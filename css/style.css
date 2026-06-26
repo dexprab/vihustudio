@@ -1,0 +1,25 @@
+/* VihuStudio v0.3.0 */
+:root{
+--navy:#1D3457;
+--gold:#FFCB45;
+--bg:#EEF2F7;
+--panel:#fff;
+--line:#DCE3EE;
+--radius:18px;
+--card-radius:36px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);overflow:hidden}
+header{height:64px;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 20px}
+header span{color:var(--gold)}
+#app{display:grid;grid-template-columns:300px 1fr 320px;height:calc(100vh - 64px)}
+.sidebar,.props{background:#fff;overflow:auto;border-right:1px solid var(--line);padding:16px}
+.props{border-left:1px solid var(--line);border-right:none}
+.preview{display:flex;align-items:center;justify-content:center;background:#dfe8f3}
+.phone{background:var(--navy);padding:24px;border-radius:22px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+#previewCanvas{width:370px;height:462px;background:#fff;border-radius:36px;display:block}
+button{width:100%;padding:10px;border:none;border-radius:10px;background:var(--gold);font-weight:bold;cursor:pointer;margin-bottom:10px}
+input,textarea{width:100%;padding:10px;border:1px solid #ccd5e2;border-radius:10px;margin:8px 0 16px}
+#slideList{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+#slideList div{padding:10px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+#slideList div:hover{border-color:var(--gold)}

@@ -1,0 +1,4 @@
+const SlideRenderer=(()=>{let c,x;const W=1080,H=1350;
+function init(cv){c=cv;c.width=W;c.height=H;x=c.getContext('2d');}
+function render(s){x.fillStyle='#1D3457';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.fillRect(70,185,940,930);x.fillStyle='#fff';x.font='56px Arial';x.fillText(s.storyBeat||'',60,100);x.font='24px Arial';x.fillText('@vihuplanet',850,60);if(s.image){let sc=Math.min(900/s.image.width,890/s.image.height);let w=s.image.width*sc,h=s.image.height*sc;x.drawImage(s.image,70+(940-w)/2,185+(930-h)/2,w,h);}x.fillText(s.bookTitle||'',320,1285);x.fillText((s.page||1)+' / '+(s.totalPages||1),900,1285);}
+return{init,render};})();
