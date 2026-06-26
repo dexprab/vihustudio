@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>VihuStudio v0.3.0</title>
+<link rel='stylesheet' href='css/style.css'>
+</head>
+<body>
+<header><h1>Vihu<span>Studio</span></h1></header>
+<div id='app'>
+<aside class='sidebar'>
+<button id='uploadBtn'>📂 Upload Images</button>
+<input id='scanUpload' type='file' accept='image/*' multiple hidden>
+<button id='coverBtn'>+ Cover</button>
+<button id='ctaBtn'>+ CTA</button>
+<div id='slideList'></div>
+</aside>
+<main class='preview'>
+<canvas id='previewCanvas'></canvas>
+</main>
+<aside class='props'>
+<label>Book Title</label><input id='bookTitle' value='The Worst Birthday Ever'>
+<label>Story Beat</label><textarea id='storyBeat'></textarea>
+<label>Page</label><input id='pageNumber' value='1'>
+<label>Total Pages</label><input id='totalPages' value='35'>
+</aside>
+</div>
+<script src='js/state.js'></script>
+<script src='renderer/slideRenderer.js'></script>
+<script src='js/app.js'></script>
+</body>
+</html>
