@@ -1,9 +1,9 @@
 {
   "version": "0.4-dev",
   "sprint": "S2",
-  "task": "T2.2",
-  "build": "0006",
+  "task": "T2.3",
+  "build": "0007",
   "buildDate": "2026-06-27",
-  "commit": "d9a188e",
+  "commit": "f4b63f5",
   "environment": "Development"
 }

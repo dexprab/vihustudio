@@ -9,4 +9,5 @@ All notable changes to this project are documented in this file.
 - feat(dev): add dynamic build information loader (2026-06-27)
 - feat(slides): implement thumbnail navigation engine (2026-06-27)
 - feat(batch): improve batch thumbnail workflow (2026-06-27)
+- feat(slides): implement page operations (duplicate, delete, insert blank) (2026-06-27)
 

@@ -6,6 +6,10 @@ const title=document.getElementById('bookTitle');
 const page=document.getElementById('pageNumber');
 const total=document.getElementById('totalPages');
 const previewCanvas=document.getElementById('previewCanvas');
+const duplicateBtn=document.getElementById('duplicateBtn');
+const deleteBtn=document.getElementById('deleteBtn');
+const blankBtn=document.getElementById('blankBtn');
+
 SlideRenderer.init(previewCanvas);
 if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
   try{ ThumbnailEngine.init(previewCanvas); }catch(e){}
@@ -26,7 +30,6 @@ upload.onchange=e=>{
       loaded++;
       renderList();
       if(AppState.slides.length===1) showSlide(0);
-      // batch generate thumbnails when all files are loaded
       if(loaded===files.length && newSlides.length>0){
         try{ ThumbnailEngine.generateBatch(newSlides).then(()=>{
            newSlides.forEach((s,idx)=>{
@@ -40,7 +43,23 @@ upload.onchange=e=>{
  });
 };
 
-function renderList(){
+duplicateBtn.onclick=()=>{
+  if(AppState.slides.length>0){
+    PageOps.duplicatePage(AppState.currentSlide);
+  }
+};
+
+deleteBtn.onclick=()=>{
+  if(AppState.slides.length>0){
+    PageOps.deletePage(AppState.currentSlide);
+  }
+};
+
+blankBtn.onclick=()=>{
+  PageOps.insertBlankPage(AppState.currentSlide>=0 ? AppState.currentSlide : 0);
+};
+
+window.renderList=function(){
  const list=document.getElementById('slideList');
  list.innerHTML='';
  AppState.slides.forEach((s,i)=>{
@@ -75,18 +94,19 @@ function renderList(){
      }); }catch(e){}
    }
  });
-}
+};
 
-function showSlide(i){
+window.showSlide=function(i){
  AppState.currentSlide=i;
  const s=AppState.slides[i];
+ if(!s) return;
  story.value=s.storyBeat;
  page.value=s.page;
  total.value=AppState.slides.length;
  draw();
  document.querySelectorAll('#slideList .thumb').forEach(el=>el.classList.remove('selected'));
  const sel=document.querySelector('#slideList [data-index="'+i+'"]'); if(sel) sel.classList.add('selected');
-}
+};
 
 function draw(){
  if(!AppState.slides.length)return;
