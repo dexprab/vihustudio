@@ -23,3 +23,10 @@ input,textarea{width:100%;padding:10px;border:1px solid #ccd5e2;border-radius:10
 #slideList{display:flex;flex-direction:column;gap:8px;margin-top:16px}
 #slideList div{padding:10px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px;cursor:pointer}
 #slideList div:hover{border-color:var(--gold)}
+
+/* Development footer styles */
+.dev-footer{position:fixed;right:12px;bottom:12px;padding:6px 10px;background:rgba(29,52,87,0.85);color:#fff;font-size:12px;border-radius:8px;opacity:0.85;pointer-events:none;z-index:20}
+.dev-footer.hidden{display:none}
+@media (max-width:640px){
+  .dev-footer{right:8px;bottom:8px;font-size:11px;padding:4px 8px}
+}
