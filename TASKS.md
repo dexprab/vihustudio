@@ -1,5 +1,21 @@
 # TASKS and Backlog for VihuStudio
 
+## DESIGN FREEZE NOTICE
+
+**As of Sprint 2 Task 2.6 (2026-06-27)**
+
+The VihuStudio workspace layout is now officially LOCKED.
+
+Future sprints may:
+- Add functionality
+- Enable placeholders
+- Improve performance
+- Fix bugs
+
+But should NOT move panels or redesign the workspace unless explicitly approved by the VihuStudio Design Council.
+
+---
+
 This file lists the current backlog, technical debt, known issues, and a recommended next sprint. All items below are written from the current implementation — no assumptions beyond what is present in the codebase.
 
 ## Current backlog (observed from code state)
@@ -17,6 +33,7 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 - [ ] **Add After**: Insert a blank page after current page
 - [ ] **Style Panel**: Implement color palette, fonts, page style, layout options
 - [ ] **Theme Customization**: Allow custom color schemes and themes
+- [ ] **Vihu Buddy**: AI assistant panel (research & design)
 
 ### General backlog (observed from code state)
 
@@ -53,7 +70,7 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 - **Priority**: Low.
 - **Effort**: 1-2 hours.
 
-### TD-005: Timeline Synchronization (open, introduced in S2-T2.5)
+### TD-005: Timeline Synchronization (open)
 - **Description**: Timeline and left pane list are rendered separately; they could share a common rendering function.
 - **Impact**: Low; minor code duplication in renderList() and renderTimeline(). Both functions are nearly identical.
 - **Priority**: Low.
@@ -71,10 +88,9 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 
 ## Recommended next sprint (Sprint 3, highest priority first)
 
-1. Implement actual autosave functionality: detect changes, save to localStorage, update autosave status display.
-2. Implement project persistence: save/load entire AppState with Save As / Open Project buttons; restore previous session.
-3. Implement export page functionality (image/PDF export of single page).
-4. Implement set as cover and move to end page operations.
-5. Implement add before / add after page operations.
-6. Fix object URL memory leak: track created object URLs and revoke them when slides are removed.
+1. **Persistence Engine**: Implement actual autosave functionality and project save/load with .vihu file format.
+2. **Export functionality**: Implement page and book export (image/PDF).
+3. **Page Operations**: Implement remaining context menu features (set as cover, move to end, add before/after).
+4. **Session Restoration**: Load previous session from localStorage on app start.
+5. **Memory Optimization**: Fix object URL memory leak and implement thumbnail memory management.
 
