@@ -52,11 +52,6 @@
 <section class='sidebar-section'>
 <h3>PAGES</h3>
 <div id='slideList' class='slide-list'></div>
-<div class='page-controls'>
-<button id='duplicateBtn' title='Duplicate Page'>🖧 Duplicate</button>
-<button id='deleteBtn' title='Delete Page'>✕ Delete</button>
-<button id='blankBtn' title='Insert Blank Page'>+ Blank</button>
-</div>
 </section>
 </aside>
 
@@ -119,6 +114,11 @@
 </aside>
 </div>
 
+<!-- Bottom Timeline/Filmstrip -->
+<div class='timeline'>
+<div id='timelineList' class='timeline-list'></div>
+</div>
+
 <!-- Development footer -->
 <div id='devFooter' class='dev-footer'>VihuStudio • Development</div>
 
@@ -128,6 +128,7 @@
 <button class='context-item' data-action='set-cover'>🎨 Set as Cover</button>
 <button class='context-item' data-action='add-before'>⬆ Add Before</button>
 <button class='context-item' data-action='add-after'>⬇ Add After</button>
+<button class='context-item' data-action='blank'>📄 Insert Blank</button>
 <button class='context-item' data-action='duplicate'>🖧 Duplicate</button>
 <button class='context-item' data-action='move-end'>⤵ Move to End</button>
 <button class='context-item' data-action='delete'>✕ Delete</button>

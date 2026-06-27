@@ -19,4 +19,14 @@ All notable changes to this project are documented in this file.
   - Added autosave status placeholder for Sprint 3
   - Improved spacing and layout to match wireframe
   - Preserved all existing functionality: upload, thumbnail engine, renderer, export
+- refactor(ui): complete VihuStudio wireframe implementation (2026-06-27)
+  - Fixed context menu positioning: appears beside thumbnail, auto-repositions at screen edges, closes on Escape or outside click
+  - Removed page action buttons from left pane (Duplicate, Delete, Blank) - now accessed only via context menu
+  - Restored bottom timeline/filmstrip: horizontal scrollable strip showing all pages with current page highlighted
+  - Left pane is now navigation-only (MY BOOK, PROJECT, THEME, PAGES sections)
+  - Timeline synchronizes with left pane selection
+  - Added Escape key handler for context menu
+  - Improved context menu positioning logic for screen edge detection
+  - Updated all context menu items to include Insert Blank option
+  - Added renderTimeline() function to keep timeline in sync with page changes
 
