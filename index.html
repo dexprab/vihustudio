@@ -3,30 +3,136 @@
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>VihuStudio v0.3.0</title>
+<title>VihuStudio v0.4-dev</title>
 <link rel='stylesheet' href='css/style.css'>
 </head>
-<body>
-<!-- GitHub connector update test -->
-<header><h1>Vihu<span>Studio</span></h1></header>
-<div id='app'>
-<aside class='sidebar'>
+<body class='light-theme'>
+<!-- Header -->
+<header class='app-header'>
+<div class='header-left'>
+<div class='logo'>VihuStudio</div>
+<button id='openBtn' title='Open Project'>📂 Open</button>
+<button id='saveBtn' title='Save Project As'>💾 Save As</button>
+</div>
+<div class='header-center'>
+<input id='projectTitle' type='text' placeholder='Project Title' class='project-title-input'>
+</div>
+<div class='header-right'>
+<div id='autosaveStatus' class='autosave-status'>Saved locally</div>
+<button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
+<button id='exportBtn' class='export-btn'>📥 Export</button>
+</div>
+</header>
+
+<!-- Main workspace -->
+<div id='app' class='workspace'>
+<!-- Left sidebar -->
+<aside class='sidebar left-sidebar'>
+<section class='sidebar-section'>
+<h3>MY BOOK</h3>
 <button id='uploadBtn'>📂 Upload Images</button>
 <input id='scanUpload' type='file' accept='image/*' multiple hidden>
-<button id='coverBtn'>+ Cover</button>
-<button id='ctaBtn'>+ CTA</button>
-<button id='duplicateBtn'>⎘ Duplicate</button>
-<button id='deleteBtn'>✕ Delete</button>
-<button id='blankBtn'>+ Blank</button>
-<div id='slideList'></div>
+</section>
+
+<section class='sidebar-section'>
+<h3>PROJECT</h3>
+<label>Title</label>
+<input id='projectAuthor' type='text' placeholder='Project Author' class='input-field'>
+</section>
+
+<section class='sidebar-section'>
+<h3>THEME</h3>
+<select id='themeSelect' class='input-field'>
+<option value='default'>Default</option>
+<option value='warm'>Warm</option>
+<option value='cool'>Cool</option>
+</select>
+</section>
+
+<section class='sidebar-section'>
+<h3>PAGES</h3>
+<div id='slideList' class='slide-list'></div>
+<div class='page-controls'>
+<button id='duplicateBtn' title='Duplicate Page'>🖧 Duplicate</button>
+<button id='deleteBtn' title='Delete Page'>✕ Delete</button>
+<button id='blankBtn' title='Insert Blank Page'>+ Blank</button>
+</div>
+</section>
 </aside>
-<main class='preview'><canvas id='previewCanvas'></canvas></main>
-<aside class='props'><label>Book Title</label><input id='bookTitle' value='The Worst Birthday Ever'><label>Story Beat</label><textarea id='storyBeat'></textarea><label>Page</label><input id='pageNumber' value='1'><label>Total Pages</label><input id='totalPages' value='0' readonly></aside>
+
+<!-- Center preview -->
+<main class='preview-area'>
+<div class='preview-wrapper'>
+<canvas id='previewCanvas'></canvas>
+</div>
+</main>
+
+<!-- Right sidebar -->
+<aside class='sidebar right-sidebar'>
+<div class='tabs'>
+<button class='tab-btn active' data-tab='story'>Story</button>
+<button class='tab-btn' data-tab='style'>Style</button>
 </div>
 
-<!-- Development footer (populated from build-info.json; hidden by adding .hidden) -->
-<div id="devFooter" class="dev-footer">VihuStudio • Development</div>
+<div id='story-tab' class='tab-content active'>
+<label>Book Title</label>
+<input id='bookTitle' type='text' value='The Worst Birthday Ever' class='input-field'>
+<label>Story Beat</label>
+<textarea id='storyBeat' class='input-field textarea'></textarea>
+<label>Page</label>
+<input id='pageNumber' type='text' value='1' class='input-field'>
+<label>Total Pages</label>
+<input id='totalPages' type='text' value='0' readonly class='input-field'>
+</div>
 
-<script src='js/state.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/app.js'></script>
+<div id='style-tab' class='tab-content'>
+<section class='style-section'>
+<h4>Theme Style</h4>
+<p class='placeholder'>Color & theme options coming soon</p>
+</section>
+
+<section class='style-section'>
+<h4>Color Palette</h4>
+<p class='placeholder'>Color selection coming soon</p>
+</section>
+
+<section class='style-section'>
+<h4>Fonts</h4>
+<p class='placeholder'>Font selection coming soon</p>
+</section>
+
+<section class='style-section'>
+<h4>Page Style</h4>
+<p class='placeholder'>Page background & styling coming soon</p>
+</section>
+
+<section class='style-section'>
+<h4>Layout & Spacing</h4>
+<p class='placeholder'>Layout options coming soon</p>
+</section>
+
+<section class='style-section'>
+<h4>Advanced</h4>
+<p class='placeholder'>Advanced settings coming soon</p>
+</section>
+</div>
+</aside>
+</div>
+
+<!-- Development footer -->
+<div id='devFooter' class='dev-footer'>VihuStudio • Development</div>
+
+<!-- Context menu template -->
+<div id='contextMenu' class='context-menu hidden'>
+<button class='context-item' data-action='export-page'>📥 Export Page</button>
+<button class='context-item' data-action='set-cover'>🎨 Set as Cover</button>
+<button class='context-item' data-action='add-before'>⬆ Add Before</button>
+<button class='context-item' data-action='add-after'>⬇ Add After</button>
+<button class='context-item' data-action='duplicate'>🖧 Duplicate</button>
+<button class='context-item' data-action='move-end'>⤵ Move to End</button>
+<button class='context-item' data-action='delete'>✕ Delete</button>
+</div>
+
+<script src='js/state.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/app.js'></script>
 </body>
 </html>

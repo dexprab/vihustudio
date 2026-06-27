@@ -9,6 +9,10 @@ const previewCanvas=document.getElementById('previewCanvas');
 const duplicateBtn=document.getElementById('duplicateBtn');
 const deleteBtn=document.getElementById('deleteBtn');
 const blankBtn=document.getElementById('blankBtn');
+const contextMenu=document.getElementById('contextMenu');
+const exportBtn=document.getElementById('exportBtn');
+const tabs=document.querySelectorAll('.tab-btn');
+let contextMenuTarget=null;
 
 SlideRenderer.init(previewCanvas);
 if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
@@ -59,6 +63,21 @@ blankBtn.onclick=()=>{
   PageOps.insertBlankPage(AppState.currentSlide>=0 ? AppState.currentSlide : 0);
 };
 
+exportBtn.onclick=()=>{
+  alert('Export feature coming in Sprint 3');
+};
+
+tabs.forEach(btn=>{
+  btn.onclick=()=>{
+    tabs.forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
+    btn.classList.add('active');
+    const tab=btn.getAttribute('data-tab');
+    const content=document.getElementById(tab+'-tab');
+    if(content) content.classList.add('active');
+  };
+});
+
 window.renderList=function(){
  const list=document.getElementById('slideList');
  list.innerHTML='';
@@ -66,6 +85,15 @@ window.renderList=function(){
    const d=document.createElement('div');
    d.className='thumb';
    d.setAttribute('data-index',i);
+
+   const menuBtn=document.createElement('button');
+   menuBtn.className='thumb-menu-btn';
+   menuBtn.textContent='⋮';
+   menuBtn.onclick=(e)=>{
+     e.stopPropagation();
+     showContextMenu(e,i);
+   };
+   d.appendChild(menuBtn);
 
    const img=document.createElement('img');
    if(s.thumbnail) img.src=s.thumbnail; else{
@@ -120,6 +148,38 @@ function draw(){
  }
  s._lastStory=s.storyBeat;
 }
+
+function showContextMenu(e,index){
+ contextMenuTarget=index;
+ const rect=e.target.getBoundingClientRect();
+ contextMenu.style.left=(rect.left)+'px';
+ contextMenu.style.top=(rect.bottom+5)+'px';
+ contextMenu.classList.remove('hidden');
+}
+
+document.addEventListener('click',(e)=>{
+ if(!e.target.closest('.context-menu') && !e.target.closest('.thumb-menu-btn')){
+   contextMenu.classList.add('hidden');
+ }
+});
+
+const contextItems=contextMenu.querySelectorAll('.context-item');
+contextItems.forEach(item=>{
+ item.onclick=(e)=>{
+   e.preventDefault();
+   const action=item.getAttribute('data-action');
+   contextMenu.classList.add('hidden');
+   if(contextMenuTarget<0) return;
+   
+   if(action==='duplicate') PageOps.duplicatePage(contextMenuTarget);
+   else if(action==='delete') PageOps.deletePage(contextMenuTarget);
+   else if(action==='export-page') alert('Export page feature coming in Sprint 3');
+   else if(action==='set-cover') alert('Set as cover feature coming in Sprint 3');
+   else if(action==='add-before') alert('Add before feature coming in Sprint 3');
+   else if(action==='add-after') alert('Add after feature coming in Sprint 3');
+   else if(action==='move-end') alert('Move to end feature coming in Sprint 3');
+ };
+});
 
 [story,title,page,total].forEach(el=>el.oninput=draw);
 });
