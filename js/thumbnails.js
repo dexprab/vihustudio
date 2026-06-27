@@ -1,28 +1,34 @@
 const ThumbnailEngine=(function(){
-  // Simple thumbnail engine that reuses SlideRenderer by temporarily swapping its canvas.
-  // All operations are queued to avoid concurrent re-inits.
   let previewCanvas=null;
   let queue=Promise.resolve();
+  let generatingCount=0;
+  let totalToGenerate=0;
+  let onProgressUpdate=null;
 
   function init(preview){ previewCanvas=preview; }
 
+  function setProgressCallback(cb){ onProgressUpdate=cb; }
+
+  function _notifyProgress(){
+    if(onProgressUpdate) try{ onProgressUpdate({generating:generatingCount,total:totalToGenerate}); }catch(e){}
+  }
+
   function generate(slide){
     if(!previewCanvas) return Promise.resolve(null);
-    // If thumbnail already exists, return it
     if(slide.thumbnail) return Promise.resolve(slide.thumbnail);
 
-    // Queue thumbnail generation to avoid races
+    generatingCount++;
+    totalToGenerate++;
+    _notifyProgress();
+
     queue = queue.then(()=> new Promise((resolve)=>{
       try{
-        // create a temporary canvas with same intrinsic size as previewCanvas
         const w = previewCanvas.width || previewCanvas.clientWidth || 1080;
         const h = previewCanvas.height || previewCanvas.clientHeight || 1350;
         const temp=document.createElement('canvas'); temp.width=w; temp.height=h;
 
-        // swap renderer to temp canvas
         SlideRenderer.init(temp);
 
-        // prepare payload similar to app.draw usage
         const titleEl=document.getElementById('bookTitle');
         const payload={
           image: slide.image,
@@ -36,7 +42,6 @@ const ThumbnailEngine=(function(){
           SlideRenderer.render(payload);
         }catch(e){ /* ensure we continue */ }
 
-        // draw scaled thumbnail
         const thumbW=110; const thumbH=Math.round((thumbW * temp.height)/temp.width);
         const thumbCanvas=document.createElement('canvas'); thumbCanvas.width=thumbW; thumbCanvas.height=thumbH;
         const tctx=thumbCanvas.getContext('2d');
@@ -45,7 +50,6 @@ const ThumbnailEngine=(function(){
         const dataUrl=thumbCanvas.toDataURL('image/png');
         slide.thumbnail=dataUrl;
 
-        // restore renderer to preview canvas and re-render current slide
         SlideRenderer.init(previewCanvas);
         const currentIdx=AppState.currentSlide||0;
         const current=AppState.slides[currentIdx];
@@ -53,13 +57,27 @@ const ThumbnailEngine=(function(){
           try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0}); }catch(e){}
         }
 
+        generatingCount--;
+        _notifyProgress();
         resolve(dataUrl);
       }catch(err){
+        generatingCount--;
+        _notifyProgress();
         resolve(null);
       }
     }));
     return queue;
   }
 
-  return {init,generate};
+  function generateBatch(slides){
+    // Queue all slides without blocking UI
+    const promises=slides.map(s=> !s.thumbnail ? generate(s) : Promise.resolve(s.thumbnail));
+    return Promise.all(promises);
+  }
+
+  function getProgress(){
+    return {generating:generatingCount,total:totalToGenerate};
+  }
+
+  return {init,generate,generateBatch,setProgressCallback,getProgress};
 })();

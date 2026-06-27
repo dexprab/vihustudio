@@ -15,13 +15,25 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 9. Break `js/app.js` into smaller modules while preserving global contract (longer-term refactor).
 10. Add an export feature (image/PDF export of book or pages).
 
-## Technical debt (concise)
+## Technical debt (tracked)
 
-- Global variables (AppState, SlideRenderer) and direct DOM ID coupling.
-- No tests or CI.
-- No persistence or export mechanism.
-- Potential memory leak: created object URLs are never revoked.
-- Minimal error handling and validation.
+### TD-001: SlideRenderer Refactor (open)
+- **Description**: Refactor SlideRenderer into a stateless renderer capable of rendering to any target canvas without global initialization.
+- **Impact**: Current renderer uses module closure globals and requires init/render calls in sequence; makes temporary rendering for thumbnails fragile.
+- **Priority**: Medium (workaround exists; affects maintainability and performance).
+- **Effort**: 3-4 hours.
+
+### TD-002: Batch Thumbnail Queue (open)
+- **Description**: Current batch thumbnail generation uses Promise chaining; for 100+ images this could be optimized with Web Workers or micro-task yielding.
+- **Impact**: Very large batch uploads (100+) may cause minor UI jank; current implementation is adequate for typical use (1-50 pages).
+- **Priority**: Low.
+- **Effort**: 2-3 hours.
+
+### TD-003: Memory Management for Thumbnails (open)
+- **Description**: Thumbnails are cached as data URLs on slide objects; for very large books (500+ pages) this will consume significant memory.
+- **Impact**: Memory usage grows linearly with book size; no current limit or LRU eviction.
+- **Priority**: Low (typical books are 1-100 pages).
+- **Effort**: 2-3 hours (implement Blob-based caching + LRU).
 
 ## Known issues (explicitly verified)
 
@@ -34,6 +46,6 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 
 1. Fix object URL memory leak: track created object URLs per slide and call `URL.revokeObjectURL` when a slide is removed or the app unloads.
 2. Implement slide deletion (UI button on each slide list item) with minimal changes to `js/app.js` and add a confirmation dialog.
-3. Add handlers for `+ Cover` and `+ CTA` that insert special slides (non-destructive change—create a `type` field for slides and keep render behavior compatible).
+3. Add handlers for `+ Cover` and `+ CTA` that insert special slides (non-destructive change — create a `type` field for slides and keep render behavior compatible).
 4. Add a simple persistence layer using `localStorage` (save/load project) with an explicit "Export" and "Import" JSON button; do not change the shape of `AppState` or SlideRenderer API.
 
