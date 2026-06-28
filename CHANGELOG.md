@@ -4,7 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
-- refine(designer): T3.3.4 Designer Palette UX refinement (build 0021, 2026-06-28)
+- polish(designer): T3.3.4 Final Theme Designer layout polish (build 0022, 2026-06-28)
+  - Standardizes every option group (Footer, Story Panel, Book Title, Handle, Decorations, Page Numbers) on a single responsive visual grid: `display:grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap:6px`. Cards within a row are sized by the grid, so they remain dimensionally identical.
+  - Removes the visibility clamp (`.icon-row-vis` with `repeat(2, ...)` and `max-width:140px`) and the redundant `.deco-row` rule; both collapse into the standard `.icon-row`.
+  - Replaces the flex-wrap `designer-subrow` wrapper for Book Title and Handle with two sub-labelled rows (Visibility / Position). Each sub-group renders as its own horizontal auto-wrapping card grid, never as a vertical stack of two side-by-side flex children.
+  - Adds a small `.designer-sublabel` (10 px, tertiary, uppercase) used between sub-groups for visual hierarchy under "Book Title" / "Handle"; pattern is identical for both, so spacing and alignment match.
+  - No functionality changes. No ThemeEngine changes. No architecture changes. Container IDs, option keys, persistence, and `buildDesigner()` are untouched.
   - Removes the horizontal Style / Branding / Decorations / Layout tab strip introduced in build 0020.
   - Restores the four section headers (Book Style, Branding, Decorations, Navigation) as a permanent vertical list; each section is independently expandable / collapsible via a clickable header with a rotating chevron and `aria-expanded`. All four sections start expanded.
   - Theme variants now render as visual preview cards: the variant's frame color frames a mini panel swatch (theme panel color) — visually consistent with the left-pane Theme Card and the Theme Picker mini-previews. The legacy `.variant-swatch` style is kept for future packs.

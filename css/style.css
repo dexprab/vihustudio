@@ -851,25 +851,19 @@ button:active{
   color:var(--text-secondary);
 }
 
-.designer-subrow{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
+.designer-sublabel{
+  font-size:10px;
+  font-weight:600;
+  color:var(--text-tertiary);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  margin-top:2px;
 }
 
-/* Icon cards — visual, compact grids (T3.3.4 refinement) */
+/* Icon cards — standardized responsive grid shared by every option group
+   (Footer, Story Panel, Book Title, Handle, Decorations, Page Numbers). */
 .icon-row{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
-  gap:6px;
-}
-
-.icon-row.icon-row-vis{
-  grid-template-columns:repeat(2, minmax(56px, 1fr));
-  max-width:140px;
-}
-
-.icon-row.deco-row{
   grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
   gap:6px;
 }
