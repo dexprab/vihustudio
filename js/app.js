@@ -142,19 +142,15 @@ tabs.forEach(btn=>{
   };
 });
 
-// Designer Palette sub-tabs (T3.3.4) — pure presentation; ThemeEngine container IDs are unchanged
-const paletteTabs=document.querySelectorAll('.palette-tab-btn');
-const designerPanes=document.querySelectorAll('.designer-pane');
-paletteTabs.forEach(btn=>{
-  btn.onclick=()=>{
-    paletteTabs.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
-    designerPanes.forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    btn.setAttribute('aria-selected','true');
-    const pane=btn.getAttribute('data-palette');
-    const target=document.querySelector('.designer-pane[data-palette-pane="'+pane+'"]');
-    if(target) target.classList.add('active');
-  };
+// Designer Palette collapsible sections (T3.3.4 refinement) — permanent vertical list,
+// each section independently expandable/collapsible; pure presentation.
+document.querySelectorAll('[data-collapsible-toggle]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const group=btn.closest('.designer-group');
+    if(!group) return;
+    const collapsed=group.classList.toggle('collapsed');
+    btn.setAttribute('aria-expanded',collapsed?'false':'true');
+  });
 });
 
 window.renderList=function(){

@@ -774,63 +774,66 @@ button:active{
   flex-shrink:0;
 }
 
-/* Theme Designer Palette tabs (T3.3.4) — non-sequential category navigation */
-.designer-palette-tabs{
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
-  gap:6px;
-  margin-bottom:14px;
-}
-
-.palette-tab-btn{
-  padding:8px 4px;
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:var(--border-radius);
-  color:var(--text-secondary);
-  font-size:11px;
-  font-weight:600;
-  letter-spacing:0.4px;
-  text-transform:uppercase;
-  cursor:pointer;
-  height:auto;
-  width:auto;
-  margin:0;
-  transition:border-color 0.2s, background 0.2s, color 0.2s;
-}
-
-.palette-tab-btn:hover{
-  border-color:var(--gold);
-  color:var(--text);
-}
-
-.palette-tab-btn.active{
-  background:var(--gold);
-  border-color:var(--gold);
-  color:var(--navy);
-}
-
-.designer-pane{ display:none; }
-.designer-pane.active{ display:block; }
-
-/* Theme Designer groups */
+/* Theme Designer groups — permanent vertical list, each section independently collapsible (T3.3.4 refinement) */
 .designer-group{
-  margin-bottom:18px;
-  padding:14px;
+  margin-bottom:12px;
+  padding:0;
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:var(--card-radius);
+  overflow:hidden;
 }
 
+/* Section header doubles as the collapsible toggle */
 .designer-group-title{
-  margin:0 0 12px 0;
-  padding-bottom:8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  margin:0;
+  padding:10px 14px;
+  background:transparent;
+  border:none;
+  border-radius:0;
   font-size:11px;
   font-weight:bold;
   color:var(--gold);
   text-transform:uppercase;
   letter-spacing:0.8px;
-  border-bottom:1px solid var(--line);
+  cursor:pointer;
+  text-align:left;
+  height:auto;
+  transition:background 0.15s;
+}
+
+.designer-group-title:hover{
+  background:rgba(255,203,69,0.06);
+}
+
+.designer-group-title-text{
+  flex:1;
+}
+
+.designer-group-chevron{
+  font-size:11px;
+  color:var(--text-secondary);
+  transition:transform 0.2s;
+  line-height:1;
+}
+
+.designer-group.collapsed .designer-group-chevron{
+  transform:rotate(-90deg);
+}
+
+.designer-group-body{
+  padding:0 14px 14px;
+  border-top:1px solid var(--line);
+  padding-top:12px;
+}
+
+.designer-group.collapsed .designer-group-body{
+  display:none;
 }
 
 .designer-row{
@@ -854,15 +857,22 @@ button:active{
   flex-wrap:wrap;
 }
 
-/* Icon cards — visual, compact controls */
+/* Icon cards — visual, compact grids (T3.3.4 refinement) */
 .icon-row{
-  display:flex;
-  flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
   gap:6px;
 }
 
-.icon-row.icon-row-vis{ gap:6px; }
-.icon-row.deco-row{ gap:6px; }
+.icon-row.icon-row-vis{
+  grid-template-columns:repeat(2, minmax(56px, 1fr));
+  max-width:140px;
+}
+
+.icon-row.deco-row{
+  grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
+  gap:6px;
+}
 
 .icon-card{
   display:flex;
@@ -870,7 +880,7 @@ button:active{
   align-items:center;
   gap:4px;
   padding:6px 4px;
-  width:52px;
+  width:auto;
   background:var(--bg);
   border:1px solid var(--line);
   border-radius:8px;
@@ -989,18 +999,19 @@ button:active{
   color:var(--gold);
 }
 
-/* Variant chips */
+/* Variant cards — mini visual preview of frame + panel (T3.3.4 refinement) */
 .theme-variants{
-  display:flex;
-  flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(76px, 1fr));
   gap:8px;
 }
 
 .variant-card{
   display:flex;
+  flex-direction:column;
   align-items:center;
-  gap:8px;
-  padding:6px 10px;
+  gap:6px;
+  padding:8px 6px;
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:var(--border-radius);
@@ -1009,7 +1020,7 @@ button:active{
   width:auto;
   margin:0;
   font-weight:normal;
-  transition:border-color 0.2s, background 0.2s;
+  transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .variant-card:hover{
@@ -1023,6 +1034,26 @@ button:active{
   box-shadow:0 0 0 1px rgba(255,203,69,0.4);
 }
 
+.variant-preview{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:48px;
+  height:38px;
+  border-radius:5px;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,0.08);
+}
+
+.variant-preview-panel{
+  display:block;
+  width:70%;
+  height:74%;
+  border-radius:3px;
+  box-shadow:0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Legacy swatch — kept so older serialized themes / future packs can still render dot-only previews */
 .variant-swatch{
   display:inline-block;
   width:18px;
@@ -1032,8 +1063,10 @@ button:active{
 }
 
 .variant-label{
-  font-size:12px;
+  font-size:11px;
+  line-height:1.2;
   color:var(--text);
+  text-align:center;
 }
 
 /* Option pills (panel / footer / page numbers) */

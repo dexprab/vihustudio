@@ -271,16 +271,21 @@ const ThemeEngine=(function(){
     if(!container) return;
     const t=getActiveTheme();
     const opts=getOptions();
+    const panelColor=(t.panel&&t.panel.color)||'#FFFFFF';
     container.innerHTML='';
     (t.variants||[]).forEach(function(v){
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='variant-card';
       btn.setAttribute('data-variant-id',v.id);
-      const swatch=document.createElement('span');
-      swatch.className='variant-swatch';
-      swatch.style.background=v.frameColor;
-      btn.appendChild(swatch);
+      const preview=document.createElement('span');
+      preview.className='variant-preview';
+      preview.style.background=v.frameColor;
+      const inner=document.createElement('span');
+      inner.className='variant-preview-panel';
+      inner.style.background=panelColor;
+      preview.appendChild(inner);
+      btn.appendChild(preview);
       const label=document.createElement('span');
       label.className='variant-label';
       label.textContent=v.name;

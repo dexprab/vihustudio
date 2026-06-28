@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refine(designer): T3.3.4 Designer Palette UX refinement (build 0021, 2026-06-28)
+  - Removes the horizontal Style / Branding / Decorations / Layout tab strip introduced in build 0020.
+  - Restores the four section headers (Book Style, Branding, Decorations, Navigation) as a permanent vertical list; each section is independently expandable / collapsible via a clickable header with a rotating chevron and `aria-expanded`. All four sections start expanded.
+  - Theme variants now render as visual preview cards: the variant's frame color frames a mini panel swatch (theme panel color) — visually consistent with the left-pane Theme Card and the Theme Picker mini-previews. The legacy `.variant-swatch` style is kept for future packs.
+  - Icon rows (`.icon-row`, `.deco-row`) and the variants row switch from flex-wrap to CSS grid (`grid-template-columns: repeat(auto-fill, minmax(56px|76px, 1fr))`) so options align in tidy columns; visibility rows are clamped to two columns to keep Show/Hide compact.
+  - No changes to ThemeEngine API, option keys, persistence, or container IDs. `_renderVariants` was extended to compose the mini preview (frame + panel) but its inputs and outputs are unchanged.
+  - Aligns with CLAUDE.md Core Principle "Visual controls for visual properties" and the Roadmap #1 "Theme Designer Polish" item.
 - refactor(designer): T3.3.4 Designer Palette restructuring (build 0020, 2026-06-28)
   - Completes Sprint 3 Task 3.3.4 by replacing the right-pane Theme Designer's sequential stack of four sections with a non-sequential, tabbed Designer Palette.
   - New `.designer-palette-tabs` segmented control sits directly under the Current Theme banner with four peer categories: Style, Branding, Decorations, Layout. Only the active category's controls are rendered; the other three panes are `display:none`.

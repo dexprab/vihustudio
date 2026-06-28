@@ -95,17 +95,13 @@
 <span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
 </section>
 
-<!-- Designer Palette tabs (T3.3.4) — non-sequential category navigation; container IDs preserved so ThemeEngine.buildDesigner() is unchanged -->
-<div class='designer-palette-tabs' role='tablist' aria-label='Theme Designer categories'>
-<button type='button' class='palette-tab-btn active' role='tab' aria-selected='true' data-palette='style'>Style</button>
-<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='branding'>Branding</button>
-<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='decorations'>Decorations</button>
-<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='layout'>Layout</button>
-</div>
-
-<div class='designer-pane active' data-palette-pane='style' role='tabpanel'>
-<section class='designer-group'>
-<h4 class='designer-group-title'>Book Style</h4>
+<!-- Designer Palette (T3.3.4 refinement) — permanent vertical list with per-section collapsibility; ThemeEngine container IDs are preserved so buildDesigner() is unchanged -->
+<section class='designer-group' data-section='style'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Book Style</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
 <div class='designer-row'>
 <div class='designer-row-label'>Variant</div>
 <div id='themeVariants' class='theme-variants'></div>
@@ -114,12 +110,15 @@
 <div class='designer-row-label'>Story Panel</div>
 <div id='panelStyles' class='icon-row'></div>
 </div>
-</section>
 </div>
+</section>
 
-<div class='designer-pane' data-palette-pane='branding' role='tabpanel'>
-<section class='designer-group'>
-<h4 class='designer-group-title'>Branding</h4>
+<section class='designer-group' data-section='branding'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Branding</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
 <div class='designer-row'>
 <div class='designer-row-label'>Footer</div>
 <div id='footerStyles' class='icon-row'></div>
@@ -138,25 +137,31 @@
 <div id='handlePosition' class='icon-row'></div>
 </div>
 </div>
-</section>
 </div>
+</section>
 
-<div class='designer-pane' data-palette-pane='decorations' role='tabpanel'>
-<section class='designer-group'>
-<h4 class='designer-group-title'>Decorations</h4>
+<section class='designer-group' data-section='decorations'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Decorations</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
 <div id='decorationsList' class='icon-row deco-row'></div>
-</section>
 </div>
+</section>
 
-<div class='designer-pane' data-palette-pane='layout' role='tabpanel'>
-<section class='designer-group'>
-<h4 class='designer-group-title'>Navigation</h4>
+<section class='designer-group' data-section='layout'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Navigation</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
 <div class='designer-row'>
 <div class='designer-row-label'>Page Numbers</div>
 <div id='pageNumberStyles' class='icon-row'></div>
 </div>
-</section>
 </div>
+</section>
 </div>
 </aside>
 </div>
