@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(persistence): project lifecycle foundation (T3.0, build 0012, 2026-06-28)
+  - New module `js/projectManager.js` owns serialize, deserialize, autosave, save-as, open, and session restore
+  - Project model v1.0 with `version`, `project` (title/author/bookTitle/theme/createdDate/modifiedDate), `pages` (pageType/image/thumbnail/storyBeat/storyDraft/metadata), `settings` (darkMode/selectedTheme), `session` (currentPage/uiState)
+  - Page types introduced: `story`, `cover`, `cta`, `blank` (only `story` and `blank` used this sprint)
+  - Autosave to `localStorage` with 500 ms debounce on upload, page operations, theme change, project/author/book-title/story edits
+  - Header autosave status now shows live state: Saving... / Saved / Save Failed / Unsaved
+  - Save Project As downloads a `.vihu` file (JSON, no compression, image data-URLs encapsulated inside ProjectManager)
+  - Open Project (`.vihu`) restores project metadata, pages, thumbnails, theme, and current page
+  - On startup, app prompts to Restore or Discard a saved session; corrupt or future-version sessions show a graceful Start New Project / Discard Saved Session dialog
+  - Extended `AppState.project` with author, bookTitle, createdDate, modifiedDate (non-breaking)
+  - No changes to SlideRenderer, ThumbnailEngine, ThemeManager, PageOps, or the locked UI layout
 - refactor(ui): final layout correction — design freeze (T2.6.1, build 0011, 2026-06-28)
   - Filmstrip now spans the full width of the center workspace (removed 444px cap); remains inside the preview column and never extends under the sidebars
   - Added a thin top border to visually anchor the filmstrip as part of the book workspace
