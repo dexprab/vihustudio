@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refactor(designer): T3.3.4 Designer Palette restructuring (build 0020, 2026-06-28)
+  - Completes Sprint 3 Task 3.3.4 by replacing the right-pane Theme Designer's sequential stack of four sections with a non-sequential, tabbed Designer Palette.
+  - New `.designer-palette-tabs` segmented control sits directly under the Current Theme banner with four peer categories: Style, Branding, Decorations, Layout. Only the active category's controls are rendered; the other three panes are `display:none`.
+  - Each pre-existing T3.3.2 group is wrapped in a `.designer-pane[data-palette-pane]` envelope; container IDs (`themeVariants`, `panelStyles`, `footerStyles`, `pageNumberStyles`, `bookTitleVisibility`, `bookTitlePosition`, `handleVisibility`, `handlePosition`, `decorationsList`) are unchanged, so `ThemeEngine.buildDesigner()` and `_syncControls` continue to look up controls by ID without any modification.
+  - Tab switching is a small `app.js` handler scoped to `.palette-tab-btn`; no changes to ThemeEngine, ProjectManager, SlideRenderer, ThumbnailEngine, or PageOps.
+  - Aligns the Designer with the Core Principle "Editor UI should only contain controls that improve the active workflow" — the user sees one category at a time, not a long scroll.
+  - Accessibility: tabs carry `role='tablist' / 'tab' / 'tabpanel'` and `aria-selected` is maintained on click.
 - refactor(workspace): T3.3.4 Workspace Simplification (build 0019, 2026-06-28)
   - Implements CLAUDE.md Locked Product Decision #1: editor UI no longer surfaces Project Title, Author, or the editable Book Name.
   - Header center `#projectTitle` input is hidden; left sidebar PROJECT section (`#projectAuthor`, `#projectAuthorName`) is hidden; Story tab Book Title label + `#bookTitle` input are hidden.

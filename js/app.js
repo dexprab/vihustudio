@@ -142,6 +142,21 @@ tabs.forEach(btn=>{
   };
 });
 
+// Designer Palette sub-tabs (T3.3.4) — pure presentation; ThemeEngine container IDs are unchanged
+const paletteTabs=document.querySelectorAll('.palette-tab-btn');
+const designerPanes=document.querySelectorAll('.designer-pane');
+paletteTabs.forEach(btn=>{
+  btn.onclick=()=>{
+    paletteTabs.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    designerPanes.forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+    const pane=btn.getAttribute('data-palette');
+    const target=document.querySelector('.designer-pane[data-palette-pane="'+pane+'"]');
+    if(target) target.classList.add('active');
+  };
+});
+
 window.renderList=function(){
  const list=document.getElementById('slideList');
  list.innerHTML='';

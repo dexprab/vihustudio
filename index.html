@@ -95,6 +95,15 @@
 <span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
 </section>
 
+<!-- Designer Palette tabs (T3.3.4) — non-sequential category navigation; container IDs preserved so ThemeEngine.buildDesigner() is unchanged -->
+<div class='designer-palette-tabs' role='tablist' aria-label='Theme Designer categories'>
+<button type='button' class='palette-tab-btn active' role='tab' aria-selected='true' data-palette='style'>Style</button>
+<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='branding'>Branding</button>
+<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='decorations'>Decorations</button>
+<button type='button' class='palette-tab-btn' role='tab' aria-selected='false' data-palette='layout'>Layout</button>
+</div>
+
+<div class='designer-pane active' data-palette-pane='style' role='tabpanel'>
 <section class='designer-group'>
 <h4 class='designer-group-title'>Book Style</h4>
 <div class='designer-row'>
@@ -106,7 +115,9 @@
 <div id='panelStyles' class='icon-row'></div>
 </div>
 </section>
+</div>
 
+<div class='designer-pane' data-palette-pane='branding' role='tabpanel'>
 <section class='designer-group'>
 <h4 class='designer-group-title'>Branding</h4>
 <div class='designer-row'>
@@ -128,12 +139,16 @@
 </div>
 </div>
 </section>
+</div>
 
+<div class='designer-pane' data-palette-pane='decorations' role='tabpanel'>
 <section class='designer-group'>
 <h4 class='designer-group-title'>Decorations</h4>
 <div id='decorationsList' class='icon-row deco-row'></div>
 </section>
+</div>
 
+<div class='designer-pane' data-palette-pane='layout' role='tabpanel'>
 <section class='designer-group'>
 <h4 class='designer-group-title'>Navigation</h4>
 <div class='designer-row'>
@@ -141,6 +156,7 @@
 <div id='pageNumberStyles' class='icon-row'></div>
 </div>
 </section>
+</div>
 </div>
 </aside>
 </div>
