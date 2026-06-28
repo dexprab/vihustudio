@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refactor(ui): final layout correction — design freeze (T2.6.1, build 0011, 2026-06-28)
+  - Filmstrip now spans the full width of the center workspace (removed 444px cap); remains inside the preview column and never extends under the sidebars
+  - Added a thin top border to visually anchor the filmstrip as part of the book workspace
+  - Increased preview canvas from 444x555 to 500x625 (~12% larger, 4:5 aspect preserved)
+  - Scaled responsive preview sizes proportionally at 1600/1440/1366/1280 breakpoints
+  - Reclaimed 100px reserved at the bottom of the workspace grid; the filmstrip now lives inside the preview column instead
+  - Tightened preview area padding and wrapper margin to reduce dead grey space
+  - Consolidated six Style-tab "Coming Soon" cards into a single grouped placeholder
+  - No changes to AppState, SlideRenderer, ThumbnailEngine, PageOps, ThemeManager, or Export
 - docs: add project architecture and AI development guide (2026-06-27)
 - feat(dev): add development build information footer (2026-06-27)
 - feat(dev): add dynamic build information loader (2026-06-27)

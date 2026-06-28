@@ -117,7 +117,7 @@ body{
 .workspace{
   display:grid;
   grid-template-columns:340px 1fr 320px;
-  height:calc(100vh - 64px - 100px);
+  height:calc(100vh - 64px);
   gap:0;
 }
 
@@ -227,19 +227,19 @@ button:active{
   align-items:center;
   justify-content:flex-start;
   background:var(--bg);
-  padding:20px;
+  padding:16px 16px 12px;
   overflow-y:auto;
 }
 
 .preview-wrapper{
   background:transparent;
   border-radius:var(--card-radius);
-  margin-bottom:20px;
+  margin-bottom:12px;
 }
 
 #previewCanvas{
-  width:444px;
-  height:555px;
+  width:500px;
+  height:625px;
   background:#fff;
   border-radius:var(--card-radius);
   display:block;
@@ -369,26 +369,26 @@ button:active{
   color:var(--gold);
 }
 
-/* Timeline/Filmstrip - Inside preview area */
+/* Timeline/Filmstrip - Belongs to the center workspace, full column width */
 .timeline{
   width:100%;
-  max-width:444px;
   height:auto;
   background:transparent;
-  border:none;
+  border-top:1px solid var(--line);
   overflow-x:auto;
   overflow-y:hidden;
   display:flex;
   align-items:center;
-  padding:0;
-  margin-top:16px;
+  justify-content:center;
+  padding:12px 4px 4px;
+  margin-top:4px;
 }
 
 .timeline-list{
   display:flex;
   gap:8px;
   padding:0;
-  width:100%;
+  margin:0 auto;
 }
 
 .timeline-thumb{
@@ -510,27 +510,29 @@ button:active{
   display:none;
 }
 
-/* Style section placeholders */
-.style-section{
-  margin-bottom:16px;
-  padding:12px;
+/* Style tab — single grouped placeholder */
+.style-placeholder{
+  margin:0;
+  padding:20px;
   background:var(--bg);
-  border-radius:var(--border-radius);
-  border:1px solid var(--line);
+  border:1px dashed var(--line);
+  border-radius:var(--card-radius);
+  text-align:center;
 }
 
-.style-section h4{
+.style-placeholder h4{
   margin:0 0 8px 0;
-  font-size:12px;
+  font-size:13px;
   font-weight:bold;
   color:var(--text);
 }
 
 .placeholder{
   margin:0;
-  font-size:11px;
+  font-size:12px;
   color:var(--text-tertiary);
   font-style:italic;
+  line-height:1.5;
 }
 
 /* Responsive adjustments */
@@ -539,8 +541,8 @@ button:active{
     grid-template-columns:340px 1fr 320px;
   }
   #previewCanvas{
-    width:444px;
-    height:555px;
+    width:500px;
+    height:625px;
   }
 }
 
@@ -549,8 +551,8 @@ button:active{
     grid-template-columns:320px 1fr 300px;
   }
   #previewCanvas{
-    width:400px;
-    height:500px;
+    width:450px;
+    height:562px;
   }
 }
 
@@ -559,8 +561,8 @@ button:active{
     grid-template-columns:300px 1fr 280px;
   }
   #previewCanvas{
-    width:360px;
-    height:450px;
+    width:400px;
+    height:500px;
   }
 }
 
@@ -569,8 +571,8 @@ button:active{
     grid-template-columns:280px 1fr 260px;
   }
   #previewCanvas{
-    width:320px;
-    height:400px;
+    width:360px;
+    height:450px;
   }
 }
 
@@ -579,8 +581,8 @@ button:active{
     grid-template-columns:260px 1fr 240px;
   }
   #previewCanvas{
-    width:300px;
-    height:375px;
+    width:340px;
+    height:425px;
   }
 }
 
