@@ -22,18 +22,21 @@ This file lists the current backlog, technical debt, known issues, and a recomme
 
 ### Sprint 3 Implementation TODO
 
-- [ ] **Open Project**: Load a saved .vihu project file and restore AppState
-- [ ] **Save Project As**: Serialize AppState and export as .vihu JSON file
-- [ ] **Auto Save**: Detect changes, save to localStorage, update autosave status display (Unsaved changes → Saving... → Saved locally)
-- [ ] **Restore Session**: Load last session from localStorage on app start
-- [ ] **Export Page**: Render and export individual page as image/PDF
-- [ ] **Set as Cover**: Mark a page as the book cover (visual indicator)
-- [ ] **Move to End**: Move a page to the end of the book
-- [ ] **Add Before**: Insert a blank page before current page
-- [ ] **Add After**: Insert a blank page after current page
-- [ ] **Style Panel**: Implement color palette, fonts, page style, layout options
-- [ ] **Theme Customization**: Allow custom color schemes and themes
+- [x] **Open Project**: Load a saved .vihu project file and restore AppState (T3.0)
+- [x] **Save Project As**: Serialize AppState and export as .vihu JSON file (T3.0)
+- [x] **Auto Save**: Detect changes, save to localStorage, update autosave status display (T3.0)
+- [x] **Restore Session**: Load last session from localStorage on app start (T3.0)
+- [x] **Export Page**: Render and export individual page as image (T3.1)
+- [x] **Set as Cover**: Mark a page as the book cover (T3.1)
+- [x] **Move to End**: Move a page to the end of the book (T3.1)
+- [x] **Add Before**: Insert a blank page before current page (T3.1)
+- [x] **Add After**: Insert a blank page after current page (T3.1)
+- [x] **Style Panel**: Replaced with Theme Designer (T3.3)
+- [x] **Theme Customization**: Theme Engine + Designer with variants, decorations, branding controls (T3.2 – T3.3.3)
+- [x] **Workspace Simplification**: Hide Project Title, Author, editable Book Name; preserve metadata in the model (T3.3.4)
 - [ ] **Vihu Buddy**: AI assistant panel (research & design)
+
+> Canonical project context now lives in [CLAUDE.md](./CLAUDE.md). This TODO list is retained for historical traceability of Sprint 3.
 
 ### General backlog (observed from code state)
 

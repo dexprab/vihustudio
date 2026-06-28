@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refactor(workspace): T3.3.4 Workspace Simplification (build 0019, 2026-06-28)
+  - Implements CLAUDE.md Locked Product Decision #1: editor UI no longer surfaces Project Title, Author, or the editable Book Name.
+  - Header center `#projectTitle` input is hidden; left sidebar PROJECT section (`#projectAuthor`, `#projectAuthorName`) is hidden; Story tab Book Title label + `#bookTitle` input are hidden.
+  - DOM elements remain in place (same IDs) so SlideRenderer, ProjectManager serialize/deserialize, and the autosave dirty listeners stay backward compatible. The metadata still lives on `AppState.project.{title,author,bookTitle}` and is persisted via ProjectManager exactly as before; the rendered Book Title on the slide is unchanged.
+  - Verified: opening a `.vihu` project still restores title/author/bookTitle into the model; autosave round-trips them through `localStorage`; preview continues to render the book title; no console errors on load, upload, page operations, theme change, or restore.
+  - Aligns the editor with the Core Principle "Editor UI should only contain controls that improve the active workflow" and "Metadata should not occupy permanent workspace."
+  - No changes to AppState shape, SlideRenderer, ThemeEngine, ThumbnailEngine, ProjectManager, PageOps, or the locked workspace grid.
 - fix(persistence): T3.3.3 Theme System stabilization & design freeze (build 0018, 2026-06-28)
   - Fix: Auto Save initialization regression — a session containing only project metadata (theme, title, author, themeOptions) but no pages was being silently filtered out as "empty" by ProjectManager.getSessionStatus(), so users who customized a theme before uploading any images saw their setup lost on reload. Any parsed-and-validated session is now restorable; the restore modal copy adapts when there are no pages yet.
   - Verified: changing theme, picking a variant, typing a book/project title, or any Designer option click on a brand-new project now produces a restorable session within the 500 ms debounce window.

@@ -16,7 +16,8 @@
 <input id='openProjectInput' type='file' accept='.vihu,application/json' hidden>
 </div>
 <div class='header-center'>
-<input id='projectTitle' type='text' placeholder='Project Title' class='project-title-input'>
+<!-- Project Title metadata preserved in AppState.project.title; hidden from editor per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
+<input id='projectTitle' type='text' placeholder='Project Title' class='project-title-input' hidden>
 </div>
 <div class='header-right'>
 <div id='autosaveStatus' class='autosave-status'>Saved locally</div>
@@ -35,7 +36,8 @@
 <input id='scanUpload' type='file' accept='image/*' multiple hidden>
 </section>
 
-<section class='sidebar-section'>
+<!-- Project metadata (Title, Author) preserved in AppState.project; hidden from editor per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
+<section class='sidebar-section' hidden>
 <h3>PROJECT</h3>
 <label>Title</label>
 <input id='projectAuthor' type='text' placeholder='Enter project title' class='input-field'>
@@ -73,8 +75,9 @@
 </div>
 
 <div id='story-tab' class='tab-content active'>
-<label>Book Title</label>
-<input id='bookTitle' type='text' value='The Worst Birthday Ever' class='input-field'>
+<!-- Book Title metadata preserved in AppState.project.bookTitle and rendered onto the slide; editable input hidden from Story tab per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
+<label hidden>Book Title</label>
+<input id='bookTitle' type='text' value='The Worst Birthday Ever' class='input-field' hidden>
 <label>Story Beat</label>
 <textarea id='storyBeat' class='input-field textarea'></textarea>
 <label>Page</label>
