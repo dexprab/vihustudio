@@ -152,6 +152,9 @@ const ProjectManager=(function(){
       if(typeof ThemeManager!=='undefined'){
         try{ ThemeManager.applyTheme(settings.darkMode?'dark':'light'); }catch(e){}
       }
+      if(typeof ThemeEngine!=='undefined'){
+        try{ ThemeEngine.applyTheme(AppState.project.theme,{silent:true}); }catch(e){}
+      }
 
       if(typeof window.renderList==='function') window.renderList();
       if(typeof window.renderTimeline==='function') window.renderTimeline();

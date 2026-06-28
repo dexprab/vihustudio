@@ -30,12 +30,14 @@ const ThumbnailEngine=(function(){
         SlideRenderer.init(temp);
 
         const titleEl=document.getElementById('bookTitle');
+        const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
         const payload={
           image: slide.image,
           storyBeat: slide.storyBeat || '',
           bookTitle: titleEl? titleEl.value : '',
           page: slide.page || 1,
-          totalPages: slide.totalPages || 0
+          totalPages: slide.totalPages || 0,
+          theme: theme
         };
 
         try{

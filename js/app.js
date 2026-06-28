@@ -30,6 +30,17 @@ if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
   try{ ThumbnailEngine.init(previewCanvas); }catch(e){}
 }
 
+// Theme Engine bootstrap
+if(typeof ThemeEngine!=='undefined'){
+  try{ ThemeEngine.populateSelector(themeSelectEl); }catch(e){}
+  try{ ThemeEngine.buildCards(document.getElementById('themeCards')); }catch(e){}
+  if(themeSelectEl){
+    themeSelectEl.addEventListener('change',function(){
+      ThemeEngine.applyTheme(themeSelectEl.value);
+    });
+  }
+}
+
 const STATUS_LABEL={saving:'Saving...',saved:'Saved',failed:'Save Failed',unsaved:'Unsaved'};
 function setAutosaveStatus(state){
   if(!autosaveStatus) return;
@@ -218,7 +229,8 @@ function draw(){
  s.storyBeat=story.value;
  s.page=page.value;
  s.totalPages=AppState.slides.length;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages});
+ const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }

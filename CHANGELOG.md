@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(theme): Theme Engine foundation (T3.2, build 0014, 2026-06-28)
+  - New module `js/themeEngine.js` owns theme registry, apply, preview, persistence
+  - Four built-in themes: Storybook Classic (default), Adventure, Fun Comic, Minimal Elegant
+  - SlideRenderer extended to accept a theme object in its payload (backward compatible — falls back to the active theme or an embedded Storybook Classic if none is provided)
+  - ThumbnailEngine forwards the active theme so thumbnails reflect the selected theme
+  - Style tab replaced with theme cards (preview swatch + name + description), Theme Info block (name / description / suitable-for), and an informational "Coming in future" placeholder for typography, colors, decorations, layout, frames
+  - THEME dropdown in the left sidebar now populated from the registry; both the dropdown and cards stay in sync with the active theme
+  - Changing theme immediately repaints preview, refreshes left thumbnails and the filmstrip, and persists via ProjectManager autosave
+  - On Open / Restore, the saved theme is re-applied (silent — no extra autosave write); thumbnails are restored as they were saved
+  - No changes to SlideRenderer drawing algorithm or layout positions; no changes to ThemeManager (light/dark), ProjectManager architecture, PageOps, or the locked UI layout
 - feat(page-ops): complete page management (T3.1, build 0013, 2026-06-28)
   - All eight context-menu actions implemented; no placeholder alerts remain
   - New PageOps methods: addBefore, addAfter, moveToEnd, setAsCover, exportPage
