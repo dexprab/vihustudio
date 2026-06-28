@@ -70,11 +70,10 @@ const SlideRenderer=(()=>{
     // Handle / branding watermark
     _drawHandle(t,opts);
 
-    // Image inside panel
+    // Image inside panel — presentation-only transforms; original image untouched.
+    // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
     if(s.image && s.image.width){
-      const sc=Math.min(900/s.image.width,890/s.image.height);
-      const w=s.image.width*sc, h=s.image.height*sc;
-      x.drawImage(s.image,70+(940-w)/2,185+(930-h)/2,w,h);
+      _drawImage(s);
     }
 
     // Decorations on the frame
@@ -86,6 +85,32 @@ const SlideRenderer=(()=>{
     // Page number
     _drawPageNumber(t,opts,s.page||1,s.totalPages||1);
   }
+
+  // Inner image area inside the panel — 20px breathing room on all sides so
+  // the image never visually touches the rounded/scroll/cloud edges.
+  const IMG_X=PANEL_X+20, IMG_Y=PANEL_Y+20, IMG_W=PANEL_W-40, IMG_H=PANEL_H-40;
+
+  function _drawImage(s){
+    const v=s.imageView||{};
+    const fit=v.fit==='fill'?'fill':'fit';
+    const userScale=typeof v.scale==='number' && isFinite(v.scale) && v.scale>0 ? v.scale : 1;
+    const offX=typeof v.offsetX==='number' && isFinite(v.offsetX) ? v.offsetX : 0;
+    const offY=typeof v.offsetY==='number' && isFinite(v.offsetY) ? v.offsetY : 0;
+    const iw=s.image.width, ih=s.image.height;
+    const base=fit==='fill' ? Math.max(IMG_W/iw, IMG_H/ih) : Math.min(IMG_W/iw, IMG_H/ih);
+    const sc=base*userScale;
+    const w=iw*sc, h=ih*sc;
+    const cx=IMG_X+IMG_W/2+offX, cy=IMG_Y+IMG_H/2+offY;
+    x.save();
+    x.beginPath();
+    x.rect(IMG_X,IMG_Y,IMG_W,IMG_H);
+    x.clip();
+    x.drawImage(s.image,cx-w/2,cy-h/2,w,h);
+    x.restore();
+  }
+
+  // Public: panel rect in canvas coordinates — consumed by canvas pan handler.
+  function getPanelRect(){ return {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
   function _drawHandle(theme,opts){
     if(opts.handleVisibility==='hide') return;
@@ -289,7 +314,7 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  const api={init,render};
+  const api={init,render,getPanelRect};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

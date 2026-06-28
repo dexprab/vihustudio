@@ -39,9 +39,17 @@ if(typeof ThemeEngine!=='undefined'){
 }
 
 // Card Designer foundation bootstrap (Sprint 4.1) — mount the reusable
-// component into its right-pane host. Controls land in Sprint 4.x.
+// component into its right-pane host. Sprint 4.2 wires the Image section to
+// the active slide via the documented configure() host contract.
 if(typeof CardDesigner!=='undefined'){
   try{ CardDesigner.mount(document.getElementById('cardDesignerRoot')); }catch(e){}
+  try{
+    CardDesigner.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); }
+    });
+  }catch(e){}
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
@@ -256,6 +264,9 @@ window.showSlide=function(i){
  const sel=document.querySelector('#slideList [data-index="'+i+'"]'); if(sel) sel.classList.add('selected');
  document.querySelectorAll('#timelineList .timeline-thumb').forEach(el=>el.classList.remove('active'));
  const tsel=document.querySelector('#timelineList [data-index="'+i+'"]'); if(tsel) tsel.classList.add('active');
+ // Re-sync the Card Designer's Image section with the newly-active slide.
+ if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+ _updateCanvasCursor();
 };
 
 function draw(){
@@ -266,12 +277,18 @@ function draw(){
  s.totalPages=AppState.slides.length;
  const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
  const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions});
+ const imageView=(s.metadata && s.metadata.imageView) || null;
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
  s._lastStory=s.storyBeat;
 }
+
+// Exposed redraw used by CardDesigner.configure({redraw}). Lighter-weight
+// than showSlide — it skips the input/highlight resync that only matters
+// when switching slides.
+window.redrawPreview=draw;
 
 function showContextMenu(e,index){
  contextMenuTarget=index;
@@ -348,6 +365,78 @@ contextItems.forEach(item=>{
   el.addEventListener('input',markDirty);
 });
 if(themeToggleEl){ themeToggleEl.addEventListener('click',()=>setTimeout(markDirty,0)); }
+
+// --- Canvas pan (Sprint 4.2) ---------------------------------------------
+// Drag inside the panel rect translates the image's offsetX/offsetY in
+// canvas-pixel space. The original Image object is never touched — only
+// slide.metadata.imageView is mutated.
+let _panState=null;
+
+function _canvasCoords(e){
+  const rect=previewCanvas.getBoundingClientRect();
+  const sx=previewCanvas.width/rect.width;
+  const sy=previewCanvas.height/rect.height;
+  return {
+    x:(e.clientX-rect.left)*sx,
+    y:(e.clientY-rect.top)*sy,
+    sx:sx, sy:sy
+  };
+}
+
+function _isInsidePanel(canvasX,canvasY){
+  if(typeof SlideRenderer.getPanelRect!=='function') return false;
+  const r=SlideRenderer.getPanelRect();
+  return canvasX>=r.x && canvasX<=r.x+r.w && canvasY>=r.y && canvasY<=r.y+r.h;
+}
+
+function _updateCanvasCursor(){
+  if(!previewCanvas) return;
+  const s=AppState.slides[AppState.currentSlide];
+  if(s && s.image){
+    previewCanvas.classList.add('canvas-pannable');
+  }else{
+    previewCanvas.classList.remove('canvas-pannable');
+  }
+}
+
+previewCanvas.addEventListener('mousedown',function(e){
+  const s=AppState.slides[AppState.currentSlide];
+  if(!s||!s.image) return;
+  const c=_canvasCoords(e);
+  if(!_isInsidePanel(c.x,c.y)) return;
+  if(typeof CardDesigner==='undefined') return;
+  const v=CardDesigner.getActiveImageView();
+  if(!v) return;
+  _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};
+  previewCanvas.classList.add('canvas-panning');
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove',function(e){
+  if(!_panState) return;
+  const s=AppState.slides[AppState.currentSlide];
+  if(!s) return;
+  if(!s.metadata||!s.metadata.imageView) return;
+  const dx=(e.clientX-_panState.startX)*_panState.sx;
+  const dy=(e.clientY-_panState.startY)*_panState.sy;
+  s.metadata.imageView.offsetX=_panState.offX+dx;
+  s.metadata.imageView.offsetY=_panState.offY+dy;
+  delete s.thumbnail;
+  draw();
+});
+
+document.addEventListener('mouseup',function(){
+  if(!_panState) return;
+  _panState=null;
+  previewCanvas.classList.remove('canvas-panning');
+  // Persist + refresh thumbnails once at the end of the gesture, so the
+  // mousemove path stays at 60fps.
+  markDirty();
+  const s=AppState.slides[AppState.currentSlide];
+  if(s && typeof ThumbnailEngine!=='undefined'){
+    try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
+  }
+});
 
 // Restore-modal helpers
 function showRestoreModal(opts){

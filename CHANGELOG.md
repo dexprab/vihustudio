@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(card-designer): Sprint 4.2 Image Designer & Workspace Enhancement (build 0024, 2026-06-28)
+  - First functional Card Designer module: the Image section now ships Mode (Fit / Fill icon cards), Scale (range slider 0.25×–4×, step 0.05, with a live readout), Reset to Fit, and drag-to-pan on the preview canvas.
+  - Edits are entirely non-destructive — only `slide.metadata.imageView` (`{scale, offsetX, offsetY, fit}`) is mutated; the original `Image` object is never touched, never re-encoded, and never decoded into pixel data.
+  - SlideRenderer extended with `_drawImage(s)` that reads `payload.imageView`, computes the base scale from Fit/Fill, applies the user scale multiplier and pan offsets, and clips to the inner panel rect so overflow never bleeds onto the frame. New public `SlideRenderer.getPanelRect()` exposes the panel rect for canvas hit-testing.
+  - CardDesigner gains a documented host contract: `configure({getCurrentSlide, redraw, markDirty})`, plus `refresh()`, `getActiveImageView()`, and `notifyImageViewChanged()`. Story / Cover / CTA Designers will share the same wiring in future sprints.
+  - app.js exposes `window.redrawPreview = draw`, passes `imageView` in the SlideRenderer payload, refreshes the Image section on every `showSlide`, and installs canvas pan handlers (mousedown is scoped to the panel rect; mouseup commits via markDirty and re-generates the thumbnail).
+  - ThumbnailEngine forwards `slide.metadata.imageView` so thumbnails always match the preview after a scale / pan / fit change.
+  - Workspace rebalance: right Designer Palette widened by ~80px at every breakpoint (340/1fr/400 at 1920+, scaling proportionally down to 260/1fr/320 at 1280); canvas CSS widths unchanged so the canvas remains the primary focus. Wider pane lets the auto-fill icon grid fit more cards per row, improving visual density.
+  - Persistence: `slide.metadata.imageView` rides through `metadata` — no project format change, no ProjectManager change, no schema bump. Save → Reload restores scale, fit, and pan exactly.
+  - Constraints honored: no Theme Designer changes, no ThemeEngine changes, no export changes, no project format changes, no architecture changes outside Card Designer / SlideRenderer composition.
 - feat(card-designer): Sprint 4.1 Card Designer foundation (build 0023, 2026-06-28)
   - New module `js/cardDesigner.js` exposes the reusable foundation that Story Designer, Cover Designer, and CTA Designer will share. Public API: `CardDesigner.{SECTIONS, getSections(), mount(container), unmount(container), getSectionBody(container, sectionId)}`.
   - Three sections rendered in document order: **Image** (image scale, position, fit mode), **Card** (card styling, theme defaults + per-card overrides), **Text** (typography). Each section is a `.designer-group` with a collapsible header, identical to the Theme Designer's visual language, and a `[data-card-section-body]` attachment slot for future controls.

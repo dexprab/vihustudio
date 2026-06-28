@@ -113,10 +113,12 @@ body{
   background:rgba(255,255,255,0.3);
 }
 
-/* Workspace layout */
+/* Workspace layout — right Designer Palette widened in Sprint 4.2 so the
+   Card Designer's controls (mode cards, scale slider) have breathing room
+   and the auto-fill icon grid fits more cards per row. */
 .workspace{
   display:grid;
-  grid-template-columns:340px 1fr 320px;
+  grid-template-columns:340px 1fr 400px;
   height:calc(100vh - 64px);
   gap:0;
 }
@@ -518,6 +520,89 @@ button:active{
 .card-section-body{
   display:block;
 }
+
+/* Image section controls (Sprint 4.2) — composes Theme-Designer grid
+   primitives so spacing/alignment matches the rest of the palette. */
+.image-mode-glyph{
+  display:block;
+  width:22px;
+  height:28px;
+  border:1.5px solid var(--gold);
+  border-radius:3px;
+  background:transparent;
+}
+.image-mode-glyph-fit{
+  width:22px;
+  height:28px;
+}
+.image-mode-glyph-fill{
+  width:26px;
+  height:30px;
+  background:var(--gold);
+  opacity:0.85;
+}
+
+.image-scale-label{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+}
+
+.image-scale-value{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+
+.image-scale-slider{
+  width:100%;
+  height:auto;
+  margin:0;
+  padding:0;
+  background:transparent;
+  accent-color:var(--gold);
+  cursor:pointer;
+}
+
+.image-scale-slider:disabled{
+  cursor:not-allowed;
+  opacity:0.5;
+}
+
+.image-reset-btn{
+  width:100%;
+  padding:8px 12px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+  transition:border-color 0.2s, background 0.2s;
+}
+
+.image-reset-btn:hover:not(:disabled){
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+
+.image-reset-btn:disabled,
+.image-mode-btn:disabled{
+  cursor:not-allowed;
+  opacity:0.45;
+}
+
+.image-hint{
+  margin-top:8px;
+}
+
+/* Canvas pan cursor */
+#previewCanvas.canvas-pannable{ cursor:grab; }
+#previewCanvas.canvas-panning{ cursor:grabbing; }
 
 /* Development footer */
 .dev-footer{
@@ -1167,7 +1252,7 @@ button:active{
 /* Responsive adjustments */
 @media (max-width:1920px){
   .workspace{
-    grid-template-columns:340px 1fr 320px;
+    grid-template-columns:340px 1fr 400px;
   }
   #previewCanvas{
     width:500px;
@@ -1177,7 +1262,7 @@ button:active{
 
 @media (max-width:1600px){
   .workspace{
-    grid-template-columns:320px 1fr 300px;
+    grid-template-columns:320px 1fr 380px;
   }
   #previewCanvas{
     width:450px;
@@ -1187,7 +1272,7 @@ button:active{
 
 @media (max-width:1440px){
   .workspace{
-    grid-template-columns:300px 1fr 280px;
+    grid-template-columns:300px 1fr 360px;
   }
   #previewCanvas{
     width:400px;
@@ -1197,7 +1282,7 @@ button:active{
 
 @media (max-width:1366px){
   .workspace{
-    grid-template-columns:280px 1fr 260px;
+    grid-template-columns:280px 1fr 340px;
   }
   #previewCanvas{
     width:360px;
@@ -1207,7 +1292,7 @@ button:active{
 
 @media (max-width:1280px){
   .workspace{
-    grid-template-columns:260px 1fr 240px;
+    grid-template-columns:260px 1fr 320px;
   }
   #previewCanvas{
     width:340px;

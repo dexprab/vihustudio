@@ -28,10 +28,11 @@ Canonical project context for VihuStudio. Read this first before making any chan
 - Page Management
 - Theme Engine
 - Theme Designer
+- Card Designer Foundation
 
 ### In Progress
 
-- Card Designer Foundation
+- Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset)
 
 ## Locked Product Decisions
 

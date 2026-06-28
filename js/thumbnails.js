@@ -39,7 +39,8 @@ const ThumbnailEngine=(function(){
           page: slide.page || 1,
           totalPages: slide.totalPages || 0,
           theme: theme,
-          themeOptions: themeOptions
+          themeOptions: themeOptions,
+          imageView: (slide.metadata && slide.metadata.imageView) || null
         };
 
         try{
@@ -58,7 +59,7 @@ const ThumbnailEngine=(function(){
         const currentIdx=AppState.currentSlide||0;
         const current=AppState.slides[currentIdx];
         if(current){
-          try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions}); }catch(e){}
+          try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.imageView)||null}); }catch(e){}
         }
 
         generatingCount--;
