@@ -11,7 +11,9 @@ const exportBtn=document.getElementById('exportBtn');
 const tabs=document.querySelectorAll('.tab-btn');
 const projectTitleEl=document.getElementById('projectTitle');
 const projectAuthorEl=document.getElementById('projectAuthorName');
-const themeSelectEl=document.getElementById('themeSelect');
+const changeThemeBtn=document.getElementById('changeThemeBtn');
+const themePickerModal=document.getElementById('themePickerModal');
+const themePickerClose=document.getElementById('themePickerClose');
 const themeToggleEl=document.getElementById('themeToggle');
 const saveBtn=document.getElementById('saveBtn');
 const openBtn=document.getElementById('openBtn');
@@ -32,14 +34,25 @@ if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
 
 // Theme Engine bootstrap
 if(typeof ThemeEngine!=='undefined'){
-  try{ ThemeEngine.populateSelector(themeSelectEl); }catch(e){}
-  try{ ThemeEngine.buildCards(document.getElementById('themeCards')); }catch(e){}
+  try{ ThemeEngine.buildLeftPaneCard(); }catch(e){}
   try{ ThemeEngine.buildDesigner(); }catch(e){}
-  if(themeSelectEl){
-    themeSelectEl.addEventListener('change',function(){
-      ThemeEngine.applyTheme(themeSelectEl.value);
-    });
-  }
+}
+if(changeThemeBtn){
+  changeThemeBtn.addEventListener('click',function(){
+    if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
+  });
+}
+if(themePickerClose){
+  themePickerClose.addEventListener('click',function(){
+    if(typeof ThemeEngine!=='undefined') ThemeEngine.closeThemePicker();
+  });
+}
+if(themePickerModal){
+  themePickerModal.addEventListener('click',function(e){
+    if(e.target===themePickerModal){
+      if(typeof ThemeEngine!=='undefined') ThemeEngine.closeThemePicker();
+    }
+  });
 }
 
 const STATUS_LABEL={saving:'Saving...',saved:'Saved',failed:'Save Failed',unsaved:'Unsaved'};
@@ -276,6 +289,9 @@ document.addEventListener('keydown',(e)=>{
    if(restoreModal && !restoreModal.classList.contains('hidden')){
      hideRestoreModal();
    }
+   if(themePickerModal && !themePickerModal.classList.contains('hidden')){
+     if(typeof ThemeEngine!=='undefined') ThemeEngine.closeThemePicker();
+   }
  }
 });
 
@@ -310,7 +326,6 @@ contextItems.forEach(item=>{
   if(!el) return;
   el.addEventListener('input',markDirty);
 });
-if(themeSelectEl){ themeSelectEl.addEventListener('change',markDirty); }
 if(themeToggleEl){ themeToggleEl.addEventListener('click',()=>setTimeout(markDirty,0)); }
 
 // Restore-modal helpers

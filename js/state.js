@@ -9,7 +9,11 @@ const AppState={
      panelStyle:'classic',
      footerStyle:'classic',
      decorations:[],
-     pageNumber:'bottom-right'
+     pageNumber:'bottom-right',
+     bookTitleVisibility:'show',
+     bookTitlePosition:'bottom-left',
+     handleVisibility:'show',
+     handlePosition:'top-right'
    },
    createdDate:'',
    modifiedDate:''

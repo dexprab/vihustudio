@@ -1,7 +1,7 @@
 const ThemeEngine=(function(){
   const DEFAULT_THEME_ID='storybook-classic';
 
-  // Cross-theme catalogs — the same options apply to any theme.
+  // Cross-theme catalogs.
   const PANEL_STYLES=[
     {id:'classic',name:'Classic'},
     {id:'rounded',name:'Rounded'},
@@ -19,8 +19,22 @@ const ThemeEngine=(function(){
     {id:'bottom-center',name:'Bottom Center'},
     {id:'hidden',name:'Hidden'}
   ];
+  const VISIBILITY=[
+    {id:'show',name:'Show'},
+    {id:'hide',name:'Hide'}
+  ];
+  const BOOK_TITLE_POSITIONS=[
+    {id:'bottom-left',name:'Bottom Left'},
+    {id:'bottom-center',name:'Bottom Center'},
+    {id:'bottom-right',name:'Bottom Right'}
+  ];
+  const HANDLE_POSITIONS=[
+    {id:'top-left',name:'Top Left'},
+    {id:'top-right',name:'Top Right'},
+    {id:'bottom-left',name:'Bottom Left'},
+    {id:'bottom-right',name:'Bottom Right'}
+  ];
 
-  // Built-in themes. Each declares its variants and the decorations it permits.
   const BUILTIN_THEMES=[
     {
       id:'storybook-classic',
@@ -112,16 +126,17 @@ const ThemeEngine=(function(){
     registry[theme.id]=theme;
     return true;
   }
-
   function getTheme(id){
     if(id && registry[id]) return registry[id];
     return registry[DEFAULT_THEME_ID];
   }
-
   function getAllThemes(){ return BUILTIN_THEMES.slice(); }
   function getPanelStyles(){ return PANEL_STYLES.slice(); }
   function getFooterStyles(){ return FOOTER_STYLES.slice(); }
   function getPageNumberStyles(){ return PAGE_NUMBER_STYLES.slice(); }
+  function getVisibility(){ return VISIBILITY.slice(); }
+  function getBookTitlePositions(){ return BOOK_TITLE_POSITIONS.slice(); }
+  function getHandlePositions(){ return HANDLE_POSITIONS.slice(); }
 
   function getActiveThemeId(){
     if(typeof AppState!=='undefined' && AppState.project && AppState.project.theme && registry[AppState.project.theme]){
@@ -129,7 +144,6 @@ const ThemeEngine=(function(){
     }
     return DEFAULT_THEME_ID;
   }
-
   function getActiveTheme(){ return getTheme(getActiveThemeId()); }
 
   function _defaultOptionsFor(theme){
@@ -138,7 +152,11 @@ const ThemeEngine=(function(){
       panelStyle:'classic',
       footerStyle:'classic',
       decorations:[],
-      pageNumber:'bottom-right'
+      pageNumber:'bottom-right',
+      bookTitleVisibility:'show',
+      bookTitlePosition:'bottom-left',
+      handleVisibility:'show',
+      handlePosition:'top-right'
     };
   }
 
@@ -159,11 +177,9 @@ const ThemeEngine=(function(){
   function _reconcileOptionsForTheme(theme){
     if(!AppState.project) return;
     const cur=Object.assign({},_defaultOptionsFor(theme),AppState.project.themeOptions||{});
-    // Variant must exist on the active theme
     if(!theme.variants || !theme.variants.find(function(v){ return v.id===cur.variant; })){
       cur.variant=(theme.variants&&theme.variants[0])?theme.variants[0].id:'classic';
     }
-    // Decorations must be allowed by the active theme
     const allowedDecos=new Set((theme.decorations||[]).map(function(d){ return d.id; }));
     cur.decorations=(cur.decorations||[]).filter(function(d){ return allowedDecos.has(d); });
     _writeOptions(cur);
@@ -210,23 +226,41 @@ const ThemeEngine=(function(){
     }catch(e){}
   }
 
-  function _renderThemeInfo(themeId){
+  function _renderCurrentThemeName(themeId){
     const t=getTheme(themeId);
-    const nameEl=document.getElementById('themeInfoName');
-    const descEl=document.getElementById('themeInfoDescription');
-    const suitEl=document.getElementById('themeInfoSuitable');
-    if(nameEl) nameEl.textContent=t.name;
-    if(descEl) descEl.textContent=t.description;
-    if(suitEl) suitEl.textContent=t.suitableFor;
+    const el=document.getElementById('currentThemeName');
+    if(el) el.textContent=t.name;
+  }
+
+  function _renderLeftCard(themeId){
+    const container=document.getElementById('leftThemeCard');
+    if(!container) return;
+    const t=getTheme(themeId);
+    container.innerHTML='';
+    const preview=document.createElement('div');
+    preview.className='left-theme-card-preview';
+    preview.style.background=t.frame.color;
+    const inner=document.createElement('div');
+    inner.className='left-theme-card-panel';
+    inner.style.background=t.panel.color;
+    preview.appendChild(inner);
+    container.appendChild(preview);
+    const info=document.createElement('div');
+    info.className='left-theme-card-info';
+    const name=document.createElement('div');
+    name.className='left-theme-card-name';
+    name.textContent=t.name;
+    info.appendChild(name);
+    const desc=document.createElement('div');
+    desc.className='left-theme-card-desc';
+    desc.textContent=t.description;
+    info.appendChild(desc);
+    container.appendChild(info);
   }
 
   function _syncControls(themeId){
-    const sel=document.getElementById('themeSelect');
-    if(sel && sel.value!==themeId){ sel.value=themeId; }
-    document.querySelectorAll('.theme-card').forEach(function(card){
-      card.classList.toggle('active', card.getAttribute('data-theme-id')===themeId);
-    });
-    _renderThemeInfo(themeId);
+    _renderLeftCard(themeId);
+    _renderCurrentThemeName(themeId);
     _renderVariants();
     _markActiveOptions();
     _renderDecorations();
@@ -262,7 +296,11 @@ const ThemeEngine=(function(){
     [
       ['panelStyles','panelStyle'],
       ['footerStyles','footerStyle'],
-      ['pageNumberStyles','pageNumber']
+      ['pageNumberStyles','pageNumber'],
+      ['bookTitleVisibility','bookTitleVisibility'],
+      ['bookTitlePosition','bookTitlePosition'],
+      ['handleVisibility','handleVisibility'],
+      ['handlePosition','handlePosition']
     ].forEach(function(pair){
       const containerId=pair[0], key=pair[1];
       const container=document.getElementById(containerId);
@@ -336,28 +374,21 @@ const ThemeEngine=(function(){
     return t;
   }
 
-  function populateSelector(selectEl){
-    const el=selectEl||document.getElementById('themeSelect');
-    if(!el) return;
-    el.innerHTML='';
-    BUILTIN_THEMES.forEach(function(t){
-      const opt=document.createElement('option');
-      opt.value=t.id;
-      opt.textContent=t.name;
-      el.appendChild(opt);
-    });
-    el.value=getActiveThemeId();
+  function buildLeftPaneCard(){
+    _renderLeftCard(getActiveThemeId());
   }
 
-  function buildCards(container){
-    const el=container||document.getElementById('themeCards');
+  function buildPickerCards(){
+    const el=document.getElementById('themePickerCards');
     if(!el) return;
     el.innerHTML='';
+    const activeId=getActiveThemeId();
     BUILTIN_THEMES.forEach(function(t){
       const card=document.createElement('button');
       card.type='button';
       card.className='theme-card';
       card.setAttribute('data-theme-id',t.id);
+      if(t.id===activeId) card.classList.add('active');
       const preview=document.createElement('div');
       preview.className='theme-card-preview';
       preview.style.background=t.frame.color;
@@ -374,15 +405,33 @@ const ThemeEngine=(function(){
       desc.className='theme-card-desc';
       desc.textContent=t.description;
       card.appendChild(desc);
-      card.addEventListener('click',function(){ applyTheme(t.id); });
+      card.addEventListener('click',function(){
+        applyTheme(t.id);
+        closeThemePicker();
+      });
       el.appendChild(card);
     });
+  }
+
+  function openThemePicker(){
+    const modal=document.getElementById('themePickerModal');
+    if(!modal) return;
+    buildPickerCards();
+    modal.classList.remove('hidden');
+  }
+  function closeThemePicker(){
+    const modal=document.getElementById('themePickerModal');
+    if(modal) modal.classList.add('hidden');
   }
 
   function buildDesigner(){
     _buildOptionPills('panelStyles',PANEL_STYLES,'panelStyle');
     _buildOptionPills('footerStyles',FOOTER_STYLES,'footerStyle');
     _buildOptionPills('pageNumberStyles',PAGE_NUMBER_STYLES,'pageNumber');
+    _buildOptionPills('bookTitleVisibility',VISIBILITY,'bookTitleVisibility');
+    _buildOptionPills('bookTitlePosition',BOOK_TITLE_POSITIONS,'bookTitlePosition');
+    _buildOptionPills('handleVisibility',VISIBILITY,'handleVisibility');
+    _buildOptionPills('handlePosition',HANDLE_POSITIONS,'handlePosition');
     _syncControls(getActiveThemeId());
   }
 
@@ -395,15 +444,19 @@ const ThemeEngine=(function(){
     getPanelStyles:getPanelStyles,
     getFooterStyles:getFooterStyles,
     getPageNumberStyles:getPageNumberStyles,
+    getVisibility:getVisibility,
+    getBookTitlePositions:getBookTitlePositions,
+    getHandlePositions:getHandlePositions,
     getOptions:getOptions,
     setOption:setOption,
     toggleDecoration:toggleDecoration,
     resolveFrameColor:resolveFrameColor,
     applyTheme:applyTheme,
     registerTheme:registerTheme,
-    populateSelector:populateSelector,
-    buildCards:buildCards,
-    buildDesigner:buildDesigner
+    buildLeftPaneCard:buildLeftPaneCard,
+    buildDesigner:buildDesigner,
+    openThemePicker:openThemePicker,
+    closeThemePicker:closeThemePicker
   };
   try{ window.ThemeEngine=api; }catch(e){}
   return api;

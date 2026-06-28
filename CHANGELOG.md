@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refactor(theme-ux): T3.3.1 Theme System UX refinement (build 0016, 2026-06-28)
+  - Left pane Theme dropdown replaced with a Theme Card (preview + name + description) plus a Change Theme button
+  - Change Theme opens a lightweight Theme Picker modal that reuses the four built-in themes
+  - Theme Library and Theme Info removed from the Theme Designer; replaced with a Current Theme banner
+  - Theme Designer is now exclusively about customizing the active theme: Variant, Story Panel, Footer, Decorations, Page Numbers, Book Title, Handle / Branding
+  - New book-level controls: Book Title visibility (Show/Hide) + position (Bottom Left/Center/Right); Handle/Branding visibility (Show/Hide) + position (Top Left/Right, Bottom Left/Right)
+  - Renderer honors the new options; Book Title position overrides Footer's previous alignment; Hide on either Book Title or Handle suppresses the corresponding text
+  - AppState defaults extended; ProjectManager persistence reused (no schema redesign)
+  - No changes to ThemeEngine architecture (API stable), ProjectManager architecture, SlideRenderer API, PageOps, or the locked workspace layout
 - feat(theme-designer): T3.3 Theme Designer (build 0015, 2026-06-28)
   - Style tab renamed to Theme Designer; layout otherwise unchanged
   - Theme model extended with `variants[]` and `decorations[]` declarations; cross-theme catalogs (`panelStyles`, `footerStyles`, `pageNumberStyles`) live on ThemeEngine

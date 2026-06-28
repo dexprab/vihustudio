@@ -15,7 +15,11 @@ const SlideRenderer=(()=>{
     panelStyle:'classic',
     footerStyle:'classic',
     decorations:[],
-    pageNumber:'bottom-right'
+    pageNumber:'bottom-right',
+    bookTitleVisibility:'show',
+    bookTitlePosition:'bottom-left',
+    handleVisibility:'show',
+    handlePosition:'top-right'
   };
 
   function _theme(s){
@@ -63,11 +67,8 @@ const SlideRenderer=(()=>{
       x.fillText(s.storyBeat,60,100);
     }
 
-    // Watermark
-    x.fillStyle=t.watermark.color;
-    x.font=t.watermark.size+'px '+t.watermark.font;
-    x.textAlign='left';
-    x.fillText('@vihuplanet',850,60);
+    // Handle / branding watermark
+    _drawHandle(t,opts);
 
     // Image inside panel
     if(s.image && s.image.width){
@@ -84,6 +85,20 @@ const SlideRenderer=(()=>{
 
     // Page number
     _drawPageNumber(t,opts,s.page||1,s.totalPages||1);
+  }
+
+  function _drawHandle(theme,opts){
+    if(opts.handleVisibility==='hide') return;
+    const pos=opts.handlePosition||'top-right';
+    let hx, hy, align;
+    if(pos==='top-left'){ hx=60; hy=60; align='left'; }
+    else if(pos==='bottom-left'){ hx=60; hy=H-30; align='left'; }
+    else if(pos==='bottom-right'){ hx=W-60; hy=H-30; align='right'; }
+    else { hx=W-60; hy=60; align='right'; }
+    x.fillStyle=theme.watermark.color;
+    x.font=theme.watermark.size+'px '+theme.watermark.font;
+    x.textAlign=align;
+    x.fillText('@vihuplanet',hx,hy);
   }
 
   // --- Panel styles ---
@@ -127,24 +142,22 @@ const SlideRenderer=(()=>{
     x.closePath();
   }
 
-  // --- Footer ---
+  // --- Footer (book title) ---
   function _drawFooter(theme,opts,bookTitle){
+    if(opts.bookTitleVisibility==='hide') return;
     if(opts.footerStyle==='hidden' || !bookTitle) return;
+    let size=theme.footerText.size;
+    if(opts.footerStyle==='modern') size=Math.round(size*1.1);
+    else if(opts.footerStyle==='minimal') size=Math.round(size*0.75);
     x.fillStyle=theme.footerText.color;
-    x.font=theme.footerText.size+'px '+theme.footerText.font;
-    if(opts.footerStyle==='modern'){
-      x.textAlign='center';
-      x.fillText(bookTitle,W/2,1285);
-    }else if(opts.footerStyle==='minimal'){
-      x.save();
-      x.font=Math.round(theme.footerText.size*0.7)+'px '+theme.footerText.font;
-      x.textAlign='center';
-      x.fillText(bookTitle,W/2,1295);
-      x.restore();
-    }else{
-      x.textAlign='left';
-      x.fillText(bookTitle,320,1285);
-    }
+    x.font=size+'px '+theme.footerText.font;
+    const pos=opts.bookTitlePosition||'bottom-left';
+    let bx, align;
+    if(pos==='bottom-center'){ bx=W/2; align='center'; }
+    else if(pos==='bottom-right'){ bx=W-60; align='right'; }
+    else { bx=320; align='left'; }
+    x.textAlign=align;
+    x.fillText(bookTitle,bx,1285);
   }
 
   // --- Page number ---

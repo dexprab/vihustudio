@@ -45,7 +45,8 @@
 
 <section class='sidebar-section'>
 <h3>THEME</h3>
-<select id='themeSelect' class='input-field'></select>
+<div id='leftThemeCard' class='left-theme-card'></div>
+<button id='changeThemeBtn' class='change-theme-btn' type='button'>Change Theme</button>
 </section>
 
 <section class='sidebar-section'>
@@ -87,15 +88,9 @@
 </div>
 
 <div id='style-tab' class='tab-content'>
-<section class='theme-section'>
-<h4>Theme Library</h4>
-<div id='themeCards' class='theme-cards'></div>
-</section>
-
-<section class='theme-info' id='themeInfo'>
-<h4 id='themeInfoName'>Storybook Classic</h4>
-<p id='themeInfoDescription' class='theme-info-line'>Warm, rounded, friendly.</p>
-<p class='theme-info-meta'><span class='theme-info-label'>Suitable for:</span> <span id='themeInfoSuitable'>Bedtime stories</span></p>
+<section class='current-theme-banner'>
+<span class='current-theme-label'>Current Theme</span>
+<span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
 </section>
 
 <section class='theme-section'>
@@ -122,12 +117,40 @@
 <h4>Page Numbers</h4>
 <div id='pageNumberStyles' class='option-grid'></div>
 </section>
+
+<section class='theme-section'>
+<h4>Book Title</h4>
+<div class='subsection-label'>Visibility</div>
+<div id='bookTitleVisibility' class='option-grid'></div>
+<div class='subsection-label'>Position</div>
+<div id='bookTitlePosition' class='option-grid'></div>
+</section>
+
+<section class='theme-section'>
+<h4>Handle / Branding</h4>
+<div class='subsection-label'>Visibility</div>
+<div id='handleVisibility' class='option-grid'></div>
+<div class='subsection-label'>Position</div>
+<div id='handlePosition' class='option-grid'></div>
+</section>
 </div>
 </aside>
 </div>
 
 <!-- Development footer -->
 <div id='devFooter' class='dev-footer'>VihuStudio • Development</div>
+
+<!-- Theme Picker modal (Sprint 3.3.1) -->
+<div id='themePickerModal' class='modal hidden' role='dialog' aria-modal='true'>
+<div class='modal-content modal-wide'>
+<h3>Choose a Theme</h3>
+<p>Pick a visual identity for your book. You can customize it further in the Theme Designer.</p>
+<div id='themePickerCards' class='theme-cards'></div>
+<div class='modal-actions'>
+<button id='themePickerClose' class='modal-btn' type='button'>Cancel</button>
+</div>
+</div>
+</div>
 
 <!-- Restore-session modal (Sprint 3) -->
 <div id='restoreModal' class='modal hidden' role='dialog' aria-modal='true'>

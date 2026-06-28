@@ -625,6 +625,121 @@ button:active{
   color:var(--text-secondary);
 }
 
+/* Left pane Theme Card */
+.left-theme-card{
+  display:flex;
+  align-items:stretch;
+  gap:10px;
+  padding:10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  margin-bottom:10px;
+}
+
+.left-theme-card-preview{
+  flex-shrink:0;
+  width:48px;
+  height:60px;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.left-theme-card-panel{
+  width:70%;
+  height:74%;
+  border-radius:3px;
+  box-shadow:0 1px 2px rgba(0,0,0,0.12);
+}
+
+.left-theme-card-info{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.left-theme-card-name{
+  font-size:13px;
+  font-weight:bold;
+  color:var(--text);
+  line-height:1.2;
+  margin-bottom:2px;
+}
+
+.left-theme-card-desc{
+  font-size:11px;
+  color:var(--text-secondary);
+  line-height:1.3;
+}
+
+.change-theme-btn{
+  width:100%;
+  padding:8px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+  transition:border-color 0.2s, background 0.2s;
+}
+
+.change-theme-btn:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.05);
+}
+
+/* Theme Designer current-theme banner */
+.current-theme-banner{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  padding:12px 14px;
+  margin-bottom:20px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+}
+
+.current-theme-label{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--text-tertiary);
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+}
+
+.current-theme-name{
+  font-size:14px;
+  font-weight:bold;
+  color:var(--gold);
+}
+
+/* Subsection label inside designer sections */
+.subsection-label{
+  font-size:11px;
+  font-weight:600;
+  color:var(--text-secondary);
+  margin:8px 0 6px;
+}
+
+/* Modal wide variant for the Theme Picker */
+.modal-content.modal-wide{
+  max-width:600px;
+}
+
+.modal-content.modal-wide .theme-cards{
+  margin-bottom:16px;
+}
+
 /* Variant chips */
 .theme-variants{
   display:flex;
