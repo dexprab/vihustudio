@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(page-ops): complete page management (T3.1, build 0013, 2026-06-28)
+  - All eight context-menu actions implemented; no placeholder alerts remain
+  - New PageOps methods: addBefore, addAfter, moveToEnd, setAsCover, exportPage
+  - Internal helpers introduced (_recalcPageNumbers, _refreshNavigation, _refreshSelection, _reorderPages, _createBlankSlide) to eliminate duplicated page-order logic and unblock future Move Up / Move Down / Drag & Drop
+  - Page numbers and totalPages recalculated on every mutation; no stale numbering
+  - Selection stability per spec: delete keeps nearest neighbour focused; moveToEnd / setAsCover keep moved page focused; add-before / add-after focus the new page
+  - Set as Cover enforces single-cover invariant: any existing cover is converted back to story before the new cover is moved to position 1
+  - Export Page renders the selected slide at full resolution 1080x1350 via the existing SlideRenderer and downloads "Page NNN.png" (zero-padded)
+  - PageOps now persists internally (calls ProjectManager.markDirty) — app.js no longer needs per-op autosave wiring
+  - No changes to SlideRenderer, ThumbnailEngine, ThemeManager, ProjectManager architecture, or the locked UI layout
 - feat(persistence): project lifecycle foundation (T3.0, build 0012, 2026-06-28)
   - New module `js/projectManager.js` owns serialize, deserialize, autosave, save-as, open, and session restore
   - Project model v1.0 with `version`, `project` (title/author/bookTitle/theme/createdDate/modifiedDate), `pages` (pageType/image/thumbnail/storyBeat/storyDraft/metadata), `settings` (darkMode/selectedTheme), `session` (currentPage/uiState)

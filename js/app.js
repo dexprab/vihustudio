@@ -265,37 +265,27 @@ document.addEventListener('keydown',(e)=>{
  }
 });
 
+const CONTEXT_ACTIONS={
+  'duplicate':'duplicatePage',
+  'delete':'deletePage',
+  'blank':'insertBlankPage',
+  'add-before':'addBefore',
+  'add-after':'addAfter',
+  'move-end':'moveToEnd',
+  'set-cover':'setAsCover',
+  'export-page':'exportPage'
+};
 const contextItems=contextMenu.querySelectorAll('.context-item');
 contextItems.forEach(item=>{
  item.onclick=(e)=>{
    e.preventDefault();
    const action=item.getAttribute('data-action');
+   const target=contextMenuTarget;
    closeContextMenu();
-   if(contextMenuTarget<0) return;
-
-   if(action==='duplicate'){
-     PageOps.duplicatePage(contextMenuTarget);
-     renderTimeline();
-     markDirty();
-   }else if(action==='delete'){
-     PageOps.deletePage(contextMenuTarget);
-     renderTimeline();
-     markDirty();
-   }else if(action==='blank'){
-     PageOps.insertBlankPage(contextMenuTarget);
-     renderTimeline();
-     markDirty();
-   }else if(action==='export-page'){
-     alert('Export page feature coming in Sprint 3');
-   }else if(action==='set-cover'){
-     alert('Set as cover feature coming in Sprint 3');
-   }else if(action==='add-before'){
-     alert('Add before feature coming in Sprint 3');
-   }else if(action==='add-after'){
-     alert('Add after feature coming in Sprint 3');
-   }else if(action==='move-end'){
-     alert('Move to end feature coming in Sprint 3');
-   }
+   if(target===null||target<0) return;
+   const method=CONTEXT_ACTIONS[action];
+   if(!method||typeof PageOps[method]!=='function') return;
+   try{ PageOps[method](target); }catch(err){ /* swallow */ }
  };
 });
 
