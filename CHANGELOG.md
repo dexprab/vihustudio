@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(card-designer): Sprint 4.3 Text Designer — Selection & Live Editing (build 0025, 2026-06-28)
+  - Canvas-first text selection: clicking any rendered text on the preview now selects it (Story Text, Footer, Page Number, Handle). Selection draws a dashed gold outline around the actual text bounding box.
+  - One element at a time: clicking another text element switches selection; clicking outside any text clears it.
+  - Selecting auto-activates the **Card Designer** tab and expands the **Text** section. Switching selection updates the controls immediately.
+  - Text controls (MEP): Font Size (12–120 px slider with live readout), Text Color (color picker), Text Alignment (Left / Center / Right icon-card row), Reset to Theme Default.
+  - Changes apply live to the canvas; theme values remain the defaults. Card Designer stores only per-card overrides in `slide.metadata.cardOverrides.textElements[elementId] = {fontSize, color, alignment}` — rides the existing `metadata` field, so no project format change.
+  - SlideRenderer extended: every text-drawing function now consumes `payload.overrides.textElements[id]`, returns its rendered bbox, and `getTextElements()` exposes the bbox list to the host for hit-testing. Selection outline is rendered last so it sits above everything.
+  - CardDesigner host contract extended: `getSelectedTextElement()`, `setSelectedTextElement(id)`, `getTextDefaults(elementId)` join the existing image/redraw/markDirty hooks. `refresh()` now re-syncs both the Image and Text sections.
+  - app.js: new canvas mousedown hit-test prefers text selection over image pan; `_setSelectedTextElement(id)` switches tab/section and triggers redraw; `draw()` forwards `overrides` and `selectedTextElement` in the payload.
+  - ThumbnailEngine forwards overrides so the page filmstrip and slide list match the live preview after a text override edit.
+  - Note: the spec's "Story Title" maps to the same selectable element as "Story Text" because the current renderer has a single story-text slot per page. A future sprint can introduce a distinct per-card title content field with its own selectable element on the same selection mechanism.
+  - Constraints honored: no Theme Designer changes, no ThemeEngine changes (read-only consumption), no export changes, no project format changes, no architecture changes outside the Card Designer / SlideRenderer composition.
 - feat(card-designer): Sprint 4.2 Image Designer & Workspace Enhancement (build 0024, 2026-06-28)
   - First functional Card Designer module: the Image section now ships Mode (Fit / Fill icon cards), Scale (range slider 0.25×–4×, step 0.05, with a live readout), Reset to Fit, and drag-to-pan on the preview canvas.
   - Edits are entirely non-destructive — only `slide.metadata.imageView` (`{scale, offsetX, offsetY, fit}`) is mutated; the original `Image` object is never touched, never re-encoded, and never decoded into pixel data.

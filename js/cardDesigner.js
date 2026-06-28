@@ -17,7 +17,7 @@ const CardDesigner=(function(){
     {
       id:'text',
       title:'Text',
-      summary:'Typography controls — font, size, alignment. Reserved for Sprint 4.x.'
+      summary:''
     }
   ];
 
@@ -64,6 +64,8 @@ const CardDesigner=(function(){
 
     if(s.id==='image'){
       _buildImageControls(sub);
+    }else if(s.id==='text'){
+      _buildTextControls(sub);
     }else if(s.summary){
       const note=document.createElement('p');
       note.className='placeholder';
@@ -218,6 +220,208 @@ const CardDesigner=(function(){
     if(reset){ reset.disabled=!hasImage; }
   }
 
+  // --- Text section (Sprint 4.3) -----------------------------------------
+  // Overrides live at slide.metadata.cardOverrides.textElements[id] and ride
+  // through the existing metadata serialization — no project format change.
+  const TEXT_ELEMENT_LABELS={
+    'story-text':'Story Text',
+    'footer':'Footer',
+    'page-number':'Page Number',
+    'handle':'Handle'
+  };
+
+  function _ensureTextOverrides(slide){
+    if(!slide) return null;
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    if(!slide.metadata.cardOverrides.textElements) slide.metadata.cardOverrides.textElements={};
+    return slide.metadata.cardOverrides.textElements;
+  }
+
+  function _selectedTextId(){
+    if(!host||typeof host.getSelectedTextElement!=='function') return null;
+    try{ return host.getSelectedTextElement(); }catch(e){ return null; }
+  }
+
+  function _textDefaultsFor(id){
+    if(host&&typeof host.getTextDefaults==='function'){
+      try{ return host.getTextDefaults(id); }catch(e){}
+    }
+    return {fontSize:24,color:'#FFFFFF',alignment:'left'};
+  }
+
+  function _commitText(){
+    const s=_currentSlide();
+    if(s) delete s.thumbnail;
+    if(host){
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+    _refreshText();
+  }
+
+  function _setTextOverride(key,value){
+    const slide=_currentSlide();
+    const id=_selectedTextId();
+    if(!slide||!id) return;
+    const map=_ensureTextOverrides(slide);
+    if(!map[id]) map[id]={};
+    map[id][key]=value;
+    _commitText();
+  }
+
+  function _resetTextOverride(){
+    const slide=_currentSlide();
+    const id=_selectedTextId();
+    if(!slide||!id) return;
+    if(slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.textElements){
+      delete slide.metadata.cardOverrides.textElements[id];
+    }
+    _commitText();
+  }
+
+  function _buildTextControls(body){
+    const empty=document.createElement('p');
+    empty.className='placeholder text-empty';
+    empty.textContent='Click any text on the canvas to edit it.';
+    body.appendChild(empty);
+
+    const editor=document.createElement('div');
+    editor.className='text-editor hidden';
+
+    const selectedLabel=document.createElement('div');
+    selectedLabel.className='text-selected-label';
+    selectedLabel.textContent='Selected: —';
+    editor.appendChild(selectedLabel);
+
+    // Font Size
+    const sizeRow=document.createElement('div');
+    sizeRow.className='designer-row';
+    const sizeLabel=document.createElement('div');
+    sizeLabel.className='designer-row-label text-size-label';
+    const sizeTitle=document.createElement('span');
+    sizeTitle.textContent='Font Size';
+    sizeLabel.appendChild(sizeTitle);
+    const sizeValue=document.createElement('span');
+    sizeValue.className='text-size-value';
+    sizeValue.textContent='—';
+    sizeLabel.appendChild(sizeValue);
+    sizeRow.appendChild(sizeLabel);
+    const sizeSlider=document.createElement('input');
+    sizeSlider.type='range';
+    sizeSlider.min='12';
+    sizeSlider.max='120';
+    sizeSlider.step='1';
+    sizeSlider.value='56';
+    sizeSlider.className='text-size-slider';
+    sizeSlider.addEventListener('input',function(){ _setTextOverride('fontSize',parseInt(sizeSlider.value,10)); });
+    sizeRow.appendChild(sizeSlider);
+    editor.appendChild(sizeRow);
+
+    // Color
+    const colorRow=document.createElement('div');
+    colorRow.className='designer-row text-color-row';
+    const colorLabel=document.createElement('div');
+    colorLabel.className='designer-row-label';
+    colorLabel.textContent='Color';
+    colorRow.appendChild(colorLabel);
+    const colorInput=document.createElement('input');
+    colorInput.type='color';
+    colorInput.className='text-color-input';
+    colorInput.value='#ffffff';
+    colorInput.addEventListener('input',function(){ _setTextOverride('color',colorInput.value); });
+    colorRow.appendChild(colorInput);
+    editor.appendChild(colorRow);
+
+    // Alignment
+    const alignRow=document.createElement('div');
+    alignRow.className='designer-row';
+    const alignLabel=document.createElement('div');
+    alignLabel.className='designer-row-label';
+    alignLabel.textContent='Alignment';
+    alignRow.appendChild(alignLabel);
+    const alignIcons=document.createElement('div');
+    alignIcons.className='icon-row text-align-row';
+    ['left','center','right'].forEach(function(a){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card text-align-btn';
+      btn.setAttribute('data-align',a);
+      const pv=document.createElement('span');
+      pv.className='icon-preview';
+      const glyph=document.createElement('span');
+      glyph.className='text-align-glyph text-align-glyph-'+a;
+      pv.appendChild(glyph);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=a.charAt(0).toUpperCase()+a.slice(1);
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _setTextOverride('alignment',a); });
+      alignIcons.appendChild(btn);
+    });
+    alignRow.appendChild(alignIcons);
+    editor.appendChild(alignRow);
+
+    // Reset
+    const resetRow=document.createElement('div');
+    resetRow.className='designer-row';
+    const resetBtn=document.createElement('button');
+    resetBtn.type='button';
+    resetBtn.className='text-reset-btn';
+    resetBtn.textContent='↺ Reset to Theme Default';
+    resetBtn.addEventListener('click',_resetTextOverride);
+    resetRow.appendChild(resetBtn);
+    editor.appendChild(resetRow);
+
+    body.appendChild(editor);
+  }
+
+  function _refreshText(){
+    if(!mountedRoot) return;
+    const empty=mountedRoot.querySelector('.text-empty');
+    const editor=mountedRoot.querySelector('.text-editor');
+    if(!empty||!editor) return;
+    const id=_selectedTextId();
+    if(!id){
+      empty.classList.remove('hidden');
+      editor.classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    editor.classList.remove('hidden');
+
+    const slide=_currentSlide();
+    const ovMap=(slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.textElements) || {};
+    const ov=ovMap[id] || {};
+    const def=_textDefaultsFor(id);
+
+    const labelEl=mountedRoot.querySelector('.text-selected-label');
+    if(labelEl) labelEl.textContent='Selected: '+(TEXT_ELEMENT_LABELS[id]||id);
+
+    const sizeSlider=mountedRoot.querySelector('.text-size-slider');
+    const sizeValue=mountedRoot.querySelector('.text-size-value');
+    const effSize=ov.fontSize||def.fontSize;
+    if(sizeSlider) sizeSlider.value=String(effSize);
+    if(sizeValue) sizeValue.textContent=effSize+'px';
+
+    const colorInput=mountedRoot.querySelector('.text-color-input');
+    if(colorInput) colorInput.value=_normalizeColor(ov.color||def.color);
+
+    const effAlign=ov.alignment||def.alignment||'left';
+    mountedRoot.querySelectorAll('.text-align-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-align')===effAlign);
+    });
+  }
+
+  // <input type=color> only accepts lowercased 7-char hex; theme colors are
+  // sometimes uppercase. Strip alpha if present and lowercase.
+  function _normalizeColor(c){
+    if(typeof c!=='string') return '#ffffff';
+    const m=c.match(/^#?[0-9a-f]{6}/i);
+    return m ? ('#'+m[0].replace('#','').toLowerCase()) : '#ffffff';
+  }
+
   // Mount the Card Designer foundation into a container element.
   // Returns the mounted root element (or null if the container is missing).
   function mount(container){
@@ -251,6 +455,7 @@ const CardDesigner=(function(){
     });
 
     _refreshImage();
+    _refreshText();
     return root;
   }
 
@@ -261,11 +466,12 @@ const CardDesigner=(function(){
   function configure(cfg){
     host=cfg||null;
     _refreshImage();
+    _refreshText();
   }
 
-  // Re-sync the Image section UI with the current slide — call after the
-  // host switches slides so sliders and active mode reflect the new view.
-  function refresh(){ _refreshImage(); }
+  // Re-sync the Image and Text sections with the current slide/selection —
+  // call after the host switches slides or changes the text selection.
+  function refresh(){ _refreshImage(); _refreshText(); }
 
   // Read the active slide's imageView, defaulting if absent. Exposed so
   // canvas pan handlers in the host can read+write without poking metadata

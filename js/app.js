@@ -40,16 +40,68 @@ if(typeof ThemeEngine!=='undefined'){
 
 // Card Designer foundation bootstrap (Sprint 4.1) — mount the reusable
 // component into its right-pane host. Sprint 4.2 wires the Image section to
-// the active slide via the documented configure() host contract.
+// the active slide. Sprint 4.3 adds Text selection + override controls via
+// getSelectedTextElement / setSelectedTextElement / getTextDefaults hooks.
+let _selectedTextElement=null;
+function _getTextDefaults(elementId){
+  const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
+  const opts=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
+  if(!theme||!opts){
+    return {fontSize:24,color:'#FFFFFF',alignment:'left'};
+  }
+  switch(elementId){
+    case 'story-text':
+      return {fontSize:theme.storyText.size,color:theme.storyText.color,alignment:'left'};
+    case 'footer': {
+      let size=theme.footerText.size;
+      if(opts.footerStyle==='modern') size=Math.round(size*1.1);
+      else if(opts.footerStyle==='minimal') size=Math.round(size*0.75);
+      const pos=opts.bookTitlePosition||'bottom-left';
+      const align=pos==='bottom-center'?'center':(pos==='bottom-right'?'right':'left');
+      return {fontSize:size,color:theme.footerText.color,alignment:align};
+    }
+    case 'page-number': {
+      const align=opts.pageNumber==='bottom-center'?'center':'left';
+      return {fontSize:theme.footerText.size,color:theme.footerText.color,alignment:align};
+    }
+    case 'handle': {
+      const pos=opts.handlePosition||'top-right';
+      const align=(pos==='top-left'||pos==='bottom-left')?'left':'right';
+      return {fontSize:theme.watermark.size,color:theme.watermark.color,alignment:align};
+    }
+    default:
+      return {fontSize:24,color:'#FFFFFF',alignment:'left'};
+  }
+}
+
 if(typeof CardDesigner!=='undefined'){
   try{ CardDesigner.mount(document.getElementById('cardDesignerRoot')); }catch(e){}
   try{
     CardDesigner.configure({
       getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
-      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); }
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
+      getSelectedTextElement:function(){ return _selectedTextElement; },
+      setSelectedTextElement:function(id){ _setSelectedTextElement(id); },
+      getTextDefaults:_getTextDefaults
     });
   }catch(e){}
+}
+
+function _setSelectedTextElement(id){
+  _selectedTextElement=id||null;
+  if(typeof window.redrawPreview==='function') window.redrawPreview();
+  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+  if(id){
+    // Auto-activate Card Designer tab and Text section.
+    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+    const textSection=document.querySelector('[data-card-section="text"]');
+    if(textSection && textSection.classList.contains('collapsed')){
+      const header=textSection.querySelector('.designer-group-title');
+      if(header) header.click();
+    }
+  }
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
@@ -278,7 +330,8 @@ function draw(){
  const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
  const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
  const imageView=(s.metadata && s.metadata.imageView) || null;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView});
+ const overrides=(s.metadata && s.metadata.cardOverrides) || null;
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
@@ -399,17 +452,46 @@ function _updateCanvasCursor(){
   }
 }
 
+function _hitTestText(canvasX,canvasY){
+  if(typeof SlideRenderer.getTextElements!=='function') return null;
+  const els=SlideRenderer.getTextElements();
+  for(let i=els.length-1;i>=0;i--){
+    const el=els[i];
+    if(canvasX>=el.bx && canvasX<=el.bx+el.bw && canvasY>=el.by && canvasY<=el.by+el.bh){
+      return el;
+    }
+  }
+  return null;
+}
+
 previewCanvas.addEventListener('mousedown',function(e){
   const s=AppState.slides[AppState.currentSlide];
-  if(!s||!s.image) return;
+  if(!s) return;
   const c=_canvasCoords(e);
-  if(!_isInsidePanel(c.x,c.y)) return;
-  if(typeof CardDesigner==='undefined') return;
-  const v=CardDesigner.getActiveImageView();
-  if(!v) return;
-  _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};
-  previewCanvas.classList.add('canvas-panning');
-  e.preventDefault();
+
+  // Sprint 4.3 — text selection takes priority over image pan.
+  const hit=_hitTestText(c.x,c.y);
+  if(hit){
+    _setSelectedTextElement(hit.id);
+    e.preventDefault();
+    return;
+  }
+
+  // Image pan inside the panel rect (Sprint 4.2 behavior).
+  if(s.image && _isInsidePanel(c.x,c.y) && typeof CardDesigner!=='undefined'){
+    const v=CardDesigner.getActiveImageView();
+    if(v){
+      _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};
+      previewCanvas.classList.add('canvas-panning');
+      e.preventDefault();
+      return;
+    }
+  }
+
+  // Clicked empty space — clear any text selection.
+  if(_selectedTextElement){
+    _setSelectedTextElement(null);
+  }
 });
 
 document.addEventListener('mousemove',function(e){

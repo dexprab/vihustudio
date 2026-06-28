@@ -33,6 +33,7 @@ Canonical project context for VihuStudio. Read this first before making any chan
 ### In Progress
 
 - Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset)
+- Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset)
 
 ## Locked Product Decisions
 

@@ -2,6 +2,9 @@ const SlideRenderer=(()=>{
   let c,x;
   const W=1080,H=1350;
   const PANEL_X=70, PANEL_Y=185, PANEL_W=940, PANEL_H=930;
+  // Cached after each render() so canvas hit-testing can match clicks to
+  // the actual rendered bboxes — including override-driven size shifts.
+  let _lastTextElements=[];
 
   const FALLBACK_THEME={
     frame:{ color:'#1D3457' },
@@ -51,6 +54,8 @@ const SlideRenderer=(()=>{
     if(!x) return;
     const t=_theme(s);
     const opts=_options(s);
+    const overrides=(s && s.overrides && s.overrides.textElements) || {};
+    _lastTextElements=[];
 
     // Frame
     x.fillStyle=_frameColor(t,opts);
@@ -60,15 +65,12 @@ const SlideRenderer=(()=>{
     _drawPanel(t.panel.color,opts.panelStyle);
 
     // Top story text
-    if(s.storyBeat){
-      x.fillStyle=t.storyText.color;
-      x.font=t.storyText.size+'px '+t.storyText.font;
-      x.textAlign='left';
-      x.fillText(s.storyBeat,60,100);
-    }
+    const storyBbox=_drawStoryText(s,t,overrides);
+    if(storyBbox) _lastTextElements.push(storyBbox);
 
     // Handle / branding watermark
-    _drawHandle(t,opts);
+    const handleBbox=_drawHandle(t,opts,overrides);
+    if(handleBbox) _lastTextElements.push(handleBbox);
 
     // Image inside panel — presentation-only transforms; original image untouched.
     // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
@@ -80,10 +82,58 @@ const SlideRenderer=(()=>{
     _drawDecorations(opts.decorations,t,opts);
 
     // Footer (book title)
-    _drawFooter(t,opts,s.bookTitle||'');
+    const footerBbox=_drawFooter(t,opts,s.bookTitle||'',overrides);
+    if(footerBbox) _lastTextElements.push(footerBbox);
 
     // Page number
-    _drawPageNumber(t,opts,s.page||1,s.totalPages||1);
+    const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
+    if(pageBbox) _lastTextElements.push(pageBbox);
+
+    // Selection outline — last, so it sits above everything.
+    if(s && s.selectedTextElement){
+      const sel=_lastTextElements.find(function(e){ return e.id===s.selectedTextElement; });
+      if(sel) _drawSelectionOutline(sel);
+    }
+  }
+
+  // Returns the most recent text-element bboxes (canvas-pixel coords) so the
+  // host can hit-test mouse clicks against them. Each entry:
+  //   {id, label, bx, by, bw, bh}
+  function getTextElements(){ return _lastTextElements.slice(); }
+
+  function _drawSelectionOutline(e){
+    x.save();
+    x.strokeStyle='#FFCB45';
+    x.lineWidth=4;
+    x.setLineDash([12,6]);
+    x.strokeRect(e.bx-8, e.by-6, e.bw+16, e.bh+12);
+    x.restore();
+  }
+
+  function _bboxForAnchored(text,anchorX,baselineY,align,size){
+    const w=x.measureText(text).width;
+    let bx=anchorX;
+    if(align==='center') bx=anchorX-w/2;
+    else if(align==='right') bx=anchorX-w;
+    return { bx:bx, by:baselineY-size, bw:w, bh:size+8 };
+  }
+
+  function _drawStoryText(s,theme,overrides){
+    if(!s.storyBeat) return null;
+    const ov=overrides['story-text']||{};
+    const size=ov.fontSize||theme.storyText.size;
+    const color=ov.color||theme.storyText.color;
+    const align=ov.alignment||'left';
+    const font=theme.storyText.font;
+    x.fillStyle=color;
+    x.font=size+'px '+font;
+    x.textAlign=align;
+    let drawX=60;
+    if(align==='center') drawX=W/2;
+    else if(align==='right') drawX=W-60;
+    x.fillText(s.storyBeat,drawX,100);
+    const b=_bboxForAnchored(s.storyBeat,drawX,100,align,size);
+    return Object.assign({id:'story-text',label:'Story Text'},b);
   }
 
   // Inner image area inside the panel — 20px breathing room on all sides so
@@ -112,18 +162,24 @@ const SlideRenderer=(()=>{
   // Public: panel rect in canvas coordinates — consumed by canvas pan handler.
   function getPanelRect(){ return {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
-  function _drawHandle(theme,opts){
-    if(opts.handleVisibility==='hide') return;
+  function _drawHandle(theme,opts,overrides){
+    if(opts.handleVisibility==='hide') return null;
+    const ov=(overrides && overrides['handle'])||{};
     const pos=opts.handlePosition||'top-right';
-    let hx, hy, align;
-    if(pos==='top-left'){ hx=60; hy=60; align='left'; }
-    else if(pos==='bottom-left'){ hx=60; hy=H-30; align='left'; }
-    else if(pos==='bottom-right'){ hx=W-60; hy=H-30; align='right'; }
-    else { hx=W-60; hy=60; align='right'; }
-    x.fillStyle=theme.watermark.color;
-    x.font=theme.watermark.size+'px '+theme.watermark.font;
+    let hx, hy, defaultAlign;
+    if(pos==='top-left'){ hx=60; hy=60; defaultAlign='left'; }
+    else if(pos==='bottom-left'){ hx=60; hy=H-30; defaultAlign='left'; }
+    else if(pos==='bottom-right'){ hx=W-60; hy=H-30; defaultAlign='right'; }
+    else { hx=W-60; hy=60; defaultAlign='right'; }
+    const size=ov.fontSize||theme.watermark.size;
+    const color=ov.color||theme.watermark.color;
+    const align=ov.alignment||defaultAlign;
+    x.fillStyle=color;
+    x.font=size+'px '+theme.watermark.font;
     x.textAlign=align;
     x.fillText('@vihuplanet',hx,hy);
+    const b=_bboxForAnchored('@vihuplanet',hx,hy,align,size);
+    return Object.assign({id:'handle',label:'Handle'},b);
   }
 
   // --- Panel styles ---
@@ -168,36 +224,49 @@ const SlideRenderer=(()=>{
   }
 
   // --- Footer (book title) ---
-  function _drawFooter(theme,opts,bookTitle){
-    if(opts.bookTitleVisibility==='hide') return;
-    if(opts.footerStyle==='hidden' || !bookTitle) return;
-    let size=theme.footerText.size;
-    if(opts.footerStyle==='modern') size=Math.round(size*1.1);
-    else if(opts.footerStyle==='minimal') size=Math.round(size*0.75);
-    x.fillStyle=theme.footerText.color;
+  function _drawFooter(theme,opts,bookTitle,overrides){
+    if(opts.bookTitleVisibility==='hide') return null;
+    if(opts.footerStyle==='hidden' || !bookTitle) return null;
+    const ov=(overrides && overrides['footer'])||{};
+    let defaultSize=theme.footerText.size;
+    if(opts.footerStyle==='modern') defaultSize=Math.round(defaultSize*1.1);
+    else if(opts.footerStyle==='minimal') defaultSize=Math.round(defaultSize*0.75);
+    const size=ov.fontSize||defaultSize;
+    const color=ov.color||theme.footerText.color;
+    x.fillStyle=color;
     x.font=size+'px '+theme.footerText.font;
     const pos=opts.bookTitlePosition||'bottom-left';
-    let bx, align;
-    if(pos==='bottom-center'){ bx=W/2; align='center'; }
-    else if(pos==='bottom-right'){ bx=W-60; align='right'; }
-    else { bx=320; align='left'; }
+    let anchorX, defaultAlign;
+    if(pos==='bottom-center'){ anchorX=W/2; defaultAlign='center'; }
+    else if(pos==='bottom-right'){ anchorX=W-60; defaultAlign='right'; }
+    else { anchorX=320; defaultAlign='left'; }
+    const align=ov.alignment||defaultAlign;
     x.textAlign=align;
-    x.fillText(bookTitle,bx,1285);
+    x.fillText(bookTitle,anchorX,1285);
+    const b=_bboxForAnchored(bookTitle,anchorX,1285,align,size);
+    return Object.assign({id:'footer',label:'Footer'},b);
   }
 
   // --- Page number ---
-  function _drawPageNumber(theme,opts,page,total){
-    if(opts.pageNumber==='hidden') return;
-    x.fillStyle=theme.footerText.color;
-    x.font=theme.footerText.size+'px '+theme.footerText.font;
+  function _drawPageNumber(theme,opts,page,total,overrides){
+    if(opts.pageNumber==='hidden') return null;
+    const ov=(overrides && overrides['page-number'])||{};
+    const size=ov.fontSize||theme.footerText.size;
+    const color=ov.color||theme.footerText.color;
+    x.fillStyle=color;
+    x.font=size+'px '+theme.footerText.font;
     const label=page+' / '+total;
+    let anchorX, anchorY, defaultAlign;
     if(opts.pageNumber==='bottom-center'){
-      x.textAlign='center';
-      x.fillText(label,W/2,opts.footerStyle==='hidden'?1285:1325);
+      anchorX=W/2; anchorY=opts.footerStyle==='hidden'?1285:1325; defaultAlign='center';
     }else{
-      x.textAlign='left';
-      x.fillText(label,900,1285);
+      anchorX=900; anchorY=1285; defaultAlign='left';
     }
+    const align=ov.alignment||defaultAlign;
+    x.textAlign=align;
+    x.fillText(label,anchorX,anchorY);
+    const b=_bboxForAnchored(label,anchorX,anchorY,align,size);
+    return Object.assign({id:'page-number',label:'Page Number'},b);
   }
 
   // --- Decorations ---
@@ -314,7 +383,7 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  const api={init,render,getPanelRect};
+  const api={init,render,getPanelRect,getTextElements};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

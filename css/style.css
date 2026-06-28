@@ -604,6 +604,121 @@ button:active{
 #previewCanvas.canvas-pannable{ cursor:grab; }
 #previewCanvas.canvas-panning{ cursor:grabbing; }
 
+/* Text section (Sprint 4.3) — selection-driven override editor. Most of
+   the visual language reuses the icon-row primitives so the row matches
+   the Theme Designer and Image section. */
+.text-empty{
+  margin:0;
+  font-size:11px;
+  color:var(--text-tertiary);
+  font-style:italic;
+  line-height:1.5;
+}
+
+.text-editor{
+  display:block;
+}
+
+.text-editor.hidden{
+  display:none;
+}
+
+.text-selected-label{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  margin-bottom:14px;
+  padding:8px 10px;
+  background:rgba(255,203,69,0.10);
+  border:1px solid rgba(255,203,69,0.4);
+  border-radius:var(--border-radius);
+}
+
+.text-size-label{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+}
+
+.text-size-value{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+
+.text-size-slider{
+  width:100%;
+  height:auto;
+  margin:0;
+  padding:0;
+  background:transparent;
+  accent-color:var(--gold);
+  cursor:pointer;
+}
+
+.text-color-row{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:10px;
+}
+
+.text-color-input{
+  width:80px;
+  height:36px;
+  padding:2px;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  background:transparent;
+  cursor:pointer;
+}
+
+.text-align-glyph{
+  display:block;
+  width:22px;
+  height:14px;
+  position:relative;
+}
+.text-align-glyph::before,
+.text-align-glyph::after{
+  content:'';
+  position:absolute;
+  height:2px;
+  background:var(--gold);
+  border-radius:1px;
+}
+.text-align-glyph::before{ top:3px; width:22px; }
+.text-align-glyph::after{ top:9px; }
+.text-align-glyph-left::before{ left:0; }
+.text-align-glyph-left::after{ left:0; width:14px; }
+.text-align-glyph-center::before{ left:0; }
+.text-align-glyph-center::after{ left:4px; width:14px; }
+.text-align-glyph-right::before{ left:0; }
+.text-align-glyph-right::after{ right:0; width:14px; }
+
+.text-reset-btn{
+  width:100%;
+  padding:8px 12px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+  transition:border-color 0.2s, background 0.2s;
+}
+
+.text-reset-btn:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+
 /* Development footer */
 .dev-footer{
   position:fixed;
