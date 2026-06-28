@@ -352,9 +352,13 @@ function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden
   if(!window.ProjectManager){ setAutosaveStatus('saved'); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
+    const hasPages=(info.pageCount||0)>0;
+    const body=hasPages
+      ? 'Continue working on “'+(info.title||'Untitled')+'” from your last session?'
+      : 'Pick up where you left off on “'+(info.title||'Untitled')+'” — your project setup is saved.';
     showRestoreModal({
       title:'Restore Previous Project?',
-      body:'Continue working on “'+(info.title||'Untitled')+'” from your last session?',
+      body:body,
       primary:'Restore',
       secondary:'Discard',
       onPrimary:async ()=>{

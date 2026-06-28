@@ -198,8 +198,15 @@ const ProjectManager=(function(){
     let data;
     try{ data=JSON.parse(raw); }catch(e){ return {state:'corrupt',reason:'parse'}; }
     try{ validatePayload(data); }catch(e){ return {state:'corrupt',reason:e.message}; }
-    if(!data.pages||data.pages.length===0) return {state:'empty'};
-    return {state:'valid',data:data,title:(data.project&&data.project.title)||'Untitled'};
+    // Any parsed-and-validated session is restorable — even before the first
+    // page is uploaded, partial state (theme, title, options) is real user
+    // work that must survive a reload.
+    return {
+      state:'valid',
+      data:data,
+      title:(data.project&&data.project.title)||'Untitled',
+      pageCount:(data.pages||[]).length
+    };
   }
 
   async function restoreSession(){

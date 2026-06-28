@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- fix(persistence): T3.3.3 Theme System stabilization & design freeze (build 0018, 2026-06-28)
+  - Fix: Auto Save initialization regression — a session containing only project metadata (theme, title, author, themeOptions) but no pages was being silently filtered out as "empty" by ProjectManager.getSessionStatus(), so users who customized a theme before uploading any images saw their setup lost on reload. Any parsed-and-validated session is now restorable; the restore modal copy adapts when there are no pages yet.
+  - Verified: changing theme, picking a variant, typing a book/project title, or any Designer option click on a brand-new project now produces a restorable session within the 500 ms debounce window.
+  - Theme System and Project Persistence are now frozen: future work adds new built-in / user / AI themes only, without changing the selection or customization workflow.
+  - No changes to ThemeEngine, SlideRenderer, PageOps, ProjectManager architecture, or the locked workspace layout. ProjectManager.getSessionStatus's return shape gained an optional pageCount field; existing callers are unaffected.
 - polish(theme): T3.3.2 Theme System polish & design freeze (build 0017, 2026-06-28)
   - Theme System is now feature complete; future work only adds new built-in / user / AI themes without changing the workflow
   - Left Theme Card is interactive — click anywhere on it to open the Theme Picker; Change Theme button removed
