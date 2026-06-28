@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- polish(theme): T3.3.2 Theme System polish & design freeze (build 0017, 2026-06-28)
+  - Theme System is now feature complete; future work only adds new built-in / user / AI themes without changing the workflow
+  - Left Theme Card is interactive — click anywhere on it to open the Theme Picker; Change Theme button removed
+  - Theme Picker compacted: max-width 700px, max-height 70vh, internal scroll, auto-fill grid (minmax 170px) supports 20+ themes; smaller previews and tighter spacing
+  - Theme Designer reorganized into four labelled groups: Book Style (Variant, Story Panel), Branding (Footer, Book Title, Handle), Decorations, Navigation (Page Numbers)
+  - All radio-style pills replaced with visual icon cards (52×60 each): Story Panel previews the panel shape, Footer previews the title line, Page Numbers / Book Title / Handle previews show a dot in the position, Visibility uses filled/outline glyphs, Decorations show their motif character
+  - Approximately 50% less vertical scroll; designer fits the right pane more comfortably
+  - No changes to ThemeEngine API, ProjectManager, PageOps, SlideRenderer architecture, or the locked workspace layout
 - refactor(theme-ux): T3.3.1 Theme System UX refinement (build 0016, 2026-06-28)
   - Left pane Theme dropdown replaced with a Theme Card (preview + name + description) plus a Change Theme button
   - Change Theme opens a lightweight Theme Picker modal that reuses the four built-in themes

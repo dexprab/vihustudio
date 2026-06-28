@@ -45,8 +45,7 @@
 
 <section class='sidebar-section'>
 <h3>THEME</h3>
-<div id='leftThemeCard' class='left-theme-card'></div>
-<button id='changeThemeBtn' class='change-theme-btn' type='button'>Change Theme</button>
+<button id='leftThemeCard' class='left-theme-card' type='button' title='Click to change theme'></button>
 </section>
 
 <section class='sidebar-section'>
@@ -93,45 +92,51 @@
 <span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
 </section>
 
-<section class='theme-section'>
-<h4>Variant</h4>
+<section class='designer-group'>
+<h4 class='designer-group-title'>Book Style</h4>
+<div class='designer-row'>
+<div class='designer-row-label'>Variant</div>
 <div id='themeVariants' class='theme-variants'></div>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Story Panel</div>
+<div id='panelStyles' class='icon-row'></div>
+</div>
 </section>
 
-<section class='theme-section'>
-<h4>Story Panel</h4>
-<div id='panelStyles' class='option-grid'></div>
+<section class='designer-group'>
+<h4 class='designer-group-title'>Branding</h4>
+<div class='designer-row'>
+<div class='designer-row-label'>Footer</div>
+<div id='footerStyles' class='icon-row'></div>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Book Title</div>
+<div class='designer-subrow'>
+<div id='bookTitleVisibility' class='icon-row icon-row-vis'></div>
+<div id='bookTitlePosition' class='icon-row'></div>
+</div>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Handle</div>
+<div class='designer-subrow'>
+<div id='handleVisibility' class='icon-row icon-row-vis'></div>
+<div id='handlePosition' class='icon-row'></div>
+</div>
+</div>
 </section>
 
-<section class='theme-section'>
-<h4>Footer</h4>
-<div id='footerStyles' class='option-grid'></div>
+<section class='designer-group'>
+<h4 class='designer-group-title'>Decorations</h4>
+<div id='decorationsList' class='icon-row deco-row'></div>
 </section>
 
-<section class='theme-section'>
-<h4>Decorations</h4>
-<div id='decorationsList' class='decorations-list'></div>
-</section>
-
-<section class='theme-section'>
-<h4>Page Numbers</h4>
-<div id='pageNumberStyles' class='option-grid'></div>
-</section>
-
-<section class='theme-section'>
-<h4>Book Title</h4>
-<div class='subsection-label'>Visibility</div>
-<div id='bookTitleVisibility' class='option-grid'></div>
-<div class='subsection-label'>Position</div>
-<div id='bookTitlePosition' class='option-grid'></div>
-</section>
-
-<section class='theme-section'>
-<h4>Handle / Branding</h4>
-<div class='subsection-label'>Visibility</div>
-<div id='handleVisibility' class='option-grid'></div>
-<div class='subsection-label'>Position</div>
-<div id='handlePosition' class='option-grid'></div>
+<section class='designer-group'>
+<h4 class='designer-group-title'>Navigation</h4>
+<div class='designer-row'>
+<div class='designer-row-label'>Page Numbers</div>
+<div id='pageNumberStyles' class='icon-row'></div>
+</div>
 </section>
 </div>
 </aside>

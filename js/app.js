@@ -11,7 +11,7 @@ const exportBtn=document.getElementById('exportBtn');
 const tabs=document.querySelectorAll('.tab-btn');
 const projectTitleEl=document.getElementById('projectTitle');
 const projectAuthorEl=document.getElementById('projectAuthorName');
-const changeThemeBtn=document.getElementById('changeThemeBtn');
+const leftThemeCardEl=document.getElementById('leftThemeCard');
 const themePickerModal=document.getElementById('themePickerModal');
 const themePickerClose=document.getElementById('themePickerClose');
 const themeToggleEl=document.getElementById('themeToggle');
@@ -37,8 +37,8 @@ if(typeof ThemeEngine!=='undefined'){
   try{ ThemeEngine.buildLeftPaneCard(); }catch(e){}
   try{ ThemeEngine.buildDesigner(); }catch(e){}
 }
-if(changeThemeBtn){
-  changeThemeBtn.addEventListener('click',function(){
+if(leftThemeCardEl){
+  leftThemeCardEl.addEventListener('click',function(){
     if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
   });
 }

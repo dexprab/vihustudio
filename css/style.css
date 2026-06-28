@@ -625,7 +625,7 @@ button:active{
   color:var(--text-secondary);
 }
 
-/* Left pane Theme Card */
+/* Left pane Theme Card — interactive */
 .left-theme-card{
   display:flex;
   align-items:stretch;
@@ -634,7 +634,22 @@ button:active{
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:var(--border-radius);
-  margin-bottom:10px;
+  margin-bottom:0;
+  width:100%;
+  cursor:pointer;
+  text-align:left;
+  font-family:inherit;
+  height:auto;
+  transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.left-theme-card:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.05);
+}
+
+.left-theme-card:active{
+  background:rgba(255,203,69,0.12);
 }
 
 .left-theme-card-preview{
@@ -677,26 +692,6 @@ button:active{
   line-height:1.3;
 }
 
-.change-theme-btn{
-  width:100%;
-  padding:8px;
-  background:transparent;
-  border:1px solid var(--line);
-  border-radius:var(--border-radius);
-  color:var(--text);
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-  height:auto;
-  margin:0;
-  transition:border-color 0.2s, background 0.2s;
-}
-
-.change-theme-btn:hover{
-  border-color:var(--gold);
-  background:rgba(255,203,69,0.05);
-}
-
 /* Theme Designer current-theme banner */
 .current-theme-banner{
   display:flex;
@@ -731,13 +726,228 @@ button:active{
   margin:8px 0 6px;
 }
 
-/* Modal wide variant for the Theme Picker */
+/* Theme Picker modal — compact, scalable to 20+ themes */
 .modal-content.modal-wide{
-  max-width:600px;
+  max-width:700px;
+  max-height:70vh;
+  display:flex;
+  flex-direction:column;
+}
+
+.modal-content.modal-wide h3{
+  flex-shrink:0;
+}
+
+.modal-content.modal-wide > p{
+  flex-shrink:0;
 }
 
 .modal-content.modal-wide .theme-cards{
   margin-bottom:16px;
+  overflow-y:auto;
+  flex:1 1 auto;
+  grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+  gap:8px;
+  padding:4px;
+}
+
+.modal-content.modal-wide .theme-card{
+  padding:8px;
+}
+
+.modal-content.modal-wide .theme-card-preview{
+  aspect-ratio:4 / 5;
+  margin-bottom:6px;
+}
+
+.modal-content.modal-wide .theme-card-name{
+  font-size:12px;
+  margin-bottom:2px;
+}
+
+.modal-content.modal-wide .theme-card-desc{
+  font-size:10px;
+  line-height:1.3;
+}
+
+.modal-content.modal-wide .modal-actions{
+  flex-shrink:0;
+}
+
+/* Theme Designer groups */
+.designer-group{
+  margin-bottom:18px;
+  padding:14px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--card-radius);
+}
+
+.designer-group-title{
+  margin:0 0 12px 0;
+  padding-bottom:8px;
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  border-bottom:1px solid var(--line);
+}
+
+.designer-row{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:10px;
+}
+
+.designer-row:last-child{ margin-bottom:0; }
+
+.designer-row-label{
+  font-size:11px;
+  font-weight:600;
+  color:var(--text-secondary);
+}
+
+.designer-subrow{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* Icon cards — visual, compact controls */
+.icon-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.icon-row.icon-row-vis{ gap:6px; }
+.icon-row.deco-row{ gap:6px; }
+
+.icon-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:6px 4px;
+  width:52px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:8px;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+  font-weight:normal;
+  transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.icon-card:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+
+.icon-card.active{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.12);
+  box-shadow:0 0 0 1px rgba(255,203,69,0.45);
+}
+
+.icon-preview{
+  position:relative;
+  width:32px;
+  height:40px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:4px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.icon-label{
+  font-size:9px;
+  line-height:1.1;
+  color:var(--text);
+  text-align:center;
+  white-space:nowrap;
+}
+
+/* Story panel previews */
+.icon-panel{
+  display:block;
+  width:22px;
+  height:28px;
+  background:var(--gold);
+  opacity:0.85;
+}
+.icon-panel-classic{ border-radius:0; }
+.icon-panel-rounded{ border-radius:6px; }
+.icon-panel-cloud{ border-radius:50%; }
+.icon-panel-scroll{
+  border-radius:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,0.25) 0 4px, var(--gold) 4px calc(100% - 4px), rgba(0,0,0,0.25) calc(100% - 4px) 100%);
+}
+
+/* Footer line previews */
+.icon-footer-line{
+  position:absolute;
+  bottom:5px;
+  height:2px;
+  background:var(--gold);
+  border-radius:2px;
+}
+.icon-footer-classic{ left:4px; width:14px; }
+.icon-footer-modern{ left:50%; transform:translateX(-50%); width:22px; height:3px; }
+.icon-footer-minimal{ left:50%; transform:translateX(-50%); width:8px; height:1.5px; }
+
+/* Position dots */
+.icon-dot{
+  position:absolute;
+  width:6px;
+  height:6px;
+  background:var(--gold);
+  border-radius:50%;
+}
+.icon-dot-top-left{ top:3px; left:3px; }
+.icon-dot-top-right{ top:3px; right:3px; }
+.icon-dot-bottom-left{ bottom:3px; left:3px; }
+.icon-dot-bottom-right{ bottom:3px; right:3px; }
+.icon-dot-bottom-center{ bottom:3px; left:50%; transform:translateX(-50%); }
+
+.icon-cross{
+  width:14px;
+  height:14px;
+  position:relative;
+}
+.icon-cross::before,
+.icon-cross::after{
+  content:'';
+  position:absolute;
+  top:50%;
+  left:0;
+  right:0;
+  height:2px;
+  background:var(--text-tertiary);
+  border-radius:2px;
+}
+.icon-cross::before{ transform:rotate(45deg); }
+.icon-cross::after{ transform:rotate(-45deg); }
+
+/* Visibility glyphs */
+.icon-vis{
+  font-size:14px;
+  line-height:1;
+  color:var(--gold);
+}
+.icon-vis-hide{ color:var(--text-tertiary); }
+
+/* Decoration glyphs */
+.icon-deco{
+  font-size:18px;
+  line-height:1;
+  color:var(--gold);
 }
 
 /* Variant chips */

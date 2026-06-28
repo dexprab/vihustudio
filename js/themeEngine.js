@@ -305,11 +305,13 @@ const ThemeEngine=(function(){
       const containerId=pair[0], key=pair[1];
       const container=document.getElementById(containerId);
       if(!container) return;
-      container.querySelectorAll('.option-pill').forEach(function(p){
+      container.querySelectorAll('.icon-card').forEach(function(p){
         p.classList.toggle('active', p.getAttribute('data-value')===opts[key]);
       });
     });
   }
+
+  const DECO_GLYPH={ stars:'★', clouds:'☁', birds:'✦', trees:'▲', flowers:'✿' };
 
   function _renderDecorations(){
     const container=document.getElementById('decorationsList');
@@ -325,38 +327,87 @@ const ThemeEngine=(function(){
       container.appendChild(note);
       return;
     }
+    const enabled=new Set(opts.decorations||[]);
     allowed.forEach(function(d){
-      const id='deco-'+d.id;
-      const wrap=document.createElement('label');
-      wrap.className='deco-item';
-      wrap.setAttribute('for',id);
-      const cb=document.createElement('input');
-      cb.type='checkbox';
-      cb.id=id;
-      cb.checked=(opts.decorations||[]).indexOf(d.id)!==-1;
-      cb.addEventListener('change',function(){ toggleDecoration(d.id); });
-      wrap.appendChild(cb);
-      const txt=document.createElement('span');
-      txt.textContent=d.name;
-      wrap.appendChild(txt);
-      container.appendChild(wrap);
+      const card=_makeIconCard(d.id,d.name,function(preview){
+        const sym=document.createElement('div');
+        sym.className='icon-deco';
+        sym.textContent=DECO_GLYPH[d.id]||'•';
+        preview.appendChild(sym);
+      });
+      if(enabled.has(d.id)) card.classList.add('active');
+      card.addEventListener('click',function(){ toggleDecoration(d.id); });
+      container.appendChild(card);
     });
   }
 
-  function _buildOptionPills(containerId,items,optionKey){
+  function _makeIconCard(value,label,decorator){
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='icon-card';
+    btn.setAttribute('data-value',value);
+    const preview=document.createElement('span');
+    preview.className='icon-preview';
+    if(decorator) decorator(preview);
+    btn.appendChild(preview);
+    const lbl=document.createElement('span');
+    lbl.className='icon-label';
+    lbl.textContent=label;
+    btn.appendChild(lbl);
+    return btn;
+  }
+
+  function _decorPanel(id){
+    return function(preview){
+      const inner=document.createElement('span');
+      inner.className='icon-panel icon-panel-'+id;
+      preview.appendChild(inner);
+    };
+  }
+
+  function _decorFooter(id){
+    return function(preview){
+      if(id==='hidden') return;
+      const line=document.createElement('span');
+      line.className='icon-footer-line icon-footer-'+id;
+      preview.appendChild(line);
+    };
+  }
+
+  function _decorPosition(id){
+    return function(preview){
+      if(id==='hidden'){
+        const cross=document.createElement('span');
+        cross.className='icon-cross';
+        preview.appendChild(cross);
+        return;
+      }
+      const dot=document.createElement('span');
+      dot.className='icon-dot icon-dot-'+id;
+      preview.appendChild(dot);
+    };
+  }
+
+  function _decorVisibility(id){
+    return function(preview){
+      const glyph=document.createElement('span');
+      glyph.className='icon-vis icon-vis-'+id;
+      glyph.textContent=id==='show'?'●':'○';
+      preview.appendChild(glyph);
+    };
+  }
+
+  function _buildIconRow(containerId,items,optionKey,decoratorFor){
     const container=document.getElementById(containerId);
     if(!container) return;
     container.innerHTML='';
     items.forEach(function(it){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='option-pill';
-      btn.setAttribute('data-value',it.id);
-      btn.textContent=it.name;
-      btn.addEventListener('click',function(){ setOption(optionKey,it.id); });
-      container.appendChild(btn);
+      const card=_makeIconCard(it.id,it.name,decoratorFor(it.id));
+      card.addEventListener('click',function(){ setOption(optionKey,it.id); });
+      container.appendChild(card);
     });
   }
+
 
   function applyTheme(themeId,opts){
     const t=getTheme(themeId);
@@ -425,13 +476,13 @@ const ThemeEngine=(function(){
   }
 
   function buildDesigner(){
-    _buildOptionPills('panelStyles',PANEL_STYLES,'panelStyle');
-    _buildOptionPills('footerStyles',FOOTER_STYLES,'footerStyle');
-    _buildOptionPills('pageNumberStyles',PAGE_NUMBER_STYLES,'pageNumber');
-    _buildOptionPills('bookTitleVisibility',VISIBILITY,'bookTitleVisibility');
-    _buildOptionPills('bookTitlePosition',BOOK_TITLE_POSITIONS,'bookTitlePosition');
-    _buildOptionPills('handleVisibility',VISIBILITY,'handleVisibility');
-    _buildOptionPills('handlePosition',HANDLE_POSITIONS,'handlePosition');
+    _buildIconRow('panelStyles',PANEL_STYLES,'panelStyle',_decorPanel);
+    _buildIconRow('footerStyles',FOOTER_STYLES,'footerStyle',_decorFooter);
+    _buildIconRow('pageNumberStyles',PAGE_NUMBER_STYLES,'pageNumber',_decorPosition);
+    _buildIconRow('bookTitleVisibility',VISIBILITY,'bookTitleVisibility',_decorVisibility);
+    _buildIconRow('bookTitlePosition',BOOK_TITLE_POSITIONS,'bookTitlePosition',_decorPosition);
+    _buildIconRow('handleVisibility',VISIBILITY,'handleVisibility',_decorVisibility);
+    _buildIconRow('handlePosition',HANDLE_POSITIONS,'handlePosition',_decorPosition);
     _syncControls(getActiveThemeId());
   }
 
