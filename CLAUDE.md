@@ -27,10 +27,11 @@ Canonical project context for VihuStudio. Read this first before making any chan
 - Persistence
 - Page Management
 - Theme Engine
+- Theme Designer
 
 ### In Progress
 
-- Theme Designer UX Polish
+- Card Designer Foundation
 
 ## Locked Product Decisions
 

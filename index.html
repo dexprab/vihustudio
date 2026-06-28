@@ -71,7 +71,14 @@
 <aside class='sidebar right-sidebar'>
 <div class='tabs'>
 <button class='tab-btn active' data-tab='story'>Story</button>
+<button class='tab-btn' data-tab='card'>Card Designer</button>
 <button class='tab-btn' data-tab='style'>Theme Designer</button>
+</div>
+
+<!-- Card Designer mount point (Sprint 4.1 foundation) — populated by CardDesigner.mount() -->
+<div id='card-tab' class='tab-content'>
+<p class='card-designer-intro'>Reusable card foundation shared by Story Designer, Cover Designer and CTA Designer. Controls land in Sprint 4.x.</p>
+<div id='cardDesignerRoot' class='card-designer-root'></div>
 </div>
 
 <div id='story-tab' class='tab-content active'>
@@ -205,6 +212,6 @@
 <button class='context-item' data-action='delete'>✕ Delete</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/cardDesigner.js'></script><script src='js/app.js'></script>
 </body>
 </html>

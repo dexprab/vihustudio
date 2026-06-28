@@ -492,6 +492,33 @@ button:active{
   padding:16px;
 }
 
+/* Card Designer foundation (Sprint 4.1) — reusable visual shell; reuses
+   .designer-group / .designer-group-title / .designer-group-body styling
+   for visual parity with the Theme Designer. */
+.card-designer-intro{
+  margin:0 0 14px 0;
+  padding:10px 12px;
+  background:var(--bg);
+  border:1px dashed var(--line);
+  border-radius:var(--border-radius);
+  font-size:11px;
+  line-height:1.5;
+  color:var(--text-secondary);
+}
+
+.card-designer-root{
+  display:block;
+}
+
+.card-designer{
+  display:flex;
+  flex-direction:column;
+}
+
+.card-section-body{
+  display:block;
+}
+
 /* Development footer */
 .dev-footer{
   position:fixed;

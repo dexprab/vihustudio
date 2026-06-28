@@ -37,6 +37,12 @@ if(typeof ThemeEngine!=='undefined'){
   try{ ThemeEngine.buildLeftPaneCard(); }catch(e){}
   try{ ThemeEngine.buildDesigner(); }catch(e){}
 }
+
+// Card Designer foundation bootstrap (Sprint 4.1) — mount the reusable
+// component into its right-pane host. Controls land in Sprint 4.x.
+if(typeof CardDesigner!=='undefined'){
+  try{ CardDesigner.mount(document.getElementById('cardDesignerRoot')); }catch(e){}
+}
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
     if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
@@ -144,7 +150,11 @@ tabs.forEach(btn=>{
 
 // Designer Palette collapsible sections (T3.3.4 refinement) — permanent vertical list,
 // each section independently expandable/collapsible; pure presentation.
-document.querySelectorAll('[data-collapsible-toggle]').forEach(btn=>{
+// Scoped to Theme Designer sections (those carry data-section); the Card
+// Designer's own sections carry data-card-section and CardDesigner.mount()
+// binds their collapse handlers itself, so they would double-toggle if this
+// selector caught them too.
+document.querySelectorAll('[data-section] [data-collapsible-toggle]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const group=btn.closest('.designer-group');
     if(!group) return;

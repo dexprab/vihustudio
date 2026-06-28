@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(card-designer): Sprint 4.1 Card Designer foundation (build 0023, 2026-06-28)
+  - New module `js/cardDesigner.js` exposes the reusable foundation that Story Designer, Cover Designer, and CTA Designer will share. Public API: `CardDesigner.{SECTIONS, getSections(), mount(container), unmount(container), getSectionBody(container, sectionId)}`.
+  - Three sections rendered in document order: **Image** (image scale, position, fit mode), **Card** (card styling, theme defaults + per-card overrides), **Text** (typography). Each section is a `.designer-group` with a collapsible header, identical to the Theme Designer's visual language, and a `[data-card-section-body]` attachment slot for future controls.
+  - Right-pane integration: new `Card Designer` tab sits between `Story` and `Theme Designer` and hosts `#cardDesignerRoot`. The foundation tab mounts on app bootstrap and is reachable without affecting Theme Designer behavior.
+  - Sections collapse independently; the collapsible behavior is registered by the module itself, so the same `mount()` can be reused inside any future host container (Story / Cover / CTA workflows).
+  - No functionality is implemented yet — each section's body carries a single placeholder line describing its future controls.
+  - Constraints honored: no Theme Designer changes, no ThemeEngine changes, no persistence changes, no export changes, and no architecture changes outside the new Card Designer module.
 - polish(designer): T3.3.4 Final Theme Designer layout polish (build 0022, 2026-06-28)
   - Standardizes every option group (Footer, Story Panel, Book Title, Handle, Decorations, Page Numbers) on a single responsive visual grid: `display:grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap:6px`. Cards within a row are sized by the grid, so they remain dimensionally identical.
   - Removes the visibility clamp (`.icon-row-vis` with `repeat(2, ...)` and `max-width:140px`) and the redundant `.deco-row` rule; both collapse into the standard `.icon-row`.
