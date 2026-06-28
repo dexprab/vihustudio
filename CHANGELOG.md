@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(theme-designer): T3.3 Theme Designer (build 0015, 2026-06-28)
+  - Style tab renamed to Theme Designer; layout otherwise unchanged
+  - Theme model extended with `variants[]` and `decorations[]` declarations; cross-theme catalogs (`panelStyles`, `footerStyles`, `pageNumberStyles`) live on ThemeEngine
+  - Designer sections: Theme Library, Variant, Story Panel (Classic/Rounded/Cloud/Scroll), Footer (Classic/Modern/Minimal/Hidden), Decorations (per-theme set of Stars/Clouds/Birds/Trees/Flowers), Page Numbers (Bottom Right/Bottom Center/Hidden)
+  - Each control routes through a single ThemeEngine.setOption / toggleDecoration path which invalidates thumbnails, refreshes preview + filmstrip + left list, and marks dirty for autosave
+  - SlideRenderer extended (composition unchanged) to draw the four panel shapes, three page-number positions, three footer styles (plus hidden), and five decoration motifs; theme variants resolve frame color through ThemeEngine.resolveFrameColor
+  - On theme switch, themeOptions are reconciled: variants default to the new theme's first; decorations are pruned to those allowed
+  - AppState extended with `project.themeOptions`; ProjectManager serializes / restores it (schema extension only, still v1.0)
+  - No changes to SlideRenderer API, ThumbnailEngine queue, ThemeManager, ProjectManager architecture, PageOps, or the locked workspace layout
 - feat(theme): Theme Engine foundation (T3.2, build 0014, 2026-06-28)
   - New module `js/themeEngine.js` owns theme registry, apply, preview, persistence
   - Four built-in themes: Storybook Classic (default), Adventure, Fun Comic, Minimal Elegant

@@ -256,7 +256,7 @@ button:active{
 
 .tab-btn{
   flex:1;
-  padding:12px;
+  padding:12px 6px;
   background:transparent;
   color:var(--text-secondary);
   border:none;
@@ -266,6 +266,7 @@ button:active{
   font-weight:bold;
   margin:0;
   height:auto;
+  white-space:nowrap;
   transition:color 0.2s, border-color 0.2s;
 }
 
@@ -624,20 +625,117 @@ button:active{
   color:var(--text-secondary);
 }
 
-.theme-future{
-  padding:14px;
-  background:var(--bg);
-  border:1px dashed var(--line);
-  border-radius:var(--border-radius);
+/* Variant chips */
+.theme-variants{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
 }
 
-.theme-future-list{
+.variant-card{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  cursor:pointer;
+  height:auto;
+  width:auto;
   margin:0;
-  padding-left:18px;
-  color:var(--text-tertiary);
-  font-size:11px;
-  line-height:1.6;
-  font-style:italic;
+  font-weight:normal;
+  transition:border-color 0.2s, background 0.2s;
+}
+
+.variant-card:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.05);
+}
+
+.variant-card.active{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.08);
+  box-shadow:0 0 0 1px rgba(255,203,69,0.4);
+}
+
+.variant-swatch{
+  display:inline-block;
+  width:18px;
+  height:18px;
+  border-radius:5px;
+  border:1px solid rgba(0,0,0,0.08);
+}
+
+.variant-label{
+  font-size:12px;
+  color:var(--text);
+}
+
+/* Option pills (panel / footer / page numbers) */
+.option-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.option-pill{
+  padding:6px 12px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:999px;
+  font-size:12px;
+  color:var(--text);
+  cursor:pointer;
+  height:auto;
+  width:auto;
+  margin:0;
+  font-weight:normal;
+  transition:border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.option-pill:hover{
+  border-color:var(--gold);
+}
+
+.option-pill.active{
+  background:var(--gold);
+  color:var(--navy);
+  border-color:var(--gold);
+  font-weight:bold;
+}
+
+/* Decoration checkboxes */
+.decorations-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.deco-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  cursor:pointer;
+  font-size:12px;
+  color:var(--text);
+  user-select:none;
+  transition:border-color 0.2s;
+}
+
+.deco-item:hover{
+  border-color:var(--gold);
+}
+
+.deco-item input[type='checkbox']{
+  width:14px;
+  height:14px;
+  cursor:pointer;
+  accent-color:var(--gold);
 }
 
 .placeholder{

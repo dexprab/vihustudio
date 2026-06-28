@@ -34,6 +34,7 @@ if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
 if(typeof ThemeEngine!=='undefined'){
   try{ ThemeEngine.populateSelector(themeSelectEl); }catch(e){}
   try{ ThemeEngine.buildCards(document.getElementById('themeCards')); }catch(e){}
+  try{ ThemeEngine.buildDesigner(); }catch(e){}
   if(themeSelectEl){
     themeSelectEl.addEventListener('change',function(){
       ThemeEngine.applyTheme(themeSelectEl.value);
@@ -230,7 +231,8 @@ function draw(){
  s.page=page.value;
  s.totalPages=AppState.slides.length;
  const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme});
+ const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }

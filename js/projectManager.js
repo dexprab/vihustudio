@@ -71,6 +71,7 @@ const ProjectManager=(function(){
         author:readDomString('projectAuthorName')||AppState.project.author||'',
         bookTitle:readDomString('bookTitle')||AppState.project.bookTitle||'',
         theme:readDomString('themeSelect')||AppState.project.theme||'default',
+        themeOptions:AppState.project.themeOptions||null,
         createdDate:AppState.project.createdDate,
         modifiedDate:AppState.project.modifiedDate
       },
@@ -118,6 +119,7 @@ const ProjectManager=(function(){
         author:project.author||'',
         bookTitle:project.bookTitle||'',
         theme:project.theme||'default',
+        themeOptions:project.themeOptions||null,
         createdDate:project.createdDate||new Date().toISOString(),
         modifiedDate:project.modifiedDate||new Date().toISOString()
       };

@@ -3,7 +3,14 @@ const AppState={
    title:'The Worst Birthday Ever',
    author:'',
    bookTitle:'The Worst Birthday Ever',
-   theme:'default',
+   theme:'storybook-classic',
+   themeOptions:{
+     variant:'classic',
+     panelStyle:'classic',
+     footerStyle:'classic',
+     decorations:[],
+     pageNumber:'bottom-right'
+   },
    createdDate:'',
    modifiedDate:''
  },
