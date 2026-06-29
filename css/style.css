@@ -1256,42 +1256,107 @@ button:active{
 
 /* Reuse Sprint 4.4 slider-label pattern so font-size/value chips align. */
 .image-scale-value,
-.image-crop-value,
-.image-focalx-value,
-.image-focaly-value,
-.image-straighten-value,
-.image-brightness-value,
-.image-contrast-value,
-.image-highlights-value,
-.image-shadows-value,
-.image-warmth-value,
-.image-saturation-value,
-.image-sharpness-value,
-.image-vignette-value{
+.image-offsetx-value,
+.image-offsety-value,
+.border-padding-value,
+.border-radius-value,
+.border-line-width-value,
+.border-shadow-value{
   font-size:11px;
   font-weight:bold;
   color:var(--gold);
   font-variant-numeric:tabular-nums;
 }
 
-.image-crop-slider,
-.image-focalx-slider,
-.image-focaly-slider,
-.image-straighten-slider,
-.image-brightness-slider,
-.image-contrast-slider,
-.image-highlights-slider,
-.image-shadows-slider,
-.image-warmth-slider,
-.image-saturation-slider,
-.image-sharpness-slider,
-.image-vignette-slider{
+.image-offsetx-slider,
+.image-offsety-slider,
+.border-padding-slider,
+.border-radius-slider,
+.border-line-width-slider,
+.border-shadow-slider{
   width:100%;
   height:auto;
   margin:0;
   padding:0;
   background:transparent;
   accent-color:var(--gold);
+  cursor:pointer;
+}
+
+/* Sprint 6.5 — Picture Border controls. Sticks to existing icon-card
+   visual language so the section blends with the rest of the palette. */
+.picture-actions-row{ display:flex; gap:6px; margin-top:8px; }
+.picture-reset-btn{
+  flex:1;
+  padding:8px 10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  transition:border-color 0.2s, background 0.2s;
+}
+.picture-reset-btn:hover:not(:disabled){
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+.picture-reset-btn:disabled{ cursor:not-allowed; opacity:0.45; }
+
+.border-fill-row .border-fill-btn{ position:relative; }
+.border-fill-preview{
+  display:block;
+  width:100%;
+  height:28px;
+  border-radius:6px;
+  border:1px solid var(--line);
+}
+.border-fill-preview-none{
+  background:
+    linear-gradient(45deg, transparent 45%, #c44 47%, #c44 53%, transparent 55%),
+    repeating-conic-gradient(#eee 0 25%, #ccc 0 50%) 0 0/8px 8px;
+}
+.border-fill-preview-white{ background:#FFFFFF; }
+.border-fill-preview-black{ background:#000000; }
+.border-fill-preview-page{
+  background:linear-gradient(135deg,#1D3457 50%, var(--bg) 50%);
+}
+.border-fill-preview-custom{
+  background:linear-gradient(135deg,#F44 0%,#FA0 25%,#3D5 50%,#39F 75%,#A4F 100%);
+}
+.border-fill-custom{ position:relative; overflow:hidden; }
+.border-fill-custom-input{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+  border:0;
+  padding:0;
+}
+
+.border-toggle-row{ align-items:center; }
+.border-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  color:var(--text-secondary);
+  cursor:pointer;
+}
+.border-toggle input[type="checkbox"]{ accent-color:var(--gold); }
+.border-toggle-text{ user-select:none; }
+
+.border-line-color-input{
+  width:48px;
+  height:28px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:transparent;
+  padding:0;
   cursor:pointer;
 }
 

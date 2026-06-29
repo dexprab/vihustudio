@@ -61,6 +61,86 @@ const SlideRenderer=(()=>{
     try{ x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; }catch(e){}
   }
 
+  // Sprint 6.5 — Picture Border. Resolved from
+  // slide.metadata.cardOverrides.border (passed in via payload.overrides.border).
+  // Returns null when no override is present so the legacy rendering path
+  // stays byte-identical for projects that haven't touched the border.
+  function _resolveBorder(s){
+    const ov=(s && s.overrides) || null;
+    const b=ov && ov.border;
+    if(!b) return null;
+    const line=b.line||{};
+    const shadow=b.shadow||{};
+    return {
+      padding:(typeof b.padding==='number')?b.padding:20,
+      fill:b.fill||'page',
+      cornerRadius:(typeof b.cornerRadius==='number')?b.cornerRadius:0,
+      lineEnabled:!!line.enabled,
+      lineWidth:(typeof line.width==='number')?line.width:2,
+      lineColor:line.color||'#000000',
+      shadowEnabled:!!shadow.enabled,
+      shadowIntensity:(typeof shadow.intensity==='number')?shadow.intensity:0.4
+    };
+  }
+
+  function _resolveBorderFillColor(border,theme){
+    switch(border.fill){
+      case 'none': return null;
+      case 'white': return '#FFFFFF';
+      case 'black': return '#000000';
+      case 'page': return (theme && theme.panel) ? theme.panel.color : '#FFFFFF';
+      default:
+        if(typeof border.fill==='string' && border.fill.charAt(0)==='#') return border.fill;
+        return (theme && theme.panel) ? theme.panel.color : '#FFFFFF';
+    }
+  }
+
+  function _picturePath(rx,ry,rw,rh,radius){
+    const r=Math.max(0,Math.min(radius||0,rw/2,rh/2));
+    if(r===0){
+      x.beginPath();
+      x.rect(rx,ry,rw,rh);
+      return;
+    }
+    x.beginPath();
+    x.moveTo(rx+r,ry);
+    x.arcTo(rx+rw,ry,rx+rw,ry+rh,r);
+    x.arcTo(rx+rw,ry+rh,rx,ry+rh,r);
+    x.arcTo(rx,ry+rh,rx,ry,r);
+    x.arcTo(rx,ry,rx+rw,ry,r);
+    x.closePath();
+  }
+
+  // Picture-frame fill (with optional drop shadow). Drawn under the image.
+  function _drawPictureFrameFill(rect,border,theme){
+    const fillColor=_resolveBorderFillColor(border,theme);
+    if(!fillColor && !border.shadowEnabled) return;
+    x.save();
+    if(border.shadowEnabled){
+      x.shadowBlur=16+border.shadowIntensity*36;
+      x.shadowOffsetY=6+border.shadowIntensity*10;
+      x.shadowColor='rgba(0,0,0,'+(0.20+border.shadowIntensity*0.5).toFixed(3)+')';
+    }
+    if(fillColor){
+      _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+      x.fillStyle=fillColor;
+      x.fill();
+    }
+    x.restore();
+  }
+
+  // Picture-frame stroke. Drawn over the image so it always reads as a
+  // crisp border, even when fill is "None".
+  function _drawPictureFrameStroke(rect,border){
+    if(!border.lineEnabled || !border.lineWidth) return;
+    x.save();
+    _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+    x.lineWidth=border.lineWidth;
+    x.strokeStyle=border.lineColor;
+    x.stroke();
+    x.restore();
+  }
+
   function render(s){
     if(!x) return;
     const t=_theme(s);
@@ -72,8 +152,16 @@ const SlideRenderer=(()=>{
     x.fillStyle=_frameColor(t,opts);
     x.fillRect(0,0,W,H);
 
-    // Panel (style-driven)
-    _drawPanel(t.panel.color,opts.panelStyle);
+    // Sprint 6.5 — when the user has customised the Picture Border, draw
+    // a styled frame in place of the legacy panel. Otherwise fall through
+    // to the existing panel style so untouched projects stay pixel-identical.
+    const _border=_resolveBorder(s);
+    const _panelRect={x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+    if(_border){
+      _drawPictureFrameFill(_panelRect,_border,t);
+    }else{
+      _drawPanel(t.panel.color,opts.panelStyle);
+    }
 
     // Sprint 6.2 — when a scene is active, the scene blueprint owns the
     // page composition. Skip the legacy Story-style pipeline so text /
@@ -93,7 +181,12 @@ const SlideRenderer=(()=>{
       // Image inside panel — presentation-only transforms; original image untouched.
       // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
       if(s.image && s.image.width){
-        _drawImage(s);
+        _drawImage(s,_border);
+      }
+      // Sprint 6.5 — Picture Border stroke sits above the image so it
+      // always reads as a crisp frame edge.
+      if(_border){
+        _drawPictureFrameStroke(_panelRect,_border);
       }
 
       // Decorations on the frame
@@ -239,20 +332,53 @@ const SlideRenderer=(()=>{
       x.restore();
       return;
     }
+    // Sprint 6.5 — Picture Border applies to scene image holders too, so
+    // the same UI controls Story / Cover / Hook / End.
+    const border=_resolveBorder(s);
+    const outerRect={x:rx,y:ry,w:size.w,h:size.h};
+    const pad=border ? border.padding : 0;
+    const innerRect={
+      x:rx+pad, y:ry+pad,
+      w:Math.max(1,size.w-pad*2), h:Math.max(1,size.h-pad*2)
+    };
+    if(border){
+      _drawPictureFrameFill(outerRect,border,_theme(s));
+    }
     // Resolve the view: user's s.imageView wins; blueprint `fit` seeds
     // the default mode ('cover' → 'fill', 'contain' → 'fit').
     const seedMode=el.fit==='contain' ? 'fit' : 'fill';
     const raw=s.imageView ? Object.assign({mode:seedMode},s.imageView) : {mode:seedMode};
     if(typeof ImageViewEngine!=='undefined'){
-      ImageViewEngine.drawInto(x,img,{x:rx,y:ry,w:size.w,h:size.h},raw);
+      if(border){
+        // Apply a concentric round-rect clip so the image follows the
+        // frame's curves, then hand off to the View Engine for the actual
+        // image draw.
+        const innerRadius=Math.max(0,(border.cornerRadius||0)-pad);
+        x.save();
+        if(innerRadius>0){
+          _picturePath(innerRect.x,innerRect.y,innerRect.w,innerRect.h,innerRadius);
+        }else{
+          x.beginPath();
+          x.rect(innerRect.x,innerRect.y,innerRect.w,innerRect.h);
+        }
+        x.clip();
+        ImageViewEngine.drawInto(x,img,innerRect,raw);
+        x.restore();
+      }else{
+        ImageViewEngine.drawInto(x,img,outerRect,raw);
+      }
     }else{
       // Defensive fallback — should never run because the script is loaded first.
       const iw=img.width, ih=img.height;
-      const base=seedMode==='fit' ? Math.min(size.w/iw,size.h/ih) : Math.max(size.w/iw,size.h/ih);
+      const targetRect=border?innerRect:outerRect;
+      const base=seedMode==='fit' ? Math.min(targetRect.w/iw,targetRect.h/ih) : Math.max(targetRect.w/iw,targetRect.h/ih);
       const dw=iw*base, dh=ih*base;
-      const dx=pos.x-dw/2, dy=pos.y-dh/2;
-      x.beginPath(); x.rect(rx,ry,size.w,size.h); x.clip();
+      const dx=targetRect.x+targetRect.w/2-dw/2, dy=targetRect.y+targetRect.h/2-dh/2;
+      x.beginPath(); x.rect(targetRect.x,targetRect.y,targetRect.w,targetRect.h); x.clip();
       x.drawImage(img,dx,dy,dw,dh);
+    }
+    if(border){
+      _drawPictureFrameStroke(outerRect,border);
     }
     x.restore();
   }
@@ -376,11 +502,15 @@ const SlideRenderer=(()=>{
     return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8,overflow:overflow,maxWidth:STORY_MAX_WIDTH};
   }
 
-  // Inner image area inside the panel — 20px breathing room on all sides so
-  // the image never visually touches the rounded/scroll/cloud edges.
-  const IMG_X=PANEL_X+20, IMG_Y=PANEL_Y+20, IMG_W=PANEL_W-40, IMG_H=PANEL_H-40;
+  // Inner image area inside the panel. Sprint 6.5 — padding is normally
+  // 20px (the legacy default) but the Picture Border slider can override
+  // it; the renderer adapts so the image always fits inside the styled frame.
+  const DEFAULT_IMG_PAD=20;
 
-  function _drawImage(s){
+  function _drawImage(s,border){
+    const pad=border ? border.padding : DEFAULT_IMG_PAD;
+    const IMG_X=PANEL_X+pad, IMG_Y=PANEL_Y+pad;
+    const IMG_W=Math.max(1,PANEL_W-pad*2), IMG_H=Math.max(1,PANEL_H-pad*2);
     const v=s.imageView||{};
     // Sprint 4.5 — crop / straighten / focal point / image adjustments.
     const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
@@ -443,8 +573,16 @@ const SlideRenderer=(()=>{
     if(Math.abs(warmth)>0.001) filterParts.push('hue-rotate('+(warmth*-15).toFixed(2)+'deg)');
 
     x.save();
-    x.beginPath();
-    x.rect(IMG_X,IMG_Y,IMG_W,IMG_H);
+    // Sprint 6.5 — when a picture-border radius is set, the inner image
+    // gets a concentric round-rect clip so the image's corners follow
+    // the frame's corners. Inner radius = max(0, R - padding).
+    const innerRadius=border ? Math.max(0,(border.cornerRadius||0)-pad) : 0;
+    if(innerRadius>0){
+      _picturePath(IMG_X,IMG_Y,IMG_W,IMG_H,innerRadius);
+    }else{
+      x.beginPath();
+      x.rect(IMG_X,IMG_Y,IMG_W,IMG_H);
+    }
     x.clip();
     // Straighten: rotate around the panel center so the user sees a level horizon.
     if(Math.abs(straighten)>0.001){

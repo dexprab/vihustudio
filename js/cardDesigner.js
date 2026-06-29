@@ -4,13 +4,18 @@
 // Sprint 4.5: Image overrides migrated to slide.metadata.cardOverrides.image,
 //             expanded with composition / light / color / detail / effects.
 //             Card section hidden from the palette (code preserved).
+// Sprint 6.5: "Make My Picture Beautiful." UI rewritten in child-friendly
+//             language with two groups — Picture (Show / Bigger ↔ Smaller /
+//             Move Left ↔ Right / Move Up ↔ Down / Start Over) and Picture
+//             Border (size / color / round corners / border line / shadow /
+//             reset). Legacy composition / light / color / detail / effects
+//             data continues to render from saved projects; the power-user
+//             UI is hidden because a 9-year-old shouldn't need it.
 const CardDesigner=(function(){
-  // 'hidden' sections are skipped at build time but remain in the SECTIONS
-  // array so their summary text and id are still part of the public API.
   const SECTIONS=[
     {
       id:'image',
-      title:'Image',
+      title:'Picture',
       summary:''
     },
     {
@@ -27,11 +32,20 @@ const CardDesigner=(function(){
   ];
 
   const SCALE_MIN=0.25, SCALE_MAX=4, SCALE_STEP=0.05;
+  // Sprint 6.5: Bigger ↔ Smaller is the only zoom control children see, and
+  // the previous 0.25× – 4× range felt punishing. 0.5× – 3× still covers
+  // every realistic case.
+  const PICTURE_ZOOM_MIN=0.5, PICTURE_ZOOM_MAX=3, PICTURE_ZOOM_STEP=0.05;
+  const MOVE_MIN=-300, MOVE_MAX=300;
   const DEFAULT_VIEW={scale:1,offsetX:0,offsetY:0,fit:'fit'};
-  // Keys that count as "composition" vs "adjustments" — used by the two
-  // group-reset actions in the Actions sub-section.
-  const COMPOSITION_KEYS=['fit','scale','offsetX','offsetY','focalX','focalY','crop','straighten'];
-  const ADJUSTMENT_KEYS=['brightness','contrast','highlights','shadows','warmth','saturation','sharpness','vignette'];
+  // Sprint 6.5 — picture border defaults.
+  const BORDER_DEFAULTS={padding:20,fill:'page',cornerRadius:0,lineWidth:2,lineColor:'#000000',shadowIntensity:0.4};
+  const BORDER_FILL_PRESETS=[
+    {id:'none',label:'None'},
+    {id:'white',label:'White'},
+    {id:'black',label:'Black'},
+    {id:'page',label:'Same as Page'}
+  ];
 
   let mountedContainer=null;
   let mountedRoot=null;
@@ -241,20 +255,29 @@ const CardDesigner=(function(){
     return body;
   }
 
+  // Sprint 6.5 — Picture section: Show / Bigger ↔ Smaller / Move Left ↔
+  // Right / Move Up ↔ Down / Start Over. Followed by the Picture Border
+  // section. Legacy power-user data (crop, focal, straighten, brightness,
+  // contrast, highlights, shadows, warmth, saturation, sharpness,
+  // vignette) is still honoured by the renderer for existing projects;
+  // a 9-year-old just no longer sees those knobs.
   function _buildImageControls(body){
-    // --- Composition ---------------------------------------------------
-    const comp=_makeImageSubgroup(body,'composition','Composition');
+    // Picture controls live directly under the section header — adding a
+    // second "Picture" subgroup title would just duplicate the heading.
+    const pic=document.createElement('div');
+    pic.className='image-picture-block';
+    body.appendChild(pic);
 
-    // Fit / Fill icon row
-    const modeRow=document.createElement('div');
-    modeRow.className='designer-row';
-    const modeLabel=document.createElement('div');
-    modeLabel.className='designer-row-label';
-    modeLabel.textContent='Mode';
-    modeRow.appendChild(modeLabel);
-    const modeIcons=document.createElement('div');
-    modeIcons.className='icon-row image-mode-row';
-    [['fit','Fit'],['fill','Fill']].forEach(function(pair){
+    // Show: Whole Picture / Fill the Box  (internal: fit / fill)
+    const showRow=document.createElement('div');
+    showRow.className='designer-row';
+    const showLabel=document.createElement('div');
+    showLabel.className='designer-row-label';
+    showLabel.textContent='Show';
+    showRow.appendChild(showLabel);
+    const showIcons=document.createElement('div');
+    showIcons.className='icon-row image-mode-row';
+    [['fit','Whole Picture'],['fill','Fill the Box']].forEach(function(pair){
       const id=pair[0], name=pair[1];
       const btn=document.createElement('button');
       btn.type='button';
@@ -271,163 +294,280 @@ const CardDesigner=(function(){
       lbl.textContent=name;
       btn.appendChild(lbl);
       btn.addEventListener('click',function(){ _setMode(id); });
-      modeIcons.appendChild(btn);
+      showIcons.appendChild(btn);
     });
-    modeRow.appendChild(modeIcons);
-    comp.appendChild(modeRow);
+    showRow.appendChild(showIcons);
+    pic.appendChild(showRow);
 
-    // Zoom (existing scale, relabeled)
-    _makeImageSliderRow(comp,{
-      labelText:'Zoom',valueClass:'image-scale-value',sliderClass:'image-scale-slider',
-      min:SCALE_MIN,max:SCALE_MAX,step:SCALE_STEP,
+    // Bigger ↔ Smaller (zoom)
+    _makeImageSliderRow(pic,{
+      labelText:'Bigger ↔ Smaller',valueClass:'image-scale-value',sliderClass:'image-scale-slider',
+      min:PICTURE_ZOOM_MIN,max:PICTURE_ZOOM_MAX,step:PICTURE_ZOOM_STEP,
       onInput:function(v){ _setScale(v); }
     });
 
-    // Crop (uniform inset from each side, 0..0.3)
-    _makeImageSliderRow(comp,{
-      labelText:'Crop',valueClass:'image-crop-value',sliderClass:'image-crop-slider',
-      min:0,max:0.3,step:0.01,
+    // Move Left ↔ Right (offsetX). Snap to 0 inside a 1px deadzone so the
+    // override stays absent when the slider is dead-centered.
+    _makeImageSliderRow(pic,{
+      labelText:'Move Left ↔ Right',valueClass:'image-offsetx-value',sliderClass:'image-offsetx-slider',
+      min:MOVE_MIN,max:MOVE_MAX,step:1,
       onInput:function(v){
         const view=_ensureView(_currentSlide());
         if(!view) return;
-        view.crop={top:v,right:v,bottom:v,left:v};
-        if(v===0) delete view.crop;
+        if(Math.abs(v)<0.5) delete view.offsetX; else view.offsetX=Math.round(v);
         _commit();
       }
     });
 
-    // Focal Point X / Y
-    _makeImageSliderRow(comp,{
-      labelText:'Focal X',valueClass:'image-focalx-value',sliderClass:'image-focalx-slider',
-      min:0,max:1,step:0.01,
+    // Move Up ↔ Down (offsetY)
+    _makeImageSliderRow(pic,{
+      labelText:'Move Up ↔ Down',valueClass:'image-offsety-value',sliderClass:'image-offsety-slider',
+      min:MOVE_MIN,max:MOVE_MAX,step:1,
       onInput:function(v){
         const view=_ensureView(_currentSlide());
         if(!view) return;
-        if(Math.abs(v-0.5)<0.005) delete view.focalX; else view.focalX=v;
-        _commit();
-      }
-    });
-    _makeImageSliderRow(comp,{
-      labelText:'Focal Y',valueClass:'image-focaly-value',sliderClass:'image-focaly-slider',
-      min:0,max:1,step:0.01,
-      onInput:function(v){
-        const view=_ensureView(_currentSlide());
-        if(!view) return;
-        if(Math.abs(v-0.5)<0.005) delete view.focalY; else view.focalY=v;
+        if(Math.abs(v)<0.5) delete view.offsetY; else view.offsetY=Math.round(v);
         _commit();
       }
     });
 
-    // Straighten ±5°
-    _makeImageSliderRow(comp,{
-      labelText:'Straighten',valueClass:'image-straighten-value',sliderClass:'image-straighten-slider',
-      min:-5,max:5,step:0.1,
-      onInput:function(v){
-        const view=_ensureView(_currentSlide());
-        if(!view) return;
-        if(Math.abs(v)<0.05) delete view.straighten; else view.straighten=v;
-        _commit();
-      }
-    });
+    // Start Over (resets the picture view + adjustments).
+    const startRow=document.createElement('div');
+    startRow.className='picture-actions-row';
+    const startBtn=document.createElement('button');
+    startBtn.type='button';
+    startBtn.className='picture-reset-btn picture-reset-image-btn';
+    startBtn.textContent='↺ Start Over';
+    startBtn.addEventListener('click',_resetImage);
+    startRow.appendChild(startBtn);
+    pic.appendChild(startRow);
 
-    const compHint=document.createElement('p');
-    compHint.className='placeholder image-hint';
-    compHint.textContent='Drag to pan; Shift + click to set focal point.';
-    comp.appendChild(compHint);
-
-    // --- Light --------------------------------------------------------
-    const light=_makeImageSubgroup(body,'light','Light');
-    [['brightness','Brightness'],['contrast','Contrast'],['highlights','Highlights'],['shadows','Shadows']].forEach(function(pair){
-      const key=pair[0], name=pair[1];
-      _makeImageSliderRow(light,{
-        labelText:name,valueClass:'image-'+key+'-value',sliderClass:'image-'+key+'-slider',
-        min:-1,max:1,step:0.01,
-        onInput:function(v){
-          const view=_ensureView(_currentSlide());
-          if(!view) return;
-          if(Math.abs(v)<0.005) delete view[key]; else view[key]=v;
-          _commit();
-        }
-      });
-    });
-
-    // --- Color --------------------------------------------------------
-    const color=_makeImageSubgroup(body,'color','Color');
-    [['warmth','Warmth'],['saturation','Saturation']].forEach(function(pair){
-      const key=pair[0], name=pair[1];
-      _makeImageSliderRow(color,{
-        labelText:name,valueClass:'image-'+key+'-value',sliderClass:'image-'+key+'-slider',
-        min:-1,max:1,step:0.01,
-        onInput:function(v){
-          const view=_ensureView(_currentSlide());
-          if(!view) return;
-          if(Math.abs(v)<0.005) delete view[key]; else view[key]=v;
-          _commit();
-        }
-      });
-    });
-
-    // --- Detail -------------------------------------------------------
-    const detail=_makeImageSubgroup(body,'detail','Detail');
-    _makeImageSliderRow(detail,{
-      labelText:'Sharpness',valueClass:'image-sharpness-value',sliderClass:'image-sharpness-slider',
-      min:0,max:1,step:0.01,
-      onInput:function(v){
-        const view=_ensureView(_currentSlide());
-        if(!view) return;
-        if(v<0.005) delete view.sharpness; else view.sharpness=v;
-        _commit();
-      }
-    });
-
-    // --- Effects ------------------------------------------------------
-    const effects=_makeImageSubgroup(body,'effects','Effects');
-    _makeImageSliderRow(effects,{
-      labelText:'Vignette',valueClass:'image-vignette-value',sliderClass:'image-vignette-slider',
-      min:0,max:1,step:0.01,
-      onInput:function(v){
-        const view=_ensureView(_currentSlide());
-        if(!view) return;
-        if(v<0.005) delete view.vignette; else view.vignette=v;
-        _commit();
-      }
-    });
-
-    // --- Actions ------------------------------------------------------
-    const actions=_makeImageSubgroup(body,'actions','Actions');
-    [
-      ['Reset Composition',_resetImageComposition],
-      ['Reset Adjustments',_resetImageAdjustments],
-      ['Reset Image',_resetImage]
-    ].forEach(function(pair){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='image-reset-action-btn';
-      btn.textContent='↺ '+pair[0];
-      btn.addEventListener('click',pair[1]);
-      actions.appendChild(btn);
-    });
+    _buildBorderControls(body);
   }
 
-  // Effective values displayed by the panel — override ?? default.
+  // Sprint 6.5 — Picture Border section.
+  function _buildBorderControls(body){
+    const bg=_makeImageSubgroup(body,'border','Picture Border');
+
+    // Border Size (padding) — Tiny ↔ Big
+    _makeImageSliderRow(bg,{
+      labelText:'Border Size',valueClass:'border-padding-value',sliderClass:'border-padding-slider',
+      min:0,max:60,step:1,
+      onInput:function(v){
+        const b=_ensureBorder(_currentSlide());
+        if(!b) return;
+        if(Math.round(v)===BORDER_DEFAULTS.padding) delete b.padding; else b.padding=Math.round(v);
+        _commitBorder();
+      }
+    });
+
+    // Border Color — chips: None / White / Black / Same as Page / Pick a Color
+    const colorRow=document.createElement('div');
+    colorRow.className='designer-row';
+    const colorLabel=document.createElement('div');
+    colorLabel.className='designer-row-label';
+    colorLabel.textContent='Border Color';
+    colorRow.appendChild(colorLabel);
+    const chips=document.createElement('div');
+    chips.className='icon-row border-fill-row';
+    BORDER_FILL_PRESETS.forEach(function(p){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card border-fill-btn';
+      btn.setAttribute('data-fill',p.id);
+      const pv=document.createElement('span');
+      pv.className='icon-preview border-fill-preview border-fill-preview-'+p.id;
+      btn.appendChild(pv);
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=p.label;
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        const b=_ensureBorder(_currentSlide());
+        if(!b) return;
+        if(p.id==='page') delete b.fill; else b.fill=p.id;
+        _commitBorder();
+      });
+      chips.appendChild(btn);
+    });
+    // Pick a Color chip (hides a color input inside the card).
+    const customWrap=document.createElement('button');
+    customWrap.type='button';
+    customWrap.className='icon-card border-fill-btn border-fill-custom';
+    customWrap.setAttribute('data-fill','custom');
+    const customPv=document.createElement('span');
+    customPv.className='icon-preview border-fill-preview border-fill-preview-custom';
+    customWrap.appendChild(customPv);
+    const customColor=document.createElement('input');
+    customColor.type='color';
+    customColor.className='border-fill-custom-input';
+    customColor.value='#FFFFFF';
+    customColor.addEventListener('input',function(){
+      const b=_ensureBorder(_currentSlide());
+      if(!b) return;
+      b.fill=customColor.value;
+      _commitBorder();
+    });
+    customWrap.appendChild(customColor);
+    const customLbl=document.createElement('span');
+    customLbl.className='icon-label';
+    customLbl.textContent='Pick a Color';
+    customWrap.appendChild(customLbl);
+    customWrap.addEventListener('click',function(e){
+      // Avoid bubbling into the native click that already opens the picker.
+      if(e.target!==customColor) customColor.click();
+    });
+    chips.appendChild(customWrap);
+    colorRow.appendChild(chips);
+    bg.appendChild(colorRow);
+
+    // Round Corners — Square ↔ Round
+    _makeImageSliderRow(bg,{
+      labelText:'Round Corners',valueClass:'border-radius-value',sliderClass:'border-radius-slider',
+      min:0,max:80,step:1,
+      onInput:function(v){
+        const b=_ensureBorder(_currentSlide());
+        if(!b) return;
+        if(Math.round(v)===0) delete b.cornerRadius; else b.cornerRadius=Math.round(v);
+        _commitBorder();
+      }
+    });
+
+    // Border Line (on/off + width + color)
+    _buildToggleRow(bg,'Border Line','border-line-toggle',function(checked){
+      const b=_ensureBorder(_currentSlide());
+      if(!b) return;
+      b.line=b.line||{};
+      if(checked) b.line.enabled=true; else delete b.line.enabled;
+      _commitBorder();
+    });
+    _makeImageSliderRow(bg,{
+      labelText:'Line Width',valueClass:'border-line-width-value',sliderClass:'border-line-width-slider',
+      min:1,max:12,step:1,
+      onInput:function(v){
+        const b=_ensureBorder(_currentSlide());
+        if(!b) return;
+        b.line=b.line||{};
+        if(Math.round(v)===BORDER_DEFAULTS.lineWidth) delete b.line.width; else b.line.width=Math.round(v);
+        _commitBorder();
+      }
+    });
+    const lineColorRow=document.createElement('div');
+    lineColorRow.className='designer-row';
+    const lineColorLabel=document.createElement('div');
+    lineColorLabel.className='designer-row-label';
+    lineColorLabel.textContent='Line Color';
+    lineColorRow.appendChild(lineColorLabel);
+    const lineColorInput=document.createElement('input');
+    lineColorInput.type='color';
+    lineColorInput.className='border-line-color-input';
+    lineColorInput.value=BORDER_DEFAULTS.lineColor;
+    lineColorInput.addEventListener('input',function(){
+      const b=_ensureBorder(_currentSlide());
+      if(!b) return;
+      b.line=b.line||{};
+      b.line.color=lineColorInput.value;
+      _commitBorder();
+    });
+    lineColorRow.appendChild(lineColorInput);
+    bg.appendChild(lineColorRow);
+
+    // Shadow (on/off + intensity)
+    _buildToggleRow(bg,'Shadow','border-shadow-toggle',function(checked){
+      const b=_ensureBorder(_currentSlide());
+      if(!b) return;
+      b.shadow=b.shadow||{};
+      if(checked) b.shadow.enabled=true; else delete b.shadow.enabled;
+      _commitBorder();
+    });
+    _makeImageSliderRow(bg,{
+      labelText:'Light ↔ Dark',valueClass:'border-shadow-value',sliderClass:'border-shadow-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){
+        const b=_ensureBorder(_currentSlide());
+        if(!b) return;
+        b.shadow=b.shadow||{};
+        const n=Math.round(v*100)/100;
+        if(Math.abs(n-BORDER_DEFAULTS.shadowIntensity)<0.005) delete b.shadow.intensity; else b.shadow.intensity=n;
+        _commitBorder();
+      }
+    });
+
+    // Reset Border
+    const resetRow=document.createElement('div');
+    resetRow.className='picture-actions-row';
+    const resetBtn=document.createElement('button');
+    resetBtn.type='button';
+    resetBtn.className='picture-reset-btn picture-reset-border-btn';
+    resetBtn.textContent='↺ Reset Border';
+    resetBtn.addEventListener('click',_resetBorder);
+    resetRow.appendChild(resetBtn);
+    bg.appendChild(resetRow);
+  }
+
+  function _buildToggleRow(parent,labelText,toggleClass,onChange){
+    const row=document.createElement('div');
+    row.className='designer-row border-toggle-row';
+    const lbl=document.createElement('div');
+    lbl.className='designer-row-label';
+    lbl.textContent=labelText;
+    row.appendChild(lbl);
+    const toggle=document.createElement('label');
+    toggle.className='border-toggle';
+    const input=document.createElement('input');
+    input.type='checkbox';
+    input.className=toggleClass;
+    toggle.appendChild(input);
+    const swText=document.createElement('span');
+    swText.className='border-toggle-text';
+    swText.textContent='On';
+    toggle.appendChild(swText);
+    row.appendChild(toggle);
+    parent.appendChild(row);
+    input.addEventListener('change',function(){ onChange(input.checked); });
+  }
+
+  // Sprint 6.5 — border data lives under slide.metadata.cardOverrides.border.
+  function _ensureBorder(slide){
+    if(!slide) return null;
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    if(!slide.metadata.cardOverrides.border) slide.metadata.cardOverrides.border={};
+    return slide.metadata.cardOverrides.border;
+  }
+  function _readBorder(slide){
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return null;
+    return slide.metadata.cardOverrides.border||null;
+  }
+  function _pruneBorder(slide){
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    const b=slide.metadata.cardOverrides.border;
+    if(!b) return;
+    if(b.line && Object.keys(b.line).length===0) delete b.line;
+    if(b.shadow && Object.keys(b.shadow).length===0) delete b.shadow;
+    if(Object.keys(b).length===0) delete slide.metadata.cardOverrides.border;
+  }
+  function _commitBorder(){
+    _pruneBorder(_currentSlide());
+    _commit();
+  }
+  function _resetBorder(){
+    const slide=_currentSlide();
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    delete slide.metadata.cardOverrides.border;
+    _commit();
+  }
+
+  // Sprint 6.5 — Picture-section effective values. Legacy power-user keys
+  // (crop / focal / straighten / brightness / etc.) still render from
+  // saved projects but aren't exposed in the UI any more.
   function _effectiveImageView(slide){
     const v=(slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide && slide.metadata && slide.metadata.imageView) || {};
-    const cropV=v.crop||{};
     return {
       fit:v.fit||'fit',
       scale:(typeof v.scale==='number')?v.scale:1,
-      crop:(cropV.top||cropV.right||cropV.bottom||cropV.left||0),
-      focalX:(typeof v.focalX==='number')?v.focalX:0.5,
-      focalY:(typeof v.focalY==='number')?v.focalY:0.5,
-      straighten:(typeof v.straighten==='number')?v.straighten:0,
-      brightness:(typeof v.brightness==='number')?v.brightness:0,
-      contrast:(typeof v.contrast==='number')?v.contrast:0,
-      highlights:(typeof v.highlights==='number')?v.highlights:0,
-      shadows:(typeof v.shadows==='number')?v.shadows:0,
-      warmth:(typeof v.warmth==='number')?v.warmth:0,
-      saturation:(typeof v.saturation==='number')?v.saturation:0,
-      sharpness:(typeof v.sharpness==='number')?v.sharpness:0,
-      vignette:(typeof v.vignette==='number')?v.vignette:0
+      offsetX:(typeof v.offsetX==='number')?v.offsetX:0,
+      offsetY:(typeof v.offsetY==='number')?v.offsetY:0
     };
   }
 
@@ -447,19 +587,59 @@ const CardDesigner=(function(){
       if(vl) vl.textContent=fmt(value);
     }
     setSlider('.image-scale-slider','.image-scale-value',eff.scale,function(v){ return v.toFixed(2)+'×'; });
-    setSlider('.image-crop-slider','.image-crop-value',eff.crop,function(v){ return Math.round(v*100)+'%'; });
-    setSlider('.image-focalx-slider','.image-focalx-value',eff.focalX,function(v){ return Math.round(v*100)+'%'; });
-    setSlider('.image-focaly-slider','.image-focaly-value',eff.focalY,function(v){ return Math.round(v*100)+'%'; });
-    setSlider('.image-straighten-slider','.image-straighten-value',eff.straighten,function(v){ return v.toFixed(1)+'°'; });
-    setSlider('.image-brightness-slider','.image-brightness-value',eff.brightness,function(v){ return Math.round(v*100); });
-    setSlider('.image-contrast-slider','.image-contrast-value',eff.contrast,function(v){ return Math.round(v*100); });
-    setSlider('.image-highlights-slider','.image-highlights-value',eff.highlights,function(v){ return Math.round(v*100); });
-    setSlider('.image-shadows-slider','.image-shadows-value',eff.shadows,function(v){ return Math.round(v*100); });
-    setSlider('.image-warmth-slider','.image-warmth-value',eff.warmth,function(v){ return Math.round(v*100); });
-    setSlider('.image-saturation-slider','.image-saturation-value',eff.saturation,function(v){ return Math.round(v*100); });
-    setSlider('.image-sharpness-slider','.image-sharpness-value',eff.sharpness,function(v){ return Math.round(v*100); });
-    setSlider('.image-vignette-slider','.image-vignette-value',eff.vignette,function(v){ return Math.round(v*100); });
-    mountedRoot.querySelectorAll('.image-reset-action-btn').forEach(function(btn){ btn.disabled=!hasImage; });
+    setSlider('.image-offsetx-slider','.image-offsetx-value',eff.offsetX,function(v){ return Math.round(v)+'px'; });
+    setSlider('.image-offsety-slider','.image-offsety-value',eff.offsetY,function(v){ return Math.round(v)+'px'; });
+    mountedRoot.querySelectorAll('.picture-reset-btn').forEach(function(btn){ btn.disabled=!hasImage; });
+    _refreshBorder();
+  }
+
+  function _refreshBorder(){
+    if(!mountedRoot) return;
+    const s=_currentSlide();
+    const b=_readBorder(s)||{};
+    const line=b.line||{};
+    const shadow=b.shadow||{};
+    const padding=(typeof b.padding==='number')?b.padding:BORDER_DEFAULTS.padding;
+    const cornerRadius=(typeof b.cornerRadius==='number')?b.cornerRadius:BORDER_DEFAULTS.cornerRadius;
+    const lineEnabled=!!line.enabled;
+    const lineWidth=(typeof line.width==='number')?line.width:BORDER_DEFAULTS.lineWidth;
+    const lineColor=line.color||BORDER_DEFAULTS.lineColor;
+    const shadowEnabled=!!shadow.enabled;
+    const shadowIntensity=(typeof shadow.intensity==='number')?shadow.intensity:BORDER_DEFAULTS.shadowIntensity;
+    const fillSetting=b.fill||'page';
+    const hasImage=!!(s && s.image);
+
+    function setSlider(sel,valueSel,value,fmt,disabled){
+      const sl=mountedRoot.querySelector(sel);
+      const vl=mountedRoot.querySelector(valueSel);
+      if(sl){ sl.value=String(value); sl.disabled=!!disabled; }
+      if(vl) vl.textContent=fmt(value);
+    }
+    setSlider('.border-padding-slider','.border-padding-value',padding,function(v){ return Math.round(v)+'px'; },!hasImage);
+    setSlider('.border-radius-slider','.border-radius-value',cornerRadius,function(v){ return Math.round(v)+'px'; },!hasImage);
+    setSlider('.border-line-width-slider','.border-line-width-value',lineWidth,function(v){ return Math.round(v)+'px'; },!hasImage||!lineEnabled);
+    setSlider('.border-shadow-slider','.border-shadow-value',shadowIntensity,function(v){ return Math.round(v*100)+'%'; },!hasImage||!shadowEnabled);
+
+    // Active fill chip
+    const isCustom=typeof fillSetting==='string' && fillSetting.charAt(0)==='#';
+    const activeFill=isCustom?'custom':fillSetting;
+    mountedRoot.querySelectorAll('.border-fill-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-fill')===activeFill);
+      btn.disabled=!hasImage;
+    });
+
+    const lineToggle=mountedRoot.querySelector('.border-line-toggle');
+    if(lineToggle){ lineToggle.checked=lineEnabled; lineToggle.disabled=!hasImage; }
+    const shadowToggle=mountedRoot.querySelector('.border-shadow-toggle');
+    if(shadowToggle){ shadowToggle.checked=shadowEnabled; shadowToggle.disabled=!hasImage; }
+
+    const lineColorInput=mountedRoot.querySelector('.border-line-color-input');
+    if(lineColorInput){ lineColorInput.value=_normalizeColor(lineColor); lineColorInput.disabled=!hasImage||!lineEnabled; }
+    const customColorInput=mountedRoot.querySelector('.border-fill-custom-input');
+    if(customColorInput){
+      if(isCustom) customColorInput.value=_normalizeColor(fillSetting);
+      customColorInput.disabled=!hasImage;
+    }
   }
 
   // --- Text section (Sprint 4.3 + 4.4) -----------------------------------
