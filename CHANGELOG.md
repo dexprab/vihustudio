@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(page-designer): Sprint 6.0 Page Designer · Roles & Scenes (build 0032, 2026-06-29)
+  - Selector now carries the static helper line **"Choose the role of this page in your story."** plus a dynamic single-line description that updates per role:
+    - 📖 Story → *"Tell what happens on this page of your story."*
+    - 📘 Cover → *"Introduce your story and invite readers into your adventure."*
+    - 🪝 Hook → *"Leave readers excited and encourage them to follow your next adventure."*
+    - 🏁 End → *"Give your story a warm and memorable ending."*
+  - **Story Title** is now shared content across Story / Hook / End and persists at `slide.metadata.storyTitle` — the field appears in each role's editor and shows the same value when the user toggles roles.
+  - Per-role layouts updated to match the spec:
+    - **Story**: Story Title · Story Beat · counts · overflow warning · Footer · Handle. (Expand / Review / Search / Operations — all confirmed absent.)
+    - **Cover**: Title · Subtitle · Author · Cover Image placeholder · Scene cards.
+    - **Hook**: Story Title · Heading · Message · Handle · Optional Image placeholder · QR Code placeholder · Scene cards.
+    - **End**: Story Title · *Ending Title* · Message · Handle · Optional Image placeholder · Scene cards. (`title` → `endingTitle` rename in `slide.metadata.end`.)
+  - **Scenes** (foundation only): visual preset cards on Cover / Hook / End. Six per role:
+    - Cover: 🗺️ Adventure · 🚀 Space · 🌴 Jungle · 🌊 Ocean · 👑 Princess · 🤍 Minimal
+    - Hook: ⭐ Stars · 🎈 Balloons · 🚀 Space · ❤️ Thank You · 🎉 Celebration · 📚 Read More
+    - End: 🌙 Good Night · ❤️ Thank You · 🌈 Rainbow · 🚀 Next Adventure · 🎉 Celebration · 📖 The End
+  - Selection persists at `slide.metadata.scene`. Clicking the active scene again clears the selection (toggle). Story pages do not show the Scene control.
+  - Card Designer continues to drive the visual presentation of every page regardless of role. The Card → Theme override hierarchy is preserved. Renderer architecture is unchanged — Sprint 6.0 captures the role + scene + content data; later sprints can map scenes to renderer-friendly overrides.
+  - Existing Story pages automatically migrate to the Story role: the unchanged `_currentRole()` fallback maps any pageType outside `[story, cover, hook, end]` (i.e. legacy `blank` / `cta`) to Story without mutating the model.
+  - No project format change, no Theme Designer change, no renderer architecture change.
 - feat(page-designer): Sprint 6.0 Page Designer Foundation (build 0031, 2026-06-29)
   - Story Designer evolved into a page-centric **Page Designer**: `js/storyDesigner.js` → `js/pageDesigner.js`; global renamed to `PageDesigner` (legacy `window.StoryDesigner` alias preserved as a no-touch safety net); mount root renamed to `#pageDesignerRoot`; CSS class `.page-designer` added (with `.story-designer` retained as an alias so inherited rules still apply).
   - New "**What is this page?**" selector at the top with four big visual cards: 📖 Story · 📘 Cover · 🪝 Hook · 🏁 End. Default for any slide whose `pageType` is missing / `'cta'` / `'blank'` is Story (no model mutation; the selector just maps unknown values to Story for display).

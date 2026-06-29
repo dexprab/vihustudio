@@ -905,6 +905,78 @@ button:active{
   flex-direction:column;
 }
 
+/* Sprint 6.0 — helper text + per-role description under the selector */
+.page-role-helper{
+  margin:8px 0 4px 0;
+  font-size:11px;
+  color:var(--text-secondary);
+  line-height:1.4;
+}
+.page-role-description{
+  margin:0 0 4px 0;
+  padding:8px 10px;
+  background:rgba(255,203,69,0.10);
+  border:1px solid rgba(255,203,69,0.35);
+  border-radius:var(--border-radius);
+  font-size:11px;
+  font-weight:600;
+  color:var(--text);
+  line-height:1.4;
+  min-height:14px;
+}
+
+/* Sprint 6.0 — Scene cards (Cover / Hook / End) */
+.page-scene-label{
+  margin-top:12px;
+  margin-bottom:6px;
+  font-size:12px;
+  font-weight:bold;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+}
+.page-scene-row{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:6px;
+}
+.page-scene-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:8px 4px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  cursor:pointer;
+  height:auto;
+  width:auto;
+  margin:0;
+  font-weight:normal;
+  transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.page-scene-card:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+.page-scene-card.active{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.12);
+  box-shadow:0 0 0 1px rgba(255,203,69,0.45);
+}
+.page-scene-emoji{
+  font-size:20px;
+  line-height:1;
+}
+.page-scene-name{
+  font-size:10px;
+  font-weight:600;
+  color:var(--text);
+  text-align:center;
+  line-height:1.2;
+}
+
 /* Foundation placeholder card used by the Cover / Hook / End editors. */
 .page-placeholder{
   margin:8px 0 0 0;
