@@ -122,6 +122,19 @@ if(typeof PageDesigner!=='undefined'){
   }catch(e){}
 }
 
+// Preview Studio bootstrap (Sprint 6.6) — Platform Preview Studio. Lives
+// in the new "👁 Preview" tab; the host hands it the active slide and
+// the main preview canvas so the renderer can hop between contexts.
+if(typeof PreviewStudio!=='undefined'){
+  try{ PreviewStudio.mount(document.getElementById('previewStudioRoot')); }catch(e){}
+  try{
+    PreviewStudio.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getMainCanvas:function(){ return document.getElementById('previewCanvas'); }
+    });
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(typeof window.redrawPreview==='function') window.redrawPreview();
@@ -282,6 +295,12 @@ tabs.forEach(btn=>{
     if(tab==='story' && _selectedTextElement && typeof PageDesigner!=='undefined'){
       try{ PageDesigner.focusField(_selectedTextElement); }catch(e){}
     }
+    // Sprint 6.6 — activating the Preview tab kicks an immediate refresh
+    // so the previews catch up with whatever the user just changed in
+    // another tab.
+    if(tab==='preview' && typeof PreviewStudio!=='undefined'){
+      try{ PreviewStudio.refresh(); }catch(e){}
+    }
   };
 });
 
@@ -422,6 +441,9 @@ function draw(){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
  s._lastStory=s.storyBeat;
+ // Sprint 6.6 — Platform Preview Studio mirrors every page change. The
+ // studio debounces internally and skips work when its tab isn't active.
+ if(typeof PreviewStudio!=='undefined'){ try{ PreviewStudio.refresh(); }catch(e){} }
 }
 
 // Exposed redraw used by CardDesigner.configure({redraw}). Lighter-weight

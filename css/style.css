@@ -1425,6 +1425,168 @@ button:active{
   border:1.5px solid #8C5A2B;
 }
 
+/* Sprint 6.6 — Platform Preview Studio (right sidebar tab). */
+.preview-studio-root{ padding:8px 12px 16px; }
+.preview-studio-header{ margin-bottom:10px; }
+.preview-studio-title{
+  margin:0 0 4px 0;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
+.preview-studio-intro{
+  margin:0;
+  font-size:11px;
+  color:var(--text-secondary);
+}
+.preview-chip-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:8px 0 12px;
+}
+.preview-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:6px 10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  transition:border-color 0.15s, background 0.15s, color 0.15s;
+}
+.preview-chip:hover{ border-color:var(--gold); }
+.preview-chip.active{
+  background:rgba(255,203,69,0.10);
+  border-color:var(--gold);
+  color:var(--text);
+}
+.preview-chip-check{ display:none; }
+.preview-chip.active .preview-chip-check{ display:inline; color:var(--gold); }
+
+.preview-card-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.preview-card{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:8px;
+}
+.preview-card-header{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--text);
+}
+.preview-card-icon{ font-size:14px; }
+.preview-card-canvas-wrap{
+  align-self:center;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+  padding:0;
+  cursor:zoom-in;
+  line-height:0;
+}
+.preview-card-canvas{ display:block; }
+.preview-card-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:10px;
+  color:var(--text-secondary);
+}
+.preview-card-dims{ font-variant-numeric:tabular-nums; }
+.preview-card-status[data-status-kind="ready"]{ color:#5DBB63; font-weight:600; }
+.preview-card-status[data-status-kind="note"]{ color:#E0A046; font-weight:600; }
+.preview-empty{
+  margin:8px 0;
+  padding:14px 12px;
+  font-size:11px;
+  text-align:center;
+  color:var(--text-secondary);
+  background:rgba(255,255,255,0.02);
+  border:1px dashed var(--line);
+  border-radius:6px;
+}
+
+/* Lightbox modal */
+.modal-content.preview-lightbox{
+  max-width:90vw;
+  width:auto;
+}
+.preview-lightbox-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+.preview-lightbox-title{ font-weight:700; font-size:15px; color:var(--text); }
+.preview-lightbox-close{
+  width:32px; height:32px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--text);
+  font-size:14px;
+  cursor:pointer;
+}
+.preview-lightbox-close:hover{ border-color:var(--gold); }
+.preview-lightbox-body{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:8px 0;
+}
+.preview-lightbox-canvas-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.preview-lightbox-canvas{
+  display:block;
+  width:auto;
+  height:auto;
+  border:1px solid var(--line);
+}
+.preview-lightbox-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-top:10px;
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.preview-lightbox-status[data-status-kind="ready"]{ color:#5DBB63; font-weight:600; }
+.preview-lightbox-status[data-status-kind="note"]{ color:#E0A046; font-weight:600; }
+.preview-lightbox-nav{ display:flex; align-items:center; gap:8px; }
+.preview-lightbox-nav-btn{
+  width:32px; height:32px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--text);
+  font-size:16px;
+  cursor:pointer;
+}
+.preview-lightbox-nav-btn:hover{ border-color:var(--gold); }
+.preview-lightbox-counter{ font-variant-numeric:tabular-nums; }
+
 /* Development footer */
 .dev-footer{
   position:fixed;
