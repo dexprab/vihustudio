@@ -344,7 +344,11 @@ function draw(){
  s.totalPages=AppState.slides.length;
  const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
  const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
- const imageView=(s.metadata && s.metadata.imageView) || null;
+ // Sprint 4.5: image override moved into cardOverrides.image. Fall back to
+ // the legacy slide.metadata.imageView path so old projects still render.
+ const imageView=(s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.image)
+   || (s.metadata && s.metadata.imageView)
+   || null;
  const overrides=(s.metadata && s.metadata.cardOverrides) || null;
  const dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
  SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId});
@@ -487,6 +491,28 @@ previewCanvas.addEventListener('mousedown',function(e){
   if(!s) return;
   const c=_canvasCoords(e);
 
+  // Sprint 4.5 — Shift+click inside the panel sets the focal point at the
+  // clicked location (relative to the cropped image source). Pre-empts both
+  // text selection and image pan.
+  if(e.shiftKey && s.image && _isInsidePanel(c.x,c.y) && typeof CardDesigner!=='undefined'){
+    const view=CardDesigner.getActiveImageView();
+    if(view){
+      const SR=SlideRenderer;
+      const r=(typeof SR.getPanelRect==='function')?SR.getPanelRect():{x:70,y:185,w:940,h:930};
+      const innerX=r.x+20, innerY=r.y+20, innerW=r.w-40, innerH=r.h-40;
+      const fx=Math.max(0,Math.min(1,(c.x-innerX)/innerW));
+      const fy=Math.max(0,Math.min(1,(c.y-innerY)/innerH));
+      view.focalX=fx;
+      view.focalY=fy;
+      delete s.thumbnail;
+      draw();
+      try{ CardDesigner.refresh(); }catch(err){}
+      markDirty();
+      e.preventDefault();
+      return;
+    }
+  }
+
   // Sprint 4.3 — text selection takes priority over image pan.
   // Sprint 4.4 — same gesture also primes a drag; movement past
   // TEXT_DRAG_THRESHOLD activates it.
@@ -544,15 +570,16 @@ document.addEventListener('mousemove',function(e){
     return;
   }
 
-  // Image pan (Sprint 4.2)
+  // Image pan (Sprint 4.2, migrated path in Sprint 4.5)
   if(!_panState) return;
   const s2=AppState.slides[AppState.currentSlide];
   if(!s2) return;
-  if(!s2.metadata||!s2.metadata.imageView) return;
+  const view=(typeof CardDesigner!=='undefined') ? CardDesigner.getActiveImageView() : null;
+  if(!view) return;
   const dx2=(e.clientX-_panState.startX)*_panState.sx;
   const dy2=(e.clientY-_panState.startY)*_panState.sy;
-  s2.metadata.imageView.offsetX=_panState.offX+dx2;
-  s2.metadata.imageView.offsetY=_panState.offY+dy2;
+  view.offsetX=_panState.offX+dx2;
+  view.offsetY=_panState.offY+dy2;
   delete s2.thumbnail;
   draw();
 });

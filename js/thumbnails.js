@@ -40,7 +40,7 @@ const ThumbnailEngine=(function(){
           totalPages: slide.totalPages || 0,
           theme: theme,
           themeOptions: themeOptions,
-          imageView: (slide.metadata && slide.metadata.imageView) || null,
+          imageView: (slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide.metadata && slide.metadata.imageView) || null,
           overrides: (slide.metadata && slide.metadata.cardOverrides) || null
         };
 
@@ -60,7 +60,7 @@ const ThumbnailEngine=(function(){
         const currentIdx=AppState.currentSlide||0;
         const current=AppState.slides[currentIdx];
         if(current){
-          try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null}); }catch(e){}
+          try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null}); }catch(e){}
         }
 
         generatingCount--;

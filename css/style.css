@@ -841,6 +841,122 @@ button:active{
 
 #previewCanvas.canvas-text-dragging{ cursor:move; }
 
+/* Sprint 4.5 — Image section sub-groups (Composition / Light / Color /
+   Detail / Effects / Actions). Each is independently collapsible and
+   shares the chevron + body pattern with the Theme Designer groups. */
+.image-subgroup{
+  margin-top:8px;
+  padding:0;
+  border-top:1px solid var(--line);
+}
+.image-subgroup:first-child{
+  border-top:none;
+  margin-top:0;
+}
+
+.image-subgroup-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  margin:0;
+  padding:8px 0;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  font-size:10px;
+  font-weight:bold;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  cursor:pointer;
+  text-align:left;
+  height:auto;
+  transition:opacity 0.15s;
+}
+.image-subgroup-title:hover{ opacity:0.85; }
+
+.image-subgroup-title .designer-group-chevron{
+  font-size:10px;
+  color:var(--text-secondary);
+  transition:transform 0.2s;
+}
+.image-subgroup.collapsed .designer-group-chevron{
+  transform:rotate(-90deg);
+}
+
+.image-subgroup-body{
+  padding:0 0 8px;
+}
+.image-subgroup.collapsed .image-subgroup-body{
+  display:none;
+}
+
+.image-reset-action-btn{
+  width:100%;
+  padding:8px 10px;
+  margin:0 0 6px 0;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  transition:border-color 0.2s, background 0.2s;
+}
+.image-reset-action-btn:hover:not(:disabled){
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+.image-reset-action-btn:disabled{
+  cursor:not-allowed;
+  opacity:0.45;
+}
+
+/* Reuse Sprint 4.4 slider-label pattern so font-size/value chips align. */
+.image-scale-value,
+.image-crop-value,
+.image-focalx-value,
+.image-focaly-value,
+.image-straighten-value,
+.image-brightness-value,
+.image-contrast-value,
+.image-highlights-value,
+.image-shadows-value,
+.image-warmth-value,
+.image-saturation-value,
+.image-sharpness-value,
+.image-vignette-value{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+
+.image-crop-slider,
+.image-focalx-slider,
+.image-focaly-slider,
+.image-straighten-slider,
+.image-brightness-slider,
+.image-contrast-slider,
+.image-highlights-slider,
+.image-shadows-slider,
+.image-warmth-slider,
+.image-saturation-slider,
+.image-sharpness-slider,
+.image-vignette-slider{
+  width:100%;
+  height:auto;
+  margin:0;
+  padding:0;
+  background:transparent;
+  accent-color:var(--gold);
+  cursor:pointer;
+}
+
 /* Development footer */
 .dev-footer{
   position:fixed;

@@ -1,8 +1,12 @@
 // CardDesigner — reusable foundation shared by Story / Cover / CTA Designers.
 // Sprint 4.1: structure, public API, mount/unmount.
-// Sprint 4.2: Image section becomes the first functional module — scale,
-// fit/fill, reset — operating on slide.metadata.imageView (presentation-only).
+// Sprint 4.2: Image section — scale, fit/fill, pan, reset (stored at imageView).
+// Sprint 4.5: Image overrides migrated to slide.metadata.cardOverrides.image,
+//             expanded with composition / light / color / detail / effects.
+//             Card section hidden from the palette (code preserved).
 const CardDesigner=(function(){
+  // 'hidden' sections are skipped at build time but remain in the SECTIONS
+  // array so their summary text and id are still part of the public API.
   const SECTIONS=[
     {
       id:'image',
@@ -12,7 +16,8 @@ const CardDesigner=(function(){
     {
       id:'card',
       title:'Card',
-      summary:'Card styling with theme defaults and per-card overrides. Reserved for Sprint 4.x.'
+      summary:'Card styling with theme defaults and per-card overrides. Reserved for Sprint 4.x.',
+      hidden:true
     },
     {
       id:'text',
@@ -23,6 +28,10 @@ const CardDesigner=(function(){
 
   const SCALE_MIN=0.25, SCALE_MAX=4, SCALE_STEP=0.05;
   const DEFAULT_VIEW={scale:1,offsetX:0,offsetY:0,fit:'fit'};
+  // Keys that count as "composition" vs "adjustments" — used by the two
+  // group-reset actions in the Actions sub-section.
+  const COMPOSITION_KEYS=['fit','scale','offsetX','offsetY','focalX','focalY','crop','straighten'];
+  const ADJUSTMENT_KEYS=['brightness','contrast','highlights','shadows','warmth','saturation','sharpness','vignette'];
 
   let mountedContainer=null;
   let mountedRoot=null;
@@ -78,13 +87,30 @@ const CardDesigner=(function(){
     return section;
   }
 
+  // Sprint 4.5: image overrides live at slide.metadata.cardOverrides.image.
+  // Legacy data from Sprint 4.2 lived at slide.metadata.imageView and is
+  // migrated on first access; this single getter ensures all later writes go
+  // to the new path so saved projects converge without a schema bump.
   function _ensureView(slide){
     if(!slide) return null;
     if(!slide.metadata) slide.metadata={};
-    if(!slide.metadata.imageView){
-      slide.metadata.imageView={scale:DEFAULT_VIEW.scale,offsetX:DEFAULT_VIEW.offsetX,offsetY:DEFAULT_VIEW.offsetY,fit:DEFAULT_VIEW.fit};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    if(!slide.metadata.cardOverrides.image){
+      if(slide.metadata.imageView){
+        slide.metadata.cardOverrides.image=slide.metadata.imageView;
+        delete slide.metadata.imageView;
+      }else{
+        slide.metadata.cardOverrides.image={scale:DEFAULT_VIEW.scale,offsetX:DEFAULT_VIEW.offsetX,offsetY:DEFAULT_VIEW.offsetY,fit:DEFAULT_VIEW.fit};
+      }
     }
-    return slide.metadata.imageView;
+    return slide.metadata.cardOverrides.image;
+  }
+
+  function _readView(slide){
+    if(!slide||!slide.metadata) return null;
+    if(slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) return slide.metadata.cardOverrides.image;
+    if(slide.metadata.imageView) return slide.metadata.imageView;
+    return null;
   }
 
   function _currentSlide(){
@@ -120,17 +146,106 @@ const CardDesigner=(function(){
     _commit();
   }
 
-  function _resetView(){
+  function _setImageProp(key,value){
     const v=_ensureView(_currentSlide());
     if(!v) return;
-    v.scale=DEFAULT_VIEW.scale;
-    v.offsetX=DEFAULT_VIEW.offsetX;
-    v.offsetY=DEFAULT_VIEW.offsetY;
-    v.fit=DEFAULT_VIEW.fit;
+    if(typeof value==='number' && !isFinite(value)) return;
+    v[key]=value;
     _commit();
   }
 
+  // Sprint 4.5 reset actions (composition-only, adjustments-only, full).
+  function _pruneImage(slide){
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    const img=slide.metadata.cardOverrides.image;
+    if(img && Object.keys(img).length===0) delete slide.metadata.cardOverrides.image;
+  }
+  function _resetImageComposition(){
+    const slide=_currentSlide();
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    const img=slide.metadata.cardOverrides.image;
+    if(!img) return;
+    COMPOSITION_KEYS.forEach(function(k){ delete img[k]; });
+    _pruneImage(slide);
+    _commit();
+  }
+  function _resetImageAdjustments(){
+    const slide=_currentSlide();
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    const img=slide.metadata.cardOverrides.image;
+    if(!img) return;
+    ADJUSTMENT_KEYS.forEach(function(k){ delete img[k]; });
+    _pruneImage(slide);
+    _commit();
+  }
+  function _resetImage(){
+    const slide=_currentSlide();
+    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    delete slide.metadata.cardOverrides.image;
+    _commit();
+  }
+  // Kept under its old name for backward compat with the Sprint 4.2 unit
+  // test harness — the Composition reset replaces it conceptually.
+  function _resetView(){ _resetImageComposition(); }
+
+  // --- Image section builders ---------------------------------------------
+  // Each control row is built via _makeImageSliderRow with consistent
+  // chrome so spacing matches the Theme Designer's icon-row grid.
+  function _makeImageSliderRow(parent,opts){
+    const row=document.createElement('div');
+    row.className='designer-row';
+    const lbl=document.createElement('div');
+    lbl.className='designer-row-label text-slider-label';
+    const title=document.createElement('span');
+    title.textContent=opts.labelText;
+    lbl.appendChild(title);
+    const val=document.createElement('span');
+    val.className=opts.valueClass;
+    val.textContent='—';
+    lbl.appendChild(val);
+    row.appendChild(lbl);
+    const slider=document.createElement('input');
+    slider.type='range';
+    slider.min=String(opts.min);
+    slider.max=String(opts.max);
+    slider.step=String(opts.step);
+    slider.className=opts.sliderClass;
+    slider.addEventListener('input',function(){ opts.onInput(parseFloat(slider.value)); });
+    row.appendChild(slider);
+    parent.appendChild(row);
+  }
+
+  function _makeImageSubgroup(parent,id,title){
+    const sub=document.createElement('div');
+    sub.className='image-subgroup';
+    sub.setAttribute('data-image-group',id);
+    const header=document.createElement('button');
+    header.type='button';
+    header.className='image-subgroup-title';
+    header.setAttribute('aria-expanded','true');
+    header.setAttribute('data-collapsible-toggle','');
+    const t=document.createElement('span');
+    t.className='image-subgroup-title-text';
+    t.textContent=title;
+    header.appendChild(t);
+    const chev=document.createElement('span');
+    chev.className='designer-group-chevron';
+    chev.setAttribute('aria-hidden','true');
+    chev.textContent='▾';
+    header.appendChild(chev);
+    sub.appendChild(header);
+    const body=document.createElement('div');
+    body.className='image-subgroup-body';
+    sub.appendChild(body);
+    parent.appendChild(sub);
+    return body;
+  }
+
   function _buildImageControls(body){
+    // --- Composition ---------------------------------------------------
+    const comp=_makeImageSubgroup(body,'composition','Composition');
+
+    // Fit / Fill icon row
     const modeRow=document.createElement('div');
     modeRow.className='designer-row';
     const modeLabel=document.createElement('div');
@@ -159,65 +274,192 @@ const CardDesigner=(function(){
       modeIcons.appendChild(btn);
     });
     modeRow.appendChild(modeIcons);
-    body.appendChild(modeRow);
+    comp.appendChild(modeRow);
 
-    const scaleRow=document.createElement('div');
-    scaleRow.className='designer-row';
-    const scaleLabel=document.createElement('div');
-    scaleLabel.className='designer-row-label image-scale-label';
-    const scaleLabelText=document.createElement('span');
-    scaleLabelText.textContent='Scale';
-    scaleLabel.appendChild(scaleLabelText);
-    const scaleValue=document.createElement('span');
-    scaleValue.className='image-scale-value';
-    scaleValue.textContent='1.00×';
-    scaleLabel.appendChild(scaleValue);
-    scaleRow.appendChild(scaleLabel);
-    const slider=document.createElement('input');
-    slider.type='range';
-    slider.min=String(SCALE_MIN);
-    slider.max=String(SCALE_MAX);
-    slider.step=String(SCALE_STEP);
-    slider.value='1';
-    slider.className='image-scale-slider';
-    slider.addEventListener('input',function(){ _setScale(slider.value); });
-    scaleRow.appendChild(slider);
-    body.appendChild(scaleRow);
+    // Zoom (existing scale, relabeled)
+    _makeImageSliderRow(comp,{
+      labelText:'Zoom',valueClass:'image-scale-value',sliderClass:'image-scale-slider',
+      min:SCALE_MIN,max:SCALE_MAX,step:SCALE_STEP,
+      onInput:function(v){ _setScale(v); }
+    });
 
-    const resetRow=document.createElement('div');
-    resetRow.className='designer-row';
-    const resetBtn=document.createElement('button');
-    resetBtn.type='button';
-    resetBtn.className='image-reset-btn';
-    resetBtn.textContent='↺ Reset to Fit';
-    resetBtn.addEventListener('click',_resetView);
-    resetRow.appendChild(resetBtn);
-    body.appendChild(resetRow);
+    // Crop (uniform inset from each side, 0..0.3)
+    _makeImageSliderRow(comp,{
+      labelText:'Crop',valueClass:'image-crop-value',sliderClass:'image-crop-slider',
+      min:0,max:0.3,step:0.01,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        view.crop={top:v,right:v,bottom:v,left:v};
+        if(v===0) delete view.crop;
+        _commit();
+      }
+    });
 
-    const hint=document.createElement('p');
-    hint.className='placeholder image-hint';
-    hint.textContent='Drag the canvas to pan the image.';
-    body.appendChild(hint);
+    // Focal Point X / Y
+    _makeImageSliderRow(comp,{
+      labelText:'Focal X',valueClass:'image-focalx-value',sliderClass:'image-focalx-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        if(Math.abs(v-0.5)<0.005) delete view.focalX; else view.focalX=v;
+        _commit();
+      }
+    });
+    _makeImageSliderRow(comp,{
+      labelText:'Focal Y',valueClass:'image-focaly-value',sliderClass:'image-focaly-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        if(Math.abs(v-0.5)<0.005) delete view.focalY; else view.focalY=v;
+        _commit();
+      }
+    });
+
+    // Straighten ±5°
+    _makeImageSliderRow(comp,{
+      labelText:'Straighten',valueClass:'image-straighten-value',sliderClass:'image-straighten-slider',
+      min:-5,max:5,step:0.1,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        if(Math.abs(v)<0.05) delete view.straighten; else view.straighten=v;
+        _commit();
+      }
+    });
+
+    const compHint=document.createElement('p');
+    compHint.className='placeholder image-hint';
+    compHint.textContent='Drag to pan; Shift + click to set focal point.';
+    comp.appendChild(compHint);
+
+    // --- Light --------------------------------------------------------
+    const light=_makeImageSubgroup(body,'light','Light');
+    [['brightness','Brightness'],['contrast','Contrast'],['highlights','Highlights'],['shadows','Shadows']].forEach(function(pair){
+      const key=pair[0], name=pair[1];
+      _makeImageSliderRow(light,{
+        labelText:name,valueClass:'image-'+key+'-value',sliderClass:'image-'+key+'-slider',
+        min:-1,max:1,step:0.01,
+        onInput:function(v){
+          const view=_ensureView(_currentSlide());
+          if(!view) return;
+          if(Math.abs(v)<0.005) delete view[key]; else view[key]=v;
+          _commit();
+        }
+      });
+    });
+
+    // --- Color --------------------------------------------------------
+    const color=_makeImageSubgroup(body,'color','Color');
+    [['warmth','Warmth'],['saturation','Saturation']].forEach(function(pair){
+      const key=pair[0], name=pair[1];
+      _makeImageSliderRow(color,{
+        labelText:name,valueClass:'image-'+key+'-value',sliderClass:'image-'+key+'-slider',
+        min:-1,max:1,step:0.01,
+        onInput:function(v){
+          const view=_ensureView(_currentSlide());
+          if(!view) return;
+          if(Math.abs(v)<0.005) delete view[key]; else view[key]=v;
+          _commit();
+        }
+      });
+    });
+
+    // --- Detail -------------------------------------------------------
+    const detail=_makeImageSubgroup(body,'detail','Detail');
+    _makeImageSliderRow(detail,{
+      labelText:'Sharpness',valueClass:'image-sharpness-value',sliderClass:'image-sharpness-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        if(v<0.005) delete view.sharpness; else view.sharpness=v;
+        _commit();
+      }
+    });
+
+    // --- Effects ------------------------------------------------------
+    const effects=_makeImageSubgroup(body,'effects','Effects');
+    _makeImageSliderRow(effects,{
+      labelText:'Vignette',valueClass:'image-vignette-value',sliderClass:'image-vignette-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){
+        const view=_ensureView(_currentSlide());
+        if(!view) return;
+        if(v<0.005) delete view.vignette; else view.vignette=v;
+        _commit();
+      }
+    });
+
+    // --- Actions ------------------------------------------------------
+    const actions=_makeImageSubgroup(body,'actions','Actions');
+    [
+      ['Reset Composition',_resetImageComposition],
+      ['Reset Adjustments',_resetImageAdjustments],
+      ['Reset Image',_resetImage]
+    ].forEach(function(pair){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='image-reset-action-btn';
+      btn.textContent='↺ '+pair[0];
+      btn.addEventListener('click',pair[1]);
+      actions.appendChild(btn);
+    });
+  }
+
+  // Effective values displayed by the panel — override ?? default.
+  function _effectiveImageView(slide){
+    const v=(slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide && slide.metadata && slide.metadata.imageView) || {};
+    const cropV=v.crop||{};
+    return {
+      fit:v.fit||'fit',
+      scale:(typeof v.scale==='number')?v.scale:1,
+      crop:(cropV.top||cropV.right||cropV.bottom||cropV.left||0),
+      focalX:(typeof v.focalX==='number')?v.focalX:0.5,
+      focalY:(typeof v.focalY==='number')?v.focalY:0.5,
+      straighten:(typeof v.straighten==='number')?v.straighten:0,
+      brightness:(typeof v.brightness==='number')?v.brightness:0,
+      contrast:(typeof v.contrast==='number')?v.contrast:0,
+      highlights:(typeof v.highlights==='number')?v.highlights:0,
+      shadows:(typeof v.shadows==='number')?v.shadows:0,
+      warmth:(typeof v.warmth==='number')?v.warmth:0,
+      saturation:(typeof v.saturation==='number')?v.saturation:0,
+      sharpness:(typeof v.sharpness==='number')?v.sharpness:0,
+      vignette:(typeof v.vignette==='number')?v.vignette:0
+    };
   }
 
   function _refreshImage(){
     if(!mountedRoot) return;
     const s=_currentSlide();
-    const v=(s && s.metadata && s.metadata.imageView) || DEFAULT_VIEW;
+    const eff=_effectiveImageView(s);
     const hasImage=!!(s && s.image);
     mountedRoot.querySelectorAll('.image-mode-btn').forEach(function(b){
-      b.classList.toggle('active', b.getAttribute('data-mode')===(v.fit||'fit'));
+      b.classList.toggle('active', b.getAttribute('data-mode')===eff.fit);
       b.disabled=!hasImage;
     });
-    const slider=mountedRoot.querySelector('.image-scale-slider');
-    if(slider){
-      slider.value=String(v.scale||1);
-      slider.disabled=!hasImage;
+    function setSlider(sel,valueSel,value,fmt){
+      const sl=mountedRoot.querySelector(sel);
+      const vl=mountedRoot.querySelector(valueSel);
+      if(sl){ sl.value=String(value); sl.disabled=!hasImage; }
+      if(vl) vl.textContent=fmt(value);
     }
-    const readout=mountedRoot.querySelector('.image-scale-value');
-    if(readout){ readout.textContent=(v.scale||1).toFixed(2)+'×'; }
-    const reset=mountedRoot.querySelector('.image-reset-btn');
-    if(reset){ reset.disabled=!hasImage; }
+    setSlider('.image-scale-slider','.image-scale-value',eff.scale,function(v){ return v.toFixed(2)+'×'; });
+    setSlider('.image-crop-slider','.image-crop-value',eff.crop,function(v){ return Math.round(v*100)+'%'; });
+    setSlider('.image-focalx-slider','.image-focalx-value',eff.focalX,function(v){ return Math.round(v*100)+'%'; });
+    setSlider('.image-focaly-slider','.image-focaly-value',eff.focalY,function(v){ return Math.round(v*100)+'%'; });
+    setSlider('.image-straighten-slider','.image-straighten-value',eff.straighten,function(v){ return v.toFixed(1)+'°'; });
+    setSlider('.image-brightness-slider','.image-brightness-value',eff.brightness,function(v){ return Math.round(v*100); });
+    setSlider('.image-contrast-slider','.image-contrast-value',eff.contrast,function(v){ return Math.round(v*100); });
+    setSlider('.image-highlights-slider','.image-highlights-value',eff.highlights,function(v){ return Math.round(v*100); });
+    setSlider('.image-shadows-slider','.image-shadows-value',eff.shadows,function(v){ return Math.round(v*100); });
+    setSlider('.image-warmth-slider','.image-warmth-value',eff.warmth,function(v){ return Math.round(v*100); });
+    setSlider('.image-saturation-slider','.image-saturation-value',eff.saturation,function(v){ return Math.round(v*100); });
+    setSlider('.image-sharpness-slider','.image-sharpness-value',eff.sharpness,function(v){ return Math.round(v*100); });
+    setSlider('.image-vignette-slider','.image-vignette-value',eff.vignette,function(v){ return Math.round(v*100); });
+    mountedRoot.querySelectorAll('.image-reset-action-btn').forEach(function(btn){ btn.disabled=!hasImage; });
   }
 
   // --- Text section (Sprint 4.3 + 4.4) -----------------------------------
@@ -668,7 +910,7 @@ const CardDesigner=(function(){
     container.innerHTML='';
     const root=document.createElement('div');
     root.className='card-designer';
-    SECTIONS.forEach(function(s){ root.appendChild(_buildSection(s)); });
+    SECTIONS.forEach(function(s){ if(s.hidden) return; root.appendChild(_buildSection(s)); });
     container.appendChild(root);
     container.__cardDesignerRoot=root;
     mountedContainer=container;
@@ -678,9 +920,10 @@ const CardDesigner=(function(){
     // Designer in app.js also delegates [data-collapsible-toggle] clicks, but
     // CardDesigner manages its own lifecycle so it works regardless of mount
     // order or whether it shares a host page with the Theme Designer.
+    // Sprint 4.5: also handle nested .image-subgroup collapsibles.
     root.querySelectorAll('[data-collapsible-toggle]').forEach(function(btn){
       btn.addEventListener('click',function(){
-        const group=btn.closest('.designer-group');
+        const group=btn.closest('.image-subgroup, .designer-group');
         if(!group) return;
         const collapsed=group.classList.toggle('collapsed');
         btn.setAttribute('aria-expanded',collapsed?'false':'true');

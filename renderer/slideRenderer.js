@@ -195,20 +195,78 @@ const SlideRenderer=(()=>{
 
   function _drawImage(s){
     const v=s.imageView||{};
+    // Composition
     const fit=v.fit==='fill'?'fill':'fit';
     const userScale=typeof v.scale==='number' && isFinite(v.scale) && v.scale>0 ? v.scale : 1;
     const offX=typeof v.offsetX==='number' && isFinite(v.offsetX) ? v.offsetX : 0;
     const offY=typeof v.offsetY==='number' && isFinite(v.offsetY) ? v.offsetY : 0;
+    const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
+    const focalY=typeof v.focalY==='number' && isFinite(v.focalY) ? Math.max(0,Math.min(1,v.focalY)) : 0.5;
+    const crop=v.crop||{};
+    const cTop=crop.top||0, cRight=crop.right||0, cBottom=crop.bottom||0, cLeft=crop.left||0;
+    const straighten=typeof v.straighten==='number' && isFinite(v.straighten) ? v.straighten : 0;
+    // Light / Color / Detail
+    const brightness=typeof v.brightness==='number'?v.brightness:0;
+    const contrast=typeof v.contrast==='number'?v.contrast:0;
+    const highlights=typeof v.highlights==='number'?v.highlights:0;
+    const shadows=typeof v.shadows==='number'?v.shadows:0;
+    const warmth=typeof v.warmth==='number'?v.warmth:0;
+    const saturation=typeof v.saturation==='number'?v.saturation:0;
+    const sharpness=typeof v.sharpness==='number'?v.sharpness:0;
+    const vignette=typeof v.vignette==='number'?v.vignette:0;
+
     const iw=s.image.width, ih=s.image.height;
-    const base=fit==='fill' ? Math.max(IMG_W/iw, IMG_H/ih) : Math.min(IMG_W/iw, IMG_H/ih);
+    // Cropped source rect (in original image coords) — never modifies the
+    // Image; just narrows the slice that gets drawn.
+    const srcX=cLeft*iw, srcY=cTop*ih;
+    const srcW=Math.max(1, iw - srcX - cRight*iw);
+    const srcH=Math.max(1, ih - srcY - cBottom*ih);
+
+    const base=fit==='fill' ? Math.max(IMG_W/srcW, IMG_H/srcH) : Math.min(IMG_W/srcW, IMG_H/srcH);
     const sc=base*userScale;
-    const w=iw*sc, h=ih*sc;
-    const cx=IMG_X+IMG_W/2+offX, cy=IMG_Y+IMG_H/2+offY;
+    const dw=srcW*sc, dh=srcH*sc;
+    // Place the focal point of the cropped src at the panel center, plus
+    // any user pan offset.
+    const dx=IMG_X+IMG_W/2 - focalX*dw + offX;
+    const dy=IMG_Y+IMG_H/2 - focalY*dh + offY;
+
+    // Build canvas filter string (Light + Color + Detail). Highlights /
+    // Shadows / Sharpness are approximated as light brightness/contrast
+    // perturbations — subtle, non-destructive, matches "beautify originals".
+    const filterParts=[];
+    const bF = 1 + brightness*0.5 + highlights*0.18 + shadows*-0.18;
+    if(Math.abs(bF-1)>0.001) filterParts.push('brightness('+bF.toFixed(4)+')');
+    const cF = 1 + contrast*0.5 + sharpness*0.25;
+    if(Math.abs(cF-1)>0.001) filterParts.push('contrast('+cF.toFixed(4)+')');
+    const satF = 1 + saturation;
+    if(Math.abs(satF-1)>0.001) filterParts.push('saturate('+satF.toFixed(4)+')');
+    if(Math.abs(warmth)>0.001) filterParts.push('hue-rotate('+(warmth*-15).toFixed(2)+'deg)');
+
     x.save();
     x.beginPath();
     x.rect(IMG_X,IMG_Y,IMG_W,IMG_H);
     x.clip();
-    x.drawImage(s.image,cx-w/2,cy-h/2,w,h);
+    // Straighten: rotate around the panel center so the user sees a level horizon.
+    if(Math.abs(straighten)>0.001){
+      const cx0=IMG_X+IMG_W/2, cy0=IMG_Y+IMG_H/2;
+      x.translate(cx0,cy0);
+      x.rotate(straighten*Math.PI/180);
+      x.translate(-cx0,-cy0);
+    }
+    if(filterParts.length>0) x.filter=filterParts.join(' ');
+    x.drawImage(s.image, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
+    if(filterParts.length>0) x.filter='none';
+    // Vignette: a radial dim drawn on top of the panel area only.
+    if(vignette>0.001){
+      const grad=x.createRadialGradient(
+        IMG_X+IMG_W/2, IMG_Y+IMG_H/2, Math.min(IMG_W,IMG_H)*0.30,
+        IMG_X+IMG_W/2, IMG_Y+IMG_H/2, Math.max(IMG_W,IMG_H)*0.72
+      );
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(1,'rgba(0,0,0,'+(Math.min(1,vignette)*0.7).toFixed(4)+')');
+      x.fillStyle=grad;
+      x.fillRect(IMG_X,IMG_Y,IMG_W,IMG_H);
+    }
     x.restore();
   }
 
