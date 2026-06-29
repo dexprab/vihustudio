@@ -211,9 +211,11 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  // Sprint 6.2 — Image Holder. Draws slide.image scaled to cover (or
-  // contain) the holder rect. When the page has no image, paints a
-  // dashed placeholder so the user sees the slot.
+  // Sprint 6.2 — Image Holder. Sprint 6.3.1: routed through ImageViewEngine
+  // so Cover / Hook / End use the SAME view model (mode / zoom / panX / panY)
+  // as Story. When the page has no image, paints a dashed placeholder so
+  // the user sees the slot. The blueprint's `fit` ('cover' / 'contain')
+  // seeds the default view mode but the user's `s.imageView.mode` wins.
   function _drawSceneImageHolder(s,el){
     const pos=el.position||{x:W/2,y:H/2};
     const size=el.size||{w:600,h:600};
@@ -237,18 +239,21 @@ const SlideRenderer=(()=>{
       x.restore();
       return;
     }
-    const fit=el.fit||'cover';
-    const iw=img.width, ih=img.height;
-    const base = fit==='contain'
-      ? Math.min(size.w/iw,size.h/ih)
-      : Math.max(size.w/iw,size.h/ih);
-    const dw=iw*base, dh=ih*base;
-    const dx=pos.x-dw/2, dy=pos.y-dh/2;
-    // Clip to the holder rect so cover-mode overflow stays inside.
-    x.beginPath();
-    x.rect(rx,ry,size.w,size.h);
-    x.clip();
-    x.drawImage(img,dx,dy,dw,dh);
+    // Resolve the view: user's s.imageView wins; blueprint `fit` seeds
+    // the default mode ('cover' → 'fill', 'contain' → 'fit').
+    const seedMode=el.fit==='contain' ? 'fit' : 'fill';
+    const raw=s.imageView ? Object.assign({mode:seedMode},s.imageView) : {mode:seedMode};
+    if(typeof ImageViewEngine!=='undefined'){
+      ImageViewEngine.drawInto(x,img,{x:rx,y:ry,w:size.w,h:size.h},raw);
+    }else{
+      // Defensive fallback — should never run because the script is loaded first.
+      const iw=img.width, ih=img.height;
+      const base=seedMode==='fit' ? Math.min(size.w/iw,size.h/ih) : Math.max(size.w/iw,size.h/ih);
+      const dw=iw*base, dh=ih*base;
+      const dx=pos.x-dw/2, dy=pos.y-dh/2;
+      x.beginPath(); x.rect(rx,ry,size.w,size.h); x.clip();
+      x.drawImage(img,dx,dy,dw,dh);
+    }
     x.restore();
   }
   function _sceneBbox(el){
@@ -377,11 +382,7 @@ const SlideRenderer=(()=>{
 
   function _drawImage(s){
     const v=s.imageView||{};
-    // Composition
-    const fit=v.fit==='fill'?'fill':'fit';
-    const userScale=typeof v.scale==='number' && isFinite(v.scale) && v.scale>0 ? v.scale : 1;
-    const offX=typeof v.offsetX==='number' && isFinite(v.offsetX) ? v.offsetX : 0;
-    const offY=typeof v.offsetY==='number' && isFinite(v.offsetY) ? v.offsetY : 0;
+    // Sprint 4.5 — crop / straighten / focal point / image adjustments.
     const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
     const focalY=typeof v.focalY==='number' && isFinite(v.focalY) ? Math.max(0,Math.min(1,v.focalY)) : 0.5;
     const crop=v.crop||{};
@@ -404,13 +405,30 @@ const SlideRenderer=(()=>{
     const srcW=Math.max(1, iw - srcX - cRight*iw);
     const srcH=Math.max(1, ih - srcY - cBottom*ih);
 
-    const base=fit==='fill' ? Math.max(IMG_W/srcW, IMG_H/srcH) : Math.min(IMG_W/srcW, IMG_H/srcH);
-    const sc=base*userScale;
-    const dw=srcW*sc, dh=srcH*sc;
+    // Sprint 6.3.1 — geometry routed through ImageViewEngine so the Story
+    // path uses the SAME uniform-scale guarantee as Cover / Hook / End.
+    // The View Engine returns dw / dh via a single scale factor applied
+    // to both axes, so the original aspect ratio is preserved by
+    // construction. Backward-compatible: View Engine normalize() accepts
+    // both new (mode/zoom/panX/panY) and legacy (fit/scale/offsetX/offsetY)
+    // keys, so existing projects keep working.
+    let dw, dh, panX, panY;
+    if(typeof ImageViewEngine!=='undefined'){
+      const c=ImageViewEngine.compute(srcW,srcH,IMG_W,IMG_H,v);
+      dw=c.dw; dh=c.dh; panX=c.panX; panY=c.panY;
+    }else{
+      const fit=v.fit==='fill'?'fill':'fit';
+      const userScale=typeof v.scale==='number' && isFinite(v.scale) && v.scale>0 ? v.scale : 1;
+      const base=fit==='fill' ? Math.max(IMG_W/srcW, IMG_H/srcH) : Math.min(IMG_W/srcW, IMG_H/srcH);
+      const sc=base*userScale;
+      dw=srcW*sc; dh=srcH*sc;
+      panX=typeof v.offsetX==='number' && isFinite(v.offsetX) ? v.offsetX : 0;
+      panY=typeof v.offsetY==='number' && isFinite(v.offsetY) ? v.offsetY : 0;
+    }
     // Place the focal point of the cropped src at the panel center, plus
     // any user pan offset.
-    const dx=IMG_X+IMG_W/2 - focalX*dw + offX;
-    const dy=IMG_Y+IMG_H/2 - focalY*dh + offY;
+    const dx=IMG_X+IMG_W/2 - focalX*dw + panX;
+    const dy=IMG_Y+IMG_H/2 - focalY*dh + panY;
 
     // Build canvas filter string (Light + Color + Detail). Highlights /
     // Shadows / Sharpness are approximated as light brightness/contrast
@@ -438,6 +456,13 @@ const SlideRenderer=(()=>{
     if(filterParts.length>0) x.filter=filterParts.join(' ');
     x.drawImage(s.image, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
     if(filterParts.length>0) x.filter='none';
+    // Sprint 6.3.1 — runtime tripwire. The source we just drew is the
+    // cropped slice (srcW × srcH); the rendered slice is (dw × dh). If
+    // these ratios ever drift the engine has been bypassed somewhere
+    // upstream — surface it loudly without breaking production.
+    if(typeof ImageViewEngine!=='undefined'){
+      ImageViewEngine.verifyAspectRatio(srcW,srcH,dw,dh);
+    }
     // Vignette: a radial dim drawn on top of the panel area only.
     if(vignette>0.001){
       const grad=x.createRadialGradient(
