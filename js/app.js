@@ -373,20 +373,17 @@ function draw(){
  s.storyBeat=story.value;
  s.page=page.value;
  s.totalPages=AppState.slides.length;
- const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
- const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
- // Sprint 4.5: image override moved into cardOverrides.image. Fall back to
- // the legacy slide.metadata.imageView path so old projects still render.
- const imageView=(s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.image)
-   || (s.metadata && s.metadata.imageView)
-   || null;
- const overrides=(s.metadata && s.metadata.cardOverrides) || null;
- const dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
- // Sprint 5.0: Story Designer owns per-slide content. Resolve per-slide
- // footer/handle overrides here; the renderer just consumes the values.
- const bookTitle=(s.metadata && typeof s.metadata.footerText==='string') ? s.metadata.footerText : title.value;
- const handle=(s.metadata && typeof s.metadata.handle==='string' && s.metadata.handle.length>0) ? s.metadata.handle : '@vihuplanet';
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:bookTitle,handle:handle,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId,pageType:s.pageType,metadata:s.metadata});
+ // Sprint 6.4 — Preview, Thumbnail, and Export resolve through the same
+ // SlideRenderer.buildPayload helper so WYSIWYE holds. Editor-only chrome
+ // (selectedTextElement / dragActiveId) layers on top — Export omits them.
+ const payload=SlideRenderer.buildPayload(s,{
+   page:s.page,
+   totalPages:s.totalPages,
+   defaultBookTitle:title.value
+ });
+ payload.selectedTextElement=_selectedTextElement;
+ payload.dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
+ SlideRenderer.render(payload);
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }

@@ -29,25 +29,12 @@ const ThumbnailEngine=(function(){
 
         SlideRenderer.init(temp);
 
+        // Sprint 6.4 — WYSIWYE. Resolve via the shared helper so the
+        // thumbnail is a faithful miniature of the preview / export.
         const titleEl=document.getElementById('bookTitle');
-        const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
-        const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
-        const _ft=(slide.metadata && typeof slide.metadata.footerText==='string') ? slide.metadata.footerText : (titleEl? titleEl.value : '');
-        const _hd=(slide.metadata && typeof slide.metadata.handle==='string' && slide.metadata.handle.length>0) ? slide.metadata.handle : '@vihuplanet';
-        const payload={
-          image: slide.image,
-          storyBeat: slide.storyBeat || '',
-          bookTitle: _ft,
-          handle: _hd,
-          page: slide.page || 1,
-          totalPages: slide.totalPages || 0,
-          theme: theme,
-          themeOptions: themeOptions,
-          imageView: (slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide.metadata && slide.metadata.imageView) || null,
-          overrides: (slide.metadata && slide.metadata.cardOverrides) || null,
-          pageType: slide.pageType,
-          metadata: slide.metadata
-        };
+        const payload=SlideRenderer.buildPayload(slide,{
+          defaultBookTitle: titleEl ? titleEl.value : ''
+        });
 
         try{
           SlideRenderer.render(payload);
@@ -69,9 +56,10 @@ const ThumbnailEngine=(function(){
         const current=AppState.slides[currentIdx];
         if(current){
           try{
-            const _cft=(current.metadata && typeof current.metadata.footerText==='string') ? current.metadata.footerText : (document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'');
-            const _chd=(current.metadata && typeof current.metadata.handle==='string' && current.metadata.handle.length>0) ? current.metadata.handle : '@vihuplanet';
-            SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:_cft,handle:_chd,page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null,pageType:current.pageType,metadata:current.metadata});
+            const _titleEl=document.getElementById('bookTitle');
+            SlideRenderer.render(SlideRenderer.buildPayload(current,{
+              defaultBookTitle: _titleEl ? _titleEl.value : ''
+            }));
           }catch(e){}
         }
 

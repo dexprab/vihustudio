@@ -711,7 +711,50 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  const api={init,render,getPanelRect,getTextElements,getSceneElements};
+  // Sprint 6.4 — WYSIWYE. Single source of truth for resolving a slide
+  // into a render payload. Preview (app.js), Thumbnail (thumbnails.js),
+  // and Export (pageOps.js) all funnel through this helper so the
+  // exported PNG is pixel-identical to what's on the canvas. Adding new
+  // resolution layers in the future means changing one place.
+  //
+  // opts: { page, totalPages, defaultBookTitle, defaultHandle } — all
+  // optional. The defaults are the editor-chrome fallbacks (the hidden
+  // #bookTitle input value); slide.metadata always wins when set.
+  function buildPayload(slide, opts){
+    opts = opts || {};
+    const theme = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getActiveTheme() : null;
+    const themeOptions = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getOptions() : null;
+    const m = slide.metadata || {};
+    const cardOverrides = m.cardOverrides || null;
+    // Sprint 4.5: image view lives under cardOverrides.image; fall back
+    // to the legacy slide.metadata.imageView path so old projects render.
+    const imageView = (cardOverrides && cardOverrides.image)
+      || m.imageView
+      || null;
+    // Sprint 5.0: per-slide footer / handle overrides resolved here.
+    const bookTitle = (typeof m.footerText === 'string')
+      ? m.footerText
+      : (opts.defaultBookTitle || '');
+    const handle = (typeof m.handle === 'string' && m.handle.length > 0)
+      ? m.handle
+      : (opts.defaultHandle || '@vihuplanet');
+    return {
+      image: slide.image,
+      storyBeat: slide.storyBeat || '',
+      bookTitle: bookTitle,
+      handle: handle,
+      page: (opts.page != null) ? opts.page : (slide.page || 1),
+      totalPages: (opts.totalPages != null) ? opts.totalPages : (slide.totalPages || 0),
+      theme: theme,
+      themeOptions: themeOptions,
+      imageView: imageView,
+      overrides: cardOverrides,
+      pageType: slide.pageType,
+      metadata: slide.metadata
+    };
+  }
+
+  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -157,6 +157,11 @@ const PageOps=(function(){
     return true;
   }
 
+  // Sprint 6.4 — WYSIWYE. Export now resolves the page through the SAME
+  // SlideRenderer.buildPayload helper that Preview and Thumbnail use, so
+  // every override layer (scene / element overrides / image view / card
+  // overrides / theme / page content) is preserved. The exported PNG is
+  // pixel-identical to the canvas preview at export resolution.
   function exportPage(index){
     if(index<0||index>=AppState.slides.length) return false;
     if(typeof SlideRenderer==='undefined') return false;
@@ -165,31 +170,29 @@ const PageOps=(function(){
     const slide=AppState.slides[index];
     const titleEl=document.getElementById('bookTitle');
     const bookTitleVal=titleEl?titleEl.value:'';
+    const totalPages=AppState.slides.length;
 
     try{
       const temp=document.createElement('canvas');
       SlideRenderer.init(temp);
-      SlideRenderer.render({
-        image:slide.image,
-        storyBeat:slide.storyBeat||'',
-        bookTitle:bookTitleVal,
+      SlideRenderer.render(SlideRenderer.buildPayload(slide,{
         page:String(index+1),
-        totalPages:AppState.slides.length
-      });
+        totalPages:totalPages,
+        defaultBookTitle:bookTitleVal
+      }));
       const dataURL=temp.toDataURL('image/png');
 
-      // Restore renderer back to the preview canvas
+      // Restore renderer back to the preview canvas — re-render the
+      // currently-visible page so the editor view stays correct.
       SlideRenderer.init(previewCanvas);
       const cur=AppState.slides[AppState.currentSlide];
       if(cur){
         try{
-          SlideRenderer.render({
-            image:cur.image,
-            storyBeat:cur.storyBeat||'',
-            bookTitle:bookTitleVal,
+          SlideRenderer.render(SlideRenderer.buildPayload(cur,{
             page:cur.page||String(AppState.currentSlide+1),
-            totalPages:AppState.slides.length
-          });
+            totalPages:totalPages,
+            defaultBookTitle:bookTitleVal
+          }));
         }catch(e){}
       }
 
@@ -202,7 +205,6 @@ const PageOps=(function(){
       a.remove();
       return true;
     }catch(e){
-      // Restore renderer even on failure
       try{ SlideRenderer.init(previewCanvas); }catch(_){}
       return false;
     }
