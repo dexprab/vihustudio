@@ -103,6 +103,20 @@ if(typeof CardDesigner!=='undefined'){
   }catch(e){}
 }
 
+// Story Designer bootstrap (Sprint 5.0) — owns content only; live edits
+// flow through the existing draw() / markDirty chain via hidden plumbing
+// inputs and a tiny per-slide metadata override for footerText / handle.
+if(typeof StoryDesigner!=='undefined'){
+  try{ StoryDesigner.mount(document.getElementById('storyDesignerRoot')); }catch(e){}
+  try{
+    StoryDesigner.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); }
+    });
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(typeof window.redrawPreview==='function') window.redrawPreview();
@@ -220,6 +234,11 @@ tabs.forEach(btn=>{
     const tab=btn.getAttribute('data-tab');
     const content=document.getElementById(tab+'-tab');
     if(content) content.classList.add('active');
+    // Sprint 5.0 — selection sync: when the user switches to the Story tab
+    // with a Card Designer text element selected, focus the matching field.
+    if(tab==='story' && _selectedTextElement && typeof StoryDesigner!=='undefined'){
+      try{ StoryDesigner.focusField(_selectedTextElement); }catch(e){}
+    }
   };
 });
 
@@ -333,6 +352,8 @@ window.showSlide=function(i){
  const tsel=document.querySelector('#timelineList [data-index="'+i+'"]'); if(tsel) tsel.classList.add('active');
  // Re-sync the Card Designer's Image section with the newly-active slide.
  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+ // Re-sync the Story Designer's content fields (Sprint 5.0).
+ if(typeof StoryDesigner!=='undefined'){ try{ StoryDesigner.refresh(); }catch(e){} }
  _updateCanvasCursor();
 };
 
@@ -351,7 +372,11 @@ function draw(){
    || null;
  const overrides=(s.metadata && s.metadata.cardOverrides) || null;
  const dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId});
+ // Sprint 5.0: Story Designer owns per-slide content. Resolve per-slide
+ // footer/handle overrides here; the renderer just consumes the values.
+ const bookTitle=(s.metadata && typeof s.metadata.footerText==='string') ? s.metadata.footerText : title.value;
+ const handle=(s.metadata && typeof s.metadata.handle==='string' && s.metadata.handle.length>0) ? s.metadata.handle : '@vihuplanet';
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:bookTitle,handle:handle,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }

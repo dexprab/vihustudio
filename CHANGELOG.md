@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(story-designer): Sprint 5.0 Story Designer Foundation (build 0028, 2026-06-28)
+  - New module `js/storyDesigner.js` (`mount` / `unmount` / `configure` / `refresh` / `focusField`) — same host-callback shape as CardDesigner so future AI-assisted writing features attach cleanly without touching `app.js`.
+  - The Story tab UI is now the Story Designer: Story Text (multi-line), Footer, Handle, Page Number, Page Type dropdown (Story / Cover / CTA / Blank), Actions (Reset Story; "Apply to Selected Pages" is disabled / labelled as future placeholder).
+  - All edits are live and have no Apply button. Story Text and Page Number sync through the legacy hidden `#storyBeat` / `#pageNumber` inputs and dispatch `input` events so the existing `draw()` and `markDirty` listeners fire unchanged. Footer and Handle write to new per-slide overrides: `slide.metadata.footerText` and `slide.metadata.handle` — rides existing `metadata` field, no project format change.
+  - Renderer change is presentation-only: `_drawHandle` now reads `payload.handle` (defaults to `@vihuplanet`); architecture unchanged. ThumbnailEngine forwards the resolved per-slide footer + handle so the filmstrip mirrors the live preview.
+  - Selection sync: with a Card Designer text element selected (story-text / footer / handle / page-number), switching to the Story tab focuses the matching content field (and selects its text where applicable). Editing in the Story tab does not clear the Card Designer's text selection.
+  - Reset Story clears `slide.storyBeat`, deletes `metadata.footerText` / `metadata.handle`, and resets `pageType` to `story`. The Footer input then reveals the project-level book title, and the Handle input reveals `@vihuplanet` — both via the renderer's fallback path.
+  - `showSlide` now calls `StoryDesigner.refresh()` so the panel always reflects the active slide.
+  - No Theme Designer changes, no CardDesigner changes, no renderer architecture changes, no project format changes. Save/Reload preserves Story Text, Footer overrides, Handle overrides, Page Number, and Page Type for every slide.
 - feat(card-designer): Sprint 4.5 Image Designer — Fine Tuning (build 0027, 2026-06-28)
   - Image overrides migrated from `slide.metadata.imageView` to `slide.metadata.cardOverrides.image` so every card override now lives under a single namespace. Legacy `imageView` data is migrated on first access; renderer still reads `imageView` as a fallback so older sessions render correctly even pre-migration.
   - Image section reorganized into five independently collapsible sub-groups plus an Actions row: **Composition** (Fit / Fill, Zoom, Crop, Focal X / Focal Y, Straighten), **Light** (Brightness, Contrast, Highlights, Shadows), **Color** (Warmth, Saturation), **Detail** (Sharpness), **Effects** (Vignette), **Actions** (Reset Composition / Reset Adjustments / Reset Image).

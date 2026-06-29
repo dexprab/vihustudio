@@ -32,8 +32,9 @@ Canonical project context for VihuStudio. Read this first before making any chan
 
 ### In Progress
 
-- Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset)
-- Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset)
+- Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset; Sprint 4.5 added composition / light / color / detail / effects fine tuning)
+- Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset; Sprint 4.4 added position drag + arrow nudge + full typography)
+- Story Designer Foundation (Sprint 5.0 shipped content-only panel: Story Text, Footer, Handle, Page Number, Page Type)
 
 ## Locked Product Decisions
 

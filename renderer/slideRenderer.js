@@ -68,8 +68,8 @@ const SlideRenderer=(()=>{
     const storyBbox=_drawStoryText(s,t,overrides);
     if(storyBbox) _lastTextElements.push(storyBbox);
 
-    // Handle / branding watermark
-    const handleBbox=_drawHandle(t,opts,overrides);
+    // Handle / branding watermark — Sprint 5.0 reads handle text from payload.
+    const handleBbox=_drawHandle(t,opts,overrides,s.handle);
     if(handleBbox) _lastTextElements.push(handleBbox);
 
     // Image inside panel — presentation-only transforms; original image untouched.
@@ -273,8 +273,9 @@ const SlideRenderer=(()=>{
   // Public: panel rect in canvas coordinates — consumed by canvas pan handler.
   function getPanelRect(){ return {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
-  function _drawHandle(theme,opts,overrides){
+  function _drawHandle(theme,opts,overrides,handleText){
     if(opts.handleVisibility==='hide') return null;
+    const text=(typeof handleText==='string' && handleText.length>0) ? handleText : '@vihuplanet';
     const ov=(overrides && overrides['handle'])||{};
     const pos=opts.handlePosition||'top-right';
     let hx, hy, defaultAlign;
@@ -287,8 +288,8 @@ const SlideRenderer=(()=>{
     _applyTextStyle(st);
     hx+=st.offsetX;
     hy+=st.offsetY;
-    x.fillText('@vihuplanet',hx,hy);
-    const w=x.measureText('@vihuplanet').width;
+    x.fillText(text,hx,hy);
+    const w=x.measureText(text).width;
     x.restore();
     let bx=hx;
     if(st.alignment==='center') bx=hx-w/2;

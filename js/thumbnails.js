@@ -32,10 +32,13 @@ const ThumbnailEngine=(function(){
         const titleEl=document.getElementById('bookTitle');
         const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
         const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
+        const _ft=(slide.metadata && typeof slide.metadata.footerText==='string') ? slide.metadata.footerText : (titleEl? titleEl.value : '');
+        const _hd=(slide.metadata && typeof slide.metadata.handle==='string' && slide.metadata.handle.length>0) ? slide.metadata.handle : '@vihuplanet';
         const payload={
           image: slide.image,
           storyBeat: slide.storyBeat || '',
-          bookTitle: titleEl? titleEl.value : '',
+          bookTitle: _ft,
+          handle: _hd,
           page: slide.page || 1,
           totalPages: slide.totalPages || 0,
           theme: theme,
@@ -60,7 +63,11 @@ const ThumbnailEngine=(function(){
         const currentIdx=AppState.currentSlide||0;
         const current=AppState.slides[currentIdx];
         if(current){
-          try{ SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'',page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null}); }catch(e){}
+          try{
+            const _cft=(current.metadata && typeof current.metadata.footerText==='string') ? current.metadata.footerText : (document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'');
+            const _chd=(current.metadata && typeof current.metadata.handle==='string' && current.metadata.handle.length>0) ? current.metadata.handle : '@vihuplanet';
+            SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:_cft,handle:_chd,page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null});
+          }catch(e){}
         }
 
         generatingCount--;

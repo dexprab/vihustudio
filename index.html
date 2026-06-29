@@ -82,15 +82,20 @@
 </div>
 
 <div id='story-tab' class='tab-content active'>
-<!-- Book Title metadata preserved in AppState.project.bookTitle and rendered onto the slide; editable input hidden from Story tab per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
+<!-- Hidden plumbing inputs (Sprint 3.3.4 Workspace Simplification + Sprint 5.0 Story Designer):
+     these IDs remain wired into app.js's draw()/showSlide()/projectManager;
+     the visible Story tab UI is now the StoryDesigner mounted below. -->
 <label hidden>Book Title</label>
 <input id='bookTitle' type='text' value='The Worst Birthday Ever' class='input-field' hidden>
-<label>Story Beat</label>
-<textarea id='storyBeat' class='input-field textarea'></textarea>
-<label>Page</label>
-<input id='pageNumber' type='text' value='1' class='input-field'>
-<label>Total Pages</label>
-<input id='totalPages' type='text' value='0' readonly class='input-field'>
+<label hidden>Story Beat</label>
+<textarea id='storyBeat' class='input-field textarea' hidden></textarea>
+<label hidden>Page</label>
+<input id='pageNumber' type='text' value='1' class='input-field' hidden>
+<label hidden>Total Pages</label>
+<input id='totalPages' type='text' value='0' readonly class='input-field' hidden>
+
+<!-- Story Designer (Sprint 5.0) — owns slide content only -->
+<div id='storyDesignerRoot'></div>
 
 <!-- Vihu Buddy placeholder -->
 <div class='buddy-placeholder'>🤖 Vihu Buddy Coming Soon</div>
@@ -212,6 +217,6 @@
 <button class='context-item' data-action='delete'>✕ Delete</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/cardDesigner.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/cardDesigner.js'></script><script src='js/storyDesigner.js'></script><script src='js/app.js'></script>
 </body>
 </html>

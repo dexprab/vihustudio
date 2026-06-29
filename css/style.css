@@ -841,6 +841,77 @@ button:active{
 
 #previewCanvas.canvas-text-dragging{ cursor:move; }
 
+/* Sprint 5.0 — Story Designer (content-only panel) */
+.story-designer{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.story-intro{
+  margin:0 0 8px 0;
+  padding:10px 12px;
+  background:var(--bg);
+  border:1px dashed var(--line);
+  border-radius:var(--border-radius);
+  font-size:11px;
+  line-height:1.5;
+  color:var(--text-secondary);
+}
+
+.story-field-label{
+  display:block;
+  margin:6px 0 4px 0;
+  font-size:11px;
+  font-weight:600;
+  color:var(--text-secondary);
+}
+
+.story-text-input{
+  min-height:120px;
+}
+
+.story-row-2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.story-row-2 .story-cell{
+  display:flex;
+  flex-direction:column;
+}
+
+.story-pagetype-select{
+  height:var(--input-height);
+  padding:8px 10px;
+  width:100%;
+}
+
+.story-reset-btn,
+.story-apply-btn{
+  width:100%;
+  padding:8px 12px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0 0 6px 0;
+  transition:border-color 0.2s, background 0.2s;
+}
+.story-reset-btn:hover:not(:disabled){
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+.story-apply-btn:disabled{
+  cursor:not-allowed;
+  opacity:0.45;
+}
+
 /* Sprint 4.5 — Image section sub-groups (Composition / Light / Color /
    Detail / Effects / Actions). Each is independently collapsible and
    shares the chevron + body pattern with the Theme Designer groups. */
