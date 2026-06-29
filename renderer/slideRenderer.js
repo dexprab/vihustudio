@@ -5,6 +5,9 @@ const SlideRenderer=(()=>{
   // Cached after each render() so canvas hit-testing can match clicks to
   // the actual rendered bboxes — including override-driven size shifts.
   let _lastTextElements=[];
+  // Sprint 6.1 — scene element bboxes from the most recent render(), used
+  // by the canvas drag handler to hit-test scene elements.
+  let _lastSceneElements=[];
 
   const FALLBACK_THEME={
     frame:{ color:'#1D3457' },
@@ -89,11 +92,37 @@ const SlideRenderer=(()=>{
     const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
     if(pageBbox) _lastTextElements.push(pageBbox);
 
+    // Sprint 6.1 — Scene Layer. Story role pages return null from
+    // SceneEngine, so this pass is a no-op for them.
+    _lastSceneElements=[];
+    if(typeof SceneEngine!=='undefined'){
+      const data=SceneEngine.getRenderData(s);
+      if(data && data.elements && data.elements.length){
+        const sorted=data.elements.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
+        sorted.forEach(function(el){
+          if(el.visible===false) return;
+          if(el.type==='background') _drawSceneBackground(el);
+          else if(el.type==='decoration') _drawSceneDecoration(el);
+          else if(el.type==='text') _drawSceneText(s,el);
+          // Other element types (image-slot / shape) reserved for later sprints.
+          // Record bbox after drawing so canvas hit-tests use the actual
+          // rendered footprint.
+          _lastSceneElements.push(_sceneBbox(el));
+        });
+      }
+    }
+
     // Drag guides (Sprint 4.4) — drawn under the selection outline so the
     // outline stays on top of the canvas center crosshair.
     if(s && s.dragActiveId){
       const dragSel=_lastTextElements.find(function(e){ return e.id===s.dragActiveId; });
       if(dragSel) _drawDragGuides(dragSel);
+    }
+
+    // Sprint 6.1 selection outline for scene elements
+    if(s && s.selectedSceneElement){
+      const sel=_lastSceneElements.find(function(e){ return e.id===s.selectedSceneElement; });
+      if(sel) _drawSelectionOutline(sel);
     }
 
     // Selection outline — last, so it sits above everything.
@@ -102,6 +131,69 @@ const SlideRenderer=(()=>{
       if(sel) _drawSelectionOutline(sel);
     }
   }
+
+  // Sprint 6.1 — scene element drawing helpers.
+  function _drawSceneBackground(el){
+    x.save();
+    if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    x.fillStyle=el.color||'#000000';
+    x.fillRect(0,0,W,H);
+    x.restore();
+  }
+  function _drawSceneDecoration(el){
+    const pos=el.position||{x:W/2,y:H/2};
+    const size=el.size||{w:64,h:64};
+    if(!el.glyph) return;
+    x.save();
+    if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    if(el.rotation){
+      x.translate(pos.x,pos.y);
+      x.rotate(el.rotation*Math.PI/180);
+      x.translate(-pos.x,-pos.y);
+    }
+    x.font=Math.round(size.h||64)+'px "Apple Color Emoji","Segoe UI Emoji",Arial,sans-serif';
+    x.textAlign='center';
+    x.textBaseline='middle';
+    x.fillText(el.glyph,pos.x,pos.y);
+    x.restore();
+  }
+  function _drawSceneText(s,el){
+    const text=SceneEngine.resolveTextSource(s,el.source) || el.placeholder || '';
+    if(!text) return;
+    const pos=el.position||{x:W/2,y:H/2};
+    x.save();
+    if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    const stylePart=el.fontStyle && el.fontStyle!=='normal' ? el.fontStyle+' ' : '';
+    const weightPart=el.fontWeight && el.fontWeight!=='normal' ? el.fontWeight+' ' : '';
+    x.font=stylePart+weightPart+(el.fontSize||56)+'px '+(el.fontFamily||'Georgia, serif');
+    x.fillStyle=el.color||'#FFFFFF';
+    x.textAlign=el.alignment||'center';
+    x.textBaseline='alphabetic';
+    x.fillText(text,pos.x,pos.y);
+    x.restore();
+  }
+  function _sceneBbox(el){
+    const pos=el.position||{x:W/2,y:H/2};
+    if(el.type==='background'){
+      return {id:el.id,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false};
+    }
+    if(el.type==='decoration'){
+      const size=el.size||{w:64,h:64};
+      return {id:el.id,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
+    }
+    if(el.type==='text'){
+      const w=(el.size && el.size.w) || 700;
+      const h=(el.fontSize||56)+12;
+      let bx=pos.x-w/2;
+      if(el.alignment==='left') bx=pos.x;
+      else if(el.alignment==='right') bx=pos.x-w;
+      return {id:el.id,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false};
+    }
+    return {id:el.id,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false};
+  }
+
+  // Sprint 6.1 — exposed for canvas drag hit-testing.
+  function getSceneElements(){ return _lastSceneElements.slice(); }
 
   // Returns the most recent text-element bboxes (canvas-pixel coords) so the
   // host can hit-test mouse clicks against them. Each entry:
@@ -511,7 +603,7 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  const api={init,render,getPanelRect,getTextElements};
+  const api={init,render,getPanelRect,getTextElements,getSceneElements};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -977,6 +977,60 @@ button:active{
   line-height:1.2;
 }
 
+/* Sprint 6.1 — Scene element checklist */
+.page-element-list{
+  margin-top:12px;
+  padding:10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+}
+.page-element-list.hidden{ display:none; }
+.page-element-list-title{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  margin-bottom:8px;
+}
+.page-element-row{
+  display:grid;
+  grid-template-columns:18px 1fr 22px;
+  align-items:center;
+  gap:8px;
+  padding:4px 0;
+  font-size:11px;
+  color:var(--text);
+}
+.page-element-row .page-element-visible{
+  width:14px;
+  height:14px;
+  cursor:pointer;
+  accent-color:var(--gold);
+}
+.page-element-row .page-element-name{
+  font-weight:600;
+}
+.page-element-row .page-element-reset{
+  width:22px;
+  height:22px;
+  padding:0;
+  margin:0;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--text-secondary);
+  font-size:13px;
+  line-height:1;
+  cursor:pointer;
+  transition:border-color 0.2s, color 0.2s;
+}
+.page-element-row .page-element-reset:hover{
+  border-color:var(--gold);
+  color:var(--gold);
+}
+
 /* Foundation placeholder card used by the Cover / Hook / End editors. */
 .page-placeholder{
   margin:8px 0 0 0;

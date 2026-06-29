@@ -44,7 +44,9 @@ const ThumbnailEngine=(function(){
           theme: theme,
           themeOptions: themeOptions,
           imageView: (slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide.metadata && slide.metadata.imageView) || null,
-          overrides: (slide.metadata && slide.metadata.cardOverrides) || null
+          overrides: (slide.metadata && slide.metadata.cardOverrides) || null,
+          pageType: slide.pageType,
+          metadata: slide.metadata
         };
 
         try{
@@ -66,7 +68,7 @@ const ThumbnailEngine=(function(){
           try{
             const _cft=(current.metadata && typeof current.metadata.footerText==='string') ? current.metadata.footerText : (document.getElementById('bookTitle')?document.getElementById('bookTitle').value:'');
             const _chd=(current.metadata && typeof current.metadata.handle==='string' && current.metadata.handle.length>0) ? current.metadata.handle : '@vihuplanet';
-            SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:_cft,handle:_chd,page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null});
+            SlideRenderer.render({image:current.image,storyBeat:current.storyBeat||'',bookTitle:_cft,handle:_chd,page:current.page||1,totalPages:current.totalPages||0,theme:theme,themeOptions:themeOptions,imageView:(current.metadata&&current.metadata.cardOverrides&&current.metadata.cardOverrides.image)||(current.metadata&&current.metadata.imageView)||null,overrides:(current.metadata&&current.metadata.cardOverrides)||null,pageType:current.pageType,metadata:current.metadata});
           }catch(e){}
         }
 

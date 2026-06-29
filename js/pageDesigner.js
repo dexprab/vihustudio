@@ -283,6 +283,10 @@ const PageDesigner=(function(){
       row.appendChild(btn);
     });
     body.appendChild(row);
+    // Sprint 6.1 — element checklist host (filled by _refreshElementList).
+    const list=document.createElement('div');
+    list.className='page-element-list hidden';
+    body.appendChild(list);
   }
   function _refreshSceneCards(){
     if(!editorBody) return;
@@ -290,6 +294,60 @@ const PageDesigner=(function(){
     const active=(s && s.metadata && typeof s.metadata.scene==='string') ? s.metadata.scene : null;
     editorBody.querySelectorAll('.page-scene-card').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-scene')===active);
+    });
+    _refreshElementList();
+  }
+
+  // Sprint 6.1 — element checklist. Only shown when a scene is active.
+  // Each entry has a visibility checkbox + a tiny "↺" reset that drops
+  // every override for that element (position / size / visibility back
+  // to the scene defaults).
+  function _refreshElementList(){
+    if(!editorBody) return;
+    const host=editorBody.querySelector('.page-element-list');
+    if(!host) return;
+    const s=_currentSlide();
+    const elements=(typeof SceneEngine!=='undefined') ? SceneEngine.listElements(s) : [];
+    host.innerHTML='';
+    if(elements.length===0){
+      host.classList.add('hidden');
+      return;
+    }
+    host.classList.remove('hidden');
+    const title=document.createElement('div');
+    title.className='page-element-list-title';
+    title.textContent='Elements';
+    host.appendChild(title);
+    elements.forEach(function(el){
+      const row=document.createElement('div');
+      row.className='page-element-row';
+      row.setAttribute('data-element-id',el.id);
+      const cb=document.createElement('input');
+      cb.type='checkbox';
+      cb.checked=el.visible;
+      cb.className='page-element-visible';
+      cb.addEventListener('change',function(){
+        if(typeof SceneEngine==='undefined') return;
+        SceneEngine.setVisibility(s,el.id,cb.checked);
+        _commitContent();
+      });
+      row.appendChild(cb);
+      const name=document.createElement('span');
+      name.className='page-element-name';
+      name.textContent=el.label;
+      row.appendChild(name);
+      const reset=document.createElement('button');
+      reset.type='button';
+      reset.className='page-element-reset';
+      reset.title='Reset this element to the scene default';
+      reset.textContent='↺';
+      reset.addEventListener('click',function(){
+        if(typeof SceneEngine==='undefined') return;
+        SceneEngine.clearOverride(s,el.id);
+        _commitContent();
+      });
+      row.appendChild(reset);
+      host.appendChild(row);
     });
   }
 

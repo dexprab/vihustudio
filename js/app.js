@@ -376,7 +376,7 @@ function draw(){
  // footer/handle overrides here; the renderer just consumes the values.
  const bookTitle=(s.metadata && typeof s.metadata.footerText==='string') ? s.metadata.footerText : title.value;
  const handle=(s.metadata && typeof s.metadata.handle==='string' && s.metadata.handle.length>0) ? s.metadata.handle : '@vihuplanet';
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:bookTitle,handle:handle,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId});
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:bookTitle,handle:handle,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId,pageType:s.pageType,metadata:s.metadata});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
@@ -515,6 +515,24 @@ function _hitTestText(canvasX,canvasY){
 }
 
 const TEXT_DRAG_THRESHOLD=3;
+const SCENE_DRAG_THRESHOLD=3;
+let _sceneDragState=null; // {elementId, startClientX, startClientY, sx, sy, baseX, baseY, moved}
+
+function _hitTestSceneElement(canvasX,canvasY){
+  if(typeof SlideRenderer.getSceneElements!=='function') return null;
+  const els=SlideRenderer.getSceneElements();
+  // Iterate top-down so the highest-z element wins.
+  for(let i=els.length-1;i>=0;i--){
+    const el=els[i];
+    if(!el || el.visible===false) continue;
+    // Skip background — full-canvas hit is unhelpful for dragging.
+    if(el.id==='background') continue;
+    if(canvasX>=el.bx && canvasX<=el.bx+el.bw && canvasY>=el.by && canvasY<=el.by+el.bh){
+      return el;
+    }
+  }
+  return null;
+}
 
 previewCanvas.addEventListener('mousedown',function(e){
   const s=AppState.slides[AppState.currentSlide];
@@ -541,6 +559,29 @@ previewCanvas.addEventListener('mousedown',function(e){
       e.preventDefault();
       return;
     }
+  }
+
+  // Sprint 6.1 — Scene element drag. Scene elements (decorations, scene
+  // text, etc.) sit on top of the existing draw pipeline, so they get
+  // first shot at the click. Position becomes a Card Override on
+  // slide.metadata.elementOverrides[id].position; the Scene blueprint is
+  // never mutated.
+  const sceneHit=_hitTestSceneElement(c.x,c.y);
+  if(sceneHit){
+    const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[sceneHit.id] && s.metadata.elementOverrides[sceneHit.id].position) || {};
+    // Default position comes from the rendered bbox center (already
+    // reflects any prior overrides).
+    const baseX=(typeof pos.x==='number') ? pos.x : (sceneHit.bx + sceneHit.bw/2);
+    const baseY=(typeof pos.y==='number') ? pos.y : (sceneHit.by + sceneHit.bh/2);
+    _sceneDragState={
+      elementId:sceneHit.id,
+      startClientX:e.clientX,startClientY:e.clientY,
+      sx:c.sx,sy:c.sy,
+      baseX:baseX,baseY:baseY,
+      moved:false
+    };
+    e.preventDefault();
+    return;
   }
 
   // Sprint 4.3 — text selection takes priority over image pan.
@@ -580,6 +621,24 @@ previewCanvas.addEventListener('mousedown',function(e){
 });
 
 document.addEventListener('mousemove',function(e){
+  // Sprint 6.1 — Scene element drag
+  if(_sceneDragState){
+    const s=AppState.slides[AppState.currentSlide];
+    if(!s) return;
+    const dx=(e.clientX-_sceneDragState.startClientX)*_sceneDragState.sx;
+    const dy=(e.clientY-_sceneDragState.startClientY)*_sceneDragState.sy;
+    if(!_sceneDragState.moved){
+      if(Math.abs(dx)+Math.abs(dy)<SCENE_DRAG_THRESHOLD) return;
+      _sceneDragState.moved=true;
+      previewCanvas.classList.add('canvas-text-dragging');
+    }
+    if(typeof SceneEngine==='undefined') return;
+    SceneEngine.setPosition(s,_sceneDragState.elementId,{x:_sceneDragState.baseX+dx, y:_sceneDragState.baseY+dy});
+    delete s.thumbnail;
+    draw();
+    return;
+  }
+
   // Text drag (Sprint 4.4)
   if(_textDragState){
     const s=AppState.slides[AppState.currentSlide];
@@ -615,6 +674,22 @@ document.addEventListener('mousemove',function(e){
 });
 
 document.addEventListener('mouseup',function(){
+  // Sprint 6.1 — Scene drag end
+  if(_sceneDragState){
+    const wasMoved=_sceneDragState.moved;
+    _sceneDragState=null;
+    previewCanvas.classList.remove('canvas-text-dragging');
+    if(wasMoved){
+      markDirty();
+      const s=AppState.slides[AppState.currentSlide];
+      if(s && typeof ThumbnailEngine!=='undefined'){
+        try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
+      }
+      if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
+    }
+    return;
+  }
+
   // Text drag end
   if(_textDragState){
     const wasMoved=_textDragState.moved;
