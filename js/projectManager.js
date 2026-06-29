@@ -2,7 +2,10 @@ const ProjectManager=(function(){
   const STORAGE_KEY='vihustudio-session';
   const PROJECT_VERSION='1.0';
   const AUTOSAVE_DEBOUNCE_MS=500;
-  const ALLOWED_PAGE_TYPES=['story','cover','cta','blank'];
+  // Sprint 6.0 extends the allowed list with 'hook' and 'end' (the new
+  // Page Designer roles); 'cta' and 'blank' are retained for backward
+  // compatibility with projects saved before Sprint 6.0.
+  const ALLOWED_PAGE_TYPES=['story','cover','cta','blank','hook','end'];
 
   let autosaveTimer=null;
   let statusCallback=null;

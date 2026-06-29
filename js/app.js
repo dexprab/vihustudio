@@ -106,10 +106,10 @@ if(typeof CardDesigner!=='undefined'){
 // Story Designer bootstrap (Sprint 5.0) — owns content only; live edits
 // flow through the existing draw() / markDirty chain via hidden plumbing
 // inputs and a tiny per-slide metadata override for footerText / handle.
-if(typeof StoryDesigner!=='undefined'){
-  try{ StoryDesigner.mount(document.getElementById('storyDesignerRoot')); }catch(e){}
+if(typeof PageDesigner!=='undefined'){
+  try{ PageDesigner.mount(document.getElementById('pageDesignerRoot')); }catch(e){}
   try{
-    StoryDesigner.configure({
+    PageDesigner.configure({
       getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); }
@@ -236,8 +236,8 @@ tabs.forEach(btn=>{
     if(content) content.classList.add('active');
     // Sprint 5.0 — selection sync: when the user switches to the Story tab
     // with a Card Designer text element selected, focus the matching field.
-    if(tab==='story' && _selectedTextElement && typeof StoryDesigner!=='undefined'){
-      try{ StoryDesigner.focusField(_selectedTextElement); }catch(e){}
+    if(tab==='story' && _selectedTextElement && typeof PageDesigner!=='undefined'){
+      try{ PageDesigner.focusField(_selectedTextElement); }catch(e){}
     }
   };
 });
@@ -353,7 +353,7 @@ window.showSlide=function(i){
  // Re-sync the Card Designer's Image section with the newly-active slide.
  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
  // Re-sync the Story Designer's content fields (Sprint 5.0).
- if(typeof StoryDesigner!=='undefined'){ try{ StoryDesigner.refresh(); }catch(e){} }
+ if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
  _updateCanvasCursor();
 };
 
@@ -390,7 +390,7 @@ window.redrawPreview=function(){
   draw();
   // Sprint 5.1 — overflow + validation derive from the renderer's bbox
   // cache, so refresh them once draw() has populated it.
-  if(typeof StoryDesigner!=='undefined'){ try{ StoryDesigner.refresh(); }catch(e){} }
+  if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
 };
 
 function showContextMenu(e,index){

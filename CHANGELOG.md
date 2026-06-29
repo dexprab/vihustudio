@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(page-designer): Sprint 6.0 Page Designer Foundation (build 0031, 2026-06-29)
+  - Story Designer evolved into a page-centric **Page Designer**: `js/storyDesigner.js` → `js/pageDesigner.js`; global renamed to `PageDesigner` (legacy `window.StoryDesigner` alias preserved as a no-touch safety net); mount root renamed to `#pageDesignerRoot`; CSS class `.page-designer` added (with `.story-designer` retained as an alias so inherited rules still apply).
+  - New "**What is this page?**" selector at the top with four big visual cards: 📖 Story · 📘 Cover · 🪝 Hook · 🏁 End. Default for any slide whose `pageType` is missing / `'cta'` / `'blank'` is Story (no model mutation; the selector just maps unknown values to Story for display).
+  - Internal organization is modular per role: closures `_buildStoryEditor` / `_buildCoverEditor` / `_buildHookEditor` / `_buildEndEditor` + matching refresh routines; `_renderEditor()` swaps the editor body when the role changes. User sees one editor — never separate tabs.
+  - **Story role**: unchanged from Sprint 5.2 (Story Beat + inline Characters / Words counts + conditional overflow warning + Footer + Handle). Page Type dropdown removed (replaced by the role selector above).
+  - **Cover role (foundation)**: Title / Subtitle / Author text inputs, plus a "Cover Image" placeholder card.
+  - **Hook role (foundation)**: Heading input + Message textarea, plus "QR Code" and "Social Handle" placeholder cards.
+  - **End role (foundation)**: Title input + Message textarea, plus an "Illustration" placeholder card.
+  - Per-role data is namespaced under `slide.metadata.cover` / `slide.metadata.hook` / `slide.metadata.end`. Story data continues to use `slide.storyBeat`, `slide.metadata.footerText`, `slide.metadata.handle`. Each page stores only the data relevant to its current role — switching roles preserves the other roles' data so the user can go back and forth without losing work.
+  - `ProjectManager.ALLOWED_PAGE_TYPES` extended to `['story','cover','cta','blank','hook','end']` so Hook / End survive Save → Reload. No schema or format change — this is just a constant list extension.
+  - Renderer is untouched (per spec "No renderer redesign"). Live editing still updates the canvas immediately for Story-role content; Cover / Hook / End fields are stored for future rendering sprints.
+  - Constraints honored: no Theme Designer changes, no Card Designer changes, no project format changes, no architecture changes beyond introducing the page role.
 - refactor(story-designer): Sprint 5.2 Simplify Story Designer (build 0030, 2026-06-28)
   - Story Designer trimmed to the Vihaan-first layout: **Story Beat** textarea, inline `Characters: XX` / `Words: XX`, conditional `⚠ Story may not fit on this page.` warning, divider, **Footer**, **Handle**, **Page Type**. Nothing else.
   - Removed from the UI: Expand button, Expanded Editor modal (`#storyExpandModal` markup + all wiring), stats chips, **Review** subgroup (5 indicators), **Search** subgroup (Find/Replace/match counter), **Story Operations** subgroup (Duplicate / Split / Merge / Move Selected / Clear / Copy / Paste), Reset Story button, "Apply to Selected Pages" placeholder, Page Number input, intro paragraph.
