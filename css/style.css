@@ -977,6 +977,73 @@ button:active{
   line-height:1.2;
 }
 
+/* Sprint 6.2 — Page asset (image) management */
+.page-image-manager{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:6px;
+  padding:10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+}
+.page-image-empty{
+  text-align:center;
+  font-size:11px;
+  color:var(--text-tertiary);
+  padding:8px 0;
+  font-style:italic;
+}
+.page-image-preview{
+  display:block;
+  width:100%;
+  max-height:140px;
+  object-fit:contain;
+  border-radius:var(--border-radius);
+  background:rgba(0,0,0,0.05);
+}
+.page-image-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+.page-image-btn{
+  width:100%;
+  padding:8px 10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+  transition:border-color 0.2s, background 0.2s;
+}
+.page-image-btn:hover{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.06);
+}
+.page-image-btn.page-image-btn-primary{
+  background:var(--gold);
+  color:var(--navy);
+  border-color:var(--gold);
+}
+.page-image-btn.page-image-btn-primary:hover{
+  opacity:0.9;
+  background:var(--gold);
+}
+.page-image-btn.page-image-btn-danger{
+  border-color:rgba(192,57,43,0.4);
+  color:#c0392b;
+}
+.page-image-btn.page-image-btn-danger:hover{
+  border-color:#c0392b;
+  background:rgba(192,57,43,0.06);
+}
+
 /* Sprint 6.1 — Scene element checklist */
 .page-element-list{
   margin-top:12px;

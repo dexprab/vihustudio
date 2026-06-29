@@ -67,30 +67,38 @@ const SlideRenderer=(()=>{
     // Panel (style-driven)
     _drawPanel(t.panel.color,opts.panelStyle);
 
-    // Top story text
-    const storyBbox=_drawStoryText(s,t,overrides);
-    if(storyBbox) _lastTextElements.push(storyBbox);
+    // Sprint 6.2 — when a scene is active, the scene blueprint owns the
+    // page composition. Skip the legacy Story-style pipeline so text /
+    // image / decorations don't double-render. Story-role pages stay
+    // byte-identical because SceneEngine.getRenderData returns null for
+    // them.
+    const _hasScene=(typeof SceneEngine!=='undefined') && (SceneEngine.getRenderData(s)!==null);
+    if(!_hasScene){
+      // Top story text
+      const storyBbox=_drawStoryText(s,t,overrides);
+      if(storyBbox) _lastTextElements.push(storyBbox);
 
-    // Handle / branding watermark — Sprint 5.0 reads handle text from payload.
-    const handleBbox=_drawHandle(t,opts,overrides,s.handle);
-    if(handleBbox) _lastTextElements.push(handleBbox);
+      // Handle / branding watermark — Sprint 5.0 reads handle text from payload.
+      const handleBbox=_drawHandle(t,opts,overrides,s.handle);
+      if(handleBbox) _lastTextElements.push(handleBbox);
 
-    // Image inside panel — presentation-only transforms; original image untouched.
-    // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
-    if(s.image && s.image.width){
-      _drawImage(s);
+      // Image inside panel — presentation-only transforms; original image untouched.
+      // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
+      if(s.image && s.image.width){
+        _drawImage(s);
+      }
+
+      // Decorations on the frame
+      _drawDecorations(opts.decorations,t,opts);
+
+      // Footer (book title)
+      const footerBbox=_drawFooter(t,opts,s.bookTitle||'',overrides);
+      if(footerBbox) _lastTextElements.push(footerBbox);
+
+      // Page number
+      const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
+      if(pageBbox) _lastTextElements.push(pageBbox);
     }
-
-    // Decorations on the frame
-    _drawDecorations(opts.decorations,t,opts);
-
-    // Footer (book title)
-    const footerBbox=_drawFooter(t,opts,s.bookTitle||'',overrides);
-    if(footerBbox) _lastTextElements.push(footerBbox);
-
-    // Page number
-    const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
-    if(pageBbox) _lastTextElements.push(pageBbox);
 
     // Sprint 6.1 — Scene Layer. Story role pages return null from
     // SceneEngine, so this pass is a no-op for them.
@@ -103,10 +111,10 @@ const SlideRenderer=(()=>{
           if(el.visible===false) return;
           if(el.type==='background') _drawSceneBackground(el);
           else if(el.type==='decoration') _drawSceneDecoration(el);
+          else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
+          else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
+          // Legacy fallback for projects authored against Sprint 6.1.
           else if(el.type==='text') _drawSceneText(s,el);
-          // Other element types (image-slot / shape) reserved for later sprints.
-          // Record bbox after drawing so canvas hit-tests use the actual
-          // rendered footprint.
           _lastSceneElements.push(_sceneBbox(el));
         });
       }
@@ -172,6 +180,69 @@ const SlideRenderer=(()=>{
     x.fillText(text,pos.x,pos.y);
     x.restore();
   }
+
+  // Sprint 6.2 — Text Holder. Same render contract as text, but draws a
+  // soft placeholder when the page hasn't filled the slot yet so the
+  // user always sees where the content will appear.
+  function _drawSceneTextHolder(s,el){
+    let text=SceneEngine.resolveTextSource(s,el.source);
+    const isPlaceholder=!text;
+    if(isPlaceholder) text=el.placeholder||'';
+    if(!text) return;
+    const pos=el.position||{x:W/2,y:H/2};
+    x.save();
+    if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    if(isPlaceholder) x.globalAlpha=(x.globalAlpha||1)*0.5;
+    const stylePart=el.fontStyle && el.fontStyle!=='normal' ? el.fontStyle+' ' : '';
+    const weightPart=el.fontWeight && el.fontWeight!=='normal' ? el.fontWeight+' ' : '';
+    x.font=stylePart+weightPart+(el.fontSize||56)+'px '+(el.fontFamily||'Georgia, serif');
+    x.fillStyle=el.color||'#FFFFFF';
+    x.textAlign=el.alignment||'center';
+    x.textBaseline='alphabetic';
+    x.fillText(text,pos.x,pos.y);
+    x.restore();
+  }
+
+  // Sprint 6.2 — Image Holder. Draws slide.image scaled to cover (or
+  // contain) the holder rect. When the page has no image, paints a
+  // dashed placeholder so the user sees the slot.
+  function _drawSceneImageHolder(s,el){
+    const pos=el.position||{x:W/2,y:H/2};
+    const size=el.size||{w:600,h:600};
+    const rx=pos.x-size.w/2, ry=pos.y-size.h/2;
+    const img=s.image;
+    x.save();
+    if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    if(!img || !img.width){
+      x.fillStyle='rgba(255,255,255,0.06)';
+      x.fillRect(rx,ry,size.w,size.h);
+      x.strokeStyle='rgba(255,255,255,0.40)';
+      x.lineWidth=3;
+      x.setLineDash([12,8]);
+      x.strokeRect(rx,ry,size.w,size.h);
+      x.setLineDash([]);
+      x.fillStyle='rgba(255,255,255,0.70)';
+      x.font='bold 28px sans-serif';
+      x.textAlign='center';
+      x.textBaseline='middle';
+      x.fillText('Add an image',pos.x,pos.y);
+      x.restore();
+      return;
+    }
+    const fit=el.fit||'cover';
+    const iw=img.width, ih=img.height;
+    const base = fit==='contain'
+      ? Math.min(size.w/iw,size.h/ih)
+      : Math.max(size.w/iw,size.h/ih);
+    const dw=iw*base, dh=ih*base;
+    const dx=pos.x-dw/2, dy=pos.y-dh/2;
+    // Clip to the holder rect so cover-mode overflow stays inside.
+    x.beginPath();
+    x.rect(rx,ry,size.w,size.h);
+    x.clip();
+    x.drawImage(img,dx,dy,dw,dh);
+    x.restore();
+  }
   function _sceneBbox(el){
     const pos=el.position||{x:W/2,y:H/2};
     if(el.type==='background'){
@@ -181,13 +252,17 @@ const SlideRenderer=(()=>{
       const size=el.size||{w:64,h:64};
       return {id:el.id,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
     }
-    if(el.type==='text'){
+    if(el.type==='text' || el.type==='text-holder'){
       const w=(el.size && el.size.w) || 700;
       const h=(el.fontSize||56)+12;
       let bx=pos.x-w/2;
       if(el.alignment==='left') bx=pos.x;
       else if(el.alignment==='right') bx=pos.x-w;
       return {id:el.id,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false};
+    }
+    if(el.type==='image-holder'){
+      const size=el.size||{w:600,h:600};
+      return {id:el.id,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
     }
     return {id:el.id,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false};
   }

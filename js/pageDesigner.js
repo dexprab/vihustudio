@@ -32,12 +32,13 @@ const PageDesigner=(function(){
   // future sprint maps each scene to renderer-friendly card overrides.
   const SCENES={
     cover:[
-      {id:'adventure', emoji:'🗺️', label:'Adventure'},
-      {id:'space',     emoji:'🚀', label:'Space'},
-      {id:'jungle',    emoji:'🌴', label:'Jungle'},
-      {id:'ocean',     emoji:'🌊', label:'Ocean'},
-      {id:'princess',  emoji:'👑', label:'Princess'},
-      {id:'minimal',   emoji:'🤍', label:'Minimal'}
+      {id:'adventure',         emoji:'🗺️', label:'Adventure'},
+      {id:'space',             emoji:'🚀', label:'Space'},
+      {id:'jungle',            emoji:'🌴', label:'Jungle'},
+      {id:'ocean',             emoji:'🌊', label:'Ocean'},
+      {id:'fairy-tale',        emoji:'🧚', label:'Fairy Tale'},
+      {id:'birthday',          emoji:'🎂', label:'Birthday'},
+      {id:'classic-storybook', emoji:'📖', label:'Storybook'}
     ],
     hook:[
       {id:'stars',       emoji:'⭐', label:'Stars'},
@@ -157,6 +158,95 @@ const PageDesigner=(function(){
     s.textContent=subtext;
     ph.appendChild(s);
     return ph;
+  }
+
+  // --- Page Asset · Image management (Sprint 6.2) ---------------------
+  // Works for every role that supports an image (Story / Cover / Hook /
+  // End). Routes through a hidden <input type=file> so it reuses the
+  // existing upload pipeline; no new image processing logic.
+  let _imageInput=null;
+  function _ensureImageInput(){
+    if(_imageInput) return _imageInput;
+    _imageInput=document.createElement('input');
+    _imageInput.type='file';
+    _imageInput.accept='image/*';
+    _imageInput.style.display='none';
+    _imageInput.addEventListener('change',_onImageSelected);
+    document.body.appendChild(_imageInput);
+    return _imageInput;
+  }
+  function _triggerImageUpload(){
+    const inp=_ensureImageInput();
+    inp.value='';
+    inp.click();
+  }
+  function _onImageSelected(e){
+    const file=e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      const img=new Image();
+      img.onload=function(){
+        const s=_currentSlide();
+        if(!s) return;
+        s.image=img;
+        s._imageDataURL=ev.target.result;
+        delete s.thumbnail;
+        _commitContent();
+        _renderEditor();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function _removeImage(){
+    const s=_currentSlide();
+    if(!s) return;
+    s.image=null;
+    delete s._imageDataURL;
+    delete s.thumbnail;
+    _commitContent();
+    _renderEditor();
+  }
+  function _appendImageManager(body){
+    body.appendChild(_makeLabel('Image'));
+    const wrap=document.createElement('div');
+    wrap.className='page-image-manager';
+    const s=_currentSlide();
+    if(s && s.image && s._imageDataURL){
+      const preview=document.createElement('img');
+      preview.className='page-image-preview';
+      preview.src=s._imageDataURL;
+      preview.alt='Current image';
+      wrap.appendChild(preview);
+      const actions=document.createElement('div');
+      actions.className='page-image-actions';
+      const replace=document.createElement('button');
+      replace.type='button';
+      replace.className='page-image-btn';
+      replace.textContent='Replace Image';
+      replace.addEventListener('click',_triggerImageUpload);
+      actions.appendChild(replace);
+      const remove=document.createElement('button');
+      remove.type='button';
+      remove.className='page-image-btn page-image-btn-danger';
+      remove.textContent='Remove Image';
+      remove.addEventListener('click',_removeImage);
+      actions.appendChild(remove);
+      wrap.appendChild(actions);
+    }else{
+      const msg=document.createElement('div');
+      msg.className='page-image-empty';
+      msg.textContent='No image selected.';
+      wrap.appendChild(msg);
+      const add=document.createElement('button');
+      add.type='button';
+      add.className='page-image-btn page-image-btn-primary';
+      add.textContent='Add Image';
+      add.addEventListener('click',_triggerImageUpload);
+      wrap.appendChild(add);
+    }
+    body.appendChild(wrap);
   }
 
   // Story Title — shared content across Story / Hook / End.
@@ -396,6 +486,7 @@ const PageDesigner=(function(){
     body.appendChild(footer);
 
     _appendHandle(body);
+    _appendImageManager(body);
   }
   function _refreshStoryInputs(){
     if(!editorBody) return;
@@ -460,7 +551,7 @@ const PageDesigner=(function(){
         _commitContent();
       }
     }));
-    body.appendChild(_makePlaceholder('Cover Image','Edit the image in the Card Designer.'));
+    _appendImageManager(body);
     _appendSceneCards(body,'cover');
   }
   function _refreshCoverInputs(){
@@ -506,7 +597,7 @@ const PageDesigner=(function(){
       }
     }));
     _appendHandle(body);
-    body.appendChild(_makePlaceholder('Optional Image','Edit the image in the Card Designer.'));
+    _appendImageManager(body);
     body.appendChild(_makePlaceholder('QR Code','QR generator lands in a future sprint.'));
     _appendSceneCards(body,'hook');
   }
@@ -562,7 +653,7 @@ const PageDesigner=(function(){
       }
     }));
     _appendHandle(body);
-    body.appendChild(_makePlaceholder('Optional Image','Edit the image in the Card Designer.'));
+    _appendImageManager(body);
     _appendSceneCards(body,'end');
   }
   function _refreshEndInputs(){
