@@ -169,30 +169,40 @@ upload.onchange=e=>{
  const newSlides=[];
  let loaded=0;
 
+ // Sprint 6.3 fidelity: read each file as a Data URL up front so the
+ // ORIGINAL encoding (PNG → PNG, JPEG → JPEG) is the canonical source.
+ // The Image decodes from the same Data URL, so slide.image and
+ // slide._imageDataURL come from the same bits — no re-encoding step
+ // before, during, or after persistence.
  files.forEach((file,i)=>{
-   const img=new Image();
-   img.onload=()=>{
-      const slideObj={id:Date.now()+i,image:img,storyBeat:'',pageType:'story',page:AppState.slides.length+newSlides.length+1,totalPages:0};
-      newSlides.push(slideObj);
-      AppState.slides.push(slideObj);
-      loaded++;
-      renderList();
-      renderTimeline();
-      if(AppState.slides.length===1) showSlide(0);
-      if(loaded===files.length && newSlides.length>0){
-        try{ ThumbnailEngine.generateBatch(newSlides).then(()=>{
-           newSlides.forEach((s,idx)=>{
-             const el=document.querySelector('#slideList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
-             if(el && s.thumbnail) el.src=s.thumbnail;
-             const tEl=document.querySelector('#timelineList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
-             if(tEl && s.thumbnail) tEl.src=s.thumbnail;
-           });
-           markDirty();
-        }); }catch(e){}
-      }
-      markDirty();
+   const reader=new FileReader();
+   reader.onload=ev=>{
+     const dataUrl=ev.target.result;
+     const img=new Image();
+     img.onload=()=>{
+       const slideObj={id:Date.now()+i,image:img,_imageDataURL:dataUrl,storyBeat:'',pageType:'story',page:AppState.slides.length+newSlides.length+1,totalPages:0};
+       newSlides.push(slideObj);
+       AppState.slides.push(slideObj);
+       loaded++;
+       renderList();
+       renderTimeline();
+       if(AppState.slides.length===1) showSlide(0);
+       if(loaded===files.length && newSlides.length>0){
+         try{ ThumbnailEngine.generateBatch(newSlides).then(()=>{
+            newSlides.forEach((s,idx)=>{
+              const el=document.querySelector('#slideList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
+              if(el && s.thumbnail) el.src=s.thumbnail;
+              const tEl=document.querySelector('#timelineList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
+              if(tEl && s.thumbnail) tEl.src=s.thumbnail;
+            });
+            markDirty();
+         }); }catch(err){}
+       }
+       markDirty();
+     };
+     img.src=dataUrl;
    };
-   img.src=URL.createObjectURL(file);
+   reader.readAsDataURL(file);
  });
  // allow re-uploading the same file later
  e.target.value='';

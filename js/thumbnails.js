@@ -56,6 +56,9 @@ const ThumbnailEngine=(function(){
         const thumbW=110; const thumbH=Math.round((thumbW * temp.height)/temp.width);
         const thumbCanvas=document.createElement('canvas'); thumbCanvas.width=thumbW; thumbCanvas.height=thumbH;
         const tctx=thumbCanvas.getContext('2d');
+        // Sprint 6.3 — match SlideRenderer.init quality so the temp→thumb
+        // downscale also uses high-quality interpolation.
+        try{ tctx.imageSmoothingEnabled=true; tctx.imageSmoothingQuality='high'; }catch(e){}
         tctx.fillStyle='#fff'; tctx.fillRect(0,0,thumbW,thumbH);
         tctx.drawImage(temp,0,0,thumbW,thumbH);
         const dataUrl=thumbCanvas.toDataURL('image/png');

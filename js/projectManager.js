@@ -24,6 +24,10 @@ const ProjectManager=(function(){
 
   function imageToDataURL(slide){
     if(!slide||!slide.image) return null;
+    // Sprint 6.3 fidelity: if the upload pipeline already captured the
+    // original bytes (app.js / Page Designer image manager both do
+    // `FileReader.readAsDataURL`), return them verbatim — no canvas
+    // re-encoding. This is now the common path.
     if(slide._imageDataURL) return slide._imageDataURL;
     try{
       const img=slide.image;
@@ -33,8 +37,12 @@ const ProjectManager=(function(){
       const c=document.createElement('canvas');
       c.width=w; c.height=h;
       const ctx=c.getContext('2d');
+      // High-quality interpolation for the (rare) re-encode fallback.
+      try{ ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; }catch(_){}
       ctx.drawImage(img,0,0,w,h);
-      const data=c.toDataURL('image/jpeg',0.92);
+      // Sprint 6.3 — was 'image/jpeg' at 0.92 (lossy). Switch to lossless
+      // PNG so pencil texture / contrast / tonal range survive the fallback.
+      const data=c.toDataURL('image/png');
       slide._imageDataURL=data;
       return data;
     }catch(e){ return null; }

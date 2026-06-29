@@ -51,7 +51,15 @@ const SlideRenderer=(()=>{
     return theme.frame.color;
   }
 
-  function init(cv){ c=cv; c.width=W; c.height=H; x=c.getContext('2d'); }
+  function init(cv){
+    c=cv; c.width=W; c.height=H;
+    x=c.getContext('2d');
+    // Sprint 6.3 — Chromium defaults imageSmoothingQuality to 'low' which
+    // smudges fine pencil strokes when the renderer downscales scans
+    // into the image-holder. Set to 'high' so the single resampling step
+    // uses better-than-bilinear interpolation.
+    try{ x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; }catch(e){}
+  }
 
   function render(s){
     if(!x) return;

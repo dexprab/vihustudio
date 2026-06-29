@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- fix(fidelity): Sprint 6.3 Rendering Fidelity Audit & Fix (build 0035, 2026-06-29)
+  - **Audit findings.** The candle-sketch test case showed visible degradation. Root causes:
+    1. `ProjectManager.imageToDataURL` re-encoded every saved image as **JPEG at 0.92** — measurable artefacts on pencil texture, contrast, and edges, compounding on every Save → Reload.
+    2. The main upload pipeline in `app.js` decoded the file directly via a blob URL and **never set `slide._imageDataURL`**, so the lossy fallback was the *only* path the image took before persistence.
+    3. Chromium defaults `imageSmoothingQuality` to **`'low'`** — bilinear filtering. The renderer downscales high-resolution scans (e.g. 1500×2000) into the image-holder rect in a single `drawImage` call; with `'low'` quality the fine pencil strokes smudge.
+    4. The thumbnail engine's thumb canvas inherited the same `'low'` default for the temp→thumb downscale, cascading the softness.
+    5. CSS scaling of the 1080-wide canvas to a 500-px CSS box used `image-rendering: auto` — fine for photos, but a quick `image-rendering: high-quality` hint preserves more detail in pencil work.
+  - **Fixes.**
+    1. `app.js` upload path now reads each file via `FileReader.readAsDataURL`. The Image decodes from the same Data URL stored on `slide._imageDataURL`; **same bits, zero re-encoding** through the entire pipeline.
+    2. `ProjectManager.imageToDataURL` returns `_imageDataURL` verbatim when present (the common path now). The rare fallback re-encodes with **`'image/png'` (lossless)** instead of `'image/jpeg', 0.92`.
+    3. `SlideRenderer.init` sets `ctx.imageSmoothingEnabled = true` + `ctx.imageSmoothingQuality = 'high'` on the preview canvas. Because the thumbnail engine reuses `SlideRenderer.init` on its temp canvas, the same setting propagates to thumbnails automatically.
+    4. The thumbnail engine's final thumb canvas also sets `'high'` quality so the temp → thumb downscale matches.
+    5. CSS on `#previewCanvas`: `image-rendering: -webkit-optimize-contrast; image-rendering: high-quality;` so the browser-side display scale preserves sharpness.
+  - **Result.** A freshly uploaded image is decoded from its original bytes, rendered at high quality with a single `drawImage` resampling step, persisted *verbatim* (no recompression), and decoded again from the same bytes on reload. Backwards-compatible: the lossy fallback is still there but now lossless PNG, and old projects with legacy JPEG `_imageDataURL` continue to load (the artefacts they already carry are inherent to the saved file, not the renderer).
 - feat(scene-engine): Sprint 6.2 Scene Holders & Page Asset Integration (build 0034, 2026-06-29)
   - **Scene Blueprints are now holder-based.** The renderer never places text or images directly — every Cover / Hook / End scene declares an **Image Holder** plus role-appropriate **Text Holders** (Title / Subtitle / Author for Cover; Heading / Message / Handle for Hook; Story Title / Ending Title / Message / Handle for End). Decorations stay as decorations. The blueprint says *what goes on the page*; the renderer just iterates.
   - Resolution chain enforced: `Theme → Page Role → Scene Blueprint → Generated Holders → Page Content → Card Overrides → Renderer`. The blueprint is never mutated — only overrides on `slide.metadata.elementOverrides[id]` are persisted.

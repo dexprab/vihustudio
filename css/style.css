@@ -246,6 +246,10 @@ button:active{
   border-radius:var(--card-radius);
   display:block;
   box-shadow:0 10px 40px rgba(0,0,0,0.15);
+  /* Sprint 6.3 — keep pencil detail sharp when the 1080-wide canvas
+     buffer is scaled down for display. */
+  image-rendering:-webkit-optimize-contrast;
+  image-rendering:high-quality;
 }
 
 /* Tabs */
