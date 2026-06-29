@@ -89,6 +89,13 @@ const SlideRenderer=(()=>{
     const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
     if(pageBbox) _lastTextElements.push(pageBbox);
 
+    // Drag guides (Sprint 4.4) — drawn under the selection outline so the
+    // outline stays on top of the canvas center crosshair.
+    if(s && s.dragActiveId){
+      const dragSel=_lastTextElements.find(function(e){ return e.id===s.dragActiveId; });
+      if(dragSel) _drawDragGuides(dragSel);
+    }
+
     // Selection outline — last, so it sits above everything.
     if(s && s.selectedTextElement){
       const sel=_lastTextElements.find(function(e){ return e.id===s.selectedTextElement; });
@@ -110,6 +117,21 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  const SNAP_DIST=18;
+  function _drawDragGuides(el){
+    const cx=el.bx+el.bw/2;
+    const cy=el.by+el.bh/2;
+    x.save();
+    x.strokeStyle='#7B9AC8';
+    x.lineWidth=1.5;
+    x.setLineDash([8,6]);
+    x.globalAlpha=Math.abs(cx-W/2)<SNAP_DIST?1:0.35;
+    x.beginPath(); x.moveTo(W/2,0); x.lineTo(W/2,H); x.stroke();
+    x.globalAlpha=Math.abs(cy-H/2)<SNAP_DIST?1:0.35;
+    x.beginPath(); x.moveTo(0,H/2); x.lineTo(W,H/2); x.stroke();
+    x.restore();
+  }
+
   function _bboxForAnchored(text,anchorX,baselineY,align,size){
     const w=x.measureText(text).width;
     let bx=anchorX;
@@ -118,22 +140,53 @@ const SlideRenderer=(()=>{
     return { bx:bx, by:baselineY-size, bw:w, bh:size+8 };
   }
 
+  // Resolve effective text style: Card Override → Theme → System Default.
+  // Returns the final values used by both drawing and bbox math.
+  function _resolveTextStyle(ov,defSize,defFont,defColor,defAlign){
+    const pos=ov.position||{};
+    return {
+      fontSize:(typeof ov.fontSize==='number'&&ov.fontSize>0)?ov.fontSize:defSize,
+      fontFamily:ov.fontFamily||defFont,
+      fontWeight:ov.fontWeight||'normal',
+      fontStyle:ov.fontStyle||'normal',
+      color:ov.color||defColor,
+      opacity:(typeof ov.opacity==='number'&&isFinite(ov.opacity))?Math.max(0,Math.min(1,ov.opacity)):1,
+      letterSpacing:(typeof ov.letterSpacing==='number'&&isFinite(ov.letterSpacing))?ov.letterSpacing:0,
+      lineHeight:(typeof ov.lineHeight==='number'&&isFinite(ov.lineHeight)&&ov.lineHeight>0)?ov.lineHeight:1.2,
+      alignment:ov.alignment||defAlign,
+      offsetX:(typeof pos.offsetX==='number'&&isFinite(pos.offsetX))?pos.offsetX:0,
+      offsetY:(typeof pos.offsetY==='number'&&isFinite(pos.offsetY))?pos.offsetY:0
+    };
+  }
+
+  function _applyTextStyle(st){
+    x.fillStyle=st.color;
+    const stylePart=st.fontStyle&&st.fontStyle!=='normal'?st.fontStyle+' ':'';
+    const weightPart=st.fontWeight&&st.fontWeight!=='normal'?st.fontWeight+' ':'';
+    x.font=stylePart+weightPart+st.fontSize+'px '+st.fontFamily;
+    try{ x.letterSpacing=st.letterSpacing+'px'; }catch(e){}
+    x.textAlign=st.alignment;
+    x.globalAlpha=st.opacity;
+  }
+
   function _drawStoryText(s,theme,overrides){
     if(!s.storyBeat) return null;
     const ov=overrides['story-text']||{};
-    const size=ov.fontSize||theme.storyText.size;
-    const color=ov.color||theme.storyText.color;
-    const align=ov.alignment||'left';
-    const font=theme.storyText.font;
-    x.fillStyle=color;
-    x.font=size+'px '+font;
-    x.textAlign=align;
+    const st=_resolveTextStyle(ov,theme.storyText.size,theme.storyText.font,theme.storyText.color,'left');
+    x.save();
+    _applyTextStyle(st);
     let drawX=60;
-    if(align==='center') drawX=W/2;
-    else if(align==='right') drawX=W-60;
-    x.fillText(s.storyBeat,drawX,100);
-    const b=_bboxForAnchored(s.storyBeat,drawX,100,align,size);
-    return Object.assign({id:'story-text',label:'Story Text'},b);
+    if(st.alignment==='center') drawX=W/2;
+    else if(st.alignment==='right') drawX=W-60;
+    drawX+=st.offsetX;
+    const drawY=100+st.offsetY;
+    x.fillText(s.storyBeat,drawX,drawY);
+    const w=x.measureText(s.storyBeat).width;
+    x.restore();
+    let bx=drawX;
+    if(st.alignment==='center') bx=drawX-w/2;
+    else if(st.alignment==='right') bx=drawX-w;
+    return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8};
   }
 
   // Inner image area inside the panel — 20px breathing room on all sides so
@@ -171,15 +224,18 @@ const SlideRenderer=(()=>{
     else if(pos==='bottom-left'){ hx=60; hy=H-30; defaultAlign='left'; }
     else if(pos==='bottom-right'){ hx=W-60; hy=H-30; defaultAlign='right'; }
     else { hx=W-60; hy=60; defaultAlign='right'; }
-    const size=ov.fontSize||theme.watermark.size;
-    const color=ov.color||theme.watermark.color;
-    const align=ov.alignment||defaultAlign;
-    x.fillStyle=color;
-    x.font=size+'px '+theme.watermark.font;
-    x.textAlign=align;
+    const st=_resolveTextStyle(ov,theme.watermark.size,theme.watermark.font,theme.watermark.color,defaultAlign);
+    x.save();
+    _applyTextStyle(st);
+    hx+=st.offsetX;
+    hy+=st.offsetY;
     x.fillText('@vihuplanet',hx,hy);
-    const b=_bboxForAnchored('@vihuplanet',hx,hy,align,size);
-    return Object.assign({id:'handle',label:'Handle'},b);
+    const w=x.measureText('@vihuplanet').width;
+    x.restore();
+    let bx=hx;
+    if(st.alignment==='center') bx=hx-w/2;
+    else if(st.alignment==='right') bx=hx-w;
+    return {id:'handle',label:'Handle',bx:bx,by:hy-st.fontSize,bw:w,bh:st.fontSize+8};
   }
 
   // --- Panel styles ---
@@ -231,30 +287,29 @@ const SlideRenderer=(()=>{
     let defaultSize=theme.footerText.size;
     if(opts.footerStyle==='modern') defaultSize=Math.round(defaultSize*1.1);
     else if(opts.footerStyle==='minimal') defaultSize=Math.round(defaultSize*0.75);
-    const size=ov.fontSize||defaultSize;
-    const color=ov.color||theme.footerText.color;
-    x.fillStyle=color;
-    x.font=size+'px '+theme.footerText.font;
     const pos=opts.bookTitlePosition||'bottom-left';
     let anchorX, defaultAlign;
     if(pos==='bottom-center'){ anchorX=W/2; defaultAlign='center'; }
     else if(pos==='bottom-right'){ anchorX=W-60; defaultAlign='right'; }
     else { anchorX=320; defaultAlign='left'; }
-    const align=ov.alignment||defaultAlign;
-    x.textAlign=align;
-    x.fillText(bookTitle,anchorX,1285);
-    const b=_bboxForAnchored(bookTitle,anchorX,1285,align,size);
-    return Object.assign({id:'footer',label:'Footer'},b);
+    const st=_resolveTextStyle(ov,defaultSize,theme.footerText.font,theme.footerText.color,defaultAlign);
+    x.save();
+    _applyTextStyle(st);
+    anchorX+=st.offsetX;
+    const anchorY=1285+st.offsetY;
+    x.fillText(bookTitle,anchorX,anchorY);
+    const w=x.measureText(bookTitle).width;
+    x.restore();
+    let bx=anchorX;
+    if(st.alignment==='center') bx=anchorX-w/2;
+    else if(st.alignment==='right') bx=anchorX-w;
+    return {id:'footer',label:'Footer',bx:bx,by:anchorY-st.fontSize,bw:w,bh:st.fontSize+8};
   }
 
   // --- Page number ---
   function _drawPageNumber(theme,opts,page,total,overrides){
     if(opts.pageNumber==='hidden') return null;
     const ov=(overrides && overrides['page-number'])||{};
-    const size=ov.fontSize||theme.footerText.size;
-    const color=ov.color||theme.footerText.color;
-    x.fillStyle=color;
-    x.font=size+'px '+theme.footerText.font;
     const label=page+' / '+total;
     let anchorX, anchorY, defaultAlign;
     if(opts.pageNumber==='bottom-center'){
@@ -262,11 +317,18 @@ const SlideRenderer=(()=>{
     }else{
       anchorX=900; anchorY=1285; defaultAlign='left';
     }
-    const align=ov.alignment||defaultAlign;
-    x.textAlign=align;
+    const st=_resolveTextStyle(ov,theme.footerText.size,theme.footerText.font,theme.footerText.color,defaultAlign);
+    x.save();
+    _applyTextStyle(st);
+    anchorX+=st.offsetX;
+    anchorY+=st.offsetY;
     x.fillText(label,anchorX,anchorY);
-    const b=_bboxForAnchored(label,anchorX,anchorY,align,size);
-    return Object.assign({id:'page-number',label:'Page Number'},b);
+    const w=x.measureText(label).width;
+    x.restore();
+    let bx=anchorX;
+    if(st.alignment==='center') bx=anchorX-w/2;
+    else if(st.alignment==='right') bx=anchorX-w;
+    return {id:'page-number',label:'Page Number',bx:bx,by:anchorY-st.fontSize,bw:w,bh:st.fontSize+8};
   }
 
   // --- Decorations ---

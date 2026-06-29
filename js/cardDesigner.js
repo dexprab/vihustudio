@@ -220,15 +220,39 @@ const CardDesigner=(function(){
     if(reset){ reset.disabled=!hasImage; }
   }
 
-  // --- Text section (Sprint 4.3) -----------------------------------------
+  // --- Text section (Sprint 4.3 + 4.4) -----------------------------------
   // Overrides live at slide.metadata.cardOverrides.textElements[id] and ride
   // through the existing metadata serialization — no project format change.
+  // Sprint 4.4 adds: fontFamily, fontWeight, fontStyle, opacity,
+  // letterSpacing, lineHeight, and a nested position {offsetX, offsetY}.
   const TEXT_ELEMENT_LABELS={
     'story-text':'Story Text',
     'footer':'Footer',
     'page-number':'Page Number',
     'handle':'Handle'
   };
+
+  const FONT_FAMILY_OPTIONS=[
+    {value:'',label:'Theme Default'},
+    {value:'Georgia, serif',label:'Georgia'},
+    {value:'"Times New Roman", Times, serif',label:'Times'},
+    {value:'Arial, Helvetica, sans-serif',label:'Arial'},
+    {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
+    {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
+    {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
+    {value:'"Courier New", Courier, monospace',label:'Courier'}
+  ];
+  const FONT_WEIGHT_OPTIONS=[
+    {value:'',label:'Theme Default'},
+    {value:'300',label:'Light'},
+    {value:'400',label:'Regular'},
+    {value:'500',label:'Medium'},
+    {value:'600',label:'Semibold'},
+    {value:'700',label:'Bold'},
+    {value:'900',label:'Black'}
+  ];
+  // Typography keys (everything except position) — used for Reset Typography.
+  const TYPOGRAPHY_KEYS=['fontFamily','fontSize','fontWeight','fontStyle','color','opacity','letterSpacing','lineHeight','alignment'];
 
   function _ensureTextOverrides(slide){
     if(!slide) return null;
@@ -270,7 +294,42 @@ const CardDesigner=(function(){
     _commitText();
   }
 
-  function _resetTextOverride(){
+  // Removes a single property — Sprint 4.4 "Reset Property". Empty string
+  // selection in <select> dropdowns funnels through this so picking
+  // "Theme Default" actually removes the override.
+  function _clearTextProperty(key){
+    const slide=_currentSlide();
+    const id=_selectedTextId();
+    if(!slide||!id) return;
+    const map=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.textElements;
+    if(!map||!map[id]) return;
+    delete map[id][key];
+    if(Object.keys(map[id]).length===0) delete map[id];
+    _commitText();
+  }
+
+  // Sprint 4.4 reset actions.
+  function _resetTypography(){
+    const slide=_currentSlide();
+    const id=_selectedTextId();
+    if(!slide||!id) return;
+    const map=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.textElements;
+    if(!map||!map[id]) return;
+    TYPOGRAPHY_KEYS.forEach(function(k){ delete map[id][k]; });
+    if(Object.keys(map[id]).length===0) delete map[id];
+    _commitText();
+  }
+  function _resetPosition(){
+    const slide=_currentSlide();
+    const id=_selectedTextId();
+    if(!slide||!id) return;
+    const map=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.textElements;
+    if(!map||!map[id]) return;
+    delete map[id].position;
+    if(Object.keys(map[id]).length===0) delete map[id];
+    _commitText();
+  }
+  function _resetToTheme(){
     const slide=_currentSlide();
     const id=_selectedTextId();
     if(!slide||!id) return;
@@ -278,6 +337,31 @@ const CardDesigner=(function(){
       delete slide.metadata.cardOverrides.textElements[id];
     }
     _commitText();
+  }
+
+  function _makeSliderRow(parent,opts){
+    // opts: {labelText, valueClass, sliderClass, min, max, step, onInput, format}
+    const row=document.createElement('div');
+    row.className='designer-row';
+    const lbl=document.createElement('div');
+    lbl.className='designer-row-label text-slider-label';
+    const title=document.createElement('span');
+    title.textContent=opts.labelText;
+    lbl.appendChild(title);
+    const val=document.createElement('span');
+    val.className=opts.valueClass;
+    val.textContent='—';
+    lbl.appendChild(val);
+    row.appendChild(lbl);
+    const slider=document.createElement('input');
+    slider.type='range';
+    slider.min=String(opts.min);
+    slider.max=String(opts.max);
+    slider.step=String(opts.step);
+    slider.className=opts.sliderClass;
+    slider.addEventListener('input',function(){ opts.onInput(parseFloat(slider.value)); });
+    row.appendChild(slider);
+    parent.appendChild(row);
   }
 
   function _buildTextControls(body){
@@ -294,29 +378,104 @@ const CardDesigner=(function(){
     selectedLabel.textContent='Selected: —';
     editor.appendChild(selectedLabel);
 
+    // --- Position group --------------------------------------------------
+    const posHdr=document.createElement('div');
+    posHdr.className='designer-sublabel';
+    posHdr.textContent='Position';
+    editor.appendChild(posHdr);
+    const posRow=document.createElement('div');
+    posRow.className='text-position-row';
+    posRow.innerHTML='<span>X <span class="text-pos-x">0</span>px</span><span>Y <span class="text-pos-y">0</span>px</span>';
+    editor.appendChild(posRow);
+    const posHint=document.createElement('p');
+    posHint.className='placeholder text-pos-hint';
+    posHint.textContent='Drag text on canvas, or use arrow keys (Shift = 10×).';
+    editor.appendChild(posHint);
+    const resetPosBtn=document.createElement('button');
+    resetPosBtn.type='button';
+    resetPosBtn.className='text-reset-pos-btn text-small-btn';
+    resetPosBtn.textContent='↺ Reset Position';
+    resetPosBtn.addEventListener('click',_resetPosition);
+    editor.appendChild(resetPosBtn);
+
+    // --- Typography group ------------------------------------------------
+    const typoHdr=document.createElement('div');
+    typoHdr.className='designer-sublabel';
+    typoHdr.textContent='Typography';
+    editor.appendChild(typoHdr);
+
+    // Font Family
+    const familyRow=document.createElement('div');
+    familyRow.className='designer-row';
+    const familyLabel=document.createElement('div');
+    familyLabel.className='designer-row-label';
+    familyLabel.textContent='Font Family';
+    familyRow.appendChild(familyLabel);
+    const familySel=document.createElement('select');
+    familySel.className='text-family-select';
+    FONT_FAMILY_OPTIONS.forEach(function(o){
+      const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; familySel.appendChild(opt);
+    });
+    familySel.addEventListener('change',function(){
+      if(familySel.value==='') _clearTextProperty('fontFamily');
+      else _setTextOverride('fontFamily',familySel.value);
+    });
+    familyRow.appendChild(familySel);
+    editor.appendChild(familyRow);
+
     // Font Size
-    const sizeRow=document.createElement('div');
-    sizeRow.className='designer-row';
-    const sizeLabel=document.createElement('div');
-    sizeLabel.className='designer-row-label text-size-label';
-    const sizeTitle=document.createElement('span');
-    sizeTitle.textContent='Font Size';
-    sizeLabel.appendChild(sizeTitle);
-    const sizeValue=document.createElement('span');
-    sizeValue.className='text-size-value';
-    sizeValue.textContent='—';
-    sizeLabel.appendChild(sizeValue);
-    sizeRow.appendChild(sizeLabel);
-    const sizeSlider=document.createElement('input');
-    sizeSlider.type='range';
-    sizeSlider.min='12';
-    sizeSlider.max='120';
-    sizeSlider.step='1';
-    sizeSlider.value='56';
-    sizeSlider.className='text-size-slider';
-    sizeSlider.addEventListener('input',function(){ _setTextOverride('fontSize',parseInt(sizeSlider.value,10)); });
-    sizeRow.appendChild(sizeSlider);
-    editor.appendChild(sizeRow);
+    _makeSliderRow(editor,{
+      labelText:'Font Size',valueClass:'text-size-value',sliderClass:'text-size-slider',
+      min:12,max:120,step:1,
+      onInput:function(v){ _setTextOverride('fontSize',Math.round(v)); }
+    });
+
+    // Font Weight
+    const weightRow=document.createElement('div');
+    weightRow.className='designer-row';
+    const weightLabel=document.createElement('div');
+    weightLabel.className='designer-row-label';
+    weightLabel.textContent='Weight';
+    weightRow.appendChild(weightLabel);
+    const weightSel=document.createElement('select');
+    weightSel.className='text-weight-select';
+    FONT_WEIGHT_OPTIONS.forEach(function(o){
+      const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; weightSel.appendChild(opt);
+    });
+    weightSel.addEventListener('change',function(){
+      if(weightSel.value==='') _clearTextProperty('fontWeight');
+      else _setTextOverride('fontWeight',weightSel.value);
+    });
+    weightRow.appendChild(weightSel);
+    editor.appendChild(weightRow);
+
+    // Font Style (Normal / Italic icon cards)
+    const styleRow=document.createElement('div');
+    styleRow.className='designer-row';
+    const styleLabel=document.createElement('div');
+    styleLabel.className='designer-row-label';
+    styleLabel.textContent='Style';
+    styleRow.appendChild(styleLabel);
+    const styleIcons=document.createElement('div');
+    styleIcons.className='icon-row text-style-row';
+    [['normal','Normal','R'],['italic','Italic','I']].forEach(function(t){
+      const id=t[0], name=t[1], glyph=t[2];
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card text-style-btn';
+      btn.setAttribute('data-style',id);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span');
+      g.className='text-style-glyph text-style-glyph-'+id;
+      g.textContent=glyph;
+      pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=name; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _setTextOverride('fontStyle',id); });
+      styleIcons.appendChild(btn);
+    });
+    styleRow.appendChild(styleIcons);
+    editor.appendChild(styleRow);
 
     // Color
     const colorRow=document.createElement('div');
@@ -332,6 +491,27 @@ const CardDesigner=(function(){
     colorInput.addEventListener('input',function(){ _setTextOverride('color',colorInput.value); });
     colorRow.appendChild(colorInput);
     editor.appendChild(colorRow);
+
+    // Opacity
+    _makeSliderRow(editor,{
+      labelText:'Opacity',valueClass:'text-opacity-value',sliderClass:'text-opacity-slider',
+      min:0,max:1,step:0.01,
+      onInput:function(v){ _setTextOverride('opacity',Math.round(v*100)/100); }
+    });
+
+    // Letter Spacing
+    _makeSliderRow(editor,{
+      labelText:'Letter Spacing',valueClass:'text-letterspacing-value',sliderClass:'text-letterspacing-slider',
+      min:-5,max:20,step:0.5,
+      onInput:function(v){ _setTextOverride('letterSpacing',v); }
+    });
+
+    // Line Height
+    _makeSliderRow(editor,{
+      labelText:'Line Height',valueClass:'text-lineheight-value',sliderClass:'text-lineheight-slider',
+      min:0.8,max:2.5,step:0.05,
+      onInput:function(v){ _setTextOverride('lineHeight',Math.round(v*100)/100); }
+    });
 
     // Alignment
     const alignRow=document.createElement('div');
@@ -363,16 +543,22 @@ const CardDesigner=(function(){
     alignRow.appendChild(alignIcons);
     editor.appendChild(alignRow);
 
-    // Reset
-    const resetRow=document.createElement('div');
-    resetRow.className='designer-row';
-    const resetBtn=document.createElement('button');
-    resetBtn.type='button';
-    resetBtn.className='text-reset-btn';
-    resetBtn.textContent='↺ Reset to Theme Default';
-    resetBtn.addEventListener('click',_resetTextOverride);
-    resetRow.appendChild(resetBtn);
-    editor.appendChild(resetRow);
+    // --- Reset actions ---------------------------------------------------
+    const resetGroup=document.createElement('div');
+    resetGroup.className='text-reset-actions';
+    const resetTypoBtn=document.createElement('button');
+    resetTypoBtn.type='button';
+    resetTypoBtn.className='text-reset-typo-btn text-small-btn';
+    resetTypoBtn.textContent='↺ Reset Typography';
+    resetTypoBtn.addEventListener('click',_resetTypography);
+    resetGroup.appendChild(resetTypoBtn);
+    const resetAllBtn=document.createElement('button');
+    resetAllBtn.type='button';
+    resetAllBtn.className='text-reset-btn';
+    resetAllBtn.textContent='↺ Reset to Theme';
+    resetAllBtn.addEventListener('click',_resetToTheme);
+    resetGroup.appendChild(resetAllBtn);
+    editor.appendChild(resetGroup);
 
     body.appendChild(editor);
   }
@@ -399,15 +585,62 @@ const CardDesigner=(function(){
     const labelEl=mountedRoot.querySelector('.text-selected-label');
     if(labelEl) labelEl.textContent='Selected: '+(TEXT_ELEMENT_LABELS[id]||id);
 
+    // Position readout
+    const pos=ov.position||{};
+    const px=Math.round(pos.offsetX||0);
+    const py=Math.round(pos.offsetY||0);
+    const xEl=mountedRoot.querySelector('.text-pos-x');
+    const yEl=mountedRoot.querySelector('.text-pos-y');
+    if(xEl) xEl.textContent=String(px);
+    if(yEl) yEl.textContent=String(py);
+
+    // Font Family
+    const familySel=mountedRoot.querySelector('.text-family-select');
+    if(familySel) familySel.value=ov.fontFamily||'';
+
+    // Font Size
     const sizeSlider=mountedRoot.querySelector('.text-size-slider');
     const sizeValue=mountedRoot.querySelector('.text-size-value');
     const effSize=ov.fontSize||def.fontSize;
     if(sizeSlider) sizeSlider.value=String(effSize);
     if(sizeValue) sizeValue.textContent=effSize+'px';
 
+    // Font Weight
+    const weightSel=mountedRoot.querySelector('.text-weight-select');
+    if(weightSel) weightSel.value=ov.fontWeight||'';
+
+    // Font Style
+    const effStyle=ov.fontStyle||def.fontStyle||'normal';
+    mountedRoot.querySelectorAll('.text-style-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-style')===effStyle);
+    });
+
+    // Color
     const colorInput=mountedRoot.querySelector('.text-color-input');
     if(colorInput) colorInput.value=_normalizeColor(ov.color||def.color);
 
+    // Opacity
+    const opSlider=mountedRoot.querySelector('.text-opacity-slider');
+    const opValue=mountedRoot.querySelector('.text-opacity-value');
+    const effOpacity=(typeof ov.opacity==='number')?ov.opacity:(def.opacity!==undefined?def.opacity:1);
+    if(opSlider) opSlider.value=String(effOpacity);
+    if(opValue) opValue.textContent=Math.round(effOpacity*100)+'%';
+
+    // Letter Spacing
+    const lsSlider=mountedRoot.querySelector('.text-letterspacing-slider');
+    const lsValue=mountedRoot.querySelector('.text-letterspacing-value');
+    const effLS=(typeof ov.letterSpacing==='number')?ov.letterSpacing:(def.letterSpacing||0);
+    if(lsSlider) lsSlider.value=String(effLS);
+    if(lsValue) lsValue.textContent=effLS+'px';
+
+    // Line Height
+    const lhSlider=mountedRoot.querySelector('.text-lineheight-slider');
+    const lhValue=mountedRoot.querySelector('.text-lineheight-value');
+    const effLH=(typeof ov.lineHeight==='number')?ov.lineHeight:(def.lineHeight||1.2);
+    if(lhSlider) lhSlider.value=String(effLH);
+    if(lhValue) lhValue.textContent=effLH.toFixed(2);
+
+    // Alignment
     const effAlign=ov.alignment||def.alignment||'left';
     mountedRoot.querySelectorAll('.text-align-btn').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-align')===effAlign);

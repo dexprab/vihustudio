@@ -719,6 +719,128 @@ button:active{
   background:rgba(255,203,69,0.06);
 }
 
+/* Sprint 4.4 — expanded Text Designer controls */
+.text-slider-label{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+}
+
+.text-position-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+  color:var(--text);
+  margin-bottom:8px;
+}
+.text-position-row .text-pos-x,
+.text-position-row .text-pos-y{
+  color:var(--gold);
+  font-weight:bold;
+}
+
+.text-pos-hint{
+  margin:0 0 10px 0;
+  font-size:10px;
+  color:var(--text-tertiary);
+  font-style:italic;
+  line-height:1.4;
+}
+
+.text-family-select,
+.text-weight-select{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  background:var(--bg);
+  color:var(--text);
+  font-size:12px;
+  cursor:pointer;
+  height:auto;
+  margin:0;
+}
+
+.text-family-select:focus,
+.text-weight-select:focus{
+  outline:none;
+  border-color:var(--gold);
+}
+
+.text-style-glyph{
+  display:block;
+  width:18px;
+  height:18px;
+  text-align:center;
+  line-height:18px;
+  font-size:13px;
+  font-weight:bold;
+  color:var(--gold);
+  font-family:Georgia, serif;
+}
+.text-style-glyph-italic{
+  font-style:italic;
+}
+
+.text-opacity-slider,
+.text-letterspacing-slider,
+.text-lineheight-slider{
+  width:100%;
+  height:auto;
+  margin:0;
+  padding:0;
+  background:transparent;
+  accent-color:var(--gold);
+  cursor:pointer;
+}
+
+.text-opacity-value,
+.text-letterspacing-value,
+.text-lineheight-value{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+
+.text-small-btn{
+  width:100%;
+  padding:6px 10px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  margin:0 0 12px 0;
+  transition:border-color 0.2s, color 0.2s;
+}
+.text-small-btn:hover{
+  border-color:var(--gold);
+  color:var(--text);
+}
+
+.text-reset-actions{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+}
+.text-reset-actions .text-reset-btn{
+  margin:0;
+}
+
+#previewCanvas.canvas-text-dragging{ cursor:move; }
+
 /* Development footer */
 .dev-footer{
   position:fixed;

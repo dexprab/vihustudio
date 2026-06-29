@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(card-designer): Sprint 4.4 Text Designer — Position & Typography (build 0026, 2026-06-28)
+  - Text Position: any selected text can be dragged directly on the canvas (3 px threshold so a tap stays a selection); arrow keys nudge by 1 px, Shift + arrow by 10 px; alignment guides (canvas centerlines) appear while dragging and brighten when the text center crosses the snap zone (18 px). Stored as `slide.metadata.cardOverrides.textElements[id].position = {offsetX, offsetY}` relative to the theme position. Reset Position removes the `position` sub-object.
+  - Typography: new live controls for Font Family (dropdown including Theme Default), Font Size (slider 12–120 px), Font Weight (Light → Black dropdown), Font Style (Normal / Italic icon cards), Color, Opacity (0–100 % slider), Letter Spacing (–5 → +20 px slider), Line Height (0.8 → 2.5 slider), Text Alignment (Left / Center / Right icon cards). Each writes only the changed property into the override entry.
+  - Override precedence enforced in `SlideRenderer._resolveTextStyle()`: Card Override → Theme → System Default. Removing an override (via "Theme Default" dropdown options or any reset action) immediately reveals the Theme value at the next render — never copies values forward.
+  - Reset actions: **Reset Property** via picking "Theme Default" in family/weight dropdowns (drops just that key); **Reset Typography** wipes every typography key but keeps position; **Reset Position** wipes the position only; **Reset to Theme** removes the whole element entry. Empty override entries are auto-pruned.
+  - SlideRenderer extended (`_applyTextStyle`, drag-guide drawing, `dragActiveId` payload key); all four text drawing functions (`_drawStoryText`, `_drawHandle`, `_drawFooter`, `_drawPageNumber`) now consume the full override set and honor position offsets. Bbox math uses the live measured width so hit-testing matches the override-driven on-screen footprint.
+  - app.js: text drag state coexists with image pan (text hit-test runs first, panel-rect pan as fallback); `_ensureTextPosition()` lazily initializes the path; arrow-key handler is gated on `_selectedTextElement` and ignored when an input/textarea/select is focused.
+  - Thumbnails reflect typography + position overrides (the existing ThumbnailEngine forwards `cardOverrides`); no project format change, no Theme Designer change, no ThemeEngine change, no export change.
 - feat(card-designer): Sprint 4.3 Text Designer — Selection & Live Editing (build 0025, 2026-06-28)
   - Canvas-first text selection: clicking any rendered text on the preview now selects it (Story Text, Footer, Page Number, Handle). Selection draws a dashed gold outline around the actual text bounding box.
   - One element at a time: clicking another text element switches selection; clicking outside any text clears it.

@@ -43,35 +43,50 @@ if(typeof ThemeEngine!=='undefined'){
 // the active slide. Sprint 4.3 adds Text selection + override controls via
 // getSelectedTextElement / setSelectedTextElement / getTextDefaults hooks.
 let _selectedTextElement=null;
+let _textDragState=null; // {elementId, startClientX, startClientY, sx, sy, baseOffX, baseOffY, moved}
+const _TEXT_BASE_DEFAULTS={fontWeight:'normal',fontStyle:'normal',opacity:1,letterSpacing:0,lineHeight:1.2};
+
 function _getTextDefaults(elementId){
   const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
   const opts=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
   if(!theme||!opts){
-    return {fontSize:24,color:'#FFFFFF',alignment:'left'};
+    return Object.assign({fontSize:24,fontFamily:'Arial',color:'#FFFFFF',alignment:'left'},_TEXT_BASE_DEFAULTS);
   }
   switch(elementId){
     case 'story-text':
-      return {fontSize:theme.storyText.size,color:theme.storyText.color,alignment:'left'};
+      return Object.assign({fontSize:theme.storyText.size,fontFamily:theme.storyText.font,color:theme.storyText.color,alignment:'left'},_TEXT_BASE_DEFAULTS);
     case 'footer': {
       let size=theme.footerText.size;
       if(opts.footerStyle==='modern') size=Math.round(size*1.1);
       else if(opts.footerStyle==='minimal') size=Math.round(size*0.75);
       const pos=opts.bookTitlePosition||'bottom-left';
       const align=pos==='bottom-center'?'center':(pos==='bottom-right'?'right':'left');
-      return {fontSize:size,color:theme.footerText.color,alignment:align};
+      return Object.assign({fontSize:size,fontFamily:theme.footerText.font,color:theme.footerText.color,alignment:align},_TEXT_BASE_DEFAULTS);
     }
     case 'page-number': {
       const align=opts.pageNumber==='bottom-center'?'center':'left';
-      return {fontSize:theme.footerText.size,color:theme.footerText.color,alignment:align};
+      return Object.assign({fontSize:theme.footerText.size,fontFamily:theme.footerText.font,color:theme.footerText.color,alignment:align},_TEXT_BASE_DEFAULTS);
     }
     case 'handle': {
       const pos=opts.handlePosition||'top-right';
       const align=(pos==='top-left'||pos==='bottom-left')?'left':'right';
-      return {fontSize:theme.watermark.size,color:theme.watermark.color,alignment:align};
+      return Object.assign({fontSize:theme.watermark.size,fontFamily:theme.watermark.font,color:theme.watermark.color,alignment:align},_TEXT_BASE_DEFAULTS);
     }
     default:
-      return {fontSize:24,color:'#FFFFFF',alignment:'left'};
+      return Object.assign({fontSize:24,fontFamily:'Arial',color:'#FFFFFF',alignment:'left'},_TEXT_BASE_DEFAULTS);
   }
+}
+
+function _ensureTextPosition(slide,id){
+  if(!slide.metadata) slide.metadata={};
+  if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+  if(!slide.metadata.cardOverrides.textElements) slide.metadata.cardOverrides.textElements={};
+  if(!slide.metadata.cardOverrides.textElements[id]) slide.metadata.cardOverrides.textElements[id]={};
+  const entry=slide.metadata.cardOverrides.textElements[id];
+  if(!entry.position) entry.position={offsetX:0,offsetY:0};
+  if(typeof entry.position.offsetX!=='number') entry.position.offsetX=0;
+  if(typeof entry.position.offsetY!=='number') entry.position.offsetY=0;
+  return entry.position;
 }
 
 if(typeof CardDesigner!=='undefined'){
@@ -331,7 +346,8 @@ function draw(){
  const themeOptions=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
  const imageView=(s.metadata && s.metadata.imageView) || null;
  const overrides=(s.metadata && s.metadata.cardOverrides) || null;
- SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement});
+ const dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
+ SlideRenderer.render({image:s.image,storyBeat:s.storyBeat,bookTitle:title.value,page:s.page,totalPages:s.totalPages,theme:theme,themeOptions:themeOptions,imageView:imageView,overrides:overrides,selectedTextElement:_selectedTextElement,dragActiveId:dragActiveId});
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
@@ -464,15 +480,28 @@ function _hitTestText(canvasX,canvasY){
   return null;
 }
 
+const TEXT_DRAG_THRESHOLD=3;
+
 previewCanvas.addEventListener('mousedown',function(e){
   const s=AppState.slides[AppState.currentSlide];
   if(!s) return;
   const c=_canvasCoords(e);
 
   // Sprint 4.3 — text selection takes priority over image pan.
+  // Sprint 4.4 — same gesture also primes a drag; movement past
+  // TEXT_DRAG_THRESHOLD activates it.
   const hit=_hitTestText(c.x,c.y);
   if(hit){
     _setSelectedTextElement(hit.id);
+    const ovMap=(s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.textElements)||{};
+    const pos=(ovMap[hit.id] && ovMap[hit.id].position)||{};
+    _textDragState={
+      elementId:hit.id,
+      startClientX:e.clientX,startClientY:e.clientY,
+      sx:c.sx,sy:c.sy,
+      baseOffX:pos.offsetX||0,baseOffY:pos.offsetY||0,
+      moved:false
+    };
     e.preventDefault();
     return;
   }
@@ -495,19 +524,58 @@ previewCanvas.addEventListener('mousedown',function(e){
 });
 
 document.addEventListener('mousemove',function(e){
+  // Text drag (Sprint 4.4)
+  if(_textDragState){
+    const s=AppState.slides[AppState.currentSlide];
+    if(!s) return;
+    const dx=(e.clientX-_textDragState.startClientX)*_textDragState.sx;
+    const dy=(e.clientY-_textDragState.startClientY)*_textDragState.sy;
+    if(!_textDragState.moved){
+      if(Math.abs(dx)+Math.abs(dy)<TEXT_DRAG_THRESHOLD) return;
+      _textDragState.moved=true;
+      previewCanvas.classList.add('canvas-text-dragging');
+    }
+    const pos=_ensureTextPosition(s,_textDragState.elementId);
+    pos.offsetX=_textDragState.baseOffX+dx;
+    pos.offsetY=_textDragState.baseOffY+dy;
+    delete s.thumbnail;
+    draw();
+    if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(err){} }
+    return;
+  }
+
+  // Image pan (Sprint 4.2)
   if(!_panState) return;
-  const s=AppState.slides[AppState.currentSlide];
-  if(!s) return;
-  if(!s.metadata||!s.metadata.imageView) return;
-  const dx=(e.clientX-_panState.startX)*_panState.sx;
-  const dy=(e.clientY-_panState.startY)*_panState.sy;
-  s.metadata.imageView.offsetX=_panState.offX+dx;
-  s.metadata.imageView.offsetY=_panState.offY+dy;
-  delete s.thumbnail;
+  const s2=AppState.slides[AppState.currentSlide];
+  if(!s2) return;
+  if(!s2.metadata||!s2.metadata.imageView) return;
+  const dx2=(e.clientX-_panState.startX)*_panState.sx;
+  const dy2=(e.clientY-_panState.startY)*_panState.sy;
+  s2.metadata.imageView.offsetX=_panState.offX+dx2;
+  s2.metadata.imageView.offsetY=_panState.offY+dy2;
+  delete s2.thumbnail;
   draw();
 });
 
 document.addEventListener('mouseup',function(){
+  // Text drag end
+  if(_textDragState){
+    const wasMoved=_textDragState.moved;
+    _textDragState=null;
+    previewCanvas.classList.remove('canvas-text-dragging');
+    if(wasMoved){
+      markDirty();
+      const s=AppState.slides[AppState.currentSlide];
+      if(s && typeof ThumbnailEngine!=='undefined'){
+        try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
+      }
+      // Redraw without dragActiveId so guides disappear.
+      draw();
+    }
+    return;
+  }
+
+  // Image pan end
   if(!_panState) return;
   _panState=null;
   previewCanvas.classList.remove('canvas-panning');
@@ -517,6 +585,33 @@ document.addEventListener('mouseup',function(){
   const s=AppState.slides[AppState.currentSlide];
   if(s && typeof ThumbnailEngine!=='undefined'){
     try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
+  }
+});
+
+// Arrow-key nudge for selected text (Sprint 4.4) — 1px, Shift = 10px.
+// Skipped when the user is typing in an input/textarea/select so the
+// existing Story Beat / Page Number / Theme controls are unaffected.
+const ARROW_DELTAS={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+document.addEventListener('keydown',function(e){
+  if(!_selectedTextElement) return;
+  const active=document.activeElement;
+  if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA' || active.tagName==='SELECT')) return;
+  const d=ARROW_DELTAS[e.key];
+  if(!d) return;
+  e.preventDefault();
+  const step=e.shiftKey?10:1;
+  const s=AppState.slides[AppState.currentSlide];
+  if(!s) return;
+  const pos=_ensureTextPosition(s,_selectedTextElement);
+  pos.offsetX=(pos.offsetX||0)+d[0]*step;
+  pos.offsetY=(pos.offsetY||0)+d[1]*step;
+  delete s.thumbnail;
+  draw();
+  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(err){} }
+  markDirty();
+  // Regenerate thumbnail asynchronously
+  if(typeof ThumbnailEngine!=='undefined'){
+    try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(err){}
   }
 });
 
