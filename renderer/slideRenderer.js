@@ -65,6 +65,8 @@ const SlideRenderer=(()=>{
   // slide.metadata.cardOverrides.border (passed in via payload.overrides.border).
   // Returns null when no override is present so the legacy rendering path
   // stays byte-identical for projects that haven't touched the border.
+  // Sprint 6.5.1 — also carries the design id so per-design ornament
+  // drawing dispatches consistently.
   function _resolveBorder(s){
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
@@ -72,6 +74,7 @@ const SlideRenderer=(()=>{
     const line=b.line||{};
     const shadow=b.shadow||{};
     return {
+      design:b.design||null,
       padding:(typeof b.padding==='number')?b.padding:20,
       fill:b.fill||'page',
       cornerRadius:(typeof b.cornerRadius==='number')?b.cornerRadius:0,
@@ -95,6 +98,17 @@ const SlideRenderer=(()=>{
     }
   }
 
+  // Sprint 6.5.1 — per-design asymmetric padding. Polaroid grows the
+  // bottom by ~3× the side padding so the classic instant-photo frame
+  // reads at a glance. Every other design stays symmetric.
+  function _getDesignInsets(border){
+    const p=border.padding;
+    if(border.design==='polaroid'){
+      return {top:p, right:p, bottom:Math.round(p*2.8), left:p};
+    }
+    return {top:p, right:p, bottom:p, left:p};
+  }
+
   function _picturePath(rx,ry,rw,rh,radius){
     const r=Math.max(0,Math.min(radius||0,rw/2,rh/2));
     if(r===0){
@@ -111,6 +125,56 @@ const SlideRenderer=(()=>{
     x.closePath();
   }
 
+  // Cloud-shape path — six puffy lobes around the rect. Used by the
+  // Cloud Frame Design for both the frame fill and the image clip.
+  function _cloudPath(rx,ry,rw,rh){
+    const cx=rx+rw/2, cy=ry+rh/2;
+    const a=rw/2*0.95, b=rh/2*0.95;
+    x.beginPath();
+    // Top puffs
+    const lobeR=Math.min(rw,rh)*0.18;
+    const tops=[
+      [cx-rw*0.30, ry+lobeR*0.5, lobeR*1.05],
+      [cx-rw*0.05, ry+lobeR*0.20, lobeR*1.25],
+      [cx+rw*0.22, ry+lobeR*0.35, lobeR*1.10]
+    ];
+    // Side puffs
+    const sides=[
+      [rx+rw-lobeR*0.40, cy-rh*0.10, lobeR*1.10],
+      [rx+rw-lobeR*0.50, cy+rh*0.20, lobeR*1.00]
+    ];
+    // Bottom puffs
+    const bots=[
+      [cx+rw*0.20, ry+rh-lobeR*0.40, lobeR*1.10],
+      [cx-rw*0.10, ry+rh-lobeR*0.20, lobeR*1.25],
+      [cx-rw*0.30, ry+rh-lobeR*0.45, lobeR*0.95]
+    ];
+    // Left puffs
+    const lefts=[
+      [rx+lobeR*0.40, cy+rh*0.10, lobeR*1.10],
+      [rx+lobeR*0.50, cy-rh*0.20, lobeR*1.00]
+    ];
+    // Compose an ellipse roughly and then union with the lobes. Simplest:
+    // ellipse base + circle lobes on top.
+    x.ellipse(cx,cy,a*0.92,b*0.86,0,0,Math.PI*2);
+    [].concat(tops,sides,bots,lefts).forEach(function(p){
+      x.moveTo(p[0]+p[2],p[1]);
+      x.arc(p[0],p[1],p[2],0,Math.PI*2);
+    });
+    x.closePath();
+  }
+
+  // Sprint 6.5.1 — dispatch the fill path by design. For most designs the
+  // existing rounded-rect path is correct; Cloud swaps it for the cloud
+  // silhouette so the frame really IS cloud-shaped.
+  function _frameFillPath(rect,border){
+    if(border.design==='cloud'){
+      _cloudPath(rect.x,rect.y,rect.w,rect.h);
+      return;
+    }
+    _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+  }
+
   // Picture-frame fill (with optional drop shadow). Drawn under the image.
   function _drawPictureFrameFill(rect,border,theme){
     const fillColor=_resolveBorderFillColor(border,theme);
@@ -122,10 +186,169 @@ const SlideRenderer=(()=>{
       x.shadowColor='rgba(0,0,0,'+(0.20+border.shadowIntensity*0.5).toFixed(3)+')';
     }
     if(fillColor){
-      _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+      _frameFillPath(rect,border);
       x.fillStyle=fillColor;
       x.fill();
     }
+    x.restore();
+  }
+
+  // Sprint 6.5.1 — per-design ornament drawn after the image, under the
+  // stroke. This is what gives each Frame Design its visual identity
+  // (sparkles for Magic, grain for Wooden, ribbon corners for Ribbon, …).
+  function _drawPictureFrameOrnament(rect,border,theme){
+    if(!border.design) return;
+    switch(border.design){
+      case 'storybook': return _ornamentStorybook(rect);
+      case 'polaroid':  return _ornamentPolaroid(rect,border);
+      case 'ribbon':    return _ornamentRibbon(rect);
+      case 'wooden':    return _ornamentWooden(rect,border);
+      case 'magic':     return _ornamentMagic(rect);
+      case 'vintage':   return _ornamentVintage(rect,border,theme);
+      default: return;
+    }
+  }
+
+  function _ornamentStorybook(rect){
+    // Soft inner highlight — a thin lighter band just inside the top edge
+    // so the cream paper feels printed, not flat.
+    x.save();
+    x.strokeStyle='rgba(255,255,255,0.45)';
+    x.lineWidth=2;
+    const m=4;
+    x.beginPath();
+    x.moveTo(rect.x+m+10, rect.y+m+2);
+    x.lineTo(rect.x+rect.w-m-10, rect.y+m+2);
+    x.stroke();
+    x.restore();
+  }
+
+  function _ornamentPolaroid(rect,border){
+    // A faint caption baseline inside the wide bottom margin so the
+    // polaroid identity reads even without text.
+    x.save();
+    const insets=_getDesignInsets(border);
+    const captionY=rect.y+rect.h-insets.bottom/2;
+    x.strokeStyle='rgba(80,80,80,0.20)';
+    x.lineWidth=2;
+    x.beginPath();
+    x.moveTo(rect.x+rect.w*0.20, captionY);
+    x.lineTo(rect.x+rect.w*0.80, captionY);
+    x.stroke();
+    x.restore();
+  }
+
+  function _ornamentRibbon(rect){
+    // Gold ribbon corners — small triangle-fold accents at each of the
+    // four corners.
+    x.save();
+    x.fillStyle='#D4AF37';
+    const s=Math.min(rect.w,rect.h)*0.08;
+    const corners=[
+      [rect.x, rect.y, 1, 1],
+      [rect.x+rect.w, rect.y, -1, 1],
+      [rect.x, rect.y+rect.h, 1, -1],
+      [rect.x+rect.w, rect.y+rect.h, -1, -1]
+    ];
+    corners.forEach(function(c){
+      x.beginPath();
+      x.moveTo(c[0], c[1]);
+      x.lineTo(c[0]+s*c[2], c[1]);
+      x.lineTo(c[0], c[1]+s*c[3]);
+      x.closePath();
+      x.fill();
+    });
+    x.restore();
+  }
+
+  function _ornamentWooden(rect,border){
+    // Horizontal wood grain — translucent darker streaks restricted to
+    // the frame band (between the outer edge and the inner image rect)
+    // so the grain reads as wood, not blinds over the picture.
+    if(!border) return;
+    const insets=_getDesignInsets(border);
+    const innerRect={
+      x:rect.x+insets.left, y:rect.y+insets.top,
+      w:Math.max(1,rect.w-insets.left-insets.right),
+      h:Math.max(1,rect.h-insets.top-insets.bottom)
+    };
+    x.save();
+    // Compose a band-only clip path with even-odd: outer ring – inner shape.
+    x.beginPath();
+    _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+    const innerR=Math.max(0,(border.cornerRadius||0)-border.padding);
+    if(innerR>0){
+      _picturePath(innerRect.x,innerRect.y,innerRect.w,innerRect.h,innerR);
+    }else{
+      x.rect(innerRect.x,innerRect.y,innerRect.w,innerRect.h);
+    }
+    try{ x.clip('evenodd'); }catch(e){ x.clip(); }
+    x.strokeStyle='rgba(74,54,31,0.45)';
+    x.lineWidth=1.5;
+    const steps=18;
+    for(let i=1;i<steps;i++){
+      const t=i/steps;
+      const yT=rect.y+rect.h*t;
+      x.beginPath();
+      x.moveTo(rect.x-2, yT);
+      x.bezierCurveTo(
+        rect.x+rect.w*0.30, yT+(i%2?2:-2),
+        rect.x+rect.w*0.70, yT+(i%2?-2:2),
+        rect.x+rect.w+2, yT
+      );
+      x.stroke();
+    }
+    x.restore();
+  }
+
+  function _ornamentMagic(rect){
+    // Soft purple glow + sparkle dots. The glow is a stroked rounded rect
+    // a few px outside the frame; the sparkles are positioned around it.
+    x.save();
+    x.strokeStyle='rgba(168,124,245,0.55)';
+    x.lineWidth=8;
+    x.shadowColor='rgba(168,124,245,0.95)';
+    x.shadowBlur=22;
+    _picturePath(rect.x-3, rect.y-3, rect.w+6, rect.h+6, 24);
+    x.stroke();
+    x.shadowBlur=0;
+    // Sparkles
+    const sparkles=[
+      [rect.x+rect.w*0.05, rect.y-12, 6],
+      [rect.x+rect.w*0.30, rect.y-18, 5],
+      [rect.x+rect.w*0.70, rect.y-10, 7],
+      [rect.x+rect.w*0.95, rect.y+rect.h*0.30, 5],
+      [rect.x-12, rect.y+rect.h*0.60, 6],
+      [rect.x+rect.w*0.10, rect.y+rect.h+12, 5],
+      [rect.x+rect.w*0.55, rect.y+rect.h+18, 6],
+      [rect.x+rect.w*0.92, rect.y+rect.h+8, 4]
+    ];
+    x.fillStyle='#FFE17A';
+    sparkles.forEach(function(p){ _drawStar(p[0],p[1],p[2]); });
+    x.restore();
+  }
+
+  function _ornamentVintage(rect,border,theme){
+    // Worn / aged edges — a darker brown band along the inner edge of the
+    // frame fades toward the middle, and four corner spots imply age.
+    x.save();
+    const grad=x.createLinearGradient(rect.x,rect.y,rect.x,rect.y+rect.h);
+    grad.addColorStop(0,'rgba(86,52,18,0.35)');
+    grad.addColorStop(0.5,'rgba(86,52,18,0.0)');
+    grad.addColorStop(1,'rgba(86,52,18,0.35)');
+    x.strokeStyle=grad;
+    x.lineWidth=8;
+    _picturePath(rect.x+3, rect.y+3, rect.w-6, rect.h-6, Math.max(0,((border && border.cornerRadius)||0)-2));
+    x.stroke();
+    // Age spots
+    x.fillStyle='rgba(86,52,18,0.18)';
+    const spots=[
+      [rect.x+rect.w*0.05, rect.y+rect.h*0.05, 3],
+      [rect.x+rect.w*0.92, rect.y+rect.h*0.10, 4],
+      [rect.x+rect.w*0.10, rect.y+rect.h*0.90, 3.5],
+      [rect.x+rect.w*0.86, rect.y+rect.h*0.93, 4]
+    ];
+    spots.forEach(function(s){ x.beginPath(); x.arc(s[0],s[1],s[2],0,Math.PI*2); x.fill(); });
     x.restore();
   }
 
@@ -134,7 +357,7 @@ const SlideRenderer=(()=>{
   function _drawPictureFrameStroke(rect,border){
     if(!border.lineEnabled || !border.lineWidth) return;
     x.save();
-    _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
+    _frameFillPath(rect,border);
     x.lineWidth=border.lineWidth;
     x.strokeStyle=border.lineColor;
     x.stroke();
@@ -184,8 +407,11 @@ const SlideRenderer=(()=>{
         _drawImage(s,_border);
       }
       // Sprint 6.5 — Picture Border stroke sits above the image so it
-      // always reads as a crisp frame edge.
+      // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
+      // (sparkles, grain, ribbon corners, …) sits between image and
+      // stroke so the stroke can still cap it visually.
       if(_border){
+        _drawPictureFrameOrnament(_panelRect,_border,t);
         _drawPictureFrameStroke(_panelRect,_border);
       }
 
@@ -338,14 +564,18 @@ const SlideRenderer=(()=>{
       return;
     }
     // Sprint 6.5 — Picture Border applies to scene image holders too, so
-    // the same UI controls Story / Cover / Hook / End.
+    // the same UI controls Story / Cover / Hook / End. Sprint 6.5.1 —
+    // design dispatch + asymmetric insets + Cloud clip work identically
+    // here.
     const border=_resolveBorder(s);
     const outerRect={x:rx,y:ry,w:size.w,h:size.h};
+    const insets=border ? _getDesignInsets(border) : null;
     const pad=border ? border.padding : 0;
-    const innerRect={
-      x:rx+pad, y:ry+pad,
-      w:Math.max(1,size.w-pad*2), h:Math.max(1,size.h-pad*2)
-    };
+    const innerRect=border ? {
+      x:rx+insets.left, y:ry+insets.top,
+      w:Math.max(1,size.w-insets.left-insets.right),
+      h:Math.max(1,size.h-insets.top-insets.bottom)
+    } : {x:rx, y:ry, w:size.w, h:size.h};
     if(border){
       _drawPictureFrameFill(outerRect,border,_theme(s));
     }
@@ -355,12 +585,14 @@ const SlideRenderer=(()=>{
     const raw=s.imageView ? Object.assign({mode:seedMode},s.imageView) : {mode:seedMode};
     if(typeof ImageViewEngine!=='undefined'){
       if(border){
-        // Apply a concentric round-rect clip so the image follows the
-        // frame's curves, then hand off to the View Engine for the actual
-        // image draw.
+        // Apply a concentric round-rect (or cloud) clip so the image
+        // follows the frame's silhouette, then hand off to the View
+        // Engine for the actual image draw.
         const innerRadius=Math.max(0,(border.cornerRadius||0)-pad);
         x.save();
-        if(innerRadius>0){
+        if(border.design==='cloud'){
+          _cloudPath(innerRect.x,innerRect.y,innerRect.w,innerRect.h);
+        }else if(innerRadius>0){
           _picturePath(innerRect.x,innerRect.y,innerRect.w,innerRect.h,innerRadius);
         }else{
           x.beginPath();
@@ -383,6 +615,7 @@ const SlideRenderer=(()=>{
       x.drawImage(img,dx,dy,dw,dh);
     }
     if(border){
+      _drawPictureFrameOrnament(outerRect,border,_theme(s));
       _drawPictureFrameStroke(outerRect,border);
     }
     x.restore();
@@ -563,12 +796,16 @@ const SlideRenderer=(()=>{
   // Inner image area inside the panel. Sprint 6.5 — padding is normally
   // 20px (the legacy default) but the Picture Border slider can override
   // it; the renderer adapts so the image always fits inside the styled frame.
+  // Sprint 6.5.1 — designs can request asymmetric insets (Polaroid grows
+  // the bottom). The image rect is computed from those insets so the
+  // identity of the design reads in the layout.
   const DEFAULT_IMG_PAD=20;
 
   function _drawImage(s,border){
+    const insets=border ? _getDesignInsets(border) : {top:DEFAULT_IMG_PAD,right:DEFAULT_IMG_PAD,bottom:DEFAULT_IMG_PAD,left:DEFAULT_IMG_PAD};
     const pad=border ? border.padding : DEFAULT_IMG_PAD;
-    const IMG_X=PANEL_X+pad, IMG_Y=PANEL_Y+pad;
-    const IMG_W=Math.max(1,PANEL_W-pad*2), IMG_H=Math.max(1,PANEL_H-pad*2);
+    const IMG_X=PANEL_X+insets.left, IMG_Y=PANEL_Y+insets.top;
+    const IMG_W=Math.max(1,PANEL_W-insets.left-insets.right), IMG_H=Math.max(1,PANEL_H-insets.top-insets.bottom);
     const v=s.imageView||{};
     // Sprint 4.5 — crop / straighten / focal point / image adjustments.
     const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
@@ -633,9 +870,13 @@ const SlideRenderer=(()=>{
     x.save();
     // Sprint 6.5 — when a picture-border radius is set, the inner image
     // gets a concentric round-rect clip so the image's corners follow
-    // the frame's corners. Inner radius = max(0, R - padding).
+    // the frame's corners. Inner radius = max(0, R - padding). Sprint
+    // 6.5.1 — Cloud design clips the image to a cloud silhouette so the
+    // picture really IS cloud-shaped.
     const innerRadius=border ? Math.max(0,(border.cornerRadius||0)-pad) : 0;
-    if(innerRadius>0){
+    if(border && border.design==='cloud'){
+      _cloudPath(IMG_X,IMG_Y,IMG_W,IMG_H);
+    }else if(innerRadius>0){
       _picturePath(IMG_X,IMG_Y,IMG_W,IMG_H,innerRadius);
     }else{
       x.beginPath();
@@ -950,7 +1191,55 @@ const SlideRenderer=(()=>{
     };
   }
 
-  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius};
+  // Sprint 6.5.1 — Frame thumbnail helper. Renders a single Frame Design
+  // into a provided 2D context so the Card Designer's chip previews show
+  // the actual rendered Frame (not a CSS approximation). The function
+  // temporarily retargets the module-level `x` so existing draw helpers
+  // can be reused without duplication.
+  function drawFrameSwatch(targetCtx,rect,border,theme){
+    if(!targetCtx||!rect||!border) return;
+    const saved=x;
+    x=targetCtx;
+    try{
+      _drawPictureFrameFill(rect,border,theme||{panel:{color:'#FFFFFF'}});
+      // The "picture" inside a swatch is a soft placeholder block so
+      // shape / proportions read at a glance.
+      const insets=_getDesignInsets(border);
+      const inner={
+        x:rect.x+insets.left, y:rect.y+insets.top,
+        w:Math.max(1,rect.w-insets.left-insets.right),
+        h:Math.max(1,rect.h-insets.top-insets.bottom)
+      };
+      const innerRadius=Math.max(0,(border.cornerRadius||0)-border.padding);
+      targetCtx.save();
+      if(border.design==='cloud'){
+        _cloudPath(inner.x,inner.y,inner.w,inner.h);
+      }else if(innerRadius>0){
+        _picturePath(inner.x,inner.y,inner.w,inner.h,innerRadius);
+      }else{
+        targetCtx.beginPath();
+        targetCtx.rect(inner.x,inner.y,inner.w,inner.h);
+      }
+      targetCtx.clip();
+      const grad=targetCtx.createLinearGradient(inner.x,inner.y,inner.x,inner.y+inner.h);
+      grad.addColorStop(0,'#9FB0CB');
+      grad.addColorStop(1,'#3D5A82');
+      targetCtx.fillStyle=grad;
+      targetCtx.fillRect(inner.x,inner.y,inner.w,inner.h);
+      // Sun arc to hint a picture is inside
+      targetCtx.fillStyle='#FFD27A';
+      targetCtx.beginPath();
+      targetCtx.arc(inner.x+inner.w*0.70, inner.y+inner.h*0.30, Math.min(inner.w,inner.h)*0.12, 0, Math.PI*2);
+      targetCtx.fill();
+      targetCtx.restore();
+      _drawPictureFrameOrnament(rect,border,theme||{panel:{color:'#FFFFFF'}});
+      _drawPictureFrameStroke(rect,border);
+    } finally {
+      x=saved;
+    }
+  }
+
+  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -391,10 +391,81 @@ const CardDesigner=(function(){
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     // Deep-clone the preset's border config so future mutations don't
-    // leak across presets.
-    slide.metadata.cardOverrides.border=JSON.parse(JSON.stringify(preset.border));
+    // leak across presets. Sprint 6.5.1 — embed the design id inside the
+    // border object so the renderer can dispatch per-design ornament.
+    const cfg=JSON.parse(JSON.stringify(preset.border));
+    cfg.design=preset.id;
+    slide.metadata.cardOverrides.border=cfg;
     slide.metadata.cardOverrides.frameDesign=preset.id;
     _commit();
+  }
+
+  // Sprint 6.5.1 — render a single Frame Design swatch into a 64×56 canvas
+  // by calling into SlideRenderer.drawFrameSwatch, then dispose the canvas
+  // by returning its data URL. Children pick frames by sight, not by name.
+  function _generateFrameThumb(preset){
+    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.drawFrameSwatch!=='function') return null;
+    const W=86, H=64;
+    const c=document.createElement('canvas');
+    c.width=W; c.height=H;
+    const ctx=c.getContext('2d');
+    // Page-coloured background so the swatch reads like a real preview tile.
+    let pageColor='#1D3457';
+    try{
+      if(typeof ThemeEngine!=='undefined'){
+        const t=ThemeEngine.getActiveTheme();
+        const opts=ThemeEngine.getOptions();
+        if(t && t.frame){
+          pageColor=(typeof ThemeEngine.resolveFrameColor==='function')
+            ? ThemeEngine.resolveFrameColor(t, opts && opts.variant)
+            : t.frame.color;
+        }
+      }
+    }catch(e){}
+    ctx.fillStyle=pageColor;
+    ctx.fillRect(0,0,W,H);
+    const M=4;
+    const rect={x:M, y:M, w:W-M*2, h:H-M*2};
+    // The renderer expects a fully-resolved border object — clone the
+    // preset and stamp the design id so dispatch fires.
+    const border=Object.assign({}, JSON.parse(JSON.stringify(preset.border)), {design:preset.id});
+    // Make sure derived flags read as the renderer expects.
+    const line=border.line||{};
+    const shadow=border.shadow||{};
+    const renderBorder={
+      design: preset.id,
+      padding: Math.max(2, Math.min(14, Math.round((border.padding||20)*0.35))),
+      fill: border.fill||'page',
+      cornerRadius: Math.round((border.cornerRadius||0)*0.45),
+      lineEnabled: !!line.enabled,
+      lineWidth: Math.max(1, Math.round((line.width||2)*0.6)),
+      lineColor: line.color||'#000000',
+      shadowEnabled: !!shadow.enabled,
+      shadowIntensity: typeof shadow.intensity==='number'?shadow.intensity:0.4
+    };
+    let theme=null;
+    try{ theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null; }catch(e){}
+    SlideRenderer.drawFrameSwatch(ctx, rect, renderBorder, theme);
+    return c.toDataURL('image/png');
+  }
+
+  function _refreshFrameThumbs(){
+    if(!mountedRoot) return;
+    FRAME_DESIGNS.forEach(function(preset){
+      const btn=mountedRoot.querySelector('.frame-design-btn[data-frame-design="'+preset.id+'"]');
+      if(!btn) return;
+      const pv=btn.querySelector('.frame-design-preview');
+      if(!pv) return;
+      try{
+        const url=_generateFrameThumb(preset);
+        if(url){
+          pv.style.backgroundImage='url("'+url+'")';
+          pv.style.backgroundSize='cover';
+          pv.style.backgroundPosition='center';
+          pv.classList.add('frame-design-preview-rendered');
+        }
+      }catch(e){}
+    });
   }
 
   // Sprint 6.5 — Frame Style section (was "Picture Border" in the first
@@ -1166,6 +1237,7 @@ const CardDesigner=(function(){
 
     _refreshImage();
     _refreshText();
+    _refreshFrameThumbs();
     return root;
   }
 

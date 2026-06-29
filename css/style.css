@@ -1371,8 +1371,14 @@ button:active{
 .frame-design-preview{
   display:block;
   width:100%;
-  height:36px;
+  height:42px;
   background:#3D5A82;
+  border-radius:4px;
+  background-size:cover;
+  background-position:center;
+}
+.frame-design-preview-rendered{
+  background-color:transparent;
 }
 .frame-design-preview-simple{
   background:repeating-conic-gradient(#eee 0 25%, #ccc 0 50%) 0 0/6px 6px;
