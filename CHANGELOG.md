@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- refactor(story-designer): Sprint 5.2 Simplify Story Designer (build 0030, 2026-06-28)
+  - Story Designer trimmed to the Vihaan-first layout: **Story Beat** textarea, inline `Characters: XX` / `Words: XX`, conditional `⚠ Story may not fit on this page.` warning, divider, **Footer**, **Handle**, **Page Type**. Nothing else.
+  - Removed from the UI: Expand button, Expanded Editor modal (`#storyExpandModal` markup + all wiring), stats chips, **Review** subgroup (5 indicators), **Search** subgroup (Find/Replace/match counter), **Story Operations** subgroup (Duplicate / Split / Merge / Move Selected / Clear / Copy / Paste), Reset Story button, "Apply to Selected Pages" placeholder, Page Number input, intro paragraph.
+  - `PageOps.splitPage` and `PageOps.mergeWithNext` remain on the public API for future use, as the spec requires.
+  - Char / word counts and the overflow warning use the same renderer-as-source-of-truth pattern from Sprint 5.1: the warning toggles solely on `SlideRenderer.getTextElements()[story-text].overflow`. The renderer is unchanged.
+  - Existing host contract (`mount` / `configure` / `refresh` / `focusField`) is preserved; `focusField` now skips `page-number` since the field no longer exists in the UI.
+  - Persistence and the data plumbing (hidden `#storyBeat` / `#bookTitle` / `#pageNumber` / `#totalPages`) are unchanged, so storyBeat / metadata.footerText / metadata.handle / pageType continue to round-trip exactly.
+  - CSS cleanup: dropped `.story-intro`, `.story-row-2`, `.story-cell`, `.story-reset-btn`, `.story-apply-btn`, `.stat-chip`, `.story-stats-row`, `.story-overflow-chip`, `.story-subgroup`, `.story-review-item`, `.story-find-status`, `.story-op-btn`, `.story-replace-btn`, `.story-text-header`, `.story-expand-btn`, `.modal-content.modal-large`, `.story-expand-header*`, `.story-expand-textarea`.
 - feat(story-designer): Sprint 5.1 Story Designer Complete (build 0029, 2026-06-28)
   - Story Text header gains live **Char / Words / Fits-or-Overflow** chips and a `⛶` Expand button. Counts update on every keystroke.
   - **Expanded Editor modal** (`#storyExpandModal`) — large `<textarea>`, mirrored stats + overflow chips, ESC / backdrop / Close button all dismiss. Edits in either editor stream through `_setStoryText`, syncing the inline textarea, the modal textarea, the hidden `#storyBeat` (so the existing `draw()` chain fires), and `slide.storyBeat`. No Apply button; the project autosaves through the unchanged ProjectManager path.
