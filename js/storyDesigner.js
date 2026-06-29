@@ -55,20 +55,39 @@ const StoryDesigner=(function(){
     intro.textContent='Edit page content. Visual styling lives in the Card Designer.';
     root.appendChild(intro);
 
-    // Story Text
+    // Story Text — Sprint 5.1 adds stats chips + overflow chip + expand btn.
+    const stHeader=document.createElement('div');
+    stHeader.className='story-text-header';
     const stLabel=document.createElement('label');
     stLabel.className='story-field-label';
     stLabel.textContent='Story Text';
-    root.appendChild(stLabel);
+    stHeader.appendChild(stLabel);
+    const expandBtn=document.createElement('button');
+    expandBtn.type='button';
+    expandBtn.className='story-expand-btn';
+    expandBtn.title='Open expanded editor';
+    expandBtn.textContent='⛶';
+    expandBtn.addEventListener('click',_openExpandedEditor);
+    stHeader.appendChild(expandBtn);
+    root.appendChild(stHeader);
+
+    const statsRow=document.createElement('div');
+    statsRow.className='story-stats-row';
+    statsRow.innerHTML='<span class="stat-chip">Chars <span class="story-char-count">0</span></span>'+
+      '<span class="stat-chip">Words <span class="story-word-count">0</span></span>'+
+      '<span class="stat-chip story-overflow-chip" id="storyOverflowChip">✅ Fits</span>';
+    root.appendChild(statsRow);
+
     const storyText=document.createElement('textarea');
     storyText.className='story-text-input input-field textarea';
     storyText.rows=4;
     storyText.placeholder='What happens on this page?';
     storyText.addEventListener('input',function(){
       if(suppressInput) return;
-      // Sync to the legacy hidden #storyBeat so the existing app.js draw
-      // and markDirty listeners fire — keeps the data plumbing untouched.
       _syncHidden('storyBeat',storyText.value,true);
+      _refreshStats(storyText.value);
+      _refreshValidation();
+      _refreshExpandedEditor();
     });
     root.appendChild(storyText);
 
@@ -153,7 +172,76 @@ const StoryDesigner=(function(){
     row.appendChild(tCell);
     root.appendChild(row);
 
-    // Actions
+    // --- Review (collapsible, Sprint 5.1) ----------------------------
+    const reviewBody=_makeStorySubgroup(root,'review','Review');
+    [
+      ['review-empty','Empty story'],
+      ['review-overflow','Story overflow'],
+      ['review-missing-image','Missing image'],
+      ['review-missing-footer','Missing footer'],
+      ['review-missing-handle','Missing handle']
+    ].forEach(function(pair){
+      const item=document.createElement('div');
+      item.className='story-review-item';
+      item.setAttribute('data-review-id',pair[0]);
+      item.innerHTML='<span class="story-review-icon">✅</span><span class="story-review-label">'+pair[1]+'</span>';
+      reviewBody.appendChild(item);
+    });
+
+    // --- Search (collapsible, Sprint 5.1) ----------------------------
+    const searchBody=_makeStorySubgroup(root,'search','Search');
+    const findLabel=document.createElement('label');
+    findLabel.className='story-field-label';
+    findLabel.textContent='Find';
+    searchBody.appendChild(findLabel);
+    const findInput=document.createElement('input');
+    findInput.type='text';
+    findInput.className='story-find-input input-field';
+    findInput.placeholder='Find within current story';
+    searchBody.appendChild(findInput);
+    const findStatus=document.createElement('div');
+    findStatus.className='story-find-status';
+    findStatus.textContent='0 matches';
+    searchBody.appendChild(findStatus);
+    const repLabel=document.createElement('label');
+    repLabel.className='story-field-label';
+    repLabel.textContent='Replace with';
+    searchBody.appendChild(repLabel);
+    const repInput=document.createElement('input');
+    repInput.type='text';
+    repInput.className='story-replace-input input-field';
+    repInput.placeholder='Replacement text';
+    searchBody.appendChild(repInput);
+    const replaceBtn=document.createElement('button');
+    replaceBtn.type='button';
+    replaceBtn.className='story-replace-btn story-op-btn';
+    replaceBtn.textContent='Replace All';
+    replaceBtn.addEventListener('click',function(){
+      _replaceAll(findInput.value,repInput.value);
+    });
+    searchBody.appendChild(replaceBtn);
+    findInput.addEventListener('input',function(){ _refreshFind(); });
+
+    // --- Story Operations (collapsible, Sprint 5.1) ------------------
+    const opsBody=_makeStorySubgroup(root,'operations','Story Operations');
+    [
+      ['Duplicate Page', _duplicatePage],
+      ['Split Page', _splitPage],
+      ['Merge with Next Page', _mergeWithNext],
+      ['Move Selected Text → Next Page', _moveSelectedToNext],
+      ['Clear Story', _clearStory],
+      ['Copy Story', _copyStory],
+      ['Paste Story', _pasteStory]
+    ].forEach(function(pair){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='story-op-btn';
+      btn.textContent=pair[0];
+      btn.addEventListener('click',pair[1]);
+      opsBody.appendChild(btn);
+    });
+
+    // --- Actions -----------------------------------------------------
     const actionsLabel=document.createElement('div');
     actionsLabel.className='designer-sublabel';
     actionsLabel.textContent='Actions';
@@ -173,6 +261,251 @@ const StoryDesigner=(function(){
     applyBtn.disabled=true;
     applyBtn.title='Coming in a future sprint';
     root.appendChild(applyBtn);
+  }
+
+  // Reuses the .image-subgroup collapse pattern so behavior matches the
+  // Card Designer's Composition / Light / Color subgroups.
+  function _makeStorySubgroup(parent,id,title){
+    const sub=document.createElement('div');
+    sub.className='image-subgroup story-subgroup';
+    sub.setAttribute('data-story-group',id);
+    const header=document.createElement('button');
+    header.type='button';
+    header.className='image-subgroup-title';
+    header.setAttribute('aria-expanded','true');
+    header.setAttribute('data-collapsible-toggle','');
+    const t=document.createElement('span');
+    t.className='image-subgroup-title-text';
+    t.textContent=title;
+    header.appendChild(t);
+    const chev=document.createElement('span');
+    chev.className='designer-group-chevron';
+    chev.setAttribute('aria-hidden','true');
+    chev.textContent='▾';
+    header.appendChild(chev);
+    sub.appendChild(header);
+    header.addEventListener('click',function(){
+      const collapsed=sub.classList.toggle('collapsed');
+      header.setAttribute('aria-expanded',collapsed?'false':'true');
+    });
+    const body=document.createElement('div');
+    body.className='image-subgroup-body';
+    sub.appendChild(body);
+    parent.appendChild(sub);
+    return body;
+  }
+
+  // --- Stats / overflow ---------------------------------------------
+  function _countWords(text){
+    if(!text) return 0;
+    const m=text.trim().match(/\S+/g);
+    return m?m.length:0;
+  }
+
+  function _refreshStats(text){
+    if(!mountedRoot) return;
+    const t=(typeof text==='string')?text:((mountedRoot.querySelector('.story-text-input')||{}).value||'');
+    const c=mountedRoot.querySelector('.story-char-count');
+    const w=mountedRoot.querySelector('.story-word-count');
+    if(c) c.textContent=String(t.length);
+    if(w) w.textContent=String(_countWords(t));
+    const ec=document.querySelector('.expand-char-count');
+    const ew=document.querySelector('.expand-word-count');
+    if(ec) ec.textContent=String(t.length);
+    if(ew) ew.textContent=String(_countWords(t));
+  }
+
+  // Reads the renderer's last text-element list — the renderer is the
+  // source of truth for layout / overflow.
+  function _renderedStoryElement(){
+    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.getTextElements!=='function') return null;
+    try{
+      const els=SlideRenderer.getTextElements();
+      return els.find(function(e){ return e.id==='story-text'; }) || null;
+    }catch(e){ return null; }
+  }
+
+  function _refreshOverflowChip(){
+    const rendered=_renderedStoryElement();
+    const overflows=!!(rendered && rendered.overflow);
+    const chip=mountedRoot && mountedRoot.querySelector('.story-overflow-chip');
+    if(chip){
+      chip.textContent=overflows?'⚠ Overflow':'✅ Fits';
+      chip.classList.toggle('chip-warn',overflows);
+    }
+    const expandChip=document.getElementById('expandOverflowChip');
+    if(expandChip){
+      expandChip.textContent=overflows?'⚠ Story exceeds available space':'✅ Fits on Page';
+      expandChip.classList.toggle('chip-warn',overflows);
+    }
+  }
+
+  // --- Validation indicators ----------------------------------------
+  function _refreshValidation(){
+    if(!mountedRoot) return;
+    const s=_currentSlide();
+    const rendered=_renderedStoryElement();
+    const checks={
+      'review-empty': !(s && s.storyBeat && s.storyBeat.trim().length>0),
+      'review-overflow': !!(rendered && rendered.overflow),
+      'review-missing-image': !!(s && s.pageType!=='blank' && !s.image),
+      'review-missing-footer': !(s && (
+        (s.metadata && typeof s.metadata.footerText==='string' && s.metadata.footerText.length>0)
+        || _projectBookTitle().length>0
+      )),
+      'review-missing-handle': !(s && s.metadata && typeof s.metadata.handle==='string' && s.metadata.handle.length>0) && false
+        // Handle defaults to @vihuplanet — only count as missing when
+        // explicitly cleared. The boolean above is therefore always false
+        // unless the user has typed an empty string; preserved as the
+        // canonical hook for that future check.
+    };
+    Object.keys(checks).forEach(function(id){
+      const item=mountedRoot.querySelector('[data-review-id="'+id+'"]');
+      if(!item) return;
+      const bad=checks[id];
+      const icon=item.querySelector('.story-review-icon');
+      if(icon) icon.textContent=bad?'⚠':'✅';
+      item.classList.toggle('review-warn',bad);
+    });
+    _refreshOverflowChip();
+  }
+
+  function _refreshFind(){
+    if(!mountedRoot) return;
+    const findEl=mountedRoot.querySelector('.story-find-input');
+    const statusEl=mountedRoot.querySelector('.story-find-status');
+    if(!findEl||!statusEl) return;
+    const s=_currentSlide();
+    const text=(s&&s.storyBeat)||'';
+    const needle=findEl.value;
+    if(!needle){ statusEl.textContent='0 matches'; return; }
+    const re=new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+    const matches=text.match(re);
+    statusEl.textContent=(matches?matches.length:0)+' match'+((matches&&matches.length===1)?'':'es');
+  }
+
+  function _replaceAll(needle,replacement){
+    if(!needle) return;
+    const s=_currentSlide();
+    if(!s) return;
+    const re=new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
+    const updated=(s.storyBeat||'').replace(re,replacement||'');
+    _setStoryText(updated);
+    _refreshFind();
+  }
+
+  // --- Story operations ---------------------------------------------
+  function _duplicatePage(){
+    if(typeof PageOps==='undefined') return;
+    PageOps.duplicatePage(AppState.currentSlide);
+  }
+  function _splitPage(){
+    if(typeof PageOps==='undefined') return;
+    const ta=mountedRoot && mountedRoot.querySelector('.story-text-input');
+    const text=(ta && ta.value) || '';
+    const cursor=(ta && typeof ta.selectionStart==='number') ? ta.selectionStart : Math.floor(text.length/2);
+    PageOps.splitPage(AppState.currentSlide,text.slice(0,cursor),text.slice(cursor));
+  }
+  function _mergeWithNext(){
+    if(typeof PageOps==='undefined') return;
+    PageOps.mergeWithNext(AppState.currentSlide);
+  }
+  function _moveSelectedToNext(){
+    const ta=mountedRoot && mountedRoot.querySelector('.story-text-input');
+    if(!ta) return;
+    const start=ta.selectionStart, end=ta.selectionEnd;
+    if(start===end) return;
+    const original=ta.value;
+    const selected=original.slice(start,end);
+    if(!selected) return;
+    const remaining=original.slice(0,start)+original.slice(end);
+    // Apply remaining to current slide first.
+    _setStoryText(remaining);
+    // Ensure a next page exists.
+    if(AppState.currentSlide+1>=AppState.slides.length){
+      if(typeof PageOps==='undefined') return;
+      PageOps.addAfter(AppState.currentSlide);
+    }
+    const nextIdx=AppState.currentSlide+1;
+    const next=AppState.slides[nextIdx];
+    if(!next) return;
+    next.storyBeat=selected + (next.storyBeat?'\n\n'+next.storyBeat:'');
+    delete next.thumbnail;
+    if(host&&typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    if(typeof window.showSlide==='function') window.showSlide(nextIdx);
+  }
+  function _clearStory(){
+    _setStoryText('');
+  }
+  function _copyStory(){
+    const s=_currentSlide();
+    const text=(s&&s.storyBeat)||'';
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){});
+    }
+  }
+  function _pasteStory(){
+    if(navigator.clipboard && navigator.clipboard.readText){
+      navigator.clipboard.readText().then(function(t){ _setStoryText(t||''); }).catch(function(){});
+    }
+  }
+
+  // --- Story text setter (single source for stats refresh + sync) ---
+  function _setStoryText(value){
+    const s=_currentSlide();
+    if(s) s.storyBeat=value;
+    _syncHidden('storyBeat',value,true);
+    const ta=mountedRoot && mountedRoot.querySelector('.story-text-input');
+    if(ta && ta.value!==value){ suppressInput=true; ta.value=value; suppressInput=false; }
+    const exTa=document.getElementById('storyExpandTextarea');
+    if(exTa && exTa.value!==value){ exTa.value=value; }
+    _refreshStats(value);
+    _refreshValidation();
+    _refreshFind();
+  }
+
+  // --- Expanded editor ----------------------------------------------
+  function _openExpandedEditor(){
+    const modal=document.getElementById('storyExpandModal');
+    const ta=document.getElementById('storyExpandTextarea');
+    const s=_currentSlide();
+    if(!modal||!ta) return;
+    ta.value=(s&&s.storyBeat)||'';
+    modal.classList.remove('hidden');
+    setTimeout(function(){ ta.focus(); },0);
+    _refreshStats(ta.value);
+    _refreshOverflowChip();
+  }
+  function _closeExpandedEditor(){
+    const modal=document.getElementById('storyExpandModal');
+    if(modal) modal.classList.add('hidden');
+  }
+  function _refreshExpandedEditor(){
+    const exTa=document.getElementById('storyExpandTextarea');
+    if(!exTa) return;
+    const s=_currentSlide();
+    const v=(s&&s.storyBeat)||'';
+    if(exTa.value!==v) exTa.value=v;
+  }
+
+  // Wire the modal once — safe to call multiple times; the second mount
+  // detects an already-bound modal via the data attribute.
+  function _wireExpandedEditor(){
+    const modal=document.getElementById('storyExpandModal');
+    const ta=document.getElementById('storyExpandTextarea');
+    const closeBtn=document.getElementById('storyExpandClose');
+    if(!modal||modal.getAttribute('data-wired')==='1') return;
+    modal.setAttribute('data-wired','1');
+    if(ta){
+      ta.addEventListener('input',function(){
+        _setStoryText(ta.value);
+      });
+    }
+    if(closeBtn){ closeBtn.addEventListener('click',_closeExpandedEditor); }
+    modal.addEventListener('click',function(e){ if(e.target===modal) _closeExpandedEditor(); });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape' && !modal.classList.contains('hidden')) _closeExpandedEditor();
+    });
   }
 
   function _resetStory(){
@@ -223,6 +556,11 @@ const StoryDesigner=(function(){
     }finally{
       suppressInput=false;
     }
+    // Sprint 5.1 — keep stats / validation / search / expanded editor in sync.
+    _refreshStats();
+    _refreshValidation();
+    _refreshFind();
+    _refreshExpandedEditor();
   }
 
   // Selection sync hook — called when CardDesigner has a text element
@@ -249,6 +587,7 @@ const StoryDesigner=(function(){
     if(container.__storyDesignerRoot){
       mountedContainer=container;
       mountedRoot=container.__storyDesignerRoot;
+      _wireExpandedEditor();
       _refresh();
       return mountedRoot;
     }
@@ -260,6 +599,7 @@ const StoryDesigner=(function(){
     container.__storyDesignerRoot=root;
     mountedContainer=container;
     mountedRoot=root;
+    _wireExpandedEditor();
     _refresh();
     return root;
   }

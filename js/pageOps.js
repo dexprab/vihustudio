@@ -208,6 +208,39 @@ const PageOps=(function(){
     }
   }
 
+  // Sprint 5.1 — Story Operations: split a slide's storyBeat into two
+  // sibling slides, and merge a slide's storyBeat with the next slide's.
+  // Both reuse the existing _afterMutation pipeline so renumbering /
+  // navigation refresh / autosave fire automatically.
+  function splitPage(index,firstHalf,secondHalf){
+    if(index<0||index>=AppState.slides.length) return false;
+    const slide=AppState.slides[index];
+    slide.storyBeat=firstHalf||'';
+    delete slide.thumbnail;
+    const inserted=_createBlankSlide();
+    inserted.storyBeat=secondHalf||'';
+    // Inherit page type so a split Cover stays a cover-shaped split if
+    // ever needed; otherwise stay 'story' since the original is 'blank'
+    // only when there was no image.
+    inserted.pageType=slide.pageType==='cover'?'story':(slide.pageType||'story');
+    delete inserted.thumbnail;
+    AppState.slides.splice(index+1,0,inserted);
+    _afterMutation(index+1);
+    return true;
+  }
+
+  function mergeWithNext(index){
+    if(index<0||index>=AppState.slides.length-1) return false;
+    const current=AppState.slides[index];
+    const next=AppState.slides[index+1];
+    const joiner=(current.storyBeat && next.storyBeat) ? '\n\n' : '';
+    current.storyBeat=(current.storyBeat||'')+joiner+(next.storyBeat||'');
+    delete current.thumbnail;
+    AppState.slides.splice(index+1,1);
+    _afterMutation(index);
+    return true;
+  }
+
   return {
     duplicatePage:duplicatePage,
     deletePage:deletePage,
@@ -216,7 +249,9 @@ const PageOps=(function(){
     addAfter:addAfter,
     moveToEnd:moveToEnd,
     setAsCover:setAsCover,
-    exportPage:exportPage
+    exportPage:exportPage,
+    splitPage:splitPage,
+    mergeWithNext:mergeWithNext
   };
 })();
 try{ window.PageOps=PageOps; }catch(e){}

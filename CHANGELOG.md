@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+- feat(story-designer): Sprint 5.1 Story Designer Complete (build 0029, 2026-06-28)
+  - Story Text header gains live **Char / Words / Fits-or-Overflow** chips and a `⛶` Expand button. Counts update on every keystroke.
+  - **Expanded Editor modal** (`#storyExpandModal`) — large `<textarea>`, mirrored stats + overflow chips, ESC / backdrop / Close button all dismiss. Edits in either editor stream through `_setStoryText`, syncing the inline textarea, the modal textarea, the hidden `#storyBeat` (so the existing `draw()` chain fires), and `slide.storyBeat`. No Apply button; the project autosaves through the unchanged ProjectManager path.
+  - **Overflow detection** lives in the renderer (`STORY_MAX_WIDTH = W - 120`); `_drawStoryText` adds `overflow: bool` to its returned bbox. Story Designer reads `SlideRenderer.getTextElements()` after every render — never re-implements layout — and updates the chips accordingly.
+  - **Review** collapsible group with live indicators: Empty Story, Story Overflow, Missing Image, Missing Footer, Missing Handle. Warnings inform but never block editing.
+  - **Search** collapsible group: case-insensitive Find with live match-count, Replace-All button that funnels through `_setStoryText` so the canvas and thumbnail update with the substitution.
+  - **Story Operations** collapsible group: Duplicate Page (existing `PageOps.duplicatePage`), Split Page (new `PageOps.splitPage` — uses cursor position as the split point), Merge with Next Page (new `PageOps.mergeWithNext`), Move Selected Text → Next Page (Story Designer reads the textarea selection, writes remainder to current slide, prepends the selection to the next slide — auto-creates a blank next page if absent), Clear Story, Copy Story, Paste Story (clipboard read/write with graceful no-op when the API is unavailable).
+  - Both new PageOps run through the existing `_afterMutation` pipeline so renumbering, navigation refresh, and markDirty fire automatically.
+  - Live sync: `window.redrawPreview` now wraps `draw()` + `StoryDesigner.refresh()`, so any Card Designer or Theme Designer change that affects rendered story-text width refreshes the overflow / validation indicators automatically. The Story Designer's own input handler also fires `_refreshStats / _refreshValidation / _refreshExpandedEditor` immediately.
+  - No project format changes, no Theme Designer changes, no Card Designer architecture changes. The renderer gains only the `overflow` / `maxWidth` metadata on `story-text` bboxes — no new draw paths.
 - feat(story-designer): Sprint 5.0 Story Designer Foundation (build 0028, 2026-06-28)
   - New module `js/storyDesigner.js` (`mount` / `unmount` / `configure` / `refresh` / `focusField`) — same host-callback shape as CardDesigner so future AI-assisted writing features attach cleanly without touching `app.js`.
   - The Story tab UI is now the Story Designer: Story Text (multi-line), Footer, Handle, Page Number, Page Type dropdown (Story / Cover / CTA / Blank), Actions (Reset Story; "Apply to Selected Pages" is disabled / labelled as future placeholder).

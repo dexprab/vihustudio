@@ -888,6 +888,118 @@ button:active{
   width:100%;
 }
 
+/* Sprint 5.1 — Story Designer Complete */
+.story-text-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+}
+.story-expand-btn{
+  width:auto;
+  height:auto;
+  padding:4px 8px;
+  margin:0;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text-secondary);
+  font-size:13px;
+  cursor:pointer;
+  transition:border-color 0.2s, color 0.2s;
+}
+.story-expand-btn:hover{ border-color:var(--gold); color:var(--text); }
+
+.story-stats-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:4px 0 6px 0;
+}
+.stat-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 8px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:999px;
+  font-size:10px;
+  font-weight:600;
+  color:var(--text-secondary);
+  font-variant-numeric:tabular-nums;
+}
+.stat-chip > span{ color:var(--gold); }
+.story-overflow-chip{ color:var(--text); }
+.story-overflow-chip.chip-warn{
+  background:rgba(255, 119, 119, 0.12);
+  border-color:rgba(255, 119, 119, 0.4);
+  color:#c0392b;
+}
+
+.story-subgroup{ margin-top:6px; }
+
+.story-review-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 0;
+  font-size:11px;
+  color:var(--text-secondary);
+}
+.story-review-item.review-warn{ color:#c0392b; }
+.story-review-icon{ width:14px; font-size:12px; }
+
+.story-find-status{
+  font-size:10px;
+  color:var(--text-tertiary);
+  margin:4px 0 8px 0;
+  font-variant-numeric:tabular-nums;
+}
+
+.story-op-btn,
+.story-replace-btn{
+  width:100%;
+  padding:8px 10px;
+  margin:0 0 6px 0;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  color:var(--text);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  height:auto;
+  text-align:left;
+  transition:border-color 0.2s, background 0.2s;
+}
+.story-op-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.06); }
+
+/* Expanded editor modal */
+.modal-content.modal-large{
+  max-width:760px;
+  width:calc(100% - 64px);
+}
+.story-expand-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+  flex-wrap:wrap;
+}
+.story-expand-header h3{ margin:0; }
+.story-expand-stats{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.story-expand-textarea{
+  min-height:280px;
+  font-size:14px;
+  line-height:1.5;
+}
+
 .story-reset-btn,
 .story-apply-btn{
   width:100%;

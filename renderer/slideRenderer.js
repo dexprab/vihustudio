@@ -169,6 +169,12 @@ const SlideRenderer=(()=>{
     x.globalAlpha=st.opacity;
   }
 
+  // Sprint 5.1 — exposed to Story Designer as the source of truth for
+  // overflow detection. Width budget = canvas minus left/right margins
+  // (60 each side). Multi-line input also flags overflow because the
+  // current renderer draws only the first line.
+  const STORY_MAX_WIDTH=W-120;
+
   function _drawStoryText(s,theme,overrides){
     if(!s.storyBeat) return null;
     const ov=overrides['story-text']||{};
@@ -186,7 +192,8 @@ const SlideRenderer=(()=>{
     let bx=drawX;
     if(st.alignment==='center') bx=drawX-w/2;
     else if(st.alignment==='right') bx=drawX-w;
-    return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8};
+    const overflow=(w>STORY_MAX_WIDTH) || (s.storyBeat.indexOf('\n')!==-1);
+    return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8,overflow:overflow,maxWidth:STORY_MAX_WIDTH};
   }
 
   // Inner image area inside the panel — 20px breathing room on all sides so

@@ -386,7 +386,12 @@ function draw(){
 // Exposed redraw used by CardDesigner.configure({redraw}). Lighter-weight
 // than showSlide — it skips the input/highlight resync that only matters
 // when switching slides.
-window.redrawPreview=draw;
+window.redrawPreview=function(){
+  draw();
+  // Sprint 5.1 — overflow + validation derive from the renderer's bbox
+  // cache, so refresh them once draw() has populated it.
+  if(typeof StoryDesigner!=='undefined'){ try{ StoryDesigner.refresh(); }catch(e){} }
+};
 
 function showContextMenu(e,index){
  contextMenuTarget=index;
