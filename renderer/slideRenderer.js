@@ -228,10 +228,15 @@ const SlideRenderer=(()=>{
       if(dragSel) _drawDragGuides(dragSel);
     }
 
-    // Sprint 6.1 selection outline for scene elements
+    // Sprint 6.1 selection outline for scene elements + Sprint 6.5
+    // (Object Designer) resize handles for elements that support resize
+    // (Frame / decoration).
     if(s && s.selectedSceneElement){
       const sel=_lastSceneElements.find(function(e){ return e.id===s.selectedSceneElement; });
-      if(sel) _drawSelectionOutline(sel);
+      if(sel){
+        _drawSelectionOutline(sel);
+        if(_supportsResize(sel)) _drawResizeHandles(sel);
+      }
     }
 
     // Selection outline — last, so it sits above everything.
@@ -385,11 +390,11 @@ const SlideRenderer=(()=>{
   function _sceneBbox(el){
     const pos=el.position||{x:W/2,y:H/2};
     if(el.type==='background'){
-      return {id:el.id,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false};
     }
     if(el.type==='decoration'){
       const size=el.size||{w:64,h:64};
-      return {id:el.id,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
     }
     if(el.type==='text' || el.type==='text-holder'){
       const w=(el.size && el.size.w) || 700;
@@ -397,13 +402,13 @@ const SlideRenderer=(()=>{
       let bx=pos.x-w/2;
       if(el.alignment==='left') bx=pos.x;
       else if(el.alignment==='right') bx=pos.x-w;
-      return {id:el.id,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false};
     }
     if(el.type==='image-holder'){
       const size=el.size||{w:600,h:600};
-      return {id:el.id,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
     }
-    return {id:el.id,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false};
+    return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false};
   }
 
   // Sprint 6.1 — exposed for canvas drag hit-testing.
@@ -422,6 +427,59 @@ const SlideRenderer=(()=>{
     x.strokeRect(e.bx-8, e.by-6, e.bw+16, e.bh+12);
     x.restore();
   }
+
+  // Sprint 6.5 (Object Designer) — resize handles. Eight handles total
+  // (four corners + four side midpoints) on the selected scene element's
+  // bbox. App.js hit-tests against the same positions to drive resize
+  // drag.
+  const HANDLE_RADIUS=12;
+  function _supportsResize(el){
+    if(!el || !el.type) return false;
+    // Resize is meaningful for the image-holder and for decorations;
+    // text-holder / background stay un-resizable so the child can't
+    // accidentally distort body text or break the page background.
+    return el.type==='image-holder' || el.type==='decoration';
+  }
+  function _drawResizeHandles(el){
+    const cx1=el.bx, cy1=el.by;
+    const cx2=el.bx+el.bw, cy2=el.by+el.bh;
+    const mx=el.bx+el.bw/2, my=el.by+el.bh/2;
+    const positions=[
+      [cx1,cy1],[cx2,cy1],[cx1,cy2],[cx2,cy2],
+      [mx,cy1],[mx,cy2],[cx1,my],[cx2,my]
+    ];
+    x.save();
+    x.fillStyle='#FFCB45';
+    x.strokeStyle='#1D3457';
+    x.lineWidth=2;
+    positions.forEach(function(p){
+      x.beginPath();
+      x.arc(p[0],p[1],HANDLE_RADIUS,0,Math.PI*2);
+      x.fill();
+      x.stroke();
+    });
+    x.restore();
+  }
+  // Exposed for canvas hit-testing — returns the 8 handle positions for
+  // the currently-selected scene element, or [] when nothing is selected.
+  function getResizeHandlesFor(elementId){
+    const el=_lastSceneElements.find(function(e){ return e.id===elementId; });
+    if(!el || !_supportsResize(el)) return [];
+    const cx1=el.bx, cy1=el.by;
+    const cx2=el.bx+el.bw, cy2=el.by+el.bh;
+    const mx=el.bx+el.bw/2, my=el.by+el.bh/2;
+    return [
+      {pos:'nw', x:cx1, y:cy1},
+      {pos:'ne', x:cx2, y:cy1},
+      {pos:'sw', x:cx1, y:cy2},
+      {pos:'se', x:cx2, y:cy2},
+      {pos:'n',  x:mx,  y:cy1},
+      {pos:'s',  x:mx,  y:cy2},
+      {pos:'w',  x:cx1, y:my},
+      {pos:'e',  x:cx2, y:my}
+    ];
+  }
+  function getHandleRadius(){ return HANDLE_RADIUS; }
 
   const SNAP_DIST=18;
   function _drawDragGuides(el){
@@ -892,7 +950,7 @@ const SlideRenderer=(()=>{
     };
   }
 
-  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements};
+  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

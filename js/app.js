@@ -44,6 +44,11 @@ if(typeof ThemeEngine!=='undefined'){
 // getSelectedTextElement / setSelectedTextElement / getTextDefaults hooks.
 let _selectedTextElement=null;
 let _textDragState=null; // {elementId, startClientX, startClientY, sx, sy, baseOffX, baseOffY, moved}
+// Sprint 6.5 (Object Designer) — canvas selection state for scene elements
+// (Frame, decorations). The renderer paints a gold outline + resize handles
+// around the selected element and `_resizeDragState` drives handle drags.
+let _selectedSceneElement=null;
+let _resizeDragState=null;
 const _TEXT_BASE_DEFAULTS={fontWeight:'normal',fontStyle:'normal',opacity:1,letterSpacing:0,lineHeight:1.2};
 
 function _getTextDefaults(elementId){
@@ -130,6 +135,34 @@ function _setSelectedTextElement(id){
       const header=textSection.querySelector('.designer-group-title');
       if(header) header.click();
     }
+  }
+}
+
+// Sprint 6.5 (Object Designer) — selecting a scene element auto-routes
+// to the right pane's correct designer. Frame (image-holder) opens the
+// Card Designer; everything else (text holders, decorations, scene
+// backgrounds) lives under the Story tab's Page Designer.
+function _setSelectedSceneElement(id, elementType){
+  _selectedSceneElement=id||null;
+  if(_selectedSceneElement && _selectedTextElement){
+    // Mutually exclusive — selecting a scene element clears any text
+    // selection so the right pane shows one clear context.
+    _selectedTextElement=null;
+  }
+  if(typeof window.redrawPreview==='function') window.redrawPreview();
+  if(!id) return;
+  // Auto-tab-switch.
+  if(elementType==='image-holder'){
+    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+  }else if(elementType==='text-holder' || elementType==='text'){
+    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+  }else{
+    // Decoration / background / future objects — leave on whatever tab
+    // the user is on. The Page Designer's element panel covers them.
+    const storyTabBtn=document.querySelector('.tab-btn[data-tab="story"]');
+    if(storyTabBtn && !storyTabBtn.classList.contains('active')) storyTabBtn.click();
   }
 }
 if(leftThemeCardEl){
@@ -382,6 +415,7 @@ function draw(){
    defaultBookTitle:title.value
  });
  payload.selectedTextElement=_selectedTextElement;
+ payload.selectedSceneElement=_selectedSceneElement;
  payload.dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
  SlideRenderer.render(payload);
  if(s.thumbnail){
@@ -541,10 +575,50 @@ function _hitTestSceneElement(canvasX,canvasY){
   return null;
 }
 
+// Sprint 6.5 (Object Designer) — hit-test the 8 resize handles around the
+// currently-selected scene element, if any. Returns the handle position
+// string ('nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e') or null.
+function _hitTestResizeHandle(canvasX,canvasY){
+  if(!_selectedSceneElement) return null;
+  if(typeof SlideRenderer.getResizeHandlesFor!=='function') return null;
+  const handles=SlideRenderer.getResizeHandlesFor(_selectedSceneElement);
+  if(!handles.length) return null;
+  const r=(typeof SlideRenderer.getHandleRadius==='function')?SlideRenderer.getHandleRadius():12;
+  // Generous hit slop so children can hit a handle with a fat fingertip.
+  const slop=r*1.4;
+  for(let i=0;i<handles.length;i++){
+    const h=handles[i];
+    const dx=canvasX-h.x, dy=canvasY-h.y;
+    if(dx*dx+dy*dy<=slop*slop) return h.pos;
+  }
+  return null;
+}
+
 previewCanvas.addEventListener('mousedown',function(e){
   const s=AppState.slides[AppState.currentSlide];
   if(!s) return;
   const c=_canvasCoords(e);
+
+  // Sprint 6.5 — resize handle hit-test takes priority over everything.
+  const handlePos=_hitTestResizeHandle(c.x,c.y);
+  if(handlePos){
+    const els=SlideRenderer.getSceneElements();
+    const bbox=els.find(function(el){ return el.id===_selectedSceneElement; });
+    if(bbox){
+      _resizeDragState={
+        elementId:_selectedSceneElement,
+        handle:handlePos,
+        startClientX:e.clientX, startClientY:e.clientY,
+        sx:c.sx, sy:c.sy,
+        baseX:bbox.bx+bbox.bw/2, baseY:bbox.by+bbox.bh/2,
+        baseW:bbox.bw, baseH:bbox.bh,
+        moved:false
+      };
+      previewCanvas.classList.add('canvas-text-dragging');
+      e.preventDefault();
+      return;
+    }
+  }
 
   // Sprint 4.5 — Shift+click inside the panel sets the focal point at the
   // clicked location (relative to the cropped image source). Pre-empts both
@@ -568,25 +642,27 @@ previewCanvas.addEventListener('mousedown',function(e){
     }
   }
 
-  // Sprint 6.1 — Scene element drag. Scene elements (decorations, scene
-  // text, etc.) sit on top of the existing draw pipeline, so they get
-  // first shot at the click. Position becomes a Card Override on
-  // slide.metadata.elementOverrides[id].position; the Scene blueprint is
-  // never mutated.
+  // Sprint 6.1 — Scene element drag. Sprint 6.5 (Object Designer): the
+  // click now ALSO selects the element (paints the gold outline + handles
+  // and routes the right pane), so a quick click without drag still
+  // performs object selection. The drag itself activates only after the
+  // mouse moves past SCENE_DRAG_THRESHOLD.
   const sceneHit=_hitTestSceneElement(c.x,c.y);
   if(sceneHit){
     const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[sceneHit.id] && s.metadata.elementOverrides[sceneHit.id].position) || {};
-    // Default position comes from the rendered bbox center (already
-    // reflects any prior overrides).
     const baseX=(typeof pos.x==='number') ? pos.x : (sceneHit.bx + sceneHit.bw/2);
     const baseY=(typeof pos.y==='number') ? pos.y : (sceneHit.by + sceneHit.bh/2);
     _sceneDragState={
       elementId:sceneHit.id,
+      elementType:sceneHit.type,
       startClientX:e.clientX,startClientY:e.clientY,
       sx:c.sx,sy:c.sy,
       baseX:baseX,baseY:baseY,
       moved:false
     };
+    // Selection happens immediately so the gold outline + handles appear
+    // even on a tap without drag.
+    _setSelectedSceneElement(sceneHit.id, sceneHit.type);
     e.preventDefault();
     return;
   }
@@ -621,13 +697,67 @@ previewCanvas.addEventListener('mousedown',function(e){
     }
   }
 
-  // Clicked empty space — clear any text selection.
+  // Clicked empty space — clear any text/scene selection so the canvas
+  // is back to a blank slate.
   if(_selectedTextElement){
     _setSelectedTextElement(null);
+  }
+  if(_selectedSceneElement){
+    _setSelectedSceneElement(null,null);
+  }
+});
+
+// Sprint 6.5 (Object Designer) — hover cursor over resize handles.
+previewCanvas.addEventListener('mousemove',function(e){
+  if(_resizeDragState || _sceneDragState || _textDragState || _panState) return;
+  const c=_canvasCoords(e);
+  const h=_hitTestResizeHandle(c.x,c.y);
+  if(h){
+    const CURSOR={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize'};
+    previewCanvas.style.cursor=CURSOR[h]||'default';
+  }else{
+    previewCanvas.style.cursor='';
   }
 });
 
 document.addEventListener('mousemove',function(e){
+  // Sprint 6.5 (Object Designer) — handle resize drag. Each handle drives
+  // a different combination of position + size changes. Minimum 60×60 so
+  // the Frame can't be shrunk to a sliver.
+  if(_resizeDragState){
+    const s=AppState.slides[AppState.currentSlide];
+    if(!s) return;
+    const dx=(e.clientX-_resizeDragState.startClientX)*_resizeDragState.sx;
+    const dy=(e.clientY-_resizeDragState.startClientY)*_resizeDragState.sy;
+    if(!_resizeDragState.moved){
+      if(Math.abs(dx)+Math.abs(dy)<3) return;
+      _resizeDragState.moved=true;
+    }
+    const h=_resizeDragState.handle;
+    let dw=0, dh=0;
+    if(h==='e' || h==='ne' || h==='se') dw=dx;
+    if(h==='w' || h==='nw' || h==='sw') dw=-dx;
+    if(h==='s' || h==='se' || h==='sw') dh=dy;
+    if(h==='n' || h==='ne' || h==='nw') dh=-dy;
+    const MIN=60;
+    const newW=Math.max(MIN, _resizeDragState.baseW+dw);
+    const newH=Math.max(MIN, _resizeDragState.baseH+dh);
+    // Position drift: side opposite the drag stays anchored, so the
+    // center moves by half the size delta in the right direction.
+    let cx=_resizeDragState.baseX, cy=_resizeDragState.baseY;
+    if(h==='e' || h==='ne' || h==='se') cx=_resizeDragState.baseX+(newW-_resizeDragState.baseW)/2;
+    if(h==='w' || h==='nw' || h==='sw') cx=_resizeDragState.baseX-(newW-_resizeDragState.baseW)/2;
+    if(h==='s' || h==='se' || h==='sw') cy=_resizeDragState.baseY+(newH-_resizeDragState.baseH)/2;
+    if(h==='n' || h==='ne' || h==='nw') cy=_resizeDragState.baseY-(newH-_resizeDragState.baseH)/2;
+    if(typeof SceneEngine!=='undefined'){
+      SceneEngine.setSize(s, _resizeDragState.elementId, {w:newW, h:newH});
+      SceneEngine.setPosition(s, _resizeDragState.elementId, {x:cx, y:cy});
+    }
+    delete s.thumbnail;
+    draw();
+    return;
+  }
+
   // Sprint 6.1 — Scene element drag
   if(_sceneDragState){
     const s=AppState.slides[AppState.currentSlide];
@@ -681,6 +811,22 @@ document.addEventListener('mousemove',function(e){
 });
 
 document.addEventListener('mouseup',function(){
+  // Sprint 6.5 (Object Designer) — resize drag end
+  if(_resizeDragState){
+    const wasMoved=_resizeDragState.moved;
+    _resizeDragState=null;
+    previewCanvas.classList.remove('canvas-text-dragging');
+    if(wasMoved){
+      markDirty();
+      const s=AppState.slides[AppState.currentSlide];
+      if(s && typeof ThumbnailEngine!=='undefined'){
+        try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
+      }
+      if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
+    }
+    return;
+  }
+
   // Sprint 6.1 — Scene drag end
   if(_sceneDragState){
     const wasMoved=_sceneDragState.moved;

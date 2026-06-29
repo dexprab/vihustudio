@@ -46,6 +46,20 @@ const CardDesigner=(function(){
     {id:'black',label:'Black'},
     {id:'page',label:'Same as Page'}
   ];
+  // Sprint 6.5 — Frame Designs. Each preset writes a complete border
+  // configuration; the child can then tweak any value in Frame Style.
+  const FRAME_DESIGNS=[
+    {id:'simple',    label:'Simple',    border:{padding:0,  fill:'none',  cornerRadius:0,  line:{enabled:false}, shadow:{enabled:false}}},
+    {id:'rounded',   label:'Rounded',   border:{padding:18, fill:'white', cornerRadius:30, line:{enabled:false}, shadow:{enabled:true, intensity:0.35}}},
+    {id:'storybook', label:'Storybook', border:{padding:24, fill:'page',  cornerRadius:20, line:{enabled:false}, shadow:{enabled:false}}},
+    {id:'polaroid',  label:'Polaroid',  border:{padding:28, fill:'white', cornerRadius:0,  line:{enabled:false}, shadow:{enabled:true, intensity:0.6}}},
+    {id:'comic',     label:'Comic',     border:{padding:8,  fill:'white', cornerRadius:0,  line:{enabled:true,  width:6, color:'#000000'}, shadow:{enabled:false}}},
+    {id:'cloud',     label:'Cloud',     border:{padding:16, fill:'white', cornerRadius:60, line:{enabled:false}, shadow:{enabled:true, intensity:0.25}}},
+    {id:'ribbon',    label:'Ribbon',    border:{padding:14, fill:'page',  cornerRadius:10, line:{enabled:true,  width:3, color:'#D4AF37'}, shadow:{enabled:false}}},
+    {id:'wooden',    label:'Wooden',    border:{padding:22, fill:'#8B6A45', cornerRadius:6, line:{enabled:true, width:4, color:'#4A361F'}, shadow:{enabled:true, intensity:0.5}}},
+    {id:'magic',     label:'Magic',     border:{padding:18, fill:'page',  cornerRadius:30, line:{enabled:true,  width:4, color:'#7A4FB5'}, shadow:{enabled:true, intensity:0.7}}},
+    {id:'vintage',   label:'Vintage',   border:{padding:20, fill:'#F4E6D0', cornerRadius:0, line:{enabled:true, width:2, color:'#8C5A2B'}, shadow:{enabled:true, intensity:0.45}}}
+  ];
 
   let mountedContainer=null;
   let mountedRoot=null;
@@ -342,12 +356,52 @@ const CardDesigner=(function(){
     startRow.appendChild(startBtn);
     pic.appendChild(startRow);
 
+    _buildFrameLookControls(body);
     _buildBorderControls(body);
   }
 
-  // Sprint 6.5 — Picture Border section.
+  // Sprint 6.5 (Object Designer) — Frame Look section. A row of preset
+  // cards that write a complete border configuration to
+  // cardOverrides.border. Children can still tweak any value in Frame Style.
+  function _buildFrameLookControls(body){
+    const fl=_makeImageSubgroup(body,'frame-look','Frame Look');
+    const grid=document.createElement('div');
+    grid.className='icon-row frame-design-row';
+    FRAME_DESIGNS.forEach(function(p){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card frame-design-btn';
+      btn.setAttribute('data-frame-design',p.id);
+      const pv=document.createElement('span');
+      pv.className='icon-preview frame-design-preview frame-design-preview-'+p.id;
+      btn.appendChild(pv);
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=p.label;
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _applyFrameDesign(p); });
+      grid.appendChild(btn);
+    });
+    fl.appendChild(grid);
+  }
+
+  function _applyFrameDesign(preset){
+    const slide=_currentSlide();
+    if(!slide) return;
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    // Deep-clone the preset's border config so future mutations don't
+    // leak across presets.
+    slide.metadata.cardOverrides.border=JSON.parse(JSON.stringify(preset.border));
+    slide.metadata.cardOverrides.frameDesign=preset.id;
+    _commit();
+  }
+
+  // Sprint 6.5 — Frame Style section (was "Picture Border" in the first
+  // iteration; renamed so the child sees Frame Look + Frame Style as the
+  // two ways the picture's frame can be customised).
   function _buildBorderControls(body){
-    const bg=_makeImageSubgroup(body,'border','Picture Border');
+    const bg=_makeImageSubgroup(body,'border','Frame Style');
 
     // Border Size (padding) — Tiny ↔ Big
     _makeImageSliderRow(bg,{
