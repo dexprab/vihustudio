@@ -269,8 +269,177 @@ const PublishStudio=(function(){
       e.preventDefault(); _goto(_slideCount()-1);
     }
   }
+  // --- Stage 2 · Almost Ready ---------------------------------------
+  // Validation runs every time the child enters this stage so the
+  // nudges reflect the slide state as of right now.
+  let _almostBackBtn=null;
+  let _almostHeadline=null;
+  let _almostMessage=null;
+  let _almostCoverHost=null;
+  let _almostCoverCanvas=null;
+  let _almostCoverInfo=null;
+  let _almostNudgeList=null;
+  let _almostPublishBtn=null;
+
   function _buildAlmostReadyBody(){
-    return _placeholderBody('publish-studio-body-almost','✨ Almost Ready · coming next');
+    const body=document.createElement('section');
+    body.className='publish-studio-body publish-studio-body-almost hidden';
+
+    const back=document.createElement('button');
+    back.type='button';
+    back.className='publish-back-link';
+    back.innerHTML='<span class="publish-back-arrow">←</span> Back to Reading';
+    back.addEventListener('click',function(){ _setStage(STAGES.READ); });
+    _almostBackBtn=back;
+    body.appendChild(back);
+
+    const center=document.createElement('div');
+    center.className='publish-almost-center';
+
+    _almostHeadline=document.createElement('div');
+    _almostHeadline.className='publish-almost-headline';
+    center.appendChild(_almostHeadline);
+
+    _almostMessage=document.createElement('p');
+    _almostMessage.className='publish-almost-message';
+    center.appendChild(_almostMessage);
+
+    // Clean state — cover preview tile.
+    _almostCoverHost=document.createElement('div');
+    _almostCoverHost.className='publish-almost-cover-host hidden';
+    _almostCoverCanvas=document.createElement('canvas');
+    _almostCoverCanvas.width=1080;
+    _almostCoverCanvas.height=1350;
+    _almostCoverCanvas.className='publish-almost-cover-canvas';
+    _almostCoverHost.appendChild(_almostCoverCanvas);
+    _almostCoverInfo=document.createElement('div');
+    _almostCoverInfo.className='publish-almost-cover-info';
+    _almostCoverHost.appendChild(_almostCoverInfo);
+    center.appendChild(_almostCoverHost);
+
+    // Nudge state — list of cards.
+    _almostNudgeList=document.createElement('div');
+    _almostNudgeList.className='publish-nudges hidden';
+    center.appendChild(_almostNudgeList);
+
+    // Primary action — same label whether nudges are present or not.
+    // Per the locked spec, never "Publish Anyway"; the choice is the
+    // child's to make.
+    _almostPublishBtn=document.createElement('button');
+    _almostPublishBtn.type='button';
+    _almostPublishBtn.className='publish-primary-btn';
+    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">📖</span><span class="publish-primary-label">Publish My Book</span>';
+    _almostPublishBtn.addEventListener('click',function(){ _setStage(STAGES.PUBLISHING); });
+    center.appendChild(_almostPublishBtn);
+
+    body.appendChild(center);
+    return body;
+  }
+
+  function _enterAlmostReady(){
+    const slides=AppState.slides||[];
+    const project=(typeof AppState!=='undefined') ? AppState.project : null;
+    const nudges=(typeof PublishValidator!=='undefined')
+      ? PublishValidator.run(slides, project) : [];
+
+    if(nudges.length===0){
+      _almostHeadline.textContent='✨ Your book looks ready!';
+      _almostMessage.textContent='';
+      _almostCoverHost.classList.remove('hidden');
+      _almostNudgeList.classList.add('hidden');
+      _renderAlmostCover();
+    }else{
+      _almostHeadline.textContent='✨ A few helpful tips';
+      _almostMessage.textContent='Have a quick look — or publish your book anyway when you’re ready.';
+      _almostCoverHost.classList.add('hidden');
+      _almostNudgeList.classList.remove('hidden');
+      _renderAlmostNudges(nudges);
+    }
+  }
+
+  function _renderAlmostCover(){
+    if(!_almostCoverCanvas) return;
+    const slides=AppState.slides||[];
+    if(slides.length===0) return;
+    // Prefer the slide with role=cover; fall back to the first slide.
+    let cover=slides.find(function(s){ return s && s.pageType==='cover'; });
+    if(!cover) cover=slides[0];
+    const editorCanvas=document.getElementById('previewCanvas');
+    try{
+      SlideRenderer.init(_almostCoverCanvas);
+      const titleEl=document.getElementById('bookTitle');
+      const payload=SlideRenderer.buildPayload(cover,{
+        page:1,
+        totalPages:slides.length,
+        defaultBookTitle:titleEl?titleEl.value:''
+      });
+      SlideRenderer.render(payload);
+    }catch(e){}
+    try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
+
+    const title=(AppState.project && (AppState.project.bookTitle||AppState.project.title))||'Untitled';
+    const author=(AppState.project && AppState.project.author)||'';
+    const lines=[title];
+    if(author) lines.push('by '+author);
+    lines.push(slides.length+' page'+(slides.length===1?'':'s'));
+    _almostCoverInfo.innerHTML='';
+    lines.forEach(function(t,i){
+      const ln=document.createElement('div');
+      ln.className=i===0?'publish-almost-cover-title':'publish-almost-cover-meta';
+      ln.textContent=t;
+      _almostCoverInfo.appendChild(ln);
+    });
+  }
+
+  function _renderAlmostNudges(nudges){
+    _almostNudgeList.innerHTML='';
+    nudges.forEach(function(n){
+      const card=document.createElement('div');
+      card.className='publish-nudge-card';
+      const icon=document.createElement('div');
+      icon.className='publish-nudge-icon';
+      icon.textContent='💡';
+      card.appendChild(icon);
+      const text=document.createElement('div');
+      text.className='publish-nudge-text';
+      text.textContent=n.message;
+      card.appendChild(text);
+      const action=document.createElement('button');
+      action.type='button';
+      action.className='publish-nudge-fix';
+      action.textContent='Fix in Editor';
+      action.addEventListener('click',function(){ _fixInEditor(n); });
+      card.appendChild(action);
+      _almostNudgeList.appendChild(card);
+    });
+  }
+
+  // "Fix in Editor" — close the studio, jump to the offending slide,
+  // and route the right pane to the relevant designer. Friendly, never
+  // technical.
+  function _fixInEditor(nudge){
+    _close();
+    if(typeof nudge.slideIndex==='number' && typeof window.showSlide==='function'){
+      try{ window.showSlide(nudge.slideIndex); }catch(e){}
+    }
+    const hint=nudge.fixHint;
+    if(hint==='book-title'){
+      // The book title rides in the hidden #bookTitle input — focus it
+      // by routing to the Story tab where the Page Designer can be
+      // edited. Future sprints can surface a dedicated Book Details
+      // panel; for now we land the child in a useful spot.
+      _activateTab('story');
+    }else if(hint==='empty-page' || hint==='text-overflow'){
+      _activateTab('story');
+    }else if(hint==='low-quality'){
+      _activateTab('card');
+    }else if(hint==='add-cover'){
+      _activateTab('story');
+    }
+  }
+  function _activateTab(name){
+    const btn=document.querySelector('.tab-btn[data-tab="'+name+'"]');
+    if(btn && !btn.classList.contains('active')) btn.click();
   }
   function _buildPublishingBody(){
     return _placeholderBody('publish-studio-body-publishing','📕 Painting your book · coming next');
@@ -287,6 +456,7 @@ const PublishStudio=(function(){
       _bodies[k].classList.toggle('hidden', k!==next);
     });
     if(next===STAGES.READ) _enterRead();
+    else if(next===STAGES.ALMOST_READY) _enterAlmostReady();
   }
 
   // -------- Lifecycle ------------------------------------------------
