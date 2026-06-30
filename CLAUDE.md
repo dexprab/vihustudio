@@ -32,6 +32,7 @@ Canonical project context for VihuStudio. Read this first before making any chan
 
 ### In Progress
 
+- Publish Studio (Sprint 8.1 ships the four-stage Publish flow — 📖 Read My Story → ✨ Almost Ready → 📕 Publishing → 🎉 Celebration. Modal overlay, never a permanent tab. Hand-rolled `js/pdfWriter.js` emits a valid PDF 1.4 with one rasterised page per slide through the canonical SlideRenderer path; WYSIWYE preserved)
 - Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset; Sprint 4.5 added composition / light / color / detail / effects fine tuning)
 - Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset; Sprint 4.4 added position drag + arrow nudge + full typography)
 - Page Designer Foundation (Sprint 6.0 introduces the page role selector — 📖 Story / 📘 Cover / 🪝 Hook / 🏁 End — with role-specific content editors)

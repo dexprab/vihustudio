@@ -616,8 +616,173 @@ const PublishStudio=(function(){
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
     return true;
   }
+  // --- Stage 4 · Celebration ----------------------------------------
+  // The five-second emotional payoff. Confetti rains, the cover sits
+  // on a CSS-perspective-tilted card, and a single primary 📖 Get My
+  // Book button hands the child their finished work. Nothing
+  // auto-closes; the child stays in the moment until they leave.
+  let _celebBody=null;
+  let _celebConfetti=null;
+  let _celebCoverCanvas=null;
+  let _celebTitle=null;
+  let _celebSubtitle=null;
+  let _celebDownloadBtn=null;
+  let _celebReadyMsg=null;
+
   function _buildCelebrationBody(){
-    return _placeholderBody('publish-studio-body-celebration','🎉 Celebration · coming next');
+    _celebBody=document.createElement('section');
+    _celebBody.className='publish-studio-body publish-studio-body-celebration hidden';
+
+    // Confetti layer.
+    _celebConfetti=document.createElement('div');
+    _celebConfetti.className='publish-confetti';
+    _celebBody.appendChild(_celebConfetti);
+
+    const center=document.createElement('div');
+    center.className='publish-celebration-center';
+
+    const headline=document.createElement('div');
+    headline.className='publish-celebration-headline';
+    headline.innerHTML='<span class="publish-celebration-emoji">🎉</span> Congratulations!';
+    center.appendChild(headline);
+
+    const message=document.createElement('div');
+    message.className='publish-celebration-message';
+    message.textContent='Your story is now a real book!';
+    center.appendChild(message);
+
+    // 3D-tilted cover.
+    const stand=document.createElement('div');
+    stand.className='publish-celebration-stand';
+    const book=document.createElement('div');
+    book.className='publish-celebration-book';
+    _celebCoverCanvas=document.createElement('canvas');
+    _celebCoverCanvas.width=1080;
+    _celebCoverCanvas.height=1350;
+    _celebCoverCanvas.className='publish-celebration-cover';
+    book.appendChild(_celebCoverCanvas);
+    stand.appendChild(book);
+    center.appendChild(stand);
+
+    _celebTitle=document.createElement('div');
+    _celebTitle.className='publish-celebration-title';
+    center.appendChild(_celebTitle);
+
+    _celebSubtitle=document.createElement('div');
+    _celebSubtitle.className='publish-celebration-subtitle';
+    center.appendChild(_celebSubtitle);
+
+    // Primary action.
+    _celebDownloadBtn=document.createElement('button');
+    _celebDownloadBtn.type='button';
+    _celebDownloadBtn.className='publish-celebration-download';
+    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">📥</span><span>Get My Book</span>';
+    _celebDownloadBtn.addEventListener('click',function(){
+      const ok=_downloadPublished();
+      if(ok){
+        _celebReadyMsg.classList.remove('hidden');
+        _celebDownloadBtn.classList.add('is-given');
+      }
+    });
+    center.appendChild(_celebDownloadBtn);
+
+    _celebReadyMsg=document.createElement('div');
+    _celebReadyMsg.className='publish-celebration-ready hidden';
+    _celebReadyMsg.innerHTML='<span>✓</span> Your book is ready. Download again any time.';
+    center.appendChild(_celebReadyMsg);
+
+    // Secondary actions.
+    const secondary=document.createElement('div');
+    secondary.className='publish-celebration-secondary';
+    const keep=document.createElement('button');
+    keep.type='button';
+    keep.className='publish-celebration-secondary-btn';
+    keep.innerHTML='<span>✏️</span> Keep Editing';
+    keep.addEventListener('click',function(){ _close(); });
+    secondary.appendChild(keep);
+    const another=document.createElement('button');
+    another.type='button';
+    another.className='publish-celebration-secondary-btn';
+    another.innerHTML='<span>📖</span> Make Another Story';
+    another.addEventListener('click',function(){ _makeAnotherStory(); });
+    secondary.appendChild(another);
+    center.appendChild(secondary);
+
+    _celebBody.appendChild(center);
+    return _celebBody;
+  }
+
+  function _enterCelebration(){
+    if(!_celebBody) return;
+    // Reset between celebrations.
+    _celebReadyMsg.classList.add('hidden');
+    _celebDownloadBtn.classList.remove('is-given');
+
+    // Spawn confetti — DOM nodes with CSS keyframes. ~60 particles is
+    // enough to feel celebratory without taxing the GPU.
+    _celebConfetti.innerHTML='';
+    const COLORS=['#FFCB45','#FF6B6B','#4ECDC4','#7B61FF','#FFE17A','#FF8FA3'];
+    for(let i=0;i<60;i++){
+      const p=document.createElement('span');
+      p.className='publish-confetti-particle';
+      p.style.background=COLORS[i%COLORS.length];
+      p.style.left=Math.random()*100+'%';
+      p.style.animationDelay=(Math.random()*1.6).toFixed(2)+'s';
+      p.style.animationDuration=(2.5+Math.random()*1.8).toFixed(2)+'s';
+      p.style.transform='rotate('+Math.floor(Math.random()*360)+'deg)';
+      _celebConfetti.appendChild(p);
+    }
+
+    // Render the cover into the celebration canvas via the canonical
+    // path — children see their real book on the celebration screen.
+    const slides=AppState.slides||[];
+    if(slides.length>0){
+      let cover=slides.find(function(s){ return s && s.pageType==='cover'; });
+      if(!cover) cover=slides[0];
+      const editorCanvas=document.getElementById('previewCanvas');
+      try{
+        SlideRenderer.init(_celebCoverCanvas);
+        const titleEl=document.getElementById('bookTitle');
+        const payload=SlideRenderer.buildPayload(cover,{
+          page:1,
+          totalPages:slides.length,
+          defaultBookTitle:titleEl?titleEl.value:''
+        });
+        SlideRenderer.render(payload);
+      }catch(e){}
+      try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
+    }
+
+    // Title + author readout.
+    const title=(AppState.project && (AppState.project.bookTitle||AppState.project.title))||'My Story';
+    const author=(AppState.project && AppState.project.author)||'';
+    _celebTitle.textContent=title;
+    _celebSubtitle.textContent=author ? 'by '+author : '';
+  }
+
+  function _makeAnotherStory(){
+    // Confirmation — never lose progress without a clear yes.
+    const ok=window.confirm('Start a brand-new story? Your current book is already published — this will give you a fresh page to begin.');
+    if(!ok) return;
+    // Reset the project to a clean slate.
+    try{
+      if(typeof AppState!=='undefined'){
+        AppState.slides=[];
+        AppState.currentSlide=0;
+        if(AppState.project){
+          AppState.project.bookTitle='';
+          AppState.project.title='';
+          AppState.project.author='';
+        }
+      }
+      if(typeof ProjectManager!=='undefined' && typeof ProjectManager.discardSession==='function'){
+        ProjectManager.discardSession();
+      }
+      // Soft reload — the simplest path back to a true clean slate.
+      window.location.reload();
+    }catch(e){
+      _close();
+    }
   }
 
   // -------- Stage state machine -------------------------------------
@@ -630,6 +795,7 @@ const PublishStudio=(function(){
     if(next===STAGES.READ) _enterRead();
     else if(next===STAGES.ALMOST_READY) _enterAlmostReady();
     else if(next===STAGES.PUBLISHING) _enterPublishing();
+    else if(next===STAGES.CELEBRATION) _enterCelebration();
   }
 
   // -------- Lifecycle ------------------------------------------------
