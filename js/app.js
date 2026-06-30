@@ -162,13 +162,11 @@ function _setSelectedTextElement(id){
   if(typeof window.redrawPreview==='function') window.redrawPreview();
   if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
   if(id){
-    // Auto-activate Card Designer tab and Text section.
-    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-    const textSection=document.querySelector('[data-card-section="text"]');
-    if(textSection && textSection.classList.contains('collapsed')){
-      const header=textSection.querySelector('.designer-group-title');
-      if(header) header.click();
+    // Sprint 8.4.1 — Universal Object Selection. Switch to the Card
+    // Designer tab and focus the Text section (expand + smooth scroll).
+    _activateTab('card');
+    if(typeof CardDesigner!=='undefined' && typeof CardDesigner.focusSection==='function'){
+      try{ CardDesigner.focusSection('text'); }catch(e){}
     }
   }
 }
@@ -184,6 +182,19 @@ function _activateTab(tabId){
   const btn=document.querySelector('.tab-btn[data-tab="'+tabId+'"]');
   if(btn && !btn.classList.contains('active')) btn.click();
 }
+// Sprint 8.4.1 — Universal Object Selection. One mapping from scene
+// element type → Card Designer section id. Selecting any object on the
+// canvas now lands in the same designer surface with the matching
+// section expanded and scrolled into view. Picture Holder (`frame`),
+// Picture (the picture inside the holder — surfaced by the `image`
+// section), Sticker, Text, and Decoration all follow the same rule.
+const SCENE_TYPE_TO_SECTION={
+  'image-holder':'frame',
+  'text-holder':'text',
+  'text':'text',
+  'sticker':'sticker',
+  'decoration':'decoration'
+};
 window.setSelectedSceneElement=function(id,elementType){ _setSelectedSceneElement(id,elementType); };
 function _setSelectedSceneElement(id, elementType){
   _selectedSceneElement=id||null;
@@ -193,18 +204,17 @@ function _setSelectedSceneElement(id, elementType){
     // selection so the right pane shows one clear context.
     _selectedTextElement=null;
   }
-  // Tab activation FIRST — any refresh that runs afterward sees the
-  // correct active tab. Sprint 8.3 (Universal Object Consistency):
-  // Frame / Sticker / Text → Card Designer (full Object Designer
-  // controls). Decorations → Story tab (the Page Designer's Element
-  // checklist now carries Lock alongside visibility + reset, so the
-  // child has one row per element with the same shape).
+  // Sprint 8.4.1 — tab activation FIRST so any refresh that runs
+  // afterward sees the correct active tab. Every selectable object
+  // (Picture Holder, Sticker, Text, Decoration) lands in the Card
+  // Designer; the matching section is expanded + scrolled into view.
   if(id){
-    if(elementType==='image-holder' || elementType==='text-holder' ||
-       elementType==='text' || elementType==='sticker'){
+    const sectionId=SCENE_TYPE_TO_SECTION[elementType];
+    if(sectionId){
       _activateTab('card');
-    }else if(elementType==='decoration'){
-      _activateTab('story');
+      if(typeof CardDesigner!=='undefined' && typeof CardDesigner.focusSection==='function'){
+        try{ CardDesigner.focusSection(sectionId); }catch(e){}
+      }
     }
   }
   if(typeof window.redrawPreview==='function') window.redrawPreview();

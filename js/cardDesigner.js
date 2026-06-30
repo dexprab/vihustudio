@@ -12,6 +12,11 @@
 //             data continues to render from saved projects; the power-user
 //             UI is hidden because a 9-year-old shouldn't need it.
 const CardDesigner=(function(){
+  // Sprint 8.4.1 — section order tracks the Universal Object Selection
+  // routing in app.js. `frame` is the Picture Holder (the container the
+  // picture lives inside); `image` is the picture itself; the rest are
+  // self-evident. The id `frame` is preserved for backward compat with
+  // every saved selection state + the renderer's element id.
   const SECTIONS=[
     {
       id:'sticker',
@@ -20,7 +25,7 @@ const CardDesigner=(function(){
     },
     {
       id:'frame',
-      title:'Frame',
+      title:'Picture Holder',
       summary:''
     },
     {
@@ -37,6 +42,11 @@ const CardDesigner=(function(){
     {
       id:'text',
       title:'Text',
+      summary:''
+    },
+    {
+      id:'decoration',
+      title:'Decoration',
       summary:''
     }
   ];
@@ -117,6 +127,8 @@ const CardDesigner=(function(){
       _buildStickerControls(sub);
     }else if(s.id==='frame'){
       _buildFrameControls(sub);
+    }else if(s.id==='decoration'){
+      _buildDecorationControls(sub);
     }else if(s.summary){
       const note=document.createElement('p');
       note.className='placeholder';
@@ -1293,6 +1305,174 @@ const CardDesigner=(function(){
     body.appendChild(editor);
   }
 
+  // --- Decoration section (Sprint 8.4.1 — Universal Object Selection) ----
+  // Selecting a decoration on canvas now routes the right pane to the Card
+  // Designer just like every other object. The Decoration section surfaces
+  // Visibility, Lock, Layer order, Reset — the controls that fit a
+  // decorative element. The wider Element checklist in the Story tab still
+  // works for bulk visibility toggling.
+  function _activeDecorationElement(){
+    if(_selectedStickerType()!=='decoration') return null;
+    if(typeof SceneEngine==='undefined') return null;
+    const slide=_currentSlide();
+    if(!slide) return null;
+    const data=SceneEngine.getRenderData(slide);
+    if(!data) return null;
+    const id=_selectedStickerHostId();
+    if(!id) return null;
+    return data.elements.find(function(el){ return el.id===id; })||null;
+  }
+  function _commitDecoration(){
+    const s=_currentSlide();
+    if(s) delete s.thumbnail;
+    if(host){
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+    _refreshDecoration();
+  }
+
+  function _buildDecorationControls(body){
+    const empty=document.createElement('p');
+    empty.className='placeholder decoration-empty';
+    empty.textContent='Pick a decoration on the page to edit it.';
+    body.appendChild(empty);
+
+    const editor=document.createElement('div');
+    editor.className='decoration-editor hidden';
+
+    const selectedLabel=document.createElement('div');
+    selectedLabel.className='decoration-selected-label';
+    selectedLabel.textContent='Decoration';
+    editor.appendChild(selectedLabel);
+
+    const hint=document.createElement('p');
+    hint.className='placeholder decoration-hint';
+    hint.textContent='Drag the decoration on the canvas to move it. Drag the gold handles to resize.';
+    editor.appendChild(hint);
+
+    // Layer — Backward / Forward (matches Frame / Sticker shape).
+    const layerRow=document.createElement('div');
+    layerRow.className='designer-row';
+    const layerLbl=document.createElement('div');
+    layerLbl.className='designer-row-label';
+    layerLbl.textContent='Layer';
+    layerRow.appendChild(layerLbl);
+    const layerIcons=document.createElement('div');
+    layerIcons.className='icon-row decoration-layer-row';
+    [
+      {id:'backward',label:'Backward',glyph:'⬇',delta:-1},
+      {id:'forward', label:'Forward', glyph:'⬆',delta:1}
+    ].forEach(function(L){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card decoration-layer-btn';
+      btn.setAttribute('data-layer',L.id);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='decoration-layer-glyph'; g.textContent=L.glyph; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=L.label; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        if(typeof SceneEngine==='undefined') return;
+        const slide=_currentSlide();
+        const id=_selectedStickerHostId();
+        if(!slide||!id) return;
+        SceneEngine.adjustZIndex(slide,id,L.delta);
+        _commitDecoration();
+      });
+      layerIcons.appendChild(btn);
+    });
+    layerRow.appendChild(layerIcons);
+    editor.appendChild(layerRow);
+
+    // Action row — Lock / Hide / Reset.
+    const actionRow=document.createElement('div');
+    actionRow.className='sticker-actions-row';
+
+    const lockBtn=document.createElement('button');
+    lockBtn.type='button';
+    lockBtn.className='sticker-action-btn decoration-lock-btn';
+    lockBtn.textContent='🔒 Lock';
+    lockBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      const cur=(slide.metadata && slide.metadata.elementOverrides
+        && slide.metadata.elementOverrides[id]
+        && slide.metadata.elementOverrides[id].locked)===true;
+      SceneEngine.setLocked(slide,id,!cur);
+      _commitDecoration();
+    });
+    actionRow.appendChild(lockBtn);
+
+    const hideBtn=document.createElement('button');
+    hideBtn.type='button';
+    hideBtn.className='sticker-action-btn decoration-hide-btn';
+    hideBtn.textContent='✕ Hide';
+    hideBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      SceneEngine.setVisibility(slide,id,false);
+      if(host && typeof host.setSelectedSceneElement==='function'){
+        try{ host.setSelectedSceneElement(null,null); }catch(e){}
+      }
+      _commitDecoration();
+    });
+    actionRow.appendChild(hideBtn);
+
+    editor.appendChild(actionRow);
+
+    // Reset Decoration.
+    const resetRow=document.createElement('div');
+    resetRow.className='picture-actions-row';
+    const resetBtn=document.createElement('button');
+    resetBtn.type='button';
+    resetBtn.className='picture-reset-btn picture-reset-decoration-btn';
+    resetBtn.textContent='↺ Reset Decoration';
+    resetBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      SceneEngine.clearOverride(slide,id);
+      _commitDecoration();
+    });
+    resetRow.appendChild(resetBtn);
+    editor.appendChild(resetRow);
+
+    body.appendChild(editor);
+  }
+
+  function _refreshDecoration(){
+    if(!mountedRoot) return;
+    const section=mountedRoot.querySelector('[data-card-section="decoration"]');
+    if(!section) return;
+    const empty=section.querySelector('.decoration-empty');
+    const editor=section.querySelector('.decoration-editor');
+    if(!empty || !editor) return;
+    const el=_activeDecorationElement();
+    if(!el){
+      empty.classList.remove('hidden');
+      editor.classList.add('hidden');
+      section.classList.remove('decoration-active');
+      return;
+    }
+    empty.classList.add('hidden');
+    editor.classList.remove('hidden');
+    section.classList.add('decoration-active');
+    const label=section.querySelector('.decoration-selected-label');
+    if(label) label.textContent=el.label||'Decoration';
+    const lockBtn=section.querySelector('.decoration-lock-btn');
+    if(lockBtn){
+      const locked=!!el.locked;
+      lockBtn.textContent=locked?'🔓 Unlock':'🔒 Lock';
+      lockBtn.classList.toggle('active',locked);
+    }
+  }
+
   function _refreshFrame(){
     if(!mountedRoot) return;
     const section=mountedRoot.querySelector('[data-card-section="frame"]');
@@ -1798,6 +1978,7 @@ const CardDesigner=(function(){
     _refreshText();
     _refreshSticker();
     _refreshFrame();
+    _refreshDecoration();
     _refreshFrameThumbs();
     return root;
   }
@@ -1812,11 +1993,45 @@ const CardDesigner=(function(){
     _refreshText();
     _refreshSticker();
     _refreshFrame();
+    _refreshDecoration();
   }
 
   // Re-sync every section with the current slide/selection — call after
   // the host switches slides or changes the object selection.
-  function refresh(){ _refreshImage(); _refreshText(); _refreshSticker(); _refreshFrame(); }
+  function refresh(){
+    _refreshImage();
+    _refreshText();
+    _refreshSticker();
+    _refreshFrame();
+    _refreshDecoration();
+  }
+
+  // Sprint 8.4.1 — Universal Object Selection. Expand the named section,
+  // make sure its body is visible (uncollapse if collapsed), and smoothly
+  // scroll it into view inside the right pane. Other sections stay in
+  // whatever state the child left them — the rule is "make sure the
+  // matching section is open and visible", not "close everything else".
+  function focusSection(sectionId){
+    if(!mountedRoot||!sectionId) return false;
+    const section=mountedRoot.querySelector('[data-card-section="'+sectionId+'"]');
+    if(!section) return false;
+    if(section.classList.contains('collapsed')){
+      const header=section.querySelector('.designer-group-title');
+      if(header){
+        section.classList.remove('collapsed');
+        header.setAttribute('aria-expanded','true');
+      }
+    }
+    // Defer the scroll so the tab-switch + refresh DOM mutations settle
+    // first; otherwise the scrollIntoView lands on the wrong layout.
+    try{
+      window.requestAnimationFrame(function(){
+        try{ section.scrollIntoView({behavior:'smooth',block:'start'}); }
+        catch(e){ try{ section.scrollIntoView(); }catch(_){ } }
+      });
+    }catch(e){}
+    return true;
+  }
 
   // Read the active slide's imageView, defaulting if absent. Exposed so
   // canvas pan handlers in the host can read+write without poking metadata
@@ -1857,6 +2072,7 @@ const CardDesigner=(function(){
     unmount:unmount,
     configure:configure,
     refresh:refresh,
+    focusSection:focusSection,
     getActiveImageView:getActiveImageView,
     notifyImageViewChanged:notifyImageViewChanged,
     getSectionBody:getSectionBody

@@ -2817,6 +2817,60 @@ body.dark-theme .sticker-action-btn{ background:var(--panel); }
 
 body.dark-theme .frame-layer-btn{ background:var(--panel); }
 
+/* ---------------------------
+ * Sprint 8.4.1 — Decoration section (Universal Object Selection).
+ * Reuses the Frame section's typography + grid so every object type
+ * reads identically. Glyphs match the Frame layer row.
+ * --------------------------- */
+.decoration-empty,
+.decoration-hint{
+  font-size:12px;
+  color:var(--text-secondary);
+  text-align:center;
+  padding:6px 0;
+}
+.decoration-empty.hidden{ display:none; }
+.decoration-editor.hidden{ display:none; }
+
+.decoration-selected-label{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  opacity:0.85;
+  margin-bottom:8px;
+}
+
+.decoration-layer-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
+  gap:6px;
+}
+.decoration-layer-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:6px 4px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:8px;
+  cursor:pointer;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s;
+}
+.decoration-layer-btn:hover{
+  background:rgba(255,203,69,0.10);
+  border-color:rgba(255,203,69,0.45);
+}
+.decoration-layer-glyph{
+  font-size:18px;
+  line-height:1;
+}
+body.dark-theme .decoration-layer-btn{ background:var(--panel); }
+
 /* ===========================
  * Sprint 6.7 — Picture Studio
  * A temporary preparation workspace. Modal overlay that opens when a
