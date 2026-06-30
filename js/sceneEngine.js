@@ -271,7 +271,16 @@ const SceneEngine=(function(){
     const data=getRenderData(slide);
     if(!data) return [];
     return data.elements.map(function(el){
-      return {id:el.id,label:el.label||el.id,type:el.type,visible:el.visible!==false};
+      return {
+        id:el.id,
+        label:el.label||el.id,
+        type:el.type,
+        visible:el.visible!==false,
+        // Sprint 8.3 — Universal Object Consistency. Surface the lock
+        // state so the Page Designer's Element checklist can offer a
+        // Lock toggle alongside the visibility checkbox.
+        locked:!!el.locked
+      };
     });
   }
 

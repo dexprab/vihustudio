@@ -1147,6 +1147,31 @@ button:active{
   color:var(--gold);
 }
 
+/* Sprint 8.3 — Universal Object Consistency. Lock toggle alongside
+ * the visibility checkbox so every scene element shares the same
+ * lock primitive without leaving the Page Designer. */
+.page-element-row .page-element-lock{
+  width:22px;
+  height:22px;
+  padding:0;
+  margin:0 6px 0 0;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--text-secondary);
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+  transition:border-color 0.15s, background 0.15s;
+}
+.page-element-row .page-element-lock:hover{
+  border-color:var(--gold);
+}
+.page-element-row .page-element-lock.is-locked{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.15);
+}
+
 /* Foundation placeholder card used by the Cover / Hook / End editors. */
 .page-placeholder{
   margin:8px 0 0 0;

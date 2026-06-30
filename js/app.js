@@ -194,13 +194,17 @@ function _setSelectedSceneElement(id, elementType){
     _selectedTextElement=null;
   }
   // Tab activation FIRST — any refresh that runs afterward sees the
-  // correct active tab. This fixes the Sprint 6.6 issue where the right
-  // pane could end up on Story instead of Card after a sticker insert.
+  // correct active tab. Sprint 8.3 (Universal Object Consistency):
+  // Frame / Sticker / Text → Card Designer (full Object Designer
+  // controls). Decorations → Story tab (the Page Designer's Element
+  // checklist now carries Lock alongside visibility + reset, so the
+  // child has one row per element with the same shape).
   if(id){
     if(elementType==='image-holder' || elementType==='text-holder' ||
-       elementType==='text' || elementType==='sticker' ||
-       elementType==='decoration'){
+       elementType==='text' || elementType==='sticker'){
       _activateTab('card');
+    }else if(elementType==='decoration'){
+      _activateTab('story');
     }
   }
   if(typeof window.redrawPreview==='function') window.redrawPreview();

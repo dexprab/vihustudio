@@ -480,6 +480,21 @@ const PageDesigner=(function(){
       name.className='page-element-name';
       name.textContent=el.label;
       row.appendChild(name);
+      // Sprint 8.3 — Universal Object Consistency. Lock toggle sits
+      // alongside the visibility checkbox so every scene element
+      // (Frame, Decorations, Text Holders) carries the same lock
+      // primitive without leaving the Page Designer.
+      const lock=document.createElement('button');
+      lock.type='button';
+      lock.className='page-element-lock'+(el.locked?' is-locked':'');
+      lock.title=el.locked?'Unlock this element':'Lock this element';
+      lock.textContent=el.locked?'🔒':'🔓';
+      lock.addEventListener('click',function(){
+        if(typeof SceneEngine==='undefined') return;
+        SceneEngine.setLocked(s,el.id,!el.locked);
+        _commitContent();
+      });
+      row.appendChild(lock);
       const reset=document.createElement('button');
       reset.type='button';
       reset.className='page-element-reset';
