@@ -20,24 +20,20 @@ Canonical project context for VihuStudio. Read this first before making any chan
 
 ## Current Status
 
-### Frozen
+### Frozen (Version 1.0)
 
 - Workspace
 - Project Management
 - Persistence
-- Page Management
+- Page Management (Sprint 8.2 drag-and-drop reorder + trimmed context menu)
 - Theme Engine
 - Theme Designer
-- Card Designer Foundation
-
-### In Progress
-
-- Publish Studio (Sprint 8.1 ships the four-stage Publish flow — 📖 Read My Story → ✨ Almost Ready → 📕 Publishing → 🎉 Celebration. Modal overlay, never a permanent tab. Hand-rolled `js/pdfWriter.js` emits a valid PDF 1.4 with one rasterised page per slide through the canonical SlideRenderer path; WYSIWYE preserved)
-- Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset; Sprint 4.5 added composition / light / color / detail / effects fine tuning)
-- Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset; Sprint 4.4 added position drag + arrow nudge + full typography)
-- Page Designer Foundation (Sprint 6.0 introduces the page role selector — 📖 Story / 📘 Cover / 🪝 Hook / 🏁 End — with role-specific content editors)
-- Sticker Studio (Sprint 6.6 ships the Sticker Studio tab — 15 categories, search, favorites + recents, and per-slide sticker objects persisted at `slide.metadata.stickers`; stickers reuse the existing object selection, resize handles, and Object Designer chrome. Sprint 6.6.1 polish: removed the Preview tab from the editor, compacted the chip strip, dropped the pastel disc behind sticker artwork, hardened the insertion → Card Designer routing, and promoted the Frame to a first-class object with Spin + Layer controls)
-- Picture Studio (Sprint 6.7 ships the Picture Studio modal — a temporary preparation workspace that opens when a child uploads or replaces a picture. Crop / Rotate / Flip / Auto Enhance / Fit-Fill / Reset / Before-After. Transforms bake into the bitmap on Apply; right pane lands on Card Designer for further editing. Not a permanent tab)
+- Card Designer (Picture · Frame · Sticker · Text — every object follows the same Object Designer interaction model)
+- Page Designer (📖 Story / 📘 Cover / 🪝 Hook / 🏁 End roles; per-role content editors; per-element checklist with Visibility / Lock / Reset)
+- Sticker Studio (15 categories, search, favorites + recents, 241 stickers; insertions land in the Card Designer's Sticker section)
+- Picture Studio (temporary preparation modal — Crop / Rotate / Flip / Auto Enhance / Fit-Fill / Reset / Before-After; bake-on-Apply through the canonical SlideRenderer path)
+- Publish Studio (four-stage flow — 📖 Read My Story → ✨ Almost Ready → 📕 Publishing → 🎉 Celebration; hand-rolled `js/pdfWriter.js` emits a valid PDF 1.4 per book; WYSIWYE preserved from editor canvas to printed PDF)
+- Universal Object Consistency (Frame · Sticker · Decoration · Text-Holder · Background all share Select / Move / Resize / Rotate / Layer / Lock / Delete primitives via the `slide.metadata.elementOverrides` bag)
 
 ## Locked Product Decisions
 

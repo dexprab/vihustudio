@@ -1,9 +1,9 @@
 {
-  "version": "0.8-dev",
+  "version": "1.0.0",
   "sprint": "S8",
-  "task": "T8.2",
-  "build": "0046",
+  "task": "T8.3",
+  "build": "0047",
   "buildDate": "2026-06-30",
-  "commit": "8a0c5dd",
-  "environment": "Development"
+  "commit": "pending",
+  "environment": "Release"
 }
