@@ -1978,6 +1978,7 @@ button:active{
 
 .designer-group-title-text{
   flex:1;
+  min-width:0;
 }
 
 .designer-group-chevron{
@@ -2971,6 +2972,12 @@ body.dark-theme .card-section-badge.is-overridden{
 .theme-reset-btn:hover{
   background:rgba(255,203,69,0.10) !important;
   border-color:rgba(255,203,69,0.45) !important;
+}
+.theme-reset-btn:focus-visible,
+.theme-font-select:focus-visible,
+.theme-color-input:focus-visible{
+  outline:2px solid rgba(255,203,69,0.6);
+  outline-offset:2px;
 }
 body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
 

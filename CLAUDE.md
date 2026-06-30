@@ -27,13 +27,15 @@ Canonical project context for VihuStudio. Read this first before making any chan
 - Persistence
 - Page Management (Sprint 8.2 drag-and-drop reorder + trimmed context menu)
 - Theme Engine
-- Theme Designer
-- Card Designer (Picture · Frame · Sticker · Text — every object follows the same Object Designer interaction model)
+- Theme Designer (Sprint 8.4.2 — Book Style · Branding · Typography · Colours · Picture Holder Defaults · Page Layout · Decorations · Navigation; sub-options ride on `themeOptions` and reach the renderer via `ThemeEngine.resolveTheme()`)
+- Card Designer (Sprint 8.4.3 — explicit Theme → Card inheritance: header note + per-section "Theme / This Page" badge; Picture Holder · Picture · Sticker · Text · Decoration sections — every object follows the same Object Designer interaction model)
 - Page Designer (📖 Story / 📘 Cover / 🪝 Hook / 🏁 End roles; per-role content editors; per-element checklist with Visibility / Lock / Reset)
 - Sticker Studio (15 categories, search, favorites + recents, 241 stickers; insertions land in the Card Designer's Sticker section)
 - Picture Studio (temporary preparation modal — Crop / Rotate / Flip / Auto Enhance / Fit-Fill / Reset / Before-After; bake-on-Apply through the canonical SlideRenderer path)
 - Publish Studio (four-stage flow — 📖 Read My Story → ✨ Almost Ready → 📕 Publishing → 🎉 Celebration; hand-rolled `js/pdfWriter.js` emits a valid PDF 1.4 per book; WYSIWYE preserved from editor canvas to printed PDF)
 - Universal Object Consistency (Frame · Sticker · Decoration · Text-Holder · Background all share Select / Move / Resize / Rotate / Layer / Lock / Delete primitives via the `slide.metadata.elementOverrides` bag)
+- Universal Object Selection (Sprint 8.4.1 — any object click switches to the Card Designer, expands the matching section, and smoothly scrolls it into view; one `SCENE_TYPE_TO_SECTION` mapping covers every selectable element type)
+- Picture Holder Completion (Sprint 8.4.4 — Selection · Free Move · Free W/H Resize · Rotation · Layer · Lock · Delete on the holder; Border / Corner Radius / Shadow shared with the Picture section's Frame Look + Frame Style; the picture inside the holder remains independently editable — Zoom / Move / Replace / Fit / Fill)
 
 ## Locked Product Decisions
 
