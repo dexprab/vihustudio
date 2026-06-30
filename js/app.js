@@ -332,9 +332,14 @@ upload.onchange=e=>{
  });
 };
 
-exportBtn.onclick=()=>{
-  alert('Export feature coming in Sprint 3');
-};
+// Sprint 8.1 retired the visible Export button; Sprint 8.3.4 guards the
+// dormant handler so removing the hidden node later (or stripping the
+// HTML completely) can't throw. Children publish books, not files.
+if(exportBtn){
+  exportBtn.onclick=()=>{
+    alert('Export feature coming in Sprint 3');
+  };
+}
 
 // Sprint 8.1.1 — Publish button opens Publish Studio. The editor stays
 // exactly as it was underneath; closing the studio returns control with
