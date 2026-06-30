@@ -103,6 +103,15 @@ const CardDesigner=(function(){
     text.textContent=s.title;
     header.appendChild(text);
 
+    // Sprint 8.4.3 — inheritance badge. "Theme" when no card override
+    // for this section is set on the active slide; "This Page" when
+    // the child has personalised it. Refreshed by _refreshInheritance.
+    const badge=document.createElement('span');
+    badge.className='card-section-badge';
+    badge.setAttribute('data-card-section-badge',s.id);
+    badge.textContent='Theme';
+    header.appendChild(badge);
+
     const chev=document.createElement('span');
     chev.className='designer-group-chevron';
     chev.setAttribute('aria-hidden','true');
@@ -1954,6 +1963,16 @@ const CardDesigner=(function(){
     container.innerHTML='';
     const root=document.createElement('div');
     root.className='card-designer';
+
+    // Sprint 8.4.3 — Card Designer Inheritance. The header note explains
+    // the rule so the child / user reading the right pane knows that
+    // every control inherits from the Theme until they override it for
+    // this page. Reset buttons in each section walk the override back.
+    const intro=document.createElement('p');
+    intro.className='card-designer-inheritance';
+    intro.innerHTML='<strong>Card</strong> customises this page only. Every control follows the <strong>Theme</strong> until you change it here.';
+    root.appendChild(intro);
+
     SECTIONS.forEach(function(s){ if(s.hidden) return; root.appendChild(_buildSection(s)); });
     container.appendChild(root);
     container.__cardDesignerRoot=root;
@@ -1979,6 +1998,7 @@ const CardDesigner=(function(){
     _refreshSticker();
     _refreshFrame();
     _refreshDecoration();
+    _refreshInheritance();
     _refreshFrameThumbs();
     return root;
   }
@@ -1994,6 +2014,7 @@ const CardDesigner=(function(){
     _refreshSticker();
     _refreshFrame();
     _refreshDecoration();
+    _refreshInheritance();
   }
 
   // Re-sync every section with the current slide/selection — call after
@@ -2004,6 +2025,67 @@ const CardDesigner=(function(){
     _refreshSticker();
     _refreshFrame();
     _refreshDecoration();
+    _refreshInheritance();
+  }
+
+  // Sprint 8.4.3 — Card Designer Inheritance. Walks the active slide's
+  // cardOverrides + stickers + scene element overrides to decide
+  // whether each Card Designer section is currently "Theme" or
+  // "This Page". The badge updates per-refresh so the child sees the
+  // section flip as soon as they change a control.
+  function _slideHasSectionOverride(slide,sectionId){
+    if(!slide||!slide.metadata) return false;
+    const co=slide.metadata.cardOverrides||{};
+    switch(sectionId){
+      case 'image':{
+        const img=co.image||{};
+        // Default image view has no relevant overrides; any deviation
+        // counts. We treat plain {fit:'fit',scale:1,offsetX:0,offsetY:0}
+        // as no override.
+        const isPlain = (img.fit==='fit' || !img.fit) &&
+                        (img.scale===undefined || img.scale===1) &&
+                        (img.offsetX===undefined || img.offsetX===0) &&
+                        (img.offsetY===undefined || img.offsetY===0);
+        return !isPlain;
+      }
+      case 'frame':{
+        if(co.border) return true;
+        // image-holder element override on this slide.
+        const eo=(slide.metadata.elementOverrides||{})['image-holder'];
+        if(eo && Object.keys(eo).length>0) return true;
+        return !!co.frameDesign;
+      }
+      case 'text':{
+        const te=co.textElements||{};
+        return Object.keys(te).length>0;
+      }
+      case 'sticker':{
+        return Array.isArray(slide.metadata.stickers) && slide.metadata.stickers.length>0;
+      }
+      case 'decoration':{
+        const overrides=slide.metadata.elementOverrides||{};
+        for(const k in overrides){
+          if(k==='image-holder') continue;
+          if(k.indexOf('-holder')!==-1) continue;
+          if(Object.keys(overrides[k]||{}).length>0) return true;
+        }
+        return false;
+      }
+      default:
+        return false;
+    }
+  }
+  function _refreshInheritance(){
+    if(!mountedRoot) return;
+    const slide=_currentSlide();
+    SECTIONS.forEach(function(s){
+      if(s.hidden) return;
+      const badge=mountedRoot.querySelector('[data-card-section-badge="'+s.id+'"]');
+      if(!badge) return;
+      const overridden=_slideHasSectionOverride(slide,s.id);
+      badge.textContent=overridden?'This Page':'Theme';
+      badge.classList.toggle('is-overridden',overridden);
+    });
   }
 
   // Sprint 8.4.1 — Universal Object Selection. Expand the named section,

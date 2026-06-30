@@ -2872,6 +2872,49 @@ body.dark-theme .frame-layer-btn{ background:var(--panel); }
 body.dark-theme .decoration-layer-btn{ background:var(--panel); }
 
 /* ---------------------------
+ * Sprint 8.4.3 — Card Designer Inheritance.
+ * Header note explains the Theme → Card rule once at the top; the
+ * per-section badge flips between "Theme" (no overrides) and "This
+ * Page" (any card-level override active for that section).
+ * --------------------------- */
+.card-designer-inheritance{
+  font-size:12px;
+  line-height:1.5;
+  color:var(--text-secondary);
+  margin:0 0 12px;
+  padding:8px 10px;
+  background:rgba(255,203,69,0.06);
+  border:1px solid rgba(255,203,69,0.25);
+  border-radius:8px;
+}
+.card-designer-inheritance strong{
+  color:var(--text);
+  font-weight:700;
+}
+
+.card-section-badge{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  margin-left:auto;
+  padding:2px 8px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.06);
+  color:var(--text-secondary);
+  border:1px solid var(--line);
+  flex-shrink:0;
+}
+.card-section-badge.is-overridden{
+  color:#7a5a00;
+  background:rgba(255,203,69,0.25);
+  border-color:rgba(255,203,69,0.55);
+}
+body.dark-theme .card-section-badge.is-overridden{
+  color:#FFCB45;
+}
+
+/* ---------------------------
  * Sprint 8.4.2 — Theme Designer Completion controls.
  * Typography / Colours / Picture Holder Defaults / Page Layout rows.
  * The inputs reuse existing .designer-row + .input-field chrome; this
