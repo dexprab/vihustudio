@@ -884,8 +884,10 @@ previewCanvas.addEventListener('mousedown',function(e){
   const sceneHit=_hitTestSceneElement(c.x,c.y);
   if(sceneHit){
     // Sprint 6.6 — stickers persist in their own array, so their base
-    // position comes off the sticker record directly. Locked stickers
-    // are still selectable but can't be dragged.
+    // position comes off the sticker record directly. Sprint 8.3 —
+    // locked propagates through the bbox for every scene-element type
+    // (Frame, decoration, …) so the same lock primitive guards every
+    // object. Locked objects are still selectable but never drag.
     let baseX, baseY, locked=false;
     if(sceneHit.type==='sticker' && typeof SceneEngine!=='undefined'){
       const st=SceneEngine.findSticker(s,sceneHit.id);
@@ -896,6 +898,7 @@ previewCanvas.addEventListener('mousedown',function(e){
       const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[sceneHit.id] && s.metadata.elementOverrides[sceneHit.id].position) || {};
       baseX=(typeof pos.x==='number') ? pos.x : (sceneHit.bx + sceneHit.bw/2);
       baseY=(typeof pos.y==='number') ? pos.y : (sceneHit.by + sceneHit.bh/2);
+      locked=!!sceneHit.locked;
     }
     _sceneDragState={
       elementId:sceneHit.id,

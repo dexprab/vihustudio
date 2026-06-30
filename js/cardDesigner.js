@@ -1208,6 +1208,70 @@ const CardDesigner=(function(){
     layerRow.appendChild(layerIcons);
     editor.appendChild(layerRow);
 
+    // Sprint 8.3 — Frame Holder completion. The Frame is now a true
+    // first-class object: Lock / Duplicate / Delete sit beside the
+    // existing Spin / Layer / Reset controls so every page object
+    // (Frame, Sticker, …) carries the same shape. Picture
+    // independence is preserved by construction — these actions
+    // never touch the imageView; the picture inside the frame keeps
+    // its own pan / zoom / replace controls under the Picture section.
+    const actionRow=document.createElement('div');
+    actionRow.className='sticker-actions-row';
+
+    const lockBtn=document.createElement('button');
+    lockBtn.type='button';
+    lockBtn.className='sticker-action-btn frame-lock-btn';
+    lockBtn.textContent='🔒 Lock';
+    lockBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      const cur=(slide.metadata && slide.metadata.elementOverrides
+        && slide.metadata.elementOverrides[id]
+        && slide.metadata.elementOverrides[id].locked)===true;
+      SceneEngine.setLocked(slide,id,!cur);
+      _commitFrame();
+    });
+    actionRow.appendChild(lockBtn);
+
+    const dupBtn=document.createElement('button');
+    dupBtn.type='button';
+    dupBtn.className='sticker-action-btn frame-dup-btn';
+    dupBtn.textContent='⎘ Duplicate';
+    dupBtn.title='Multiple frames per page are coming in a future story.';
+    dupBtn.addEventListener('click',function(){
+      // V1.0 architecture-ready: the scene blueprint owns one Frame
+      // per page; a future sprint will lift the Frame into a free
+      // standing object collection. Until then, surface a friendly
+      // note so the action behaves predictably.
+      try{ alert('More frames per page are coming in a future story. ✨'); }catch(e){}
+    });
+    actionRow.appendChild(dupBtn);
+
+    const delBtn=document.createElement('button');
+    delBtn.type='button';
+    // Sprint 8.3 — distinct class so the test harness + future styling
+    // can target the Frame's delete without hitting the Sticker's.
+    delBtn.className='sticker-action-btn sticker-del-btn frame-del-btn';
+    delBtn.textContent='✕ Delete';
+    delBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      // Delete = hide. Children can bring the frame back from the
+      // Page Designer's Elements checklist.
+      SceneEngine.setVisibility(slide,id,false);
+      if(host && typeof host.setSelectedSceneElement==='function'){
+        try{ host.setSelectedSceneElement(null,null); }catch(e){}
+      }
+      _commitFrame();
+    });
+    actionRow.appendChild(delBtn);
+
+    editor.appendChild(actionRow);
+
     // Reset Frame — clears every override on the image-holder.
     const resetRow=document.createElement('div');
     resetRow.className='picture-actions-row';
@@ -1252,6 +1316,14 @@ const CardDesigner=(function(){
     const rot=typeof el.rotation==='number'?el.rotation:0;
     if(rotSlider) rotSlider.value=String(rot);
     if(rotVal) rotVal.textContent=Math.round(rot)+'°';
+
+    // Lock button reflects current state.
+    const lockBtn=section.querySelector('.frame-lock-btn');
+    if(lockBtn){
+      const locked=!!el.locked;
+      lockBtn.textContent=locked?'🔓 Unlock':'🔒 Lock';
+      lockBtn.classList.toggle('active',locked);
+    }
   }
 
   // --- Text section (Sprint 4.3 + 4.4) -----------------------------------

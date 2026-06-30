@@ -247,6 +247,10 @@ const SceneEngine=(function(){
     if(typeof ov.rotation==='number') out.rotation=ov.rotation;
     if(typeof ov.opacity==='number') out.opacity=ov.opacity;
     if(typeof ov.zIndex==='number') out.zIndex=ov.zIndex;
+    // Sprint 8.3 — propagate the locked flag (Frame Holder completion /
+    // Universal Object Consistency). Renderer + canvas hit-tests read
+    // el.locked through the resolved element.
+    if(ov.locked===true) out.locked=true;
     return out;
   }
 
@@ -317,6 +321,15 @@ const SceneEngine=(function(){
     const entry=_ensureEntry(slide,id);
     if(typeof rotation!=='number' || rotation===0) delete entry.rotation;
     else entry.rotation=rotation;
+    _maybePrune(slide,id);
+  }
+  // Sprint 8.3 — Frame Holder completion + Universal Object
+  // Consistency. Every scene element can now be locked (preventing
+  // drag + resize without removing the picture). Lock state rides on
+  // the existing elementOverrides bag — no project format change.
+  function setLocked(slide,id,locked){
+    const entry=_ensureEntry(slide,id);
+    if(locked) entry.locked=true; else delete entry.locked;
     _maybePrune(slide,id);
   }
   function adjustZIndex(slide,id,delta){
@@ -493,6 +506,7 @@ const SceneEngine=(function(){
     setPosition:setPosition,
     setSize:setSize,
     setRotation:setRotation,
+    setLocked:setLocked,
     adjustZIndex:adjustZIndex,
     clearOverride:clearOverride,
     resolveTextSource:resolveTextSource,

@@ -713,12 +713,13 @@ const SlideRenderer=(()=>{
 
   function _sceneBbox(el){
     const pos=el.position||{x:W/2,y:H/2};
+    const locked=!!el.locked;
     if(el.type==='background'){
-      return {id:el.id,type:el.type,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false,locked:locked};
     }
     if(el.type==='decoration'){
       const size=el.size||{w:64,h:64};
-      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false,locked:locked};
     }
     if(el.type==='text' || el.type==='text-holder'){
       const w=(el.size && el.size.w) || 700;
@@ -726,13 +727,13 @@ const SlideRenderer=(()=>{
       let bx=pos.x-w/2;
       if(el.alignment==='left') bx=pos.x;
       else if(el.alignment==='right') bx=pos.x-w;
-      return {id:el.id,type:el.type,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:bx,by:pos.y-(el.fontSize||56),bw:w,bh:h,visible:el.visible!==false,locked:locked};
     }
     if(el.type==='image-holder'){
       const size=el.size||{w:600,h:600};
-      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x-size.w/2,by:pos.y-size.h/2,bw:size.w,bh:size.h,visible:el.visible!==false,locked:locked};
     }
-    return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false};
+    return {id:el.id,type:el.type,label:el.label||el.id,bx:pos.x,by:pos.y,bw:0,bh:0,visible:el.visible!==false,locked:locked};
   }
 
   // Sprint 6.1 — exposed for canvas drag hit-testing.
@@ -759,10 +760,10 @@ const SlideRenderer=(()=>{
   const HANDLE_RADIUS=12;
   function _supportsResize(el){
     if(!el || !el.type) return false;
-    // Resize is meaningful for the image-holder, decorations, and
-    // stickers; text-holder / background stay un-resizable so the child
-    // can't accidentally distort body text or break the page background.
-    if(el.type==='sticker' && el.locked) return false;
+    // Sprint 8.3 — Universal Object Consistency. Lock disables resize
+    // (and drag) for ANY scene element type. Resize otherwise applies
+    // to the Frame (image-holder), decorations, and stickers.
+    if(el.locked) return false;
     return el.type==='image-holder' || el.type==='decoration' || el.type==='sticker';
   }
   function _drawResizeHandles(el){
