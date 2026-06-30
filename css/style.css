@@ -3017,10 +3017,11 @@ body.dark-theme .picture-studio-btn{ background:var(--panel); }
   display:inline-flex;
   align-items:center;
   gap:4px;
-  transition:background 0.15s, transform 0.05s;
+  transition:background 0.15s, transform 0.05s, box-shadow 0.15s;
 }
-.publish-btn:hover{ background:#FFD466; transform:translateY(-1px); }
-.publish-btn:active{ transform:translateY(0); }
+.publish-btn:hover{ background:#FFD466; transform:translateY(-1px); box-shadow:0 4px 12px rgba(255,203,69,0.30); }
+.publish-btn:active{ transform:translateY(0); box-shadow:none; }
+.publish-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
 
 .publish-studio-modal{
   position:fixed;
