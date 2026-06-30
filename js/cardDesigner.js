@@ -1156,7 +1156,12 @@ const CardDesigner=(function(){
   function _buildFrameControls(body){
     const empty=document.createElement('p');
     empty.className='placeholder frame-empty';
-    empty.textContent='Pick the frame on the page to edit it.';
+    // Sprint 8.4.4 — Picture Holder Completion. The section is the
+    // Picture Holder — the rectangle the picture lives inside.
+    // Changing the holder never distorts the picture; the picture
+    // keeps its own pan / zoom / replace controls under the Picture
+    // section below.
+    empty.textContent='Pick the picture holder on the page to edit it.';
     body.appendChild(empty);
 
     const editor=document.createElement('div');
@@ -1164,13 +1169,22 @@ const CardDesigner=(function(){
 
     const selectedLabel=document.createElement('div');
     selectedLabel.className='frame-selected-label';
-    selectedLabel.textContent='Frame';
+    selectedLabel.textContent='Picture Holder';
     editor.appendChild(selectedLabel);
 
     const hint=document.createElement('p');
     hint.className='placeholder frame-hint';
-    hint.textContent='Drag the frame on the canvas to move it. Drag the gold handles to resize.';
+    hint.textContent='Drag the holder on the canvas to move it. Drag the gold handles to resize. The picture inside follows the holder but stays editable in the Picture section below.';
     editor.appendChild(hint);
+
+    // Sprint 8.4.4 — Picture Holder cross-reference. Border / Corner /
+    // Shadow controls live in the Picture section's Frame Look + Frame
+    // Style sub-groups (same data, slide.metadata.cardOverrides.border).
+    // Surface a friendly pointer so children find them.
+    const styleHint=document.createElement('p');
+    styleHint.className='placeholder frame-style-hint';
+    styleHint.textContent='Change the border, corner roundness, and shadow under Picture → Frame Look / Frame Style.';
+    editor.appendChild(styleHint);
 
     // Spin (rotation)
     const rotRow=document.createElement('div');
@@ -1260,13 +1274,13 @@ const CardDesigner=(function(){
     dupBtn.type='button';
     dupBtn.className='sticker-action-btn frame-dup-btn';
     dupBtn.textContent='⎘ Duplicate';
-    dupBtn.title='Multiple frames per page are coming in a future story.';
+    dupBtn.title='More picture holders per page are coming soon.';
     dupBtn.addEventListener('click',function(){
-      // V1.0 architecture-ready: the scene blueprint owns one Frame
-      // per page; a future sprint will lift the Frame into a free
-      // standing object collection. Until then, surface a friendly
-      // note so the action behaves predictably.
-      try{ alert('More frames per page are coming in a future story. ✨'); }catch(e){}
+      // V1.0 architecture-ready: the scene blueprint owns one Picture
+      // Holder per page; a future sprint will lift the holder into a
+      // free standing object collection. Until then, surface a
+      // friendly note so the action behaves predictably.
+      try{ alert('More picture holders per page are coming in a future story. ✨'); }catch(e){}
     });
     actionRow.appendChild(dupBtn);
 
@@ -1293,13 +1307,14 @@ const CardDesigner=(function(){
 
     editor.appendChild(actionRow);
 
-    // Reset Frame — clears every override on the image-holder.
+    // Reset — clears every override on the image-holder. Picture stays
+    // untouched because slide.image / slide.imageView live elsewhere.
     const resetRow=document.createElement('div');
     resetRow.className='picture-actions-row';
     const resetBtn=document.createElement('button');
     resetBtn.type='button';
     resetBtn.className='picture-reset-btn picture-reset-frame-btn';
-    resetBtn.textContent='↺ Reset Frame';
+    resetBtn.textContent='↺ Reset Picture Holder';
     resetBtn.addEventListener('click',function(){
       if(typeof SceneEngine==='undefined') return;
       const slide=_currentSlide();
