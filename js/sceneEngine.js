@@ -310,6 +310,29 @@ const SceneEngine=(function(){
     else entry.size=Object.assign({},entry.size||{},size);
     _maybePrune(slide,id);
   }
+  // Sprint 6.6.1 — Frame Designer enhancement. Rotation + z-index
+  // overrides ride on the existing elementOverrides bag so the
+  // persistence path is unchanged.
+  function setRotation(slide,id,rotation){
+    const entry=_ensureEntry(slide,id);
+    if(typeof rotation!=='number' || rotation===0) delete entry.rotation;
+    else entry.rotation=rotation;
+    _maybePrune(slide,id);
+  }
+  function adjustZIndex(slide,id,delta){
+    // delta = +1 brings forward, -1 sends backward. The override is
+    // additive on top of the blueprint's z; the renderer's sort honours
+    // the resolved value.
+    const bp=getBlueprint(slide.pageType,(slide.metadata||{}).scene);
+    const defEl=bp ? (bp.elements.find(function(e){ return e.id===id; })) : null;
+    const baseZ=defEl ? (typeof defEl.zIndex==='number'?defEl.zIndex:0) : 0;
+    const entry=_ensureEntry(slide,id);
+    const cur=typeof entry.zIndex==='number'?entry.zIndex:baseZ;
+    const next=cur+delta;
+    if(next===baseZ) delete entry.zIndex;
+    else entry.zIndex=next;
+    _maybePrune(slide,id);
+  }
   function clearOverride(slide,id){
     if(!slide.metadata||!slide.metadata.elementOverrides) return;
     delete slide.metadata.elementOverrides[id];
@@ -469,6 +492,8 @@ const SceneEngine=(function(){
     setVisibility:setVisibility,
     setPosition:setPosition,
     setSize:setSize,
+    setRotation:setRotation,
+    adjustZIndex:adjustZIndex,
     clearOverride:clearOverride,
     resolveTextSource:resolveTextSource,
     // Stickers

@@ -34,25 +34,22 @@ const StickerLibrary=(function(){
   ];
 
   // SVG builders. Every sticker is a 200×200 viewBox so resizing is a
-  // single transform. The emoji `glyph` is the foreground; SVG is the
-  // canonical art. Glyphs are widely supported and avoid hand-illustration
-  // dependency. Each SVG uses a soft pastel disc behind the glyph so it
-  // reads as a sticker, not as a floating emoji.
+  // single transform. The emoji `glyph` IS the sticker — Sprint 6.6.1
+  // drops the pastel disc + white ring so artwork reads on its own,
+  // with full transparency. A subtle drop shadow keeps the sticker
+  // feeling lifted off the page. The legacy `bg` argument stays in the
+  // signature so the catalog table doesn't need a sweeping rewrite.
   function _sticker(glyph,bg){
     return (
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'+
       '<defs>'+
-        '<radialGradient id="g" cx="50%" cy="40%" r="60%">'+
-          '<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>'+
-          '<stop offset="100%" stop-color="'+bg+'" stop-opacity="0.9"/>'+
-        '</radialGradient>'+
-        '<filter id="s" x="-10%" y="-10%" width="120%" height="120%">'+
-          '<feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.25"/>'+
+        '<filter id="s" x="-20%" y="-20%" width="140%" height="140%">'+
+          '<feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-opacity="0.22"/>'+
         '</filter>'+
       '</defs>'+
-      '<circle cx="100" cy="100" r="92" fill="url(#g)" stroke="#FFFFFF" stroke-width="6" filter="url(#s)"/>'+
-      '<text x="100" y="138" text-anchor="middle" font-size="120" '+
-        'font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">'+
+      '<text x="100" y="158" text-anchor="middle" font-size="170" '+
+        'font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif" '+
+        'filter="url(#s)">'+
         glyph+
       '</text>'+
       '</svg>'

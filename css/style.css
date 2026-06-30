@@ -2375,8 +2375,10 @@ button:active{
 
 /* ===========================
  * Sprint 6.6 — Sticker Studio
- * Magical sticker book, not a clipart browser. Categories sit horizontally
- * so the grid below gets vertical room; sticker cards are big and visual.
+ * Sprint 6.6.1 polish — the grid IS the studio: chips collapse into a
+ * compact filter strip up top so the sticker book below gets the room.
+ * Stickers render directly on transparent canvas, no card chrome
+ * fighting the artwork.
  * =========================== */
 .sticker-studio-root{
   display:flex;
@@ -2386,17 +2388,17 @@ button:active{
 .sticker-studio{
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:10px;
   height:100%;
   min-height:0;
 }
 .sticker-studio-header{
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:8px;
 }
 .sticker-studio-title{
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
   letter-spacing:0.6px;
   text-transform:uppercase;
@@ -2416,13 +2418,13 @@ button:active{
 }
 .sticker-studio-search{
   width:100%;
-  padding:10px 12px 10px 36px;
+  padding:8px 12px 8px 36px;
   border:1px solid var(--line);
-  border-radius:24px;
+  border-radius:22px;
   background:var(--bg);
   color:var(--text);
   font-size:13px;
-  height:var(--input-height);
+  height:36px;
   transition:border-color 0.2s, box-shadow 0.2s;
 }
 .sticker-studio-search:focus{
@@ -2431,30 +2433,36 @@ button:active{
   box-shadow:0 0 0 2px rgba(255,203,69,0.18);
 }
 
-/* Category chips — wrap freely so every category is reachable at any width. */
+/* Sprint 6.6.1 — category chips. Compact filter strip, emoji-forward.
+ * Names sit alongside the emoji so they read at a glance but stay short.
+ * Wraps freely; no scrollbar. */
 .sticker-studio-categories{
   display:flex;
   flex-wrap:wrap;
-  gap:6px;
+  gap:4px;
   padding-bottom:8px;
   border-bottom:1px solid var(--line);
 }
 .sticker-studio-category{
-  display:flex;
+  display:inline-flex;
   align-items:center;
-  gap:6px;
-  padding:6px 10px;
+  gap:4px;
+  padding:4px 8px;
   border:1px solid var(--line);
-  border-radius:18px;
-  background:var(--bg);
+  border-radius:14px;
+  background:transparent;
   color:var(--text);
-  font-size:12px;
+  font-size:11px;
   font-weight:500;
   cursor:pointer;
-  height:auto;
-  width:auto;
-  margin:0;
-  transition:background 0.15s, border-color 0.15s, transform 0.05s;
+  /* The global button:not(...) rule has higher specificity than a
+   * plain class selector; we must use !important to keep the chip
+   * intrinsic-sized. */
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  line-height:1.2;
+  transition:background 0.12s, border-color 0.12s, color 0.12s;
 }
 .sticker-studio-category:hover{
   background:rgba(255,203,69,0.10);
@@ -2466,21 +2474,24 @@ button:active{
   color:var(--navy);
   font-weight:700;
 }
-.sticker-studio-category-emoji{ font-size:14px; line-height:1; }
+.sticker-studio-category-emoji{ font-size:13px; line-height:1; }
 .sticker-studio-category-name{ white-space:nowrap; }
 
-/* Grid — big visual cards, lazy thumbnails. */
+/* Sprint 6.6.1 — grid. Larger thumbnails, more breathing room.
+ * Sticker artwork stretches almost the full card; the page background
+ * shows through. */
 .sticker-studio-grid-shell{
   flex:1;
   min-height:0;
   overflow-y:auto;
   padding-right:4px;
+  scroll-behavior:smooth;
 }
 .sticker-studio-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
-  gap:10px;
-  padding:4px 0 12px;
+  grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+  gap:8px;
+  padding:6px 0 16px;
 }
 .sticker-studio-grid.hidden{ display:none; }
 
@@ -2489,29 +2500,31 @@ button:active{
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:6px;
-  padding:10px 6px 8px;
-  background:var(--bg);
-  border:1px solid var(--line);
+  gap:4px;
+  padding:8px 4px 6px;
+  background:transparent;
+  border:1px solid transparent;
   border-radius:14px;
   cursor:pointer;
-  height:auto;
-  width:auto;
-  margin:0;
-  transition:transform 0.08s, border-color 0.15s, box-shadow 0.15s;
+  /* Override the global button:not(...) margin so the grid spacing is
+   * controlled by `gap` only. */
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  transition:transform 0.10s, border-color 0.15s, background 0.15s;
   text-align:center;
 }
 .sticker-card:hover{
-  border-color:rgba(255,203,69,0.55);
-  box-shadow:0 4px 14px rgba(0,0,0,0.08);
-  transform:translateY(-1px);
+  background:rgba(255,203,69,0.10);
+  border-color:rgba(255,203,69,0.35);
+  transform:translateY(-2px);
 }
 .sticker-card:active{
   transform:translateY(0);
 }
 .sticker-card-preview{
-  width:84px;
-  height:84px;
+  width:78px;
+  height:78px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -2524,35 +2537,38 @@ button:active{
   -webkit-user-drag:none;
 }
 .sticker-card-name{
-  font-size:12px;
-  color:var(--text);
-  font-weight:600;
+  font-size:11px;
+  color:var(--text-secondary);
+  font-weight:500;
   line-height:1.2;
   overflow:hidden;
   display:-webkit-box;
-  -webkit-line-clamp:2;
+  -webkit-line-clamp:1;
   -webkit-box-orient:vertical;
   word-break:break-word;
+  opacity:0.85;
 }
 .sticker-card-fav{
   position:absolute;
-  top:6px;
-  right:6px;
+  top:4px;
+  right:4px;
   width:22px;
   height:22px;
   display:flex;
   align-items:center;
   justify-content:center;
   border-radius:50%;
-  font-size:14px;
-  color:rgba(0,0,0,0.35);
-  background:rgba(255,255,255,0.85);
+  font-size:13px;
+  color:rgba(0,0,0,0.32);
+  background:transparent;
   cursor:pointer;
   user-select:none;
-  transition:color 0.15s, transform 0.08s;
+  transition:color 0.15s, transform 0.08s, background 0.15s;
+  opacity:0;
 }
-.sticker-card-fav:hover{ transform:scale(1.1); }
-.sticker-card-fav.is-fav{ color:#E14D6B; }
+.sticker-card:hover .sticker-card-fav{ opacity:1; }
+.sticker-card-fav.is-fav{ opacity:1; color:#E14D6B; }
+.sticker-card-fav:hover{ transform:scale(1.18); }
 
 .sticker-studio-empty{
   display:flex;
@@ -2560,7 +2576,7 @@ button:active{
   align-items:center;
   justify-content:center;
   text-align:center;
-  padding:40px 12px;
+  padding:48px 12px;
   gap:14px;
   color:var(--text-secondary);
 }
@@ -2575,10 +2591,7 @@ button:active{
   max-width:240px;
 }
 
-/* Darker page tint for dark mode */
-body.dark-theme .sticker-studio-category{ background:var(--panel); }
-body.dark-theme .sticker-card{ background:var(--panel); }
-body.dark-theme .sticker-card-fav{ background:rgba(0,0,0,0.45); color:rgba(255,255,255,0.45); }
+body.dark-theme .sticker-card-fav{ color:rgba(255,255,255,0.35); }
 body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 
 /* ===========================
@@ -2621,9 +2634,9 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   border:1px solid var(--line);
   border-radius:8px;
   cursor:pointer;
-  height:auto;
-  width:auto;
-  margin:0;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
   transition:background 0.15s, border-color 0.15s;
 }
 .sticker-flip-btn:hover,
@@ -2657,9 +2670,9 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   font-size:12px;
   font-weight:600;
   cursor:pointer;
-  height:auto;
-  width:auto;
-  margin:0;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
   transition:background 0.15s, border-color 0.15s, color 0.15s;
 }
 .sticker-action-btn:hover{
@@ -2677,6 +2690,62 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 body.dark-theme .sticker-flip-btn,
 body.dark-theme .sticker-layer-btn,
 body.dark-theme .sticker-action-btn{ background:var(--panel); }
+
+/* ===========================
+ * Sprint 6.6.1 — Frame Object Designer
+ * Surfaces when the Frame (image-holder) is selected on the canvas.
+ * Reuses the Sticker section's chrome so the universal object UI feels
+ * consistent across object types.
+ * =========================== */
+.frame-empty,
+.frame-hint{
+  font-size:12px;
+  color:var(--text-secondary);
+  text-align:center;
+  padding:6px 0;
+}
+.frame-empty.hidden{ display:none; }
+.frame-editor.hidden{ display:none; }
+
+.frame-selected-label{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  opacity:0.85;
+  margin-bottom:8px;
+}
+
+.frame-layer-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
+  gap:6px;
+}
+.frame-layer-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:6px 4px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:8px;
+  cursor:pointer;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s;
+}
+.frame-layer-btn:hover{
+  background:rgba(255,203,69,0.10);
+  border-color:rgba(255,203,69,0.45);
+}
+.frame-layer-glyph{
+  font-size:18px;
+  line-height:1;
+}
+
+body.dark-theme .frame-layer-btn{ background:var(--panel); }
 
 /* Print styles */
 @media print{

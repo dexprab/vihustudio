@@ -276,6 +276,11 @@ const StickerStudio=(function(){
   }
 
   // ---- Insert ----
+  // Sprint 6.6.1 — explicit ordering. We insert + persist + repaint
+  // FIRST, then hand off selection LAST so the Card Designer's auto
+  // tab-switch + refresh are the last DOM mutations of this user
+  // gesture. Nothing that fires later can race the right pane back to
+  // a different tab.
   function _insertSticker(st){
     if(!host || typeof host.getCurrentSlide!=='function') return;
     const slide=host.getCurrentSlide();
@@ -288,13 +293,19 @@ const StickerStudio=(function(){
     });
     if(!inst) return;
     _pushRecent(st.id);
-    // Repaint, select, route the right pane to the Card Designer.
-    if(typeof host.setSelectedSticker==='function'){
-      try{ host.setSelectedSticker(inst.id,'sticker'); }catch(e){}
-    }
+
+    // Persist + redraw + thumbnails first so the canvas paints the
+    // sticker before the selection chrome lands on top.
     if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
     if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
     if(typeof host.refreshThumbnails==='function'){ try{ host.refreshThumbnails(); }catch(e){} }
+
+    // Selection LAST. This is what activates the Card Designer tab and
+    // surfaces the Sticker controls — by putting it at the end we make
+    // sure no follow-up refresh can undo the routing.
+    if(typeof host.setSelectedSticker==='function'){
+      try{ host.setSelectedSticker(inst.id,'sticker'); }catch(e){}
+    }
   }
 
   function configure(cfg){ host=cfg||null; }

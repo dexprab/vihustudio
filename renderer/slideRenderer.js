@@ -560,6 +560,14 @@ const SlideRenderer=(()=>{
     const img=s.image;
     x.save();
     if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
+    // Sprint 6.6.1 — Frame Designer rotation. Rotate around the holder
+    // centre so the user's spin reads naturally and the image inside
+    // stays anchored to the frame.
+    if(el.rotation){
+      x.translate(pos.x,pos.y);
+      x.rotate((el.rotation||0)*Math.PI/180);
+      x.translate(-pos.x,-pos.y);
+    }
     if(!img || !img.width){
       x.fillStyle='rgba(255,255,255,0.06)';
       x.fillRect(rx,ry,size.w,size.h);

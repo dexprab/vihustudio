@@ -128,18 +128,10 @@ if(typeof PageDesigner!=='undefined'){
   }catch(e){}
 }
 
-// Preview Studio bootstrap (Sprint 6.6) — Platform Preview Studio. Lives
-// in the new "👁 Preview" tab; the host hands it the active slide and
-// the main preview canvas so the renderer can hop between contexts.
-if(typeof PreviewStudio!=='undefined'){
-  try{ PreviewStudio.mount(document.getElementById('previewStudioRoot')); }catch(e){}
-  try{
-    PreviewStudio.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
-      getMainCanvas:function(){ return document.getElementById('previewCanvas'); }
-    });
-  }catch(e){}
-}
+// Sprint 6.6.1 — Preview Studio is no longer mounted in the editor. The
+// editor is always the live preview; publishing belongs to Publish
+// Studio (Sprint 8.0). The PreviewStudio module remains on disk so
+// future Publish Studio work can lift its platform renderer logic.
 
 // Sticker Studio bootstrap (Sprint 6.6) — browse + insert stickers. The
 // studio inserts into SceneEngine, then asks the host to select the new
@@ -182,9 +174,16 @@ function _setSelectedTextElement(id){
 }
 
 // Sprint 6.5 (Object Designer) — selecting a scene element auto-routes
-// to the right pane's correct designer. Frame (image-holder) opens the
-// Card Designer; everything else (text holders, decorations, scene
-// backgrounds) lives under the Story tab's Page Designer.
+// to the right pane's correct designer. Sprint 6.6.1 — the Universal
+// Object principle: every editable object — Frame, Sticker, Text,
+// Decoration — opens its controls in the Card Designer ("Object
+// Designer") the instant it's selected. Tab activation happens FIRST so
+// no subsequent refresh can accidentally race the selection back to
+// another tab.
+function _activateTab(tabId){
+  const btn=document.querySelector('.tab-btn[data-tab="'+tabId+'"]');
+  if(btn && !btn.classList.contains('active')) btn.click();
+}
 function _setSelectedSceneElement(id, elementType){
   _selectedSceneElement=id||null;
   _selectedSceneElementType=id ? (elementType||null) : null;
@@ -193,32 +192,18 @@ function _setSelectedSceneElement(id, elementType){
     // selection so the right pane shows one clear context.
     _selectedTextElement=null;
   }
+  // Tab activation FIRST — any refresh that runs afterward sees the
+  // correct active tab. This fixes the Sprint 6.6 issue where the right
+  // pane could end up on Story instead of Card after a sticker insert.
+  if(id){
+    if(elementType==='image-holder' || elementType==='text-holder' ||
+       elementType==='text' || elementType==='sticker' ||
+       elementType==='decoration'){
+      _activateTab('card');
+    }
+  }
   if(typeof window.redrawPreview==='function') window.redrawPreview();
   if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
-  if(!id) return;
-  // Auto-tab-switch.
-  if(elementType==='image-holder'){
-    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-  }else if(elementType==='text-holder' || elementType==='text'){
-    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-  }else if(elementType==='sticker'){
-    // Sprint 6.6 — selecting a sticker opens the Object Designer. We
-    // reuse the Card Designer tab as the universal object editor host;
-    // CardDesigner.refresh() reveals the Sticker controls when a
-    // sticker is selected.
-    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-    if(typeof CardDesigner!=='undefined'){
-      try{ CardDesigner.refresh(); }catch(e){}
-    }
-  }else{
-    // Decoration / background / future objects — leave on whatever tab
-    // the user is on. The Page Designer's element panel covers them.
-    const storyTabBtn=document.querySelector('.tab-btn[data-tab="story"]');
-    if(storyTabBtn && !storyTabBtn.classList.contains('active')) storyTabBtn.click();
-  }
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
@@ -336,12 +321,6 @@ tabs.forEach(btn=>{
     // with a Card Designer text element selected, focus the matching field.
     if(tab==='story' && _selectedTextElement && typeof PageDesigner!=='undefined'){
       try{ PageDesigner.focusField(_selectedTextElement); }catch(e){}
-    }
-    // Sprint 6.6 — activating the Preview tab kicks an immediate refresh
-    // so the previews catch up with whatever the user just changed in
-    // another tab.
-    if(tab==='preview' && typeof PreviewStudio!=='undefined'){
-      try{ PreviewStudio.refresh(); }catch(e){}
     }
     // Sprint 6.6 — activating the Stickers tab re-renders so favorites /
     // recents are fresh after any insertion that happened from the
@@ -489,9 +468,6 @@ function draw(){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }
  }
  s._lastStory=s.storyBeat;
- // Sprint 6.6 — Platform Preview Studio mirrors every page change. The
- // studio debounces internally and skips work when its tab isn't active.
- if(typeof PreviewStudio!=='undefined'){ try{ PreviewStudio.refresh(); }catch(e){} }
 }
 
 // Exposed redraw used by CardDesigner.configure({redraw}). Lighter-weight

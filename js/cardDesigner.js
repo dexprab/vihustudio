@@ -19,6 +19,11 @@ const CardDesigner=(function(){
       summary:''
     },
     {
+      id:'frame',
+      title:'Frame',
+      summary:''
+    },
+    {
       id:'image',
       title:'Picture',
       summary:''
@@ -110,6 +115,8 @@ const CardDesigner=(function(){
       _buildTextControls(sub);
     }else if(s.id==='sticker'){
       _buildStickerControls(sub);
+    }else if(s.id==='frame'){
+      _buildFrameControls(sub);
     }else if(s.summary){
       const note=document.createElement('p');
       note.className='placeholder';
@@ -1090,6 +1097,163 @@ const CardDesigner=(function(){
     }
   }
 
+  // --- Frame section (Sprint 6.6.1 — Object Designer for the Frame) ----
+  // The Frame is the rectangle that holds the picture. Sprint 6.6.1
+  // promotes it to a first-class object: rotation, layer order, and
+  // free move/resize (move + resize already work via canvas drag +
+  // handles; this section surfaces the rest of the universal object
+  // controls in the right pane).
+  function _activeFrameElement(){
+    if(_selectedStickerType()!=='image-holder') return null;
+    if(typeof SceneEngine==='undefined') return null;
+    const slide=_currentSlide();
+    if(!slide) return null;
+    const data=SceneEngine.getRenderData(slide);
+    if(!data) return null;
+    const id=_selectedStickerHostId();
+    if(!id) return null;
+    return data.elements.find(function(el){ return el.id===id; })||null;
+  }
+  function _commitFrame(){
+    const s=_currentSlide();
+    if(s) delete s.thumbnail;
+    if(host){
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+    _refreshFrame();
+  }
+  function _frameAdjustZ(delta){
+    if(typeof SceneEngine==='undefined') return;
+    const slide=_currentSlide();
+    const id=_selectedStickerHostId();
+    if(!slide||!id) return;
+    SceneEngine.adjustZIndex(slide,id,delta);
+    _commitFrame();
+  }
+
+  function _buildFrameControls(body){
+    const empty=document.createElement('p');
+    empty.className='placeholder frame-empty';
+    empty.textContent='Pick the frame on the page to edit it.';
+    body.appendChild(empty);
+
+    const editor=document.createElement('div');
+    editor.className='frame-editor hidden';
+
+    const selectedLabel=document.createElement('div');
+    selectedLabel.className='frame-selected-label';
+    selectedLabel.textContent='Frame';
+    editor.appendChild(selectedLabel);
+
+    const hint=document.createElement('p');
+    hint.className='placeholder frame-hint';
+    hint.textContent='Drag the frame on the canvas to move it. Drag the gold handles to resize.';
+    editor.appendChild(hint);
+
+    // Spin (rotation)
+    const rotRow=document.createElement('div');
+    rotRow.className='designer-row';
+    const rotLbl=document.createElement('div');
+    rotLbl.className='designer-row-label text-slider-label';
+    const rotTitle=document.createElement('span');
+    rotTitle.textContent='Spin';
+    rotLbl.appendChild(rotTitle);
+    const rotVal=document.createElement('span');
+    rotVal.className='frame-rotation-value';
+    rotVal.textContent='0°';
+    rotLbl.appendChild(rotVal);
+    rotRow.appendChild(rotLbl);
+    const rotSlider=document.createElement('input');
+    rotSlider.type='range';
+    rotSlider.min='-180';
+    rotSlider.max='180';
+    rotSlider.step='1';
+    rotSlider.className='frame-rotation-slider';
+    rotSlider.addEventListener('input',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      SceneEngine.setRotation(slide,id,parseFloat(rotSlider.value));
+      _commitFrame();
+    });
+    rotRow.appendChild(rotSlider);
+    editor.appendChild(rotRow);
+
+    // Layer — Bring Forward / Send Backward
+    const layerRow=document.createElement('div');
+    layerRow.className='designer-row';
+    const layerLbl=document.createElement('div');
+    layerLbl.className='designer-row-label';
+    layerLbl.textContent='Layer';
+    layerRow.appendChild(layerLbl);
+    const layerIcons=document.createElement('div');
+    layerIcons.className='icon-row frame-layer-row';
+    [
+      {id:'backward',label:'Backward',glyph:'⬇',delta:-1},
+      {id:'forward', label:'Forward', glyph:'⬆',delta:1}
+    ].forEach(function(L){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card frame-layer-btn';
+      btn.setAttribute('data-layer',L.id);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='frame-layer-glyph'; g.textContent=L.glyph; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=L.label; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _frameAdjustZ(L.delta); });
+      layerIcons.appendChild(btn);
+    });
+    layerRow.appendChild(layerIcons);
+    editor.appendChild(layerRow);
+
+    // Reset Frame — clears every override on the image-holder.
+    const resetRow=document.createElement('div');
+    resetRow.className='picture-actions-row';
+    const resetBtn=document.createElement('button');
+    resetBtn.type='button';
+    resetBtn.className='picture-reset-btn picture-reset-frame-btn';
+    resetBtn.textContent='↺ Reset Frame';
+    resetBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      SceneEngine.clearOverride(slide,id);
+      _commitFrame();
+    });
+    resetRow.appendChild(resetBtn);
+    editor.appendChild(resetRow);
+
+    body.appendChild(editor);
+  }
+
+  function _refreshFrame(){
+    if(!mountedRoot) return;
+    const section=mountedRoot.querySelector('[data-card-section="frame"]');
+    if(!section) return;
+    const empty=section.querySelector('.frame-empty');
+    const editor=section.querySelector('.frame-editor');
+    if(!empty || !editor) return;
+    const el=_activeFrameElement();
+    if(!el){
+      empty.classList.remove('hidden');
+      editor.classList.add('hidden');
+      section.classList.remove('frame-active');
+      return;
+    }
+    empty.classList.add('hidden');
+    editor.classList.remove('hidden');
+    section.classList.add('frame-active');
+
+    const rotSlider=section.querySelector('.frame-rotation-slider');
+    const rotVal=section.querySelector('.frame-rotation-value');
+    const rot=typeof el.rotation==='number'?el.rotation:0;
+    if(rotSlider) rotSlider.value=String(rot);
+    if(rotVal) rotVal.textContent=Math.round(rot)+'°';
+  }
+
   // --- Text section (Sprint 4.3 + 4.4) -----------------------------------
   // Overrides live at slide.metadata.cardOverrides.textElements[id] and ride
   // through the existing metadata serialization — no project format change.
@@ -1561,6 +1725,7 @@ const CardDesigner=(function(){
     _refreshImage();
     _refreshText();
     _refreshSticker();
+    _refreshFrame();
     _refreshFrameThumbs();
     return root;
   }
@@ -1574,11 +1739,12 @@ const CardDesigner=(function(){
     _refreshImage();
     _refreshText();
     _refreshSticker();
+    _refreshFrame();
   }
 
-  // Re-sync the Image and Text sections with the current slide/selection —
-  // call after the host switches slides or changes the text selection.
-  function refresh(){ _refreshImage(); _refreshText(); _refreshSticker(); }
+  // Re-sync every section with the current slide/selection — call after
+  // the host switches slides or changes the object selection.
+  function refresh(){ _refreshImage(); _refreshText(); _refreshSticker(); _refreshFrame(); }
 
   // Read the active slide's imageView, defaulting if absent. Exposed so
   // canvas pan handlers in the host can read+write without poking metadata
