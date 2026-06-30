@@ -146,6 +146,22 @@ const ThemeEngine=(function(){
   }
   function getActiveTheme(){ return getTheme(getActiveThemeId()); }
 
+  // Sprint 8.4.2 — Theme Designer Completion. Typography / Colours /
+  // Picture Holder Defaults / Page Layout all ride on themeOptions
+  // sub-objects. Empty sub-objects mean "use the active theme defaults"
+  // — no project format change for legacy projects (the keys simply
+  // don't exist there).
+  const FONT_CHOICES=[
+    {value:'',label:'Theme default'},
+    {value:'Georgia, serif',label:'Storybook (Georgia)'},
+    {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
+    {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
+    {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
+    {value:'"Times New Roman", Times, serif',label:'Times'},
+    {value:'Arial, Helvetica, sans-serif',label:'Arial'},
+    {value:'"Courier New", Courier, monospace',label:'Courier'}
+  ];
+
   function _defaultOptionsFor(theme){
     return {
       variant:(theme.variants&&theme.variants[0])?theme.variants[0].id:'classic',
@@ -156,9 +172,15 @@ const ThemeEngine=(function(){
       bookTitleVisibility:'show',
       bookTitlePosition:'bottom-left',
       handleVisibility:'show',
-      handlePosition:'top-right'
+      handlePosition:'top-right',
+      // Sprint 8.4.2 — new sub-objects. Empty == "follow the theme".
+      typography:{},
+      colours:{},
+      holder:{},
+      layout:{}
     };
   }
+  function getFontChoices(){ return FONT_CHOICES.slice(); }
 
   function getOptions(){
     const t=getActiveTheme();
@@ -166,7 +188,54 @@ const ThemeEngine=(function(){
     const stored=(AppState&&AppState.project&&AppState.project.themeOptions)||{};
     const merged=Object.assign({},base,stored);
     if(!Array.isArray(merged.decorations)) merged.decorations=[];
+    // Sprint 8.4.2 — guarantee sub-objects so callers can read keys
+    // without a defensive lookup. Legacy projects whose themeOptions
+    // pre-date these sub-objects converge here on first read.
+    merged.typography=merged.typography||{};
+    merged.colours=merged.colours||{};
+    merged.holder=merged.holder||{};
+    merged.layout=merged.layout||{};
     return merged;
+  }
+
+  // Sprint 8.4.2 — resolve the effective theme by layering themeOptions
+  // typography / colours on top of the active theme. The renderer reads
+  // this so an override at the Theme Designer level applies everywhere
+  // the active theme would be read, without changing the theme record.
+  function resolveTheme(){
+    const base=getActiveTheme();
+    const opts=getOptions();
+    const ty=opts.typography||{};
+    const co=opts.colours||{};
+    const scale=(typeof ty.sizeScale==='number') ? ty.sizeScale : 1;
+    function _scaledFont(spec){
+      return {
+        font:ty.fontFamily || spec.font,
+        size:Math.round((spec.size||16) * scale),
+        color:ty.color || spec.color
+      };
+    }
+    return {
+      id:base.id,
+      name:base.name,
+      description:base.description,
+      suitableFor:base.suitableFor,
+      frame:{ color: co.frame || base.frame.color },
+      panel:{ color: co.panel || base.panel.color },
+      storyText:_scaledFont(base.storyText),
+      footerText:_scaledFont(base.footerText),
+      watermark:_scaledFont(base.watermark),
+      variants:base.variants,
+      decorations:base.decorations
+    };
+  }
+  // Sprint 8.4.2 — Picture Holder defaults read by the renderer / Card
+  // Designer when no per-card border override is present.
+  function getHolderDefaults(){
+    return Object.assign({}, getOptions().holder||{});
+  }
+  function getPageLayout(){
+    return Object.assign({margin:60,showSafeArea:false}, getOptions().layout||{});
   }
 
   function _writeOptions(opts){
@@ -189,6 +258,37 @@ const ThemeEngine=(function(){
     if(!AppState.project) return;
     const cur=getOptions();
     cur[key]=value;
+    _writeOptions(cur);
+    _invalidateThumbnails();
+    _syncControls(getActiveThemeId());
+    _refreshUI();
+    if(!(opts&&opts.silent)){
+      try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    }
+  }
+  // Sprint 8.4.2 — sub-option setter. `group` ∈ {typography,colours,
+  // holder,layout}; passing value === undefined removes the key. The
+  // group sub-object is pruned (deleted) when it goes empty so saved
+  // projects round-trip cleanly.
+  function setSubOption(group,key,value,opts){
+    if(!AppState.project) return;
+    const cur=getOptions();
+    const sub=Object.assign({},cur[group]||{});
+    if(value===undefined || value===null || value===''){ delete sub[key]; }
+    else { sub[key]=value; }
+    cur[group]=sub;
+    _writeOptions(cur);
+    _invalidateThumbnails();
+    _syncControls(getActiveThemeId());
+    _refreshUI();
+    if(!(opts&&opts.silent)){
+      try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    }
+  }
+  function resetSubGroup(group,opts){
+    if(!AppState.project) return;
+    const cur=getOptions();
+    cur[group]={};
     _writeOptions(cur);
     _invalidateThumbnails();
     _syncControls(getActiveThemeId());
@@ -264,6 +364,62 @@ const ThemeEngine=(function(){
     _renderVariants();
     _markActiveOptions();
     _renderDecorations();
+    _syncExtended();
+  }
+
+  // Sprint 8.4.2 — sync Typography / Colours / Picture Holder Defaults
+  // / Page Layout controls with the current themeOptions sub-objects.
+  function _syncExtended(){
+    const opts=getOptions();
+    const theme=getActiveTheme();
+    const ty=opts.typography||{};
+    const co=opts.colours||{};
+    const hd=opts.holder||{};
+    const ly=opts.layout||{};
+
+    function _val(el, value){ if(el) el.value=value; }
+    function _txt(id, text){ const el=document.getElementById(id); if(el) el.textContent=text; }
+    function _check(el, on){ if(el) el.checked=!!on; }
+
+    const fontSelect=document.getElementById('themeStoryFont');
+    if(fontSelect) fontSelect.value=ty.fontFamily||'';
+
+    const scaleSlider=document.getElementById('themeTextScale');
+    const scale=(typeof ty.sizeScale==='number')?ty.sizeScale:1;
+    _val(scaleSlider,String(scale));
+    _txt('themeTextScaleValue',Math.round(scale*100)+'%');
+
+    const textColor=document.getElementById('themeTextColor');
+    if(textColor) textColor.value=_safeColor(ty.color || (theme.storyText && theme.storyText.color) || '#FFFFFF');
+
+    const pageColor=document.getElementById('themePageColor');
+    if(pageColor) pageColor.value=_safeColor(co.frame || (theme.frame && theme.frame.color) || '#1D3457');
+
+    const panelColor=document.getElementById('themePanelColor');
+    if(panelColor) panelColor.value=_safeColor(co.panel || (theme.panel && theme.panel.color) || '#FFFFFF');
+
+    const holderRadius=document.getElementById('themeHolderRadius');
+    const hr=(typeof hd.cornerRadius==='number')?hd.cornerRadius:0;
+    _val(holderRadius,String(hr));
+    _txt('themeHolderRadiusValue',hr+'px');
+
+    const holderPadding=document.getElementById('themeHolderPadding');
+    const hp=(typeof hd.padding==='number')?hd.padding:0;
+    _val(holderPadding,String(hp));
+    _txt('themeHolderPaddingValue',hp+'px');
+
+    _check(document.getElementById('themeHolderShadow'), hd.shadow);
+
+    const margin=(typeof ly.margin==='number')?ly.margin:60;
+    _val(document.getElementById('themePageMargin'),String(margin));
+    _txt('themePageMarginValue',margin+'px');
+    _check(document.getElementById('themeSafeArea'), ly.showSafeArea);
+  }
+
+  function _safeColor(c){
+    if(typeof c!=='string') return '#ffffff';
+    const m=c.match(/^#?[0-9a-f]{6}/i);
+    return m ? ('#'+m[0].replace('#','').toLowerCase()) : '#ffffff';
   }
 
   function _renderVariants(){
@@ -488,7 +644,79 @@ const ThemeEngine=(function(){
     _buildIconRow('bookTitlePosition',BOOK_TITLE_POSITIONS,'bookTitlePosition',_decorPosition);
     _buildIconRow('handleVisibility',VISIBILITY,'handleVisibility',_decorVisibility);
     _buildIconRow('handlePosition',HANDLE_POSITIONS,'handlePosition',_decorPosition);
+    _wireExtendedControls();
     _syncControls(getActiveThemeId());
+  }
+
+  // Sprint 8.4.2 — wire the Typography / Colours / Picture Holder
+  // Defaults / Page Layout control rows. Idempotent: if an input has
+  // already been wired in a previous mount, the marker guards a
+  // double-attach.
+  function _wireExtendedControls(){
+    const fontSelect=document.getElementById('themeStoryFont');
+    if(fontSelect && !fontSelect.__themeWired){
+      fontSelect.innerHTML='';
+      FONT_CHOICES.forEach(function(c){
+        const opt=document.createElement('option');
+        opt.value=c.value; opt.textContent=c.label;
+        fontSelect.appendChild(opt);
+      });
+      fontSelect.addEventListener('change',function(){
+        setSubOption('typography','fontFamily',fontSelect.value||undefined);
+      });
+      fontSelect.__themeWired=true;
+    }
+    function _wireSlider(id,group,key,format,defaultVal){
+      const el=document.getElementById(id);
+      if(!el || el.__themeWired) return;
+      el.addEventListener('input',function(){
+        const n=parseFloat(el.value);
+        const out=document.getElementById(id+'Value');
+        if(out) out.textContent=format(n);
+        if(n===defaultVal) setSubOption(group,key,undefined);
+        else setSubOption(group,key,n);
+      });
+      el.__themeWired=true;
+    }
+    _wireSlider('themeTextScale','typography','sizeScale',function(v){ return Math.round(v*100)+'%'; },1);
+    _wireSlider('themeHolderRadius','holder','cornerRadius',function(v){ return Math.round(v)+'px'; },0);
+    _wireSlider('themeHolderPadding','holder','padding',function(v){ return Math.round(v)+'px'; },0);
+    _wireSlider('themePageMargin','layout','margin',function(v){ return Math.round(v)+'px'; },60);
+
+    function _wireColor(id,group,key){
+      const el=document.getElementById(id);
+      if(!el || el.__themeWired) return;
+      el.addEventListener('input',function(){
+        setSubOption(group,key,el.value);
+      });
+      el.__themeWired=true;
+    }
+    _wireColor('themeTextColor','typography','color');
+    _wireColor('themePageColor','colours','frame');
+    _wireColor('themePanelColor','colours','panel');
+
+    function _wireToggle(id,group,key){
+      const el=document.getElementById(id);
+      if(!el || el.__themeWired) return;
+      el.addEventListener('change',function(){
+        if(el.checked) setSubOption(group,key,true);
+        else setSubOption(group,key,undefined);
+      });
+      el.__themeWired=true;
+    }
+    _wireToggle('themeHolderShadow','holder','shadow');
+    _wireToggle('themeSafeArea','layout','showSafeArea');
+
+    function _wireReset(id,group){
+      const el=document.getElementById(id);
+      if(!el || el.__themeWired) return;
+      el.addEventListener('click',function(){ resetSubGroup(group); });
+      el.__themeWired=true;
+    }
+    _wireReset('themeTypographyReset','typography');
+    _wireReset('themeColoursReset','colours');
+    _wireReset('themeHolderReset','holder');
+    _wireReset('themeLayoutReset','layout');
   }
 
   const api={
@@ -503,10 +731,16 @@ const ThemeEngine=(function(){
     getVisibility:getVisibility,
     getBookTitlePositions:getBookTitlePositions,
     getHandlePositions:getHandlePositions,
+    getFontChoices:getFontChoices,
     getOptions:getOptions,
     setOption:setOption,
+    setSubOption:setSubOption,
+    resetSubGroup:resetSubGroup,
     toggleDecoration:toggleDecoration,
     resolveFrameColor:resolveFrameColor,
+    resolveTheme:resolveTheme,
+    getHolderDefaults:getHolderDefaults,
+    getPageLayout:getPageLayout,
     applyTheme:applyTheme,
     registerTheme:registerTheme,
     buildLeftPaneCard:buildLeftPaneCard,

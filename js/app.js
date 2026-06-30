@@ -655,6 +655,17 @@ function draw(){
  payload.selectedTextElement=_selectedTextElement;
  payload.selectedSceneElement=_selectedSceneElement;
  payload.dragActiveId=(_textDragState && _textDragState.moved) ? _textDragState.elementId : null;
+ // Sprint 8.4.2 — editor-only Safe Area guide. Publish Studio renders
+ // through the same buildPayload + render path but never sets these
+ // chrome fields, so WYSIWYE (Sprint 6.4) holds — the guide is shown
+ // in the editor only, never baked into a published PDF.
+ if(typeof ThemeEngine!=='undefined'){
+   try{
+     const layout=ThemeEngine.getPageLayout();
+     payload.showSafeArea=!!layout.showSafeArea;
+     payload.pageMargin=(typeof layout.margin==='number')?layout.margin:60;
+   }catch(e){}
+ }
  SlideRenderer.render(payload);
  if(s.thumbnail){
    if(!s._lastStory || s._lastStory!==s.storyBeat){ delete s.thumbnail; }

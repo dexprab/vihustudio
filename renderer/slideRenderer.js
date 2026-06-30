@@ -30,8 +30,15 @@ const SlideRenderer=(()=>{
 
   function _theme(s){
     if(s && s.theme) return s.theme;
+    // Sprint 8.4.2 — Theme Designer Completion. resolveTheme() layers the
+    // themeOptions Typography + Colours sub-objects onto the active theme
+    // so Theme-level overrides reach the renderer without the renderer
+    // having to know about themeOptions schema.
     if(typeof ThemeEngine!=='undefined'){
-      try{ return ThemeEngine.getActiveTheme(); }catch(e){}
+      try{
+        if(typeof ThemeEngine.resolveTheme==='function') return ThemeEngine.resolveTheme();
+        return ThemeEngine.getActiveTheme();
+      }catch(e){}
     }
     return FALLBACK_THEME;
   }
@@ -70,7 +77,30 @@ const SlideRenderer=(()=>{
   function _resolveBorder(s){
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
-    if(!b) return null;
+    // Sprint 8.4.2 — when no card-level override is set, fall back to the
+    // theme-level Picture Holder defaults (themeOptions.holder). The card
+    // still wins per slide; this is the global default for every untouched
+    // holder. When neither is set, return null so legacy behaviour holds.
+    if(!b){
+      const opts=_options(s);
+      const hd=(opts && opts.holder) || {};
+      const hasHolderDefault=
+        (typeof hd.cornerRadius==='number' && hd.cornerRadius>0) ||
+        (typeof hd.padding==='number' && hd.padding>0) ||
+        !!hd.shadow;
+      if(!hasHolderDefault) return null;
+      return {
+        design:null,
+        padding:(typeof hd.padding==='number')?hd.padding:0,
+        fill:'page',
+        cornerRadius:(typeof hd.cornerRadius==='number')?hd.cornerRadius:0,
+        lineEnabled:false,
+        lineWidth:2,
+        lineColor:'#000000',
+        shadowEnabled:!!hd.shadow,
+        shadowIntensity:0.4
+      };
+    }
     const line=b.line||{};
     const shadow=b.shadow||{};
     return {
@@ -482,6 +512,23 @@ const SlideRenderer=(()=>{
     if(s && s.selectedTextElement){
       const sel=_lastTextElements.find(function(e){ return e.id===s.selectedTextElement; });
       if(sel) _drawSelectionOutline(sel);
+    }
+
+    // Sprint 8.4.2 — Page Layout Safe Area guide. Editor chrome only: the
+    // flag rides on the payload via `showSafeArea`, which the editor sets
+    // from themeOptions.layout.showSafeArea and Publish Studio leaves
+    // false. Draws a dashed gold rectangle inset by `pageMargin` so
+    // children can keep important content inside the safe zone.
+    if(s && s.showSafeArea){
+      const m=(typeof s.pageMargin==='number') ? s.pageMargin : 60;
+      if(m>0 && m<W/2 && m<H/2){
+        x.save();
+        x.strokeStyle='rgba(255,203,69,0.7)';
+        x.lineWidth=2;
+        x.setLineDash([12,8]);
+        x.strokeRect(m,m,W-m*2,H-m*2);
+        x.restore();
+      }
     }
   }
 

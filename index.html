@@ -157,6 +157,108 @@
 </div>
 </section>
 
+<!-- Sprint 8.4.2 — Typography. Page-wide font defaults that every Card
+     inherits unless overridden. The renderer reads `themeOptions.typography`
+     and falls back to the active theme's font + size when no override is set. -->
+<section class='designer-group' data-section='typography'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Typography</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
+<div class='designer-row'>
+<div class='designer-row-label'>Story Font</div>
+<select id='themeStoryFont' class='input-field theme-font-select'></select>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label text-slider-label'><span>Text Size</span><span id='themeTextScaleValue'>100%</span></div>
+<input id='themeTextScale' type='range' min='0.8' max='1.4' step='0.05' value='1'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Text Color</div>
+<input id='themeTextColor' type='color' class='theme-color-input'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Reset</div>
+<button id='themeTypographyReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+</div>
+</div>
+</section>
+
+<!-- Sprint 8.4.2 — Colours. Theme-level page + panel colour overrides.
+     Card overrides still win per slide; this is the global default. -->
+<section class='designer-group' data-section='colours'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Colours</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
+<div class='designer-row'>
+<div class='designer-row-label'>Page Background</div>
+<input id='themePageColor' type='color' class='theme-color-input'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Story Panel</div>
+<input id='themePanelColor' type='color' class='theme-color-input'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Reset</div>
+<button id='themeColoursReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+</div>
+</div>
+</section>
+
+<!-- Sprint 8.4.2 — Picture Holder defaults. Applies to every Picture
+     Holder unless the card overrides it. -->
+<section class='designer-group' data-section='holder'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Picture Holder Defaults</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
+<div class='designer-row'>
+<div class='designer-row-label text-slider-label'><span>Default Corner Radius</span><span id='themeHolderRadiusValue'>0px</span></div>
+<input id='themeHolderRadius' type='range' min='0' max='80' step='1' value='0'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label text-slider-label'><span>Default Border Size</span><span id='themeHolderPaddingValue'>0px</span></div>
+<input id='themeHolderPadding' type='range' min='0' max='60' step='1' value='0'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Default Shadow</div>
+<label class='theme-toggle-row'><input id='themeHolderShadow' type='checkbox'> <span>On</span></label>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Reset</div>
+<button id='themeHolderReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+</div>
+</div>
+</section>
+
+<!-- Sprint 8.4.2 — Page Layout. Editor-only safe-area guide so children
+     keep important content inside the safe zone. The guide is added to
+     the editor payload only; the export pipeline omits it. -->
+<section class='designer-group' data-section='pagelayout'>
+<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
+<span class='designer-group-title-text'>Page Layout</span>
+<span class='designer-group-chevron' aria-hidden='true'>▾</span>
+</button>
+<div class='designer-group-body'>
+<div class='designer-row'>
+<div class='designer-row-label text-slider-label'><span>Page Margin</span><span id='themePageMarginValue'>60px</span></div>
+<input id='themePageMargin' type='range' min='0' max='160' step='2' value='60'>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Show Safe Area</div>
+<label class='theme-toggle-row'><input id='themeSafeArea' type='checkbox'> <span>On</span></label>
+</div>
+<div class='designer-row'>
+<div class='designer-row-label'>Reset</div>
+<button id='themeLayoutReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+</div>
+</div>
+</section>
+
 <section class='designer-group' data-section='decorations'>
 <button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
 <span class='designer-group-title-text'>Decorations</span>

@@ -2871,6 +2871,66 @@ body.dark-theme .frame-layer-btn{ background:var(--panel); }
 }
 body.dark-theme .decoration-layer-btn{ background:var(--panel); }
 
+/* ---------------------------
+ * Sprint 8.4.2 — Theme Designer Completion controls.
+ * Typography / Colours / Picture Holder Defaults / Page Layout rows.
+ * The inputs reuse existing .designer-row + .input-field chrome; this
+ * block sizes the colour swatches, font dropdown, toggle, and reset
+ * button so the four new sections read consistently with Branding /
+ * Decorations / Navigation.
+ * --------------------------- */
+.theme-color-input{
+  width:48px;
+  height:32px !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:transparent;
+  cursor:pointer;
+}
+.theme-color-input::-webkit-color-swatch-wrapper{ padding:2px; }
+.theme-color-input::-webkit-color-swatch{ border:none; border-radius:4px; }
+
+.theme-font-select{
+  width:100%;
+  margin:0 !important;
+}
+
+.theme-toggle-row{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.theme-toggle-row input[type="checkbox"]{
+  width:16px;
+  height:16px !important;
+  margin:0 !important;
+  padding:0 !important;
+  cursor:pointer;
+}
+
+.theme-reset-btn{
+  font-size:12px !important;
+  height:auto !important;
+  padding:6px 10px !important;
+  margin:0 !important;
+  width:auto !important;
+  background:var(--bg) !important;
+  border:1px solid var(--line) !important;
+  color:var(--text) !important;
+  border-radius:8px !important;
+  cursor:pointer;
+}
+.theme-reset-btn:hover{
+  background:rgba(255,203,69,0.10) !important;
+  border-color:rgba(255,203,69,0.45) !important;
+}
+body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
+
 /* ===========================
  * Sprint 6.7 — Picture Studio
  * A temporary preparation workspace. Modal overlay that opens when a
