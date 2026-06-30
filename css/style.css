@@ -353,6 +353,51 @@ button:active{
   text-align:center;
 }
 
+/* Sprint 8.2 — Page management. Playful drag visuals: the lifted page
+ * carries a soft shadow, the original slot fades, and an insertion bar
+ * floats absolutely so the surrounding thumb layout never shifts while
+ * the child decides where the page belongs. */
+.thumb[draggable="true"]{ cursor:grab; }
+.thumb[draggable="true"]:active{ cursor:grabbing; }
+.thumb.is-dragging{
+  opacity:0.35;
+  transform:scale(0.98);
+  box-shadow:0 14px 28px rgba(0,0,0,0.20);
+  transition:opacity 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+/* Fixed-position pages get a calm anchor look so the child knows
+ * Cover is always first and End is always last. */
+.thumb-fixed{
+  position:relative;
+}
+.thumb-fixed::after{
+  position:absolute;
+  top:6px;
+  right:30px;
+  font-size:10px;
+  letter-spacing:0.4px;
+  background:rgba(255,203,69,0.20);
+  color:var(--text);
+  padding:1px 6px;
+  border-radius:8px;
+  pointer-events:none;
+}
+.thumb-fixed-cover::after{ content:'COVER'; }
+.thumb-fixed-end::after{ content:'END'; }
+
+/* Floating insertion indicator — a thin gold rail with rounded caps. */
+.slide-drop-indicator{
+  position:fixed;
+  height:4px;
+  border-radius:2px;
+  background:linear-gradient(90deg, rgba(255,203,69,0), var(--gold), rgba(255,203,69,0));
+  box-shadow:0 0 12px rgba(255,203,69,0.65);
+  pointer-events:none;
+  z-index:1000;
+  transition:top 0.10s ease-out;
+}
+.slide-drop-indicator.hidden{ display:none; }
+
 .thumb-menu-btn{
   background:transparent;
   color:var(--text-secondary);

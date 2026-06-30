@@ -231,6 +231,76 @@ const PageOps=(function(){
     return true;
   }
 
+  // Sprint 8.2 — drag-and-drop reorder. Honors fixed positions: a
+  // Cover-role page is locked at index 0, an End-role page is locked at
+  // the last index. Story pages move freely between them. Selection
+  // follows the moved page so the editor stays on the same story.
+  function _firstStoryIdx(){
+    // The lowest index a story page is allowed to occupy. Cover anchors
+    // index 0 when present.
+    return (AppState.slides.length>0 && AppState.slides[0].pageType==='cover') ? 1 : 0;
+  }
+  function _lastStoryIdx(){
+    // The highest index a story page is allowed to occupy. End anchors
+    // the last slot when present.
+    const n=AppState.slides.length;
+    if(n===0) return -1;
+    return (AppState.slides[n-1].pageType==='end') ? n-2 : n-1;
+  }
+  function canMove(index){
+    if(index<0||index>=AppState.slides.length) return false;
+    const t=AppState.slides[index].pageType;
+    return t!=='cover' && t!=='end';
+  }
+  function reorderPage(fromIdx,toIdx){
+    if(fromIdx===toIdx) return false;
+    if(fromIdx<0||fromIdx>=AppState.slides.length) return false;
+    if(!canMove(fromIdx)) return false;
+    // Clamp the drop position into the moveable range.
+    const minIdx=_firstStoryIdx();
+    const maxIdx=_lastStoryIdx();
+    let target=Math.max(minIdx,Math.min(toIdx,maxIdx));
+    // splice math: removing first shifts later indices by 1.
+    const adjusted=(target>fromIdx) ? target : target;
+    if(adjusted===fromIdx) return false;
+    const wasSelected=AppState.currentSlide===fromIdx;
+    const moved=AppState.slides.splice(fromIdx,1)[0];
+    const insertAt=(adjusted>fromIdx) ? adjusted : adjusted;
+    AppState.slides.splice(insertAt,0,moved);
+    // Track where the moved page landed so selection can follow it.
+    const landed=AppState.slides.indexOf(moved);
+    if(wasSelected){
+      _afterMutation(landed);
+    }else{
+      // Preserve the previously-selected page when something else moved.
+      const prevSelectedSlide=AppState.slides[AppState.currentSlide];
+      _recalcPageNumbers();
+      _refreshNavigation();
+      // Re-anchor selection to whatever slide was previously selected
+      // (its index may have shifted).
+      const idx=AppState.slides.indexOf(prevSelectedSlide);
+      if(idx!==-1) _refreshSelection(idx);
+      _persist();
+    }
+    return true;
+  }
+  // Sprint 8.2 — child-friendly page rename. Persists at slide.name and
+  // shows in the thumbnail label; an empty name resets to the default
+  // "Page X" label without touching anything else.
+  function renamePage(index,name){
+    if(index<0||index>=AppState.slides.length) return false;
+    const slide=AppState.slides[index];
+    const trimmed=typeof name==='string' ? name.trim() : '';
+    if(trimmed){
+      slide.name=trimmed;
+    }else{
+      delete slide.name;
+    }
+    _refreshNavigation();
+    _persist();
+    return true;
+  }
+
   function mergeWithNext(index){
     if(index<0||index>=AppState.slides.length-1) return false;
     const current=AppState.slides[index];
@@ -253,7 +323,11 @@ const PageOps=(function(){
     setAsCover:setAsCover,
     exportPage:exportPage,
     splitPage:splitPage,
-    mergeWithNext:mergeWithNext
+    mergeWithNext:mergeWithNext,
+    // Sprint 8.2 — page management enhancement
+    reorderPage:reorderPage,
+    renamePage:renamePage,
+    canMove:canMove
   };
 })();
 try{ window.PageOps=PageOps; }catch(e){}

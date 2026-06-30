@@ -407,9 +407,17 @@ document.querySelectorAll('[data-section] [data-collapsible-toggle]').forEach(bt
 window.renderList=function(){
  const list=document.getElementById('slideList');
  list.innerHTML='';
+ const canMove=(typeof PageOps!=='undefined' && typeof PageOps.canMove==='function')
+   ? PageOps.canMove : function(){ return true; };
  AppState.slides.forEach((s,i)=>{
    const d=document.createElement('div');
    d.className='thumb';
+   // Sprint 8.2 — Cover/End are anchored at the ends. Only movable
+   // pages are draggable; the rest still respond to click + ⋮ menu.
+   const movable=canMove(i);
+   if(movable) d.setAttribute('draggable','true');
+   if(s.pageType==='cover') d.classList.add('thumb-fixed','thumb-fixed-cover');
+   if(s.pageType==='end') d.classList.add('thumb-fixed','thumb-fixed-end');
    d.setAttribute('data-index',i);
 
    const menuBtn=document.createElement('button');
@@ -429,7 +437,8 @@ window.renderList=function(){
 
    if(s.thumbnail) d.appendChild(img);
 
-   const lbl=document.createElement('div'); lbl.className='page-label'; lbl.textContent='Page '+(i+1);
+   const lbl=document.createElement('div'); lbl.className='page-label';
+   lbl.textContent=(s && typeof s.name==='string' && s.name) ? s.name : ('Page '+(i+1));
    d.appendChild(lbl);
 
    d.onclick=()=>showSlide(i);
@@ -448,7 +457,113 @@ window.renderList=function(){
      }); }catch(e){}
    }
  });
+ _wireSlideListDnD(list);
 };
+
+// Sprint 8.2 — HTML5 drag-and-drop reorder for the left page list.
+// The thumbs themselves are the drag handles; an insertion indicator
+// element gets re-positioned between them as the child drags. Fixed
+// pages (Cover / End) are non-draggable and never accept drops.
+let _slideDragSourceIdx=null;
+let _slideDropIndicator=null;
+function _wireSlideListDnD(list){
+  if(!list) return;
+  // One reusable insertion indicator. It floats absolutely so the
+  // surrounding thumb layout doesn't shift while we move it around.
+  if(!_slideDropIndicator){
+    _slideDropIndicator=document.createElement('div');
+    _slideDropIndicator.className='slide-drop-indicator hidden';
+    document.body.appendChild(_slideDropIndicator);
+  }
+
+  list.addEventListener('dragstart',function(e){
+    const t=e.target.closest('.thumb');
+    if(!t) return;
+    if(t.getAttribute('draggable')!=='true'){ e.preventDefault(); return; }
+    _slideDragSourceIdx=parseInt(t.getAttribute('data-index'),10);
+    try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(_slideDragSourceIdx)); }catch(_){}
+    // Defer the styling so the browser uses the original element as the
+    // drag image; if we set it synchronously, the ghost shows the
+    // muted thumb.
+    setTimeout(function(){ t.classList.add('is-dragging'); },0);
+  });
+
+  list.addEventListener('dragend',function(){
+    list.querySelectorAll('.thumb.is-dragging').forEach(function(el){ el.classList.remove('is-dragging'); });
+    _hideDropIndicator();
+    _slideDragSourceIdx=null;
+  });
+
+  list.addEventListener('dragover',function(e){
+    if(_slideDragSourceIdx===null) return;
+    e.preventDefault();
+    try{ e.dataTransfer.dropEffect='move'; }catch(_){}
+    const dropIdx=_computeDropIndex(list,e.clientY);
+    _showDropIndicator(list,dropIdx);
+  });
+
+  list.addEventListener('dragleave',function(e){
+    // Only hide when the cursor leaves the list bounds entirely.
+    const rel=e.relatedTarget;
+    if(rel && list.contains(rel)) return;
+    _hideDropIndicator();
+  });
+
+  list.addEventListener('drop',function(e){
+    if(_slideDragSourceIdx===null) return;
+    e.preventDefault();
+    const dropIdx=_computeDropIndex(list,e.clientY);
+    _hideDropIndicator();
+    if(typeof PageOps!=='undefined' && typeof PageOps.reorderPage==='function'){
+      // splice insertion: the dropIdx is where the moved page WILL
+      // sit. PageOps.reorderPage already clamps to the moveable range
+      // (between Cover and End).
+      const from=_slideDragSourceIdx;
+      const to=dropIdx>from ? dropIdx-1 : dropIdx;
+      _slideDragSourceIdx=null;
+      PageOps.reorderPage(from,to);
+    }else{
+      _slideDragSourceIdx=null;
+    }
+  });
+}
+
+function _computeDropIndex(list,clientY){
+  // The insertion index = how many thumbs sit fully above the cursor.
+  // We use each thumb's midpoint as the split line.
+  const thumbs=list.querySelectorAll('.thumb');
+  let idx=thumbs.length;
+  for(let i=0;i<thumbs.length;i++){
+    const t=thumbs[i];
+    const r=t.getBoundingClientRect();
+    if(clientY < r.top + r.height/2){ idx=i; break; }
+  }
+  return idx;
+}
+
+function _showDropIndicator(list,dropIdx){
+  if(!_slideDropIndicator) return;
+  const thumbs=list.querySelectorAll('.thumb');
+  const listRect=list.getBoundingClientRect();
+  let top;
+  if(dropIdx>=thumbs.length){
+    const last=thumbs[thumbs.length-1];
+    if(!last) return;
+    const r=last.getBoundingClientRect();
+    top=r.bottom-listRect.top+list.scrollTop-3;
+  }else{
+    const t=thumbs[dropIdx];
+    const r=t.getBoundingClientRect();
+    top=r.top-listRect.top+list.scrollTop-3;
+  }
+  _slideDropIndicator.style.left=(listRect.left+8)+'px';
+  _slideDropIndicator.style.top=(listRect.top+top)+'px';
+  _slideDropIndicator.style.width=(listRect.width-16)+'px';
+  _slideDropIndicator.classList.remove('hidden');
+}
+function _hideDropIndicator(){
+  if(_slideDropIndicator) _slideDropIndicator.classList.add('hidden');
+}
 
 window.renderTimeline=function(){
  const timeline=document.getElementById('timelineList');
@@ -581,16 +696,28 @@ document.addEventListener('keydown',(e)=>{
  }
 });
 
+// Sprint 8.2 — context menu trimmed to four child-friendly actions:
+// Rename Page, Duplicate Page, Add Blank Page After, Delete Page.
+// The wider PageOps API (setAsCover / addBefore / moveToEnd / exportPage
+// / splitPage / mergeWithNext) is retained for programmatic callers; the
+// menu just no longer exposes the clutter.
 const CONTEXT_ACTIONS={
   'duplicate':'duplicatePage',
   'delete':'deletePage',
-  'blank':'insertBlankPage',
-  'add-before':'addBefore',
   'add-after':'addAfter',
-  'move-end':'moveToEnd',
-  'set-cover':'setAsCover',
-  'export-page':'exportPage'
+  'rename':'__rename'
 };
+function _promptRenamePage(index){
+  if(index<0||index>=AppState.slides.length) return;
+  const slide=AppState.slides[index];
+  const current=(slide && typeof slide.name==='string') ? slide.name : '';
+  const next=window.prompt('What should we call this page?',current);
+  // null = Cancel; '' = clear (restore default "Page X" label).
+  if(next===null) return;
+  if(typeof PageOps!=='undefined' && typeof PageOps.renamePage==='function'){
+    PageOps.renamePage(index,next);
+  }
+}
 const contextItems=contextMenu.querySelectorAll('.context-item');
 contextItems.forEach(item=>{
  item.onclick=(e)=>{
@@ -600,7 +727,9 @@ contextItems.forEach(item=>{
    closeContextMenu();
    if(target===null||target<0) return;
    const method=CONTEXT_ACTIONS[action];
-   if(!method||typeof PageOps[method]!=='function') return;
+   if(!method) return;
+   if(method==='__rename'){ _promptRenamePage(target); return; }
+   if(typeof PageOps[method]!=='function') return;
    try{ PageOps[method](target); }catch(err){ /* swallow */ }
  };
 });
