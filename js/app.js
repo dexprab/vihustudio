@@ -332,6 +332,17 @@ exportBtn.onclick=()=>{
   alert('Export feature coming in Sprint 3');
 };
 
+// Sprint 8.1.1 — Publish button opens Publish Studio. The editor stays
+// exactly as it was underneath; closing the studio returns control with
+// no state change.
+const publishBtn=document.getElementById('publishBtn');
+if(publishBtn){
+  publishBtn.onclick=function(){
+    if(typeof PublishStudio==='undefined') return;
+    PublishStudio.open();
+  };
+}
+
 if(saveBtn){
   saveBtn.onclick=()=>{
     if(!window.ProjectManager) return;

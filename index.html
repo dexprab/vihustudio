@@ -22,7 +22,11 @@
 <div class='header-right'>
 <div id='autosaveStatus' class='autosave-status'>Saved locally</div>
 <button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
-<button id='exportBtn' class='export-btn'>📥 Export</button>
+<!-- Sprint 8.1 — Children publish books. Software exports files. The
+     placeholder export button is preserved hidden so any deferred
+     wiring still resolves; Publish is now the editor's primary CTA. -->
+<button id='exportBtn' class='export-btn' hidden>📥 Export</button>
+<button id='publishBtn' class='publish-btn' title='Publish my book'>📖 Publish</button>
 </div>
 </header>
 
@@ -223,6 +227,6 @@
 <button class='context-item' data-action='delete'>✕ Delete</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishStudio.js'></script><script src='js/app.js'></script>
 </body>
 </html>
