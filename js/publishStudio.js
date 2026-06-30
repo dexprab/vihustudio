@@ -441,8 +441,180 @@ const PublishStudio=(function(){
     const btn=document.querySelector('.tab-btn[data-tab="'+name+'"]');
     if(btn && !btn.classList.contains('active')) btn.click();
   }
+  // --- Stage 3 · Publishing -----------------------------------------
+  // Children publish books. Software exports files. Every visible
+  // label in this stage uses creative verbs (Painting, Stitching,
+  // Wrapping). Cancellation never emits a partial file — the PDF is
+  // only assembled at the very end of the loop.
+  const PUBLISH_MESSAGES=[
+    'Painting your pages…',
+    'Adding the finishing touches…',
+    'Binding your book…',
+    'Wrapping it with care…',
+    'Almost ready…'
+  ];
+  // PDF page size — 7.5" × 9.375" at 144 DPI matches the editor's
+  // native 1080×1350 canvas without resampling, so what the child saw
+  // in the editor is what lands in the file. (PDF points: 72 per inch.)
+  const PDF_PAGE_W_PT=540;
+  const PDF_PAGE_H_PT=675;
+  const PDF_RENDER_W=1080;
+  const PDF_RENDER_H=1350;
+
+  let _pubBody=null;
+  let _pubGlyph=null;
+  let _pubMessage=null;
+  let _pubBar=null;
+  let _pubProgressText=null;
+  let _pubCancelBtn=null;
+  let _publishCancelled=false;
+  let _publishOutputBlob=null;
+
   function _buildPublishingBody(){
-    return _placeholderBody('publish-studio-body-publishing','📕 Painting your book · coming next');
+    _pubBody=document.createElement('section');
+    _pubBody.className='publish-studio-body publish-studio-body-publishing hidden';
+
+    const center=document.createElement('div');
+    center.className='publish-publishing-center';
+
+    _pubGlyph=document.createElement('div');
+    _pubGlyph.className='publish-publishing-glyph';
+    _pubGlyph.textContent='📖✨';
+    center.appendChild(_pubGlyph);
+
+    _pubMessage=document.createElement('div');
+    _pubMessage.className='publish-publishing-message';
+    _pubMessage.textContent='Painting your pages…';
+    center.appendChild(_pubMessage);
+
+    const barWrap=document.createElement('div');
+    barWrap.className='publish-publishing-barwrap';
+    _pubBar=document.createElement('div');
+    _pubBar.className='publish-publishing-bar';
+    barWrap.appendChild(_pubBar);
+    center.appendChild(barWrap);
+
+    _pubProgressText=document.createElement('div');
+    _pubProgressText.className='publish-publishing-progress';
+    _pubProgressText.textContent='Page 0 of 0';
+    center.appendChild(_pubProgressText);
+
+    _pubCancelBtn=document.createElement('button');
+    _pubCancelBtn.type='button';
+    _pubCancelBtn.className='publish-publishing-cancel';
+    _pubCancelBtn.textContent='Cancel';
+    _pubCancelBtn.addEventListener('click',function(){
+      _publishCancelled=true;
+    });
+    center.appendChild(_pubCancelBtn);
+
+    _pubBody.appendChild(center);
+    return _pubBody;
+  }
+
+  function _enterPublishing(){
+    _publishCancelled=false;
+    _publishOutputBlob=null;
+    const slides=AppState.slides||[];
+    if(slides.length===0){
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
+    _updateProgress(0, slides.length);
+    _pubMessage.textContent=PUBLISH_MESSAGES[0];
+    // Kick off async. requestAnimationFrame between pages keeps the
+    // UI responsive on large books.
+    _renderNextPage(0, slides, []);
+  }
+
+  function _updateProgress(done, total){
+    if(!_pubBar) return;
+    const pct=total>0 ? Math.round((done/total)*100) : 0;
+    _pubBar.style.width=pct+'%';
+    _pubProgressText.textContent='Page '+done+' of '+total;
+    // Rotate the playful message based on progress.
+    const stage=Math.min(PUBLISH_MESSAGES.length-1,
+      Math.floor((done/Math.max(1,total))*PUBLISH_MESSAGES.length));
+    _pubMessage.textContent=PUBLISH_MESSAGES[stage];
+  }
+
+  function _renderNextPage(idx, slides, pages){
+    if(_publishCancelled){
+      // Aborted. No file ever emitted; just bounce back to the
+      // Almost Ready stage.
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
+    if(idx>=slides.length){
+      _finalizePublish(pages);
+      return;
+    }
+    // Render this slide.
+    const slide=slides[idx];
+    const off=document.createElement('canvas');
+    off.width=PDF_RENDER_W;
+    off.height=PDF_RENDER_H;
+    const editorCanvas=document.getElementById('previewCanvas');
+    try{
+      SlideRenderer.init(off);
+      const titleEl=document.getElementById('bookTitle');
+      const payload=SlideRenderer.buildPayload(slide,{
+        page: idx+1,
+        totalPages: slides.length,
+        defaultBookTitle: titleEl ? titleEl.value : ''
+      });
+      SlideRenderer.render(payload);
+    }catch(e){}
+    try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
+
+    // Encode as JPEG and stash for the PDF builder.
+    let dataURL=null;
+    try{ dataURL=off.toDataURL('image/jpeg', 0.92); }catch(e){ dataURL=null; }
+    if(dataURL){
+      const bytes=PdfWriter.dataURLToBytes(dataURL);
+      pages.push({ jpegBytes:bytes, srcW:PDF_RENDER_W, srcH:PDF_RENDER_H });
+    }
+
+    _updateProgress(idx+1, slides.length);
+
+    // Yield to the next frame so the bar / message can paint.
+    requestAnimationFrame(function(){
+      _renderNextPage(idx+1, slides, pages);
+    });
+  }
+
+  function _finalizePublish(pages){
+    if(_publishCancelled){
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
+    try{
+      const blob=PdfWriter.build(pages, PDF_PAGE_W_PT, PDF_PAGE_H_PT);
+      _publishOutputBlob=blob;
+    }catch(e){
+      _publishOutputBlob=null;
+    }
+    // Move on to the Celebration stage (8.1.5).
+    _setStage(STAGES.CELEBRATION);
+  }
+
+  function _publishedBlob(){ return _publishOutputBlob; }
+  function _publishedFilename(){
+    const t=(AppState.project && (AppState.project.bookTitle||AppState.project.title))||'my-book';
+    const safe=String(t).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'')||'my-book';
+    return safe+'.pdf';
+  }
+  function _downloadPublished(){
+    if(!_publishOutputBlob) return false;
+    const url=URL.createObjectURL(_publishOutputBlob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=_publishedFilename();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    return true;
   }
   function _buildCelebrationBody(){
     return _placeholderBody('publish-studio-body-celebration','🎉 Celebration · coming next');
@@ -457,6 +629,7 @@ const PublishStudio=(function(){
     });
     if(next===STAGES.READ) _enterRead();
     else if(next===STAGES.ALMOST_READY) _enterAlmostReady();
+    else if(next===STAGES.PUBLISHING) _enterPublishing();
   }
 
   // -------- Lifecycle ------------------------------------------------
@@ -508,7 +681,10 @@ const PublishStudio=(function(){
     isOpen:isOpen,
     getStage:getStage,
     // Internal — exposed for the test harness only.
-    _setStage:_setStage
+    _setStage:_setStage,
+    _publishedBlob:_publishedBlob,
+    _publishedFilename:_publishedFilename,
+    _downloadPublished:_downloadPublished
   };
   try{ window.PublishStudio=api; }catch(e){}
   return api;

@@ -3331,6 +3331,75 @@ body.dark-theme .publish-nudge-card{ background:var(--panel); }
 .publish-primary-btn:active{ transform:translateY(0); }
 .publish-primary-glyph{ font-size:20px; }
 
+/* Sprint 8.1.4 — Publishing stage ------------------------------------ */
+.publish-studio-body-publishing{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  min-height:0;
+}
+.publish-studio-body-publishing:not(.hidden){ display:flex; }
+
+.publish-publishing-center{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  max-width:420px;
+  width:100%;
+  text-align:center;
+}
+.publish-publishing-glyph{
+  font-size:64px;
+  line-height:1;
+  animation:publish-glyph-float 2.2s ease-in-out infinite;
+}
+@keyframes publish-glyph-float{
+  0%, 100%{ transform:translateY(0); }
+  50%{ transform:translateY(-8px); }
+}
+.publish-publishing-message{
+  font-size:18px;
+  font-weight:600;
+  color:var(--text);
+}
+.publish-publishing-barwrap{
+  width:100%;
+  height:10px;
+  background:rgba(0,0,0,0.08);
+  border-radius:6px;
+  overflow:hidden;
+}
+body.dark-theme .publish-publishing-barwrap{ background:rgba(255,255,255,0.10); }
+.publish-publishing-bar{
+  height:100%;
+  width:0;
+  background:linear-gradient(90deg, var(--gold), #FFD466);
+  border-radius:6px;
+  transition:width 0.22s ease-out;
+}
+.publish-publishing-progress{
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.publish-publishing-cancel{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:8px 24px !important;
+  font-size:13px;
+  font-weight:500;
+  border-radius:18px;
+  cursor:pointer;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  transition:background 0.15s;
+}
+.publish-publishing-cancel:hover{ background:rgba(0,0,0,0.06); }
+body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.06); }
+
 /* Print styles */
 @media print{
   .app-header, .sidebar, .dev-footer, .context-menu, .timeline, .modal{
