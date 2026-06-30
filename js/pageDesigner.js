@@ -180,9 +180,23 @@ const PageDesigner=(function(){
     inp.value='';
     inp.click();
   }
+  // Sprint 6.7 — route every image pick through Picture Studio so the
+  // child prepares (crop / rotate / flip / enhance / fit-mode) before
+  // the picture lands on the page. After Apply the picture is inserted,
+  // the Card Designer opens, and editing continues.
   function _onImageSelected(e){
     const file=e.target.files && e.target.files[0];
     if(!file) return;
+    if(typeof PictureStudio!=='undefined'){
+      PictureStudio.open(file,{
+        defaultMode:'fit',
+        onApply:function(result){ _applyPreparedPicture(result); },
+        onCancel:function(){ /* no-op — child chose not to add the picture */ }
+      });
+      return;
+    }
+    // Defensive fallback if Picture Studio isn't loaded — keep the
+    // legacy direct-load path.
     const reader=new FileReader();
     reader.onload=function(ev){
       const img=new Image();
@@ -198,6 +212,34 @@ const PageDesigner=(function(){
       img.src=ev.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  function _applyPreparedPicture(result){
+    if(!result || !result.dataURL) return;
+    const img=new Image();
+    img.onload=function(){
+      const s=_currentSlide();
+      if(!s) return;
+      s.image=img;
+      s._imageDataURL=result.dataURL;
+      // Sprint 6.7: imageView is reset to a clean slate after a Picture
+      // Studio bake. The picture itself is the new source of truth —
+      // crop / rotate / flip / enhance are already baked in. Only the
+      // placement mode (fit / fill) rides along.
+      if(!s.metadata) s.metadata={};
+      if(!s.metadata.cardOverrides) s.metadata.cardOverrides={};
+      const mode=(result.imageView && result.imageView.mode)==='fill' ? 'fill' : 'fit';
+      s.metadata.cardOverrides.image={ mode:mode, fit:mode, scale:1, offsetX:0, offsetY:0 };
+      delete s.thumbnail;
+      _commitContent();
+      _renderEditor();
+      // Route the right pane to Card Designer so the child can keep
+      // editing the picture immediately.
+      const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+      if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+      if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+    };
+    img.src=result.dataURL;
   }
   function _removeImage(){
     const s=_currentSlide();

@@ -2747,6 +2747,184 @@ body.dark-theme .sticker-action-btn{ background:var(--panel); }
 
 body.dark-theme .frame-layer-btn{ background:var(--panel); }
 
+/* ===========================
+ * Sprint 6.7 — Picture Studio
+ * A temporary preparation workspace. Modal overlay that opens when a
+ * child uploads (or replaces) a picture; closes on Apply or Cancel.
+ * The picture preview is the visual focus; controls sit beneath.
+ * =========================== */
+.picture-studio-modal{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,10,16,0.78);
+  backdrop-filter:blur(8px);
+}
+.picture-studio-modal.hidden{ display:none; }
+
+.picture-studio{
+  display:flex;
+  flex-direction:column;
+  background:var(--panel);
+  color:var(--text);
+  width:min(960px,94vw);
+  height:min(720px,92vh);
+  border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.45);
+  overflow:hidden;
+}
+
+.picture-studio-header{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 20px;
+  border-bottom:1px solid var(--line);
+}
+.picture-studio-title{
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:0.4px;
+}
+.picture-studio-subtitle{
+  font-size:13px;
+  color:var(--text-secondary);
+}
+.picture-studio-close{
+  width:34px;
+  height:34px !important;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:50%;
+  background:transparent;
+  border:none;
+  color:var(--text);
+  font-size:18px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background 0.15s;
+}
+.picture-studio-close:hover{ background:rgba(0,0,0,0.08); }
+
+.picture-studio-stage{
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#1a1d24;
+  padding:16px;
+}
+.picture-studio-canvas{
+  width:100%;
+  height:100%;
+  cursor:grab;
+  border-radius:8px;
+  background:#0e1015;
+  display:block;
+}
+.picture-studio-canvas:active{ cursor:grabbing; }
+
+.picture-studio-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  gap:10px 16px;
+  padding:14px 20px;
+  border-top:1px solid var(--line);
+  background:var(--panel);
+}
+.picture-studio-tool-group{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.picture-studio-tool-group-label{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  color:var(--text-secondary);
+  opacity:0.85;
+}
+.picture-studio-tool-row{
+  display:flex;
+  gap:4px;
+}
+.picture-studio-tool-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  padding:6px 8px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:10px;
+  color:var(--text);
+  font-size:11px;
+  font-weight:500;
+  cursor:pointer;
+  /* Override the global button:not(...) margin/width. */
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.12s, border-color 0.12s, transform 0.05s;
+}
+.picture-studio-tool-btn:hover{
+  background:rgba(255,203,69,0.12);
+  border-color:rgba(255,203,69,0.45);
+}
+.picture-studio-tool-btn:active{
+  transform:translateY(1px);
+}
+.picture-studio-tool-btn.active{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--navy);
+}
+.picture-studio-tool-glyph{ font-size:18px; line-height:1; }
+.picture-studio-tool-label{ font-size:11px; }
+
+.picture-studio-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding:14px 20px;
+  border-top:1px solid var(--line);
+}
+.picture-studio-btn{
+  padding:10px 22px;
+  border-radius:24px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s;
+}
+.picture-studio-btn:hover{ background:rgba(0,0,0,0.04); }
+.picture-studio-apply-btn{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--navy);
+  font-weight:700;
+}
+.picture-studio-apply-btn:hover{ background:#FFD466; }
+
+body.dark-theme .picture-studio{ background:var(--panel); }
+body.dark-theme .picture-studio-tool-btn{ background:var(--panel); }
+body.dark-theme .picture-studio-btn{ background:var(--panel); }
+
 /* Print styles */
 @media print{
   .app-header, .sidebar, .dev-footer, .context-menu, .timeline, .modal{

@@ -237,16 +237,64 @@ if(window.ProjectManager){
 function markDirty(){ if(window.ProjectManager) ProjectManager.markDirty(); }
 
 uploadBtn.onclick=()=>upload.click();
+
+// Sprint 6.7 — single-file uploads now route through Picture Studio so
+// the child can prepare the picture before it lands on the page.
+// Multi-file uploads keep the bulk-import flow (children importing a
+// whole scanned book shouldn't be stopped at every page).
+function _insertPreparedSlide(dataUrl, mode){
+  const img=new Image();
+  img.onload=function(){
+    const slideObj={
+      id:Date.now(),
+      image:img,
+      _imageDataURL:dataUrl,
+      storyBeat:'',
+      pageType:'story',
+      page:AppState.slides.length+1,
+      totalPages:0,
+      metadata:{
+        cardOverrides:{ image:{ mode:mode||'fit', fit:mode||'fit', scale:1, offsetX:0, offsetY:0 } }
+      }
+    };
+    AppState.slides.push(slideObj);
+    renderList();
+    renderTimeline();
+    const idx=AppState.slides.length-1;
+    showSlide(idx);
+    if(typeof ThumbnailEngine!=='undefined'){
+      try{ ThumbnailEngine.generate(slideObj).then(function(){
+        renderList(); renderTimeline();
+      }); }catch(e){}
+    }
+    markDirty();
+    // Route the right pane to the Card Designer so the child can keep
+    // editing the picture immediately.
+    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+    if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+  };
+  img.src=dataUrl;
+}
+
 upload.onchange=e=>{
  const files=[...e.target.files];
+ e.target.value='';
+ if(files.length===0) return;
+ if(files.length===1 && typeof PictureStudio!=='undefined'){
+   PictureStudio.open(files[0],{
+     defaultMode:'fit',
+     onApply:function(result){
+       _insertPreparedSlide(result.dataURL, result.imageView && result.imageView.mode);
+     },
+     onCancel:function(){ /* child chose not to add the picture */ }
+   });
+   return;
+ }
+ // Bulk import — original Sprint 6.3 fidelity path. Each file's ORIGINAL
+ // encoding (PNG → PNG, JPEG → JPEG) is the canonical source.
  const newSlides=[];
  let loaded=0;
-
- // Sprint 6.3 fidelity: read each file as a Data URL up front so the
- // ORIGINAL encoding (PNG → PNG, JPEG → JPEG) is the canonical source.
- // The Image decodes from the same Data URL, so slide.image and
- // slide._imageDataURL come from the same bits — no re-encoding step
- // before, during, or after persistence.
  files.forEach((file,i)=>{
    const reader=new FileReader();
    reader.onload=ev=>{
@@ -277,8 +325,6 @@ upload.onchange=e=>{
    };
    reader.readAsDataURL(file);
  });
- // allow re-uploading the same file later
- e.target.value='';
 };
 
 exportBtn.onclick=()=>{
