@@ -35,6 +35,7 @@ Canonical project context for VihuStudio. Read this first before making any chan
 - Card Designer · Image module (Sprint 4.2 shipped scale, fit/fill, pan, reset; Sprint 4.5 added composition / light / color / detail / effects fine tuning)
 - Card Designer · Text module (Sprint 4.3 shipped canvas-first selection + font size / color / alignment overrides + reset; Sprint 4.4 added position drag + arrow nudge + full typography)
 - Page Designer Foundation (Sprint 6.0 introduces the page role selector — 📖 Story / 📘 Cover / 🪝 Hook / 🏁 End — with role-specific content editors)
+- Sticker Studio (Sprint 6.6 ships the Sticker Studio tab — 15 categories, search, favorites + recents, and per-slide sticker objects persisted at `slide.metadata.stickers`; stickers reuse the existing object selection, resize handles, and Object Designer chrome)
 
 ## Locked Product Decisions
 

@@ -48,6 +48,7 @@ let _textDragState=null; // {elementId, startClientX, startClientY, sx, sy, base
 // (Frame, decorations). The renderer paints a gold outline + resize handles
 // around the selected element and `_resizeDragState` drives handle drags.
 let _selectedSceneElement=null;
+let _selectedSceneElementType=null;
 let _resizeDragState=null;
 const _TEXT_BASE_DEFAULTS={fontWeight:'normal',fontStyle:'normal',opacity:1,letterSpacing:0,lineHeight:1.2};
 
@@ -103,7 +104,12 @@ if(typeof CardDesigner!=='undefined'){
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
       getSelectedTextElement:function(){ return _selectedTextElement; },
       setSelectedTextElement:function(id){ _setSelectedTextElement(id); },
-      getTextDefaults:_getTextDefaults
+      getTextDefaults:_getTextDefaults,
+      // Sprint 6.6 — sticker selection bridge so the Card Designer's
+      // Sticker section can read + drive the active object.
+      getSelectedSceneElement:function(){ return _selectedSceneElement; },
+      getSelectedSceneElementType:function(){ return _selectedSceneElementType; },
+      setSelectedSceneElement:function(id,type){ _setSelectedSceneElement(id,type); }
     });
   }catch(e){}
 }
@@ -135,6 +141,30 @@ if(typeof PreviewStudio!=='undefined'){
   }catch(e){}
 }
 
+// Sticker Studio bootstrap (Sprint 6.6) — browse + insert stickers. The
+// studio inserts into SceneEngine, then asks the host to select the new
+// instance so the gold outline + resize handles appear immediately.
+if(typeof StickerStudio!=='undefined'){
+  try{ StickerStudio.mount(document.getElementById('stickerStudioRoot')); }catch(e){}
+  try{
+    StickerStudio.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
+      setSelectedSticker:function(id,type){ _setSelectedSceneElement(id,type||'sticker'); },
+      refreshThumbnails:function(){
+        const s=AppState.slides[AppState.currentSlide];
+        if(s && typeof ThumbnailEngine!=='undefined'){
+          try{ ThumbnailEngine.generate(s).then(function(){
+            if(typeof renderList==='function') renderList();
+            if(typeof renderTimeline==='function') renderTimeline();
+          }); }catch(e){}
+        }
+      }
+    });
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(typeof window.redrawPreview==='function') window.redrawPreview();
@@ -157,12 +187,14 @@ function _setSelectedTextElement(id){
 // backgrounds) lives under the Story tab's Page Designer.
 function _setSelectedSceneElement(id, elementType){
   _selectedSceneElement=id||null;
+  _selectedSceneElementType=id ? (elementType||null) : null;
   if(_selectedSceneElement && _selectedTextElement){
     // Mutually exclusive — selecting a scene element clears any text
     // selection so the right pane shows one clear context.
     _selectedTextElement=null;
   }
   if(typeof window.redrawPreview==='function') window.redrawPreview();
+  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
   if(!id) return;
   // Auto-tab-switch.
   if(elementType==='image-holder'){
@@ -171,6 +203,16 @@ function _setSelectedSceneElement(id, elementType){
   }else if(elementType==='text-holder' || elementType==='text'){
     const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
     if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+  }else if(elementType==='sticker'){
+    // Sprint 6.6 — selecting a sticker opens the Object Designer. We
+    // reuse the Card Designer tab as the universal object editor host;
+    // CardDesigner.refresh() reveals the Sticker controls when a
+    // sticker is selected.
+    const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+    if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+    if(typeof CardDesigner!=='undefined'){
+      try{ CardDesigner.refresh(); }catch(e){}
+    }
   }else{
     // Decoration / background / future objects — leave on whatever tab
     // the user is on. The Page Designer's element panel covers them.
@@ -300,6 +342,12 @@ tabs.forEach(btn=>{
     // another tab.
     if(tab==='preview' && typeof PreviewStudio!=='undefined'){
       try{ PreviewStudio.refresh(); }catch(e){}
+    }
+    // Sprint 6.6 — activating the Stickers tab re-renders so favorites /
+    // recents are fresh after any insertion that happened from the
+    // canvas side.
+    if(tab==='stickers' && typeof StickerStudio!=='undefined'){
+      try{ StickerStudio.refresh(); }catch(e){}
     }
   };
 });
@@ -629,6 +677,7 @@ previewCanvas.addEventListener('mousedown',function(e){
     if(bbox){
       _resizeDragState={
         elementId:_selectedSceneElement,
+        elementType:bbox.type,
         handle:handlePos,
         startClientX:e.clientX, startClientY:e.clientY,
         sx:c.sx, sy:c.sy,
@@ -671,15 +720,27 @@ previewCanvas.addEventListener('mousedown',function(e){
   // mouse moves past SCENE_DRAG_THRESHOLD.
   const sceneHit=_hitTestSceneElement(c.x,c.y);
   if(sceneHit){
-    const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[sceneHit.id] && s.metadata.elementOverrides[sceneHit.id].position) || {};
-    const baseX=(typeof pos.x==='number') ? pos.x : (sceneHit.bx + sceneHit.bw/2);
-    const baseY=(typeof pos.y==='number') ? pos.y : (sceneHit.by + sceneHit.bh/2);
+    // Sprint 6.6 — stickers persist in their own array, so their base
+    // position comes off the sticker record directly. Locked stickers
+    // are still selectable but can't be dragged.
+    let baseX, baseY, locked=false;
+    if(sceneHit.type==='sticker' && typeof SceneEngine!=='undefined'){
+      const st=SceneEngine.findSticker(s,sceneHit.id);
+      baseX=(st && typeof st.x==='number') ? st.x : (sceneHit.bx + sceneHit.bw/2);
+      baseY=(st && typeof st.y==='number') ? st.y : (sceneHit.by + sceneHit.bh/2);
+      locked=!!(st && st.locked);
+    }else{
+      const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[sceneHit.id] && s.metadata.elementOverrides[sceneHit.id].position) || {};
+      baseX=(typeof pos.x==='number') ? pos.x : (sceneHit.bx + sceneHit.bw/2);
+      baseY=(typeof pos.y==='number') ? pos.y : (sceneHit.by + sceneHit.bh/2);
+    }
     _sceneDragState={
       elementId:sceneHit.id,
       elementType:sceneHit.type,
       startClientX:e.clientX,startClientY:e.clientY,
       sx:c.sx,sy:c.sy,
       baseX:baseX,baseY:baseY,
+      locked:locked,
       moved:false
     };
     // Selection happens immediately so the gold outline + handles appear
@@ -762,8 +823,19 @@ document.addEventListener('mousemove',function(e){
     if(h==='s' || h==='se' || h==='sw') dh=dy;
     if(h==='n' || h==='ne' || h==='nw') dh=-dy;
     const MIN=60;
-    const newW=Math.max(MIN, _resizeDragState.baseW+dw);
-    const newH=Math.max(MIN, _resizeDragState.baseH+dh);
+    // Sprint 6.6 — sticker corner drags preserve aspect ratio by default
+    // so stickers stay recognisable as resized. Side handles still do
+    // 1-axis scaling for fine-tuning.
+    let newW=Math.max(MIN, _resizeDragState.baseW+dw);
+    let newH=Math.max(MIN, _resizeDragState.baseH+dh);
+    if(_resizeDragState.elementType==='sticker' && (h==='nw'||h==='ne'||h==='sw'||h==='se')){
+      const aspect=_resizeDragState.baseW/_resizeDragState.baseH;
+      if(Math.abs(dw) > Math.abs(dh)*aspect){
+        newH=Math.max(MIN, newW/aspect);
+      }else{
+        newW=Math.max(MIN, newH*aspect);
+      }
+    }
     // Position drift: side opposite the drag stays anchored, so the
     // center moves by half the size delta in the right direction.
     let cx=_resizeDragState.baseX, cy=_resizeDragState.baseY;
@@ -771,9 +843,17 @@ document.addEventListener('mousemove',function(e){
     if(h==='w' || h==='nw' || h==='sw') cx=_resizeDragState.baseX-(newW-_resizeDragState.baseW)/2;
     if(h==='s' || h==='se' || h==='sw') cy=_resizeDragState.baseY+(newH-_resizeDragState.baseH)/2;
     if(h==='n' || h==='ne' || h==='nw') cy=_resizeDragState.baseY-(newH-_resizeDragState.baseH)/2;
-    if(typeof SceneEngine!=='undefined'){
-      SceneEngine.setSize(s, _resizeDragState.elementId, {w:newW, h:newH});
-      SceneEngine.setPosition(s, _resizeDragState.elementId, {x:cx, y:cy});
+    if(_resizeDragState.elementType==='sticker'){
+      // Sticker resize goes through the sticker mutation path so the
+      // change persists at slide.metadata.stickers[*].
+      if(typeof SceneEngine!=='undefined'){
+        SceneEngine.updateSticker(s, _resizeDragState.elementId, {w:newW, h:newH, x:cx, y:cy});
+      }
+    }else{
+      if(typeof SceneEngine!=='undefined'){
+        SceneEngine.setSize(s, _resizeDragState.elementId, {w:newW, h:newH});
+        SceneEngine.setPosition(s, _resizeDragState.elementId, {x:cx, y:cy});
+      }
     }
     delete s.thumbnail;
     draw();
@@ -784,6 +864,7 @@ document.addEventListener('mousemove',function(e){
   if(_sceneDragState){
     const s=AppState.slides[AppState.currentSlide];
     if(!s) return;
+    if(_sceneDragState.locked) return;
     const dx=(e.clientX-_sceneDragState.startClientX)*_sceneDragState.sx;
     const dy=(e.clientY-_sceneDragState.startClientY)*_sceneDragState.sy;
     if(!_sceneDragState.moved){
@@ -792,7 +873,11 @@ document.addEventListener('mousemove',function(e){
       previewCanvas.classList.add('canvas-text-dragging');
     }
     if(typeof SceneEngine==='undefined') return;
-    SceneEngine.setPosition(s,_sceneDragState.elementId,{x:_sceneDragState.baseX+dx, y:_sceneDragState.baseY+dy});
+    if(_sceneDragState.elementType==='sticker'){
+      SceneEngine.updateSticker(s,_sceneDragState.elementId,{x:_sceneDragState.baseX+dx, y:_sceneDragState.baseY+dy});
+    }else{
+      SceneEngine.setPosition(s,_sceneDragState.elementId,{x:_sceneDragState.baseX+dx, y:_sceneDragState.baseY+dy});
+    }
     delete s.thumbnail;
     draw();
     return;
@@ -900,15 +985,50 @@ document.addEventListener('mouseup',function(){
 // existing Story Beat / Page Number / Theme controls are unaffected.
 const ARROW_DELTAS={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
 document.addEventListener('keydown',function(e){
-  if(!_selectedTextElement) return;
   const active=document.activeElement;
   if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA' || active.tagName==='SELECT')) return;
+  const s=AppState.slides[AppState.currentSlide];
+  if(!s) return;
+
+  // Sprint 6.6 — keyboard shortcuts for selected sticker. Delete keys
+  // remove; arrow keys nudge by 1px (Shift = 10px).
+  if(_selectedSceneElement && typeof SceneEngine!=='undefined'){
+    const st=SceneEngine.findSticker(s,_selectedSceneElement);
+    if(st){
+      if(e.key==='Delete' || e.key==='Backspace'){
+        e.preventDefault();
+        SceneEngine.removeSticker(s,_selectedSceneElement);
+        _setSelectedSceneElement(null,null);
+        delete s.thumbnail;
+        draw();
+        markDirty();
+        if(typeof ThumbnailEngine!=='undefined'){
+          try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(err){}
+        }
+        return;
+      }
+      const sd=ARROW_DELTAS[e.key];
+      if(sd && !st.locked){
+        e.preventDefault();
+        const step=e.shiftKey?10:1;
+        SceneEngine.updateSticker(s,_selectedSceneElement,{
+          x:(st.x||540)+sd[0]*step,
+          y:(st.y||675)+sd[1]*step
+        });
+        delete s.thumbnail;
+        draw();
+        markDirty();
+        if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(err){} }
+        return;
+      }
+    }
+  }
+
+  if(!_selectedTextElement) return;
   const d=ARROW_DELTAS[e.key];
   if(!d) return;
   e.preventDefault();
   const step=e.shiftKey?10:1;
-  const s=AppState.slides[AppState.currentSlide];
-  if(!s) return;
   const pos=_ensureTextPosition(s,_selectedTextElement);
   pos.offsetX=(pos.offsetX||0)+d[0]*step;
   pos.offsetY=(pos.offsetY||0)+d[1]*step;

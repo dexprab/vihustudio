@@ -14,6 +14,11 @@
 const CardDesigner=(function(){
   const SECTIONS=[
     {
+      id:'sticker',
+      title:'Sticker',
+      summary:''
+    },
+    {
       id:'image',
       title:'Picture',
       summary:''
@@ -103,6 +108,8 @@ const CardDesigner=(function(){
       _buildImageControls(sub);
     }else if(s.id==='text'){
       _buildTextControls(sub);
+    }else if(s.id==='sticker'){
+      _buildStickerControls(sub);
     }else if(s.summary){
       const note=document.createElement('p');
       note.className='placeholder';
@@ -767,6 +774,322 @@ const CardDesigner=(function(){
     }
   }
 
+  // --- Sticker section (Sprint 6.6 — Object Designer for stickers) --------
+  // Surfaced when a sticker is the active selection. Everything is live;
+  // no Apply button. The section reuses the same designer-row /
+  // icon-card chrome as the rest of the Card Designer so children see a
+  // consistent visual language.
+
+  function _selectedStickerHostId(){
+    // The selected sticker id comes from the same scene-selection channel
+    // app.js exposes via host.getSelectedSceneElement. We deliberately go
+    // through the host so CardDesigner stays decoupled from the global
+    // selection state.
+    if(host && typeof host.getSelectedSceneElement==='function'){
+      try{ return host.getSelectedSceneElement(); }catch(e){}
+    }
+    return null;
+  }
+  function _selectedStickerType(){
+    if(host && typeof host.getSelectedSceneElementType==='function'){
+      try{ return host.getSelectedSceneElementType(); }catch(e){}
+    }
+    return null;
+  }
+  function _activeSticker(){
+    if(typeof SceneEngine==='undefined') return null;
+    const slide=_currentSlide();
+    if(!slide) return null;
+    const id=_selectedStickerHostId();
+    if(!id) return null;
+    return SceneEngine.findSticker(slide,id);
+  }
+  function _commitSticker(){
+    const s=_currentSlide();
+    if(s) delete s.thumbnail;
+    if(host){
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+    _refreshSticker();
+  }
+  function _stickerUpdate(changes){
+    if(typeof SceneEngine==='undefined') return;
+    const slide=_currentSlide();
+    const id=_selectedStickerHostId();
+    if(!slide||!id) return;
+    SceneEngine.updateSticker(slide,id,changes);
+    _commitSticker();
+  }
+
+  function _buildStickerControls(body){
+    const empty=document.createElement('p');
+    empty.className='placeholder sticker-empty';
+    empty.textContent='Pick a sticker on the page to edit it.';
+    body.appendChild(empty);
+
+    const editor=document.createElement('div');
+    editor.className='sticker-editor hidden';
+
+    const selectedLabel=document.createElement('div');
+    selectedLabel.className='sticker-selected-label';
+    selectedLabel.textContent='Sticker';
+    editor.appendChild(selectedLabel);
+
+    // Size — Bigger ↔ Smaller (uniform scale, preserves aspect ratio).
+    const sizeRow=document.createElement('div');
+    sizeRow.className='designer-row';
+    const sizeLbl=document.createElement('div');
+    sizeLbl.className='designer-row-label text-slider-label';
+    const sizeTitle=document.createElement('span');
+    sizeTitle.textContent='Size';
+    sizeLbl.appendChild(sizeTitle);
+    const sizeVal=document.createElement('span');
+    sizeVal.className='sticker-size-value';
+    sizeVal.textContent='—';
+    sizeLbl.appendChild(sizeVal);
+    sizeRow.appendChild(sizeLbl);
+    const sizeSlider=document.createElement('input');
+    sizeSlider.type='range';
+    sizeSlider.min='60';
+    sizeSlider.max='900';
+    sizeSlider.step='1';
+    sizeSlider.className='sticker-size-slider';
+    sizeSlider.addEventListener('input',function(){
+      const st=_activeSticker();
+      if(!st) return;
+      const target=parseFloat(sizeSlider.value);
+      const aspect=(st.w&&st.h)?(st.w/st.h):1;
+      _stickerUpdate({w:Math.round(target), h:Math.round(target/aspect)});
+    });
+    sizeRow.appendChild(sizeSlider);
+    editor.appendChild(sizeRow);
+
+    // Rotation — Spin ↺ ↻.
+    const rotRow=document.createElement('div');
+    rotRow.className='designer-row';
+    const rotLbl=document.createElement('div');
+    rotLbl.className='designer-row-label text-slider-label';
+    const rotTitle=document.createElement('span');
+    rotTitle.textContent='Spin';
+    rotLbl.appendChild(rotTitle);
+    const rotVal=document.createElement('span');
+    rotVal.className='sticker-rotation-value';
+    rotVal.textContent='0°';
+    rotLbl.appendChild(rotVal);
+    rotRow.appendChild(rotLbl);
+    const rotSlider=document.createElement('input');
+    rotSlider.type='range';
+    rotSlider.min='-180';
+    rotSlider.max='180';
+    rotSlider.step='1';
+    rotSlider.className='sticker-rotation-slider';
+    rotSlider.addEventListener('input',function(){
+      _stickerUpdate({rotation:parseFloat(rotSlider.value)});
+    });
+    rotRow.appendChild(rotSlider);
+    editor.appendChild(rotRow);
+
+    // Opacity — See Through.
+    const opRow=document.createElement('div');
+    opRow.className='designer-row';
+    const opLbl=document.createElement('div');
+    opLbl.className='designer-row-label text-slider-label';
+    const opTitle=document.createElement('span');
+    opTitle.textContent='See Through';
+    opLbl.appendChild(opTitle);
+    const opVal=document.createElement('span');
+    opVal.className='sticker-opacity-value';
+    opVal.textContent='100%';
+    opLbl.appendChild(opVal);
+    opRow.appendChild(opLbl);
+    const opSlider=document.createElement('input');
+    opSlider.type='range';
+    opSlider.min='0';
+    opSlider.max='1';
+    opSlider.step='0.01';
+    opSlider.className='sticker-opacity-slider';
+    opSlider.addEventListener('input',function(){
+      _stickerUpdate({opacity:Math.round(parseFloat(opSlider.value)*100)/100});
+    });
+    opRow.appendChild(opSlider);
+    editor.appendChild(opRow);
+
+    // Flip row — Flip Left/Right + Flip Up/Down.
+    const flipRow=document.createElement('div');
+    flipRow.className='designer-row';
+    const flipLbl=document.createElement('div');
+    flipLbl.className='designer-row-label';
+    flipLbl.textContent='Flip';
+    flipRow.appendChild(flipLbl);
+    const flipIcons=document.createElement('div');
+    flipIcons.className='icon-row sticker-flip-row';
+    [['flipX','Left ↔ Right','↔','flipX'],['flipY','Up ↔ Down','↕','flipY']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-flip-btn';
+      btn.setAttribute('data-flip',t[0]);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='sticker-flip-glyph'; g.textContent=t[2]; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[1]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        const st=_activeSticker();
+        if(!st) return;
+        const upd={};
+        upd[t[0]]=!st[t[0]];
+        _stickerUpdate(upd);
+      });
+      flipIcons.appendChild(btn);
+    });
+    flipRow.appendChild(flipIcons);
+    editor.appendChild(flipRow);
+
+    // Layer row — Bring Forward / Send Backward.
+    const layerRow=document.createElement('div');
+    layerRow.className='designer-row';
+    const layerLbl=document.createElement('div');
+    layerLbl.className='designer-row-label';
+    layerLbl.textContent='Layer';
+    layerRow.appendChild(layerLbl);
+    const layerIcons=document.createElement('div');
+    layerIcons.className='icon-row sticker-layer-row';
+    const LAYER_ACTIONS=[
+      {id:'back',label:'Back',glyph:'⤓',fn:'sendStickerToBack'},
+      {id:'backward',label:'Backward',glyph:'⬇',fn:'sendStickerBackward'},
+      {id:'forward',label:'Forward',glyph:'⬆',fn:'bringStickerForward'},
+      {id:'front',label:'Front',glyph:'⤒',fn:'bringStickerToFront'}
+    ];
+    LAYER_ACTIONS.forEach(function(L){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-layer-btn';
+      btn.setAttribute('data-layer',L.id);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='sticker-layer-glyph'; g.textContent=L.glyph; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=L.label; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        if(typeof SceneEngine==='undefined') return;
+        const slide=_currentSlide();
+        const id=_selectedStickerHostId();
+        if(!slide||!id) return;
+        if(typeof SceneEngine[L.fn]==='function'){
+          SceneEngine[L.fn](slide,id);
+          _commitSticker();
+        }
+      });
+      layerIcons.appendChild(btn);
+    });
+    layerRow.appendChild(layerIcons);
+    editor.appendChild(layerRow);
+
+    // Action row — Lock / Duplicate / Delete.
+    const actionRow=document.createElement('div');
+    actionRow.className='sticker-actions-row';
+
+    const lockBtn=document.createElement('button');
+    lockBtn.type='button';
+    lockBtn.className='sticker-action-btn sticker-lock-btn';
+    lockBtn.addEventListener('click',function(){
+      const st=_activeSticker();
+      if(!st) return;
+      _stickerUpdate({locked:!st.locked});
+    });
+    actionRow.appendChild(lockBtn);
+
+    const dupBtn=document.createElement('button');
+    dupBtn.type='button';
+    dupBtn.className='sticker-action-btn sticker-dup-btn';
+    dupBtn.textContent='⎘ Duplicate';
+    dupBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      const copy=SceneEngine.duplicateSticker(slide,id);
+      _commitSticker();
+      if(copy && host && typeof host.setSelectedSceneElement==='function'){
+        try{ host.setSelectedSceneElement(copy.id,'sticker'); }catch(e){}
+      }
+    });
+    actionRow.appendChild(dupBtn);
+
+    const delBtn=document.createElement('button');
+    delBtn.type='button';
+    delBtn.className='sticker-action-btn sticker-del-btn';
+    delBtn.textContent='✕ Delete';
+    delBtn.addEventListener('click',function(){
+      if(typeof SceneEngine==='undefined') return;
+      const slide=_currentSlide();
+      const id=_selectedStickerHostId();
+      if(!slide||!id) return;
+      SceneEngine.removeSticker(slide,id);
+      if(host && typeof host.setSelectedSceneElement==='function'){
+        try{ host.setSelectedSceneElement(null,null); }catch(e){}
+      }
+      _commitSticker();
+    });
+    actionRow.appendChild(delBtn);
+
+    editor.appendChild(actionRow);
+
+    body.appendChild(editor);
+  }
+
+  function _refreshSticker(){
+    if(!mountedRoot) return;
+    const section=mountedRoot.querySelector('[data-card-section="sticker"]');
+    if(!section) return;
+    const empty=section.querySelector('.sticker-empty');
+    const editor=section.querySelector('.sticker-editor');
+    if(!empty || !editor) return;
+    const st=_activeSticker();
+    const isStickerSelected=!!st && _selectedStickerType()==='sticker';
+    if(!isStickerSelected){
+      empty.classList.remove('hidden');
+      editor.classList.add('hidden');
+      section.classList.remove('sticker-active');
+      return;
+    }
+    empty.classList.add('hidden');
+    editor.classList.remove('hidden');
+    section.classList.add('sticker-active');
+
+    const cat=(typeof StickerLibrary!=='undefined') ? StickerLibrary.getById(st.stickerId) : null;
+    const labelEl=section.querySelector('.sticker-selected-label');
+    if(labelEl) labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
+
+    const sizeSlider=section.querySelector('.sticker-size-slider');
+    const sizeVal=section.querySelector('.sticker-size-value');
+    const w=st.w||260;
+    if(sizeSlider) sizeSlider.value=String(w);
+    if(sizeVal) sizeVal.textContent=Math.round(w)+'px';
+
+    const rotSlider=section.querySelector('.sticker-rotation-slider');
+    const rotVal=section.querySelector('.sticker-rotation-value');
+    const rot=typeof st.rotation==='number'?st.rotation:0;
+    if(rotSlider) rotSlider.value=String(rot);
+    if(rotVal) rotVal.textContent=Math.round(rot)+'°';
+
+    const opSlider=section.querySelector('.sticker-opacity-slider');
+    const opVal=section.querySelector('.sticker-opacity-value');
+    const op=typeof st.opacity==='number'?st.opacity:1;
+    if(opSlider) opSlider.value=String(op);
+    if(opVal) opVal.textContent=Math.round(op*100)+'%';
+
+    section.querySelectorAll('.sticker-flip-btn').forEach(function(b){
+      const k=b.getAttribute('data-flip');
+      b.classList.toggle('active',!!st[k]);
+    });
+
+    const lockBtn=section.querySelector('.sticker-lock-btn');
+    if(lockBtn){
+      lockBtn.textContent=st.locked?'🔓 Unlock':'🔒 Lock';
+      lockBtn.classList.toggle('active',!!st.locked);
+    }
+  }
+
   // --- Text section (Sprint 4.3 + 4.4) -----------------------------------
   // Overrides live at slide.metadata.cardOverrides.textElements[id] and ride
   // through the existing metadata serialization — no project format change.
@@ -1237,6 +1560,7 @@ const CardDesigner=(function(){
 
     _refreshImage();
     _refreshText();
+    _refreshSticker();
     _refreshFrameThumbs();
     return root;
   }
@@ -1249,11 +1573,12 @@ const CardDesigner=(function(){
     host=cfg||null;
     _refreshImage();
     _refreshText();
+    _refreshSticker();
   }
 
   // Re-sync the Image and Text sections with the current slide/selection —
   // call after the host switches slides or changes the text selection.
-  function refresh(){ _refreshImage(); _refreshText(); }
+  function refresh(){ _refreshImage(); _refreshText(); _refreshSticker(); }
 
   // Read the active slide's imageView, defaulting if absent. Exposed so
   // canvas pan handlers in the host can read+write without poking metadata

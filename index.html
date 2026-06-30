@@ -72,6 +72,7 @@
 <div class='tabs'>
 <button class='tab-btn active' data-tab='story'>Story</button>
 <button class='tab-btn' data-tab='card'>Card Designer</button>
+<button class='tab-btn' data-tab='stickers'>✨ Stickers</button>
 <button class='tab-btn' data-tab='style'>Theme Designer</button>
 <button class='tab-btn' data-tab='preview'>👁 Preview</button>
 </div>
@@ -177,6 +178,11 @@
 </section>
 </div>
 
+<!-- Sticker Studio (Sprint 6.6) — browse + insert stickers; mounts via StickerStudio.mount() -->
+<div id='stickers-tab' class='tab-content'>
+<div id='stickerStudioRoot' class='sticker-studio-root'></div>
+</div>
+
 <!-- Preview tab (Sprint 6.6) — Platform Preview Studio mounted here by PreviewStudio.mount() -->
 <div id='preview-tab' class='tab-content'>
 <div id='previewStudioRoot' class='preview-studio-root'></div>
@@ -235,6 +241,6 @@
 <button class='context-item' data-action='delete'>✕ Delete</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/previewStudio.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/previewStudio.js'></script><script src='js/app.js'></script>
 </body>
 </html>

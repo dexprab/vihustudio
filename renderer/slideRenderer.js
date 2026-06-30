@@ -447,6 +447,19 @@ const SlideRenderer=(()=>{
       }
     }
 
+    // Sprint 6.6 — Stickers. Story objects that ride on top of every
+    // role's composition. Drawn back-to-front in array order so the last
+    // sticker added sits on top. Bboxes are appended to the scene-element
+    // list so the existing canvas hit-test path covers them for free.
+    if(typeof SceneEngine!=='undefined'){
+      const stickers=SceneEngine.getStickers(s);
+      for(let i=0;i<stickers.length;i++){
+        const st=stickers[i];
+        _drawSceneSticker(st);
+        _lastSceneElements.push(_stickerBbox(st));
+      }
+    }
+
     // Drag guides (Sprint 4.4) — drawn under the selection outline so the
     // outline stays on top of the canvas center crosshair.
     if(s && s.dragActiveId){
@@ -620,6 +633,76 @@ const SlideRenderer=(()=>{
     }
     x.restore();
   }
+  // Sprint 6.6 — Stickers. The catalog hands us an SVG; we cache an
+  // `Image` per sticker id so the renderer can call `drawImage` directly.
+  // While the image is still decoding the renderer falls back to drawing
+  // the sticker's emoji glyph so children always see something (and the
+  // canvas refreshes once the image fires its `onload`).
+  const _stickerImgCache={};
+  function _ensureStickerImage(stickerId,onReady){
+    if(!stickerId) return null;
+    if(_stickerImgCache[stickerId]) return _stickerImgCache[stickerId];
+    if(typeof StickerLibrary==='undefined') return null;
+    const url=StickerLibrary.getDataURL(stickerId);
+    if(!url) return null;
+    const img=new Image();
+    img.onload=function(){
+      img.__ready=true;
+      if(typeof onReady==='function') onReady(img);
+      // Nudge the editor to repaint once the decode lands so children
+      // never see a blank slot for more than a frame.
+      if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
+        try{ window.redrawPreview(); }catch(_){}
+      }
+    };
+    img.src=url;
+    _stickerImgCache[stickerId]=img;
+    return img;
+  }
+  function _drawSceneSticker(st){
+    if(!st) return;
+    const cx=typeof st.x==='number'?st.x:W/2;
+    const cy=typeof st.y==='number'?st.y:H/2;
+    const w=typeof st.w==='number'?st.w:260;
+    const h=typeof st.h==='number'?st.h:260;
+    x.save();
+    x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
+    x.translate(cx,cy);
+    if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
+    const sx=st.flipX?-1:1, sy=st.flipY?-1:1;
+    if(sx!==1 || sy!==1) x.scale(sx,sy);
+    const img=_ensureStickerImage(st.stickerId);
+    if(img && img.__ready){
+      x.drawImage(img,-w/2,-h/2,w,h);
+    }else{
+      // Fallback while the SVG decodes — emoji glyph at the right size.
+      const cat=(typeof StickerLibrary!=='undefined') ? StickerLibrary.getById(st.stickerId) : null;
+      const glyph=cat?cat.glyph:'?';
+      x.font=Math.round(h*0.7)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      x.textAlign='center';
+      x.textBaseline='middle';
+      x.fillText(glyph,0,0);
+    }
+    x.restore();
+  }
+  function _stickerBbox(st){
+    const cx=typeof st.x==='number'?st.x:W/2;
+    const cy=typeof st.y==='number'?st.y:H/2;
+    const w=typeof st.w==='number'?st.w:260;
+    const h=typeof st.h==='number'?st.h:260;
+    // Hit-test uses the AXIS-ALIGNED bbox; rotation tightens later if
+    // needed. For a child interaction this is generous, never confusing.
+    return {
+      id:st.id,
+      type:'sticker',
+      stickerId:st.stickerId,
+      label:'Sticker',
+      bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
+      visible:true,
+      locked:!!st.locked
+    };
+  }
+
   function _sceneBbox(el){
     const pos=el.position||{x:W/2,y:H/2};
     if(el.type==='background'){
@@ -668,10 +751,11 @@ const SlideRenderer=(()=>{
   const HANDLE_RADIUS=12;
   function _supportsResize(el){
     if(!el || !el.type) return false;
-    // Resize is meaningful for the image-holder and for decorations;
-    // text-holder / background stay un-resizable so the child can't
-    // accidentally distort body text or break the page background.
-    return el.type==='image-holder' || el.type==='decoration';
+    // Resize is meaningful for the image-holder, decorations, and
+    // stickers; text-holder / background stay un-resizable so the child
+    // can't accidentally distort body text or break the page background.
+    if(el.type==='sticker' && el.locked) return false;
+    return el.type==='image-holder' || el.type==='decoration' || el.type==='sticker';
   }
   function _drawResizeHandles(el){
     const cx1=el.bx, cy1=el.by;

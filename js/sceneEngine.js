@@ -316,6 +316,132 @@ const SceneEngine=(function(){
     if(Object.keys(slide.metadata.elementOverrides).length===0) delete slide.metadata.elementOverrides;
   }
 
+  // ---------- Stickers (Sprint 6.6) ----------
+  //
+  // Stickers are story objects, not scene blueprint elements. They live
+  // at `slide.metadata.stickers` as an ordered array (back-to-front), so
+  // every page — Story, Cover, Hook, End — can carry stickers without
+  // any blueprint coupling. Each entry:
+  //
+  //   {
+  //     id:        unique instance id ('sticker-<timestamp>-<rand>')
+  //     stickerId: catalog id from StickerLibrary (e.g. 'animals.cat')
+  //     x, y:      center position (canvas pixels, 1080×1350)
+  //     w, h:      size (canvas pixels)
+  //     rotation:  degrees clockwise (0 default)
+  //     flipX, flipY: bool
+  //     opacity:   0..1
+  //     locked:    bool
+  //   }
+  //
+  // Helpers below are the single mutation surface so the persistence path
+  // (`slide.metadata` rides through the existing ProjectManager serialiser
+  // unchanged) and the renderer have one source of truth.
+
+  const STICKER_DEFAULTS={w:260,h:260,rotation:0,flipX:false,flipY:false,opacity:1,locked:false};
+
+  function _ensureStickersArray(slide){
+    if(!slide.metadata) slide.metadata={};
+    if(!Array.isArray(slide.metadata.stickers)) slide.metadata.stickers=[];
+    return slide.metadata.stickers;
+  }
+
+  function _newStickerInstanceId(){
+    return 'sticker-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e6).toString(36);
+  }
+
+  function getStickers(slide){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return [];
+    return slide.metadata.stickers.slice();
+  }
+
+  function findSticker(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return null;
+    return slide.metadata.stickers.find(function(st){ return st.id===stickerInstanceId; })||null;
+  }
+
+  function addSticker(slide,init){
+    if(!slide||!init||!init.stickerId) return null;
+    const list=_ensureStickersArray(slide);
+    const inst=Object.assign({},STICKER_DEFAULTS,{
+      id:_newStickerInstanceId(),
+      stickerId:init.stickerId,
+      x:typeof init.x==='number' ? init.x : 540,
+      y:typeof init.y==='number' ? init.y : 675
+    },init);
+    // Stamp the catalog id on the instance again so a spread doesn't
+    // accidentally drop it.
+    inst.stickerId=init.stickerId;
+    list.push(inst);
+    return inst;
+  }
+
+  function updateSticker(slide,stickerInstanceId,changes){
+    const st=findSticker(slide,stickerInstanceId);
+    if(!st||!changes) return null;
+    Object.keys(changes).forEach(function(k){ st[k]=changes[k]; });
+    return st;
+  }
+
+  function removeSticker(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return false;
+    const idx=slide.metadata.stickers.findIndex(function(st){ return st.id===stickerInstanceId; });
+    if(idx===-1) return false;
+    slide.metadata.stickers.splice(idx,1);
+    if(slide.metadata.stickers.length===0) delete slide.metadata.stickers;
+    return true;
+  }
+
+  function duplicateSticker(slide,stickerInstanceId){
+    const orig=findSticker(slide,stickerInstanceId);
+    if(!orig) return null;
+    const list=_ensureStickersArray(slide);
+    const copy=Object.assign({},orig,{
+      id:_newStickerInstanceId(),
+      x:(orig.x||540)+30,
+      y:(orig.y||675)+30
+    });
+    list.push(copy);
+    return copy;
+  }
+
+  // Bring forward / send backward swap with the neighbour in the array.
+  // Front of array = back of canvas. Last = top of stack.
+  function bringStickerForward(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return false;
+    const arr=slide.metadata.stickers;
+    const i=arr.findIndex(function(st){ return st.id===stickerInstanceId; });
+    if(i===-1 || i===arr.length-1) return false;
+    const tmp=arr[i]; arr[i]=arr[i+1]; arr[i+1]=tmp;
+    return true;
+  }
+  function sendStickerBackward(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return false;
+    const arr=slide.metadata.stickers;
+    const i=arr.findIndex(function(st){ return st.id===stickerInstanceId; });
+    if(i<=0) return false;
+    const tmp=arr[i]; arr[i]=arr[i-1]; arr[i-1]=tmp;
+    return true;
+  }
+  function bringStickerToFront(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return false;
+    const arr=slide.metadata.stickers;
+    const i=arr.findIndex(function(st){ return st.id===stickerInstanceId; });
+    if(i===-1 || i===arr.length-1) return false;
+    const it=arr.splice(i,1)[0];
+    arr.push(it);
+    return true;
+  }
+  function sendStickerToBack(slide,stickerInstanceId){
+    if(!slide||!slide.metadata||!Array.isArray(slide.metadata.stickers)) return false;
+    const arr=slide.metadata.stickers;
+    const i=arr.findIndex(function(st){ return st.id===stickerInstanceId; });
+    if(i<=0) return false;
+    const it=arr.splice(i,1)[0];
+    arr.unshift(it);
+    return true;
+  }
+
   // Resolve a `source` like "cover.title", "hook.message", "storyTitle"
   // or "handle" against the slide's stored content. Returns '' if absent.
   function resolveTextSource(slide,source){
@@ -336,6 +462,7 @@ const SceneEngine=(function(){
 
   const api={
     BLUEPRINTS:BLUEPRINTS,
+    STICKER_DEFAULTS:STICKER_DEFAULTS,
     getBlueprint:getBlueprint,
     getRenderData:getRenderData,
     listElements:listElements,
@@ -343,7 +470,18 @@ const SceneEngine=(function(){
     setPosition:setPosition,
     setSize:setSize,
     clearOverride:clearOverride,
-    resolveTextSource:resolveTextSource
+    resolveTextSource:resolveTextSource,
+    // Stickers
+    getStickers:getStickers,
+    findSticker:findSticker,
+    addSticker:addSticker,
+    updateSticker:updateSticker,
+    removeSticker:removeSticker,
+    duplicateSticker:duplicateSticker,
+    bringStickerForward:bringStickerForward,
+    sendStickerBackward:sendStickerBackward,
+    bringStickerToFront:bringStickerToFront,
+    sendStickerToBack:sendStickerToBack
   };
   try{ window.SceneEngine=api; }catch(e){}
   return api;
