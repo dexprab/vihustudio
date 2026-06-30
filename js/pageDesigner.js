@@ -234,9 +234,21 @@ const PageDesigner=(function(){
       _commitContent();
       _renderEditor();
       // Route the right pane to Card Designer so the child can keep
-      // editing the picture immediately.
+      // editing the picture immediately. On scene-role pages, also
+      // auto-select the image-holder so the Frame outline + handles
+      // appear on the canvas — the spec's "Picture automatically
+      // selected" guarantee.
       const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
       if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+      if(typeof SceneEngine!=='undefined' && typeof window.setSelectedSceneElement==='function'){
+        try{
+          const data=SceneEngine.getRenderData(s);
+          if(data && data.elements){
+            const holder=data.elements.find(function(el){ return el.type==='image-holder'; });
+            if(holder) window.setSelectedSceneElement(holder.id,'image-holder');
+          }
+        }catch(e){}
+      }
       if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
     };
     img.src=result.dataURL;

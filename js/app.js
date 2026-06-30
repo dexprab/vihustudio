@@ -184,6 +184,7 @@ function _activateTab(tabId){
   const btn=document.querySelector('.tab-btn[data-tab="'+tabId+'"]');
   if(btn && !btn.classList.contains('active')) btn.click();
 }
+window.setSelectedSceneElement=function(id,elementType){ _setSelectedSceneElement(id,elementType); };
 function _setSelectedSceneElement(id, elementType){
   _selectedSceneElement=id||null;
   _selectedSceneElementType=id ? (elementType||null) : null;
