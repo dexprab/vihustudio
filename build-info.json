@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "sprint": "S8",
-  "task": "T8.4",
-  "build": "0048",
-  "buildDate": "2026-06-30",
-  "commit": "6920e40",
+  "version": "1.0.1",
+  "sprint": "S9",
+  "task": "T9.0",
+  "build": "0049",
+  "buildDate": "2026-07-01",
+  "commit": "bd3cd04",
   "environment": "Release"
 }

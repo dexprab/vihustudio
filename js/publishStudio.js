@@ -836,8 +836,12 @@ const PublishStudio=(function(){
     headline.innerHTML='<span class="publish-celebration-emoji">🎉</span> Congratulations!';
     center.appendChild(headline);
 
+    // Sprint 9.0.5 — destination-aware message. The generic
+    // "Your story is now a real book!" reads wrong when the child
+    // chose Carousel; every destination gets its own celebratory
+    // line resolved in _enterCelebration().
     const message=document.createElement('div');
-    message.className='publish-celebration-message';
+    message.className='publish-celebration-message publish-celebration-message-generic';
     message.textContent='Your story is now a real book!';
     center.appendChild(message);
 
@@ -919,6 +923,19 @@ const PublishStudio=(function(){
               || 'Get My Story';
     const glyph=(_publishOutputMeta && _publishOutputMeta.celebrateGlyph) || '📥';
     _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">'+glyph+'</span><span>'+label+'</span>';
+    // Sprint 9.0.5 — destination-aware headline message. Reads
+    // right for every destination without polluting the shell
+    // with per-destination branches.
+    const msgEl=_celebBody.querySelector('.publish-celebration-message-generic');
+    if(msgEl){
+      if(dest && dest.id==='carousel'){
+        msgEl.textContent='Your story is now a shareable carousel!';
+      }else if(dest && dest.id==='book'){
+        msgEl.textContent='Your story is now a real book!';
+      }else{
+        msgEl.textContent='Your story is ready!';
+      }
+    }
     // Ready-message language matches the destination too.
     const readyGlyph='<span>✓</span> ';
     const readyMsg=(dest && dest.id==='carousel')
