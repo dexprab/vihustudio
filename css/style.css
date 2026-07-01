@@ -222,7 +222,12 @@ button:active{
   margin-bottom:var(--section-gap);
 }
 
-/* Preview area */
+/* Preview area
+ * Sprint 9.1.2 — WYSIWYE. The preview area is a flex column that
+ * lets the canvas consume the entire available space above the
+ * timeline, respecting the 4:5 aspect ratio. That eliminates the
+ * fixed 500 CSS px width that made the editor look softer than
+ * the PDF viewer's ~720 CSS px natural display. */
 .preview-area{
   display:flex;
   flex-direction:column;
@@ -230,24 +235,44 @@ button:active{
   justify-content:flex-start;
   background:var(--bg);
   padding:16px 16px 12px;
-  overflow-y:auto;
+  overflow:hidden;
+  min-height:0;
 }
 
 .preview-wrapper{
   background:transparent;
   border-radius:var(--card-radius);
   margin-bottom:12px;
+  flex:1;
+  min-height:0;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  width:100%;
 }
 
 #previewCanvas{
-  width:500px;
-  height:625px;
+  /* Fluid sizing so the display expands to match the available
+   * preview column, capped at native 1080 × 1350 CSS px. On a
+   * 1440-wide viewport this delivers ~720 CSS px of canvas —
+   * identical to the Chrome PDF viewer's natural display of a
+   * 540 × 675 pt page. At the same display size the editor and
+   * the published Book / Carousel paint from the same source
+   * pixels, so they look indistinguishable. */
+  max-width:100%;
+  max-height:100%;
+  height:auto;
+  width:auto;
+  aspect-ratio:4 / 5;
   background:#fff;
   border-radius:var(--card-radius);
   display:block;
   box-shadow:0 10px 40px rgba(0,0,0,0.15);
-  /* Sprint 6.3 — keep pencil detail sharp when the 1080-wide canvas
-     buffer is scaled down for display. */
+  /* Sprint 6.3 + 9.1.2 — canvas backing store already carries the
+   * DPR-scaled bitmap, but a display downsample can still soften
+   * detail. `high-quality` picks Chrome's best resampler; the
+   * `-webkit-optimize-contrast` fallback stays as a hint for
+   * older WebKit builds. */
   image-rendering:-webkit-optimize-contrast;
   image-rendering:high-quality;
 }
@@ -2303,14 +2328,14 @@ button:active{
   line-height:1.5;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments.
+ * Sprint 9.1.2 — the canvas is fluid now (see #previewCanvas base
+ * rule). These media queries only trim the left / right sidebars
+ * on narrower viewports so the preview column keeps as much room
+ * as possible. */
 @media (max-width:1920px){
   .workspace{
     grid-template-columns:340px 1fr 400px;
-  }
-  #previewCanvas{
-    width:500px;
-    height:625px;
   }
 }
 
@@ -2318,19 +2343,11 @@ button:active{
   .workspace{
     grid-template-columns:320px 1fr 380px;
   }
-  #previewCanvas{
-    width:450px;
-    height:562px;
-  }
 }
 
 @media (max-width:1440px){
   .workspace{
     grid-template-columns:300px 1fr 360px;
-  }
-  #previewCanvas{
-    width:400px;
-    height:500px;
   }
 }
 
@@ -2338,19 +2355,11 @@ button:active{
   .workspace{
     grid-template-columns:280px 1fr 340px;
   }
-  #previewCanvas{
-    width:360px;
-    height:450px;
-  }
 }
 
 @media (max-width:1280px){
   .workspace{
     grid-template-columns:260px 1fr 320px;
-  }
-  #previewCanvas{
-    width:340px;
-    height:425px;
   }
 }
 
@@ -2366,11 +2375,6 @@ button:active{
   .right-sidebar{
     border-left:none;
     border-bottom:1px solid var(--line);
-  }
-  #previewCanvas{
-    width:100%;
-    max-width:100%;
-    height:auto;
   }
 }
 
