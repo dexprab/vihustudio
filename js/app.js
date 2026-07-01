@@ -7,7 +7,9 @@ const page=document.getElementById('pageNumber');
 const total=document.getElementById('totalPages');
 const previewCanvas=document.getElementById('previewCanvas');
 const contextMenu=document.getElementById('contextMenu');
-const exportBtn=document.getElementById('exportBtn');
+// Sprint 9.1.4 — Export button removed. Children publish stories;
+// software generates files. Publish is the editor's only publishing
+// action, wired below.
 const tabs=document.querySelectorAll('.tab-btn');
 const projectTitleEl=document.getElementById('projectTitle');
 const projectAuthorEl=document.getElementById('projectAuthorName');
@@ -341,15 +343,6 @@ upload.onchange=e=>{
    reader.readAsDataURL(file);
  });
 };
-
-// Sprint 8.1 retired the visible Export button; Sprint 8.3.4 guards the
-// dormant handler so removing the hidden node later (or stripping the
-// HTML completely) can't throw. Children publish books, not files.
-if(exportBtn){
-  exportBtn.onclick=()=>{
-    alert('Export feature coming in Sprint 3');
-  };
-}
 
 // Sprint 8.1.1 — Publish button opens Publish Studio. The editor stays
 // exactly as it was underneath; closing the studio returns control with
@@ -726,27 +719,35 @@ document.addEventListener('keydown',(e)=>{
  }
 });
 
-// Sprint 8.2 — context menu trimmed to four child-friendly actions:
-// Rename Page, Duplicate Page, Add Blank Page After, Delete Page.
-// The wider PageOps API (setAsCover / addBefore / moveToEnd / exportPage
-// / splitPage / mergeWithNext) is retained for programmatic callers; the
-// menu just no longer exposes the clutter.
+// Sprint 9.1.4 — Publishing Language & Page Management. The context
+// menu now carries Publish This Page + Move Page Up / Down alongside
+// the existing Duplicate / Add Blank After / Delete. Rename Page is
+// gone (child-facing renaming was rarely used). Publish This Page
+// opens Publish Studio with the single-page slice passed via
+// PublishStudio.open({slides:[oneSlide]}).
 const CONTEXT_ACTIONS={
   'duplicate':'duplicatePage',
   'delete':'deletePage',
   'add-after':'addAfter',
-  'rename':'__rename'
+  'move-up':'__moveUp',
+  'move-down':'__moveDown',
+  'publish-page':'__publishPage'
 };
-function _promptRenamePage(index){
+function _movePage(index, delta){
   if(index<0||index>=AppState.slides.length) return;
+  if(typeof PageOps==='undefined' || typeof PageOps.reorderPage!=='function') return;
+  const target=index+delta;
+  if(target<0||target>=AppState.slides.length) return;
+  // Respect PageOps.canMove — Cover / End pages are anchored at the
+  // ends of the book and never move.
+  if(typeof PageOps.canMove==='function' && !PageOps.canMove(index)) return;
+  PageOps.reorderPage(index, target);
+}
+function _publishSinglePage(index){
+  if(index<0||index>=AppState.slides.length) return;
+  if(typeof PublishStudio==='undefined') return;
   const slide=AppState.slides[index];
-  const current=(slide && typeof slide.name==='string') ? slide.name : '';
-  const next=window.prompt('What should we call this page?',current);
-  // null = Cancel; '' = clear (restore default "Page X" label).
-  if(next===null) return;
-  if(typeof PageOps!=='undefined' && typeof PageOps.renamePage==='function'){
-    PageOps.renamePage(index,next);
-  }
+  try{ PublishStudio.open({slides:[slide]}); }catch(e){}
 }
 const contextItems=contextMenu.querySelectorAll('.context-item');
 contextItems.forEach(item=>{
@@ -758,7 +759,9 @@ contextItems.forEach(item=>{
    if(target===null||target<0) return;
    const method=CONTEXT_ACTIONS[action];
    if(!method) return;
-   if(method==='__rename'){ _promptRenamePage(target); return; }
+   if(method==='__moveUp'){ _movePage(target,-1); return; }
+   if(method==='__moveDown'){ _movePage(target,1); return; }
+   if(method==='__publishPage'){ _publishSinglePage(target); return; }
    if(typeof PageOps[method]!=='function') return;
    try{ PageOps[method](target); }catch(err){ /* swallow */ }
  };

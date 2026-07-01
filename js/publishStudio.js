@@ -164,13 +164,12 @@ const PublishStudio=(function(){
   }
 
   function _slideCount(){
-    return (typeof AppState!=='undefined' && Array.isArray(AppState.slides))
-      ? AppState.slides.length : 0;
+    return _slides().length;
   }
 
   function _renderReadPage(){
     if(!_readCanvas) return;
-    const slides=AppState.slides||[];
+    const slides=_slides();
     const n=slides.length;
     if(n===0) return;
     const idx=Math.max(0,Math.min(_state.page, n-1));
@@ -348,7 +347,7 @@ const PublishStudio=(function(){
   }
 
   function _enterAlmostReady(){
-    const slides=AppState.slides||[];
+    const slides=_slides();
     const project=(typeof AppState!=='undefined') ? AppState.project : null;
     const nudges=(typeof PublishValidator!=='undefined')
       ? PublishValidator.run(slides, project) : [];
@@ -535,7 +534,7 @@ const PublishStudio=(function(){
 
   function _renderAlmostCover(){
     if(!_almostCoverCanvas) return;
-    const slides=AppState.slides||[];
+    const slides=_slides();
     if(slides.length===0) return;
     // Prefer the slide with role=cover; fall back to the first slide.
     let cover=slides.find(function(s){ return s && s.pageType==='cover'; });
@@ -702,7 +701,7 @@ const PublishStudio=(function(){
     _publishCancelled=false;
     _publishOutputBlob=null;
     _publishOutputMeta=null;
-    const slides=AppState.slides||[];
+    const slides=_slides();
     if(slides.length===0){
       _setStage(STAGES.ALMOST_READY);
       return;
@@ -960,7 +959,7 @@ const PublishStudio=(function(){
 
     // Render the cover into the celebration canvas via the canonical
     // path — children see their real book on the celebration screen.
-    const slides=AppState.slides||[];
+    const slides=_slides();
     if(slides.length>0){
       let cover=slides.find(function(s){ return s && s.pageType==='cover'; });
       if(!cover) cover=slides[0];
@@ -1025,13 +1024,28 @@ const PublishStudio=(function(){
   }
 
   // -------- Lifecycle ------------------------------------------------
-  function open(){
+  // Sprint 9.1.4 — Publish This Page support. `open({slides:[slide]})`
+  // publishes a single-page slice. The scope stays live inside the
+  // studio via _slides(); every stage that reads AppState.slides now
+  // reads _slides() so the single-page loop reuses the full pipeline
+  // (Read → Almost Ready → Destination → Publishing → Celebration)
+  // without duplication.
+  let _slidesOverride=null;
+  function _slides(){
+    if(Array.isArray(_slidesOverride) && _slidesOverride.length>0) return _slidesOverride;
+    return (typeof AppState!=='undefined' && Array.isArray(AppState.slides)) ? AppState.slides : [];
+  }
+  function open(opts){
     _ensureModal();
+    if(opts && Array.isArray(opts.slides) && opts.slides.length>0){
+      _slidesOverride=opts.slides.slice();
+    }else{
+      _slidesOverride=null;
+    }
     if(!_hasSlides()){
       // Nothing to publish yet. Nudge inside the editor — Sprint 8.1.1
       // keeps the studio's empty-state simple while the rest of the
-      // stages light up. A future milestone can swap this for a
-      // friendlier in-studio empty state.
+      // stages light up.
       try{ alert('Add a page to your story before you publish.'); }catch(e){}
       return;
     }
@@ -1058,9 +1072,7 @@ const PublishStudio=(function(){
   }
 
   function _hasSlides(){
-    return typeof AppState!=='undefined'
-      && Array.isArray(AppState.slides)
-      && AppState.slides.length>0;
+    return _slides().length>0;
   }
 
   function isOpen(){ return _opened; }

@@ -22,11 +22,10 @@
 <div class='header-right'>
 <div id='autosaveStatus' class='autosave-status'>Saved locally</div>
 <button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
-<!-- Sprint 8.1 — Children publish books. Software exports files. The
-     placeholder export button is preserved hidden so any deferred
-     wiring still resolves; Publish is now the editor's primary CTA. -->
-<button id='exportBtn' class='export-btn' hidden>📥 Export</button>
-<button id='publishBtn' class='publish-btn' title='Publish my book'>📖 Publish</button>
+<!-- Sprint 9.1.4 — Children publish stories. Software generates
+     files. The Export button that lingered hidden since Sprint 8.1
+     is gone; Publish is the only publishing action in the editor. -->
+<button id='publishBtn' class='publish-btn' title='Publish my story'>📖 Publish</button>
 </div>
 </header>
 
@@ -324,14 +323,20 @@
 </div>
 </div>
 
-<!-- Sprint 8.2 — context menu trimmed to four child-friendly actions.
-     PageOps still exposes the larger API (setAsCover, addBefore, moveToEnd,
-     exportPage, splitPage, mergeWithNext) for future / programmatic callers. -->
+<!-- Sprint 9.1.4 — Publishing Language & Page Management. Context menu
+     surfaces the six actions a child actually reaches for on a page.
+     Rename Page is removed (child-facing renaming was rarely used and
+     added a text-input step); Publish This Page and Move Page Up /
+     Down land in its place. PageOps still exposes the wider API
+     (setAsCover, addBefore, moveToEnd, splitPage, mergeWithNext) for
+     programmatic callers. -->
 <div id='contextMenu' class='context-menu hidden'>
-<button class='context-item' data-action='rename'>✏️ Rename Page</button>
+<button class='context-item' data-action='publish-page'>📖 Publish This Page</button>
 <button class='context-item' data-action='duplicate'>📋 Duplicate Page</button>
-<button class='context-item' data-action='add-after'>📄 Add Blank Page After</button>
-<button class='context-item' data-action='delete'>✕ Delete Page</button>
+<button class='context-item' data-action='move-up'>⬆ Move Page Up</button>
+<button class='context-item' data-action='move-down'>⬇ Move Page Down</button>
+<button class='context-item' data-action='add-after'>➕ Add Blank Page After</button>
+<button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
 <script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/app.js'></script>
