@@ -20,9 +20,15 @@
 // bodies are placeholders that subsequent milestones (8.1.2 Read,
 // 8.1.3 Almost Ready, 8.1.4 Publishing, 8.1.5 Celebration) light up.
 const PublishStudio=(function(){
+  // Sprint 9.0.3 — Story Destinations. A new stage sits between
+  // Almost Ready and Publishing: the child picks HOW they want to
+  // enjoy their story (Book / Carousel / Reel) and, within that,
+  // one format. The Publishing + Celebration stages become
+  // destination-driven — no more hardcoded "PDF" verbiage.
   const STAGES={
     READ:'read',
     ALMOST_READY:'almost-ready',
+    DESTINATION:'destination',
     PUBLISHING:'publishing',
     CELEBRATION:'celebration'
   };
@@ -77,6 +83,7 @@ const PublishStudio=(function(){
     stage.className='publish-studio-stage';
     _bodies[STAGES.READ]=_buildReadBody();
     _bodies[STAGES.ALMOST_READY]=_buildAlmostReadyBody();
+    _bodies[STAGES.DESTINATION]=_buildDestinationBody();
     _bodies[STAGES.PUBLISHING]=_buildPublishingBody();
     _bodies[STAGES.CELEBRATION]=_buildCelebrationBody();
     Object.keys(_bodies).forEach(function(k){ stage.appendChild(_bodies[k]); });
@@ -328,8 +335,12 @@ const PublishStudio=(function(){
     _almostPublishBtn=document.createElement('button');
     _almostPublishBtn.type='button';
     _almostPublishBtn.className='publish-primary-btn';
-    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">📖</span><span class="publish-primary-label">Publish My Book</span>';
-    _almostPublishBtn.addEventListener('click',function(){ _setStage(STAGES.PUBLISHING); });
+    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">📖</span><span class="publish-primary-label">Choose Story Destination</span>';
+    // Sprint 9.0.3 — the primary action no longer jumps straight to
+    // publishing. It lands the child in the destination picker so
+    // they choose HOW they want to enjoy their story before software
+    // picks the file format.
+    _almostPublishBtn.addEventListener('click',function(){ _setStage(STAGES.DESTINATION); });
     center.appendChild(_almostPublishBtn);
 
     body.appendChild(center);
@@ -355,6 +366,171 @@ const PublishStudio=(function(){
       _almostNudgeList.classList.remove('hidden');
       _renderAlmostNudges(nudges);
     }
+  }
+
+  // --- Stage 2.5 · Choose Story Destination -------------------------
+  // The heart of Sprint 9.0. Children choose HOW they want to enjoy
+  // their story. Story Book → PDF (Digital / Print-ready). Story
+  // Carousel → PNGs (Instagram Portrait / Square). Story Reel →
+  // Coming Soon (architecture-ready). Every card is a plain button;
+  // format sub-cards appear inline when a destination is selected,
+  // so the choice is one screen deep — no dialogs, no wizards.
+  let _destBody=null;
+  let _destGrid=null;
+  let _destContinueBtn=null;
+  let _destComingSoonMsg=null;
+  let _chosenDestinationId=null;
+  let _chosenFormatId=null;
+
+  function _buildDestinationBody(){
+    _destBody=document.createElement('section');
+    _destBody.className='publish-studio-body publish-studio-body-destination hidden';
+
+    const back=document.createElement('button');
+    back.type='button';
+    back.className='publish-back-link';
+    back.innerHTML='<span class="publish-back-arrow">←</span> Back';
+    back.addEventListener('click',function(){ _setStage(STAGES.ALMOST_READY); });
+    _destBody.appendChild(back);
+
+    const center=document.createElement('div');
+    center.className='publish-destination-center';
+
+    const headline=document.createElement('div');
+    headline.className='publish-destination-headline';
+    headline.textContent='Choose Story Destination';
+    center.appendChild(headline);
+
+    const message=document.createElement('p');
+    message.className='publish-destination-message';
+    message.textContent='How would you like to enjoy your story?';
+    center.appendChild(message);
+
+    _destGrid=document.createElement('div');
+    _destGrid.className='publish-destination-grid';
+    center.appendChild(_destGrid);
+
+    _destComingSoonMsg=document.createElement('div');
+    _destComingSoonMsg.className='publish-destination-comingsoon hidden';
+    _destComingSoonMsg.textContent='Story Reel is coming soon — check back after we film it. 🎬';
+    center.appendChild(_destComingSoonMsg);
+
+    _destContinueBtn=document.createElement('button');
+    _destContinueBtn.type='button';
+    _destContinueBtn.className='publish-primary-btn publish-destination-continue';
+    _destContinueBtn.disabled=true;
+    _destContinueBtn.innerHTML='<span class="publish-primary-glyph">✨</span><span class="publish-primary-label">Continue</span>';
+    _destContinueBtn.addEventListener('click',function(){ _confirmDestination(); });
+    center.appendChild(_destContinueBtn);
+
+    _destBody.appendChild(center);
+    return _destBody;
+  }
+
+  function _enterDestination(){
+    // Reset selection every time the child arrives at this stage.
+    _chosenDestinationId=null;
+    _chosenFormatId=null;
+    _destContinueBtn.disabled=true;
+    _destComingSoonMsg.classList.add('hidden');
+    _renderDestinationGrid();
+  }
+
+  function _renderDestinationGrid(){
+    if(!_destGrid || typeof StoryDestinations==='undefined') return;
+    _destGrid.innerHTML='';
+    StoryDestinations.list().forEach(function(dest){
+      const card=document.createElement('button');
+      card.type='button';
+      card.className='publish-destination-card';
+      card.setAttribute('data-destination-id',dest.id);
+      if(dest.comingSoon) card.classList.add('is-coming-soon');
+
+      const head=document.createElement('div');
+      head.className='publish-destination-card-head';
+      const glyph=document.createElement('div');
+      glyph.className='publish-destination-card-glyph';
+      glyph.textContent=dest.glyph;
+      head.appendChild(glyph);
+      const title=document.createElement('div');
+      title.className='publish-destination-card-title';
+      title.textContent=dest.label;
+      head.appendChild(title);
+      if(dest.comingSoon){
+        const chip=document.createElement('span');
+        chip.className='publish-destination-card-chip';
+        chip.textContent='Coming Soon';
+        head.appendChild(chip);
+      }
+      card.appendChild(head);
+
+      const tagline=document.createElement('div');
+      tagline.className='publish-destination-card-tagline';
+      tagline.textContent=dest.tagline;
+      card.appendChild(tagline);
+
+      const formatList=document.createElement('div');
+      formatList.className='publish-destination-formats hidden';
+      dest.formats.forEach(function(fmt){
+        const fbtn=document.createElement('button');
+        fbtn.type='button';
+        fbtn.className='publish-destination-format';
+        fbtn.setAttribute('data-format-id',fmt.id);
+        const fLabel=document.createElement('div');
+        fLabel.className='publish-destination-format-label';
+        fLabel.textContent=fmt.label;
+        fbtn.appendChild(fLabel);
+        const fDesc=document.createElement('div');
+        fDesc.className='publish-destination-format-desc';
+        fDesc.textContent=fmt.description||'';
+        fbtn.appendChild(fDesc);
+        fbtn.addEventListener('click',function(e){
+          e.stopPropagation();
+          _pickFormat(dest, fmt);
+        });
+        formatList.appendChild(fbtn);
+      });
+      card.appendChild(formatList);
+
+      card.addEventListener('click',function(){
+        _pickDestination(dest);
+      });
+      _destGrid.appendChild(card);
+    });
+  }
+
+  function _pickDestination(dest){
+    _chosenDestinationId=dest.id;
+    _chosenFormatId=null;
+    _destComingSoonMsg.classList.toggle('hidden', !dest.comingSoon);
+    _destGrid.querySelectorAll('.publish-destination-card').forEach(function(el){
+      const on=el.getAttribute('data-destination-id')===dest.id;
+      el.classList.toggle('is-selected', on);
+      const formats=el.querySelector('.publish-destination-formats');
+      if(formats) formats.classList.toggle('hidden', !on);
+      // Clear any previously-picked format highlight when re-entering.
+      el.querySelectorAll('.publish-destination-format').forEach(function(f){ f.classList.remove('is-selected'); });
+    });
+    // Coming-Soon destinations can be selected + read but can't
+    // continue — the button stays disabled so the child sees the
+    // note without hitting a broken flow.
+    _destContinueBtn.disabled=true;
+  }
+  function _pickFormat(dest, fmt){
+    _chosenDestinationId=dest.id;
+    _chosenFormatId=fmt.id;
+    const card=_destGrid.querySelector('.publish-destination-card[data-destination-id="'+dest.id+'"]');
+    if(card){
+      card.querySelectorAll('.publish-destination-format').forEach(function(f){
+        f.classList.toggle('is-selected', f.getAttribute('data-format-id')===fmt.id);
+      });
+    }
+    // Reel is comingSoon → never lets the child continue in v1.
+    _destContinueBtn.disabled=!!dest.comingSoon;
+  }
+  function _confirmDestination(){
+    if(!_chosenDestinationId || !_chosenFormatId) return;
+    _setStage(STAGES.PUBLISHING);
   }
 
   function _renderAlmostCover(){
@@ -512,18 +688,48 @@ const PublishStudio=(function(){
     return _pubBody;
   }
 
+  // Sprint 9.0.3 — the Publishing stage now dispatches through
+  // StoryDestinations. The state machine still runs the same
+  // per-page render loop (one page per requestAnimationFrame,
+  // cancel checked at every iteration, no partial file emitted),
+  // but the render / encode / finalise steps come from the chosen
+  // destination so future destinations plug in for free.
+  let _publishOutputMeta=null;   // { blob, mime, filename, celebrateLabel, celebrateGlyph }
+  let _publishDestination=null;
+  let _publishFormat=null;
+
   function _enterPublishing(){
     _publishCancelled=false;
     _publishOutputBlob=null;
+    _publishOutputMeta=null;
     const slides=AppState.slides||[];
     if(slides.length===0){
       _setStage(STAGES.ALMOST_READY);
       return;
     }
+    // Resolve the chosen destination + format. Fallback to Book /
+    // Digital PDF if the child somehow skipped the destination
+    // picker (backwards-compat with the legacy shell entry).
+    if(typeof StoryDestinations==='undefined'){
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
+    _publishDestination=StoryDestinations.find(_chosenDestinationId)
+                     || StoryDestinations.find('book');
+    _publishFormat=StoryDestinations.findFormat(
+      _publishDestination.id,
+      _chosenFormatId
+    ) || _publishDestination.formats[0];
+    // Reel + any other Coming-Soon destination must not enter
+    // Publishing — the destination picker's continue button already
+    // guards this, but this second gate keeps the state machine
+    // honest.
+    if(_publishDestination.comingSoon){
+      _setStage(STAGES.DESTINATION);
+      return;
+    }
     _updateProgress(0, slides.length);
     _pubMessage.textContent=PUBLISH_MESSAGES[0];
-    // Kick off async. requestAnimationFrame between pages keeps the
-    // UI responsive on large books.
     _renderNextPage(0, slides, []);
   }
 
@@ -538,77 +744,54 @@ const PublishStudio=(function(){
     _pubMessage.textContent=PUBLISH_MESSAGES[stage];
   }
 
-  function _renderNextPage(idx, slides, pages){
+  function _renderNextPage(idx, slides, payloads){
     if(_publishCancelled){
-      // Aborted. No file ever emitted; just bounce back to the
-      // Almost Ready stage.
+      // Aborted. No file ever emitted; just bounce back to Almost
+      // Ready — cancel-honesty is a locked product principle.
       _setStage(STAGES.ALMOST_READY);
       return;
     }
     if(idx>=slides.length){
-      _finalizePublish(pages);
+      _finalizePublish(payloads);
       return;
     }
-    // Render this slide.
+    // Render this slide through the chosen destination.
     const slide=slides[idx];
-    const off=document.createElement('canvas');
-    off.width=PDF_RENDER_W;
-    off.height=PDF_RENDER_H;
-    const editorCanvas=document.getElementById('previewCanvas');
+    const off=_publishDestination.createCanvas(_publishFormat);
+    const ctx={index:idx, total:slides.length, format:_publishFormat};
     try{
-      // Sprint 9.0.2 — WYSIWYE. Force dpr:1 for the PDF render so the
-      // JPEG toDataURL emits a flat 1080×1350 bitmap (the target size
-      // PdfWriter expects). Without this, HiDPI displays would emit a
-      // 2160×2700 JPEG that quadruples the PDF file size for no gain
-      // in a 540×675 pt page.
-      SlideRenderer.init(off,{dpr:1});
-      const titleEl=document.getElementById('bookTitle');
-      const payload=SlideRenderer.buildPayload(slide,{
-        page: idx+1,
-        totalPages: slides.length,
-        defaultBookTitle: titleEl ? titleEl.value : ''
-      });
-      SlideRenderer.render(payload);
+      _publishDestination.renderPage(off, slide, ctx);
+      const payload=_publishDestination.encodePage(off, _publishFormat, ctx);
+      if(payload) payloads.push(payload);
     }catch(e){}
-    // Rebind the editor canvas so the editor picks up whatever DPR
-    // the browser reports — the DPR default keeps the editor sharp.
-    try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
-
-    // Encode as JPEG and stash for the PDF builder.
-    let dataURL=null;
-    try{ dataURL=off.toDataURL('image/jpeg', 0.92); }catch(e){ dataURL=null; }
-    if(dataURL){
-      const bytes=PdfWriter.dataURLToBytes(dataURL);
-      pages.push({ jpegBytes:bytes, srcW:PDF_RENDER_W, srcH:PDF_RENDER_H });
-    }
 
     _updateProgress(idx+1, slides.length);
 
     // Yield to the next frame so the bar / message can paint.
     requestAnimationFrame(function(){
-      _renderNextPage(idx+1, slides, pages);
+      _renderNextPage(idx+1, slides, payloads);
     });
   }
 
-  function _finalizePublish(pages){
+  function _finalizePublish(payloads){
     if(_publishCancelled){
       _setStage(STAGES.ALMOST_READY);
       return;
     }
+    let out=null;
     try{
-      const blob=PdfWriter.build(pages, PDF_PAGE_W_PT, PDF_PAGE_H_PT);
-      _publishOutputBlob=blob;
-    }catch(e){
-      _publishOutputBlob=null;
-    }
-    // Move on to the Celebration stage (8.1.5).
+      out=_publishDestination.finish(payloads, _publishFormat);
+    }catch(e){ out=null; }
+    _publishOutputMeta=out;
+    _publishOutputBlob=out ? out.blob : null;
     _setStage(STAGES.CELEBRATION);
   }
 
   function _publishedBlob(){ return _publishOutputBlob; }
   function _publishedFilename(){
-    const t=(AppState.project && (AppState.project.bookTitle||AppState.project.title))||'my-book';
-    const safe=String(t).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'')||'my-book';
+    if(_publishOutputMeta && _publishOutputMeta.filename) return _publishOutputMeta.filename;
+    const t=(AppState.project && (AppState.project.bookTitle||AppState.project.title))||'my-story';
+    const safe=String(t).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'')||'my-story';
     return safe+'.pdf';
   }
   function _downloadPublished(){
@@ -725,6 +908,24 @@ const PublishStudio=(function(){
     _celebReadyMsg.classList.add('hidden');
     _celebDownloadBtn.classList.remove('is-given');
 
+    // Sprint 9.0.3 — destination-aware Celebration copy. Story Book →
+    // "Get My Book". Story Carousel → "Download Images" (or
+    // "Download Image" for single-page). The blob + filename came
+    // through _publishOutputMeta; the label + glyph are the same
+    // metadata the destination emitted from `finish()`.
+    const dest=_publishDestination;
+    const label=(_publishOutputMeta && _publishOutputMeta.celebrateLabel)
+              || (dest && dest.formats && 'Get My Story')
+              || 'Get My Story';
+    const glyph=(_publishOutputMeta && _publishOutputMeta.celebrateGlyph) || '📥';
+    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">'+glyph+'</span><span>'+label+'</span>';
+    // Ready-message language matches the destination too.
+    const readyGlyph='<span>✓</span> ';
+    const readyMsg=(dest && dest.id==='carousel')
+      ? readyGlyph+'Your images are ready. Download again any time.'
+      : readyGlyph+'Your book is ready. Download again any time.';
+    _celebReadyMsg.innerHTML=readyMsg;
+
     // Spawn confetti — DOM nodes with CSS keyframes. ~60 particles is
     // enough to feel celebratory without taxing the GPU.
     _celebConfetti.innerHTML='';
@@ -801,6 +1002,7 @@ const PublishStudio=(function(){
     });
     if(next===STAGES.READ) _enterRead();
     else if(next===STAGES.ALMOST_READY) _enterAlmostReady();
+    else if(next===STAGES.DESTINATION) _enterDestination();
     else if(next===STAGES.PUBLISHING) _enterPublishing();
     else if(next===STAGES.CELEBRATION) _enterCelebration();
   }

@@ -3566,6 +3566,158 @@ body.dark-theme .publish-nudge-card{ background:var(--panel); }
 .publish-primary-btn:active{ transform:translateY(0); }
 .publish-primary-glyph{ font-size:20px; }
 
+/* ---------------------------
+ * Sprint 9.0.3 — Choose Story Destination stage.
+ * Three cards (Book / Carousel / Reel) sit in a responsive grid.
+ * Picking one expands its inline format list; picking a format
+ * enables Continue. The Coming-Soon Reel card is selectable so
+ * the child can read it but Continue stays disabled.
+ * --------------------------- */
+.publish-studio-body-destination{
+  display:none;
+  flex-direction:column;
+  padding:24px;
+  overflow-y:auto;
+  min-height:0;
+}
+.publish-studio-body-destination:not(.hidden){ display:flex; }
+
+.publish-destination-center{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  padding:20px 0;
+  max-width:820px;
+  width:100%;
+  align-self:center;
+}
+.publish-destination-headline{
+  font-size:24px;
+  font-weight:700;
+  text-align:center;
+}
+.publish-destination-message{
+  font-size:14px;
+  color:var(--text-secondary);
+  text-align:center;
+  margin:0;
+}
+.publish-destination-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;
+  width:100%;
+}
+.publish-destination-card{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:18px;
+  background:rgba(0,0,0,0.04);
+  border:2px solid transparent;
+  border-radius:16px;
+  cursor:pointer;
+  text-align:left;
+  height:auto !important;
+  width:100% !important;
+  margin:0 !important;
+  transition:transform 0.15s, border-color 0.15s, background 0.15s;
+}
+body.dark-theme .publish-destination-card{ background:rgba(255,255,255,0.05); }
+.publish-destination-card:hover{ transform:translateY(-2px); }
+.publish-destination-card.is-selected{
+  border-color:rgba(255,203,69,0.75);
+  background:rgba(255,203,69,0.10);
+}
+.publish-destination-card.is-coming-soon{ opacity:0.85; }
+.publish-destination-card-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.publish-destination-card-glyph{
+  font-size:32px;
+  line-height:1;
+}
+.publish-destination-card-title{
+  font-size:17px;
+  font-weight:700;
+  flex:1;
+}
+.publish-destination-card-chip{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  padding:3px 8px;
+  border-radius:999px;
+  background:rgba(255,203,69,0.20);
+  color:#7a5a00;
+  border:1px solid rgba(255,203,69,0.55);
+}
+body.dark-theme .publish-destination-card-chip{ color:#FFCB45; }
+.publish-destination-card-tagline{
+  font-size:13px;
+  color:var(--text-secondary);
+}
+.publish-destination-formats{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding-top:8px;
+  border-top:1px solid var(--line);
+}
+.publish-destination-formats.hidden{ display:none; }
+.publish-destination-format{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:8px 10px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
+  height:auto !important;
+  width:100% !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s;
+}
+.publish-destination-format:hover{
+  background:rgba(255,203,69,0.06);
+  border-color:rgba(255,203,69,0.45);
+}
+.publish-destination-format.is-selected{
+  background:rgba(255,203,69,0.18);
+  border-color:rgba(255,203,69,0.7);
+}
+.publish-destination-format-label{
+  font-size:14px;
+  font-weight:700;
+}
+.publish-destination-format-desc{
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.publish-destination-comingsoon{
+  font-size:13px;
+  color:var(--text-secondary);
+  text-align:center;
+  padding:10px 14px;
+  border-radius:10px;
+  background:rgba(255,203,69,0.10);
+  border:1px dashed rgba(255,203,69,0.45);
+}
+.publish-destination-comingsoon.hidden{ display:none; }
+.publish-destination-continue:disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  transform:none !important;
+  box-shadow:none !important;
+}
+
 /* Sprint 8.1.4 — Publishing stage ------------------------------------ */
 .publish-studio-body-publishing{
   display:none;
