@@ -1,136 +1,214 @@
-# VihuPlanet Chapter 2 · Storyteller Selection — Evidence
+# VihuPlanet Chapter 2 · The Dreaming Planet — Evidence
 
 All captures generated in headless Chromium at
 `deviceScaleFactor = 1`, viewport `1440 × 900`, against HEAD.
 
 ## Files
 
-| File                              | What it shows                                                     |
-|-----------------------------------|-------------------------------------------------------------------|
-| `01-world-loaded.png`             | Chapter 1 world at load — before the storyteller cards arrive.    |
-| `02-storyteller-selection.png`    | Cards settled in. Hero prompt + subtitle + Vihaan / Myra / Vilo / Add Storyteller row + Parents pill at the bottom. |
-| `03-storyteller-selected.png`     | Myra selected — soft pulse ring + gold sparkle burst around her card. |
-| `04-transition-still.png`         | Storyteller Home transition mid-play — "Welcome, Myra. Your Bookshelf arrives in Chapter 3." over the zoom-faded world. |
-| `04-transition.webm`              | ~9 s recording covering settle, selection, and transition.        |
+| File                          | What it shows                                                                                                             |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `01-universe.png`             | The universe at rest. Chapter 1 world alive; four storyteller planets floating with names + one-line teasers; Dreaming Planet sleeping on the right with its orbiting stars. |
+| `02-floating-planets.png`     | ~1.5 s later — planets have drifted along their unique paths (proves the drift motion is per-planet, not synchronised).  |
+| `03-dreaming-planet.png`      | Focus on the Dreaming Planet still asleep, halo faint, companion barely visible.                                          |
+| `04-companion-awakens.png`    | After the explorer clicks the Dreaming Planet — the universe has quietened (ambient objects dimmed), the companion has woken, eyes open, smiling. |
+| `05-invitation.png`           | Dialogue bubble reads *"I've been dreaming of meeting my storyteller… Would you be my storyteller?"* with three soft choices: 🌟 Yes, I'd love to! · 🏠 I already have a planet. · 🌙 Maybe later. |
+| `06-motion.webm`              | ~20 s recording covering: universe → quieten → wake sequence (sleeping → stirring → waking → looking → smiling → speaking) → invitation → chose "Maybe later" → companion returns to sleep → universe brightens back. |
 
 ## Implementation
 
-- **New module** `vihuplanet/storyteller/` with three files:
-  - `storyteller.js` — Storyteller registry + StorytellerManager
-    (mount / select / transition).
-  - `storytellerData.js` — Vihaan / Myra / Vilo / Add-Storyteller
-    descriptors. No hard-coded cards in HTML.
-  - `storyteller.css` — Card geometry + idle / hover / focus /
-    selected styling. All motion classes reused from
-    `animations/motion.css`.
-- **Four hand-drawn avatars** as SVG assets under
-  `vihuplanet/assets/avatars/`. Each SVG stays under 3 KB, uses
-  the same navy ink outline (`#1D3457`) and warm skin palette as
-  Chapter 1's moon so the avatars belong to the same world.
-- **Nunito Rounded** added to `assets/fonts/` (variable-weight
-  Latin subset, single 39 KB `.woff2`). Zero CDN dependency at
-  runtime.
-- **Parents entry** moved from Chapter 1's top-right to Chapter 2's
-  UX-Contract-specified bottom-centre — smaller pill, secondary,
-  never competes with the storyteller row.
+### The Explorer arrives
+
+The child (canonically an **Explorer**) enters `vihuplanet/`. The
+Chapter 1 world loads exactly as it did before. Nothing about the
+sky / ground / horizon / hero prompt / moon / stars / rocket /
+paper plane / hills / flowers / telescope was touched — the "The
+Chapter 1 world remains untouched. Nothing disappears." rule holds.
+
+### Four storyteller planets appear
+
+~1.1 s after the hero prompt starts drawing in, four floating
+planets settle into the sky one at a time via the shared `.settle`
+Greeting motion. Each planet:
+
+- carries a **storyteller name** (Vihaan / Aarav / Meera / Emma)
+  and a **one-line teaser** (e.g. *"The dragon finally learned to
+  fly."*);
+- drifts along a unique gentle path (Living / `.planet-drift`,
+  26–32 s per loop, staggered delays so no two planets sync);
+- shows a small hand-drawn **companion** on top — dragon, star-
+  dragon, fox, penguin — matching the teaser.
+
+### The Dreaming Planet awakens curiosity
+
+~0.4 s after the storyteller planets settle, the **Dreaming
+Planet** appears on the right. It's slightly larger, has a wider
+soft halo, its companion is asleep (closed eyes, tiny sleeping
+"o" mouth), and four warm gold stars quietly **orbit** its centre.
+It breathes gently (Living / `.breathing`, 8 s — slower than the
+moon's `.breathe`). Nothing about it flashes; it simply asks to
+be looked at.
+
+### Click → quieten → wake → speak → invite
+
+`DreamingPlanetManager.begin()` walks a state machine driven by
+the `data-dp-state` attribute:
+
+    sleeping → stirring (0.9s) → waking (1.0s) → looking (0.9s)
+             → smiling (0.7s) → speaking (dialogue reveals) → chosen
+
+The state class swaps the companion's SVG eye + mouth layers by
+CSS opacity, so the awakening reads as small hand-drawn frames
+turning:
+
+- **sleeping** — closed-eye arcs, small "o" mouth
+- **stirring** — half-open eye arcs, yawn mouth
+- **waking** — open eyes, yawn mouth
+- **looking** — open eyes, no mouth (curious pause)
+- **smiling** — open eyes, smile mouth
+- **speaking** — open eyes, smile, dialogue bubble visible
+
+The moment the state leaves `sleeping`, `body.universe-quieting`
+dims every ambient object except the Dreaming Planet so the
+child's attention naturally follows the wake.
+
+### Three choices
+
+- **🌟 Yes, I'd love to!** → Companion: *"Really? Then let's get
+  to know each other."* → world fades out (Journey `.fade-out`)
+  → Chapter 3B will pick up here.
+- **🏠 I already have a planet.** → Companion: *"Wonderful!
+  Let's find your way home."* → world fades out → Chapter 3A will
+  pick up here.
+- **🌙 Maybe later.** → Companion: *"That's alright. I'll keep
+  dreaming until you're ready."* → dialogue fades → planet
+  gently returns to `sleeping`. The universe wakes back up and
+  the explorer keeps exploring.
+
+None of the three paths ever traps the explorer, per the UX
+Contract's "Every choice is valid" rule.
 
 ## Architecture
 
-Storyteller is a **new, isolated module** that plugs into the
-Chapter 1 shell without touching Chapter 1's code:
+Chapter 2 ships as two **new isolated modules** + three **service
+placeholders**. Chapter 1 remained untouched.
 
-- `.foreground` layer (declared as empty in Chapter 1's HTML,
-  waiting for exactly this) is the mount point. No changes to
-  `.sky` / `.ground` / horizon / brand / hero.
-- `StorytellerManager.mount(host)` is called once by
-  `js/scene.js`, 1.3 s after the hero prompt starts drawing in.
-- The registry pattern from `WorldObject` (Chapter 1) is
-  re-used verbatim: `Storyteller.register({...})` +
-  `Storyteller.list()` + `Storyteller.find(id)`. Same shape,
-  different scope. This is deliberate — one mental model, two
-  domains.
-- The transition CSS class (`.zoom-out`) lives in
-  `animations/motion.css` under Journey, so any future chapter
-  that needs a zoom-out has the same helper.
-- The `Storyteller.register()` API accepts `enabled: false` so
-  future storytellers can ship dark and be toggled on later,
-  matching WorldObject's descriptor pattern.
+    vihuplanet/
+    ├── planets/               NEW — floating storyteller planets
+    │   ├── planets.js         Planet registry + PlanetsManager.mount()
+    │   ├── planetsData.js     4 planet descriptors
+    │   └── planets.css        Planet + label styling
+    ├── dreamingPlanet/        NEW — the singular Dreaming Planet
+    │   ├── dreamingPlanet.js  Registry with the descriptor
+    │   ├── dreamingPlanetManager.js  Wake sequence + dialogue + choices
+    │   └── dreamingPlanet.css Sphere / companion states / dialogue / choices
+    ├── shared/services/       NEW — placeholder interfaces only
+    │   ├── RecognitionService.js
+    │   ├── CompanionService.js
+    │   └── PlanetService.js
+    └── assets/planets/        NEW — SVG assets for all 5 planets
+
+The retired `storyteller/` module (v0.2.0's card grid) has been
+removed — the previous approach was superseded by v0.3 canon.
 
 ## Reusable systems
 
-Every animation Chapter 2 uses comes from Chapter 1's
-`WorldMotion` vocabulary:
+Every animation in Chapter 2 came from Chapter 1's `WorldMotion`
+vocabulary, extended (not replaced) with new named motions:
 
-- **Living** — the avatar in the selected card breathes softly
-  via `.select-pulse` (Category 4 · Celebration, new in Chapter 2).
-- **Greeting** — cards fade + rise in with `.settle` at a
-  staggered delay per card. Subtitle uses the same class.
-- **Journey** — `.zoom-out` (new in Chapter 2, filed under
-  Category 3 · Journey) drives the transition to Storyteller Home.
-- **Celebration** — `.select-pulse` is the first entry that
-  category has; the category header notes it lands in Chapter 2.
+- **Living** — `sleeping`, `breathing`, `listening`, `orbit`,
+  `planet-drift` (all new in Chapter 2, all filed under the
+  Living category alongside `twinkle` / `drift` / `float` /
+  `breathe`).
+- **Greeting** — `awakening` (a small stretch keyframe used at
+  the moment the companion first opens their eyes) alongside the
+  existing `drawn-in` / `warm-in` / `settle`.
+- **Journey** — inherits `fade-out` (already in Chapter 2 v0.2);
+  no new entries.
+- **Celebration** — declared, no new entries in Chapter 2 v0.3.
 
-No new animation system was introduced. `storyteller.css` only
-owns geometry, colour, and interaction states (idle / hover /
-focus / selected).
+The `prefers-reduced-motion` guard was extended to include every
+new class + the body-level `.universe-quieting` marker.
 
-## Motion implementation notes
+## Placeholder services
 
-- **Hover** uses a CSS transition (`transform 0.35s
-  cubic-bezier(.2, .8, .2, 1)`), not a keyframe. Hover is a
-  user-driven state; keyframes are for autonomous / repeated
-  motion. Matches the sprint's motion rules.
-- **Selected pulse** is a keyframe (`vp-select-pulse`) so it
-  animates on its own once the state is set. Runs at 1.6 s per
-  cycle to feel like a soft heartbeat, not a distraction.
-- **Sparkles** wrap the avatar in 5 tiny star SVGs that only
-  animate when the card carries `.is-selected`. Uses the
-  existing `.twinkle` keyframe (Living) with a longer 2.4 s
-  duration so the stars read as calm.
-- **Transition** targets `.world` — the WHOLE Chapter 1 world
-  fades + scales, and the Chapter 3 placeholder warms in over the
-  top. Feels like arriving somewhere new instead of leaving.
-- **Reduced motion** guard updated in `motion.css` to disable
-  the pulse, zoom-out, fade-out, and the body-level transition
-  class so accessibility settings still hold.
+Per the Architecture Contract (Section 6): *"Prepare interfaces
+only. Do not implement."* Three services ship as declared
+surfaces:
 
-## Future hooks intentionally left inactive
+- `RecognitionService` — `identify()` / `remember()` / `findHome()`.
+  A later chapter (Companion's First Meeting, Constellation
+  recognition, Returning Home) implements these; MEP always
+  resolves "not recognised".
+- `CompanionService` — `current()` / `say()` / `setMood()`. MEP
+  no-ops; Chapter 2 speaks through DreamingPlanetManager directly.
+- `PlanetService` — `find()` / `all()` / `grow()` / `focus()`.
+  MEP delegates to the two live registries (Planet + DreamingPlanet).
 
-- **Add Storyteller** currently pulses + shows a bottom toast
-  ("Adding a new storyteller lives in a later chapter."). A
-  later chapter wires the flow.
-- **`Storyteller.register({ enabled: false })`** honoured but
-  no dark-shipped storyteller today.
-- **`StorytellerManager.onTransition(cb)`** exposes a callback
-  hook that Chapter 3 will use to swap the placeholder for the
-  real Bookshelf.
-- **Storyteller Home placeholder** auto-fades back after 2.8 s
-  so the child returns to a live scene rather than a dead end —
-  removed once Chapter 3 lands.
+Each service module documents its future responsibility inline
+so a later chapter can drop in an implementation with zero
+consumer changes.
+
+## Language canon
+
+Every visible word in Chapter 2 was audited against the Creative
+Contract:
+
+- **Never**: Login, Register, User, Account, Password,
+  Authentication, Profile, Switch User.
+- **Always**: Explorer, Storyteller, Planet, Companion, Journey,
+  Home, Dreaming Planet, Constellation.
+
+The three choice labels read *"Yes, I'd love to!"*, *"I already
+have a planet."*, *"Maybe later."* — no "sign in", no "continue
+as", no "welcome back". The companion's response after "I
+already have a planet." says *"Let's find your way home."* —
+never "recover" or "restore".
+
+## Future hooks (reserved, not implemented)
+
+Interfaces for the extension points listed in Section 11:
+
+- **Companion's First Meeting** — `CompanionService.setMood`,
+  `RecognitionService.remember`.
+- **Camera recognition** — `RecognitionService.identify` returns a
+  promise that a later chapter fulfils by asking the camera; the
+  MEP promise always resolves `{ recognised: false }`.
+- **Constellation recognition** — `RecognitionService.findHome`
+  accepts a `constellationPattern` argument; MEP no-ops.
+- **Returning Home** — `PlanetService.focus(planetId)` will bring
+  the storyteller's home planet to centre; MEP no-ops.
+- **Traveller's Star / Home Planet / Planet growth** —
+  `PlanetService.grow(planetId, delta)`; MEP no-ops.
 
 ## Known limitations
 
-- The placeholder Storyteller Home is deliberately minimal (a
-  book glyph + "Welcome, {name}. Your Bookshelf arrives in
-  Chapter 3."). It's a stub, not a state.
-- No sound effect on select. The Contract mentions a soft
-  audio cue; audio assets weren't shipped in this sprint per
-  the "Bundle assets locally" rule. A `select.wav` will drop
-  into `assets/audio/` when the wider audio pass lands.
-- On very narrow desktops (< 1024 px) the four cards may wrap.
-  Contract calls out "Minimum desktop width 1024 px" and the
-  layout respects that.
+- The three "Yes" / "Already" fade-outs land on a black screen
+  (there is no Chapter 3 destination yet). The Repository &
+  Commit Contract says the build must stay fully functional; a
+  refresh returns the explorer to a live universe. **"Maybe
+  later"** always brings the universe back automatically — that
+  path is fully in-Chapter-2.
+- Companions on the storyteller planets are cute but simple
+  silhouettes. A future polish pass can grow their expressions
+  into small idle animations (e.g. the fox wags its tail; the
+  penguin sways in place).
+- Emma's teaser text sits close to the horizon line at 1440 ×
+  900. On narrower desktops the ground green blends slightly
+  with the last line of italic teaser text. Not a blocker; the
+  next Chapter 2 polish pass will constrain the ground band.
 
 ## Chapter 3 readiness
 
-Chapter 3 (Bookshelf) plugs in through three seams:
+Chapter 3 (A: "Returning Home" — for the explorer who says "I
+already have a planet"; B: "Getting to Know You" — for the
+explorer who says "Yes") plugs in through three seams:
 
-1. `StorytellerManager.onTransition(function(descriptor) { ... })`
-   fires with the chosen storyteller. The callback can mount
-   the Bookshelf inside the transitioning body.
-2. `.storyteller-home-placeholder` in `storyteller.css` is the
-   fill-in for Chapter 3's mount point; delete or replace once
-   the real Bookshelf ships.
-3. `Storyteller.find(id).themeColor / accent` are the palette
-   Chapter 3 should tint its Bookshelf with, so each storyteller's
-   world reads as theirs.
+1. `DreamingPlanetManager.onEnd(function (path) { ... })` fires
+   with `'yes'`, `'already'`, or `'later'`. A future
+   `chapter03/router.js` listens and mounts the appropriate
+   destination.
+2. `body.dreaming-fade-out` is applied for `yes` / `already` so
+   the destination has a clean canvas to warm into.
+3. `PlanetService.find(id)` + `PlanetService.focus(id)` are the
+   entry points Chapter 3A will use to bring the explorer's home
+   planet to the centre.

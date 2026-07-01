@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="Meera's planet">
+  <defs>
+    <radialGradient id="mrBody" cx="42%" cy="42%" r="65%">
+      <stop offset="0%"  stop-color="#FFD1A0"/>
+      <stop offset="60%" stop-color="#F09758"/>
+      <stop offset="100%" stop-color="#B8632A"/>
+    </radialGradient>
+    <radialGradient id="mrHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#FFD1A0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFD1A0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="140" r="80" fill="url(#mrHalo)"/>
+  <circle cx="100" cy="140" r="62" fill="url(#mrBody)" stroke="#1D3457" stroke-width="2.2"/>
+  <!-- Desert dune stripes -->
+  <path d="M52 148 q30 -10 60 4 q28 12 44 -6" fill="none" stroke="#B8632A" stroke-width="1.8" opacity="0.5"/>
+  <path d="M56 168 q40 -8 88 4"  fill="none" stroke="#B8632A" stroke-width="1.6" opacity="0.4"/>
+  <!-- Small palette on planet edge -->
+  <ellipse cx="150" cy="150" rx="10" ry="4" fill="#FFD1A0" stroke="#1D3457" stroke-width="1.2"/>
+  <circle cx="148" cy="150" r="1.5" fill="#EF6F55"/>
+  <circle cx="152" cy="149" r="1.5" fill="#5FB3FF"/>
+  <circle cx="155" cy="151" r="1.5" fill="#B294FF"/>
+
+  <!-- Fox companion on top -->
+  <!-- Body -->
+  <path d="M100 92 q0 -22 20 -22 q20 0 20 22 q0 12 -10 18 l -20 0 q -10 -6 -10 -18 z"
+        fill="#F0813F" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- White belly + face patch -->
+  <path d="M108 96 q12 8 24 0 q-2 12 -12 12 q-10 0 -12 -12 z" fill="#FFFFFF"/>
+  <!-- Ears -->
+  <path d="M104 66 l4 -14 l6 12 z" fill="#F0813F" stroke="#1D3457" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M136 66 l-4 -14 l-6 12 z" fill="#F0813F" stroke="#1D3457" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M107 62 l1 -6 l3 5 z" fill="#FFFFFF"/>
+  <path d="M133 62 l-1 -6 l-3 5 z" fill="#FFFFFF"/>
+  <!-- Eyes -->
+  <circle cx="112" cy="76" r="3" fill="#1D3457"/>
+  <circle cx="128" cy="76" r="3" fill="#1D3457"/>
+  <circle cx="111" cy="75" r="1" fill="#FFFFFF"/>
+  <circle cx="127" cy="75" r="1" fill="#FFFFFF"/>
+  <!-- Nose -->
+  <ellipse cx="120" cy="84" rx="2.4" ry="1.8" fill="#1D3457"/>
+  <!-- Mouth -->
+  <path d="M116 88 q4 3 8 0" fill="none" stroke="#1D3457" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

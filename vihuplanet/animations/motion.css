@@ -191,6 +191,127 @@
 }
 
 /* ============================================================== */
+/* CATEGORY 1 · LIVING — additions for Chapter 2 (Dreaming)        */
+/* ============================================================== */
+
+/* sleeping — companion asleep on the Dreaming Planet. Very slow
+ * scale + soft halo pulse (the "breath under a blanket" feel).
+ * Longer duration than `.breathe` so the sleep reads calmer than
+ * the moon's wakeful breathing. */
+@keyframes vp-sleeping {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 8px  rgba(178,148,255,0.35)); }
+  50%      { transform: scale(1.02); filter: drop-shadow(0 0 14px rgba(178,148,255,0.55)); }
+}
+.sleeping {
+  animation-name: vp-sleeping;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 6.5s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* breathing — even slower, gentler breath used by the Dreaming
+ * Planet itself (the sphere). Contrast with the moon's `breathe`. */
+@keyframes vp-breathing {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 12px rgba(123,95,204,0.40)); }
+  50%      { transform: scale(1.015);filter: drop-shadow(0 0 22px rgba(123,95,204,0.55)); }
+}
+.breathing {
+  animation-name: vp-breathing;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 8s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* listening — small attentive lean toward the explorer. Used by
+ * the companion after they wake and turn to look. Slow, subtle. */
+@keyframes vp-listening {
+  0%, 100% { transform: rotate(-1deg) translateY(0); }
+  50%      { transform: rotate(2deg)  translateY(-2px); }
+}
+.listening {
+  animation-name: vp-listening;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 4.4s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* orbit — tiny stars circle the Dreaming Planet. Uses transform
+ * origin at the centre of the planet; each star is positioned then
+ * rotated to its own phase. */
+@keyframes vp-orbit {
+  from { transform: rotate(0deg)   translateX(var(--vp-orbit-radius, 90px)) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(var(--vp-orbit-radius, 90px)) rotate(-360deg); }
+}
+.orbit {
+  animation-name: vp-orbit;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 22s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* planet-drift — very slow horizontal + vertical loop for
+ * storyteller planets so each has its own floating path without
+ * a rewrite of `.drift`. */
+@keyframes vp-planet-drift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(1.4vw, -1vh); }
+  50%  { transform: translate(0, -1.6vh); }
+  75%  { transform: translate(-1.4vw, -1vh); }
+  100% { transform: translate(0, 0); }
+}
+.planet-drift {
+  animation-name: vp-planet-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 24s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* ============================================================== */
+/* CATEGORY 2 · GREETING — Awakening sequence (Chapter 2)          */
+/* ============================================================== */
+
+/* awakening — a one-shot small stretch + rise that plays when
+ * the companion first wakes. State machine in
+ * dreamingPlanetManager.js flips classes:
+ *   .state-sleeping → .state-stirring → .state-waking →
+ *   .state-looking → .state-smiling.
+ * Each state carries its own CSS look inside
+ * dreamingPlanet/dreamingPlanet.css; the shared vocabulary here
+ * only defines the tiny stretch keyframe the wake moment plays. */
+@keyframes vp-awakening {
+  0%   { transform: scale(0.98) translateY(2px); }
+  60%  { transform: scale(1.04) translateY(-3px); }
+  100% { transform: scale(1)    translateY(0); }
+}
+.awakening {
+  animation-name: vp-awakening;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  animation-duration: var(--vp-motion-duration, 1.4s);
+}
+
+/* quieten-universe — when the explorer clicks the Dreaming Planet
+ * the wider universe motion damps down so the child's attention
+ * follows the wake. Every Living/Journey object gets an
+ * animation-play-state pause under this body-level marker; the
+ * fade is applied through opacity here. */
+body.universe-quieting .world-object:not(.world-object-dreaming-planet):not(.world-object-companion):not([data-object-id^="storyteller-planet"]) {
+  animation-play-state: paused;
+  opacity: 0.55;
+  transition: opacity 1.2s ease-in-out;
+}
+
+/* ============================================================== */
 /* CATEGORY 4 · CELEBRATION — first entries land in Chapter 2      */
 /* ============================================================== */
 
@@ -246,9 +367,9 @@
   .twinkle, .drift, .float, .breathe,
   .drawn-in, .warm-in, .settle,
   .glide, .sail, .drift-long,
-  .select-pulse, .zoom-out, .fade-out {
+  .select-pulse, .zoom-out, .fade-out,
+  .sleeping, .breathing, .listening, .orbit, .planet-drift, .awakening {
     animation: none !important;
   }
-  .storyteller-card.is-selected .storyteller-avatar { animation: none !important; }
-  body.storyteller-transitioning .world { animation: none !important; }
+  body.universe-quieting .world-object { animation: none !important; }
 }

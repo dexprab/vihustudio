@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="Vihaan's planet">
+  <defs>
+    <radialGradient id="vhBody" cx="42%" cy="42%" r="65%">
+      <stop offset="0%"  stop-color="#C9B5FF"/>
+      <stop offset="60%" stop-color="#8F72D8"/>
+      <stop offset="100%" stop-color="#5D3FA6"/>
+    </radialGradient>
+    <radialGradient id="vhHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#C9B5FF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#C9B5FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Halo -->
+  <circle cx="100" cy="140" r="80" fill="url(#vhHalo)"/>
+  <!-- Planet sphere -->
+  <circle cx="100" cy="140" r="62" fill="url(#vhBody)" stroke="#1D3457" stroke-width="2.2"/>
+  <!-- Crater texture -->
+  <ellipse cx="82" cy="150" rx="14" ry="6" fill="#5D3FA6" opacity="0.4"/>
+  <ellipse cx="118" cy="132" rx="10" ry="5" fill="#5D3FA6" opacity="0.35"/>
+  <path d="M74 172 q26 6 52 -2" fill="none" stroke="#5D3FA6" stroke-width="1.6" opacity="0.4"/>
+  <!-- Little mountain in front -->
+  <path d="M78 168 l14 -20 l14 20 z" fill="#7B5FCC" stroke="#1D3457" stroke-width="1.8" stroke-linejoin="round"/>
+
+  <!-- Green dragon companion on top -->
+  <!-- Body -->
+  <path d="M98 84 q0 -22 20 -22 q20 0 20 22 q0 12 -10 18 l -20 0 q -10 -6 -10 -18 z"
+        fill="#7BC96E" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Belly patch -->
+  <path d="M108 90 q10 8 20 0 q-2 12 -10 12 q-8 0 -10 -12 z" fill="#C7EDB5"/>
+  <!-- Wings -->
+  <path d="M96 74 q-16 0 -18 -18 q10 6 22 18 z" fill="#5FA453" stroke="#1D3457" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M140 74 q16 0 18 -18 q-10 6 -22 18 z" fill="#5FA453" stroke="#1D3457" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Eyes -->
+  <circle cx="112" cy="72" r="3.5" fill="#1D3457"/>
+  <circle cx="126" cy="72" r="3.5" fill="#1D3457"/>
+  <circle cx="111" cy="71" r="1.2" fill="#FFFFFF"/>
+  <circle cx="125" cy="71" r="1.2" fill="#FFFFFF"/>
+  <!-- Small snout -->
+  <path d="M114 80 q4 4 10 0" fill="none" stroke="#1D3457" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Wizard's hat -->
+  <path d="M108 62 q10 -28 24 -4 l-2 6 z" fill="#5D3FA6" stroke="#1D3457" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="118" cy="42" r="3" fill="#F4D79A" stroke="#1D3457" stroke-width="1"/>
+</svg>

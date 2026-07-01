@@ -1,0 +1,266 @@
+/* dreamingPlanet.css — Chapter 2 Dreaming Planet styling.
+ *
+ * Three surfaces:
+ *   .dreaming-planet             The sphere + companion + orbit stars.
+ *   .dreaming-dialogue           Speech bubble the companion speaks
+ *                                from once they've woken.
+ *   .dreaming-choices            Three soft rounded buttons —
+ *                                Yes / I already have a planet /
+ *                                Maybe later.
+ *
+ * State is carried on the wrapper as `data-dp-state` and mirrored on
+ * <body> so global cues (like the universe quietening) can react.
+ *
+ * States:
+ *   sleeping   Eyes closed. Halo dim. Very slow breathing.
+ *   stirring   Eyes half-open, small stretch, yawn glyph.
+ *   waking     Eyes open. Halo brightens.
+ *   looking    Companion tilts (listening motion) toward centre.
+ *   smiling    Mouth swaps to a smile.
+ *   speaking   Dialogue bubble visible.
+ *   chosen     One of the three choices was made.
+ *   resting    Returning to sleep after "Maybe later".
+ */
+
+/* Host — fills the foreground so the Dreaming Planet + dialogue +
+ * choices can all position themselves absolutely inside. */
+.dreaming-planet-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;   /* children opt in */
+}
+.dreaming-planet-host > * { pointer-events: auto; }
+
+.dreaming-planet {
+  position: absolute;
+  z-index: 6;
+  cursor: pointer;
+  transition:
+    transform 0.9s ease-in-out,
+    filter    0.9s ease-in-out;
+}
+.dreaming-planet svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.dreaming-planet[data-dp-state="sleeping"] { filter: drop-shadow(0 0 10px rgba(178,148,255,0.35)); }
+.dreaming-planet[data-dp-state="waking"],
+.dreaming-planet[data-dp-state="looking"],
+.dreaming-planet[data-dp-state="smiling"],
+.dreaming-planet[data-dp-state="speaking"] {
+  filter: drop-shadow(0 0 24px rgba(178,148,255,0.65));
+  transform: scale(1.03);
+}
+.dreaming-planet[data-dp-state="chosen"] { transform: scale(1.06); }
+
+/* Focus ring — accessible click target. */
+.dreaming-planet:focus-visible {
+  outline: 3px solid #F4D79A;
+  outline-offset: 6px;
+  border-radius: 50%;
+}
+
+/* Hover lift only when the planet is still sleeping/resting; once
+ * it wakes, the interaction moves to the dialogue + choices. */
+.dreaming-planet[data-dp-state="sleeping"]:hover,
+.dreaming-planet[data-dp-state="resting"]:hover {
+  transform: scale(1.02);
+  filter: drop-shadow(0 0 20px rgba(178,148,255,0.55));
+}
+
+/* ---- Companion state swaps ------------------------------------- */
+/* Default: sleeping eyes visible, sleeping mouth visible; open eyes,
+ * yawn, smile hidden. Each state below flips visibility. */
+.dp-eyes-sleeping   { opacity: 1; transition: opacity 0.4s ease-in-out; }
+.dp-eyes-stirring   { opacity: 0; transition: opacity 0.4s ease-in-out; }
+.dp-eyes-open       { opacity: 0; transition: opacity 0.4s ease-in-out; }
+.dp-mouth-sleeping  { opacity: 1; transition: opacity 0.4s ease-in-out; }
+.dp-mouth-yawn      { opacity: 0; transition: opacity 0.4s ease-in-out; }
+.dp-mouth-smile     { opacity: 0; transition: opacity 0.4s ease-in-out; }
+
+[data-dp-state="stirring"] .dp-eyes-sleeping { opacity: 0; }
+[data-dp-state="stirring"] .dp-eyes-stirring { opacity: 1; }
+[data-dp-state="stirring"] .dp-mouth-sleeping{ opacity: 0; }
+[data-dp-state="stirring"] .dp-mouth-yawn    { opacity: 1; }
+
+[data-dp-state="waking"] .dp-eyes-sleeping { opacity: 0; }
+[data-dp-state="waking"] .dp-eyes-open     { opacity: 1; }
+[data-dp-state="waking"] .dp-mouth-sleeping{ opacity: 0; }
+[data-dp-state="waking"] .dp-mouth-yawn    { opacity: 1; }
+
+[data-dp-state="looking"] .dp-eyes-sleeping { opacity: 0; }
+[data-dp-state="looking"] .dp-eyes-open     { opacity: 1; }
+[data-dp-state="looking"] .dp-mouth-sleeping{ opacity: 0; }
+
+[data-dp-state="smiling"] .dp-eyes-sleeping { opacity: 0; }
+[data-dp-state="smiling"] .dp-eyes-open     { opacity: 1; }
+[data-dp-state="smiling"] .dp-mouth-sleeping{ opacity: 0; }
+[data-dp-state="smiling"] .dp-mouth-smile   { opacity: 1; }
+
+[data-dp-state="speaking"] .dp-eyes-sleeping { opacity: 0; }
+[data-dp-state="speaking"] .dp-eyes-open     { opacity: 1; }
+[data-dp-state="speaking"] .dp-mouth-sleeping{ opacity: 0; }
+[data-dp-state="speaking"] .dp-mouth-smile   { opacity: 1; }
+
+[data-dp-state="chosen"]   .dp-eyes-open     { opacity: 1; }
+[data-dp-state="chosen"]   .dp-mouth-smile   { opacity: 1; }
+[data-dp-state="chosen"]   .dp-mouth-sleeping{ opacity: 0; }
+
+[data-dp-state="resting"] .dp-mouth-smile { opacity: 0; }
+[data-dp-state="resting"] .dp-mouth-sleeping { opacity: 1; }
+[data-dp-state="resting"] .dp-eyes-open { opacity: 0; }
+[data-dp-state="resting"] .dp-eyes-sleeping { opacity: 1; }
+
+/* Small look-around head tilt on the companion once they're
+ * looking or speaking. Applied to the SVG group with the
+ * companion. */
+[data-dp-state="looking"] .dp-companion,
+[data-dp-state="smiling"] .dp-companion,
+[data-dp-state="speaking"] .dp-companion { animation: vp-listening 4.6s ease-in-out infinite both; }
+
+/* ---- Orbiting stars ------------------------------------------- */
+.dreaming-planet-orbit {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  /* The stars orbit around the planet centre; positioning is
+   * absolute inside the wrapper, centred by the .dp-orbit-star-wrap
+   * transform below. */
+}
+.dp-orbit-star-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform-origin: 0 0;
+}
+.dp-orbit-star svg,
+.dp-orbit-star {
+  width: 14px;
+  height: 14px;
+  display: block;
+  filter: drop-shadow(0 0 4px rgba(244,215,154,0.75));
+}
+
+/* Halo brightens once the companion wakes. */
+[data-dp-state="waking"] .dreaming-planet-orbit,
+[data-dp-state="looking"] .dreaming-planet-orbit,
+[data-dp-state="smiling"] .dreaming-planet-orbit,
+[data-dp-state="speaking"] .dreaming-planet-orbit,
+[data-dp-state="chosen"]  .dreaming-planet-orbit { filter: brightness(1.2) drop-shadow(0 0 10px rgba(244,215,154,0.7)); }
+
+/* ---- Dialogue bubble ------------------------------------------ */
+.dreaming-dialogue {
+  position: absolute;
+  bottom: 24vh;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 20;
+  max-width: min(560px, 82vw);
+  padding: 18px 24px;
+  background: #FFFFFF;
+  border-radius: 20px;
+  border: 2px solid rgba(29,52,87,0.14);
+  box-shadow: 0 18px 42px rgba(29,52,87,0.18);
+  font-family: 'Nunito', system-ui, sans-serif;
+  color: var(--vp-ink);
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+  pointer-events: none;
+}
+.dreaming-dialogue.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.dreaming-dialogue::after {
+  /* Little pointer toward the companion (right side of the world). */
+  content: "";
+  position: absolute;
+  right: 24%;
+  bottom: -14px;
+  width: 22px;
+  height: 22px;
+  background: #FFFFFF;
+  border-right: 2px solid rgba(29,52,87,0.14);
+  border-bottom: 2px solid rgba(29,52,87,0.14);
+  transform: rotate(45deg);
+  border-radius: 4px;
+}
+.dreaming-dialogue-headline {
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+.dreaming-dialogue-line {
+  font-weight: 400;
+  font-size: 17px;
+  margin: 0;
+  line-height: 1.35;
+}
+.dreaming-dialogue-line + .dreaming-dialogue-line { margin-top: 8px; }
+
+/* ---- Three choices ------------------------------------------- */
+.dreaming-choices {
+  position: absolute;
+  bottom: 8vh;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 21;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+  pointer-events: none;
+}
+.dreaming-choices.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.dreaming-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  border: 2px solid rgba(29,52,87,0.12);
+  background: rgba(255,255,255,0.94);
+  color: var(--vp-ink);
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(29,52,87,0.12);
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background 0.3s ease-in-out;
+}
+.dreaming-choice:hover,
+.dreaming-choice:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(29,52,87,0.20);
+  outline: none;
+}
+.dreaming-choice-yes     { background: linear-gradient(180deg, #FFEAB3 0%, #FFD066 100%); }
+.dreaming-choice-already { background: linear-gradient(180deg, #DDEEFF 0%, #A9C7EE 100%); }
+.dreaming-choice-later   { background: linear-gradient(180deg, #E8DEFF 0%, #C4B0FF 100%); }
+.dreaming-choice-glyph {
+  font-size: 22px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+/* Universe quietens — everything except the Dreaming Planet dims. */
+body[data-dp-state]:not([data-dp-state="sleeping"]):not([data-dp-state="resting"]) .world-object[data-object-id]:not([data-object-id="dreaming"]) {
+  opacity: 0.55;
+  transition: opacity 1.2s ease-in-out;
+}
+
+/* Fade the whole world on Yes / Already so the transition to
+ * Chapter 3 reads as leaving somewhere. */
+body.dreaming-fade-out .world { animation: vp-fade-out 1.2s ease-in-out forwards; }
+
+.dreaming-planet.is-gone { opacity: 0; transition: opacity 1.2s ease-in-out; }

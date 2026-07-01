@@ -14,13 +14,31 @@ landmark alongside others.
 
 - [x] **Chapter 1 — Hero World Foundation.** A single-viewport
       hand-drawn sketchbook world that lives on its own before the
-      child interacts with anything. Evidence:
+      Explorer interacts with anything. Evidence:
       [`evidence/chapter-01/README.md`](evidence/chapter-01/README.md).
-- [x] **Chapter 2 — Storyteller Selection.** The child chooses who
-      is creating today. Chapter 1 world stays alive behind the
-      storyteller row. Evidence:
+- [x] **Chapter 2 — The Dreaming Planet.** The Explorer discovers
+      floating storyteller planets and one **Dreaming Planet**,
+      wakes its **Companion**, and receives an invitation.
+      Evidence:
       [`evidence/chapter-02/README.md`](evidence/chapter-02/README.md).
-- [ ] **Chapter 3 — My Bookshelf.**
+- [ ] **Chapter 3A — Returning Home** (for *"I already have a planet."*)
+- [ ] **Chapter 3B — Getting to Know You** (for *"Yes, I'd love to!"*)
+
+## Canon (immutable)
+
+- **Explorer** is the starting state. Everyone entering
+  VihuPlanet begins as an Explorer.
+- **Exploration is always free.** No login. No registration.
+  No identity required.
+- **Storyteller** is simply an Explorer who accepted a
+  **Companion**'s invitation.
+- Every Storyteller has one **Home Planet**.
+- There is always exactly one **Dreaming Planet** per universe.
+- **Companions choose Storytellers.** Never the other way around.
+- The browser remembers quietly (future).
+- Every technical action must become a magical interaction.
+- Illustration before interface. Play before purpose. Curiosity
+  before instruction.
 
 ## Structure
 
@@ -32,7 +50,7 @@ vihuplanet/
 ├── assets/
 │   ├── fonts/               bundled locally — no CDN dependency
 │   ├── objects/             one SVG per Chapter 1 World Object
-│   └── avatars/             one SVG per Chapter 2 storyteller
+│   └── planets/             one SVG per Chapter 2 planet
 ├── animations/
 │   └── motion.css           WorldMotion vocabulary (Living / Greeting
 │                            / Journey / Celebration)
@@ -42,46 +60,54 @@ vihuplanet/
 ├── hero/
 │   └── hero.css             hero prompt styling
 ├── shared/
-│   └── worldObject.js       Chapter 1 registry + mount system
-├── storyteller/
-│   ├── storyteller.js       Chapter 2 registry + StorytellerManager
-│   ├── storytellerData.js   storyteller descriptors
-│   └── storyteller.css      Chapter 2 card styling
+│   ├── worldObject.js       Chapter 1 registry + mount system
+│   └── services/            Chapter 2 placeholder interfaces
+│       ├── RecognitionService.js
+│       ├── CompanionService.js
+│       └── PlanetService.js
+├── planets/                 Chapter 2 storyteller planet module
+│   ├── planets.js
+│   ├── planetsData.js
+│   └── planets.css
+├── dreamingPlanet/          Chapter 2 Dreaming Planet module
+│   ├── dreamingPlanet.js
+│   ├── dreamingPlanetManager.js
+│   └── dreamingPlanet.css
 ├── js/
 │   ├── registry.js          Chapter 1 World Object descriptors
 │   └── scene.js             boot → mount → arm motion → reveal prompt
-│                            → mount storytellers
+│                            → mount planets → mount Dreaming Planet
 └── evidence/
     ├── chapter-01/          Chapter 1 evidence + README
     └── chapter-02/          Chapter 2 evidence + README
 ```
 
-## Two systems that grow the world
+## Systems that grow the world
 
 **WorldObject** (`shared/worldObject.js`, `js/registry.js`). Every
-visible thing that lives in Chapter 1 is a `WorldObject.register({...})`
-descriptor. Adding a new landmark in a future chapter is one
-`register()` call — no HTML shuffling, no CSS refactor.
+visible Chapter 1 landmark is a `WorldObject.register({...})`
+descriptor.
 
 **WorldMotion** (`animations/motion.css`). Motion is a shared
-vocabulary that grows with the world:
+vocabulary in four categories:
 
-- **Living** — always on. `twinkle`, `drift`, `float`, `breathe`.
-- **Greeting** — arrival + reveal. `drawn-in`, `warm-in`, `settle`.
+- **Living** — always on. `twinkle`, `drift`, `float`, `breathe`,
+  `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`.
+- **Greeting** — arrival + reveal. `drawn-in`, `warm-in`,
+  `settle`, `awakening`.
 - **Journey** — long traversals + transitions. `glide`, `sail`,
   `drift-long`, `zoom-out`, `fade-out`.
-- **Celebration** — first entry lands in Chapter 2:
-  `select-pulse`.
+- **Celebration** — reserved for future joyful moments.
 
-Chapters extend these systems rather than replace them.
+**Planet** (`planets/planets.js`, `planets/planetsData.js`). The
+floating storyteller planets. Same registry pattern as WorldObject.
+Each descriptor carries a storyteller name and a one-line story
+teaser.
 
-## Chapter 2 addition — Storyteller
-
-Storyteller is a new sibling to WorldObject. Same registry pattern,
-different scope: each storyteller is a
-`Storyteller.register({ id, name, avatar, themeColor, accent, enabled })`
-descriptor. Adding a new storyteller in a future chapter is one
-more entry in `storyteller/storytellerData.js`.
+**DreamingPlanet** (`dreamingPlanet/dreamingPlanet.js`). Registry
+with the single Dreaming Planet descriptor.
+`DreamingPlanetManager` drives the wake sequence, dialogue, and
+three choice paths.
 
 ## Running
 

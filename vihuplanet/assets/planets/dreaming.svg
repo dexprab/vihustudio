@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-label="Dreaming Planet">
+  <defs>
+    <radialGradient id="dpBody" cx="42%" cy="42%" r="65%">
+      <stop offset="0%"  stop-color="#DDCCFF"/>
+      <stop offset="55%" stop-color="#9C82E4"/>
+      <stop offset="100%" stop-color="#6A4CC2"/>
+    </radialGradient>
+    <radialGradient id="dpHalo" cx="50%" cy="50%" r="55%">
+      <stop offset="0%"  stop-color="#DDCCFF" stop-opacity="0.50"/>
+      <stop offset="100%" stop-color="#DDCCFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Wide soft halo (dreaming glow) -->
+  <circle cx="120" cy="165" r="105" fill="url(#dpHalo)"/>
+  <!-- Planet sphere -->
+  <circle cx="120" cy="165" r="76" fill="url(#dpBody)" stroke="#1D3457" stroke-width="2.4"/>
+  <!-- Night-side swirl -->
+  <path d="M64 158 q30 -18 62 -4 q30 12 52 -10" fill="none" stroke="#6A4CC2" stroke-width="2" opacity="0.5"/>
+  <path d="M72 186 q34 8 74 -2" fill="none" stroke="#6A4CC2" stroke-width="1.8" opacity="0.4"/>
+
+  <!-- Companion — sleeping blob (a fluffy cloud creature).
+       All the state-swappable pieces live in <g> elements so
+       CSS classes on the outer wrapper can toggle visibility. -->
+  <g class="dp-companion" transform="translate(120 108)">
+    <!-- Body -->
+    <path d="M-30 26 q0 -32 30 -32 q30 0 30 32 q0 18 -12 22 l -36 0 q -12 -4 -12 -22 z"
+          fill="#B294FF" stroke="#1D3457" stroke-width="2.2" stroke-linejoin="round"/>
+    <!-- Fluff / hair -->
+    <path d="M-22 -6 q0 -22 22 -22 q22 0 22 22 q -4 -4 -8 -4 q-4 0 -6 4 q-2 -4 -8 -4 q-4 0 -6 4 q-2 -4 -8 -4 q-4 0 -8 4 z"
+          fill="#9670E8" stroke="#1D3457" stroke-width="1.8" stroke-linejoin="round"/>
+    <!-- Cheeks (always visible) -->
+    <circle cx="-14" cy="14" r="3.4" fill="#F4A9A0" opacity="0.85"/>
+    <circle cx="14"  cy="14" r="3.4" fill="#F4A9A0" opacity="0.85"/>
+
+    <!-- SLEEPING eyes (closed arc) -->
+    <g class="dp-eyes-sleeping">
+      <path d="M-14 4 q4 -6 8 0" fill="none" stroke="#1D3457" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6   4 q4 -6 8 0" fill="none" stroke="#1D3457" stroke-width="2.4" stroke-linecap="round"/>
+    </g>
+    <!-- STIRRING eyes (half-open) -->
+    <g class="dp-eyes-stirring">
+      <path d="M-14 4 q4 -3 8 0" fill="none" stroke="#1D3457" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6   4 q4 -3 8 0" fill="none" stroke="#1D3457" stroke-width="2.4" stroke-linecap="round"/>
+    </g>
+    <!-- WAKING / LOOKING / SMILING eyes (open circles) -->
+    <g class="dp-eyes-open">
+      <circle cx="-10" cy="4" r="4"   fill="#FFFFFF" stroke="#1D3457" stroke-width="1.8"/>
+      <circle cx="10"  cy="4" r="4"   fill="#FFFFFF" stroke="#1D3457" stroke-width="1.8"/>
+      <circle class="dp-pupil dp-pupil-l" cx="-9"  cy="4" r="2" fill="#1D3457"/>
+      <circle class="dp-pupil dp-pupil-r" cx="11"  cy="4" r="2" fill="#1D3457"/>
+      <circle cx="-9.5" cy="3" r="0.9" fill="#FFFFFF"/>
+      <circle cx="10.5" cy="3" r="0.9" fill="#FFFFFF"/>
+    </g>
+
+    <!-- Mouths -->
+    <!-- Sleeping small "o" -->
+    <ellipse class="dp-mouth-sleeping" cx="0" cy="18" rx="2" ry="1.4" fill="#1D3457"/>
+    <!-- Yawning open mouth (used in Stirring/Waking) -->
+    <path class="dp-mouth-yawn" d="M-5 18 q5 8 10 0 q0 -4 -5 -4 q-5 0 -5 4 z"
+          fill="#1D3457"/>
+    <!-- Smile -->
+    <path class="dp-mouth-smile" d="M-6 18 q6 6 12 0" fill="none" stroke="#1D3457" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Orbiting stars are added by dreamingPlanetManager into the
+       parent DOM (outside the SVG) so their orbit centre can hit
+       the planet centre in page space regardless of viewport. -->
+</svg>

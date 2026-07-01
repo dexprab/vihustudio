@@ -12,7 +12,8 @@
 <link rel="stylesheet" href="animations/motion.css">
 <link rel="stylesheet" href="css/scene.css">
 <link rel="stylesheet" href="hero/hero.css">
-<link rel="stylesheet" href="storyteller/storyteller.css">
+<link rel="stylesheet" href="planets/planets.css">
+<link rel="stylesheet" href="dreamingPlanet/dreamingPlanet.css">
 </head>
 <body>
 
@@ -31,43 +32,38 @@
   <rect width="100%" height="100%" filter="url(#paperGrain)"/>
 </svg>
 
-<!-- The single-viewport world. Four layers (.sky / .ground /
-     .foreground / UI). Chapter 2's storyteller cards mount inside
-     .foreground so the Chapter 1 world keeps living behind them. -->
+<!-- The single-viewport world. Four layers preserved from Chapter 1.
+     Chapter 2 adds the storyteller planets + the Dreaming Planet
+     inside .foreground so Chapter 1's .sky / .ground stay
+     completely untouched (canon: "The Chapter 1 world remains
+     untouched"). -->
 <main class="world">
 
-  <!-- Sky (~62%) — Chapter 1 layer. -->
   <section class="sky" aria-hidden="true">
     <div class="watercolor-sky"></div>
   </section>
 
-  <!-- Ground (~38%) — Chapter 1 layer. -->
   <section class="ground" aria-hidden="true">
     <div class="watercolor-ground"></div>
   </section>
 
-  <!-- Foreground — Chapter 2 storyteller host lives here. -->
-  <section class="foreground" aria-hidden="false">
-    <div class="storyteller-host" data-storyteller-host></div>
+  <!-- Foreground — Chapter 2 planets + Dreaming Planet live here. -->
+  <section class="foreground">
+    <div class="planets-host"          data-planets-host          aria-hidden="true"></div>
+    <div class="dreaming-planet-host"  data-dreaming-planet-host  aria-label="Dreaming Planet"></div>
   </section>
 
-  <!-- Logo — hand-drawn feeling, top centre. -->
   <header class="brand">
     <span class="brand-dot">✿</span>
     <span class="brand-word">VihuPlanet</span>
     <span class="brand-underline"></span>
   </header>
 
-  <!-- Parents entry — Chapter 2 UX Contract puts it bottom-centre so
-       it never competes with storyteller selection. Small. Secondary. -->
   <a class="parents-entry" href="#" role="button">
     <span class="parents-glyph" aria-hidden="true">👨</span>
     <span class="parents-label">Parents</span>
   </a>
 
-  <!-- Hero prompt — hidden at load; revealed after ~2.3s by
-       js/scene.js. Below the question sits a decorative underline
-       with a small warm star. -->
   <section class="hero" aria-live="polite">
     <p class="hero-prompt" data-hero-prompt hidden>
       Who&rsquo;s creating today?
@@ -85,16 +81,29 @@
 </main>
 
 <!-- Load order:
-     1. WorldObject.register()   — shared/worldObject.js
-     2. Chapter 1 registry       — js/registry.js
-     3. Storyteller.register()   — storyteller/storyteller.js
-     4. Chapter 2 registry       — storyteller/storytellerData.js
-     5. Scene bootstrap          — js/scene.js
+     Chapter 1:
+       1. WorldObject.register()   — shared/worldObject.js
+       2. Chapter 1 registry       — js/registry.js
+     Placeholder services (interfaces only):
+       3. RecognitionService / CompanionService / PlanetService
+     Chapter 2 storyteller planets:
+       4. Planet.register()        — planets/planets.js
+       5. Chapter 2 planet data    — planets/planetsData.js
+     Chapter 2 Dreaming Planet:
+       6. DreamingPlanet.register() — dreamingPlanet/dreamingPlanet.js
+       7. DreamingPlanetManager     — dreamingPlanet/dreamingPlanetManager.js
+     Scene bootstrap (last):
+       8. js/scene.js
 -->
 <script src="shared/worldObject.js"></script>
 <script src="js/registry.js"></script>
-<script src="storyteller/storyteller.js"></script>
-<script src="storyteller/storytellerData.js"></script>
+<script src="shared/services/RecognitionService.js"></script>
+<script src="shared/services/CompanionService.js"></script>
+<script src="shared/services/PlanetService.js"></script>
+<script src="planets/planets.js"></script>
+<script src="planets/planetsData.js"></script>
+<script src="dreamingPlanet/dreamingPlanet.js"></script>
+<script src="dreamingPlanet/dreamingPlanetManager.js"></script>
 <script src="js/scene.js"></script>
 </body>
 </html>
