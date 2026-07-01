@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Vihaan">
+  <defs>
+    <radialGradient id="vihaanSky" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#D9EDFF"/>
+      <stop offset="100%" stop-color="#5FB3FF"/>
+    </radialGradient>
+  </defs>
+  <!-- Backdrop tint -->
+  <circle cx="60" cy="60" r="58" fill="url(#vihaanSky)"/>
+  <!-- Neck + shoulders -->
+  <path d="M20 118 q10 -22 40 -22 q30 0 40 22 z" fill="#5FB3FF" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M45 100 q15 6 30 0 v -8 h -30 z" fill="#F2C79A" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Face -->
+  <ellipse cx="60" cy="70" rx="26" ry="30" fill="#F4CEA0" stroke="#1D3457" stroke-width="2.4"/>
+  <!-- Hair -->
+  <path d="M34 60 q4 -30 26 -32 q22 2 26 30 q0 -4 -2 -6 q-8 -12 -24 -12 q-16 0 -24 12 q-2 2 -2 8 z"
+        fill="#2B1E17" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Hair tuft -->
+  <path d="M60 34 q6 -8 12 -4 q -2 4 -8 8 z" fill="#2B1E17"/>
+  <!-- Eyes -->
+  <path d="M48 72 q3 -4 6 0" fill="none" stroke="#1D3457" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M66 72 q3 -4 6 0" fill="none" stroke="#1D3457" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <ellipse cx="48" cy="84" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.75"/>
+  <ellipse cx="72" cy="84" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.75"/>
+  <!-- Smile -->
+  <path d="M52 88 q8 6 16 0" fill="none" stroke="#1D3457" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

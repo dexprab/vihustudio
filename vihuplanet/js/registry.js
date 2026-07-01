@@ -92,10 +92,13 @@
     label: 'Rocket',
     assetHref: 'assets/objects/rocket.svg',
     layer: 'sky',
-    placement: { top: '20vh', left: '0vw', width: '78px', height: '140px' },
+    placement: { top: '4vh', left: '0vw', width: '72px', height: '130px' },
     motion: {
-      category: 'Journey', name: 'glide', duration: '22s', delay: '-4s',
-      params: { '--vp-glide-tilt': '-18deg', '--vp-glide-drop': '2vh' }
+      // Rocket climbs at a steeper tilt now that the hero prompt sits
+      // in the sky's middle band. The negative delay keeps it visible
+      // in the top-left corner at capture time.
+      category: 'Journey', name: 'glide', duration: '26s', delay: '-6s',
+      params: { '--vp-glide-tilt': '-28deg', '--vp-glide-drop': '-1vh' }
     }
   });
 

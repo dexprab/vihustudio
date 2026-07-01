@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VihuPlanet</title>
 
-<!-- Handwritten typography — bundled locally. No CDN dependency. -->
+<!-- Handwritten + rounded typography — bundled locally. -->
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="animations/motion.css">
 <link rel="stylesheet" href="css/scene.css">
 <link rel="stylesheet" href="hero/hero.css">
+<link rel="stylesheet" href="storyteller/storyteller.css">
 </head>
 <body>
 
@@ -30,25 +31,25 @@
   <rect width="100%" height="100%" filter="url(#paperGrain)"/>
 </svg>
 
-<!-- The single-viewport world. The four layers (.sky / .ground /
-     .foreground / UI) are the mount points every registered
-     WorldObject lands on. No scrolling. -->
+<!-- The single-viewport world. Four layers (.sky / .ground /
+     .foreground / UI). Chapter 2's storyteller cards mount inside
+     .foreground so the Chapter 1 world keeps living behind them. -->
 <main class="world">
 
-  <!-- Sky (~62%) — watercolor wash + every sky WorldObject. -->
+  <!-- Sky (~62%) — Chapter 1 layer. -->
   <section class="sky" aria-hidden="true">
     <div class="watercolor-sky"></div>
   </section>
 
-  <!-- Ground (~38%) — watercolor + hills + flowers + telescope. -->
+  <!-- Ground (~38%) — Chapter 1 layer. -->
   <section class="ground" aria-hidden="true">
     <div class="watercolor-ground"></div>
   </section>
 
-  <!-- Foreground reserved for future landmarks that need to sit
-       above the horizon. Empty in Chapter 1 but declared so a
-       future descriptor can target layer: 'foreground'. -->
-  <section class="foreground" aria-hidden="true"></section>
+  <!-- Foreground — Chapter 2 storyteller host lives here. -->
+  <section class="foreground" aria-hidden="false">
+    <div class="storyteller-host" data-storyteller-host></div>
+  </section>
 
   <!-- Logo — hand-drawn feeling, top centre. -->
   <header class="brand">
@@ -57,7 +58,8 @@
     <span class="brand-underline"></span>
   </header>
 
-  <!-- Parents entry — small, minimal, top-right. -->
+  <!-- Parents entry — Chapter 2 UX Contract puts it bottom-centre so
+       it never competes with storyteller selection. Small. Secondary. -->
   <a class="parents-entry" href="#" role="button">
     <span class="parents-glyph" aria-hidden="true">👨</span>
     <span class="parents-label">Parents</span>
@@ -65,7 +67,7 @@
 
   <!-- Hero prompt — hidden at load; revealed after ~2.3s by
        js/scene.js. Below the question sits a decorative underline
-       with a small warm star, per the Visual Contract. -->
+       with a small warm star. -->
   <section class="hero" aria-live="polite">
     <p class="hero-prompt" data-hero-prompt hidden>
       Who&rsquo;s creating today?
@@ -83,11 +85,16 @@
 </main>
 
 <!-- Load order:
-     1. WorldObject.register() gets defined by shared/worldObject.js
-     2. registry.js declares every Chapter 1 world object
-     3. scene.js mounts, arms motion, reveals hero prompt -->
+     1. WorldObject.register()   — shared/worldObject.js
+     2. Chapter 1 registry       — js/registry.js
+     3. Storyteller.register()   — storyteller/storyteller.js
+     4. Chapter 2 registry       — storyteller/storytellerData.js
+     5. Scene bootstrap          — js/scene.js
+-->
 <script src="shared/worldObject.js"></script>
 <script src="js/registry.js"></script>
+<script src="storyteller/storyteller.js"></script>
+<script src="storyteller/storytellerData.js"></script>
 <script src="js/scene.js"></script>
 </body>
 </html>

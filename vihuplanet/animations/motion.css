@@ -191,13 +191,53 @@
 }
 
 /* ============================================================== */
-/* CATEGORY 4 · CELEBRATION — reserved for M0.3+                  */
+/* CATEGORY 4 · CELEBRATION — first entries land in Chapter 2      */
 /* ============================================================== */
 
-/* Placeholder — no motions ship in M0.1. Sprint M0.3 (Publishing
- * celebration) + Sprint M1.x (landmark unlock) fill in
- * sparkle-burst, confetti-rise, orbit-out. Keeping the section
- * declared here means future keyframes have a home. */
+/* select-pulse — soft heartbeat scale + glow on the selected
+ * storyteller card. Sits inside Celebration because it fires ONLY
+ * as a response to a joyful moment (a child picking their
+ * storyteller). Runs for as long as the selection persists. */
+@keyframes vp-select-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 4px var(--st-color), 0 0 0 14px color-mix(in srgb, var(--st-color) 22%, transparent), 0 10px 24px rgba(29,52,87,0.16); }
+  50%      { transform: scale(1.03); box-shadow: 0 0 0 4px var(--st-color), 0 0 0 22px color-mix(in srgb, var(--st-color) 30%, transparent), 0 12px 30px rgba(29,52,87,0.22); }
+}
+.select-pulse {
+  animation: vp-select-pulse 1.6s ease-in-out infinite both;
+}
+
+/* ============================================================== */
+/* CATEGORY 3.b · JOURNEY — additions for Chapter 2               */
+/* ============================================================== */
+
+/* zoom-out — the whole world zooms in slightly and fades, the way
+ * a story-book page turns to reveal what's next. Used by the
+ * transition from storyteller selection into the placeholder that
+ * stands in for Chapter 3 until Bookshelf lands. */
+@keyframes vp-zoom-out {
+  from { transform: scale(1);    opacity: 1; filter: blur(0); }
+  to   { transform: scale(1.12); opacity: 0; filter: blur(2px); }
+}
+.zoom-out {
+  animation-name: vp-zoom-out;
+  animation-duration: var(--vp-motion-duration, 1.6s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* fade-out — quiet exit for the Chapter 3 placeholder so the child
+ * lands back on a live world if they linger. */
+@keyframes vp-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.98); }
+}
+.fade-out {
+  animation-name: vp-fade-out;
+  animation-duration: var(--vp-motion-duration, 0.8s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
 
 /* ============================================================== */
 /* accessibility                                                  */
@@ -205,7 +245,10 @@
 @media (prefers-reduced-motion: reduce) {
   .twinkle, .drift, .float, .breathe,
   .drawn-in, .warm-in, .settle,
-  .glide, .sail, .drift-long {
+  .glide, .sail, .drift-long,
+  .select-pulse, .zoom-out, .fade-out {
     animation: none !important;
   }
+  .storyteller-card.is-selected .storyteller-avatar { animation: none !important; }
+  body.storyteller-transitioning .world { animation: none !important; }
 }

@@ -3,25 +3,36 @@
 The entrance to a universe.
 
 This is **not** VihuStudio. VihuStudio is one of several destinations
-inside VihuPlanet; a future sprint (M1.x) plugs it in as one landmark
-alongside others.
+that will live inside VihuPlanet; a future chapter plugs it in as one
+landmark alongside others.
 
-## Chapter 1 — World Foundation
+- **MEP Version:** see [`BUILD.md`](BUILD.md)
+- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md)
+- **Evidence packets:** [`evidence/`](evidence)
 
-The first thing a child sees when they arrive: a hand-drawn
-sketchbook world that lives on its own before they touch anything.
-See `chapter-1-evidence/README.md` for the full delivery notes,
-architecture decisions, motion implementation, and known
-limitations.
+## Chapters
+
+- [x] **Chapter 1 — Hero World Foundation.** A single-viewport
+      hand-drawn sketchbook world that lives on its own before the
+      child interacts with anything. Evidence:
+      [`evidence/chapter-01/README.md`](evidence/chapter-01/README.md).
+- [x] **Chapter 2 — Storyteller Selection.** The child chooses who
+      is creating today. Chapter 1 world stays alive behind the
+      storyteller row. Evidence:
+      [`evidence/chapter-02/README.md`](evidence/chapter-02/README.md).
+- [ ] **Chapter 3 — My Bookshelf.**
 
 ## Structure
 
 ```
 vihuplanet/
 ├── index.html               single-viewport entrance
+├── BUILD.md                 MEP version + completed / upcoming chapters
+├── CHANGELOG.md             per-chapter changelog
 ├── assets/
 │   ├── fonts/               bundled locally — no CDN dependency
-│   └── objects/             one SVG per World Object
+│   ├── objects/             one SVG per Chapter 1 World Object
+│   └── avatars/             one SVG per Chapter 2 storyteller
 ├── animations/
 │   └── motion.css           WorldMotion vocabulary (Living / Greeting
 │                            / Journey / Celebration)
@@ -31,33 +42,46 @@ vihuplanet/
 ├── hero/
 │   └── hero.css             hero prompt styling
 ├── shared/
-│   └── worldObject.js       registry + mount system
+│   └── worldObject.js       Chapter 1 registry + mount system
+├── storyteller/
+│   ├── storyteller.js       Chapter 2 registry + StorytellerManager
+│   ├── storytellerData.js   storyteller descriptors
+│   └── storyteller.css      Chapter 2 card styling
 ├── js/
-│   ├── registry.js          M0.1 World Object descriptors
+│   ├── registry.js          Chapter 1 World Object descriptors
 │   └── scene.js             boot → mount → arm motion → reveal prompt
-└── docs/
-    └── m0.1-evidence/       screenshots + short clip
+│                            → mount storytellers
+└── evidence/
+    ├── chapter-01/          Chapter 1 evidence + README
+    └── chapter-02/          Chapter 2 evidence + README
 ```
 
-## Two systems worth knowing
+## Two systems that grow the world
 
-**World Objects** (`shared/worldObject.js`, `js/registry.js`).
-Every visible thing in the world (moon, stars, clouds, rocket, paper
-plane, tufts, telescope, and every future landmark) is a **World
-Object**: a descriptor that pairs an SVG asset with placement +
-motion metadata. Adding a new landmark in a future sprint is
-`WorldObject.register({...})` and nothing else.
+**WorldObject** (`shared/worldObject.js`, `js/registry.js`). Every
+visible thing that lives in Chapter 1 is a `WorldObject.register({...})`
+descriptor. Adding a new landmark in a future chapter is one
+`register()` call — no HTML shuffling, no CSS refactor.
 
 **WorldMotion** (`animations/motion.css`). Motion is a shared
-vocabulary, not per-object CSS. Four categories:
+vocabulary that grows with the world:
 
 - **Living** — always on. `twinkle`, `drift`, `float`, `breathe`.
 - **Greeting** — arrival + reveal. `drawn-in`, `warm-in`, `settle`.
-- **Journey** — long traversals. `glide`, `sail`, `drift-long`.
-- **Celebration** — reserved for M0.3+ (empty in M0.1).
+- **Journey** — long traversals + transitions. `glide`, `sail`,
+  `drift-long`, `zoom-out`, `fade-out`.
+- **Celebration** — first entry lands in Chapter 2:
+  `select-pulse`.
 
-An object joins by declaring its category + name; the scene
-bootstrap does the class arithmetic.
+Chapters extend these systems rather than replace them.
+
+## Chapter 2 addition — Storyteller
+
+Storyteller is a new sibling to WorldObject. Same registry pattern,
+different scope: each storyteller is a
+`Storyteller.register({ id, name, avatar, themeColor, accent, enabled })`
+descriptor. Adding a new storyteller in a future chapter is one
+more entry in `storyteller/storytellerData.js`.
 
 ## Running
 

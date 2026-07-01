@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Myra">
+  <defs>
+    <radialGradient id="myraSky" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#FFE0EC"/>
+      <stop offset="100%" stop-color="#FF7BA7"/>
+    </radialGradient>
+  </defs>
+  <!-- Backdrop tint -->
+  <circle cx="60" cy="60" r="58" fill="url(#myraSky)"/>
+  <!-- Neck + shoulders -->
+  <path d="M20 118 q10 -22 40 -22 q30 0 40 22 z" fill="#FF7BA7" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M45 100 q15 6 30 0 v -8 h -30 z" fill="#F2C79A" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Face -->
+  <ellipse cx="60" cy="70" rx="26" ry="30" fill="#F4CEA0" stroke="#1D3457" stroke-width="2.4"/>
+  <!-- Long dark hair falling on the sides -->
+  <path d="M32 62 q0 -32 28 -34 q28 2 28 34 l -2 34 q-4 -6 -6 -22 l-2 4 l-2 -6 l-2 6 l-2 -6 l-2 6 l-2 -8
+           l-8 0 l -2 8 l-2 -6 l-2 6 l-2 -6 l-2 6 l-2 -4 q-2 16 -6 22 z"
+        fill="#3A241A" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Red headband -->
+  <path d="M32 56 q28 -12 56 0 l0 6 q-28 -10 -56 0 z" fill="#E4433D" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="42" cy="55" r="2" fill="#F7F2E7"/>
+  <circle cx="60" cy="52" r="2" fill="#F7F2E7"/>
+  <circle cx="78" cy="55" r="2" fill="#F7F2E7"/>
+  <!-- Eyes -->
+  <path d="M48 74 q3 -4 6 0" fill="none" stroke="#1D3457" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M66 74 q3 -4 6 0" fill="none" stroke="#1D3457" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <ellipse cx="48" cy="86" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.8"/>
+  <ellipse cx="72" cy="86" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.8"/>
+  <!-- Smile -->
+  <path d="M52 90 q8 6 16 0" fill="none" stroke="#1D3457" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

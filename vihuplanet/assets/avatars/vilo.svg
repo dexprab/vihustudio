@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Vilo">
+  <defs>
+    <radialGradient id="viloSky" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#EEE1FF"/>
+      <stop offset="100%" stop-color="#9B7BFF"/>
+    </radialGradient>
+  </defs>
+  <!-- Backdrop tint -->
+  <circle cx="60" cy="60" r="58" fill="url(#viloSky)"/>
+  <!-- Body / lower half -->
+  <path d="M18 118 q10 -30 42 -30 q32 0 42 30 z" fill="#B294FF" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Head -->
+  <path d="M28 66 q0 -34 32 -34 q32 0 32 34 q0 26 -32 26 q-32 0 -32 -26 z"
+        fill="#B294FF" stroke="#1D3457" stroke-width="2.4" stroke-linejoin="round"/>
+  <!-- Horns -->
+  <path d="M40 34 q-4 -14 4 -18 q4 8 4 18 z" fill="#8267C9" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M80 34 q-4 -14 4 -18 q4 8 4 18 z" fill="#8267C9" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Belly patch -->
+  <path d="M40 90 q20 12 40 0 q-4 12 -20 12 q-16 0 -20 -12 z" fill="#EAD8FF" opacity="0.9"/>
+  <!-- Eyes -->
+  <circle cx="48" cy="66" r="7" fill="#FFFFFF" stroke="#1D3457" stroke-width="2"/>
+  <circle cx="72" cy="66" r="7" fill="#FFFFFF" stroke="#1D3457" stroke-width="2"/>
+  <circle cx="49" cy="67" r="3.2" fill="#1D3457"/>
+  <circle cx="73" cy="67" r="3.2" fill="#1D3457"/>
+  <circle cx="47" cy="65" r="1.2" fill="#FFFFFF"/>
+  <circle cx="71" cy="65" r="1.2" fill="#FFFFFF"/>
+  <!-- Cheeks -->
+  <ellipse cx="42" cy="80" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.75"/>
+  <ellipse cx="78" cy="80" rx="4" ry="2.6" fill="#F4A9A0" opacity="0.75"/>
+  <!-- Smile with a small tooth -->
+  <path d="M50 82 q10 10 20 0" fill="none" stroke="#1D3457" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M60 82 l-2 5 l4 0 z" fill="#FFFFFF" stroke="#1D3457" stroke-width="1.4" stroke-linejoin="round"/>
+</svg>

@@ -7,8 +7,11 @@
  * prompt — for now this file only owns the prompt itself. */
 
 .hero {
+  /* Sprint 2: raised to 38 % so the storyteller row at 62 vh has
+   * comfortable clearance below. Chapter 1 alone (without cards)
+   * still reads well because the sky continues below the prompt. */
   position: absolute;
-  top: 50%;
+  top: 38%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
