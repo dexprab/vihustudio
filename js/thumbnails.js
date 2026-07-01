@@ -23,11 +23,16 @@ const ThumbnailEngine=(function(){
 
     queue = queue.then(()=> new Promise((resolve)=>{
       try{
-        const w = previewCanvas.width || previewCanvas.clientWidth || 1080;
-        const h = previewCanvas.height || previewCanvas.clientHeight || 1350;
+        // Sprint 9.0.2 — WYSIWYE. Read the canonical logical size from
+        // the renderer (1080 × 1350) instead of the DPR-scaled backing
+        // store on `previewCanvas`, and render at dpr:1 so the temp
+        // bitmap stays predictably 1080 × 1350 for the thumb downscale.
+        const canon=(typeof SlideRenderer.getCanvasSize==='function')
+          ? SlideRenderer.getCanvasSize() : {w:1080,h:1350};
+        const w=canon.w, h=canon.h;
         const temp=document.createElement('canvas'); temp.width=w; temp.height=h;
 
-        SlideRenderer.init(temp);
+        SlideRenderer.init(temp,{dpr:1});
 
         // Sprint 6.4 — WYSIWYE. Resolve via the shared helper so the
         // thumbnail is a faithful miniature of the preview / export.

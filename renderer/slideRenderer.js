@@ -58,9 +58,28 @@ const SlideRenderer=(()=>{
     return theme.frame.color;
   }
 
-  function init(cv){
-    c=cv; c.width=W; c.height=H;
+  // Sprint 9.0.2 — WYSIWYE. `init` now takes an optional `opts` bag
+  // whose `dpr` key controls the canvas backing store scale. Editor
+  // and Publish Read canvases pass `window.devicePixelRatio` (default)
+  // so what the child sees on screen is drawn at native pixel density —
+  // no more CSS-downscale softness. Export paths (Publish Studio's PDF
+  // render loop, thumbnails) pass `{dpr: 1}` because their toDataURL
+  // output should stay 1080 × 1350 pixels flat. The renderer continues
+  // to draw in the fixed 1080 × 1350 coordinate space regardless of
+  // dpr thanks to the setTransform below, so no downstream renderer
+  // code needs to change.
+  function init(cv, opts){
+    c=cv;
+    const dpr=(opts && typeof opts.dpr==='number' && opts.dpr>0)
+      ? opts.dpr
+      : ((typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1);
+    c.width=Math.round(W*dpr);
+    c.height=Math.round(H*dpr);
     x=c.getContext('2d');
+    // Draw in canonical 1080 × 1350 coordinates; DPR scaling is baked
+    // into the transform once, so `x.fillRect(0,0,W,H)` still covers
+    // the full page regardless of backing store size.
+    try{ x.setTransform(dpr,0,0,dpr,0,0); }catch(e){}
     // Sprint 6.3 — Chromium defaults imageSmoothingQuality to 'low' which
     // smudges fine pencil strokes when the renderer downscales scans
     // into the image-holder. Set to 'high' so the single resampling step
@@ -1057,6 +1076,13 @@ const SlideRenderer=(()=>{
   // Public: panel rect in canvas coordinates — consumed by canvas pan handler.
   function getPanelRect(){ return {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
+  // Sprint 9.0.2 — WYSIWYE. Canonical canvas size in *logical* pixels
+  // (the coordinate space every downstream renderer / hit-tester uses,
+  // regardless of DPR-scaled backing store). Hit-testing on the editor
+  // canvas divides mouse events by this rather than by `canvas.width`,
+  // which is now `W * dpr` on HiDPI displays.
+  function getCanvasSize(){ return {w:W, h:H}; }
+
   function _drawHandle(theme,opts,overrides,handleText){
     if(opts.handleVisibility==='hide') return null;
     const text=(typeof handleText==='string' && handleText.length>0) ? handleText : '@vihuplanet';
@@ -1379,7 +1405,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
+  const api={init,render,buildPayload,getPanelRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -781,8 +781,16 @@ let _panState=null;
 
 function _canvasCoords(e){
   const rect=previewCanvas.getBoundingClientRect();
-  const sx=previewCanvas.width/rect.width;
-  const sy=previewCanvas.height/rect.height;
+  // Sprint 9.0.2 — WYSIWYE. The canvas backing store is now DPR-scaled
+  // (`W * dpr × H * dpr`) so `previewCanvas.width` is no longer the
+  // logical canvas width. Hit-testing must run in the renderer's
+  // canonical 1080 × 1350 coordinate space instead, otherwise a click
+  // on a HiDPI display would be scaled 2× and land in the wrong place.
+  const canonical=(typeof SlideRenderer.getCanvasSize==='function')
+    ? SlideRenderer.getCanvasSize()
+    : {w:previewCanvas.width, h:previewCanvas.height};
+  const sx=canonical.w/rect.width;
+  const sy=canonical.h/rect.height;
   return {
     x:(e.clientX-rect.left)*sx,
     y:(e.clientY-rect.top)*sy,

@@ -556,7 +556,12 @@ const PublishStudio=(function(){
     off.height=PDF_RENDER_H;
     const editorCanvas=document.getElementById('previewCanvas');
     try{
-      SlideRenderer.init(off);
+      // Sprint 9.0.2 — WYSIWYE. Force dpr:1 for the PDF render so the
+      // JPEG toDataURL emits a flat 1080×1350 bitmap (the target size
+      // PdfWriter expects). Without this, HiDPI displays would emit a
+      // 2160×2700 JPEG that quadruples the PDF file size for no gain
+      // in a 540×675 pt page.
+      SlideRenderer.init(off,{dpr:1});
       const titleEl=document.getElementById('bookTitle');
       const payload=SlideRenderer.buildPayload(slide,{
         page: idx+1,
@@ -565,6 +570,8 @@ const PublishStudio=(function(){
       });
       SlideRenderer.render(payload);
     }catch(e){}
+    // Rebind the editor canvas so the editor picks up whatever DPR
+    // the browser reports — the DPR default keeps the editor sharp.
     try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
 
     // Encode as JPEG and stash for the PDF builder.
