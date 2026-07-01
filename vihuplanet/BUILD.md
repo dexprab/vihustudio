@@ -1,26 +1,32 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.3.0**
+MEP Version: **0.3.5**
 
 ## Completed
 
 - ✔ Chapter 1 — Hero World Foundation
 - ✔ Chapter 2 — The Dreaming Planet
+- ✔ Chapter 2.5 — Art Direction v1.0 (permanent visual identity)
 
 ## Upcoming
 
 - Chapter 3A — Returning Home  (path: *"I already have a planet."*)
 - Chapter 3B — Getting to Know You  (path: *"Yes, I'd love to!"*)
 
+Every chapter after 2.5 must inherit the visual language established in
+Art Direction v1.0. See `artDirection/illustrationRules.js` and
+`evidence/chapter-02.5/README.md`.
+
 ## Shared systems live at HEAD
 
 | System            | Where                                                     | Notes                                                          |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|
+| ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
 | WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object.             |
 | WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`. |
-| Planet            | `planets/planets.js` + `planets/planetsData.js`           | Storyteller planet registry + PlanetsManager.mount().          |
-| DreamingPlanet    | `dreamingPlanet/dreamingPlanet.js` + `.../dreamingPlanetManager.js` | Singular Dreaming Planet + wake sequence + invitation dialogue + three choice paths. |
-| Font stack        | `assets/fonts/`                                           | Caveat, Kalam (Chapter 1); Nunito Rounded (Chapter 2 UI). Local, no CDN. |
+| Planet            | `planets/planets.js` + `planets/planetsData.js`           | Storyteller planet registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. |
+| DreamingPlanet    | `dreamingPlanet/dreamingPlanet.js` + `.../dreamingPlanetManager.js` | Singular Dreaming Planet + wake sequence + invitation dialogue + three choice paths. Dialogue is sky-caption (no bubble). |
+| Font stack        | `assets/fonts/`                                           | Caveat + Kalam. Nunito Rounded is retired from Chapter 1/2 surfaces — the world speaks in one hand. |
 | Layers            | `.sky` / `.ground` / `.foreground`                        | Declared in `index.html`; Chapter 2 mounts inside `.foreground`. |
 | Placeholder services | `shared/services/`                                      | RecognitionService · CompanionService · PlanetService. Interfaces only. |
 
@@ -36,6 +42,10 @@ MEP Version: **0.3.0**
 - Every technical action must become a magical interaction.
 - Adults appear only when the real world requires them.
 - Illustration before interface. Play before purpose. Curiosity before instruction.
+- **The universe existed long before the Explorer arrived and will continue living long after they leave.**
+- **Companions are independent inhabitants, not mascots. They are rarely front-facing.**
+- **Wonder before action. Observation before interaction.**
+- **Every chapter after 2.5 inherits Art Direction v1.0 verbatim.**
 
 ## Enhancements deferred
 
@@ -47,3 +57,4 @@ MEP Version: **0.3.0**
 
 - `evidence/chapter-01/` — Chapter 1 World Foundation captures + README.
 - `evidence/chapter-02/` — Chapter 2 Dreaming Planet captures + README.
+- `evidence/chapter-02.5/` — Art Direction v1.0 study + README (permanent).

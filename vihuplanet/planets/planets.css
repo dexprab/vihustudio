@@ -1,59 +1,78 @@
-/* planets host — fills the foreground and lets each descendent
- * planet position itself absolutely per its descriptor. */
+/* planets.css — Art Direction v1.0.
+ *
+ * Storyteller planets are floating landmasses (Concept C
+ * structure) with visible geography and a companion going about
+ * their day. Labels are pencilled narration in the sky, near the
+ * planet but never on it — text belongs to the illustrator's
+ * hand, not to a caption card.
+ *
+ * Descriptor.depth = 'foreground' | 'midground' | 'background'
+ * controls the atmospheric ramp per the artDirection rules.
+ */
+
 .planets-host {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-/* planets.css — Chapter 2 storyteller planets.
- *
- * Each planet is a small floating world with:
- *   - the planet + companion SVG
- *   - a hand-lettered storyteller name
- *   - a one-line story teaser
- *
- * Placement + drift motion come from the descriptor + the shared
- * WorldMotion class .planet-drift. This file only owns the label
- * chrome and the settle-in delay stagger. */
-
 .storyteller-planet {
   position: absolute;
-  z-index: 5;                 /* above the sky watercolor + Chapter 1 clouds */
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   pointer-events: none;
-  /* Custom property `--vp-settle-delay` is set per instance by the
-   * manager so every planet lands staggered. */
   animation-delay: var(--vp-settle-delay, 0s);
 }
 .storyteller-planet svg {
   display: block;
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 6px 14px rgba(29,52,87,0.14));
+  /* Softer drop-shadow — a page-shadow, not a UI shadow. */
+  filter: drop-shadow(0 4px 8px rgba(30,40,66,0.10));
 }
 
+/* ---- Atmospheric depth ramp (Art Direction v1.0) --------------- */
+/* Background planets sit softer and cooler; midground reads
+ * present but calm; foreground is reserved for later chapters. */
+.storyteller-planet.depth-background {
+  opacity: 0.62;
+  filter: drop-shadow(0 3px 6px rgba(30,40,66,0.08)) blur(0.3px);
+  transform: scale(0.92);
+}
+.storyteller-planet.depth-midground {
+  opacity: 0.94;
+}
+.storyteller-planet.depth-foreground {
+  opacity: 1;
+}
+
+/* ---- Label — pencilled narration ----------------------------- */
 .storyteller-planet-label {
   text-align: center;
   color: var(--vp-ink);
-  font-family: 'Nunito', system-ui, sans-serif;
-  line-height: 1.15;
   padding: 0 4px;
-  max-width: 200px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+  max-width: 180px;
+  line-height: 1.2;
+  /* No card, no background, no border — just handwriting on the
+   * page. The paper grain reads through. */
 }
 .storyteller-planet-name {
-  font-weight: 700;
-  font-size: 15px;
+  font-family: 'Caveat', 'Segoe Script', cursive;
+  font-weight: 500;
+  font-size: 20px;
   letter-spacing: 0.2px;
+  color: var(--vp-ink);
+  opacity: 0.78;
 }
 .storyteller-planet-teaser {
   font-family: 'Caveat', 'Segoe Script', cursive;
-  font-weight: 500;
+  font-weight: 400;
   font-size: 15px;
-  opacity: 0.82;
-  margin-top: 2px;
+  color: var(--vp-ink);
+  opacity: 0.62;
+  margin-top: 1px;
+  font-style: italic;
 }

@@ -2,16 +2,16 @@
   <!-- Curly dashed trail — sits BEHIND the plane (left side, from
        where the plane came), matching the Visual Contract. -->
   <path d="M2 68 q22 -22 44 -8 q22 14 44 -6 q14 -14 36 -6"
-        fill="none" stroke="#1D3457" stroke-width="1.6"
+        fill="none" stroke="#1E2842" stroke-width="1.6"
         stroke-linecap="round" stroke-dasharray="2 6" opacity="0.6"/>
 
   <!-- Origami paper plane. Nose points RIGHT (x=182, y=42). -->
   <!-- Top wing outline -->
   <path d="M182 42 L96 12 L120 42 Z"
-        fill="#FFFFFF" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+        fill="#FFFFFF" stroke="#1E2842" stroke-width="2" stroke-linejoin="round"/>
   <!-- Bottom wing outline -->
   <path d="M182 42 L96 12 L100 60 L120 42 Z"
-        fill="#F7F2E7" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
+        fill="#F7F2E7" stroke="#1E2842" stroke-width="2" stroke-linejoin="round"/>
   <!-- Fold line down the middle -->
-  <path d="M182 42 L120 42" stroke="#1D3457" stroke-width="1.6" fill="none"/>
+  <path d="M182 42 L120 42" stroke="#1E2842" stroke-width="1.6" fill="none"/>
 </svg>

@@ -1,41 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="Emma's planet">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" role="img" aria-label="Emma's planet">
   <defs>
-    <radialGradient id="emBody" cx="42%" cy="42%" r="65%">
-      <stop offset="0%"  stop-color="#C1EFDD"/>
-      <stop offset="55%" stop-color="#5FC0A0"/>
-      <stop offset="100%" stop-color="#2F7C68"/>
+    <radialGradient id="emIce" cx="45%" cy="55%" r="60%">
+      <stop offset="0%"   stop-color="#DDE7EE"/>
+      <stop offset="100%" stop-color="#7EB1CE"/>
     </radialGradient>
-    <radialGradient id="emHalo" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"  stop-color="#C1EFDD" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#C1EFDD" stop-opacity="0"/>
+    <radialGradient id="emEarth" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#4C6E76"/>
+      <stop offset="100%" stop-color="#2C4048"/>
+    </radialGradient>
+    <radialGradient id="emHalo" cx="50%" cy="55%" r="55%">
+      <stop offset="0%"   stop-color="#DDE7EE" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#DDE7EE" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <circle cx="100" cy="140" r="80" fill="url(#emHalo)"/>
-  <circle cx="100" cy="140" r="62" fill="url(#emBody)" stroke="#1D3457" stroke-width="2.2"/>
-  <!-- Iceberg patches -->
-  <path d="M56 132 q10 -12 24 -4 q10 6 -4 12 z"  fill="#FFFFFF" stroke="#1D3457" stroke-width="1.4" stroke-linejoin="round" opacity="0.75"/>
-  <path d="M118 128 q8 -8 22 -4 q6 6 -6 10 z"    fill="#FFFFFF" stroke="#1D3457" stroke-width="1.4" stroke-linejoin="round" opacity="0.75"/>
-  <path d="M76 170 q28 -8 60 4"  fill="none" stroke="#2F7C68" stroke-width="1.6" opacity="0.4"/>
-  <!-- Music note by the planet -->
-  <path d="M156 116 l0 -14 q6 0 6 4 q0 4 -3 6 l0 4 q3 0 3 3 q0 4 -6 4 q-2 0 -2 -2 z" fill="#F4D79A" stroke="#1D3457" stroke-width="1.2" stroke-linejoin="round"/>
 
-  <!-- Penguin companion on top -->
-  <!-- Body -->
-  <path d="M100 92 q0 -22 20 -22 q20 0 20 22 q0 12 -10 18 l -20 0 q -10 -6 -10 -18 z"
-        fill="#1D3457" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
-  <!-- White belly -->
-  <path d="M108 90 q12 8 24 0 q-4 20 -12 20 q-8 0 -12 -20 z" fill="#FFFFFF" stroke="#1D3457" stroke-width="1.6" stroke-linejoin="round"/>
-  <!-- Head - joined to body -->
-  <ellipse cx="120" cy="76" rx="18" ry="14" fill="#1D3457"/>
-  <path d="M108 76 q12 8 24 0" fill="#FFFFFF"/>
-  <!-- Eyes -->
-  <circle cx="114" cy="73" r="2.8" fill="#FFFFFF"/>
-  <circle cx="126" cy="73" r="2.8" fill="#FFFFFF"/>
-  <circle cx="114" cy="73" r="1.6" fill="#1D3457"/>
-  <circle cx="126" cy="73" r="1.6" fill="#1D3457"/>
-  <!-- Beak -->
-  <path d="M116 80 l4 4 l4 -4 l-4 -2 z" fill="#F0A060" stroke="#1D3457" stroke-width="1.2" stroke-linejoin="round"/>
-  <!-- Feet -->
-  <ellipse cx="112" cy="108" rx="5" ry="2" fill="#F0A060" stroke="#1D3457" stroke-width="1.2"/>
-  <ellipse cx="128" cy="108" rx="5" ry="2" fill="#F0A060" stroke="#1D3457" stroke-width="1.2"/>
+  <circle cx="110" cy="160" r="98" fill="url(#emHalo)"/>
+
+  <!-- Landmass — a wide flat ice plateau with a subtle rise. -->
+  <path d="M28 178
+           q0 -14 8 -18
+           q4 -18 20 -20
+           q10 -20 30 -18
+           q28 -12 46 -4
+           q22 -6 32 12
+           q26 4 22 26
+           q4 20 -10 24
+           q-8 12 -22 10
+           q-14 12 -30 8
+           q-24 8 -46 -2
+           q-22 6 -36 -4
+           q-16 -2 -18 -14
+           q-4 -4 4 -8 z"
+        fill="url(#emIce)" stroke="#1E2842" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <!-- Underside — dark shadow, dripping icicles -->
+  <path d="M50 194 q22 6 62 4 q30 -4 46 0 q-2 8 -18 12 q-30 4 -60 -2 q-20 -4 -30 -14 z"
+        fill="url(#emEarth)" opacity="0.55"/>
+  <path d="M80 214 l -2 8"  stroke="#1E2842" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M110 218 l -1 6" stroke="#1E2842" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M138 214 l -2 8" stroke="#1E2842" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Faint ice-crack lines across the plateau top -->
+  <path d="M52 160 q30 -6 60 0 q30 6 56 -4" fill="none" stroke="#1E2842" stroke-width="1.1" opacity="0.35"/>
+  <path d="M78 170 q28 4 60 -2" fill="none" stroke="#1E2842" stroke-width="1" opacity="0.28"/>
+
+  <!-- Lone piano bench — small wooden rectangle raised on two legs -->
+  <rect x="108" y="132" width="30" height="6" fill="#8E7551" stroke="#1E2842" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M112 138 l 0 12" stroke="#1E2842" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M134 138 l 0 12" stroke="#1E2842" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- The penguin — SITTING ON THE BENCH FROM BEHIND, one wing
+       lightly raised. We see her back and a hint of one flipper. -->
+  <!-- Body (dark navy silhouette from behind) -->
+  <path d="M110 132 q4 -22 14 -22 q10 0 14 22 z"
+        fill="#1E2842" stroke="#1E2842" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Wing lifted slightly -->
+  <path d="M136 118 q4 -2 6 -8 q0 8 -4 12 z"
+        fill="#1E2842" stroke="#1E2842" stroke-width="1.2" stroke-linejoin="round"/>
+  <!-- Head cap -->
+  <path d="M118 112 q6 -6 12 -6 q6 0 8 6 z"
+        fill="#1E2842"/>
+  <!-- A single music note floating up and to the right — the ONE
+       warm mark in the composition. -->
+  <path d="M156 108 l 0 -14 q4 0 4 3 q0 3 -2 4 l 0 3 q2 0 2 2 q0 3 -4 3 q-1 0 -1 -1 z"
+        fill="#EBB47A" stroke="#1E2842" stroke-width="1.1" stroke-linejoin="round" opacity="0.9"/>
 </svg>

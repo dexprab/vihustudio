@@ -57,10 +57,18 @@
         wrap.classList.add(d.motion.name || 'planet-drift');
       }
       // Stagger the settle-in reveal so the row of planets lands
-      // one at a time.
-      wrap.style.setProperty('--vp-settle-delay', (idx * 0.18) + 's');
+      // one at a time. Art Direction v1.0 slows the stagger so
+      // planets appear in sequence rather than in a run.
+      wrap.style.setProperty('--vp-settle-delay', (idx * 0.35) + 's');
       wrap.classList.add('settle');
 
+      // Atmospheric depth per Art Direction v1.0. Background
+      // planets sit softer and farther; midground reads present;
+      // foreground is reserved (Chapter 3+ may use it).
+      if (d.depth) wrap.classList.add('depth-' + d.depth);
+
+      // Label is a small handwritten narration in the illustrator's
+      // pencil hand, floated near the planet. No caption card.
       wrap.innerHTML =
         svg +
         '<div class="storyteller-planet-label" aria-hidden="true">' +

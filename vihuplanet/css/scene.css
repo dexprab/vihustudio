@@ -27,19 +27,39 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 62%;
+  /* Extended past the notional 62% horizon so the apricot glow
+   * gradient reaches down into ground territory without being
+   * clipped by the sky's own box. */
+  height: 74%;
   z-index: 2;
 }
 
 .watercolor-sky {
   position: absolute;
   inset: 0;
-  /* Even blue wash from top down to the bottom of the sky layer,
-   * so the sky doesn't fade to cream before it meets the ground. */
+  /* Art Direction v1.0 · painterly timeless magic-hour sky.
+   * Warm apricot low + cool cerulean high, with cream paper
+   * always visible at the edges of the wash. Painted with
+   * gradient washes, not flat colour. */
   background:
-    radial-gradient(ellipse at 32% 18%, rgba(221,234,246,0.92) 0%, rgba(221,234,246,0.75) 45%, rgba(221,234,246,0.55) 100%),
-    linear-gradient(180deg, rgba(221,234,246,0.85) 0%, rgba(221,234,246,0.70) 70%, rgba(221,234,246,0.55) 100%);
+    radial-gradient(ellipse at 26% 12%, rgba(126,177,206,0.35) 0%, rgba(126,177,206,0.18) 45%, rgba(126,177,206,0.06) 90%),
+    radial-gradient(ellipse at 78% 88%, rgba(235,180,122,0.55) 0%, rgba(235,180,122,0.32) 45%, rgba(235,180,122,0.10) 85%),
+    linear-gradient(180deg, rgba(126,177,206,0.55) 0%, rgba(221,231,238,0.35) 55%, rgba(235,180,122,0.42) 100%);
   mix-blend-mode: multiply;
+}
+/* Faint painterly cloud wash on the mid-sky — hand-brushed streaks
+ * that catch the warm light. Kept very low so the cream paper reads
+ * through. */
+.watercolor-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 12% 40%, rgba(241,234,208,0.55) 0%, rgba(241,234,208,0) 60%),
+    radial-gradient(ellipse at 68% 26%, rgba(241,234,208,0.45) 0%, rgba(241,234,208,0) 55%),
+    radial-gradient(ellipse at 90% 60%, rgba(241,234,208,0.35) 0%, rgba(241,234,208,0) 55%);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
 }
 
 /* ---- Ground layer ------------------------------------------------- */
@@ -56,10 +76,18 @@
 .watercolor-ground {
   position: absolute;
   inset: 0;
-  /* Green wash across the full ground layer — no cream fade. */
+  /* Art Direction v1.0 · muted meadow wash. Top of the ground box
+   * is transparent so the sky's apricot horizon glow reads through;
+   * meadow-moss gains density toward the bottom. */
   background:
-    radial-gradient(ellipse at 25% 40%, rgba(191,225,198,0.75) 0%, rgba(191,225,198,0.55) 55%, rgba(191,225,198,0.45) 100%),
-    linear-gradient(180deg, rgba(191,225,198,0.55) 0%, rgba(156,207,166,0.75) 100%);
+    radial-gradient(ellipse 70% 60% at 24% 68%, rgba(183,203,166,0.55) 0%, rgba(183,203,166,0.24) 55%, rgba(183,203,166,0) 100%),
+    radial-gradient(ellipse 70% 60% at 82% 82%, rgba(124,156,111,0.50) 0%, rgba(124,156,111,0.22) 65%, rgba(124,156,111,0) 100%),
+    linear-gradient(180deg,
+      rgba(183,203,166,0)    0%,
+      rgba(183,203,166,0.08) 12%,
+      rgba(183,203,166,0.32) 36%,
+      rgba(124,156,111,0.55) 68%,
+      rgba(76,110,118,0.30)  100%);
   mix-blend-mode: multiply;
 }
 
@@ -122,78 +150,80 @@
 /* ---- Brand / logo ------------------------------------------------ */
 
 .brand {
+  /* Art Direction v1.0 · the logo belongs to the illustration.
+   * Smaller, quieter, drawn in the same pencil hand as the rest
+   * of the world. Sits in the top-left corner rather than
+   * dominating the centre. */
   position: absolute;
-  top: 3.6vh;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 3vh;
+  left: 3.4vw;
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 4px 12px;
+  gap: 6px;
+  padding: 0;
   z-index: 10;
   color: var(--vp-ink);
 }
 .brand-dot {
-  color: var(--vp-moon);
-  font-size: 20px;
-  transform: translateY(-2px);
-  text-shadow: 0 0 4px rgba(244,215,154,0.55);
+  color: var(--vp-candle);
+  font-size: 15px;
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 .brand-word {
   font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
-  font-weight: 700;
-  font-size: 44px;
+  font-weight: 500;
+  font-size: 30px;
   color: var(--vp-ink);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   line-height: 1;
+  opacity: 0.82;
 }
 .brand-underline {
   position: absolute;
-  left: 30px;
-  right: 8px;
-  bottom: -4px;
-  height: 6px;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 6' preserveAspectRatio='none'><path d='M2 3 q20 -4 40 0 t40 -1 t40 2 t40 -3 t36 2' fill='none' stroke='%231D3457' stroke-width='1.8' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
-  opacity: 0.68;
+  left: 22px;
+  right: 4px;
+  bottom: -3px;
+  height: 5px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 6' preserveAspectRatio='none'><path d='M2 3 q20 -4 40 0 t40 -1 t40 2 t40 -3 t36 2' fill='none' stroke='%231E2842' stroke-width='1.4' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
+  opacity: 0.55;
 }
 
 /* ---- Parents entry ----------------------------------------------- */
 
 .parents-entry {
-  /* Sprint 2 UX Contract: Parents entry is always available at the
-   * bottom. Small pill, secondary, never competes with storyteller
-   * selection above. */
+  /* Art Direction v1.0 · Parents is a whispered handwritten label
+   * in the bottom corner of the page. Not a pill, not a button —
+   * a small note in the same pencil hand as everything else. */
   position: absolute;
-  bottom: 3.6vh;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 3vh;
+  right: 3.4vw;
+  left: auto;
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: rgba(255,255,255,0.6);
-  border: 1px solid rgba(29,52,87,0.16);
-  border-radius: 999px;
-  font-family: 'Nunito', system-ui, sans-serif;
-  font-weight: 700;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-family: 'Kalam', 'Segoe Script', cursive;
+  font-weight: 400;
   font-size: 14px;
   color: var(--vp-ink);
   text-decoration: none;
-  opacity: 0.72;
-  transition: opacity 0.4s ease-in-out, background 0.4s ease-in-out, transform 0.4s ease-in-out;
+  opacity: 0.55;
+  transition: opacity 0.6s ease-in-out;
   z-index: 10;
-  backdrop-filter: blur(2px);
 }
 .parents-entry:hover,
 .parents-entry:focus-visible {
-  opacity: 1;
-  background: rgba(255,255,255,0.9);
-  transform: translateX(-50%) translateY(-2px);
+  opacity: 0.9;
   outline: none;
 }
 .parents-glyph {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1;
   transform: translateY(-1px);
-  opacity: 0.85;
+  opacity: 0.65;
 }

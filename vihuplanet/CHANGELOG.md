@@ -2,6 +2,69 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.5 — 2026-07-01
+
+- **Chapter 2.5 — Art Direction v1.0.** Locks the permanent visual
+  identity of VihuPlanet. Synthesis of the three concept studies:
+  **Concept C** for structural foundation (planets are landmasses,
+  depth ramp reads background → midground → foreground),
+  **Concept B** for emotional tone (patience, air, silence, back-
+  turned companions, sky-caption dialogue),
+  **Concept A** for illustration technique (watercolor washes with
+  pencil-ink outlines on cream sketchbook paper).
+- **Permanent palette locked** in `css/base.css`:
+  Paper `#F1EAD0` · Horizon Apricot `#EBB47A` · Sky Cerulean `#7EB1CE` ·
+  Ink `#1E2842` · Candle `#E8B871` · Moss `#7C9C6F` ·
+  Ember `#E4A455` · Dusk `#8E7CB0`. Any single scene draws from at
+  most **four** of these + paper.
+- **New module — `artDirection/illustrationRules.js`.** Documents
+  the permanent rules as a live global (`ArtDirection`) so future
+  chapters can read them at runtime instead of re-deriving them.
+- **Planets redrawn as landmasses.** Vihaan (mountain summit with
+  back-turned dragon watching the sky), Aarav (lone tree with
+  dragon in profile), Meera (tilted meadow with fox painting at
+  easel, tail arcing away), Emma (ice plateau with penguin at
+  piano bench, back turned), Dreaming (cloud-wrapped island with
+  companion inside a warm-window cottage). Companions are rarely
+  front-facing. The universe reads as existing without the
+  Explorer.
+- **Depth ramp.** `planets/planetsData.js` gains a `depth` field
+  (`background` / `midground` / `foreground`);
+  `planets/planets.css` applies opacity + micro-blur so distant
+  planets fall back and near planets step forward.
+- **Sky is now painterly.** `css/scene.css` replaces the flat
+  gradient with a warm-apricot low + cool-cerulean high wash that
+  lets cream paper read through.
+- **Dialogue becomes sky-caption.** `dreamingPlanet/dreamingPlanet.css`
+  removes bubble geometry entirely — no `::after` tail, no border,
+  no shadow. The companion's words float against the sky in Caveat.
+  Choice pills are pencilled ink outlines at low fill opacity.
+- **Hero prompt quieter.** `hero/hero.css` shrinks the prompt to
+  `clamp(22px, 2.4vw, 34px)` at 0.78 opacity and pulls the star-
+  flanked underline down to match.
+- **Brand + Parents entry recede.** Brand moves top-left in Caveat
+  30px 500 weight at 0.82 opacity; Parents entry becomes a small
+  bottom-right pencilled label at 0.55 opacity. The UI is now the
+  world's quietest layer.
+- **Ambient objects repalletted.** Moon (mascot face removed;
+  crescent shadow + craters instead), rocket, star, flower, hills,
+  telescope, cloud, paper plane — all now speak in the permanent
+  palette with `#1E2842` ink lines.
+- **Font stack narrowed.** Nunito Rounded is retired from Chapter 1
+  and Chapter 2 surfaces. Caveat + Kalam only. "The world speaks
+  in one hand."
+- **Permanent canon added.** *The universe existed long before the
+  Explorer arrived and will continue living long after they leave.
+  Companions are independent inhabitants, not mascots. Wonder
+  before action. Observation before interaction.*
+- **Inheritance rule.** Every chapter after 2.5 must inherit Art
+  Direction v1.0 verbatim.
+- **Evidence packet** at `evidence/chapter-02.5/` — seven stills
+  (`01-current-vs-new.png` through `07-final-world.png`) +
+  `08-motion.webm` + a README that documents visual decisions,
+  Chapter 1 vs Chapter 2 changes, and the permanent rules.
+- **BUILD.md** bumped to `0.3.5`.
+
 ## v0.3.0 — 2026-07-01
 
 - **Chapter 2 — The Dreaming Planet.** Full rework of Chapter 2

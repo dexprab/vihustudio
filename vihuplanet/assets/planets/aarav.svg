@@ -1,40 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="Aarav's planet">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" role="img" aria-label="Aarav's planet">
   <defs>
-    <radialGradient id="arBody" cx="42%" cy="42%" r="65%">
-      <stop offset="0%"  stop-color="#BFE1FF"/>
-      <stop offset="55%" stop-color="#5FB3FF"/>
-      <stop offset="100%" stop-color="#255CA0"/>
+    <radialGradient id="arGrass" cx="45%" cy="55%" r="60%">
+      <stop offset="0%"   stop-color="#A9C1AE"/>
+      <stop offset="100%" stop-color="#6E9080"/>
     </radialGradient>
-    <radialGradient id="arHalo" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"  stop-color="#BFE1FF" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#BFE1FF" stop-opacity="0"/>
+    <radialGradient id="arEarth" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#7C6A56"/>
+      <stop offset="100%" stop-color="#4C4030"/>
+    </radialGradient>
+    <radialGradient id="arHalo" cx="50%" cy="55%" r="55%">
+      <stop offset="0%"   stop-color="#7EB1CE" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#7EB1CE" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <circle cx="100" cy="140" r="80" fill="url(#arHalo)"/>
-  <circle cx="100" cy="140" r="62" fill="url(#arBody)" stroke="#1D3457" stroke-width="2.2"/>
-  <!-- Cloud bands -->
-  <path d="M52 138 q26 -8 52 4 q26 12 44 -8" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
-  <path d="M60 162 q30 -4 68 6" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-  <!-- Small stars orbiting the planet edge -->
-  <path d="M50 108 l 2 4 l 4 -2 l -2 4 l 2 4 l -4 -2 l -2 4 l -2 -4 l -4 2 l 2 -4 l -2 -4 l 4 2 z" fill="#F4D79A" opacity="0.9"/>
-  <path d="M158 130 l 2 3 l 3 -1 l -1 3 l 1 3 l -3 -1 l -2 3 l -1 -3 l -3 1 l 1 -3 l -1 -3 l 3 1 z" fill="#F4D79A" opacity="0.9"/>
 
-  <!-- Blue baby dragon companion on top -->
-  <!-- Body -->
-  <path d="M96 92 q0 -22 22 -22 q22 0 22 22 q0 12 -11 18 l -22 0 q -11 -6 -11 -18 z"
-        fill="#7BB9F0" stroke="#1D3457" stroke-width="2" stroke-linejoin="round"/>
-  <!-- Belly -->
-  <path d="M108 96 q10 8 22 0 q-2 12 -11 12 q-9 0 -11 -12 z" fill="#DDEEFF"/>
-  <!-- Cheek fins -->
-  <path d="M96 82 q-6 -2 -6 -12 q4 4 6 12 z" fill="#5B99D8" stroke="#1D3457" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M140 82 q6 -2 6 -12 q-4 4 -6 12 z" fill="#5B99D8" stroke="#1D3457" stroke-width="1.6" stroke-linejoin="round"/>
-  <!-- Eyes -->
-  <circle cx="113" cy="74" r="4" fill="#FFFFFF" stroke="#1D3457" stroke-width="1.6"/>
-  <circle cx="127" cy="74" r="4" fill="#FFFFFF" stroke="#1D3457" stroke-width="1.6"/>
-  <circle cx="114" cy="74" r="2" fill="#1D3457"/>
-  <circle cx="128" cy="74" r="2" fill="#1D3457"/>
-  <!-- Smile -->
-  <path d="M114 84 q6 5 12 0" fill="none" stroke="#1D3457" stroke-width="1.6" stroke-linecap="round"/>
-  <!-- Little horn -->
-  <path d="M118 60 q4 -8 6 0 z" fill="#F4D79A" stroke="#1D3457" stroke-width="1.4" stroke-linejoin="round"/>
+  <circle cx="110" cy="160" r="98" fill="url(#arHalo)"/>
+
+  <!-- Landmass — a low rounded island, wider than tall. A small
+       gentle hill rises on the right. -->
+  <path d="M28 178
+           q0 -12 8 -18
+           q4 -18 22 -20
+           q10 -18 30 -18
+           q28 -12 44 -4
+           q22 -6 32 12
+           q26 4 22 26
+           q4 20 -10 24
+           q-8 12 -22 10
+           q-14 12 -30 8
+           q-24 8 -46 -2
+           q-22 6 -36 -4
+           q-16 -2 -18 -14
+           q-4 -4 4 -8 z"
+        fill="url(#arGrass)" stroke="#1E2842" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <!-- Underside earth -->
+  <path d="M50 194 q22 6 62 4 q30 -4 46 0 q-2 8 -18 12 q-30 4 -60 -2 q-20 -4 -30 -14 z"
+        fill="url(#arEarth)" opacity="0.55"/>
+
+  <!-- Sparse grass strokes across the top -->
+  <g stroke="#1E2842" stroke-width="1.2" fill="none" opacity="0.55">
+    <path d="M58 168 l 0 -4"/>
+    <path d="M76 166 l 0 -4"/>
+    <path d="M96 164 l 0 -5"/>
+    <path d="M112 162 l 0 -5"/>
+    <path d="M148 164 l 0 -4"/>
+  </g>
+
+  <!-- Lone tree on the right rise — trunk + a single soft canopy. -->
+  <path d="M148 154 l 0 -34" stroke="#4C4030" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M126 118
+           q6 -22 22 -22
+           q16 0 22 22
+           q-4 8 -12 8
+           q-4 4 -10 0
+           q-4 4 -10 0
+           q-8 0 -12 -8 z"
+        fill="#6E9080" stroke="#1E2842" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Faint painted leaf hint -->
+  <path d="M132 108 q6 4 12 0" fill="none" stroke="#1E2842" stroke-width="1.1" opacity="0.5"/>
+
+  <!-- The little dragon — SEEN IN PROFILE from behind, at the base
+       of the tree, looking up at the sky. Small body, back to the
+       viewer, tail relaxed on the grass. -->
+  <path d="M96 152 q0 -14 12 -14 q12 0 12 14 l -4 8 l -16 0 z"
+        fill="#7EB1CE" stroke="#1E2842" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Tail curling out behind -->
+  <path d="M96 156 q-10 4 -12 12 q4 2 12 -6 z"
+        fill="#7EB1CE" stroke="#1E2842" stroke-width="1.3" stroke-linejoin="round"/>
+  <!-- Small crest at the back of the head -->
+  <path d="M104 140 l -2 -4 l 4 0 z" fill="#EBB47A" stroke="#1E2842" stroke-width="1.1"/>
+  <!-- One eye just visible in profile — looking up -->
+  <circle cx="118" cy="142" r="1.4" fill="#1E2842"/>
 </svg>

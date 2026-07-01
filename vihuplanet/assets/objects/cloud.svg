@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100" role="img" aria-label="Cloud">
-  <!-- Soft cottony puff — five overlapping lobes. -->
+  <!-- Soft cottony puff — cream paper reads through, ink pencil outline -->
   <path d="M18 68
            q0 -22 22 -24
            q4 -22 30 -20
@@ -10,10 +10,10 @@
            l-92 0
            q-22 0 -26 -14
            q-8 -2 0 -12 z"
-        fill="#FFFFFF"
-        stroke="#1D3457" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        fill="#F7F2E7"
+        stroke="#1E2842" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>
 
   <!-- Faint under-shadow to suggest paper depth -->
   <path d="M28 78 q80 6 158 -2"
-        fill="none" stroke="#1D3457" stroke-width="1.4" opacity="0.4"/>
+        fill="none" stroke="#1E2842" stroke-width="1.2" opacity="0.38"/>
 </svg>
