@@ -1,45 +1,59 @@
-// registry.js — the M0.1 World Object registry.
+// registry.js — Chapter 1 World Object registry.
 //
 // One entry per object that lives in the world today. Each entry
 // declares WHERE the object sits, HOW it moves, and WHETHER it
-// responds to input. Adding a new landmark in a future sprint means
-// dropping in one more descriptor here; the scene bootstrap
-// (js/scene.js) walks the list and mounts each object without any
-// HTML changes.
+// responds to input. The scene bootstrap (js/scene.js) walks the
+// list and mounts each object without any HTML changes. Adding a
+// landmark in a future chapter is one more descriptor here.
 //
 // Motion categories map 1:1 with animations/motion.css:
 //   Living      → twinkle / drift / float / breathe
 //   Greeting    → drawn-in / warm-in / settle
 //   Journey     → glide / sail / drift-long
-//   Celebration → (empty in M0.1)
+//   Celebration → (empty in Chapter 1)
 
 (function () {
   'use strict';
   if (typeof WorldObject === 'undefined') return;
 
+  // === Ground shape ==================================================
+  // Rolling hills span the entire ground layer.
+  WorldObject.register({
+    id: 'hills',
+    label: 'Rolling hills',
+    assetHref: 'assets/objects/hills.svg',
+    layer: 'ground',
+    placement: {
+      left: '0', right: '0', top: '0', bottom: '0',
+      width: '100%', height: '100%'
+    }
+    // No motion — the hills are the world's stillness.
+  });
+
   // === Sky landmarks ==================================================
 
+  // Moon — big, warm, top-left. Breathes gently.
   WorldObject.register({
     id: 'moon',
     label: 'Moon',
     assetHref: 'assets/objects/moon.svg',
     layer: 'sky',
-    placement: { top: '6vh', left: '8vw', width: '92px', height: '92px' },
-    motion: { category: 'Living', name: 'breathe', duration: '6.2s', delay: '0.4s' }
+    placement: { top: '4vh', left: '5vw', width: '180px', height: '180px' },
+    motion: { category: 'Living', name: 'breathe', duration: '6.4s', delay: '0.2s' }
   });
 
-  // Stars — one entry per star. Sizes / positions authored by hand so
-  // the constellation feels intentional rather than random.
+  // Stars — hand-authored positions so the constellation feels
+  // intentional. Warm amber four-point sparkles per the Contract.
   var stars = [
-    { id: 'star-1', top:  '8vh', left: '22vw', size: '9px', duration: '3.8s', delay: '0.0s' },
-    { id: 'star-2', top: '14vh', left: '36vw', size: '6px', duration: '4.5s', delay: '0.9s' },
-    { id: 'star-3', top: '10vh', left: '52vw', size: '7px', duration: '5.1s', delay: '1.6s' },
-    { id: 'star-4', top: '22vh', left: '63vw', size: '8px', duration: '4.2s', delay: '0.3s' },
-    { id: 'star-5', top:  '6vh', left: '74vw', size: '6px', duration: '5.4s', delay: '2.1s' },
-    { id: 'star-6', top: '30vh', left: '84vw', size: '7px', duration: '4.8s', delay: '1.2s' },
-    { id: 'star-7', top: '34vh', left: '48vw', size: '5px', duration: '5.6s', delay: '2.4s' },
-    { id: 'star-8', top: '42vh', left: '18vw', size: '6px', duration: '5.2s', delay: '0.5s' },
-    { id: 'star-9', top: '46vh', left: '68vw', size: '7px', duration: '4.4s', delay: '1.8s' }
+    { id: 'star-1', top:  '6vh', left: '32vw', size: '28px', duration: '4.6s', delay: '0.0s' },
+    { id: 'star-2', top: '15vh', left: '40vw', size: '22px', duration: '5.0s', delay: '1.1s' },
+    { id: 'star-3', top:  '8vh', left: '48vw', size: '24px', duration: '4.3s', delay: '2.0s' },
+    { id: 'star-4', top: '20vh', left: '58vw', size: '26px', duration: '5.4s', delay: '0.4s' },
+    { id: 'star-5', top:  '4vh', left: '64vw', size: '22px', duration: '4.8s', delay: '2.4s' },
+    { id: 'star-6', top: '10vh', left: '76vw', size: '26px', duration: '5.1s', delay: '1.4s' },
+    { id: 'star-7', top: '28vh', left: '44vw', size: '20px', duration: '5.7s', delay: '2.7s' },
+    { id: 'star-8', top: '34vh', left: '20vw', size: '24px', duration: '4.4s', delay: '0.6s' },
+    { id: 'star-9', top: '30vh', left: '87vw', size: '22px', duration: '5.3s', delay: '1.9s' }
   ];
   stars.forEach(function (s) {
     WorldObject.register({
@@ -52,14 +66,12 @@
     });
   });
 
-  // Clouds — three at different heights + sizes + drift phases. Each
-  // uses the Living `drift` motion (soft back-and-forth); a future
-  // sprint could add a `drift-long` cloud that traverses the whole
-  // sky for variety.
+  // Clouds — four cottony puffs across the sky at different heights.
   var clouds = [
-    { id: 'cloud-1', top: '8vh',  left: '6vw',  width: '160px', duration: '22s', delay: '0s' },
-    { id: 'cloud-2', top: '26vh', left: '42vw', width: '200px', duration: '28s', delay: '-6s' },
-    { id: 'cloud-3', top: '40vh', left: '66vw', width: '130px', duration: '24s', delay: '-12s' }
+    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px', duration: '24s', delay:   '0s' },
+    { id: 'cloud-2', top: '22vh', left: '54vw', width: '190px', duration: '28s', delay:  '-6s' },
+    { id: 'cloud-3', top: '12vh', left: '82vw', width: '140px', duration: '26s', delay: '-12s' },
+    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px', duration: '25s', delay:  '-8s' }
   ];
   clouds.forEach(function (c) {
     WorldObject.register({
@@ -72,64 +84,73 @@
     });
   });
 
-  // Rocket — Journey object. Enters from the left, glides across,
-  // exits right. Slight downward drift over the traversal for a
-  // natural arc.
+  // Rocket — Journey object. Contract cadence 18–22s left→right glide,
+  // slight upward tilt. Negative delay puts it partway across at
+  // load so it lands in a natural sky spot on the first frame.
   WorldObject.register({
     id: 'rocket',
     label: 'Rocket',
     assetHref: 'assets/objects/rocket.svg',
     layer: 'sky',
-    placement: { top: '12vh', left: '-12vw', width: '72px', height: '144px' },
+    placement: { top: '20vh', left: '0vw', width: '78px', height: '140px' },
     motion: {
-      category: 'Journey', name: 'glide', duration: '32s', delay: '-6s',
-      params: { '--vp-glide-tilt': '78deg', '--vp-glide-drop': '6vh' }
+      category: 'Journey', name: 'glide', duration: '22s', delay: '-4s',
+      params: { '--vp-glide-tilt': '-18deg', '--vp-glide-drop': '2vh' }
     }
   });
 
-  // Paper plane — different Journey path, faster, steeper drop.
+  // Paper plane — Contract cadence 16–20s right→left sail with a
+  // curly dashed trail. Negative delay places it mid-flight so the
+  // first frame shows it comfortably in-scene.
   WorldObject.register({
     id: 'paper-plane',
     label: 'Paper plane',
     assetHref: 'assets/objects/paper-plane.svg',
     layer: 'sky',
-    placement: { top: '34vh', left: '-14vw', width: '110px', height: '55px' },
+    placement: { top: '10vh', left: '0', width: '180px', height: '82px' },
     motion: {
-      category: 'Journey', name: 'glide', duration: '26s', delay: '-14s',
-      params: { '--vp-glide-tilt': '-6deg', '--vp-glide-drop': '10vh' }
+      // Nose points right in the SVG → glide left→right. A 20 s
+      // loop with -6 s delay puts the plane around 18 vw at load
+      // and gently sails it toward the top-right; the plane stays
+      // in view for the whole capture window.
+      category: 'Journey', name: 'glide', duration: '20s', delay: '-6s',
+      params: { '--vp-glide-tilt': '-8deg', '--vp-glide-drop': '3vh' }
     }
   });
 
   // === Ground landmarks ===============================================
 
-  // Grass tufts — Living motion, gently sway.
-  var tufts = [
-    { id: 'tuft-1', left: '12vw', width: '74px' },
-    { id: 'tuft-2', left: '46vw', width: '96px' },
-    { id: 'tuft-3', left: '76vw', width: '62px' }
+  // Flowers — a scatter of daisies along the hills. Living float so
+  // they gently sway.
+  var flowers = [
+    { id: 'flower-1', bottom:  '4vh', left:  '8vw', width: '46px', duration: '5.6s', delay: '0.4s' },
+    { id: 'flower-2', bottom:  '6vh', left: '18vw', width: '38px', duration: '5.0s', delay: '1.2s' },
+    { id: 'flower-3', bottom:  '3vh', left: '28vw', width: '42px', duration: '5.8s', delay: '0.8s' },
+    { id: 'flower-4', bottom:  '5vh', left: '38vw', width: '40px', duration: '5.4s', delay: '2.0s' },
+    { id: 'flower-5', bottom:  '3vh', left: '48vw', width: '36px', duration: '5.2s', delay: '2.6s' },
+    { id: 'flower-6', bottom:  '4vh', left: '58vw', width: '42px', duration: '5.9s', delay: '1.7s' }
   ];
-  tufts.forEach(function (t) {
+  flowers.forEach(function (f) {
     WorldObject.register({
-      id: t.id,
-      label: 'Grass',
-      assetHref: 'assets/objects/tuft.svg',
+      id: f.id,
+      label: 'Flower',
+      assetHref: 'assets/objects/flower.svg',
       layer: 'ground',
-      placement: { bottom: '3vh', left: t.left, width: t.width },
-      motion: { category: 'Living', name: 'float', duration: '5.4s' }
+      placement: { bottom: f.bottom, left: f.left, width: f.width },
+      motion: { category: 'Living', name: 'float', duration: f.duration, delay: f.delay }
     });
   });
 
   // Telescope — a visible **future landmark**. Non-interactive in
-  // M0.1; a later sprint flips `interactive:true` and adds a click
-  // handler that carries the child up to see the stars. Deliberately
-  // positioned on the ground so it belongs to the world today, not
-  // hidden away for later.
+  // Chapter 1 (`interactive:false`); a later chapter flips it on
+  // and lets the child peer through it at the stars. Positioned on
+  // the right of the hills per the Visual Contract.
   WorldObject.register({
     id: 'telescope',
     label: 'Telescope (coming soon)',
     assetHref: 'assets/objects/telescope.svg',
     layer: 'ground',
-    placement: { bottom: '6vh', right: '10vw', width: '112px', height: '140px' },
+    placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
     motion: { category: 'Living', name: 'float', duration: '6.8s', delay: '0.8s' },
     interactive: false
   });

@@ -1,30 +1,59 @@
-/* hero/hero.css — VihuPlanet M0.1 hero prompt.
+/* hero/hero.css — Chapter 1 hero prompt.
  *
- * The prompt sits just above the horizon line so the sky frames it.
- * It starts hidden and is unveiled by js/scene.js after ~2.3 s with
- * the .drawn-in class (see animations/motion.css) so it genuinely
- * feels written onto the page. Sprint M0.2 will add the storyteller
- * cards below this prompt — for now this file only owns the prompt
- * itself. */
+ * Positioned in the sky's centre so the question sits over the
+ * softest watercolor. Revealed by js/scene.js after ~2.3s via the
+ * Greeting `drawn-in` motion so it feels genuinely handwritten
+ * onto the page. Chapter 2 will add storyteller cards below this
+ * prompt — for now this file only owns the prompt itself. */
 
 .hero {
   position: absolute;
-  top: 46%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  z-index: 5;
+  z-index: 6;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
 .hero-prompt {
   font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
   font-weight: 500;
-  font-size: clamp(38px, 5.5vw, 72px);
+  font-size: clamp(38px, 5vw, 68px);
   line-height: 1;
   margin: 0;
-  color: #3A3630;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+  color: var(--vp-ink);
+  letter-spacing: 0.4px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
 }
 .hero-prompt[hidden] { display: none; }
+
+/* Decorative underline — a hand-drawn wavy line with a small warm
+ * star at its centre, matching the Visual Contract. */
+.hero-underline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.9s ease-in-out 0.6s, transform 0.9s ease-in-out 0.6s;
+}
+.hero-underline.is-revealed {
+  opacity: 0.75;
+  transform: translateY(0);
+}
+.hero-underline-line {
+  width: 60px;
+  height: 5px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 5' preserveAspectRatio='none'><path d='M2 3 q10 -3 20 0 t20 -1 t18 1' fill='none' stroke='%231D3457' stroke-width='1.6' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
+}
+.hero-underline-star {
+  width: 14px;
+  height: 14px;
+  color: var(--vp-moon);
+  display: inline-block;
+}

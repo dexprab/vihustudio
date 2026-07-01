@@ -1,4 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 90" role="img" aria-label="Cloud">
-  <path d="M10 60 q0 -26 26 -26 q4 -20 30 -20 q26 0 30 22 q26 0 26 24 q0 14 -18 18 l-80 0 q-14 -4 -14 -18 z"
-        fill="#FFFFFF" stroke="#3A3630" stroke-width="1.6" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100" role="img" aria-label="Cloud">
+  <!-- Soft cottony puff — five overlapping lobes. -->
+  <path d="M18 68
+           q0 -22 22 -24
+           q4 -22 30 -20
+           q22 0 28 22
+           q22 -6 30 12
+           q22 -2 26 22
+           q0 12 -18 14
+           l-92 0
+           q-22 0 -26 -14
+           q-8 -2 0 -12 z"
+        fill="#FFFFFF"
+        stroke="#1D3457" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Faint under-shadow to suggest paper depth -->
+  <path d="M28 78 q80 6 158 -2"
+        fill="none" stroke="#1D3457" stroke-width="1.4" opacity="0.4"/>
 </svg>

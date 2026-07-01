@@ -32,8 +32,11 @@
 
   // Reveal the hero prompt after the world has settled. The
   // `.drawn-in` class in animations/motion.css owns the fade + rise.
+  // The decorative underline follows shortly after so the whole
+  // moment reads like the question is being written onto the page.
   function revealHeroPrompt(delayMs) {
     var prompt = document.querySelector('[data-hero-prompt]');
+    var underline = document.querySelector('[data-hero-underline]');
     if (!prompt) return;
     window.setTimeout(function () {
       prompt.hidden = false;
@@ -42,6 +45,7 @@
       // is applied — otherwise Chromium skips the initial keyframe.
       window.requestAnimationFrame(function () {
         prompt.classList.add('drawn-in');
+        if (underline) underline.classList.add('is-revealed');
       });
     }, delayMs);
   }

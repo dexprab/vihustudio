@@ -1,14 +1,33 @@
-/* base.css — VihuPlanet M0.1 World Foundation.
- * Paper palette + reset + typography. Everything else layers on top.
+/* base.css — VihuPlanet Chapter 1 palette + reset.
  *
- * Colour references:
- *   #F5EBD6  paper cream (page background)
- *   #E8DCBB  paper darker (subtle grain layer)
- *   #3A3630  ink brown (all outlines, handwritten strokes)
- *   #B7D3E4  sky watercolor (soft powder blue)
- *   #F7E1A1  sun-warm cream (moon glow)
- *   #8FB58B  ground watercolor (soft dusty green)
+ * Palette matches the Visual Contract v1.0 (docs/chapter-1-evidence/
+ * or the design-contract card the reviewer used):
+ *
+ *   #F7F2E7  paper cream            (page background)
+ *   #DDEAF6  sky blue watercolor    (upper wash)
+ *   #BFE1C6  grass green watercolor (ground wash)
+ *   #F4D79A  moon warm yellow       (celestial body)
+ *   #FFB366  rocket orange          (accent)
+ *   #1D3457  navy ink               (all handwriting + outlines)
+ *   #6B7A8C  soft grey-blue         (subtle secondary)
+ *
+ * Typography stack: 'Kalam' body / 'Caveat' display, both bundled
+ * locally (assets/fonts/). Cursive stack fallback only fires if the
+ * .woff2 files ever fail to load.
  */
+
+:root {
+  --vp-paper:      #F7F2E7;
+  --vp-sky:        #DDEAF6;
+  --vp-grass:      #BFE1C6;
+  --vp-moon:       #F4D79A;
+  --vp-rocket:     #FFB366;
+  --vp-ink:        #1D3457;
+  --vp-subtle:     #6B7A8C;
+  --vp-cheek:      #F4A9A0;
+  --vp-flower:     #FFFFFF;
+  --vp-flower-eye: #F4D79A;
+}
 
 *,
 *::before,
@@ -21,9 +40,9 @@ html, body {
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;              /* Never scroll — the sprint bans it. */
-  background: #F5EBD6;           /* paper cream */
-  color: #3A3630;                /* ink brown */
+  overflow: hidden;              /* No scrolling — Visual Contract rule. */
+  background: var(--vp-paper);
+  color: var(--vp-ink);
   font-family: 'Kalam', 'Segoe Script', 'Bradley Hand', cursive;
   font-weight: 400;
   letter-spacing: 0.2px;
@@ -40,7 +59,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.32;
   z-index: 0;
   mix-blend-mode: multiply;
 }

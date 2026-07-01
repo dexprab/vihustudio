@@ -6,11 +6,13 @@ This is **not** VihuStudio. VihuStudio is one of several destinations
 inside VihuPlanet; a future sprint (M1.x) plugs it in as one landmark
 alongside others.
 
-## Chapter 1 — World Foundation (M0.1)
+## Chapter 1 — World Foundation
 
 The first thing a child sees when they arrive: a hand-drawn
 sketchbook world that lives on its own before they touch anything.
-See `docs/m0.1-evidence/README.md` for what the sprint delivers.
+See `chapter-1-evidence/README.md` for the full delivery notes,
+architecture decisions, motion implementation, and known
+limitations.
 
 ## Structure
 

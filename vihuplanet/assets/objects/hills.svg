@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Rolling hills">
+  <!-- Back hill (softer green, further away) -->
+  <path d="M0 210
+           Q 200 150 420 200
+           T 820 230
+           T 1220 190
+           T 1600 220
+           L 1600 500 L 0 500 Z"
+        fill="#BFE1C6" stroke="#1D3457" stroke-width="2" stroke-linejoin="round" opacity="0.85"/>
+
+  <!-- Front hill (richer green) -->
+  <path d="M0 320
+           Q 180 260 400 320
+           T 800 340
+           T 1200 300
+           T 1600 340
+           L 1600 500 L 0 500 Z"
+        fill="#9CCFA6" stroke="#1D3457" stroke-width="2.2" stroke-linejoin="round"/>
+
+  <!-- Front-hill grass tufts — small pencil marks along the ridge. -->
+  <g stroke="#1D3457" stroke-width="1.4" fill="none" opacity="0.65">
+    <path d="M180 322 l-2 -10 M186 322 l2 -12 M192 322 l-1 -9"/>
+    <path d="M420 316 l-2 -11 M426 316 l2 -13 M432 316 l-1 -9"/>
+    <path d="M700 340 l-2 -10 M706 340 l2 -12 M712 340 l-1 -9"/>
+    <path d="M960 344 l-2 -11 M966 344 l2 -13 M972 344 l-1 -9"/>
+    <path d="M1240 318 l-2 -10 M1246 318 l2 -12 M1252 318 l-1 -9"/>
+    <path d="M1420 336 l-2 -11 M1426 336 l2 -13 M1432 336 l-1 -9"/>
+  </g>
+</svg>
