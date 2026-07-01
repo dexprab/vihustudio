@@ -1,29 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 180" role="img" aria-label="Telescope">
-  <!-- Ground shadow -->
-  <ellipse cx="70" cy="170" rx="36" ry="4" fill="#3A3630" opacity="0.18"/>
+  <!-- Ground shadow — softer, ink-tinted -->
+  <ellipse cx="70" cy="170" rx="36" ry="4" fill="#1E2842" opacity="0.15"/>
 
-  <!-- Rear tripod leg -->
-  <path d="M74 96 L86 168" stroke="#3A3630" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M62 96 L34 168" stroke="#3A3630" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M70 96 L70 168" stroke="#3A3630" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Tripod legs — pencil ink -->
+  <path d="M74 96 L86 168" stroke="#1E2842" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M62 96 L34 168" stroke="#1E2842" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M70 96 L70 168" stroke="#1E2842" stroke-width="2.6" stroke-linecap="round"/>
 
   <!-- Tripod cross-braces -->
-  <path d="M46 140 q24 -8 48 0" stroke="#3A3630" stroke-width="1.6" fill="none" opacity="0.55"/>
+  <path d="M46 140 q24 -8 48 0" stroke="#1E2842" stroke-width="1.4" fill="none" opacity="0.5"/>
 
-  <!-- Telescope tube -->
+  <!-- Telescope tube — ember gold, muted -->
   <g transform="rotate(-28 68 82)">
-    <rect x="16" y="70" width="108" height="30" rx="14" fill="#F0C060" stroke="#3A3630" stroke-width="2.4"/>
+    <rect x="16" y="70" width="108" height="30" rx="14"
+          fill="#E4A455" stroke="#1E2842" stroke-width="2"/>
     <!-- eyepiece -->
-    <rect x="8" y="76" width="14" height="18" rx="3" fill="#3A3630"/>
-    <!-- lens hood -->
-    <ellipse cx="124" cy="85" rx="6" ry="16" fill="#B7D3E4" stroke="#3A3630" stroke-width="2.2"/>
+    <rect x="8" y="76" width="14" height="18" rx="3"
+          fill="#1E2842" opacity="0.85"/>
+    <!-- lens hood — cerulean glass -->
+    <ellipse cx="124" cy="85" rx="6" ry="16"
+             fill="#7EB1CE" stroke="#1E2842" stroke-width="1.8"/>
     <!-- pencil hatch -->
-    <path d="M30 82 q30 -4 60 0" stroke="#3A3630" stroke-width="1.2" fill="none" opacity="0.5"/>
-    <path d="M30 92 q30 -4 60 0" stroke="#3A3630" stroke-width="1.2" fill="none" opacity="0.5"/>
-    <!-- focus knob -->
-    <circle cx="70" cy="102" r="4" fill="#E7A748" stroke="#3A3630" stroke-width="1.6"/>
+    <path d="M30 82 q30 -4 60 0" stroke="#1E2842" stroke-width="1.2" fill="none" opacity="0.45"/>
+    <path d="M30 92 q30 -4 60 0" stroke="#1E2842" stroke-width="1.2" fill="none" opacity="0.45"/>
+    <!-- focus knob — candle warm -->
+    <circle cx="70" cy="102" r="4"
+            fill="#E8B871" stroke="#1E2842" stroke-width="1.4"/>
   </g>
 
-  <!-- Small twinkle beside the eyepiece to hint at "look through me" -->
-  <text x="16" y="60" font-family="Kalam, cursive" font-size="14" fill="#C69B37" opacity="0.8">✧</text>
+  <!-- Small twinkle beside the eyepiece — a hint, not a call -->
+  <text x="16" y="60" font-family="Kalam, cursive" font-size="14"
+        fill="#E8B871" opacity="0.78">✧</text>
 </svg>

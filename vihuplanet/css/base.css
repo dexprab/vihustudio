@@ -1,32 +1,59 @@
-/* base.css — VihuPlanet Chapter 1 palette + reset.
+/* base.css — VihuPlanet paper + palette + typography.
  *
- * Palette matches the Visual Contract v1.0 (docs/chapter-1-evidence/
- * or the design-contract card the reviewer used):
+ * Art Direction v1.0 (Chapter 2.5) — synthesis of Concept C
+ * (Living Meadow structural depth), Concept B (Small Prince
+ * emotional restraint), Concept A (Storybook Page hand-painted
+ * technique). Palette below is the PERMANENT palette. Every
+ * future chapter inherits these tokens; new palette values
+ * belong to their own theme layer, not this file.
  *
- *   #F7F2E7  paper cream            (page background)
- *   #DDEAF6  sky blue watercolor    (upper wash)
- *   #BFE1C6  grass green watercolor (ground wash)
- *   #F4D79A  moon warm yellow       (celestial body)
- *   #FFB366  rocket orange          (accent)
- *   #1D3457  navy ink               (all handwriting + outlines)
- *   #6B7A8C  soft grey-blue         (subtle secondary)
+ * The eight permanent colours:
  *
- * Typography stack: 'Kalam' body / 'Caveat' display, both bundled
- * locally (assets/fonts/). Cursive stack fallback only fires if the
- * .woff2 files ever fail to load.
+ *   #F1EAD0  paper cream          background; the page itself
+ *   #EBB47A  apricot horizon      warmth low in the sky; painted lantern light
+ *   #7EB1CE  sky cerulean         high sky; distant water
+ *   #1E2842  ink navy             every outline, every handwritten line
+ *   #E8B871  candle warm          the ONE warm accent in a quiet frame
+ *   #7C9C6F  meadow moss          ground; underside of an island
+ *   #E4A455  ember gold           rare — a fox's ear, a distant window
+ *   #8E7CB0  wildflower purple    Dreaming Planet + far dusk
+ *
+ * Extended supporting tones (used at ≤ 20 % of any composition):
+ *   #C3AF88  faded ochre          old paper edge
+ *   #4C6E76  teal shadow          undersides, cloud bellies
+ *   #C56B67  single rose          rare emotional beat only
  */
 
 :root {
-  --vp-paper:      #F7F2E7;
-  --vp-sky:        #DDEAF6;
-  --vp-grass:      #BFE1C6;
-  --vp-moon:       #F4D79A;
-  --vp-rocket:     #FFB366;
-  --vp-ink:        #1D3457;
-  --vp-subtle:     #6B7A8C;
-  --vp-cheek:      #F4A9A0;
-  --vp-flower:     #FFFFFF;
-  --vp-flower-eye: #F4D79A;
+  /* Permanent palette (v1.0) */
+  --vp-paper:            #F1EAD0;
+  --vp-horizon-apricot:  #EBB47A;
+  --vp-sky-cerulean:     #7EB1CE;
+  --vp-ink:              #1E2842;
+  --vp-candle:           #E8B871;
+  --vp-moss:             #7C9C6F;
+  --vp-ember:            #E4A455;
+  --vp-dusk:             #8E7CB0;
+
+  --vp-ochre-faded:      #C3AF88;
+  --vp-shadow:           #4C6E76;
+  --vp-rose:             #C56B67;
+
+  /* Legacy names, remapped so any Chapter 1/2 code that still
+   * references them lands on the v1.0 palette. */
+  --vp-sky:              #DDE7EE;      /* softer, less saturated */
+  --vp-grass:            #B7CBA6;      /* meadow at midground */
+  --vp-moon:             #E8B871;      /* moon glows candle-warm */
+  --vp-rocket:           #E4A455;      /* rocket = ember gold, not orange plastic */
+  --vp-subtle:           #A4A5A0;
+  --vp-cheek:            #D9A395;      /* moved off saturated pink */
+  --vp-flower:           #F6EEDA;
+  --vp-flower-eye:       #E8B871;
+
+  /* Line weights — Art Direction rule: pencil ink, never bolder. */
+  --vp-line-thin:        1.2px;
+  --vp-line-normal:      1.6px;
+  --vp-line-heavy:       2.0px;
 }
 
 *,
@@ -40,26 +67,28 @@ html, body {
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;              /* No scrolling — Visual Contract rule. */
+  overflow: hidden;              /* No scrolling. */
   background: var(--vp-paper);
   color: var(--vp-ink);
+  /* Kalam handwriting for body captions; Caveat is reserved for
+   * hero-scale handwriting (large narration). Nunito is retired
+   * from Chapter 1/2 surfaces — the world speaks in one hand. */
   font-family: 'Kalam', 'Segoe Script', 'Bradley Hand', cursive;
   font-weight: 400;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Paper grain — full-viewport SVG noise stamped just above the
- * cream background. Kept at low opacity so ink strokes stay
- * readable. */
+/* Paper grain — full-viewport SVG noise. Reduced opacity in v1.0
+ * so the illustration reads clearly over it. */
 .paper-grain {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  opacity: 0.32;
+  opacity: 0.22;
   z-index: 0;
   mix-blend-mode: multiply;
 }

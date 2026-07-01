@@ -1,17 +1,13 @@
-/* hero/hero.css — Chapter 1 hero prompt.
+/* hero/hero.css — Art Direction v1.0.
  *
- * Positioned in the sky's centre so the question sits over the
- * softest watercolor. Revealed by js/scene.js after ~2.3s via the
- * Greeting `drawn-in` motion so it feels genuinely handwritten
- * onto the page. Chapter 2 will add storyteller cards below this
- * prompt — for now this file only owns the prompt itself. */
+ * The hero prompt is no longer a large centred UI headline. It's a
+ * small pencilled narration in the sky, in the same hand as every
+ * other word on the page. The world speaks first; the text speaks
+ * second. */
 
 .hero {
-  /* Sprint 2: raised to 38 % so the storyteller row at 62 vh has
-   * comfortable clearance below. Chapter 1 alone (without cards)
-   * still reads well because the sky continues below the prompt. */
   position: absolute;
-  top: 38%;
+  top: 32%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
@@ -20,43 +16,48 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  opacity: 0.82;
 }
 
 .hero-prompt {
   font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
-  font-weight: 500;
-  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 400;
+  font-style: italic;
+  /* Smaller than v0.3 — the hero prompt no longer dominates. It
+   * belongs to the sky. */
+  font-size: clamp(22px, 2.4vw, 34px);
   line-height: 1;
   margin: 0;
   color: var(--vp-ink);
-  letter-spacing: 0.4px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+  letter-spacing: 0.2px;
+  opacity: 0.78;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
 }
 .hero-prompt[hidden] { display: none; }
 
-/* Decorative underline — a hand-drawn wavy line with a small warm
- * star at its centre, matching the Visual Contract. */
+/* Decorative underline — a hand-drawn wavy line with a very small
+ * warm dot at its centre. Kept small and pencilled. */
 .hero-underline {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.9s ease-in-out 0.6s, transform 0.9s ease-in-out 0.6s;
+  transform: translateY(4px);
+  transition: opacity 1.1s ease-in-out 0.7s, transform 1.1s ease-in-out 0.7s;
 }
 .hero-underline.is-revealed {
-  opacity: 0.75;
+  opacity: 0.55;
   transform: translateY(0);
 }
 .hero-underline-line {
-  width: 60px;
-  height: 5px;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 5' preserveAspectRatio='none'><path d='M2 3 q10 -3 20 0 t20 -1 t18 1' fill='none' stroke='%231D3457' stroke-width='1.6' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
+  width: 40px;
+  height: 4px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 5' preserveAspectRatio='none'><path d='M2 3 q10 -3 20 0 t20 -1 t18 1' fill='none' stroke='%231E2842' stroke-width='1.4' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
 }
 .hero-underline-star {
-  width: 14px;
-  height: 14px;
-  color: var(--vp-moon);
+  width: 8px;
+  height: 8px;
+  color: var(--vp-candle);
   display: inline-block;
 }
