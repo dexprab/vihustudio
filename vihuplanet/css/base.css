@@ -1,0 +1,46 @@
+/* base.css — VihuPlanet M0.1 World Foundation.
+ * Paper palette + reset + typography. Everything else layers on top.
+ *
+ * Colour references:
+ *   #F5EBD6  paper cream (page background)
+ *   #E8DCBB  paper darker (subtle grain layer)
+ *   #3A3630  ink brown (all outlines, handwritten strokes)
+ *   #B7D3E4  sky watercolor (soft powder blue)
+ *   #F7E1A1  sun-warm cream (moon glow)
+ *   #8FB58B  ground watercolor (soft dusty green)
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;              /* Never scroll — the sprint bans it. */
+  background: #F5EBD6;           /* paper cream */
+  color: #3A3630;                /* ink brown */
+  font-family: 'Kalam', 'Segoe Script', 'Bradley Hand', cursive;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Paper grain — full-viewport SVG noise stamped just above the
+ * cream background. Kept at low opacity so ink strokes stay
+ * readable. */
+.paper-grain {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  opacity: 0.35;
+  z-index: 0;
+  mix-blend-mode: multiply;
+}

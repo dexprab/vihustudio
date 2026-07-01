@@ -1,0 +1,30 @@
+/* hero/hero.css — VihuPlanet M0.1 hero prompt.
+ *
+ * The prompt sits just above the horizon line so the sky frames it.
+ * It starts hidden and is unveiled by js/scene.js after ~2.3 s with
+ * the .drawn-in class (see animations/motion.css) so it genuinely
+ * feels written onto the page. Sprint M0.2 will add the storyteller
+ * cards below this prompt — for now this file only owns the prompt
+ * itself. */
+
+.hero {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hero-prompt {
+  font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
+  font-weight: 500;
+  font-size: clamp(38px, 5.5vw, 72px);
+  line-height: 1;
+  margin: 0;
+  color: #3A3630;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+.hero-prompt[hidden] { display: none; }

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VihuPlanet</title>
+
+<!-- Handwritten typography — bundled locally. No CDN dependency. -->
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="animations/motion.css">
+<link rel="stylesheet" href="css/scene.css">
+<link rel="stylesheet" href="hero/hero.css">
+</head>
+<body>
+
+<!-- Paper backdrop — SVG grain filter stamped over the whole page so
+     the world reads as sketchbook paper. -->
+<svg class="paper-grain" aria-hidden="true">
+  <defs>
+    <filter id="paperGrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7"/>
+      <feColorMatrix values="0 0 0 0 0.42
+                             0 0 0 0 0.32
+                             0 0 0 0 0.22
+                             0 0 0 0.10 0"/>
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" filter="url(#paperGrain)"/>
+</svg>
+
+<!-- The single-viewport world. The three layers (.sky / .ground /
+     .foreground) are the mount points every registered WorldObject
+     lands on. Nothing ever escapes below the fold — no scrolling. -->
+<main class="world">
+
+  <!-- Sky (~60%) — watercolor wash + every sky WorldObject. -->
+  <section class="sky" aria-hidden="true">
+    <div class="watercolor-sky"></div>
+    <!-- Sparkles stay declarative (very low density; not worth a
+         registry entry today). -->
+    <div class="sparkles">
+      <span class="sparkle sparkle-1">✧</span>
+      <span class="sparkle sparkle-2">✦</span>
+      <span class="sparkle sparkle-3">✧</span>
+      <span class="sparkle sparkle-4">✦</span>
+    </div>
+  </section>
+
+  <!-- Horizon line — hand-drawn wavy pencil stroke. -->
+  <svg class="horizon" viewBox="0 0 1600 30" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 15 q80 -10 160 0 t160 -4 t160 6 t160 -8 t160 4 t160 -2 t160 6 t160 -10 t160 8 t160 -4"
+          fill="none" stroke="#5C4A32" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/>
+  </svg>
+
+  <!-- Ground (~40%) — watercolor + every ground WorldObject. -->
+  <section class="ground" aria-hidden="true">
+    <div class="watercolor-ground"></div>
+  </section>
+
+  <!-- Foreground reserved for future landmarks that need to sit
+       above the horizon (a floating card, a stage, etc.). Kept
+       empty in M0.1 but declared so a future descriptor can
+       target layer: 'foreground'. -->
+  <section class="foreground" aria-hidden="true"></section>
+
+  <!-- Logo — hand-drawn feeling, top centre. -->
+  <header class="brand">
+    <span class="brand-dot">✿</span>
+    <span class="brand-word">VihuPlanet</span>
+    <span class="brand-underline"></span>
+  </header>
+
+  <!-- Parents entry — small, minimal, top-right. -->
+  <a class="parents-entry" href="#" role="button">
+    <span class="parents-glyph" aria-hidden="true">👨</span>
+    <span class="parents-label">Parents</span>
+  </a>
+
+  <!-- Hero prompt — revealed after ~2.3s by js/scene.js. -->
+  <section class="hero" aria-live="polite">
+    <p class="hero-prompt" data-hero-prompt hidden>
+      Who&rsquo;s creating today?
+    </p>
+  </section>
+
+</main>
+
+<!-- Load order:
+     1. WorldObject.register() gets defined by shared/worldObject.js
+     2. registry.js declares every M0.1 world object
+     3. scene.js mounts, arms motion, reveals hero prompt -->
+<script src="shared/worldObject.js"></script>
+<script src="js/registry.js"></script>
+<script src="js/scene.js"></script>
+</body>
+</html>

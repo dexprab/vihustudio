@@ -1,0 +1,211 @@
+/* animations/motion.css — VihuPlanet WorldMotion system.
+ *
+ * Motion in VihuPlanet is not a set of per-object animations. It is
+ * a shared vocabulary that grows with the world. Every animation
+ * belongs to one of four **categories**; the category defines the
+ * mood, the individual name defines the shape, and durations /
+ * delays are tuned per world object via CSS custom properties.
+ *
+ * ==============================================================
+ *   Category      When it plays                Named motions
+ * ==============================================================
+ *   Living        Always. Ambient background.  twinkle, drift,
+ *                 The world breathes.          float, breathe
+ *
+ *   Greeting      When something arrives —     drawn-in, warm-in,
+ *                 a landmark appears, the      settle
+ *                 hero prompt is unveiled,
+ *                 a new page loads.
+ *
+ *   Journey       Long traversals. Objects     glide, sail,
+ *                 crossing the world.          drift-long
+ *
+ *   Celebration   Reserved for future joyful   (empty for M0.1 —
+ *                 moments — publishing a       sparkle-burst,
+ *                 story, unlocking a           confetti-rise
+ *                 landmark, seasonal            arrive here in
+ *                 events.                      Sprint M0.3+)
+ * ==============================================================
+ *
+ * Every keyframe uses ease-in-out and long durations. No bouncing,
+ * no sharp movement, no exaggerated easing. Objects consume motions
+ * via class composition — motion is never inlined per object, so a
+ * future object joins by declaring `class="cloud drift"` and
+ * inheriting the vocabulary.
+ *
+ * The `--prefers-reduced-motion` guard at the bottom short-circuits
+ * every animation so accessibility settings are honoured.
+ */
+
+/* ============================================================== */
+/* CATEGORY 1 · LIVING — ambient breath of the world             */
+/* ============================================================== */
+
+@keyframes vp-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+.twinkle {
+  animation-name: vp-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 4.6s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+@keyframes vp-drift {
+  from { transform: translateX(-4vw); }
+  to   { transform: translateX(4vw); }
+}
+.drift {
+  animation-name: vp-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 22s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+@keyframes vp-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.float {
+  animation-name: vp-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 5.4s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+@keyframes vp-breathe {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 12px rgba(249,233,200,0.55)); }
+  50%      { transform: scale(1.03); filter: drop-shadow(0 0 20px rgba(249,233,200,0.75)); }
+}
+.breathe {
+  animation-name: vp-breathe;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 6.2s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* ============================================================== */
+/* CATEGORY 2 · GREETING — arrival + reveal                       */
+/* ============================================================== */
+
+/* drawn-in — used by the hero prompt. Text starts invisible +
+ * slightly translated and eases into place as if written onto the
+ * page. */
+@keyframes vp-drawn-in {
+  0%   { opacity: 0; transform: translateY(8px); filter: blur(1.2px); }
+  100% { opacity: 1; transform: translateY(0);   filter: blur(0); }
+}
+.drawn-in {
+  animation-name: vp-drawn-in;
+  animation-duration: var(--vp-motion-duration, 1.6s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+/* warm-in — object fades in while gently glowing brighter. Used
+ * when a landmark first arrives in the world. */
+@keyframes vp-warm-in {
+  0%   { opacity: 0; filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 12px rgba(249,233,200,0.4)); }
+}
+.warm-in {
+  animation-name: vp-warm-in;
+  animation-duration: var(--vp-motion-duration, 2.2s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+/* settle — small drop from above and a soft landing. Perfect for
+ * objects that "arrive" and stay put (a card, a landmark). */
+@keyframes vp-settle {
+  0%   { opacity: 0; transform: translateY(-14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.settle {
+  animation-name: vp-settle;
+  animation-duration: var(--vp-motion-duration, 1.4s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+/* ============================================================== */
+/* CATEGORY 3 · JOURNEY — long traversals across the world        */
+/* ============================================================== */
+
+/* glide — rocket + paper plane. Enters from the left, exits to the
+ * right, with a slight downward drift. */
+@keyframes vp-glide-left-to-right {
+  from { transform: translate(-25vw, 0) rotate(var(--vp-glide-tilt, 0deg)); }
+  to   { transform: translate(120vw, var(--vp-glide-drop, 4vh)) rotate(var(--vp-glide-tilt, 0deg)); }
+}
+.glide {
+  animation-name: vp-glide-left-to-right;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 32s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* sail — right-to-left variant so a future traveller can pass in the
+ * opposite direction (or return home). */
+@keyframes vp-sail-right-to-left {
+  from { transform: translate(120vw, 0) rotate(var(--vp-glide-tilt, 0deg)); }
+  to   { transform: translate(-25vw, var(--vp-glide-drop, 4vh)) rotate(var(--vp-glide-tilt, 0deg)); }
+}
+.sail {
+  animation-name: vp-sail-right-to-left;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 34s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* drift-long — long horizontal drift for clouds that traverse the
+ * whole sky rather than just breathing in place. */
+@keyframes vp-drift-long {
+  from { transform: translateX(-30vw); }
+  to   { transform: translateX(130vw); }
+}
+.drift-long {
+  animation-name: vp-drift-long;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 90s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* ============================================================== */
+/* CATEGORY 4 · CELEBRATION — reserved for M0.3+                  */
+/* ============================================================== */
+
+/* Placeholder — no motions ship in M0.1. Sprint M0.3 (Publishing
+ * celebration) + Sprint M1.x (landmark unlock) fill in
+ * sparkle-burst, confetti-rise, orbit-out. Keeping the section
+ * declared here means future keyframes have a home. */
+
+/* ============================================================== */
+/* accessibility                                                  */
+/* ============================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .twinkle, .drift, .float, .breathe,
+  .drawn-in, .warm-in, .settle,
+  .glide, .sail, .drift-long {
+    animation: none !important;
+  }
+}

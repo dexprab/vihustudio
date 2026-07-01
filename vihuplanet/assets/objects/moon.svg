@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Moon">
+  <defs>
+    <filter id="moonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="60" cy="60" r="42" fill="#F9E9C8" filter="url(#moonGlow)"/>
+  <path d="M60 22 a38 38 0 0 0 -30 60 a30 30 0 0 1 30 -60 z" fill="#F3DDA9" opacity="0.55"/>
+  <circle cx="70" cy="50" r="4" fill="#E7CE94" opacity="0.55"/>
+  <circle cx="52" cy="72" r="3" fill="#E7CE94" opacity="0.45"/>
+  <circle cx="78" cy="70" r="2" fill="#E7CE94" opacity="0.5"/>
+</svg>

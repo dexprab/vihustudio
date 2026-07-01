@@ -1,0 +1,196 @@
+/* scene.css — VihuPlanet M0.1 scene composition.
+ *
+ * Layout:
+ *   .world           full-viewport stage. Three layers ↓
+ *   .sky             upper 60% — watercolor + sky WorldObjects.
+ *   .ground          lower 40% — watercolor + ground WorldObjects.
+ *   .foreground      reserved for future landmarks above the horizon.
+ *   .horizon         hand-drawn wavy pencil stroke separating them.
+ *
+ * Placement of individual objects (moon, stars, clouds, rocket,
+ * paper plane, tufts, telescope) lives in js/registry.js as a per-
+ * object descriptor. This CSS only owns the layered stage + the
+ * shared styling that every world object inherits from the layers
+ * they live in.
+ */
+
+.world {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* ---- layers ----------------------------------------------------- */
+
+.sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+}
+
+.watercolor-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(214,229,241,0.85) 0%, rgba(214,229,241,0.55) 30%, rgba(245,235,214,0) 68%),
+    radial-gradient(ellipse at 78% 40%, rgba(224,238,224,0.55) 0%, rgba(245,235,214,0) 55%),
+    linear-gradient(180deg, rgba(214,229,241,0.55) 0%, rgba(245,235,214,0) 100%);
+  mix-blend-mode: multiply;
+}
+
+.horizon {
+  position: absolute;
+  top: 60%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 30px;
+  transform: translateY(-15px);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+}
+
+.watercolor-ground {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(143,181,139,0.55) 0%, rgba(245,235,214,0) 65%),
+    radial-gradient(ellipse at 80% 40%, rgba(126,168,124,0.55) 0%, rgba(245,235,214,0) 65%),
+    linear-gradient(180deg, rgba(143,181,139,0.35) 0%, rgba(126,168,124,0.65) 100%);
+  mix-blend-mode: multiply;
+}
+
+.foreground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* ---- world objects ---------------------------------------------- */
+
+/* Every mounted WorldObject wraps its SVG in a `.world-object` div.
+ * The wrapper owns placement + motion transforms; the inner SVG is
+ * a pure asset. */
+.world-object {
+  position: absolute;
+  will-change: transform, opacity;
+}
+.world-object svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.world-object.is-interactive {
+  cursor: pointer;
+}
+.world-object.is-interactive:hover,
+.world-object.is-interactive:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 12px rgba(249,233,200,0.55));
+}
+
+/* Star SVG lives inside a small wrapper. The .twinkle class hits
+ * the wrapper, but the star pattern reads as pencilled marks against
+ * the sky so we let its intrinsic size (width/height from the
+ * registry) drive the shape. */
+
+/* ---- ambient sparkles ------------------------------------------- */
+
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.sparkle {
+  position: absolute;
+  color: #C69B37;
+  opacity: 0.55;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(198,155,55,0.35);
+  animation: vp-twinkle ease-in-out infinite both;
+}
+.sparkle-1 { top: 18vh; left: 45vw; font-size: 16px; animation-duration: 5.4s; animation-delay: 0.2s; }
+.sparkle-2 { top: 26vh; left: 30vw; font-size: 12px; animation-duration: 6.2s; animation-delay: 1.4s; }
+.sparkle-3 { top: 12vh; left: 60vw; font-size: 14px; animation-duration: 5.8s; animation-delay: 2.6s; }
+.sparkle-4 { top: 38vh; left: 75vw; font-size: 12px; animation-duration: 6.4s; animation-delay: 0.7s; }
+
+/* ---- brand (logo) ---------------------------------------------- */
+
+.brand {
+  position: absolute;
+  top: 3vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 12px;
+  z-index: 10;
+}
+.brand-dot {
+  color: #C69B37;
+  font-size: 20px;
+  transform: translateY(-2px);
+}
+.brand-word {
+  font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
+  font-weight: 700;
+  font-size: 40px;
+  color: #3A3630;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+.brand-underline {
+  position: absolute;
+  left: 24px;
+  right: 12px;
+  bottom: -2px;
+  height: 6px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 6' preserveAspectRatio='none'><path d='M2 3 q20 -4 40 0 t40 -1 t40 2 t40 -3 t36 2' fill='none' stroke='%233A3630' stroke-width='1.6' stroke-linecap='round'/></svg>") center/100% 100% no-repeat;
+  opacity: 0.72;
+}
+
+/* ---- parents entry --------------------------------------------- */
+
+.parents-entry {
+  position: absolute;
+  top: 3vh;
+  right: 3vw;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Caveat', 'Segoe Script', cursive;
+  font-size: 18px;
+  color: #3A3630;
+  text-decoration: none;
+  opacity: 0.62;
+  border-radius: 999px;
+  transition: opacity 0.4s ease-in-out, background 0.4s ease-in-out;
+  z-index: 10;
+}
+.parents-entry:hover,
+.parents-entry:focus-visible {
+  opacity: 0.95;
+  background: rgba(255,255,255,0.35);
+  outline: none;
+}
+.parents-glyph {
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
