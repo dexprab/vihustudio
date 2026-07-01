@@ -312,8 +312,14 @@ const ThemeEngine=(function(){
   }
 
   function _invalidateThumbnails(){
+    // Sprint 9.1.3 — every slide's cached thumbnail must go, not just
+    // slides with a bound image. Theme changes affect background /
+    // typography / border / margins on every page (including cover +
+    // hook + end pages that render without an uploaded image), so
+    // keeping their stale thumbnails made the sidebar look like the
+    // theme change wasn't global.
     if(typeof AppState==='undefined' || !AppState.slides) return;
-    AppState.slides.forEach(function(s){ if(s.image){ delete s.thumbnail; } });
+    AppState.slides.forEach(function(s){ delete s.thumbnail; });
   }
 
   function _refreshUI(){

@@ -2896,6 +2896,21 @@ body.dark-theme .decoration-layer-btn{ background:var(--panel); }
   color:var(--text);
   font-weight:700;
 }
+/* Sprint 9.1.3 — Theme Designer global-behaviour intro note. */
+.theme-designer-intro{
+  font-size:12px;
+  line-height:1.5;
+  color:var(--text-secondary);
+  margin:0 0 12px;
+  padding:8px 10px;
+  background:rgba(255,203,69,0.06);
+  border:1px solid rgba(255,203,69,0.25);
+  border-radius:8px;
+}
+.theme-designer-intro strong{
+  color:var(--text);
+  font-weight:700;
+}
 
 .card-section-badge{
   font-size:10px;

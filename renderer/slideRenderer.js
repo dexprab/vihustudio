@@ -1325,7 +1325,21 @@ const SlideRenderer=(()=>{
   // #bookTitle input value); slide.metadata always wins when set.
   function buildPayload(slide, opts){
     opts = opts || {};
-    const theme = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getActiveTheme() : null;
+    // Sprint 9.1.3 — Theme Designer Global Behaviour. The payload
+    // carries the RESOLVED theme (with themeOptions.typography +
+    // themeOptions.colours layered on top) so every render surface
+    // — editor, publish, thumbnails — reflects Theme Designer
+    // changes immediately. Before this, buildPayload stamped the
+    // BASE theme, which meant Typography / Colours overrides
+    // reached the renderer only through _theme(s)'s late fallback
+    // and never through the payload's `theme` field — so typography
+    // changes silently didn't propagate to thumbnails or the read
+    // canvas.
+    const theme = (typeof ThemeEngine !== 'undefined')
+      ? ((typeof ThemeEngine.resolveTheme === 'function')
+          ? ThemeEngine.resolveTheme()
+          : ThemeEngine.getActiveTheme())
+      : null;
     const themeOptions = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getOptions() : null;
     const m = slide.metadata || {};
     const cardOverrides = m.cardOverrides || null;
