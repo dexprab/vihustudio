@@ -9,19 +9,64 @@
 // module owns the mapping from a chosen destination + format → a
 // renderer that produces a Blob.
 //
-// The publishing architecture keeps a single loop:
+// ===========================================================
+// The Story Destination interface (Sprint 9.0.4)
+// ===========================================================
+// Every destination object must expose:
 //
-//     Story ─┐
-//            ▶  Destination.plan(pages) → per-page renderable size
-//     Every page:
-//            ▶  Destination.renderPage(canvas, slide, opts)
-//            ▶  Destination.encodePage(canvas) → payloadBytes
-//     Finalise:
-//            ▶  Destination.finish(payloads) → Blob + filename
+//   id            String — stable identifier used by the state
+//                          machine. Never shown to the child.
+//   label         String — child-friendly name shown on the card.
+//   glyph         String — one emoji shown on the card.
+//   tagline       String — one-line description under the label.
+//   comingSoon    Bool   — optional. `true` disables Continue for
+//                          this destination.
+//   formats       Array  — 1+ Format objects (see below).
 //
-// Adding a future destination (EPUB, Kindle, VihuPlanet, Print Order,
-// or the eventual Story Reel MP4 renderer) means dropping in one more
-// entry — no PublishStudio redesign, no shell changes, no new stage.
+// Each Format object must expose:
+//
+//   id            String — stable identifier.
+//   label         String — child-friendly name.
+//   description   String — one-line explanation shown under the label.
+//   ...           any additional fields the renderer needs (canvas
+//                 dimensions, JPEG quality, etc).
+//
+// The destination must implement the render pipeline hooks:
+//
+//   createCanvas(format) → HTMLCanvasElement
+//       Create a canvas sized for the destination's native render
+//       resolution. PublishStudio will hand this canvas to
+//       renderPage(); the destination owns its lifecycle.
+//
+//   renderPage(canvas, slide, ctx)
+//       Draw the slide into the canvas via
+//       SlideRenderer.buildPayload → SlideRenderer.render. `ctx`
+//       carries {index, total, format}.
+//
+//   encodePage(canvas, format, ctx) → payload
+//       Turn the drawn canvas into a payload the destination's
+//       finish() step can concatenate. The shape is opaque to
+//       PublishStudio; the destination reads it back in finish().
+//       Return null to skip a page (e.g. encode failure).
+//
+//   finish(payloads, format) → { blob, mime, filename,
+//                                celebrateLabel, celebrateGlyph }
+//       Concatenate the payloads into the final output blob and
+//       tell PublishStudio how to celebrate. Return null on
+//       failure — PublishStudio treats a null result as "no file
+//       emitted" and lands the child on Celebration with a
+//       disabled download button.
+//
+// Adding a future destination (EPUB, Kindle, VihuPlanet, Print
+// Order, or the eventual Story Reel MP4 renderer) means either:
+//
+//   • Adding one entry to REGISTRY inside this file, or
+//   • Calling StoryDestinations.register(destination) from a
+//     plugin script loaded before PublishStudio.open().
+//
+// Either way PublishStudio needs no changes — the Publishing loop
+// is fully driven through the interface above.
+// ===========================================================
 const StoryDestinations=(function(){
 
   // ---------- Destination helpers (shared) ----------
@@ -230,7 +275,58 @@ const StoryDestinations=(function(){
     return null;
   }
 
-  const api={list:list,find:find,findFormat:findFormat};
+  // Sprint 9.0.4 — register API. A future plugin (VihuPlanet, EPUB,
+  // Kindle, Print Order, MP4 Reel renderer) can push a destination
+  // into the registry without editing this file. `validate` returns
+  // an array of missing / malformed fields; if it comes back
+  // non-empty, register refuses the entry and returns false so the
+  // developer sees the problem instead of silently shipping a
+  // broken destination.
+  const REQUIRED_DESTINATION_FIELDS=['id','label','glyph','tagline','formats'];
+  const REQUIRED_HOOKS=['createCanvas','renderPage','encodePage','finish'];
+  const REQUIRED_FORMAT_FIELDS=['id','label','description'];
+
+  function validate(dest){
+    const problems=[];
+    if(!dest || typeof dest!=='object'){ problems.push('destination is not an object'); return problems; }
+    REQUIRED_DESTINATION_FIELDS.forEach(function(k){
+      if(typeof dest[k]==='undefined') problems.push('missing field: '+k);
+    });
+    // Coming-Soon destinations may skip render hooks — their
+    // interface is intentionally inert. Everyone else must
+    // implement the full four-step pipeline.
+    if(!dest.comingSoon){
+      REQUIRED_HOOKS.forEach(function(h){
+        if(typeof dest[h]!=='function') problems.push('missing hook: '+h);
+      });
+    }
+    if(Array.isArray(dest.formats)){
+      if(dest.formats.length===0) problems.push('formats array is empty');
+      dest.formats.forEach(function(fmt,i){
+        REQUIRED_FORMAT_FIELDS.forEach(function(f){
+          if(typeof fmt[f]==='undefined') problems.push('formats['+i+'] missing '+f);
+        });
+      });
+    }else{
+      problems.push('formats is not an array');
+    }
+    // ids in the registry must be unique.
+    if(dest.id && REGISTRY.some(function(d){ return d.id===dest.id; })){
+      problems.push('duplicate destination id: '+dest.id);
+    }
+    return problems;
+  }
+  function register(dest){
+    const problems=validate(dest);
+    if(problems.length>0){
+      try{ console.warn('StoryDestinations.register rejected: '+problems.join('; ')); }catch(e){}
+      return false;
+    }
+    REGISTRY.push(dest);
+    return true;
+  }
+
+  const api={list:list,find:find,findFormat:findFormat,register:register,validate:validate};
   try{ window.StoryDestinations=api; }catch(e){}
   return api;
 })();
