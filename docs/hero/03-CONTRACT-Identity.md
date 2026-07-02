@@ -1,4 +1,4 @@
-# Contract 03 — Exploration
+# Contract 03 — Identity
 
 Status: 🟡 DRAFT
 

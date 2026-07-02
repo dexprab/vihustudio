@@ -1,5 +1,11 @@
 # Hero Page Documentation Changelog
 
+## v1.1
+
+- Locked Contract 02 – Exploration.
+- Renumbered contracts: Exploration is now Contract 02; Identity moved
+  to Contract 03.
+
 ## v1.0
 
 - Created Hero Page documentation structure.
