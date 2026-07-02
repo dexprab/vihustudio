@@ -40,12 +40,12 @@ _Placeholder — the step-by-step path a child takes through the Hero Page._
 
 ## Core Contracts
 
-_Placeholder — index of the numbered contract documents (01–10) and their
-current status._
+_Placeholder — index of the numbered contract documents and their current
+status._
 
 - [Contract 01 — Purpose](01-CONTRACT-Purpose.md) — 🟢 LOCKED
 - [Contract 02 — Exploration](02-CONTRACT-Exploration.md) — 🟢 LOCKED
-- [Contract 03 — Identity](03-CONTRACT-Identity.md) — 🟡 DRAFT
+- [Contract 03 — Storyteller](03-CONTRACT-Storyteller.md) — 🟢 LOCKED
 - [Contract 04 — Companion](04-CONTRACT-Companion.md) — 🟡 DRAFT
 - [Contract 05 — Home Planet](05-CONTRACT-Home-Planet.md) — 🟡 DRAFT
 - [Contract 06 — Dreaming Planet](06-CONTRACT-Dreaming-Planet.md) — 🟡 DRAFT
@@ -53,6 +53,7 @@ current status._
 - [Contract 08 — User Switch](08-CONTRACT-User-Switch.md) — 🟡 DRAFT
 - [Contract 09 — Browser Memory](09-CONTRACT-Browser-Memory.md) — 🟡 DRAFT
 - [Contract 10 — World Objects](10-CONTRACT-World-Objects.md) — 🟡 DRAFT
+- [Contract 11 — Identity](11-CONTRACT-Identity.md) — 🟡 DRAFT
 
 ---
 

@@ -1,5 +1,11 @@
 # Hero Page Documentation Changelog
 
+## v1.2
+
+- Locked Contract 03 – Storyteller.
+- Renumbered contracts: Storyteller is now Contract 03; Identity moved
+  to Contract 11.
+
 ## v1.1
 
 - Locked Contract 02 – Exploration.
