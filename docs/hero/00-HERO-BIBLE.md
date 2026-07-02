@@ -23,6 +23,16 @@ _Placeholder — the long-term aspiration for the Hero Page experience._
 
 _Placeholder — the guiding design beliefs behind the Hero Page._
 
+Technology should always remain invisible.
+
+Every technical action should become a magical experience.
+
+Examples:
+
+- Authentication becomes finding home.
+- Registration becomes awakening.
+- Discovery becomes exploration.
+
 ---
 
 ## Emotional Goals
@@ -46,7 +56,7 @@ status._
 - [Contract 01 — Purpose](01-CONTRACT-Purpose.md) — 🟢 LOCKED
 - [Contract 02 — Exploration](02-CONTRACT-Exploration.md) — 🟢 LOCKED
 - [Contract 03 — Storyteller](03-CONTRACT-Storyteller.md) — 🟢 LOCKED
-- [Contract 04 — Universe Relationships](04-CONTRACT-Universe-Relationships.md) — 🟡 DRAFT
+- [Contract 04 — Telescope](04-CONTRACT-Telescope.md) — 🟢 LOCKED
 - [Contract 05 — Home Planet](05-CONTRACT-Home-Planet.md) — 🟡 DRAFT
 - [Contract 06 — Dreaming Planet](06-CONTRACT-Dreaming-Planet.md) — 🟡 DRAFT
 - [Contract 07 — Authentication](07-CONTRACT-Authentication.md) — 🟡 DRAFT
@@ -55,6 +65,10 @@ status._
 - [Contract 10 — World Objects](10-CONTRACT-World-Objects.md) — 🟡 DRAFT
 - [Contract 11 — Identity](11-CONTRACT-Identity.md) — 🟡 DRAFT
 - [Contract 12 — Companion](12-CONTRACT-Companion.md) — 🟡 DRAFT
+- [Contract 13 — Universe Relationships](13-CONTRACT-Universe-Relationships.md) — 🟡 DRAFT
+
+See also [`docs/01-canon/CANON.md`](../01-canon/CANON.md) for the
+immutable Canon Laws that every contract must honor.
 
 ---
 

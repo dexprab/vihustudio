@@ -1,5 +1,18 @@
 # Hero Page Documentation Changelog
 
+## v1.4
+
+- Locked Contract 04 – Telescope.
+- Renumbered contracts: Telescope is now Contract 04; Universe
+  Relationships moved to Contract 13 (still 🟡 DRAFT, unlocked, under
+  active design).
+- Added new Canon laws in `docs/01-canon/CANON.md`:
+  - Relationships are discovered.
+  - The Companion chooses the Storyteller.
+  - The Dreaming Planet always exists.
+- Updated Hero Bible Design Philosophy: technology remains invisible,
+  every technical action becomes a magical experience.
+
 ## v1.3
 
 - Added draft Contract 04 – Universe Relationships (not locked, under

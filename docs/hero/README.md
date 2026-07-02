@@ -39,8 +39,11 @@ be reflected in the Change History section and `CHANGELOG.md`.
 ## Files
 
 - `00-HERO-BIBLE.md` — top-level vision and index of the Hero Page.
-- `01`–`10` `CONTRACT-*.md` — individual contracts covering each area of
-  the Hero Page.
+- `CONTRACT-*.md` — individual contracts covering each area of the Hero
+  Page. See the Core Contracts list in `00-HERO-BIBLE.md` for the
+  current numbering and status of each.
+- `../01-canon/CANON.md` — immutable Canon Laws that every contract
+  must honor.
 - `HERO-EMOTIONS.md` — the emotional goals the Hero Page must achieve.
 - `HERO-NON-NEGOTIABLES.md` — constraints that must never be violated.
 - `CHANGELOG.md` — history of documentation changes.
