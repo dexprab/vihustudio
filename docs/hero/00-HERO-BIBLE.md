@@ -46,7 +46,7 @@ status._
 - [Contract 01 — Purpose](01-CONTRACT-Purpose.md) — 🟢 LOCKED
 - [Contract 02 — Exploration](02-CONTRACT-Exploration.md) — 🟢 LOCKED
 - [Contract 03 — Storyteller](03-CONTRACT-Storyteller.md) — 🟢 LOCKED
-- [Contract 04 — Companion](04-CONTRACT-Companion.md) — 🟡 DRAFT
+- [Contract 04 — Universe Relationships](04-CONTRACT-Universe-Relationships.md) — 🟡 DRAFT
 - [Contract 05 — Home Planet](05-CONTRACT-Home-Planet.md) — 🟡 DRAFT
 - [Contract 06 — Dreaming Planet](06-CONTRACT-Dreaming-Planet.md) — 🟡 DRAFT
 - [Contract 07 — Authentication](07-CONTRACT-Authentication.md) — 🟡 DRAFT
@@ -54,6 +54,7 @@ status._
 - [Contract 09 — Browser Memory](09-CONTRACT-Browser-Memory.md) — 🟡 DRAFT
 - [Contract 10 — World Objects](10-CONTRACT-World-Objects.md) — 🟡 DRAFT
 - [Contract 11 — Identity](11-CONTRACT-Identity.md) — 🟡 DRAFT
+- [Contract 12 — Companion](12-CONTRACT-Companion.md) — 🟡 DRAFT
 
 ---
 

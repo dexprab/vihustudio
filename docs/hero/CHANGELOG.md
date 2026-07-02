@@ -1,5 +1,12 @@
 # Hero Page Documentation Changelog
 
+## v1.3
+
+- Added draft Contract 04 – Universe Relationships (not locked, under
+  active design).
+- Renumbered contracts: Universe Relationships is now Contract 04;
+  Companion moved to Contract 12.
+
 ## v1.2
 
 - Locked Contract 03 – Storyteller.

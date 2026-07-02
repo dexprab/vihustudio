@@ -1,4 +1,4 @@
-# Contract 04 — Companion
+# Contract 12 — Companion
 
 Status: 🟡 DRAFT
 
