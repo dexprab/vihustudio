@@ -50,22 +50,37 @@ _Placeholder — the step-by-step path a child takes through the Hero Page._
 
 ## Core Contracts
 
-_Placeholder — index of the numbered contract documents and their current
-status._
+Contracts now carry a **permanent Hero Page ID** (`HP-XXX`). This ID
+never changes once assigned, even if the document's file name is later
+reorganized.
 
-- [Contract 01 — Purpose](01-CONTRACT-Purpose.md) — 🟢 LOCKED
-- [Contract 02 — Exploration](02-CONTRACT-Exploration.md) — 🟢 LOCKED
-- [Contract 03 — Storyteller](03-CONTRACT-Storyteller.md) — 🟢 LOCKED
-- [Contract 04 — Telescope](04-CONTRACT-Telescope.md) — 🟢 LOCKED
-- [Contract 05 — Home Planet](05-CONTRACT-Home-Planet.md) — 🟡 DRAFT
-- [Contract 06 — Dreaming Planet](06-CONTRACT-Dreaming-Planet.md) — 🟡 DRAFT
-- [Contract 07 — Authentication](07-CONTRACT-Authentication.md) — 🟡 DRAFT
-- [Contract 08 — User Switch](08-CONTRACT-User-Switch.md) — 🟡 DRAFT
-- [Contract 09 — Browser Memory](09-CONTRACT-Browser-Memory.md) — 🟡 DRAFT
-- [Contract 10 — World Objects](10-CONTRACT-World-Objects.md) — 🟡 DRAFT
-- [Contract 11 — Identity](11-CONTRACT-Identity.md) — 🟡 DRAFT
-- [Contract 12 — Companion](12-CONTRACT-Companion.md) — 🟡 DRAFT
-- [Contract 13 — Universe Relationships](13-CONTRACT-Universe-Relationships.md) — 🟡 DRAFT
+- HP-001 — [Contract 01 — Purpose](01-CONTRACT-Purpose.md) — 🟢 LOCKED
+- HP-002 — [Contract 02 — Exploration](02-CONTRACT-Exploration.md) — 🟢 LOCKED
+- HP-003 — [Contract 03 — Storyteller](03-CONTRACT-Storyteller.md) — 🟢 LOCKED
+- HP-004 — [Contract 04 — Telescope](04-CONTRACT-Telescope.md) — 🟢 LOCKED
+- HP-005 — [Contract 05 — Dreaming Planet](05-CONTRACT-Dreaming-Planet.md) — 🟢 LOCKED
+- HP-006 — [Contract 06 — Companion](06-CONTRACT-Companion.md) — 🟢 LOCKED
+- HP-007 — [Contract 07 — Hero Sky Map](07-CONTRACT-Hero-Sky-Map.md) — 🟡 DRAFT
+- HP-008 — Universe Relationships (reserved) — currently drafted at
+  [13-CONTRACT-Universe-Relationships.md](13-CONTRACT-Universe-Relationships.md) — 🟡 DRAFT
+- HP-009 — Story World (reserved) — not yet drafted
+- HP-010 — Authentication (reserved) — currently drafted at
+  [15-CONTRACT-Authentication.md](15-CONTRACT-Authentication.md) — 🟡 DRAFT
+- HP-011 — User Creation (reserved) — not yet drafted
+- HP-012 — User Switching (reserved) — currently drafted at
+  [08-CONTRACT-User-Switch.md](08-CONTRACT-User-Switch.md) — 🟡 DRAFT
+- HP-013 — Browser Memory (reserved) — currently drafted at
+  [09-CONTRACT-Browser-Memory.md](09-CONTRACT-Browser-Memory.md) — 🟡 DRAFT
+
+### Unassigned Drafts
+
+The following existing drafts are not yet part of the permanent HP-ID
+sequence. They remain in the repository pending a permanent ID
+assignment in a future update.
+
+- [10-CONTRACT-World-Objects.md](10-CONTRACT-World-Objects.md) — 🟡 DRAFT — no HP ID yet
+- [14-CONTRACT-Home-Planet.md](14-CONTRACT-Home-Planet.md) — 🟡 DRAFT — no HP ID yet
+- [11-CONTRACT-Identity.md](11-CONTRACT-Identity.md) — 🟡 DRAFT — no HP ID yet
 
 See also [`docs/01-canon/CANON.md`](../01-canon/CANON.md) for the
 immutable Canon Laws that every contract must honor.
