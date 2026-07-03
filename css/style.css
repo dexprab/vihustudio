@@ -1933,14 +1933,34 @@ button:active{
 }
 
 /* Sprint 9.2 — Theme Library. .theme-library is the scrollable
-   region (Official section + Imported section + Import button);
-   .theme-cards stays a plain grid nested inside each section so the
-   existing card styles below need no change. */
+   region (type sections + Import button); .theme-cards stays a plain
+   grid nested inside each section so the existing card styles below
+   need no change. Sprint 9.3 — .theme-library-type groups Story
+   Themes / Artwork Themes, each still split into Official/Imported
+   via .theme-library-section exactly as in 9.2. */
 .modal-content.modal-wide .theme-library{
   margin-bottom:16px;
   overflow-y:auto;
   flex:1 1 auto;
   padding:4px;
+}
+
+.theme-library-type{
+  margin-bottom:22px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+.theme-library-type:last-of-type{
+  border-bottom:none;
+  margin-bottom:10px;
+  padding-bottom:0;
+}
+
+.theme-library-type-heading{
+  margin:0 0 12px 0;
+  font-size:14px;
+  font-weight:bold;
+  color:var(--text);
 }
 
 .theme-library-section{

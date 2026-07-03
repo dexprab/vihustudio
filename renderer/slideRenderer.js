@@ -51,6 +51,19 @@ const SlideRenderer=(()=>{
     return FALLBACK_OPTIONS;
   }
 
+  // Sprint 9.3 — Artwork Themes. Same lookup shape as _theme(s), but
+  // `null` is a legitimate, common answer (no Artwork Theme selected)
+  // rather than something to fall back away from — every artwork-
+  // presentation call site below treats a null return as "render
+  // exactly like before this sprint existed."
+  function _artworkTheme(s){
+    if(s && s.artworkTheme!==undefined) return s.artworkTheme;
+    if(typeof ThemeEngine!=='undefined'){
+      try{ return ThemeEngine.getActiveArtworkTheme(); }catch(e){ return null; }
+    }
+    return null;
+  }
+
   function _frameColor(theme,opts){
     if(typeof ThemeEngine!=='undefined' && theme && theme.variants){
       try{ return ThemeEngine.resolveFrameColor(theme,opts.variant); }catch(e){}
@@ -87,6 +100,82 @@ const SlideRenderer=(()=>{
     try{ x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; }catch(e){}
   }
 
+  // ===========================================================
+  // Sprint 9.3 — Artwork Themes.
+  // ===========================================================
+  // Artwork Themes never touch a pixel of the child's picture. They
+  // map onto the exact same Picture Border rendering Sprint 6.5/6.5.1
+  // already built (fill / design / cornerRadius / shadow / padding) —
+  // there is no parallel "artwork engine" here, just three lookup
+  // tables plus a couple of new ornament/texture passes that draw
+  // around the image, never onto it. See _resolveBorder below for
+  // where this becomes one more fallback layer (card override wins,
+  // then an Artwork Theme, then the Story Theme's Holder Defaults).
+  //
+  // background -> border.fill (drawn UNDER the image — "Background
+  // always sits behind the artwork").
+  const ARTWORK_BACKGROUND_FILL={
+    white:'white', cream:'#F7F1E3', 'kraft-paper':'#C9A66B',
+    'watercolor-paper':'#F5F0E6', 'notebook-paper':'#F4F6FA',
+    black:'black', transparent:'none', 'bulletin-board':'#C9A876'
+  };
+  // frame -> {design, cornerRadius}. "none" / "white-mat" / "floating"
+  // lean on the existing fill+shadow primitives rather than a bespoke
+  // design (a mat is just a fill with no ornament). "wood" and
+  // "polaroid" reuse the Sprint 6.5.1 designs verbatim — they already
+  // are what these presets describe. "tape" is the one genuinely new
+  // ornament this sprint adds (see _ornamentTape). Frames never crop
+  // or resize the image itself — only cornerRadius, which the image's
+  // own clip path already respects for every other border design.
+  const ARTWORK_FRAME_PRESET={
+    'none':           {design:null,       cornerRadius:0},
+    'white-mat':      {design:null,       cornerRadius:0},
+    'floating':       {design:null,       cornerRadius:8},
+    'wood':           {design:'wooden',   cornerRadius:6},
+    'polaroid':       {design:'polaroid', cornerRadius:0},
+    'tape':           {design:'tape',     cornerRadius:0},
+    'bulletin-board': {design:null,       cornerRadius:0}
+  };
+  // shadow -> {enabled, intensity}. Deliberately subtle across the
+  // board — "Keep shadows subtle" per the sprint spec.
+  const ARTWORK_SHADOW_PRESET={
+    'none':     {enabled:false, intensity:0},
+    soft:       {enabled:true,  intensity:0.22},
+    gallery:    {enabled:true,  intensity:0.32},
+    floating:   {enabled:true,  intensity:0.55}
+  };
+  // composition -> padding (px, same unit as the existing border.padding).
+  const ARTWORK_COMPOSITION_PADDING={
+    center:24, fit:0, margin:56, floating:32, 'full-width':4
+  };
+
+  // Converts an active Artwork Theme into the same border-shape object
+  // _resolveBorder already produces for a card override or the Story
+  // Theme's Holder Defaults, so every existing draw function (fill /
+  // ornament / stroke / image clip) needs zero changes to understand
+  // it. `_artwork` is stashed on the return value (not part of the
+  // border shape those functions read) purely so the texture/lighting
+  // passes below can look up paper/lighting without re-resolving the
+  // active theme a second time.
+  function _artworkBorder(art){
+    if(!art) return null;
+    const framePreset=ARTWORK_FRAME_PRESET[art.frame]||ARTWORK_FRAME_PRESET['none'];
+    const shadowPreset=ARTWORK_SHADOW_PRESET[art.shadow]||ARTWORK_SHADOW_PRESET['none'];
+    const padding=(ARTWORK_COMPOSITION_PADDING[art.composition]!=null)?ARTWORK_COMPOSITION_PADDING[art.composition]:24;
+    return {
+      design:framePreset.design,
+      padding:padding,
+      fill:ARTWORK_BACKGROUND_FILL[art.background]||'none',
+      cornerRadius:framePreset.cornerRadius,
+      lineEnabled:false,
+      lineWidth:2,
+      lineColor:'#000000',
+      shadowEnabled:shadowPreset.enabled,
+      shadowIntensity:shadowPreset.intensity,
+      _artwork:art
+    };
+  }
+
   // Sprint 6.5 — Picture Border. Resolved from
   // slide.metadata.cardOverrides.border (passed in via payload.overrides.border).
   // Returns null when no override is present so the legacy rendering path
@@ -96,11 +185,22 @@ const SlideRenderer=(()=>{
   function _resolveBorder(s){
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
-    // Sprint 8.4.2 — when no card-level override is set, fall back to the
-    // theme-level Picture Holder defaults (themeOptions.holder). The card
-    // still wins per slide; this is the global default for every untouched
-    // holder. When neither is set, return null so legacy behaviour holds.
     if(!b){
+      // Sprint 9.3 — an Artwork Theme is the next fallback layer,
+      // ABOVE the Story Theme's Holder Defaults (below) but only when
+      // the slide actually has a picture — "If a page contains no
+      // artwork, Artwork Theme has no effect" is enforced right here,
+      // not by every draw call site having to check separately.
+      const hasImage=!!(s && s.image && s.image.width);
+      if(hasImage){
+        const art=_artworkTheme(s);
+        const artworkBorder=_artworkBorder(art);
+        if(artworkBorder) return artworkBorder;
+      }
+      // Sprint 8.4.2 — when no card-level override is set, fall back to the
+      // theme-level Picture Holder defaults (themeOptions.holder). The card
+      // still wins per slide; this is the global default for every untouched
+      // holder. When neither is set, return null so legacy behaviour holds.
       const opts=_options(s);
       const hd=(opts && opts.holder) || {};
       const hasHolderDefault=
@@ -254,6 +354,7 @@ const SlideRenderer=(()=>{
       case 'wooden':    return _ornamentWooden(rect,border);
       case 'magic':     return _ornamentMagic(rect);
       case 'vintage':   return _ornamentVintage(rect,border,theme);
+      case 'tape':      return _ornamentTape(rect);
       default: return;
     }
   }
@@ -401,6 +502,242 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // Sprint 9.3 — Artwork Theme "tape" frame (Sketchbook, Scrapbook).
+  // Two small washi-tape strips holding the corners down, rotated a
+  // few degrees so it reads as hand-placed rather than printed. Fixed
+  // offsets/angles (not randomised) so the same theme renders
+  // identically every time — consistent with every other ornament in
+  // this file.
+  function _ornamentTape(rect){
+    x.save();
+    x.globalAlpha=0.78;
+    x.fillStyle='#E8D9B5';
+    const tapes=[
+      {x:rect.x+rect.w*0.14, y:rect.y-6, w:64, h:26, rot:-8},
+      {x:rect.x+rect.w*0.82, y:rect.y-8, w:64, h:26, rot:6}
+    ];
+    tapes.forEach(function(t){
+      x.save();
+      x.translate(t.x,t.y);
+      x.rotate(t.rot*Math.PI/180);
+      x.fillRect(-t.w/2,-t.h/2,t.w,t.h);
+      x.strokeStyle='rgba(255,255,255,0.35)';
+      x.lineWidth=1;
+      x.strokeRect(-t.w/2,-t.h/2,t.w,t.h);
+      x.restore();
+    });
+    x.restore();
+  }
+
+  // ---------- Sprint 9.3 — Artwork Theme paper / lighting ----------
+  // Drawn right after the frame fill, still entirely under the image
+  // (the image is drawn afterwards and fully covers its own inner
+  // rect) — these never touch the artwork itself, only the mat/
+  // background band around it. Every pattern below uses fixed
+  // coordinates, never Math.random(), so a page renders identically
+  // on every redraw — the same discipline every other ornament in
+  // this file already follows.
+  function _drawArtworkPresentation(rect,border){
+    const art=border && border._artwork;
+    if(!art) return;
+    _drawArtworkPaper(rect,art.paper);
+    _drawArtworkLighting(rect,art.lighting);
+    if(art.background==='bulletin-board') _drawBulletinPins(rect);
+  }
+
+  function _drawArtworkPaper(rect,paper){
+    switch(paper){
+      case 'notebook':   return _paperNotebook(rect);
+      case 'kraft':      return _paperSpeckle(rect,'rgba(120,88,45,0.12)');
+      case 'watercolor': return _paperMottled(rect,1);
+      case 'canvas':     return _paperCrosshatch(rect);
+      case 'handmade':   return _paperMottled(rect,0.6);
+      default: return; // 'smooth' or unspecified — no texture
+    }
+  }
+
+  // Faint ruled lines + a red margin line — notebook paper.
+  function _paperNotebook(rect){
+    x.save();
+    x.strokeStyle='rgba(120,150,200,0.35)';
+    x.lineWidth=1.5;
+    const rowHeight=34;
+    for(let ly=rect.y+rowHeight; ly<rect.y+rect.h-6; ly+=rowHeight){
+      x.beginPath(); x.moveTo(rect.x+6,ly); x.lineTo(rect.x+rect.w-6,ly); x.stroke();
+    }
+    x.strokeStyle='rgba(214,90,90,0.30)';
+    x.lineWidth=2;
+    x.beginPath(); x.moveTo(rect.x+26,rect.y+4); x.lineTo(rect.x+26,rect.y+rect.h-4); x.stroke();
+    x.restore();
+  }
+
+  // Small fixed dot scatter — kraft paper's soft speckle.
+  function _paperSpeckle(rect,color){
+    x.save();
+    x.fillStyle=color;
+    const cols=6, rows=5;
+    for(let i=0;i<cols;i++){
+      for(let j=0;j<rows;j++){
+        const ox=((i*37+j*13)%17)-8;
+        const oy=((i*11+j*29)%13)-6;
+        const px=rect.x+rect.w*((i+0.5)/cols)+ox;
+        const py=rect.y+rect.h*((j+0.5)/rows)+oy;
+        x.beginPath(); x.arc(px,py,1.6,0,Math.PI*2); x.fill();
+      }
+    }
+    x.restore();
+  }
+
+  // Three soft radial blobs — watercolor bleed / handmade paper's
+  // uneven surface, at a lower alpha for handmade.
+  function _paperMottled(rect,alphaScale){
+    x.save();
+    const blobs=[
+      [rect.x+rect.w*0.22, rect.y+rect.h*0.30, rect.w*0.30],
+      [rect.x+rect.w*0.70, rect.y+rect.h*0.65, rect.w*0.26],
+      [rect.x+rect.w*0.45, rect.y+rect.h*0.85, rect.w*0.22]
+    ];
+    blobs.forEach(function(b){
+      const grad=x.createRadialGradient(b[0],b[1],0,b[0],b[1],b[2]);
+      grad.addColorStop(0,'rgba(255,255,255,'+(0.10*alphaScale).toFixed(3)+')');
+      grad.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=grad;
+      x.beginPath(); x.arc(b[0],b[1],b[2],0,Math.PI*2); x.fill();
+    });
+    x.restore();
+  }
+
+  // Fine diagonal crosshatch — canvas weave.
+  function _paperCrosshatch(rect){
+    x.save();
+    x.strokeStyle='rgba(0,0,0,0.05)';
+    x.lineWidth=1;
+    const step=14;
+    for(let ox=-rect.h; ox<rect.w; ox+=step){
+      x.beginPath();
+      x.moveTo(rect.x+ox,rect.y);
+      x.lineTo(rect.x+ox+rect.h,rect.y+rect.h);
+      x.stroke();
+    }
+    x.restore();
+  }
+
+  // Lighting only ever washes the mat/background band — never the
+  // artwork itself ("Lighting only affects presentation. Never alter
+  // artwork colours.").
+  function _drawArtworkLighting(rect,lighting){
+    switch(lighting){
+      case 'gallery': return _lightingGlow(rect, rect.x+rect.w*0.5, rect.y+rect.h*0.25, Math.max(rect.w,rect.h)*0.7, 0.10);
+      case 'soft':    return _lightingGlow(rect, rect.x+rect.w*0.5, rect.y+rect.h*0.40, Math.max(rect.w,rect.h)*0.85, 0.06);
+      case 'window':  return _lightingDirectional(rect);
+      default: return; // 'none' or unspecified
+    }
+  }
+  function _lightingGlow(rect,cx,cy,r,alpha){
+    x.save();
+    const grad=x.createRadialGradient(cx,cy,0,cx,cy,r);
+    grad.addColorStop(0,'rgba(255,248,224,'+alpha.toFixed(3)+')');
+    grad.addColorStop(1,'rgba(255,248,224,0)');
+    x.fillStyle=grad;
+    x.fillRect(rect.x,rect.y,rect.w,rect.h);
+    x.restore();
+  }
+  function _lightingDirectional(rect){
+    x.save();
+    const grad=x.createLinearGradient(rect.x,rect.y,rect.x+rect.w,rect.y+rect.h*0.3);
+    grad.addColorStop(0,'rgba(255,255,255,0.12)');
+    grad.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=grad;
+    x.fillRect(rect.x,rect.y,rect.w,rect.h);
+    x.restore();
+  }
+
+  // Classroom Display's "pinned to the bulletin board" detail — two
+  // small pin heads at the top corners of the OUTER rect (deliberately
+  // not clipped to the fill/frame path, since a pin is meant to sit on
+  // the board's surface, slightly overlapping the picture's edge).
+  function _drawBulletinPins(rect){
+    x.save();
+    const pins=[[rect.x+18,rect.y+14],[rect.x+rect.w-18,rect.y+14]];
+    pins.forEach(function(p){
+      const grad=x.createRadialGradient(p[0]-2,p[1]-2,0,p[0],p[1],7);
+      grad.addColorStop(0,'#F2E4C4');
+      grad.addColorStop(1,'#B8934A');
+      x.fillStyle=grad;
+      x.beginPath(); x.arc(p[0],p[1],6,0,Math.PI*2); x.fill();
+      x.strokeStyle='rgba(0,0,0,0.25)';
+      x.lineWidth=1;
+      x.stroke();
+    });
+    x.restore();
+  }
+
+  // Artwork caption — museum label / handwritten note / student tag /
+  // minimal line, drawn just under the panel (legacy Story-role
+  // layout only; a scene-based image holder can sit anywhere on the
+  // page, so there's no single safe spot to anchor a caption under it
+  // — out of scope for this sprint, see render()'s call site).
+  // "Captions remain optional": with no slide.metadata.artwork set
+  // (true for every project today — no UI writes this field yet) this
+  // draws nothing at all, exactly like every other artwork-theme
+  // effect does when there's nothing to show.
+  // `theme` is the resolved Story Theme — the caption sits in the
+  // frame band below the panel (same area the footer already reads
+  // theme.footerText.color for), so it uses that colour too rather
+  // than a hardcoded shade. A hardcoded dark grey would go invisible
+  // against a dark frame colour like Storybook Classic's navy; every
+  // Story Theme's footerText colour is already tuned for legibility
+  // against its own frame, so reusing it guarantees the caption reads
+  // no matter which Story Theme + Artwork Theme are combined.
+  function _drawArtworkCaption(art,meta,panelRect,theme){
+    if(!art || !art.caption || art.caption==='none') return;
+    const info=(meta && meta.artwork) || null;
+    const title=(info && typeof info.title==='string') ? info.title.trim() : '';
+    if(!title) return;
+    const subParts=[];
+    if(info.artist) subParts.push(String(info.artist));
+    if(info.age) subParts.push('Age '+info.age);
+    if(info.date) subParts.push(String(info.date));
+    const subLine=subParts.join('  ·  ');
+    const baseColor=(theme && theme.footerText && theme.footerText.color) || '#FFFFFF';
+
+    const cx=panelRect.x+panelRect.w/2;
+    const titleY=panelRect.y+panelRect.h+34;
+    let titleFont,titleAlpha,subFont,titleText;
+    switch(art.caption){
+      case 'museum':
+        titleFont='600 18px Georgia, serif'; titleAlpha=0.92; titleText=title.toUpperCase();
+        subFont='16px Georgia, serif';
+        break;
+      case 'handwritten':
+        titleFont='italic 26px Georgia, serif'; titleAlpha=0.92; titleText=title;
+        subFont='italic 18px Georgia, serif';
+        break;
+      case 'student':
+        titleFont='600 20px "Comic Sans MS", "Chalkboard SE", sans-serif'; titleAlpha=0.92; titleText=title;
+        subFont='16px "Comic Sans MS", "Chalkboard SE", sans-serif';
+        break;
+      case 'minimal':
+      default:
+        titleFont='300 16px "Helvetica Neue", Arial, sans-serif'; titleAlpha=0.78; titleText=title;
+        subFont='300 13px "Helvetica Neue", Arial, sans-serif';
+        break;
+    }
+    x.save();
+    x.textAlign='center';
+    x.textBaseline='alphabetic';
+    x.fillStyle=baseColor;
+    x.font=titleFont;
+    x.globalAlpha=titleAlpha;
+    x.fillText(titleText,cx,titleY);
+    if(subLine){
+      x.font=subFont;
+      x.globalAlpha=titleAlpha*0.72;
+      x.fillText(subLine,cx,titleY+22);
+    }
+    x.restore();
+  }
+
   // Picture-frame stroke. Drawn over the image so it always reads as a
   // crisp border, even when fill is "None".
   function _drawPictureFrameStroke(rect,border){
@@ -431,6 +768,7 @@ const SlideRenderer=(()=>{
     const _panelRect={x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
     if(_border){
       _drawPictureFrameFill(_panelRect,_border,t);
+      _drawArtworkPresentation(_panelRect,_border);
     }else{
       _drawPanel(t.panel.color,opts.panelStyle);
     }
@@ -462,6 +800,10 @@ const SlideRenderer=(()=>{
       if(_border){
         _drawPictureFrameOrnament(_panelRect,_border,t);
         _drawPictureFrameStroke(_panelRect,_border);
+        // Sprint 9.3 — _border._artwork is only ever set when the
+        // slide has an image (see _resolveBorder's gating), so this
+        // is already "no artwork on the page -> no caption" for free.
+        if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_panelRect,t);
       }
 
       // Decorations on the frame
@@ -665,6 +1007,7 @@ const SlideRenderer=(()=>{
     } : {x:rx, y:ry, w:size.w, h:size.h};
     if(border){
       _drawPictureFrameFill(outerRect,border,_theme(s));
+      _drawArtworkPresentation(outerRect,border);
     }
     // Resolve the view: user's s.imageView wins; blueprint `fit` seeds
     // the default mode ('cover' → 'fill', 'contain' → 'fit').
@@ -1341,6 +1684,14 @@ const SlideRenderer=(()=>{
           : ThemeEngine.getActiveTheme())
       : null;
     const themeOptions = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getOptions() : null;
+    // Sprint 9.3 — same "stamp the resolved value into the payload"
+    // discipline as `theme` above, so every render surface (editor,
+    // thumbnails, publish) reflects an Artwork Theme change
+    // immediately. null (no Artwork Theme selected) is a normal,
+    // common value here — see _artworkTheme(s) / _resolveBorder(s).
+    const artworkTheme = (typeof ThemeEngine !== 'undefined' && typeof ThemeEngine.getActiveArtworkTheme === 'function')
+      ? ThemeEngine.getActiveArtworkTheme()
+      : null;
     const m = slide.metadata || {};
     const cardOverrides = m.cardOverrides || null;
     // Sprint 4.5: image view lives under cardOverrides.image; fall back
@@ -1364,6 +1715,7 @@ const SlideRenderer=(()=>{
       totalPages: (opts.totalPages != null) ? opts.totalPages : (slide.totalPages || 0),
       theme: theme,
       themeOptions: themeOptions,
+      artworkTheme: artworkTheme,
       imageView: imageView,
       overrides: cardOverrides,
       pageType: slide.pageType,

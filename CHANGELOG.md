@@ -2,6 +2,100 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.0.4 — 2026-07-03
+
+Sprint 9.3 — **Artwork Themes.** Extends the Theme Registry / Theme
+Library / Theme Engine from Sprint 9.2 to support a second theme
+type: Artwork Themes, which control ONLY how a child's own picture is
+presented (background, frame, paper, caption, shadow, lighting,
+composition) and never touch a pixel of the artwork itself. No
+separate Artwork Engine, no parallel architecture — one registry, one
+Theme Library, one `.vtheme` import pipeline, now serving two theme
+types.
+
+- feat(theme): Sprint 9.3 Artwork Themes (build 0052, 2026-07-03)
+  - **Theme types.** Every manifest now carries `type: 'story'|
+    'artwork'`. `js/themeRegistry.js` normalizes a missing/invalid
+    `type` to `'story'` rather than rejecting the package — every
+    .vtheme written before this sprint, and everything already sitting
+    in a child's `localStorage` from Sprint 9.2, keeps loading with
+    zero migration. `THEME_SYSTEM_VERSION` bumped to `9.3.0`
+    (backward-compatible: 9.2-declared packages still pass
+    `isCompatible`).
+  - **Artwork Theme validation is deliberately light.** Every
+    presentation section (presentation/background/frame/paper/
+    caption/shadow/lighting/composition/enhancement) is optional per
+    spec — only enough to identify and display the theme in the
+    Library (`name`) is required, versus a Story Theme's full
+    frame/panel/storyText/footerText/watermark requirement.
+  - **Five Official Artwork Themes** — Museum Gallery (white mat,
+    soft gallery light, centered), Sketchbook (notebook paper, tape
+    corners, handwritten caption), Watercolor Portfolio (watercolor
+    paper, floating frame, generous margins), Classroom Display
+    (bulletin board with pin marks, student label), Scrapbook (kraft
+    paper, tape, layered/handmade paper texture) — added to
+    `js/themeRegistry.js` alongside the existing four Story Themes.
+  - **No parallel rendering engine.** Artwork Theme presentation is
+    layered into the exact Picture Border system Sprint 6.5/6.5.1
+    already built: `background` → `border.fill` (drawn under the
+    image, same as it's always worked), `frame` → `border.design` /
+    `cornerRadius` (reusing the existing `wooden` and `polaroid`
+    designs verbatim; `tape` is the one genuinely new ornament this
+    sprint adds), `shadow` → `border.shadowIntensity`, `composition`
+    → `border.padding`. `_resolveBorder` gained exactly one new
+    fallback layer — card override, then an active Artwork Theme
+    (only when the slide has an image), then the Story Theme's
+    Holder Defaults, then null — so every existing draw function
+    (fill / ornament / stroke / image clip) needed zero changes.
+  - **Paper texture + lighting + captions**, all drawn strictly
+    around/behind the image, never onto it: faint ruled lines for
+    notebook paper, soft speckle for kraft, mottled radial blobs for
+    watercolor/handmade, fine crosshatch for canvas; a soft gallery/
+    window/soft light wash on the mat only; a caption line (museum
+    label / handwritten note / student tag / minimal) reading
+    `slide.metadata.artwork.{title,artist,age,date}` — optional and
+    additive, so every project today (no UI writes this field yet)
+    renders no caption text, exactly as the spec requires
+    ("Captions remain optional"). Caption colour is read from the
+    active Story Theme's own `footerText.color` rather than a
+    hardcoded shade — a hardcoded dark grey went invisible against a
+    dark frame like Storybook Classic's navy during testing; every
+    Story Theme's footer colour is already tuned for legibility
+    against its own frame.
+  - **Theme Library, not a second library.** The existing Theme
+    Picker modal (Sprint 9.2) now shows **Story Themes** and
+    **Artwork Themes** as two type sections, each still split into
+    Official/Imported exactly as before. Artwork Themes are opt-in —
+    unlike Story Themes there is no default; the Artwork Themes
+    section always leads with a "None" tile that clears the
+    selection back to today's plain presentation.
+  - **Live preview, verified.** `applyArtworkTheme` reuses the exact
+    `_invalidateThumbnails` + `_refreshUI` (→ `showSlide` → `draw`)
+    path `applyTheme` already used — no page reload, no project
+    reload. Verified in headless Chromium: switching between all
+    five official Artwork Themes repaints the canvas immediately
+    with visually distinct results; clearing back to "None" produces
+    a **byte-identical** canvas bitmap to a page that never had an
+    Artwork Theme applied (compared via `canvas.toDataURL()`, not
+    just a screenshot — screenshot dimensions can shift with
+    unrelated page layout); a page with no image at all is
+    completely unaffected by any Artwork Theme (pixel-identical
+    before/after).
+  - **Backward compatible by construction.** A legacy project
+    payload with no `artworkTheme` field opens correctly and resolves
+    `getActiveArtworkThemeId() === null` — Artwork Theme is additive,
+    not a schema migration. `getAllThemes`/`getTheme`/`getActiveTheme`/
+    `applyTheme`/`resolveTheme` for Story Themes are byte-for-byte
+    unchanged in behaviour; verified via the same legacy-project +
+    resolved-frame-colour check used in the Sprint 9.2 release.
+  - **Architecture ready for what's next without another redesign.**
+    `presentation` and `enhancement` are stored and validated on every
+    Artwork Theme for forward compatibility but don't independently
+    drive rendering this sprint — none of the five official themes
+    specify an `enhancement`, and nothing in this sprint automatically
+    adjusts a pixel of a child's photo (rotate/crop/exposure stay
+    Picture Studio's explicit, child-initiated actions).
+
 ## v1.0.3 — 2026-07-03
 
 Sprint 9.2 — **Theme Library Foundation.** An architecture sprint, not

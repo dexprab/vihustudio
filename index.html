@@ -3,7 +3,7 @@
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>VihuStudio 1.0.3</title>
+<title>VihuStudio 1.0.4</title>
 <link rel='stylesheet' href='css/style.css'>
 </head>
 <body class='light-theme'>
@@ -301,19 +301,35 @@
 
 <!-- Theme Picker modal (Sprint 3.3.1; Sprint 9.2 — Theme Library
      Foundation: sections are rendered from ThemeRegistry.getCatalog()
-     instead of a hardcoded array. See js/themeRegistry.js. -->
+     instead of a hardcoded array; Sprint 9.3 — Artwork Themes adds a
+     second type section alongside Story Themes, same library, same
+     Official/Imported split within each. See js/themeRegistry.js. -->
 <div id='themePickerModal' class='modal hidden' role='dialog' aria-modal='true'>
 <div class='modal-content modal-wide'>
 <h3>Theme Library</h3>
-<p>Pick a visual identity for your book. You can customize it further in the Theme Designer.</p>
+<p>Pick a visual identity for your book, and how your artwork is presented. You can customize further in the Theme Designer.</p>
 <div id='themePickerCards' class='theme-library'>
+<div class='theme-library-type'>
+<h3 class='theme-library-type-heading'>Story Themes</h3>
 <div class='theme-library-section'>
 <h4 class='theme-library-heading'>Official Themes</h4>
-<div id='themeLibraryOfficial' class='theme-cards'></div>
+<div id='themeLibraryStoryOfficial' class='theme-cards'></div>
 </div>
 <div class='theme-library-section'>
 <h4 class='theme-library-heading'>Imported Themes</h4>
-<div id='themeLibraryImported' class='theme-cards'></div>
+<div id='themeLibraryStoryImported' class='theme-cards'></div>
+</div>
+</div>
+<div class='theme-library-type'>
+<h3 class='theme-library-type-heading'>Artwork Themes</h3>
+<div class='theme-library-section'>
+<h4 class='theme-library-heading'>Official Themes</h4>
+<div id='themeLibraryArtworkOfficial' class='theme-cards'></div>
+</div>
+<div class='theme-library-section'>
+<h4 class='theme-library-heading'>Imported Themes</h4>
+<div id='themeLibraryArtworkImported' class='theme-cards'></div>
+</div>
 </div>
 <button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn'>+ Import Theme</button>
 </div>

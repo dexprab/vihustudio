@@ -83,6 +83,23 @@ const ThemeEngine=(function(){
   }
   function getActiveTheme(){ return getTheme(getActiveThemeId()); }
 
+  // Sprint 9.3 — Artwork Themes are opt-in, unlike Story Themes: there
+  // is no DEFAULT_ARTWORK_THEME_ID. `project.artworkTheme` is additive
+  // (absent on every pre-9.3 project), so an unset/unknown/cleared id
+  // resolves to null rather than falling back to some theme — "if no
+  // Artwork Theme exists, render exactly as today" is enforced right
+  // here, not by the renderer having to guess.
+  function getActiveArtworkThemeId(){
+    if(typeof AppState!=='undefined' && AppState.project && AppState.project.artworkTheme && ThemeRegistry.hasTheme(AppState.project.artworkTheme)){
+      return AppState.project.artworkTheme;
+    }
+    return null;
+  }
+  function getActiveArtworkTheme(){
+    const id=getActiveArtworkThemeId();
+    return id ? ThemeRegistry.get(id) : null;
+  }
+
   // Sprint 8.4.2 — Theme Designer Completion. Typography / Colours /
   // Picture Holder Defaults / Page Layout all ride on themeOptions
   // sub-objects. Empty sub-objects mean "use the active theme defaults"
@@ -529,14 +546,49 @@ const ThemeEngine=(function(){
     return t;
   }
 
+  // Sprint 9.3 — applies/clears the Artwork Theme. `themeId===null`
+  // clears it back to "no artwork theme" (see the "None" card in
+  // buildPickerCards). Reuses the exact same refresh path as
+  // applyTheme (_invalidateThumbnails + _refreshUI) — "Live Preview:
+  // Selecting an Artwork Theme updates artwork presentation
+  // immediately, no page reload" falls straight out of that, the same
+  // way a Story Theme change already refreshes every page instantly.
+  function applyArtworkTheme(themeId,opts){
+    const resolvedId=themeId ? (ThemeRegistry.hasTheme(themeId) ? themeId : null) : null;
+    if(typeof AppState!=='undefined' && AppState.project){
+      AppState.project.artworkTheme=resolvedId;
+    }
+    _invalidateThumbnails();
+    _refreshUI();
+    if(!(opts&&opts.silent)){
+      try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    }
+    return resolvedId ? ThemeRegistry.get(resolvedId) : null;
+  }
+
   function buildLeftPaneCard(){
     _renderLeftCard(getActiveThemeId());
   }
 
-  // Sprint 9.2 — one card renderer shared by both Theme Library
-  // sections (previously inlined once, since there was only ever one
-  // list). Card markup/behaviour is unchanged from before this sprint.
-  function _renderThemeCard(t,activeId){
+  // Sprint 9.3 — a Story Theme card previews frame/panel colour, same
+  // as always. An Artwork Theme has no frame/panel object (its
+  // `frame` is a preset name, not a colour) — its card previews the
+  // background preset instead, using the same swatch markup so no new
+  // CSS is needed. See renderer/slideRenderer.js's ARTWORK_BACKGROUND_
+  // FILL for the canvas-side equivalent of this map; kept separate
+  // (CSS swatch vs. canvas fill) rather than shared, since forcing one
+  // constant across a CSS module and a Canvas module buys nothing.
+  const ARTWORK_BACKGROUND_PREVIEW={
+    white:'#FFFFFF', cream:'#F7F1E3', 'kraft-paper':'#C9A66B',
+    'watercolor-paper':'#F0EAE0', 'notebook-paper':'#F4F6FA',
+    black:'#1A1A1A', transparent:'#FFFFFF', 'bulletin-board':'#C9A876'
+  };
+
+  // Sprint 9.2 — one card renderer shared by every Theme Library
+  // section. Sprint 9.3 — `type` picks which fields the preview reads
+  // and which apply function a click calls; markup is identical
+  // either way.
+  function _renderThemeCard(t,activeId,type){
     const card=document.createElement('button');
     card.type='button';
     card.className='theme-card';
@@ -544,10 +596,15 @@ const ThemeEngine=(function(){
     if(t.id===activeId) card.classList.add('active');
     const preview=document.createElement('div');
     preview.className='theme-card-preview';
-    preview.style.background=t.frame.color;
     const panel=document.createElement('div');
     panel.className='theme-card-panel';
-    panel.style.background=t.panel.color;
+    if(type==='artwork'){
+      preview.style.background=ARTWORK_BACKGROUND_PREVIEW[t.background]||'#EFEFEF';
+      panel.style.background='#8FA6C9';
+    }else{
+      preview.style.background=t.frame.color;
+      panel.style.background=t.panel.color;
+    }
     preview.appendChild(panel);
     card.appendChild(preview);
     const name=document.createElement('div');
@@ -559,36 +616,80 @@ const ThemeEngine=(function(){
     desc.textContent=t.description;
     card.appendChild(desc);
     card.addEventListener('click',function(){
-      applyTheme(t.id);
+      if(type==='artwork') applyArtworkTheme(t.id);
+      else applyTheme(t.id);
       closeThemePicker();
     });
     return card;
   }
 
-  // Sprint 9.2 — Theme Library. Renders the Official / Imported
-  // sections from ThemeRegistry.getCatalog() instead of a hardcoded
-  // array, so an imported theme appears the moment it's registered —
-  // no other change to how a theme is picked or applied.
-  function buildPickerCards(){
-    const el=document.getElementById('themePickerCards');
-    const officialEl=document.getElementById('themeLibraryOfficial');
-    const importedEl=document.getElementById('themeLibraryImported');
-    if(!el || !officialEl || !importedEl) return;
-    const activeId=getActiveThemeId();
-    const catalog=ThemeRegistry.getCatalog();
+  // Sprint 9.3 — Artwork Themes are opt-in (no default), so the
+  // Artwork Themes section always leads with an explicit "None" tile
+  // that clears the selection back to today's plain presentation.
+  function _renderNoneArtworkCard(activeId){
+    const card=document.createElement('button');
+    card.type='button';
+    card.className='theme-card';
+    card.setAttribute('data-theme-id','');
+    if(!activeId) card.classList.add('active');
+    const preview=document.createElement('div');
+    preview.className='theme-card-preview';
+    preview.style.background='#EFEFEF';
+    const panel=document.createElement('div');
+    panel.className='theme-card-panel';
+    panel.style.background='#FFFFFF';
+    preview.appendChild(panel);
+    card.appendChild(preview);
+    const name=document.createElement('div');
+    name.className='theme-card-name';
+    name.textContent='None';
+    card.appendChild(name);
+    const desc=document.createElement('div');
+    desc.className='theme-card-desc';
+    desc.textContent='Pictures render exactly as they do today.';
+    card.appendChild(desc);
+    card.addEventListener('click',function(){
+      applyArtworkTheme(null);
+      closeThemePicker();
+    });
+    return card;
+  }
 
-    officialEl.innerHTML='';
-    catalog.official.forEach(function(t){ officialEl.appendChild(_renderThemeCard(t,activeId)); });
-
-    importedEl.innerHTML='';
-    if(catalog.imported.length===0){
+  // Sprint 9.2 — Theme Library, extended by Sprint 9.3 to show Story
+  // Themes and Artwork Themes as two type sections, each still split
+  // into Official / Imported. Renders from ThemeRegistry.getCatalog()
+  // so an imported theme of either type appears the moment it's
+  // registered — no other change to how a theme is picked or applied.
+  function _fillThemeSection(containerId,themes,activeId,type,emptyText){
+    const el=document.getElementById(containerId);
+    if(!el) return;
+    el.innerHTML='';
+    if(themes.length===0 && emptyText){
       const note=document.createElement('p');
       note.className='placeholder';
-      note.textContent='No imported themes yet.';
-      importedEl.appendChild(note);
-    }else{
-      catalog.imported.forEach(function(t){ importedEl.appendChild(_renderThemeCard(t,activeId)); });
+      note.textContent=emptyText;
+      el.appendChild(note);
+      return;
     }
+    themes.forEach(function(t){ el.appendChild(_renderThemeCard(t,activeId,type)); });
+  }
+  function buildPickerCards(){
+    const el=document.getElementById('themePickerCards');
+    if(!el) return;
+    const catalog=ThemeRegistry.getCatalog();
+
+    const storyActiveId=getActiveThemeId();
+    _fillThemeSection('themeLibraryStoryOfficial',catalog.story.official,storyActiveId,'story',null);
+    _fillThemeSection('themeLibraryStoryImported',catalog.story.imported,storyActiveId,'story','No imported themes yet.');
+
+    const artworkActiveId=getActiveArtworkThemeId();
+    const artworkOfficialEl=document.getElementById('themeLibraryArtworkOfficial');
+    if(artworkOfficialEl){
+      artworkOfficialEl.innerHTML='';
+      artworkOfficialEl.appendChild(_renderNoneArtworkCard(artworkActiveId));
+      catalog.artwork.official.forEach(function(t){ artworkOfficialEl.appendChild(_renderThemeCard(t,artworkActiveId,'artwork')); });
+    }
+    _fillThemeSection('themeLibraryArtworkImported',catalog.artwork.imported,artworkActiveId,'artwork','No imported themes yet.');
 
     _wireImportButton();
   }
@@ -784,6 +885,9 @@ const ThemeEngine=(function(){
     getAllThemes:getAllThemes,
     getActiveTheme:getActiveTheme,
     getActiveThemeId:getActiveThemeId,
+    getActiveArtworkTheme:getActiveArtworkTheme,
+    getActiveArtworkThemeId:getActiveArtworkThemeId,
+    applyArtworkTheme:applyArtworkTheme,
     getPanelStyles:getPanelStyles,
     getFooterStyles:getFooterStyles,
     getPageNumberStyles:getPageNumberStyles,

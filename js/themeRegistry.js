@@ -1,4 +1,5 @@
-// themeRegistry.js — Sprint 9.2 Theme Library Foundation.
+// themeRegistry.js — Sprint 9.2 Theme Library Foundation,
+// extended by Sprint 9.3 Artwork Themes.
 //
 // ThemeRegistry is the single abstraction layer between theme
 // storage and ThemeEngine. ThemeEngine no longer owns a hardcoded
@@ -20,17 +21,36 @@
 // validate) — same mental model, applied to themes.
 //
 // ===========================================================
+// Theme types (Sprint 9.3)
+// ===========================================================
+// Every theme is one of two types, carried on manifest.type:
+//   'story'   — the original Sprint 9.2 shape (frame/panel/storyText/
+//               footerText/watermark/variants/decorations). Governs
+//               the whole book. Unchanged by this sprint.
+//   'artwork' — presentation-only: how a child's own picture is
+//               framed/matted/captioned inside its holder. NEVER
+//               touches the picture's pixels — see
+//               renderer/slideRenderer.js's "Sprint 9.3" section for
+//               how it's layered into the existing Picture Border
+//               rendering. A project with no artwork theme selected
+//               renders exactly as it did before this sprint existed.
+// This is still ONE registry, ONE Theme Library, ONE import pipeline
+// — type is just a field the catalog groups and validation branches
+// on, not a parallel architecture (see Scope below).
+//
+// ===========================================================
 // Theme record shape (internal)
 // ===========================================================
 // Every registered theme is stored as:
-//   { manifest: {...}, theme: {...}, source: 'official'|'imported' }
+//   { manifest: {..., type:'story'|'artwork'}, theme: {...}, source: 'official'|'imported' }
 //
-// `theme` is always the flat object shape ThemeEngine and the
-// renderer have consumed since before this sprint — id, name,
-// description, suitableFor, frame, panel, storyText, footerText,
-// watermark, variants, decorations. Nothing downstream (renderer,
-// Card Designer, Theme Designer) needs to change or even know
-// manifests exist.
+// `theme` is the flat object shape ThemeEngine and the renderer
+// consume — for a story theme, id/name/description/suitableFor/
+// frame/panel/storyText/footerText/watermark/variants/decorations
+// (unchanged since Sprint 9.2); for an artwork theme, id/name/
+// description plus the optional presentation/background/frame/paper/
+// caption/shadow/lighting/composition/enhancement fields. Nothing
+// downstream needs to know manifests exist.
 //
 // ===========================================================
 // Theme Package format (.vtheme — plain, human-readable JSON)
@@ -38,24 +58,26 @@
 //   {
 //     "manifest": { id, name, version, author, description, category,
 //                   tags, thumbnail, createdDate, updatedDate,
-//                   minStudioVersion },
-//     "theme": { ...same shape as above... },
+//                   minStudioVersion, type },
+//     "theme": { ...story or artwork shape, see above... },
 //     "assets": {}
 //   }
 //
 // Not zipped, not compressed — a plain .vtheme is just JSON with a
 // distinct extension so it can evolve into a packaged (asset-bundled)
-// format later without changing this module's public API.
+// format later without changing this module's public API. A package
+// with no "type" (every .vtheme written before this sprint) is
+// treated as 'story' — see _normalizeManifest.
 //
 // ===========================================================
-// Scope (Sprint 9.2)
+// Scope (Sprint 9.2, extended 9.3)
 // ===========================================================
 // Registry + Library + Official registration + Import + Validation +
-// Metadata only. Theme Creator, Theme Editor, Theme Export, Duplicate
-// Theme, Community Themes and the Theme Marketplace are explicitly
-// out of scope — this module's job is to make their eventual arrival
-// additive (new sources feeding the same registry), not another
-// architecture change.
+// Metadata, for both theme types. Theme Creator, Theme Editor, Theme
+// Export, Duplicate Theme, Community Themes and the Theme Marketplace
+// are explicitly out of scope — this module's job is to make their
+// eventual arrival additive (new sources/types feeding the same
+// registry), not another architecture change.
 const ThemeRegistry=(function(){
   'use strict';
 
@@ -64,8 +86,10 @@ const ThemeRegistry=(function(){
   // release/CI metadata, fetched async, unrelated to theme-package
   // shape) — this is what a .vtheme's minStudioVersion is checked
   // against. Bump only when the theme object shape changes in a way
-  // that could break older packages.
-  const THEME_SYSTEM_VERSION='9.2.0';
+  // that could break older packages. 9.3.0 — additive only (a package
+  // with no "type" is treated as 'story', see _normalizePackage below)
+  // so 9.2-era imported themes keep loading with zero migration.
+  const THEME_SYSTEM_VERSION='9.3.0';
 
   const IMPORTED_STORAGE_KEY='vihu.themeRegistry.imported.v1';
 
@@ -73,7 +97,22 @@ const ThemeRegistry=(function(){
     'id','name','version','author','description','category',
     'tags','thumbnail','createdDate','updatedDate','minStudioVersion'
   ];
+  // Sprint 9.3 — Artwork Themes. "type" is deliberately NOT in
+  // REQUIRED_MANIFEST_FIELDS: a 9.2-era package (or one already sitting
+  // in a child's localStorage from before this sprint) has no "type"
+  // field at all, and requiring it would silently drop those themes on
+  // upgrade. _normalizePackage defaults a missing/invalid type to
+  // 'story' instead — every pre-9.3 theme was a story theme, so this is
+  // exactly what "no migration required" means in practice.
+  const THEME_TYPES=['story','artwork'];
+  const DEFAULT_THEME_TYPE='story';
   const REQUIRED_THEME_FIELDS=['frame','panel','storyText','footerText','watermark'];
+  // Artwork Themes have no hard-required presentation fields — every
+  // section (background/frame/paper/caption/shadow/lighting/
+  // composition/enhancement) is explicitly optional per the sprint
+  // spec ("Support the following optional sections"). Only enough to
+  // identify and display the theme in the Library is required.
+  const REQUIRED_ARTWORK_THEME_FIELDS=['name'];
 
   // ---------- Official Themes ----------
   // Moved here verbatim from themeEngine.js (Sprint 9.2) — same ids,
@@ -166,6 +205,96 @@ const ThemeRegistry=(function(){
     }
   ];
 
+  // ---------- Official Artwork Themes ----------
+  // Sprint 9.3 — Artwork Themes control ONLY how a child's artwork is
+  // presented (background / frame / paper / caption / shadow /
+  // lighting / composition) — never its pixels. See
+  // renderer/slideRenderer.js's "Sprint 9.3 — Artwork Themes" section
+  // for exactly how each field maps onto the existing Picture Border
+  // rendering (background -> border.fill, frame -> border.design /
+  // cornerRadius, shadow -> border.shadow*, composition -> padding),
+  // reusing that system rather than drawing a parallel one.
+  //
+  // `presentation` and `enhancement` are stored for completeness and
+  // future use (see the Theme Registry canon comment at the top of
+  // this file) but don't independently drive rendering this sprint —
+  // none of the five themes below specify an `enhancement`, and
+  // nothing in this sprint automatically adjusts a pixel of the
+  // child's photo (rotate/crop/exposure/etc. stay Picture Studio's
+  // explicit, child-initiated actions, untouched by this sprint).
+  const OFFICIAL_ARTWORK_THEMES=[
+    {
+      id:'museum-gallery',
+      name:'Museum Gallery',
+      description:'A quiet gallery wall — white mat, soft light, centered.',
+      presentation:'gallery',
+      background:'white',
+      frame:'white-mat',
+      paper:'smooth',
+      caption:'museum',
+      shadow:'gallery',
+      lighting:'gallery',
+      composition:'center',
+      enhancement:[]
+    },
+    {
+      id:'sketchbook',
+      name:'Sketchbook',
+      description:'Notebook paper and tape corners, like a page from a sketchbook.',
+      presentation:'sketchbook',
+      background:'notebook-paper',
+      frame:'tape',
+      paper:'notebook',
+      caption:'handwritten',
+      shadow:'none',
+      lighting:'none',
+      composition:'margin',
+      enhancement:[]
+    },
+    {
+      id:'watercolor-portfolio',
+      name:'Watercolor Portfolio',
+      description:'Watercolor paper and a floating frame with generous margins.',
+      presentation:'portfolio',
+      background:'watercolor-paper',
+      frame:'floating',
+      paper:'watercolor',
+      caption:'minimal',
+      shadow:'gallery',
+      lighting:'soft',
+      composition:'margin',
+      enhancement:[]
+    },
+    {
+      id:'classroom-display',
+      name:'Classroom Display',
+      description:'Pinned to the bulletin board, ready for parents’ night.',
+      presentation:'classroom',
+      background:'bulletin-board',
+      frame:'none',
+      paper:'smooth',
+      caption:'student',
+      shadow:'soft',
+      lighting:'none',
+      composition:'center',
+      enhancement:[]
+    },
+    {
+      id:'scrapbook',
+      name:'Scrapbook',
+      description:'Kraft paper and tape, layered like a page from a keepsake scrapbook.',
+      presentation:'scrapbook',
+      background:'kraft-paper',
+      frame:'tape',
+      paper:'handmade',
+      caption:'handwritten',
+      shadow:'soft',
+      lighting:'none',
+      composition:'floating',
+      enhancement:[]
+    }
+  ];
+
   // id -> {manifest, theme, source}. Single map so resolution
   // (get/list) is always O(1) and "last write wins" the same way the
   // pre-Sprint-9.2 registry already worked (registerTheme(theme)
@@ -207,16 +336,46 @@ const ThemeRegistry=(function(){
   // The Theme Library's two sections. Filters the *current* source of
   // each live id rather than a frozen snapshot, so a replaced/shadowed
   // theme shows under the section that actually governs it.
+  //
+  // Sprint 9.3 — nested one level deeper by theme type so the Theme
+  // Library can show Story Themes / Artwork Themes as its primary
+  // grouping, Official/Imported as before within each. Reads
+  // `getRecord(id).manifest.type` (normalized, so this is always
+  // 'story' or 'artwork', never missing) rather than trusting
+  // whatever a caller stashed on the flat theme object.
+  function _typeOf(id){
+    const rec=_registry[id];
+    return (rec && rec.manifest && rec.manifest.type) || DEFAULT_THEME_TYPE;
+  }
   function getCatalog(){
-    return {
-      official:_officialOrder.filter(function(id){ return _registry[id]&&_registry[id].source==='official'; })
-        .map(function(id){ return _registry[id].theme; }),
-      imported:_importedOrder.filter(function(id){ return _registry[id]&&_registry[id].source==='imported'; })
-        .map(function(id){ return _registry[id].theme; })
-    };
+    function _section(order,source,type){
+      return order.filter(function(id){
+        return _registry[id] && _registry[id].source===source && _typeOf(id)===type;
+      }).map(function(id){ return _registry[id].theme; });
+    }
+    const catalog={};
+    THEME_TYPES.forEach(function(type){
+      catalog[type]={
+        official:_section(_officialOrder,'official',type),
+        imported:_section(_importedOrder,'imported',type)
+      };
+    });
+    return catalog;
   }
 
   // ---------- validation ----------
+  // Fills in defaults a caller may have omitted rather than rejecting
+  // the package outright — specifically "type", so a 9.2-era package
+  // (or one sitting in localStorage from before Sprint 9.3) is treated
+  // as a story theme without the child ever seeing an error. Mutates
+  // nothing on the input; returns a shallow-normalized copy of just
+  // the manifest so callers can validate/store the normalized form.
+  function _normalizeManifest(manifest){
+    const m=Object.assign({},manifest);
+    if(THEME_TYPES.indexOf(m.type)===-1) m.type=DEFAULT_THEME_TYPE;
+    return m;
+  }
+
   // Returns an array of human-readable problem strings; empty = valid.
   // Never throws. Duplicate-id handling is intentionally NOT a
   // validation failure — it's a separate, recoverable decision
@@ -227,8 +386,8 @@ const ThemeRegistry=(function(){
       problems.push('This file is not a valid theme package.');
       return problems;
     }
-    const manifest=pkg.manifest;
-    if(!manifest || typeof manifest!=='object'){
+    const manifest=pkg.manifest ? _normalizeManifest(pkg.manifest) : null;
+    if(!manifest){
       problems.push('Missing "manifest" section.');
     }else{
       REQUIRED_MANIFEST_FIELDS.forEach(function(f){
@@ -244,7 +403,14 @@ const ThemeRegistry=(function(){
     if(!pkg.theme || typeof pkg.theme!=='object'){
       problems.push('Missing "theme" section.');
     }else{
-      REQUIRED_THEME_FIELDS.forEach(function(f){
+      // Sprint 9.3 — Artwork Themes carry none of the story fields
+      // (frame/panel/storyText/...); every presentation section is
+      // optional, so only enough to identify + display the theme in
+      // the Library is required.
+      const requiredFields=(manifest && manifest.type==='artwork')
+        ? REQUIRED_ARTWORK_THEME_FIELDS
+        : REQUIRED_THEME_FIELDS;
+      requiredFields.forEach(function(f){
         if(!pkg.theme[f]){ problems.push('Theme is missing "'+f+'".'); }
       });
     }
@@ -256,8 +422,13 @@ const ThemeRegistry=(function(){
   // no manifest of their own on disk. Wraps each in an auto-derived
   // manifest so they flow through the exact same {manifest,theme}
   // record shape as an imported .vtheme. Idempotent: calling this
-  // again (e.g. a hot reload) never duplicates an id.
-  function registerOfficial(themes){
+  // again (e.g. a hot reload) never duplicates an id. `type` is a
+  // single param (not read per-theme) because every call registers
+  // one homogeneous set — OFFICIAL_THEMES are all 'story',
+  // OFFICIAL_ARTWORK_THEMES are all 'artwork' — so the flat theme
+  // objects themselves never need their own "type" field.
+  function registerOfficial(themes,type){
+    const t2=(THEME_TYPES.indexOf(type)!==-1) ? type : DEFAULT_THEME_TYPE;
     (themes||[]).forEach(function(t){
       if(!t || !t.id || _registry[t.id]) return;
       _registry[t.id]={
@@ -265,7 +436,7 @@ const ThemeRegistry=(function(){
           id:t.id, name:t.name, version:'1.0.0', author:'Vihu',
           description:t.description||'', category:'Official', tags:[],
           thumbnail:'', createdDate:'', updatedDate:'',
-          minStudioVersion:THEME_SYSTEM_VERSION
+          minStudioVersion:THEME_SYSTEM_VERSION, type:t2
         },
         theme:t,
         source:'official'
@@ -299,7 +470,7 @@ const ThemeRegistry=(function(){
     const problems=validatePackage(pkg);
     if(problems.length>0) return {ok:false,problems:problems};
 
-    const manifest=Object.assign({},pkg.manifest);
+    const manifest=_normalizeManifest(pkg.manifest);
     const theme=Object.assign({},pkg.theme);
     theme.id=manifest.id; // registry identity is always manifest.id
 
@@ -340,18 +511,20 @@ const ThemeRegistry=(function(){
     }catch(e){ packages=[]; }
     packages.forEach(function(pkg){
       if(validatePackage(pkg).length>0) return; // silently skip corrupt entries, never crash boot
-      _setImported(pkg.manifest,pkg.theme);
+      _setImported(_normalizeManifest(pkg.manifest),pkg.theme);
     });
   }
 
   // Self-initializing, same convention as storyDestinations.js's
   // REGISTRY — no separate init step required by ThemeEngine or
   // anything else that loads after this script.
-  registerOfficial(OFFICIAL_THEMES);
+  registerOfficial(OFFICIAL_THEMES,'story');
+  registerOfficial(OFFICIAL_ARTWORK_THEMES,'artwork');
   _loadImported();
 
   const api={
     THEME_SYSTEM_VERSION:THEME_SYSTEM_VERSION,
+    THEME_TYPES:THEME_TYPES,
     isCompatible:isCompatible,
     hasTheme:hasTheme,
     get:get,
