@@ -1,8 +1,8 @@
 // shared/worldObject.js — VihuPlanet reusable World Object system.
 //
-// Every visible thing that lives in the world (moon, stars, clouds,
-// the Story Path, the Story Seed, telescope, and every future
-// landmark) is a **World Object**: a small descriptor that pairs a
+// Every visible thing that lives in the world (stars, clouds, the
+// Story Path, the Story Seed, telescope, and every future landmark)
+// is a **World Object**: a small descriptor that pairs a
 // source SVG with placement + motion metadata. The scene bootstrap in
 // `js/scene.js` walks the registry and injects each object into the
 // DOM in one place.
@@ -26,9 +26,9 @@
 //
 //   WorldObject.register(descriptor)
 //     descriptor = {
-//       id: 'moon',                           // stable identifier
-//       label: 'Moon',                        // aria-label
-//       assetHref: 'assets/objects/moon.svg', // fetched + inlined —
+//       id: 'telescope',                      // stable identifier
+//       label: 'Telescope',                   // aria-label
+//       assetHref: 'assets/objects/telescope.svg', // fetched + inlined —
 //                                              // also the fallback if
 //                                              // libraryType has no art yet
 //       libraryType: 'cloud',                 // optional — World Library

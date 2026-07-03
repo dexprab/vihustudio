@@ -2,6 +2,57 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.9 — 2026-07-03
+
+- **Hero MEP Sprint — Story World Identity.** The Hero presents
+  Story Worlds now, not user profiles. Story World identity only —
+  no layout redesign, no World Library changes.
+- **Celestial disc removed.** The large sun/moon circle behind
+  Vihaan's island (`moon` in `registry.js`, `assets/objects/
+  moon.svg`) had no defined role, competed with the Dreaming Planet,
+  and made one Story World read as more important than the others.
+  Removed outright, not replaced — the sky breathes on its own now.
+  The `.breathe` motion stays in the shared vocabulary (it's
+  generically named, not moon-specific, same call as `.sail` in
+  Sprint 3); the purely-descriptive `--vp-moon` constant (never
+  referenced via `var()`) is gone with the object it described.
+- **Story World naming.** `planetsData.js`'s four planets gained
+  `worldName` (Dragon Valley, Starlight Meadow, The Painted Sky,
+  Frostsong Cove) alongside the renamed `storytellerName` (was
+  `name`). Every Story World now displays its World Name and
+  "dreamed by &lt;storytellerName&gt;" — locked wording, sentence
+  case exactly as written, never "Created by" / "Made by" / "Author"
+  / etc. Pure typography: no card, background, badge, signboard,
+  ribbon, or speech bubble. Elegant storybook font (Caveat), warm
+  cream color, ~76–82% opacity, small text-shadow for readability,
+  and a tiny per-planet rotation (deterministic hash of the planet
+  id, not random) so the row reads hand-set rather than mechanical.
+  `teaser` stays on the descriptor but is no longer displayed — only
+  worldName and "dreamed by" ever render on the Hero.
+- **Fixed a real, reproducible bug found verifying this sprint:**
+  `WorldObject.mount()` resolves + appends each sky-layer object on
+  its own independent Promise, so objects land in the DOM in
+  whichever order their fetches finish — not registry order. Clouds
+  and stars never declared a `z-index` (auto), the same stacking tier
+  as Story Path's explicit `0`, ordered by DOM position for ties —
+  so on roughly half of page loads Story Path happened to mount
+  before the clouds and rendered fully hidden behind them; the real
+  synced sky background (`watercolor-sky-image`) had the identical
+  race against the whole sky-object stack, and being full-coverage
+  could hide everything. Confirmed via 5+ repeated fresh loads
+  showing genuinely different DOM orders and, before the fix,
+  inconsistent visibility. Fixed with an explicit, deterministic
+  z-index scale for the whole `.sky` stacking context (gradient
+  wash → sky photo → Story Path → clouds/stars → Story Seed),
+  independent of mount order. Verified across 5+ repeated fresh
+  loads post-fix.
+- **Improved label legibility over the pale open sky** (found in the
+  same verification pass): a single soft text-shadow read fine over
+  the darker cloud regions but nearly vanished over paler sky — the
+  Hero's watercolor sky varies enough in tone that no single shadow
+  works everywhere. Layered a tight, closer-to-opaque shadow for edge
+  definition with the original soft, wide one for glow.
+
 ## v0.3.8.2 — 2026-07-03
 
 - **Story Path and Story Seed wired to World Library.** New

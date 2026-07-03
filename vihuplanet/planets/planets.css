@@ -2,9 +2,10 @@
  *
  * Storyteller planets are floating landmasses (Concept C
  * structure) with visible geography and a companion going about
- * their day. Labels are pencilled narration in the sky, near the
- * planet but never on it — text belongs to the illustrator's
- * hand, not to a caption card.
+ * their day. Each is a Story World: its World Name + "dreamed by
+ * <storyteller>" render as plain typography near the artwork, never
+ * on it — text belongs to the illustrator's hand, not to a caption
+ * card (Sprint · Story World Identity).
  *
  * Descriptor.depth = 'foreground' | 'midground' | 'background'
  * controls the atmospheric ramp per the artDirection rules.
@@ -51,30 +52,47 @@
   opacity: 1;
 }
 
-/* ---- Label — pencilled narration ----------------------------- */
-.storyteller-planet-label {
+/* ---- Story World identity — pure typography -------------------- */
+/* Sprint · Story World Identity. World Name is the primary label;
+ * "dreamed by <storytellerName>" is the locked attribution wording
+ * (sentence case exactly as written — never "Created by" / "Made
+ * by" / "Author" / etc.). No card, no background, no badge, no
+ * signboard, no ribbon, no speech bubble — just handwriting on the
+ * page, printed rather than floating UI. The shared paper-grain SVG
+ * filter (index.html) already textures the whole page, so the text
+ * reads through it for free — nothing extra needed here.
+ *
+ * --vp-label-tilt is set per-world in planets.js (a small hash of
+ * the planet id, not random) so the row reads as hand-set rather
+ * than mechanically aligned, while staying stable across reloads. */
+.story-world-label {
   text-align: center;
-  color: var(--vp-ink);
   padding: 0 4px;
   max-width: 180px;
-  line-height: 1.2;
-  /* No card, no background, no border — just handwriting on the
-   * page. The paper grain reads through. */
+  line-height: 1.25;
+  transform: rotate(var(--vp-label-tilt, 0deg));
 }
-.storyteller-planet-name {
+.story-world-name {
   font-family: 'Caveat', 'Segoe Script', cursive;
-  font-weight: 500;
-  font-size: 20px;
+  font-weight: 600;
+  font-size: 21px;
   letter-spacing: 0.2px;
-  color: var(--vp-ink);
-  opacity: 0.78;
+  color: #FFFBF0;
+  opacity: 0.82;
+  /* Two layers: a tight, closer-to-opaque one for edge definition
+   * against the pale open sky, a softer wider one for glow against
+   * the darker cloud regions — the Hero's sky varies enough in tone
+   * that one shadow alone reads fine over half the artwork and
+   * disappears over the rest. */
+  text-shadow: 0 1px 2px rgba(30,40,66,0.55), 0 1px 6px rgba(30,40,66,0.3);
 }
-.storyteller-planet-teaser {
+.story-world-dreamed-by {
   font-family: 'Caveat', 'Segoe Script', cursive;
   font-weight: 400;
-  font-size: 15px;
-  color: var(--vp-ink);
-  opacity: 0.62;
-  margin-top: 1px;
   font-style: italic;
+  font-size: 14px;
+  color: #FFFBF0;
+  opacity: 0.76;
+  margin-top: 1px;
+  text-shadow: 0 1px 2px rgba(30,40,66,0.5), 0 1px 5px rgba(30,40,66,0.28);
 }

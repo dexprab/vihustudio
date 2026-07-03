@@ -37,6 +37,9 @@
 .watercolor-sky {
   position: absolute;
   inset: 0;
+  /* Deterministic backmost layer — see the z-index note on
+   * .watercolor-sky-image below; the same race applies here. */
+  z-index: -2;
   /* Art Direction v1.0 · painterly timeless magic-hour sky.
    * Warm apricot low + cool cerulean high, with cream paper
    * always visible at the edges of the wash. Painted with
@@ -67,10 +70,22 @@
  * gradient above is the sky's fallback and is never removed, so an
  * empty World Library renders byte-identically to before this
  * sprint. `background-size: cover` fills the frame without ever
- * stretching or distorting the artwork. */
+ * stretching or distorting the artwork.
+ *
+ * z-index note (found verifying Story World Identity): mountSky()
+ * appends this asynchronously, on its own Promise independent of
+ * WorldObject.mount()'s objects — so it can finish and land in the
+ * DOM after story-path (both were sitting at the same "auto/0"
+ * stacking tier), and since it's a full-coverage background image it
+ * would then paint over the entire sky, hiding every sky-layer
+ * object underneath it. Explicit z-index (paired with -2 on
+ * .watercolor-sky above) makes both sky layers deterministically
+ * backmost regardless of mount order — see the cloud/star z-index
+ * note further down for the matching fix on that side. */
 .watercolor-sky-image {
   position: absolute;
   inset: 0;
+  z-index: -1;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -155,7 +170,23 @@
 /* Story Path (Sprint 3) sits behind clouds — a half-hidden, distant
  * trail rather than a foreground element. Story Seed sits above
  * clouds, the tier the rocket + paper plane previously used, so it
- * reads as something actually travelling through the sky. */
+ * reads as something actually travelling through the sky.
+ *
+ * Bug found verifying Story World Identity: WorldObject.mount()
+ * resolves + appends each object's own Promise independently, so
+ * sky-layer objects land in the DOM in whichever order their
+ * fetches happen to finish — not registry.js order. Clouds and
+ * stars never declared a z-index (auto), which sits at the *same*
+ * stacking level as story-path's explicit 0, ordered by DOM
+ * position for ties — so on roughly half of page loads story-path
+ * happened to mount before the clouds and rendered fully hidden
+ * behind them. Giving clouds/stars an explicit z-index above
+ * story-path's makes the stacking deterministic regardless of
+ * mount order. */
+.world-object[data-object-id^="cloud-"],
+.world-object[data-object-id^="star-"] {
+  z-index: 1;
+}
 .world-object[data-object-id="story-path"] {
   z-index: 0;
 }

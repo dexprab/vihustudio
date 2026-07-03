@@ -1,8 +1,14 @@
 // planetsData.js — Chapter 2 storyteller-planet registry.
 //
-// The floating planets that live in the sky. Each carries a
-// storyteller name and a one-line story teaser per the Visual
-// Contract's example: "The dragon finally learned to fly."
+// The floating planets that live in the sky. Each one is a Story
+// World: `worldName` is its primary identity (what the Hero
+// displays), `storytellerName` is who dreamed it (displayed as
+// "dreamed by <storytellerName>" — locked wording, sentence case
+// exactly as written; see planets.js). `teaser` is a one-line story
+// hook per the Visual Contract's example: "The dragon finally
+// learned to fly." — kept on the descriptor for aria-label /
+// possible future use, but the Hero itself only ever displays
+// worldName and "dreamed by" (Sprint · Story World Identity).
 //
 // The Dreaming Planet lives in its own registry
 // (dreamingPlanet/dreamingPlanet.js) because its behaviour is
@@ -25,8 +31,9 @@
   // smaller and more transparent (see planets.css for the
   // atmospheric-opacity ramp).
   Planet.register({
-    id:       'vihaan',
-    name:     'Vihaan',
+    id:              'vihaan',
+    worldName:       'Dragon Valley',
+    storytellerName: 'Vihaan',
     teaser:   'The dragon finally learned to fly.',
     asset:    'assets/planets/vihaan.svg',
     libraryType: 'story-home',
@@ -36,8 +43,9 @@
   });
 
   Planet.register({
-    id:       'aarav',
-    name:     'Aarav',
+    id:              'aarav',
+    worldName:       'Starlight Meadow',
+    storytellerName: 'Aarav',
     teaser:   'The little star who loved to dance.',
     asset:    'assets/planets/aarav.svg',
     libraryType: 'story-home',
@@ -47,8 +55,9 @@
   });
 
   Planet.register({
-    id:       'meera',
-    name:     'Meera',
+    id:              'meera',
+    worldName:       'The Painted Sky',
+    storytellerName: 'Meera',
     teaser:   'The fox who painted the sky.',
     asset:    'assets/planets/meera.svg',
     libraryType: 'story-home',
@@ -58,8 +67,9 @@
   });
 
   Planet.register({
-    id:       'emma',
-    name:     'Emma',
+    id:              'emma',
+    worldName:       'Frostsong Cove',
+    storytellerName: 'Emma',
     teaser:   'The penguin who found her song.',
     asset:    'assets/planets/emma.svg',
     libraryType: 'story-home',

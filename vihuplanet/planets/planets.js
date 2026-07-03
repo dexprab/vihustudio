@@ -3,10 +3,10 @@
 // Same registry pattern WorldObject uses (Chapter 1) — a descriptor
 // is register()ed, then mount() resolves its artwork, injects it into
 // the foreground layer, and stamps placement + motion CSS
-// properties. Each planet carries a storyteller name and a one-line
-// story teaser; the Hero doesn't render either visibly (Sky Map —
-// discovery over directory), but they're available for a future
-// reveal-on-interaction and reach assistive tech via aria-label.
+// properties. Each planet is a Story World: mount() renders its
+// worldName and "dreamed by <storytellerName>" as plain typography
+// near the artwork (Sprint · Story World Identity) — no card, no
+// background, no badge. The Hero presents worlds, not user profiles.
 //
 // A descriptor's optional `libraryType` (MEP-01: World Library
 // integration — see shared/worldLibrary.js) is tried first; the
@@ -43,6 +43,16 @@
 
   var Planet = { register: register, list: list, find: find };
   try { global.Planet = Planet; } catch (e) {}
+
+  // Small deterministic hash so each Story World's label gets its own
+  // slight tilt (see --vp-label-tilt in planets.css) — "natural
+  // variation" without literal randomness, so it's stable across
+  // reloads instead of jittering.
+  function _hashId(id) {
+    var h = 0;
+    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return h;
+  }
 
   // World Library first (libraryType: 'story-home'), existing SVG
   // (d.asset) as the fallback — same pattern as WorldObject. `idx` is
@@ -102,11 +112,28 @@
         wrap.insertAdjacentHTML('afterbegin', asset.content);
       }
 
-      // Name + teaser are not rendered visibly — the Hero is a Sky
-      // Map for discovery, not a directory of labels. They stay on
-      // the descriptor (and reach assistive tech via aria-label) for
-      // a future reveal-on-interaction (hover/click/zoom/telescope).
-      wrap.setAttribute('aria-label', d.name + ' — ' + d.teaser);
+      // World Name is the Story World's primary identity; "dreamed
+      // by <storytellerName>" is the locked attribution wording
+      // (sentence case exactly as written). Pure typography — no
+      // card, no background, no badge — so it reads as printed onto
+      // the page rather than floating UI. The label itself provides
+      // the accessible name now, so no separate aria-label is set.
+      var label = document.createElement('div');
+      label.className = 'story-world-label';
+      var tilt = ((_hashId(d.id) % 5) - 2) * 0.6; // -1.2deg .. 1.2deg, per-world
+      label.style.setProperty('--vp-label-tilt', tilt + 'deg');
+
+      var worldNameEl = document.createElement('div');
+      worldNameEl.className = 'story-world-name';
+      worldNameEl.textContent = d.worldName;
+      label.appendChild(worldNameEl);
+
+      var dreamedByEl = document.createElement('div');
+      dreamedByEl.className = 'story-world-dreamed-by';
+      dreamedByEl.textContent = 'dreamed by ' + d.storytellerName;
+      label.appendChild(dreamedByEl);
+
+      wrap.appendChild(label);
       container.appendChild(wrap);
       return wrap;
     }).catch(function () { return null; });

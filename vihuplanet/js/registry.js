@@ -32,16 +32,13 @@
   });
 
   // === Sky landmarks ==================================================
-
-  // Moon — big, warm, top-left. Breathes gently.
-  WorldObject.register({
-    id: 'moon',
-    label: 'Moon',
-    assetHref: 'assets/objects/moon.svg',
-    layer: 'sky',
-    placement: { top: '4vh', left: '5vw', width: '180px', height: '180px' },
-    motion: { category: 'Living', name: 'breathe', duration: '6.4s', delay: '0.2s' }
-  });
+  //
+  // Sprint · Story World Identity removed the large sun/moon disc
+  // that used to sit top-left: it had no defined role in the
+  // universe, competed with the Dreaming Planet, and made the first
+  // Story World (which sat right in front of it) read as more
+  // important than the others. Not replaced with anything — the sky
+  // breathes on its own here now.
 
   // Stars — hand-authored positions so the constellation feels
   // intentional. Warm amber four-point sparkles per the Contract.
