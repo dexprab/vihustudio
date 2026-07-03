@@ -2,6 +2,61 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.3 — 2026-07-03
+
+- **Documentation Sprint — Hero MEP Canon Consolidation.**
+  Documentation only — no implementation, asset, behaviour, or
+  architecture change.
+- **New `HERO_CANON.md`.** The repository's single authoritative
+  record of Hero philosophy and locked product decisions: Hero
+  philosophy, purpose, Story World canon, World naming, Dreaming Realm
+  canon (+ current implementation status), Hero composition hierarchy,
+  atmosphere philosophy, Story Meadow canon, Discovery Telescope
+  canon, performance philosophy (*"Stillness is the default. Magic is
+  earned through interaction."*), asset philosophy (permanent vs.
+  atmospheric elements), World Library canon, and design principles.
+  Consolidates canon that was previously split across `README.md`'s
+  and `BUILD.md`'s separate, drifting "Canon (immutable)" lists, plus
+  a language-canon rule that existed only inside the Chapter 2 evidence
+  packet — all now live in one place, cross-referenced rather than
+  duplicated.
+- **New `world-library/README.md`.** Closed a dangling reference —
+  `README.md`, `BUILD.md`, and this changelog have linked to
+  `world-library/README.md` since MEP-01 (v0.3.6) but the file never
+  existed. Documents the actual pipeline (verified against the current
+  `vihuplanet-world-library` source: fully automatic, recursive
+  normalization — no `COLLECTIONS` list to maintain, any file under
+  `raw/<collection>/` syncs and gets a `manifest.json` with zero code
+  change), the artist workflow for existing vs. brand-new collection
+  types, session-varied collections, the `FILE_FILTERS` exclusion
+  mechanism, and a current collection snapshot.
+- **`README.md` and `BUILD.md` de-duplicated.** Both files' own
+  "Canon (immutable)" lists — which had quietly drifted apart (one
+  said "Home Planet", the other didn't; neither mentioned Story
+  Worlds, Dreaming Homes plural, or the language canon) — are replaced
+  with a pointer to `HERO_CANON.md`. `BUILD.md`'s Completed / Upcoming
+  lists are replaced with a Completed / In Progress / Future status
+  reflecting actual current state, including moving **Story Meadow
+  implementation to Completed** (it now has real production art,
+  session-varied, path/sizing corrected — v0.4.0/v0.4.1 — so listing
+  it as not-yet-done would itself be outdated documentation).
+- **Stale references removed.** `README.md`'s structure tree dropped
+  `hero/hero.css` (removed from the repo in v0.3.6.2; the directory is
+  gone) and gained `artDirection/illustrationRules.js`,
+  `js/buildInfo.js`, and `HERO_CANON.md`, none of which were
+  previously listed. `assets/avatars/` (orphaned SVGs from the retired
+  v0.2.0 storyteller-card module) is now called out as unused rather
+  than left unexplained. The WorldMotion category list dropped
+  `.glide` (removed in v0.3.8) and added the Chapter 2 / Sprint 2/3
+  motions it was missing (`sleeping`, `breathing`, `listening`,
+  `orbit`, `planet-drift`, `sway`, `shadow-breathe`, `shimmer`,
+  `wander`, `select-pulse`). `BUILD.md`'s deferred-enhancement note for
+  Organic Motion updated — `sway` shipped in Sprint 2 and is in
+  production use; only `breeze`/`bloom` remain deferred.
+- **No code, asset, or behaviour changes.** Verified by diff — every
+  change in this release touches only `.md` files (plus the routine
+  `build-info.json` bump in the following commit).
+
 ## v0.4.2 — 2026-07-03
 
 - **Hero MEP Sprint — Dreaming Realm Implementation.** Replaces the
