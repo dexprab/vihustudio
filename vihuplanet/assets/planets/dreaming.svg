@@ -13,6 +13,26 @@
       <stop offset="0%"   stop-color="#8E7CB0" stop-opacity="0.32"/>
       <stop offset="100%" stop-color="#8E7CB0" stop-opacity="0"/>
     </radialGradient>
+    <!-- Same silhouette as the landmass path below — lets the
+         production Dreaming Home artwork (dreamingPlanetManager.js
+         sets .dp-art's href once World Library resolves one) read as
+         this planet's surface instead of a hard square. -->
+    <clipPath id="dpArtClip">
+      <path d="M32 200
+               q0 -18 10 -22
+               q4 -22 24 -22
+               q10 -22 30 -22
+               q30 -14 50 -8
+               q26 -6 40 12
+               q28 4 30 30
+               q6 24 -12 30
+               q-10 14 -26 14
+               q-16 12 -34 10
+               q-26 10 -50 -2
+               q-24 8 -40 -4
+               q-20 -2 -22 -16
+               q-4 -4 0 -12 z"/>
+    </clipPath>
   </defs>
 
   <!-- Wide soft dreaming halo -->
@@ -35,6 +55,16 @@
            q-20 -2 -22 -16
            q-4 -4 0 -12 z"
         fill="url(#dpLand)" stroke="#1E2842" stroke-width="1.6" stroke-linejoin="round" opacity="0.92"/>
+
+  <!-- Production Dreaming Home artwork — empty until
+       dreamingPlanetManager.js resolves a World Library 'dreaming-home'
+       asset and sets the href. Sits above the gradient fallback so an
+       empty library (or a slow/failed fetch) still shows the original
+       purple landmass exactly as before this artwork existed. Clipped
+       to the same silhouette as the landmass path, so it reads as the
+       planet's surface rather than a pasted-in square. -->
+  <image class="dp-art" clip-path="url(#dpArtClip)"
+         x="10" y="100" width="220" height="140" preserveAspectRatio="xMidYMid slice"/>
 
   <!-- Small dwelling nestled into the peak — one warm window
        glowing through the fog. The dwelling itself is barely

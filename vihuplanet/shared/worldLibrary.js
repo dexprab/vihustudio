@@ -8,15 +8,15 @@
 // artwork currently lives in the matching folder, or nothing at all
 // if the folder is empty.
 //
-// Hero Composition Engine (Sprint · Atmosphere & World Identity):
-// sky, cloud, and story-meadow vary once per browser session. The
+// Hero Composition Engine (Sprint · Atmosphere & World Identity;
+// extended in Sprint · Dreaming Realm Implementation): sky, cloud,
+// story-meadow, and dreaming-home vary once per browser session. The
 // first resolveAt() call for one of those types picks a random
 // offset and sticks it in sessionStorage; every later call (this
 // load or a refresh/navigation within the same tab) reuses it, so
 // the chosen environment holds steady for the session and only
-// changes when a fresh session starts. Story Worlds, the Dreaming
-// Planet, and the telescope are never in this set — see
-// SESSION_VARIED_TYPES below.
+// changes when a fresh session starts. Story Worlds and the
+// telescope are never in this set — see SESSION_VARIED_TYPES below.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -74,7 +74,17 @@
   // Types the Hero Composition Engine varies once per browser
   // session. Everything else resolves the same deterministic way it
   // always has (first file, or cycling by registration order).
-  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true };
+  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true };
+
+  // Some collections carry a now-superseded file alongside their
+  // canonical set — e.g. dreaming-home's original single
+  // `dreaming_home.png` stayed in the World Library after the three
+  // production `dreaming-world-0N.png` homes landed. Filtering here
+  // (rather than deleting the file) keeps World Library content
+  // untouched — it's the pipeline's source of truth, not this repo's.
+  var FILE_FILTERS = {
+    'dreaming-home': /^dreaming-world-\d+\.png$/i
+  };
   var SESSION_KEY_PREFIX = 'vp-session-offset-';
   var _sessionOffsets = {}; // type -> chosen offset, memoized per page load
 
@@ -103,30 +113,32 @@
 
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
 
-  function _parseManifest(names, folder) {
+  function _parseManifest(names, folder, type) {
     if (!Array.isArray(names)) return [];
+    var filter = FILE_FILTERS[type];
     var seen = {};
     var files = [];
     for (var i = 0; i < names.length; i++) {
       var name = names[i];
       if (typeof name !== 'string' || !IMAGE_EXT.test(name) || seen[name]) continue;
+      if (filter && !filter.test(name)) continue;
       seen[name] = true;
       files.push(folder + name);
     }
     return files.sort();
   }
 
-  function _listFolder(folder) {
+  function _listFolder(folder, type) {
     return fetch(folder + 'manifest.json')
       .then(function (res) { return res.ok ? res.json() : []; })
-      .then(function (names) { return _parseManifest(names, folder); })
+      .then(function (names) { return _parseManifest(names, folder, type); })
       .catch(function () { return []; });
   }
 
   function _filesFor(type) {
     var folder = FOLDERS[type];
     if (!folder) return Promise.resolve([]);
-    if (!_cache[type]) _cache[type] = _listFolder(folder);
+    if (!_cache[type]) _cache[type] = _listFolder(folder, type);
     return _cache[type];
   }
 

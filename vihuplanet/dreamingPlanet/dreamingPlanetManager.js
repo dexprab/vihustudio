@@ -72,6 +72,23 @@
         // stars sit above the sphere. The sleeping companion is
         // inside the SVG.
         wrap.insertAdjacentHTML('afterbegin', svg);
+
+        // Sprint · Dreaming Realm Implementation: resolve the
+        // production Dreaming Home artwork and paint it into the
+        // SVG's own .dp-art <image> (clipped to the landmass
+        // silhouette — see dreaming.svg). Session-varied across the
+        // three canonical dreaming-world-0N homes, same mechanism as
+        // sky/cloud/story-meadow. An empty World Library (or a type
+        // with no libraryType declared) simply leaves .dp-art without
+        // an href, so the SVG's own gradient fallback shows through —
+        // no behavioural change from before this artwork existed.
+        if (descriptor.libraryType && typeof WorldLibrary !== 'undefined') {
+          WorldLibrary.resolve(descriptor.libraryType).then(function (url) {
+            if (!url) return;
+            var art = wrap.querySelector('.dp-art');
+            if (art) art.setAttribute('href', url);
+          });
+        }
       });
 
     // Orbiting stars — 4 tiny stars that circle the planet centre.

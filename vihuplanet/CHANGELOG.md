@@ -2,6 +2,42 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.2 — 2026-07-03
+
+- **Hero MEP Sprint — Dreaming Realm Implementation.** Replaces the
+  temporary purple Dreaming Planet artwork with the production
+  Dreaming Home assets. Implementation only — the Dreaming Planet
+  engine (state machine, wake sequence, companion logic, CSS
+  transitions, interaction handlers) is untouched.
+- **Production art layered behind the existing SVG, not swapped in.**
+  `assets/planets/dreaming.svg` gained a `<clipPath>` (reusing the
+  landmass path's own silhouette) and an empty `<image class="dp-art">`
+  sitting between the landmass's gradient fill and the dwelling/
+  companion/mist groups. `dreamingPlanetManager.js` resolves a World
+  Library `dreaming-home` asset after inserting the SVG and sets that
+  `<image>`'s `href` — every eye/mouth/window/companion animation hook
+  is the exact element it always was, now with production art showing
+  through the same organic silhouette instead of a flat purple
+  gradient. If the World Library has nothing to resolve, `.dp-art`
+  stays empty and the original gradient fallback shows through
+  unchanged — zero risk if resolution fails.
+- **Three canonical Dreaming Homes, session-varied.** `dreaming-home`
+  joins `sky` / `cloud` / `story-meadow` in `worldLibrary.js`'s
+  `SESSION_VARIED_TYPES` — one of the three `dreaming-world-0N.png`
+  homes is chosen once per browser session and holds steady across
+  reloads. A new `FILE_FILTERS` map (`dreaming-home` →
+  `/^dreaming-world-\d+\.png$/i`) excludes the World Library's
+  now-superseded single `dreaming_home.png` from selection without
+  deleting it — the World Library's content stays untouched, filtering
+  happens client-side only.
+- **Verified in headless Chromium:** production art renders inside the
+  planet's mist correctly (no console errors); same-tab reload keeps
+  the chosen home identical while fresh sessions vary it; the full
+  wake sequence (stirring → waking → looking → smiling → speaking →
+  chosen) and all three companion choices (yes / already have a planet
+  / maybe later, including the later→resting→sleeping return) fire
+  exactly as before; Hero composition and layout unchanged.
+
 ## v0.4.1 — 2026-07-03
 
 - **Story Meadow art landed — path + sizing fix.** `nature/story-

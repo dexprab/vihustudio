@@ -7,6 +7,10 @@
 // Descriptor:
 //   id           — stable identifier ('dreaming' is the canonical id)
 //   asset        — SVG file (contains the sphere + sleeping companion)
+//   libraryType  — World Library folder this planet's surface art
+//                  resolves from (dreamingPlanetManager.js sets the
+//                  SVG's .dp-art image href once resolved; empty
+//                  library falls back to the SVG's own gradient)
 //   placement    — position + size in the sky
 //   motion       — the sphere's Living breathing motion
 //   companion    — { name?, dialogue: { intro, question, yes,
@@ -36,11 +40,12 @@
   if (typeof DreamingPlanet === 'undefined') return;
 
   DreamingPlanet.register({
-    id:        'dreaming',
-    asset:     'assets/planets/dreaming.svg',
-    placement: { top: '20vh', right: '4vw', width: '190px', height: '210px' },
-    motion:    { category: 'Living', name: 'breathing', duration: '8s' },
-    state:     'sleeping',
+    id:          'dreaming',
+    asset:       'assets/planets/dreaming.svg',
+    libraryType: 'dreaming-home',
+    placement:   { top: '20vh', right: '4vw', width: '190px', height: '210px' },
+    motion:      { category: 'Living', name: 'breathing', duration: '8s' },
+    state:       'sleeping',
     companion: {
       // The companion has no name yet — the child names them in a
       // future chapter. For now the dialogue lines are the only
