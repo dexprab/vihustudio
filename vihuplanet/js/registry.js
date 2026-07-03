@@ -95,19 +95,27 @@
   // Story Path — Sprint 3 · Story Path & Hero Personality. Replaces
   // the rocket + paper plane's Journey traversal with an ambient,
   // ever-present trail. Never a route between two objects — it fades
-  // to nothing at both ends (baked into the SVG's gradient stroke),
-  // so it reads as something that's always wandered through the sky
-  // rather than a path that goes somewhere. libraryType wires it to
-  // World Library's `decorations/` the same way every other MEP-01
-  // object is wired — it just has nothing there yet, so it falls
-  // back to the hand-drawn trail below.
+  // to nothing at both ends, so it reads as something that's always
+  // wandered through the sky rather than a path that goes somewhere.
+  // libraryType wires it to World Library's `trails/`; falls back to
+  // the hand-drawn SVG trail if empty.
+  //
+  // The World Library art is a square (2048x2048) canvas with the
+  // painted trail sitting in a horizontal band roughly centered
+  // vertically (content ~y:564-1483) — not a wide banner image. The
+  // wrapper's width:height ratio (90vw : 40vw ≈ 2048:919, the art's
+  // own width-to-content-band ratio) plus the `object-fit: cover`
+  // override in scene.css crops exactly to that band instead of
+  // squashing the whole square (with all its transparent padding)
+  // into a small centered patch. `object-fit` doesn't apply to the
+  // inline SVG fallback, so that path is unaffected.
   WorldObject.register({
     id: 'story-path',
     label: 'Story Path',
     assetHref: 'assets/objects/story-path.svg',
-    libraryType: 'decoration',
+    libraryType: 'trail',
     layer: 'sky',
-    placement: { top: '9vh', left: '2vw', width: '96vw' },
+    placement: { top: '6vh', left: '5vw', width: '90vw', height: '40vw' },
     motion: { category: 'Living', name: 'shimmer', duration: '9.5s', delay: '0.5s' }
   });
 
@@ -116,10 +124,16 @@
   // holds baked into the keyframe stops, rather than a mechanical
   // back-and-forth, so it never reads as scripted. Negative delay
   // starts it already mid-wander instead of at its literal 0%.
+  // libraryType wires it to World Library's `seeds/`; falls back to
+  // the hand-drawn SVG seed if empty. Unlike the Story Path, the art
+  // here is a compact portrait teardrop already centered in its
+  // square canvas — the default object-fit: contain frames it
+  // correctly with no override needed.
   WorldObject.register({
     id: 'story-seed',
     label: 'Story Seed',
     assetHref: 'assets/objects/story-seed.svg',
+    libraryType: 'seed',
     layer: 'sky',
     placement: { top: '30vh', left: '38vw', width: '30px' },
     motion: { category: 'Living', name: 'wander', duration: '145s', delay: '-40s' }

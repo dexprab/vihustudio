@@ -2,6 +2,38 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.8.2 — 2026-07-03
+
+- **Story Path and Story Seed wired to World Library.** New
+  `'trail': 'world-library/trails/'` and `'seed': 'world-library/
+  seeds/'` entries in `worldLibrary.js`'s `FOLDERS` map +
+  `libraryType` on both registry descriptors. SVGs remain the
+  fallback.
+- **Fixed a real height/crop bug found while wiring the trail.** The
+  World Library trail art is a square canvas with the painted band
+  centered vertically inside it, not a wide banner — the shared
+  `.world-object img { height: auto }` rule ignores a wrapper's
+  explicit `height` entirely (sizes off the image's own intrinsic
+  ratio instead), so `object-fit: cover` had nothing to crop and the
+  art rendered as a full square instead of the intended horizontal
+  band. Fixed with a targeted `[data-object-id="story-path"] img
+  { height: 100%; object-fit: cover; }` override — only affects this
+  one `<img>`, doesn't touch the shared rule other objects rely on,
+  and doesn't affect the inline SVG fallback (`object-fit` doesn't
+  apply to it). Story Path placement adjusted to `90vw × 40vw`
+  (≈2048:919, the art's own width-to-content-band ratio) so the crop
+  window lands exactly on the painted trail.
+- **Story Seed needed no such fix** — its World Library art is a
+  compact portrait teardrop already centered in its square canvas, so
+  the default `object-fit: contain` frames it correctly at the
+  existing 30px size.
+- **Telescope wired the same session** (see previous entry) — worth
+  noting together since both were artist-supplied World Library
+  additions discovered and wired live, not planned sprint work.
+- Verified in headless Chromium: real artwork renders for all three
+  (telescope, trail, seed) at the correct crop/size, reduced-motion
+  still disables their animations, zero non-OK network responses.
+
 ## v0.3.8.1 — 2026-07-03
 
 - **Telescope wired to World Library.** New `'telescope':

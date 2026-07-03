@@ -159,6 +159,20 @@
 .world-object[data-object-id="story-path"] {
   z-index: 0;
 }
+/* The World Library trail art is a square canvas with the painted
+ * band centered vertically inside it (see registry.js) — cover crops
+ * to that band instead of the default contain squashing the whole
+ * square (with its transparent padding) into a small centered patch.
+ * height:100% is required too: the shared `.world-object img` rule
+ * sets height:auto, which sizes the image off its own intrinsic
+ * ratio and ignores the wrapper's explicit height entirely — cover
+ * has nothing to crop until the image box is forced to fill it.
+ * Only targets <img> (the World Library asset); neither property
+ * applies to the inline SVG fallback, so that path is unaffected. */
+.world-object[data-object-id="story-path"] img {
+  height: 100%;
+  object-fit: cover;
+}
 .world-object[data-object-id="story-seed"] {
   z-index: 3;
 }

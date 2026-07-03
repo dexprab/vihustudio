@@ -4,8 +4,9 @@
 // asset tree. The Hero never hard-codes a filename — it asks for a
 // renderable object TYPE (sky, tree, flower, cloud, rock, shrub,
 // waterfall, story-home, dreaming-home, decoration, companion,
-// telescope) and gets back whatever artwork currently lives in the
-// matching folder, or nothing at all if the folder is empty.
+// telescope, trail, seed) and gets back whatever artwork currently
+// lives in the matching folder, or nothing at all if the folder is
+// empty.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -54,7 +55,9 @@
     'waterfall':     'world-library/nature/waterfalls/',
     'decoration':    'world-library/decorations/',
     'companion':     'world-library/companions/',
-    'telescope':     'world-library/telescope/'
+    'telescope':     'world-library/telescope/',
+    'trail':         'world-library/trails/',
+    'seed':          'world-library/seeds/'
   };
 
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
