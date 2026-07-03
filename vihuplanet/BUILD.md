@@ -1,6 +1,6 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.3.6**
+MEP Version: **0.3.6.1**
 
 ## Completed
 
@@ -24,7 +24,7 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 | System            | Where                                                     | Notes                                                          |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|
 | ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
-| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01. Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG, or `null` so the caller falls back to its SVG. See `world-library/README.md`. |
+| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. See `world-library/README.md`. |
 | WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object. Descriptors may opt into WorldLibrary via `libraryType`. |
 | WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`. |
 | Planet            | `planets/planets.js` + `planets/planetsData.js`           | Storyteller planet registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. |

@@ -2,6 +2,23 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.6.1 — 2026-07-03
+
+- **MEP-01 hotfix — Manifest-Based World Library Asset Discovery.**
+  `shared/worldLibrary.js` no longer discovers assets by requesting a
+  folder URL and parsing the directory listing a dev server returns
+  for it — GitHub Pages and most static hosts disable directory
+  browsing and return `404`, so production artwork was never
+  discovered even though the sync pipeline was working correctly.
+  `WorldLibrary` now fetches `<folder>/manifest.json` (a flat JSON
+  array of PNG filenames) instead, generated automatically by the
+  [VihuPlanet World Library](https://github.com/dexprab/vihuplanet-world-library)
+  repo's Asset Normalizer workflow on every sync. Public API
+  (`resolve` / `resolveAt` / `resolveMany` / `TYPES`) and every caller
+  are unchanged; a missing, unreachable, or empty manifest still falls
+  back to the existing placeholder. See
+  `world-library/README.md` for the artist workflow.
+
 ## v0.3.6 — 2026-07-03
 
 - **MEP-01 — World Library Integration.** Infrastructure sprint — no

@@ -7,19 +7,23 @@
 // gets back whatever artwork currently lives in the matching folder,
 // or nothing at all if the folder is empty.
 //
-// Workflow this exists to support: generate artwork, resize it,
-// drop the PNG into the right world-library/ folder, refresh the
-// Hero. No code change, no manifest to hand-edit, no build step.
+// Workflow this exists to support: generate artwork, resize it, drop
+// the PNG into the right world-library/ folder, push. The VihuPlanet
+// World Library pipeline synchronizes the PNG and regenerates that
+// folder's manifest.json automatically — no code change, no manifest
+// to hand-edit, no build step.
 //
-// How discovery works: WorldLibrary fetches the folder URL and reads
-// the directory listing the static file server returns for it
-// (Apache/nginx autoindex, `python -m http.server`, most local dev
-// servers return an HTML page of <a href> links for a folder with no
-// index.html). If the server the Hero is running on doesn't expose a
-// directory listing (many production static hosts don't), the fetch
-// simply won't parse into any files and resolve()/resolveAt() return
-// null — callers fall back to their existing placeholder. This is
-// also what keeps the Hero working while the World Library is empty.
+// How discovery works: WorldLibrary fetches manifest.json from the
+// object type's folder — a flat JSON array of PNG filenames, nothing
+// else — and builds asset URLs from it. Manifests are plain static
+// files, so this works identically on GitHub Pages, local dev
+// servers, and every other static host (unlike the directory-listing
+// approach this replaced, which relies on server autoindexing and
+// returns 404 on most production hosts). If manifest.json is missing,
+// unreachable, or lists no assets, resolve()/resolveAt() return null
+// — callers fall back to their existing placeholder. This is also
+// what keeps the Hero working while a World Library collection is
+// empty.
 //
 // Public API:
 //   WorldLibrary.resolve(type)          -> Promise<string|null>
@@ -54,17 +58,13 @@
 
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
 
-  function _parseListing(html, folder) {
-    if (!html || typeof DOMParser === 'undefined') return [];
-    var doc = new DOMParser().parseFromString(html, 'text/html');
-    var anchors = doc.querySelectorAll('a[href]');
+  function _parseManifest(names, folder) {
+    if (!Array.isArray(names)) return [];
     var seen = {};
     var files = [];
-    for (var i = 0; i < anchors.length; i++) {
-      var href = anchors[i].getAttribute('href') || '';
-      if (!IMAGE_EXT.test(href)) continue;
-      var name = decodeURIComponent(href.split('/').filter(Boolean).pop() || '');
-      if (!name || seen[name]) continue;
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      if (typeof name !== 'string' || !IMAGE_EXT.test(name) || seen[name]) continue;
       seen[name] = true;
       files.push(folder + name);
     }
@@ -72,9 +72,9 @@
   }
 
   function _listFolder(folder) {
-    return fetch(folder)
-      .then(function (res) { return res.ok ? res.text() : ''; })
-      .then(function (html) { return _parseListing(html, folder); })
+    return fetch(folder + 'manifest.json')
+      .then(function (res) { return res.ok ? res.json() : []; })
+      .then(function (names) { return _parseManifest(names, folder); })
       .catch(function () { return []; });
   }
 
