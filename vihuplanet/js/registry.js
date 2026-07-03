@@ -154,11 +154,13 @@
   // and lets the child peer through it at the stars. Positioned on
   // the right of the hills per the Visual Contract. Shadow-breathe
   // (Sprint 2 · Living World) gives it presence without swaying —
-  // it should feel real, not float.
+  // it should feel real, not float. libraryType wires it to World
+  // Library's `telescope/` folder; falls back to the SVG if empty.
   WorldObject.register({
     id: 'telescope',
     label: 'Telescope (coming soon)',
     assetHref: 'assets/objects/telescope.svg',
+    libraryType: 'telescope',
     layer: 'ground',
     placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
     motion: { category: 'Living', name: 'shadow-breathe', duration: '7.5s', delay: '0.8s' },

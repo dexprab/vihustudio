@@ -2,6 +2,17 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.8.1 — 2026-07-03
+
+- **Telescope wired to World Library.** New `'telescope':
+  'world-library/telescope/'` entry in `worldLibrary.js`'s `FOLDERS`
+  map + `libraryType: 'telescope'` on the registry descriptor — same
+  pattern as every other MEP-01 object. An artist-supplied
+  `telescope.png` now renders in place of the hand-drawn SVG; the SVG
+  remains the fallback if the folder is ever empty again. No other
+  change — placement, `shadow-breathe` motion, and non-interactivity
+  are untouched.
+
 ## v0.3.8 — 2026-07-03
 
 - **Hero MEP Sprint 3 — Story Path & Hero Personality.** Replaces the
