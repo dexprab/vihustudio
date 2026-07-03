@@ -24,6 +24,13 @@ landmark alongside others.
 - [ ] **Chapter 3A — Returning Home** (for *"I already have a planet."*)
 - [ ] **Chapter 3B — Getting to Know You** (for *"Yes, I'd love to!"*)
 
+Infrastructure sprints (not Chapters — they don't add Hero features):
+
+- [x] **MEP-01 — World Library Integration.** Replaces hardcoded
+      artwork filenames with a filename-agnostic asset provider. See
+      [`world-library/README.md`](world-library/README.md). Evidence:
+      [`evidence/mep-01/README.md`](evidence/mep-01/README.md).
+
 ## Canon (immutable)
 
 - **Explorer** is the starting state. Everyone entering
@@ -49,8 +56,10 @@ vihuplanet/
 ├── CHANGELOG.md             per-chapter changelog
 ├── assets/
 │   ├── fonts/               bundled locally — no CDN dependency
-│   ├── objects/             one SVG per Chapter 1 World Object
-│   └── planets/             one SVG per Chapter 2 planet
+│   ├── objects/             one SVG per Chapter 1 World Object (fallback art)
+│   └── planets/             one SVG per Chapter 2 planet (fallback art)
+├── world-library/           MEP-01 — filename-agnostic artwork tree.
+│                            See world-library/README.md.
 ├── animations/
 │   └── motion.css           WorldMotion vocabulary (Living / Greeting
 │                            / Journey / Celebration)
@@ -60,6 +69,7 @@ vihuplanet/
 ├── hero/
 │   └── hero.css             hero prompt styling
 ├── shared/
+│   ├── worldLibrary.js      MEP-01 — World Library asset provider
 │   ├── worldObject.js       Chapter 1 registry + mount system
 │   └── services/            Chapter 2 placeholder interfaces
 │       ├── RecognitionService.js
@@ -75,18 +85,31 @@ vihuplanet/
 │   └── dreamingPlanet.css
 ├── js/
 │   ├── registry.js          Chapter 1 World Object descriptors
-│   └── scene.js             boot → mount → arm motion → reveal prompt
-│                            → mount planets → mount Dreaming Planet
+│   └── scene.js             boot → mount sky → mount → arm motion →
+│                            reveal prompt → mount planets → mount
+│                            Dreaming Planet
 └── evidence/
     ├── chapter-01/          Chapter 1 evidence + README
-    └── chapter-02/          Chapter 2 evidence + README
+    ├── chapter-02/          Chapter 2 evidence + README
+    ├── chapter-02.5/        Art Direction v1.0 evidence + README
+    └── mep-01/              MEP-01 World Library evidence + README
 ```
 
 ## Systems that grow the world
 
+**WorldLibrary** (`shared/worldLibrary.js`, MEP-01). Filename-agnostic
+artwork provider. Renderers ask for an object *type* (`cloud`,
+`flower`, `story-home`, `sky`, ...); WorldLibrary auto-discovers
+whatever PNGs exist in the matching `world-library/` folder and hands
+back a URL, or `null` if none exist yet — callers fall back to their
+existing SVG in that case. See `world-library/README.md` for the
+artist workflow.
+
 **WorldObject** (`shared/worldObject.js`, `js/registry.js`). Every
 visible Chapter 1 landmark is a `WorldObject.register({...})`
-descriptor.
+descriptor. Descriptors may declare `libraryType` to opt into
+WorldLibrary artwork (currently: clouds, flowers) — everything else
+renders exactly as before MEP-01.
 
 **WorldMotion** (`animations/motion.css`). Motion is a shared
 vocabulary in four categories:
@@ -102,7 +125,8 @@ vocabulary in four categories:
 **Planet** (`planets/planets.js`, `planets/planetsData.js`). The
 floating storyteller planets. Same registry pattern as WorldObject.
 Each descriptor carries a storyteller name and a one-line story
-teaser.
+teaser, and (MEP-01) a `libraryType: 'story-home'` that tries
+WorldLibrary before falling back to its SVG.
 
 **DreamingPlanet** (`dreamingPlanet/dreamingPlanet.js`). Registry
 with the single Dreaming Planet descriptor.

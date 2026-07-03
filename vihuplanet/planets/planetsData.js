@@ -29,6 +29,7 @@
     name:     'Vihaan',
     teaser:   'The dragon finally learned to fly.',
     asset:    'assets/planets/vihaan.svg',
+    libraryType: 'story-home',
     placement:{ top: '18vh', left: '5vw', width: '150px' },
     depth:    'midground',
     motion:   { category: 'Living', name: 'planet-drift', duration: '28s', delay: '-4s' }
@@ -39,6 +40,7 @@
     name:     'Aarav',
     teaser:   'The little star who loved to dance.',
     asset:    'assets/planets/aarav.svg',
+    libraryType: 'story-home',
     placement:{ top: '4vh',  left: '38vw', width: '115px' },
     depth:    'background',
     motion:   { category: 'Living', name: 'planet-drift', duration: '32s', delay: '-11s' }
@@ -49,6 +51,7 @@
     name:     'Meera',
     teaser:   'The fox who painted the sky.',
     asset:    'assets/planets/meera.svg',
+    libraryType: 'story-home',
     placement:{ top: '44vh', left: '14vw', width: '135px' },
     depth:    'midground',
     motion:   { category: 'Living', name: 'planet-drift', duration: '30s', delay: '-16s' }
@@ -59,6 +62,7 @@
     name:     'Emma',
     teaser:   'The penguin who found her song.',
     asset:    'assets/planets/emma.svg',
+    libraryType: 'story-home',
     placement:{ top: '44vh', left: '54vw', width: '120px' },
     depth:    'midground',
     motion:   { category: 'Living', name: 'planet-drift', duration: '34s', delay: '-8s' }

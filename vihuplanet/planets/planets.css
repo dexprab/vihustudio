@@ -26,10 +26,12 @@
   pointer-events: none;
   animation-delay: var(--vp-settle-delay, 0s);
 }
-.storyteller-planet svg {
+.storyteller-planet svg,
+.storyteller-planet img {
   display: block;
   width: 100%;
   height: auto;
+  object-fit: contain;
   /* Softer drop-shadow — a page-shadow, not a UI shadow. */
   filter: drop-shadow(0 4px 8px rgba(30,40,66,0.10));
 }

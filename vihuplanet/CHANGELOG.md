@@ -2,6 +2,58 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.6 — 2026-07-03
+
+- **MEP-01 — World Library Integration.** Infrastructure sprint — no
+  new Hero features, no Hero behaviour change. Replaces hardcoded
+  artwork filenames with a filename-agnostic rendering pipeline.
+- **New module — `shared/worldLibrary.js`.** `WorldLibrary.resolve(type)`
+  / `resolveAt(type, index)` / `resolveMany(type, count)`. Discovers
+  PNGs by fetching a `world-library/` folder and reading the directory
+  listing a static file server returns for it — no manifest to
+  maintain, no code change required to add new artwork. Returns `null`
+  when nothing is found (empty library, or a host with no directory
+  listing), which every caller treats as "render the existing
+  placeholder instead."
+- **New folder tree — `world-library/`.** Exactly the structure
+  specified for the sprint: `companions/`, `decorations/`,
+  `dreaming-home/`, `effects/`, `fonts/`, `nature/{clouds,flowers,
+  rocks,shrubs,trees,waterfalls}/`, `skies/`, `sounds/`,
+  `story-homes/`, `textures/`. Ships empty (`.gitkeep` per folder) —
+  this sprint is the pipeline, not new art.
+- **Renderers updated to try WorldLibrary first, SVG fallback second:**
+  - `shared/worldObject.js` — descriptors may declare `libraryType`;
+    `js/registry.js` tags clouds (`cloud`) and flowers (`flower`).
+  - `planets/planets.js` — `planets/planetsData.js` tags all four
+    storyteller planets `story-home`.
+  - `js/scene.js` — new `mountSky()` layers a `world-library/skies/`
+    image over the existing painted sky gradient if one exists; the
+    gradient is untouched and is what renders when the library is
+    empty.
+  - Every other Hero object (moon, stars, rocket, paper plane, hills,
+    telescope) is untouched — no `libraryType`, same SVG path as
+    before this sprint.
+- **Dreaming Planet / Companion intentionally NOT wired to
+  WorldLibrary.** The sphere SVG's internal groups (`dp-eyes-open`,
+  `dp-mouth-yawn`, `dp-companion`, ...) drive the entire Companion
+  Awakening Sequence via CSS; swapping it for a flat PNG would
+  silently break that state machine. `dreaming-home/` and
+  `companions/` folders exist and the provider supports both types
+  for a future sprint, but `dreamingPlanet/` itself is unchanged. See
+  `world-library/README.md`.
+- **Aspect ratio / no distortion.** `.world-object img` and
+  `.storyteller-planet img` mirror the existing `svg` sizing rules
+  (`width:100%; height:auto; object-fit:contain`); the sky image uses
+  `background-size:cover` — crops, never stretches.
+- **Verified fallback + populated paths in headless Chromium.** With
+  an empty World Library the Hero renders byte-identically to before
+  this sprint (24 SVG world-objects, 4 SVG planets, 0 images). With
+  test PNGs temporarily dropped into `nature/clouds/` and `skies/`
+  (removed before commit), every cloud instance and the sky picked
+  them up automatically with no code change. See
+  `evidence/mep-01/README.md`.
+- **BUILD.md** bumped to `0.3.6`.
+
 ## v0.3.5 — 2026-07-01
 
 - **Chapter 2.5 — Art Direction v1.0.** Locks the permanent visual

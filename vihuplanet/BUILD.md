@@ -1,12 +1,14 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.3.5**
+MEP Version: **0.3.6**
 
 ## Completed
 
 - ✔ Chapter 1 — Hero World Foundation
 - ✔ Chapter 2 — The Dreaming Planet
 - ✔ Chapter 2.5 — Art Direction v1.0 (permanent visual identity)
+- ✔ MEP-01 — World Library Integration (infrastructure — no new Hero
+  features, no behaviour change; see `world-library/README.md`)
 
 ## Upcoming
 
@@ -22,7 +24,8 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 | System            | Where                                                     | Notes                                                          |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|
 | ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
-| WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object.             |
+| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01. Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG, or `null` so the caller falls back to its SVG. See `world-library/README.md`. |
+| WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object. Descriptors may opt into WorldLibrary via `libraryType`. |
 | WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`. |
 | Planet            | `planets/planets.js` + `planets/planetsData.js`           | Storyteller planet registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. |
 | DreamingPlanet    | `dreamingPlanet/dreamingPlanet.js` + `.../dreamingPlanetManager.js` | Singular Dreaming Planet + wake sequence + invitation dialogue + three choice paths. Dialogue is sky-caption (no bubble). |
@@ -58,3 +61,4 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 - `evidence/chapter-01/` — Chapter 1 World Foundation captures + README.
 - `evidence/chapter-02/` — Chapter 2 Dreaming Planet captures + README.
 - `evidence/chapter-02.5/` — Art Direction v1.0 study + README (permanent).
+- `evidence/mep-01/` — MEP-01 World Library integration captures + README.

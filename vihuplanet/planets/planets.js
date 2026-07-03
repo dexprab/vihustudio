@@ -1,11 +1,16 @@
 // planets.js — Chapter 2 storyteller-planet system.
 //
 // Same registry pattern WorldObject uses (Chapter 1) — a descriptor
-// is register()ed, then mount() fetches every SVG, injects it into
+// is register()ed, then mount() resolves its artwork, injects it into
 // the foreground layer, and stamps placement + motion CSS
 // properties. Each planet carries a hand-drawn storyteller name and
 // a one-line story teaser (rendered as small labels beneath the
 // sphere).
+//
+// A descriptor's optional `libraryType` (MEP-01: World Library
+// integration — see shared/worldLibrary.js) is tried first; the
+// existing `asset` SVG is the fallback whenever the World Library has
+// nothing for that type yet.
 //
 // The Dreaming Planet is NOT part of this registry — it lives in
 // its own module because its behaviour is singular.
@@ -38,8 +43,27 @@
   var Planet = { register: register, list: list, find: find };
   try { global.Planet = Planet; } catch (e) {}
 
+  // World Library first (libraryType: 'story-home'), existing SVG
+  // (d.asset) as the fallback — same pattern as WorldObject. `idx` is
+  // the planet's position in the registry, reused so a given planet
+  // consistently picks the same World Library asset across mounts
+  // once more than one story-home image exists.
+  function _resolveArtwork(d, idx) {
+    var hasLibrary = d.libraryType && global.WorldLibrary;
+    var libraryLookup = hasLibrary
+      ? global.WorldLibrary.resolveAt(d.libraryType, idx).catch(function () { return null; })
+      : Promise.resolve(null);
+
+    return libraryLookup.then(function (url) {
+      if (url) return { isImage: true, content: url };
+      return fetch(d.asset).then(function (r) { return r.text(); }).then(function (svg) {
+        return { isImage: false, content: svg };
+      });
+    });
+  }
+
   function _mountOne(container, d, idx) {
-    return fetch(d.asset).then(function (r) { return r.text(); }).then(function (svg) {
+    return _resolveArtwork(d, idx).then(function (asset) {
       var wrap = document.createElement('div');
       wrap.className = 'storyteller-planet';
       wrap.setAttribute('data-planet-id', d.id);
@@ -67,14 +91,26 @@
       // foreground is reserved (Chapter 3+ may use it).
       if (d.depth) wrap.classList.add('depth-' + d.depth);
 
+      if (asset.isImage) {
+        var img = document.createElement('img');
+        img.src = asset.content;
+        img.alt = '';
+        img.decoding = 'async';
+        wrap.appendChild(img);
+      } else {
+        wrap.insertAdjacentHTML('afterbegin', asset.content);
+      }
+
       // Label is a small handwritten narration in the illustrator's
       // pencil hand, floated near the planet. No caption card.
-      wrap.innerHTML =
-        svg +
-        '<div class="storyteller-planet-label" aria-hidden="true">' +
-          '<div class="storyteller-planet-name">' + d.name + '</div>' +
-          '<div class="storyteller-planet-teaser">' + d.teaser + '</div>' +
-        '</div>';
+      var label = document.createElement('div');
+      label.className = 'storyteller-planet-label';
+      label.setAttribute('aria-hidden', 'true');
+      label.innerHTML =
+        '<div class="storyteller-planet-name">' + d.name + '</div>' +
+        '<div class="storyteller-planet-teaser">' + d.teaser + '</div>';
+      wrap.appendChild(label);
+
       wrap.setAttribute('aria-label', d.name + ' — ' + d.teaser);
       container.appendChild(wrap);
       return wrap;

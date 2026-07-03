@@ -78,6 +78,7 @@
       id: c.id,
       label: 'Cloud',
       assetHref: 'assets/objects/cloud.svg',
+      libraryType: 'cloud',
       layer: 'sky',
       placement: { top: c.top, left: c.left, width: c.width },
       motion: { category: 'Living', name: 'drift', duration: c.duration, delay: c.delay }
@@ -138,6 +139,7 @@
       id: f.id,
       label: 'Flower',
       assetHref: 'assets/objects/flower.svg',
+      libraryType: 'flower',
       layer: 'ground',
       placement: { bottom: f.bottom, left: f.left, width: f.width },
       motion: { category: 'Living', name: 'float', duration: f.duration, delay: f.delay }

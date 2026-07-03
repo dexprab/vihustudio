@@ -28,7 +28,16 @@
 //     descriptor = {
 //       id: 'moon',                           // stable identifier
 //       label: 'Moon',                        // aria-label
-//       assetHref: 'assets/objects/moon.svg', // fetched + inlined
+//       assetHref: 'assets/objects/moon.svg', // fetched + inlined —
+//                                              // also the fallback if
+//                                              // libraryType has no art yet
+//       libraryType: 'cloud',                 // optional — World Library
+//                                              // object type (see
+//                                              // shared/worldLibrary.js).
+//                                              // When set, WorldObject asks
+//                                              // WorldLibrary for artwork
+//                                              // first and only falls back
+//                                              // to assetHref if none exists.
 //       layer: 'sky' | 'ground' | 'foreground',
 //       placement: { top, left, width, height, transform },
 //       motion: { category, name, duration, delay, params },
@@ -36,13 +45,15 @@
 //     }
 //
 //   WorldObject.list()             // returns registered descriptors
-//   WorldObject.mount(container)   // fetches every SVG and appends
-//                                  // it into the world tree
+//   WorldObject.mount(container)   // resolves every object's artwork
+//                                  // (World Library first, SVG fallback)
+//                                  // and appends it into the world tree
 
 (function (global) {
   'use strict';
 
   var _registry = [];
+  var _typeCounters = {};
 
   function register(descriptor) {
     if (!descriptor || !descriptor.id) return false;
@@ -66,16 +77,39 @@
     return Promise.all(mounts);
   }
 
+  // Resolves the artwork to render for a descriptor: World Library
+  // first (if libraryType is declared and the library has something
+  // for it), the existing hardcoded SVG otherwise. This is the only
+  // place that decides between the two — everything downstream just
+  // renders whatever comes back.
+  function _resolveArtwork(d) {
+    var libraryType = d.libraryType;
+    var hasLibrary = libraryType && global.WorldLibrary;
+    var index = 0;
+    if (hasLibrary) {
+      _typeCounters[libraryType] = (_typeCounters[libraryType] || 0) + 1;
+      index = _typeCounters[libraryType] - 1;
+    }
+    var libraryLookup = hasLibrary
+      ? global.WorldLibrary.resolveAt(libraryType, index).catch(function () { return null; })
+      : Promise.resolve(null);
+
+    return libraryLookup.then(function (url) {
+      if (url) return { isImage: true, content: url };
+      return fetch(d.assetHref).then(function (r) { return r.text(); }).then(function (svgText) {
+        return { isImage: false, content: svgText };
+      });
+    });
+  }
+
   function _mountOne(container, d) {
-    return fetch(d.assetHref).then(function (r) {
-      return r.text();
-    }).then(function (svgText) {
+    return _resolveArtwork(d).then(function (asset) {
       var layer = container.querySelector('.' + (d.layer || 'sky')) || container.querySelector('.sky');
       if (!layer) return null;
 
-      // Wrap the SVG so placement + motion styles hang off the
-      // wrapper — the inner SVG stays a pure asset. That lets the
-      // same asset ship at different sizes / positions if a scene
+      // Wrap the artwork so placement + motion styles hang off the
+      // wrapper — the inner asset stays pure. That lets the same
+      // asset ship at different sizes / positions if a scene
       // instantiates the same descriptor twice in a future sprint.
       var wrap = document.createElement('div');
       wrap.className = 'world-object world-object-' + d.id;
@@ -112,7 +146,16 @@
         wrap.setAttribute('aria-hidden', 'true');
       }
 
-      wrap.innerHTML = svgText;
+      if (asset.isImage) {
+        var img = document.createElement('img');
+        img.src = asset.content;
+        img.alt = '';
+        img.decoding = 'async';
+        wrap.appendChild(img);
+      } else {
+        wrap.innerHTML = asset.content;
+      }
+
       layer.appendChild(wrap);
       return wrap;
     }).catch(function () { return null; });

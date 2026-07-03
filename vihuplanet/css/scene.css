@@ -62,6 +62,20 @@
   pointer-events: none;
 }
 
+/* MEP-01: World Library integration. Only appears in the DOM when
+ * js/scene.js finds an image in world-library/skies/ — the painted
+ * gradient above is the sky's fallback and is never removed, so an
+ * empty World Library renders byte-identically to before this
+ * sprint. `background-size: cover` fills the frame without ever
+ * stretching or distorting the artwork. */
+.watercolor-sky-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 /* ---- Ground layer ------------------------------------------------- */
 
 .ground {
@@ -102,17 +116,21 @@
 
 /* ---- WorldObjects (shared) --------------------------------------- */
 
-/* Every mounted WorldObject wraps its SVG in a `.world-object` div.
- * The wrapper owns placement + motion transforms; the inner SVG is
- * a pure asset. */
+/* Every mounted WorldObject wraps its artwork in a `.world-object`
+ * div. The wrapper owns placement + motion transforms; the inner
+ * asset is pure — either the existing SVG, or (MEP-01: World Library
+ * integration) a PNG resolved from world-library/. Both are sized
+ * identically so swapping one for the other never changes layout. */
 .world-object {
   position: absolute;
   will-change: transform, opacity;
 }
-.world-object svg {
+.world-object svg,
+.world-object img {
   display: block;
   width: 100%;
   height: auto;
+  object-fit: contain;
 }
 .world-object.is-interactive {
   cursor: pointer;

@@ -13,9 +13,28 @@
 //      floating storyteller planets into .foreground.
 //   5. mountDreamingPlanet(): DreamingPlanetManager paints the
 //      Dreaming Planet + dialogue + choice buttons.
+//
+// MEP-01 addition:
+//   6. mountSky(): if world-library/skies/ has artwork, layers it
+//      over the existing painted sky gradient. Does nothing at all
+//      when the library is empty — the gradient is the fallback and
+//      is never removed from the DOM.
 
 (function () {
   'use strict';
+
+  function mountSky() {
+    if (typeof WorldLibrary === 'undefined') return;
+    var sky = document.querySelector('.sky');
+    if (!sky) return;
+    WorldLibrary.resolve('sky').then(function (url) {
+      if (!url) return; // no art yet — existing gradient stands as-is
+      var layer = document.createElement('div');
+      layer.className = 'watercolor-sky-image';
+      layer.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
+      sky.appendChild(layer);
+    }).catch(function () {});
+  }
 
   function armMotion() {
     document.querySelectorAll('.world-object').forEach(function (wrap) {
@@ -54,6 +73,8 @@
   function boot() {
     var world = document.querySelector('.world');
     if (!world) return;
+
+    mountSky();
 
     if (typeof WorldObject === 'undefined') {
       revealHeroPrompt(2300);
