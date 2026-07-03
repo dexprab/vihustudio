@@ -1932,13 +1932,40 @@ button:active{
   flex-shrink:0;
 }
 
-.modal-content.modal-wide .theme-cards{
+/* Sprint 9.2 — Theme Library. .theme-library is the scrollable
+   region (Official section + Imported section + Import button);
+   .theme-cards stays a plain grid nested inside each section so the
+   existing card styles below need no change. */
+.modal-content.modal-wide .theme-library{
   margin-bottom:16px;
   overflow-y:auto;
   flex:1 1 auto;
+  padding:4px;
+}
+
+.theme-library-section{
+  margin-bottom:16px;
+}
+.theme-library-section:last-of-type{
+  margin-bottom:10px;
+}
+
+.theme-library-heading{
+  margin:0 0 8px 0;
+  font-size:11px;
+  font-weight:bold;
+  color:var(--text-tertiary);
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+}
+
+.import-theme-btn{
+  width:100%;
+}
+
+.modal-content.modal-wide .theme-cards{
   grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
   gap:8px;
-  padding:4px;
 }
 
 .modal-content.modal-wide .theme-card{

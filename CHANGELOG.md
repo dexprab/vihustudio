@@ -2,6 +2,69 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.0.3 — 2026-07-03
+
+Sprint 9.2 — **Theme Library Foundation.** An architecture sprint, not
+a feature sprint: transforms the Theme Engine's hardcoded
+`BUILTIN_THEMES` array into a `ThemeRegistry` abstraction layer, so
+themes become portable creative assets instead of application data —
+groundwork for the future Theme Creator, Theme Export, and Community
+Themes, none of which ship in this sprint.
+
+- feat(theme): Sprint 9.2 Theme Library Foundation (build 0051, 2026-07-03)
+  - **New `js/themeRegistry.js`.** Single abstraction layer between
+    theme storage and `ThemeEngine`, mirroring the `list / find /
+    register / validate` shape `storyDestinations.js` already
+    established for publishing destinations. Owns the four built-in
+    themes (moved here verbatim from `themeEngine.js` — same ids, same
+    field values) plus whatever a child imports, merged into one
+    catalog behind `get(id)` / `list()` / `getCatalog()`. `ThemeEngine`
+    never learns which collection a theme came from.
+  - **`.vtheme` package format.** Plain, human-readable JSON (not
+    zipped or compressed, so it can grow into a packaged format later
+    without an API change): `{manifest: {id, name, version, author,
+    description, category, tags, thumbnail, createdDate, updatedDate,
+    minStudioVersion}, theme: {...}, assets: {}}`. `theme` is the exact
+    flat shape the renderer has always consumed — nothing downstream
+    changed.
+  - **Validation, never crashes.** `ThemeRegistry.validatePackage`
+    checks JSON structure, required manifest fields, id format, and
+    `minStudioVersion` compatibility, returning friendly problem
+    strings instead of throwing. A corrupt or incompatible `.vtheme`
+    shows an `alert()` (same UX as a failed project open) and leaves
+    the Theme Library untouched.
+  - **Duplicate handling.** Importing a `.vtheme` whose id already
+    exists prompts **Replace Existing Theme / Keep Both / Cancel** (new
+    `themeImportConflictModal`, same shape as the existing
+    restore-session prompt). Keep Both appends `-copy` (bumping to
+    `-copy-2` etc. if that's also taken); Replace overwrites in place;
+    both persist to `localStorage` immediately.
+  - **Theme Library UI.** The existing Theme Picker modal (Sprint
+    3.3.1) is restructured into **Official Themes** / **Imported
+    Themes** sections + a **+ Import Theme** button, rendered from
+    `ThemeRegistry.getCatalog()`. No search, no filters, no delete, no
+    rename, no drag-and-drop — intentionally out of scope. Card
+    click-to-apply behaviour is unchanged.
+  - **Backward compatible by construction.** `ThemeEngine.getTheme /
+    getAllThemes / getActiveTheme / applyTheme / registerTheme` all
+    keep their exact pre-9.2 signatures; only the storage underneath
+    changed. Projects still store only `themeId` (unchanged — never an
+    embedded theme object). Verified in headless Chromium: a legacy
+    project payload referencing `theme:"fun-comic"` opens with zero
+    errors and resolves the exact original frame colour (`#FFD700`);
+    importing a theme, applying it, re-importing to trigger the
+    conflict prompt, choosing Keep Both, and reloading the page all
+    behave correctly with imported themes persisting across reload;
+    Theme Designer renders correctly against a single-variant,
+    zero-decoration imported theme (no crash).
+  - **Architecture ready for what's next without another redesign.**
+    Manifest metadata (author, version, category, tags) and
+    `source: 'official'|'imported'` tagging already exist per theme, so
+    Theme Creator, Theme Editor, Theme Export, Duplicate Theme,
+    Community Themes, Official Theme Updates, and eventual Theme
+    Marketplace / Versioning / Synchronization are additive — new
+    sources feeding the same registry, not a new architecture.
+
 ## v1.0.2 — 2026-07-01
 
 Sprint 9.1 — **Trust & Publishing Rework.** A product rework driven by

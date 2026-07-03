@@ -3,7 +3,7 @@
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>VihuStudio 1.0.2</title>
+<title>VihuStudio 1.0.3</title>
 <link rel='stylesheet' href='css/style.css'>
 </head>
 <body class='light-theme'>
@@ -299,14 +299,40 @@
 <!-- Build / release footer — populated at runtime by js/buildInfo.js. -->
 <div id='devFooter' class='dev-footer'>VihuStudio 1.0.2</div>
 
-<!-- Theme Picker modal (Sprint 3.3.1) -->
+<!-- Theme Picker modal (Sprint 3.3.1; Sprint 9.2 — Theme Library
+     Foundation: sections are rendered from ThemeRegistry.getCatalog()
+     instead of a hardcoded array. See js/themeRegistry.js. -->
 <div id='themePickerModal' class='modal hidden' role='dialog' aria-modal='true'>
 <div class='modal-content modal-wide'>
-<h3>Choose a Theme</h3>
+<h3>Theme Library</h3>
 <p>Pick a visual identity for your book. You can customize it further in the Theme Designer.</p>
-<div id='themePickerCards' class='theme-cards'></div>
+<div id='themePickerCards' class='theme-library'>
+<div class='theme-library-section'>
+<h4 class='theme-library-heading'>Official Themes</h4>
+<div id='themeLibraryOfficial' class='theme-cards'></div>
+</div>
+<div class='theme-library-section'>
+<h4 class='theme-library-heading'>Imported Themes</h4>
+<div id='themeLibraryImported' class='theme-cards'></div>
+</div>
+<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn'>+ Import Theme</button>
+</div>
 <div class='modal-actions'>
 <button id='themePickerClose' class='modal-btn' type='button'>Cancel</button>
+</div>
+</div>
+</div>
+<input id='importThemeInput' type='file' accept='.vtheme,application/json' hidden>
+
+<!-- Theme Import Conflict modal (Sprint 9.2) -->
+<div id='themeImportConflictModal' class='modal hidden' role='dialog' aria-modal='true'>
+<div class='modal-content'>
+<h3>A theme with this ID already exists</h3>
+<p id='themeImportConflictBody'>Choose what to do with the imported theme.</p>
+<div class='modal-actions'>
+<button id='themeImportConflictCancel' class='modal-btn' type='button'>Cancel</button>
+<button id='themeImportConflictCopy' class='modal-btn' type='button'>Keep Both</button>
+<button id='themeImportConflictReplace' class='modal-btn primary' type='button'>Replace Existing Theme</button>
 </div>
 </div>
 </div>
@@ -339,6 +365,6 @@
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeEngine.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/app.js'></script>
 </body>
 </html>

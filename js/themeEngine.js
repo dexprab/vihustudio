@@ -1,3 +1,11 @@
+// Sprint 9.2 — Theme Library Foundation. ThemeEngine no longer owns
+// theme storage: every built-in theme lives in ThemeRegistry
+// (js/themeRegistry.js, loaded before this file) alongside whatever
+// a child has imported. ThemeEngine only ever asks for a theme by id
+// — it doesn't know, and doesn't need to know, whether the answer
+// came from the bundled Official set or an imported .vtheme. Every
+// public method below keeps its exact pre-9.2 signature and
+// behaviour; only the storage underneath changed.
 const ThemeEngine=(function(){
   const DEFAULT_THEME_ID='storybook-classic';
 
@@ -35,102 +43,31 @@ const ThemeEngine=(function(){
     {id:'bottom-right',name:'Bottom Right'}
   ];
 
-  const BUILTIN_THEMES=[
-    {
-      id:'storybook-classic',
-      name:'Storybook Classic',
-      description:'Warm, rounded, friendly — traditional children’s book.',
-      suitableFor:'Bedtime stories, fairy tales, soft narratives',
-      frame:{ color:'#1D3457' },
-      panel:{ color:'#FFFFFF' },
-      storyText:{ font:'Georgia, serif', size:56, color:'#FFFFFF' },
-      footerText:{ font:'Georgia, serif', size:24, color:'#FFFFFF' },
-      watermark:{ font:'Georgia, serif', size:24, color:'#FFFFFF' },
-      variants:[
-        {id:'classic',name:'Classic',frameColor:'#1D3457'},
-        {id:'vintage',name:'Vintage',frameColor:'#6B4423'},
-        {id:'watercolor',name:'Watercolor',frameColor:'#7B9AC8'}
-      ],
-      decorations:[
-        {id:'stars',name:'Stars'},
-        {id:'clouds',name:'Clouds'},
-        {id:'flowers',name:'Flowers'}
-      ]
-    },
-    {
-      id:'adventure',
-      name:'Adventure',
-      description:'Explorer, bold, nature inspired.',
-      suitableFor:'Outdoor stories, journeys, discovery tales',
-      frame:{ color:'#2D5016' },
-      panel:{ color:'#F5E6D3' },
-      storyText:{ font:'“Trebuchet MS”, sans-serif', size:58, color:'#F5E6D3' },
-      footerText:{ font:'“Trebuchet MS”, sans-serif', size:24, color:'#F5E6D3' },
-      watermark:{ font:'“Trebuchet MS”, sans-serif', size:24, color:'#F5E6D3' },
-      variants:[
-        {id:'jungle',name:'Jungle',frameColor:'#2D5016'},
-        {id:'mountains',name:'Mountains',frameColor:'#5C6B7A'},
-        {id:'ocean',name:'Ocean',frameColor:'#1B5F8C'},
-        {id:'desert',name:'Desert',frameColor:'#C18E54'}
-      ],
-      decorations:[
-        {id:'trees',name:'Trees'},
-        {id:'birds',name:'Birds'},
-        {id:'stars',name:'Stars'}
-      ]
-    },
-    {
-      id:'fun-comic',
-      name:'Comic',
-      description:'Clean, high contrast, speech-bubble inspired.',
-      suitableFor:'Playful adventures, jokes, energetic plots',
-      frame:{ color:'#FFD700' },
-      panel:{ color:'#FFFFFF' },
-      storyText:{ font:'“Comic Sans MS”, “Chalkboard SE”, cursive', size:58, color:'#111111' },
-      footerText:{ font:'“Comic Sans MS”, “Chalkboard SE”, cursive', size:24, color:'#111111' },
-      watermark:{ font:'“Comic Sans MS”, “Chalkboard SE”, cursive', size:24, color:'#111111' },
-      variants:[
-        {id:'bold',name:'Bold',frameColor:'#FFD700'},
-        {id:'action',name:'Action',frameColor:'#E63946'},
-        {id:'newspaper',name:'Newspaper',frameColor:'#F5F0E8'}
-      ],
-      decorations:[
-        {id:'stars',name:'Stars'},
-        {id:'clouds',name:'Clouds'}
-      ]
-    },
-    {
-      id:'minimal-elegant',
-      name:'Minimal',
-      description:'Simple, modern, focus on the artwork.',
-      suitableFor:'Quiet stories, art-forward books, gallery style',
-      frame:{ color:'#EFEFEF' },
-      panel:{ color:'#FFFFFF' },
-      storyText:{ font:'“Helvetica Neue”, Helvetica, Arial, sans-serif', size:54, color:'#222222' },
-      footerText:{ font:'“Helvetica Neue”, Helvetica, Arial, sans-serif', size:22, color:'#444444' },
-      watermark:{ font:'“Helvetica Neue”, Helvetica, Arial, sans-serif', size:22, color:'#888888' },
-      variants:[
-        {id:'white',name:'White',frameColor:'#FFFFFF'},
-        {id:'soft-grey',name:'Soft Grey',frameColor:'#EFEFEF'},
-        {id:'linen',name:'Linen',frameColor:'#F4EFE6'}
-      ],
-      decorations:[]
-    }
-  ];
-
-  const registry={};
-  BUILTIN_THEMES.forEach(function(t){ registry[t.id]=t; });
-
+  // registerTheme() pre-9.2 behaviour was an unconditional overwrite
+  // by id (registry[theme.id]=theme) — preserved exactly by routing
+  // through ThemeRegistry.importPackage with onDuplicate:'replace'.
+  // No caller in this codebase currently uses this method (Theme
+  // Creator, the only future feature that would, is out of scope for
+  // this sprint) but the signature stays for API compatibility.
   function registerTheme(theme){
     if(!theme||!theme.id) return false;
-    registry[theme.id]=theme;
-    return true;
+    const pkg={
+      manifest:{
+        id:theme.id, name:theme.name||theme.id, version:'1.0.0', author:'Vihu',
+        description:theme.description||'', category:'Imported', tags:[],
+        thumbnail:'', createdDate:'', updatedDate:'',
+        minStudioVersion:ThemeRegistry.THEME_SYSTEM_VERSION
+      },
+      theme:theme
+    };
+    const result=ThemeRegistry.importPackage(pkg,{onDuplicate:'replace'});
+    return !!(result&&result.ok);
   }
   function getTheme(id){
-    if(id && registry[id]) return registry[id];
-    return registry[DEFAULT_THEME_ID];
+    if(id){ const t=ThemeRegistry.get(id); if(t) return t; }
+    return ThemeRegistry.get(DEFAULT_THEME_ID);
   }
-  function getAllThemes(){ return BUILTIN_THEMES.slice(); }
+  function getAllThemes(){ return ThemeRegistry.list(); }
   function getPanelStyles(){ return PANEL_STYLES.slice(); }
   function getFooterStyles(){ return FOOTER_STYLES.slice(); }
   function getPageNumberStyles(){ return PAGE_NUMBER_STYLES.slice(); }
@@ -139,7 +76,7 @@ const ThemeEngine=(function(){
   function getHandlePositions(){ return HANDLE_POSITIONS.slice(); }
 
   function getActiveThemeId(){
-    if(typeof AppState!=='undefined' && AppState.project && AppState.project.theme && registry[AppState.project.theme]){
+    if(typeof AppState!=='undefined' && AppState.project && AppState.project.theme && ThemeRegistry.hasTheme(AppState.project.theme)){
       return AppState.project.theme;
     }
     return DEFAULT_THEME_ID;
@@ -596,39 +533,155 @@ const ThemeEngine=(function(){
     _renderLeftCard(getActiveThemeId());
   }
 
+  // Sprint 9.2 — one card renderer shared by both Theme Library
+  // sections (previously inlined once, since there was only ever one
+  // list). Card markup/behaviour is unchanged from before this sprint.
+  function _renderThemeCard(t,activeId){
+    const card=document.createElement('button');
+    card.type='button';
+    card.className='theme-card';
+    card.setAttribute('data-theme-id',t.id);
+    if(t.id===activeId) card.classList.add('active');
+    const preview=document.createElement('div');
+    preview.className='theme-card-preview';
+    preview.style.background=t.frame.color;
+    const panel=document.createElement('div');
+    panel.className='theme-card-panel';
+    panel.style.background=t.panel.color;
+    preview.appendChild(panel);
+    card.appendChild(preview);
+    const name=document.createElement('div');
+    name.className='theme-card-name';
+    name.textContent=t.name;
+    card.appendChild(name);
+    const desc=document.createElement('div');
+    desc.className='theme-card-desc';
+    desc.textContent=t.description;
+    card.appendChild(desc);
+    card.addEventListener('click',function(){
+      applyTheme(t.id);
+      closeThemePicker();
+    });
+    return card;
+  }
+
+  // Sprint 9.2 — Theme Library. Renders the Official / Imported
+  // sections from ThemeRegistry.getCatalog() instead of a hardcoded
+  // array, so an imported theme appears the moment it's registered —
+  // no other change to how a theme is picked or applied.
   function buildPickerCards(){
     const el=document.getElementById('themePickerCards');
-    if(!el) return;
-    el.innerHTML='';
+    const officialEl=document.getElementById('themeLibraryOfficial');
+    const importedEl=document.getElementById('themeLibraryImported');
+    if(!el || !officialEl || !importedEl) return;
     const activeId=getActiveThemeId();
-    BUILTIN_THEMES.forEach(function(t){
-      const card=document.createElement('button');
-      card.type='button';
-      card.className='theme-card';
-      card.setAttribute('data-theme-id',t.id);
-      if(t.id===activeId) card.classList.add('active');
-      const preview=document.createElement('div');
-      preview.className='theme-card-preview';
-      preview.style.background=t.frame.color;
-      const panel=document.createElement('div');
-      panel.className='theme-card-panel';
-      panel.style.background=t.panel.color;
-      preview.appendChild(panel);
-      card.appendChild(preview);
-      const name=document.createElement('div');
-      name.className='theme-card-name';
-      name.textContent=t.name;
-      card.appendChild(name);
-      const desc=document.createElement('div');
-      desc.className='theme-card-desc';
-      desc.textContent=t.description;
-      card.appendChild(desc);
-      card.addEventListener('click',function(){
-        applyTheme(t.id);
-        closeThemePicker();
+    const catalog=ThemeRegistry.getCatalog();
+
+    officialEl.innerHTML='';
+    catalog.official.forEach(function(t){ officialEl.appendChild(_renderThemeCard(t,activeId)); });
+
+    importedEl.innerHTML='';
+    if(catalog.imported.length===0){
+      const note=document.createElement('p');
+      note.className='placeholder';
+      note.textContent='No imported themes yet.';
+      importedEl.appendChild(note);
+    }else{
+      catalog.imported.forEach(function(t){ importedEl.appendChild(_renderThemeCard(t,activeId)); });
+    }
+
+    _wireImportButton();
+  }
+
+  // ---------- Theme Import (Sprint 9.2) ----------
+  // Click Import -> choose .vtheme -> validate -> register -> refresh
+  // Theme Library -> theme is immediately available. Mirrors
+  // ProjectManager.openProject(file)'s FileReader + try/catch shape,
+  // and alert()s a friendly message on failure the same way app.js
+  // does for a failed project open — never throws past this function.
+  function _wireImportButton(){
+    const btn=document.getElementById('importThemeBtn');
+    const input=document.getElementById('importThemeInput');
+    if(!btn || !input) return;
+    if(!btn.__themeWired){
+      btn.addEventListener('click',function(){ input.click(); });
+      btn.__themeWired=true;
+    }
+    if(!input.__themeWired){
+      input.addEventListener('change',function(e){
+        const file=e.target.files && e.target.files[0];
+        e.target.value='';
+        if(file) importThemeFile(file);
       });
-      el.appendChild(card);
+      input.__themeWired=true;
+    }
+  }
+
+  function _readFileAsText(file){
+    return new Promise(function(resolve,reject){
+      const reader=new FileReader();
+      reader.onload=function(){ resolve(reader.result); };
+      reader.onerror=function(){ reject(new Error('Could not read file')); };
+      reader.readAsText(file);
     });
+  }
+
+  function importThemeFile(file){
+    return _readFileAsText(file).then(function(text){
+      let pkg;
+      try{ pkg=JSON.parse(text); }
+      catch(e){ alert('Could not import theme: this file is not valid JSON.'); return; }
+
+      const result=ThemeRegistry.importPackage(pkg);
+      if(result.ok){ buildPickerCards(); return; }
+      if(result.problems && result.problems.length){
+        alert('Could not import theme:\n'+result.problems.join('\n'));
+        return;
+      }
+      if(result.duplicate){
+        _showImportConflict(pkg);
+        return;
+      }
+      // result.cancelled or any other non-ok outcome — nothing to do.
+    }).catch(function(err){
+      alert('Could not import theme: '+(err&&err.message?err.message:'unknown error'));
+    });
+  }
+
+  // Replace Existing Theme / Keep Both / Cancel — same modal shape as
+  // app.js's restore-session prompt, kept local to ThemeEngine since
+  // it's purely an implementation detail of the import flow.
+  function _showImportConflict(pkg){
+    const modal=document.getElementById('themeImportConflictModal');
+    const body=document.getElementById('themeImportConflictBody');
+    const cancelBtn=document.getElementById('themeImportConflictCancel');
+    const copyBtn=document.getElementById('themeImportConflictCopy');
+    const replaceBtn=document.getElementById('themeImportConflictReplace');
+    if(!modal || !cancelBtn || !copyBtn || !replaceBtn){
+      // No conflict UI available — default to the safe, non-destructive
+      // choice rather than silently failing the import.
+      const result=ThemeRegistry.importPackage(pkg,{onDuplicate:'copy'});
+      if(result.ok) buildPickerCards();
+      return;
+    }
+    const existing=ThemeRegistry.get(pkg.manifest.id);
+    if(body) body.textContent='"'+(pkg.manifest.name||pkg.manifest.id)+'" uses the same ID as an existing theme'+(existing&&existing.name?(' ("'+existing.name+'")'):'')+'. What would you like to do?';
+    function _finish(mode){
+      modal.classList.add('hidden');
+      cancelBtn.onclick=null; copyBtn.onclick=null; replaceBtn.onclick=null;
+      if(mode==='cancel') return;
+      const result=ThemeRegistry.importPackage(pkg,{onDuplicate:mode});
+      if(result.ok) buildPickerCards();
+      else if(result.problems && result.problems.length) alert('Could not import theme:\n'+result.problems.join('\n'));
+    }
+    cancelBtn.onclick=function(){ _finish('cancel'); };
+    copyBtn.onclick=function(){ _finish('copy'); };
+    replaceBtn.onclick=function(){ _finish('replace'); };
+    // Property assignment (not addEventListener) so each call rebinds
+    // to *this* pkg's _finish instead of accumulating stale closures
+    // from a previous import's conflict prompt.
+    modal.onclick=function(e){ if(e.target===modal) _finish('cancel'); };
+    modal.classList.remove('hidden');
   }
 
   function openThemePicker(){
@@ -752,7 +805,8 @@ const ThemeEngine=(function(){
     buildLeftPaneCard:buildLeftPaneCard,
     buildDesigner:buildDesigner,
     openThemePicker:openThemePicker,
-    closeThemePicker:closeThemePicker
+    closeThemePicker:closeThemePicker,
+    importThemeFile:importThemeFile
   };
   try{ window.ThemeEngine=api; }catch(e){}
   return api;
