@@ -2,6 +2,47 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.7 — 2026-07-03
+
+- **Hero MEP Sprint 2 — Living World.** Subtle environmental motion
+  only — no redesign, no new navigation, no new features. Nothing
+  should read as animated on first paint; the world should only feel
+  alive after watching quietly for a few seconds.
+- **Cloud drift gains vertical variation.** `vp-drift` (`animations/
+  motion.css`) now arcs through a per-cloud `--vp-drift-y` custom
+  property at its midpoint instead of a flat horizontal line; each of
+  the four clouds gets a different value (`registry.js`) on top of
+  their already-different durations, so the sky doesn't read as four
+  clouds on one rail.
+- **Storyteller planets gently breathe.** `vp-planet-drift` now adds
+  a sub-1° rotation (±0.6deg) alongside its existing tiny
+  translate — islands read as floating, not just sliding. Positions,
+  per-planet durations, and phase offsets (`planetsData.js`) are
+  unchanged.
+- **Dreaming Planet glow, no scaling.** `vp-breathing` dropped its
+  `transform: scale(...)` — only the drop-shadow's blur radius and
+  opacity oscillate now, so the sphere pulses without growing.
+- **Telescope gets shadow-breathe instead of float.** New `.shadow-
+  breathe` motion (Living) animates only `filter: drop-shadow(...)`,
+  zero transform — presence without drawing the eye. Chosen over an
+  idle-sway rotation per the sprint's either/or.
+- **Flowers sway instead of bob.** New `.sway` motion (Living)
+  rotates ≤1.2° from the base (`transform-origin: bottom center`),
+  reading as wind bending the stem rather than the whole flower
+  floating.
+- **All new/changed motions honour `prefers-reduced-motion`** — added
+  to the existing disable block in `animations/motion.css` alongside
+  every other Living/Journey/Greeting animation.
+- **Dev-only build indicator.** `js/buildInfo.js` + `build-info.json`
+  (new — mirrors the root VihuStudio app's existing pattern) render a
+  low-opacity, non-interactive, bottom-left readout of the short
+  commit SHA, build timestamp, and environment, gated behind a single
+  `DEV_BUILD_INFO` flag in `buildInfo.js` for easy removal before a
+  production-facing release. Exists to kill "is this cache or a real
+  stale deploy?" confusion after a Pages push.
+- **Performance:** every animation is a CSS `transform`/`filter`
+  keyframe — no JS animation loops, no layout-triggering properties.
+
 ## v0.3.6.2 — 2026-07-03
 
 - **Hero MEP — Polish & Bug Fixes.** Small, non-architectural sprint.

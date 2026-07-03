@@ -10,7 +10,8 @@
  *   Category      When it plays                Named motions
  * ==============================================================
  *   Living        Always. Ambient background.  twinkle, drift,
- *                 The world breathes.          float, breathe
+ *                 The world breathes.          float, breathe,
+ *                                               sway, shadow-breathe
  *
  *   Greeting      When something arrives —     drawn-in, warm-in,
  *                 a landmark appears, the      settle
@@ -55,8 +56,9 @@
 }
 
 @keyframes vp-drift {
-  from { transform: translateX(-4vw); }
-  to   { transform: translateX(4vw); }
+  0%   { transform: translate(-4vw, 0); }
+  50%  { transform: translate(0, var(--vp-drift-y, -1vh)); }
+  100% { transform: translate(4vw, 0); }
 }
 .drift {
   animation-name: vp-drift;
@@ -91,6 +93,41 @@
   animation-iteration-count: infinite;
   animation-fill-mode: both;
   animation-duration: var(--vp-motion-duration, 6.2s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* sway — a gentle wind-bent rotation from the base. Used by ground
+ * objects that should read as rooted (flowers) rather than floating
+ * (Sprint 2 · Living World). Rotates from the bottom edge so it
+ * reads as the stem bending, not the whole object drifting. */
+@keyframes vp-sway {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50%      { transform: rotate(1.2deg); }
+}
+.sway {
+  transform-origin: bottom center;
+  animation-name: vp-sway;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 5.4s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* shadow-breathe — presence without movement. The object itself
+ * never transforms; only its drop-shadow softly deepens and lifts,
+ * as if the light is breathing around it (Sprint 2 · Living World —
+ * chosen for the telescope so it "feels real" without swaying). */
+@keyframes vp-shadow-breathe {
+  0%, 100% { filter: drop-shadow(0 4px 6px rgba(30,40,66,0.10)); }
+  50%      { filter: drop-shadow(0 7px 11px rgba(30,40,66,0.17)); }
+}
+.shadow-breathe {
+  animation-name: vp-shadow-breathe;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 7.5s);
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
@@ -214,8 +251,8 @@
 /* breathing — even slower, gentler breath used by the Dreaming
  * Planet itself (the sphere). Contrast with the moon's `breathe`. */
 @keyframes vp-breathing {
-  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 12px rgba(123,95,204,0.40)); }
-  50%      { transform: scale(1.015);filter: drop-shadow(0 0 22px rgba(123,95,204,0.55)); }
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(123,95,204,0.40)); }
+  50%      { filter: drop-shadow(0 0 22px rgba(123,95,204,0.55)); }
 }
 .breathing {
   animation-name: vp-breathing;
@@ -261,11 +298,11 @@
  * storyteller planets so each has its own floating path without
  * a rewrite of `.drift`. */
 @keyframes vp-planet-drift {
-  0%   { transform: translate(0, 0); }
-  25%  { transform: translate(1.4vw, -1vh); }
-  50%  { transform: translate(0, -1.6vh); }
-  75%  { transform: translate(-1.4vw, -1vh); }
-  100% { transform: translate(0, 0); }
+  0%   { transform: translate(0, 0)         rotate(0deg); }
+  25%  { transform: translate(1.4vw, -1vh)  rotate(0.6deg); }
+  50%  { transform: translate(0, -1.6vh)    rotate(0deg); }
+  75%  { transform: translate(-1.4vw, -1vh) rotate(-0.6deg); }
+  100% { transform: translate(0, 0)         rotate(0deg); }
 }
 .planet-drift {
   animation-name: vp-planet-drift;
@@ -368,7 +405,8 @@ body.universe-quieting .world-object:not(.world-object-dreaming-planet):not(.wor
   .drawn-in, .warm-in, .settle,
   .glide, .sail, .drift-long,
   .select-pulse, .zoom-out, .fade-out,
-  .sleeping, .breathing, .listening, .orbit, .planet-drift, .awakening {
+  .sleeping, .breathing, .listening, .orbit, .planet-drift, .awakening,
+  .sway, .shadow-breathe {
     animation: none !important;
   }
   body.universe-quieting .world-object { animation: none !important; }

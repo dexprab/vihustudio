@@ -7,7 +7,7 @@
 // landmark in a future chapter is one more descriptor here.
 //
 // Motion categories map 1:1 with animations/motion.css:
-//   Living      → twinkle / drift / float / breathe
+//   Living      → twinkle / drift / float / breathe / sway / shadow-breathe
 //   Greeting    → drawn-in / warm-in / settle
 //   Journey     → glide / sail / drift-long
 //   Celebration → (empty in Chapter 1)
@@ -67,11 +67,14 @@
   });
 
   // Clouds — four cottony puffs across the sky at different heights.
+  // driftY varies the vertical arc per cloud (Sprint 2 · Living
+  // World) so the drift reads as organic rather than four clouds on
+  // one rail.
   var clouds = [
-    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px', duration: '24s', delay:   '0s' },
-    { id: 'cloud-2', top: '22vh', left: '54vw', width: '190px', duration: '28s', delay:  '-6s' },
-    { id: 'cloud-3', top: '12vh', left: '82vw', width: '140px', duration: '26s', delay: '-12s' },
-    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px', duration: '25s', delay:  '-8s' }
+    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px', duration: '24s', delay:   '0s', driftY: '-0.6vh' },
+    { id: 'cloud-2', top: '22vh', left: '54vw', width: '190px', duration: '28s', delay:  '-6s', driftY: '-1.2vh' },
+    { id: 'cloud-3', top: '12vh', left: '82vw', width: '140px', duration: '26s', delay: '-12s', driftY: '-0.8vh' },
+    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px', duration: '25s', delay:  '-8s', driftY: '-1vh'   }
   ];
   clouds.forEach(function (c) {
     WorldObject.register({
@@ -81,7 +84,10 @@
       libraryType: 'cloud',
       layer: 'sky',
       placement: { top: c.top, left: c.left, width: c.width },
-      motion: { category: 'Living', name: 'drift', duration: c.duration, delay: c.delay }
+      motion: {
+        category: 'Living', name: 'drift', duration: c.duration, delay: c.delay,
+        params: { '--vp-drift-y': c.driftY }
+      }
     });
   });
 
@@ -124,8 +130,8 @@
 
   // === Ground landmarks ===============================================
 
-  // Flowers — a scatter of daisies along the hills. Living float so
-  // they gently sway.
+  // Flowers — a scatter of daisies along the hills. Living sway so
+  // they gently bend as if in a breeze (Sprint 2 · Living World).
   var flowers = [
     { id: 'flower-1', bottom:  '4vh', left:  '8vw', width: '46px', duration: '5.6s', delay: '0.4s' },
     { id: 'flower-2', bottom:  '6vh', left: '18vw', width: '38px', duration: '5.0s', delay: '1.2s' },
@@ -142,21 +148,23 @@
       libraryType: 'flower',
       layer: 'ground',
       placement: { bottom: f.bottom, left: f.left, width: f.width },
-      motion: { category: 'Living', name: 'float', duration: f.duration, delay: f.delay }
+      motion: { category: 'Living', name: 'sway', duration: f.duration, delay: f.delay }
     });
   });
 
   // Telescope — a visible **future landmark**. Non-interactive in
   // Chapter 1 (`interactive:false`); a later chapter flips it on
   // and lets the child peer through it at the stars. Positioned on
-  // the right of the hills per the Visual Contract.
+  // the right of the hills per the Visual Contract. Shadow-breathe
+  // (Sprint 2 · Living World) gives it presence without swaying —
+  // it should feel real, not float.
   WorldObject.register({
     id: 'telescope',
     label: 'Telescope (coming soon)',
     assetHref: 'assets/objects/telescope.svg',
     layer: 'ground',
     placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
-    motion: { category: 'Living', name: 'float', duration: '6.8s', delay: '0.8s' },
+    motion: { category: 'Living', name: 'shadow-breathe', duration: '7.5s', delay: '0.8s' },
     interactive: false
   });
 })();
