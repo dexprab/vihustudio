@@ -2,6 +2,32 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.6.2 — 2026-07-03
+
+- **Hero MEP — Polish & Bug Fixes.** Small, non-architectural sprint.
+- **Fixed shrubs asset discovery.** `FOLDERS.shrub` in
+  `shared/worldLibrary.js` pointed at `world-library/nature/shrubs/`,
+  but the World Library stores shrubs at `world-library/shrubs/` —
+  shrubs never loaded even with a valid manifest. Corrected to
+  `world-library/shrubs/`. No other folder mapping touched.
+- **Removed the Hero heading.** "Who's creating today?" (and its
+  decorative underline) is gone — the Hero is a Sky Map, not a
+  dashboard; the artwork tells the story. Not replaced with other
+  text. `hero/hero.css` (now fully unused) and the dead
+  `revealHeroPrompt()` reveal logic in `js/scene.js` were removed
+  along with it.
+- **Removed the Parents entry.** The bottom-right "Parents" link is
+  gone — it broke the sense of entering a universe. A dedicated
+  parent experience is deferred to a future sprint.
+- **Removed always-visible world labels.** The storyteller planets
+  (Vihaan, Meera, Emma, Aarav) no longer show their name + teaser
+  permanently beneath the sphere — discovery through exploration,
+  not a directory. The underlying data is untouched: `name` /
+  `teaser` stay on each descriptor in `planets/planetsData.js`, and
+  still reach assistive tech via `aria-label`, ready for a future
+  reveal-on-interaction (hover / click / zoom / telescope).
+- **No infrastructure, no World Library, no architecture changes.**
+
 ## v0.3.6.1 — 2026-07-03
 
 - **MEP-01 hotfix — Manifest-Based World Library Asset Discovery.**

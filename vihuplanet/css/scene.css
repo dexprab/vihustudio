@@ -6,7 +6,7 @@
  *   3. AmbientObjects lives inside .sky / .ground per descriptor.layer
  *   4. Ground        lower 40% — watercolor + ground WorldObjects (hills, flowers, telescope)
  *   5. Foreground    reserved for future landmarks above the horizon
- *   6. UI            .brand + .parents-entry + .hero
+ *   6. UI            .brand
  *
  * Placement of individual objects is declarative in js/registry.js;
  * this file only owns the layered stage + shared object styling.
@@ -207,41 +207,3 @@
   opacity: 0.55;
 }
 
-/* ---- Parents entry ----------------------------------------------- */
-
-.parents-entry {
-  /* Art Direction v1.0 · Parents is a whispered handwritten label
-   * in the bottom corner of the page. Not a pill, not a button —
-   * a small note in the same pencil hand as everything else. */
-  position: absolute;
-  bottom: 3vh;
-  right: 3.4vw;
-  left: auto;
-  transform: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  font-family: 'Kalam', 'Segoe Script', cursive;
-  font-weight: 400;
-  font-size: 14px;
-  color: var(--vp-ink);
-  text-decoration: none;
-  opacity: 0.55;
-  transition: opacity 0.6s ease-in-out;
-  z-index: 10;
-}
-.parents-entry:hover,
-.parents-entry:focus-visible {
-  opacity: 0.9;
-  outline: none;
-}
-.parents-glyph {
-  font-size: 13px;
-  line-height: 1;
-  transform: translateY(-1px);
-  opacity: 0.65;
-}

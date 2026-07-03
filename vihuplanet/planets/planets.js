@@ -3,9 +3,10 @@
 // Same registry pattern WorldObject uses (Chapter 1) — a descriptor
 // is register()ed, then mount() resolves its artwork, injects it into
 // the foreground layer, and stamps placement + motion CSS
-// properties. Each planet carries a hand-drawn storyteller name and
-// a one-line story teaser (rendered as small labels beneath the
-// sphere).
+// properties. Each planet carries a storyteller name and a one-line
+// story teaser; the Hero doesn't render either visibly (Sky Map —
+// discovery over directory), but they're available for a future
+// reveal-on-interaction and reach assistive tech via aria-label.
 //
 // A descriptor's optional `libraryType` (MEP-01: World Library
 // integration — see shared/worldLibrary.js) is tried first; the
@@ -101,16 +102,10 @@
         wrap.insertAdjacentHTML('afterbegin', asset.content);
       }
 
-      // Label is a small handwritten narration in the illustrator's
-      // pencil hand, floated near the planet. No caption card.
-      var label = document.createElement('div');
-      label.className = 'storyteller-planet-label';
-      label.setAttribute('aria-hidden', 'true');
-      label.innerHTML =
-        '<div class="storyteller-planet-name">' + d.name + '</div>' +
-        '<div class="storyteller-planet-teaser">' + d.teaser + '</div>';
-      wrap.appendChild(label);
-
+      // Name + teaser are not rendered visibly — the Hero is a Sky
+      // Map for discovery, not a directory of labels. They stay on
+      // the descriptor (and reach assistive tech via aria-label) for
+      // a future reveal-on-interaction (hover/click/zoom/telescope).
       wrap.setAttribute('aria-label', d.name + ' — ' + d.teaser);
       container.appendChild(wrap);
       return wrap;

@@ -50,7 +50,7 @@
     'flower':        'world-library/nature/flowers/',
     'cloud':         'world-library/nature/clouds/',
     'rock':          'world-library/nature/rocks/',
-    'shrub':         'world-library/nature/shrubs/',
+    'shrub':         'world-library/shrubs/',
     'waterfall':     'world-library/nature/waterfalls/',
     'decoration':    'world-library/decorations/',
     'companion':     'world-library/companions/'

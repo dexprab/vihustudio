@@ -5,17 +5,15 @@
 //      into the correct layer (.sky / .ground / .foreground).
 //   2. armMotion(): attach the motion-name class from
 //      animations/motion.css onto each mounted object.
-//   3. revealHeroPrompt(): reveal "Who's creating today?" after
-//      ~2.3 s via the Greeting `drawn-in` motion.
 //
 // Chapter 2 additions:
-//   4. mountStorytellerPlanets(): PlanetsManager paints the four
+//   3. mountStorytellerPlanets(): PlanetsManager paints the four
 //      floating storyteller planets into .foreground.
-//   5. mountDreamingPlanet(): DreamingPlanetManager paints the
+//   4. mountDreamingPlanet(): DreamingPlanetManager paints the
 //      Dreaming Planet + dialogue + choice buttons.
 //
 // MEP-01 addition:
-//   6. mountSky(): if world-library/skies/ has artwork, layers it
+//   5. mountSky(): if world-library/skies/ has artwork, layers it
 //      over the existing painted sky gradient. Does nothing at all
 //      when the library is empty — the gradient is the fallback and
 //      is never removed from the DOM.
@@ -45,19 +43,6 @@
     });
   }
 
-  function revealHeroPrompt(delayMs) {
-    var prompt = document.querySelector('[data-hero-prompt]');
-    var underline = document.querySelector('[data-hero-underline]');
-    if (!prompt) return;
-    window.setTimeout(function () {
-      prompt.hidden = false;
-      window.requestAnimationFrame(function () {
-        prompt.classList.add('drawn-in');
-        if (underline) underline.classList.add('is-revealed');
-      });
-    }, delayMs);
-  }
-
   function mountStorytellerPlanets(delayMs) {
     var host = document.querySelector('[data-planets-host]');
     if (!host || typeof PlanetsManager === 'undefined') return;
@@ -77,7 +62,6 @@
     mountSky();
 
     if (typeof WorldObject === 'undefined') {
-      revealHeroPrompt(2300);
       mountStorytellerPlanets(3400);
       mountDreamingPlanet(3800);
       return;
@@ -85,11 +69,9 @@
 
     WorldObject.mount(world).then(function () {
       armMotion();
-      revealHeroPrompt(2300);
-      // Planets settle in ~1.1s after the hero prompt starts drawing,
-      // then the Dreaming Planet arrives ~0.4s after them so the
-      // eye naturally travels: question → familiar planets → the
-      // mystery.
+      // Planets settle in first, then the Dreaming Planet arrives
+      // ~0.4s after them so the eye naturally travels: familiar
+      // planets → the mystery.
       mountStorytellerPlanets(3400);
       mountDreamingPlanet(3800);
     });
