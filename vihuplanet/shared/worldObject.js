@@ -30,7 +30,12 @@
 //       label: 'Telescope',                   // aria-label
 //       assetHref: 'assets/objects/telescope.svg', // fetched + inlined —
 //                                              // also the fallback if
-//                                              // libraryType has no art yet
+//                                              // libraryType has no art
+//                                              // yet. Optional: omit it
+//                                              // entirely (Story Meadow)
+//                                              // to render nothing at
+//                                              // all until the library
+//                                              // has something.
 //       libraryType: 'cloud',                 // optional — World Library
 //                                              // object type (see
 //                                              // shared/worldLibrary.js).
@@ -96,6 +101,7 @@
 
     return libraryLookup.then(function (url) {
       if (url) return { isImage: true, content: url };
+      if (!d.assetHref) return null; // no library art and no local fallback declared — render nothing
       return fetch(d.assetHref).then(function (r) { return r.text(); }).then(function (svgText) {
         return { isImage: false, content: svgText };
       });
@@ -104,6 +110,7 @@
 
   function _mountOne(container, d) {
     return _resolveArtwork(d).then(function (asset) {
+      if (!asset) return null; // e.g. Story Meadow with nothing in the library yet
       var layer = container.querySelector('.' + (d.layer || 'sky')) || container.querySelector('.sky');
       if (!layer) return null;
 

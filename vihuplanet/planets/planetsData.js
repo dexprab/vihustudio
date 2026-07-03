@@ -1,14 +1,14 @@
 // planetsData.js — Chapter 2 storyteller-planet registry.
 //
 // The floating planets that live in the sky. Each one is a Story
-// World: `worldName` is its primary identity (what the Hero
-// displays), `storytellerName` is who dreamed it (displayed as
-// "dreamed by <storytellerName>" — locked wording, sentence case
-// exactly as written; see planets.js). `teaser` is a one-line story
-// hook per the Visual Contract's example: "The dragon finally
-// learned to fly." — kept on the descriptor for aria-label /
-// possible future use, but the Hero itself only ever displays
-// worldName and "dreamed by" (Sprint · Story World Identity).
+// World: `worldName` is its only visible identity — the Hero
+// presents places, not profiles. `storytellerName` and `teaser`
+// (a one-line story hook per the Visual Contract's example: "The
+// dragon finally learned to fly.") stay on the descriptor for
+// possible future use, but are intentionally never rendered by the
+// Hero (Sprint · Story World Identity; narrowed to World-Name-only,
+// dropping "dreamed by" entirely, in Sprint · Atmosphere & World
+// Identity).
 //
 // The Dreaming Planet lives in its own registry
 // (dreamingPlanet/dreamingPlanet.js) because its behaviour is

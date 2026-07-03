@@ -135,10 +135,12 @@
 /* shimmer — a very slow, low-amplitude opacity pulse. Used by the
  * Story Path (Sprint 3 · Story Path & Hero Personality) so the trail
  * reads as faintly alive/magical without ever moving — an ambient
- * backdrop element, not a travelling object. */
+ * backdrop element, not a travelling object. Range lowered in
+ * Sprint · Atmosphere & World Identity (was 0.7–0.92) so the trail
+ * reads as a faint trace, never competing with the Story Worlds. */
 @keyframes vp-shimmer {
-  0%, 100% { opacity: 0.7; }
-  50%      { opacity: 0.92; }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.5; }
 }
 .shimmer {
   animation-name: vp-shimmer;

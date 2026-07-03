@@ -4,9 +4,19 @@
 // asset tree. The Hero never hard-codes a filename — it asks for a
 // renderable object TYPE (sky, tree, flower, cloud, rock, shrub,
 // waterfall, story-home, dreaming-home, decoration, companion,
-// telescope, trail, seed) and gets back whatever artwork currently
-// lives in the matching folder, or nothing at all if the folder is
-// empty.
+// telescope, trail, seed, story-meadow) and gets back whatever
+// artwork currently lives in the matching folder, or nothing at all
+// if the folder is empty.
+//
+// Hero Composition Engine (Sprint · Atmosphere & World Identity):
+// sky, cloud, and story-meadow vary once per browser session. The
+// first resolveAt() call for one of those types picks a random
+// offset and sticks it in sessionStorage; every later call (this
+// load or a refresh/navigation within the same tab) reuses it, so
+// the chosen environment holds steady for the session and only
+// changes when a fresh session starts. Story Worlds, the Dreaming
+// Planet, and the telescope are never in this set — see
+// SESSION_VARIED_TYPES below.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -57,8 +67,39 @@
     'companion':     'world-library/companions/',
     'telescope':     'world-library/telescope/',
     'trail':         'world-library/trails/',
-    'seed':          'world-library/seeds/'
+    'seed':          'world-library/seeds/',
+    'story-meadow':  'world-library/story-meadows/'
   };
+
+  // Types the Hero Composition Engine varies once per browser
+  // session. Everything else resolves the same deterministic way it
+  // always has (first file, or cycling by registration order).
+  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true };
+  var SESSION_KEY_PREFIX = 'vp-session-offset-';
+  var _sessionOffsets = {}; // type -> chosen offset, memoized per page load
+
+  function _sessionOffset(type) {
+    if (!SESSION_VARIED_TYPES[type]) return 0;
+    if (_sessionOffsets[type] !== undefined) return _sessionOffsets[type];
+
+    var offset;
+    try {
+      var key = SESSION_KEY_PREFIX + type;
+      var stored = global.sessionStorage ? global.sessionStorage.getItem(key) : null;
+      if (stored !== null) {
+        offset = parseInt(stored, 10) || 0;
+      } else {
+        offset = Math.floor(Math.random() * 997);
+        if (global.sessionStorage) global.sessionStorage.setItem(key, String(offset));
+      }
+    } catch (e) {
+      // Storage unavailable (private browsing, etc.) — still vary for
+      // this one page load, just without persisting across reloads.
+      offset = Math.floor(Math.random() * 997);
+    }
+    _sessionOffsets[type] = offset;
+    return offset;
+  }
 
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
 
@@ -92,7 +133,8 @@
   function resolveAt(type, index) {
     return _filesFor(type).then(function (files) {
       if (!files.length) return null;
-      return files[((index % files.length) + files.length) % files.length];
+      var i = index + _sessionOffset(type);
+      return files[((i % files.length) + files.length) % files.length];
     });
   }
 
@@ -103,8 +145,9 @@
   function resolveMany(type, count) {
     return _filesFor(type).then(function (files) {
       if (!files.length) return [];
+      var offset = _sessionOffset(type);
       var out = [];
-      for (var i = 0; i < count; i++) out.push(files[i % files.length]);
+      for (var i = 0; i < count; i++) out.push(files[(i + offset) % files.length]);
       return out;
     });
   }

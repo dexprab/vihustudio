@@ -1,6 +1,6 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.3.9**
+MEP Version: **0.4.0**
 
 ## Completed
 
@@ -24,10 +24,10 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 | System            | Where                                                     | Notes                                                          |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|
 | ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
-| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. See `world-library/README.md`. |
+| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. Hero Composition Engine (Sprint · Atmosphere & World Identity): `sky` / `cloud` / `story-meadow` pick a random-but-sessionStorage-sticky offset on first resolve, so the environment varies between browser sessions but holds steady across reloads. See `world-library/README.md`. |
 | WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object. Descriptors may opt into WorldLibrary via `libraryType`. |
 | WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`. Sprint 2 added `sway`, `shadow-breathe`. Sprint 3 added `shimmer`, `wander`; removed `glide` (its only consumers, rocket + paper plane, were removed). |
-| Planet            | `planets/planets.js` + `planets/planetsData.js`           | Story World registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. Each descriptor carries `worldName` + `storytellerName`; the Hero always displays World Name + "dreamed by &lt;storytellerName&gt;" as plain typography (Sprint · Story World Identity). |
+| Planet            | `planets/planets.js` + `planets/planetsData.js`           | Story World registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. Each descriptor carries `worldName` + `storytellerName`, but the Hero only ever displays World Name — `storytellerName` and `teaser` stay on the descriptor, unused by the Hero (Sprint · Atmosphere & World Identity narrowed Story World Identity's "dreamed by" line away entirely). |
 | DreamingPlanet    | `dreamingPlanet/dreamingPlanet.js` + `.../dreamingPlanetManager.js` | Singular Dreaming Planet + wake sequence + invitation dialogue + three choice paths. Dialogue is sky-caption (no bubble). |
 | Font stack        | `assets/fonts/`                                           | Caveat + Kalam. Nunito Rounded is retired from Chapter 1/2 surfaces — the world speaks in one hand. |
 | Layers            | `.sky` / `.ground` / `.foreground`                        | Declared in `index.html`; Chapter 2 mounts inside `.foreground`. |

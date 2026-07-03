@@ -2,6 +2,62 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.0 — 2026-07-03
+
+- **Hero MEP Sprint — Atmosphere & World Identity.** Polish only —
+  no layout redesign, no Hero architecture change, no World Library
+  infrastructure change, no new navigation/UI. Completes the Hero MEP.
+- **World Name is now the only visible Story World label.** Sprint ·
+  Story World Identity's "dreamed by &lt;storytellerName&gt;" line is
+  retired — `storytellerName` and `teaser` stay on the
+  `planetsData.js` descriptor for possible future use, but the Hero
+  never renders or announces them (no aria-label fallback either, so
+  sighted and screen-reader experiences match). `.story-world-
+  dreamed-by` removed from `planets.css` as dead code.
+- **Story Trail toned down.** `.shimmer`'s opacity range dropped from
+  0.7–0.92 to 0.3–0.5, the wrapper shrank (90vw×40vw → 78vw×35vw,
+  same aspect so the World Library art's cover-crop still lands
+  correctly), and a `saturate(0.7)` filter softens the real PNG
+  asset. The SVG fallback's stroke thinned (2.2 → 1.3) and its
+  stardust sparkles shrank and faded. The trail now reads as a faint
+  trace, not competing with the Story Worlds.
+- **Story Seed untouched** — still 30px, still the same `.wander`
+  motion, per the sprint's explicit "do not enlarge, do not add
+  attention-grabbing animation."
+- **Story Meadow support added.** New `'story-meadow':
+  'world-library/story-meadows/'` entry in `worldLibrary.js`'s
+  `FOLDERS` map, and a `story-meadow` `WorldObject` registered in the
+  `foreground` layer with **no local SVG fallback** — this required a
+  small, backward-compatible addition to `worldObject.js`:
+  descriptors may now omit `assetHref` entirely, and if the World
+  Library has nothing for that type either, the object simply doesn't
+  mount (every existing descriptor still declares `assetHref`, so
+  this changes nothing for them). An empty `story-meadows/` folder
+  today means today's foreground (Story Worlds + Dreaming Planet)
+  stands exactly as it always has; the object is kept explicitly
+  behind them (`z-index: 0`, vs. `.storyteller-planet`'s 4 and
+  `.dreaming-planet`'s 6) so it can never cover them once real art
+  exists.
+- **Hero Composition Engine.** `sky`, `cloud`, and `story-meadow` now
+  vary once per browser session: the first `resolveAt()` call for one
+  of those types picks a random offset (0–996) and persists it to
+  `sessionStorage`, so every later call — this page load or a
+  refresh/navigation within the same tab — reuses the same offset.
+  Every other type (Story Worlds' `story-home`, `telescope`, `trail`,
+  `seed`, etc.) is untouched, resolving exactly as deterministically
+  as before. Verified: reloading the same tab reproduces the same sky
+  + cloud selection; a fresh browser context picks a genuinely
+  different one (confirmed distinct sky image and all 4 cloud images
+  differing between two real test runs).
+- **Verified in headless Chromium:** same-session reload keeps the
+  chosen sky/clouds identical; a fresh session picks different ones;
+  Story Meadow renders nothing (graceful 404 on its manifest, no
+  console errors) since no assets exist yet; World Name is the only
+  text shown per Story World; Story Path's computed opacity sits in
+  the new lower range with the softening filter applied; Story Seed's
+  size is unchanged; `prefers-reduced-motion` still disables every
+  animation.
+
 ## v0.3.9 — 2026-07-03
 
 - **Hero MEP Sprint — Story World Identity.** The Hero presents

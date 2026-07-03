@@ -203,6 +203,11 @@
 .world-object[data-object-id="story-path"] img {
   height: 100%;
   object-fit: cover;
+  /* Sprint · Atmosphere & World Identity: a touch of desaturation on
+   * top of the lower .shimmer opacity range (motion.css) so the real
+   * World Library trail reads as a soft, faded trace rather than a
+   * bold sweeping line — the Story Worlds stay the visual focus. */
+  filter: saturate(0.7);
 }
 .world-object[data-object-id="story-seed"] {
   z-index: 3;
@@ -212,6 +217,16 @@
 .world-object[data-object-id="telescope"],
 .world-object[data-object-id^="flower-"] {
   z-index: 4;
+}
+
+/* Story Meadow (Sprint · Atmosphere & World Identity) — a foreground
+ * ground-level layer that only renders once real art exists. Kept
+ * explicitly low so it can never sit in front of the Story Worlds
+ * (.storyteller-planet, z-index: 4) or the Dreaming Planet
+ * (z-index: 6) once it does — same deterministic-stacking discipline
+ * as the sky fix above, applied before it can ever race. */
+.world-object[data-object-id="story-meadow"] {
+  z-index: 0;
 }
 
 /* ---- Brand / logo ------------------------------------------------ */

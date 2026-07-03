@@ -53,10 +53,11 @@
 }
 
 /* ---- Story World identity — pure typography -------------------- */
-/* Sprint · Story World Identity. World Name is the primary label;
- * "dreamed by <storytellerName>" is the locked attribution wording
- * (sentence case exactly as written — never "Created by" / "Made
- * by" / "Author" / etc.). No card, no background, no badge, no
+/* Sprint · Story World Identity, narrowed further in Sprint ·
+ * Atmosphere & World Identity: World Name is the ONLY visible
+ * label — the Hero presents places, not profiles, so storytellerName
+ * and "dreamed by" are never shown (they stay on the descriptor,
+ * unused by the Hero). No card, no background, no badge, no
  * signboard, no ribbon, no speech bubble — just handwriting on the
  * page, printed rather than floating UI. The shared paper-grain SVG
  * filter (index.html) already textures the whole page, so the text
@@ -85,14 +86,4 @@
    * that one shadow alone reads fine over half the artwork and
    * disappears over the rest. */
   text-shadow: 0 1px 2px rgba(30,40,66,0.55), 0 1px 6px rgba(30,40,66,0.3);
-}
-.story-world-dreamed-by {
-  font-family: 'Caveat', 'Segoe Script', cursive;
-  font-weight: 400;
-  font-style: italic;
-  font-size: 14px;
-  color: #FFFBF0;
-  opacity: 0.76;
-  margin-top: 1px;
-  text-shadow: 0 1px 2px rgba(30,40,66,0.5), 0 1px 5px rgba(30,40,66,0.28);
 }

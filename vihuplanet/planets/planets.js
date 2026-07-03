@@ -4,9 +4,11 @@
 // is register()ed, then mount() resolves its artwork, injects it into
 // the foreground layer, and stamps placement + motion CSS
 // properties. Each planet is a Story World: mount() renders its
-// worldName and "dreamed by <storytellerName>" as plain typography
-// near the artwork (Sprint · Story World Identity) — no card, no
-// background, no badge. The Hero presents worlds, not user profiles.
+// worldName as plain typography near the artwork — no card, no
+// background, no badge. The Hero presents worlds, not user profiles;
+// storytellerName lives on the descriptor but is never shown
+// (Sprint · Story World Identity, narrowed to World-Name-only in
+// Sprint · Atmosphere & World Identity).
 //
 // A descriptor's optional `libraryType` (MEP-01: World Library
 // integration — see shared/worldLibrary.js) is tried first; the
@@ -112,12 +114,16 @@
         wrap.insertAdjacentHTML('afterbegin', asset.content);
       }
 
-      // World Name is the Story World's primary identity; "dreamed
-      // by <storytellerName>" is the locked attribution wording
-      // (sentence case exactly as written). Pure typography — no
-      // card, no background, no badge — so it reads as printed onto
-      // the page rather than floating UI. The label itself provides
-      // the accessible name now, so no separate aria-label is set.
+      // World Name is the Story World's only visible identity
+      // (Sprint · Atmosphere & World Identity) — the Hero presents
+      // places, not profiles. storytellerName stays on the
+      // descriptor for a possible future use, but is intentionally
+      // hidden from the Hero entirely — including assistive tech, so
+      // sighted and screen-reader experiences match — "dreamed by"
+      // is retired. Pure typography — no card, no background, no
+      // badge — so it reads as printed onto the page rather than
+      // floating UI. The visible label itself is the accessible
+      // name; no separate aria-label needed.
       var label = document.createElement('div');
       label.className = 'story-world-label';
       var tilt = ((_hashId(d.id) % 5) - 2) * 0.6; // -1.2deg .. 1.2deg, per-world
@@ -127,11 +133,6 @@
       worldNameEl.className = 'story-world-name';
       worldNameEl.textContent = d.worldName;
       label.appendChild(worldNameEl);
-
-      var dreamedByEl = document.createElement('div');
-      dreamedByEl.className = 'story-world-dreamed-by';
-      dreamedByEl.textContent = 'dreamed by ' + d.storytellerName;
-      label.appendChild(dreamedByEl);
 
       wrap.appendChild(label);
       container.appendChild(wrap);

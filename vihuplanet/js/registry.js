@@ -100,19 +100,25 @@
   // The World Library art is a square (2048x2048) canvas with the
   // painted trail sitting in a horizontal band roughly centered
   // vertically (content ~y:564-1483) — not a wide banner image. The
-  // wrapper's width:height ratio (90vw : 40vw ≈ 2048:919, the art's
+  // wrapper's width:height ratio (78vw : 35vw ≈ 2048:919, the art's
   // own width-to-content-band ratio) plus the `object-fit: cover`
   // override in scene.css crops exactly to that band instead of
   // squashing the whole square (with all its transparent padding)
   // into a small centered patch. `object-fit` doesn't apply to the
   // inline SVG fallback, so that path is unaffected.
+  //
+  // Sprint · Atmosphere & World Identity turns its visual weight
+  // down — smaller footprint (was 90vw x 40vw) and a much lower
+  // .shimmer opacity range (motion.css) so it reads as a faint trace
+  // wandering stories left behind, never competing with the Story
+  // Worlds for attention.
   WorldObject.register({
     id: 'story-path',
     label: 'Story Path',
     assetHref: 'assets/objects/story-path.svg',
     libraryType: 'trail',
     layer: 'sky',
-    placement: { top: '6vh', left: '5vw', width: '90vw', height: '40vw' },
+    placement: { top: '8vh', left: '9vw', width: '78vw', height: '35vw' },
     motion: { category: 'Living', name: 'shimmer', duration: '9.5s', delay: '0.5s' }
   });
 
@@ -175,6 +181,24 @@
     layer: 'ground',
     placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
     motion: { category: 'Living', name: 'shadow-breathe', duration: '7.5s', delay: '0.8s' },
+    interactive: false
+  });
+
+  // Story Meadow — Sprint · Atmosphere & World Identity. A foreground
+  // ground-level layer with deliberately no local SVG: an empty
+  // World Library `story-meadows/` folder means this object resolves
+  // to nothing and simply doesn't mount, so today's foreground
+  // (Story Worlds + Dreaming Planet) stands exactly as it is until
+  // real meadow art exists. Session-varied (shared/worldLibrary.js)
+  // once more than one meadow is available, alongside sky and cloud.
+  // z-index kept low in scene.css so it can never sit in front of
+  // the Story Worlds or Dreaming Planet once it does render.
+  WorldObject.register({
+    id: 'story-meadow',
+    label: 'Story Meadow',
+    libraryType: 'story-meadow',
+    layer: 'foreground',
+    placement: { bottom: '0', left: '0', width: '100%' },
     interactive: false
   });
 })();
