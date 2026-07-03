@@ -186,19 +186,34 @@
 
   // Story Meadow — Sprint · Atmosphere & World Identity. A foreground
   // ground-level layer with deliberately no local SVG: an empty
-  // World Library `story-meadows/` folder means this object resolves
-  // to nothing and simply doesn't mount, so today's foreground
-  // (Story Worlds + Dreaming Planet) stands exactly as it is until
-  // real meadow art exists. Session-varied (shared/worldLibrary.js)
-  // once more than one meadow is available, alongside sky and cloud.
-  // z-index kept low in scene.css so it can never sit in front of
-  // the Story Worlds or Dreaming Planet once it does render.
+  // World Library `nature/story-meadows/` folder means this object
+  // resolves to nothing and simply doesn't mount, so today's
+  // foreground (Story Worlds + Dreaming Planet) stands exactly as it
+  // is until real meadow art exists. Session-varied
+  // (shared/worldLibrary.js) once more than one meadow is available,
+  // alongside sky and cloud. z-index kept low in scene.css so it can
+  // never sit in front of the Story Worlds or Dreaming Planet.
+  //
+  // Real art landed mid-sprint: a square (2048x2048) canvas with a
+  // full-width hills/meadow panorama sitting in a horizontal band
+  // centered vertically (content ~y:405-1644) — the same "square
+  // canvas, centered content band" shape as the Story Path's trail
+  // art. `object-fit: cover` (scene.css) crops in on that band.
+  //
+  // Height is deliberately capped at 7vh, well under the telescope's
+  // `bottom: 8vh` (registered below): .foreground (z-index: 5) always
+  // paints above .ground regardless of an object's z-index *within*
+  // foreground, so any taller meadow band would visually slice
+  // across the telescope's silhouette — not a stacking bug to fix,
+  // just a footprint this object needs to stay clear of, since moving
+  // it into .ground isn't an option (it would then sit behind Story
+  // Worlds too, contradicting "foreground" in the sprint spec).
   WorldObject.register({
     id: 'story-meadow',
     label: 'Story Meadow',
     libraryType: 'story-meadow',
     layer: 'foreground',
-    placement: { bottom: '0', left: '0', width: '100%' },
+    placement: { bottom: '0', left: '0', width: '100vw', height: '7vh' },
     interactive: false
   });
 })();

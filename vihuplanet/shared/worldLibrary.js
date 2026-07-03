@@ -68,7 +68,7 @@
     'telescope':     'world-library/telescope/',
     'trail':         'world-library/trails/',
     'seed':          'world-library/seeds/',
-    'story-meadow':  'world-library/story-meadows/'
+    'story-meadow':  'world-library/nature/story-meadows/'
   };
 
   // Types the Hero Composition Engine varies once per browser

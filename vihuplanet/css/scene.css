@@ -228,6 +228,18 @@
 .world-object[data-object-id="story-meadow"] {
   z-index: 0;
 }
+/* Real meadow art (landed mid-sprint) is a square canvas with the
+ * painted panorama centered vertically inside it — same shape and
+ * same fix as the Story Path trail above: height:100% is required
+ * because the shared `.world-object img` rule sets height:auto,
+ * which ignores the wrapper's explicit height entirely, leaving
+ * `object-fit: cover` nothing to crop. Only targets <img> (the World
+ * Library asset); there's no local SVG fallback for this object at
+ * all (see registry.js), so this rule has nothing else to affect. */
+.world-object[data-object-id="story-meadow"] img {
+  height: 100%;
+  object-fit: cover;
+}
 
 /* ---- Brand / logo ------------------------------------------------ */
 

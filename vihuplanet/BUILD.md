@@ -1,6 +1,6 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.4.0**
+MEP Version: **0.4.1**
 
 ## Completed
 

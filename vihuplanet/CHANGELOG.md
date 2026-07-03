@@ -2,6 +2,37 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.1 — 2026-07-03
+
+- **Story Meadow art landed — path + sizing fix.** `nature/story-
+  meadows/` synced from the World Library with real art mid-sprint,
+  revealing two bugs in the placeholder wiring from v0.4.0:
+  - `worldLibrary.js`'s `FOLDERS` map pointed at
+    `world-library/story-meadows/` (top level); the real folder is
+    nested under `nature/`, matching every other nature asset
+    (clouds, flowers, rocks, trees, waterfalls). Corrected to
+    `world-library/nature/story-meadows/`.
+  - The registered `height` went through three iterations once real
+    art existed to size against: the source art is a square
+    (2048×2048) canvas with the panorama in a horizontal band
+    (content ~y:405–1644), so an aspect-matched height (`60.5vw`)
+    seemed correct but at typical viewport sizes covered nearly the
+    entire Hero. A `22vh` reduction fixed that but then visually
+    sliced across the telescope's silhouette, because `.foreground`
+    (z-index 5) always paints above `.ground` regardless of any
+    z-index set *within* foreground — a cross-stacking-context
+    limitation, not fixable by z-index tuning, and restructuring
+    layers is out of scope. Settled on `7vh`, deliberately kept under
+    the telescope's `bottom: 8vh` placement so the meadow's box never
+    reaches its footprint. `scene.css` gained the same `height: 100%
+    ; object-fit: cover` override on the meadow's `<img>` already
+    used for Story Path, since the shared `.world-object img { height
+    : auto }` rule otherwise leaves `object-fit: cover` nothing to
+    crop.
+  - Verified in headless Chromium: telescope renders with its full
+    tripod visible, no console errors, meadow image loads from the
+    corrected path.
+
 ## v0.4.0 — 2026-07-03
 
 - **Hero MEP Sprint — Atmosphere & World Identity.** Polish only —
