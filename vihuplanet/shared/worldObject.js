@@ -1,9 +1,9 @@
 // shared/worldObject.js — VihuPlanet reusable World Object system.
 //
 // Every visible thing that lives in the world (moon, stars, clouds,
-// rocket, paper plane, tufts, telescope, and every future landmark)
-// is a **World Object**: a small descriptor that pairs a source SVG
-// with placement + motion metadata. The scene bootstrap in
+// the Story Path, the Story Seed, telescope, and every future
+// landmark) is a **World Object**: a small descriptor that pairs a
+// source SVG with placement + motion metadata. The scene bootstrap in
 // `js/scene.js` walks the registry and injects each object into the
 // DOM in one place.
 //

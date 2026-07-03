@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" role="img" aria-label="">
+  <!-- A single seed of imagination, wandering the trail. Soft
+       concentric glow rings + a small hand-inked almond of light. -->
+  <circle cx="30" cy="30" r="22" fill="#E8B871" opacity="0.12"/>
+  <circle cx="30" cy="30" r="14" fill="#E8B871" opacity="0.22"/>
+
+  <path d="M30 16 q10 8 10 18 q0 10 -10 12 q-10 -2 -10 -12 q0 -10 10 -18 z"
+        fill="#F4D79A" stroke="#1E2842" stroke-width="1.4" stroke-linejoin="round" opacity="0.95"/>
+  <circle cx="27" cy="26" r="2.4" fill="#FFFFFF" opacity="0.7"/>
+</svg>

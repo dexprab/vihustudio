@@ -11,15 +11,16 @@
  * ==============================================================
  *   Living        Always. Ambient background.  twinkle, drift,
  *                 The world breathes.          float, breathe,
- *                                               sway, shadow-breathe
+ *                                               sway, shadow-breathe,
+ *                                               shimmer, wander
  *
  *   Greeting      When something arrives —     drawn-in, warm-in,
  *                 a landmark appears, the      settle
  *                 hero prompt is unveiled,
  *                 a new page loads.
  *
- *   Journey       Long traversals. Objects     glide, sail,
- *                 crossing the world.          drift-long
+ *   Journey       Long traversals. Objects     sail, drift-long
+ *                 crossing the world.
  *
  *   Celebration   Reserved for future joyful   (empty for M0.1 —
  *                 moments — publishing a       sparkle-burst,
@@ -131,6 +132,51 @@
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
+/* shimmer — a very slow, low-amplitude opacity pulse. Used by the
+ * Story Path (Sprint 3 · Story Path & Hero Personality) so the trail
+ * reads as faintly alive/magical without ever moving — an ambient
+ * backdrop element, not a travelling object. */
+@keyframes vp-shimmer {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 0.92; }
+}
+.shimmer {
+  animation-name: vp-shimmer;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 9s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* wander — very slow, irregular drift with two brief holds baked
+ * into the keyframe stops (8–11% and 36–41%) instead of a
+ * mechanical back-and-forth. Used by the Story Seed (Sprint 3) —
+ * translate for the organic path, plus a whisper-subtle scale +
+ * glow so it reads as a mote of light drifting, not an object
+ * sliding. Long duration (~2.4 min default) keeps any one loop from
+ * ever feeling like a repeat. */
+@keyframes vp-wander {
+  0%   { transform: translate(0, 0)       scale(1);    opacity: 0.85; filter: drop-shadow(0 0 5px rgba(232,184,113,0.5)); }
+  7%   { transform: translate(3vw, -2vh)  scale(1.04); opacity: 1;    filter: drop-shadow(0 0 8px rgba(232,184,113,0.65)); }
+  11%  { transform: translate(3vw, -2vh)  scale(1.04); opacity: 1;    filter: drop-shadow(0 0 8px rgba(232,184,113,0.65)); }
+  24%  { transform: translate(9vw, 1vh)   scale(1);    opacity: 0.88; filter: drop-shadow(0 0 5px rgba(232,184,113,0.5)); }
+  36%  { transform: translate(14vw, -4vh) scale(1.05); opacity: 1;    filter: drop-shadow(0 0 9px rgba(232,184,113,0.7)); }
+  41%  { transform: translate(14vw, -4vh) scale(1.05); opacity: 1;    filter: drop-shadow(0 0 9px rgba(232,184,113,0.7)); }
+  58%  { transform: translate(10vw, 3vh)  scale(1);    opacity: 0.85; filter: drop-shadow(0 0 5px rgba(232,184,113,0.5)); }
+  74%  { transform: translate(4vw, -1vh)  scale(1.02); opacity: 0.95; filter: drop-shadow(0 0 6px rgba(232,184,113,0.55)); }
+  90%  { transform: translate(-3vw, 2vh)  scale(1);    opacity: 0.85; filter: drop-shadow(0 0 5px rgba(232,184,113,0.5)); }
+  100% { transform: translate(0, 0)       scale(1);    opacity: 0.85; filter: drop-shadow(0 0 5px rgba(232,184,113,0.5)); }
+}
+.wander {
+  animation-name: vp-wander;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 145s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
 /* ============================================================== */
 /* CATEGORY 2 · GREETING — arrival + reveal                       */
 /* ============================================================== */
@@ -181,21 +227,6 @@
 /* ============================================================== */
 /* CATEGORY 3 · JOURNEY — long traversals across the world        */
 /* ============================================================== */
-
-/* glide — rocket + paper plane. Enters from the left, exits to the
- * right, with a slight downward drift. */
-@keyframes vp-glide-left-to-right {
-  from { transform: translate(-25vw, 0) rotate(var(--vp-glide-tilt, 0deg)); }
-  to   { transform: translate(120vw, var(--vp-glide-drop, 4vh)) rotate(var(--vp-glide-tilt, 0deg)); }
-}
-.glide {
-  animation-name: vp-glide-left-to-right;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-fill-mode: both;
-  animation-duration: var(--vp-motion-duration, 32s);
-  animation-delay:    var(--vp-motion-delay,    0s);
-}
 
 /* sail — right-to-left variant so a future traveller can pass in the
  * opposite direction (or return home). */
@@ -403,10 +434,10 @@ body.universe-quieting .world-object:not(.world-object-dreaming-planet):not(.wor
 @media (prefers-reduced-motion: reduce) {
   .twinkle, .drift, .float, .breathe,
   .drawn-in, .warm-in, .settle,
-  .glide, .sail, .drift-long,
+  .sail, .drift-long,
   .select-pulse, .zoom-out, .fade-out,
   .sleeping, .breathing, .listening, .orbit, .planet-drift, .awakening,
-  .sway, .shadow-breathe {
+  .sway, .shadow-breathe, .shimmer, .wander {
     animation: none !important;
   }
   body.universe-quieting .world-object { animation: none !important; }

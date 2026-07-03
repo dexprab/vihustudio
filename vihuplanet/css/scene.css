@@ -152,10 +152,14 @@
   pointer-events: none;
 }
 
-/* Rocket + paper plane need to sit above clouds so their journey
- * reads as "in front of the sky", matching the Contract. */
-.world-object[data-object-id="rocket"],
-.world-object[data-object-id="paper-plane"] {
+/* Story Path (Sprint 3) sits behind clouds — a half-hidden, distant
+ * trail rather than a foreground element. Story Seed sits above
+ * clouds, the tier the rocket + paper plane previously used, so it
+ * reads as something actually travelling through the sky. */
+.world-object[data-object-id="story-path"] {
+  z-index: 0;
+}
+.world-object[data-object-id="story-seed"] {
   z-index: 3;
 }
 

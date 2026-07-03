@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320" role="img" aria-label="">
+  <!-- An ancient, wandering trail — never straight, never a route.
+       The gradient stroke fades to nothing at both ends so it never
+       appears to begin or end at a fixed point; it just always
+       seems to have been there, and always seems to keep going. The
+       irregular dot-dot-gap dash rhythm (rather than one repeating
+       interval) keeps it reading as scattered stardust, not a
+       plotted line. -->
+  <defs>
+    <linearGradient id="storyPathFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1E2842" stop-opacity="0"/>
+      <stop offset="14%"  stop-color="#1E2842" stop-opacity="0.5"/>
+      <stop offset="50%"  stop-color="#1E2842" stop-opacity="0.55"/>
+      <stop offset="86%"  stop-color="#1E2842" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#1E2842" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M20 270
+           q100 -130 190 -80
+           q90 50 170 -20
+           q100 -90 190 -40
+           q110 60 200 -20
+           q90 -50 190 -90"
+        fill="none" stroke="url(#storyPathFade)" stroke-width="2.2"
+        stroke-linecap="round" stroke-dasharray="1 9 1 20"/>
+
+  <!-- Soft stardust glints scattered along the trail — imagination
+       leaves a trace, not a signpost. -->
+  <circle cx="150" cy="220" r="3"   fill="#E8B871" opacity="0.5"/>
+  <circle cx="340" cy="195" r="2.4" fill="#E8B871" opacity="0.4"/>
+  <circle cx="520" cy="100" r="3"   fill="#E8B871" opacity="0.45"/>
+  <circle cx="700" cy="150" r="2.6" fill="#E8B871" opacity="0.4"/>
+  <circle cx="880" cy="45"  r="2.2" fill="#E8B871" opacity="0.35"/>
+</svg>

@@ -7,9 +7,10 @@
 // landmark in a future chapter is one more descriptor here.
 //
 // Motion categories map 1:1 with animations/motion.css:
-//   Living      → twinkle / drift / float / breathe / sway / shadow-breathe
+//   Living      → twinkle / drift / float / breathe / sway /
+//                 shadow-breathe / shimmer / wander
 //   Greeting    → drawn-in / warm-in / settle
-//   Journey     → glide / sail / drift-long
+//   Journey     → sail / drift-long
 //   Celebration → (empty in Chapter 1)
 
 (function () {
@@ -91,41 +92,37 @@
     });
   });
 
-  // Rocket — Journey object. Contract cadence 18–22s left→right glide,
-  // slight upward tilt. Negative delay puts it partway across at
-  // load so it lands in a natural sky spot on the first frame.
+  // Story Path — Sprint 3 · Story Path & Hero Personality. Replaces
+  // the rocket + paper plane's Journey traversal with an ambient,
+  // ever-present trail. Never a route between two objects — it fades
+  // to nothing at both ends (baked into the SVG's gradient stroke),
+  // so it reads as something that's always wandered through the sky
+  // rather than a path that goes somewhere. libraryType wires it to
+  // World Library's `decorations/` the same way every other MEP-01
+  // object is wired — it just has nothing there yet, so it falls
+  // back to the hand-drawn trail below.
   WorldObject.register({
-    id: 'rocket',
-    label: 'Rocket',
-    assetHref: 'assets/objects/rocket.svg',
+    id: 'story-path',
+    label: 'Story Path',
+    assetHref: 'assets/objects/story-path.svg',
+    libraryType: 'decoration',
     layer: 'sky',
-    placement: { top: '4vh', left: '0vw', width: '72px', height: '130px' },
-    motion: {
-      // Rocket climbs at a steeper tilt now that the hero prompt sits
-      // in the sky's middle band. The negative delay keeps it visible
-      // in the top-left corner at capture time.
-      category: 'Journey', name: 'glide', duration: '26s', delay: '-6s',
-      params: { '--vp-glide-tilt': '-28deg', '--vp-glide-drop': '-1vh' }
-    }
+    placement: { top: '9vh', left: '2vw', width: '96vw' },
+    motion: { category: 'Living', name: 'shimmer', duration: '9.5s', delay: '0.5s' }
   });
 
-  // Paper plane — Contract cadence 16–20s right→left sail with a
-  // curly dashed trail. Negative delay places it mid-flight so the
-  // first frame shows it comfortably in-scene.
+  // Story Seed — the one seed of imagination wandering the Story
+  // Path. A single long, irregular loop (~2.4 min) with two brief
+  // holds baked into the keyframe stops, rather than a mechanical
+  // back-and-forth, so it never reads as scripted. Negative delay
+  // starts it already mid-wander instead of at its literal 0%.
   WorldObject.register({
-    id: 'paper-plane',
-    label: 'Paper plane',
-    assetHref: 'assets/objects/paper-plane.svg',
+    id: 'story-seed',
+    label: 'Story Seed',
+    assetHref: 'assets/objects/story-seed.svg',
     layer: 'sky',
-    placement: { top: '10vh', left: '0', width: '180px', height: '82px' },
-    motion: {
-      // Nose points right in the SVG → glide left→right. A 20 s
-      // loop with -6 s delay puts the plane around 18 vw at load
-      // and gently sails it toward the top-right; the plane stays
-      // in view for the whole capture window.
-      category: 'Journey', name: 'glide', duration: '20s', delay: '-6s',
-      params: { '--vp-glide-tilt': '-8deg', '--vp-glide-drop': '3vh' }
-    }
+    placement: { top: '30vh', left: '38vw', width: '30px' },
+    motion: { category: 'Living', name: 'wander', duration: '145s', delay: '-40s' }
   });
 
   // === Ground landmarks ===============================================

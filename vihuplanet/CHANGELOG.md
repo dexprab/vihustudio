@@ -2,6 +2,50 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.3.8 — 2026-07-03
+
+- **Hero MEP Sprint 3 — Story Path & Hero Personality.** Replaces the
+  rocket and paper plane with a Story Path + Story Seed. Hero-only —
+  no infrastructure, World Library, or architecture changes.
+- **Rocket removed.** Descriptor, `assets/objects/rocket.svg`, and
+  the now-dead `--vp-rocket` palette constant (never referenced via
+  `var()`, purely descriptive) are gone.
+- **Paper plane removed.** Descriptor and `assets/objects/
+  paper-plane.svg` are gone.
+- **`.glide` motion removed.** Its own doc comment named it "rocket +
+  paper plane" — with both objects gone it was genuinely dead code.
+  `.sail` (a distinct, always-forward-looking Journey primitive never
+  used by either object) is untouched.
+- **Story Path added.** A single wandering trail across the sky
+  (`assets/objects/story-path.svg`) — a hand-drawn dashed line with
+  an irregular dot-dot-gap rhythm and a gradient stroke that fades to
+  nothing at both ends, so it never appears to begin or end at a
+  fixed point and never reads as a route between Story Worlds. Wired
+  to `libraryType: 'decoration'` (World Library integration, same
+  pattern as every other MEP-01 object) — falls back to the SVG since
+  `world-library/decorations/` has nothing yet. New `.shimmer` motion
+  (Living) gives it a very slow opacity pulse; sits at `z-index: 0`,
+  behind clouds, so it reads as a distant backdrop trail.
+- **Story Seed added.** One small glowing seed of light
+  (`assets/objects/story-seed.svg`) wandering the sky. New `.wander`
+  motion (Living) — a single ~2.4-minute irregular loop with two
+  brief holds baked into the keyframe stops (not a mechanical
+  back-and-forth) combining translate, a whisper-subtle scale, and a
+  glow pulse. Sits at `z-index: 3`, the tier the rocket/paper plane
+  previously used.
+- **Composition preserved.** Story Worlds, Dreaming Planet, telescope,
+  clouds, and flowers keep their existing positions and motions —
+  only the rocket/paper-plane slot changed.
+- **`prefers-reduced-motion` respected** — `.shimmer` and `.wander`
+  added to the existing disable block; `.glide` removed from it since
+  the class no longer exists.
+- **Verified in headless Chromium**: rocket/paper-plane elements
+  absent, `story-path.svg`/`story-seed.svg` load (200), old assets
+  404, Story Path/Seed carry the correct animation names, both motions
+  cleanly disable under reduced motion, dev build indicator still
+  renders, and no new console errors (the only non-OK network
+  responses are graceful World Library manifest-miss fallbacks).
+
 ## v0.3.7 — 2026-07-03
 
 - **Hero MEP Sprint 2 — Living World.** Subtle environmental motion
