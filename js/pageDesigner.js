@@ -775,8 +775,43 @@ const PageDesigner=(function(){
     else if(role==='cover') _buildCoverEditor(editorBody);
     else if(role==='hook')  _buildHookEditor(editorBody);
     else if(role==='end')   _buildEndEditor(editorBody);
+    _appendSlidePanel(editorBody);
     _refresh();
   }
+
+  // Sprint 9.4 — the Slide panel: page-level presentation controls that
+  // apply regardless of role. Background (Scene) and Title already live
+  // inside each role's own editor above (Scene cards / Story Title /
+  // Cover title / etc.) and stay there untouched — they're core content
+  // fields, not something a theme should be able to hide. Decorations is
+  // new to Page Designer: the exact same picker ThemeEngine's Theme
+  // Designer tab already renders (js/themeEngine.js's _renderDecorations,
+  // reused verbatim via renderDecorationsInto so the toggle logic isn't
+  // duplicated), mounted here too because it's a Slide-scope concept —
+  // shown only when the active workspace theme's Slide config lists it.
+  function _appendSlidePanel(body){
+    const ids=(typeof WorkspaceBuilder!=='undefined') ? WorkspaceBuilder.getControlIds('slide') : [];
+    if(ids.indexOf('decorations')===-1) return;
+    const wrap=document.createElement('div');
+    wrap.className='page-slide-panel';
+    const label=document.createElement('div');
+    label.className='page-scene-label';
+    label.textContent='Decorations';
+    wrap.appendChild(label);
+    const list=document.createElement('div');
+    list.className='page-decorations-list';
+    wrap.appendChild(list);
+    body.appendChild(wrap);
+    if(typeof ThemeEngine!=='undefined' && typeof ThemeEngine.renderDecorationsInto==='function'){
+      ThemeEngine.renderDecorationsInto(list);
+    }
+  }
+
+  // Sprint 9.4 — public hook for ThemeEngine._refreshUI: a theme change
+  // can add/remove/reorder Slide-panel content (today, Decorations), so
+  // the whole editor body needs a full rebuild, not just a value-sync
+  // (which _refresh() alone already does for the rest).
+  function rebuildWorkspace(){ _renderEditor(); }
 
   function _refresh(){
     if(!mountedRoot) return;
@@ -867,7 +902,8 @@ const PageDesigner=(function(){
     unmount:unmount,
     configure:configure,
     refresh:refresh,
-    focusField:focusField
+    focusField:focusField,
+    rebuildWorkspace:rebuildWorkspace
   };
   try{ window.PageDesigner=api; }catch(e){}
   // Compat alias preserved from the Story Designer era.

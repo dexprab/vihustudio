@@ -284,6 +284,11 @@ const ThemeEngine=(function(){
         window.showSlide(AppState.currentSlide);
       }
     }catch(e){}
+    // Sprint 9.4 — Dynamic Theme Workspace. A theme change can add/
+    // remove/reorder Frame, Holder, and Slide controls, so the right
+    // panel needs to rebuild immediately here too, not just the canvas.
+    try{ if(typeof CardDesigner!=='undefined') CardDesigner.refresh(); }catch(e){}
+    try{ if(typeof PageDesigner!=='undefined') PageDesigner.rebuildWorkspace(); }catch(e){}
   }
 
   function _renderCurrentThemeName(themeId){
@@ -434,8 +439,14 @@ const ThemeEngine=(function(){
 
   const DECO_GLYPH={ stars:'★', clouds:'☁', birds:'✦', trees:'▲', flowers:'✿' };
 
-  function _renderDecorations(){
-    const container=document.getElementById('decorationsList');
+  // Sprint 9.4 — generalized to accept any container so the Slide panel
+  // (Page Designer's Story tab) can mount the exact same decorations
+  // picker the Theme Designer tab already has, reusing this render/
+  // toggle logic verbatim rather than duplicating it. Theme Designer's
+  // own call (below) keeps passing #decorationsList so nothing there
+  // changes.
+  function _renderDecorations(container){
+    container=container||document.getElementById('decorationsList');
     if(!container) return;
     const t=getActiveTheme();
     const opts=getOptions();
@@ -910,7 +921,8 @@ const ThemeEngine=(function(){
     buildDesigner:buildDesigner,
     openThemePicker:openThemePicker,
     closeThemePicker:closeThemePicker,
-    importThemeFile:importThemeFile
+    importThemeFile:importThemeFile,
+    renderDecorationsInto:_renderDecorations
   };
   try{ window.ThemeEngine=api; }catch(e){}
   return api;
