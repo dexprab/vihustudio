@@ -144,7 +144,14 @@ const PageDesigner=(function(){
       if(suppressInput) return;
       opts.onChange(el.value);
     });
-    return el;
+    // Sprint 9.6 — Global Emoji Pack: every Text Element field gets the
+    // same insert-emoji affordance. `el` stays a direct child of the
+    // returned wrapper, so every existing querySelector('.some-class')
+    // lookup on `el`'s own class keeps finding it — callers don't
+    // change. {emoji:false} opts out for a field where it'd never make
+    // sense (there are none today).
+    if(opts.emoji===false || typeof EmojiPicker==='undefined') return el;
+    return EmojiPicker.wrap(el);
   }
   function _makePlaceholder(title,subtext){
     const ph=document.createElement('div');
@@ -524,7 +531,10 @@ const PageDesigner=(function(){
       _syncHidden('storyBeat',storyText.value,true);
       _refreshIndicators();
     });
-    body.appendChild(storyText);
+    // Sprint 9.6 — Global Emoji Pack. Hand-built (not routed through
+    // _makeTextInput) because of the char/word-count + overflow-warning
+    // wiring below, so it's wrapped explicitly here instead.
+    body.appendChild((typeof EmojiPicker!=='undefined') ? EmojiPicker.wrap(storyText) : storyText);
 
     const stats=document.createElement('div');
     stats.className='story-stats-inline';
@@ -791,6 +801,20 @@ const PageDesigner=(function(){
   // shown only when the active workspace theme's Slide config lists it.
   function _appendSlidePanel(body){
     const ids=(typeof WorkspaceBuilder!=='undefined') ? WorkspaceBuilder.getControlIds('slide') : [];
+
+    // Sprint 9.6 — Layout is a catalog-driven Slide control (same
+    // WorkspaceBuilder.layout/CONTROL_CATALOG mechanism the Frame/
+    // Holder panels already use), built into its own small container
+    // so it doesn't disturb Decorations' own special-cased picker
+    // below. A theme with no 'layout' in its Slide config (every theme
+    // before this sprint) never gets this container at all.
+    if(ids.indexOf('layout')!==-1 && typeof WorkspaceBuilder!=='undefined'){
+      const layoutWrap=document.createElement('div');
+      layoutWrap.className='page-slide-panel';
+      body.appendChild(layoutWrap);
+      WorkspaceBuilder.layout(layoutWrap,'slide',{getSlide:_currentSlide,onChange:_commitContent});
+    }
+
     if(ids.indexOf('decorations')===-1) return;
     const wrap=document.createElement('div');
     wrap.className='page-slide-panel';

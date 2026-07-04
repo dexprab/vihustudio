@@ -801,9 +801,9 @@ function _canvasCoords(e){
   };
 }
 
-function _isInsidePanel(canvasX,canvasY){
+function _isInsidePanel(canvasX,canvasY,s){
   if(typeof SlideRenderer.getPanelRect!=='function') return false;
-  const r=SlideRenderer.getPanelRect();
+  const r=SlideRenderer.getPanelRect(s);
   return canvasX>=r.x && canvasX<=r.x+r.w && canvasY>=r.y && canvasY<=r.y+r.h;
 }
 
@@ -898,11 +898,11 @@ previewCanvas.addEventListener('mousedown',function(e){
   // Sprint 4.5 — Shift+click inside the panel sets the focal point at the
   // clicked location (relative to the cropped image source). Pre-empts both
   // text selection and image pan.
-  if(e.shiftKey && s.image && _isInsidePanel(c.x,c.y) && typeof CardDesigner!=='undefined'){
+  if(e.shiftKey && s.image && _isInsidePanel(c.x,c.y,s) && typeof CardDesigner!=='undefined'){
     const view=CardDesigner.getActiveImageView();
     if(view){
       const SR=SlideRenderer;
-      const r=(typeof SR.getPanelRect==='function')?SR.getPanelRect():{x:70,y:185,w:940,h:930};
+      const r=(typeof SR.getPanelRect==='function')?SR.getPanelRect(s):{x:70,y:185,w:940,h:930};
       const innerX=r.x+20, innerY=r.y+20, innerW=r.w-40, innerH=r.h-40;
       const fx=Math.max(0,Math.min(1,(c.x-innerX)/innerW));
       const fy=Math.max(0,Math.min(1,(c.y-innerY)/innerH));
@@ -977,7 +977,7 @@ previewCanvas.addEventListener('mousedown',function(e){
   }
 
   // Image pan inside the panel rect (Sprint 4.2 behavior).
-  if(s.image && _isInsidePanel(c.x,c.y) && typeof CardDesigner!=='undefined'){
+  if(s.image && _isInsidePanel(c.x,c.y,s) && typeof CardDesigner!=='undefined'){
     const v=CardDesigner.getActiveImageView();
     if(v){
       _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};

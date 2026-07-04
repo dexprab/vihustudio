@@ -322,22 +322,74 @@ const ThemeRegistry=(function(){
       name:'Museum Gallery',
       description:'A quiet gallery wall — white mat, soft light, centered.',
       // Sprint 9.5 — Theme Language v2: `presentation` alone now
-      // supplies background/frame/paper/caption/shadow/lighting/
-      // composition, resolved from js/themePresets.js
-      // HOLDER_PRESETS.image.gallery (byte-identical to this theme's
-      // pre-9.5 explicit fields — see git history for the values this
-      // replaces). Add any field below `presentation` to override just
-      // that one value; everything else keeps coming from the preset.
+      // supplies background/frame/paper/shadow/lighting/composition,
+      // resolved from js/themePresets.js HOLDER_PRESETS.image.gallery
+      // (byte-identical to this theme's pre-9.5 explicit fields — see
+      // git history for the values this replaces). Add any field below
+      // `presentation` to override just that one value; everything
+      // else keeps coming from the preset.
       presentation:'gallery',
+      // Sprint 9.6 — Museum Gallery Theme Support: the legacy enum
+      // caption is explicitly turned off here (a Theme Override, same
+      // resolution ladder as everything else) because the real caption
+      // now comes from the `museum-caption` Layer below — rendering
+      // both would double the caption.
+      caption:'none',
       enhancement:[],
+      // Sprint 9.6 — Museum Gallery is the reference implementation
+      // for Phase 2's Official Theme Collection: Slide layout presets
+      // (single-Holder only this sprint — Diptych/Triptych are a
+      // future sprint's multi-Holder Frame, not a parallel model),
+      // user-switchable Frame Variations, and a Theme Layer Pack (see
+      // js/layerEngine.js). `holders:1` on every layout documents that
+      // reservation without yet acting on it.
+      layouts:[
+        {id:'portrait',   name:'Portrait',   aspect:'portrait',   holders:1},
+        {id:'landscape',  name:'Landscape',  aspect:'landscape',  holders:1},
+        {id:'square',     name:'Square',     aspect:'square',     holders:1},
+        {id:'wide',       name:'Wide',       aspect:'wide',       holders:1},
+        {id:'quote',      name:'Quote',      aspect:'quote',      holders:1},
+        {id:'full-bleed', name:'Full Bleed', aspect:'full-bleed', holders:1}
+      ],
+      frameVariations:[
+        {id:'classic-white-mat', name:'Classic White Mat', fields:{}},
+        {id:'warm-ivory',        name:'Warm Ivory',        fields:{background:'cream',frame:'white-mat',paper:'smooth',shadow:'gallery'}},
+        {id:'natural-linen',     name:'Natural Linen',     fields:{background:'cream',frame:'white-mat',paper:'canvas',shadow:'soft'}},
+        {id:'floating-frame',    name:'Floating Frame',    fields:{background:'white',frame:'floating',paper:'smooth',shadow:'floating'}},
+        {id:'black-matte',       name:'Black Matte',       fields:{background:'black',frame:'none',paper:'smooth',shadow:'gallery'}},
+        {id:'gold-accent',       name:'Gold Accent',       fields:{background:'white',frame:'wood',paper:'smooth',shadow:'gallery'}},
+        {id:'dark-gallery',      name:'Dark Gallery',      fields:{background:'black',frame:'floating',paper:'smooth',shadow:'floating'}}
+      ],
+      // The 5 layers required this sprint (js/layerEngine.js): Museum
+      // Caption reads the per-slide caption a child typed; Page Number
+      // and Handle are declarative-only (no `text` payload) — they
+      // stay rendered by the existing, unrelated _drawPageNumber /
+      // _drawHandle functions, this pack entry just documents that
+      // they're part of this theme's complete layer inventory.
+      layerPack:[
+        {id:'museum-caption', type:'text', target:'holder', anchor:'bottom-center', offsetY:16, zIndex:1,
+          text:{source:'slideCaption', font:'Georgia, serif', size:20, color:'#3A3A3A'}},
+        {id:'page-number', type:'text', target:'slide'},
+        {id:'handle', type:'text', target:'slide'},
+        {id:'gallery-spotlight', type:'decoration', target:'slide', anchor:'top-center', zIndex:0,
+          decoration:{kind:'spotlight', alpha:0.14, radius:640}},
+        {id:'wax-seal', type:'sticker', target:'frame', anchor:'bottom-right', offsetX:-28, offsetY:-28, zIndex:2}
+      ],
+      // Sprint 9.6 — rich Theme Library metadata (js/themeRegistry.js
+      // registerOfficial copies these onto the auto-derived manifest).
+      purpose:'Showcase a child’s original artwork the way a museum would.',
+      mood:'Calm, refined, quietly proud.',
+      bestFor:['Fine art & paintings','Photography','Portraits','Keepsake gifts'],
+      notRecommendedFor:['Silly, high-energy stories'],
+      themeIcon:'🖼️',
       // Sprint 9.4 — a gallery wall is about the picture, not the page:
-      // no background/decorations control, Frame panel limited to Fill +
-      // Shadow + Paper, and the full Presentation/Lighting/Caption set
-      // exposed on the Image holder.
+      // Sprint 9.6 adds the Slide's Layout picker and the Image
+      // holder's Frame Variation alongside the existing Presentation/
+      // Lighting/Caption set.
       editor:{
-        slide:{sections:['title']},
+        slide:{sections:['layout','title']},
         frame:{sections:['fill','shadow','paper']},
-        holder:{image:['presentation','lighting','caption'],text:['typography'],sticker:[]}
+        holder:{image:['presentation','frameVariation','lighting','caption'],text:['typography'],sticker:[]}
       }
     },
     {
@@ -543,13 +595,24 @@ const ThemeRegistry=(function(){
     const t2=(THEME_TYPES.indexOf(type)!==-1) ? type : DEFAULT_THEME_TYPE;
     (themes||[]).forEach(function(t){
       if(!t || !t.id || _registry[t.id]) return;
+      const manifest={
+        id:t.id, name:t.name, version:'1.0.0', author:'Vihu',
+        description:t.description||'', category:'Official', tags:[],
+        thumbnail:'', createdDate:'', updatedDate:'',
+        minStudioVersion:THEME_SYSTEM_VERSION, type:t2
+      };
+      // Sprint 9.6 — rich metadata (Purpose/Mood/Best For/Not
+      // Recommended For/Preview Image/Theme Icon). An official theme
+      // authors these directly on its own flat object (there's no
+      // separate manifest literal for in-code entries) and they're
+      // copied onto the auto-derived manifest here, additively — a
+      // theme with none of these (every official theme before Museum
+      // Gallery) leaves the manifest exactly as it was.
+      ['purpose','mood','bestFor','notRecommendedFor','themeIcon','previewImage'].forEach(function(k){
+        if(t[k]!==undefined) manifest[k]=t[k];
+      });
       _registry[t.id]={
-        manifest:{
-          id:t.id, name:t.name, version:'1.0.0', author:'Vihu',
-          description:t.description||'', category:'Official', tags:[],
-          thumbnail:'', createdDate:'', updatedDate:'',
-          minStudioVersion:THEME_SYSTEM_VERSION, type:t2
-        },
+        manifest:manifest,
         theme:t,
         source:'official'
       };

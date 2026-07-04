@@ -30,7 +30,16 @@ const StickerLibrary=(function(){
     {id:'sports',        label:'Sports',        emoji:'⚽'},
     {id:'weather',       label:'Weather',       emoji:'☀'},
     {id:'emotions',      label:'Emotions',      emoji:'❤️'},
-    {id:'decorations',   label:'Decorations',   emoji:'✨'}
+    {id:'decorations',   label:'Decorations',   emoji:'✨'},
+    // Sprint 9.6 — Museum Gallery Theme Support: Global Social Pack +
+    // Global Shape Pack. Available regardless of active theme, same as
+    // every other category — "global" here just means no theme has to
+    // opt in, not a different loading path. Generic, non-trademarked
+    // glyphs stand in for each platform (a camera for Instagram, a
+    // play button for YouTube, …) rather than reproducing a protected
+    // logo mark.
+    {id:'social',        label:'Social',        emoji:'📱'},
+    {id:'shapes',        label:'Shapes',        emoji:'🔷'}
   ];
 
   // SVG builders. Every sticker is a 200×200 viewBox so resizing is a
@@ -337,7 +346,26 @@ const StickerLibrary=(function(){
     _S('musical-notes','decorations','Music Notes','🎶',  '#C9B6F2',['music','notes']),
     _S('question',     'decorations','Question',   '❓','#FFC0E0',['question','mark']),
     _S('exclaim',      'decorations','Exclaim',    '❗','#FFC0C0',['exclaim','mark']),
-    _S('hundred',      'decorations','100',        '💯','#FFB0B0',['hundred','100','points'])
+    _S('hundred',      'decorations','100',        '💯','#FFB0B0',['hundred','100','points']),
+
+    // ---- Social (Sprint 9.6 — Global Social Pack) ----
+    _S('instagram',    'social','Instagram',    '📷','#F2C9DD',['instagram','photo','social','share']),
+    _S('facebook',     'social','Facebook',     '👥','#B7C9EA',['facebook','social','community','share']),
+    _S('youtube',      'social','YouTube',      '▶️','#FFB0B0',['youtube','video','watch','share']),
+    _S('pinterest',    'social','Pinterest',    '📌','#FFC2C2',['pinterest','pin','save','share']),
+    _S('tiktok',       'social','TikTok',       '🎵','#C9C9D2',['tiktok','video','music','share']),
+    _S('linkedin',     'social','LinkedIn',     '💼','#A8C2E0',['linkedin','professional','share']),
+    _S('whatsapp',     'social','WhatsApp',     '💬','#B8E2B8',['whatsapp','chat','message','share']),
+    _S('x-social',     'social','X',            '✖️','#D2D2D2',['x','social','share']),
+    _S('website',      'social','Website',      '🌐','#A8D8EA',['website','web','link','share']),
+    _S('email',        'social','Email',        '📧','#FFD9A0',['email','mail','share']),
+
+    // ---- Shapes (Sprint 9.6 — Global Shape Pack) ----
+    _S('arrow',        'shapes','Arrow',        '➡️','#A9D2E0',['arrow','direction','point']),
+    _S('circle',       'shapes','Circle',       '⚪','#E8E8E8',['circle','round','shape']),
+    _S('star',         'shapes','Star',         '⭐','#FFE17A',['star','shape','sparkle']),
+    _S('speech-bubble','shapes','Speech Bubble','💬','#A9D2EA',['speech','bubble','talk','shape']),
+    _S('banner',       'shapes','Banner',       '🎗️','#F2B8C9',['banner','ribbon','shape'])
   ];
 
   // Quick lookup by id.

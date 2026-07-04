@@ -191,9 +191,16 @@ const CardDesigner=(function(){
     _refreshImage();
   }
 
+  // Sprint 9.6 — Museum Gallery Theme Support adds 'original' as a
+  // third Holder mode alongside the pre-existing fit/fill. `mode` is
+  // written explicitly (the new authoritative field — see
+  // ImageViewEngine.normalize) and `fit` keeps being written too for
+  // any older code path still reading it directly; 'original' writes
+  // 'fit' as an inert placeholder since `mode` always wins once set.
   function _setMode(mode){
     const v=_ensureView(_currentSlide());
     if(!v) return;
+    v.mode=(mode==='original')?'original':(mode==='fill')?'fill':'fit';
     v.fit=(mode==='fill')?'fill':'fit';
     _commit();
   }
@@ -326,7 +333,7 @@ const CardDesigner=(function(){
     showRow.appendChild(showLabel);
     const showIcons=document.createElement('div');
     showIcons.className='icon-row image-mode-row';
-    [['fit','Whole Picture'],['fill','Fill the Box']].forEach(function(pair){
+    [['fit','Whole Picture'],['fill','Fill the Box'],['original','Actual Size']].forEach(function(pair){
       const id=pair[0], name=pair[1];
       const btn=document.createElement('button');
       btn.type='button';
@@ -780,6 +787,10 @@ const CardDesigner=(function(){
     const v=(slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide && slide.metadata && slide.metadata.imageView) || {};
     return {
       fit:v.fit||'fit',
+      // Sprint 9.6 — `mode` is authoritative when set (see
+      // ImageViewEngine.normalize); every pre-9.6 project only ever has
+      // `fit`, so this falls through to it unchanged.
+      mode:v.mode||v.fit||'fit',
       scale:(typeof v.scale==='number')?v.scale:1,
       offsetX:(typeof v.offsetX==='number')?v.offsetX:0,
       offsetY:(typeof v.offsetY==='number')?v.offsetY:0
@@ -792,7 +803,7 @@ const CardDesigner=(function(){
     const eff=_effectiveImageView(s);
     const hasImage=!!(s && s.image);
     mountedRoot.querySelectorAll('.image-mode-btn').forEach(function(b){
-      b.classList.toggle('active', b.getAttribute('data-mode')===eff.fit);
+      b.classList.toggle('active', b.getAttribute('data-mode')===eff.mode);
       b.disabled=!hasImage;
     });
     function setSlider(sel,valueSel,value,fmt){

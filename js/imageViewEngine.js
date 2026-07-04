@@ -12,6 +12,13 @@
 // (`mode`, `zoom`, `panX`, `panY`) and the legacy Sprint 4.2 keys
 // (`fit`, `scale`, `offsetX`, `offsetY`). Existing saved projects keep
 // working without any data migration.
+//
+// Sprint 9.6 — Museum Gallery Theme Support adds a third Holder mode,
+// `'original'`: the image draws at its own natural pixel size (base
+// scale 1, before the user's own `zoom` still applies on top, exactly
+// like Fit/Fill already do) instead of being scaled to the Holder.
+// Nothing before this sprint ever wrote `mode:'original'`, so no
+// existing project's rendering changes.
 const ImageViewEngine=(function(){
   const DEFAULT_VIEW={mode:'fit',zoom:1,panX:0,panY:0};
   // Aspect ratio tolerance for the runtime tripwire — generous enough to
@@ -20,7 +27,13 @@ const ImageViewEngine=(function(){
 
   function normalize(raw){
     if(!raw) return Object.assign({},DEFAULT_VIEW);
-    const mode=(raw.mode==='fill' || raw.fit==='fill') ? 'fill' : 'fit';
+    // `mode` is authoritative when it's one of the three recognized
+    // values (nothing before Sprint 9.6 ever wrote it, so this is a
+    // no-op for every existing project); otherwise fall back to the
+    // legacy `fit` key exactly as always.
+    const mode=(raw.mode==='fill'||raw.mode==='fit'||raw.mode==='original')
+      ? raw.mode
+      : (raw.fit==='fill' ? 'fill' : 'fit');
     const zoom=(typeof raw.zoom==='number'&&isFinite(raw.zoom)&&raw.zoom>0)
       ? raw.zoom
       : (typeof raw.scale==='number'&&isFinite(raw.scale)&&raw.scale>0)
@@ -50,7 +63,9 @@ const ImageViewEngine=(function(){
     const v=normalize(raw);
     const base=v.mode==='fill'
       ? Math.max(holderW/imgW, holderH/imgH)
-      : Math.min(holderW/imgW, holderH/imgH);
+      : v.mode==='original'
+        ? 1
+        : Math.min(holderW/imgW, holderH/imgH);
     const scale=base*v.zoom;
     return {
       dw:imgW*scale,

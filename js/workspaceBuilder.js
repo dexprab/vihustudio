@@ -128,7 +128,12 @@ const WorkspaceBuilder=(function(){
     return (slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.artwork) || {};
   }
 
-  function _buildSelectRow(container,id,label,key,options,ctx,meta){
+  // Sprint 9.6 — `store` optionally overrides where this control reads/
+  // writes, for a control whose data doesn't belong in the artwork bag
+  // (Layout is a Slide-scope choice, stored at slide.metadata.layout,
+  // not slide.metadata.cardOverrides.artwork). Every existing caller
+  // omits it and keeps today's artwork-bag behaviour exactly.
+  function _buildSelectRow(container,id,label,key,options,ctx,meta,store){
     const wrap=document.createElement('div');
     wrap.className='designer-row';
     wrap.setAttribute('data-control',id);
@@ -142,19 +147,24 @@ const WorkspaceBuilder=(function(){
     const defaultLabel='Theme default'+((meta&&meta.default)?(' ('+meta.default+')'):'');
     sel.appendChild(new Option(defaultLabel,''));
     optionList.forEach(function(o){ sel.appendChild(new Option(o[1],o[0])); });
-    sel.addEventListener('change',function(){
-      const slide=ctx.getSlide && ctx.getSlide();
+    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide)[key]; };
+    const _set=(store&&store.set) || function(slide,value){
       const art=_ensureArtwork(slide);
       if(!art) return;
-      if(sel.value==='') delete art[key]; else art[key]=sel.value;
+      if(value===undefined) delete art[key]; else art[key]=value;
+    };
+    sel.addEventListener('change',function(){
+      const slide=ctx.getSlide && ctx.getSlide();
+      if(!slide) return;
+      _set(slide, sel.value===''?undefined:sel.value);
       if(ctx.onChange) ctx.onChange();
     });
     wrap.appendChild(sel);
     container.appendChild(wrap);
     wrap.__sync=function(){
       const slide=ctx.getSlide && ctx.getSlide();
-      const art=_readArtwork(slide);
-      sel.value=(art[key]!==undefined)?art[key]:'';
+      const value=_get(slide);
+      sel.value=(value!==undefined)?value:'';
     };
     return wrap;
   }
@@ -230,6 +240,44 @@ const WorkspaceBuilder=(function(){
     },
     stickerShadow:{
       build:function(c,ctx,meta){ return _buildToggleRow(c,'stickerShadow','Shadow','stickerShadow',ctx); }
+    },
+    // Sprint 9.6 — Museum Gallery Theme Support. Options come from the
+    // active theme's own `frameVariations` (a named bundle of artwork
+    // fields — "Classic White Mat", "Gold Accent", …), never a
+    // hardcoded list, since a variation only makes sense for the theme
+    // that authored it. A theme with no `frameVariations` renders this
+    // control with an empty (theme-default-only) option list rather
+    // than hiding it — the same graceful-empty convention _buildSelectRow
+    // already uses everywhere else.
+    frameVariation:{
+      build:function(c,ctx,meta){
+        const theme=getActiveWorkspaceTheme();
+        const options=(theme && Array.isArray(theme.frameVariations))
+          ? theme.frameVariations.map(function(v){ return [v.id,v.name||v.id]; })
+          : [];
+        return _buildSelectRow(c,'frameVariation','Frame Variation','frameVariation',options,ctx,meta);
+      }
+    },
+    // Sprint 9.6 — Slide-scope Layout preset (see renderer/
+    // slideRenderer.js _resolveLayout). Options come from the active
+    // theme's own `layouts`; stored at slide.metadata.layout (a Slide-
+    // level choice, not a Holder/Frame artwork override) via the
+    // custom `store` _buildSelectRow now accepts.
+    layout:{
+      build:function(c,ctx,meta){
+        const theme=getActiveWorkspaceTheme();
+        const options=(theme && Array.isArray(theme.layouts))
+          ? theme.layouts.map(function(l){ return [l.id,l.name||l.id]; })
+          : [];
+        return _buildSelectRow(c,'layout','Layout','layout',options,ctx,meta,{
+          get:function(slide){ return slide && slide.metadata && slide.metadata.layout; },
+          set:function(slide,value){
+            if(!slide) return;
+            if(!slide.metadata) slide.metadata={};
+            if(value===undefined) delete slide.metadata.layout; else slide.metadata.layout=value;
+          }
+        });
+      }
     }
   };
 

@@ -64,6 +64,62 @@ const SlideRenderer=(()=>{
     return null;
   }
 
+  // ===========================================================
+  // Sprint 9.6 — Museum Gallery Theme Support: Slide layout presets.
+  // ===========================================================
+  // Canonical containership: Slide -> Frame -> Holder -> Element. A
+  // layout preset decides only WHERE the Frame sits on the Slide
+  // (position/size) — the Frame's own look (border/paper/shadow/fill)
+  // stays the Artwork Theme's separate concern (_artworkBorder below).
+  // `holders` on a preset is reserved for future multi-Holder layouts
+  // (Diptych/Triptych) and is always 1 this sprint — adding those later
+  // means teaching the Frame draw path to loop over N holder rects
+  // instead of drawing one, not a parallel layout system.
+  //
+  // `portrait` is deliberately identical to the pre-9.6 fixed panel
+  // rect (PANEL_X/Y/W/H below), so a theme with no `layouts` array
+  // (every theme before this sprint) and a Museum Gallery slide that
+  // hasn't picked a layout yet both resolve to the exact same
+  // geometry — zero regression either way.
+  const LAYOUT_RECT={
+    portrait:    {x:PANEL_X, y:PANEL_Y, w:PANEL_W, h:PANEL_H},
+    landscape:   {x:70,  y:340, w:940,  h:610},
+    square:      {x:190, y:250, w:700,  h:700},
+    wide:        {x:40,  y:420, w:1000, h:460},
+    quote:       {x:140, y:460, w:800,  h:380},
+    'full-bleed':{x:0,   y:0,   w:1080, h:1350}
+  };
+
+  // Layouts belong to the theme (the spec's words) — same single
+  // active-workspace-theme precedent WorkspaceBuilder already
+  // established in Sprint 9.4: an active Artwork Theme governs Frame
+  // geometry if present, otherwise the Story Theme does.
+  function _layoutTheme(s){
+    const art=_artworkTheme(s);
+    if(art) return art;
+    if(typeof ThemeEngine!=='undefined'){ try{ return ThemeEngine.getActiveTheme(); }catch(e){} }
+    return null;
+  }
+
+  // Per-Slide layout choice lives in slide.metadata.layout — same
+  // convention as the existing slide.metadata.cardOverrides bag. No
+  // choice yet (or theme has no `layouts` at all) resolves to the
+  // theme's first listed layout, or — if the theme declares none — to
+  // null, meaning "use the legacy fixed panel rect" (see _panelRectFor).
+  function _resolveLayout(s){
+    const theme=_layoutTheme(s);
+    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
+    if(!layouts || !layouts.length) return null;
+    const chosenId=(s && s.metadata && s.metadata.layout) || null;
+    const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
+    const key=preset && (preset.aspect||preset.id);
+    return (key && LAYOUT_RECT[key]) || null;
+  }
+
+  function _panelRectFor(s){
+    return _resolveLayout(s) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+  }
+
   function _frameColor(theme,opts){
     if(typeof ThemeEngine!=='undefined' && theme && theme.variants){
       try{ return ThemeEngine.resolveFrameColor(theme,opts.variant); }catch(e){}
@@ -188,6 +244,36 @@ const SlideRenderer=(()=>{
     };
   }
 
+  // Sprint 9.6 — Museum Gallery Theme Support: Frame Variations. A
+  // theme may ship `frameVariations` (named bundles of artwork fields
+  // — "Classic White Mat", "Gold Accent", …), and Sprint 9.4's
+  // per-card Holder controls (Presentation/Frame/Lighting/Caption/
+  // Paper/Mat), written into slide.metadata.cardOverrides.artwork since
+  // they shipped but never rendered ("inert this sprint" — see
+  // js/workspaceBuilder.js's file header), finally get consumed here.
+  // Precedence, most-specific-wins: System Default < Presentation
+  // Preset < Theme's own explicit fields < chosen Frame Variation's
+  // fields < a raw per-card field override. A slide that has never
+  // touched any of these controls has an empty cardOverrides bag, so
+  // this is a no-op and rendering is exactly what _artworkBorder
+  // already produced pre-9.6.
+  function _cardArtworkOverride(s){
+    return (s && s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.artwork) || {};
+  }
+  function _resolveArtworkFields(theme,s){
+    if(!theme) return null;
+    const cardOv=_cardArtworkOverride(s);
+    let merged=Object.assign({},theme);
+    if(cardOv.frameVariation && Array.isArray(theme.frameVariations)){
+      const variation=theme.frameVariations.find(function(v){ return v && v.id===cardOv.frameVariation; });
+      if(variation && variation.fields) merged=Object.assign(merged,variation.fields);
+    }
+    ['presentation','frame','paper','lighting','caption','composition'].forEach(function(k){
+      if(cardOv[k]!==undefined) merged[k]=cardOv[k];
+    });
+    return merged;
+  }
+
   // Sprint 6.5 — Picture Border. Resolved from
   // slide.metadata.cardOverrides.border (passed in via payload.overrides.border).
   // Returns null when no override is present so the legacy rendering path
@@ -205,7 +291,7 @@ const SlideRenderer=(()=>{
       // not by every draw call site having to check separately.
       const hasImage=!!(s && s.image && s.image.width);
       if(hasImage){
-        const art=_artworkTheme(s);
+        const art=_resolveArtworkFields(_artworkTheme(s),s);
         const artworkBorder=_artworkBorder(art);
         if(artworkBorder) return artworkBorder;
       }
@@ -769,6 +855,97 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // ===========================================================
+  // Sprint 9.6 — Museum Gallery Theme Support: Layer System draw
+  // helpers. LayerEngine (js/layerEngine.js) owns filtering-by-target,
+  // z-ordering and anchor resolution; every actual canvas-2d call
+  // stays here, same discipline as the rest of this file.
+  // ===========================================================
+  function _activeLayerPack(s){
+    const theme=_layoutTheme(s);
+    return (theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
+  }
+
+  function _layerDrawText(layer,anchor,rect,s){
+    const t=layer.text||{};
+    let content=t.content||'';
+    // 'slideCaption' is the one dynamic binding this sprint ships —
+    // Museum Caption reads a plain per-slide caption string a child
+    // typed (slide.metadata.caption), same convention as bookTitle /
+    // handle already being plain per-slide string fields.
+    if(t.source==='slideCaption') content=(s && s.metadata && typeof s.metadata.caption==='string' && s.metadata.caption) || content;
+    if(!content) return;
+    x.save();
+    x.font=(t.size||18)+'px '+(t.font||'Georgia, serif');
+    x.fillStyle=t.color||'#333333';
+    x.textAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
+    x.textBaseline=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
+    x.fillText(content,anchor.x,anchor.y);
+    x.restore();
+  }
+
+  // Wax Seal (Museum Gallery's one Sticker Layer, Frame-targeted). A
+  // custom glyph draws as-is; the default is a small drawn ornament
+  // (not an emoji) so the look never depends on font/emoji coverage.
+  function _layerDrawSticker(layer,anchor){
+    const st=layer.sticker||{};
+    if(st.glyph){
+      x.save();
+      x.font=(st.size||36)+'px sans-serif';
+      x.textAlign='center';
+      x.textBaseline='middle';
+      x.fillText(st.glyph,anchor.x,anchor.y);
+      x.restore();
+      return;
+    }
+    x.save();
+    x.translate(anchor.x,anchor.y);
+    const r=(st.size||36)/2;
+    x.fillStyle=st.color||'#7A1F2B';
+    x.beginPath(); x.arc(0,0,r,0,Math.PI*2); x.fill();
+    x.strokeStyle='rgba(255,255,255,0.35)';
+    x.lineWidth=2;
+    x.beginPath(); x.arc(0,0,r*0.6,0,Math.PI*2); x.stroke();
+    x.restore();
+  }
+
+  // Gallery Spotlight (Museum Gallery's one Decoration Layer,
+  // Slide-targeted) reuses the exact same radial-glow primitive the
+  // Holder-scope 'gallery'/'soft' lighting already draws (_lightingGlow
+  // above) — just aimed at the whole Slide rect instead of the picture
+  // rect, so there's no second glow implementation to keep in sync.
+  function _layerDrawDecoration(layer,anchor,rect){
+    const d=layer.decoration||{};
+    const kind=d.kind||'spotlight';
+    if(kind==='spotlight'){
+      const radius=(typeof d.radius==='number')?d.radius:Math.max(rect.w,rect.h)*0.6;
+      const alpha=(typeof d.alpha==='number')?d.alpha:0.12;
+      _lightingGlow(rect,anchor.x,anchor.y,radius,alpha);
+    }
+  }
+
+  function _renderLayers(pack,target,rect,s){
+    if(!pack || typeof LayerEngine==='undefined') return;
+    LayerEngine.render(pack,target,rect,{
+      drawText:function(layer,anchor){ _layerDrawText(layer,anchor,rect,s); },
+      drawSticker:function(layer,anchor){ _layerDrawSticker(layer,anchor,rect); },
+      drawDecoration:function(layer,anchor){ _layerDrawDecoration(layer,anchor,rect); }
+    });
+  }
+
+  // Holder rect — same insets/padding math _drawImage already applies
+  // to the panel rect, exposed separately so Holder-targeted layers
+  // (Museum Caption) can anchor to the actual picture content area
+  // rather than the outer Frame.
+  function _holderRectFor(panelRect,border){
+    const insets=border?_getDesignInsets(border):{top:DEFAULT_IMG_PAD,right:DEFAULT_IMG_PAD,bottom:DEFAULT_IMG_PAD,left:DEFAULT_IMG_PAD};
+    return {
+      x:panelRect.x+insets.left, y:panelRect.y+insets.top,
+      w:Math.max(1,panelRect.w-insets.left-insets.right),
+      h:Math.max(1,panelRect.h-insets.top-insets.bottom)
+    };
+  }
+
   function render(s){
     if(!x) return;
     const t=_theme(s);
@@ -780,16 +957,23 @@ const SlideRenderer=(()=>{
     x.fillStyle=_frameColor(t,opts);
     x.fillRect(0,0,W,H);
 
+    // Sprint 9.6 — Slide-targeted layers (Gallery Spotlight) sit right
+    // on the background wall, before the picture panel/border draws on
+    // top of it. A theme with no layerPack (every theme before this
+    // sprint) has _layerPack===null, so _renderLayers is a no-op.
+    const _layerPack=_activeLayerPack(s);
+    _renderLayers(_layerPack,'slide',{x:0,y:0,w:W,h:H},s);
+
     // Sprint 6.5 — when the user has customised the Picture Border, draw
     // a styled frame in place of the legacy panel. Otherwise fall through
     // to the existing panel style so untouched projects stay pixel-identical.
     const _border=_resolveBorder(s);
-    const _panelRect={x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+    const _panelRect=_panelRectFor(s);
     if(_border){
       _drawPictureFrameFill(_panelRect,_border,t);
       _drawArtworkPresentation(_panelRect,_border);
     }else{
-      _drawPanel(t.panel.color,opts.panelStyle);
+      _drawPanel(t.panel.color,opts.panelStyle,_panelRect);
     }
 
     // Sprint 6.2 — when a scene is active, the scene blueprint owns the
@@ -810,7 +994,7 @@ const SlideRenderer=(()=>{
       // Image inside panel — presentation-only transforms; original image untouched.
       // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
       if(s.image && s.image.width){
-        _drawImage(s,_border);
+        _drawImage(s,_border,_panelRect);
       }
       // Sprint 6.5 — Picture Border stroke sits above the image so it
       // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
@@ -823,6 +1007,13 @@ const SlideRenderer=(()=>{
         // slide has an image (see _resolveBorder's gating), so this
         // is already "no artwork on the page -> no caption" for free.
         if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_panelRect,t);
+        // Sprint 9.6 — Frame-targeted layers (Wax Seal) draw on top of
+        // the fully-assembled frame; Holder-targeted layers (Museum
+        // Caption) anchor to the picture content rect, not the outer
+        // frame, so a wide mat doesn't push the caption far from the
+        // picture it labels.
+        _renderLayers(_layerPack,'frame',_panelRect,s);
+        _renderLayers(_layerPack,'holder',_holderRectFor(_panelRect,_border),s);
       }
 
       // Decorations on the frame
@@ -1322,11 +1513,12 @@ const SlideRenderer=(()=>{
   // identity of the design reads in the layout.
   const DEFAULT_IMG_PAD=20;
 
-  function _drawImage(s,border){
+  function _drawImage(s,border,panelRect){
+    const rect=panelRect||{x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
     const insets=border ? _getDesignInsets(border) : {top:DEFAULT_IMG_PAD,right:DEFAULT_IMG_PAD,bottom:DEFAULT_IMG_PAD,left:DEFAULT_IMG_PAD};
     const pad=border ? border.padding : DEFAULT_IMG_PAD;
-    const IMG_X=PANEL_X+insets.left, IMG_Y=PANEL_Y+insets.top;
-    const IMG_W=Math.max(1,PANEL_W-insets.left-insets.right), IMG_H=Math.max(1,PANEL_H-insets.top-insets.bottom);
+    const IMG_X=rect.x+insets.left, IMG_Y=rect.y+insets.top;
+    const IMG_W=Math.max(1,rect.w-insets.left-insets.right), IMG_H=Math.max(1,rect.h-insets.top-insets.bottom);
     const v=s.imageView||{};
     // Sprint 4.5 — crop / straighten / focal point / image adjustments.
     const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
@@ -1435,8 +1627,11 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  // Public: panel rect in canvas coordinates — consumed by canvas pan handler.
-  function getPanelRect(){ return {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
+  // Public: panel rect in canvas coordinates — consumed by canvas pan
+  // handler. Sprint 9.6 — an optional slide arg resolves the active
+  // layout's Frame rect (see _panelRectFor); omitted, it's the legacy
+  // fixed rect exactly as before, for any caller not yet slide-aware.
+  function getPanelRect(s){ return s!==undefined ? _panelRectFor(s) : {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
   // Sprint 9.0.2 — WYSIWYE. Canonical canvas size in *logical* pixels
   // (the coordinate space every downstream renderer / hit-tester uses,
@@ -1470,26 +1665,30 @@ const SlideRenderer=(()=>{
   }
 
   // --- Panel styles ---
-  function _drawPanel(color,style){
+  // Sprint 9.6 — `rect` is the resolved layout Frame rect (see
+  // _panelRectFor); omitted, falls back to the legacy fixed panel so
+  // any caller not yet passing one stays byte-identical.
+  function _drawPanel(color,style,rect){
+    const r=rect||{x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
     x.fillStyle=color;
     if(style==='rounded'){
-      _roundedRect(PANEL_X,PANEL_Y,PANEL_W,PANEL_H,40);
+      _roundedRect(r.x,r.y,r.w,r.h,40);
       x.fill();
     }else if(style==='cloud'){
-      _cloudShape(PANEL_X,PANEL_Y,PANEL_W,PANEL_H);
+      _cloudShape(r.x,r.y,r.w,r.h);
       x.fill();
     }else if(style==='scroll'){
-      x.fillRect(PANEL_X,PANEL_Y,PANEL_W,PANEL_H);
+      x.fillRect(r.x,r.y,r.w,r.h);
       x.save();
       x.fillStyle='rgba(0,0,0,0.10)';
-      x.fillRect(PANEL_X,PANEL_Y,PANEL_W,22);
-      x.fillRect(PANEL_X,PANEL_Y+PANEL_H-22,PANEL_W,22);
+      x.fillRect(r.x,r.y,r.w,22);
+      x.fillRect(r.x,r.y+r.h-22,r.w,22);
       x.fillStyle='rgba(0,0,0,0.05)';
-      x.fillRect(PANEL_X,PANEL_Y+22,PANEL_W,8);
-      x.fillRect(PANEL_X,PANEL_Y+PANEL_H-30,PANEL_W,8);
+      x.fillRect(r.x,r.y+22,r.w,8);
+      x.fillRect(r.x,r.y+r.h-30,r.w,8);
       x.restore();
     }else{
-      x.fillRect(PANEL_X,PANEL_Y,PANEL_W,PANEL_H);
+      x.fillRect(r.x,r.y,r.w,r.h);
     }
   }
 

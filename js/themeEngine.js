@@ -637,15 +637,42 @@ const ThemeEngine=(function(){
     preview.className='theme-card-preview';
     const panel=document.createElement('div');
     panel.className='theme-card-panel';
-    if(type==='artwork'){
-      preview.style.background=ARTWORK_BACKGROUND_PREVIEW[t.background]||'#EFEFEF';
+    // Sprint 9.6 — rich metadata (previewImage/purpose/mood/bestFor/
+    // notRecommendedFor/themeIcon) lives on the manifest, not the flat
+    // `theme` object getCatalog() hands back — looked up here by id so
+    // getCatalog()'s shape stays untouched (no Theme Registry redesign).
+    const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(t.id) : null;
+    const manifest=(rec && rec.manifest) || {};
+    if(manifest.previewImage){
+      const img=document.createElement('img');
+      img.className='theme-card-preview-image';
+      img.src=manifest.previewImage;
+      img.alt='';
+      preview.appendChild(img);
+    }else if(type==='artwork'){
+      // Sprint 9.5 simplified official Artwork Themes down to a bare
+      // `presentation` id for several fields, `background` included —
+      // resolve through the same preset ladder the renderer uses
+      // rather than reading `t.background` directly (which is now
+      // undefined for e.g. Museum Gallery, and would always fall back
+      // to the generic gray swatch below).
+      const resolvedBg=(typeof ThemePresets!=='undefined')
+        ? ThemePresets.resolveHolder('image',t.presentation,t).background
+        : t.background;
+      preview.style.background=ARTWORK_BACKGROUND_PREVIEW[resolvedBg]||'#EFEFEF';
       panel.style.background='#8FA6C9';
     }else{
       preview.style.background=t.frame.color;
       panel.style.background=t.panel.color;
     }
-    preview.appendChild(panel);
+    if(!manifest.previewImage) preview.appendChild(panel);
     card.appendChild(preview);
+    if(manifest.themeIcon){
+      const icon=document.createElement('span');
+      icon.className='theme-card-icon';
+      icon.textContent=manifest.themeIcon;
+      card.appendChild(icon);
+    }
     const name=document.createElement('div');
     name.className='theme-card-name';
     name.textContent=t.name;
@@ -654,6 +681,22 @@ const ThemeEngine=(function(){
     desc.className='theme-card-desc';
     desc.textContent=t.description;
     card.appendChild(desc);
+    // Sprint 9.6 — "Users should understand the theme before importing
+    // it": Purpose / Best For, shown only when the theme actually
+    // provides them (every theme before this sprint has neither, so
+    // nothing new renders for them).
+    if(manifest.purpose){
+      const purpose=document.createElement('div');
+      purpose.className='theme-card-purpose';
+      purpose.textContent=manifest.purpose;
+      card.appendChild(purpose);
+    }
+    if(Array.isArray(manifest.bestFor) && manifest.bestFor.length){
+      const bestFor=document.createElement('div');
+      bestFor.className='theme-card-bestfor';
+      bestFor.textContent='Best for: '+manifest.bestFor.join(', ');
+      card.appendChild(bestFor);
+    }
     card.addEventListener('click',function(){
       if(type==='artwork') applyArtworkTheme(t.id);
       else applyTheme(t.id);
@@ -757,32 +800,133 @@ const ThemeEngine=(function(){
     }
   }
 
-  function _readFileAsText(file){
+  function _readFileAsArrayBuffer(file){
     return new Promise(function(resolve,reject){
       const reader=new FileReader();
       reader.onload=function(){ resolve(reader.result); };
       reader.onerror=function(){ reject(new Error('Could not read file')); };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     });
   }
 
-  function importThemeFile(file){
-    return _readFileAsText(file).then(function(text){
-      let pkg;
-      try{ pkg=JSON.parse(text); }
-      catch(e){ alert('Could not import theme: this file is not valid JSON.'); return; }
+  // Sprint 9.6 — Museum Gallery Theme Support. A .vtheme may now be a
+  // real folder-based package (zipped): a manifest+theme JSON file
+  // inside a root folder, alongside metadata.json (rich metadata),
+  // preview/thumbnail images, and layouts/ frames/ layer-packs/ assets/
+  // sub-folders. This function is the ONLY place that knows the
+  // package is a zip — it flattens everything back into the exact same
+  // {manifest, theme, assets} shape ThemeRegistry.importPackage has
+  // always consumed, so Theme Registry / Theme Engine / renderer /
+  // Workspace Builder never need to know a theme came from a package
+  // rather than a single JSON blob. A legacy flat-JSON .vtheme (no zip
+  // magic bytes) skips all of this and is parsed exactly as before.
+  const _EXT_MIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',svg:'image/svg+xml',webp:'image/webp'};
+  function _mimeFor(name){
+    const ext=(name.split('.').pop()||'').toLowerCase();
+    return _EXT_MIME[ext]||'application/octet-stream';
+  }
 
-      const result=ThemeRegistry.importPackage(pkg);
-      if(result.ok){ buildPickerCards(); return; }
-      if(result.problems && result.problems.length){
-        alert('Could not import theme:\n'+result.problems.join('\n'));
-        return;
+  function _buildPackageFromZipFiles(files){
+    const names=Object.keys(files);
+    const vthemeName=names.find(function(n){ return /\.vtheme$/i.test(n); });
+    if(!vthemeName){
+      throw new Error('This package has no .vtheme manifest file inside it.');
+    }
+    const slash=vthemeName.lastIndexOf('/');
+    const root=slash===-1?'':vthemeName.slice(0,slash+1); // e.g. "MuseumGallery/"
+
+    let pkg;
+    try{ pkg=JSON.parse(ZipReader.bytesToText(files[vthemeName])); }
+    catch(e){ throw new Error('The .vtheme file inside this package is not valid JSON.'); }
+    pkg.manifest=pkg.manifest||{};
+    pkg.theme=pkg.theme||{};
+    pkg.assets=pkg.assets||{};
+
+    function _relatives(prefix){
+      return names.filter(function(n){ return n.indexOf(root+prefix)===0; });
+    }
+    function _parseJSON(name){
+      try{ return JSON.parse(ZipReader.bytesToText(files[name])); }catch(e){ return null; }
+    }
+
+    // metadata.json — rich manifest fields (purpose/mood/bestFor/
+    // notRecommendedFor/themeIcon/...). Additive: never overwrites a
+    // field the .vtheme's own manifest already set.
+    const metaName=root+'metadata.json';
+    if(files[metaName]){
+      const meta=_parseJSON(metaName)||{};
+      Object.keys(meta).forEach(function(k){
+        if(pkg.manifest[k]===undefined) pkg.manifest[k]=meta[k];
+      });
+    }
+
+    // preview.png / thumbnail.png (or .jpg/.jpeg/.webp) — package-level
+    // images, embedded as data URIs so nothing downstream needs to know
+    // the theme ever lived as separate files on disk.
+    ['preview','thumbnail'].forEach(function(field){
+      const found=names.find(function(n){ return new RegExp('^'+root.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+field+'\\.(png|jpg|jpeg|webp)$','i').test(n); });
+      if(found && !pkg.manifest[field==='preview'?'previewImage':field]){
+        const key=field==='preview'?'previewImage':field;
+        pkg.manifest[key]=ZipReader.bytesToDataURL(files[found],_mimeFor(found));
       }
-      if(result.duplicate){
-        _showImportConflict(pkg);
-        return;
+    });
+
+    // layouts/ frames/ layer-packs/ — each a folder of small JSON files;
+    // every file may contain either one preset object or an array of
+    // them. Collected into flat arrays on the theme, additive (a theme
+    // that already inlines these keeps its own values).
+    function _collectFolder(folder,themeKey){
+      if(pkg.theme[themeKey]!==undefined) return;
+      const files_=_relatives(folder+'/').filter(function(n){ return /\.json$/i.test(n); });
+      if(files_.length===0) return;
+      const out=[];
+      files_.forEach(function(n){
+        const parsed=_parseJSON(n);
+        if(Array.isArray(parsed)) out.push.apply(out,parsed);
+        else if(parsed) out.push(parsed);
+      });
+      if(out.length) pkg.theme[themeKey]=out;
+    }
+    _collectFolder('layouts','layouts');
+    _collectFolder('frames','frameVariations');
+    _collectFolder('layer-packs','layerPack');
+
+    // assets/ — arbitrary images referenced by relative path from
+    // layouts/frames/layer-packs JSON; exposed as a flat
+    // {relativePath: dataURI} map so consuming code can resolve one by
+    // key without needing to know it came from a zip.
+    _relatives('assets/').forEach(function(n){
+      const rel=n.slice((root+'assets/').length);
+      if(rel) pkg.assets[rel]=ZipReader.bytesToDataURL(files[n],_mimeFor(n));
+    });
+
+    return pkg;
+  }
+
+  function importThemeFile(file){
+    return _readFileAsArrayBuffer(file).then(function(buffer){
+      let pkgPromise;
+      if(ZipReader.isZip(buffer)){
+        pkgPromise=ZipReader.read(buffer).then(_buildPackageFromZipFiles);
+      }else{
+        let pkg;
+        try{ pkg=JSON.parse(new TextDecoder('utf-8').decode(buffer)); }
+        catch(e){ throw new Error('this file is not valid JSON.'); }
+        pkgPromise=Promise.resolve(pkg);
       }
-      // result.cancelled or any other non-ok outcome — nothing to do.
+      return pkgPromise.then(function(pkg){
+        const result=ThemeRegistry.importPackage(pkg);
+        if(result.ok){ buildPickerCards(); return; }
+        if(result.problems && result.problems.length){
+          alert('Could not import theme:\n'+result.problems.join('\n'));
+          return;
+        }
+        if(result.duplicate){
+          _showImportConflict(pkg);
+          return;
+        }
+        // result.cancelled or any other non-ok outcome — nothing to do.
+      });
     }).catch(function(err){
       alert('Could not import theme: '+(err&&err.message?err.message:'unknown error'));
     });
