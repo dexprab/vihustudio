@@ -9,15 +9,16 @@
 // if the folder is empty.
 //
 // Hero Composition Engine (Sprint · Atmosphere & World Identity;
-// extended in Sprint · Dreaming Realm Implementation; extended again
-// to vary the Dream Trail): sky, cloud, story-meadow, dreaming-home,
-// and trail vary once per browser session. The first resolveAt()
+// extended in Sprint · Dreaming Realm Implementation; extended to
+// vary the Dream Trail; extended again in Sprint H4-H6 for the
+// Telescope Library): sky, cloud, story-meadow, dreaming-home, trail,
+// and telescope vary once per browser session. The first resolveAt()
 // call for one of those types picks a random offset and sticks it in
 // sessionStorage; every later call (this load or a refresh/
 // navigation within the same tab) reuses it, so the chosen
 // environment holds steady for the session and only changes when a
-// fresh session starts. Story Worlds and the telescope are never in
-// this set — see SESSION_VARIED_TYPES below.
+// fresh session starts. Story Worlds are never in this set — see
+// SESSION_VARIED_TYPES below.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -66,7 +67,7 @@
     'waterfall':     'world-library/nature/waterfalls/',
     'decoration':    'world-library/decorations/',
     'companion':     'world-library/companions/',
-    'telescope':     'world-library/telescope/',
+    'telescope':     'world-library/telescopes/',
     'trail':         'world-library/trails/',
     'seed':          'world-library/seeds/',
     'story-meadow':  'world-library/nature/story-meadows/'
@@ -75,7 +76,7 @@
   // Types the Hero Composition Engine varies once per browser
   // session. Everything else resolves the same deterministic way it
   // always has (first file, or cycling by registration order).
-  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true, 'trail': true };
+  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true, 'trail': true, 'telescope': true };
 
   // Some collections carry a now-superseded file alongside their
   // canonical set — e.g. dreaming-home's original single

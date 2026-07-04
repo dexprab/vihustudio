@@ -200,6 +200,11 @@
   function begin() {
     if (_state !== STATES.SLEEPING && _state !== STATES.RESTING) return;
 
+    // Sprint H4-H6 Part 2/7 — tactile audio on the real activation
+    // only (the guard above already filters out no-op clicks while
+    // awake); the wake sequence below is untouched.
+    if (global.HeroAudio && global.HeroAudio.dreamingHomeClick) global.HeroAudio.dreamingHomeClick();
+
     document.body.classList.add('universe-quieting');
     _setState(STATES.STIRRING);
 

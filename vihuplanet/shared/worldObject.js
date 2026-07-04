@@ -46,7 +46,15 @@
 //       layer: 'sky' | 'ground' | 'foreground',
 //       placement: { top, left, width, height, transform },
 //       motion: { category, name, duration, delay, params },
-//       interactive: false                    // true → clickable
+//       interactive: false,                   // true → clickable
+//       onActivate: function(){}              // optional (Sprint H4-H6) —
+//                                              // called on click/Enter/
+//                                              // Space when interactive is
+//                                              // true. Tactile feedback
+//                                              // only, not a navigation
+//                                              // hook — see the telescope
+//                                              // descriptor in
+//                                              // js/registry.js.
 //     }
 //
 //   WorldObject.list()             // returns registered descriptors
@@ -148,7 +156,19 @@
       if (d.interactive === true) {
         wrap.setAttribute('role', 'button');
         wrap.setAttribute('tabindex', '0');
+        if (d.label) wrap.setAttribute('aria-label', d.label);
         wrap.classList.add('is-interactive');
+        // Sprint H4-H6 — optional tactile-feedback hook. Not a
+        // navigation system: descriptors that declare one (the
+        // telescope) get visual/audio acknowledgment of a click,
+        // nothing more, matching Story Worlds' "no destination
+        // exists yet" treatment.
+        if (typeof d.onActivate === 'function') {
+          wrap.addEventListener('click', d.onActivate);
+          wrap.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); d.onActivate(); }
+          });
+        }
       } else {
         wrap.setAttribute('aria-hidden', 'true');
       }

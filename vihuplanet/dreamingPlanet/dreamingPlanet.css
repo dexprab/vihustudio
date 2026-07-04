@@ -63,11 +63,39 @@
 }
 
 /* Hover lift only when the planet is still sleeping/resting; once
- * it wakes, the interaction moves to the dialogue + choices. */
+ * it wakes, the interaction moves to the dialogue + choices.
+ * Sprint H4-H6 Part 2 — added a gentle upward lift and a richer
+ * shadow alongside the scale that already shipped here; the window
+ * warms via --vp-window-warmth below rather than a second filter on
+ * the same element (see the .dp-window rule — its own vp-window-glow
+ * animation already owns `filter` there, same reasoning as
+ * animations/motion.css's transform-layering notes). Focus-visible
+ * mirrors hover for keyboard parity. */
 .dreaming-planet[data-dp-state="sleeping"]:hover,
-.dreaming-planet[data-dp-state="resting"]:hover {
-  transform: scale(1.02);
-  filter: drop-shadow(0 0 20px rgba(178,148,255,0.55));
+.dreaming-planet[data-dp-state="resting"]:hover,
+.dreaming-planet[data-dp-state="sleeping"]:focus-visible,
+.dreaming-planet[data-dp-state="resting"]:focus-visible {
+  transform: scale(1.02) translateY(-5px);
+  filter: drop-shadow(0 0 26px rgba(178,148,255,0.62));
+}
+.dreaming-planet[data-dp-state="sleeping"]:hover .dp-window,
+.dreaming-planet[data-dp-state="resting"]:hover .dp-window,
+.dreaming-planet[data-dp-state="sleeping"]:focus-visible .dp-window,
+.dreaming-planet[data-dp-state="resting"]:focus-visible .dp-window {
+  --vp-window-warmth: 1.2;
+}
+
+/* Click tactile feedback (Part 2 — "matching Story Worlds"): a tiny
+ * downward settle relative to the hover lift, snappier than the
+ * hover transition. Declared after :hover so equal specificity
+ * resolves in its favour during the brief mousedown instant; the
+ * click handler in dreamingPlanetManager.js (untouched — frozen
+ * infrastructure per HERO_CANON.md §4) continues into the wake
+ * sequence immediately after, exactly as before. */
+.dreaming-planet[data-dp-state="sleeping"]:active,
+.dreaming-planet[data-dp-state="resting"]:active {
+  transform: scale(1.015) translateY(-3px);
+  transition: transform 120ms ease-out, filter 0.9s ease-in-out;
 }
 
 /* ---- Companion state swaps ------------------------------------- */

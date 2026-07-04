@@ -76,11 +76,15 @@
   // min(Npx, Xvw) is a no-op at desktop/laptop widths (the vw side
   // never wins there) and shrinks gracefully below ~900px — no media
   // query needed, no change to today's desktop appearance.
+  // Sprint H4-H6 Part 6 — every width (and the matching vw cap, so
+  // the tablet/mobile ceiling shrinks proportionally too) cut ~17%
+  // so clouds frame the composition rather than dominating it; top/
+  // left placement and the drift motion above are untouched.
   var clouds = [
-    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px',            duration: '52s', delay:   '0s', driftX: '14px' },
-    { id: 'cloud-2', top: '22vh', left: '54vw', width: 'min(190px, 34vw)', duration: '68s', delay: '-19s', driftX: '11px' },
-    { id: 'cloud-3', top: '12vh', left: '82vw', width: 'min(140px, 12vw)', duration: '44s', delay: '-31s', driftX: '18px' },
-    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px',            duration: '61s', delay:  '-8s', driftX: '16px' }
+    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '125px',            duration: '52s', delay:   '0s', driftX: '14px' },
+    { id: 'cloud-2', top: '22vh', left: '54vw', width: 'min(158px, 28vw)', duration: '68s', delay: '-19s', driftX: '11px' },
+    { id: 'cloud-3', top: '12vh', left: '82vw', width: 'min(116px, 10vw)', duration: '44s', delay: '-31s', driftX: '18px' },
+    { id: 'cloud-4', top: '32vh', left: '30vw', width: '133px',            duration: '61s', delay:  '-8s', driftX: '16px' }
   ];
   clouds.forEach(function (c) {
     WorldObject.register({
@@ -178,22 +182,36 @@
     });
   });
 
-  // Telescope — a visible **future landmark**. Non-interactive in
-  // Chapter 1 (`interactive:false`); a later chapter flips it on
-  // and lets the child peer through it at the stars. Positioned on
-  // the right of the hills per the Visual Contract. Shadow-breathe
-  // (Sprint 2 · Living World) gives it presence without swaying —
-  // it should feel real, not float. libraryType wires it to World
-  // Library's `telescope/` folder; falls back to the SVG if empty.
+  // Telescope — a visible landmark. Positioned on the right of the
+  // hills per the Visual Contract. Shadow-breathe (Sprint 2 · Living
+  // World) gives it presence without swaying — it should feel real,
+  // not float. libraryType wires it to World Library's `telescopes/`
+  // Telescope Library (Sprint H4-H6 Part 4 — session-varied, same
+  // manifest/resolve architecture as every other collection); falls
+  // back to the SVG if empty.
+  //
+  // Sprint H4-H6 Part 3 — now `interactive:true` for hover/click
+  // tactile + audio acknowledgment only (see css/scene.css's hover
+  // rules and onActivate below) — peering through it at the stars
+  // remains a genuinely future feature (`HERO_CANON.md` §8), not
+  // implemented by this sprint. onActivate never navigates anywhere.
   WorldObject.register({
     id: 'telescope',
-    label: 'Telescope (coming soon)',
+    label: 'Telescope',
     assetHref: 'assets/objects/telescope.svg',
     libraryType: 'telescope',
     layer: 'ground',
     placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
     motion: { category: 'Living', name: 'shadow-breathe', duration: '7.5s', delay: '0.8s' },
-    interactive: false
+    interactive: true,
+    onActivate: function () {
+      var el = document.querySelector('.world-object[data-object-id="telescope"]');
+      if (el) {
+        el.classList.add('is-pressed');
+        window.setTimeout(function () { el.classList.remove('is-pressed'); }, 150);
+      }
+      if (typeof HeroAudio !== 'undefined' && HeroAudio.telescopeClick) HeroAudio.telescopeClick();
+    }
   });
 
   // Story Meadow — Sprint · Atmosphere & World Identity. A foreground

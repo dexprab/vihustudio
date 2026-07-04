@@ -17,15 +17,52 @@
   pointer-events: none;
 }
 
+/* Sprint H4-H6 — Interactive Story Worlds. Three nested layers so
+ * hover-lift, the ambient float, and the one-shot settle-in/depth-
+ * ramp scale each own `transform` on their own element instead of
+ * fighting for it on one (see planets.js's _mountOne comment for the
+ * full reasoning: an animation or a fill-mode:both one-shot always
+ * wins the cascade over a plain rule on the same element, so hover
+ * would otherwise be silently ignored, or would itself cancel the
+ * ambient float). */
 .storyteller-planet {
   position: absolute;
   z-index: 4;
+  pointer-events: auto;
+  cursor: pointer;
+  animation-delay: var(--vp-settle-delay, 0s);
+}
+.storyteller-planet:focus-visible {
+  outline: 2px solid #F4D79A;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.storyteller-planet-hover {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  pointer-events: none;
-  animation-delay: var(--vp-settle-delay, 0s);
+  transform: translateY(0);
+  transition: transform 220ms ease-out;
+}
+/* Hover — Part 1: lift 4-6px, no scale/rotate/bounce. Active/click —
+ * a further 1-2px downward settle at a snappier 120ms, matching the
+ * "tiny tactile feedback" spec rather than the hover glide. Keyboard
+ * focus mirrors mouse hover so the lift isn't a mouse-only cue. */
+.storyteller-planet:hover .storyteller-planet-hover,
+.storyteller-planet:focus-visible .storyteller-planet-hover {
+  transform: translateY(-5px);
+}
+.storyteller-planet:active .storyteller-planet-hover,
+.storyteller-planet.is-pressed .storyteller-planet-hover {
+  transform: translateY(-3px);
+  transition: transform 120ms ease-out;
+}
+.storyteller-planet-float {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 .storyteller-planet svg,
 .storyteller-planet img {
@@ -35,6 +72,16 @@
   object-fit: contain;
   /* Softer drop-shadow — a page-shadow, not a UI shadow. */
   filter: drop-shadow(0 4px 8px rgba(30,40,66,0.10));
+  transition: filter 220ms ease-out;
+}
+/* Hover — Part 1: +3-5% brightness, a touch more saturation, and a
+ * stronger floating shadow (deeper offset/blur/opacity) — never a
+ * dramatic glow. */
+.storyteller-planet:hover svg,
+.storyteller-planet:hover img,
+.storyteller-planet:focus-visible svg,
+.storyteller-planet:focus-visible img {
+  filter: drop-shadow(0 9px 18px rgba(30,40,66,0.20)) brightness(1.04) saturate(1.1);
 }
 
 /* ---- Atmospheric depth ramp (Art Direction v1.0) --------------- */
@@ -86,4 +133,10 @@
    * that one shadow alone reads fine over half the artwork and
    * disappears over the rest. */
   text-shadow: 0 1px 2px rgba(30,40,66,0.55), 0 1px 6px rgba(30,40,66,0.3);
+  transition: opacity 220ms ease-out;
+}
+/* Hover — Part 1: "brighten world title slightly." */
+.storyteller-planet:hover .story-world-name,
+.storyteller-planet:focus-visible .story-world-name {
+  opacity: 0.95;
 }

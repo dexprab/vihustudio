@@ -219,32 +219,48 @@
 
 /* lens-reflection — companion to lens-glint for when the telescope
  * renders as a single flat World Library photo rather than the
- * inline SVG fallback (today's production path, once world-library/
- * telescope/ has art): a small dot positioned over the lens in
- * scene.css fades in and out instead of the SVG ellipse's own fill
- * brightening. Same cadence, opacity-only, invisible the rest of the
- * time. */
+ * inline SVG fallback (today's production path): a small highlight
+ * positioned over the lens in scene.css instead of the SVG ellipse's
+ * own fill brightening.
+ *
+ * Sprint H4-H6 Part 3 audit — the original version only faded
+ * opacity in place, which did not read as a glint within a 60s
+ * viewing session; reworked into an actual specular sweep (the
+ * highlight translates across the lens while visible, ~2.4% of the
+ * cycle — 480-840ms across the 20-35s range js/scene.js randomizes
+ * --vp-lens-glint-duration to, close to the spec's 500-800ms given
+ * a percentage-based keyframe can't target an exact ms width across
+ * a variable total duration). --vp-lens-glint-scale lets `:hover`
+ * (scene.css) make the reflection visibly stronger without a second
+ * rule fighting this animation for the same property. */
 @keyframes vp-lens-reflection {
-  0%, 73%, 100% { opacity: 0; }
-  74%           { opacity: 0.9; }
-  76%           { opacity: 0; }
+  0%, 73%, 100%  { opacity: 0; transform: translateX(0) scale(var(--vp-lens-glint-scale, 1)); }
+  73.3%          { opacity: 0.92; transform: translateX(-18%) scale(var(--vp-lens-glint-scale, 1)); }
+  75.7%          { opacity: 0.92; transform: translateX(18%) scale(var(--vp-lens-glint-scale, 1)); }
+  76%            { opacity: 0; transform: translateX(18%) scale(var(--vp-lens-glint-scale, 1)); }
 }
 
 /* window-glow — Hero MEP Final Polish. A Dreaming Home window
  * breathing with light behind it, never blinking on/off: a smooth
  * ease-in-out ±5% brightness cycle. Filter only, no transform — the
- * window itself never moves, only the light inside it. */
+ * window itself never moves, only the light inside it.
+ *
+ * --vp-window-warmth (Sprint H4-H6 Part 2) parametrizes the peak so
+ * hovering the Dreaming Home can read as "slightly warmer windows"
+ * without a second `filter` rule fighting this animation for the
+ * property — a plain rule targeting the same element/property as a
+ * running animation is always overridden by the animation, but a
+ * custom property is just data the keyframe reads, so overriding
+ * *that* from a `:hover` rule works correctly mid-animation.
+ *
+ * Sprint H4-H6 Part 12 cleanup: this used to also define a
+ * `.window-glow` utility class, but `.dp-window` has only ever
+ * consumed the keyframe directly via `animation:` (dreamingPlanet.css
+ * — same reasoning as `.dp-companion`'s vp-listening), so the class
+ * had zero consumers. Removed rather than left as dead weight. */
 @keyframes vp-window-glow {
   0%, 100% { filter: brightness(0.95); }
-  50%      { filter: brightness(1.05); }
-}
-.window-glow {
-  animation-name: vp-window-glow;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-fill-mode: both;
-  animation-duration: var(--vp-motion-duration, 15s);
-  animation-delay:    var(--vp-motion-delay,    0s);
+  50%      { filter: brightness(var(--vp-window-warmth, 1.05)); }
 }
 
 /* ============================================================== */
@@ -468,7 +484,7 @@ body.universe-quieting .world-object {
   .sail, .drift-long,
   .sleeping, .breathing, .listening, .orbit, .planet-drift,
   .sway, .shadow-breathe, .shimmer, .wander,
-  .lens-glint, .window-glow {
+  .lens-glint {
     animation: none !important;
   }
   /* These apply their keyframe directly via `animation:` /
@@ -484,4 +500,33 @@ body.universe-quieting .world-object {
     animation: none !important;
   }
   body.universe-quieting .world-object { animation: none !important; }
+
+  /* Sprint H4-H6 Part 9 — reduce hover/click *movement* while
+   * preserving the rest of the feedback (brightness, saturation,
+   * shadow, title opacity, window warmth, lens reflection size are
+   * all separate `filter`/`opacity` rules, untouched by any of
+   * this). Story Worlds and the telescope lose their lift entirely;
+   * the Dreaming Home keeps the small scale it already had before
+   * this sprint added a lift on top, dropping only the new
+   * translateY. */
+  .storyteller-planet:hover .storyteller-planet-hover,
+  .storyteller-planet:focus-visible .storyteller-planet-hover,
+  .storyteller-planet:active .storyteller-planet-hover,
+  .storyteller-planet.is-pressed .storyteller-planet-hover,
+  .world-object[data-object-id="telescope"]:hover,
+  .world-object[data-object-id="telescope"]:focus-visible,
+  .world-object[data-object-id="telescope"]:active,
+  .world-object[data-object-id="telescope"].is-pressed {
+    transform: none !important;
+  }
+  .dreaming-planet[data-dp-state="sleeping"]:hover,
+  .dreaming-planet[data-dp-state="resting"]:hover,
+  .dreaming-planet[data-dp-state="sleeping"]:focus-visible,
+  .dreaming-planet[data-dp-state="resting"]:focus-visible {
+    transform: scale(1.02) !important;
+  }
+  .dreaming-planet[data-dp-state="sleeping"]:active,
+  .dreaming-planet[data-dp-state="resting"]:active {
+    transform: scale(1.015) !important;
+  }
 }

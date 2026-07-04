@@ -2,6 +2,129 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.6 — 2026-07-04
+
+- **Sprint H4-H6 — Hero Final Closure, Interaction Polish & MEP
+  Freeze.** The Hero gains its first real interactivity: Story
+  Worlds, the Dreaming Home, and the telescope all now acknowledge
+  hover and click. No new navigation exists yet (Chapter 3 — Story
+  World entry — still isn't built), so every interaction is tactile +
+  optional audio acknowledgment only, never a fake destination.
+- **Interactive Story Worlds.** Hover lifts 4-6px, brightens ~4%,
+  saturates ~10%, deepens the floating shadow, and brightens the
+  title — 220ms ease-out, no scale/rotate/bounce. Click adds a 1-2px
+  settle (120ms) plus a soft paper-touch sound. Keyboard-focusable
+  (`role="button"`, `tabindex="0"`, Enter/Space parity with click).
+  Required a DOM restructure — `.storyteller-planet` (position/focus/
+  depth-ramp) → `.storyteller-planet-hover` (hover-lift) →
+  `.storyteller-planet-float` (ambient `planet-drift` + content) —
+  because a running CSS animation or a `fill-mode:both` one-shot
+  always wins the cascade over a plain rule on the *same* element;
+  nesting is what lets hover-lift and the ambient float coexist
+  without either resetting the other (Part 8). Side effect: this also
+  quietly fixes `.depth-background`'s `scale(0.92)`, which the
+  ambient float animation had been silently overriding since before
+  this sprint (`aarav`/Starlight Meadow's background depth now
+  actually reads as an atmospheric ramp).
+- **Dreaming Home hover/click.** Kept the existing sleeping/resting
+  hover scale, added a lift (`translateY(-5px)`) alongside it, a
+  richer shadow, and warmer windows via a new `--vp-window-warmth`
+  custom property the `vp-window-glow` keyframe reads (same
+  non-conflicting technique as the float/hover split above — a
+  custom property is just data an animation reads, so a `:hover` rule
+  can change it without fighting the running animation for `filter`
+  itself). Click adds a tiny settle plus a soft wood-tap + chime
+  sound. `dreamingPlanetManager.js`'s state machine is untouched — one
+  `if (HeroAudio...)` line added at the top of `begin()`.
+- **Telescope lens glint — audited and reworked.** The previous
+  sprint's version was a static fade-in/out dot; per this sprint's
+  own audit standard ("if it cannot be clearly observed in 60s, treat
+  it as missing"), that's a fail — it didn't read as a glint. Reworked
+  into an actual specular sweep (the highlight translates across the
+  lens while visible) with a random 20-35s interval picked once per
+  page load (`js/scene.js`'s `armLensGlint()` — a CSS keyframe alone
+  can't be "random," so this is genuine per-load variation rather
+  than one fixed number). Visible window is ~2.4% of the cycle
+  (480-840ms across the range, close to the 500-800ms spec — a
+  percentage-based keyframe can't hit an exact ms width against a
+  variable total duration, a real CSS limitation, not an oversight).
+- **Telescope hover/click.** `interactive: false → true` — the first
+  real change to that flag since Chapter 1. Hover lifts 5px, brightens
+  the brass ~6%, and strengthens the lens reflection (a
+  `--vp-lens-glint-scale` custom property, same technique as the
+  window warmth). Click settles + plays a tiny brass-tick sound.
+  `WorldObject` gained an optional `onActivate` callback (`shared/
+  worldObject.js`) — completes a descriptor field (`interactive`) that
+  already existed but never actually attached a handler; not a new
+  system. **`HERO_CANON.md` §6/§8/§10 updated in the same commit**
+  (its own discipline for Locked sections): the telescope's
+  *artwork* now varies by session and it's `interactive: true` for
+  tactile feedback — the landmark's role, position, and "looking
+  through it is still undefined" both remain exactly as locked.
+- **Telescope Library (new canonical collection).** `telescope`
+  migrated from the singular `world-library/telescope/` to a plural,
+  session-varied `world-library/telescopes/` — identical manifest/
+  session/resolve architecture every other collection already uses
+  (`SESSION_VARIED_TYPES`), zero new loading code. Honest caveat,
+  same one Story Meadow shipped with initially: only the one real
+  telescope image that already existed was migrated (renamed
+  in-place, not fabricated) — `world-library/` is a pipeline-synced
+  mirror artists don't hand-edit (`world-library/README.md`), and this
+  sprint has no art pipeline access to produce the suggested
+  Explorer/Moonwatch/Forest-Watcher set. Session variation has zero
+  visible effect until a second image lands via the normal pipeline —
+  at that point it starts working with no further code change, same
+  as every other session-varied type. Also note: the sprint brief
+  suggested `.webp` filenames, but the existing pipeline (and
+  `WorldLibrary`'s `IMAGE_EXT` matcher) is PNG-only end to end; new
+  telescope art should land as PNG like everything else until the
+  pipeline itself adds another format.
+- **Story Meadow contrast.** A soft top-edge contact shadow
+  (`::before`, tapered — a `box-shadow` can't fade along one axis) plus
+  a touch more contrast/saturation on the art itself, so the meadow
+  reads as a distinct band instead of fading into the ground wash.
+  Same size, same position, still quieter than any Story World.
+- **Cloud refinement.** All four clouds' widths (and the matching vw
+  ceiling on the two with a `min()` responsive cap) cut ~17% — frames
+  the composition rather than dominating it. Drift motion and
+  placement untouched.
+- **Hero Audio (new, Part 7).** `js/heroAudio.js` — every sound is
+  synthesized via the Web Audio API at the moment it's needed (noise
+  bursts + short tone envelopes), not a binary asset: no licensing to
+  track, nothing for the World Library pipeline to carry, and playback
+  only ever happens from inside a real click/keydown handler, which
+  is exactly the gesture browsers already require before allowing
+  audio — no autoplay-unlock hack needed. No hover sounds, no
+  ambience, no music, matching the brief exactly. Three sounds:
+  Story World click (soft paper-touch, ~160ms), telescope click (tiny
+  brass tick), Dreaming Home click (soft wood tap + warm chime).
+- **Accessibility.** `prefers-reduced-motion` now disables every new
+  hover/click lift/settle transform while preserving the rest of the
+  feedback (brightness, saturation, shadow, title opacity, window
+  warmth, lens-reflection size are separate `filter`/`opacity` rules,
+  untouched). All three interactive elements are keyboard-focusable
+  with Enter/Space parity to a real click, including firing audio.
+- **Cleanup.** Removed the `.window-glow` utility class from
+  `animations/motion.css` — `.dp-window` has only ever consumed the
+  `vp-window-glow` keyframe directly via `animation:`, so the class
+  had zero consumers (the keyframe itself stays). Old singular
+  `world-library/telescope/` folder removed (renamed to `telescopes/`,
+  not duplicated). No console.log/debugger leftovers found.
+- **QA.** Playwright/Chromium across 4 breakpoints (1920/1366/834/390
+  px): zero console errors, zero cloud/label overflow, zero
+  still-animating elements under reduced motion. Verified with real
+  computed-style assertions, not just visual review: hover transforms
+  actually change (and the ambient float's `animationPlayState` stays
+  `running` throughout — Part 8's "never reset" requirement), click
+  fires the correct `HeroAudio` method, Enter/Space fires the same
+  path as a mouse click, and the lens-glint's opacity/transform
+  actually sweep across the sampled keyframe window.
+- **Hero MEP Freeze.** Per the sprint's Final Definition of Done, the
+  Hero is closed. Future Hero changes are limited to bug fixes,
+  accessibility improvements, or issues found through real user
+  testing; development focus moves to the experience inside the
+  Story Worlds.
+
 ## v0.4.5 — 2026-07-04
 
 - **Sprint H1-H3 — Hero MEP Final Polish, Optimization & Production

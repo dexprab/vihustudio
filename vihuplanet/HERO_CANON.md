@@ -185,6 +185,9 @@ Hero atmosphere changes between browser sessions. Currently varied:
 - Story Meadow
 - Dreaming Home
 - Dream Trail (Story Path)
+- Telescope appearance (Telescope Library — see §8; the landmark
+  itself is permanent, only which canonical telescope it presents as
+  varies, same distinction as Dreaming Realm/Dreaming Home in §4)
 
 Selections remain fixed for the duration of the browser session — the
 Hero should always feel familiar but never identical.
@@ -192,8 +195,8 @@ Hero should always feel familiar but never identical.
 **Current mechanism** (`shared/worldLibrary.js`): the first
 `resolveAt()` call for a session-varied type picks a random offset and
 persists it to `sessionStorage`; every later call in that tab reuses
-it. A fresh session (new tab/context) picks a new offset. Story
-Worlds, and the Discovery Telescope are permanent (§7) and never vary.
+it. A fresh session (new tab/context) picks a new offset. Story Worlds
+are permanent (§3) and never vary.
 
 ## 7. Story Meadow Canon (Locked)
 
@@ -214,10 +217,26 @@ The Telescope is the child's gateway to Story Worlds beyond the
 visible Hero. It represents **curiosity, not navigation** — it is not
 a menu or a link; it is an invitation to look further.
 
-Current telescope artwork is accepted for the Hero MEP. Future
-improvements to it are artwork-only — no interaction redesign is
-planned. It remains non-interactive (`interactive: false`) until a
-future chapter defines what looking through it does.
+The telescope is a single permanent landmark, exactly as the Dreaming
+Realm is a single permanent entity (§4): a **Telescope Library**
+(Sprint H4-H6, `world-library/telescopes/`) provides multiple
+canonical telescope appearances it may present as, chosen once per
+browser session through the same mechanism as every other
+session-varied type (§6). This is not a contradiction of "one
+telescope" — the landmark's role, position, and behaviour stay
+singular; only which canonical telescope it visually presents as
+varies. Future telescopes are art + a manifest entry, same as any
+other World Library collection (`world-library/README.md`) — no code
+change.
+
+Sprint H4-H6 also gave the telescope hover and click tactile + audio
+acknowledgment (`interactive: true`, was `false`) — a response to
+being noticed, matching Story Worlds' treatment, not a redesign of
+what it does. **"Looking through it" remains undefined and
+unimplemented** — no peering interaction, no menu, no navigation
+exists yet, and clicking it does not go anywhere. Any future chapter
+that defines what looking through the telescope does is still a new
+decision this file doesn't make today.
 
 ## 9. Hero Performance Philosophy (Locked)
 
@@ -266,7 +285,9 @@ element does not reduce wonder, it should not exist.**
 Note on current implementation: not every atmospheric element listed
 above is session-varied yet — `SESSION_VARIED_TYPES` in
 `shared/worldLibrary.js` currently covers sky, cloud, story-meadow,
-dreaming-home, and trail. Flowers and Dream particles (Story Seed) are
+dreaming-home, trail, and telescope (§8's Telescope Library — the
+telescope itself stays a Permanent element above; only its artwork is
+atmospheric). Flowers and Dream particles (Story Seed) are
 World-Library-sourced but still resolve deterministically. Extending
 variation to them is compatible with this canon and does not require
 a new decision — just implementation.

@@ -74,7 +74,8 @@ itself needs to change.
 Some collections are chosen once per browser session rather than
 resolving deterministically — see `SESSION_VARIED_TYPES` in
 `shared/worldLibrary.js` for the current list (`sky`, `cloud`,
-`story-meadow`, `dreaming-home`, `trail` as of this writing) and
+`story-meadow`, `dreaming-home`, `trail`, `telescope` as of this
+writing) and
 `HERO_CANON.md` §6 for the philosophy. Adding more than one image to a
 session-varied collection is all that's needed for variation to kick
 in — no other change.
@@ -93,7 +94,7 @@ Hero simply ignores what doesn't match.
 This list can drift — treat `FOLDERS` in `shared/worldLibrary.js` as
 the authoritative current mapping. As of this writing:
 
-`skies/`, `story-homes/`, `dreaming-home/`, `telescope/`, `trails/`,
+`skies/`, `story-homes/`, `dreaming-home/`, `telescopes/`, `trails/`,
 `seeds/`, `shrubs/`, `nature/trees/`, `nature/flowers/`,
 `nature/clouds/`, `nature/rocks/`, `nature/waterfalls/`,
 `nature/story-meadows/`.
