@@ -17,8 +17,11 @@
     <!-- eyepiece -->
     <rect x="8" y="76" width="14" height="18" rx="3"
           fill="#1E2842" opacity="0.85"/>
-    <!-- lens hood — cerulean glass -->
-    <ellipse cx="124" cy="85" rx="6" ry="16"
+    <!-- lens hood — cerulean glass. Hero MEP Final Polish: a brief
+         lens-glint (animations/motion.css) catches the light every
+         ~27s — the only thing on the telescope that ever moves; the
+         body itself stays grounded and still. -->
+    <ellipse class="lens-glint" cx="124" cy="85" rx="6" ry="16"
              fill="#7EB1CE" stroke="#1E2842" stroke-width="1.8"/>
     <!-- pencil hatch -->
     <path d="M30 82 q30 -4 60 0" stroke="#1E2842" stroke-width="1.2" fill="none" opacity="0.45"/>

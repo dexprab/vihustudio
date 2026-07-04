@@ -91,6 +91,11 @@
       if (d.motion) {
         if (d.motion.duration) wrap.style.setProperty('--vp-motion-duration', d.motion.duration);
         if (d.motion.delay)    wrap.style.setProperty('--vp-motion-delay',    d.motion.delay);
+        if (d.motion.params) {
+          Object.keys(d.motion.params).forEach(function (k) {
+            wrap.style.setProperty(k, d.motion.params[k]);
+          });
+        }
         wrap.classList.add(d.motion.name || 'planet-drift');
       }
       // Stagger the settle-in reveal so the row of planets lands

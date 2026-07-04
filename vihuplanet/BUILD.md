@@ -1,6 +1,6 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.4.3**
+MEP Version: **0.4.5**
 
 See [`HERO_CANON.md`](HERO_CANON.md) for the permanent philosophy and
 locked product decisions behind everything below — this file only
@@ -34,12 +34,25 @@ tracks *status*.
 - ✔ Chapter 1 — Hero World Foundation
 - ✔ Chapter 2 — The Dreaming Planet
 - ✔ Chapter 2.5 — Art Direction v1.0 (permanent visual identity)
+- ✔ Hero visual simplification, atmosphere refinement, depth
+  refinement (Sprint H1-H3 — Hero MEP Final Polish, Optimization &
+  Production Freeze): independent per-object floating/drift on Story
+  Worlds and clouds, presentation-only Story Path + telescope + window
+  polish, a horizon-mist blend across the sky/ground seam, organic
+  (non-gridded) flower clustering, dead-code removal (retired
+  v0.2.0 storyteller-card leftovers, orphaned avatar SVGs, the
+  production build-info overlay), and a QA pass across four
+  breakpoints with zero console errors and full
+  `prefers-reduced-motion` coverage.
 
-## In Progress
+## Feature Freeze
 
-- Hero visual simplification
-- Hero atmosphere refinement
-- Hero depth refinement
+As of Sprint H1-H3, the Hero MEP is **feature-frozen**. The
+architecture, systems, and atmosphere in `HERO_CANON.md` and this file
+are considered complete for the Hero's current scope. Further Hero
+work should be limited to bug fixes or critical usability issues;
+new features resume only when a future chapter (see Future, below)
+explicitly reopens it.
 
 ## Future
 
@@ -50,9 +63,9 @@ tracks *status*.
 - Chapter 3B — Getting to Know You (path: *"Yes, I'd love to!"*)
 
 New systems should be added only when they strengthen the Hero
-philosophy in `HERO_CANON.md` — the Hero has moved from construction
-into refinement; future work should focus on composition, atmosphere,
-depth, performance, and polish rather than new systems.
+philosophy in `HERO_CANON.md`. The items above are the only work that
+reopens Hero development after the freeze; everything else is a new
+VihuPlanet chapter or destination, not a Hero change.
 
 Every chapter after 2.5 must inherit the visual language established in
 Art Direction v1.0. See `artDirection/illustrationRules.js` and
@@ -65,7 +78,7 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 | ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
 | WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. `SESSION_VARIED_TYPES` (sky / cloud / story-meadow / dreaming-home / trail as of this writing) pick a random-but-sessionStorage-sticky offset on first resolve, so the environment varies between browser sessions but holds steady across reloads. `FILE_FILTERS` lets a type exclude specific filenames (e.g. a superseded placeholder) without deleting anything from the World Library. See `world-library/README.md`. |
 | WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object. Descriptors may opt into WorldLibrary via `libraryType`; may omit `assetHref` entirely to render nothing until World Library art exists (Story Meadow). |
-| WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`. Sprint 2 added `sway`, `shadow-breathe`. Sprint 3 added `shimmer`, `wander`; removed `glide` (its only consumers, rocket + paper plane, were removed). |
+| WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`, `select-pulse`, `zoom-out`. Sprint 2 added `sway`, `shadow-breathe`. Sprint 3 added `shimmer`, `wander`; removed `glide` (its only consumers, rocket + paper plane, were removed). Hero MEP Final Polish added `lens-glint`, `lens-reflection`, `window-glow`; removed `awakening`, `select-pulse`, `zoom-out`, and the unused `.fade-out` utility class — all dead code left over from the retired v0.2.0 storyteller-card module (Celebration is empty again, `vp-fade-out` itself is still used directly by `dreamingPlanet.css`). |
 | Planet            | `planets/planets.js` + `planets/planetsData.js`           | Story World registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. Each descriptor carries `worldName` + `storytellerName`, but the Hero only ever displays World Name — `storytellerName` and `teaser` stay on the descriptor, unused by the Hero (`HERO_CANON.md` §3). |
 | DreamingPlanet    | `dreamingPlanet/dreamingPlanet.js` + `.../dreamingPlanetManager.js` + `assets/planets/dreaming.svg` | Singular Dreaming Realm + wake sequence + invitation dialogue + three choice paths. Dialogue is sky-caption (no bubble). Production Dreaming Home artwork is clipped into the SVG's existing landmass silhouette (`.dp-art`), behind the dwelling/companion/mist groups that carry every animation hook — the engine itself is frozen (`HERO_CANON.md` §4). |
 | Font stack        | `assets/fonts/`                                           | Caveat + Kalam. Nunito Rounded is retired from Chapter 1/2 surfaces — the world speaks in one hand. |

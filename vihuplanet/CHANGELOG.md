@@ -2,6 +2,111 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.5 — 2026-07-04
+
+- **Sprint H1-H3 — Hero MEP Final Polish, Optimization & Production
+  Freeze.** Polish only, per the sprint brief — no new systems, no
+  scope expansion, no philosophy changes. The Hero enters feature
+  freeze at the end of this sprint (`BUILD.md`); every change below
+  was verified in a real browser (Playwright/Chromium) across
+  desktop/laptop/tablet/mobile viewports, not just reviewed as code.
+- **Atmospheric polish.**
+  - *Story World floating* — `planet-drift` narrowed from a
+    translate+rotate loop to a pure vertical `translateY` (GPU
+    transform only). Each of the four Story Worlds now floats on its
+    own duration (19-29s, within the sprint's 18-30s spec) and
+    amplitude (3-6px), with non-overlapping phase delays — no two
+    planets move in step.
+  - *Cloud drift* — narrowed to horizontal-only movement (was
+    translate+vertical arc), 10-20px amplitude via a new
+    `--vp-drift-x` custom property, duration slowed from 24-28s to
+    44-68s per cloud. `cloud-2`/`cloud-3`'s width now uses
+    `min(Npx, Xvw)` — QA found their old fixed-px width overflowing
+    the viewport on tablet/mobile; this is a no-op at desktop/laptop
+    sizes and shrinks gracefully below ~900px.
+  - *Story Path* — `shimmer`'s keyframe stops moved off the
+    mechanical 0/50/100 split and gained a whisper of `brightness()`
+    alongside opacity, so the trail reads as magical ink catching
+    irregular light rather than a breathing wave. No new DOM, no
+    scaling, session-based selection untouched.
+  - *Telescope* — a new `lens-glint`/`lens-reflection` motion pair: a
+    sub-1-second glint every ~27s, opacity/filter only. Added as a
+    class on the SVG fallback's lens ellipse *and* as a positioned
+    `::after` overlay on the wrapper (measured directly against
+    `world-library/telescope/telescope.png`'s content box, ~11%/20%
+    from the top-left) — the World Library photo replaces the SVG
+    entirely once art exists, so the SVG-only approach alone would
+    never have rendered in production. The telescope body carries no
+    animation of its own, as specified.
+  - *Dreaming Home* — `.dp-window` gets a new `window-glow` motion,
+    ±5% brightness over a 14s ease-in-out cycle, never blinking. No
+    chimney-smoke asset exists on the current dwelling art, so that
+    part of the brief was a no-op by inspection, not skipped.
+- **Visual composition.**
+  - Flowers regrouped from a mechanical every-10vw row into three
+    loose, irregular clusters — same six flowers, same footprint,
+    only the spacing changed (a real violation of "avoid evenly
+    spaced decoration" found by inspection, not a hypothetical one).
+  - New `.horizon-mist` layer — a soft cream wash straddling the
+    `.sky`/`.ground` overlap band, independent of whichever session
+    art loaded. QA screenshots found a visibly hard seam there,
+    worst with darker/overcast World Library sky art; this softens it
+    generically rather than special-casing any one sky asset.
+  - Two Story Worlds (`meera`, `emma`) previously shared the exact
+    same `top: 44vh`, reading as gridded rather than floating — nudged
+    to 42vh/46vh. Floating-island glow/shadow/depth were already
+    unified through one shared `.storyteller-planet` rule set
+    (reviewed, no change needed).
+- **Responsive + accessibility fixes found during QA** (not
+  hypothesized — verified with Playwright across four breakpoints):
+  - A favicon-less `<head>` was producing a 404 console error on
+    every load; added an inline SVG data-URI icon (the brand's own
+    ✿ glyph).
+  - `prefers-reduced-motion` was missing three real animations:
+    the Dreaming Home companion's `vp-listening` head-tilt and the new
+    `.dp-window` glow (both applied via direct `animation:` rather
+    than a utility class the media query already covered), and the
+    Chapter-3 exit's `vp-fade-out` (applied via
+    `body.dreaming-fade-out .world`). All three are now covered;
+    verified zero animations remain active under
+    `prefers-reduced-motion: reduce`.
+- **Cleanup (verified dead, not assumed).**
+  - Removed `.awakening`/`vp-awakening`, `.select-pulse`/
+    `vp-select-pulse`, `.zoom-out`/`vp-zoom-out`, and the unused
+    `.fade-out` utility class (the `vp-fade-out` keyframe stays — it's
+    still used directly by `dreamingPlanet.css`). All were dead code
+    with zero remaining callers, tied to the retired v0.2.0
+    storyteller-card module; `.awakening`'s own comment described a
+    class-based companion state machine `dreamingPlanetManager.js`
+    never actually implemented (it uses `data-dp-state`).
+  - Simplified `body.universe-quieting .world-object`'s `:not()`
+    chain — `.world-object-dreaming-planet`, `.world-object-companion`,
+    and `[data-object-id^="storyteller-planet"]` never matched
+    anything (the Dreaming Planet and its companion are `.dreaming-
+    planet`/`.dp-companion` elements, never `.world-object`; Story
+    World wrappers carry `data-planet-id`, not `data-object-id`) — the
+    selector's own scope already excluded them.
+  - Removed `assets/avatars/` (`myra.svg`, `vihaan.svg`, `vilo.svg`)
+    — confirmed zero references anywhere in code; documented as
+    orphaned since v0.4.3 and never actually deleted until now.
+  - Flipped `js/buildInfo.js`'s `DEV_BUILD_INFO` to `false` per its
+    own comment ("flip to false … before a production-facing
+    release") — this sprint's freeze is exactly that milestone.
+  - `README.md`'s WorldMotion vocabulary list and `BUILD.md`'s
+    WorldMotion table row updated to match every addition/removal
+    above.
+- **QA.** Playwright/Chromium at 1920×1080, 1366×768, 834×1112, and
+  390×844: zero console errors, zero page errors, zero cloud/label
+  overflow, zero still-animating elements under reduced motion. The
+  full wake → dialogue → choice → fade-out Dreaming Planet flow was
+  exercised end-to-end post-cleanup with zero errors. Story Path and
+  Dreaming Home session rotation unaffected (no changes to
+  `shared/worldLibrary.js`).
+- **Hero MEP Final Polish complete — the Hero is feature-frozen**
+  (see `BUILD.md`). Further Hero work is limited to bug fixes or
+  critical usability issues until a future chapter explicitly reopens
+  it.
+
 ## v0.4.4 — 2026-07-04
 
 - **Dream Trail joins the session-varied set.** `trail` added to

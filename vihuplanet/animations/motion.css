@@ -56,10 +56,17 @@
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
+/* Hero MEP Final Polish — narrowed to a horizontal-only sway
+ * (was a wide ±4vw arc with a vertical component). A cloud should
+ * drift the way one does on a still afternoon: barely, and only
+ * sideways. --vp-drift-x is a px amplitude (10-20px per the sprint
+ * spec) set per-cloud in js/registry.js so no two clouds share a
+ * path; animation-direction:alternate turns that single amplitude
+ * into a back-and-forth without doubling the keyframe. Transform
+ * only — GPU-composited, no layout cost. */
 @keyframes vp-drift {
-  0%   { transform: translate(-4vw, 0); }
-  50%  { transform: translate(0, var(--vp-drift-y, -1vh)); }
-  100% { transform: translate(4vw, 0); }
+  0%   { transform: translateX(calc(var(--vp-drift-x, 15px) * -1)); }
+  100% { transform: translateX(var(--vp-drift-x, 15px)); }
 }
 .drift {
   animation-name: vp-drift;
@@ -67,7 +74,7 @@
   animation-iteration-count: infinite;
   animation-direction: alternate;
   animation-fill-mode: both;
-  animation-duration: var(--vp-motion-duration, 22s);
+  animation-duration: var(--vp-motion-duration, 55s);
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
@@ -137,10 +144,19 @@
  * reads as faintly alive/magical without ever moving — an ambient
  * backdrop element, not a travelling object. Range lowered in
  * Sprint · Atmosphere & World Identity (was 0.7–0.92) so the trail
- * reads as a faint trace, never competing with the Story Worlds. */
+ * reads as a faint trace, never competing with the Story Worlds.
+ *
+ * Hero MEP Final Polish: stops moved off the mechanical 0/50/100
+ * split and a whisper of brightness added alongside opacity, so the
+ * trail reads as magical ink catching irregular light — a star
+ * twinkle, not a breathing wave. Still opacity/filter only, no
+ * transform, no scale. */
 @keyframes vp-shimmer {
-  0%, 100% { opacity: 0.3; }
-  50%      { opacity: 0.5; }
+  0%, 100% { opacity: 0.3;  filter: brightness(1);    }
+  22%      { opacity: 0.42; filter: brightness(1.05); }
+  47%      { opacity: 0.35; filter: brightness(1.01); }
+  68%      { opacity: 0.5;  filter: brightness(1.08); }
+  85%      { opacity: 0.33; filter: brightness(1.02); }
 }
 .shimmer {
   animation-name: vp-shimmer;
@@ -176,6 +192,58 @@
   animation-iteration-count: infinite;
   animation-fill-mode: both;
   animation-duration: var(--vp-motion-duration, 145s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* lens-glint — Hero MEP Final Polish. The telescope body stays
+ * completely still (per HERO_CANON.md §8, it's non-interactive and
+ * must read as grounded, not floating); only its lens catches a
+ * brief, sub-1-second glint before going quiet again for the rest of
+ * a long, irregular cycle. 27s (not a round number) with the glint
+ * tucked at 74-76% keeps any one loop from feeling like a metronome.
+ * Opacity + filter only — no transform, so the lens itself never
+ * moves. */
+@keyframes vp-lens-glint {
+  0%, 73%, 100% { opacity: 0.85; filter: brightness(1)   drop-shadow(0 0 0 rgba(255,255,255,0)); }
+  74%           { opacity: 1;    filter: brightness(1.7) drop-shadow(0 0 6px rgba(255,255,255,0.9)); }
+  76%           { opacity: 0.9;  filter: brightness(1.15) drop-shadow(0 0 2px rgba(255,255,255,0.3)); }
+}
+.lens-glint {
+  animation-name: vp-lens-glint;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 27s);
+  animation-delay:    var(--vp-motion-delay,    0s);
+}
+
+/* lens-reflection — companion to lens-glint for when the telescope
+ * renders as a single flat World Library photo rather than the
+ * inline SVG fallback (today's production path, once world-library/
+ * telescope/ has art): a small dot positioned over the lens in
+ * scene.css fades in and out instead of the SVG ellipse's own fill
+ * brightening. Same cadence, opacity-only, invisible the rest of the
+ * time. */
+@keyframes vp-lens-reflection {
+  0%, 73%, 100% { opacity: 0; }
+  74%           { opacity: 0.9; }
+  76%           { opacity: 0; }
+}
+
+/* window-glow — Hero MEP Final Polish. A Dreaming Home window
+ * breathing with light behind it, never blinking on/off: a smooth
+ * ease-in-out ±5% brightness cycle. Filter only, no transform — the
+ * window itself never moves, only the light inside it. */
+@keyframes vp-window-glow {
+  0%, 100% { filter: brightness(0.95); }
+  50%      { filter: brightness(1.05); }
+}
+.window-glow {
+  animation-name: vp-window-glow;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-duration: var(--vp-motion-duration, 15s);
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
@@ -327,15 +395,16 @@
   animation-delay:    var(--vp-motion-delay,    0s);
 }
 
-/* planet-drift — very slow horizontal + vertical loop for
- * storyteller planets so each has its own floating path without
- * a rewrite of `.drift`. */
+/* planet-drift — Hero MEP Final Polish: narrowed to a pure vertical
+ * float (was translate+rotate across both axes). Every Story World
+ * gently floats, independent of the others — no two planets share a
+ * duration, phase, or amplitude (see planetsData.js), so the row
+ * never reads as one mechanism. --vp-float-amplitude is a px value
+ * (3-6px per the sprint spec); translateY only — GPU-composited,
+ * nothing else animates. */
 @keyframes vp-planet-drift {
-  0%   { transform: translate(0, 0)         rotate(0deg); }
-  25%  { transform: translate(1.4vw, -1vh)  rotate(0.6deg); }
-  50%  { transform: translate(0, -1.6vh)    rotate(0deg); }
-  75%  { transform: translate(-1.4vw, -1vh) rotate(-0.6deg); }
-  100% { transform: translate(0, 0)         rotate(0deg); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(var(--vp-float-amplitude, -4px)); }
 }
 .planet-drift {
   animation-name: vp-planet-drift;
@@ -347,87 +416,47 @@
 }
 
 /* ============================================================== */
-/* CATEGORY 2 · GREETING — Awakening sequence (Chapter 2)          */
+/* CATEGORY 2 · GREETING — universe quieting (Chapter 2)           */
 /* ============================================================== */
 
-/* awakening — a one-shot small stretch + rise that plays when
- * the companion first wakes. State machine in
- * dreamingPlanetManager.js flips classes:
- *   .state-sleeping → .state-stirring → .state-waking →
- *   .state-looking → .state-smiling.
- * Each state carries its own CSS look inside
- * dreamingPlanet/dreamingPlanet.css; the shared vocabulary here
- * only defines the tiny stretch keyframe the wake moment plays. */
-@keyframes vp-awakening {
-  0%   { transform: scale(0.98) translateY(2px); }
-  60%  { transform: scale(1.04) translateY(-3px); }
-  100% { transform: scale(1)    translateY(0); }
-}
-.awakening {
-  animation-name: vp-awakening;
-  animation-timing-function: ease-out;
-  animation-fill-mode: forwards;
-  animation-duration: var(--vp-motion-duration, 1.4s);
-}
-
-/* quieten-universe — when the explorer clicks the Dreaming Planet
+/* Hero MEP Final Polish — removed `.awakening`/`vp-awakening`: dead
+ * code. The comment here described a class-based companion state
+ * machine (`.state-sleeping` → `.state-waking` → …) that
+ * dreamingPlanetManager.js never actually implemented — it drives
+ * state entirely through the `data-dp-state` attribute, and the wake
+ * moment's look comes from dreamingPlanet.css's own `transition:`
+ * rules, not this keyframe. Nothing ever applied `class="awakening"`.
+ *
+ * quieten-universe — when the explorer clicks the Dreaming Planet
  * the wider universe motion damps down so the child's attention
  * follows the wake. Every Living/Journey object gets an
  * animation-play-state pause under this body-level marker; the
- * fade is applied through opacity here. */
-body.universe-quieting .world-object:not(.world-object-dreaming-planet):not(.world-object-companion):not([data-object-id^="storyteller-planet"]) {
+ * fade is applied through opacity here. (The dreaming planet and its
+ * companion are separate elements entirely — `.dreaming-planet` /
+ * `.dp-companion`, never `.world-object` — so this selector's scope
+ * alone already keeps them out; no `:not()` exclusions needed.) */
+body.universe-quieting .world-object {
   animation-play-state: paused;
   opacity: 0.55;
   transition: opacity 1.2s ease-in-out;
 }
 
-/* ============================================================== */
-/* CATEGORY 4 · CELEBRATION — first entries land in Chapter 2      */
-/* ============================================================== */
-
-/* select-pulse — soft heartbeat scale + glow on the selected
- * storyteller card. Sits inside Celebration because it fires ONLY
- * as a response to a joyful moment (a child picking their
- * storyteller). Runs for as long as the selection persists. */
-@keyframes vp-select-pulse {
-  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 4px var(--st-color), 0 0 0 14px color-mix(in srgb, var(--st-color) 22%, transparent), 0 10px 24px rgba(29,52,87,0.16); }
-  50%      { transform: scale(1.03); box-shadow: 0 0 0 4px var(--st-color), 0 0 0 22px color-mix(in srgb, var(--st-color) 30%, transparent), 0 12px 30px rgba(29,52,87,0.22); }
-}
-.select-pulse {
-  animation: vp-select-pulse 1.6s ease-in-out infinite both;
-}
-
-/* ============================================================== */
-/* CATEGORY 3.b · JOURNEY — additions for Chapter 2               */
-/* ============================================================== */
-
-/* zoom-out — the whole world zooms in slightly and fades, the way
- * a story-book page turns to reveal what's next. Used by the
- * transition from storyteller selection into the placeholder that
- * stands in for Chapter 3 until Bookshelf lands. */
-@keyframes vp-zoom-out {
-  from { transform: scale(1);    opacity: 1; filter: blur(0); }
-  to   { transform: scale(1.12); opacity: 0; filter: blur(2px); }
-}
-.zoom-out {
-  animation-name: vp-zoom-out;
-  animation-duration: var(--vp-motion-duration, 1.6s);
-  animation-delay:    var(--vp-motion-delay,    0s);
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: forwards;
-}
+/* Hero MEP Final Polish — removed the CELEBRATION category's
+ * `.select-pulse`/`vp-select-pulse` (a "selected storyteller card"
+ * heartbeat) and the JOURNEY category's `.zoom-out`/`vp-zoom-out`
+ * (a storyteller-selection → Chapter-3-placeholder transition) and
+ * the unused `.fade-out` utility class below. All three were tied to
+ * the retired v0.2.0 storyteller-card selection UI (see README.md's
+ * asset notes) and had zero remaining callers — Celebration is empty
+ * again, reserved for future joyful moments, same as at M0.1. */
 
 /* fade-out — quiet exit for the Chapter 3 placeholder so the child
- * lands back on a live world if they linger. */
+ * lands back on a live world if they linger. Applied directly via
+ * `body.dreaming-fade-out .world` (dreamingPlanet.css) rather than
+ * through a utility class. */
 @keyframes vp-fade-out {
   from { opacity: 1; transform: scale(1); }
   to   { opacity: 0; transform: scale(0.98); }
-}
-.fade-out {
-  animation-name: vp-fade-out;
-  animation-duration: var(--vp-motion-duration, 0.8s);
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: forwards;
 }
 
 /* ============================================================== */
@@ -437,9 +466,21 @@ body.universe-quieting .world-object:not(.world-object-dreaming-planet):not(.wor
   .twinkle, .drift, .float, .breathe,
   .drawn-in, .warm-in, .settle,
   .sail, .drift-long,
-  .select-pulse, .zoom-out, .fade-out,
-  .sleeping, .breathing, .listening, .orbit, .planet-drift, .awakening,
-  .sway, .shadow-breathe, .shimmer, .wander {
+  .sleeping, .breathing, .listening, .orbit, .planet-drift,
+  .sway, .shadow-breathe, .shimmer, .wander,
+  .lens-glint, .window-glow {
+    animation: none !important;
+  }
+  /* These apply their keyframe directly via `animation:` /
+   * `animation-name:` (dreamingPlanet.css, scene.css) rather than
+   * through a utility class above — listed here explicitly so
+   * reduced-motion actually reaches them too. */
+  [data-dp-state="looking"] .dp-companion,
+  [data-dp-state="smiling"] .dp-companion,
+  [data-dp-state="speaking"] .dp-companion,
+  .dp-window,
+  .world-object[data-object-id="telescope"]::after,
+  body.dreaming-fade-out .world {
     animation: none !important;
   }
   body.universe-quieting .world-object { animation: none !important; }

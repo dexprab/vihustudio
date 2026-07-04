@@ -65,14 +65,22 @@
   });
 
   // Clouds — four cottony puffs across the sky at different heights.
-  // driftY varies the vertical arc per cloud (Sprint 2 · Living
-  // World) so the drift reads as organic rather than four clouds on
-  // one rail.
+  // Hero MEP Final Polish: drift narrowed to a horizontal-only sway
+  // (driftX, a px amplitude within the sprint's 10-20px range) with
+  // much slower, per-cloud-distinct durations (40-70s) so no two
+  // clouds ever move in step — "almost imperceptible", not four
+  // clouds on one rail.
+  // width uses CSS min() for cloud-2/cloud-3 only — QA (Playwright,
+  // 390/834px viewports) found their fixed px width plus vw-based
+  // left position pushed them past the right edge on tablet/mobile.
+  // min(Npx, Xvw) is a no-op at desktop/laptop widths (the vw side
+  // never wins there) and shrinks gracefully below ~900px — no media
+  // query needed, no change to today's desktop appearance.
   var clouds = [
-    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px', duration: '24s', delay:   '0s', driftY: '-0.6vh' },
-    { id: 'cloud-2', top: '22vh', left: '54vw', width: '190px', duration: '28s', delay:  '-6s', driftY: '-1.2vh' },
-    { id: 'cloud-3', top: '12vh', left: '82vw', width: '140px', duration: '26s', delay: '-12s', driftY: '-0.8vh' },
-    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px', duration: '25s', delay:  '-8s', driftY: '-1vh'   }
+    { id: 'cloud-1', top:  '9vh', left: '15vw', width: '150px',            duration: '52s', delay:   '0s', driftX: '14px' },
+    { id: 'cloud-2', top: '22vh', left: '54vw', width: 'min(190px, 34vw)', duration: '68s', delay: '-19s', driftX: '11px' },
+    { id: 'cloud-3', top: '12vh', left: '82vw', width: 'min(140px, 12vw)', duration: '44s', delay: '-31s', driftX: '18px' },
+    { id: 'cloud-4', top: '32vh', left: '30vw', width: '160px',            duration: '61s', delay:  '-8s', driftX: '16px' }
   ];
   clouds.forEach(function (c) {
     WorldObject.register({
@@ -84,7 +92,7 @@
       placement: { top: c.top, left: c.left, width: c.width },
       motion: {
         category: 'Living', name: 'drift', duration: c.duration, delay: c.delay,
-        params: { '--vp-drift-y': c.driftY }
+        params: { '--vp-drift-x': c.driftX }
       }
     });
   });
@@ -146,13 +154,17 @@
 
   // Flowers — a scatter of daisies along the hills. Living sway so
   // they gently bend as if in a breeze (Sprint 2 · Living World).
+  // Hero MEP Final Polish: regrouped from a mechanical every-10vw row
+  // into three loose, irregular clusters (a patch a meadow actually
+  // grows in) — same six flowers, same rough left-of-hills footprint,
+  // only the spacing changed.
   var flowers = [
-    { id: 'flower-1', bottom:  '4vh', left:  '8vw', width: '46px', duration: '5.6s', delay: '0.4s' },
-    { id: 'flower-2', bottom:  '6vh', left: '18vw', width: '38px', duration: '5.0s', delay: '1.2s' },
-    { id: 'flower-3', bottom:  '3vh', left: '28vw', width: '42px', duration: '5.8s', delay: '0.8s' },
-    { id: 'flower-4', bottom:  '5vh', left: '38vw', width: '40px', duration: '5.4s', delay: '2.0s' },
-    { id: 'flower-5', bottom:  '3vh', left: '48vw', width: '36px', duration: '5.2s', delay: '2.6s' },
-    { id: 'flower-6', bottom:  '4vh', left: '58vw', width: '42px', duration: '5.9s', delay: '1.7s' }
+    { id: 'flower-1', bottom:  '4vh',   left:  '6vw', width: '46px', duration: '5.6s', delay: '0.4s' },
+    { id: 'flower-2', bottom:  '6.5vh', left: '12vw', width: '38px', duration: '5.0s', delay: '1.2s' },
+    { id: 'flower-3', bottom:  '3vh',   left: '24vw', width: '42px', duration: '5.8s', delay: '0.8s' },
+    { id: 'flower-4', bottom:  '5.5vh', left: '30vw', width: '40px', duration: '5.4s', delay: '2.0s' },
+    { id: 'flower-5', bottom:  '3.5vh', left: '44vw', width: '36px', duration: '5.2s', delay: '2.6s' },
+    { id: 'flower-6', bottom:  '5vh',   left: '49vw', width: '42px', duration: '5.9s', delay: '1.7s' }
   ];
   flowers.forEach(function (f) {
     WorldObject.register({

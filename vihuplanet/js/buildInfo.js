@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var DEV_BUILD_INFO = true;
+  var DEV_BUILD_INFO = false;
   if (!DEV_BUILD_INFO) return;
 
   function render(info) {

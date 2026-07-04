@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VihuPlanet</title>
 
+<!-- Hero MEP Final Polish — QA found the browser's automatic
+     favicon.ico request 404ing (no icon was ever declared), which
+     surfaces as a console error on every load. Inline SVG data URI:
+     the brand's own ✿ glyph, candle-warm — no new asset file. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+
 <!-- Handwritten + rounded typography — bundled locally. -->
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 
@@ -45,6 +51,14 @@
   <section class="ground" aria-hidden="true">
     <div class="watercolor-ground"></div>
   </section>
+
+  <!-- Hero MEP Final Polish — QA (Playwright screenshots across
+       breakpoints) found a visible hard seam where .sky's box ends
+       and .ground's begins, most noticeable with darker/overcast
+       World Library sky art. A soft cream wash straddling that line,
+       independent of whichever sky/ground art loaded this session,
+       turns it into a mist-like blend instead of a color cut. -->
+  <div class="horizon-mist" aria-hidden="true"></div>
 
   <!-- Foreground — Chapter 2 planets + Dreaming Planet live here. -->
   <section class="foreground">

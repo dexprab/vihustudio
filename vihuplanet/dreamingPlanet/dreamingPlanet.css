@@ -120,6 +120,12 @@
 [data-dp-state="smiling"] .dp-companion,
 [data-dp-state="speaking"] .dp-companion { animation: vp-listening 4.6s ease-in-out infinite both; }
 
+/* Hero MEP Final Polish — the dwelling's one lit window breathes
+ * gently (±5% brightness, vp-window-glow in animations/motion.css)
+ * regardless of companion state, so the home reads as lived-in even
+ * while the companion sleeps. Filter only — the window never moves. */
+.dp-window { animation: vp-window-glow 14s ease-in-out infinite both; }
+
 /* ---- Orbiting stars ------------------------------------------- */
 .dreaming-planet-orbit {
   position: absolute;

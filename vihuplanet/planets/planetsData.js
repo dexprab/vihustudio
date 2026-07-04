@@ -39,7 +39,8 @@
     libraryType: 'story-home',
     placement:{ top: '18vh', left: '5vw', width: '150px' },
     depth:    'midground',
-    motion:   { category: 'Living', name: 'planet-drift', duration: '28s', delay: '-4s' }
+    motion:   { category: 'Living', name: 'planet-drift', duration: '22s', delay: '-3s',
+                params: { '--vp-float-amplitude': '-4px' } }
   });
 
   Planet.register({
@@ -51,7 +52,8 @@
     libraryType: 'story-home',
     placement:{ top: '4vh',  left: '38vw', width: '115px' },
     depth:    'background',
-    motion:   { category: 'Living', name: 'planet-drift', duration: '32s', delay: '-11s' }
+    motion:   { category: 'Living', name: 'planet-drift', duration: '26s', delay: '-9s',
+                params: { '--vp-float-amplitude': '-3px' } }
   });
 
   Planet.register({
@@ -61,9 +63,10 @@
     teaser:   'The fox who painted the sky.',
     asset:    'assets/planets/meera.svg',
     libraryType: 'story-home',
-    placement:{ top: '44vh', left: '14vw', width: '135px' },
+    placement:{ top: '42vh', left: '14vw', width: '135px' },
     depth:    'midground',
-    motion:   { category: 'Living', name: 'planet-drift', duration: '30s', delay: '-16s' }
+    motion:   { category: 'Living', name: 'planet-drift', duration: '19s', delay: '-14s',
+                params: { '--vp-float-amplitude': '-5px' } }
   });
 
   Planet.register({
@@ -73,8 +76,9 @@
     teaser:   'The penguin who found her song.',
     asset:    'assets/planets/emma.svg',
     libraryType: 'story-home',
-    placement:{ top: '44vh', left: '54vw', width: '120px' },
+    placement:{ top: '46vh', left: '54vw', width: '120px' },
     depth:    'midground',
-    motion:   { category: 'Living', name: 'planet-drift', duration: '34s', delay: '-8s' }
+    motion:   { category: 'Living', name: 'planet-drift', duration: '29s', delay: '-6s',
+                params: { '--vp-float-amplitude': '-6px' } }
   });
 })();

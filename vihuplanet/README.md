@@ -61,9 +61,7 @@ vihuplanet/
 ├── assets/
 │   ├── fonts/               bundled locally — no CDN dependency
 │   ├── objects/             one SVG per Chapter 1 World Object (fallback art)
-│   ├── planets/             one SVG per Story World + the Dreaming Realm (fallback art)
-│   └── avatars/             orphaned from the retired v0.2.0 storyteller-card
-│                            module — unused by anything today
+│   └── planets/             one SVG per Story World + the Dreaming Realm (fallback art)
 ├── world-library/           MEP-01 — filename-agnostic artwork tree, synced
 │                            from vihuplanet-world-library. See
 │                            world-library/README.md for the artist workflow.
@@ -130,13 +128,15 @@ vocabulary in four categories:
 
 - **Living** — always on. `twinkle`, `drift`, `float`, `breathe`,
   `sway`, `shadow-breathe`, `shimmer`, `wander`, `sleeping`,
-  `breathing`, `listening`, `orbit`, `planet-drift`.
-- **Greeting** — arrival + reveal. `drawn-in`, `warm-in`, `settle`,
-  `awakening`.
+  `breathing`, `listening`, `orbit`, `planet-drift`, `lens-glint`,
+  `lens-reflection`, `window-glow`.
+- **Greeting** — arrival + reveal. `drawn-in`, `warm-in`, `settle`.
 - **Journey** — long traversals + transitions. `sail`, `drift-long`,
-  `zoom-out`, `fade-out`.
-- **Celebration** — `select-pulse` so far; reserved for future joyful
-  moments.
+  `fade-out`.
+- **Celebration** — empty, reserved for future joyful moments (the
+  `select-pulse` "selected storyteller card" heartbeat that shipped in
+  Chapter 2 was retired with the v0.2.0 storyteller-card module it
+  served — removed as dead code in Hero MEP Final Polish).
 
 Per `HERO_CANON.md` §9, no Greeting/Journey/Celebration motion plays
 until the Explorer acts — the idle Hero uses only Living motion.
