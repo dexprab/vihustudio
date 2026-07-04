@@ -2,6 +2,52 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.7 — 2026-07-04
+
+- **Fix — Telescope Library was completely non-functional in
+  production.** A Hero Variant Audit (20 fresh Playwright sessions,
+  reading the actually-rendered asset URL for every session-varied
+  collection) found `WorldLibrary.resolveAt('telescope', ...)`
+  404ing on every call since shortly after Sprint H4-H6 shipped. Root
+  cause: `FOLDERS['telescope']` pointed at `world-library/telescopes/`
+  (plural), a rename made *inside this repo only*; the automated
+  World Library sync mirrors the source repo's own folder structure
+  destructively on every run (confirmed separately — the same
+  mechanism has deleted `world-library/README.md` four times in this
+  repo's history, each time silently, each time re-added by a later
+  Hero doc commit), so the very next sync recreated `world-library/
+  telescope/` (singular) and the renamed folder was simply gone. The
+  telescope had been silently rendering its SVG fallback the entire
+  time — 11 real production images (`telescope-dreamer-01`,
+  `telescope-observer-01/02`, `telescope-seeker-01`,
+  `telescope-world-finder-01/02`, `telescope.png`, plus four more
+  carrying `story-meadow-*` filenames from the source side but
+  confirmed to be telescope art, not excluded) sat in the World
+  Library completely unused and unseen.
+- **Fix.** `FOLDERS['telescope']` repointed at the singular
+  `world-library/telescope/` — matching the pipeline's actual output,
+  not a name chosen for readability in this repo. No `FILE_FILTERS`
+  entry added: all 11 files in the manifest are real telescope
+  images regardless of filename, so none are excluded from rotation
+  (unlike Dreaming Home's legacy-file exclusion, which is a genuinely
+  superseded placeholder, not a naming quirk). `HERO_CANON.md` §8,
+  `BUILD.md`, `js/registry.js`, and `css/scene.css` comments updated
+  to match and to record *why* the folder name must track the
+  pipeline rather than read well.
+- **Known follow-on, not fixed here.** The lens-glint overlay's
+  position (`css/scene.css`) was measured against `telescope.png`
+  specifically; the other 10 images likely have the lens somewhere
+  else in frame, so the glint may not land on glass for every
+  variant. Flagged in a code comment for whoever picks it up.
+- **Separately observed, not fixed here:** `world-library/README.md`
+  has been deleted by the automated sync four separate times across
+  this repo's history (`git log --diff-filter=D`) and re-added each
+  time by a Hero documentation commit — the same destructive-mirror
+  behavior that broke the telescope folder rename. It's missing from
+  the tree again as of this audit. Worth a permanent fix on the
+  pipeline side (documentation living outside whatever `production/`
+  mirrors) rather than another repeat of this cycle.
+
 ## v0.4.6 — 2026-07-04
 
 - **Sprint H4-H6 — Hero Final Closure, Interaction Polish & MEP

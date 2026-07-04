@@ -243,7 +243,7 @@
 }
 
 /* Telescope lens glint — measured directly against
- * world-library/telescopes/telescope.png's content box (the lens
+ * world-library/telescope/telescope.png's content box (the lens
  * glass centers at ~11%/20% of the rendered image). Positioned
  * against the wrapper rather than the image so it holds up whichever
  * art (World Library photo or the SVG fallback) is actually mounted.
@@ -251,6 +251,14 @@
  * is the only thing that ever moves on it. (`.world-object` is
  * already `position: absolute`, which is what an absolutely-
  * positioned `::after` needs from its containing block.)
+ *
+ * Known limitation (found by the Hero Variant Audit): this position
+ * was measured against `telescope.png` specifically. Now that the
+ * folder holds 10 more real images, the lens likely sits somewhere
+ * else in some of them — the overlay isn't guaranteed to land on
+ * glass for every variant. Not fixed here; needs a per-image lens
+ * position or a differently-designed glint if it turns out to
+ * matter visually.
  *
  * Sprint H4-H6 Part 3 — audited against the sharper spec ("if it
  * cannot be clearly observed in 60s, treat it as missing") and found

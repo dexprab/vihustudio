@@ -219,7 +219,7 @@ a menu or a link; it is an invitation to look further.
 
 The telescope is a single permanent landmark, exactly as the Dreaming
 Realm is a single permanent entity (§4): a **Telescope Library**
-(Sprint H4-H6, `world-library/telescopes/`) provides multiple
+(Sprint H4-H6, `world-library/telescope/`) provides multiple
 canonical telescope appearances it may present as, chosen once per
 browser session through the same mechanism as every other
 session-varied type (§6). This is not a contradiction of "one
@@ -228,6 +228,15 @@ singular; only which canonical telescope it visually presents as
 varies. Future telescopes are art + a manifest entry, same as any
 other World Library collection (`world-library/README.md`) — no code
 change.
+
+A Hero Variant Audit (post-H4-H6) found this folder briefly renamed
+to `telescopes/` (plural) in this repo, which broke selection
+entirely — the automated World Library sync mirrors the source
+repo's own folder names destructively on every run, so a
+destination-only rename doesn't survive the next sync. The folder
+name here is singular for exactly that reason: it must match
+whatever the source pipeline actually calls it, not a name chosen for
+readability in this repo alone.
 
 Sprint H4-H6 also gave the telescope hover and click tactile + audio
 acknowledgment (`interactive: true`, was `false`) — a response to

@@ -67,7 +67,7 @@
     'waterfall':     'world-library/nature/waterfalls/',
     'decoration':    'world-library/decorations/',
     'companion':     'world-library/companions/',
-    'telescope':     'world-library/telescopes/',
+    'telescope':     'world-library/telescope/',
     'trail':         'world-library/trails/',
     'seed':          'world-library/seeds/',
     'story-meadow':  'world-library/nature/story-meadows/'

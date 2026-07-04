@@ -1,6 +1,6 @@
 # VihuPlanet MEP Build
 
-MEP Version: **0.4.6**
+MEP Version: **0.4.7**
 
 See [`HERO_CANON.md`](HERO_CANON.md) for the permanent philosophy and
 locked product decisions behind everything below — this file only
@@ -51,10 +51,25 @@ tracks *status*.
   telescope (tactile + optional synthesized audio, no navigation —
   Chapter 3 still doesn't exist); the telescope's lens glint audited
   and reworked into an actual visible sweep; a new session-varied
-  Telescope Library (`world-library/telescopes/`, same manifest/
-  session architecture as every other collection); Story Meadow
+  Telescope Library (`world-library/telescope/` — see the Hero
+  Variant Audit bullet below, this was briefly broken); Story Meadow
   contrast and ~17% smaller clouds; full keyboard + reduced-motion
   coverage for every new interaction.
+- ✔ Hero Variant Audit (post-H4-H6, bug fix under the MEP Freeze's
+  "bug fixes only" allowance). Counted every session-varied World
+  Library collection empirically (20 fresh browser sessions,
+  Playwright) and found the Telescope Library entirely non-functional
+  in production: `FOLDERS['telescope']` pointed at `world-library/
+  telescopes/` (plural, from the H4-H6 rename), but the automated
+  World Library sync mirrors the source repo's own folder names
+  destructively on every run, so a destination-only rename never
+  survives the next sync — the folder silently reverted to singular
+  `telescope/`, the code 404'd against it, and the telescope quietly
+  fell back to its SVG the entire time. Fixed by pointing at
+  `telescope/` (matching the pipeline, not a name chosen for
+  readability) — 11 real images now selectable, all confirmed real
+  telescope art despite some carrying `story-meadow-*` filenames from
+  the source side, so none were filtered out.
 
 ## MEP Freeze
 
@@ -98,7 +113,7 @@ Art Direction v1.0. See `artDirection/illustrationRules.js` and
 | System            | Where                                                     | Notes                                                          |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|
 | ArtDirection      | `artDirection/illustrationRules.js`                       | Permanent v1.0 rules — palette, line quality, planets, companions, sky, composition, motion, dialogue, hero, stance. |
-| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. `SESSION_VARIED_TYPES` (sky / cloud / story-meadow / dreaming-home / trail / telescope as of this writing) pick a random-but-sessionStorage-sticky offset on first resolve, so the environment varies between browser sessions but holds steady across reloads. `FILE_FILTERS` lets a type exclude specific filenames (e.g. a superseded placeholder) without deleting anything from the World Library. Sprint H4-H6 migrated `telescope` from the singular `telescope/` folder to a plural, session-varied `telescopes/` (the Telescope Library) — same architecture, no new code path. See `world-library/README.md`. |
+| WorldLibrary      | `shared/worldLibrary.js` + `world-library/`               | MEP-01 (0.3.6.1 hotfix: manifest-based discovery). Filename-agnostic artwork provider — resolves a renderable type to a discovered PNG via that folder's `manifest.json`, or `null` so the caller falls back to its SVG. `SESSION_VARIED_TYPES` (sky / cloud / story-meadow / dreaming-home / trail / telescope as of this writing) pick a random-but-sessionStorage-sticky offset on first resolve, so the environment varies between browser sessions but holds steady across reloads. `FILE_FILTERS` lets a type exclude specific filenames (e.g. a superseded placeholder) without deleting anything from the World Library. `telescope` is session-varied via the existing singular `world-library/telescope/` folder (the Telescope Library, Sprint H4-H6) — a brief attempt to rename it to plural `telescopes/` for readability was reverted by a Hero Variant Audit: the automated sync mirrors the source repo's own folder names destructively on every run, so the destination name must match the pipeline exactly, not read well. See `world-library/README.md`. |
 | WorldObject       | `shared/worldObject.js`                                   | Registry + mount for every Chapter 1 world object. Descriptors may opt into WorldLibrary via `libraryType`; may omit `assetHref` entirely to render nothing until World Library art exists (Story Meadow). Sprint H4-H6 added an optional `onActivate` callback, wired to `interactive: true`'s existing click/keydown handling for the first time (the telescope is the first consumer) — completes a descriptor field that already existed but had never actually attached a handler; not a new system. |
 | WorldMotion       | `animations/motion.css`                                   | Four categories: Living / Greeting / Journey / Celebration. Chapter 2 added `sleeping`, `breathing`, `listening`, `orbit`, `planet-drift`, `awakening`, `select-pulse`, `zoom-out`. Sprint 2 added `sway`, `shadow-breathe`. Sprint 3 added `shimmer`, `wander`; removed `glide` (its only consumers, rocket + paper plane, were removed). Hero MEP Final Polish added `lens-glint`, `lens-reflection`, `window-glow`; removed `awakening`, `select-pulse`, `zoom-out`, and the unused `.fade-out` utility class — all dead code left over from the retired v0.2.0 storyteller-card module (Celebration is empty again, `vp-fade-out` itself is still used directly by `dreamingPlanet.css`). Sprint H4-H6 reworked `vp-lens-reflection` into an actual specular sweep (audited and found the fade-only original didn't read as a glint) and removed the `.window-glow` utility class (zero consumers — `.dp-window` only ever used the keyframe directly). |
 | Planet            | `planets/planets.js` + `planets/planetsData.js`           | Story World registry + PlanetsManager.mount(). Planets are LANDMASSES, not spheres, and carry a `depth` field for the atmospheric ramp. Each descriptor carries `worldName` + `storytellerName`, but the Hero only ever displays World Name — `storytellerName` and `teaser` stay on the descriptor, unused by the Hero (`HERO_CANON.md` §3). Sprint H4-H6 made every Story World interactive: hover/click/keyboard with tactile + audio feedback, no navigation. Required nesting the ambient float and the hover-lift onto separate elements (`.storyteller-planet` → `.storyteller-planet-hover` → `.storyteller-planet-float`) since a running animation always wins the cascade over a plain rule on the same element. |

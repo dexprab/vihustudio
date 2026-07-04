@@ -185,10 +185,14 @@
   // Telescope — a visible landmark. Positioned on the right of the
   // hills per the Visual Contract. Shadow-breathe (Sprint 2 · Living
   // World) gives it presence without swaying — it should feel real,
-  // not float. libraryType wires it to World Library's `telescopes/`
-  // Telescope Library (Sprint H4-H6 Part 4 — session-varied, same
-  // manifest/resolve architecture as every other collection); falls
-  // back to the SVG if empty.
+  // not float. libraryType wires it to World Library's `telescope/`
+  // folder (Sprint H4-H6 Part 4 — session-varied, same manifest/
+  // resolve architecture as every other collection; a Hero Variant
+  // Audit found the folder briefly renamed to `telescopes/`, but the
+  // automated sync mirrors the source repo's own `telescope/` naming
+  // destructively on every run — pointing at a renamed destination
+  // folder doesn't survive the next sync, so this stays singular);
+  // falls back to the SVG if empty.
   //
   // Sprint H4-H6 Part 3 — now `interactive:true` for hover/click
   // tactile + audio acknowledgment only (see css/scene.css's hover
