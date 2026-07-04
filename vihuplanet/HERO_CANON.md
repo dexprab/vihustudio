@@ -184,6 +184,7 @@ Hero atmosphere changes between browser sessions. Currently varied:
 - Clouds
 - Story Meadow
 - Dreaming Home
+- Dream Trail (Story Path)
 
 Selections remain fixed for the duration of the browser session — the
 Hero should always feel familiar but never identical.
@@ -265,7 +266,7 @@ element does not reduce wonder, it should not exist.**
 Note on current implementation: not every atmospheric element listed
 above is session-varied yet — `SESSION_VARIED_TYPES` in
 `shared/worldLibrary.js` currently covers sky, cloud, story-meadow,
-and dreaming-home. Flowers and the Dream Trail/particles are
+dreaming-home, and trail. Flowers and Dream particles (Story Seed) are
 World-Library-sourced but still resolve deterministically. Extending
 variation to them is compatible with this canon and does not require
 a new decision — just implementation.

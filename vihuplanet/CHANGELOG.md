@@ -2,6 +2,22 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.4 — 2026-07-04
+
+- **Dream Trail joins the session-varied set.** `trail` added to
+  `SESSION_VARIED_TYPES` in `shared/worldLibrary.js` — the Hero now
+  picks one of `world-library/trails/`'s PNGs (currently
+  `story-trail-broken.png` / `story-trail-scattered.png`) once per
+  browser session, the same mechanism already governing sky, cloud,
+  story-meadow, and dreaming-home. No registry or engine change: the
+  trail `WorldObject` already resolved through `libraryType: 'trail'`,
+  it just resolved deterministically (always the alphabetically-first
+  file) until now.
+- **`HERO_CANON.md` updated in the same commit** (§6, §10) per its own
+  discipline for Locked sections — Dream Trail (Story Path) moves from
+  "not yet session-varied" to the currently-varied list.
+  `BUILD.md` and `world-library/README.md` updated to match.
+
 ## v0.4.3 — 2026-07-03
 
 - **Documentation Sprint — Hero MEP Canon Consolidation.**

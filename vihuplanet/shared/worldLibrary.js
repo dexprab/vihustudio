@@ -9,14 +9,15 @@
 // if the folder is empty.
 //
 // Hero Composition Engine (Sprint · Atmosphere & World Identity;
-// extended in Sprint · Dreaming Realm Implementation): sky, cloud,
-// story-meadow, and dreaming-home vary once per browser session. The
-// first resolveAt() call for one of those types picks a random
-// offset and sticks it in sessionStorage; every later call (this
-// load or a refresh/navigation within the same tab) reuses it, so
-// the chosen environment holds steady for the session and only
-// changes when a fresh session starts. Story Worlds and the
-// telescope are never in this set — see SESSION_VARIED_TYPES below.
+// extended in Sprint · Dreaming Realm Implementation; extended again
+// to vary the Dream Trail): sky, cloud, story-meadow, dreaming-home,
+// and trail vary once per browser session. The first resolveAt()
+// call for one of those types picks a random offset and sticks it in
+// sessionStorage; every later call (this load or a refresh/
+// navigation within the same tab) reuses it, so the chosen
+// environment holds steady for the session and only changes when a
+// fresh session starts. Story Worlds and the telescope are never in
+// this set — see SESSION_VARIED_TYPES below.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -74,7 +75,7 @@
   // Types the Hero Composition Engine varies once per browser
   // session. Everything else resolves the same deterministic way it
   // always has (first file, or cycling by registration order).
-  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true };
+  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true, 'trail': true };
 
   // Some collections carry a now-superseded file alongside their
   // canonical set — e.g. dreaming-home's original single
