@@ -2,6 +2,70 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.0.5 — 2026-07-04
+
+Sprint 9.4 — **Dynamic Theme Workspace.** The right-side designer
+becomes theme-driven: an optional `theme.editor` block on any Story or
+Artwork Theme now decides which presentational controls the Frame,
+Holder, and Slide panels show, in what order — editor-only, rendering
+untouched. Reuses the existing Slide (Page Designer's Story tab),
+Frame (Card Designer's Picture section's Frame Look + Frame Style
+groups), and Holder (Card Designer's Picture / Text / Sticker
+sections) panels verbatim — no new tabs, no redesign.
+
+- feat(theme): Sprint 9.4 Dynamic Theme Workspace
+  - **New module `js/workspaceBuilder.js`.** The only place that
+    resolves "which controls does this panel show, in what order" from
+    a theme's `editor` block, with a fixed `DEFAULT_CONFIG` fallback
+    matching today's control set exactly — a theme with no `editor`
+    (every theme before this sprint) renders an identical workspace to
+    before. Existing controls are wrapped in a `data-control="id"`
+    tag by the caller and only shown/hidden/reordered here; their
+    wiring is never touched. New controls (Paper, Mat, Presentation,
+    Frame preset, Lighting, Caption, Sticker Shadow) are built by a
+    small `CONTROL_CATALOG` and write to a new, inert
+    `slide.metadata.cardOverrides.artwork` bag — captured this sprint,
+    not yet read by `renderer/slideRenderer.js` (out of scope, same as
+    Artwork Theme's own unread `enhancement` field).
+  - **Single active workspace theme, no merging.** If an Artwork Theme
+    is selected, its `editor` block governs all three panels; otherwise
+    the Story Theme's does. Rendering is unaffected — Story/Artwork
+    themes keep rendering as two independent layers exactly as in
+    Sprint 9.3.
+  - **Frame panel** = Card Designer's existing Frame Look + Frame Style
+    groups (inside the Picture section, unchanged location):
+    `frameStyle`, `fill`, `border`, `radius`, `shadow` wrap existing
+    fields; `paper`/`mat` are new.
+  - **Holder panel** = Card Designer's Picture / Text / Sticker
+    sections' presentation controls, additive to the always-present
+    manipulation controls (Zoom/Move/Replace/Fit, text Position,
+    sticker Layer/Lock/Delete stay untouched): Image gets a new
+    "Artwork Presentation" subgroup (`presentation`/`artworkFrame`/
+    `lighting`/`caption`); Text's existing Typography + Alignment
+    fields become the two theme-driven controls; Sticker gets a new
+    `stickerShadow` control.
+  - **Slide panel** = Page Designer's Story tab. Background (Scene) and
+    Title stay exactly where they are — core content fields, not
+    theme-gated. Decorations is new to Page Designer: the same picker
+    and toggle logic Theme Designer's tab already used
+    (`ThemeEngine._renderDecorations`, generalized to accept any
+    container and exposed as `ThemeEngine.renderDecorationsInto`) is
+    mounted a second time here, shown only when the active workspace
+    theme's Slide config lists `decorations`.
+  - **Live updates.** `ThemeEngine._refreshUI` (already the single
+    place a theme change fans out to the canvas) now also calls
+    `CardDesigner.refresh()` and the new `PageDesigner.rebuildWorkspace()`
+    — switching themes rebuilds the right panel immediately, no reload.
+  - **Five themes ship an `editor` block**, each producing a visibly
+    different workspace: Storybook Classic (today's baseline, spelled
+    out explicitly), Comic (bold Fill/Border only, Sticker Shadow),
+    Museum Gallery (Fill/Shadow/Paper; full Presentation/Lighting/
+    Caption on Image), Sketchbook (Border/Paper; Frame preset +
+    Caption on Image), Watercolor Portfolio (Fill/Shadow/Mat/Paper;
+    Presentation/Lighting on Image). Adventure, Minimal, Classroom
+    Display, and Scrapbook deliberately have no `editor` block — the
+    real (not synthetic) backward-compatibility proof.
+
 ## v1.0.4 — 2026-07-03
 
 Sprint 9.3 — **Artwork Themes.** Extends the Theme Registry / Theme
