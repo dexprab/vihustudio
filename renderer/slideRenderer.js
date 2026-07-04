@@ -81,11 +81,16 @@ const SlideRenderer=(()=>{
   // (every theme before this sprint) and a Museum Gallery slide that
   // hasn't picked a layout yet both resolve to the exact same
   // geometry — zero regression either way.
+  // Sprint 9.7 — `wide` is narrower than its 9.6 shape (was
+  // edge-to-edge, leaving zero room for a caption beside it): the
+  // Design Board's Wide composition puts the picture on the left ~55%
+  // of the slide with a real text column on the right (see
+  // _captionRectFor), not just a wider centered rect.
   const LAYOUT_RECT={
     portrait:    {x:PANEL_X, y:PANEL_Y, w:PANEL_W, h:PANEL_H},
     landscape:   {x:70,  y:340, w:940,  h:610},
     square:      {x:190, y:250, w:700,  h:700},
-    wide:        {x:40,  y:420, w:1000, h:460},
+    wide:        {x:40,  y:400, w:560,  h:500},
     quote:       {x:140, y:460, w:800,  h:380},
     'full-bleed':{x:0,   y:0,   w:1080, h:1350}
   };
@@ -106,6 +111,15 @@ const SlideRenderer=(()=>{
   // choice yet (or theme has no `layouts` at all) resolves to the
   // theme's first listed layout, or — if the theme declares none — to
   // null, meaning "use the legacy fixed panel rect" (see _panelRectFor).
+  //
+  // Sprint 9.7 — Museum Gallery Fidelity: "Each layout must define its
+  // own composition rather than simply changing aspect ratio." A
+  // layout preset may carry `composition` ('below' — title/caption
+  // under the Frame, the default; 'right' — Frame left, caption right,
+  // Wide's layout; 'quote' — no Frame/Holder at all, just centered
+  // quote text). Returns {rect, composition} instead of a bare rect so
+  // render() can branch on it; _panelRectFor below still hands back
+  // just the rect for every caller that only ever needed geometry.
   function _resolveLayout(s){
     const theme=_layoutTheme(s);
     const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
@@ -113,11 +127,19 @@ const SlideRenderer=(()=>{
     const chosenId=(s && s.metadata && s.metadata.layout) || null;
     const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
     const key=preset && (preset.aspect||preset.id);
-    return (key && LAYOUT_RECT[key]) || null;
+    const rect=(key && LAYOUT_RECT[key]) || null;
+    if(!rect) return null;
+    return {rect:rect, composition:(preset&&preset.composition)||'below'};
   }
 
   function _panelRectFor(s){
-    return _resolveLayout(s) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+    const resolved=_resolveLayout(s);
+    return (resolved && resolved.rect) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+  }
+
+  function _layoutCompositionFor(s){
+    const resolved=_resolveLayout(s);
+    return (resolved && resolved.composition) || 'below';
   }
 
   function _frameColor(theme,opts){
@@ -222,6 +244,17 @@ const SlideRenderer=(()=>{
   // Defaults). A theme with no `presentation`, or one ThemePresets
   // doesn't recognize, resolves to its own explicit fields unchanged —
   // this is a strict superset of pre-9.5 behaviour, not a redesign.
+  // Sprint 9.7 — Museum Gallery Fidelity. Frame Variations describe
+  // the exhibition mount with real, direct values (per the approved
+  // Design Board) instead of only picking from the enum lookup tables
+  // above: `matWidth` (px) overrides the composition-based padding,
+  // `frameThickness` (px, >0) draws an actual coloured border stroke —
+  // every artwork theme before this sprint had lineEnabled permanently
+  // off — and `borderColor` sets its colour. All three are optional;
+  // omitted, the enum-based System Defaults below run exactly as
+  // before, so an artwork theme that only ever set background/frame/
+  // paper/shadow (every artwork theme before Museum Gallery's 9.7
+  // variations) is unaffected.
   function _artworkBorder(art){
     if(!art) return null;
     const resolved=(typeof ThemePresets!=='undefined')
@@ -229,15 +262,18 @@ const SlideRenderer=(()=>{
       : art;
     const framePreset=ARTWORK_FRAME_PRESET[resolved.frame]||ARTWORK_FRAME_PRESET['none'];
     const shadowPreset=ARTWORK_SHADOW_PRESET[resolved.shadow]||ARTWORK_SHADOW_PRESET['none'];
-    const padding=(ARTWORK_COMPOSITION_PADDING[resolved.composition]!=null)?ARTWORK_COMPOSITION_PADDING[resolved.composition]:24;
+    const padding=(typeof resolved.matWidth==='number')
+      ? resolved.matWidth
+      : (ARTWORK_COMPOSITION_PADDING[resolved.composition]!=null)?ARTWORK_COMPOSITION_PADDING[resolved.composition]:24;
+    const thickness=(typeof resolved.frameThickness==='number')?resolved.frameThickness:0;
     return {
       design:framePreset.design,
       padding:padding,
       fill:ARTWORK_BACKGROUND_FILL[resolved.background]||'none',
       cornerRadius:framePreset.cornerRadius,
-      lineEnabled:false,
-      lineWidth:2,
-      lineColor:'#000000',
+      lineEnabled:thickness>0,
+      lineWidth:thickness>0?thickness:2,
+      lineColor:resolved.borderColor||'#000000',
       shadowEnabled:shadowPreset.enabled,
       shadowIntensity:shadowPreset.intensity,
       _artwork:resolved
@@ -272,6 +308,40 @@ const SlideRenderer=(()=>{
       if(cardOv[k]!==undefined) merged[k]=cardOv[k];
     });
     return merged;
+  }
+
+  // Sprint 9.7 — Museum Gallery Fidelity: wall tone is the gallery
+  // room's paint colour, not the picture's mat — it applies whenever
+  // an Artwork Theme is active, regardless of whether THIS particular
+  // slide has a picture (a Quote page has no image at all but still
+  // sits on the same gallery wall). Deliberately independent of
+  // _resolveBorder, which stays image-gated for the Frame/mat itself.
+  function _resolveWallTone(s){
+    const artTheme=_artworkTheme(s);
+    if(!artTheme) return null;
+    const merged=_resolveArtworkFields(artTheme,s);
+    const resolved=(typeof ThemePresets!=='undefined')
+      ? ThemePresets.resolveHolder('image',merged.presentation,merged)
+      : merged;
+    return resolved.wallTone||null;
+  }
+
+  // Sprint 9.7 — page-furniture text (Handle, Page Number) is drawn in
+  // the Story Theme's own watermark/footerText colour by default,
+  // which is usually white for a dark book-frame background. Once an
+  // Artwork Theme sets a wall tone, that assumption can invert (a
+  // light gallery wall needs dark text) — a simple luminance check
+  // picks a readable colour instead of hardcoding one gallery mood.
+  function _luminance(hex){
+    const h=String(hex).replace('#','');
+    if(h.length<6) return 1;
+    const r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+    if(isNaN(r)||isNaN(g)||isNaN(b)) return 1;
+    return (0.299*r+0.587*g+0.114*b)/255;
+  }
+  function _chromeTextColor(wallTone){
+    if(!wallTone) return null;
+    return _luminance(wallTone)>0.55 ? '#2A2A2A' : '#F5F0E6';
   }
 
   // Sprint 6.5 — Picture Border. Resolved from
@@ -866,13 +936,29 @@ const SlideRenderer=(()=>{
     return (theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
   }
 
+  // Sprint 9.7 — a declarative Layer Pack entry (Handle / Page Number)
+  // may carry a `position` field pinning it to a specific corner,
+  // overriding the Story Theme's own handlePosition/pageNumber default
+  // for that one theme. No entry, no `position` field: null, and the
+  // existing themeOptions default runs exactly as before.
+  function _layerPosition(pack,id){
+    const l=pack && pack.find(function(l2){ return l2 && l2.id===id; });
+    return (l && l.position) || null;
+  }
+
   function _layerDrawText(layer,anchor,rect,s){
     const t=layer.text||{};
+    // Sprint 9.7 — Museum Gallery Fidelity: 'museumCaption' composes the
+    // Design Board's two-line museum label (bold serif title, then a
+    // muted "By {artist} ✍️  Age {age} 🎂 | {date} 📅" line) from real
+    // per-slide fields instead of one flat string.
+    if(t.source==='museumCaption'){ _drawMuseumCaption(t,anchor,s); return; }
     let content=t.content||'';
-    // 'slideCaption' is the one dynamic binding this sprint ships —
-    // Museum Caption reads a plain per-slide caption string a child
-    // typed (slide.metadata.caption), same convention as bookTitle /
-    // handle already being plain per-slide string fields.
+    // 'slideCaption' — a plain per-slide caption string a child typed
+    // (slide.metadata.caption), same convention as bookTitle / handle
+    // already being plain per-slide string fields. Kept as a simpler
+    // single-field option for future themes that don't need the full
+    // Title/Artist/Age/Date breakdown.
     if(t.source==='slideCaption') content=(s && s.metadata && typeof s.metadata.caption==='string' && s.metadata.caption) || content;
     if(!content) return;
     x.save();
@@ -884,17 +970,67 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  // Wax Seal (Museum Gallery's one Sticker Layer, Frame-targeted). A
-  // custom glyph draws as-is; the default is a small drawn ornament
-  // (not an emoji) so the look never depends on font/emoji coverage.
+  function _drawMuseumCaption(t,anchor,s){
+    const m=(s && s.metadata) || {};
+    const title=(typeof m.artworkTitle==='string') ? m.artworkTitle.trim() : '';
+    const artist=(typeof m.artist==='string') ? m.artist.trim() : '';
+    const age=(typeof m.age==='string' || typeof m.age==='number') ? String(m.age).trim() : '';
+    const date=(typeof m.date==='string') ? m.date.trim() : '';
+    if(!title && !artist && !age && !date) return;
+    const metaParts=[];
+    if(artist) metaParts.push('By '+artist+' ✍️');
+    if(age) metaParts.push('Age '+age+' 🎂');
+    if(date) metaParts.push(date+' 📅');
+    const metaLine=metaParts.join('   |   ');
+
+    const titleSize=t.size||20;
+    const align=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
+    x.save();
+    x.textAlign=align;
+    x.textBaseline='top';
+    let cy=anchor.y;
+    if(title){
+      x.font=titleSize+'px '+(t.font||'Georgia, serif');
+      x.fillStyle=t.color||'#3A3A3A';
+      x.fillText(title,anchor.x,cy);
+      cy+=Math.round(titleSize*1.2);
+    }
+    if(metaLine){
+      x.font=Math.round(titleSize*0.65)+'px '+(t.font||'Georgia, serif');
+      x.fillStyle='rgba(58,58,58,0.72)';
+      x.fillText(metaLine,anchor.x,cy);
+    }
+    x.restore();
+  }
+
+  // Wax Seal (Museum Gallery's one shipped Sticker Layer, Frame-
+  // targeted). A custom glyph draws as-is; the default is a small
+  // drawn ornament (not an emoji) so the look never depends on font/
+  // emoji coverage.
+  // Sprint 9.7 — default glyphs for the rest of the Design Board's
+  // named Sticker Layer catalog (Gallery Badge, Certificate Ribbon,
+  // Curator Pick, Museum Stamp). A theme never has to use these — any
+  // layer.sticker.glyph always wins — but declaring e.g. {id:
+  // 'gallery-badge', type:'sticker', ...} with no glyph of its own
+  // still renders something on-theme instead of a generic circle. Not
+  // part of Museum Gallery's shipped layerPack (the board's own
+  // "Common Layers" panel keeps that minimal); available for any
+  // future theme package that wants them.
+  const LAYER_STICKER_GLYPH={
+    'gallery-badge':'🏅',
+    'certificate-ribbon':'🎗️',
+    'curator-pick':'⭐',
+    'museum-stamp':'🔖'
+  };
   function _layerDrawSticker(layer,anchor){
     const st=layer.sticker||{};
-    if(st.glyph){
+    const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
+    if(glyph){
       x.save();
       x.font=(st.size||36)+'px sans-serif';
       x.textAlign='center';
       x.textBaseline='middle';
-      x.fillText(st.glyph,anchor.x,anchor.y);
+      x.fillText(glyph,anchor.x,anchor.y);
       x.restore();
       return;
     }
@@ -909,11 +1045,16 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
-  // Gallery Spotlight (Museum Gallery's one Decoration Layer,
+  // Gallery Spotlight (Museum Gallery's one shipped Decoration Layer,
   // Slide-targeted) reuses the exact same radial-glow primitive the
   // Holder-scope 'gallery'/'soft' lighting already draws (_lightingGlow
   // above) — just aimed at the whole Slide rect instead of the picture
   // rect, so there's no second glow implementation to keep in sync.
+  // Sprint 9.7 — two more kinds from the Design Board's Decoration
+  // Layer catalog, each reusing an existing texture/vignette primitive
+  // rather than a bespoke drawing routine: 'paperTexture' (the same
+  // mottled paper wash Holder-scope paper textures already use) and
+  // 'shadowWash' (a soft vignette at the Slide's edges).
   function _layerDrawDecoration(layer,anchor,rect){
     const d=layer.decoration||{};
     const kind=d.kind||'spotlight';
@@ -921,6 +1062,16 @@ const SlideRenderer=(()=>{
       const radius=(typeof d.radius==='number')?d.radius:Math.max(rect.w,rect.h)*0.6;
       const alpha=(typeof d.alpha==='number')?d.alpha:0.12;
       _lightingGlow(rect,anchor.x,anchor.y,radius,alpha);
+    }else if(kind==='paperTexture'){
+      _paperMottled(rect,(typeof d.alpha==='number')?d.alpha:0.5);
+    }else if(kind==='shadowWash'){
+      x.save();
+      const grad=x.createRadialGradient(rect.x+rect.w/2,rect.y+rect.h/2,Math.min(rect.w,rect.h)*0.3,rect.x+rect.w/2,rect.y+rect.h/2,Math.max(rect.w,rect.h)*0.7);
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(1,'rgba(0,0,0,'+((typeof d.alpha==='number')?d.alpha:0.18).toFixed(3)+')');
+      x.fillStyle=grad;
+      x.fillRect(rect.x,rect.y,rect.w,rect.h);
+      x.restore();
     }
   }
 
@@ -946,6 +1097,68 @@ const SlideRenderer=(()=>{
     };
   }
 
+  // Sprint 9.7 — Museum Gallery Fidelity: the 'right' composition
+  // (Wide layout — "Image on left, text on right") puts the Museum
+  // Caption in a column beside the Frame instead of below it. A middle
+  // vertical band (not the full column height) keeps a two-line
+  // caption reading as vertically centered against the Frame without
+  // teaching the Layer Engine a new anchor.
+  function _captionRectFor(panelRect,composition){
+    if(composition!=='right') return null;
+    const gap=40;
+    const x0=panelRect.x+panelRect.w+gap;
+    const w0=Math.max(80,(W-40)-x0);
+    return {x:x0, y:panelRect.y+panelRect.h*0.32, w:w0, h:panelRect.h*0.36};
+  }
+
+  // Quote composition ("Minimal Quote" — no Frame/Holder at all, just
+  // a centered quote). Basic word-wrap since Canvas text has none
+  // built in; a quote with no text set renders nothing, leaving a
+  // plain gallery wall rather than an empty box.
+  function _wrapText(text,maxWidth){
+    const words=String(text).split(/\s+/).filter(Boolean);
+    const lines=[]; let line='';
+    words.forEach(function(w){
+      const trial=line?line+' '+w:w;
+      if(x.measureText(trial).width>maxWidth && line){ lines.push(line); line=w; }
+      else line=trial;
+    });
+    if(line) lines.push(line);
+    return lines;
+  }
+  function _drawQuoteText(s,t,rect){
+    const m=(s && s.metadata) || {};
+    const quote=(typeof m.quoteText==='string') ? m.quoteText.trim() : '';
+    const attribution=(typeof m.quoteAttribution==='string') ? m.quoteAttribution.trim() : '';
+    if(!quote && !attribution) return;
+    const cx=rect.x+rect.w/2;
+    const maxWidth=rect.w*0.82;
+    x.save();
+    x.textAlign='center';
+    x.textBaseline='middle';
+    const quoteSize=32;
+    x.font='italic '+quoteSize+'px Georgia, serif';
+    // A museum wall label is dark serif on a light wall, regardless of
+    // the Story Theme's own storyText colour (usually white, meant for
+    // a dark book-frame background) — Quote is a Museum Gallery
+    // composition, not a generic Story Theme feature.
+    x.fillStyle='#3A3A3A';
+    const lines=quote?_wrapText('“'+quote+'”',maxWidth):[];
+    const lineHeight=Math.round(quoteSize*1.35);
+    const totalH=lines.length*lineHeight+(attribution?lineHeight:0);
+    let cy=rect.y+rect.h/2-totalH/2+lineHeight/2;
+    lines.forEach(function(line){
+      x.fillText(line,cx,cy);
+      cy+=lineHeight;
+    });
+    if(attribution){
+      x.font='16px Georgia, serif';
+      x.fillStyle='rgba(58,58,58,0.7)';
+      x.fillText('— '+attribution,cx,cy);
+    }
+    x.restore();
+  }
+
   function render(s){
     if(!x) return;
     const t=_theme(s);
@@ -953,8 +1166,24 @@ const SlideRenderer=(()=>{
     const overrides=(s && s.overrides && s.overrides.textElements) || {};
     _lastTextElements=[];
 
+    // Sprint 6.5 — when the user has customised the Picture Border, draw
+    // a styled frame in place of the legacy panel. Otherwise fall through
+    // to the existing panel style so untouched projects stay pixel-identical.
+    // Sprint 9.7 — resolved before the background fill below so a Frame
+    // Variation's `wallTone` (the gallery wall colour, a Slide-level
+    // concept distinct from the mat) can override it.
+    const _border=_resolveBorder(s);
+    const _panelRect=_panelRectFor(s);
+    // Sprint 9.7 — "Each layout must define its own composition."
+    // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
+    // gallery wall with just a quote on it); 'right' keeps everything
+    // but moves the Museum Caption beside the Frame instead of below.
+    const _composition=_layoutCompositionFor(s);
+
     // Frame
-    x.fillStyle=_frameColor(t,opts);
+    const _wallTone=_resolveWallTone(s);
+    const _chromeColor=_chromeTextColor(_wallTone);
+    x.fillStyle=_wallTone||_frameColor(t,opts);
     x.fillRect(0,0,W,H);
 
     // Sprint 9.6 — Slide-targeted layers (Gallery Spotlight) sit right
@@ -964,12 +1193,9 @@ const SlideRenderer=(()=>{
     const _layerPack=_activeLayerPack(s);
     _renderLayers(_layerPack,'slide',{x:0,y:0,w:W,h:H},s);
 
-    // Sprint 6.5 — when the user has customised the Picture Border, draw
-    // a styled frame in place of the legacy panel. Otherwise fall through
-    // to the existing panel style so untouched projects stay pixel-identical.
-    const _border=_resolveBorder(s);
-    const _panelRect=_panelRectFor(s);
-    if(_border){
+    if(_composition==='quote'){
+      _drawQuoteText(s,t,_panelRect);
+    }else if(_border){
       _drawPictureFrameFill(_panelRect,_border,t);
       _drawArtworkPresentation(_panelRect,_border);
     }else{
@@ -988,19 +1214,21 @@ const SlideRenderer=(()=>{
       if(storyBbox) _lastTextElements.push(storyBbox);
 
       // Handle / branding watermark — Sprint 5.0 reads handle text from payload.
-      const handleBbox=_drawHandle(t,opts,overrides,s.handle);
+      const handleBbox=_drawHandle(t,opts,overrides,s.handle,_layerPosition(_layerPack,'handle'),_chromeColor);
       if(handleBbox) _lastTextElements.push(handleBbox);
 
       // Image inside panel — presentation-only transforms; original image untouched.
       // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
-      if(s.image && s.image.width){
+      // Sprint 9.7 — 'quote' composition has no Frame/Holder/image at
+      // all (see _drawQuoteText above), so this entire block is skipped.
+      if(_composition!=='quote' && s.image && s.image.width){
         _drawImage(s,_border,_panelRect);
       }
       // Sprint 6.5 — Picture Border stroke sits above the image so it
       // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
       // (sparkles, grain, ribbon corners, …) sits between image and
       // stroke so the stroke can still cap it visually.
-      if(_border){
+      if(_composition!=='quote' && _border){
         _drawPictureFrameOrnament(_panelRect,_border,t);
         _drawPictureFrameStroke(_panelRect,_border);
         // Sprint 9.3 — _border._artwork is only ever set when the
@@ -1011,9 +1239,12 @@ const SlideRenderer=(()=>{
         // the fully-assembled frame; Holder-targeted layers (Museum
         // Caption) anchor to the picture content rect, not the outer
         // frame, so a wide mat doesn't push the caption far from the
-        // picture it labels.
+        // picture it labels. Sprint 9.7 — the 'right' composition
+        // (Wide layout) moves that caption rect beside the Frame
+        // instead, via _captionRectFor.
         _renderLayers(_layerPack,'frame',_panelRect,s);
-        _renderLayers(_layerPack,'holder',_holderRectFor(_panelRect,_border),s);
+        const _captionRect=_captionRectFor(_panelRect,_composition)||_holderRectFor(_panelRect,_border);
+        _renderLayers(_layerPack,'holder',_captionRect,s);
       }
 
       // Decorations on the frame
@@ -1024,7 +1255,7 @@ const SlideRenderer=(()=>{
       if(footerBbox) _lastTextElements.push(footerBbox);
 
       // Page number
-      const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides);
+      const pageBbox=_drawPageNumber(t,opts,s.page||1,s.totalPages||1,overrides,_layerPosition(_layerPack,'page-number'),_chromeColor);
       if(pageBbox) _lastTextElements.push(pageBbox);
     }
 
@@ -1640,17 +1871,26 @@ const SlideRenderer=(()=>{
   // which is now `W * dpr` on HiDPI displays.
   function getCanvasSize(){ return {w:W, h:H}; }
 
-  function _drawHandle(theme,opts,overrides,handleText){
+  // Sprint 9.7 — `positionOverride` lets a theme's Layer Pack pin
+  // Handle to a specific corner (the Design Board puts it bottom-right
+  // for Museum Gallery) regardless of the Story Theme's own
+  // handlePosition default — see _layerPosition below. Omitted (every
+  // theme before this sprint), behaviour is unchanged.
+  // Sprint 9.7 — `colorOverride` lets the active wall tone (see
+  // _chromeTextColor) win over the Story Theme's own watermark colour
+  // (usually white, meant for a dark book-frame) so Handle stays
+  // legible against a light gallery wall. Omitted, behaviour unchanged.
+  function _drawHandle(theme,opts,overrides,handleText,positionOverride,colorOverride){
     if(opts.handleVisibility==='hide') return null;
     const text=(typeof handleText==='string' && handleText.length>0) ? handleText : '@vihuplanet';
     const ov=(overrides && overrides['handle'])||{};
-    const pos=opts.handlePosition||'top-right';
+    const pos=positionOverride||opts.handlePosition||'top-right';
     let hx, hy, defaultAlign;
     if(pos==='top-left'){ hx=60; hy=60; defaultAlign='left'; }
     else if(pos==='bottom-left'){ hx=60; hy=H-30; defaultAlign='left'; }
     else if(pos==='bottom-right'){ hx=W-60; hy=H-30; defaultAlign='right'; }
     else { hx=W-60; hy=60; defaultAlign='right'; }
-    const st=_resolveTextStyle(ov,theme.watermark.size,theme.watermark.font,theme.watermark.color,defaultAlign);
+    const st=_resolveTextStyle(ov,theme.watermark.size,theme.watermark.font,colorOverride||theme.watermark.color,defaultAlign);
     x.save();
     _applyTextStyle(st);
     hx+=st.offsetX;
@@ -1737,17 +1977,23 @@ const SlideRenderer=(()=>{
   }
 
   // --- Page number ---
-  function _drawPageNumber(theme,opts,page,total,overrides){
+  // Sprint 9.7 — `positionOverride` (same convention as _drawHandle
+  // above) adds a 'bottom-left' placement, which nothing before this
+  // sprint's Museum Gallery Layer Pack ever needed.
+  function _drawPageNumber(theme,opts,page,total,overrides,positionOverride,colorOverride){
     if(opts.pageNumber==='hidden') return null;
     const ov=(overrides && overrides['page-number'])||{};
     const label=page+' / '+total;
+    const pos=positionOverride||opts.pageNumber;
     let anchorX, anchorY, defaultAlign;
-    if(opts.pageNumber==='bottom-center'){
+    if(pos==='bottom-center'){
       anchorX=W/2; anchorY=opts.footerStyle==='hidden'?1285:1325; defaultAlign='center';
+    }else if(pos==='bottom-left'){
+      anchorX=60; anchorY=1285; defaultAlign='left';
     }else{
       anchorX=900; anchorY=1285; defaultAlign='left';
     }
-    const st=_resolveTextStyle(ov,theme.footerText.size,theme.footerText.font,theme.footerText.color,defaultAlign);
+    const st=_resolveTextStyle(ov,theme.footerText.size,theme.footerText.font,colorOverride||theme.footerText.color,defaultAlign);
     x.save();
     _applyTextStyle(st);
     anchorX+=st.offsetX;

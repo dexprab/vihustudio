@@ -343,34 +343,66 @@ const ThemeRegistry=(function(){
       // user-switchable Frame Variations, and a Theme Layer Pack (see
       // js/layerEngine.js). `holders:1` on every layout documents that
       // reservation without yet acting on it.
+      // Sprint 9.7 — order matches the approved Design Board's numbered
+      // panel (Landscape, Portrait, Wide, Square, Quote); Full Bleed
+      // isn't on that panel but stays in the text spec's layout list.
+      // `composition` (new this sprint — see _resolveLayout/render in
+      // renderer/slideRenderer.js) is each layout's OWN arrangement,
+      // not just its aspect: 'below' (default, omitted) puts the
+      // Museum Caption under the Frame; 'right' (Wide) puts it beside
+      // the Frame instead; 'quote' (Quote) drops the Frame/Holder
+      // entirely for a centered quote.
       layouts:[
-        {id:'portrait',   name:'Portrait',   aspect:'portrait',   holders:1},
         {id:'landscape',  name:'Landscape',  aspect:'landscape',  holders:1},
+        {id:'portrait',   name:'Portrait',   aspect:'portrait',   holders:1},
+        {id:'wide',       name:'Wide',       aspect:'wide',       holders:1, composition:'right'},
         {id:'square',     name:'Square',     aspect:'square',     holders:1},
-        {id:'wide',       name:'Wide',       aspect:'wide',       holders:1},
-        {id:'quote',      name:'Quote',      aspect:'quote',      holders:1},
+        {id:'quote',      name:'Quote',      aspect:'quote',      holders:1, composition:'quote'},
         {id:'full-bleed', name:'Full Bleed', aspect:'full-bleed', holders:1}
       ],
+      // Sprint 9.7 — Museum Gallery Fidelity: each variation now sets
+      // matWidth/frameThickness/borderColor/wallTone directly (per the
+      // approved Design Board), not just the enum lookups Sprint 9.6
+      // used — "Changing frame variation should noticeably change
+      // presentation while preserving artwork." "Classic White" is an
+      // empty override; its values are the gallery preset's own base
+      // defaults (js/themePresets.js), so it's pure inheritance.
       frameVariations:[
-        {id:'classic-white-mat', name:'Classic White Mat', fields:{}},
-        {id:'warm-ivory',        name:'Warm Ivory',        fields:{background:'cream',frame:'white-mat',paper:'smooth',shadow:'gallery'}},
-        {id:'natural-linen',     name:'Natural Linen',     fields:{background:'cream',frame:'white-mat',paper:'canvas',shadow:'soft'}},
-        {id:'floating-frame',    name:'Floating Frame',    fields:{background:'white',frame:'floating',paper:'smooth',shadow:'floating'}},
-        {id:'black-matte',       name:'Black Matte',       fields:{background:'black',frame:'none',paper:'smooth',shadow:'gallery'}},
-        {id:'gold-accent',       name:'Gold Accent',       fields:{background:'white',frame:'wood',paper:'smooth',shadow:'gallery'}},
-        {id:'dark-gallery',      name:'Dark Gallery',      fields:{background:'black',frame:'floating',paper:'smooth',shadow:'floating'}}
+        {id:'classic-white-mat', name:'Classic White', fields:{}},
+        {id:'warm-ivory',        name:'Warm Ivory',
+          fields:{background:'cream', frame:'white-mat', paper:'smooth', shadow:'soft',
+            matWidth:26, frameThickness:3, borderColor:'#D9C7A3', wallTone:'#F2E8D5'}},
+        {id:'natural-linen',     name:'Natural Linen',
+          fields:{background:'cream', frame:'white-mat', paper:'canvas', shadow:'soft',
+            matWidth:24, frameThickness:2, borderColor:'#C7B99B', wallTone:'#E9E2D0'}},
+        {id:'dark-gallery',      name:'Dark Gallery',
+          fields:{background:'white', frame:'white-mat', paper:'smooth', shadow:'floating',
+            matWidth:22, frameThickness:2, borderColor:'#2A2A2A', wallTone:'#1D1F24'}},
+        {id:'floating-frame',    name:'Floating Frame',
+          fields:{background:'white', frame:'floating', paper:'smooth', shadow:'floating',
+            matWidth:56, frameThickness:0, wallTone:'#FFFFFF'}},
+        {id:'black-matte',       name:'Black Matte',
+          fields:{background:'black', frame:'white-mat', paper:'smooth', shadow:'floating',
+            matWidth:20, frameThickness:2, borderColor:'#0A0A0A', wallTone:'#D6D6D6'}},
+        {id:'gold-accent',       name:'Gold Accent',
+          fields:{background:'white', frame:'white-mat', paper:'smooth', shadow:'gallery',
+            matWidth:24, frameThickness:4, borderColor:'#C9A227', wallTone:'#F8F2E4'}}
       ],
       // The 5 layers required this sprint (js/layerEngine.js): Museum
       // Caption reads the per-slide caption a child typed; Page Number
       // and Handle are declarative-only (no `text` payload) — they
       // stay rendered by the existing, unrelated _drawPageNumber /
-      // _drawHandle functions, this pack entry just documents that
-      // they're part of this theme's complete layer inventory.
+      // _drawHandle functions — `position` (Sprint 9.7) pins each to
+      // the corner the Design Board shows (page number bottom-left,
+      // handle bottom-right) regardless of the Story Theme's own
+      // handlePosition/pageNumber default; this pack entry otherwise
+      // just documents that they're part of this theme's complete
+      // layer inventory.
       layerPack:[
         {id:'museum-caption', type:'text', target:'holder', anchor:'bottom-center', offsetY:16, zIndex:1,
-          text:{source:'slideCaption', font:'Georgia, serif', size:20, color:'#3A3A3A'}},
-        {id:'page-number', type:'text', target:'slide'},
-        {id:'handle', type:'text', target:'slide'},
+          text:{source:'museumCaption', font:'Georgia, serif', size:20, color:'#3A3A3A'}},
+        {id:'page-number', type:'text', target:'slide', position:'bottom-left'},
+        {id:'handle', type:'text', target:'slide', position:'bottom-right'},
         {id:'gallery-spotlight', type:'decoration', target:'slide', anchor:'top-center', zIndex:0,
           decoration:{kind:'spotlight', alpha:0.14, radius:640}},
         {id:'wax-seal', type:'sticker', target:'frame', anchor:'bottom-right', offsetX:-28, offsetY:-28, zIndex:2}
@@ -385,11 +417,12 @@ const ThemeRegistry=(function(){
       // Sprint 9.4 — a gallery wall is about the picture, not the page:
       // Sprint 9.6 adds the Slide's Layout picker and the Image
       // holder's Frame Variation alongside the existing Presentation/
-      // Lighting/Caption set.
+      // Lighting/Caption set. Sprint 9.7 adds the Title/Artist/Age/Date
+      // fields that feed the Museum Caption layer.
       editor:{
-        slide:{sections:['layout','title']},
+        slide:{sections:['layout','quoteText','title']},
         frame:{sections:['fill','shadow','paper']},
-        holder:{image:['presentation','frameVariation','lighting','caption'],text:['typography'],sticker:[]}
+        holder:{image:['presentation','frameVariation','lighting','caption','museumCaption'],text:['typography'],sticker:[]}
       }
     },
     {

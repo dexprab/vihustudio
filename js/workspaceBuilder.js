@@ -278,6 +278,100 @@ const WorkspaceBuilder=(function(){
           }
         });
       }
+    },
+    // Sprint 9.7 — Museum Gallery Fidelity: Title/Artist/Age/Date, the
+    // real fields js/layerEngine.js's 'museumCaption' text-layer source
+    // composes into the Design Board's two-line museum label (see
+    // renderer/slideRenderer.js _drawMuseumCaption). Stored directly on
+    // slide.metadata (per-slide content, not a Holder presentation
+    // override) — same reasoning as the 'layout' control above. Each
+    // field gets the same emoji-insertion affordance as every other
+    // Text Element in the app.
+    museumCaption:{
+      build:function(c,ctx,meta){
+        const wrap=document.createElement('div');
+        wrap.setAttribute('data-control','museumCaption');
+        const fields=[
+          {key:'artworkTitle', label:'Title', placeholder:'e.g. The Big Tree'},
+          {key:'artist', label:'Artist', placeholder:'e.g. Vihaan'},
+          {key:'age', label:'Age', placeholder:'e.g. 7'},
+          {key:'date', label:'Date', placeholder:'e.g. May 2025'}
+        ];
+        const inputs={};
+        fields.forEach(function(f){
+          const row=document.createElement('div');
+          row.className='designer-row';
+          const lbl=document.createElement('div');
+          lbl.className='designer-row-label';
+          lbl.textContent=f.label;
+          row.appendChild(lbl);
+          const input=document.createElement('input');
+          input.type='text';
+          input.className='input-field workspace-text-input';
+          input.placeholder=f.placeholder;
+          input.addEventListener('input',function(){
+            const slide=ctx.getSlide && ctx.getSlide();
+            if(!slide) return;
+            if(!slide.metadata) slide.metadata={};
+            if(input.value) slide.metadata[f.key]=input.value; else delete slide.metadata[f.key];
+            if(ctx.onChange) ctx.onChange();
+          });
+          inputs[f.key]=input;
+          row.appendChild((typeof EmojiPicker!=='undefined') ? EmojiPicker.wrap(input) : input);
+          wrap.appendChild(row);
+        });
+        c.appendChild(wrap);
+        wrap.__sync=function(){
+          const slide=ctx.getSlide && ctx.getSlide();
+          const m=(slide && slide.metadata) || {};
+          fields.forEach(function(f){ inputs[f.key].value=(m[f.key]!==undefined)?m[f.key]:''; });
+        };
+        return wrap;
+      }
+    },
+    // Sprint 9.7 — Museum Gallery Fidelity: the Quote layout's content
+    // (renderer/slideRenderer.js _drawQuoteText). Slide-scope, like
+    // Layout, since a Quote page has no Frame/Holder to attach it to.
+    quoteText:{
+      build:function(c,ctx,meta){
+        const wrap=document.createElement('div');
+        wrap.setAttribute('data-control','quoteText');
+        const fields=[
+          {key:'quoteText', label:'Quote', placeholder:'e.g. Every child is an artist…', multiline:true},
+          {key:'quoteAttribution', label:'Attribution', placeholder:'e.g. Pablo Picasso'}
+        ];
+        const inputs={};
+        fields.forEach(function(f){
+          const row=document.createElement('div');
+          row.className='designer-row';
+          const lbl=document.createElement('div');
+          lbl.className='designer-row-label';
+          lbl.textContent=f.label;
+          row.appendChild(lbl);
+          const input=document.createElement(f.multiline?'textarea':'input');
+          if(!f.multiline) input.type='text';
+          else input.rows=3;
+          input.className='input-field workspace-text-input';
+          input.placeholder=f.placeholder;
+          input.addEventListener('input',function(){
+            const slide=ctx.getSlide && ctx.getSlide();
+            if(!slide) return;
+            if(!slide.metadata) slide.metadata={};
+            if(input.value) slide.metadata[f.key]=input.value; else delete slide.metadata[f.key];
+            if(ctx.onChange) ctx.onChange();
+          });
+          inputs[f.key]=input;
+          row.appendChild((typeof EmojiPicker!=='undefined') ? EmojiPicker.wrap(input) : input);
+          wrap.appendChild(row);
+        });
+        c.appendChild(wrap);
+        wrap.__sync=function(){
+          const slide=ctx.getSlide && ctx.getSlide();
+          const m=(slide && slide.metadata) || {};
+          fields.forEach(function(f){ inputs[f.key].value=(m[f.key]!==undefined)?m[f.key]:''; });
+        };
+        return wrap;
+      }
     }
   };
 

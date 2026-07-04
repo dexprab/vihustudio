@@ -95,10 +95,18 @@ const ThemePresets=(function(){
   // truth for a panel that already has one.
   const HOLDER_PRESETS={
     image:{
+      // Sprint 9.7 — Museum Gallery Fidelity: matWidth/frameThickness/
+      // borderColor/wallTone are the "Classic White" Frame Variation's
+      // own values (Design Board: white mat, thin grey border, very
+      // soft shadow, warm white wall), baked into the base preset so
+      // Museum Gallery's "Classic White" variation can stay an empty
+      // override (pure inheritance) while the other 6 variations only
+      // need to override what's actually different.
       gallery:{
         meta:{displayName:'Museum Gallery',description:'A quiet gallery wall — white mat, soft light, centered.'},
         background:'white', frame:'white-mat', paper:'smooth', caption:'museum',
-        shadow:'gallery', lighting:'gallery', composition:'center',
+        shadow:'soft', lighting:'gallery', composition:'center',
+        matWidth:24, frameThickness:2, borderColor:'#B5AFA4', wallTone:'#F7F4EE',
         editorControls:['presentation','lighting','caption']
       },
       sketchbook:{
