@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Builder</title>
+    <link rel="stylesheet" href="css/theme-builder.css">
+</head>
+<body>
+    <!-- Header -->
+    <header id="header" class="header">
+        <div class="header-content">
+            <div class="header-brand">
+                <h1>Theme Builder</h1>
+            </div>
+            <div class="header-info">
+                <div class="header-item">
+                    <span class="label">Current Theme</span>
+                    <span id="currentThemeName" class="value">—</span>
+                </div>
+                <div class="header-item">
+                    <span class="label">Build Status</span>
+                    <span id="buildStatus" class="value status-ready">Ready</span>
+                </div>
+                <div class="header-actions">
+                    <button id="actionSave" class="btn btn-primary" title="Save theme">Save</button>
+                    <button id="actionBuild" class="btn btn-secondary" title="Build theme">Build</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="workspace">
+        <!-- Left Navigation -->
+        <nav id="navigation" class="sidebar">
+            <div class="nav-items">
+                <button class="nav-item" data-page="dashboard">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-page="theme">
+                    <span class="icon">🎨</span>
+                    <span>Theme</span>
+                </button>
+                <button class="nav-item" data-page="layouts">
+                    <span class="icon">📐</span>
+                    <span>Layouts</span>
+                </button>
+                <button class="nav-item" data-page="frames">
+                    <span class="icon">🖼️</span>
+                    <span>Frames</span>
+                </button>
+                <button class="nav-item" data-page="layers">
+                    <span class="icon">📚</span>
+                    <span>Layers</span>
+                </button>
+                <button class="nav-item" data-page="assets">
+                    <span class="icon">📦</span>
+                    <span>Assets</span>
+                </button>
+                <button class="nav-item" data-page="preview">
+                    <span class="icon">👁️</span>
+                    <span>Preview</span>
+                </button>
+                <button class="nav-item" data-page="build">
+                    <span class="icon">🔨</span>
+                    <span>Build</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main" class="main-workspace">
+            <!-- Workspace Container -->
+            <div id="workspaceContainer" class="workspace-container">
+                <!-- Pages will be rendered here -->
+            </div>
+        </main>
+
+        <!-- Right Panel -->
+        <aside id="infoPanel" class="info-panel">
+            <div class="panel-content">
+                <div id="panelContent" class="panel-items">
+                    <!-- Context-sensitive content -->
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer id="footer" class="footer">
+        <div class="footer-content">
+            <div class="footer-item">
+                <span class="label">Version</span>
+                <span id="version" class="value">1.0.0-TB</span>
+            </div>
+            <div class="footer-item">
+                <span class="label">Theme</span>
+                <span id="footerTheme" class="value">—</span>
+            </div>
+            <div class="footer-item">
+                <span class="label">Validation</span>
+                <span id="footerValidation" class="value">—</span>
+            </div>
+            <div class="footer-item">
+                <span class="label">Status</span>
+                <span id="footerStatus" class="value status-ready">Ready</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/constants.js"></script>
+    <script src="js/eventBus.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
