@@ -393,6 +393,29 @@ const CardDesigner=(function(){
 
     _buildFrameLookControls(body);
     _buildBorderControls(body);
+
+    // Sprint 9.4 — Frame Look's visibility (the whole "frameStyle"
+    // preset subgroup, tagged in _buildFrameLookControls) is decided at
+    // this level. Uses applyLayout (not layout) deliberately: at this
+    // container level the only tagged direct child is the frameStyle
+    // subgroup itself — layout() would try to build any unresolved
+    // catalog id (paper/mat) directly here too, duplicating the ones
+    // Frame Style already builds one level down.
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.applyLayout(body,WorkspaceBuilder.getControlIds('frame'));
+    }
+
+    // Sprint 9.4 — Artwork Presentation: a new, additive subgroup for
+    // Holder → Image controls (Presentation / Frame preset / Lighting /
+    // Caption). Built once at mount like every other subgroup; hidden
+    // entirely when the active workspace theme lists nothing for
+    // 'holder.image' so a theme with no opinion here never leaves an
+    // empty section visible.
+    const artworkBody=_makeImageSubgroup(body,'artwork-presentation','Artwork Presentation');
+    const artworkSub=artworkBody.parentNode;
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(artworkBody,'holder.image',{getSlide:_currentSlide,onChange:_commit},artworkSub);
+    }
   }
 
   // Sprint 6.5 (Object Designer) — Frame Look section. A row of preset
@@ -400,6 +423,11 @@ const CardDesigner=(function(){
   // cardOverrides.border. Children can still tweak any value in Frame Style.
   function _buildFrameLookControls(body){
     const fl=_makeImageSubgroup(body,'frame-look','Frame Look');
+    // Sprint 9.4 — the whole subgroup is one theme-driven "frame" panel
+    // control (fl.parentNode is the .image-subgroup wrapper _makeImageSubgroup
+    // built and already appended to `body`; tag it there rather than
+    // changing _makeImageSubgroup's return shape).
+    fl.parentNode.setAttribute('data-control','frameStyle');
     const grid=document.createElement('div');
     grid.className='icon-row frame-design-row';
     FRAME_DESIGNS.forEach(function(p){
@@ -509,8 +537,26 @@ const CardDesigner=(function(){
   function _buildBorderControls(body){
     const bg=_makeImageSubgroup(body,'border','Frame Style');
 
+    // Sprint 9.4 — Frame Style's fields are grouped into four theme-
+    // driven controls (fill / border / radius / shadow) plus two new
+    // ones (paper / mat) built by WorkspaceBuilder. Each wrapper is a
+    // direct child of `bg` so WorkspaceBuilder.layout can show/hide/
+    // reorder them without touching a single field's wiring below.
+    const fillGroup=document.createElement('div');
+    fillGroup.setAttribute('data-control','fill');
+    bg.appendChild(fillGroup);
+    const borderGroup=document.createElement('div');
+    borderGroup.setAttribute('data-control','border');
+    bg.appendChild(borderGroup);
+    const radiusGroup=document.createElement('div');
+    radiusGroup.setAttribute('data-control','radius');
+    bg.appendChild(radiusGroup);
+    const shadowGroup=document.createElement('div');
+    shadowGroup.setAttribute('data-control','shadow');
+    bg.appendChild(shadowGroup);
+
     // Border Size (padding) — Tiny ↔ Big
-    _makeImageSliderRow(bg,{
+    _makeImageSliderRow(borderGroup,{
       labelText:'Border Size',valueClass:'border-padding-value',sliderClass:'border-padding-slider',
       min:0,max:60,step:1,
       onInput:function(v){
@@ -579,10 +625,10 @@ const CardDesigner=(function(){
     });
     chips.appendChild(customWrap);
     colorRow.appendChild(chips);
-    bg.appendChild(colorRow);
+    fillGroup.appendChild(colorRow);
 
     // Round Corners — Square ↔ Round
-    _makeImageSliderRow(bg,{
+    _makeImageSliderRow(radiusGroup,{
       labelText:'Round Corners',valueClass:'border-radius-value',sliderClass:'border-radius-slider',
       min:0,max:80,step:1,
       onInput:function(v){
@@ -594,14 +640,14 @@ const CardDesigner=(function(){
     });
 
     // Border Line (on/off + width + color)
-    _buildToggleRow(bg,'Border Line','border-line-toggle',function(checked){
+    _buildToggleRow(borderGroup,'Border Line','border-line-toggle',function(checked){
       const b=_ensureBorder(_currentSlide());
       if(!b) return;
       b.line=b.line||{};
       if(checked) b.line.enabled=true; else delete b.line.enabled;
       _commitBorder();
     });
-    _makeImageSliderRow(bg,{
+    _makeImageSliderRow(borderGroup,{
       labelText:'Line Width',valueClass:'border-line-width-value',sliderClass:'border-line-width-slider',
       min:1,max:12,step:1,
       onInput:function(v){
@@ -630,17 +676,17 @@ const CardDesigner=(function(){
       _commitBorder();
     });
     lineColorRow.appendChild(lineColorInput);
-    bg.appendChild(lineColorRow);
+    borderGroup.appendChild(lineColorRow);
 
     // Shadow (on/off + intensity)
-    _buildToggleRow(bg,'Shadow','border-shadow-toggle',function(checked){
+    _buildToggleRow(shadowGroup,'Shadow','border-shadow-toggle',function(checked){
       const b=_ensureBorder(_currentSlide());
       if(!b) return;
       b.shadow=b.shadow||{};
       if(checked) b.shadow.enabled=true; else delete b.shadow.enabled;
       _commitBorder();
     });
-    _makeImageSliderRow(bg,{
+    _makeImageSliderRow(shadowGroup,{
       labelText:'Light ↔ Dark',valueClass:'border-shadow-value',sliderClass:'border-shadow-slider',
       min:0,max:1,step:0.01,
       onInput:function(v){
@@ -653,7 +699,16 @@ const CardDesigner=(function(){
       }
     });
 
-    // Reset Border
+    // Sprint 9.4 — show/hide/reorder fill/border/radius/shadow per the
+    // active workspace theme, and build Paper/Mat (new, inert this
+    // sprint — see workspaceBuilder.js header) if the theme lists them.
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(bg,'frame',{getSlide:_currentSlide,onChange:_commitBorder});
+    }
+
+    // Reset Border — a trailer action, always last regardless of the
+    // theme-driven order above (appended after WorkspaceBuilder.layout
+    // so it's never one of the elements that gets reordered).
     const resetRow=document.createElement('div');
     resetRow.className='picture-actions-row';
     const resetBtn=document.createElement('button');
@@ -751,6 +806,27 @@ const CardDesigner=(function(){
     setSlider('.image-offsety-slider','.image-offsety-value',eff.offsetY,function(v){ return Math.round(v)+'px'; });
     mountedRoot.querySelectorAll('.picture-reset-btn').forEach(function(btn){ btn.disabled=!hasImage; });
     _refreshBorder();
+    _refreshFrameWorkspace();
+  }
+
+  // Sprint 9.4 — re-run the theme-driven layout for the Frame panel
+  // (Frame Look visibility + Frame Style's fill/border/radius/shadow/
+  // paper/mat) and the Holder → Image "Artwork Presentation" subgroup.
+  // Called on every image refresh (slide switch, control commit) so a
+  // theme change picked up via ThemeEngine._refreshUI -> CardDesigner.
+  // refresh() -> here rebuilds the right panel immediately, no reload.
+  function _refreshFrameWorkspace(){
+    if(!mountedRoot || typeof WorkspaceBuilder==='undefined') return;
+    const imageBody=mountedRoot.querySelector('[data-card-section-body="image"]');
+    if(!imageBody) return;
+    const ctx={getSlide:_currentSlide,onChange:_commit};
+    const borderCtx={getSlide:_currentSlide,onChange:_commitBorder};
+    WorkspaceBuilder.applyLayout(imageBody,WorkspaceBuilder.getControlIds('frame'));
+    const frameStyleBody=imageBody.querySelector('[data-image-group="border"] .image-subgroup-body');
+    if(frameStyleBody) WorkspaceBuilder.layout(frameStyleBody,'frame',borderCtx);
+    const artworkSub=imageBody.querySelector('[data-image-group="artwork-presentation"]');
+    const artworkBody=imageBody.querySelector('[data-image-group="artwork-presentation"] .image-subgroup-body');
+    if(artworkBody) WorkspaceBuilder.layout(artworkBody,'holder.image',ctx,artworkSub);
   }
 
   function _refreshBorder(){
@@ -1062,6 +1138,16 @@ const CardDesigner=(function(){
 
     editor.appendChild(actionRow);
 
+    // Sprint 9.4 — Holder → Sticker's theme-driven controls (today just
+    // "shadow", e.g. Comic). Built as one additive container, hidden
+    // entirely when the active workspace theme lists nothing here.
+    const stickerWorkspace=document.createElement('div');
+    stickerWorkspace.className='sticker-workspace-controls';
+    editor.appendChild(stickerWorkspace);
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(stickerWorkspace,'holder.sticker',{getSlide:_currentSlide,onChange:_commitSticker},stickerWorkspace);
+    }
+
     body.appendChild(editor);
   }
 
@@ -1072,6 +1158,10 @@ const CardDesigner=(function(){
     const empty=section.querySelector('.sticker-empty');
     const editor=section.querySelector('.sticker-editor');
     if(!empty || !editor) return;
+    const stickerWorkspace=editor.querySelector('.sticker-workspace-controls');
+    if(stickerWorkspace && typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(stickerWorkspace,'holder.sticker',{getSlide:_currentSlide,onChange:_commitSticker},stickerWorkspace);
+    }
     const st=_activeSticker();
     const isStickerSelected=!!st && _selectedStickerType()==='sticker';
     if(!isStickerSelected){
@@ -1709,10 +1799,19 @@ const CardDesigner=(function(){
     editor.appendChild(resetPosBtn);
 
     // --- Typography group ------------------------------------------------
+    // Sprint 9.4 — everything from Font Family through Line Height is one
+    // theme-driven "typography" control (holder.text); wrapped in a
+    // single tagged container so WorkspaceBuilder can show/hide/reorder
+    // it as a unit relative to "alignment", without touching any of the
+    // individual fields' wiring below.
+    const typoGroup=document.createElement('div');
+    typoGroup.setAttribute('data-control','typography');
+    editor.appendChild(typoGroup);
+
     const typoHdr=document.createElement('div');
     typoHdr.className='designer-sublabel';
     typoHdr.textContent='Typography';
-    editor.appendChild(typoHdr);
+    typoGroup.appendChild(typoHdr);
 
     // Font Family
     const familyRow=document.createElement('div');
@@ -1731,10 +1830,10 @@ const CardDesigner=(function(){
       else _setTextOverride('fontFamily',familySel.value);
     });
     familyRow.appendChild(familySel);
-    editor.appendChild(familyRow);
+    typoGroup.appendChild(familyRow);
 
     // Font Size
-    _makeSliderRow(editor,{
+    _makeSliderRow(typoGroup,{
       labelText:'Font Size',valueClass:'text-size-value',sliderClass:'text-size-slider',
       min:12,max:120,step:1,
       onInput:function(v){ _setTextOverride('fontSize',Math.round(v)); }
@@ -1757,7 +1856,7 @@ const CardDesigner=(function(){
       else _setTextOverride('fontWeight',weightSel.value);
     });
     weightRow.appendChild(weightSel);
-    editor.appendChild(weightRow);
+    typoGroup.appendChild(weightRow);
 
     // Font Style (Normal / Italic icon cards)
     const styleRow=document.createElement('div');
@@ -1785,7 +1884,7 @@ const CardDesigner=(function(){
       styleIcons.appendChild(btn);
     });
     styleRow.appendChild(styleIcons);
-    editor.appendChild(styleRow);
+    typoGroup.appendChild(styleRow);
 
     // Color
     const colorRow=document.createElement('div');
@@ -1800,28 +1899,34 @@ const CardDesigner=(function(){
     colorInput.value='#ffffff';
     colorInput.addEventListener('input',function(){ _setTextOverride('color',colorInput.value); });
     colorRow.appendChild(colorInput);
-    editor.appendChild(colorRow);
+    typoGroup.appendChild(colorRow);
 
     // Opacity
-    _makeSliderRow(editor,{
+    _makeSliderRow(typoGroup,{
       labelText:'Opacity',valueClass:'text-opacity-value',sliderClass:'text-opacity-slider',
       min:0,max:1,step:0.01,
       onInput:function(v){ _setTextOverride('opacity',Math.round(v*100)/100); }
     });
 
     // Letter Spacing
-    _makeSliderRow(editor,{
+    _makeSliderRow(typoGroup,{
       labelText:'Letter Spacing',valueClass:'text-letterspacing-value',sliderClass:'text-letterspacing-slider',
       min:-5,max:20,step:0.5,
       onInput:function(v){ _setTextOverride('letterSpacing',v); }
     });
 
     // Line Height
-    _makeSliderRow(editor,{
+    _makeSliderRow(typoGroup,{
       labelText:'Line Height',valueClass:'text-lineheight-value',sliderClass:'text-lineheight-slider',
       min:0.8,max:2.5,step:0.05,
       onInput:function(v){ _setTextOverride('lineHeight',Math.round(v*100)/100); }
     });
+
+    // Sprint 9.4 — Alignment is the second theme-driven "holder.text"
+    // control, wrapped the same way as Typography above.
+    const alignGroup=document.createElement('div');
+    alignGroup.setAttribute('data-control','alignment');
+    editor.appendChild(alignGroup);
 
     // Alignment
     const alignRow=document.createElement('div');
@@ -1851,7 +1956,14 @@ const CardDesigner=(function(){
       alignIcons.appendChild(btn);
     });
     alignRow.appendChild(alignIcons);
-    editor.appendChild(alignRow);
+    alignGroup.appendChild(alignRow);
+
+    // Sprint 9.4 — show/hide/reorder Typography vs. Alignment per the
+    // active workspace theme. Position (above) and Reset actions (below)
+    // are core and stay untouched/untagged.
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(editor,'holder.text',{getSlide:_currentSlide,onChange:_commitText});
+    }
 
     // --- Reset actions ---------------------------------------------------
     const resetGroup=document.createElement('div');
@@ -1878,6 +1990,12 @@ const CardDesigner=(function(){
     const empty=mountedRoot.querySelector('.text-empty');
     const editor=mountedRoot.querySelector('.text-editor');
     if(!empty||!editor) return;
+    // Sprint 9.4 — re-run on every refresh so a theme change (routed
+    // here via ThemeEngine._refreshUI -> CardDesigner.refresh()) updates
+    // Typography/Alignment visibility and order with no reload.
+    if(typeof WorkspaceBuilder!=='undefined'){
+      WorkspaceBuilder.layout(editor,'holder.text',{getSlide:_currentSlide,onChange:_commitText});
+    }
     const id=_selectedTextId();
     if(!id){
       empty.classList.remove('hidden');
