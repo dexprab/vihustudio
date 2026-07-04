@@ -70,7 +70,30 @@
 // treated as 'story' — see _normalizeManifest.
 //
 // ===========================================================
-// Scope (Sprint 9.2, extended 9.3)
+// theme.editor (Sprint 9.4 — Dynamic Theme Workspace)
+// ===========================================================
+// Optional. Drives which controls js/workspaceBuilder.js shows in the
+// right-side designer, in what order, for THIS theme — never the
+// renderer (see renderer/slideRenderer.js, untouched by this sprint).
+//   editor: {
+//     slide:  { sections: ['background','decorations','title'] },
+//     frame:  { sections: ['frameStyle','fill','border','radius','shadow','paper','mat'] },
+//     holder: {
+//       image:   ['presentation','artworkFrame','lighting','caption'],
+//       text:    ['typography','alignment'],
+//       sticker: ['stickerShadow']
+//     }
+//   }
+// Each list entry is either a plain control-id string (uses
+// WorkspaceBuilder's built-in default/options) or an object
+// {id, default, min, max, options, label} to override those per-theme.
+// Absent entirely, or missing a given panel, WorkspaceBuilder falls
+// back to today's fixed control set for that panel — no migration
+// required, same convention as a missing "type" (_normalizeManifest
+// below) or Artwork Theme's optional presentation fields.
+//
+// ===========================================================
+// Scope (Sprint 9.2, extended 9.3, extended 9.4)
 // ===========================================================
 // Registry + Library + Official registration + Import + Validation +
 // Metadata, for both theme types. Theme Creator, Theme Editor, Theme
@@ -142,7 +165,15 @@ const ThemeRegistry=(function(){
         {id:'stars',name:'Stars'},
         {id:'clouds',name:'Clouds'},
         {id:'flowers',name:'Flowers'}
-      ]
+      ],
+      // Sprint 9.4 — the baseline editor config: today's default control
+      // set, spelled out explicitly so this theme (the app's default)
+      // documents the workspace contract by example.
+      editor:{
+        slide:{sections:['background','decorations','title']},
+        frame:{sections:['frameStyle','fill','border','radius','shadow']},
+        holder:{image:[],text:['typography','alignment'],sticker:[]}
+      }
     },
     {
       id:'adventure',
@@ -184,7 +215,15 @@ const ThemeRegistry=(function(){
       decorations:[
         {id:'stars',name:'Stars'},
         {id:'clouds',name:'Clouds'}
-      ]
+      ],
+      // Sprint 9.4 — Comic keeps the frame bold and simple (no radius
+      // finesse) and gives stickers their own Shadow control for
+      // speech-bubble-style pop.
+      editor:{
+        slide:{sections:['title','decorations']},
+        frame:{sections:['fill','border']},
+        holder:{image:[],text:['typography','alignment'],sticker:['stickerShadow']}
+      }
     },
     {
       id:'minimal-elegant',
@@ -235,7 +274,16 @@ const ThemeRegistry=(function(){
       shadow:'gallery',
       lighting:'gallery',
       composition:'center',
-      enhancement:[]
+      enhancement:[],
+      // Sprint 9.4 — a gallery wall is about the picture, not the page:
+      // no background/decorations control, Frame panel limited to Fill +
+      // Shadow + Paper, and the full Presentation/Lighting/Caption set
+      // exposed on the Image holder.
+      editor:{
+        slide:{sections:['title']},
+        frame:{sections:['fill','shadow','paper']},
+        holder:{image:['presentation','lighting','caption'],text:['typography'],sticker:[]}
+      }
     },
     {
       id:'sketchbook',
@@ -249,7 +297,15 @@ const ThemeRegistry=(function(){
       shadow:'none',
       lighting:'none',
       composition:'margin',
-      enhancement:[]
+      enhancement:[],
+      // Sprint 9.4 — a notebook page: tape/paper on the Frame, and the
+      // Image holder trades Lighting for a Tape/Floating frame preset
+      // plus a handwritten Caption.
+      editor:{
+        slide:{sections:['background','title']},
+        frame:{sections:['border','paper']},
+        holder:{image:['presentation','artworkFrame','caption'],text:['typography','alignment'],sticker:[]}
+      }
     },
     {
       id:'watercolor-portfolio',
@@ -263,7 +319,14 @@ const ThemeRegistry=(function(){
       shadow:'gallery',
       lighting:'soft',
       composition:'margin',
-      enhancement:[]
+      enhancement:[],
+      // Sprint 9.4 — generous margins call for a Mat control alongside
+      // Fill/Shadow/Paper; the Image holder keeps Presentation + Lighting.
+      editor:{
+        slide:{sections:['background','decorations','title']},
+        frame:{sections:['fill','shadow','mat','paper']},
+        holder:{image:['presentation','lighting'],text:['typography'],sticker:[]}
+      }
     },
     {
       id:'classroom-display',
