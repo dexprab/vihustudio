@@ -829,7 +829,8 @@ button:active{
 }
 
 .text-family-select,
-.text-weight-select{
+.text-weight-select,
+.workspace-select{
   width:100%;
   padding:8px 10px;
   border:1px solid var(--line);
@@ -843,7 +844,8 @@ button:active{
 }
 
 .text-family-select:focus,
-.text-weight-select:focus{
+.text-weight-select:focus,
+.workspace-select:focus{
   outline:none;
   border-color:var(--gold);
 }
@@ -1127,6 +1129,10 @@ button:active{
   border-radius:var(--border-radius);
 }
 .page-element-list.hidden{ display:none; }
+/* Sprint 9.4 — Dynamic Theme Workspace: WorkspaceBuilder hides a
+   control by class rather than removing it from the DOM, so its
+   listeners/state survive a theme switch back. */
+.wb-hidden{ display:none !important; }
 .page-element-list-title{
   font-size:11px;
   font-weight:bold;
