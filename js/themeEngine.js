@@ -116,8 +116,25 @@ const ThemeEngine=(function(){
     {value:'"Courier New", Courier, monospace',label:'Courier'}
   ];
 
+  // Sprint 9.5 — Theme Language v2. A Story Theme may now carry an
+  // optional `slide` block and/or an optional `holder` block —
+  // `{presentation:'<id>', ...overrides}` — that seed these system
+  // defaults through ThemePresets (Presentation Preset -> Theme
+  // Overrides -> System Defaults, see js/themePresets.js). `holder` is
+  // the sprint's "Frame" scope (Picture Holder look — cornerRadius/
+  // padding/shadow/fill) named to match the schema
+  // themeOptions.holder/getHolderDefaults() already use; it is NOT the
+  // pre-existing `theme.frame` field (the book's outer frame COLOR,
+  // read by _frameColor — an unrelated, Slide-level concept despite
+  // the name). A theme with neither `slide` nor `holder` (every theme
+  // before this sprint) falls straight through to the hardcoded values
+  // below exactly as always. Storybook Classic's own `slide`/`holder`
+  // presets are deliberately identical to these hardcoded values (see
+  // themeRegistry.js) so the app's default theme — and every project
+  // that has never touched Theme Designer — never sees a pixel of
+  // difference from this change.
   function _defaultOptionsFor(theme){
-    return {
+    const base={
       variant:(theme.variants&&theme.variants[0])?theme.variants[0].id:'classic',
       panelStyle:'classic',
       footerStyle:'classic',
@@ -133,6 +150,17 @@ const ThemeEngine=(function(){
       holder:{},
       layout:{}
     };
+    if(theme.slide && typeof ThemePresets!=='undefined'){
+      const slideDefaults=ThemePresets.resolveSlide(theme.slide.presentation,theme.slide);
+      delete slideDefaults.presentation;
+      Object.assign(base,slideDefaults);
+    }
+    if(theme.holder && typeof ThemePresets!=='undefined'){
+      const holderDefaults=ThemePresets.resolveFrame(theme.holder.presentation,theme.holder);
+      delete holderDefaults.presentation;
+      base.holder=Object.assign({},base.holder,holderDefaults);
+    }
+    return base;
   }
   function getFontChoices(){ return FONT_CHOICES.slice(); }
 

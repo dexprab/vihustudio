@@ -157,22 +157,34 @@ const SlideRenderer=(()=>{
   // border shape those functions read) purely so the texture/lighting
   // passes below can look up paper/lighting without re-resolving the
   // active theme a second time.
+  // Sprint 9.5 — Theme Language v2. An Artwork Theme may now say
+  // `presentation:'gallery'` instead of spelling out every field below;
+  // ThemePresets.resolveHolder fills in whatever the theme doesn't
+  // override itself (Presentation Preset -> Theme Overrides), and any
+  // field still missing after that falls through to this function's
+  // own ARTWORK_*_PRESET['none'] lookups exactly as before (System
+  // Defaults). A theme with no `presentation`, or one ThemePresets
+  // doesn't recognize, resolves to its own explicit fields unchanged —
+  // this is a strict superset of pre-9.5 behaviour, not a redesign.
   function _artworkBorder(art){
     if(!art) return null;
-    const framePreset=ARTWORK_FRAME_PRESET[art.frame]||ARTWORK_FRAME_PRESET['none'];
-    const shadowPreset=ARTWORK_SHADOW_PRESET[art.shadow]||ARTWORK_SHADOW_PRESET['none'];
-    const padding=(ARTWORK_COMPOSITION_PADDING[art.composition]!=null)?ARTWORK_COMPOSITION_PADDING[art.composition]:24;
+    const resolved=(typeof ThemePresets!=='undefined')
+      ? ThemePresets.resolveHolder('image',art.presentation,art)
+      : art;
+    const framePreset=ARTWORK_FRAME_PRESET[resolved.frame]||ARTWORK_FRAME_PRESET['none'];
+    const shadowPreset=ARTWORK_SHADOW_PRESET[resolved.shadow]||ARTWORK_SHADOW_PRESET['none'];
+    const padding=(ARTWORK_COMPOSITION_PADDING[resolved.composition]!=null)?ARTWORK_COMPOSITION_PADDING[resolved.composition]:24;
     return {
       design:framePreset.design,
       padding:padding,
-      fill:ARTWORK_BACKGROUND_FILL[art.background]||'none',
+      fill:ARTWORK_BACKGROUND_FILL[resolved.background]||'none',
       cornerRadius:framePreset.cornerRadius,
       lineEnabled:false,
       lineWidth:2,
       lineColor:'#000000',
       shadowEnabled:shadowPreset.enabled,
       shadowIntensity:shadowPreset.intensity,
-      _artwork:art
+      _artwork:resolved
     };
   }
 
@@ -203,15 +215,22 @@ const SlideRenderer=(()=>{
       // holder. When neither is set, return null so legacy behaviour holds.
       const opts=_options(s);
       const hd=(opts && opts.holder) || {};
+      // Sprint 9.5 — `fill` joins cornerRadius/padding/shadow as a
+      // Frame-presentation-seedable field (see ThemeEngine's
+      // _defaultOptionsFor -> ThemePresets.resolveFrame). A theme with
+      // no `holder` block never sets it, so `hd.fill` stays undefined
+      // and this branch's own System Default ('page') is what runs —
+      // identical to every pre-9.5 theme.
       const hasHolderDefault=
         (typeof hd.cornerRadius==='number' && hd.cornerRadius>0) ||
         (typeof hd.padding==='number' && hd.padding>0) ||
-        !!hd.shadow;
+        !!hd.shadow ||
+        !!hd.fill;
       if(!hasHolderDefault) return null;
       return {
         design:null,
         padding:(typeof hd.padding==='number')?hd.padding:0,
-        fill:'page',
+        fill:hd.fill||'page',
         cornerRadius:(typeof hd.cornerRadius==='number')?hd.cornerRadius:0,
         lineEnabled:false,
         lineWidth:2,

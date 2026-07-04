@@ -93,7 +93,32 @@
 // below) or Artwork Theme's optional presentation fields.
 //
 // ===========================================================
-// Scope (Sprint 9.2, extended 9.3, extended 9.4)
+// Presentation Presets (Sprint 9.5 — Theme Language v2)
+// ===========================================================
+// Optional. Lets a theme describe creative intent instead of listing
+// every low-level property — see js/themePresets.js for the preset
+// tables and the merge helper (Presentation Preset -> Theme Overrides
+// -> System Defaults). A Story Theme opts in with either or both of:
+//   slide:  { presentation:'comic', ... }   // page furniture defaults
+//                                            // (panelStyle/footerStyle/
+//                                            // pageNumber/bookTitle*/
+//                                            // handle*/decorations —
+//                                            // read by ThemeEngine's
+//                                            // _defaultOptionsFor)
+//   holder: { presentation:'comic', ... }   // Picture Holder look
+//                                            // defaults (cornerRadius/
+//                                            // padding/shadow/fill)
+// `holder` here is the sprint's "Frame" scope — NOT the pre-existing
+// `frame` field above, which is the book's outer frame COLOR and is
+// unrelated. An Artwork Theme's existing `presentation` field (Sprint
+// 9.3) is reused as its own preset id, resolved by
+// renderer/slideRenderer.js's _artworkBorder via
+// ThemePresets.resolveHolder('image', ...). A theme with none of
+// these (every theme before this sprint) resolves exactly as before —
+// see each resolver's own System Default fallback.
+//
+// ===========================================================
+// Scope (Sprint 9.2, extended 9.3, extended 9.4, extended 9.5)
 // ===========================================================
 // Registry + Library + Official registration + Import + Validation +
 // Metadata, for both theme types. Theme Creator, Theme Editor, Theme
@@ -111,8 +136,12 @@ const ThemeRegistry=(function(){
   // against. Bump only when the theme object shape changes in a way
   // that could break older packages. 9.3.0 — additive only (a package
   // with no "type" is treated as 'story', see _normalizePackage below)
-  // so 9.2-era imported themes keep loading with zero migration.
-  const THEME_SYSTEM_VERSION='9.3.0';
+  // so 9.2-era imported themes keep loading with zero migration. 9.5.0
+  // — Theme Language v2 (js/themePresets.js): a Story Theme may add
+  // optional `slide`/`holder` blocks, an Artwork Theme's existing
+  // `presentation` field may now resolve through a preset table.
+  // Still additive only — a package with neither is unaffected.
+  const THEME_SYSTEM_VERSION='9.5.0';
 
   const IMPORTED_STORAGE_KEY='vihu.themeRegistry.imported.v1';
 
@@ -173,7 +202,15 @@ const ThemeRegistry=(function(){
         slide:{sections:['background','decorations','title']},
         frame:{sections:['frameStyle','fill','border','radius','shadow']},
         holder:{image:[],text:['typography','alignment'],sticker:[]}
-      }
+      },
+      // Sprint 9.5 — Theme Language v2: the app's default theme names
+      // its own Slide/Holder presentation, and both presets are
+      // defined (js/themePresets.js SLIDE_PRESETS.storybook /
+      // FRAME_PRESETS.storybook) to reproduce these exact values —
+      // documenting the presentation-preset contract by example without
+      // changing a pixel of what Storybook Classic already renders.
+      slide:{presentation:'storybook'},
+      holder:{presentation:'storybook'}
     },
     {
       id:'adventure',
@@ -223,7 +260,17 @@ const ThemeRegistry=(function(){
         slide:{sections:['title','decorations']},
         frame:{sections:['fill','border']},
         holder:{image:[],text:['typography','alignment'],sticker:['stickerShadow']}
-      }
+      },
+      // Sprint 9.5 — Theme Language v2: page furniture defaults to a
+      // bold, centered "comic" presentation (rounded panel, minimal
+      // footer, centered title/page number — js/themePresets.js
+      // SLIDE_PRESETS.comic), and the picture holder defaults to a
+      // square, plain-white, shadowless panel (FRAME_PRESETS.comic) —
+      // richer out-of-the-box defaults for brand-new Comic pages, with
+      // zero effect on any project that already has this theme applied
+      // (its themeOptions are already persisted from that point on).
+      slide:{presentation:'comic'},
+      holder:{presentation:'comic'}
     },
     {
       id:'minimal-elegant',
@@ -254,10 +301,18 @@ const ThemeRegistry=(function(){
   // cornerRadius, shadow -> border.shadow*, composition -> padding),
   // reusing that system rather than drawing a parallel one.
   //
-  // `presentation` and `enhancement` are stored for completeness and
-  // future use (see the Theme Registry canon comment at the top of
-  // this file) but don't independently drive rendering this sprint —
-  // none of the five themes below specify an `enhancement`, and
+  // Sprint 9.5 — Theme Language v2 activates `presentation`: it now
+  // resolves through js/themePresets.js's HOLDER_PRESETS.image table
+  // (Presentation Preset -> Theme Overrides -> System Defaults, see
+  // renderer/slideRenderer.js _artworkBorder), so a theme can name a
+  // preset instead of spelling out every field below it. Museum
+  // Gallery / Sketchbook / Watercolor Portfolio do exactly that;
+  // Classroom Display / Scrapbook still spell every field out
+  // explicitly (their `presentation` id is present but unused as a
+  // preset lookup key here, matching what pre-9.5 code already did) —
+  // both forms are equally valid, a theme is never required to use
+  // the shorthand. `enhancement` is still stored for completeness and
+  // future use — none of the five themes below specify one, and
   // nothing in this sprint automatically adjusts a pixel of the
   // child's photo (rotate/crop/exposure/etc. stay Picture Studio's
   // explicit, child-initiated actions, untouched by this sprint).
@@ -266,14 +321,14 @@ const ThemeRegistry=(function(){
       id:'museum-gallery',
       name:'Museum Gallery',
       description:'A quiet gallery wall — white mat, soft light, centered.',
+      // Sprint 9.5 — Theme Language v2: `presentation` alone now
+      // supplies background/frame/paper/caption/shadow/lighting/
+      // composition, resolved from js/themePresets.js
+      // HOLDER_PRESETS.image.gallery (byte-identical to this theme's
+      // pre-9.5 explicit fields — see git history for the values this
+      // replaces). Add any field below `presentation` to override just
+      // that one value; everything else keeps coming from the preset.
       presentation:'gallery',
-      background:'white',
-      frame:'white-mat',
-      paper:'smooth',
-      caption:'museum',
-      shadow:'gallery',
-      lighting:'gallery',
-      composition:'center',
       enhancement:[],
       // Sprint 9.4 — a gallery wall is about the picture, not the page:
       // no background/decorations control, Frame panel limited to Fill +
@@ -289,43 +344,37 @@ const ThemeRegistry=(function(){
       id:'sketchbook',
       name:'Sketchbook',
       description:'Notebook paper and tape corners, like a page from a sketchbook.',
+      // Sprint 9.5 — see Museum Gallery above; resolves from
+      // HOLDER_PRESETS.image.sketchbook.
       presentation:'sketchbook',
-      background:'notebook-paper',
-      frame:'tape',
-      paper:'notebook',
-      caption:'handwritten',
-      shadow:'none',
-      lighting:'none',
-      composition:'margin',
       enhancement:[],
       // Sprint 9.4 — a notebook page: tape/paper on the Frame, and the
       // Image holder trades Lighting for a Tape/Floating frame preset
-      // plus a handwritten Caption.
+      // plus a handwritten Caption. Sprint 9.5 adds Paper to the Image
+      // holder too, so the notebook texture is choosable per picture,
+      // not just for the page.
       editor:{
         slide:{sections:['background','title']},
         frame:{sections:['border','paper']},
-        holder:{image:['presentation','artworkFrame','caption'],text:['typography','alignment'],sticker:[]}
+        holder:{image:['presentation','paper','artworkFrame','caption'],text:['typography','alignment'],sticker:[]}
       }
     },
     {
       id:'watercolor-portfolio',
       name:'Watercolor Portfolio',
       description:'Watercolor paper and a floating frame with generous margins.',
+      // Sprint 9.5 — see Museum Gallery above; resolves from
+      // HOLDER_PRESETS.image.portfolio.
       presentation:'portfolio',
-      background:'watercolor-paper',
-      frame:'floating',
-      paper:'watercolor',
-      caption:'minimal',
-      shadow:'gallery',
-      lighting:'soft',
-      composition:'margin',
       enhancement:[],
       // Sprint 9.4 — generous margins call for a Mat control alongside
       // Fill/Shadow/Paper; the Image holder keeps Presentation + Lighting.
+      // Sprint 9.5 adds Caption, since Portfolio's "minimal" caption is
+      // now a real, choosable value rather than a fixed theme field.
       editor:{
         slide:{sections:['background','decorations','title']},
         frame:{sections:['fill','shadow','mat','paper']},
-        holder:{image:['presentation','lighting'],text:['typography'],sticker:[]}
+        holder:{image:['presentation','lighting','caption'],text:['typography'],sticker:[]}
       }
     },
     {

@@ -81,9 +81,27 @@ const WorkspaceBuilder=(function(){
     return null;
   }
 
+  // Sprint 9.5 — a theme that names a Holder presentation (e.g.
+  // Classroom Display's `presentation:'classroom'`) but authors no
+  // `editor` block of its own still gets a meaningful, non-empty
+  // control list, sourced from that preset's `editorControls`
+  // metadata (js/themePresets.js) instead of DEFAULT_CONFIG's empty
+  // array. A theme with its own explicit `editor` block always wins —
+  // this only fills the gap _editorSectionFor leaves null.
+  function _presetEditorFallback(panelId){
+    if(panelId.indexOf('holder.')!==0 || typeof ThemePresets==='undefined') return null;
+    const holderType=panelId.slice('holder.'.length);
+    const theme=getActiveWorkspaceTheme();
+    const presentation=theme && theme.presentation;
+    if(!presentation) return null;
+    const table=ThemePresets.HOLDER_PRESETS[holderType];
+    const preset=table && table[presentation];
+    return (preset && Array.isArray(preset.editorControls)) ? preset.editorControls : null;
+  }
+
   // Returns {ids:[...], metaById:{id:{default,min,max,options,label}}}
   function _resolve(panelId){
-    const raw=_editorSectionFor(panelId);
+    const raw=_editorSectionFor(panelId) || _presetEditorFallback(panelId);
     const list=Array.isArray(raw) ? raw : (DEFAULT_CONFIG[panelId]||[]);
     const ids=[]; const metaById={};
     list.forEach(function(entry){
@@ -185,9 +203,18 @@ const WorkspaceBuilder=(function(){
       build:function(c,ctx,meta){ return _buildSelectRow(c,'mat','Mat','composition',
         [['center','Center'],['margin','Margin'],['floating','Floating']],ctx,meta); }
     },
+    // Sprint 9.5 — the option list comes from ThemePresets' Holder
+    // Image preset catalog (id + meta.displayName) rather than a
+    // hardcoded array, so a new official or imported preset appears
+    // here automatically — "No theme-specific UI should be
+    // hardcoded" per the sprint spec.
     presentation:{
-      build:function(c,ctx,meta){ return _buildSelectRow(c,'presentation','Presentation','presentation',
-        [['gallery','Gallery'],['sketchbook','Sketchbook'],['portfolio','Portfolio'],['classroom','Classroom'],['scrapbook','Scrapbook']],ctx,meta); }
+      build:function(c,ctx,meta){
+        const options=(typeof ThemePresets!=='undefined')
+          ? ThemePresets.listHolderPresets('image').map(function(p){ return [p.id,(p.meta&&p.meta.displayName)||p.id]; })
+          : [];
+        return _buildSelectRow(c,'presentation','Presentation','presentation',options,ctx,meta);
+      }
     },
     artworkFrame:{
       build:function(c,ctx,meta){ return _buildSelectRow(c,'artworkFrame','Frame','frame',
