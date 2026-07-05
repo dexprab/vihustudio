@@ -1,9 +1,9 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "sprint": "S11.0",
-  "task": "Studio Arrival Experience",
-  "build": "0062",
+  "task": "Studio Arrival Experience (Screen 2 master/detail)",
+  "build": "0063",
   "buildDate": "2026-07-05",
-  "commit": "56f5f92",
+  "commit": "2c06339",
   "environment": "Release"
 }
