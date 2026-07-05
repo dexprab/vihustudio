@@ -159,6 +159,24 @@ if(typeof StickerStudio!=='undefined'){
   }catch(e){}
 }
 
+// Sprint 10.0 — Creation Experience V1. ContextPanel replaces the
+// permanent tab bar / always-visible designer sections with a single
+// selection-driven panel; it reuses CardDesigner/PageDesigner/
+// StickerStudio exactly as mounted above, it does not replace them.
+if(typeof ContextPanel!=='undefined'){
+  try{
+    ContextPanel.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
+      getSelectedTextElement:function(){ return _selectedTextElement; },
+      getSelectedSceneElement:function(){ return _selectedSceneElement; },
+      getSelectedSceneElementType:function(){ return _selectedSceneElementType; }
+    });
+    ContextPanel.init();
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(typeof window.redrawPreview==='function') window.redrawPreview();
@@ -171,6 +189,7 @@ function _setSelectedTextElement(id){
       try{ CardDesigner.focusSection('text'); }catch(e){}
     }
   }
+  if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
 }
 
 // Sprint 6.5 (Object Designer) — selecting a scene element auto-routes
@@ -221,6 +240,7 @@ function _setSelectedSceneElement(id, elementType){
   }
   if(typeof window.redrawPreview==='function') window.redrawPreview();
   if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+  if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
@@ -628,6 +648,8 @@ window.showSlide=function(i){
  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
  // Re-sync the Story Designer's content fields (Sprint 5.0).
  if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
+ // Sprint 10.0 — keep the Context Panel in sync with the newly-active slide.
+ if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
  _updateCanvasCursor();
 };
 
@@ -980,6 +1002,13 @@ previewCanvas.addEventListener('mousedown',function(e){
   if(s.image && _isInsidePanel(c.x,c.y,s) && typeof CardDesigner!=='undefined'){
     const v=CardDesigner.getActiveImageView();
     if(v){
+      // Sprint 10.0 — Story-role pages have no SceneEngine scene element
+      // for the picture (SceneEngine.getRenderData returns null for
+      // Story role — see js/sceneEngine.js), so this is the only real
+      // click target the Context Panel can key off for "Artwork
+      // selected" on those pages. Selecting doesn't change the pan
+      // gesture below at all — it just notifies the Context Panel.
+      _setSelectedSceneElement('image-holder','image-holder');
       _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};
       previewCanvas.classList.add('canvas-panning');
       e.preventDefault();
@@ -1269,8 +1298,16 @@ function showRestoreModal(opts){
 function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden'); }
 
 // Session bootstrap
+// Sprint 10.0 — Creation Experience V1. A brand-new session (no saved
+// project at all, or a discarded/corrupt one) now opens the Creation Flow
+// (Creation Type -> Theme -> Representation) instead of sitting on the
+// hardcoded default AppState. Restoring a saved session is unchanged —
+// it goes straight to the editor exactly as before.
+function _startCreationFlow(){
+  if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+}
 (function bootstrapSession(){
-  if(!window.ProjectManager){ setAutosaveStatus('saved'); return; }
+  if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
     const hasPages=(info.pageCount||0)>0;
@@ -1286,7 +1323,7 @@ function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden
         try{ await ProjectManager.restoreSession(); setAutosaveStatus('saved'); }
         catch(e){ ProjectManager.discardSession(); setAutosaveStatus('failed'); }
       },
-      onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); }
+      onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); }
     });
   }else if(info.state==='corrupt'){
     showRestoreModal({
@@ -1294,11 +1331,12 @@ function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden
       body:'Your previous session could not be loaded (it may be corrupted or from a newer version).',
       primary:'Start New Project',
       secondary:'Discard Saved Session',
-      onPrimary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); },
-      onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); }
+      onPrimary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); },
+      onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); }
     });
   }else{
     setAutosaveStatus('saved');
+    _startCreationFlow();
   }
 })();
 });

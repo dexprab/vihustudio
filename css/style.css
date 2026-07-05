@@ -202,7 +202,11 @@ body{
 }
 .emoji-picker-toggle{
   flex:none;
-  width:32px;
+  /* !important: the global button:not(#openBtn):not(#saveBtn){width:100%}
+     rule outranks this class selector on specificity (its :not() ID
+     arguments count as ID specificity) and would otherwise stretch this
+     32px icon button to fill the row. */
+  width:32px !important;
   height:32px;
   margin-top:0;
   padding:0;
@@ -4134,3 +4138,187 @@ body.dark-theme .publish-celebration-secondary-btn:hover{ background:rgba(255,25
     display:none;
   }
 }
+
+/* ===========================
+   Sprint 10.0 — Creation Experience V1 (Child First Studio)
+   =========================== */
+
+/* Creation Flow — full-screen Creation Type -> Theme -> Representation
+   wizard shown before the editor. */
+.creation-flow-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  background:var(--bg);
+  overflow-y:auto;
+  display:flex;
+  justify-content:center;
+  padding:48px 24px;
+}
+.creation-flow-overlay.hidden{ display:none; }
+body.creation-flow-active #app{ display:none; }
+
+.creation-flow-panel{ width:100%; max-width:920px; }
+
+.creation-flow-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:8px;
+}
+.creation-flow-back{
+  background:none;
+  border:none;
+  color:var(--text-secondary);
+  font-size:14px;
+  cursor:pointer;
+  padding:4px 8px;
+  width:auto;
+  height:auto;
+  margin:0;
+  justify-content:flex-start;
+}
+.creation-flow-back:hover{ color:var(--text); opacity:1; }
+.creation-flow-step{
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  white-space:nowrap;
+  margin-left:auto;
+}
+.creation-flow-question{
+  font-size:28px;
+  font-weight:700;
+  color:var(--text);
+  margin:8px 0 28px;
+}
+.creation-flow-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:20px;
+}
+.creation-flow-card{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
+  gap:8px;
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:var(--card-radius);
+  background:var(--panel);
+  color:var(--text);
+  cursor:pointer;
+  transition:border-color .15s, transform .15s, box-shadow .15s;
+  position:relative;
+  width:auto;
+  height:auto;
+}
+.creation-flow-card:hover{
+  border-color:var(--gold);
+  transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+.creation-flow-card-icon{ font-size:40px; line-height:1; }
+.creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--text); }
+.creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); }
+.creation-flow-theme-preview{
+  width:100%;
+  height:90px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:32px;
+  margin-bottom:4px;
+  border:1px solid var(--line);
+}
+.creation-flow-badge{
+  position:absolute;
+  top:14px;
+  right:14px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--navy);
+  background:var(--gold);
+  padding:3px 8px;
+  border-radius:20px;
+}
+.creation-flow-comingsoon-msg{
+  font-size:14px;
+  color:var(--text-secondary);
+  max-width:480px;
+  margin-bottom:24px;
+}
+.creation-flow-choose-other{ display:inline-flex; width:auto; }
+
+/* Context Panel — replaces the permanent tab bar / always-visible
+   accordion sections with a single selection-driven panel. Existing
+   CardDesigner/PageDesigner/StickerStudio DOM is reused as-is; this only
+   hides chrome and shows/hides the relevant [data-card-section] via a
+   `context-active` class the Context Panel toggles. */
+.right-sidebar.context-panel-mode .tabs{ display:none; }
+.right-sidebar.context-panel-mode .tab-content{ display:none; }
+.right-sidebar.context-panel-mode .tab-content.context-visible{ display:block; }
+.right-sidebar.context-panel-mode .card-designer-intro,
+.right-sidebar.context-panel-mode .card-designer-inheritance,
+.right-sidebar.context-panel-mode .theme-designer-intro,
+.right-sidebar.context-panel-mode .buddy-placeholder{ display:none; }
+
+.right-sidebar.context-panel-mode #cardDesignerRoot .designer-group-title{ display:none; }
+.right-sidebar.context-panel-mode #cardDesignerRoot .designer-group{
+  border:none;
+  box-shadow:none;
+  padding:0;
+  margin:0 0 24px;
+}
+.right-sidebar.context-panel-mode #cardDesignerRoot .designer-group-body{ display:block !important; }
+.right-sidebar.context-panel-mode #cardDesignerRoot [data-card-section]{ display:none; }
+.right-sidebar.context-panel-mode #cardDesignerRoot [data-card-section].context-active{ display:block; }
+.right-sidebar.context-panel-mode #cardDesignerRoot [data-control="museumCaption"]{ display:none !important; }
+
+.context-panel-root{
+  padding:16px var(--section-padding);
+  border-bottom:1px solid var(--line);
+}
+.context-panel-root.is-empty{ display:none; padding:0; border:none; }
+.context-panel-heading{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  margin:16px 0 8px;
+}
+.context-panel-heading:first-child{ margin-top:0; }
+.context-rep-name{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:8px;
+}
+.context-action-row{ display:flex; flex-wrap:wrap; gap:8px; }
+.context-btn{
+  padding:9px 14px;
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  width:auto;
+  height:auto;
+}
+.context-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.08); }
+.context-btn-primary{
+  background:var(--gold);
+  color:var(--navy);
+  border-color:var(--gold);
+}
+.context-row{ margin-bottom:12px; }
