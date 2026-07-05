@@ -1,199 +1,422 @@
 # Theme Builder
 
-A standalone web application for authoring, validating, and building official VihuStudio themes.
+A lightweight compiler for creating and validating VihuStudio themes.
 
-## Purpose
+## Overview
 
-Theme Builder is the birthplace of every Official Theme. It provides a professional, creative studio environment for theme authors to:
-
-- Create and configure themes
-- Organize layouts and frames
-- Manage layers and assets
-- Validate theme structure
-- Build and package themes
-
-## Architecture
-
-Theme Builder is built as a single-page application (SPA) using vanilla JavaScript, HTML, and CSS—matching VihuStudio's technology stack.
-
-### Core Modules
-
-- **constants.js** - Application constants and configuration
-- **eventBus.js** - Lightweight event system for decoupled communication
-- **state.js** - Central state management
-- **ui.js** - UI rendering and interaction
-- **router.js** - Client-side routing
-- **app.js** - Main application orchestration
-
-### State Management
-
-The application maintains central state through `ThemeBuilderState`:
-
-- `currentTheme` - Active theme project
-- `selectedSection` - Current workspace page
-- `isDirty` - Unsaved changes flag
-- `validationState` - Theme validation status
-- `buildState` - Build process state
-- `themes` - List of available themes
-
-### Event System
-
-Communication between modules uses `EventBus`:
-
-- `themeChanged` - Theme was modified
-- `sectionChanged` - User navigated to a new section
-- `validationUpdated` - Validation state changed
-- `buildStarted` - Build process started
-- `buildCompleted` - Build process completed
-- `stateUpdated` - State changed
-
-## Folder Structure
+Theme Builder V1 is a **read-only theme validator and compiler**. It takes a Theme Project folder, validates it against requirements, and produces a valid `.vtheme` package for import into VihuStudio.
 
 ```
-tools/
-  theme-builder/
-    index.html              # Application shell
-    css/
-      theme-builder.css    # Styles
-    js/
-      app.js              # Main application
-      router.js           # Navigation routing
-      ui.js               # UI management
-      state.js            # State management
-      eventBus.js         # Event system
-      constants.js        # Constants
-    assets/               # Images, icons, etc.
-    themes/               # Theme projects
-    README.md            # This file
+Theme Project Folder
+    ↓ [Load]
+Dashboard & Validation
+    ↓ [Validate]
+Validation Report
+    ↓ [Build]
+.vtheme Package
+    ↓ [Download]
+Import into VihuStudio
 ```
 
-## Workspace Pages
+## Theme Builder Philosophy
 
-### Dashboard
-Overview of theme projects and recent activity.
+Theme Builder is a **compiler**, not a visual editor.
 
-### Theme
-Configure theme properties, metadata, and settings.
+**Input:** Theme Project folder  
+**Process:** Validate → Package → Generate  
+**Output:** ThemeName.vtheme (directly importable)
 
-### Layouts
-Design and manage theme layouts.
+Visual editing belongs to Theme Designer V2.
 
-### Frames
-Create and organize frame components.
+## What Theme Builder Does
 
-### Layers
-Organize and manage layer packs.
+✓ Reads Theme Project folders  
+✓ Detects project structure  
+✓ Validates all components  
+✓ Reports errors and warnings  
+✓ Prevents invalid builds  
+✓ Generates `.vtheme` packages  
+✓ Provides download capability  
 
-### Assets
-Upload and manage theme assets.
+## What Theme Builder Does NOT Do
 
-### Preview
-Preview theme rendering (future).
+✗ Visual editing  
+✗ Theme design  
+✗ Live preview  
+✗ Frame/layout editing  
+✗ Asset editing  
+✗ Publishing  
 
-### Build
-Build and package themes (future).
+## Theme Project Structure
 
-## Theme Model
+A valid Theme Project folder contains:
 
-Each theme is a complete project containing:
+```
+MuseumGallery/
+├── manifest.json          (Required: theme metadata)
+├── metadata.json          (Required: display info)
+├── theme.json             (Required: theme configuration)
+├── layouts/               (Required: layout definitions)
+├── frames/                (Required: frame components)
+├── layer-packs/           (Required: layer definitions)
+├── assets/                (Required: theme assets)
+├── preview.png            (Recommended: preview image)
+├── thumbnail.png          (Recommended: thumbnail)
+└── README.md              (Recommended: documentation)
+```
 
-```javascript
+### manifest.json
+
+```json
 {
-  id: "unique-id",
-  name: "Museum Gallery",
-  version: "1.0.0",
-  created: "2026-07-05T00:00:00Z",
-  manifest: {},           // Theme manifest
-  metadata: {},           // Theme metadata
-  layouts: [],            // Layout definitions
-  frames: [],             // Frame components
-  layers: [],             // Layer packs
-  assets: [],             // Asset files
-  buildOutput: null       // Compiled theme
+  "name": "Museum Gallery",
+  "id": "museum-gallery",
+  "version": "1.0.0",
+  "author": "VihuStudio",
+  "minimumStudioVersion": "1.0.0",
+  "description": "A classic gallery-inspired theme"
 }
 ```
 
-## Usage
+### metadata.json
 
-### Initialize Application
-
-```javascript
-// Automatically initializes on DOM ready
-app.init();
+```json
+{
+  "displayName": "Museum Gallery",
+  "description": "A classic gallery-inspired theme",
+  "category": "Portfolio",
+  "tags": ["gallery", "portfolio", "classic"],
+  "colors": ["#000000", "#FFFFFF"]
+}
 ```
 
-### Create a Theme
+### theme.json
 
-```javascript
-const theme = app.createTheme('My Theme');
+```json
+{
+  "id": "museum-gallery",
+  "name": "Museum Gallery",
+  "layouts": ["gallery", "list", "grid"],
+  "frames": ["hero", "content", "footer"]
+}
 ```
 
-### Navigate
+## Validation Engine
 
-```javascript
-router.navigateTo('theme');
-appState.setSelectedSection('layouts');
+Validates all aspects of a theme project:
+
+### Structure Validation
+- ✓ Required folders exist
+- ✓ Required files exist  
+- ✓ Optional assets present
+
+### File Validation
+- ✓ JSON files are valid
+- ✓ Required fields present
+- ✓ Field types correct
+
+### ID Validation
+- ✓ Theme IDs are lowercase alphanumeric with hyphens
+- ✓ IDs are 3-50 characters
+- ✓ No duplicate IDs
+
+### Version Validation
+- ✓ Semantic version format (e.g., 1.0.0)
+- ✓ Minimum Studio Version specified
+
+### Reference Validation
+- ✓ All referenced files exist
+- ✓ No broken asset paths
+- ✓ No missing dependencies
+
+## Build Engine
+
+Converts validated themes into `.vtheme` packages:
+
+### Build Process
+1. **Validate** - Run full validation (prevents invalid builds)
+2. **Package** - Organize all files
+3. **Generate** - Create `.vtheme` file
+4. **Report** - Display build summary
+
+### Package Format
+
+`.vtheme` files contain:
+
+```json
+{
+  "version": "1.0",
+  "format": "vtheme",
+  "manifest": {...},
+  "metadata": {...},
+  "theme": {...},
+  "layouts": [...],
+  "frames": [...],
+  "layerPacks": [...],
+  "assets": [...],
+  "preview": "included",
+  "thumbnail": "included",
+  "readme": "included",
+  "builtAt": "2026-07-05T00:00:00Z",
+  "builtWith": "Theme Builder v1.0.0-TB"
+}
 ```
 
-### Build
+## Dashboard
 
-```javascript
-app.buildTheme();
+Displays project overview:
+
+- Project Name
+- Version
+- Author
+- File Count
+- Structure Status (with ✓/✗ indicators)
+
+## Validation Report
+
+Shows validation results:
+
+### Valid Projects
+```
+✓ VALID
+All checks passed!
 ```
 
-### Global Access (Development)
+### Invalid Projects
+```
+✗ INVALID
 
-```javascript
-// Access via window.ThemeBuilder
-window.ThemeBuilder.app
-window.ThemeBuilder.appState
-window.ThemeBuilder.eventBus
-window.ThemeBuilder.ui
-window.ThemeBuilder.router
+Errors (3)
+- Missing required folder: layouts/
+- Invalid JSON in frames/hero.json
+- manifest.id "Museum Gallery" must be lowercase alphanumeric
+
+Warnings (1)
+- Missing preview.png (recommended)
 ```
 
-## Future Roadmap
+## Build Report
 
-**Sprint TB-2**
-- Theme validation system
-- Theme compiler
-- Theme packaging
+After successful build:
 
-**Sprint TB-3**
-- Theme preview rendering
-- Theme import/export
-- Theme designer UI
+```
+✓ Build Successful
 
-**Sprint TB-4**
-- Theme publishing
-- Version management
-- Collaboration features
+Theme Name: Museum Gallery
+Version: 1.0.0
+Build Time: 245ms
+Package Size: 2.3 MB
+Timestamp: 2026-07-05 10:45:30 AM
 
-## Design Language
+Package ready for download
+```
 
-- Professional, minimal aesthetic
-- Large, generous spacing
-- Clean typography
-- Creative studio feel
-- No developer-oriented UI
+## Usage Workflow
 
-## Code Quality
+### 1. Load Project
 
-- Small, focused modules
-- Clear, descriptive naming
-- No duplicate logic
-- No placeholder code
-- Production-ready quality
+Click **"Load Project"** button  
+Select theme project folder  
+Dashboard displays project info
 
-## Relationship with VihuStudio
+### 2. Validate
 
-Theme Builder is the official tool for creating VihuStudio themes. All official themes (Museum Gallery, Storybook Classic, Comic Pop, Sketchbook, Watercolor Portfolio) are authored here.
+Click **"Validate"** button  
+Review validation report  
+Fix any errors shown
 
-Themes created in Theme Builder integrate directly with VihuStudio's theme system.
+### 3. Build
+
+Click **"Build"** button (enabled only after validation passes)  
+Wait for build to complete  
+Download `.vtheme` file automatically
+
+### 4. Import
+
+Open VihuStudio  
+Import downloaded `.vtheme` file  
+Theme is ready to use  
+No code changes required
+
+## API Reference
+
+### Global Access
+
+```javascript
+window.ThemeBuilder.app          // Main app instance
+window.ThemeBuilder.projectLoader // Project loading
+window.ThemeBuilder.validator     // Validation engine
+window.ThemeBuilder.builder       // Build engine
+window.ThemeBuilder.appState      // State management
+window.ThemeBuilder.ui            // UI controller
+window.ThemeBuilder.eventBus      // Event system
+```
+
+### Project Loader
+
+```javascript
+// Load from FileList
+await projectLoader.loadProjectFromFiles(files);
+
+// Get project info
+projectLoader.getProjectInfo();
+
+// Check if loaded
+projectLoader.isLoaded();
+```
+
+### Validator
+
+```javascript
+// Run validation
+const result = await validator.validate();
+
+// Result structure
+{
+  isValid: boolean,
+  errors: string[],
+  warnings: string[],
+  details: { ... }
+}
+```
+
+### Builder
+
+```javascript
+// Build theme
+const result = await builder.build();
+
+// Download package
+builder.downloadPackage(result.packageFile);
+
+// Get build history
+builder.getHistory();
+```
+
+## Architecture
+
+### Modules
+
+- **constants.js** - Application constants
+- **eventBus.js** - Pub/sub event system
+- **state.js** - Central state management
+- **projectLoader.js** - Project detection and loading
+- **validator.js** - Theme validation engine
+- **builder.js** - Theme packaging and building
+- **ui.js** - UI rendering and interaction
+- **router.js** - Navigation routing
+- **app.js** - Application orchestration
+
+### State Management
+
+Central state stores:
+
+```javascript
+{
+  currentTheme: { ... },      // Loaded project
+  selectedSection: "dashboard",
+  isDirty: false,
+  validationState: "Unknown",
+  buildState: "ready"
+}
+```
+
+### Event System
+
+Key events:
+
+- `THEME_CHANGED` - Project loaded/changed
+- `VALIDATION_UPDATED` - Validation completed
+- `BUILD_STARTED` - Build process started
+- `BUILD_COMPLETED` - Build process finished
+- `NAVIGATION_CHANGED` - Page changed
 
 ## Browser Support
 
 - Modern browsers with ES6 support
+- Chrome, Firefox, Safari, Edge
 - GitHub Pages compatible
 - No build step required
 - No external dependencies
+
+## Development
+
+### Running Locally
+
+```bash
+# Open in browser
+open tools/theme-builder/index.html
+
+# Or serve via HTTP
+python -m http.server 8000
+# Visit http://localhost:8000/tools/theme-builder/
+```
+
+### Console API
+
+```javascript
+// Check application status
+window.ThemeBuilder.app.getInfo();
+
+// Access current state
+window.ThemeBuilder.appState.getState();
+
+// Manually load project
+await window.ThemeBuilder.app.loadProject(files);
+
+// Validate
+await window.ThemeBuilder.app.validateProject();
+
+// Build
+await window.ThemeBuilder.app.buildProject();
+```
+
+## Theme Builder V1 Freeze
+
+After TB-2 completion, Theme Builder V1 is **frozen** as a stable compiler.
+
+Future visual editing features go into **Theme Designer V2**, which will reuse the Theme Builder compiler underneath.
+
+Workflow will be:
+
+```
+Theme Designer (Visual Editing)
+           ↓
+Theme Builder (Compiler)
+           ↓
+.vtheme Package
+           ↓
+VihuStudio Import
+```
+
+## Roadmap
+
+**TB-2 (Current)** - Complete  
+✓ Project loading  
+✓ Validation engine  
+✓ Build engine  
+✓ Package generation  
+
+**TB-3** (Future)  
+- Theme Designer UI
+- Visual frame editor
+- Layout editor
+- Live preview
+
+**TB-4** (Future)  
+- Publishing
+- Version management
+- Theme marketplace
+
+## License
+
+Part of VihuStudio. All rights reserved.
+
+## Support
+
+For issues with Theme Builder, check:
+
+1. Validation report for specific errors
+2. Console for debug logs (F12 → Console)
+3. Theme project structure against documentation
+4. File formats (JSON validity, required fields)
