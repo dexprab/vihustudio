@@ -58,10 +58,10 @@ const PAGE_METADATA = {
 };
 
 const VALIDATION_STATES = {
-    VALID: 'valid',
-    INVALID: 'invalid',
-    PENDING: 'pending',
-    UNKNOWN: 'unknown'
+    VALID: 'Valid',
+    INVALID: 'Invalid',
+    PENDING: 'Pending',
+    UNKNOWN: 'Unknown'
 };
 
 const BUILD_STATES = {
