@@ -1,7 +1,42 @@
 [
-  "story-meadow-final.png",
-  "story-meadow-gentle-hills.png",
-  "story-meadow-rolling-hills.png",
-  "story-meadow-storybook.png",
-  "story-meadow-wildflowers.png"
+  {
+    "id": "story-meadow-final",
+    "file": "story-meadow-final.png",
+    "display": {
+      "anchor": "bottom",
+      "focusY": 0.62
+    }
+  },
+  {
+    "id": "story-meadow-gentle-hills",
+    "file": "story-meadow-gentle-hills.png",
+    "display": {
+      "anchor": "bottom",
+      "focusY": 0.65
+    }
+  },
+  {
+    "id": "story-meadow-rolling-hills",
+    "file": "story-meadow-rolling-hills.png",
+    "display": {
+      "anchor": "bottom",
+      "focusY": 0.68
+    }
+  },
+  {
+    "id": "story-meadow-storybook",
+    "file": "story-meadow-storybook.png",
+    "display": {
+      "anchor": "bottom",
+      "focusY": 0.62
+    }
+  },
+  {
+    "id": "story-meadow-wildflowers",
+    "file": "story-meadow-wildflowers.png",
+    "display": {
+      "anchor": "bottom",
+      "focusY": 0.68
+    }
+  }
 ]
