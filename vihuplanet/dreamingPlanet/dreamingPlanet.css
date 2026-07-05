@@ -31,13 +31,30 @@
 }
 .dreaming-planet-host > * { pointer-events: auto; }
 
+/* Hero Premium Pass fix: `filter` is declared exactly once, here,
+ * composed entirely from custom properties. Every state/hover rule
+ * below only ever overrides these variables, never `filter` itself —
+ * that's what lets them coexist with the always-running `.breathing`
+ * animation (animations/motion.css) instead of being silently
+ * overridden by it (the bug this fixes; see that file's comment on
+ * vp-breathing for the full reasoning). */
 .dreaming-planet {
   position: absolute;
   z-index: 6;
   cursor: pointer;
+  filter: drop-shadow(0 0 var(--vp-dp-glow-blur) rgba(var(--vp-dp-glow-rgb, 123,95,204), var(--vp-dp-glow-alpha)))
+          brightness(var(--vp-dp-brightness, 1))
+          sepia(var(--vp-dp-sepia, 0));
   transition:
     transform 0.9s ease-in-out,
     filter    0.9s ease-in-out;
+}
+/* Once a state moves past sleeping/resting, the ambient breath should
+ * stop competing with that state's own (bigger, deliberate) glow
+ * change — mirrors the data-dp-state attribute dreamingPlanetManager.js
+ * (frozen infrastructure) already mirrors onto <body>. */
+body[data-dp-state]:not([data-dp-state="sleeping"]):not([data-dp-state="resting"]) .dreaming-planet.breathing {
+  animation: none !important;
 }
 .dreaming-planet svg {
   display: block;
@@ -45,12 +62,21 @@
   height: auto;
   overflow: visible;
 }
-.dreaming-planet[data-dp-state="sleeping"] { filter: drop-shadow(0 0 10px rgba(178,148,255,0.35)); }
+/* Colour only — blur/alpha stay on the breathing amplitude
+ * (animations/motion.css) while sleeping/resting. */
+.dreaming-planet[data-dp-state="sleeping"],
+.dreaming-planet[data-dp-state="resting"] {
+  --vp-dp-glow-rgb: 178,148,255;
+}
+/* Breathing is stopped for these states (rule above), so it's safe to
+ * set the glow variables directly here — nothing is fighting them. */
 .dreaming-planet[data-dp-state="waking"],
 .dreaming-planet[data-dp-state="looking"],
 .dreaming-planet[data-dp-state="smiling"],
 .dreaming-planet[data-dp-state="speaking"] {
-  filter: drop-shadow(0 0 24px rgba(178,148,255,0.65));
+  --vp-dp-glow-rgb: 178,148,255;
+  --vp-dp-glow-blur: 24px;
+  --vp-dp-glow-alpha: 0.65;
   transform: scale(1.03);
 }
 .dreaming-planet[data-dp-state="chosen"] { transform: scale(1.06); }
@@ -76,7 +102,30 @@
 .dreaming-planet[data-dp-state="sleeping"]:focus-visible,
 .dreaming-planet[data-dp-state="resting"]:focus-visible {
   transform: scale(1.02) translateY(-5px);
-  filter: drop-shadow(0 0 26px rgba(178,148,255,0.62));
+  /* Hero Premium Pass — bigger blur + slightly lower opacity reads as
+   * softer/more diffuse rather than just "more glow"; a touch of
+   * sepia nudges the violet toward warm without fighting the
+   * Dreaming Realm's own hue. Curve/duration deliberately left on
+   * the shared 0.9s ease-in-out (base rule above) rather than a
+   * per-state override — that timing also governs the wake
+   * sequence's own transitions, which is presentation this pass
+   * isn't touching.
+   *
+   * Set twice: the plain --vp-dp-glow-blur/-alpha values apply
+   * directly (this is what fires under prefers-reduced-motion, where
+   * .breathing's animation is off); the -min/-max control variables
+   * are what the still-running vp-breathing keyframe itself reads
+   * every frame, so hovering widens the breath instead of being
+   * overridden by it (see animations/motion.css's vp-breathing
+   * comment). */
+  --vp-dp-glow-blur: 32px;
+  --vp-dp-glow-alpha: 0.5;
+  --vp-dp-glow-blur-min: 20px;
+  --vp-dp-glow-blur-max: 32px;
+  --vp-dp-glow-alpha-min: 0.45;
+  --vp-dp-glow-alpha-max: 0.5;
+  --vp-dp-brightness: 1.03;
+  --vp-dp-sepia: 0.05;
 }
 .dreaming-planet[data-dp-state="sleeping"]:hover .dp-window,
 .dreaming-planet[data-dp-state="resting"]:hover .dp-window,

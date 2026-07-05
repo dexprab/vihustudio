@@ -211,6 +211,65 @@ carry no assumption that a given sky pairs with a given meadow.
 Future seasonal Story Meadows are supported — the World Library
 collection can grow without any registry or engine change.
 
+### Story Meadow — Hero Foreground Asset Spec (Hero Premium Pass, Pass 3)
+
+Pass 3's manual verification found the meadow's fundamentals sound —
+all 5 `world-library/nature/story-meadows/` variants load, zero
+console errors, correct `.foreground` layer, opacity 1 — but the art
+itself doesn't fit its footprint. Each source file is a general
+2048×2048 landscape painting; the Hero renders it into a strip
+`width:100vw; height:7vh` at the very bottom edge (`css/scene.css`).
+`object-fit: cover` can only show one thin horizontal slice of a
+square painting in that strip, and no crop position serves both
+goals at once: centred shows enough colour/texture to read as its
+own place but clashes in tone with the hills above it; a crop toward
+the bottom of the source blends almost perfectly with the hills but
+then barely reads as "a meadow" at all. That tension is the likely
+reason a first-time viewer never mentions the meadow unprompted.
+
+Decision: rather than grow the strip's height (which would start
+painting over the telescope's silhouette at its current position —
+a Pass 4/5 decision, not a Pass 3 one), commission new art **composed
+for this exact footprint** instead of cropped into it from a
+general-purpose square painting.
+
+**The footprint is far more extreme than a typical "wide" banner.**
+`100vw × 7vh` is not a fixed ratio — it scales with the viewport's own
+aspect ratio — but at the desktop widescreen sizes the Hero is
+primarily framed for, it lands around **24:1** (e.g. 1280×50px at a
+1280×720 viewport, 1920×76px at 1920×1080 — both ≈25.4:1, since ratio
+= viewport-aspect × 100/7). A 3:1 canvas would still need most of its
+height cropped away by `cover` to fill that strip — only a modest
+improvement over the current 1:1 art, not a fix. On a portrait mobile
+viewport the same strip is a much gentler ~6.6:1, so some cropping at
+other breakpoints is unavoidable regardless; the target below is
+tuned for the desktop case since that's where the gap is worst.
+
+Target spec for the replacement art:
+- **Canvas ratio ≈ 24:1** (e.g. 2400×100px, or any multiple — exact
+  pixel size doesn't matter, `object-fit: cover` scales it).
+- Composed as a low, dense band of meadow ground filling nearly the
+  whole frame — tall grass and wildflowers reaching up from the
+  bottom edge, little to no sky or distant hills painted into it
+  (the real hills already exist in the layer above; repainting them
+  here is what caused the tonal clash).
+- Palette pre-tuned to sit under the pale sage-green hills already
+  on screen (see `css/scene.css`'s existing
+  `filter: contrast(1.1) saturate(1.12)` on this object — the new art
+  should assume that filter still applies unless someone revisits it
+  alongside the new art) rather than the saturated yellow-green of
+  today's square crops.
+- Same drop-in mechanism as every other World Library collection:
+  add the file to `world-library/nature/story-meadows/` and list its
+  filename in that folder's `manifest.json` (§11) — no registry or
+  engine change needed, and it's picked up as one more session-varied
+  option alongside the existing five.
+
+If a purpose-built strip still fails the "does a first-time viewer
+mention it" test once real art exists, revisit the height/telescope
+constraint above — this spec is the first attempt, not a promise it
+alone is sufficient.
+
 ## 8. Discovery Telescope Canon (Locked)
 
 The Telescope is the child's gateway to Story Worlds beyond the
@@ -219,15 +278,24 @@ a menu or a link; it is an invitation to look further.
 
 The telescope is a single permanent landmark, exactly as the Dreaming
 Realm is a single permanent entity (§4): a **Telescope Library**
-(Sprint H4-H6, `world-library/telescope/`) provides multiple
-canonical telescope appearances it may present as, chosen once per
-browser session through the same mechanism as every other
-session-varied type (§6). This is not a contradiction of "one
-telescope" — the landmark's role, position, and behaviour stay
-singular; only which canonical telescope it visually presents as
-varies. Future telescopes are art + a manifest entry, same as any
-other World Library collection (`world-library/README.md`) — no code
-change.
+(Sprint H4-H6, `world-library/telescope/`) holds the candidate
+telescope appearances. Future telescopes are art + a manifest entry,
+same as any other World Library collection (`world-library/README.md`)
+— no code change.
+
+**Pinned to `telescope.png` (Hero Premium Pass, Pass 4).** The
+Library originally session-varied across all 11 candidates the same
+way sky/cloud/trail do (§6), but a craft audit comparing every
+candidate side by side, then in-context at production scale, found
+only `telescope.png` matched the floating islands' hand-painted
+watercolor texture and warm palette — the other 10 are either
+glossy/CG-shaded (read as a game icon, not a storybook page) or
+visibly blurred/artifacted. `shared/worldLibrary.js`'s `FILE_FILTERS`
+narrows the folder to that one file, the same mechanism already used
+to pin `dreaming-home` — the other 10 stay in World Library, unused,
+for a future variant to build on rather than being deleted. If a
+future telescope art pass wants variety again, removing that filter
+entry restores session-variance with zero other code changes.
 
 A Hero Variant Audit (post-H4-H6) found this folder briefly renamed
 to `telescopes/` (plural) in this repo, which broke selection

@@ -242,23 +242,30 @@
   z-index: 4;
 }
 
-/* Telescope lens glint — measured directly against
- * world-library/telescope/telescope.png's content box (the lens
- * glass centers at ~11%/20% of the rendered image). Positioned
- * against the wrapper rather than the image so it holds up whichever
- * art (World Library photo or the SVG fallback) is actually mounted.
- * The telescope body itself carries no animation of its own — this
- * is the only thing that ever moves on it. (`.world-object` is
- * already `position: absolute`, which is what an absolutely-
+/* Telescope lens glint — repositioned in the Hero Premium Pass
+ * (Pass 6) by sampling world-library/telescope/telescope.png's
+ * actual pixel data for the lens glass (a grayish-olive oval,
+ * distinct from the warm bronze body): bbox ≈ 8.3-16.4% / 6.25-22.07%
+ * of the source image. The <img> renders at width:100% height:auto
+ * (shared `.world-object img` rule) inside this wrapper, so it's a
+ * 130x130 square pinned to the wrapper's top edge inside a 130x162
+ * box — meaning image-space Y needs scaling by 130/162 (≈0.8025) to
+ * land in wrapper-space, X does not. That gave the box below. The
+ * previous top:19% (this rule's numbers before this pass) was
+ * measured wrong and landed the glint near the tripod's ball joint,
+ * not the glass — invisible-by-design bugs like this are exactly why
+ * Pass 6 says "watch the actual pixels," not "trust the comment."
+ * Positioned against the wrapper rather than the image so it holds up
+ * whichever art (World Library photo or the SVG fallback) is actually
+ * mounted. The telescope body itself carries no animation of its
+ * own — this is the only thing that ever moves on it. (`.world-object`
+ * is already `position: absolute`, which is what an absolutely-
  * positioned `::after` needs from its containing block.)
  *
- * Known limitation (found by the Hero Variant Audit): this position
- * was measured against `telescope.png` specifically. Now that the
- * folder holds 10 more real images, the lens likely sits somewhere
- * else in some of them — the overlay isn't guaranteed to land on
- * glass for every variant. Not fixed here; needs a per-image lens
- * position or a differently-designed glint if it turns out to
- * matter visually.
+ * Now that Pass 4 has pinned the Telescope Library to `telescope.png`
+ * alone (§8 of HERO_CANON.md), the old "doesn't hold up across 11
+ * variants" limitation no longer applies — there's only one variant
+ * to hold up against.
  *
  * Sprint H4-H6 Part 3 — audited against the sharper spec ("if it
  * cannot be clearly observed in 60s, treat it as missing") and found
@@ -273,10 +280,10 @@
 .world-object[data-object-id="telescope"]::after {
   content: "";
   position: absolute;
-  left: 9%;
-  top: 19%;
-  width: 16%;
-  height: 10%;
+  left: 8%;
+  top: 5%;
+  width: 8%;
+  height: 13%;
   border-radius: 50%;
   background: radial-gradient(ellipse, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0) 72%);
   pointer-events: none;
@@ -303,7 +310,10 @@
  * settle, mirroring Story Worlds' tactile feedback. */
 .world-object[data-object-id="telescope"] {
   cursor: pointer;
-  transition: transform 220ms ease-out;
+  /* Hero Premium Pass — same expo-out curve as the Story Worlds
+   * (planets.css) so every interactive object settles the same way,
+   * not just moves the same distance. */
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .world-object[data-object-id="telescope"]:focus-visible {
   outline: 2px solid #F4D79A;
@@ -321,13 +331,17 @@
 }
 .world-object[data-object-id="telescope"] img,
 .world-object[data-object-id="telescope"] svg {
-  transition: filter 220ms ease-out;
+  /* A beat behind the lift, same overlapping-action reasoning as
+   * Story Worlds. Targets the image, not the wrapper, so it never
+   * competes with the wrapper's own ambient shadow-breathe filter
+   * animation (motion.css) for the `filter` property. */
+  transition: filter 300ms cubic-bezier(0.16, 1, 0.3, 1) 30ms;
 }
 .world-object[data-object-id="telescope"]:hover img,
 .world-object[data-object-id="telescope"]:hover svg,
 .world-object[data-object-id="telescope"]:focus-visible img,
 .world-object[data-object-id="telescope"]:focus-visible svg {
-  filter: brightness(1.06) saturate(1.05);
+  filter: drop-shadow(0 8px 20px rgba(30,40,66,0.12)) brightness(1.06) saturate(1.08) sepia(0.05);
 }
 
 /* Story Meadow (Sprint · Atmosphere & World Identity) — a foreground

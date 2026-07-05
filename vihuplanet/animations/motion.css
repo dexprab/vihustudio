@@ -366,10 +366,45 @@
 }
 
 /* breathing — even slower, gentler breath used by the Dreaming
- * Planet itself (the sphere). Contrast with the moon's `breathe`. */
+ * Planet itself (the sphere). Contrast with the moon's `breathe`.
+ *
+ * Hero Premium Pass fix: this used to animate `filter` directly,
+ * which — because a running keyframe always wins the cascade over a
+ * plain rule targeting the same property on the same element (see
+ * the file header / planets.css's layering notes) — silently
+ * overrode every `data-dp-state` glow change and the new hover
+ * warmth in dreamingPlanet.css. Real hover testing caught it: the
+ * planet's baseline computed filter never matched what any state
+ * rule declared. Fixed by animating two `@property`-registered
+ * custom properties instead (registered just below so they actually
+ * interpolate rather than snapping); dreamingPlanet.css composes the
+ * real `filter` once from these plus a colour/brightness/sepia set
+ * that state and :hover rules are free to override without ever
+ * touching `filter` itself. The keyframe reads its own amplitude
+ * from --vp-dp-glow-*-min/-max so :hover can widen the breath (a
+ * bigger, softer glow while lifted) the same way it already widens
+ * --vp-window-warmth elsewhere — overriding a var() a running
+ * animation merely *reads* is safe; overriding the property the
+ * animation *writes* is not. */
+@property --vp-dp-glow-blur {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 12px;
+}
+@property --vp-dp-glow-alpha {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.40;
+}
 @keyframes vp-breathing {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(123,95,204,0.40)); }
-  50%      { filter: drop-shadow(0 0 22px rgba(123,95,204,0.55)); }
+  0%, 100% {
+    --vp-dp-glow-blur:  var(--vp-dp-glow-blur-min,  12px);
+    --vp-dp-glow-alpha: var(--vp-dp-glow-alpha-min, 0.40);
+  }
+  50% {
+    --vp-dp-glow-blur:  var(--vp-dp-glow-blur-max,  22px);
+    --vp-dp-glow-alpha: var(--vp-dp-glow-alpha-max, 0.55);
+  }
 }
 .breathing {
   animation-name: vp-breathing;

@@ -2,6 +2,63 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.8 — 2026-07-05
+
+Hero Premium Pass — a craft audit against Rule #1 ("an item is
+complete only when the experience matches the intent, verified in
+the browser"), not a features pass.
+
+- **Fix — Dreaming Home's ambient breathing silently overrode every
+  state/hover glow change.** `.dreaming-planet` always carries an
+  always-running `.breathing` animation that set `filter` directly;
+  since a running keyframe always wins the cascade over a static rule
+  on the same property, sleeping/waking/chosen/hover glow changes had
+  never actually been visible on the planet body — a bug predating
+  this session. Fixed by animating two `@property`-registered custom
+  properties (`--vp-dp-glow-blur`, `--vp-dp-glow-alpha`) instead of
+  `filter` directly (`animations/motion.css`), composing the real
+  `filter` once from those plus colour/brightness/sepia variables
+  (`dreamingPlanet/dreamingPlanet.css`), and stopping the breathing
+  animation once a state leaves sleeping/resting so it can't fight
+  that state's own glow. Verified across sleeping, hover, the full
+  wake sequence, chosen, resting, and `prefers-reduced-motion`.
+- **Craft — Story World and Telescope hover.** Expo-out easing,
+  staggered "overlapping action" timing across transform/filter/
+  opacity, genuine warmth via a touch of `sepia()`, softer/more
+  diffuse shadows (`planets/planets.css`, `css/scene.css`).
+- **Feature — file-based Hero audio, replacing synthesized
+  placeholders.** `js/heroAudio.js` now plays real `<audio>` files
+  from `assets/audio/` instead of generating tones/noise via Web
+  Audio; same public API, so no caller changed. Five placeholder
+  `.wav` files ship today with a README documenting the target
+  character and max duration for each — drop a real recording in at
+  the same filename and nothing else needs to change.
+- **Fix — Telescope Library pinned to a single definitive image.**
+  A side-by-side and in-context craft audit of all 11 candidates
+  found only `telescope.png` matched the floating islands' hand-
+  painted watercolor texture; the other 10 are glossy/CG-shaded or
+  visibly blurred. `shared/worldLibrary.js`'s `FILE_FILTERS` narrows
+  the folder to that one file (same mechanism already used for
+  `dreaming-home`); the other 10 stay in World Library, unused, for a
+  future variant to build on. `HERO_CANON.md` §8 updated.
+- **Fix — telescope lens-glint was landing on the tripod joint, not
+  the glass.** Its position was never actually measured against
+  `telescope.png`'s real pixels; sampling the source PNG directly
+  found the lens glass bbox and recalibrated `css/scene.css`'s
+  `::after` overlay to match. Confirmed via the Web Animations API
+  (seeking the animation's `currentTime` directly to its peak) rather
+  than trusting the old comment's numbers.
+- **Spec, not yet implemented — Story Meadow needs art composed for
+  its actual footprint, not cropped into it.** A craft audit found no
+  crop of the existing square (2048×2048) meadow paintings can both
+  read as "a place" and blend with the hills above it within the
+  `100vw × 7vh` foreground strip — which is a much more extreme ratio
+  (~24:1 at desktop widescreen) than it looks. `HERO_CANON.md` §7
+  documents the exact target spec for a purpose-built replacement;
+  drops in via the existing World Library manifest mechanism with no
+  code change. Blocked on new art — outside this pass's ability to
+  generate.
+
 ## v0.4.7 — 2026-07-04
 
 - **Fix — Telescope Library was completely non-functional in

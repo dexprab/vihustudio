@@ -11,14 +11,24 @@
 // Hero Composition Engine (Sprint · Atmosphere & World Identity;
 // extended in Sprint · Dreaming Realm Implementation; extended to
 // vary the Dream Trail; extended again in Sprint H4-H6 for the
-// Telescope Library): sky, cloud, story-meadow, dreaming-home, trail,
-// and telescope vary once per browser session. The first resolveAt()
-// call for one of those types picks a random offset and sticks it in
+// Telescope Library): sky, cloud, story-meadow, dreaming-home, and
+// trail vary once per browser session. The first resolveAt() call
+// for one of those types picks a random offset and sticks it in
 // sessionStorage; every later call (this load or a refresh/
 // navigation within the same tab) reuses it, so the chosen
 // environment holds steady for the session and only changes when a
 // fresh session starts. Story Worlds are never in this set — see
 // SESSION_VARIED_TYPES below.
+//
+// Telescope was session-varied too until the Hero Premium Pass
+// (Pass 4): a craft audit found the Telescope Library's 10 other
+// candidates broke storybook consistency (glossy CG shading, or
+// visibly blurred/artifacted renders) next to the hand-painted
+// floating islands, while `telescope.png` alone matched — genuine
+// watercolor texture, warm palette, star/moon motif. FILE_FILTERS
+// below narrows the folder to that one file; the other 10 stay in
+// World Library, unused, for future variants to inherit from rather
+// than being deleted.
 //
 // Workflow this exists to support: generate artwork, resize it, drop
 // the PNG into the right world-library/ folder, push. The VihuPlanet
@@ -76,7 +86,7 @@
   // Types the Hero Composition Engine varies once per browser
   // session. Everything else resolves the same deterministic way it
   // always has (first file, or cycling by registration order).
-  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true, 'trail': true, 'telescope': true };
+  var SESSION_VARIED_TYPES = { 'sky': true, 'cloud': true, 'story-meadow': true, 'dreaming-home': true, 'trail': true };
 
   // Some collections carry a now-superseded file alongside their
   // canonical set — e.g. dreaming-home's original single
@@ -85,7 +95,8 @@
   // (rather than deleting the file) keeps World Library content
   // untouched — it's the pipeline's source of truth, not this repo's.
   var FILE_FILTERS = {
-    'dreaming-home': /^dreaming-world-\d+\.png$/i
+    'dreaming-home': /^dreaming-world-\d+\.png$/i,
+    'telescope':     /^telescope\.png$/i
   };
   var SESSION_KEY_PREFIX = 'vp-session-offset-';
   var _sessionOffsets = {}; // type -> chosen offset, memoized per page load
