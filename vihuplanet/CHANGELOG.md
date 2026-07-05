@@ -2,6 +2,42 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.4.9 — 2026-07-05
+
+Sprint MEP-09 (World Library display-metadata consumption) and
+Sprint MEP-10 (Hero Composition Rebalancing) — closing out the Story
+Meadow investigation that ran across the Hero Premium Pass, Sprint
+MEP-08, and MEP-09.
+
+- **Feature — generic World Library display-metadata consumption.**
+  `shared/worldLibrary.js` now captures `display` (`anchor`/`focusY`)
+  from object-shaped manifest entries into a `url -> display` map,
+  exposed via a new `WorldLibrary.displayFor(url)`. `shared/
+  worldObject.js`'s single generic mount path converts that into a
+  CSS `object-position` value, set per-instance as
+  `--vp-display-position`; `css/scene.css`'s one shared
+  `.world-object img/svg` rule reads
+  `object-position: var(--vp-display-position, 50% 50%)`. No asset
+  type is ever named in this code — an asset without display metadata
+  computes to the literal browser default, provably unchanged.
+- **Fix — Story Meadow height raised 7vh → 18vh.** With generic
+  focusY-driven framing in place, the old 7vh box no longer needed to
+  stay "well under the telescope" — it could finally be tall enough
+  to show the landscape the display metadata frames (rolling hills,
+  flower clusters) instead of a razor-thin, mostly-featureless strip.
+- **Composition — telescope repositioned + enlarged to clear the
+  taller meadow.** `js/registry.js`: `bottom:8vh, right:10vw,
+  130x162px` → `bottom:15.5vh, right:3vw, 140x174px`. Three options
+  (shift up+inward same size; shrink+reposition; hug the corner
+  slightly larger) were composed and screenshotted side by side
+  against the real 18vh meadow before choosing the corner-hugging
+  option — it reads as the telescope having been placed there
+  deliberately, tripod feet and book/coin props fully grounded and
+  visible, rather than moved out of the way. Verified clip-free and
+  error-free at 1920x1080, 1366x768, 768x1024 (tablet), and
+  812x375 (mobile landscape), across multiple session-varied meadow
+  images.
+
 ## v0.4.8 — 2026-07-05
 
 Hero Premium Pass — a craft audit against Rule #1 ("an item is

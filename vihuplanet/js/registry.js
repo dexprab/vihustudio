@@ -199,13 +199,26 @@
   // rules and onActivate below) — peering through it at the stars
   // remains a genuinely future feature (`HERO_CANON.md` §8), not
   // implemented by this sprint. onActivate never navigates anywhere.
+  //
+  // Repositioned + enlarged (was bottom:8vh, right:10vw, 130x162px)
+  // in Sprint MEP-10 — Hero Composition Rebalancing, once the Story
+  // Meadow grew from 7vh to 18vh (registered below) to let its own
+  // display metadata (Sprint MEP-09) actually show a landscape instead
+  // of a sliver: at the old position the taller meadow's `.foreground`
+  // layer (which always paints above this object's `.ground` layer,
+  // regardless of z-index) would have covered the tripod's lower legs
+  // and hidden the book/coin props. Chose "hug the corner, slightly
+  // larger" over two other tested options (shift up+inward at the
+  // same size; shrink+reposition) — evaluated side by side against the
+  // real 18vh meadow, this reads most like the telescope was placed
+  // there on purpose rather than moved out of the way.
   WorldObject.register({
     id: 'telescope',
     label: 'Telescope',
     assetHref: 'assets/objects/telescope.svg',
     libraryType: 'telescope',
     layer: 'ground',
-    placement: { bottom: '8vh', right: '10vw', width: '130px', height: '162px' },
+    placement: { bottom: '15.5vh', right: '3vw', width: '140px', height: '174px' },
     motion: { category: 'Living', name: 'shadow-breathe', duration: '7.5s', delay: '0.8s' },
     interactive: true,
     onActivate: function () {
@@ -234,20 +247,23 @@
   // canvas, centered content band" shape as the Story Path's trail
   // art. `object-fit: cover` (scene.css) crops in on that band.
   //
-  // Height is deliberately capped at 7vh, well under the telescope's
-  // `bottom: 8vh` (registered below): .foreground (z-index: 5) always
-  // paints above .ground regardless of an object's z-index *within*
-  // foreground, so any taller meadow band would visually slice
-  // across the telescope's silhouette — not a stacking bug to fix,
-  // just a footprint this object needs to stay clear of, since moving
-  // it into .ground isn't an option (it would then sit behind Story
-  // Worlds too, contradicting "foreground" in the sprint spec).
+  // Height raised from 7vh to 18vh (Sprint MEP-10 — Hero Composition
+  // Rebalancing) now that display metadata (Sprint MEP-09) drives
+  // object-position generically: at 7vh, object-fit:cover had to
+  // discard ~90-96% of the source painting's height regardless of
+  // which fraction it was centred on, so the meadow could only ever
+  // read as a flat strip. 18vh leaves enough of the painting visible
+  // for the rolling hills and flower clusters display metadata now
+  // frames to actually show. This taller box overlaps the telescope's
+  // old position — see the telescope's own placement comment below for
+  // how Sprint MEP-10 resolved that, which is why "well under the
+  // telescope" no longer describes this value.
   WorldObject.register({
     id: 'story-meadow',
     label: 'Story Meadow',
     libraryType: 'story-meadow',
     layer: 'foreground',
-    placement: { bottom: '0', left: '0', width: '100vw', height: '7vh' },
+    placement: { bottom: '0', left: '0', width: '100vw', height: '18vh' },
     interactive: false
   });
 })();
