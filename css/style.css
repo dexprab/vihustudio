@@ -4345,40 +4345,123 @@ body.creation-flow-active .app-header{ display:none; }
   color:var(--text-secondary);
   margin:0 0 8px;
 }
-.creation-flow-title-row{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-  margin-bottom:20px;
-}
-.creation-flow-import-btn{
-  width:auto;
-  white-space:nowrap;
-  padding:9px 16px;
-  border:1px solid var(--gold);
-  border-radius:20px;
-  background:var(--panel);
-  color:var(--navy);
+.creation-flow-row-label{
   font-size:13px;
   font-weight:700;
-  cursor:pointer;
+  letter-spacing:.03em;
+  color:var(--text-secondary);
+  text-transform:uppercase;
+  margin:24px 0 12px;
 }
-.creation-flow-import-btn:hover{ background:var(--gold); }
+.creation-flow-world-row{
+  display:flex;
+  gap:16px;
+  overflow-x:auto;
+  padding:4px 4px 12px;
+  scroll-snap-type:x proximity;
+}
+.creation-flow-world-card{
+  flex:0 0 auto;
+  scroll-snap-align:start;
+  width:150px !important;
+  height:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:8px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:var(--card-radius);
+  background:var(--panel);
+  color:var(--text);
+  cursor:pointer;
+  position:relative;
+  transition:border-color .15s, transform .15s, box-shadow .15s;
+}
+.creation-flow-world-card:hover{
+  border-color:var(--gold);
+  transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+.creation-flow-world-card.selected{
+  border-color:var(--gold);
+  border-width:2px;
+}
+.creation-flow-world-thumb{
+  width:100%;
+  height:80px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+.creation-flow-world-thumb img{ width:100%; height:100%; object-fit:cover; }
+.creation-flow-world-name{ font-size:13px; font-weight:700; color:var(--text); }
+.creation-flow-add-world-card{ border-style:dashed; }
+.creation-flow-add-world-thumb{
+  background:var(--bg);
+  color:var(--text-tertiary);
+  font-size:32px;
+  font-weight:700;
+}
+
+.creation-flow-preview{
+  display:flex;
+  gap:28px;
+  margin-top:16px;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:var(--card-radius);
+  background:var(--panel);
+}
+.creation-flow-preview-empty{
+  font-size:14px;
+  color:var(--text-secondary);
+}
+.creation-flow-preview-hero{
+  flex:0 0 240px;
+  height:240px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:64px;
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+.creation-flow-preview-hero img{ width:100%; height:100%; object-fit:cover; }
+.creation-flow-preview-info{ flex:1 1 auto; min-width:0; }
+@media (max-width:640px){
+  .creation-flow-preview{ flex-direction:column; }
+  .creation-flow-preview-hero{ width:100%; height:180px; flex-basis:auto; }
+}
+.creation-flow-preview-name{
+  font-size:22px;
+  font-weight:700;
+  color:var(--text);
+  margin:0 0 6px;
+}
+.creation-flow-preview-desc{
+  font-size:14px;
+  color:var(--text-secondary);
+  margin:0;
+}
 .creation-flow-subheading{
   font-size:16px;
   font-weight:700;
   color:var(--text);
-  margin:28px 0 16px;
+  margin:24px 0 16px;
 }
-.creation-flow-style-section:empty{ display:none; }
 .creation-flow-footer{
   display:flex;
   justify-content:flex-end;
-  margin-top:32px;
+  margin-top:24px;
 }
 .creation-flow-start-btn{
-  width:auto;
+  width:auto !important;
   padding:14px 28px;
   border:none;
   border-radius:26px;
@@ -4442,19 +4525,6 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-card-icon{ font-size:40px; line-height:1; }
 .creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--text); }
 .creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); }
-.creation-flow-theme-preview{
-  width:100%;
-  height:90px;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:32px;
-  margin-bottom:4px;
-  border:1px solid var(--line);
-  overflow:hidden;
-}
-.creation-flow-theme-preview img{ width:100%; height:100%; object-fit:cover; }
 .creation-flow-badge{
   position:absolute;
   top:14px;
@@ -4468,14 +4538,6 @@ body.creation-flow-active .app-header{ display:none; }
   padding:3px 8px;
   border-radius:20px;
 }
-.creation-flow-comingsoon-msg{
-  font-size:14px;
-  color:var(--text-secondary);
-  max-width:480px;
-  margin-bottom:24px;
-}
-.creation-flow-choose-other{ display:inline-flex; width:auto; }
-
 /* Context Panel — replaces the permanent tab bar / always-visible
    accordion sections with a single selection-driven panel. Existing
    CardDesigner/PageDesigner/StickerStudio DOM is reused as-is; this only

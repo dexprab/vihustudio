@@ -1,14 +1,22 @@
 // creationFlow.js — Sprint 10.0 Creation Experience V1, made data-driven by
 // Sprint 10.1 (Theme Driven Representations), given the "Story Meadow"
-// arrival experience by Sprint 11.0 (Studio Arrival Experience).
+// arrival experience and master/detail Screen 2 by Sprint 11.0 (Studio
+// Arrival Experience). Canonical product documents:
+//   docs/STUDIO_DESIGN_CANON.md
+//   docs/STUDIO_CREATION_JOURNEY_V1.md
+//   docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md
+// This file implements those documents; it does not redefine them —
+// see the docs for the product rationale behind the structure below.
 //
 // Two full-screen steps, shown before the editor:
 //   Screen 1 — Choose What To Create (Creation Type)
-//   Screen 2 — Choose a Theme + Choose your first Page Style, combined
-//              on one screen per the Sprint 11.0 storyboard (picking a
-//              Theme immediately refreshes the Page Style cards below
-//              it; Start Creating finishes the flow).
-// Only once "Start Creating" is pressed (or the chosen Theme has no
+//   Screen 2 — Choose Your Creative World: a master/detail layout —
+//              Vihu Worlds row + World Library row (master) feeding one
+//              Selected World Preview (detail) that holds the Page Style
+//              picker and Start Creating. Only one World is selected at
+//              a time, regardless of which row it came from, and there
+//              is exactly one Preview/Page-Style picker on the screen.
+// Only once "Start Creating" is pressed (or the chosen World has no
 // Representations to pick from) does Studio create the first page and
 // reveal the editor.
 //
@@ -18,14 +26,17 @@
 // decision), but which Theme is offered under which Creation Type, and
 // which Representation cards a Theme offers, are both read live from
 // ThemeRegistry: `theme.supportedCreationTypes` and `theme.representations`.
-// A Creation Type with no compatible registered theme shows a generic
-// "Coming Soon" screen rather than a hardcoded placeholder theme.
 //
 // Sprint 11.0 — Import Theme moves from the (now unreachable while this
-// overlay is up) Theme Library modal onto Screen 2 itself, so a theme
-// emailed to a fresh install can be picked up without ever detouring
-// through the editor first. It reuses ThemeEngine.importThemeFile as-is
-// — no Theme Engine/Registry/Builder/Compiler change of any kind.
+// overlay is up) Theme Library modal onto Screen 2 itself as the World
+// Library row's "Add New World" card, so a theme emailed to a fresh
+// install can be picked up without ever detouring through the editor
+// first. It reuses ThemeEngine.importThemeFile as-is — no Theme
+// Engine/Registry/Builder/Compiler change of any kind. A Creation Type
+// with zero compatible themes is never a dead end: Vihu Worlds is simply
+// omitted and World Library's Add New World card is always present (see
+// the IA doc's "Empty state" section) — there is no separate "Coming
+// Soon" screen.
 //
 // Representation selection only ever writes to existing, already-
 // supported fields (slide.metadata.layout, AppState.project.artworkTheme/
@@ -37,8 +48,8 @@ const CreationFlow=(function(){
   // Storyboard "Choose What To Create" cards — six tiles, wording and
   // icons transcribed from the canonical storyboard. supportedCreationTypes
   // stays theme-owned data (Sprint 10.1); a type with zero compatible
-  // themes naturally falls into _renderComingSoon below with no special-
-  // casing needed for 'card'/'more'.
+  // themes simply renders an empty Vihu Worlds row and an Add New World
+  // card with no special-casing needed for 'card'/'more'.
   const CREATION_TYPES=[
     {id:'story',   title:'Tell a Story',           desc:'Build your own story page by page.',    icon:'📖'},
     {id:'artwork', title:'Showcase My Artwork',     desc:'Display your art in beautiful layouts.', icon:'🖼️'},
@@ -113,6 +124,14 @@ const CreationFlow=(function(){
     return (rec && rec.manifest && rec.manifest.type) || 'story';
   }
 
+  // Vihu Worlds (official) vs World Library (imported) — the IA doc's
+  // two World Sources. Same ThemeRegistry record every other theme
+  // lookup already reads; no new registry concept.
+  function _themeSource(themeId){
+    const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(themeId) : null;
+    return (rec && rec.source) || 'official';
+  }
+
   // A Theme card's preview swatch/icon — the same manifest fields
   // ThemeEngine's own Theme Library card (_renderThemeCard) already reads
   // for this exact purpose, so a new theme picks up a sensible preview
@@ -152,11 +171,14 @@ const CreationFlow=(function(){
   // ---------- Shared card builders ----------
   function _checkBadge(){ return _el('div','creation-flow-card-check','✓'); }
 
-  function _themeCard(theme,selected,onClick){
-    const card=_el('button','creation-flow-card creation-flow-theme-card'+(selected?' selected':''));
+  // A compact card for the Vihu Worlds / World Library rows — icon/image
+  // + name only. Description lives in the Selected World Preview (§5 of
+  // the IA doc), never duplicated here.
+  function _worldRowCard(theme,selected,onClick){
+    const card=_el('button','creation-flow-world-card'+(selected?' selected':''));
     card.type='button';
     if(selected) card.appendChild(_checkBadge());
-    const preview=_el('div','creation-flow-theme-preview');
+    const preview=_el('div','creation-flow-world-thumb');
     const pv=_themePreview(theme);
     if(pv.image){
       const img=document.createElement('img');
@@ -167,9 +189,20 @@ const CreationFlow=(function(){
       preview.textContent=pv.icon;
     }
     card.appendChild(preview);
-    card.appendChild(_el('div','creation-flow-card-title',theme.name));
-    card.appendChild(_el('div','creation-flow-card-desc',theme.description||''));
+    card.appendChild(_el('div','creation-flow-world-name',theme.name));
     card.addEventListener('click',onClick);
+    return card;
+  }
+
+  // Last card in the World Library row — same size as a World card, so
+  // it reads as "one more world source" rather than a toolbar button.
+  // Its click handler is wired externally via _wireImportButton.
+  function _addWorldCard(){
+    const card=_el('button','creation-flow-world-card creation-flow-add-world-card');
+    card.type='button';
+    const preview=_el('div','creation-flow-world-thumb creation-flow-add-world-thumb','+');
+    card.appendChild(preview);
+    card.appendChild(_el('div','creation-flow-world-name','Add New World'));
     return card;
   }
 
@@ -208,7 +241,7 @@ const CreationFlow=(function(){
       card.appendChild(_el('div','creation-flow-card-desc',t.desc));
       card.addEventListener('click',function(){
         _selectedThemeId=null; _selectedRepId=null;
-        _renderThemeAndStyleScreen(t);
+        _renderWorldScreen(t);
       });
       grid.appendChild(card);
     });
@@ -230,8 +263,8 @@ const CreationFlow=(function(){
     return _importInputEl;
   }
 
-  function _wireImportButton(btn,type){
-    btn.addEventListener('click',function(){
+  function _wireImportButton(el,onImported){
+    el.addEventListener('click',function(){
       const input=_importInput();
       input.onchange=function(e){
         const file=e.target.files && e.target.files[0];
@@ -241,101 +274,141 @@ const CreationFlow=(function(){
         _allThemes().forEach(function(t){ before[t.id]=true; });
         ThemeEngine.importThemeFile(file).then(function(){
           const added=_allThemes().find(function(t){ return !before[t.id]; });
-          if(added){ _selectedThemeId=added.id; _selectedRepId=null; }
-          _renderThemeAndStyleScreen(type);
+          onImported(added||null);
         });
       };
       input.click();
     });
   }
 
-  // ---------- Screen 2: Choose a Theme + Choose your first Page Style ----------
-  // Combined per the Sprint 11.0 storyboard: Theme cards on top, Page
-  // Style (Representation) cards beneath refreshing live as the Theme
-  // selection changes, Import Theme top-right, Start Creating bottom-
-  // right. Replaces the old two-step Theme->Representation wizard.
-  function _renderThemeAndStyleScreen(type){
+  // ---------- Screen 2: Choose Your Creative World ----------
+  // Master/detail per docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md:
+  // Row 1 Vihu Worlds (official) + Row 2 World Library (imported, ending
+  // in Add New World) are the master list; the Selected World Preview is
+  // the one detail component every World — regardless of source — is
+  // read about and acted on through. Only one World is selected at a
+  // time; selecting a different card repaints the Preview, never spawns
+  // a second picker.
+  function _renderWorldScreen(type){
     _clear();
     _setAtmosphere(true);
     _header('Step 2 of 2',_renderTypeScreen);
+    content.appendChild(_el('h1','creation-flow-question','Choose Your Creative World'));
+    content.appendChild(_el('p','creation-flow-subtitle','Pick a world and page style to start'));
 
     const themes=_themesForType(type.id);
-    if(!themes.length){ _renderComingSoon(type); return; }
-    if(!_selectedThemeId || !themes.some(function(t){ return t.id===_selectedThemeId; })){
-      _selectedThemeId=themes[0].id;
+    const officialThemes=themes.filter(function(t){ return _themeSource(t.id)==='official'; });
+    const importedThemes=themes.filter(function(t){ return _themeSource(t.id)==='imported'; });
+    const selectable=officialThemes.concat(importedThemes);
+    if(!_selectedThemeId || !selectable.some(function(t){ return t.id===_selectedThemeId; })){
+      _selectedThemeId=selectable.length ? selectable[0].id : null;
     }
 
-    const titleRow=_el('div','creation-flow-title-row');
-    const titleCol=_el('div');
-    titleCol.appendChild(_el('h1','creation-flow-question','Choose a Theme'));
-    titleCol.appendChild(_el('p','creation-flow-subtitle','Pick a world and page style to start'));
-    titleRow.appendChild(titleCol);
-    const importBtn=_el('button','creation-flow-import-btn','⤴ Import Theme');
-    importBtn.type='button';
-    _wireImportButton(importBtn,type);
-    titleRow.appendChild(importBtn);
-    content.appendChild(titleRow);
+    let officialRow=null, importedRow=null;
+    if(officialThemes.length){
+      officialRow=_el('div','creation-flow-world-row');
+      content.appendChild(_el('h2','creation-flow-row-label','Vihu Worlds'));
+      content.appendChild(officialRow);
+    }
+    content.appendChild(_el('h2','creation-flow-row-label','World Library'));
+    importedRow=_el('div','creation-flow-world-row');
+    content.appendChild(importedRow);
 
-    const themeGrid=_el('div','creation-flow-grid creation-flow-theme-grid');
-    content.appendChild(themeGrid);
-    const styleSection=_el('div','creation-flow-style-section');
-    content.appendChild(styleSection);
-    const footer=_el('div','creation-flow-footer');
-    const startBtn=_el('button','creation-flow-start-btn','Start Creating  →');
-    startBtn.type='button';
-    footer.appendChild(startBtn);
-    content.appendChild(footer);
+    const preview=_el('div','creation-flow-preview');
+    content.appendChild(preview);
 
-    function paintThemes(){
-      themeGrid.innerHTML='';
-      themes.forEach(function(theme){
-        themeGrid.appendChild(_themeCard(theme,theme.id===_selectedThemeId,function(){
-          if(_selectedThemeId===theme.id) return;
-          _selectedThemeId=theme.id;
-          _selectedRepId=null;
-          paintThemes();
-          paintStyles();
-        }));
-      });
+    function selectWorld(themeId){
+      if(_selectedThemeId===themeId) return;
+      _selectedThemeId=themeId;
+      _selectedRepId=null;
+      paintRows();
+      paintPreview();
     }
 
-    function paintStyles(){
-      styleSection.innerHTML='';
-      const theme=themes.find(function(t){ return t.id===_selectedThemeId; });
-      const reps=theme ? _representationsForTheme(theme.id,type.id) : [];
-      if(!reps.length){ _selectedRepId=null; return; }
-      if(!_selectedRepId || !reps.some(function(r){ return r.id===_selectedRepId; })){
-        _selectedRepId=reps[0].id;
+    function paintRows(){
+      if(officialRow){
+        officialRow.innerHTML='';
+        officialThemes.forEach(function(theme){
+          officialRow.appendChild(_worldRowCard(theme,theme.id===_selectedThemeId,function(){ selectWorld(theme.id); }));
+        });
       }
-      styleSection.appendChild(_el('h2','creation-flow-subheading','Choose your first Page Style'));
-      const grid=_el('div','creation-flow-grid creation-flow-style-grid');
-      reps.forEach(function(r){
-        grid.appendChild(_repCard(r,r.id===_selectedRepId,function(){
-          _selectedRepId=r.id;
-          paintStyles();
-        }));
+      importedRow.innerHTML='';
+      importedThemes.forEach(function(theme){
+        importedRow.appendChild(_worldRowCard(theme,theme.id===_selectedThemeId,function(){ selectWorld(theme.id); }));
       });
-      styleSection.appendChild(grid);
+      const addCard=_addWorldCard();
+      _wireImportButton(addCard,function(added){
+        if(added){ _selectedThemeId=added.id; _selectedRepId=null; }
+        _renderWorldScreen(type);
+      });
+      importedRow.appendChild(addCard);
     }
 
-    startBtn.addEventListener('click',function(){
-      const theme=themes.find(function(t){ return t.id===_selectedThemeId; });
-      if(!theme) return;
-      const reps=_representationsForTheme(theme.id,type.id);
-      const rep=reps.find(function(r){ return r.id===_selectedRepId; })||null;
-      _finish(type,theme,rep);
-    });
+    function paintPreview(){
+      preview.innerHTML='';
+      const theme=selectable.find(function(t){ return t.id===_selectedThemeId; });
+      if(!theme){
+        preview.appendChild(_el('p','creation-flow-preview-empty','Add a world from World Library to get started.'));
+        return;
+      }
+      const hero=_el('div','creation-flow-preview-hero');
+      const pv=_themePreview(theme);
+      if(pv.image){
+        const img=document.createElement('img');
+        img.src=pv.image; img.alt='';
+        hero.appendChild(img);
+      }else{
+        hero.style.background=pv.color;
+        hero.textContent=pv.icon;
+      }
+      preview.appendChild(hero);
+      const info=_el('div','creation-flow-preview-info');
+      info.appendChild(_el('h2','creation-flow-preview-name',theme.name));
+      info.appendChild(_el('p','creation-flow-preview-desc',theme.description||''));
 
-    paintThemes();
-    paintStyles();
+      const reps=_representationsForTheme(theme.id,type.id);
+      if(reps.length){
+        if(!_selectedRepId || !reps.some(function(r){ return r.id===_selectedRepId; })){
+          _selectedRepId=reps[0].id;
+        }
+        info.appendChild(_el('h3','creation-flow-subheading','Choose your first Page Style'));
+        const grid=_el('div','creation-flow-grid creation-flow-style-grid');
+        reps.forEach(function(r){
+          grid.appendChild(_repCard(r,r.id===_selectedRepId,function(){
+            _selectedRepId=r.id;
+            paintPreview();
+          }));
+        });
+        info.appendChild(grid);
+      }else{
+        _selectedRepId=null;
+      }
+
+      const footer=_el('div','creation-flow-footer');
+      const startBtn=_el('button','creation-flow-start-btn','Start Creating  →');
+      startBtn.type='button';
+      startBtn.addEventListener('click',function(){
+        const reps2=_representationsForTheme(theme.id,type.id);
+        const rep=reps2.find(function(r){ return r.id===_selectedRepId; })||null;
+        _finish(type,theme,rep);
+      });
+      footer.appendChild(startBtn);
+      info.appendChild(footer);
+
+      preview.appendChild(info);
+    }
+
+    paintRows();
+    paintPreview();
   }
 
   // ---------- Change Representation screen (Context Panel shortcut) ----------
-  // Deliberately NOT the combined Screen 2 above: the active Theme is
-  // already fixed (set from the editor), so only the Page Style
-  // (Representation) grid is shown — no Theme grid, no Import Theme. This
-  // preserves the exact Sprint 10.1 "Change Representation" behavior;
-  // Sprint 11.0 only restyled Screen 1/2 of the new-project flow.
+  // Deliberately NOT the master/detail Screen 2 above: the active World
+  // is already fixed (set from the editor), so only the Page Style
+  // (Representation) grid is shown — no World rows, no Import Theme.
+  // This preserves the exact Sprint 10.1 "Change Representation"
+  // behavior; Sprint 11.0 only restyled Screens 1/2 of the new-project
+  // flow.
   function _renderChangeRepresentationScreen(reps){
     _clear();
     _setAtmosphere(true);
@@ -346,28 +419,6 @@ const CreationFlow=(function(){
       grid.appendChild(_repCard(r,false,function(){ _applyRepresentationToCurrentSlide(r); }));
     });
     content.appendChild(grid);
-  }
-
-  // No theme currently supports this Creation Type. Import Theme still
-  // appears here (it's the empty state of Screen 2, not a new screen) so
-  // a theme emailed for exactly this Creation Type isn't blocked behind
-  // first completing the flow with something else.
-  function _renderComingSoon(type){
-    _clear();
-    _setAtmosphere(true);
-    _header('Step 2 of 2',_renderTypeScreen);
-    const titleRow=_el('div','creation-flow-title-row');
-    titleRow.appendChild(_el('h1','creation-flow-question',type.title+' is coming soon!'));
-    const importBtn=_el('button','creation-flow-import-btn','⤴ Import Theme');
-    importBtn.type='button';
-    _wireImportButton(importBtn,type);
-    titleRow.appendChild(importBtn);
-    content.appendChild(titleRow);
-    content.appendChild(_el('p','creation-flow-comingsoon-msg','We\'re still working on this one. Pick something else for now, or import a theme that supports it — '+type.title+' will be ready soon.'));
-    const back=_el('button','creation-flow-card creation-flow-choose-other','Choose Something Else');
-    back.type='button';
-    back.addEventListener('click',_renderTypeScreen);
-    content.appendChild(back);
   }
 
   // ---------- Enter editor (first time only) ----------
