@@ -1,0 +1,8 @@
+{
+  "id": "portrait",
+  "name": "Portrait",
+  "aspect": "portrait",
+  "composition": "below",
+  "holders": 1,
+  "supportedFrames": ["nonexistent-frame"]
+}

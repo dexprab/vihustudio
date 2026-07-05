@@ -1,4 +1,13 @@
 // Theme Build Engine
+//
+// TB-4.6 — Runtime Alignment. generateVThemePackage() now emits
+// exactly the shape ThemeEngine.importThemeFile() / ThemeRegistry.
+// importPackage() consume today — the legacy flat
+// { manifest, theme, assets } package (js/themeRegistry.js's own
+// header comment calls this "the .vtheme package format"). No zip
+// step is introduced: the flat format is already the runtime's first-
+// class, fully-supported contract, so compiling straight to it is the
+// smallest change that closes the gap (see docs/VTHEME_PACKAGE_SPEC.md).
 
 class BuildEngine {
     constructor() {
@@ -69,7 +78,10 @@ class BuildEngine {
     }
 
     /**
-     * Package theme files into structure
+     * Package theme files into structure. Each collection is flattened
+     * to plain preset objects (one file may hold one object or an
+     * array — spec §5/§6/§7), not wrapped in { file, data } pairs, so
+     * generateVThemePackage() can merge them straight onto `theme`.
      */
     async packageTheme() {
         const package_ = {
@@ -77,12 +89,11 @@ class BuildEngine {
             metadata: null,
             theme: null,
             layouts: [],
-            frames: [],
-            layerPacks: [],
-            assets: [],
-            preview: null,
-            thumbnail: null,
-            readme: null
+            frameVariations: [],
+            layerPack: [],
+            assets: {},
+            previewDataURL: null,
+            thumbnailDataURL: null
         };
 
         // Get core files
@@ -96,101 +107,68 @@ class BuildEngine {
             package_.theme = projectLoader.currentProject.theme;
         }
 
-        // Get layouts
-        for (const layoutFile of projectLoader.getFilesInFolder('layouts')) {
-            if (layoutFile.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(layoutFile);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    package_.layouts.push({
-                        file: layoutFile,
-                        data: json
-                    });
-                }
-            }
+        package_.layouts = await this.collectFolder('layouts');
+        package_.frameVariations = await this.collectFolder('frames');
+        package_.layerPack = await this.collectFolder('layer-packs');
+
+        // Assets — flattened to a { relativePath: dataURI } map, paths
+        // relative to assets/ (spec §8), exactly the shape
+        // js/zipReader.js + themeEngine.js's _buildPackageFromZipFiles
+        // already produce for a zipped package.
+        for (const file of projectLoader.getFilesInFolder('assets')) {
+            const relPath = file.replace(/^assets\//, '');
+            const dataURL = await projectLoader.getFileAsDataURL(file);
+            if (dataURL) package_.assets[relPath] = dataURL;
         }
 
-        // Get frames
-        for (const frameFile of projectLoader.getFilesInFolder('frames')) {
-            if (frameFile.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(frameFile);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    package_.frames.push({
-                        file: frameFile,
-                        data: json
-                    });
-                }
-            }
-        }
-
-        // Get layer packs
-        for (const layerFile of projectLoader.getFilesInFolder('layer-packs')) {
-            if (layerFile.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(layerFile);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    package_.layerPacks.push({
-                        file: layerFile,
-                        data: json
-                    });
-                }
-            }
-        }
-
-        // Get assets
-        package_.assets = projectLoader.getFilesInFolder('assets');
-
-        // Get preview and thumbnail (if available)
+        // preview.png / thumbnail.png — embedded as data URIs so the
+        // compiled package carries real image bytes, not a placeholder
+        // string.
         if (projectLoader.projectStructure.hasPreview) {
-            package_.preview = projectLoader.currentProject.files['preview.png'];
+            package_.previewDataURL = await projectLoader.getFileAsDataURL('preview.png');
         }
         if (projectLoader.projectStructure.hasThumbnail) {
-            package_.thumbnail = projectLoader.currentProject.files['thumbnail.png'];
-        }
-
-        // Get README
-        if (projectLoader.projectStructure.hasReadme) {
-            const readmeContent = await projectLoader.getFileContent('README.md');
-            package_.readme = readmeContent;
+            package_.thumbnailDataURL = await projectLoader.getFileAsDataURL('thumbnail.png');
         }
 
         return package_;
     }
 
     /**
-     * Generate .vtheme package file
+     * Parse every .json file in a folder into a flat array of preset
+     * objects, in whichever combination of single-object and array
+     * files the author used.
+     */
+    async collectFolder(folder) {
+        const out = [];
+        for (const file of projectLoader.getFilesInFolder(folder)) {
+            if (!file.endsWith('.json')) continue;
+            const content = await projectLoader.getFileContent(file);
+            const json = projectLoader.parseJSON(content);
+            if (Array.isArray(json)) out.push(...json);
+            else if (json) out.push(json);
+        }
+        return out;
+    }
+
+    /**
+     * Generate .vtheme package file — the canonical
+     * { manifest, theme, assets } shape ThemeRegistry.importPackage()
+     * consumes directly, no conversion step required.
      */
     async generateVThemePackage(packageData) {
-        const manifest = packageData.manifest;
-        const themeName = manifest?.name?.replace(/\s+/g, '_') || 'theme';
-        const version = manifest?.version || '0.0.1';
+        const manifest = this.buildManifest(packageData);
+        const theme = this.buildTheme(packageData, manifest);
+        const assets = packageData.assets || {};
 
-        // Create package structure
-        const vthemeStructure = {
-            version: '1.0',
-            format: 'vtheme',
-            manifest: packageData.manifest,
-            metadata: packageData.metadata,
-            theme: packageData.theme,
-            layouts: this.serializeArray(packageData.layouts),
-            frames: this.serializeArray(packageData.frames),
-            layerPacks: this.serializeArray(packageData.layerPacks),
-            assets: packageData.assets,
-            preview: packageData.preview ? 'included' : null,
-            thumbnail: packageData.thumbnail ? 'included' : null,
-            readme: packageData.readme ? 'included' : null,
-            builtAt: new Date().toISOString(),
-            builtWith: `${TB_NAME} v${TB_VERSION}`
-        };
+        const pkg = { manifest, theme, assets };
 
-        // Create blob and generate download
-        const blob = new Blob([JSON.stringify(vthemeStructure, null, 2)], {
+        const blob = new Blob([JSON.stringify(pkg, null, 2)], {
             type: 'application/json'
         });
 
         return {
-            filename: `${themeName}.vtheme`,
+            filename: `${manifest.id || 'theme'}.vtheme`,
             blob: blob,
             manifest: manifest,
             size: blob.size
@@ -198,13 +176,53 @@ class BuildEngine {
     }
 
     /**
-     * Serialize array of objects for packaging
+     * Build the runtime manifest — starts from manifest.json, merges
+     * metadata.json's rich fields additively (never overwriting a
+     * field the manifest already set, same rule
+     * _buildPackageFromZipFiles uses for a zipped package), and embeds
+     * preview.png/thumbnail.png as data URIs onto the exact fields the
+     * runtime already reads (manifest.thumbnail / manifest.previewImage).
      */
-    serializeArray(arr) {
-        return arr.map(item => ({
-            file: item.file,
-            data: item.data
-        }));
+    buildManifest(packageData) {
+        const manifest = Object.assign({}, packageData.manifest);
+        const metadata = packageData.metadata || {};
+
+        Object.keys(metadata).forEach(key => {
+            if (manifest[key] === undefined) manifest[key] = metadata[key];
+        });
+
+        if (packageData.thumbnailDataURL && (!manifest.thumbnail || manifest.thumbnail === 'thumbnail.png')) {
+            manifest.thumbnail = packageData.thumbnailDataURL;
+        }
+        if (packageData.previewDataURL && (!manifest.previewImage || manifest.previewImage === 'preview.png')) {
+            manifest.previewImage = packageData.previewDataURL;
+        }
+
+        return manifest;
+    }
+
+    /**
+     * Build the runtime theme object — theme.json's own fields (minus
+     * id/name duplication, which stay for clarity but must already
+     * equal the manifest's per validation) plus layouts/frameVariations/
+     * layerPack flattened onto it (spec §4's compiled shape).
+     */
+    buildTheme(packageData, manifest) {
+        const theme = Object.assign({}, packageData.theme);
+        theme.id = manifest.id;
+        theme.name = manifest.name;
+
+        if (theme.layouts === undefined && packageData.layouts.length) {
+            theme.layouts = packageData.layouts;
+        }
+        if (theme.frameVariations === undefined && packageData.frameVariations.length) {
+            theme.frameVariations = packageData.frameVariations;
+        }
+        if (theme.layerPack === undefined) {
+            theme.layerPack = packageData.layerPack;
+        }
+
+        return theme;
     }
 
     /**

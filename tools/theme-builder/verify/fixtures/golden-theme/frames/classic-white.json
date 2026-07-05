@@ -1,0 +1,16 @@
+{
+  "id": "classic-white",
+  "name": "Classic White",
+  "description": "A simple white mat.",
+  "fields": {
+    "background": "white",
+    "frame": "white-mat",
+    "paper": "smooth",
+    "shadow": "gallery",
+    "matWidth": 24,
+    "frameThickness": 2,
+    "borderColor": "#B5AFA4",
+    "wallTone": "#F7F4EE",
+    "textureAsset": "textures/linen.png"
+  }
+}

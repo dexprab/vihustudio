@@ -1,6 +1,6 @@
 // Theme Builder Constants
 
-const TB_VERSION = '1.0.0-TB';
+const TB_VERSION = '1.1.0-TB';
 const TB_NAME = 'Theme Builder';
 
 const PAGES = {
@@ -80,3 +80,13 @@ const EVENTS = {
     STATE_UPDATED: 'stateUpdated',
     NAVIGATION_CHANGED: 'navigationChanged'
 };
+
+// TB-4.6 — Runtime Alignment. These enums mirror the exact contract
+// docs/THEME_PROJECT_SPEC.md defines and js/themeRegistry.js /
+// renderer/slideRenderer.js already consume, so the validator checks
+// against the same values the importer and renderer do.
+const THEME_TYPES = ['story', 'artwork'];
+const DEFAULT_THEME_TYPE = 'story';
+const LAYOUT_ASPECTS = ['portrait', 'landscape', 'square', 'wide', 'quote', 'full-bleed'];
+const LAYER_TYPES = ['text', 'sticker', 'decoration'];
+const LAYER_TARGETS = ['slide', 'frame', 'holder', 'element'];

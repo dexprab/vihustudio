@@ -80,6 +80,20 @@ class ProjectLoader {
     }
 
     /**
+     * Read file content as a data URI — used for binary assets
+     * (preview/thumbnail/assets images) the compiler must embed, as
+     * opposed to readFile()'s text mode used for JSON/Markdown.
+     */
+    readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /**
      * Parse JSON safely
      */
     parseJSON(content) {
@@ -174,6 +188,16 @@ class ProjectLoader {
         const file = this.currentProject.files[relativePath];
         if (!file) return null;
         return await this.readFile(file);
+    }
+
+    /**
+     * Get file content as a data URI (see readFileAsDataURL)
+     */
+    async getFileAsDataURL(relativePath) {
+        if (!this.currentProject) return null;
+        const file = this.currentProject.files[relativePath];
+        if (!file) return null;
+        return await this.readFileAsDataURL(file);
     }
 
     /**

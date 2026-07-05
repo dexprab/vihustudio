@@ -69,14 +69,26 @@ MuseumGallery/
 
 ```json
 {
-  "name": "Museum Gallery",
   "id": "museum-gallery",
+  "name": "Museum Gallery",
   "version": "1.0.0",
+  "builderVersion": "1.0.0",
+  "minStudioVersion": "9.5.0",
   "author": "VihuStudio",
-  "minimumStudioVersion": "1.0.0",
-  "description": "A classic gallery-inspired theme"
+  "description": "A classic gallery-inspired theme",
+  "category": "Official",
+  "tags": ["gallery", "art", "museum"],
+  "thumbnail": "thumbnail.png",
+  "createdDate": "2026-01-01",
+  "updatedDate": "2026-01-01"
 }
 ```
+
+`minStudioVersion` (not `minimumStudioVersion`) is the field the real
+VihuStudio import path checks — see `docs/THEME_PROJECT_SPEC.md` §2 and
+`docs/VTHEME_PACKAGE_SPEC.md`. Every field above is required — the exact
+list `js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS` checks, plus
+`builderVersion` (a Theme Builder-only authoring gate).
 
 ### metadata.json
 
@@ -85,21 +97,28 @@ MuseumGallery/
   "displayName": "Museum Gallery",
   "description": "A classic gallery-inspired theme",
   "category": "Portfolio",
-  "tags": ["gallery", "portfolio", "classic"],
-  "colors": ["#000000", "#FFFFFF"]
+  "tags": ["gallery", "portfolio", "classic"]
 }
 ```
 
 ### theme.json
 
+`theme.json` is **not** the runtime theme object — it's the small set of
+theme-wide defaults the compiler starts from before folding in `layouts/`,
+`frames/`, and `layer-packs/`. See `docs/THEME_PROJECT_SPEC.md` §4.
+
 ```json
 {
   "id": "museum-gallery",
   "name": "Museum Gallery",
-  "layouts": ["gallery", "list", "grid"],
-  "frames": ["hero", "content", "footer"]
+  "presentation": "gallery"
 }
 ```
+
+`id`/`name` must exactly match `manifest.json`'s — a project where they
+differ fails validation. A Story Theme (`manifest.type` absent or
+`"story"`) additionally requires `frame`, `panel`, `storyText`,
+`footerText`, `watermark` on `theme.json`.
 
 ## Validation Engine
 
@@ -125,9 +144,15 @@ Validates all aspects of a theme project:
 - ✓ Minimum Studio Version specified
 
 ### Reference Validation
-- ✓ All referenced files exist
-- ✓ No broken asset paths
-- ✓ No missing dependencies
+- ✓ No two Layouts share an id; no two Frame Variations share an id; no
+  two Layers across the entire compiled Layer Pack share an id (checked
+  across every file under `layer-packs/`, not just one)
+- ✓ Every `supportedFrames` entry in a Layout names a real Frame id
+- ✓ Every Layer's `type`/`target` is one of the allowed values
+- ✓ Every asset path referenced from `layouts/`/`frames/`/`layer-packs/`
+  resolves to a real file under `assets/`
+- ✓ `manifest.thumbnail` / `metadata.previewImage`, if a relative path,
+  resolve to a real project file
 
 ## Build Engine
 
@@ -141,26 +166,26 @@ Converts validated themes into `.vtheme` packages:
 
 ### Package Format
 
-`.vtheme` files contain:
+`.vtheme` files are the canonical flat runtime package
+`ThemeRegistry.importPackage()` consumes directly — see
+`docs/VTHEME_PACKAGE_SPEC.md` for the full contract:
 
 ```json
 {
-  "version": "1.0",
-  "format": "vtheme",
-  "manifest": {...},
-  "metadata": {...},
-  "theme": {...},
-  "layouts": [...],
-  "frames": [...],
-  "layerPacks": [...],
-  "assets": [...],
-  "preview": "included",
-  "thumbnail": "included",
-  "readme": "included",
-  "builtAt": "2026-07-05T00:00:00Z",
-  "builtWith": "Theme Builder v1.0.0-TB"
+  "manifest": { "...": "manifest.json + metadata.json, merged" },
+  "theme": {
+    "...": "theme.json's own fields",
+    "layouts": ["...flattened from layouts/*.json"],
+    "frameVariations": ["...flattened from frames/*.json"],
+    "layerPack": ["...flattened from layer-packs/*.json"]
+  },
+  "assets": { "relative/path.png": "data:image/png;base64,..." }
 }
 ```
+
+`preview.png`/`thumbnail.png` are embedded as real data URIs on
+`manifest.previewImage`/`manifest.thumbnail` — no placeholder strings, no
+per-collection `{file, data}` wrappers, no build-provenance envelope.
 
 ## Dashboard
 
@@ -373,7 +398,13 @@ await window.ThemeBuilder.app.buildProject();
 
 ## Theme Builder V1 Freeze
 
-After TB-2 completion, Theme Builder V1 is **frozen** as a stable compiler.
+Theme Builder V1 is **frozen** as a stable compiler as of TB-4.6 (Theme
+Builder Runtime Alignment) — the point where a compiled `.vtheme` first
+imports into VihuStudio without manual editing, compatibility shims, or a
+conversion step. Verified end-to-end by
+`tools/theme-builder/verify/goldenBuild.js`, which drives the real Theme
+Builder tool and the real VihuStudio runtime through
+Validate → Compile → Import → Register → Render.
 
 Future visual editing features go into **Theme Designer V2**, which will reuse the Theme Builder compiler underneath.
 
@@ -391,11 +422,23 @@ VihuStudio Import
 
 ## Roadmap
 
-**TB-2 (Current)** - Complete  
-✓ Project loading  
-✓ Validation engine  
-✓ Build engine  
-✓ Package generation  
+**TB-2** - Complete
+✓ Project loading
+✓ Validation engine
+✓ Build engine
+✓ Package generation
+
+**TB-4.5** - Complete
+✓ `docs/THEME_PROJECT_SPEC.md` — canonical Theme Project specification
+
+**TB-4.6 (Current)** - Complete
+✓ Manifest contract aligned on `minStudioVersion` (Theme Builder, Theme
+  Registry, Theme Engine, both spec docs)
+✓ Compiled package aligned on the canonical flat `{manifest, theme,
+  assets}` format
+✓ Real reference/duplicate-id validation
+✓ `docs/VTHEME_PACKAGE_SPEC.md` — canonical compiled-package specification
+✓ Golden build verification (`tools/theme-builder/verify/goldenBuild.js`)
 
 **TB-3** (Future)  
 - Theme Designer UI

@@ -1,4 +1,12 @@
 // Theme Validation Engine
+//
+// TB-4.6 — Runtime Alignment. Every rule here enforces
+// docs/THEME_PROJECT_SPEC.md §11 exactly, using the same field names
+// and enums the real import path (js/themeRegistry.js's
+// REQUIRED_MANIFEST_FIELDS/REQUIRED_THEME_FIELDS/THEME_TYPES) already
+// checks — so a project that validates here is guaranteed to pass
+// ThemeRegistry.importPackage(), not just Theme Builder's own opinion
+// of "valid".
 
 class ValidationEngine {
     constructor() {
@@ -17,8 +25,15 @@ class ValidationEngine {
                 requiredAssets: ['preview.png', 'thumbnail.png']
             },
             manifest: {
-                requiredFields: ['name', 'id', 'version', 'author', 'minimumStudioVersion'],
-                stringFields: ['name', 'id', 'author', 'description'],
+                // Matches js/themeRegistry.js's REQUIRED_MANIFEST_FIELDS
+                // one-for-one, plus builderVersion — a Theme-Builder-only
+                // authoring gate (spec §2), not a runtime concern.
+                requiredFields: [
+                    'id', 'name', 'version', 'builderVersion', 'minStudioVersion',
+                    'author', 'description', 'category', 'tags', 'thumbnail',
+                    'createdDate', 'updatedDate'
+                ],
+                stringFields: ['id', 'name', 'author', 'description'],
                 versionFormat: /^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$/
             },
             metadata: {
@@ -26,7 +41,13 @@ class ValidationEngine {
                 stringFields: ['displayName', 'description', 'category']
             },
             theme: {
-                requiredFields: ['id', 'name']
+                requiredFields: ['id', 'name'],
+                // Matches js/themeRegistry.js's REQUIRED_THEME_FIELDS /
+                // REQUIRED_ARTWORK_THEME_FIELDS exactly.
+                requiredFieldsByType: {
+                    story: ['frame', 'panel', 'storyText', 'footerText', 'watermark'],
+                    artwork: []
+                }
             },
             ids: {
                 pattern: /^[a-z0-9-]+$/,
@@ -59,11 +80,11 @@ class ValidationEngine {
         await this.validateManifest(result);
         await this.validateMetadata(result);
         await this.validateTheme(result);
-        await this.validateLayouts(result);
-        await this.validateFrames(result);
-        await this.validateLayerPacks(result);
+        const layouts = await this.validateLayouts(result);
+        const frames = await this.validateFrames(result);
+        const layerEntries = await this.validateLayerPacks(result);
         await this.validateAssets(result);
-        await this.validateReferences(result);
+        await this.validateReferences(result, { layouts, frames, layerEntries });
 
         result.isValid = result.errors.length === 0;
         this.lastValidationResult = result;
@@ -77,12 +98,19 @@ class ValidationEngine {
         const structure = projectLoader.projectStructure;
         const details = {};
 
-        // Check required folders
+        // Check required folders — must exist AND contain at least one
+        // .json file (an empty folder is not a valid Layer Pack/Layout/
+        // Frame source, per spec §11).
         for (const folder of this.validationRules.structure.requiredFolders) {
             const exists = structure[`has${this.capitalize(folder)}`] || structure.folders[folder];
             details[folder] = exists;
             if (!exists) {
                 result.errors.push(`Missing required folder: ${folder}/`);
+                continue;
+            }
+            const jsonFiles = projectLoader.getFilesInFolder(folder).filter(f => f.endsWith('.json'));
+            if (jsonFiles.length === 0) {
+                result.errors.push(`Folder ${folder}/ exists but contains no .json files`);
             }
         }
 
@@ -101,6 +129,9 @@ class ValidationEngine {
         }
         if (!structure.hasThumbnail) {
             result.warnings.push('Missing thumbnail.png (recommended)');
+        }
+        if (!structure.hasReadme) {
+            result.warnings.push('Missing README.md (recommended)');
         }
 
         result.details.structure = details;
@@ -121,7 +152,7 @@ class ValidationEngine {
 
         // Check required fields
         for (const field of this.validationRules.manifest.requiredFields) {
-            if (!(field in manifest)) {
+            if (!(field in manifest) || manifest[field] === null || manifest[field] === undefined) {
                 result.errors.push(`manifest.json missing required field: ${field}`);
             } else {
                 details[field] = manifest[field];
@@ -133,14 +164,20 @@ class ValidationEngine {
             result.errors.push(`manifest.id "${manifest.id}" must be lowercase alphanumeric with hyphens (3-50 chars)`);
         }
 
-        // Validate version format
+        // Validate version formats
         if (manifest.version && !this.validationRules.manifest.versionFormat.test(manifest.version)) {
             result.errors.push(`manifest.version "${manifest.version}" must be semantic (e.g., 1.0.0)`);
         }
+        if (manifest.builderVersion && !this.validationRules.manifest.versionFormat.test(manifest.builderVersion)) {
+            result.errors.push(`manifest.builderVersion "${manifest.builderVersion}" must be semantic (e.g., 1.0.0)`);
+        }
+        if (manifest.minStudioVersion && !this.validationRules.manifest.versionFormat.test(manifest.minStudioVersion)) {
+            result.errors.push(`manifest.minStudioVersion "${manifest.minStudioVersion}" must be semantic (e.g., 9.5.0)`);
+        }
 
-        // Validate minimumStudioVersion
-        if (manifest.minimumStudioVersion && !this.validationRules.manifest.versionFormat.test(manifest.minimumStudioVersion)) {
-            result.warnings.push(`manifestminimumStudioVersion has unusual format: ${manifest.minimumStudioVersion}`);
+        // Validate type
+        if (manifest.type !== undefined && THEME_TYPES.indexOf(manifest.type) === -1) {
+            result.warnings.push(`manifest.type "${manifest.type}" is not recognized — normalizes to "${DEFAULT_THEME_TYPE}" at import`);
         }
 
         result.details.manifest = details;
@@ -172,10 +209,19 @@ class ValidationEngine {
     }
 
     /**
+     * Effective theme type — normalizes an absent/unrecognized
+     * manifest.type to 'story', exactly like ThemeRegistry._normalizeManifest.
+     */
+    effectiveType(manifest) {
+        return (manifest && THEME_TYPES.indexOf(manifest.type) !== -1) ? manifest.type : DEFAULT_THEME_TYPE;
+    }
+
+    /**
      * Validate theme.json
      */
     async validateTheme(result) {
         const theme = projectLoader.currentProject?.theme;
+        const manifest = projectLoader.currentProject?.manifest;
         const details = {};
 
         if (!theme) {
@@ -184,12 +230,34 @@ class ValidationEngine {
             return;
         }
 
-        // Check required fields
+        // Check base required fields
         for (const field of this.validationRules.theme.requiredFields) {
             if (!(field in theme)) {
                 result.errors.push(`theme.json missing required field: ${field}`);
             } else {
                 details[field] = theme[field];
+            }
+        }
+
+        // theme.id / theme.name must equal manifest's — an internal
+        // consistency error, not a warning (spec §11).
+        if (manifest) {
+            if (theme.id !== undefined && manifest.id !== undefined && theme.id !== manifest.id) {
+                result.errors.push(`theme.id "${theme.id}" does not match manifest.id "${manifest.id}"`);
+            }
+            if (theme.name !== undefined && manifest.name !== undefined && theme.name !== manifest.name) {
+                result.errors.push(`theme.name "${theme.name}" does not match manifest.name "${manifest.name}"`);
+            }
+        }
+
+        // Type-specific required fields (story needs frame/panel/
+        // storyText/footerText/watermark; artwork needs nothing beyond
+        // id/name already checked above).
+        const type = this.effectiveType(manifest);
+        const extraRequired = this.validationRules.theme.requiredFieldsByType[type] || [];
+        for (const field of extraRequired) {
+            if (!theme[field]) {
+                result.errors.push(`theme.json missing required field for type "${type}": ${field}`);
             }
         }
 
@@ -202,81 +270,56 @@ class ValidationEngine {
     }
 
     /**
+     * Parse every .json file in a folder into a flat list of entries
+     * (a file may hold one object or an array of them — spec §5/§6/§7).
+     * Returns [{ ...entry, __file }] for downstream reference/duplicate-
+     * id checks, and records per-file valid/invalid detail.
+     */
+    async collectFolderEntries(folder, result, detailKey) {
+        const files = projectLoader.getFilesInFolder(folder).filter(f => f.endsWith('.json'));
+        const details = { count: files.length, files: [] };
+        const entries = [];
+
+        for (const file of files) {
+            const content = await projectLoader.getFileContent(file);
+            const json = projectLoader.parseJSON(content);
+            if (json === null) {
+                result.errors.push(`Invalid JSON in ${file}`);
+                details.files.push({ file, valid: false });
+                continue;
+            }
+            details.files.push({ file, valid: true });
+            const items = Array.isArray(json) ? json : [json];
+            items.forEach(item => {
+                if (item && typeof item === 'object') {
+                    entries.push(Object.assign({ __file: file }, item));
+                }
+            });
+        }
+
+        result.details[detailKey] = details;
+        return entries;
+    }
+
+    /**
      * Validate layouts folder
      */
     async validateLayouts(result) {
-        const layoutFiles = projectLoader.getFilesInFolder('layouts');
-        const details = {
-            count: layoutFiles.length,
-            files: []
-        };
-
-        for (const file of layoutFiles) {
-            if (file.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(file);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    details.files.push({ file, valid: true });
-                } else {
-                    result.errors.push(`Invalid JSON in ${file}`);
-                    details.files.push({ file, valid: false });
-                }
-            }
-        }
-
-        result.details.layouts = details;
+        return this.collectFolderEntries('layouts', result, 'layouts');
     }
 
     /**
      * Validate frames folder
      */
     async validateFrames(result) {
-        const frameFiles = projectLoader.getFilesInFolder('frames');
-        const details = {
-            count: frameFiles.length,
-            files: []
-        };
-
-        for (const file of frameFiles) {
-            if (file.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(file);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    details.files.push({ file, valid: true });
-                } else {
-                    result.errors.push(`Invalid JSON in ${file}`);
-                    details.files.push({ file, valid: false });
-                }
-            }
-        }
-
-        result.details.frames = details;
+        return this.collectFolderEntries('frames', result, 'frames');
     }
 
     /**
      * Validate layer-packs folder
      */
     async validateLayerPacks(result) {
-        const layerFiles = projectLoader.getFilesInFolder('layer-packs');
-        const details = {
-            count: layerFiles.length,
-            files: []
-        };
-
-        for (const file of layerFiles) {
-            if (file.endsWith('.json')) {
-                const content = await projectLoader.getFileContent(file);
-                const json = projectLoader.parseJSON(content);
-                if (json) {
-                    details.files.push({ file, valid: true });
-                } else {
-                    result.errors.push(`Invalid JSON in ${file}`);
-                    details.files.push({ file, valid: false });
-                }
-            }
-        }
-
-        result.details.layerPacks = details;
+        return this.collectFolderEntries('layer-packs', result, 'layerPacks');
     }
 
     /**
@@ -293,14 +336,128 @@ class ValidationEngine {
     }
 
     /**
-     * Validate references between files
+     * Check for duplicate ids within one collection (Layouts, Frames,
+     * or the entire compiled Layer Pack) — each scope is independent
+     * (spec §11). Layouts/Frames also require a display "name" (shown
+     * in their pickers); a Layer Pack entry does not — spec §7 lists no
+     * "name" field for Layers, and real production entries (e.g.
+     * "page-number", "handle") never carry one.
      */
-    async validateReferences(result) {
-        // This would validate that layouts reference valid frames, etc.
-        // For now, basic implementation
-        const details = {
-            checked: true
+    checkDuplicateIds(entries, label, result, requireName) {
+        const seen = new Map();
+        entries.forEach(entry => {
+            if (!entry.id) {
+                result.errors.push(`${label} entry in ${entry.__file} is missing "id"`);
+                return;
+            }
+            if (!this.validateId(entry.id)) {
+                result.errors.push(`${label} id "${entry.id}" (${entry.__file}) must be lowercase alphanumeric with hyphens (3-50 chars)`);
+            }
+            if (requireName && !entry.name) {
+                result.errors.push(`${label} "${entry.id}" (${entry.__file}) is missing "name"`);
+            }
+            if (seen.has(entry.id)) {
+                result.errors.push(`Duplicate ${label.toLowerCase()} id "${entry.id}" in ${seen.get(entry.id)} and ${entry.__file}`);
+            } else {
+                seen.set(entry.id, entry.__file);
+            }
+        });
+    }
+
+    /**
+     * Recursively collect string values that look like asset
+     * references (an image extension) so they can be checked against
+     * assets/ — spec §8's "reference is relative to assets/" rule.
+     */
+    findAssetPaths(obj, out) {
+        out = out || [];
+        if (!obj || typeof obj !== 'object') return out;
+        for (const key of Object.keys(obj)) {
+            if (key === '__file') continue;
+            const value = obj[key];
+            if (typeof value === 'string') {
+                if (/\.(png|jpe?g|svg|webp)$/i.test(value) && !/^(data:|https?:)/i.test(value)) {
+                    out.push(value.replace(/^assets\//, ''));
+                }
+            } else if (value && typeof value === 'object') {
+                this.findAssetPaths(value, out);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Validate references between files — duplicate ids, broken
+     * cross-references, and asset paths. Spec §11 "Reference rules" /
+     * "Missing assets".
+     */
+    async validateReferences(result, collected) {
+        const { layouts, frames, layerEntries } = collected;
+        const details = { checked: true, duplicates: [], brokenReferences: [], missingAssets: [] };
+
+        this.checkDuplicateIds(layouts, 'Layout', result, true);
+        this.checkDuplicateIds(frames, 'Frame', result, true);
+        this.checkDuplicateIds(layerEntries, 'Layer', result, false);
+
+        const frameIds = new Set(frames.map(f => f.id).filter(Boolean));
+        layouts.forEach(layout => {
+            if (layout.aspect && LAYOUT_ASPECTS.indexOf(layout.aspect) === -1) {
+                result.warnings.push(`Layout "${layout.id}" has unrecognized aspect "${layout.aspect}" — falls back to the legacy fixed panel`);
+            }
+            (layout.supportedFrames || []).forEach(frameId => {
+                if (!frameIds.has(frameId)) {
+                    result.errors.push(`Layout "${layout.id}" references unknown frame "${frameId}" in supportedFrames`);
+                    details.brokenReferences.push({ from: layout.id, to: frameId, type: 'supportedFrames' });
+                }
+            });
+        });
+
+        layerEntries.forEach(layer => {
+            if (layer.type && LAYER_TYPES.indexOf(layer.type) === -1) {
+                result.errors.push(`Layer "${layer.id}" has invalid type "${layer.type}" (must be one of: ${LAYER_TYPES.join(', ')})`);
+            }
+            if (layer.target && LAYER_TARGETS.indexOf(layer.target) === -1) {
+                result.errors.push(`Layer "${layer.id}" has invalid target "${layer.target}" (must be one of: ${LAYER_TARGETS.join(', ')})`);
+            }
+        });
+
+        // Asset path references from layouts/frames/layer-packs JSON.
+        const assetFiles = new Set(
+            projectLoader.getFilesInFolder('assets').map(f => f.replace(/^assets\//, ''))
+        );
+        const checkAssetRefs = (entries, label) => {
+            entries.forEach(entry => {
+                this.findAssetPaths(entry).forEach(relPath => {
+                    if (!assetFiles.has(relPath)) {
+                        result.errors.push(`${label} "${entry.id || entry.__file}" references missing asset "${relPath}"`);
+                        details.missingAssets.push(relPath);
+                    }
+                });
+            });
         };
+        checkAssetRefs(layouts, 'Layout');
+        checkAssetRefs(frames, 'Frame');
+        checkAssetRefs(layerEntries, 'Layer');
+
+        // manifest.thumbnail / metadata.previewImage, when a relative
+        // path (not a data URI or remote URL), must resolve to a real
+        // project file.
+        const manifest = projectLoader.currentProject?.manifest || {};
+        const metadata = projectLoader.currentProject?.metadata || {};
+        const structure = projectLoader.projectStructure;
+        [
+            { field: 'manifest.thumbnail', value: manifest.thumbnail },
+            { field: 'metadata.previewImage', value: metadata.previewImage }
+        ].forEach(({ field, value }) => {
+            if (!value || /^(data:|https?:)/i.test(value)) return;
+            const exists = (value in (structure?.files || {}))
+                || (value === 'thumbnail.png' && structure?.hasThumbnail)
+                || (value === 'preview.png' && structure?.hasPreview);
+            if (!exists) {
+                result.errors.push(`${field} references "${value}" which does not exist in the project`);
+                details.missingAssets.push(value);
+            }
+        });
 
         result.details.references = details;
     }

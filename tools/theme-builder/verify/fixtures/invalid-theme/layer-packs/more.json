@@ -1,0 +1,6 @@
+{
+  "id": "dup-layer",
+  "type": "decoration",
+  "target": "slide",
+  "decoration": { "kind": "spotlight" }
+}

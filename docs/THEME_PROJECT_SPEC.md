@@ -118,12 +118,19 @@ about how it looks.
 | `builderVersion` | **Required** | semantic version | The Theme Builder schema version this project was authored against. Lets Theme Builder refuse (or warn on) a project written for a newer contract than it understands. |
 | `minStudioVersion` | **Required** | semantic version | The minimum VihuStudio theme-system version (`ThemeRegistry.THEME_SYSTEM_VERSION`) this package needs. Checked at import time — see §13, naming note. |
 | `author` | **Required** | string | Author or studio name. |
-| `category` | Optional | string | Grouping shown in the Theme Library (`"Official"`, `"Imported"`, etc.). Official themes always use `"Official"`. |
-| `tags` | Optional | string array | Free-form search/filter tags. |
-| `description` | Optional | string | Short one-line summary. May duplicate `metadata.description` for tooling that only reads the manifest. |
-| `thumbnail` | Optional | string | Relative path to the thumbnail image (conventionally `"thumbnail.png"`). |
-| `createdDate` / `updatedDate` | Optional | `YYYY-MM-DD` | Authoring provenance. Not read by the runtime; useful for humans and changelogs. |
+| `category` | **Required** | string | Grouping shown in the Theme Library (`"Official"`, `"Imported"`, etc.). Official themes always use `"Official"`. |
+| `tags` | **Required** | string array | Free-form search/filter tags. May be an empty array. |
+| `description` | **Required** | string | Short one-line summary. May duplicate `metadata.description` for tooling that only reads the manifest. |
+| `thumbnail` | **Required** | string | Authoring-time: relative path to the thumbnail image (conventionally `"thumbnail.png"`). The compiler replaces this with an embedded data URI — see `docs/VTHEME_PACKAGE_SPEC.md`. |
+| `createdDate` / `updatedDate` | **Required** | `YYYY-MM-DD` | Authoring provenance. Not read by the runtime; required anyway, matching `js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS` exactly — one canonical required-field list, no divergence between authoring and runtime. |
 | `type` | Optional | `"story"` \| `"artwork"` | Which of VihuStudio's two theme types this is. Missing/invalid normalizes to `"story"` — never omit it for an Artwork Theme. |
+
+**Required means required everywhere.** Every field marked **Required**
+above is checked, under the identical name, by both Theme Builder's
+validator (`tools/theme-builder/js/validator.js`) and the runtime importer's
+`REQUIRED_MANIFEST_FIELDS` (`js/themeRegistry.js`) — see §13. A manifest
+that passes Theme Builder's validation is guaranteed to pass
+`ThemeRegistry.validatePackage()` too.
 
 No other top-level keys are read by the compiler or the runtime today.
 An author may still add their own (e.g. an internal tracking key) — they
@@ -509,11 +516,18 @@ its successor) must enforce before a build is allowed to proceed.
 
 **Manifest / metadata / theme.json required fields**
 - `manifest.json`: `id`, `name`, `version`, `builderVersion`,
-  `minStudioVersion`, `author` all present.
+  `minStudioVersion`, `author`, `description`, `category`, `tags`,
+  `thumbnail`, `createdDate`, `updatedDate` all present — the exact set
+  `js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS` checks, plus
+  `builderVersion` (a Theme-Builder-only authoring gate, not a runtime
+  field).
 - `metadata.json`: `displayName`, `description`, `category` all present.
 - `theme.json`: `id`, `name` present, and both **equal** the manifest's
   `id`/`name` (a mismatch is an error, not a warning — it means the
-  project is internally inconsistent about its own identity).
+  project is internally inconsistent about its own identity). A Story
+  Theme (`manifest.type` absent or `"story"`) additionally requires
+  `frame`, `panel`, `storyText`, `footerText`, `watermark` — an Artwork
+  Theme (`manifest.type: "artwork"`) requires nothing beyond `id`/`name`.
 
 **ID rules**
 - Every id (`manifest.id`, `theme.id`, every Layout/Frame/Layer id)
@@ -569,57 +583,37 @@ so every Official Theme adopts the same one.
 
 ---
 
-## 13. Known Reconciliation Items
+## 13. Known Reconciliation Items — Resolved (TB-4.6)
 
-Written down here, deliberately, rather than fixed — this sprint is
-documentation only. Whoever picks up Museum Gallery (or a validator/
-compiler hardening sprint) needs these resolved first, or Museum Gallery
-will compile "successfully" into a package VihuStudio cannot actually
-import.
+TB-4.5 (this spec's own sprint) found three gaps between Theme Builder and
+the live VihuStudio runtime and deliberately left them unfixed —
+documentation only. **TB-4.6 (Theme Builder Runtime Alignment) closed all
+three.** Recorded here for history, not as an open punch list:
 
-1. **Manifest field name mismatch.** This spec (§2) and the live
-   runtime (`js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS`) both use
-   `minStudioVersion`. Today's Theme Builder validator
-   (`tools/theme-builder/js/validator.js`) checks for
-   `minimumStudioVersion` instead. Author against **this spec's**
-   name — it's the one the actual import path reads — and treat the
-   validator's current check as the thing to correct.
+1. **Manifest field name mismatch — resolved.** `minStudioVersion` is now
+   the one name used everywhere: this spec, `js/themeRegistry.js`'s
+   `REQUIRED_MANIFEST_FIELDS`, and `tools/theme-builder/js/validator.js`.
+   No alias, no fallback lookup.
 
-2. **Compiled package shape does not match the runtime importer.**
-   Today's `tools/theme-builder/js/builder.js` `generateVThemePackage()`
-   produces a **plain JSON blob** (not a zip) shaped like:
-   ```
-   { version, format:"vtheme", manifest, metadata, theme,
-     layouts:[{file,data}], frames:[{file,data}], layerPacks:[{file,data}],
-     assets:[...], preview:"included"|null, thumbnail:"included"|null, ... }
-   ```
-   The real import path (`ThemeEngine.importThemeFile` /
-   `ThemeRegistry.importPackage`) expects either a legacy flat
-   `{ manifest, theme, assets }` file, or a zip archive with the folder
-   layout this spec describes (§1), which `js/zipReader.js` +
-   `_buildPackageFromZipFiles` unpack and flatten. Today's compiled
-   output does neither: `theme` is left as `theme.json`'s raw content
-   (never merged with `layouts`/`frames`/`layerPacks`, per §4's compiled
-   shape), those three stay as separate top-level arrays of `{file,
-   data}` pairs instead of flattened arrays merged onto `theme.layouts`/
-   `theme.frameVariations`/`theme.layerPack`, and `preview`/`thumbnail`
-   are replaced with the literal string `"included"` — the actual image
-   bytes are never embedded, so they're lost entirely. A theme compiled
-   by today's Theme Builder will not import into VihuStudio as claimed;
-   the compiler's output stage needs to be brought in line with §1/§4
-   of this spec before Museum Gallery is compiled through it.
+2. **Compiled package shape — resolved.** `tools/theme-builder/js/
+   builder.js`'s `generateVThemePackage()` now emits the canonical flat
+   `{ manifest, theme, assets }` shape directly — `theme.layouts`/
+   `frameVariations`/`layerPack` are real flattened arrays (not `{file,
+   data}` pairs), `assets` is a real `{relativePath: dataURI}` map, and
+   `preview.png`/`thumbnail.png` are embedded as real data URIs onto
+   `manifest.previewImage`/`manifest.thumbnail` — nothing is replaced with
+   a placeholder string. See `docs/VTHEME_PACKAGE_SPEC.md` for the full
+   compiled-package contract.
 
-3. **Duplicate-ID and reference validation are stubbed.** Today's
-   validator's `validateReferences()` is a placeholder
-   (`{ checked: true }`, no real check performed) and there is no
-   cross-file duplicate-ID check across `layer-packs/`. §11's duplicate-
-   ID and reference rules are the target to implement, not something
-   already enforced.
+3. **Duplicate-ID and reference validation — resolved.** `tools/theme-
+   builder/js/validator.js`'s `validateReferences()` now performs real
+   checks: duplicate ids within Layouts / Frame Variations / the entire
+   compiled Layer Pack (three independent scopes, per §11), broken
+   `supportedFrames` references, invalid Layer `type`/`target` values, and
+   missing asset-path references. A project with any of these fails
+   validation and cannot be built.
 
-None of this blocks writing Museum Gallery's *content* against this
-spec — the folder structure, manifest/metadata fields, and Layout/Frame/
-Layer schemas above are all correct and already proven by the live
-Museum Gallery theme shipped in `js/themeRegistry.js` and
-`themes/MuseumGallery.vtheme` (Sprint 9.6/9.7). It blocks trusting
-*Theme Builder's compile step* to produce an importable package until
-items 1–3 are closed.
+A compiled `.vtheme` produced by today's Theme Builder now imports into
+VihuStudio without manual editing, compatibility shims, or a conversion
+step — the Freeze Criteria a future "Museum Gallery Official Theme 001"
+sprint depends on.
