@@ -1,0 +1,97 @@
+[
+  {
+    "id": "classic-white-mat",
+    "name": "Classic White",
+    "description": "Pure inheritance — the gallery preset's own base defaults. The reference frame every other variation is a deliberate departure from.",
+    "fields": {}
+  },
+  {
+    "id": "warm-ivory",
+    "name": "Warm Ivory",
+    "description": "A soft cream mat and a warm ivory wall — cozy, not clinical.",
+    "fields": {
+      "background": "cream",
+      "frame": "white-mat",
+      "paper": "smooth",
+      "shadow": "soft",
+      "matWidth": 26,
+      "frameThickness": 3,
+      "borderColor": "#D9C7A3",
+      "wallTone": "#F2E8D5"
+    }
+  },
+  {
+    "id": "natural-linen",
+    "name": "Natural Linen",
+    "description": "A textured canvas paper and a muted linen wall.",
+    "fields": {
+      "background": "cream",
+      "frame": "white-mat",
+      "paper": "canvas",
+      "shadow": "soft",
+      "matWidth": 24,
+      "frameThickness": 2,
+      "borderColor": "#C7B99B",
+      "wallTone": "#E9E2D0"
+    }
+  },
+  {
+    "id": "dark-gallery",
+    "name": "Dark Gallery",
+    "description": "A dramatic dark wall behind a bright white mat, like a night exhibition.",
+    "fields": {
+      "background": "white",
+      "frame": "white-mat",
+      "paper": "smooth",
+      "shadow": "floating",
+      "matWidth": 22,
+      "frameThickness": 2,
+      "borderColor": "#2A2A2A",
+      "wallTone": "#1D1F24"
+    }
+  },
+  {
+    "id": "floating-frame",
+    "name": "Floating Frame",
+    "description": "No border line — the picture appears to float above a wide white mat.",
+    "fields": {
+      "background": "white",
+      "frame": "floating",
+      "paper": "smooth",
+      "shadow": "floating",
+      "matWidth": 56,
+      "frameThickness": 0,
+      "wallTone": "#FFFFFF"
+    }
+  },
+  {
+    "id": "black-matte",
+    "name": "Black Matte",
+    "description": "A bold black mat and border on a light wall — modern and graphic.",
+    "fields": {
+      "background": "black",
+      "frame": "white-mat",
+      "paper": "smooth",
+      "shadow": "floating",
+      "matWidth": 20,
+      "frameThickness": 2,
+      "borderColor": "#0A0A0A",
+      "wallTone": "#D6D6D6"
+    }
+  },
+  {
+    "id": "gold-accent",
+    "name": "Gold Accent",
+    "description": "A warm, premium gold border on a white mat.",
+    "fields": {
+      "background": "white",
+      "frame": "white-mat",
+      "paper": "smooth",
+      "shadow": "gallery",
+      "matWidth": 24,
+      "frameThickness": 4,
+      "borderColor": "#C9A227",
+      "wallTone": "#F8F2E4"
+    }
+  }
+]

@@ -311,191 +311,34 @@ const ThemeRegistry=(function(){
   // resolves through js/themePresets.js's HOLDER_PRESETS.image table
   // (Presentation Preset -> Theme Overrides -> System Defaults, see
   // renderer/slideRenderer.js _artworkBorder), so a theme can name a
-  // preset instead of spelling out every field below it. Museum
-  // Gallery / Sketchbook / Watercolor Portfolio do exactly that;
-  // Classroom Display / Scrapbook still spell every field out
-  // explicitly (their `presentation` id is present but unused as a
-  // preset lookup key here, matching what pre-9.5 code already did) —
-  // both forms are equally valid, a theme is never required to use
-  // the shorthand. `enhancement` is still stored for completeness and
-  // future use — none of the five themes below specify one, and
-  // nothing in this sprint automatically adjusts a pixel of the
-  // child's photo (rotate/crop/exposure/etc. stay Picture Studio's
-  // explicit, child-initiated actions, untouched by this sprint).
+  // preset instead of spelling out every field below it. Sketchbook /
+  // Watercolor Portfolio do exactly that; Classroom Display / Scrapbook
+  // still spell every field out explicitly (their `presentation` id is
+  // present but unused as a preset lookup key here, matching what
+  // pre-9.5 code already did) — both forms are equally valid, a theme
+  // is never required to use the shorthand. `enhancement` is still
+  // stored for completeness and future use — none of the four themes
+  // below specify one, and nothing in this sprint automatically
+  // adjusts a pixel of the child's photo (rotate/crop/exposure/etc.
+  // stay Picture Studio's explicit, child-initiated actions, untouched
+  // by this sprint).
+  //
+  // Sprint 10.2 — Museum Gallery, the reference implementation for
+  // Presentation Presets / Frame Variations / the Layer System /
+  // Representations, is no longer registered here. It now exists
+  // entirely as a Theme Project (theme-projects/MuseumGallery/),
+  // compiled by Theme Builder into themes/MuseumGallery.vtheme, and
+  // reaches Studio only through the ordinary Import Theme flow — the
+  // same path any imported theme uses. Nothing in this file (or
+  // anywhere else in Studio) references it by name any more.
   const OFFICIAL_ARTWORK_THEMES=[
-    {
-      id:'museum-gallery',
-      name:'Museum Gallery',
-      description:'A quiet gallery wall — white mat, soft light, centered.',
-      // Sprint 9.5 — Theme Language v2: `presentation` alone now
-      // supplies background/frame/paper/shadow/lighting/composition,
-      // resolved from js/themePresets.js HOLDER_PRESETS.image.gallery
-      // (byte-identical to this theme's pre-9.5 explicit fields — see
-      // git history for the values this replaces). Add any field below
-      // `presentation` to override just that one value; everything
-      // else keeps coming from the preset.
-      presentation:'gallery',
-      // Sprint 9.6 — Museum Gallery Theme Support: the legacy enum
-      // caption is explicitly turned off here (a Theme Override, same
-      // resolution ladder as everything else) because the real caption
-      // now comes from the `museum-caption` Layer below — rendering
-      // both would double the caption.
-      caption:'none',
-      enhancement:[],
-      // Sprint 10.1 — Theme Driven Representations. Which Creation
-      // Types (js/creationFlow.js's hardcoded CREATION_TYPES ids —
-      // Creation Types themselves stay hardcoded this sprint, only
-      // theme<->type compatibility becomes data) this theme is offered
-      // under in Step 2 of the Creation Flow.
-      supportedCreationTypes:['artwork'],
-      // Sprint 9.6 — Museum Gallery is the reference implementation
-      // for Phase 2's Official Theme Collection: Slide layout presets
-      // (single-Holder only this sprint — Diptych/Triptych are a
-      // future sprint's multi-Holder Frame, not a parallel model),
-      // user-switchable Frame Variations, and a Theme Layer Pack (see
-      // js/layerEngine.js). `holders:1` on every layout documents that
-      // reservation without yet acting on it.
-      // Sprint 9.7 — order matches the approved Design Board's numbered
-      // panel (Landscape, Portrait, Wide, Square, Quote); Full Bleed
-      // isn't on that panel but stays in the text spec's layout list.
-      // `composition` (new this sprint — see _resolveLayout/render in
-      // renderer/slideRenderer.js) is each layout's OWN arrangement,
-      // not just its aspect: 'below' (default, omitted) puts the
-      // Museum Caption under the Frame; 'right' (Wide) puts it beside
-      // the Frame instead; 'quote' (Quote) drops the Frame/Holder
-      // entirely for a centered quote.
-      layouts:[
-        {id:'landscape',  name:'Landscape',  aspect:'landscape',  holders:1},
-        {id:'portrait',   name:'Portrait',   aspect:'portrait',   holders:1},
-        {id:'wide',       name:'Wide',       aspect:'wide',       holders:1, composition:'right'},
-        {id:'square',     name:'Square',     aspect:'square',     holders:1},
-        {id:'quote',      name:'Quote',      aspect:'quote',      holders:1, composition:'quote'},
-        {id:'full-bleed', name:'Full Bleed', aspect:'full-bleed', holders:1}
-      ],
-      // Sprint 10.1 — Theme Driven Representations. Studio's Creation
-      // Flow (js/creationFlow.js) and Context Panel (js/contextPanel.js,
-      // "Change Representation") no longer hardcode Showcase/Portrait/
-      // Quote anywhere — they read this array. Each Representation is a
-      // complete page style: which Creation Type(s) it applies under,
-      // which of this theme's own `layouts` it initializes the page
-      // with, a suggested default Frame Variation, a reserved
-      // `defaultLayerPack` (this runtime only ever compiles one flat
-      // Layer Pack per theme — see docs/THEME_PROJECT_SPEC.md §4's
-      // `defaultLayerPack`, same reservation, not read today), an
-      // optional default background override (not read today — Museum
-      // Gallery's wall colour already comes from the Frame Variation's
-      // `wallTone`), and which editing actions Studio's Context Panel
-      // should surface for a page created from it. `actions` is
-      // descriptive metadata Studio already knows how to render
-      // (`editCaption`/`editQuote` pick the Caption vs. Quote field
-      // group in js/contextPanel.js) — not a plugin/arbitrary-action
-      // system.
-      representations:[
-        {
-          id:'showcase', name:'Showcase',
-          description:'Big and bold — the classic gallery look.',
-          thumbnail:'🖼️',
-          supportedCreationTypes:['artwork'],
-          layout:'landscape',
-          defaultFrame:'classic-white-mat',
-          defaultLayerPack:null,
-          background:null,
-          actions:['replaceArtwork','cropRotate','frameVariation','editCaption']
-        },
-        {
-          id:'portrait', name:'Portrait',
-          description:'Tall and centered, like a framed portrait.',
-          thumbnail:'🧍',
-          supportedCreationTypes:['artwork'],
-          layout:'portrait',
-          defaultFrame:'classic-white-mat',
-          defaultLayerPack:null,
-          background:null,
-          actions:['replaceArtwork','cropRotate','frameVariation','editCaption']
-        },
-        {
-          id:'quote', name:'Quote',
-          description:'Just your words, beautifully centered.',
-          thumbnail:'💬',
-          supportedCreationTypes:['artwork'],
-          layout:'quote',
-          defaultFrame:null,
-          defaultLayerPack:null,
-          background:null,
-          actions:['editQuote']
-        }
-      ],
-      // Sprint 9.7 — Museum Gallery Fidelity: each variation now sets
-      // matWidth/frameThickness/borderColor/wallTone directly (per the
-      // approved Design Board), not just the enum lookups Sprint 9.6
-      // used — "Changing frame variation should noticeably change
-      // presentation while preserving artwork." "Classic White" is an
-      // empty override; its values are the gallery preset's own base
-      // defaults (js/themePresets.js), so it's pure inheritance.
-      frameVariations:[
-        {id:'classic-white-mat', name:'Classic White', fields:{}},
-        {id:'warm-ivory',        name:'Warm Ivory',
-          fields:{background:'cream', frame:'white-mat', paper:'smooth', shadow:'soft',
-            matWidth:26, frameThickness:3, borderColor:'#D9C7A3', wallTone:'#F2E8D5'}},
-        {id:'natural-linen',     name:'Natural Linen',
-          fields:{background:'cream', frame:'white-mat', paper:'canvas', shadow:'soft',
-            matWidth:24, frameThickness:2, borderColor:'#C7B99B', wallTone:'#E9E2D0'}},
-        {id:'dark-gallery',      name:'Dark Gallery',
-          fields:{background:'white', frame:'white-mat', paper:'smooth', shadow:'floating',
-            matWidth:22, frameThickness:2, borderColor:'#2A2A2A', wallTone:'#1D1F24'}},
-        {id:'floating-frame',    name:'Floating Frame',
-          fields:{background:'white', frame:'floating', paper:'smooth', shadow:'floating',
-            matWidth:56, frameThickness:0, wallTone:'#FFFFFF'}},
-        {id:'black-matte',       name:'Black Matte',
-          fields:{background:'black', frame:'white-mat', paper:'smooth', shadow:'floating',
-            matWidth:20, frameThickness:2, borderColor:'#0A0A0A', wallTone:'#D6D6D6'}},
-        {id:'gold-accent',       name:'Gold Accent',
-          fields:{background:'white', frame:'white-mat', paper:'smooth', shadow:'gallery',
-            matWidth:24, frameThickness:4, borderColor:'#C9A227', wallTone:'#F8F2E4'}}
-      ],
-      // The 5 layers required this sprint (js/layerEngine.js): Museum
-      // Caption reads the per-slide caption a child typed; Page Number
-      // and Handle are declarative-only (no `text` payload) — they
-      // stay rendered by the existing, unrelated _drawPageNumber /
-      // _drawHandle functions — `position` (Sprint 9.7) pins each to
-      // the corner the Design Board shows (page number bottom-left,
-      // handle bottom-right) regardless of the Story Theme's own
-      // handlePosition/pageNumber default; this pack entry otherwise
-      // just documents that they're part of this theme's complete
-      // layer inventory.
-      layerPack:[
-        {id:'museum-caption', type:'text', target:'holder', anchor:'bottom-center', offsetY:16, zIndex:1,
-          text:{source:'museumCaption', font:'Georgia, serif', size:20, color:'#3A3A3A'}},
-        {id:'page-number', type:'text', target:'slide', position:'bottom-left'},
-        {id:'handle', type:'text', target:'slide', position:'bottom-right'},
-        {id:'gallery-spotlight', type:'decoration', target:'slide', anchor:'top-center', zIndex:0,
-          decoration:{kind:'spotlight', alpha:0.14, radius:640}},
-        {id:'wax-seal', type:'sticker', target:'frame', anchor:'bottom-right', offsetX:-28, offsetY:-28, zIndex:2}
-      ],
-      // Sprint 9.6 — rich Theme Library metadata (js/themeRegistry.js
-      // registerOfficial copies these onto the auto-derived manifest).
-      purpose:'Showcase a child’s original artwork the way a museum would.',
-      mood:'Calm, refined, quietly proud.',
-      bestFor:['Fine art & paintings','Photography','Portraits','Keepsake gifts'],
-      notRecommendedFor:['Silly, high-energy stories'],
-      themeIcon:'🖼️',
-      // Sprint 9.4 — a gallery wall is about the picture, not the page:
-      // Sprint 9.6 adds the Slide's Layout picker and the Image
-      // holder's Frame Variation alongside the existing Presentation/
-      // Lighting/Caption set. Sprint 9.7 adds the Title/Artist/Age/Date
-      // fields that feed the Museum Caption layer.
-      editor:{
-        slide:{sections:['layout','quoteText','title']},
-        frame:{sections:['fill','shadow','paper']},
-        holder:{image:['presentation','frameVariation','lighting','caption','museumCaption'],text:['typography'],sticker:[]}
-      }
-    },
     {
       id:'sketchbook',
       name:'Sketchbook',
       description:'Notebook paper and tape corners, like a page from a sketchbook.',
-      // Sprint 9.5 — see Museum Gallery above; resolves from
-      // HOLDER_PRESETS.image.sketchbook.
+      // Sprint 9.5 — `presentation` alone supplies background/frame/
+      // paper/shadow/lighting/composition, resolved from
+      // js/themePresets.js HOLDER_PRESETS.image.sketchbook.
       presentation:'sketchbook',
       enhancement:[],
       // Sprint 9.4 — a notebook page: tape/paper on the Frame, and the
@@ -513,8 +356,9 @@ const ThemeRegistry=(function(){
       id:'watercolor-portfolio',
       name:'Watercolor Portfolio',
       description:'Watercolor paper and a floating frame with generous margins.',
-      // Sprint 9.5 — see Museum Gallery above; resolves from
-      // HOLDER_PRESETS.image.portfolio.
+      // Sprint 9.5 — `presentation` alone supplies background/frame/
+      // paper/shadow/lighting/composition, resolved from
+      // js/themePresets.js HOLDER_PRESETS.image.portfolio.
       presentation:'portfolio',
       enhancement:[],
       // Sprint 9.4 — generous margins call for a Mat control alongside

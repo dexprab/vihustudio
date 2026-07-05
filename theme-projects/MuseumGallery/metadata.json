@@ -1,0 +1,11 @@
+{
+  "displayName": "Museum Gallery",
+  "description": "A quiet gallery wall — white mat, soft light, centered.",
+  "category": "Official",
+  "purpose": "Present a child's artwork like a professional museum exhibition.",
+  "mood": "Calm, refined, quietly proud.",
+  "bestFor": ["Fine art & paintings", "Photography", "Portraits", "Keepsake gifts"],
+  "notRecommendedFor": ["Silly, high-energy stories"],
+  "themeIcon": "🖼️",
+  "previewImage": "preview.png"
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "showcase",
+    "name": "Showcase",
+    "description": "Big and bold — the classic gallery look.",
+    "thumbnail": "🖼️",
+    "layout": "landscape",
+    "defaultFrame": "classic-white-mat",
+    "defaultLayerPack": null,
+    "background": null,
+    "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+  },
+  {
+    "id": "portrait",
+    "name": "Portrait",
+    "description": "Tall and centered, like a framed portrait.",
+    "thumbnail": "🧍",
+    "layout": "portrait",
+    "defaultFrame": "classic-white-mat",
+    "defaultLayerPack": null,
+    "background": null,
+    "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+  },
+  {
+    "id": "quote",
+    "name": "Quote",
+    "description": "Just your words, beautifully centered — a quote, a poem, or a certificate.",
+    "thumbnail": "💬",
+    "layout": "quote",
+    "defaultFrame": null,
+    "defaultLayerPack": null,
+    "background": null,
+    "actions": ["editQuote"]
+  }
+]

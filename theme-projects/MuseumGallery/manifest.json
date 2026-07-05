@@ -1,0 +1,15 @@
+{
+  "id": "museum-gallery",
+  "name": "Museum Gallery",
+  "version": "1.2.0",
+  "builderVersion": "1.2.0",
+  "minStudioVersion": "9.5.0",
+  "author": "Vihu",
+  "category": "Official",
+  "tags": ["gallery", "art", "museum", "artwork"],
+  "description": "A quiet gallery wall — white mat, soft light, centered.",
+  "thumbnail": "thumbnail.png",
+  "createdDate": "2026-07-04",
+  "updatedDate": "2026-07-05",
+  "type": "artwork"
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "landscape",
+    "name": "Landscape",
+    "description": "The classic gallery wall — a wide picture, caption below.",
+    "aspect": "landscape",
+    "holders": 1,
+    "supportedFrames": [
+      "classic-white-mat",
+      "warm-ivory",
+      "natural-linen",
+      "dark-gallery",
+      "floating-frame",
+      "black-matte",
+      "gold-accent"
+    ]
+  },
+  {
+    "id": "portrait",
+    "name": "Portrait",
+    "description": "Tall and centered, like a framed portrait on a gallery wall.",
+    "aspect": "portrait",
+    "holders": 1,
+    "supportedFrames": [
+      "classic-white-mat",
+      "warm-ivory",
+      "natural-linen",
+      "dark-gallery",
+      "floating-frame",
+      "black-matte",
+      "gold-accent"
+    ]
+  },
+  {
+    "id": "quote",
+    "name": "Quote",
+    "description": "No picture — a centered quote, poem, or certificate text.",
+    "aspect": "quote",
+    "holders": 1,
+    "composition": "quote"
+  }
+]

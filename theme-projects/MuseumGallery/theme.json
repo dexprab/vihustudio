@@ -1,0 +1,18 @@
+{
+  "id": "museum-gallery",
+  "name": "Museum Gallery",
+  "description": "A quiet gallery wall — white mat, soft light, centered.",
+  "presentation": "gallery",
+  "caption": "none",
+  "enhancement": [],
+  "supportedCreationTypes": ["artwork", "artwork-collection"],
+  "editor": {
+    "slide": { "sections": ["layout", "quoteText", "title"] },
+    "frame": { "sections": ["fill", "shadow", "paper"] },
+    "holder": {
+      "image": ["presentation", "frameVariation", "lighting", "caption", "museumCaption"],
+      "text": ["typography"],
+      "sticker": []
+    }
+  }
+}

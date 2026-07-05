@@ -232,8 +232,9 @@ runtime.theme = {
 ```
 
 This is the exact shape `ThemeRegistry.get(id)` / `ThemeEngine` expect —
-see `js/themeRegistry.js`'s Museum Gallery entry for a hand-authored
-reference of what a compiled `theme` object looks like in production.
+see `theme-projects/MuseumGallery/` (Sprint 10.2 — Official Theme 001)
+for a complete, real reference Theme Project, and `themes/
+MuseumGallery.vtheme` for what it compiles to.
 
 ---
 
@@ -723,3 +724,24 @@ array) and, for an imported package, in the compiled `theme.representations`
 this section defines. Museum Gallery is deliberately still the *only*
 theme with real Representations authored this sprint — the reference
 implementation, not a special case Studio depends on by name.
+
+---
+
+### Sprint 10.2 — Official Theme 001: Museum Gallery
+
+Museum Gallery moved out of `js/themeRegistry.js`'s `OFFICIAL_ARTWORK_THEMES`
+array entirely and now exists only as a Theme Project —
+`theme-projects/MuseumGallery/`, the first complete, real-world example of
+every section of this spec (3 Layouts, 7 Frame Variations, 1 Layer Pack,
+3 Representations). It reaches Studio exactly the way any imported theme
+does: Theme Builder compiles it to `themes/MuseumGallery.vtheme`, and a
+child (or, today, a developer) imports that file through the ordinary
+Import Theme flow — `source: 'imported'`, not `'official'`. Studio's
+Creation Flow and Context Panel needed no changes to keep working, because
+Sprint 10.1 already made both fully data-driven; this sprint is proof of
+that, not a new mechanism. `theme-projects/MuseumGallery/README.md`
+documents why the folder trims to exactly 3 Layouts (Wide/Square/Full
+Bleed, present in the pre-10.2 in-code version, were never reachable
+through the Context Panel and so were not re-authored) and why it has no
+`assets/` folder (nothing this theme renders is a raster image — every
+Frame field is an enum resolved to a drawn canvas routine).
