@@ -4163,7 +4163,10 @@ body.creation-flow-active #app{ display:none; }
    above) must be hidden too, or it bleeds through behind the scene.
    The storyboard shows no app chrome during the arrival flow anyway. */
 body.creation-flow-active .app-header{ display:none; }
-body.creation-flow-active .dev-footer{ display:none; }
+/* Dev build-info footer stays visible (in the corner, on top of the
+   overlay) through the arrival flow while we're still in dev mode —
+   only the header (real app chrome) is hidden there. */
+.dev-footer{ z-index:1001; }
 
 /* ---------- Sprint 11.0 — Story Meadow atmosphere ----------
    Purely decorative (aria-hidden), fixed behind the panel so it never
