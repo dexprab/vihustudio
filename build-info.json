@@ -1,9 +1,9 @@
 {
-  "version": "1.4.0",
-  "sprint": "S10.2",
-  "task": "Official Theme 001 - Museum Gallery",
-  "build": "0061",
+  "version": "1.5.0",
+  "sprint": "S11.0",
+  "task": "Studio Arrival Experience",
+  "build": "0062",
   "buildDate": "2026-07-05",
-  "commit": "9b12e66",
+  "commit": "28ee735",
   "environment": "Release"
 }
