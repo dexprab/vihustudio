@@ -77,62 +77,50 @@ class ThemeBuilderApp {
     }
 
     /**
-     * Create a new theme project
+     * Validate current project
      */
-    createTheme(name) {
-        const theme = {
-            id: Date.now().toString(),
-            name: name,
-            version: '0.0.1',
-            created: new Date().toISOString(),
-            manifest: {},
-            metadata: {},
-            layouts: [],
-            frames: [],
-            layers: [],
-            assets: [],
-            buildOutput: null
-        };
-
-        appState.setCurrentTheme(theme);
-        appState.setIsDirty(true);
-        return theme;
-    }
-
-    /**
-     * Save current theme
-     */
-    saveTheme() {
-        const state = appState.getState();
-        if (!state.currentTheme) {
-            ui.showNotification('No theme to save', 'warning');
-            return false;
-        }
-
-        console.log('Saving theme:', state.currentTheme);
-        appState.setIsDirty(false);
-        ui.showNotification('Theme saved successfully', 'success');
-        return true;
-    }
-
-    /**
-     * Build current theme
-     */
-    buildTheme() {
-        const state = appState.getState();
-        if (!state.currentTheme) {
-            ui.showNotification('No theme to build', 'warning');
+    async validateProject() {
+        if (!projectLoader.isLoaded()) {
+            ui.showNotification('No project loaded', 'warning');
             return;
         }
 
-        eventBus.emit(EVENTS.BUILD_STARTED);
+        ui.setLoading(true);
+        const result = await validator.validate();
+        appState.setValidationState(result.isValid ? VALIDATION_STATES.VALID : VALIDATION_STATES.INVALID);
+        ui.setLoading(false);
 
-        // Simulate build process
-        setTimeout(() => {
-            appState.setBuildState(BUILD_STATES.SUCCESS);
-            eventBus.emit(EVENTS.BUILD_COMPLETED, { state: BUILD_STATES.SUCCESS });
-            ui.showNotification('Theme built successfully', 'success');
-        }, 2000);
+        return result;
+    }
+
+    /**
+     * Build current project
+     */
+    async buildProject() {
+        if (!projectLoader.isLoaded()) {
+            ui.showNotification('No project loaded', 'warning');
+            return;
+        }
+
+        ui.setLoading(true);
+        appState.setBuildState(BUILD_STATES.BUILDING);
+
+        const result = await builder.build();
+        
+        appState.setBuildState(result.success ? BUILD_STATES.SUCCESS : BUILD_STATES.ERROR);
+        ui.setLoading(false);
+
+        return result;
+    }
+
+    /**
+     * Load a theme project
+     */
+    async loadProject(files) {
+        ui.setLoading(true);
+        const result = await projectLoader.loadProjectFromFiles(files);
+        ui.setLoading(false);
+        return result;
     }
 
     /**
@@ -157,13 +145,16 @@ document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
 
-// Expose global API for debugging
+// Expose global API for debugging and programmatic access
 window.ThemeBuilder = {
     app,
     appState,
     eventBus,
     router,
     ui,
+    projectLoader,
+    validator,
+    builder,
     constants: {
         PAGES,
         EVENTS,
