@@ -126,13 +126,30 @@
 
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
 
+  // A manifest entry is normally a plain filename string. The World
+  // Library pipeline (Sprint MEP-08 Phase 1, vihuplanet-world-library)
+  // can now optionally emit `{id, file, display}` objects instead, for
+  // collections that declare per-file display-framing metadata
+  // (display.json upstream) — Story Meadow is the first. This resolver
+  // only reads `.file` out of that shape; `display` (anchor/focusY)
+  // isn't consumed anywhere yet, that's Phase 2. Accepting the object
+  // shape here is a compatibility fix, not Phase 2 itself — without
+  // it, every entry with display metadata is silently dropped by the
+  // `typeof name !== 'string'` check below, which is exactly what
+  // happened the first time a collection shipped one.
+  function _manifestEntryFilename(entry) {
+    if (typeof entry === 'string') return entry;
+    if (entry && typeof entry.file === 'string') return entry.file;
+    return null;
+  }
+
   function _parseManifest(names, folder, type) {
     if (!Array.isArray(names)) return [];
     var filter = FILE_FILTERS[type];
     var seen = {};
     var files = [];
     for (var i = 0; i < names.length; i++) {
-      var name = names[i];
+      var name = _manifestEntryFilename(names[i]);
       if (typeof name !== 'string' || !IMAGE_EXT.test(name) || seen[name]) continue;
       if (filter && !filter.test(name)) continue;
       seen[name] = true;
