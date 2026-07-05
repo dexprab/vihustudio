@@ -1,9 +1,9 @@
 {
-  "version": "1.0.8",
-  "sprint": "S9",
-  "task": "T9.7",
-  "build": "0056",
-  "buildDate": "2026-07-04",
-  "commit": "0b54756",
+  "version": "1.0.9",
+  "sprint": "TB-4.5",
+  "task": "Official Theme Project Specification",
+  "build": "0057",
+  "buildDate": "2026-07-05",
+  "commit": "3fc6607",
   "environment": "Release"
 }
