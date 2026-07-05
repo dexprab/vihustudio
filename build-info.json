@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
-  "sprint": "TB-4.6",
-  "task": "Theme Builder Runtime Alignment",
-  "build": "0058",
+  "version": "1.2.0",
+  "sprint": "S10",
+  "task": "Creation Experience V1",
+  "build": "0059",
   "buildDate": "2026-07-05",
-  "commit": "6b66070",
+  "commit": "5d23c6f",
   "environment": "Release"
 }
