@@ -29,10 +29,38 @@
 </div>
 </header>
 
-<!-- Sprint 10.0 — Creation Experience V1 (Child First Studio). Full-screen
-     wizard shown before the editor: Creation Type -> Theme ->
-     Representation. Populated at runtime by js/creationFlow.js. -->
+<!-- Sprint 10.0 — Creation Experience V1 (Child First Studio). Sprint 11.0
+     — Studio Arrival Experience gives it the "Story Meadow" illustrated
+     atmosphere from the canonical storyboard. Full-screen: Choose What
+     To Create -> Choose Theme & Page Style. Populated at runtime by
+     js/creationFlow.js; the .creation-scene decoration is static, purely
+     illustrative (aria-hidden), and never touched by JS. -->
 <div id='creationFlowOverlay' class='creation-flow-overlay hidden'>
+<div class='creation-scene' aria-hidden='true'>
+<div class='creation-scene-sky'></div>
+<div class='creation-scene-paper'></div>
+<div class='creation-scene-sun'></div>
+<span class='creation-scene-cloud cloud-1'></span>
+<span class='creation-scene-cloud cloud-2'></span>
+<span class='creation-scene-star star-1'>✦</span>
+<span class='creation-scene-star star-2'>✦</span>
+<span class='creation-scene-star star-3'>⋆</span>
+<span class='creation-scene-star star-4'>✦</span>
+<div class='creation-scene-hill hill-back'></div>
+<div class='creation-scene-hill hill-front'></div>
+<div class='creation-scene-grass'></div>
+<span class='creation-scene-tree tree-1'>🌳</span>
+<span class='creation-scene-tree tree-2'>🌲</span>
+<span class='creation-scene-flower flower-1'>🌼</span>
+<span class='creation-scene-flower flower-2'>🌸</span>
+<span class='creation-scene-flower flower-3'>🌷</span>
+<span class='creation-scene-flower flower-4'>🌼</span>
+<span class='creation-scene-flower flower-5'>🌻</span>
+<span class='creation-scene-bird bird-1'>🐦</span>
+<span class='creation-scene-bird bird-2'>🐦</span>
+<span class='creation-scene-butterfly butterfly-1'>🦋</span>
+<span class='creation-scene-butterfly butterfly-2'>🦋</span>
+</div>
 <div id='creationFlowContent' class='creation-flow-panel'></div>
 </div>
 
