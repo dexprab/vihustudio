@@ -1,0 +1,625 @@
+# Theme Project Specification
+
+**Sprint:** TB-4.5 — Official Theme Project Specification
+**Status:** Canonical. Every Official Theme is authored against this contract.
+**Scope:** Authoring-time structure and schema only. This document does not
+change Theme Engine, Theme Registry, Theme Library, Theme Import, or Theme
+Builder — it describes the contract those frozen components already assume,
+so every future Official Theme is built the same way instead of inventing
+its own structure.
+
+---
+
+## 0. How to read this document
+
+A **Theme Project** is a folder a person authors by hand (or with Theme
+Designer, later). **Theme Builder** loads that folder, validates it, and
+compiles it into a single `ThemeName.vtheme` package. **VihuStudio**
+imports that package at runtime. Three different programs, one contract
+in between each handoff:
+
+```
+Theme Project (this spec)
+      ↓ load + validate
+Theme Builder
+      ↓ compile
+ThemeName.vtheme (this spec, "Compiled Package" sections)
+      ↓ import
+VihuStudio (Theme Registry / Theme Engine)
+```
+
+Every section below states the rule, then — where it matters for the
+package to actually import and render correctly — cross-references the
+real, already-shipping VihuStudio code that consumes it. Where today's
+Theme Builder (TB-1/TB-2) doesn't yet fully implement a rule in this
+spec, that is called out explicitly in **§13 Known Reconciliation
+Items** rather than silently glossed over. This document does not fix
+those gaps — TB-4.5 is documentation only — it names them so the team
+that closes them (and the person authoring Museum Gallery next) isn't
+surprised.
+
+---
+
+## 1. Theme Project Structure
+
+Canonical folder layout:
+
+```
+ThemeProject/
+├── manifest.json          Required
+├── metadata.json           Required
+├── theme.json              Required
+├── README.md               Recommended
+├── thumbnail.png            Recommended
+├── preview.png               Recommended
+├── layouts/                Required (≥ 1 file)
+│   └── *.json
+├── frames/                  Required (≥ 1 file)
+│   └── *.json
+├── layer-packs/              Required (may compile to an empty pack)
+│   └── *.json
+├── assets/                    Optional
+│   ├── frames/
+│   ├── textures/
+│   ├── decorations/
+│   ├── stickers/
+│   └── icons/
+└── screenshots/                Optional
+```
+
+The folder's own name (`ThemeProject/` above) becomes the theme's working
+name during authoring only — it is never read by the loader or the
+compiler. The theme's real identity always comes from `manifest.json`'s
+`id`.
+
+| Path | Purpose | Required? | Contents | Owns | Relates to |
+|---|---|---|---|---|---|
+| `manifest.json` | Identity + compatibility | **Required** | See §2 | Theme identity | Read first by the loader; everything else is meaningless without it |
+| `metadata.json` | Theme Library presentation | **Required** | See §3 | Display/marketing info | Feeds the Theme Library picker card |
+| `theme.json` | Global theme defaults | **Required** | See §4 | Theme-wide defaults, not the runtime shape | Base object the compiler merges `layouts/`, `frames/`, `layer-packs/` into |
+| `README.md` | Human documentation | Recommended | Free-form Markdown | Author's own notes | Never read by loader, validator, or compiler |
+| `thumbnail.png` | Small Theme Library grid image | Recommended | A single raster image | Theme Library card | Referenced by `manifest.thumbnail` / shown when present |
+| `preview.png` | Larger Theme Library preview image | Recommended | A single raster image | Theme Library card | Referenced by `metadata.previewImage` / shown when present |
+| `layouts/` | Slide layout presets | **Required** | One JSON file per layout, or one file holding an array | A Layout owns its own composition | See §5; compiles into `theme.layouts` |
+| `frames/` | Frame Variation presets | **Required** | One JSON file per variation, or one file holding an array | A Frame owns its own presentation fields | See §6; compiles into `theme.frameVariations` |
+| `layer-packs/` | Layer declarations | **Required** | One JSON file per pack, or one file holding an array | A Layer Pack owns a flat list of independent Layers | See §7; compiles into `theme.layerPack` |
+| `assets/` | Binary/media files the JSON above references | Optional | Images, textures, icons | Nothing on its own — assets are inert until referenced | See §8 |
+| `screenshots/` | Documentation/portfolio screenshots | Optional | Raster images | Author's own portfolio material | Never read by loader, validator, or compiler — purely for `README.md` illustrations, marketplace listings, or human review; do not confuse with `preview.png`/`thumbnail.png`, which the Theme Library actually renders |
+
+A Theme Project is **flat at the top level** — no nested theme-within-a-
+theme, no symlinks, no build tooling of its own. Everything the compiler
+needs is one of the paths above.
+
+---
+
+## 2. Manifest Specification (`manifest.json`)
+
+The manifest is the theme's passport: identity and compatibility, nothing
+about how it looks.
+
+```json
+{
+  "id": "museum-gallery",
+  "name": "Museum Gallery",
+  "version": "1.0.0",
+  "builderVersion": "1.0.0",
+  "minStudioVersion": "9.5.0",
+  "author": "Vihu",
+  "category": "Official",
+  "tags": ["gallery", "art", "museum", "artwork"]
+}
+```
+
+| Field | Required? | Type | Meaning |
+|---|---|---|---|
+| `id` | **Required** | string, kebab-case (§9) | The theme's permanent identity. Never changes across versions. |
+| `name` | **Required** | string | Display name shown in the Theme Library. |
+| `version` | **Required** | semantic version (`MAJOR.MINOR.PATCH`, optional `-prerelease`) | This theme's own version, bumped by the author on every content change. |
+| `builderVersion` | **Required** | semantic version | The Theme Builder schema version this project was authored against. Lets Theme Builder refuse (or warn on) a project written for a newer contract than it understands. |
+| `minStudioVersion` | **Required** | semantic version | The minimum VihuStudio theme-system version (`ThemeRegistry.THEME_SYSTEM_VERSION`) this package needs. Checked at import time — see §13, naming note. |
+| `author` | **Required** | string | Author or studio name. |
+| `category` | Optional | string | Grouping shown in the Theme Library (`"Official"`, `"Imported"`, etc.). Official themes always use `"Official"`. |
+| `tags` | Optional | string array | Free-form search/filter tags. |
+| `description` | Optional | string | Short one-line summary. May duplicate `metadata.description` for tooling that only reads the manifest. |
+| `thumbnail` | Optional | string | Relative path to the thumbnail image (conventionally `"thumbnail.png"`). |
+| `createdDate` / `updatedDate` | Optional | `YYYY-MM-DD` | Authoring provenance. Not read by the runtime; useful for humans and changelogs. |
+| `type` | Optional | `"story"` \| `"artwork"` | Which of VihuStudio's two theme types this is. Missing/invalid normalizes to `"story"` — never omit it for an Artwork Theme. |
+
+No other top-level keys are read by the compiler or the runtime today.
+An author may still add their own (e.g. an internal tracking key) — they
+pass through untouched, but carry no meaning outside this project.
+
+---
+
+## 3. Metadata Specification (`metadata.json`)
+
+Where the manifest is identity, metadata is presentation: what a child
+(or their parent) sees in the Theme Library before deciding to use this
+theme.
+
+```json
+{
+  "displayName": "Museum Gallery",
+  "description": "A quiet gallery wall — white mat, soft light, centered.",
+  "purpose": "Showcase a child's original artwork the way a museum would.",
+  "mood": "Calm, refined, quietly proud.",
+  "bestFor": ["Fine art & paintings", "Photography", "Portraits", "Keepsake gifts"],
+  "notRecommendedFor": ["Silly, high-energy stories"],
+  "themeIcon": "🖼️",
+  "previewImage": "preview.png",
+  "license": "Proprietary — part of VihuStudio",
+  "credits": []
+}
+```
+
+| Field | Required? | Type | Meaning |
+|---|---|---|---|
+| `displayName` | **Required** | string | Shown as the theme's name in the Theme Library (may differ from `manifest.name`, e.g. for localization later). |
+| `description` | **Required** | string | Short description shown under the theme's name. |
+| `category` | **Required** | string | Same grouping concept as `manifest.category`; kept here too so metadata is self-contained for Theme Library rendering without needing the manifest. |
+| `purpose` | Optional | string | One sentence of creative intent. Shown in the Theme Library card when present (`ThemeEngine._renderThemeCard`). |
+| `mood` | Optional | string | Short mood descriptor. Authoring/documentation field today; reserved for future Theme Library filtering. |
+| `bestFor` | Optional | string array | Shown as "Best for: …" on the Theme Library card when present. |
+| `notRecommendedFor` | Optional | string array | Authoring guidance. Not yet surfaced in the UI — reserved for a future "is this theme right for my story?" prompt. |
+| `themeIcon` | Optional | single emoji | Small badge shown in the corner of the Theme Library card. |
+| `previewImage` | Optional | relative path | When present, the Theme Library card shows this image instead of the default colour-swatch preview. |
+| `tags` | Optional | string array | Duplicates `manifest.tags` for tooling that only reads metadata. |
+| `license` | Optional | string | Human-readable licensing note. Authoring/documentation only — not enforced or displayed anywhere yet. |
+| `credits` | Optional | array of `{name, role}` | Attribution for artwork, fonts, or assets bundled with the theme. Authoring/documentation only today. |
+
+`purpose`, `mood`, `bestFor`, `notRecommendedFor`, `themeIcon`, and
+`previewImage` are not decorative filler — they are the exact field names
+`ThemeRegistry.registerOfficial` copies onto an Official Theme's
+auto-derived manifest, and `ThemeEngine._renderThemeCard` reads them
+directly. Get the names right and the Theme Library picks them up with
+zero extra work.
+
+---
+
+## 4. Theme Definition (`theme.json`)
+
+`theme.json` is **not** the runtime theme object. It is the small set of
+theme-wide defaults and identity fields that don't belong to any one
+Layout, Frame, or Layer Pack — the scaffolding the compiler starts from
+before folding in `layouts/`, `frames/`, and `layer-packs/`.
+
+```json
+{
+  "id": "museum-gallery",
+  "name": "Museum Gallery",
+  "presentation": "gallery",
+  "defaultPalette": {},
+  "defaultTypography": {},
+  "defaultLayerPack": null
+}
+```
+
+| Field | Required? | Meaning |
+|---|---|---|
+| `id` | **Required** | Must match `manifest.id` exactly. Validated as a duplicate-consistency check (§11). |
+| `name` | **Required** | Must match `manifest.name`. |
+| `presentation` | Optional | For an Artwork Theme, the Presentation Preset id this theme resolves through (see `js/themePresets.js` `HOLDER_PRESETS.image`) before any of this project's own Frame Variations apply as overrides. |
+| `defaultPalette` | Reserved | Placeholder object for a future default colour palette. Not read by the runtime today — see §12. |
+| `defaultTypography` | Reserved | Placeholder object for a future default type ramp. Not read by the runtime today — see §12. |
+| `defaultLayerPack` | Reserved | Placeholder for naming which `layer-packs/` file is the theme's "default" pack, once a theme is allowed to ship more than one. Not read today — every file under `layer-packs/` compiles into one flat pack (§7). |
+
+**No runtime behaviour lives in this file.** It never contains rendering
+logic, canvas instructions, or anything the compiler can't express as
+plain data. Its entire job is to say "here is this theme, and here is
+what it defaults to before Layouts/Frames/Layers add anything."
+
+**Compiled shape.** The Theme Builder compiler is responsible for
+producing the final runtime `theme` object by merging:
+
+```
+runtime.theme = {
+  ...theme.json's own fields (minus id/name, which move to the manifest join),
+  layouts:         [ ...every layouts/*.json entry, flattened ],
+  frameVariations: [ ...every frames/*.json entry, flattened ],
+  layerPack:       [ ...every layer-packs/*.json entry, flattened ]
+}
+```
+
+This is the exact shape `ThemeRegistry.get(id)` / `ThemeEngine` expect —
+see `js/themeRegistry.js`'s Museum Gallery entry for a hand-authored
+reference of what a compiled `theme` object looks like in production.
+
+---
+
+## 5. Layout Specification (`layouts/*.json`)
+
+A Layout decides where the Frame sits on the Slide, and how its caption
+is arranged — a **composition**, not just a rectangle.
+
+```json
+{
+  "id": "wide",
+  "name": "Wide",
+  "description": "Image on the left, caption on the right.",
+  "aspect": "wide",
+  "composition": "right",
+  "holders": 1,
+  "supportedFrames": ["classic-white-mat", "floating-frame"],
+  "defaultHolderMode": "fit"
+}
+```
+
+| Field | Required? | Meaning |
+|---|---|---|
+| `id` | **Required** | Kebab-case, unique within this theme (§9, §11). |
+| `name` | **Required** | Display name shown in the Layout picker. |
+| `description` | Optional | One line shown alongside the name. |
+| `aspect` | **Required** | Which geometry preset this layout resolves to. **Must be one of the six values the engine already understands: `portrait`, `landscape`, `square`, `wide`, `quote`, `full-bleed`** (`renderer/slideRenderer.js`'s `LAYOUT_RECT`). An unrecognized `aspect` silently falls back to the legacy fixed panel — not an error, but not what the author intended either. |
+| `composition` | Optional, default `"below"` | `"below"` — caption sits under the Frame (the default look). `"right"` — Frame on the left, caption in a column to the right (Wide). `"quote"` — no Frame/Holder at all; a centered quote replaces the picture entirely. Composition is deliberately a small closed enum today, not a free-form layout language — see §13. |
+| `holders` | Reserved, always `1` in V1 | How many Holders this layout's Frame contains. Every Official Theme ships `1` — multi-Holder layouts (Diptych/Triptych) are a deliberately deferred future sprint, not something to improvise per-theme. |
+| `supportedFrames` | Optional | Authoring guidance only: which Frame Variation ids this layout was designed to look good with. Not enforced — every Frame Variation remains selectable with every Layout. |
+| `defaultHolderMode` | Optional | Authoring guidance only: `"fit"` \| `"fill"` \| `"original"`. Documents the layout's intended Holder mode; does not currently auto-apply it (Holder mode is chosen independently per picture). |
+
+**Responsibilities.** A Layout owns geometry and composition. It never
+owns colour, texture, or border — that's the Frame's job (§6). It never
+owns caption *content* — that's the Layer Pack's job (§7); a Layout only
+decides where that content is placed.
+
+---
+
+## 6. Frame Specification (`frames/*.json`)
+
+A Frame is the exhibition mount: the presentation container around a
+Holder. Frames remain presentation containers only — they never touch
+the Element inside them.
+
+```json
+{
+  "id": "gold-accent",
+  "name": "Gold Accent",
+  "description": "A warm, premium gold border on a white mat.",
+  "fields": {
+    "background": "white",
+    "frame": "white-mat",
+    "paper": "smooth",
+    "shadow": "gallery",
+    "matWidth": 24,
+    "frameThickness": 4,
+    "borderColor": "#C9A227",
+    "wallTone": "#F8F2E4"
+  }
+}
+```
+
+| Field | Required? | Meaning |
+|---|---|---|
+| `id` | **Required** | Kebab-case, unique within this theme. |
+| `name` | **Required** | Display name shown in the Frame Variation picker. |
+| `description` | Optional | One line, e.g. a "mood" note. |
+| `fields.background` | Optional | The mat fill, one of the existing background enum values (`white`, `cream`, `kraft-paper`, `watercolor-paper`, `notebook-paper`, `black`, `transparent`, `bulletin-board`). |
+| `fields.frame` | Optional | The frame ornament design (`none`, `white-mat`, `floating`, `wood`, `polaroid`, `tape`, `bulletin-board`). |
+| `fields.paper` | Optional | A texture pass drawn under the picture (`smooth`, `notebook`, `kraft`, `watercolor`, `canvas`, `handmade`). |
+| `fields.shadow` | Optional | Drop-shadow preset (`none`, `soft`, `gallery`, `floating`). |
+| `fields.matWidth` | Optional | Padding, in px, between the Frame's outer edge and the picture. Overrides the `composition`-based default padding when present. |
+| `fields.frameThickness` | Optional | Border stroke width, in px. `0` (or omitted) means no visible border line. |
+| `fields.borderColor` | Optional | Border stroke colour. Only visible when `frameThickness > 0`. |
+| `fields.wallTone` | Optional | The **Slide's** background colour behind the Frame — the gallery wall, not the mat. A distinct concept from `background` (which is inside the Frame). Applies even on a Frame-less page (e.g. a Quote layout) since it's a room colour, not a mat colour. |
+
+**Default Holder configuration.** A Frame does not itself configure the
+Holder's presentation mode (Fit/Fill/Original) — that is always a
+per-picture choice (§ Holder, below), universal across every theme.
+What a Frame *does* constrain is the space the Holder has to work with
+(`matWidth`) and what shows around it once the Holder's content is
+placed (`borderColor`, `wallTone`, `shadow`).
+
+---
+
+## 7. Layer Pack Specification (`layer-packs/*.json`)
+
+**Layers are independent of containership.** A Layer Pack is a flat list
+of Layers; each Layer targets exactly one of the four frozen
+containership scopes, but the Layer Pack itself does not belong to a
+Layout or a Frame — any Layout, with any Frame Variation, renders the
+same active Layer Pack.
+
+```json
+[
+  {
+    "id": "museum-caption",
+    "type": "text",
+    "target": "holder",
+    "anchor": "bottom-center",
+    "offsetX": 0,
+    "offsetY": 16,
+    "zIndex": 1,
+    "visible": true,
+    "text": { "source": "museumCaption", "font": "Georgia, serif", "size": 20, "color": "#3A3A3A" }
+  },
+  {
+    "id": "page-number",
+    "type": "text",
+    "target": "slide",
+    "position": "bottom-left"
+  },
+  {
+    "id": "wax-seal",
+    "type": "sticker",
+    "target": "frame",
+    "anchor": "bottom-right",
+    "offsetX": -28,
+    "offsetY": -28,
+    "zIndex": 2
+  }
+]
+```
+
+| Field | Required? | Meaning |
+|---|---|---|
+| `id` | **Required** | Kebab-case, unique across the *entire compiled pack* (not just one file — see §11). |
+| `type` | **Required** | `"text"` \| `"sticker"` \| `"decoration"`. |
+| `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` — one of the four frozen containership scopes. A Layer never targets more than one scope. |
+| `anchor` | Optional, default `"bottom-center"` | One of the nine standard anchor points (`top`/`bottom`/`middle` × `left`/`center`/`right`, e.g. `"top-left"`), resolved relative to whatever rect the target scope hands it. |
+| `offsetX` / `offsetY` | Optional, default `0` | Pixel nudge from the resolved anchor point. |
+| `zIndex` | Optional, default `0` | Draw order within the same target scope. Lower draws first (further back). |
+| `visible` | Optional, default `true` | Set `false` to author a Layer that ships disabled by default. |
+| `text` | Required when `type: "text"` | `{ source, content, font, size, color }`. `source` names a known dynamic binding (`"museumCaption"`, `"slideCaption"`) or is omitted for a static `content` string. An entry with neither `text.source` nor `text.content` (e.g. `page-number`, `handle`) is a **declarative-only** entry: it documents that this Layer exists in the theme's inventory, but the actual pixels are still drawn by the pre-existing, unrelated engine feature it names (see `position`, below) — never a second, competing renderer for the same content. |
+| `sticker` | Required when `type: "sticker"` | `{ glyph, size, color }`. `glyph` may be any single character/emoji; omitted, a themed default (by `id`, where one is registered) or a plain drawn ornament is used instead. |
+| `decoration` | Required when `type: "decoration"` | `{ kind, alpha, radius, ... }`. `kind` selects which decorative effect draws (`"spotlight"`, `"paperTexture"`, `"shadowWash"`, …). |
+| `position` | Optional, only meaningful on the declarative `handle` / `page-number` ids | Pins that engine feature to a specific corner (`"bottom-left"`, `"bottom-right"`, etc.) for this theme, overriding the Story Theme's own default position. |
+
+**Ordering.** Layers of the same `target` draw in ascending `zIndex`;
+Layers of different targets draw at the point in the render pipeline
+their scope naturally occurs (Slide background → Frame → Holder →
+Element), never interleaved by authored order across scopes.
+
+**Visibility.** `visible: false` is the only way to ship a Layer that
+exists in the pack (and therefore appears in any future layer-management
+UI) without rendering by default.
+
+---
+
+## 8. Asset Specification (`assets/`)
+
+```
+assets/
+├── frames/
+├── textures/
+├── decorations/
+├── stickers/
+└── icons/
+```
+
+| Subfolder | Holds |
+|---|---|
+| `frames/` | Frame-ornament source images (if a Frame Variation needs a raster asset instead of a drawn design). |
+| `textures/` | Paper/wall texture source images. |
+| `decorations/` | Decoration Layer source images. |
+| `stickers/` | Sticker Layer source images. |
+| `icons/` | Small UI/Theme-Library icon images distinct from `thumbnail.png`/`preview.png`. |
+
+**Naming.** Every file is kebab-case, descriptive, and extension-
+appropriate (`.png`, `.jpg`, `.svg`, `.webp`). No spaces, no uppercase, no
+version numbers baked into the filename (`linen-texture.png`, not
+`Linen_Texture_v2.png`).
+
+**References.** A `layouts/`, `frames/`, or `layer-packs/` JSON file
+references an asset by its path **relative to `assets/`** — e.g.
+`"assets/textures/linen.png"` is referenced as `"textures/linen.png"`.
+The compiler resolves every file under `assets/` into a flat
+`{ relativePath: dataURI }` map on the compiled package (exactly the
+shape `js/zipReader.js` + `js/themeEngine.js`'s
+`_buildPackageFromZipFiles` already produce for a zipped package today);
+nothing auto-substitutes a reference string into the field that uses
+it — the code consuming that field is responsible for the map lookup.
+
+**Supported formats.** PNG, JPEG, WebP, and SVG. Prefer PNG for anything
+with transparency, SVG for anything that should stay crisp at any
+canvas scale.
+
+---
+
+## 9. Naming Convention
+
+Every id, folder name, JSON filename, and asset filename in a Theme
+Project follows one rule:
+
+```
+^[a-z0-9-]+$        lowercase letters, digits, hyphens only
+```
+
+3–50 characters. No spaces, no underscores, no camelCase, no leading or
+trailing hyphens. This is not a style preference — it is the exact
+pattern Theme Builder's validator already enforces on every id
+(`tools/theme-builder/js/validator.js`'s `ids.pattern`).
+
+Good:
+
+```
+museum-gallery
+classic-frame
+gallery-wall
+museum-shadow
+warm-ivory
+gallery-spotlight
+```
+
+Bad:
+
+```
+Museum Gallery       (spaces, capitals)
+classic_frame        (underscore)
+GalleryWall          (camelCase)
+museum-shadow-v2      (version baked into the id — bump manifest.version instead)
+```
+
+Filenames inside `layouts/`, `frames/`, and `layer-packs/` should match
+the `id` they define wherever one file holds exactly one entry (e.g.
+`frames/gold-accent.json`). A file holding an array of entries may use a
+plural, descriptive name instead (e.g. `frames/all-variations.json`) —
+both forms are valid; see §11.
+
+---
+
+## 10. Relationships
+
+The ownership hierarchy is a strict tree; the Layer System is
+deliberately **not** part of it — an orthogonal system that decorates
+any node in the tree without belonging to one.
+
+```
+Theme
+ └── owns → Layout(s)
+              └── references → Frame(s)      (supportedFrames is a hint, not an
+                                               exclusive binding — any Frame remains
+                                               selectable with any Layout)
+              └── is composed of → Holder(s)  (always 1 in V1; see §5)
+
+Frame
+ └── contains → Holder
+
+Holder
+ └── contains → Element                      (the child's actual content — sacred,
+                                               never modified, only presented)
+
+Layer (independent — targets, does not own or get owned by, any of the above)
+ └── targets → Slide | Frame | Holder | Element
+```
+
+This must remain consistent with the frozen containership model
+(`CLAUDE.md`'s Theme → Slide → Frame → Holder → Element canon). A Theme
+Project never introduces a fifth scope, a parallel hierarchy, or a Layer
+that targets more than one scope at once.
+
+---
+
+## 11. Validation Rules
+
+A Theme Project is **valid** only if every rule below passes. These are
+the rules a validator (today's `tools/theme-builder/js/validator.js`, or
+its successor) must enforce before a build is allowed to proceed.
+
+**Structure**
+- Required top-level files exist: `manifest.json`, `metadata.json`,
+  `theme.json`.
+- Required folders exist and contain at least one `.json` file:
+  `layouts/`, `frames/`, `layer-packs/` (a Layer Pack folder may
+  compile to an empty array, but the folder itself must exist).
+- `preview.png` / `thumbnail.png` / `README.md` missing → warning, not
+  an error.
+
+**JSON validity**
+- Every `.json` file in the project parses as valid JSON. A parse
+  failure in any single file fails the whole build — a Theme Project
+  either compiles cleanly or not at all, never partially.
+
+**Manifest / metadata / theme.json required fields**
+- `manifest.json`: `id`, `name`, `version`, `builderVersion`,
+  `minStudioVersion`, `author` all present.
+- `metadata.json`: `displayName`, `description`, `category` all present.
+- `theme.json`: `id`, `name` present, and both **equal** the manifest's
+  `id`/`name` (a mismatch is an error, not a warning — it means the
+  project is internally inconsistent about its own identity).
+
+**ID rules**
+- Every id (`manifest.id`, `theme.id`, every Layout/Frame/Layer id)
+  matches the naming convention (§9).
+- **Duplicate IDs are an error**, checked at three scopes independently:
+  no two Layouts share an id, no two Frame Variations share an id, no
+  two Layers across the *entire compiled* Layer Pack share an id (even
+  if they came from different files under `layer-packs/`).
+
+**Version rules**
+- `manifest.version` and `manifest.builderVersion` are valid semantic
+  versions.
+- `manifest.minStudioVersion` is compatible with the importing
+  VihuStudio build (`ThemeRegistry.isCompatible`).
+
+**Reference rules**
+- Every `supportedFrames` entry in a Layout names a Frame id that
+  actually exists in this project.
+- Every asset path referenced from a `layouts/`, `frames/`, or
+  `layer-packs/` JSON file resolves to a real file under `assets/`.
+- Every Layer's `target` is one of the four allowed values; every
+  Layer's `type` is one of the three allowed values.
+
+**Missing assets**
+- `metadata.previewImage` / `manifest.thumbnail`, if set, name a file
+  that exists in the project (either at the project root or under
+  `assets/`).
+
+See §13 for which of these today's Theme Builder validator already
+implements versus which are newly specified here for a future
+validator pass to close.
+
+---
+
+## 12. Reserved Future Sections
+
+The following are named and reserved so a future sprint can add them
+without a breaking migration — **none of them are implemented today**,
+and no Theme Project should rely on them doing anything yet.
+
+| Reserved area | Where it will live | Notes |
+|---|---|---|
+| **Typography Tokens** | A new `theme.json.defaultTypography` shape, or a future `typography.json` file | Named font/size/weight tokens a theme can define once and every Text Layer can reference by name, instead of repeating raw font strings. |
+| **Colour Palettes** | A new `theme.json.defaultPalette` shape, or a future `palette.json` file | Named colour tokens (`"ink"`, `"accent"`, `"wall"`) Frame/Layer fields could reference instead of raw hex values. |
+| **Animation Packs** | A future `animation-packs/` folder, mirroring `layer-packs/` | Motion for Layers (entrance/exit/emphasis). VihuStudio's renderer is presently static-canvas-only; this has no home until that changes. |
+| **Accessibility** | A future `accessibility.json`, or fields on `metadata.json` | Alt text for stickers/decorations, contrast requirements, reduced-motion opt-outs. |
+| **Localization** | A future `locales/` folder | Per-language `displayName`/`description`/Layer `text.content` overrides. |
+| **Responsive Layouts** | An extension to `layouts/*.json`'s schema | Layout variants for non-1080×1350 export targets (the canonical canvas size is otherwise fixed). |
+
+A Theme Project author should not invent their own version of any of
+these ahead of time — wait for the sprint that defines the real shape,
+so every Official Theme adopts the same one.
+
+---
+
+## 13. Known Reconciliation Items
+
+Written down here, deliberately, rather than fixed — this sprint is
+documentation only. Whoever picks up Museum Gallery (or a validator/
+compiler hardening sprint) needs these resolved first, or Museum Gallery
+will compile "successfully" into a package VihuStudio cannot actually
+import.
+
+1. **Manifest field name mismatch.** This spec (§2) and the live
+   runtime (`js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS`) both use
+   `minStudioVersion`. Today's Theme Builder validator
+   (`tools/theme-builder/js/validator.js`) checks for
+   `minimumStudioVersion` instead. Author against **this spec's**
+   name — it's the one the actual import path reads — and treat the
+   validator's current check as the thing to correct.
+
+2. **Compiled package shape does not match the runtime importer.**
+   Today's `tools/theme-builder/js/builder.js` `generateVThemePackage()`
+   produces a **plain JSON blob** (not a zip) shaped like:
+   ```
+   { version, format:"vtheme", manifest, metadata, theme,
+     layouts:[{file,data}], frames:[{file,data}], layerPacks:[{file,data}],
+     assets:[...], preview:"included"|null, thumbnail:"included"|null, ... }
+   ```
+   The real import path (`ThemeEngine.importThemeFile` /
+   `ThemeRegistry.importPackage`) expects either a legacy flat
+   `{ manifest, theme, assets }` file, or a zip archive with the folder
+   layout this spec describes (§1), which `js/zipReader.js` +
+   `_buildPackageFromZipFiles` unpack and flatten. Today's compiled
+   output does neither: `theme` is left as `theme.json`'s raw content
+   (never merged with `layouts`/`frames`/`layerPacks`, per §4's compiled
+   shape), those three stay as separate top-level arrays of `{file,
+   data}` pairs instead of flattened arrays merged onto `theme.layouts`/
+   `theme.frameVariations`/`theme.layerPack`, and `preview`/`thumbnail`
+   are replaced with the literal string `"included"` — the actual image
+   bytes are never embedded, so they're lost entirely. A theme compiled
+   by today's Theme Builder will not import into VihuStudio as claimed;
+   the compiler's output stage needs to be brought in line with §1/§4
+   of this spec before Museum Gallery is compiled through it.
+
+3. **Duplicate-ID and reference validation are stubbed.** Today's
+   validator's `validateReferences()` is a placeholder
+   (`{ checked: true }`, no real check performed) and there is no
+   cross-file duplicate-ID check across `layer-packs/`. §11's duplicate-
+   ID and reference rules are the target to implement, not something
+   already enforced.
+
+None of this blocks writing Museum Gallery's *content* against this
+spec — the folder structure, manifest/metadata fields, and Layout/Frame/
+Layer schemas above are all correct and already proven by the live
+Museum Gallery theme shipped in `js/themeRegistry.js` and
+`themes/MuseumGallery.vtheme` (Sprint 9.6/9.7). It blocks trusting
+*Theme Builder's compile step* to produce an importable package until
+items 1–3 are closed.
