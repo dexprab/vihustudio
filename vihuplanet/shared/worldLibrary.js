@@ -56,6 +56,11 @@
 //     the same type (e.g. six flowers) can vary once more than one
 //     asset exists, without any caller-side bookkeeping.
 //   WorldLibrary.resolveMany(type, count) -> Promise<string[]>
+//   WorldLibrary.displayFor(url)        -> {anchor?, focusY?} | null
+//     Display-framing hint for a URL previously returned by one of the
+//     resolve calls above, or null if that asset declares none. Purely
+//     data — callers decide what to do with it (see worldObject.js's
+//     generic --vp-display-position application).
 //   WorldLibrary.TYPES                  -> array of supported type names
 
 (function (global) {
@@ -127,21 +132,25 @@
   var _cache = {}; // type -> Promise<string[]> of resolved asset URLs
 
   // A manifest entry is normally a plain filename string. The World
-  // Library pipeline (Sprint MEP-08 Phase 1, vihuplanet-world-library)
-  // can now optionally emit `{id, file, display}` objects instead, for
+  // Library pipeline (Sprint MEP-08, vihuplanet-world-library) can
+  // optionally emit `{id, file, display}` objects instead, for
   // collections that declare per-file display-framing metadata
-  // (display.json upstream) — Story Meadow is the first. This resolver
-  // only reads `.file` out of that shape; `display` (anchor/focusY)
-  // isn't consumed anywhere yet, that's Phase 2. Accepting the object
-  // shape here is a compatibility fix, not Phase 2 itself — without
-  // it, every entry with display metadata is silently dropped by the
-  // `typeof name !== 'string'` check below, which is exactly what
-  // happened the first time a collection shipped one.
+  // (display.json upstream) — Story Meadow is the first. `display`
+  // (anchor/focusY) is generic, asset-agnostic hint data: any World
+  // Library collection can carry it, and nothing here — or in
+  // shared/worldObject.js, which is what actually applies it — ever
+  // branches on which collection or file it belongs to.
   function _manifestEntryFilename(entry) {
     if (typeof entry === 'string') return entry;
     if (entry && typeof entry.file === 'string') return entry.file;
     return null;
   }
+
+  // url -> display object, populated alongside the resolved file list
+  // in _parseManifest. Looked up post-hoc via displayFor() once a
+  // caller has a resolved URL in hand — by construction that's always
+  // after _parseManifest already ran for it, so no ordering to manage.
+  var _displayByUrl = {};
 
   function _parseManifest(names, folder, type) {
     if (!Array.isArray(names)) return [];
@@ -149,13 +158,25 @@
     var seen = {};
     var files = [];
     for (var i = 0; i < names.length; i++) {
-      var name = _manifestEntryFilename(names[i]);
+      var entry = names[i];
+      var name = _manifestEntryFilename(entry);
       if (typeof name !== 'string' || !IMAGE_EXT.test(name) || seen[name]) continue;
       if (filter && !filter.test(name)) continue;
       seen[name] = true;
-      files.push(folder + name);
+      var url = folder + name;
+      files.push(url);
+      if (entry && typeof entry === 'object' && entry.display) _displayByUrl[url] = entry.display;
     }
     return files.sort();
+  }
+
+  // Generic lookup: the display block (anchor/focusY, or whatever a
+  // future field adds) for a URL previously returned by resolve()/
+  // resolveAt()/resolveMany(), or null if that asset carries none.
+  // Takes a URL rather than a type+index so a caller never needs to
+  // re-derive which manifest entry it came from.
+  function displayFor(url) {
+    return _displayByUrl[url] || null;
   }
 
   function _listFolder(folder, type) {
@@ -198,6 +219,7 @@
     resolve: resolve,
     resolveAt: resolveAt,
     resolveMany: resolveMany,
+    displayFor: displayFor,
     TYPES: Object.keys(FOLDERS)
   };
   try { global.WorldLibrary = api; } catch (e) {}

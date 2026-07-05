@@ -108,12 +108,38 @@
       : Promise.resolve(null);
 
     return libraryLookup.then(function (url) {
-      if (url) return { isImage: true, content: url };
+      if (url) {
+        // Generic — this asks WorldLibrary for whatever display hint
+        // (if any) came back with this URL's manifest entry, purely by
+        // URL. Nothing here knows or cares which object type or which
+        // specific asset this is; a display block is applied (or
+        // isn't) identically for every World Library type.
+        var display = global.WorldLibrary.displayFor(url);
+        return { isImage: true, content: url, display: display };
+      }
       if (!d.assetHref) return null; // no library art and no local fallback declared — render nothing
       return fetch(d.assetHref).then(function (r) { return r.text(); }).then(function (svgText) {
         return { isImage: false, content: svgText };
       });
     });
+  }
+
+  // Generic anchor/focusY -> CSS `object-position` value. focusY (a
+  // 0-1 fraction of the image's own height) wins when present since
+  // it's the precise value anchor is a coarse description of; anchor
+  // alone maps to the same three keyword positions object-position
+  // itself understands. Returns null for anything else so the caller
+  // can leave the shared CSS fallback (today's unchanged 50% 50%)
+  // alone rather than writing a redundant identical value.
+  function _objectPositionFor(display) {
+    if (!display) return null;
+    if (typeof display.focusY === 'number' && display.focusY >= 0 && display.focusY <= 1) {
+      return '50% ' + (display.focusY * 100) + '%';
+    }
+    if (display.anchor === 'top')    return '50% 0%';
+    if (display.anchor === 'center') return '50% 50%';
+    if (display.anchor === 'bottom') return '50% 100%';
+    return null;
   }
 
   function _mountOne(container, d) {
@@ -178,6 +204,15 @@
         img.src = asset.content;
         img.alt = '';
         img.decoding = 'async';
+        // Generic display-metadata application (Sprint MEP-09) — every
+        // World Library image goes through this same line; only
+        // whether `asset.display` exists (from the resolved asset's
+        // own manifest entry, not this object's id or type) decides
+        // whether anything happens. No display block -> the property
+        // is never set -> css/scene.css's var(--vp-display-position,
+        // 50% 50%) fallback renders exactly as it always has.
+        var objectPosition = _objectPositionFor(asset.display);
+        if (objectPosition) img.style.setProperty('--vp-display-position', objectPosition);
         wrap.appendChild(img);
       } else {
         wrap.innerHTML = asset.content;

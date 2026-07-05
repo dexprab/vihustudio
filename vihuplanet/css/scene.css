@@ -169,6 +169,15 @@
   width: 100%;
   height: auto;
   object-fit: contain;
+  /* Sprint MEP-09 — generic World Library display-metadata framing.
+   * shared/worldObject.js sets --vp-display-position per-instance,
+   * generically, whenever the resolved asset's manifest entry carries
+   * a `display` block (any collection, not just Story Meadow). No
+   * asset ever sets this property itself in CSS — the fallback,
+   * 50% 50%, is the browser's own default object-position, so any
+   * asset without display metadata renders exactly as before this
+   * rule existed. */
+  object-position: var(--vp-display-position, 50% 50%);
 }
 .world-object.is-interactive {
   cursor: pointer;
