@@ -1,9 +1,9 @@
 {
-  "version": "1.3.0",
-  "sprint": "S10.1",
-  "task": "Theme Driven Representations",
-  "build": "0060",
+  "version": "1.4.0",
+  "sprint": "S10.2",
+  "task": "Official Theme 001 - Museum Gallery",
+  "build": "0061",
   "buildDate": "2026-07-05",
-  "commit": "b44ac86",
+  "commit": "9b12e66",
   "environment": "Release"
 }
