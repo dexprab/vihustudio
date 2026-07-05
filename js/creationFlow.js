@@ -1,13 +1,24 @@
-// creationFlow.js — Sprint 10.0 Creation Experience V1 (Child First Studio).
+// creationFlow.js — Sprint 10.0 Creation Experience V1, made data-driven by
+// Sprint 10.1 (Theme Driven Representations).
 //
 // A full-screen, three-step wizard shown before the editor: Creation Type
 // -> Theme -> Representation. Only once a Representation is chosen (or the
 // chosen Theme has none) does Studio create the first page and reveal the
-// editor. Hardcoded data throughout, per the sprint's own scope — no
-// runtime/compiler/registry changes. Representation selection only ever
-// writes to existing, already-supported fields (slide.metadata.layout,
-// AppState.project.artworkTheme/theme) — the exact same fields the Theme
-// Designer / Card Designer already read and write.
+// editor.
+//
+// Sprint 10.1 — Studio knows nothing about Museum Gallery, Storybook
+// Classic, or any other theme by name. Creation Types themselves stay a
+// small hardcoded list (CREATION_TYPES — an explicit sprint scope
+// decision), but which Theme is offered under which Creation Type, and
+// which Representation cards a Theme offers, are both read live from
+// ThemeRegistry: `theme.supportedCreationTypes` and `theme.representations`.
+// A Creation Type with no compatible registered theme shows a generic
+// "Coming Soon" screen rather than a hardcoded placeholder theme.
+//
+// Representation selection only ever writes to existing, already-
+// supported fields (slide.metadata.layout, AppState.project.artworkTheme/
+// theme) — the exact same fields the Theme Designer / Card Designer
+// already read and write.
 const CreationFlow=(function(){
   'use strict';
 
@@ -17,34 +28,6 @@ const CreationFlow=(function(){
     {id:'quote',   title:'Quote Design',      desc:'Turn your favorite words into art.', icon:'💬'},
     {id:'poem',    title:'Poems',             desc:'Share a poem you wrote.',            icon:'📝'}
   ];
-
-  // Hardcoded per-type theme compatibility (sprint scope: only Story and
-  // Artwork Showcase have a real, working theme this sprint).
-  const THEMES_BY_TYPE={
-    story:[
-      {themeId:'storybook-classic', kind:'story', name:'Storybook Classic', desc:'A warm, classic storybook look.', swatch:'#1D3457', icon:'📖', real:true}
-    ],
-    artwork:[
-      {themeId:'museum-gallery', kind:'artwork', name:'Museum Gallery', desc:'Showcase artwork the way a museum would.', swatch:'#F7F4EE', icon:'🖼️', real:true}
-    ],
-    quote:[
-      {themeId:null, kind:null, name:'Quote Theme', desc:'A beautiful home for your favorite words.', swatch:'#EFEFEF', icon:'💬', real:false}
-    ],
-    poem:[
-      {themeId:null, kind:null, name:'Poetry Theme', desc:'A gentle page for your poems.', swatch:'#EFEFEF', icon:'📝', real:false}
-    ]
-  };
-
-  // Hardcoded Representations, per theme. A theme absent from this map
-  // (Storybook Classic) skips Step 3 entirely and goes straight to the
-  // editor — it has no Representation concept this sprint.
-  const REPRESENTATIONS_BY_THEME={
-    'museum-gallery':[
-      {id:'showcase', name:'Showcase', desc:'Big and bold — the classic gallery look.',        layout:'landscape', icon:'🖼️'},
-      {id:'portrait', name:'Portrait', desc:'Tall and centered, like a framed portrait.',       layout:'portrait',  icon:'🧍'},
-      {id:'quote',    name:'Quote',    desc:'Just your words, beautifully centered.',           layout:'quote',     icon:'💬'}
-    ]
-  };
 
   let overlay=null, content=null;
   let _mode='new'; // 'new' (full flow) | 'change-representation' (Step 3 only, no new page)
@@ -76,6 +59,64 @@ const CreationFlow=(function(){
     content.appendChild(header);
   }
 
+  // ---------- Theme discovery (data-driven — Sprint 10.1) ----------
+  function _allThemes(){
+    if(typeof ThemeRegistry==='undefined') return [];
+    const c=ThemeRegistry.getCatalog();
+    return [].concat(c.story.official,c.story.imported,c.artwork.official,c.artwork.imported);
+  }
+
+  // Every registered theme (story or artwork) that declares support for
+  // this Creation Type id. A theme with no `supportedCreationTypes` field
+  // at all (none exist pre-Sprint-10.1) simply never appears here — no
+  // Studio-side default/guess is made on its behalf.
+  function _themesForType(typeId){
+    return _allThemes().filter(function(t){
+      return Array.isArray(t.supportedCreationTypes) && t.supportedCreationTypes.indexOf(typeId)!==-1;
+    });
+  }
+
+  function _themeType(themeId){
+    const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(themeId) : null;
+    return (rec && rec.manifest && rec.manifest.type) || 'story';
+  }
+
+  // A Theme card's preview swatch/icon — the same manifest fields
+  // ThemeEngine's own Theme Library card (_renderThemeCard) already reads
+  // for this exact purpose, so a new theme picks up a sensible preview
+  // automatically, with no Creation-Flow-specific authoring step.
+  function _themePreview(theme){
+    const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(theme.id) : null;
+    const manifest=(rec && rec.manifest) || {};
+    return {
+      image:manifest.previewImage||null,
+      icon:manifest.themeIcon||'🎨',
+      color:(theme.frame && theme.frame.color) || '#EFEFEF'
+    };
+  }
+
+  // Representations this theme offers for this Creation Type. A
+  // Representation whose own `supportedCreationTypes` is absent applies
+  // under any Creation Type the theme itself supports; one that names a
+  // list is filtered to it (a future theme could offer a Representation
+  // valid under only one of several supported Creation Types).
+  function _representationsForTheme(themeId,typeId){
+    if(typeof ThemeRegistry==='undefined') return [];
+    const theme=ThemeRegistry.get(themeId);
+    const reps=(theme && Array.isArray(theme.representations)) ? theme.representations : [];
+    return reps.filter(function(r){
+      const supported=r.supportedCreationTypes;
+      return !supported || !supported.length || supported.indexOf(typeId)!==-1;
+    });
+  }
+
+  function _repThumbnail(r){
+    const t=r.thumbnail;
+    if(!t) return {text:'🎭'};
+    if(/^(data:|https?:)/i.test(t) || /\.(png|jpe?g|svg|webp)$/i.test(t)) return {image:t};
+    return {text:t};
+  }
+
   // ---------- Step 1: Creation Type ----------
   function _renderTypeScreen(){
     _clear();
@@ -99,33 +140,40 @@ const CreationFlow=(function(){
     _clear();
     _header('Step 2 of 3',_renderTypeScreen);
     content.appendChild(_el('h1','creation-flow-question','Pick a look for your '+type.title.toLowerCase()+'.'));
+    const themes=_themesForType(type.id);
+    if(!themes.length){ _renderComingSoon(type); return; }
     const grid=_el('div','creation-flow-grid');
-    (THEMES_BY_TYPE[type.id]||[]).forEach(function(th){
+    themes.forEach(function(theme){
       const card=_el('button','creation-flow-card creation-flow-theme-card');
       card.type='button';
       const preview=_el('div','creation-flow-theme-preview');
-      preview.style.background=th.swatch;
-      preview.textContent=th.icon;
+      const pv=_themePreview(theme);
+      if(pv.image){
+        const img=document.createElement('img');
+        img.src=pv.image; img.alt='';
+        preview.appendChild(img);
+      }else{
+        preview.style.background=pv.color;
+        preview.textContent=pv.icon;
+      }
       card.appendChild(preview);
-      card.appendChild(_el('div','creation-flow-card-title',th.name));
-      card.appendChild(_el('div','creation-flow-card-desc',th.desc));
-      if(!th.real) card.appendChild(_el('div','creation-flow-badge','Coming Soon'));
+      card.appendChild(_el('div','creation-flow-card-title',theme.name));
+      card.appendChild(_el('div','creation-flow-card-desc',theme.description||''));
       card.addEventListener('click',function(){
-        if(!th.real){ _renderComingSoon(type,th); return; }
-        const reps=REPRESENTATIONS_BY_THEME[th.themeId];
-        if(reps && reps.length){ _renderRepresentationScreen(type,th,reps); }
-        else { _finish(type,th,null); }
+        const reps=_representationsForTheme(theme.id,type.id);
+        if(reps.length){ _renderRepresentationScreen(type,theme,reps); }
+        else { _finish(type,theme,null); }
       });
       grid.appendChild(card);
     });
     content.appendChild(grid);
   }
 
-  function _renderComingSoon(type,th){
+  function _renderComingSoon(type){
     _clear();
-    _header('Step 2 of 3',function(){ _renderThemeScreen(type); });
-    content.appendChild(_el('h1','creation-flow-question',th.name+' is coming soon!'));
-    content.appendChild(_el('p','creation-flow-comingsoon-msg','We\'re still working on this one. Pick something else for now — '+th.name+' will be ready soon.'));
+    _header('Step 2 of 3',_renderTypeScreen);
+    content.appendChild(_el('h1','creation-flow-question',type.title+' is coming soon!'));
+    content.appendChild(_el('p','creation-flow-comingsoon-msg','We\'re still working on this one. Pick something else for now — '+type.title+' will be ready soon.'));
     const back=_el('button','creation-flow-card creation-flow-choose-other','Choose Something Else');
     back.type='button';
     back.addEventListener('click',_renderTypeScreen);
@@ -133,7 +181,7 @@ const CreationFlow=(function(){
   }
 
   // ---------- Step 3: Representation Selection ----------
-  function _renderRepresentationScreen(type,th,reps){
+  function _renderRepresentationScreen(type,theme,reps){
     _clear();
     const onBack=(_mode==='change-representation') ? _closeChangeRepresentation : function(){ _renderThemeScreen(type); };
     _header('Step 3 of 3',onBack);
@@ -142,12 +190,20 @@ const CreationFlow=(function(){
     reps.forEach(function(r){
       const card=_el('button','creation-flow-card creation-flow-representation-card');
       card.type='button';
-      card.appendChild(_el('div','creation-flow-card-icon',r.icon));
+      const thumb=_repThumbnail(r);
+      if(thumb.image){
+        const img=document.createElement('img');
+        img.className='creation-flow-card-icon-image';
+        img.src=thumb.image; img.alt='';
+        card.appendChild(img);
+      }else{
+        card.appendChild(_el('div','creation-flow-card-icon',thumb.text));
+      }
       card.appendChild(_el('div','creation-flow-card-title',r.name));
-      card.appendChild(_el('div','creation-flow-card-desc',r.desc));
+      card.appendChild(_el('div','creation-flow-card-desc',r.description||''));
       card.addEventListener('click',function(){
         if(_mode==='change-representation'){ _applyRepresentationToCurrentSlide(r); }
-        else { _finish(type,th,r); }
+        else { _finish(type,theme,r); }
       });
       grid.appendChild(card);
     });
@@ -155,7 +211,7 @@ const CreationFlow=(function(){
   }
 
   // ---------- Enter editor (first time only) ----------
-  function _finish(type,th,representation){
+  function _finish(type,theme,representation){
     if(typeof PageOps!=='undefined' && AppState.slides.length===0){
       PageOps.addBefore(0);
     }
@@ -164,12 +220,13 @@ const CreationFlow=(function(){
     AppState.project.representationId=representation?representation.id:null;
     if(slide){
       if(!slide.metadata) slide.metadata={};
-      if(representation) slide.metadata.layout=representation.layout;
+      if(representation && representation.layout) slide.metadata.layout=representation.layout;
     }
-    if(th.kind==='artwork' && typeof ThemeEngine!=='undefined'){
-      try{ ThemeEngine.applyArtworkTheme(th.themeId,{silent:true}); }catch(e){}
-    }else if(th.kind==='story' && typeof ThemeEngine!=='undefined'){
-      try{ ThemeEngine.applyTheme(th.themeId,{silent:true}); }catch(e){}
+    if(typeof ThemeEngine!=='undefined'){
+      try{
+        if(_themeType(theme.id)==='artwork') ThemeEngine.applyArtworkTheme(theme.id,{silent:true});
+        else ThemeEngine.applyTheme(theme.id,{silent:true});
+      }catch(e){}
     }
     try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     _closeOverlay();
@@ -181,10 +238,24 @@ const CreationFlow=(function(){
 
   // ---------- Change Representation (from the Context Panel) ----------
   // Reuses the same Step 3 screen, but only ever touches the CURRENT
-  // slide's layout — never creates a page or changes the theme.
+  // slide's layout — never creates a page or changes the theme. Checks
+  // the active Artwork Theme first (Museum Gallery's own model), then
+  // the active Story Theme, so a future Story Theme that ships its own
+  // Representations (e.g. Storybook Classic's eventual Cover/Story Page/
+  // Ending) works without any change here.
   function currentRepresentations(){
-    const artworkId=(typeof ThemeEngine!=='undefined' && ThemeEngine.getActiveArtworkThemeId) ? ThemeEngine.getActiveArtworkThemeId() : null;
-    return artworkId ? (REPRESENTATIONS_BY_THEME[artworkId]||null) : null;
+    if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined') return null;
+    const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+    if(artworkId){
+      const theme=ThemeRegistry.get(artworkId);
+      if(theme && Array.isArray(theme.representations) && theme.representations.length) return theme.representations;
+    }
+    const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
+    if(storyId){
+      const theme=ThemeRegistry.get(storyId);
+      if(theme && Array.isArray(theme.representations) && theme.representations.length) return theme.representations;
+    }
+    return null;
   }
 
   function changeRepresentation(){
@@ -193,7 +264,10 @@ const CreationFlow=(function(){
     _ensureDom();
     _mode='change-representation';
     overlay.classList.remove('hidden');
-    _renderRepresentationScreen({id:'artwork',title:'Artwork Showcase'},{themeId:'museum-gallery',kind:'artwork'},reps);
+    // `type`/`theme` args are unused on this path (only _finish, which
+    // change-representation mode never calls, reads them) — a
+    // placeholder is enough.
+    _renderRepresentationScreen({id:AppState.project.creationType||'',title:''},null,reps);
     return true;
   }
 
@@ -201,7 +275,8 @@ const CreationFlow=(function(){
     const slide=AppState.slides[AppState.currentSlide];
     if(slide){
       if(!slide.metadata) slide.metadata={};
-      slide.metadata.layout=r.layout;
+      if(r.layout) slide.metadata.layout=r.layout;
+      AppState.project.representationId=r.id;
       try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     }
     _closeChangeRepresentation();

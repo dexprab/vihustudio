@@ -128,9 +128,11 @@ raw, unmerged content.
   "watermark": { "font": "Georgia, serif", "size": 10, "color": "#FFFFFF" },
   "variants": [],
   "decorations": [],
+  "supportedCreationTypes": [ "story" ],
   "layouts": [ "...flattened from layouts/*.json" ],
   "frameVariations": [ "...flattened from frames/*.json" ],
-  "layerPack": [ "...flattened from layer-packs/*.json" ]
+  "layerPack": [ "...flattened from layer-packs/*.json" ],
+  "representations": [ "...flattened from representations/*.json — omitted if the project has none" ]
 }
 ```
 
@@ -145,9 +147,11 @@ raw, unmerged content.
   "name": "Museum Gallery",
   "description": "...",
   "presentation": "gallery",
+  "supportedCreationTypes": [ "artwork" ],
   "layouts": [ "..." ],
   "frameVariations": [ "..." ],
-  "layerPack": [ "..." ]
+  "layerPack": [ "..." ],
+  "representations": [ "..." ]
 }
 ```
 
@@ -156,14 +160,34 @@ presentation field (`presentation`/`background`/`frame`/`paper`/`caption`/
 `shadow`/`lighting`/`composition`) is optional, resolved through
 `js/themePresets.js`'s preset ladder when absent.
 
-`layouts` / `frameVariations` / `layerPack` are always flat arrays of plain
-preset objects on `theme` — never wrapped in `{file, data}` pairs, never
-left as separate top-level package keys. This is the one place Theme
-Builder's compiler does real work beyond copying files: it merges every
-`layouts/*.json` entry (whether a file holds one object or an array) into
-`theme.layouts`, and likewise for `frames/` → `theme.frameVariations` and
-`layer-packs/` → `theme.layerPack` (`tools/theme-builder/js/builder.js`'s
-`collectFolder()` / `buildTheme()`).
+`layouts` / `frameVariations` / `layerPack` / `representations` are always
+flat arrays of plain preset objects on `theme` — never wrapped in `{file,
+data}` pairs, never left as separate top-level package keys. This is the
+one place Theme Builder's compiler does real work beyond copying files: it
+merges every `layouts/*.json` entry (whether a file holds one object or an
+array) into `theme.layouts`, and likewise for `frames/` →
+`theme.frameVariations`, `layer-packs/` → `theme.layerPack`, and
+`representations/` → `theme.representations`
+(`tools/theme-builder/js/builder.js`'s `collectFolder()` / `buildTheme()`).
+
+**`supportedCreationTypes`** (Sprint 10.1 — Theme Driven Representations) —
+a flat string array naming which of Studio's Creation Type ids
+(`js/creationFlow.js`'s `CREATION_TYPES`) this theme is offered under in
+Step 2 of the Creation Flow. Not part of any Theme Project *folder* (§8 of
+`docs/THEME_PROJECT_SPEC.md` covers `representations/`; this field's
+author-time home is not yet finalized — see that spec's Reserved Future
+Sections) — today it is only authored directly on the in-code Official
+Theme entries in `js/themeRegistry.js`. A theme with no
+`supportedCreationTypes` never appears under any Creation Type; Studio does
+not guess.
+
+**`representations`** — each entry is a complete page style Studio's
+Creation Flow Step 3 ("Choose a Page Style") and Context Panel ("Change
+Representation") render directly, with zero Studio-side knowledge of any
+specific theme's Representation names. See `docs/THEME_PROJECT_SPEC.md` §8
+for the full field-by-field schema (`id`/`name`/`description`/`thumbnail`/
+`supportedCreationTypes`/`layout`/`defaultFrame`/`defaultLayerPack`/
+`background`/`actions`).
 
 ---
 
@@ -283,8 +307,8 @@ alternate inputs to the same importer, not a hierarchy where one is
 | | Theme Project | `.vtheme` package |
 |---|---|---|
 | **Who reads it** | Theme Builder (load + validate) | VihuStudio (`ThemeEngine`/`ThemeRegistry`) |
-| **Shape** | A folder: `manifest.json`, `metadata.json`, `theme.json`, `layouts/`, `frames/`, `layer-packs/`, `assets/`, images | A single JSON document: `{manifest, theme, assets}` |
-| **`theme.layouts`/`frameVariations`/`layerPack`** | Do not exist — these come from separate folders | Flat arrays, merged by the compiler |
+| **Shape** | A folder: `manifest.json`, `metadata.json`, `theme.json`, `layouts/`, `frames/`, `layer-packs/`, `representations/` (optional), `assets/`, images | A single JSON document: `{manifest, theme, assets}` |
+| **`theme.layouts`/`frameVariations`/`layerPack`/`representations`** | Do not exist — these come from separate folders | Flat arrays, merged by the compiler (`representations` omitted entirely if the project has none) |
 | **Images** | Separate files (`preview.png`, `assets/textures/linen.png`, ...) | Data URIs, embedded inline |
 | **`metadata.json`** | A separate required file | Merged onto `manifest` — not a top-level package key |
 | **Identity source of truth** | `manifest.json`'s `id`, cross-checked against `theme.json`'s `id` (must match) | `manifest.id` alone — `theme.id` is overwritten to match on import regardless |

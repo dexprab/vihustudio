@@ -871,10 +871,10 @@ const ThemeEngine=(function(){
       }
     });
 
-    // layouts/ frames/ layer-packs/ — each a folder of small JSON files;
-    // every file may contain either one preset object or an array of
-    // them. Collected into flat arrays on the theme, additive (a theme
-    // that already inlines these keeps its own values).
+    // layouts/ frames/ layer-packs/ representations/ — each a folder of
+    // small JSON files; every file may contain either one preset object
+    // or an array of them. Collected into flat arrays on the theme,
+    // additive (a theme that already inlines these keeps its own values).
     function _collectFolder(folder,themeKey){
       if(pkg.theme[themeKey]!==undefined) return;
       const files_=_relatives(folder+'/').filter(function(n){ return /\.json$/i.test(n); });
@@ -890,6 +890,12 @@ const ThemeEngine=(function(){
     _collectFolder('layouts','layouts');
     _collectFolder('frames','frameVariations');
     _collectFolder('layer-packs','layerPack');
+    // Sprint 10.1 — Theme Driven Representations: a theme's own
+    // representations/ folder registers alongside its layouts/frames/
+    // layer-packs, so Studio's Creation Flow / Context Panel (which read
+    // theme.representations, never a hardcoded list) pick up an
+    // imported theme's Representations with zero Studio code changes.
+    _collectFolder('representations','representations');
 
     // assets/ — arbitrary images referenced by relative path from
     // layouts/frames/layer-packs JSON; exposed as a flat

@@ -180,6 +180,12 @@ const ThemeRegistry=(function(){
       name:'Storybook Classic',
       description:'Warm, rounded, friendly — traditional children’s book.',
       suitableFor:'Bedtime stories, fairy tales, soft narratives',
+      // Sprint 10.1 — Theme Driven Representations. No `representations`
+      // array yet (a future sprint's Cover/Story Page/Ending is only an
+      // illustrative example, not implemented here) — Studio's Creation
+      // Flow correctly skips Step 3 for any theme with none, exactly as
+      // it did for this theme in Sprint 10.0.
+      supportedCreationTypes:['story'],
       frame:{ color:'#1D3457' },
       panel:{ color:'#FFFFFF' },
       storyText:{ font:'Georgia, serif', size:56, color:'#FFFFFF' },
@@ -336,6 +342,12 @@ const ThemeRegistry=(function(){
       // both would double the caption.
       caption:'none',
       enhancement:[],
+      // Sprint 10.1 — Theme Driven Representations. Which Creation
+      // Types (js/creationFlow.js's hardcoded CREATION_TYPES ids —
+      // Creation Types themselves stay hardcoded this sprint, only
+      // theme<->type compatibility becomes data) this theme is offered
+      // under in Step 2 of the Creation Flow.
+      supportedCreationTypes:['artwork'],
       // Sprint 9.6 — Museum Gallery is the reference implementation
       // for Phase 2's Official Theme Collection: Slide layout presets
       // (single-Holder only this sprint — Diptych/Triptych are a
@@ -359,6 +371,59 @@ const ThemeRegistry=(function(){
         {id:'square',     name:'Square',     aspect:'square',     holders:1},
         {id:'quote',      name:'Quote',      aspect:'quote',      holders:1, composition:'quote'},
         {id:'full-bleed', name:'Full Bleed', aspect:'full-bleed', holders:1}
+      ],
+      // Sprint 10.1 — Theme Driven Representations. Studio's Creation
+      // Flow (js/creationFlow.js) and Context Panel (js/contextPanel.js,
+      // "Change Representation") no longer hardcode Showcase/Portrait/
+      // Quote anywhere — they read this array. Each Representation is a
+      // complete page style: which Creation Type(s) it applies under,
+      // which of this theme's own `layouts` it initializes the page
+      // with, a suggested default Frame Variation, a reserved
+      // `defaultLayerPack` (this runtime only ever compiles one flat
+      // Layer Pack per theme — see docs/THEME_PROJECT_SPEC.md §4's
+      // `defaultLayerPack`, same reservation, not read today), an
+      // optional default background override (not read today — Museum
+      // Gallery's wall colour already comes from the Frame Variation's
+      // `wallTone`), and which editing actions Studio's Context Panel
+      // should surface for a page created from it. `actions` is
+      // descriptive metadata Studio already knows how to render
+      // (`editCaption`/`editQuote` pick the Caption vs. Quote field
+      // group in js/contextPanel.js) — not a plugin/arbitrary-action
+      // system.
+      representations:[
+        {
+          id:'showcase', name:'Showcase',
+          description:'Big and bold — the classic gallery look.',
+          thumbnail:'🖼️',
+          supportedCreationTypes:['artwork'],
+          layout:'landscape',
+          defaultFrame:'classic-white-mat',
+          defaultLayerPack:null,
+          background:null,
+          actions:['replaceArtwork','cropRotate','frameVariation','editCaption']
+        },
+        {
+          id:'portrait', name:'Portrait',
+          description:'Tall and centered, like a framed portrait.',
+          thumbnail:'🧍',
+          supportedCreationTypes:['artwork'],
+          layout:'portrait',
+          defaultFrame:'classic-white-mat',
+          defaultLayerPack:null,
+          background:null,
+          actions:['replaceArtwork','cropRotate','frameVariation','editCaption']
+        },
+        {
+          id:'quote', name:'Quote',
+          description:'Just your words, beautifully centered.',
+          thumbnail:'💬',
+          supportedCreationTypes:['artwork'],
+          layout:'quote',
+          defaultFrame:null,
+          defaultLayerPack:null,
+          background:null,
+          actions:['editQuote']
+        }
       ],
       // Sprint 9.7 — Museum Gallery Fidelity: each variation now sets
       // matWidth/frameThickness/borderColor/wallTone directly (per the

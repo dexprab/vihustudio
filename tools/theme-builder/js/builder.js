@@ -91,6 +91,7 @@ class BuildEngine {
             layouts: [],
             frameVariations: [],
             layerPack: [],
+            representations: [],
             assets: {},
             previewDataURL: null,
             thumbnailDataURL: null
@@ -110,6 +111,12 @@ class BuildEngine {
         package_.layouts = await this.collectFolder('layouts');
         package_.frameVariations = await this.collectFolder('frames');
         package_.layerPack = await this.collectFolder('layer-packs');
+        // TB-4.7 — Theme Driven Representations. Optional, unlike the
+        // three folders above — a theme with no representations/ folder
+        // compiles with theme.representations simply absent (Studio's
+        // Creation Flow already treats "no representations" as "skip
+        // Step 3", the same as before this existed).
+        package_.representations = await this.collectFolder('representations');
 
         // Assets — flattened to a { relativePath: dataURI } map, paths
         // relative to assets/ (spec §8), exactly the shape
@@ -205,7 +212,8 @@ class BuildEngine {
      * Build the runtime theme object — theme.json's own fields (minus
      * id/name duplication, which stay for clarity but must already
      * equal the manifest's per validation) plus layouts/frameVariations/
-     * layerPack flattened onto it (spec §4's compiled shape).
+     * layerPack/representations flattened onto it (spec §4's compiled
+     * shape).
      */
     buildTheme(packageData, manifest) {
         const theme = Object.assign({}, packageData.theme);
@@ -220,6 +228,13 @@ class BuildEngine {
         }
         if (theme.layerPack === undefined) {
             theme.layerPack = packageData.layerPack;
+        }
+        // TB-4.7 — only set when the project actually has any, so a
+        // theme with no representations/ folder compiles with the key
+        // simply absent (matching frameVariations' own convention above)
+        // rather than an empty array Studio would have to special-case.
+        if (theme.representations === undefined && packageData.representations.length) {
+            theme.representations = packageData.representations;
         }
 
         return theme;

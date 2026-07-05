@@ -83,8 +83,9 @@ class ValidationEngine {
         const layouts = await this.validateLayouts(result);
         const frames = await this.validateFrames(result);
         const layerEntries = await this.validateLayerPacks(result);
+        const representations = await this.validateRepresentations(result);
         await this.validateAssets(result);
-        await this.validateReferences(result, { layouts, frames, layerEntries });
+        await this.validateReferences(result, { layouts, frames, layerEntries, representations });
 
         result.isValid = result.errors.length === 0;
         this.lastValidationResult = result;
@@ -323,6 +324,16 @@ class ValidationEngine {
     }
 
     /**
+     * Validate representations folder (TB-4.7 — Theme Driven
+     * Representations). Optional, unlike layouts/frames/layer-packs — a
+     * theme with no Representations (nothing required this sprint)
+     * simply compiles with none, exactly like assets/.
+     */
+    async validateRepresentations(result) {
+        return this.collectFolderEntries('representations', result, 'representations');
+    }
+
+    /**
      * Validate assets folder
      */
     async validateAssets(result) {
@@ -392,12 +403,14 @@ class ValidationEngine {
      * "Missing assets".
      */
     async validateReferences(result, collected) {
-        const { layouts, frames, layerEntries } = collected;
+        const { layouts, frames, layerEntries, representations } = collected;
+        const reps = representations || [];
         const details = { checked: true, duplicates: [], brokenReferences: [], missingAssets: [] };
 
         this.checkDuplicateIds(layouts, 'Layout', result, true);
         this.checkDuplicateIds(frames, 'Frame', result, true);
         this.checkDuplicateIds(layerEntries, 'Layer', result, false);
+        this.checkDuplicateIds(reps, 'Representation', result, true);
 
         const frameIds = new Set(frames.map(f => f.id).filter(Boolean));
         layouts.forEach(layout => {
@@ -410,6 +423,22 @@ class ValidationEngine {
                     details.brokenReferences.push({ from: layout.id, to: frameId, type: 'supportedFrames' });
                 }
             });
+        });
+
+        // Representations reference this project's own Layouts/Frames —
+        // a broken reference here would silently resolve to nothing at
+        // runtime, so it fails validation instead (spec §11 "Reference
+        // rules").
+        const layoutIds = new Set(layouts.map(l => l.id).filter(Boolean));
+        reps.forEach(rep => {
+            if (rep.layout && !layoutIds.has(rep.layout)) {
+                result.errors.push(`Representation "${rep.id}" references unknown layout "${rep.layout}"`);
+                details.brokenReferences.push({ from: rep.id, to: rep.layout, type: 'representation.layout' });
+            }
+            if (rep.defaultFrame && !frameIds.has(rep.defaultFrame)) {
+                result.errors.push(`Representation "${rep.id}" references unknown frame "${rep.defaultFrame}" in defaultFrame`);
+                details.brokenReferences.push({ from: rep.id, to: rep.defaultFrame, type: 'representation.defaultFrame' });
+            }
         });
 
         layerEntries.forEach(layer => {
@@ -438,6 +467,7 @@ class ValidationEngine {
         checkAssetRefs(layouts, 'Layout');
         checkAssetRefs(frames, 'Frame');
         checkAssetRefs(layerEntries, 'Layer');
+        checkAssetRefs(reps, 'Representation');
 
         // manifest.thumbnail / metadata.previewImage, when a relative
         // path (not a data URI or remote URL), must resolve to a real

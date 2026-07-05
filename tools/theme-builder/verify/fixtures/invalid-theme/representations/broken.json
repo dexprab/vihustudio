@@ -1,0 +1,13 @@
+[
+  {
+    "id": "dup-rep",
+    "name": "Broken Representation",
+    "layout": "nonexistent-layout",
+    "defaultFrame": "nonexistent-frame"
+  },
+  {
+    "id": "dup-rep",
+    "name": "Duplicate Representation",
+    "layout": "portrait"
+  }
+]

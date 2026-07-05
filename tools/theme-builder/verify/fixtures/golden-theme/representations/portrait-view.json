@@ -1,0 +1,12 @@
+{
+  "id": "portrait-view",
+  "name": "Portrait View",
+  "description": "Golden build verification representation.",
+  "thumbnail": "🖼️",
+  "supportedCreationTypes": ["artwork"],
+  "layout": "portrait",
+  "defaultFrame": "classic-white",
+  "defaultLayerPack": null,
+  "background": null,
+  "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+}

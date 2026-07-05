@@ -59,6 +59,7 @@ MuseumGallery/
 ├── layouts/               (Required: layout definitions)
 ├── frames/                (Required: frame components)
 ├── layer-packs/           (Required: layer definitions)
+├── representations/       (Optional: complete page styles Studio's Creation Flow offers)
 ├── assets/                (Required: theme assets)
 ├── preview.png            (Recommended: preview image)
 ├── thumbnail.png          (Recommended: thumbnail)
@@ -146,11 +147,14 @@ Validates all aspects of a theme project:
 ### Reference Validation
 - ✓ No two Layouts share an id; no two Frame Variations share an id; no
   two Layers across the entire compiled Layer Pack share an id (checked
-  across every file under `layer-packs/`, not just one)
+  across every file under `layer-packs/`, not just one); no two
+  Representations across `representations/` share an id
 - ✓ Every `supportedFrames` entry in a Layout names a real Frame id
 - ✓ Every Layer's `type`/`target` is one of the allowed values
-- ✓ Every asset path referenced from `layouts/`/`frames/`/`layer-packs/`
-  resolves to a real file under `assets/`
+- ✓ Every Representation's `layout` names a real Layout id; every
+  Representation's `defaultFrame`, if set, names a real Frame id
+- ✓ Every asset path referenced from `layouts/`/`frames/`/`layer-packs/`/
+  `representations/` resolves to a real file under `assets/`
 - ✓ `manifest.thumbnail` / `metadata.previewImage`, if a relative path,
   resolve to a real project file
 
@@ -177,7 +181,8 @@ Converts validated themes into `.vtheme` packages:
     "...": "theme.json's own fields",
     "layouts": ["...flattened from layouts/*.json"],
     "frameVariations": ["...flattened from frames/*.json"],
-    "layerPack": ["...flattened from layer-packs/*.json"]
+    "layerPack": ["...flattened from layer-packs/*.json"],
+    "representations": ["...flattened from representations/*.json — omitted if none"]
   },
   "assets": { "relative/path.png": "data:image/png;base64,..." }
 }
@@ -431,7 +436,7 @@ VihuStudio Import
 **TB-4.5** - Complete
 ✓ `docs/THEME_PROJECT_SPEC.md` — canonical Theme Project specification
 
-**TB-4.6 (Current)** - Complete
+**TB-4.6** - Complete
 ✓ Manifest contract aligned on `minStudioVersion` (Theme Builder, Theme
   Registry, Theme Engine, both spec docs)
 ✓ Compiled package aligned on the canonical flat `{manifest, theme,
@@ -439,6 +444,16 @@ VihuStudio Import
 ✓ Real reference/duplicate-id validation
 ✓ `docs/VTHEME_PACKAGE_SPEC.md` — canonical compiled-package specification
 ✓ Golden build verification (`tools/theme-builder/verify/goldenBuild.js`)
+
+**TB-4.7 (Current)** - Complete
+✓ Optional `representations/` folder — validated (duplicate ids,
+  layout/defaultFrame reference checks) and compiled into
+  `theme.representations`
+✓ Theme Import registers a package's `representations` the same way it
+  already does layouts/frames/layer-packs
+✓ Studio's Creation Flow / Context Panel read Representations from the
+  active theme instead of a hardcoded Museum Gallery list — see
+  `docs/THEME_PROJECT_SPEC.md` §8
 
 **TB-3** (Future)  
 - Theme Designer UI

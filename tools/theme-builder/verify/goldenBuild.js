@@ -121,6 +121,18 @@ async function main() {
             invalidResult.errors.some(e => /invalid target "not-a-real-target"/i.test(e)),
             'reports the invalid Layer target'
         );
+        assert(
+            invalidResult.errors.some(e => /Duplicate representation id "dup-rep"/i.test(e)),
+            'reports the cross-entry duplicate representation id (TB-4.7)'
+        );
+        assert(
+            invalidResult.errors.some(e => /Representation "dup-rep" references unknown layout "nonexistent-layout"/i.test(e)),
+            'reports the broken Representation.layout reference (TB-4.7)'
+        );
+        assert(
+            invalidResult.errors.some(e => /Representation "dup-rep" references unknown frame "nonexistent-frame" in defaultFrame/i.test(e)),
+            'reports the broken Representation.defaultFrame reference (TB-4.7)'
+        );
         await page1.close();
 
         // ---- 2. Golden fixture: Validate -> Compile ----
@@ -142,6 +154,13 @@ async function main() {
         assert(Array.isArray(pkg.theme.frameVariations) && pkg.theme.frameVariations[0].id === 'classic-white', 'theme.frameVariations is a flattened array');
         assert(Array.isArray(pkg.theme.layerPack) && pkg.theme.layerPack.length === 2, 'theme.layerPack is a flattened array');
         assert(!!pkg.assets['textures/linen.png'] && pkg.assets['textures/linen.png'].startsWith('data:image/'), 'assets map resolves the referenced texture to a real data URI');
+        assert(
+            Array.isArray(pkg.theme.representations) && pkg.theme.representations.length === 1
+                && pkg.theme.representations[0].id === 'portrait-view'
+                && pkg.theme.representations[0].layout === 'portrait'
+                && pkg.theme.representations[0].defaultFrame === 'classic-white',
+            'theme.representations is a flattened array (TB-4.7)'
+        );
 
         // ---- 3. Import -> Register -> Render, against the REAL app ----
         console.log('\n[3] Import compiled package into the real VihuStudio runtime');
@@ -176,6 +195,8 @@ async function main() {
                 layoutsCount: resolved && Array.isArray(resolved.layouts) ? resolved.layouts.length : -1,
                 frameVariationsCount: resolved && Array.isArray(resolved.frameVariations) ? resolved.frameVariations.length : -1,
                 layerPackCount: resolved && Array.isArray(resolved.layerPack) ? resolved.layerPack.length : -1,
+                representationsCount: resolved && Array.isArray(resolved.representations) ? resolved.representations.length : -1,
+                representationName: resolved && Array.isArray(resolved.representations) && resolved.representations[0] && resolved.representations[0].name,
                 appliedId: applied && applied.id,
                 activeId
             };
@@ -189,6 +210,7 @@ async function main() {
             assert(importResult.layoutsCount === 1, 'ThemeEngine.getTheme() resolves theme.layouts (Render-ready shape)');
             assert(importResult.frameVariationsCount === 1, 'ThemeEngine.getTheme() resolves theme.frameVariations');
             assert(importResult.layerPackCount === 2, 'ThemeEngine.getTheme() resolves theme.layerPack');
+            assert(importResult.representationsCount === 1 && importResult.representationName === 'Portrait View', 'ThemeEngine.getTheme() resolves theme.representations (TB-4.7 — Studio would read this, never a hardcoded name)');
             assert(importResult.appliedId === 'golden-test-theme' && importResult.activeId === 'golden-test-theme', 'ThemeEngine.applyArtworkTheme() activates the imported theme — Render step complete');
         }
         assert(consoleErrors.length === 0, `no uncaught page errors during import (${consoleErrors.join('; ')})`);

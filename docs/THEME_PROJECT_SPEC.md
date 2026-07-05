@@ -32,7 +32,7 @@ Every section below states the rule, then — where it matters for the
 package to actually import and render correctly — cross-references the
 real, already-shipping VihuStudio code that consumes it. Where today's
 Theme Builder (TB-1/TB-2) doesn't yet fully implement a rule in this
-spec, that is called out explicitly in **§13 Known Reconciliation
+spec, that is called out explicitly in **§14 Known Reconciliation
 Items** rather than silently glossed over. This document does not fix
 those gaps — TB-4.5 is documentation only — it names them so the team
 that closes them (and the person authoring Museum Gallery next) isn't
@@ -57,6 +57,8 @@ ThemeProject/
 ├── frames/                  Required (≥ 1 file)
 │   └── *.json
 ├── layer-packs/              Required (may compile to an empty pack)
+│   └── *.json
+├── representations/            Optional
 │   └── *.json
 ├── assets/                    Optional
 │   ├── frames/
@@ -83,7 +85,8 @@ compiler. The theme's real identity always comes from `manifest.json`'s
 | `layouts/` | Slide layout presets | **Required** | One JSON file per layout, or one file holding an array | A Layout owns its own composition | See §5; compiles into `theme.layouts` |
 | `frames/` | Frame Variation presets | **Required** | One JSON file per variation, or one file holding an array | A Frame owns its own presentation fields | See §6; compiles into `theme.frameVariations` |
 | `layer-packs/` | Layer declarations | **Required** | One JSON file per pack, or one file holding an array | A Layer Pack owns a flat list of independent Layers | See §7; compiles into `theme.layerPack` |
-| `assets/` | Binary/media files the JSON above references | Optional | Images, textures, icons | Nothing on its own — assets are inert until referenced | See §8 |
+| `representations/` | Complete page styles Studio's Creation Flow offers | Optional | One JSON file per Representation, or one file holding an array | A Representation owns a reference to one Layout + a default Frame, nothing else | See §8; compiles into `theme.representations` |
+| `assets/` | Binary/media files the JSON above references | Optional | Images, textures, icons | Nothing on its own — assets are inert until referenced | See §9 |
 | `screenshots/` | Documentation/portfolio screenshots | Optional | Raster images | Author's own portfolio material | Never read by loader, validator, or compiler — purely for `README.md` illustrations, marketplace listings, or human review; do not confuse with `preview.png`/`thumbnail.png`, which the Theme Library actually renders |
 
 A Theme Project is **flat at the top level** — no nested theme-within-a-
@@ -112,11 +115,11 @@ about how it looks.
 
 | Field | Required? | Type | Meaning |
 |---|---|---|---|
-| `id` | **Required** | string, kebab-case (§9) | The theme's permanent identity. Never changes across versions. |
+| `id` | **Required** | string, kebab-case (§10) | The theme's permanent identity. Never changes across versions. |
 | `name` | **Required** | string | Display name shown in the Theme Library. |
 | `version` | **Required** | semantic version (`MAJOR.MINOR.PATCH`, optional `-prerelease`) | This theme's own version, bumped by the author on every content change. |
 | `builderVersion` | **Required** | semantic version | The Theme Builder schema version this project was authored against. Lets Theme Builder refuse (or warn on) a project written for a newer contract than it understands. |
-| `minStudioVersion` | **Required** | semantic version | The minimum VihuStudio theme-system version (`ThemeRegistry.THEME_SYSTEM_VERSION`) this package needs. Checked at import time — see §13, naming note. |
+| `minStudioVersion` | **Required** | semantic version | The minimum VihuStudio theme-system version (`ThemeRegistry.THEME_SYSTEM_VERSION`) this package needs. Checked at import time — see §14, naming note. |
 | `author` | **Required** | string | Author or studio name. |
 | `category` | **Required** | string | Grouping shown in the Theme Library (`"Official"`, `"Imported"`, etc.). Official themes always use `"Official"`. |
 | `tags` | **Required** | string array | Free-form search/filter tags. May be an empty array. |
@@ -128,7 +131,7 @@ about how it looks.
 **Required means required everywhere.** Every field marked **Required**
 above is checked, under the identical name, by both Theme Builder's
 validator (`tools/theme-builder/js/validator.js`) and the runtime importer's
-`REQUIRED_MANIFEST_FIELDS` (`js/themeRegistry.js`) — see §13. A manifest
+`REQUIRED_MANIFEST_FIELDS` (`js/themeRegistry.js`) — see §14. A manifest
 that passes Theme Builder's validation is guaranteed to pass
 `ThemeRegistry.validatePackage()` too.
 
@@ -203,11 +206,11 @@ before folding in `layouts/`, `frames/`, and `layer-packs/`.
 
 | Field | Required? | Meaning |
 |---|---|---|
-| `id` | **Required** | Must match `manifest.id` exactly. Validated as a duplicate-consistency check (§11). |
+| `id` | **Required** | Must match `manifest.id` exactly. Validated as a duplicate-consistency check (§12). |
 | `name` | **Required** | Must match `manifest.name`. |
 | `presentation` | Optional | For an Artwork Theme, the Presentation Preset id this theme resolves through (see `js/themePresets.js` `HOLDER_PRESETS.image`) before any of this project's own Frame Variations apply as overrides. |
-| `defaultPalette` | Reserved | Placeholder object for a future default colour palette. Not read by the runtime today — see §12. |
-| `defaultTypography` | Reserved | Placeholder object for a future default type ramp. Not read by the runtime today — see §12. |
+| `defaultPalette` | Reserved | Placeholder object for a future default colour palette. Not read by the runtime today — see §13. |
+| `defaultTypography` | Reserved | Placeholder object for a future default type ramp. Not read by the runtime today — see §13. |
 | `defaultLayerPack` | Reserved | Placeholder for naming which `layer-packs/` file is the theme's "default" pack, once a theme is allowed to ship more than one. Not read today — every file under `layer-packs/` compiles into one flat pack (§7). |
 
 **No runtime behaviour lives in this file.** It never contains rendering
@@ -223,7 +226,8 @@ runtime.theme = {
   ...theme.json's own fields (minus id/name, which move to the manifest join),
   layouts:         [ ...every layouts/*.json entry, flattened ],
   frameVariations: [ ...every frames/*.json entry, flattened ],
-  layerPack:       [ ...every layer-packs/*.json entry, flattened ]
+  layerPack:       [ ...every layer-packs/*.json entry, flattened ],
+  representations: [ ...every representations/*.json entry, flattened ]  // omitted entirely if the project has none
 }
 ```
 
@@ -253,11 +257,11 @@ is arranged — a **composition**, not just a rectangle.
 
 | Field | Required? | Meaning |
 |---|---|---|
-| `id` | **Required** | Kebab-case, unique within this theme (§9, §11). |
+| `id` | **Required** | Kebab-case, unique within this theme (§10, §12). |
 | `name` | **Required** | Display name shown in the Layout picker. |
 | `description` | Optional | One line shown alongside the name. |
 | `aspect` | **Required** | Which geometry preset this layout resolves to. **Must be one of the six values the engine already understands: `portrait`, `landscape`, `square`, `wide`, `quote`, `full-bleed`** (`renderer/slideRenderer.js`'s `LAYOUT_RECT`). An unrecognized `aspect` silently falls back to the legacy fixed panel — not an error, but not what the author intended either. |
-| `composition` | Optional, default `"below"` | `"below"` — caption sits under the Frame (the default look). `"right"` — Frame on the left, caption in a column to the right (Wide). `"quote"` — no Frame/Holder at all; a centered quote replaces the picture entirely. Composition is deliberately a small closed enum today, not a free-form layout language — see §13. |
+| `composition` | Optional, default `"below"` | `"below"` — caption sits under the Frame (the default look). `"right"` — Frame on the left, caption in a column to the right (Wide). `"quote"` — no Frame/Holder at all; a centered quote replaces the picture entirely. Composition is deliberately a small closed enum today, not a free-form layout language — see §13's Responsive Layouts. |
 | `holders` | Reserved, always `1` in V1 | How many Holders this layout's Frame contains. Every Official Theme ships `1` — multi-Holder layouts (Diptych/Triptych) are a deliberately deferred future sprint, not something to improvise per-theme. |
 | `supportedFrames` | Optional | Authoring guidance only: which Frame Variation ids this layout was designed to look good with. Not enforced — every Frame Variation remains selectable with every Layout. |
 | `defaultHolderMode` | Optional | Authoring guidance only: `"fit"` \| `"fill"` \| `"original"`. Documents the layout's intended Holder mode; does not currently auto-apply it (Holder mode is chosen independently per picture). |
@@ -357,7 +361,7 @@ same active Layer Pack.
 
 | Field | Required? | Meaning |
 |---|---|---|
-| `id` | **Required** | Kebab-case, unique across the *entire compiled pack* (not just one file — see §11). |
+| `id` | **Required** | Kebab-case, unique across the *entire compiled pack* (not just one file — see §12). |
 | `type` | **Required** | `"text"` \| `"sticker"` \| `"decoration"`. |
 | `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` — one of the four frozen containership scopes. A Layer never targets more than one scope. |
 | `anchor` | Optional, default `"bottom-center"` | One of the nine standard anchor points (`top`/`bottom`/`middle` × `left`/`center`/`right`, e.g. `"top-left"`), resolved relative to whatever rect the target scope hands it. |
@@ -380,7 +384,73 @@ UI) without rendering by default.
 
 ---
 
-## 8. Asset Specification (`assets/`)
+## 8. Representation Specification (`representations/*.json`)
+
+**Sprint:** TB-4.7 — Theme Driven Representations.
+
+A Representation is a complete, named page style — what a child actually
+picks in Studio's Creation Flow Step 3 ("Choose a Page Style") and in the
+Context Panel's "Change Representation." Studio itself knows nothing about
+any specific Representation (not "Showcase," not "Portrait," not any future
+theme's own names) — it only knows how to render whatever this array
+contains. See `js/creationFlow.js` and `js/contextPanel.js`.
+
+```json
+{
+  "id": "showcase",
+  "name": "Showcase",
+  "description": "Big and bold — the classic gallery look.",
+  "thumbnail": "🖼️",
+  "supportedCreationTypes": ["artwork"],
+  "layout": "landscape",
+  "defaultFrame": "classic-white-mat",
+  "defaultLayerPack": null,
+  "background": null,
+  "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+}
+```
+
+| Field | Required? | Meaning |
+|---|---|---|
+| `id` | **Required** | Kebab-case, unique within this theme (§10). |
+| `name` | **Required** | Display name shown on the Representation card and in "Change Representation." Studio never hardcodes this string. |
+| `description` | Optional | One line shown on the Representation card. |
+| `thumbnail` | Optional | A single emoji glyph (lightweight placeholder — no asset pipeline required), or a relative path / data URI to a real preview image. Studio treats anything matching an image extension or a `data:`/`http(s):` prefix as an image; anything else renders as text. |
+| `supportedCreationTypes` | Optional | Which of Studio's Creation Type ids (`js/creationFlow.js`'s hardcoded `CREATION_TYPES` — Creation Types themselves are not yet theme-authorable, see §14) this Representation applies under. Absent or empty means "every Creation Type this theme itself supports" (`manifest`/theme-level `supportedCreationTypes`, below). |
+| `layout` | **Required** | The id of one of this theme's own `layouts/*.json` entries (§5). Written to `slide.metadata.layout` when this Representation is chosen — the same field the Layout picker control has always written. |
+| `defaultFrame` | Optional | The id of one of this theme's own `frames/*.json` entries (§6). Authoring guidance for which Frame Variation a fresh page should suggest; not currently auto-applied to `slide.metadata.cardOverrides.artwork.frameVariation` (a child can always change it immediately via the Frame Variation control). |
+| `defaultLayerPack` | Reserved | Same reservation as `theme.json`'s own `defaultLayerPack` (§4) — this runtime compiles one flat Layer Pack per theme, not several selectable ones. Not read today. |
+| `background` | Reserved | Placeholder for a future default Slide-level background override. Not read today — Museum Gallery's wall colour already comes from the chosen Frame Variation's `wallTone` (§6), not this field. |
+| `actions` | Optional | Which editing-action ids the Context Panel's "Nothing Selected" default view surfaces for a page created from this Representation. Today Studio recognizes exactly two: `"editCaption"` (Title/Artist/Age/Date fields) and `"editQuote"` (Quote/Attribution fields) — see `js/contextPanel.js`'s `_appendCaptionOrQuote`. Replace/Crop/Rotate/Fit/Fill/Original are universal (always shown when an Artwork Holder exists) and not gated by this list. An unrecognized action id is inert, not an error — Studio only ever renders the ids it already knows. |
+
+**Theme-level Creation Type compatibility.** Separately from any one
+Representation's `supportedCreationTypes`, the *theme itself* declares
+which Creation Types it's offered under in Step 2 ("Pick a look for
+your…") via a flat `supportedCreationTypes` array directly on the
+compiled `theme` object (sibling to `layouts`/`frameVariations` — not
+inside `theme.json`'s own reserved fields, and not part of this folder):
+
+```json
+"supportedCreationTypes": ["artwork"]
+```
+
+A theme with no `supportedCreationTypes` at all never appears under any
+Creation Type — Studio does not guess. This field is currently only
+authored directly on the in-code Official Theme entries in
+`js/themeRegistry.js` (see §14); the Theme Project author-time home for it
+(likely a `manifest.json`/`theme.json` field) is not yet finalized — do
+not invent one ahead of that decision.
+
+**Responsibilities.** A Representation composes — it never invents. It
+points at one existing Layout and (optionally) one existing Frame
+Variation; it never defines new geometry, colour, or Layer content of its
+own. If a Representation needs a page style no existing Layout/Frame
+combination provides, author the missing Layout or Frame first (§5, §6),
+then reference it here.
+
+---
+
+## 9. Asset Specification (`assets/`)
 
 ```
 assets/
@@ -420,7 +490,7 @@ canvas scale.
 
 ---
 
-## 9. Naming Convention
+## 10. Naming Convention
 
 Every id, folder name, JSON filename, and asset filename in a Theme
 Project follows one rule:
@@ -454,15 +524,17 @@ GalleryWall          (camelCase)
 museum-shadow-v2      (version baked into the id — bump manifest.version instead)
 ```
 
-Filenames inside `layouts/`, `frames/`, and `layer-packs/` should match
-the `id` they define wherever one file holds exactly one entry (e.g.
-`frames/gold-accent.json`). A file holding an array of entries may use a
-plural, descriptive name instead (e.g. `frames/all-variations.json`) —
-both forms are valid; see §11.
+Filenames inside `layouts/`, `frames/`, `layer-packs/`, and
+`representations/` should match the `id` they define wherever one file
+holds exactly one entry (e.g. `frames/gold-accent.json`,
+`representations/showcase.json`). A file holding an array of entries may
+use a plural, descriptive name instead (e.g. `frames/all-variations.json`,
+`representations/all-representations.json`) — both forms are valid; see
+§12.
 
 ---
 
-## 10. Relationships
+## 11. Relationships
 
 The ownership hierarchy is a strict tree; the Layer System is
 deliberately **not** part of it — an orthogonal system that decorates
@@ -485,16 +557,24 @@ Holder
 
 Layer (independent — targets, does not own or get owned by, any of the above)
  └── targets → Slide | Frame | Holder | Element
+
+Representation (independent — a Studio-facing label, not a containership node)
+ └── references → one Layout                 (initializes slide.metadata.layout)
+ └── references → one Frame (optional)        (defaultFrame — a suggestion, not enforced)
 ```
 
 This must remain consistent with the frozen containership model
 (`CLAUDE.md`'s Theme → Slide → Frame → Holder → Element canon). A Theme
 Project never introduces a fifth scope, a parallel hierarchy, or a Layer
-that targets more than one scope at once.
+that targets more than one scope at once. A Representation is not a fifth
+scope either — it is Studio's own picker concept (Creation Flow Step 3 /
+"Change Representation"), composed entirely from references to Layouts
+and Frames that already exist; it owns no geometry, colour, or content of
+its own.
 
 ---
 
-## 11. Validation Rules
+## 12. Validation Rules
 
 A Theme Project is **valid** only if every rule below passes. These are
 the rules a validator (today's `tools/theme-builder/js/validator.js`, or
@@ -506,6 +586,9 @@ its successor) must enforce before a build is allowed to proceed.
 - Required folders exist and contain at least one `.json` file:
   `layouts/`, `frames/`, `layer-packs/` (a Layer Pack folder may
   compile to an empty array, but the folder itself must exist).
+- `representations/` is optional — a theme with none of its own simply
+  compiles without a `theme.representations` array (§8), exactly like a
+  theme authored before this section of the spec existed.
 - `preview.png` / `thumbnail.png` / `README.md` missing → warning, not
   an error.
 
@@ -530,12 +613,14 @@ its successor) must enforce before a build is allowed to proceed.
   Theme (`manifest.type: "artwork"`) requires nothing beyond `id`/`name`.
 
 **ID rules**
-- Every id (`manifest.id`, `theme.id`, every Layout/Frame/Layer id)
-  matches the naming convention (§9).
-- **Duplicate IDs are an error**, checked at three scopes independently:
+- Every id (`manifest.id`, `theme.id`, every Layout/Frame/Layer/
+  Representation id) matches the naming convention (§10).
+- **Duplicate IDs are an error**, checked at four scopes independently:
   no two Layouts share an id, no two Frame Variations share an id, no
   two Layers across the *entire compiled* Layer Pack share an id (even
-  if they came from different files under `layer-packs/`).
+  if they came from different files under `layer-packs/`), and no two
+  Representations across the entire compiled `representations/` folder
+  share an id.
 
 **Version rules**
 - `manifest.version` and `manifest.builderVersion` are valid semantic
@@ -546,23 +631,27 @@ its successor) must enforce before a build is allowed to proceed.
 **Reference rules**
 - Every `supportedFrames` entry in a Layout names a Frame id that
   actually exists in this project.
-- Every asset path referenced from a `layouts/`, `frames/`, or
-  `layer-packs/` JSON file resolves to a real file under `assets/`.
+- Every asset path referenced from a `layouts/`, `frames/`,
+  `layer-packs/`, or `representations/` JSON file resolves to a real
+  file under `assets/`.
 - Every Layer's `target` is one of the four allowed values; every
   Layer's `type` is one of the three allowed values.
+- Every Representation's `layout` names a Layout id that actually
+  exists in this project; every Representation's `defaultFrame`, if set,
+  names a Frame id that actually exists in this project.
 
 **Missing assets**
 - `metadata.previewImage` / `manifest.thumbnail`, if set, name a file
   that exists in the project (either at the project root or under
   `assets/`).
 
-See §13 for which of these today's Theme Builder validator already
+See §14 for which of these today's Theme Builder validator already
 implements versus which are newly specified here for a future
 validator pass to close.
 
 ---
 
-## 12. Reserved Future Sections
+## 13. Reserved Future Sections
 
 The following are named and reserved so a future sprint can add them
 without a breaking migration — **none of them are implemented today**,
@@ -576,6 +665,7 @@ and no Theme Project should rely on them doing anything yet.
 | **Accessibility** | A future `accessibility.json`, or fields on `metadata.json` | Alt text for stickers/decorations, contrast requirements, reduced-motion opt-outs. |
 | **Localization** | A future `locales/` folder | Per-language `displayName`/`description`/Layer `text.content` overrides. |
 | **Responsive Layouts** | An extension to `layouts/*.json`'s schema | Layout variants for non-1080×1350 export targets (the canonical canvas size is otherwise fixed). |
+| **Creation Type authoring** | A future `manifest.json`/`theme.json` field, or a project-level `creation-types.json` | Studio's own `js/creationFlow.js` `CREATION_TYPES` list (Story / Artwork Showcase / Quote Design / Poems) is still hardcoded (TB-4.7 — Theme Driven Representations only made theme↔type *compatibility* data-driven, via `theme.supportedCreationTypes`; the Creation Type catalog itself is not yet theme-authorable). |
 
 A Theme Project author should not invent their own version of any of
 these ahead of time — wait for the sprint that defines the real shape,
@@ -583,7 +673,7 @@ so every Official Theme adopts the same one.
 
 ---
 
-## 13. Known Reconciliation Items — Resolved (TB-4.6)
+## 14. Known Reconciliation Items — Resolved (TB-4.6)
 
 TB-4.5 (this spec's own sprint) found three gaps between Theme Builder and
 the live VihuStudio runtime and deliberately left them unfixed —
@@ -608,7 +698,7 @@ three.** Recorded here for history, not as an open punch list:
 3. **Duplicate-ID and reference validation — resolved.** `tools/theme-
    builder/js/validator.js`'s `validateReferences()` now performs real
    checks: duplicate ids within Layouts / Frame Variations / the entire
-   compiled Layer Pack (three independent scopes, per §11), broken
+   compiled Layer Pack (three independent scopes, per §12), broken
    `supportedFrames` references, invalid Layer `type`/`target` values, and
    missing asset-path references. A project with any of these fails
    validation and cannot be built.
@@ -617,3 +707,19 @@ A compiled `.vtheme` produced by today's Theme Builder now imports into
 VihuStudio without manual editing, compatibility shims, or a conversion
 step — the Freeze Criteria a future "Museum Gallery Official Theme 001"
 sprint depends on.
+
+---
+
+### TB-4.7 — Theme Driven Representations
+
+Added §8 (Representation Specification) and the `representations/` folder
+throughout this spec. This is new schema, not a reconciliation of a
+previously-flagged gap — recorded here to keep one running history rather
+than starting a second document. Studio's Creation Flow / Context Panel
+(`js/creationFlow.js`, `js/contextPanel.js`) no longer hardcode any
+theme's Representations; Museum Gallery's own Showcase/Portrait/Quote now
+live entirely on `js/themeRegistry.js`'s theme object (`representations`
+array) and, for an imported package, in the compiled `theme.representations`
+this section defines. Museum Gallery is deliberately still the *only*
+theme with real Representations authored this sprint — the reference
+implementation, not a special case Studio depends on by name.

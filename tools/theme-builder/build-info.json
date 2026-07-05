@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0-TB",
-  "sprint": "TB-4.6",
-  "task": "Theme Builder Runtime Alignment",
-  "build": "0001",
+  "version": "1.2.0-TB",
+  "sprint": "TB-4.7",
+  "task": "Theme Driven Representations",
+  "build": "0002",
   "buildDate": "2026-07-05",
-  "commit": "6b66070",
+  "commit": "pending",
   "environment": "Release"
 }

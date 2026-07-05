@@ -44,8 +44,6 @@ const ContextPanel=(function(){
     'decoration':['decoration']
   };
 
-  const REP_LABELS={landscape:'Showcase',portrait:'Portrait',quote:'Quote'};
-
   let host=null;
   let rightSidebar=null;
   let panelRoot=null;
@@ -217,13 +215,42 @@ const ContextPanel=(function(){
     return m ? ('#'+m[0].replace('#','').toLowerCase()) : '#1D3457';
   }
 
-  function _repInfo(){
-    const artworkId=(typeof ThemeEngine!=='undefined' && ThemeEngine.getActiveArtworkThemeId) ? ThemeEngine.getActiveArtworkThemeId() : null;
+  // Sprint 10.1 — Theme Driven Representations. The active theme's own
+  // `representations` array is the only source of a Representation's
+  // name/actions — nothing here names Showcase/Portrait/Quote (or any
+  // other theme's Representation) directly.
+  function _activeRepresentations(){
+    if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined') return null;
+    const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+    if(artworkId){
+      const theme=ThemeRegistry.get(artworkId);
+      if(theme && Array.isArray(theme.representations) && theme.representations.length){
+        return {themeId:artworkId,reps:theme.representations};
+      }
+    }
+    const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
+    if(storyId){
+      const theme=ThemeRegistry.get(storyId);
+      if(theme && Array.isArray(theme.representations) && theme.representations.length){
+        return {themeId:storyId,reps:theme.representations};
+      }
+    }
+    return null;
+  }
+
+  function _currentRepresentation(){
+    const active=_activeRepresentations();
     const slide=_currentSlide();
     const layout=slide && slide.metadata && slide.metadata.layout;
-    if(artworkId && layout && REP_LABELS[layout]) return {name:REP_LABELS[layout],theme:artworkId,layout:layout};
-    if(artworkId) return {name:null,theme:artworkId,layout:layout||null};
-    return null;
+    if(!active || !layout) return null;
+    return active.reps.find(function(r){ return r.layout===layout; }) || null;
+  }
+
+  function _repInfo(){
+    const artworkId=(typeof ThemeEngine!=='undefined' && ThemeEngine.getActiveArtworkThemeId) ? ThemeEngine.getActiveArtworkThemeId() : null;
+    if(!artworkId) return null;
+    const rep=_currentRepresentation();
+    return {name:rep?rep.name:null,theme:artworkId};
   }
 
   function _appendRepresentationRow(container){
@@ -242,19 +269,27 @@ const ContextPanel=(function(){
     }
   }
 
+  // Sprint 10.1 — which field group to show comes from the current
+  // Representation's own declared `actions` (editQuote / editCaption),
+  // not a hardcoded layout id check. `editQuote`/`editCaption` are the
+  // two field-group ids Studio knows how to render (mirroring how Layer
+  // `type`/`target` are a small, known enum) — a Representation that
+  // declares neither (or none exist yet, e.g. a legacy artworkTheme
+  // never chosen through the Creation Flow) simply gets no field group,
+  // rather than Studio guessing.
   function _appendCaptionOrQuote(container){
-    const info=_repInfo();
-    if(!info) return;
+    const rep=_currentRepresentation();
+    if(!rep || !Array.isArray(rep.actions)) return;
     const slide=_currentSlide();
     if(!slide) return;
     if(!slide.metadata) slide.metadata={};
-    if(info.layout==='quote'){
+    if(rep.actions.indexOf('editQuote')!==-1){
       container.appendChild(_el('div','context-panel-heading','Your Quote'));
       [
         {key:'quoteText',label:'Quote',multiline:true,placeholder:'e.g. Every child is an artist…'},
         {key:'quoteAttribution',label:'Attribution',multiline:false,placeholder:'e.g. Pablo Picasso'}
       ].forEach(function(f){ _appendMetadataField(container,slide,f); });
-    }else{
+    }else if(rep.actions.indexOf('editCaption')!==-1){
       container.appendChild(_el('div','context-panel-heading','Caption'));
       [
         {key:'artworkTitle',label:'Title',placeholder:'e.g. The Big Tree'},

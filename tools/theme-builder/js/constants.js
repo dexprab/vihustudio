@@ -1,6 +1,6 @@
 // Theme Builder Constants
 
-const TB_VERSION = '1.1.0-TB';
+const TB_VERSION = '1.2.0-TB';
 const TB_NAME = 'Theme Builder';
 
 const PAGES = {
