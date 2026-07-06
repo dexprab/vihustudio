@@ -1,9 +1,9 @@
 {
-  "version": "1.9.0",
-  "sprint": "SB1.0",
-  "task": "World Builder Foundation - Product Reset",
-  "build": "0068",
+  "version": "1.10.0",
+  "sprint": "SB1.1",
+  "task": "World Builder Workspace Foundation",
+  "build": "0069",
   "buildDate": "2026-07-06",
-  "commit": "983efa3",
+  "commit": "0c20d4a",
   "environment": "Release"
 }
