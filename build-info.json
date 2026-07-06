@@ -1,9 +1,9 @@
 {
-  "version": "1.7.0",
-  "sprint": "S11.1",
-  "task": "Screen 2 - World Selection & Preview Experience",
-  "build": "0066",
+  "version": "1.8.0",
+  "sprint": "S11.2",
+  "task": "Official World Platform - Museum Gallery Reference",
+  "build": "0067",
   "buildDate": "2026-07-05",
-  "commit": "4d46849",
+  "commit": "01221d4",
   "environment": "Release"
 }
