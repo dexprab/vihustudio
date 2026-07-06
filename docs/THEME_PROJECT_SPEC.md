@@ -47,6 +47,17 @@ same path a third-party World creator follows — there is no privileged
 pipeline for a World merely because it ships with the product (see
 `docs/WORLD_ASSET_CONTRACT.md`'s Import Parity rule).
 
+**Naming note (Sprint B1.0):** "Theme Builder" below refers to the
+validate/compile engine this spec describes, not a specific product UI.
+That engine survives, untouched, as the internal Build services
+(`tools/world-builder/js/services/{projectLoader,validator,builder}.js`)
+behind the new **World Builder** application — see
+`docs/WORLD_BUILDER_ARCHITECTURE.md`. World Builder's own Screens 1–2
+(this sprint) don't yet expose Validate/Build in the UI; those services
+are reached today only by internal tooling
+(`tools/world-builder/verify/goldenBuild.js`) until a future Builder
+Workspace sprint wires them into the visual product.
+
 ---
 
 ## 1. Theme Project Structure
@@ -139,7 +150,7 @@ about how it looks.
 
 **Required means required everywhere.** Every field marked **Required**
 above is checked, under the identical name, by both Theme Builder's
-validator (`tools/theme-builder/js/validator.js`) and the runtime importer's
+validator (`tools/world-builder/js/services/validator.js`) and the runtime importer's
 `REQUIRED_MANIFEST_FIELDS` (`js/themeRegistry.js`) — see §14. A manifest
 that passes Theme Builder's validation is guaranteed to pass
 `ThemeRegistry.validatePackage()` too.
@@ -512,7 +523,7 @@ Project follows one rule:
 3–50 characters. No spaces, no underscores, no camelCase, no leading or
 trailing hyphens. This is not a style preference — it is the exact
 pattern Theme Builder's validator already enforces on every id
-(`tools/theme-builder/js/validator.js`'s `ids.pattern`).
+(`tools/world-builder/js/services/validator.js`'s `ids.pattern`).
 
 Good:
 
@@ -587,7 +598,7 @@ its own.
 ## 12. Validation Rules
 
 A Theme Project is **valid** only if every rule below passes. These are
-the rules a validator (today's `tools/theme-builder/js/validator.js`, or
+the rules a validator (today's `tools/world-builder/js/services/validator.js`, or
 its successor) must enforce before a build is allowed to proceed.
 
 **Structure**
@@ -692,11 +703,11 @@ three.** Recorded here for history, not as an open punch list:
 
 1. **Manifest field name mismatch — resolved.** `minStudioVersion` is now
    the one name used everywhere: this spec, `js/themeRegistry.js`'s
-   `REQUIRED_MANIFEST_FIELDS`, and `tools/theme-builder/js/validator.js`.
+   `REQUIRED_MANIFEST_FIELDS`, and `tools/world-builder/js/services/validator.js`.
    No alias, no fallback lookup.
 
-2. **Compiled package shape — resolved.** `tools/theme-builder/js/
-   builder.js`'s `generateVThemePackage()` now emits the canonical flat
+2. **Compiled package shape — resolved.** `tools/world-builder/js/
+   services/builder.js`'s `generateVThemePackage()` now emits the canonical flat
    `{ manifest, theme, assets }` shape directly — `theme.layouts`/
    `frameVariations`/`layerPack` are real flattened arrays (not `{file,
    data}` pairs), `assets` is a real `{relativePath: dataURI}` map, and

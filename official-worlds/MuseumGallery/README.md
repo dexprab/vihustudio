@@ -2,9 +2,18 @@
 
 Sprint 10.2 — the first Official Theme authored entirely as a Theme
 Project against `docs/THEME_PROJECT_SPEC.md`, with zero Museum-Gallery
-knowledge left anywhere in Studio's own code. Load this folder into
-Theme Builder (`tools/theme-builder/index.html`), Validate, then Build to
-produce `MuseumGallery.vtheme`.
+knowledge left anywhere in Studio's own code.
+
+Sprint B1.0 — the old Theme Builder dashboard (Load Project/Validate/
+Build buttons) is retired; its compile engine survives as internal
+Build services (`tools/world-builder/js/services/`) with no visual
+Build UI yet (a future Builder Workspace sprint adds one). Until then,
+recompiling this project into `MuseumGallery.vtheme` means driving
+those services directly — see `tools/world-builder/verify/goldenBuild.js`
+for the reference example (loads a Theme Project folder, calls
+`projectLoader.loadProjectFromFiles()` → `validator.validate()` →
+`builder.build()` against `tools/world-builder/services-harness.html`,
+no dashboard required).
 
 Sprint 11.2 — this folder moved from `theme-projects/MuseumGallery/` to
 its permanent home at `official-worlds/MuseumGallery/` (the repository

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Builder</title>
+    <link rel="stylesheet" href="css/world-builder.css">
+</head>
+<body>
+    <div id="wb-root">
+        <!-- Screen 1 — Welcome -->
+        <section id="wb-screen-welcome" class="wb-screen wb-screen-welcome">
+            <header class="wb-welcome-header">
+                <div class="wb-brand">
+                    <span class="wb-brand-mark">🌎</span>
+                    <span class="wb-brand-name">World Builder</span>
+                </div>
+                <p class="wb-brand-tagline">Make a World for VihuStudio — a Story or an Artwork Showcase any child can pick.</p>
+            </header>
+
+            <div class="wb-welcome-main">
+                <button id="wb-create-new" class="wb-cta-create" type="button">
+                    <span class="wb-cta-icon">➕</span>
+                    <span class="wb-cta-text">
+                        <span class="wb-cta-title">Create New World</span>
+                        <span class="wb-cta-sub">Start from a template — it's ready the moment you pick one.</span>
+                    </span>
+                </button>
+
+                <section class="wb-section wb-my-worlds">
+                    <h2 class="wb-section-title">My World Projects</h2>
+                    <div id="wb-my-worlds-list" class="wb-my-worlds-list">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                    <p id="wb-my-worlds-empty" class="wb-empty-note">You haven't started a World yet — Create New World to begin.</p>
+                </section>
+
+                <section class="wb-section wb-explore">
+                    <h2 class="wb-section-title">Explore Worlds</h2>
+                    <div class="wb-explore-row">
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🏛️</span>
+                            <span class="wb-explore-name">Official Worlds</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🌐</span>
+                            <span class="wb-explore-name">Community Worlds</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🧩</span>
+                            <span class="wb-explore-name">Templates</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <!-- Screen 2 — Choose a Template -->
+        <section id="wb-screen-templates" class="wb-screen wb-screen-templates wb-hidden">
+            <header class="wb-templates-header">
+                <button id="wb-back-to-welcome" class="wb-back-btn" type="button">← Back</button>
+                <h1 class="wb-templates-title">Choose a Template</h1>
+                <p class="wb-templates-sub">Pick the starting point closest to what you want to make. You can change everything later.</p>
+            </header>
+            <div id="wb-template-grid" class="wb-template-grid">
+                <!-- rendered by worldBuilderApp.js -->
+            </div>
+        </section>
+    </div>
+
+    <footer class="wb-footer">
+        <span id="buildInfoFooter">World Builder • Development</span>
+    </footer>
+
+    <!-- Internal services (reused, unmodified — see docs/WORLD_BUILDER_ARCHITECTURE.md) -->
+    <script src="js/services/constants.js"></script>
+    <script src="js/services/projectLoader.js"></script>
+    <script src="js/services/validator.js"></script>
+    <script src="js/services/builder.js"></script>
+
+    <!-- Builder application -->
+    <script src="js/templates.js"></script>
+    <script src="js/projectStore.js"></script>
+    <script src="js/worldBuilderApp.js"></script>
+    <script src="js/buildInfo.js"></script>
+</body>
+</html>

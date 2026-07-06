@@ -1,4 +1,4 @@
-// js/buildInfo.js — Theme Builder dev build indicator.
+// js/buildInfo.js — World Builder dev build indicator.
 //
 // Mirrors the root VihuStudio app's build-info.json + js/buildInfo.js
 // pattern (and vihuplanet's own copy): a small, live readout of which
@@ -8,6 +8,8 @@
 // shape as the root app's copy, targeting this tool's own footer.
 
 (function () {
+    var WB_NAME = 'World Builder';
+
     function setBuildFooterText(text) {
         try {
             var el = document.getElementById('buildInfoFooter');
@@ -16,7 +18,7 @@
         } catch (e) {}
     }
 
-    var fallback = TB_NAME + ' • Development';
+    var fallback = WB_NAME + ' • Development';
 
     function render(j) {
         try {
@@ -28,7 +30,7 @@
             var e = j.environment || '';
             var st = s && t ? (s + '-' + t) : '';
             var parts = [];
-            parts.push(v ? (TB_NAME + ' ' + v) : TB_NAME);
+            parts.push(v ? (WB_NAME + ' ' + v) : WB_NAME);
             if (st) parts.push(st);
             if (b) parts.push('Build ' + b);
             if (c) parts.push(c);

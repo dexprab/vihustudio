@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>World Builder — Services Harness</title></head>
+<body>
+<!--
+  Internal test harness only — never part of the user-facing product.
+
+  Sprint B1.0 retired the old Theme Compiler dashboard UI (Load/
+  Validate/Build buttons, project structure panel, validation report).
+  What's left — projectLoader.js / validator.js / builder.js — are pure,
+  UI-independent services (confirmed: zero dependency on the removed
+  dashboard state/event machinery). This page exists only so automated
+  tests (tools/world-builder/verify/goldenBuild.js) can load a Theme
+  Project folder and call those services directly, exactly the way a
+  future Builder Workspace screen eventually will.
+-->
+<input id="fileInput" type="file" webkitdirectory directory style="display:none">
+<script src="js/services/constants.js"></script>
+<script src="js/services/projectLoader.js"></script>
+<script src="js/services/validator.js"></script>
+<script src="js/services/builder.js"></script>
+</body>
+</html>

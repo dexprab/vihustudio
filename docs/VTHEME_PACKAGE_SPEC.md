@@ -6,6 +6,11 @@ VihuStudio imports — no other compiled shape is supported.
 **Scope:** The compiled runtime artifact only. For the pre-compile authoring
 folder, see `docs/THEME_PROJECT_SPEC.md` — these are two separate contracts.
 
+**Naming note (Sprint B1.0):** "Theme Builder" below is this compile
+engine, preserved as the internal Build services under
+`tools/world-builder/js/services/` behind the new **World Builder**
+application (`docs/WORLD_BUILDER_ARCHITECTURE.md`) — not a specific UI.
+
 ---
 
 ## Purpose
@@ -53,7 +58,7 @@ Exactly three top-level keys. No `version`/`format` envelope, no
 wrappers — anything not read by `ThemeRegistry.importPackage()` does not
 belong at the top level. (Theme Builder's own build report — timestamp,
 duration, package size — is a UI concern of the *build result*, not a field
-of the package itself; see `tools/theme-builder/js/builder.js`'s
+of the package itself; see `tools/world-builder/js/services/builder.js`'s
 `formatReport()`.)
 
 ---
@@ -168,7 +173,7 @@ merges every `layouts/*.json` entry (whether a file holds one object or an
 array) into `theme.layouts`, and likewise for `frames/` →
 `theme.frameVariations`, `layer-packs/` → `theme.layerPack`, and
 `representations/` → `theme.representations`
-(`tools/theme-builder/js/builder.js`'s `collectFolder()` / `buildTheme()`).
+(`tools/world-builder/js/services/builder.js`'s `collectFolder()` / `buildTheme()`).
 
 **`supportedCreationTypes`** (Sprint 10.1 — Theme Driven Representations) —
 a flat string array naming which of Studio's Creation Type ids
@@ -219,7 +224,7 @@ always present, even when empty.
 fields are merged onto `manifest` at compile time, additively — a field the
 manifest already set (e.g. `description` present in both `manifest.json` and
 `metadata.json`) is never overwritten by the metadata copy
-(`tools/theme-builder/js/builder.js`'s `buildManifest()`). This mirrors
+(`tools/world-builder/js/services/builder.js`'s `buildManifest()`). This mirrors
 exactly how `_buildPackageFromZipFiles()` folds a zipped package's
 `metadata.json` onto `pkg.manifest` at import time — the two package formats
 converge on one manifest shape either way.

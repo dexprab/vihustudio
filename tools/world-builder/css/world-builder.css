@@ -1,0 +1,339 @@
+/* css/world-builder.css — Sprint B1.0 Product Reset.
+   Visual language borrows the same warm/watercolor palette as
+   VihuStudio's own Creation Flow (docs/STUDIO_DESIGN_CANON.md) —
+   soft cream paper, rounded cards, gold used sparingly for the one
+   primary action per screen. No dashboard chrome anywhere. */
+
+:root {
+    --wb-navy: #1D3457;
+    --wb-gold: #FFCB45;
+    --wb-cream: #FBF3E7;
+    --wb-paper: #FFFDF8;
+    --wb-sand: #EFE3CF;
+    --wb-sage: #B9CBB4;
+    --wb-sky: #DCE9F2;
+    --wb-text: #33302A;
+    --wb-text-secondary: #756D5E;
+    --wb-border: #E4D8C3;
+    --wb-shadow: rgba(51, 40, 20, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: var(--wb-cream);
+    color: var(--wb-text);
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+}
+
+#wb-root {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+}
+
+.wb-hidden { display: none !important; }
+
+/* ---------- Screen 1 — Welcome ---------- */
+
+.wb-welcome-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.wb-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.wb-brand-mark { font-size: 40px; }
+
+.wb-brand-name {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-brand-tagline {
+    margin: 10px 0 0;
+    color: var(--wb-text-secondary);
+    font-size: 16px;
+}
+
+.wb-welcome-main {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.wb-cta-create {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    padding: 22px 28px;
+    background: linear-gradient(135deg, var(--wb-gold), #F5B93A);
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px var(--wb-shadow);
+    cursor: pointer;
+    text-align: left;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.wb-cta-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px var(--wb-shadow);
+}
+
+.wb-cta-icon {
+    font-size: 34px;
+    background: var(--wb-paper);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.wb-cta-text { display: flex; flex-direction: column; gap: 4px; }
+
+.wb-cta-title {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-cta-sub {
+    font-size: 14px;
+    color: #5B4A1E;
+}
+
+.wb-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0 0 16px;
+}
+
+.wb-my-worlds-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.wb-project-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px var(--wb-shadow);
+    cursor: default;
+}
+
+.wb-project-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wb-project-icon {
+    font-size: 26px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-sky);
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.wb-project-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-project-tagline {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    margin: 0;
+}
+
+.wb-project-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.wb-project-status {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #7A6A2E;
+    background: var(--wb-sand);
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.wb-project-updated {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-empty-note {
+    color: var(--wb-text-secondary);
+    font-size: 14px;
+    font-style: italic;
+    margin: 0;
+}
+
+.wb-explore-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.wb-explore-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 24px 16px;
+    background: var(--wb-paper);
+    border: 1px dashed var(--wb-border);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.wb-explore-icon { font-size: 30px; }
+
+.wb-explore-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-explore-note {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+}
+
+/* ---------- Screen 2 — Choose a Template ---------- */
+
+.wb-templates-header {
+    text-align: center;
+    margin-bottom: 32px;
+    position: relative;
+}
+
+.wb-back-btn {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    background: none;
+    border: none;
+    color: var(--wb-navy);
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 6px 10px;
+}
+
+.wb-back-btn:hover { text-decoration: underline; }
+
+.wb-templates-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0 0 8px;
+}
+
+.wb-templates-sub {
+    color: var(--wb-text-secondary);
+    font-size: 15px;
+    margin: 0;
+}
+
+.wb-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.wb-template-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 28px 20px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 20px;
+    box-shadow: 0 4px 12px var(--wb-shadow);
+    cursor: pointer;
+    text-align: center;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.wb-template-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px var(--wb-shadow);
+    border-color: var(--wb-gold);
+}
+
+.wb-template-card:disabled,
+.wb-template-card.wb-busy {
+    opacity: .6;
+    cursor: default;
+    transform: none;
+}
+
+.wb-template-icon {
+    font-size: 44px;
+    width: 76px;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-sand);
+    border-radius: 50%;
+}
+
+.wb-template-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+/* ---------- Footer ---------- */
+
+.wb-footer {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    opacity: .7;
+    z-index: 5;
+}
+
+@media (max-width: 600px) {
+    #wb-root { padding: 32px 16px 96px; }
+    .wb-cta-create { flex-direction: column; text-align: center; }
+    .wb-templates-header { text-align: center; }
+    .wb-back-btn { position: static; display: inline-block; margin-bottom: 8px; }
+}

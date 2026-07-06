@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Golden Build Verification (TB-4.6 Task 4)
+// Golden Build Verification (TB-4.6 Task 4; re-pointed at the internal
+// Build services by Sprint B1.0 — see note below)
 //
-// Drives the REAL Theme Builder tool and the REAL VihuStudio runtime in a
-// headless browser — no reimplementation, no mocked import path. Proves:
+// Drives the REAL Build services (projectLoader/validator/builder) and
+// the REAL VihuStudio runtime in a headless browser — no
+// reimplementation, no mocked import path. Proves:
 //
 //   Theme Project -> Validate -> Compile -> Import -> Register -> Render
 //
@@ -14,7 +16,14 @@
 // sprint; see docs/THEME_PROJECT_SPEC.md's Reserved Future Sections for
 // where a screenshot-diff harness would eventually live).
 //
-// Usage: node tools/theme-builder/verify/goldenBuild.js
+// Sprint B1.0 — the old Theme Compiler dashboard (Load/Validate/Build
+// buttons this test used to click) is retired; projectLoader.js/
+// validator.js/builder.js survive as plain, UI-independent services
+// under js/services/. This test now drives them directly via
+// services-harness.html instead of clicking dashboard buttons — the
+// same proof, no longer coupled to UI markup that no longer exists.
+//
+// Usage: node tools/world-builder/verify/goldenBuild.js
 
 const fs = require('fs');
 const path = require('path');
@@ -61,28 +70,27 @@ function assert(condition, message) {
 
 async function loadAndBuild(page, fixtureDir) {
     await page.goto('about:blank');
-    await page.goto(`${page.__baseURL}/tools/theme-builder/index.html`);
-    await page.waitForSelector('#actionLoad');
+    await page.goto(`${page.__baseURL}/tools/world-builder/services-harness.html`);
+    await page.waitForFunction(() => typeof projectLoader !== 'undefined' && typeof validator !== 'undefined' && typeof builder !== 'undefined');
 
     const input = await page.$('#fileInput');
     await input.setInputFiles(fixtureDir);
-    await page.waitForSelector('.dashboard-grid', { timeout: 5000 });
+    await page.evaluate(() => projectLoader.loadProjectFromFiles(document.getElementById('fileInput').files));
 
-    await page.click('#actionValidate');
-    await page.waitForSelector('.validation-report', { timeout: 5000 });
-    const validationStatus = await page.$eval('#footerValidation', el => el.textContent.trim());
-    const errors = await page.$$eval('.report-section.errors li', els => els.map(e => e.textContent));
-    const warnings = await page.$$eval('.report-section.warnings li', els => els.map(e => e.textContent));
+    const validation = await page.evaluate(() => validator.validate());
+    const validationStatus = validation.isValid ? 'VALID' : 'INVALID';
+    const errors = validation.errors || [];
+    const warnings = validation.warnings || [];
 
-    let downloadPromise = null;
     let built = null;
     if (validationStatus === 'VALID') {
-        downloadPromise = page.waitForEvent('download');
-        await page.click('#actionBuild');
-        const download = await downloadPromise;
-        const tmpPath = await download.path();
-        const text = fs.readFileSync(tmpPath, 'utf8');
-        built = JSON.parse(text);
+        const buildOutcome = await page.evaluate(async () => {
+            const result = await builder.build();
+            if (!result.success || !result.packageFile) return { success: false };
+            const text = await result.packageFile.blob.text();
+            return { success: true, text };
+        });
+        if (buildOutcome.success) built = JSON.parse(buildOutcome.text);
     }
 
     return { validationStatus, errors, warnings, built };
