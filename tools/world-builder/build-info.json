@@ -1,9 +1,9 @@
 {
-  "version": "1.2.0-TB",
-  "sprint": "TB-4.7",
-  "task": "Theme Driven Representations",
-  "build": "0002",
-  "buildDate": "2026-07-05",
-  "commit": "b44ac86",
+  "version": "1.0.0-WB",
+  "sprint": "B1.0",
+  "task": "World Builder Foundation - Product Reset",
+  "build": "0001",
+  "buildDate": "2026-07-06",
+  "commit": "983efa3",
   "environment": "Release"
 }
