@@ -326,11 +326,13 @@ const ThemeRegistry=(function(){
   // Sprint 10.2 — Museum Gallery, the reference implementation for
   // Presentation Presets / Frame Variations / the Layer System /
   // Representations, is no longer registered here. It now exists
-  // entirely as a Theme Project (theme-projects/MuseumGallery/),
-  // compiled by Theme Builder into themes/MuseumGallery.vtheme, and
-  // reaches Studio only through the ordinary Import Theme flow — the
-  // same path any imported theme uses. Nothing in this file (or
-  // anywhere else in Studio) references it by name any more.
+  // entirely as a Theme Project (official-worlds/MuseumGallery/ —
+  // Sprint 11.2 moved it here from theme-projects/, the permanent home
+  // for every Official World's source), compiled by Theme Builder into
+  // themes/MuseumGallery.vtheme, and reaches Studio only through the
+  // ordinary Import Theme flow — the same path any imported theme uses,
+  // official or third-party. Nothing in this file (or anywhere else in
+  // Studio) references it by name any more.
   const OFFICIAL_ARTWORK_THEMES=[
     {
       id:'sketchbook',

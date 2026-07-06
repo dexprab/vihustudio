@@ -1,9 +1,13 @@
 // creationFlow.js — Sprint 10.0 Creation Experience V1, made data-driven by
 // Sprint 10.1 (Theme Driven Representations), given the "Story Meadow"
 // arrival experience and master/detail Screen 2 by Sprint 11.0 (Studio
-// Arrival Experience), and given a swipeable layout-carousel Preview by
-// Sprint 11.1 (World Selection & Preview Experience). Canonical product
-// documents:
+// Arrival Experience), given a swipeable layout-carousel Preview by
+// Sprint 11.1 (World Selection & Preview Experience), and made strictly
+// package-driven by Sprint 11.2 (Official World Platform — Museum
+// Gallery is the reference implementation; there are no privileged code
+// paths, no hardcoded Worlds/layouts/representations, and no synthetic
+// fallback data of any kind — see docs/WORLD_ASSET_CONTRACT.md). Canonical
+// product documents:
 //   docs/STUDIO_DESIGN_CANON.md
 //   docs/STUDIO_CREATION_JOURNEY_V1.md
 //   docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md
@@ -26,10 +30,10 @@
 // separate click-to-select grid, no checkmarks, no "Begin With" step,
 // and no other selection state — Start Creating always acts on
 // whichever layout is currently visible in the Preview.
-// Only once "Start Creating" is pressed (or the chosen World has no
-// Representations, in which case the Preview shows one slide for the
-// World's own single layout) does Studio create the first page and
-// reveal the editor.
+// Only once "Start Creating" is pressed does Studio create the first
+// page and reveal the editor. A World with no Representations (a
+// pre-existing, legacy gap — never fabricated by Studio) shows no
+// carousel at all; Start Creating still works, with no layout override.
 //
 // Sprint 10.1 — Studio knows nothing about Museum Gallery, Storybook
 // Classic, or any other theme by name. Creation Types themselves stay a
@@ -428,9 +432,19 @@ const CreationFlow=(function(){
     // wrapper around theme.layouts; see docs/THEME_PROJECT_SPEC.md §8).
     // Whichever slide is currently scrolled into view is the current
     // selection — no click-to-select grid, no checkmarks, no separate
-    // "Begin With" step. A World with no Representations still shows
-    // one slide (its own identity), so the carousel is always the one
-    // and only place a layout is chosen, for every World.
+    // "Begin With" step.
+    //
+    // Sprint 11.2 (Official World Platform) — the carousel renders ONLY
+    // what the selected World's package declares. No synthetic
+    // representation is fabricated for a World with none: the World
+    // Contract requires every Official World to declare at least one
+    // (see docs/WORLD_ASSET_CONTRACT.md), and Studio never compensates
+    // for an incomplete package by inventing data it never shipped. A
+    // World with zero Representations (a pre-existing, legacy gap —
+    // Storybook Classic has never had any) simply shows no carousel and
+    // an honest message; Start Creating still works, creating the page
+    // with no layout override, exactly as it always has for a theme
+    // with nothing to override.
     function paintPreview(){
       preview.innerHTML='';
       const theme=selectable.find(function(t){ return t.id===_selectedThemeId; });
@@ -441,9 +455,18 @@ const CreationFlow=(function(){
       const pv=_themePreview(theme);
       preview.appendChild(_el('div','creation-flow-preview-heading',pv.icon+' '+theme.name));
 
-      let reps=_representationsForTheme(theme.id,type.id);
+      const reps=_representationsForTheme(theme.id,type.id);
+
+      const footer=_el('div','creation-flow-footer');
+      const startBtn=_el('button','creation-flow-start-btn','Start Creating  →');
+      startBtn.type='button';
+      footer.appendChild(startBtn);
+
       if(!reps.length){
-        reps=[{id:null,name:theme.name,description:theme.description||'',thumbnail:null,layout:null,__isDefault:true}];
+        preview.appendChild(_el('p','creation-flow-preview-empty','This world has no page styles to preview yet.'));
+        preview.appendChild(footer);
+        startBtn.addEventListener('click',function(){ _finish(type,theme,null); });
+        return;
       }
 
       const carouselWrap=_el('div','creation-flow-carousel-wrap');
@@ -465,11 +488,6 @@ const CreationFlow=(function(){
         return d;
       });
       if(reps.length>1) preview.appendChild(dots);
-
-      const footer=_el('div','creation-flow-footer');
-      const startBtn=_el('button','creation-flow-start-btn','Start Creating  →');
-      startBtn.type='button';
-      footer.appendChild(startBtn);
       preview.appendChild(footer);
 
       let currentIndex=0;
@@ -497,8 +515,7 @@ const CreationFlow=(function(){
       }
 
       startBtn.addEventListener('click',function(){
-        const rep=reps[currentIndex];
-        _finish(type,theme,(rep && !rep.__isDefault) ? rep : null);
+        _finish(type,theme,reps[currentIndex]);
       });
     }
 

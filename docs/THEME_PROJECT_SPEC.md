@@ -38,6 +38,15 @@ those gaps — TB-4.5 is documentation only — it names them so the team
 that closes them (and the person authoring Museum Gallery next) isn't
 surprised.
 
+**Repository convention (Sprint 11.2):** every Official Theme's Theme
+Project source lives under `official-worlds/<WorldName>/` at the
+repository root — e.g. `official-worlds/MuseumGallery/`. This is source
+only; it is never consumed directly by Studio. Compiling it through
+Theme Builder is the one and only path to a usable package, exactly the
+same path a third-party World creator follows — there is no privileged
+pipeline for a World merely because it ships with the product (see
+`docs/WORLD_ASSET_CONTRACT.md`'s Import Parity rule).
+
 ---
 
 ## 1. Theme Project Structure
@@ -232,7 +241,7 @@ runtime.theme = {
 ```
 
 This is the exact shape `ThemeRegistry.get(id)` / `ThemeEngine` expect —
-see `theme-projects/MuseumGallery/` (Sprint 10.2 — Official Theme 001)
+see `official-worlds/MuseumGallery/` (Sprint 10.2 — Official Theme 001)
 for a complete, real reference Theme Project, and `themes/
 MuseumGallery.vtheme` for what it compiles to.
 
@@ -731,7 +740,7 @@ implementation, not a special case Studio depends on by name.
 
 Museum Gallery moved out of `js/themeRegistry.js`'s `OFFICIAL_ARTWORK_THEMES`
 array entirely and now exists only as a Theme Project —
-`theme-projects/MuseumGallery/`, the first complete, real-world example of
+`official-worlds/MuseumGallery/`, the first complete, real-world example of
 every section of this spec (3 Layouts, 7 Frame Variations, 1 Layer Pack,
 3 Representations). It reaches Studio exactly the way any imported theme
 does: Theme Builder compiles it to `themes/MuseumGallery.vtheme`, and a
@@ -739,7 +748,7 @@ child (or, today, a developer) imports that file through the ordinary
 Import Theme flow — `source: 'imported'`, not `'official'`. Studio's
 Creation Flow and Context Panel needed no changes to keep working, because
 Sprint 10.1 already made both fully data-driven; this sprint is proof of
-that, not a new mechanism. `theme-projects/MuseumGallery/README.md`
+that, not a new mechanism. `official-worlds/MuseumGallery/README.md`
 documents why the folder trims to exactly 3 Layouts (Wide/Square/Full
 Bleed, present in the pre-10.2 in-code version, were never reachable
 through the Context Panel and so were not re-authored) and why it has no

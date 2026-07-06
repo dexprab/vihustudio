@@ -39,9 +39,9 @@ MuseumGallery.vtheme
 
 | File | What it is | Ownership |
 |---|---|---|
-| `hero.webp` | The large image shown in Screen 2's Selected World Preview (`.creation-flow-preview-hero`) | This World only |
+| `hero.webp` | A large identity image for this World. Not currently rendered anywhere — Screen 2's Preview dropped its hero-image block in Sprint 11.1's carousel redesign in favour of a compact icon+name heading — but reserved for a future surface (e.g. a World detail view) rather than repurposed for something else in the meantime | This World only |
 | `thumbnail.webp` | The small image shown on the World's own card in the Vihu Worlds / World Library row (`.creation-flow-world-thumb`) | This World only |
-| `showcase.webp` / `portrait.webp` / `quote.webp` | One preview image per Representation this World offers, named to match the Representation's own id | This World only |
+| `showcase.webp` / `portrait.webp` / `quote.webp` | One preview image per Representation this World offers, named to match the Representation's own id, rendered as each Preview carousel slide's artwork (`.creation-flow-carousel-art`, Sprint 11.1/11.2) | This World only |
 
 Naming convention: one file per role, named for what it is
 (`hero`, `thumbnail`) or for the Representation id it previews
@@ -98,8 +98,55 @@ undocumented.
 
 ---
 
+## Import Parity (permanent platform rule)
+
+> An Official World is considered complete only when its compiled
+> `.vtheme` package can be imported into a clean installation of
+> VihuStudio and provides exactly the same creation experience as when
+> shipped with the product.
+
+Importability is part of the World Contract, not a separate concern
+checked after the fact. There is no distinction between an "Official
+World" and an "Imported World" at runtime — the package is the product.
+Studio never knows or cares how a `.vtheme` file arrived; it consumes
+the package the same way regardless of whether it shipped inside the
+repository or was emailed to a developer and added via **Add New
+World**.
+
+This rule is enforced by construction, not by a separate compliance
+step: every Official World's source lives in `official-worlds/` (see
+`docs/THEME_PROJECT_SPEC.md` §0), is compiled through the same Theme
+Builder every third-party World uses, and reaches Studio through the
+same import path every third-party World uses (`docs/THEME_PROJECT_SPEC.md`'s
+lifecycle: Theme Project → Validate → Compile → `.vtheme` → Import →
+Creation Flow → Preview → Workspace → Publish). Studio contains no
+World-specific code path of any kind — no `if (world.id === "...")`,
+no hardcoded layouts, no hardcoded representations, and no synthetic
+data fabricated to paper over a World that doesn't declare something it
+needs (see the Preview carousel rule below). Museum Gallery is the
+reference implementation this rule was written against — the first
+World to be authored, compiled, and validated entirely through this
+lifecycle with zero exceptions.
+
+**The Preview carousel renders only what the package declares.** If a
+World's compiled `theme.representations` has 3 entries, the Preview
+shows 3 slides; if it has 5, it shows 5. If it has 0, that World simply
+shows no carousel — Studio does not fabricate a placeholder
+representation to make the screen feel complete. A World with 0
+Representations has not satisfied the World Contract; the honest gap is
+a signal to the World's author, not something for Studio to paper over.
+
+---
+
 ## Change History
 
+- v1.1 — Added the permanent Import Parity rule (Sprint 11.2 — Official
+  World Platform): an Official World is complete only when its compiled
+  package, imported into a clean install, provides exactly the same
+  experience as when shipped with the product. Corrected the `hero.webp`
+  row now that Screen 2's Preview no longer renders a hero image
+  (Sprint 11.1), and pointed `showcase`/`portrait`/`quote.webp` at the
+  Preview carousel slides that actually render them today.
 - v1.0 — Initial canonical document, written for the Foundation —
   Product Asset System sprint. Reserves the `assets/{hero,thumbnail,
   <representation-id>}.webp` convention and reconciles it against the

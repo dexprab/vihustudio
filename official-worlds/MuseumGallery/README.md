@@ -6,6 +6,17 @@ knowledge left anywhere in Studio's own code. Load this folder into
 Theme Builder (`tools/theme-builder/index.html`), Validate, then Build to
 produce `MuseumGallery.vtheme`.
 
+Sprint 11.2 — this folder moved from `theme-projects/MuseumGallery/` to
+its permanent home at `official-worlds/MuseumGallery/` (the repository
+convention for every Official World's source, per
+`docs/THEME_PROJECT_SPEC.md` §0), and Museum Gallery became the
+reference implementation for the Official World Platform: it follows
+the exact same Theme Project → Validate → Compile → `.vtheme` → Import
+lifecycle as any third-party World, with no privileged pipeline, no
+hardcoding, and no synthetic fallback data anywhere in Studio. See
+`docs/WORLD_ASSET_CONTRACT.md`'s Import Parity rule — the standing bar
+every Official World, including this one, must clear.
+
 ## What's here
 
 - **3 Layouts** (`layouts/`) — Landscape, Portrait, Quote. (Wide/Square/
@@ -39,7 +50,14 @@ Nothing this theme renders is a raster asset — every Frame field
 (`background`/`frame`/`paper`/`shadow`) is an enum resolved to a drawn
 canvas routine, not a loaded image. `preview.png`/`thumbnail.png` at the
 project root are the only images this theme actually needs, and they're
-already here.
+already here. An `assets/` folder is optional per
+`docs/THEME_PROJECT_SPEC.md` §9 — required only when a theme actually
+references raster files from its JSON, which this one doesn't.
+
+Each Representation's `thumbnail` field (§8) is a single emoji glyph —
+🖼️ / 🧍 / 💬 — which `docs/THEME_PROJECT_SPEC.md` §8 documents as a
+fully valid, lightweight form of "preview artwork for every
+representation," not a placeholder standing in for a missing image.
 
 ## Continuity
 
