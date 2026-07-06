@@ -78,6 +78,30 @@ const ProjectStore = (function () {
     return project;
   }
 
-  return { list: list, get: get, create: create, save: save };
+  // Sprint B2.0.1 — Duplicate/Delete, the header overflow menu's two
+  // real actions. A duplicate is a deep copy with its own new id/
+  // timestamps, "(Copy)" appended to its name so it's never confused
+  // with the original in "My World Projects".
+  function duplicate(project) {
+    const now = new Date().toISOString();
+    const copy = JSON.parse(JSON.stringify(project));
+    copy.id = _newId();
+    copy.name = project.name + ' (Copy)';
+    copy.status = 'draft';
+    copy.createdAt = now;
+    copy.updatedAt = now;
+    delete copy.lastBuild;
+    const projects = _readAll();
+    projects.push(copy);
+    _writeAll(projects);
+    return copy;
+  }
+
+  function remove(id) {
+    const projects = _readAll().filter(function (p) { return p.id !== id; });
+    _writeAll(projects);
+  }
+
+  return { list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove };
 })();
 try { window.ProjectStore = ProjectStore; } catch (e) {}

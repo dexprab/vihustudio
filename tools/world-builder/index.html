@@ -79,10 +79,16 @@
                     <span class="wb-workspace-saved">● <span id="wb-workspace-saved-text">Draft Saved</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
-                    <button class="wb-workspace-btn" type="button" title="Coming in the next sprint">Preview</button>
-                    <button class="wb-workspace-btn" type="button" title="Coming in the next sprint">Settings</button>
-                    <button class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Coming in the next sprint">💾 Save</button>
-                    <button class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="Coming in the next sprint">⋮</button>
+                    <button id="wb-btn-preview" class="wb-workspace-btn" type="button" title="Preview this World using VihuStudio's real renderer">Preview</button>
+                    <button id="wb-btn-settings" class="wb-workspace-btn" type="button" title="Open World Settings (Overview)">Settings</button>
+                    <button id="wb-btn-save" class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Save this World Project now">💾 Save</button>
+                    <div class="wb-menu-wrap">
+                        <button id="wb-btn-menu" class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="More actions">⋮</button>
+                        <div id="wb-menu-dropdown" class="wb-menu-dropdown wb-hidden">
+                            <button id="wb-menu-duplicate" class="wb-menu-item" type="button">⧉ Duplicate World</button>
+                            <button id="wb-menu-delete" class="wb-menu-item wb-menu-item-danger" type="button">🗑 Delete World</button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -107,6 +113,23 @@
         </section>
     </div>
 
+    <!-- Preview modal (Sprint B2.0.1) — renders the current World through
+         VihuStudio's own real rendering pipeline (renderer/slideRenderer.js),
+         not the Workspace's illustrative Live Preview. Overlay, not a new
+         physical screen. -->
+    <div id="wb-preview-modal" class="wb-modal-overlay wb-hidden">
+        <div class="wb-modal-box wb-preview-modal-box">
+            <div class="wb-modal-header">
+                <span class="wb-modal-title">👁️ Preview — rendered by VihuStudio's real engine</span>
+                <button id="wb-preview-close" class="wb-modal-close" type="button">✕</button>
+            </div>
+            <div class="wb-preview-modal-body">
+                <canvas id="wb-preview-real-canvas" class="wb-preview-real-canvas"></canvas>
+                <p id="wb-preview-modal-note" class="wb-preview-modal-note"></p>
+            </div>
+        </div>
+    </div>
+
     <footer class="wb-footer">
         <span id="buildInfoFooter">World Builder • Development</span>
     </footer>
@@ -116,6 +139,14 @@
     <script src="js/services/projectLoader.js"></script>
     <script src="js/services/validator.js"></script>
     <script src="js/services/builder.js"></script>
+
+    <!-- VihuStudio Runtime engine (reused, unmodified — Sprint B2.0.1's
+         Preview renders through the exact same pipeline Runtime uses,
+         never a Builder-owned re-implementation). -->
+    <script src="../../js/themePresets.js"></script>
+    <script src="../../js/layerEngine.js"></script>
+    <script src="../../renderer/slideRenderer.js"></script>
+    <script src="../../js/themeRegistry.js"></script>
 
     <!-- Builder application -->
     <script src="js/templates.js"></script>

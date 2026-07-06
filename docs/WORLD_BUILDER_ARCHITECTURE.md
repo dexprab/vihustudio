@@ -212,6 +212,70 @@ The Assets Workspace state is generated entirely from
 can ever show is declared once there; the screen itself contains no
 per-category markup.
 
+### The Toolbar reuses the real Runtime engine, never a Builder-only mock (Sprint B2.0.1)
+
+Preview (the header's `👁️ Preview` button) does not draw its own
+approximation of a World — it packages the current Project through the
+same `builder.js` service Validation/Build already use
+(`builder.packageTheme()` → `buildManifest()` → `buildTheme()`, all
+called as bare global identifiers since `services/builder.js` exports
+only a lexical `const builder`, not `window.builder` — see the Sprint
+B1.0-era gotcha this repeats), then hands the compiled theme straight to
+`renderer/slideRenderer.js`'s real `SlideRenderer.init()`/`.render()` —
+the exact module the main app renders every page with. A synthetic slide
+object carries `theme`/`artworkTheme`/`metadata` directly rather than
+going through `ThemeEngine`, which `slideRenderer.js` already guards with
+`typeof ThemeEngine!=='undefined'` checks and so tolerates being absent.
+`js/themePresets.js` and `js/layerEngine.js` are loaded alongside for
+full Frame Variation and Layer Pack fidelity, guarded the same way. This
+means Preview cannot drift from what Runtime actually renders, because
+it is not a second rendering path — it is the same one, fed Builder data
+instead of `AppState`.
+
+Save performs a real, immediate `ProjectStore.save(currentProject)` with
+visible confirmation feedback; it does not simulate success. The
+three-dot menu's Duplicate/Delete call the corresponding real
+`ProjectStore.duplicate()`/`ProjectStore.remove()` functions. No Sprint
+B2.0.1 toolbar control fires without a working handler behind it.
+
+### Publish installs the built package via the same import path Runtime already trusts (Sprint B2.0.1)
+
+"Publish to Official Themes" (renamed from the placeholder "Official
+World," which previously behaved identically to Export Package and did
+nothing distinct) operates only on `project.lastBuild` — the immutable
+package Build produced — never on `project.files`, preserving the
+Builder-owns-Projects/Runtime-owns-Packages split (LOCK 02). It calls
+the real, unmodified `window.ThemeRegistry.importPackage(pkg,
+{onDuplicate:'replace'})`, loaded into the Builder's own page via a
+`<script src="../../js/themeRegistry.js">` tag. Because World Builder and
+the main VihuStudio app are served from the same origin, this writes to
+the exact `localStorage` key (`vihu.themeRegistry.imported.v1`) the main
+app already reads at boot — giving genuine automatic Runtime discovery
+and "replace existing versions" behavior with zero Runtime code changes,
+zero duplicated import logic, and no fabricated backend/filesystem
+write. This is the same reasoning `FIRST_OFFICIAL_WORLD_REPORT.md`
+disclosed as the honest constraint of a client-side browser tool with no
+literal access to the git-tracked `official-worlds/`/`themes/` folders;
+Publish satisfies the ticket's functional requirement ("Runtime
+automatically discovers the updated package") through the closest real
+mechanism available rather than simulating one. Export Package is
+unchanged — it still downloads the built `.vtheme` for sharing/backup/
+manual import. Community World remains Coming Soon.
+
+### Overview consumes the same shared selection state as Representations (Sprint B2.0.1)
+
+Sprint B2.0's Overview panel never rendered a Representation-driven Live
+Preview at all — `_renderPreview()`'s `AAF_STATES` set only covered
+`representations`/`layouts`/`frames`, so Overview always fell back to a
+generic identity card regardless of which Representation chip a user had
+clicked (the click itself correctly updated the shared
+`currentRepresentationId` module variable and re-highlighted the chip,
+which made the bug easy to miss). The fix is a single new predicate,
+`_showsRepresentationPreview()`, that also returns true for Overview
+when the Project has at least one Representation — no second selection
+variable was introduced; Overview reads the exact same
+`currentRepresentationId` state Representations already writes.
+
 ---
 
 ## Retirement note
@@ -255,3 +319,21 @@ for exactly what was kept and why.
   was authored end-to-end through this pipeline with zero manual
   JSON/folder editing, built into a real `.vtheme`, and verified against
   a clean Runtime import — see `FIRST_OFFICIAL_WORLD_REPORT.md`.
+- v2.1 — Sprint B2.0.1 (Builder Stabilization). No new screens, states,
+  or architecture — usability fixes to the existing, now-frozen Builder
+  only. Adds the "Toolbar reuses the real Runtime engine" section
+  (Preview renders through the real `slideRenderer.js`/`builder.js`,
+  Save/Duplicate/Delete are real, no dead header controls remain) and
+  the "Publish installs the built package via the same import path
+  Runtime already trusts" section ("Official World" renamed to "Publish
+  to Official Themes," now genuinely calls `ThemeRegistry.importPackage`
+  via same-origin `localStorage` instead of duplicating Export Package's
+  behavior). Fixes the Overview state's Representation-selection bug
+  (`_showsRepresentationPreview()` — Overview now consumes the shared
+  `currentRepresentationId` state instead of never reading it). Every
+  Workspace state gained a concise guidance intro; the Assets state's
+  slot rows now show Purpose/Dimensions/Aspect Ratio/Formats/Max Size
+  sourced from `assetSpec.js`; Validation messages gained a "Why" line
+  and, where actionable, a "Fix Now" button that navigates straight to
+  the offending state; the Build state's success view now shows Package
+  Name/Size/Timestamp and a "Continue to Publish" action.

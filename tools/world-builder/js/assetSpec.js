@@ -1,10 +1,14 @@
-// js/assetSpec.js — Sprint B2.0. The World Asset Spec contract, as data.
-// docs/WORLD_ASSET_SPEC.md documents this exact schema in prose; this
-// module is its Builder-readable mirror, the same relationship
-// js/services/constants.js already has with docs/THEME_PROJECT_SPEC.md.
-// The Assets Workspace state (js/worldBuilderApp.js) renders entirely
-// from AssetSpec.resolve(project) — there is no per-category or
-// per-slot markup hardcoded in the Assets screen itself.
+// js/assetSpec.js — Sprint B2.0, extended in Sprint B2.0.1. The World
+// Asset Spec contract, as data. docs/WORLD_ASSET_SPEC.md documents this
+// exact schema in prose; this module is its Builder-readable mirror,
+// the same relationship js/services/constants.js already has with
+// docs/THEME_PROJECT_SPEC.md. The Assets Workspace state
+// (js/worldBuilderApp.js) renders entirely from AssetSpec.resolve(project)
+// — there is no per-category or per-slot markup hardcoded in the Assets
+// screen itself. Sprint B2.0.1 adds `aspectRatio` and `maxFileSizeMB` to
+// every slot so the Assets screen can show Purpose/Recommended
+// Dimensions/Aspect Ratio/Formats/Maximum File Size without a second,
+// duplicated source of truth.
 const AssetSpec = (function () {
     'use strict';
 
@@ -21,7 +25,8 @@ const AssetSpec = (function () {
                 {
                     id: 'thumbnail', displayName: 'Thumbnail', required: true,
                     path: 'thumbnail.png', formats: ['png', 'jpg', 'webp'],
-                    recommendedDimensions: '512×512', recommendedResolution: '72–150 DPI',
+                    recommendedDimensions: '512×512', aspectRatio: '1:1', maxFileSizeMB: 2,
+                    recommendedResolution: '72–150 DPI',
                     usedBy: 'manifest.thumbnail — this World\'s card in every World-picker list',
                     purpose: 'Identifies this World at a glance.',
                     previewType: 'square',
@@ -30,7 +35,8 @@ const AssetSpec = (function () {
                 {
                     id: 'hero', displayName: 'Hero Image', required: true,
                     path: 'preview.png', formats: ['png', 'jpg', 'webp'],
-                    recommendedDimensions: '1600×1200', recommendedResolution: '72–150 DPI',
+                    recommendedDimensions: '1600×900', aspectRatio: '16:9', maxFileSizeMB: 5,
+                    recommendedResolution: '72–150 DPI',
                     usedBy: 'metadata.previewImage — this World\'s larger identity image',
                     purpose: 'A bigger, richer image representing this World.',
                     previewType: 'landscape',
@@ -49,8 +55,8 @@ const AssetSpec = (function () {
             label: 'Textures',
             description: 'Optional paper/material textures a Frame can reference.',
             slots: [
-                { id: 'canvas', displayName: 'Canvas Texture', required: false, path: 'assets/textures/canvas.png', formats: ['png', 'jpg'], recommendedDimensions: '512×512', recommendedResolution: '72 DPI', usedBy: 'Frame paper texture', purpose: 'A tileable canvas/paper texture.', previewType: 'square', validationRules: ['Should tile seamlessly'] },
-                { id: 'linen', displayName: 'Linen Texture', required: false, path: 'assets/textures/linen.png', formats: ['png', 'jpg'], recommendedDimensions: '512×512', recommendedResolution: '72 DPI', usedBy: 'Frame paper texture', purpose: 'A tileable linen texture.', previewType: 'square', validationRules: ['Should tile seamlessly'] }
+                { id: 'canvas', displayName: 'Canvas Texture', required: false, path: 'assets/textures/canvas.png', formats: ['png', 'jpg'], recommendedDimensions: '512×512', aspectRatio: '1:1', maxFileSizeMB: 3, recommendedResolution: '72 DPI', usedBy: 'Frame paper texture', purpose: 'A tileable canvas/paper texture.', previewType: 'square', validationRules: ['Should tile seamlessly'] },
+                { id: 'linen', displayName: 'Linen Texture', required: false, path: 'assets/textures/linen.png', formats: ['png', 'jpg'], recommendedDimensions: '512×512', aspectRatio: '1:1', maxFileSizeMB: 3, recommendedResolution: '72 DPI', usedBy: 'Frame paper texture', purpose: 'A tileable linen texture.', previewType: 'square', validationRules: ['Should tile seamlessly'] }
             ]
         },
         {
@@ -58,8 +64,8 @@ const AssetSpec = (function () {
             label: 'Decorations',
             description: 'Optional decorative stickers or motifs a Layer Pack can place.',
             slots: [
-                { id: 'motif-1', displayName: 'Decoration 1', required: false, path: 'assets/decorations/motif-1.png', formats: ['png'], recommendedDimensions: '256×256', recommendedResolution: '72 DPI', usedBy: 'A sticker-type Layer', purpose: 'A decorative motif.', previewType: 'square', validationRules: ['Transparent background recommended'] },
-                { id: 'motif-2', displayName: 'Decoration 2', required: false, path: 'assets/decorations/motif-2.png', formats: ['png'], recommendedDimensions: '256×256', recommendedResolution: '72 DPI', usedBy: 'A sticker-type Layer', purpose: 'A decorative motif.', previewType: 'square', validationRules: ['Transparent background recommended'] }
+                { id: 'motif-1', displayName: 'Decoration 1', required: false, path: 'assets/decorations/motif-1.png', formats: ['png'], recommendedDimensions: '256×256', aspectRatio: '1:1', maxFileSizeMB: 1, recommendedResolution: '72 DPI', usedBy: 'A sticker-type Layer', purpose: 'A decorative motif.', previewType: 'square', validationRules: ['Transparent background recommended'] },
+                { id: 'motif-2', displayName: 'Decoration 2', required: false, path: 'assets/decorations/motif-2.png', formats: ['png'], recommendedDimensions: '256×256', aspectRatio: '1:1', maxFileSizeMB: 1, recommendedResolution: '72 DPI', usedBy: 'A sticker-type Layer', purpose: 'A decorative motif.', previewType: 'square', validationRules: ['Transparent background recommended'] }
             ]
         },
         {
@@ -67,7 +73,7 @@ const AssetSpec = (function () {
             label: 'Icons',
             description: 'Optional small icon glyphs, for when an emoji placeholder is not enough.',
             slots: [
-                { id: 'icon-1', displayName: 'Icon 1', required: false, path: 'assets/icons/icon-1.png', formats: ['png', 'svg'], recommendedDimensions: '64×64', recommendedResolution: '72 DPI', usedBy: 'World or Representation thumbnail', purpose: 'A small icon glyph.', previewType: 'square', validationRules: ['Transparent background recommended'] }
+                { id: 'icon-1', displayName: 'Icon 1', required: false, path: 'assets/icons/icon-1.png', formats: ['png', 'svg'], recommendedDimensions: '64×64', aspectRatio: '1:1', maxFileSizeMB: 1, recommendedResolution: '72 DPI', usedBy: 'World or Representation thumbnail', purpose: 'A small icon glyph.', previewType: 'square', validationRules: ['Transparent background recommended'] }
             ]
         },
         {
@@ -75,7 +81,7 @@ const AssetSpec = (function () {
             label: 'Fonts',
             description: 'Optional custom fonts for this World\'s typography.',
             slots: [
-                { id: 'display-font', displayName: 'Display Font', required: false, path: 'assets/fonts/display.woff2', formats: ['woff2', 'ttf'], recommendedDimensions: '—', recommendedResolution: '—', usedBy: 'storyText/caption typography', purpose: 'A custom display font.', previewType: 'none', validationRules: ['Must be a valid font file'] }
+                { id: 'display-font', displayName: 'Display Font', required: false, path: 'assets/fonts/display.woff2', formats: ['woff2', 'ttf'], recommendedDimensions: '—', aspectRatio: '—', maxFileSizeMB: 2, recommendedResolution: '—', usedBy: 'storyText/caption typography', purpose: 'A custom display font.', previewType: 'none', validationRules: ['Must be a valid font file'] }
             ]
         },
         {
@@ -83,7 +89,7 @@ const AssetSpec = (function () {
             label: 'Backgrounds',
             description: 'Optional full-bleed background art a Layout can use.',
             slots: [
-                { id: 'bg-1', displayName: 'Background 1', required: false, path: 'assets/backgrounds/bg-1.png', formats: ['png', 'jpg'], recommendedDimensions: '1600×1200', recommendedResolution: '72 DPI', usedBy: 'Slide/page background', purpose: 'A full-bleed background image.', previewType: 'landscape', validationRules: ['Landscape aspect recommended'] }
+                { id: 'bg-1', displayName: 'Background 1', required: false, path: 'assets/backgrounds/bg-1.png', formats: ['png', 'jpg'], recommendedDimensions: '1600×1200', aspectRatio: '4:3', maxFileSizeMB: 5, recommendedResolution: '72 DPI', usedBy: 'Slide/page background', purpose: 'A full-bleed background image.', previewType: 'landscape', validationRules: ['Landscape aspect recommended'] }
             ]
         }
     ];
@@ -94,7 +100,8 @@ const AssetSpec = (function () {
             return {
                 id: f.id, displayName: f.name + ' Preview', required: false,
                 path: 'assets/frames/' + f.id + '.png', formats: ['png', 'jpg'],
-                recommendedDimensions: '512×512', recommendedResolution: '72 DPI',
+                recommendedDimensions: '512×512', aspectRatio: '1:1', maxFileSizeMB: 2,
+                recommendedResolution: '72 DPI',
                 usedBy: 'Frame "' + f.name + '" picker preview',
                 purpose: 'A preview thumbnail for this Frame Variation.',
                 previewType: 'square',

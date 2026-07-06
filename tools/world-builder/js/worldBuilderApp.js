@@ -182,6 +182,48 @@
         wide: '16 / 9', quote: '3 / 4', 'full-bleed': '4 / 3'
     };
 
+    // Sprint B2.0.1 — Builder Guidance. Every Workspace state opens with
+    // a concise What/Why/Do/Next explanation so a creator never has to
+    // leave the Builder to open a contract doc. Kept short on purpose —
+    // this is a one-paragraph orientation, not documentation.
+    const STATE_GUIDANCE = {
+        overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Representations to decide how creations look.',
+        representations: 'What: the page styles a child can choose (e.g. Showcase, Portrait, Quote). Why: Studio\'s Creation Flow shows exactly these, nothing more. Do: pick or add a Representation, then set its Default Layout and Default Frame. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
+        layouts: 'What: the geometry each page can use — aspect ratio, caption position, composition. Why: a Representation always points at one of these. Do: adjust Aspect/Composition/Spacing for the selected Layout, or add a new one. Next: design a Frame to go with it.',
+        frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
+        layerpacks: 'What: small elements placed on the page — captions, page numbers, stickers. Why: this is how a World adds its own personality on top of a Layout/Frame. Do: add Layers and set their Target Container/Anchor. Next: check Assets for anything these Layers need (like a decoration image).',
+        assets: 'What: the images (and other files) this World needs. Why: Thumbnail and Hero Image are required before you can Build; everything else is optional polish. Do: upload what you have — the checklist shows exactly what\'s missing and why. Next: run Validation once everything looks complete.',
+        validation: 'What: a real check of this World against the World Project Contract — the same rules Studio itself enforces. Why: catches problems before you spend time Building. Do: press Run Validation, then fix anything marked Error (Warnings are optional polish). Next: once it says "All Good!", move on to Build.',
+        build: 'What: compiles this World Project into a real .vtheme package, the same file format VihuStudio imports. Why: nothing can be Published until it\'s Built. Do: press Build World Package (Validation must pass first). Next: once built, continue to Publish.',
+        publish: 'What: share the World Package Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: choose Export (download for backup/sharing) or Publish to Official Themes (installs it where Studio will find it). Next: open VihuStudio and confirm your World appears.'
+    };
+
+    function _stateIntro(navId) {
+        const text = STATE_GUIDANCE[navId];
+        if (!text) return;
+        const parts = text.split(/(What:|Why:|Do:|Next:)/).filter(function (s) { return s.trim().length; });
+        const box = document.createElement('div');
+        box.className = 'wb-state-intro';
+        for (let i = 0; i < parts.length; i += 2) {
+            const label = parts[i];
+            const body = parts[i + 1] || '';
+            const p = document.createElement('div');
+            const strong = document.createElement('strong');
+            strong.textContent = label + ' ';
+            p.appendChild(strong);
+            p.appendChild(document.createTextNode(body.trim()));
+            box.appendChild(p);
+        }
+        contextPanel.appendChild(box);
+    }
+
+    function _fieldHelp(text) {
+        const p = document.createElement('p');
+        p.className = 'wb-field-help';
+        p.textContent = text;
+        return p;
+    }
+
     const workspaceNav = $('wb-workspace-nav');
     const workspaceName = $('wb-workspace-name');
     const workspaceHome = $('wb-workspace-home');
@@ -199,6 +241,140 @@
     let lastValidation = null;
 
     workspaceHome.addEventListener('click', showWelcome);
+
+    // ---------------------------------------------------------------
+    // Header toolbar (Sprint B2.0.1 — Preview/Settings/Save/Menu, all
+    // real, none decorative).
+    // ---------------------------------------------------------------
+
+    const btnPreview = $('wb-btn-preview');
+    const btnSettings = $('wb-btn-settings');
+    const btnSave = $('wb-btn-save');
+    const btnMenu = $('wb-btn-menu');
+    const menuDropdown = $('wb-menu-dropdown');
+    const menuDuplicate = $('wb-menu-duplicate');
+    const menuDelete = $('wb-menu-delete');
+    const savedText = $('wb-workspace-saved-text');
+
+    // Settings — Overview already IS "World Settings" (World Name /
+    // Tagline / Description / Publisher / Version / Icon / Purpose /
+    // Mood / Creation Types / Thumbnail / Hero Image, all writing
+    // through immediately). Rather than build a second, duplicate
+    // settings surface, Settings simply opens it.
+    btnSettings.addEventListener('click', function () {
+        currentNav = 'overview';
+        _renderNav();
+        _renderWorkspace();
+    });
+
+    // Save — every field already autosaves on change (ProjectStore.save
+    // per edit); this button's job is an explicit, user-visible
+    // confirmation that nothing is pending, not a second save mechanism.
+    btnSave.addEventListener('click', function () {
+        window.ProjectStore.save(currentProject);
+        const original = savedText.textContent;
+        btnSave.textContent = '✓ Saved';
+        savedText.textContent = 'Saved just now';
+        setTimeout(function () {
+            btnSave.innerHTML = '💾 Save';
+            savedText.textContent = original;
+        }, 1500);
+    });
+
+    // Overflow menu — Duplicate/Delete, the two real, non-redundant
+    // actions a Project Workspace needs. No dead entries.
+    btnMenu.addEventListener('click', function (e) {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('wb-hidden');
+    });
+    document.addEventListener('click', function () {
+        menuDropdown.classList.add('wb-hidden');
+    });
+    menuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    menuDuplicate.addEventListener('click', function () {
+        window.ProjectStore.duplicate(currentProject);
+        menuDropdown.classList.add('wb-hidden');
+        showWelcome();
+    });
+
+    menuDelete.addEventListener('click', function () {
+        if (!window.confirm('Delete "' + currentProject.name + '"? This cannot be undone.')) return;
+        window.ProjectStore.remove(currentProject.id);
+        menuDropdown.classList.add('wb-hidden');
+        showWelcome();
+    });
+
+    btnPreview.addEventListener('click', function () { _openPreviewModal(); });
+
+    // ---------------------------------------------------------------
+    // Preview modal (Sprint B2.0.1) — renders through VihuStudio's own
+    // real engine (renderer/slideRenderer.js), the same pipeline
+    // Runtime uses, NOT the Workspace's illustrative Live Preview. This
+    // is a genuinely different surface from the always-visible center
+    // Preview: that one stays a lightweight mockup (LOCK 01 — the
+    // Builder never renders like Runtime as its everyday editing
+    // surface); this modal is a deliberate, on-demand exception that
+    // reuses the unmodified renderer, so "what you see is what Studio
+    // will render" is literally true, not just implied.
+    // ---------------------------------------------------------------
+
+    const previewModal = $('wb-preview-modal');
+    const previewRealCanvas = $('wb-preview-real-canvas');
+    const previewModalNote = $('wb-preview-modal-note');
+    const previewCloseBtn = $('wb-preview-close');
+
+    previewCloseBtn.addEventListener('click', function () {
+        previewModal.classList.add('wb-hidden');
+    });
+    previewModal.addEventListener('click', function (e) {
+        if (e.target === previewModal) previewModal.classList.add('wb-hidden');
+    });
+
+    async function _openPreviewModal() {
+        previewModal.classList.remove('wb-hidden');
+        previewModalNote.textContent = 'Rendering…';
+        const project = currentProject;
+
+        // Reuses builder.js's own packaging step (unmodified) to get
+        // the exact resolved theme shape Build would produce — Preview
+        // never invents a second interpretation of the Project's data.
+        await window.ProjectCompiler.loadIntoProjectLoader(project);
+        const packageData = await builder.packageTheme();
+        const manifest = builder.buildManifest(packageData);
+        const theme = builder.buildTheme(packageData, manifest);
+
+        const rep = window.ProjectModel.findRepresentation(project, currentRepresentationId);
+        const layoutId = (rep && rep.layout) || (window.ProjectModel.layouts(project)[0] || {}).id;
+        const frameId = rep ? rep.defaultFrame : null;
+        const isArtwork = manifest.type === 'artwork';
+
+        const s = {
+            image: null,
+            storyBeat: '',
+            bookTitle: project.name || '',
+            handle: '',
+            page: 1,
+            totalPages: 1,
+            theme: isArtwork ? null : theme,
+            themeOptions: null,
+            artworkTheme: isArtwork ? theme : null,
+            imageView: null,
+            overrides: null,
+            pageType: 'story',
+            metadata: {
+                layout: layoutId,
+                cardOverrides: (isArtwork && frameId) ? { artwork: { frameVariation: frameId } } : null
+            }
+        };
+
+        window.SlideRenderer.init(previewRealCanvas, { dpr: window.devicePixelRatio || 1 });
+        window.SlideRenderer.render(s);
+
+        previewModalNote.textContent = rep
+            ? 'Showing "' + rep.name + '" — no artwork image is placed yet, so only the Frame/Layer Pack render.'
+            : 'This World has no Representations yet — showing its default Layout.';
+    }
 
     function openWorkspace(project) {
         currentProject = project;
@@ -291,6 +467,18 @@
 
     const AAF_STATES = { representations: 1, layouts: 1, frames: 1 };
 
+    // Sprint B2.0.1 — Overview must consume the SAME shared
+    // `currentRepresentationId` selection Representations uses, not a
+    // second selection model. Overview shows the representation-aware
+    // Preview (not the generic identity card) whenever the World has at
+    // least one Representation to browse; a World with none (e.g. a
+    // fresh Blank World) still gets the identity card, since there is
+    // nothing to select yet.
+    function _showsRepresentationPreview() {
+        if (AAF_STATES[currentNav]) return true;
+        return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length > 0;
+    }
+
     function _renderPreview() {
         previewCanvas.innerHTML = '';
         const wallTone = (function () {
@@ -302,7 +490,7 @@
         const frameEl = document.createElement('div');
         frameEl.className = 'wb-preview-frame';
 
-        if (!AAF_STATES[currentNav]) {
+        if (!_showsRepresentationPreview()) {
             frameEl.style.width = '70%';
             frameEl.style.aspectRatio = '3 / 4';
             frameEl.style.borderRadius = '10px';
@@ -494,7 +682,7 @@
         }
     }
 
-    function _fieldGroup(labelText, inputEl) {
+    function _fieldGroup(labelText, inputEl, helpText) {
         const group = document.createElement('div');
         group.className = 'wb-field-group';
         const label = document.createElement('label');
@@ -502,6 +690,7 @@
         label.textContent = labelText;
         group.appendChild(label);
         group.appendChild(inputEl);
+        if (helpText) group.appendChild(_fieldHelp(helpText));
         contextPanel.appendChild(group);
         return group;
     }
@@ -640,6 +829,30 @@
         const man = window.ProjectModel.manifest(project);
         const theme = window.ProjectModel.theme(project);
         _heading('Overview', 'Give your world a wonderful identity.');
+        _stateIntro('overview');
+
+        // Sprint B2.0.1 — Overview consumes the SAME shared
+        // currentRepresentationId selection Representations uses (no
+        // duplicated selection logic). Browsing the thumbnails below the
+        // Live Preview updates this summary, the Preview itself, and the
+        // active/highlighted thumbnail, all from that one shared value.
+        const reps = window.ProjectModel.representations(project);
+        if (reps.length) {
+            const activeRep = window.ProjectModel.findRepresentation(project, currentRepresentationId) || reps[0];
+            const repBox = document.createElement('div');
+            repBox.className = 'wb-state-intro';
+            const repTitle = document.createElement('div');
+            const repStrong = document.createElement('strong');
+            repStrong.textContent = 'Previewing: ';
+            repTitle.appendChild(repStrong);
+            repTitle.appendChild(document.createTextNode((activeRep.thumbnail || '') + ' ' + activeRep.name));
+            const repDesc = document.createElement('div');
+            repDesc.textContent = activeRep.description || '';
+            repBox.appendChild(repTitle);
+            repBox.appendChild(repDesc);
+            contextPanel.appendChild(repBox);
+            contextPanel.appendChild(_fieldHelp('Pick a different thumbnail below the Preview to browse this World\'s Representations. Edit their details in the Representations state.'));
+        }
 
         _fieldGroup('World Name', _textInput(project.name, function (v) {
             window.ProjectModel.setIdentity(project, { name: v });
@@ -748,6 +961,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Representations', 'Define how creations can be presented.');
+        _stateIntro('representations');
 
         const reps = window.ProjectModel.representations(project);
         if (!reps.length) {
@@ -808,13 +1022,13 @@
             window.ProjectModel.setRepresentationField(project, rep.id, 'layout', v);
             _persist();
             _renderPreview();
-        }));
+        }), 'Which Layout (aspect + composition) this Representation opens with. Defined in the Layouts state.');
 
         _fieldGroup('Default Frame', _select(_representationOptionsFor('frame'), rep.defaultFrame, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultFrame', v || null);
             _persist();
             _renderPreview();
-        }));
+        }), 'Which Frame Variation this Representation suggests first. A child can still change it. Defined in the Frames state.');
 
         const packOptions = window.ProjectModel.listLayerPacks(project).map(function (p) {
             return { value: p.id, label: p.name };
@@ -822,7 +1036,7 @@
         _fieldGroup('Layer Pack', _select(packOptions, rep.defaultLayerPack || packOptions[0].value, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultLayerPack', v);
             _persist();
-        }));
+        }), 'Which set of captions/decorations (from Layer Packs) this Representation uses.');
 
         const actionRow = document.createElement('div');
         actionRow.className = 'wb-action-chip-row';
@@ -852,6 +1066,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Layouts', 'Design the composition.');
+        _stateIntro('layouts');
 
         const layouts = window.ProjectModel.layouts(project);
         layouts.forEach(function (layout) {
@@ -912,7 +1127,7 @@
             layout.aspect = v;
             _persist();
             _renderPreview();
-        }));
+        }), 'The page shape this Layout resolves to. Pick "Quote" for a text-only page with no picture at all.');
 
         const holderDiagram = document.createElement('div');
         holderDiagram.className = 'wb-holder-area-diagram';
@@ -927,7 +1142,7 @@
             layout.composition = v;
             _persist();
             _renderPreview();
-        }));
+        }), 'How the Frame and caption are arranged on the page. Must be "Quote" for a Quote-aspect Layout to render correctly.');
 
         _fieldGroup('Caption Position', _select([
             { value: 'below', label: 'Below' },
@@ -974,6 +1189,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Frames', 'Create beautiful frames.');
+        _stateIntro('frames');
 
         const frames = window.ProjectModel.frames(project);
         frames.forEach(function (frame, idx) {
@@ -1123,6 +1339,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Layer Packs', 'Control visible elements.');
+        _stateIntro('layerpacks');
 
         const packs = window.ProjectModel.listLayerPacks(project);
         const defaultPackId = window.ProjectModel.getDefaultLayerPack(project);
@@ -1343,7 +1560,7 @@
         _fieldGroup('Target Container', _select(LAYER_TARGETS_OPTS, layer.target, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { target: v });
             _persist();
-        }));
+        }), 'Which containership scope this Layer draws on: the whole Slide, the Frame, the picture Holder, or a specific Element.');
 
         _fieldGroup('Anchor', _select([
             { value: '', label: '(none — uses position instead)' },
@@ -1356,7 +1573,7 @@
         ], layer.anchor || '', function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { anchor: v || undefined });
             _persist();
-        }));
+        }), 'Where this Layer sits within its Target Container. Use Anchor for most Layers; use Position only for a Slide-targeted shorthand like a page number.');
 
         _fieldGroup('Position (Slide-targeted shorthand)', _select([
             { value: '', label: '(none — uses anchor instead)' },
@@ -1382,7 +1599,7 @@
         _fieldGroup('Z-Index (Layer Order)', _range(0, 10, layer.zIndex || 0, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { zIndex: v });
             _persist();
-        }));
+        }), 'Stacking order within the same Target Container — higher draws on top of lower. Only matters when two Layers overlap.');
 
         if (layer.type === 'text') {
             _fieldGroup('Text Source', _textInput(layer.text && layer.text.source, function (v) {
@@ -1402,6 +1619,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Assets', 'Upload and manage this World\'s own assets.');
+        _stateIntro('assets');
 
         const categories = window.AssetSpec.resolve(project);
         const overall = window.AssetSpec.stats(project);
@@ -1485,15 +1703,42 @@
         nameRow.appendChild(name);
         nameRow.appendChild(badge);
 
+        const purpose = document.createElement('p');
+        purpose.className = 'wb-field-hint';
+        purpose.textContent = slot.purpose;
+
         const usage = document.createElement('p');
         usage.className = 'wb-field-hint';
         usage.textContent = 'Used by: ' + slot.usedBy;
+
+        // Sprint B2.0.1 — every value here is read straight off the
+        // slot itself (AssetSpec.resolve/js/assetSpec.js, the mirror of
+        // docs/WORLD_ASSET_SPEC.md) — no second, duplicated set of
+        // dimensions/formats lives in this screen.
+        const specGrid = document.createElement('div');
+        specGrid.className = 'wb-asset-spec-grid';
+        const specEntries = [
+            ['Dimensions', slot.recommendedDimensions],
+            ['Aspect Ratio', slot.aspectRatio],
+            ['Formats', (slot.formats || []).join(', ').toUpperCase()],
+            ['Max Size', slot.maxFileSizeMB ? slot.maxFileSizeMB + ' MB' : '—']
+        ];
+        specEntries.forEach(function (pair) {
+            const span = document.createElement('span');
+            const strong = document.createElement('strong');
+            strong.textContent = pair[0] + ': ';
+            span.appendChild(strong);
+            span.appendChild(document.createTextNode(pair[1] || '—'));
+            specGrid.appendChild(span);
+        });
 
         const status = document.createElement('span');
         status.className = 'wb-asset-status' + (existing ? ' filled' : '');
         status.textContent = existing ? 'Filled' : 'Missing';
 
         info.appendChild(nameRow);
+        info.appendChild(purpose);
+        info.appendChild(specGrid);
         info.appendChild(usage);
         info.appendChild(status);
 
@@ -1539,10 +1784,55 @@
         return 'World Contract';
     }
 
+    // Sprint B2.0.1 — Validation UX. validator.js's own messages are
+    // precise but technical ("Representation references unknown
+    // frame"); this translates the known, common message shapes into
+    // What's-wrong / Why / Fix-Now-navigation, without ever hiding the
+    // underlying message (an unrecognized message still displays,
+    // verbatim, just without the extra explanation).
+    const NAV_FOR_LABEL = { Layout: 'layouts', Frame: 'frames', Layer: 'layerpacks', Representation: 'representations', layout: 'layouts', frame: 'frames', layer: 'layerpacks', representation: 'representations' };
+    const FOLDER_NAV = { 'layouts': 'layouts', 'frames': 'frames', 'layer-packs': 'layerpacks', 'representations': 'representations' };
+
+    function _explainValidationMessage(msg) {
+        let m;
+        if ((m = msg.match(/^Representation "([^"]+)" references unknown layout "([^"]+)"$/))) {
+            return { why: 'Every Representation\'s Default Layout must point at a real Layout in this World.', fixNav: 'representations', fixLabel: 'Open Representations → ' + m[1] };
+        }
+        if ((m = msg.match(/^Representation "([^"]+)" references unknown frame "([^"]+)" in defaultFrame$/))) {
+            return { why: 'A Representation "' + m[1] + '" references Frame "' + m[2] + '" which no longer exists. Every Default Frame must point at a real Frame, or be left as None.', fixNav: 'representations', fixLabel: 'Open Representations → ' + m[1] + ' and choose an existing Default Frame' };
+        }
+        if ((m = msg.match(/^Layout "([^"]+)" references unknown frame "([^"]+)" in supportedFrames$/))) {
+            return { why: 'supportedFrames is authoring guidance for which Frames suit this Layout — it should only list Frames that still exist.', fixNav: 'layouts', fixLabel: 'Open Layouts → ' + m[1] };
+        }
+        if ((m = msg.match(/^(Layout|Frame|Layer|Representation) entry in (\S+) is missing "id"$/))) {
+            return { why: 'Every ' + m[1] + ' needs a unique id to be referenced by anything else in this World.', fixNav: NAV_FOR_LABEL[m[1]], fixLabel: 'Open ' + m[1] + 's' };
+        }
+        if ((m = msg.match(/^(Layout|Frame|Representation) "([^"]+)" \(([^)]+)\) is missing "name"$/))) {
+            return { why: 'A ' + m[1] + '\'s Name is what a creator sees in its own picker — it\'s required, not optional.', fixNav: NAV_FOR_LABEL[m[1]], fixLabel: 'Open ' + m[1] + 's → ' + m[2] + ' and set its Name' };
+        }
+        if ((m = msg.match(/^Duplicate (\w+) id "([^"]+)" in (.+) and (.+)$/))) {
+            return { why: 'Every id within its own category must be unique so it can be referenced unambiguously.', fixNav: NAV_FOR_LABEL[m[1]], fixLabel: 'Open ' + _capitalize(m[1]) + 's and rename one of them' };
+        }
+        if ((m = msg.match(/^theme\.name "([^"]*)" does not match manifest\.name "([^"]*)"$/))) {
+            return { why: 'These two must always be identical — Overview keeps them in sync automatically once you re-save the World Name.', fixNav: 'overview', fixLabel: 'Open Overview and re-enter the World Name' };
+        }
+        if ((m = msg.match(/^(manifest|metadata|theme)\.json missing required field: (\w+)$/))) {
+            return { why: 'The World Project Contract requires this field before a World can validate and Build.', fixNav: 'overview', fixLabel: 'Open Overview' };
+        }
+        if ((m = msg.match(/^Missing required folder: ([\w-]+)\/$/))) {
+            return { why: 'Every World needs at least one entry here — an empty folder is the same as none at all.', fixNav: FOLDER_NAV[m[1]], fixLabel: 'Open ' + _capitalize(m[1].replace('-', ' ')) };
+        }
+        if ((m = msg.match(/^(.+) "([^"]+)" references missing asset "([^"]+)"$/))) {
+            return { why: 'This asset file hasn\'t been uploaded yet, so nothing would actually draw at runtime.', fixNav: 'assets', fixLabel: 'Open Assets and upload it' };
+        }
+        return { why: null, fixNav: null, fixLabel: null };
+    }
+
     function _renderValidationPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Validation', 'Check this World\'s contract and completeness.');
+        _stateIntro('validation');
 
         const runBtn = document.createElement('button');
         runBtn.type = 'button';
@@ -1603,6 +1893,26 @@
                     detail.className = 'wb-field-hint wb-validation-detail';
                     detail.textContent = msg;
                     contextPanel.appendChild(detail);
+
+                    const explained = _explainValidationMessage(msg);
+                    if (explained.why) {
+                        const why = document.createElement('p');
+                        why.className = 'wb-validation-why';
+                        why.textContent = 'Why: ' + explained.why;
+                        contextPanel.appendChild(why);
+                    }
+                    if (explained.fixNav) {
+                        const fixBtn = document.createElement('button');
+                        fixBtn.type = 'button';
+                        fixBtn.className = 'wb-fix-now-btn';
+                        fixBtn.textContent = '→ Fix Now: ' + explained.fixLabel;
+                        fixBtn.addEventListener('click', function () {
+                            currentNav = explained.fixNav;
+                            _renderNav();
+                            _renderWorkspace();
+                        });
+                        contextPanel.appendChild(fixBtn);
+                    }
                 });
             }
         });
@@ -1614,6 +1924,7 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Build', 'Build your World Package.');
+        _stateIntro('build');
 
         const manifest = window.ProjectModel.manifest(project);
         const infoBox = document.createElement('div');
@@ -1661,8 +1972,27 @@
         if (project.lastBuild) {
             const success = document.createElement('div');
             success.className = 'wb-validation-status pass';
-            success.textContent = '✅ Built ' + project.lastBuild.filename + ' (' + _formatBytes(project.lastBuild.size) + ')';
+            success.textContent = '✓ World Package Built';
             contextPanel.appendChild(success);
+
+            const details = document.createElement('div');
+            details.className = 'wb-build-info-box';
+            details.innerHTML =
+                '<p><strong>Package Name</strong><br>' + project.lastBuild.filename + '</p>' +
+                '<p><strong>Package Size</strong><br>' + _formatBytes(project.lastBuild.size) + '</p>' +
+                '<p><strong>Build Timestamp</strong><br>' + new Date(project.lastBuild.builtAt).toLocaleString() + '</p>';
+            contextPanel.appendChild(details);
+
+            const continueBtn = document.createElement('button');
+            continueBtn.type = 'button';
+            continueBtn.className = 'wb-add-btn';
+            continueBtn.textContent = 'Continue to Publish →';
+            continueBtn.addEventListener('click', function () {
+                currentNav = 'publish';
+                _renderNav();
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(continueBtn);
         }
     }
 
@@ -1685,10 +2015,19 @@
         document.body.removeChild(link);
     }
 
+    // Sprint B2.0.1 — the exact package Build produced, decoded back
+    // into a plain {manifest,theme,assets} object. Publish never reads
+    // project.files (the editable Project data) — only this.
+    async function _lastBuiltPackage(project) {
+        const resp = await fetch(project.lastBuild.dataURL);
+        return await resp.json();
+    }
+
     function _renderPublishPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Publish', 'Share your World with the world.');
+        _stateIntro('publish');
 
         if (!project.lastBuild) {
             const hint = document.createElement('p');
@@ -1698,9 +2037,45 @@
             return;
         }
 
+        const resultBox = document.createElement('div');
+
+        function showResult(cls, text) {
+            resultBox.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'wb-validation-status ' + cls;
+            div.textContent = text;
+            resultBox.appendChild(div);
+        }
+
+        // Publish to Official Themes — operates ONLY on the Build
+        // output (never project.files), and installs it through the
+        // exact same ThemeRegistry.importPackage() a real "Import
+        // Theme" click uses (unmodified — no privileged pipeline, per
+        // the Import Parity rule). Builder and Runtime share one
+        // origin, so ThemeRegistry's own existing localStorage
+        // persistence (_persistImported/_loadImported) is what "Runtime
+        // automatically discovers the updated package" means here —
+        // opening VihuStudio next shows it immediately, with no
+        // re-import step.
+        async function publishToOfficialThemes() {
+            if (typeof window.ThemeRegistry === 'undefined') {
+                showResult('fail', '⚠️ ThemeRegistry is not available in this environment.');
+                return;
+            }
+            const pkg = await _lastBuiltPackage(project);
+            const result = window.ThemeRegistry.importPackage(pkg, { onDuplicate: 'replace' });
+            if (result.ok) {
+                showResult('pass', '✓ Published "' + result.manifest.name + '" — VihuStudio will discover it automatically the next time it loads (existing versions replaced).');
+            } else if (result.problems) {
+                showResult('fail', '⚠️ The built package failed registration: ' + result.problems.join('; '));
+            } else {
+                showResult('fail', '⚠️ Could not publish — try Building again.');
+            }
+        }
+
         const options = [
             {
-                icon: '💾', title: 'Export Package', note: 'Export .vtheme to your computer.',
+                icon: '💾', title: 'Export Package', note: 'Download the built .vtheme to your computer — for backup, sharing, or manual import elsewhere.',
                 action: function () { _downloadDataURL(project.lastBuild.dataURL, project.lastBuild.filename); }
             },
             {
@@ -1708,8 +2083,8 @@
                 action: null
             },
             {
-                icon: '🏛️', title: 'Official World', note: 'Submit for official curation — the exact package Build produced, no special handling.',
-                action: function () { _downloadDataURL(project.lastBuild.dataURL, project.lastBuild.filename); }
+                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs the built package where VihuStudio will find it, replacing any existing version. Uses only the .vtheme Build produced — never this Project\'s editable files.',
+                action: publishToOfficialThemes
             }
         ];
 
@@ -1725,6 +2100,8 @@
             if (opt.action) row.addEventListener('click', opt.action);
             contextPanel.appendChild(row);
         });
+
+        contextPanel.appendChild(resultBox);
     }
 
     // ---------- Placeholder states ----------

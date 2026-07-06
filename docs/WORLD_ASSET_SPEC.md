@@ -45,6 +45,8 @@ carry all of these fields:
 | `formats` | Which file extensions this slot accepts. |
 | `recommendedDimensions` | Suggested pixel dimensions, shown as a hint (never enforced — a creator's own image is never rejected for being the "wrong" size). |
 | `recommendedResolution` | Suggested DPI/resolution, same non-enforcing hint. |
+| `aspectRatio` | Suggested aspect ratio as a hint (e.g. `1:1`, `16:9`) — same non-enforcing status as `recommendedDimensions`. |
+| `maxFileSizeMB` | Suggested maximum upload size in megabytes, shown as a hint — not enforced by `validator.js`. |
 | `usedBy` | Which manifest/theme/representation field or rendering role this asset feeds. |
 | `previewType` | `square` \| `landscape` \| `none` — how the Assets screen previews it. |
 | `validationRules` | Human-readable authoring guidance (e.g. "Should tile seamlessly") — advisory, not enforced by `validator.js`. |
@@ -113,3 +115,8 @@ for how this feeds the Validation state.
   Official World Platform Validation). Documents the full per-slot
   asset schema and the seven categories `tools/world-builder/js/assetSpec.js`
   generates the Assets Workspace state from.
+- v1.1 — Sprint B2.0.1 (Builder Stabilization). Adds `aspectRatio` and
+  `maxFileSizeMB` to every slot's contract so the Assets screen can show
+  Purpose/Recommended Dimensions/Aspect Ratio/Formats/Maximum File Size
+  without a second, duplicated source of truth — `assetSpec.js` remains
+  the single place these values are declared.
