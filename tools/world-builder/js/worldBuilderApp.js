@@ -349,15 +349,34 @@
         const frameId = rep ? rep.defaultFrame : null;
         const isArtwork = manifest.type === 'artwork';
 
+        // Sprint B2.0.2 — this must render a generic sample page
+        // *of this World*, not a simulated Story runtime. bookTitle/
+        // page-number/handle are per-project Story-runtime chrome the
+        // Builder has no real value for; showing them invented
+        // fictional content (a page number, and the renderer's own
+        // hardcoded "@vihuplanet" placeholder handle when none is
+        // given) that has nothing to do with the World being authored.
+        // Explicitly hiding all three keeps the Preview to exactly what
+        // this World itself defines — Frame, Layout and Layer Pack.
         const s = {
             image: null,
             storyBeat: '',
-            bookTitle: project.name || '',
+            bookTitle: '',
             handle: '',
             page: 1,
             totalPages: 1,
             theme: isArtwork ? null : theme,
-            themeOptions: null,
+            themeOptions: {
+                variant: 'classic',
+                panelStyle: 'classic',
+                footerStyle: 'classic',
+                decorations: [],
+                pageNumber: 'hidden',
+                bookTitleVisibility: 'hide',
+                bookTitlePosition: 'bottom-left',
+                handleVisibility: 'hide',
+                handlePosition: 'top-right'
+            },
             artworkTheme: isArtwork ? theme : null,
             imageView: null,
             overrides: null,
@@ -372,8 +391,8 @@
         window.SlideRenderer.render(s);
 
         previewModalNote.textContent = rep
-            ? 'Showing "' + rep.name + '" — no artwork image is placed yet, so only the Frame/Layer Pack render.'
-            : 'This World has no Representations yet — showing its default Layout.';
+            ? 'A generic sample page for "' + rep.name + '" — your own Frame/Layer Pack render; no artwork image is placed yet.'
+            : 'This World has no Representations yet — showing its default Layout as a generic sample page.';
     }
 
     function openWorkspace(project) {
@@ -704,6 +723,17 @@
         return input;
     }
 
+    // Sprint B2.0.2 — World Id must be auto-generated and never
+    // manually editable (see docs/WORLD_BUILDER_ARCHITECTURE.md). A
+    // plain read-only field, not a disabled input, so it still reads
+    // clearly rather than looking broken/greyed-out.
+    function _readOnlyField(value) {
+        const div = document.createElement('div');
+        div.className = 'wb-field-readonly';
+        div.textContent = value || '';
+        return div;
+    }
+
     function _textarea(value, onInput) {
         const ta = document.createElement('textarea');
         ta.className = 'wb-field-textarea';
@@ -870,11 +900,8 @@
             _persist();
         }));
 
-        _fieldGroup('World Id', _textInput(man.id, function (v) {
-            const id = v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-            window.ProjectModel.setIdentity(project, { id: id });
-            _persist();
-        }));
+        _fieldGroup('World Id', _readOnlyField(man.id),
+            'Auto-generated when this World was created. It never changes, so nothing that references this World (Studio, links, other Worlds) ever breaks.');
 
         const typeRow = document.createElement('div');
         typeRow.className = 'wb-creation-type-row';
@@ -905,12 +932,6 @@
         }));
 
         const meta = window.ProjectModel.metadata(project);
-
-        _fieldGroup('Icon', _textInput(project.icon, function (v) {
-            window.ProjectModel.setIdentity(project, { icon: v });
-            _persist();
-            _renderPreview();
-        }));
 
         _fieldGroup('Purpose', _textInput(meta.purpose, function (v) {
             window.ProjectModel.setIdentity(project, { purpose: v });
@@ -1036,7 +1057,7 @@
         _fieldGroup('Layer Pack', _select(packOptions, rep.defaultLayerPack || packOptions[0].value, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultLayerPack', v);
             _persist();
-        }), 'Which set of captions/decorations (from Layer Packs) this Representation uses.');
+        }), 'Every new World begins with a default Layer Pack called Basic — a small set of captions and decorations placed on the page. You can customise or rename it later in the Layer Packs state.');
 
         const actionRow = document.createElement('div');
         actionRow.className = 'wb-action-chip-row';
@@ -1067,6 +1088,27 @@
         const project = currentProject;
         _heading('Layouts', 'Design the composition.');
         _stateIntro('layouts');
+
+        // Sprint B2.0.2 — creators were never told which Representation
+        // they were designing Layouts for. Layouts are shared/reusable
+        // (any Representation can point at one via its Default Layout),
+        // so this reads the same shared `currentRepresentationId` every
+        // other state uses rather than inventing a stricter ownership
+        // model — see docs/WORLD_BUILDER_ARCHITECTURE.md A-005, still an
+        // open question across more Official Worlds.
+        const activeRepForLayouts = window.ProjectModel.findRepresentation(project, currentRepresentationId);
+        if (activeRepForLayouts) {
+            const repBanner = document.createElement('div');
+            repBanner.className = 'wb-state-intro';
+            const repBannerTitle = document.createElement('div');
+            const repBannerStrong = document.createElement('strong');
+            repBannerStrong.textContent = 'Current Representation: ';
+            repBannerTitle.appendChild(repBannerStrong);
+            repBannerTitle.appendChild(document.createTextNode((activeRepForLayouts.thumbnail || '') + ' ' + activeRepForLayouts.name));
+            repBanner.appendChild(repBannerTitle);
+            contextPanel.appendChild(repBanner);
+            contextPanel.appendChild(_fieldHelp('Layouts are shared — other Representations can reuse the same one. Switch which Representation you\'re viewing from the Representations state.'));
+        }
 
         const layouts = window.ProjectModel.layouts(project);
         layouts.forEach(function (layout) {

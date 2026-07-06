@@ -276,6 +276,95 @@ when the Project has at least one Representation — no second selection
 variable was introduced; Overview reads the exact same
 `currentRepresentationId` state Representations already writes.
 
+### Authoring feedback from the first Museum Gallery pass (Sprint B2.0.2)
+
+Producing Museum Gallery through the Builder end-to-end (Sprint B2.0)
+surfaced usability gaps a real authoring session exposes that
+unit-level testing doesn't. None of these change the Builder's three
+screens, its nine Workspace states, or any World Project/Package
+contract — they are fixes to the existing surfaces only.
+
+**World Id is now read-only.** It was previously a free-text field that
+silently re-slugified whatever was typed — inviting a creator to rename
+it after other data (Representations, links) already depended on the
+original value. `manifest.id`/`theme.id` are auto-generated once, at
+Project creation (`templates.js`'s `_slug(name) + '-' + _uid()`), and
+Overview now only ever displays them (`_readOnlyField`), never edits
+them. **The Icon field was removed** for the same reason in reverse —
+it was free-text emoji entry with no real identity purpose beyond a
+list-row fallback glyph; per this sprint's instruction, a future visual
+Icon (from Category, or an uploaded Asset) replaces it rather than
+reintroducing free text.
+
+**The Preview modal (Sprint B2.0.1) was showing real Story-runtime
+chrome that has nothing to do with the World being authored.** Its
+synthetic slide object left `handle`/`bookTitle` empty and
+`themeOptions` null, which — with no `ThemeEngine` loaded in the
+Builder's page — resolved to `renderer/slideRenderer.js`'s own
+`FALLBACK_OPTIONS` (`bookTitleVisibility:'show'`, `pageNumber:
+'bottom-right'`, `handleVisibility:'show'`), and an empty handle string
+falls through to the renderer's own hardcoded placeholder branding text,
+`'@vihuplanet'` (`_drawHandle`, line ~1885). The result: every World's
+generic sample page showed an unrelated page number, a footer named
+after the World itself (not a book title), and a stray `@vihuplanet`
+watermark — three pieces of Story-runtime furniture invented by the
+renderer's own fallbacks, not authored by the World. The fix passes an
+explicit `themeOptions` object with `bookTitleVisibility:'hide'`,
+`pageNumber:'hidden'`, `handleVisibility:'hide'`, so the Preview shows
+only what the World itself defines — Frame, Layout, Layer Pack — a
+genuinely generic sample page, matching the Preview Contract: "what
+would this World look like if used right now?"
+
+**The Preview modal no longer scrolls.** `.wb-preview-modal-box` is a
+fixed `88vh` height; `.wb-preview-modal-body` is a flex column where a
+new `.wb-preview-canvas-wrap` (flex:1, min-height:0) claims exactly the
+space left after the header and the note text, and the canvas scales
+within that wrapper (`height:100%` + `aspect-ratio` + `max-width:100%`)
+rather than against the whole body — so the canvas always shrinks to
+fit, on any viewport, with `overflow:hidden` on the body guaranteeing no
+scrollbar ever appears.
+
+**Layouts now show a "Current Representation" banner.** Layouts are a
+shared, reusable resource — any Representation can reference the same
+Layout via its Default Layout field — so this banner reads the same
+`currentRepresentationId` every other state already uses (no new
+selection model) rather than claiming an ownership relationship that
+doesn't exist. Whether Layout should eventually become a
+per-Representation concept, or Representation should collapse into
+Layout, is intentionally left open — see "Open authoring findings"
+below.
+
+**Representations' Layer Pack field explains why "Basic" exists.**
+Every new World Project starts with one Layer Pack (named "Basic") so a
+Representation always has a valid default to point at (`docs/
+WORLD_PROJECT_CONTRACT.md`'s "born valid" guarantee, LOCK 03) — the
+field's help text now says so directly, instead of just naming what a
+Layer Pack is.
+
+#### Open authoring findings (not resolved this sprint)
+
+- **A-005 — Representation vs. Layout relationship.** Today a Layout is
+  independent, reusable geometry; a Representation merely points at one.
+  Whether that's the right mental model, or whether Layouts should
+  become owned by a single Representation, needs more Official Worlds
+  authored before deciding — changing it now on one data point (Museum
+  Gallery) would be premature.
+- **A-006 — Representation's own value.** Whether "Portrait" (currently
+  a Representation) should instead be modeled as a Layout, once more
+  Official Worlds exist to compare against, is likewise left open.
+
+Neither finding changes any code or contract this sprint; both are
+recorded here so the next Official World's authoring pass has them in
+view.
+
+#### Future vision (explicitly out of scope)
+
+A **Visual Theme Composer** — interactive page anatomy, click-to-edit
+page layers, a fully creator-centric Builder — is the long-term
+direction discussed alongside this sprint's feedback, but is
+deliberately not started here. This paragraph exists only so the
+direction is on record; no B2.x sprint should treat it as implied scope.
+
 ---
 
 ## Retirement note
@@ -337,3 +426,24 @@ for exactly what was kept and why.
   and, where actionable, a "Fix Now" button that navigates straight to
   the offending state; the Build state's success view now shows Package
   Name/Size/Timestamp and a "Continue to Publish" action.
+- v2.2 — Sprint B2.0.2 (Museum Gallery Authoring Feedback). Real-world
+  authoring feedback from producing the first Official World; no new
+  screens/states/contracts. World Id is now read-only (auto-generated
+  at Project creation, never editable); the free-text Icon field is
+  removed. The Preview modal's synthetic slide no longer resolves to
+  `slideRenderer.js`'s own Story-runtime fallbacks — an unset handle no
+  longer falls through to the renderer's hardcoded `'@vihuplanet'`
+  placeholder, and footer/page-number are explicitly hidden via
+  `themeOptions`, so Preview shows only what the World itself defines.
+  The Preview modal's CSS was restructured (a new `.wb-preview-
+  canvas-wrap` flex child) so it always fits the viewport with no
+  scrollbar, on any screen height. Layouts gained a "Current
+  Representation" banner (reusing the existing shared
+  `currentRepresentationId`, no new selection model) since a Layout is
+  reusable across Representations and creators had no way to know whose
+  context they were editing in. Representations' Layer Pack field now
+  explains why every new World starts with a Layer Pack named "Basic."
+  Two authoring findings (Representation-vs-Layout relationship;
+  whether "Portrait" belongs as a Layout instead) are recorded as open,
+  deliberately unresolved pending more Official Worlds to compare
+  against; a future Visual Theme Composer is noted as out of scope.
