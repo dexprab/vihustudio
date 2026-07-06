@@ -1,9 +1,9 @@
 {
-  "version": "1.10.0",
-  "sprint": "SB1.1",
-  "task": "World Builder Workspace Foundation",
-  "build": "0069",
+  "version": "2.0.0",
+  "sprint": "SB2.0",
+  "task": "First Official World Platform Validation",
+  "build": "0070",
   "buildDate": "2026-07-06",
-  "commit": "0c20d4a",
+  "commit": "3623006",
   "environment": "Release"
 }
