@@ -10,11 +10,13 @@
 //
 // Two full-screen steps, shown before the editor:
 //   Screen 1 — Choose What To Create (Creation Type)
-//   Screen 2 — Choose Your Creative World: a master/detail layout —
-//              Vihu Worlds row + World Library row (master) feeding one
-//              Selected World Preview (detail) that holds the Page Style
-//              picker and Start Creating. Only one World is selected at
-//              a time, regardless of which row it came from, and there
+//   Screen 2 — Choose Your Creative World: a two-column master/detail
+//              layout — LEFT is World Sources only (a Vihu Worlds row +
+//              a World Library row, each horizontally scrolling, inside
+//              one sources panel); RIGHT is the single Selected World
+//              Preview, which holds the Page Style picker and Start
+//              Creating. Only one World is selected at a time,
+//              regardless of which row/source it came from, and there
 //              is exactly one Preview/Page-Style picker on the screen.
 // Only once "Start Creating" is pressed (or the chosen World has no
 // Representations to pick from) does Studio create the first page and
@@ -28,15 +30,16 @@
 // ThemeRegistry: `theme.supportedCreationTypes` and `theme.representations`.
 //
 // Sprint 11.0 — Import Theme moves from the (now unreachable while this
-// overlay is up) Theme Library modal onto Screen 2 itself as the World
-// Library row's "Add New World" card, so a theme emailed to a fresh
-// install can be picked up without ever detouring through the editor
-// first. It reuses ThemeEngine.importThemeFile as-is — no Theme
-// Engine/Registry/Builder/Compiler change of any kind. A Creation Type
-// with zero compatible themes is never a dead end: Vihu Worlds is simply
-// omitted and World Library's Add New World card is always present (see
-// the IA doc's "Empty state" section) — there is no separate "Coming
-// Soon" screen.
+// overlay is up) Theme Library modal onto Screen 2 itself — both as a
+// header-level "Add New World" button and as the World Library row's
+// own "Add New World" card (same action, two affordances, matching the
+// storyboard) — so a theme emailed to a fresh install can be picked up
+// without ever detouring through the editor first. It reuses
+// ThemeEngine.importThemeFile as-is — no Theme Engine/Registry/Builder/
+// Compiler change of any kind. A Creation Type with zero compatible
+// themes is never a dead end: Vihu Worlds is simply omitted and World
+// Library's Add New World card is always present (see the IA doc's
+// "Empty state" section) — there is no separate "Coming Soon" screen.
 //
 // Representation selection only ever writes to existing, already-
 // supported fields (slide.metadata.layout, AppState.project.artworkTheme/
@@ -97,8 +100,9 @@ const CreationFlow=(function(){
 
   function _brand(){
     const brand=_el('div','creation-flow-brand');
-    brand.appendChild(_el('div','creation-flow-brand-name','✨ VihuStudio'));
+    brand.appendChild(_el('div','creation-flow-brand-name','✨ VihuStudio ✨'));
     brand.appendChild(_el('div','creation-flow-brand-tagline','Your story. Your world. Your way.'));
+    brand.appendChild(_el('div','creation-flow-brand-divider','»»»»» ♥ «««««'));
     content.appendChild(brand);
   }
 
@@ -226,13 +230,16 @@ const CreationFlow=(function(){
   }
 
   // ---------- Screen 1: Choose What To Create ----------
+  // Fixed 4-column grid (4+2 wrap for six cards) per the storyboard —
+  // not an auto-fill grid, which would space unevenly at this card count.
   function _renderTypeScreen(){
     _clear();
     _setAtmosphere(false);
     _brand();
     _header('Step 1 of 2',null);
     content.appendChild(_el('h1','creation-flow-question','What would you like to create today?'));
-    const grid=_el('div','creation-flow-grid');
+    content.appendChild(_el('p','creation-flow-subtitle','Choose how your creative adventure begins.'));
+    const grid=_el('div','creation-flow-grid creation-flow-type-grid');
     CREATION_TYPES.forEach(function(t){
       const card=_el('button','creation-flow-card');
       card.type='button';
@@ -281,20 +288,53 @@ const CreationFlow=(function(){
     });
   }
 
+  // A small circular chevron beside a horizontally-scrolling row —
+  // purely a convenience affordance; the row already scrolls by drag/
+  // wheel/touch on its own.
+  function _scrollButton(rowEl){
+    const btn=_el('button','creation-flow-scroll-btn','›');
+    btn.type='button';
+    btn.addEventListener('click',function(){ rowEl.scrollBy({left:220,behavior:'smooth'}); });
+    return btn;
+  }
+
+  function _sourceGroup(headingText,subText,rowEl){
+    const group=_el('div','creation-flow-source-group');
+    group.appendChild(_el('h2','creation-flow-source-heading',headingText));
+    group.appendChild(_el('p','creation-flow-source-sub',subText));
+    const wrap=_el('div','creation-flow-world-row-wrap');
+    wrap.appendChild(rowEl);
+    wrap.appendChild(_scrollButton(rowEl));
+    group.appendChild(wrap);
+    return group;
+  }
+
   // ---------- Screen 2: Choose Your Creative World ----------
-  // Master/detail per docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md:
-  // Row 1 Vihu Worlds (official) + Row 2 World Library (imported, ending
-  // in Add New World) are the master list; the Selected World Preview is
-  // the one detail component every World — regardless of source — is
-  // read about and acted on through. Only one World is selected at a
-  // time; selecting a different card repaints the Preview, never spawns
-  // a second picker.
+  // Two-column master/detail per docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md
+  // and the canonical storyboard: LEFT is World Sources ONLY (Vihu
+  // Worlds row + World Library row, each horizontally scrolling, inside
+  // one sources panel); RIGHT is the single Selected World Preview
+  // (hero art, name, description, "Begin With" Page Style cards, Start
+  // Creating) — the one detail component every World, regardless of
+  // source, is read about and acted on through. Only one World is
+  // selected at a time; selecting a different card repaints the
+  // Preview only, never spawns a second picker.
   function _renderWorldScreen(type){
     _clear();
     _setAtmosphere(true);
-    _header('Step 2 of 2',_renderTypeScreen);
-    content.appendChild(_el('h1','creation-flow-question','Choose Your Creative World'));
-    content.appendChild(_el('p','creation-flow-subtitle','Pick a world and page style to start'));
+
+    const topRow=_el('div','creation-flow-header');
+    const back=_el('button','creation-flow-back','← Back');
+    back.type='button';
+    back.addEventListener('click',_renderTypeScreen);
+    topRow.appendChild(back);
+    const headerAddBtn=_el('button','creation-flow-add-world-header-btn','⊕ Add New World');
+    headerAddBtn.type='button';
+    topRow.appendChild(headerAddBtn);
+    content.appendChild(topRow);
+
+    content.appendChild(_el('h1','creation-flow-question','🌿 Choose Your Creative World 🌿'));
+    content.appendChild(_el('p','creation-flow-subtitle','Pick a world you love and choose how you want to begin.'));
 
     const themes=_themesForType(type.id);
     const officialThemes=themes.filter(function(t){ return _themeSource(t.id)==='official'; });
@@ -304,18 +344,22 @@ const CreationFlow=(function(){
       _selectedThemeId=selectable.length ? selectable[0].id : null;
     }
 
-    let officialRow=null, importedRow=null;
+    const layout=_el('div','creation-flow-worldscreen');
+    content.appendChild(layout);
+
+    const sourcesPanel=_el('div','creation-flow-sources-panel');
+    layout.appendChild(sourcesPanel);
+
+    let officialRow=null;
     if(officialThemes.length){
       officialRow=_el('div','creation-flow-world-row');
-      content.appendChild(_el('h2','creation-flow-row-label','Vihu Worlds'));
-      content.appendChild(officialRow);
+      sourcesPanel.appendChild(_sourceGroup('⭐ Vihu Worlds','Creative worlds built by VihuStudio',officialRow));
     }
-    content.appendChild(_el('h2','creation-flow-row-label','World Library'));
-    importedRow=_el('div','creation-flow-world-row');
-    content.appendChild(importedRow);
+    const importedRow=_el('div','creation-flow-world-row');
+    sourcesPanel.appendChild(_sourceGroup('📖 World Library','All kinds of worlds from anywhere',importedRow));
 
     const preview=_el('div','creation-flow-preview');
-    content.appendChild(preview);
+    layout.appendChild(preview);
 
     function selectWorld(themeId){
       if(_selectedThemeId===themeId) return;
@@ -324,6 +368,12 @@ const CreationFlow=(function(){
       paintRows();
       paintPreview();
     }
+
+    function onImported(added){
+      if(added){ _selectedThemeId=added.id; _selectedRepId=null; }
+      _renderWorldScreen(type);
+    }
+    _wireImportButton(headerAddBtn,onImported);
 
     function paintRows(){
       if(officialRow){
@@ -337,10 +387,7 @@ const CreationFlow=(function(){
         importedRow.appendChild(_worldRowCard(theme,theme.id===_selectedThemeId,function(){ selectWorld(theme.id); }));
       });
       const addCard=_addWorldCard();
-      _wireImportButton(addCard,function(added){
-        if(added){ _selectedThemeId=added.id; _selectedRepId=null; }
-        _renderWorldScreen(type);
-      });
+      _wireImportButton(addCard,onImported);
       importedRow.appendChild(addCard);
     }
 
@@ -351,8 +398,8 @@ const CreationFlow=(function(){
         preview.appendChild(_el('p','creation-flow-preview-empty','Add a world from World Library to get started.'));
         return;
       }
-      const hero=_el('div','creation-flow-preview-hero');
       const pv=_themePreview(theme);
+      const hero=_el('div','creation-flow-preview-hero');
       if(pv.image){
         const img=document.createElement('img');
         img.src=pv.image; img.alt='';
@@ -362,16 +409,18 @@ const CreationFlow=(function(){
         hero.textContent=pv.icon;
       }
       preview.appendChild(hero);
-      const info=_el('div','creation-flow-preview-info');
-      info.appendChild(_el('h2','creation-flow-preview-name',theme.name));
-      info.appendChild(_el('p','creation-flow-preview-desc',theme.description||''));
+
+      const body=_el('div','creation-flow-preview-body');
+      body.appendChild(_el('h2','creation-flow-preview-name',pv.icon+' '+theme.name));
+      body.appendChild(_el('p','creation-flow-preview-desc',theme.description||''));
 
       const reps=_representationsForTheme(theme.id,type.id);
       if(reps.length){
         if(!_selectedRepId || !reps.some(function(r){ return r.id===_selectedRepId; })){
           _selectedRepId=reps[0].id;
         }
-        info.appendChild(_el('h3','creation-flow-subheading','Choose your first Page Style'));
+        body.appendChild(_el('div','creation-flow-preview-divider','🌿 ───── 🌿'));
+        body.appendChild(_el('h3','creation-flow-subheading','🌿 Begin With 🌿'));
         const grid=_el('div','creation-flow-grid creation-flow-style-grid');
         reps.forEach(function(r){
           grid.appendChild(_repCard(r,r.id===_selectedRepId,function(){
@@ -379,7 +428,7 @@ const CreationFlow=(function(){
             paintPreview();
           }));
         });
-        info.appendChild(grid);
+        body.appendChild(grid);
       }else{
         _selectedRepId=null;
       }
@@ -393,9 +442,9 @@ const CreationFlow=(function(){
         _finish(type,theme,rep);
       });
       footer.appendChild(startBtn);
-      info.appendChild(footer);
+      body.appendChild(footer);
 
-      preview.appendChild(info);
+      preview.appendChild(body);
     }
 
     paintRows();

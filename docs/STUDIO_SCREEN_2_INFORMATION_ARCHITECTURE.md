@@ -16,9 +16,9 @@ identity it must honor.
 ```
 Choose Creation Type          (decided on Screen 1, carried into Screen 2)
         ↓
-Choose World                  (Row 1: Vihu Worlds · Row 2: World Library)
+Choose World                  (LEFT: Vihu Worlds row + World Library row)
         ↓
-Preview Selected World         (Row 3: one world, shown large)
+Preview Selected World         (RIGHT: one world, shown large)
         ↓
 Choose First Page              (inside the Preview, only if the world offers Page Styles)
         ↓
@@ -34,18 +34,21 @@ selected World.
 
 ## 2. Layout — Master/Detail
 
-Screen 2 is a single master/detail layout, top to bottom:
+Screen 2 is a single master/detail layout, arranged as two columns
+side by side (stacking vertically only on narrow viewports):
 
-| Row | Contents |
+| Column | Contents |
 |---|---|
-| Top | Heading: "Choose Your Creative World" |
-| Row 1 | **Vihu Worlds** — horizontal scrolling cards |
-| Row 2 | **World Library** — horizontal scrolling cards, last card is **Add New World** |
-| Row 3 | **Selected World Preview** — one large panel |
+| Top (spans both columns) | Heading: "Choose Your Creative World", subtitle, and the header-level Add New World button |
+| LEFT — Sources panel | **Vihu Worlds** row (official worlds) + **World Library** row (imported worlds, last card **Add New World**) — World Sources only, nothing else |
+| RIGHT — Selected World Preview | One large panel |
 
-Row 3's panel contains, top to bottom: the World's hero artwork, its
-name, its description, "Choose Your First Page" with Page Style
-previews (only if the World offers any), and Start Creating.
+The left column contains only World Sources — it is a selector, not a
+preview. The right column contains exactly one component, the Selected
+World Preview, which is the sole place any World's detail is shown:
+top to bottom, the World's hero artwork, its name, its description,
+"Begin With" Page Style previews (only if the World offers any), and
+Start Creating.
 
 ---
 
@@ -62,22 +65,24 @@ These are **only** two sources for the same kind of thing. They are
 selected, and started exactly the same way a Vihu World is. The only
 difference between the two rows is where the World came from.
 
-Row 2 always ends with an **Add New World** card, styled like a World
-card but with a "+" and its own label, in the same place regardless of
-how many other cards are in that row. Tapping it opens the same import
-flow that has always lived in the Theme Library, brought forward onto
-this screen because the Theme Library itself is not reachable while
-Screen 1/2 are open. A newly added World appears in Row 2 immediately,
+Add New World appears twice, both wired to the same import flow: as a
+button at the very top of the screen (beside the heading) and as the
+World Library row's own last card, styled like a World card but with a
+"+" and its own label. Either one opens the same import flow that has
+always lived in the Theme Library, brought forward onto this screen
+because the Theme Library itself is not reachable while Screen 1/2 are
+open. A newly added World appears in the World Library row immediately,
 already selected, with its Preview populated — no restart, no reload.
 
-**Empty state.** If a Creation Type has no Vihu Worlds at all, Row 1 is
-omitted rather than shown empty. Row 2 is never empty — even with zero
-World Library worlds yet, its Add New World card is always present, so
-a Creation Type with nothing built in yet is still never a dead end:
-the child (or the grown-up helping them) can always add a World right
-there. If, after all that, still nothing is selected, the Preview shows
-a gentle "add a world to get started" prompt in place of a World's
-details, and Start Creating stays disabled.
+**Empty state.** If a Creation Type has no Vihu Worlds at all, that row
+is omitted rather than shown empty. The World Library row is never
+empty — even with zero World Library worlds yet, its Add New World card
+is always present, so a Creation Type with nothing built in yet is
+still never a dead end: the child (or the grown-up helping them) can
+always add a World right there. If, after all that, still nothing is
+selected, the Preview shows a gentle "add a world to get started"
+prompt in place of a World's details, and Start Creating stays
+disabled.
 
 ---
 
@@ -88,10 +93,11 @@ came from.
 
 Selecting Museum Gallery, or a freshly imported Dinosaur Adventure,
 or Storybook Classic — any of them — updates exactly the same Preview
-area. Selecting a World never changes the contents of Row 1 or Row 2
-themselves; it only changes which card in those rows shows as selected,
-and what the Preview panel below displays. The rows are the menu; the
-Preview is the only place a World is actually read about or acted on.
+area. Selecting a World never changes the contents of the Vihu Worlds
+or World Library rows themselves; it only changes which card in those
+rows shows as selected, and what the Preview panel on the right
+displays. The left column is the menu; the Preview is the only place a
+World is actually read about or acted on.
 
 ---
 
@@ -104,8 +110,8 @@ of source. It always contains:
   a soft colour field if it has no image)
 - World name
 - World description
-- "Choose Your First Page" — Page Style previews (present only if the
-  selected World defines any; see §6)
+- "Begin With" — Page Style previews (present only if the selected
+  World defines any; see §6)
 - Start Creating
 
 There is exactly one Preview component. It is never duplicated per
@@ -140,6 +146,12 @@ list it finds, exactly as it already does for Museum Gallery.
 
 ## Change History
 
+- v1.1 — Corrected the layout from a single stacked column (rows top
+  to bottom) to the canonical two-column master/detail: World Sources
+  (Vihu Worlds + World Library) on the left, Selected World Preview on
+  the right. Added the header-level Add New World button alongside the
+  World Library row's own Add New World card. Renamed the Preview's
+  Page Style heading to "Begin With" to match the canonical storyboard.
 - v1.0 — Initial canonical IA document, written for Sprint 11.0
   (Studio Arrival Experience), describing the master/detail rebuild of
   Screen 2 (Vihu Worlds / World Library / Selected World Preview)
