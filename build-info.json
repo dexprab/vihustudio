@@ -1,9 +1,9 @@
 {
-  "version": "1.6.0",
-  "sprint": "Foundation",
-  "task": "Product Asset System",
-  "build": "0065",
+  "version": "1.7.0",
+  "sprint": "S11.1",
+  "task": "Screen 2 - World Selection & Preview Experience",
+  "build": "0066",
   "buildDate": "2026-07-05",
-  "commit": "4e0606b",
+  "commit": "4d46849",
   "environment": "Release"
 }
