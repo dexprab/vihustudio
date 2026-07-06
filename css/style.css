@@ -4551,51 +4551,99 @@ body.creation-flow-active .app-header{ display:none; }
   border-radius:var(--card-radius);
   background:var(--cf-paper);
   overflow:hidden;
+  padding:20px 24px 24px;
 }
 .creation-flow-preview-empty{
   font-size:14px;
   color:var(--text-secondary);
-  padding:24px;
 }
-.creation-flow-preview-hero{
+.creation-flow-preview-heading{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  text-align:center;
+  margin:0 0 16px;
+}
+
+/* ---------- Sprint 11.1 — the Preview carousel IS the layout selector.
+   One slide per layout the selected World offers; whichever slide is
+   scrolled into view is the current selection (see paintPreview in
+   js/creationFlow.js) — no click-to-select state lives in this CSS. */
+.creation-flow-carousel-wrap{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.creation-flow-carousel{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  border-radius:14px;
+  background:var(--cf-paper-alt);
+}
+.creation-flow-carousel-slide{
+  flex:0 0 100%;
+  scroll-snap-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap:10px;
+  padding:28px 24px;
+  min-height:300px;
+}
+.creation-flow-carousel-art{
   width:100%;
-  height:260px;
+  max-width:220px;
+  height:180px;
+  border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:72px;
+  font-size:88px;
   overflow:hidden;
-  border-bottom:1px solid var(--cf-line);
+  background:var(--cf-paper);
+  border:1px solid var(--cf-line);
 }
-.creation-flow-preview-hero img{ width:100%; height:100%; object-fit:cover; }
-.creation-flow-preview-body{ padding:24px; }
+.creation-flow-carousel-art img{ width:100%; height:100%; object-fit:cover; }
+.creation-flow-carousel-name{ font-size:19px; font-weight:700; color:var(--text); }
+.creation-flow-carousel-desc{ font-size:13px; color:var(--text-secondary); max-width:360px; }
+.creation-flow-carousel-arrow{
+  flex:0 0 auto;
+  width:36px !important;
+  height:36px;
+  padding:0;
+  border-radius:50%;
+  border:1px solid var(--cf-line);
+  background:var(--cf-paper);
+  color:var(--text);
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+}
+.creation-flow-carousel-arrow:hover{ border-color:var(--gold); }
+.creation-flow-carousel-arrow:disabled{ opacity:.3; cursor:default; }
+.creation-flow-carousel-dots{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin-top:12px;
+}
+.creation-flow-carousel-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--cf-line);
+}
+.creation-flow-carousel-dot.active{ background:var(--gold); }
 @media (max-width:640px){
-  .creation-flow-preview-hero{ height:180px; }
+  .creation-flow-carousel-slide{ min-height:220px; padding:20px; }
+  .creation-flow-carousel-art{ height:120px; font-size:56px; }
 }
-.creation-flow-preview-name{
-  font-size:22px;
-  font-weight:700;
-  color:var(--text);
-  margin:0 0 6px;
-}
-.creation-flow-preview-desc{
-  font-size:14px;
-  color:var(--text-secondary);
-  margin:0;
-}
-.creation-flow-preview-divider{
-  text-align:center;
-  color:var(--text-tertiary);
-  font-size:13px;
-  margin:20px 0 0;
-}
-.creation-flow-subheading{
-  font-size:16px;
-  font-weight:700;
-  color:var(--text);
-  text-align:center;
-  margin:8px 0 16px;
-}
+
 .creation-flow-footer{
   display:flex;
   justify-content:center;

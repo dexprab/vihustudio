@@ -1,7 +1,9 @@
 // creationFlow.js — Sprint 10.0 Creation Experience V1, made data-driven by
 // Sprint 10.1 (Theme Driven Representations), given the "Story Meadow"
 // arrival experience and master/detail Screen 2 by Sprint 11.0 (Studio
-// Arrival Experience). Canonical product documents:
+// Arrival Experience), and given a swipeable layout-carousel Preview by
+// Sprint 11.1 (World Selection & Preview Experience). Canonical product
+// documents:
 //   docs/STUDIO_DESIGN_CANON.md
 //   docs/STUDIO_CREATION_JOURNEY_V1.md
 //   docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md
@@ -13,13 +15,20 @@
 //   Screen 2 — Choose Your Creative World: a two-column master/detail
 //              layout — LEFT is World Sources only (a Vihu Worlds row +
 //              a World Library row, each horizontally scrolling, inside
-//              one sources panel); RIGHT is the single Selected World
-//              Preview, which holds the Page Style picker and Start
-//              Creating. Only one World is selected at a time,
-//              regardless of which row/source it came from, and there
-//              is exactly one Preview/Page-Style picker on the screen.
+//              one sources panel); RIGHT is the single Preview, a
+//              horizontally scrollable carousel of every layout the
+//              selected World offers, with Start Creating inside it.
+//              Only one World is selected at a time, regardless of
+//              which row/source it came from, and there is exactly one
+//              Preview on the screen.
+// Sprint 11.1 — the Preview IS the layout selector: whichever slide is
+// currently scrolled into view is the current selection. There is no
+// separate click-to-select grid, no checkmarks, no "Begin With" step,
+// and no other selection state — Start Creating always acts on
+// whichever layout is currently visible in the Preview.
 // Only once "Start Creating" is pressed (or the chosen World has no
-// Representations to pick from) does Studio create the first page and
+// Representations, in which case the Preview shows one slide for the
+// World's own single layout) does Studio create the first page and
 // reveal the editor.
 //
 // Sprint 10.1 — Studio knows nothing about Museum Gallery, Storybook
@@ -64,7 +73,7 @@ const CreationFlow=(function(){
 
   let overlay=null, content=null;
   let _mode='new'; // 'new' (full flow) | 'change-representation' (Page Style only, no new page)
-  let _selectedThemeId=null, _selectedRepId=null;
+  let _selectedThemeId=null;
   let _importInputEl=null;
 
   function _el(tag,className,text){
@@ -210,6 +219,30 @@ const CreationFlow=(function(){
     return card;
   }
 
+  // A large carousel slide for the Screen 2 Preview (Sprint 11.1) — one
+  // per layout the selected World offers. Deliberately a separate
+  // builder from _repCard: _repCard stays exactly as it was for the
+  // Context Panel's "Change Representation" shortcut (out of this
+  // sprint's scope), while the carousel slide has no click handler and
+  // no selected/checkmark state of its own — the Preview's scroll
+  // position is the only selection mechanism (see paintPreview).
+  function _carouselSlide(r){
+    const slide=_el('div','creation-flow-carousel-slide');
+    const art=_el('div','creation-flow-carousel-art');
+    const thumb=_repThumbnail(r);
+    if(thumb.image){
+      const img=document.createElement('img');
+      img.src=thumb.image; img.alt='';
+      art.appendChild(img);
+    }else{
+      art.textContent=thumb.text;
+    }
+    slide.appendChild(art);
+    slide.appendChild(_el('div','creation-flow-carousel-name',r.name));
+    if(r.description) slide.appendChild(_el('div','creation-flow-carousel-desc',r.description));
+    return slide;
+  }
+
   function _repCard(r,selected,onClick){
     const card=_el('button','creation-flow-card creation-flow-representation-card'+(selected?' selected':''));
     card.type='button';
@@ -247,7 +280,7 @@ const CreationFlow=(function(){
       card.appendChild(_el('div','creation-flow-card-title',t.title));
       card.appendChild(_el('div','creation-flow-card-desc',t.desc));
       card.addEventListener('click',function(){
-        _selectedThemeId=null; _selectedRepId=null;
+        _selectedThemeId=null;
         _renderWorldScreen(t);
       });
       grid.appendChild(card);
@@ -313,12 +346,11 @@ const CreationFlow=(function(){
   // Two-column master/detail per docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md
   // and the canonical storyboard: LEFT is World Sources ONLY (Vihu
   // Worlds row + World Library row, each horizontally scrolling, inside
-  // one sources panel); RIGHT is the single Selected World Preview
-  // (hero art, name, description, "Begin With" Page Style cards, Start
-  // Creating) — the one detail component every World, regardless of
-  // source, is read about and acted on through. Only one World is
-  // selected at a time; selecting a different card repaints the
-  // Preview only, never spawns a second picker.
+  // one sources panel); RIGHT is the single Preview — a swipeable
+  // carousel of every layout the selected World offers, Start Creating
+  // living inside it (Sprint 11.1). Only one World is selected at a
+  // time; selecting a different card repaints the Preview only, never
+  // spawns a second picker.
   function _renderWorldScreen(type){
     _clear();
     _setAtmosphere(true);
@@ -356,7 +388,7 @@ const CreationFlow=(function(){
       sourcesPanel.appendChild(_sourceGroup('⭐ Vihu Worlds','Creative worlds built by VihuStudio',officialRow));
     }
     const importedRow=_el('div','creation-flow-world-row');
-    sourcesPanel.appendChild(_sourceGroup('📖 World Library','All kinds of worlds from anywhere',importedRow));
+    sourcesPanel.appendChild(_sourceGroup('📚 World Library','All kinds of worlds from anywhere',importedRow));
 
     const preview=_el('div','creation-flow-preview');
     layout.appendChild(preview);
@@ -364,13 +396,12 @@ const CreationFlow=(function(){
     function selectWorld(themeId){
       if(_selectedThemeId===themeId) return;
       _selectedThemeId=themeId;
-      _selectedRepId=null;
       paintRows();
       paintPreview();
     }
 
     function onImported(added){
-      if(added){ _selectedThemeId=added.id; _selectedRepId=null; }
+      if(added){ _selectedThemeId=added.id; }
       _renderWorldScreen(type);
     }
     _wireImportButton(headerAddBtn,onImported);
@@ -391,6 +422,15 @@ const CreationFlow=(function(){
       importedRow.appendChild(addCard);
     }
 
+    // Sprint 11.1 — the Preview IS the layout selector: a horizontally
+    // scrollable carousel of every layout the selected World offers
+    // (theme.representations — the already-authored, user-facing
+    // wrapper around theme.layouts; see docs/THEME_PROJECT_SPEC.md §8).
+    // Whichever slide is currently scrolled into view is the current
+    // selection — no click-to-select grid, no checkmarks, no separate
+    // "Begin With" step. A World with no Representations still shows
+    // one slide (its own identity), so the carousel is always the one
+    // and only place a layout is chosen, for every World.
     function paintPreview(){
       preview.innerHTML='';
       const theme=selectable.find(function(t){ return t.id===_selectedThemeId; });
@@ -399,52 +439,67 @@ const CreationFlow=(function(){
         return;
       }
       const pv=_themePreview(theme);
-      const hero=_el('div','creation-flow-preview-hero');
-      if(pv.image){
-        const img=document.createElement('img');
-        img.src=pv.image; img.alt='';
-        hero.appendChild(img);
-      }else{
-        hero.style.background=pv.color;
-        hero.textContent=pv.icon;
-      }
-      preview.appendChild(hero);
+      preview.appendChild(_el('div','creation-flow-preview-heading',pv.icon+' '+theme.name));
 
-      const body=_el('div','creation-flow-preview-body');
-      body.appendChild(_el('h2','creation-flow-preview-name',pv.icon+' '+theme.name));
-      body.appendChild(_el('p','creation-flow-preview-desc',theme.description||''));
-
-      const reps=_representationsForTheme(theme.id,type.id);
-      if(reps.length){
-        if(!_selectedRepId || !reps.some(function(r){ return r.id===_selectedRepId; })){
-          _selectedRepId=reps[0].id;
-        }
-        body.appendChild(_el('div','creation-flow-preview-divider','🌿 ───── 🌿'));
-        body.appendChild(_el('h3','creation-flow-subheading','🌿 Begin With 🌿'));
-        const grid=_el('div','creation-flow-grid creation-flow-style-grid');
-        reps.forEach(function(r){
-          grid.appendChild(_repCard(r,r.id===_selectedRepId,function(){
-            _selectedRepId=r.id;
-            paintPreview();
-          }));
-        });
-        body.appendChild(grid);
-      }else{
-        _selectedRepId=null;
+      let reps=_representationsForTheme(theme.id,type.id);
+      if(!reps.length){
+        reps=[{id:null,name:theme.name,description:theme.description||'',thumbnail:null,layout:null,__isDefault:true}];
       }
+
+      const carouselWrap=_el('div','creation-flow-carousel-wrap');
+      const prevBtn=_el('button','creation-flow-carousel-arrow prev','‹');
+      prevBtn.type='button';
+      const carousel=_el('div','creation-flow-carousel');
+      const nextBtn=_el('button','creation-flow-carousel-arrow next','›');
+      nextBtn.type='button';
+      carouselWrap.appendChild(prevBtn);
+      carouselWrap.appendChild(carousel);
+      carouselWrap.appendChild(nextBtn);
+      reps.forEach(function(r){ carousel.appendChild(_carouselSlide(r)); });
+      preview.appendChild(carouselWrap);
+
+      const dots=_el('div','creation-flow-carousel-dots');
+      const dotEls=reps.map(function(){
+        const d=_el('span','creation-flow-carousel-dot');
+        dots.appendChild(d);
+        return d;
+      });
+      if(reps.length>1) preview.appendChild(dots);
 
       const footer=_el('div','creation-flow-footer');
       const startBtn=_el('button','creation-flow-start-btn','Start Creating  →');
       startBtn.type='button';
-      startBtn.addEventListener('click',function(){
-        const reps2=_representationsForTheme(theme.id,type.id);
-        const rep=reps2.find(function(r){ return r.id===_selectedRepId; })||null;
-        _finish(type,theme,rep);
-      });
       footer.appendChild(startBtn);
-      body.appendChild(footer);
+      preview.appendChild(footer);
 
-      preview.appendChild(body);
+      let currentIndex=0;
+      function updateActive(index){
+        currentIndex=Math.max(0,Math.min(reps.length-1,index));
+        dotEls.forEach(function(d,i){ d.classList.toggle('active',i===currentIndex); });
+        prevBtn.disabled=currentIndex===0;
+        nextBtn.disabled=currentIndex===reps.length-1;
+      }
+      updateActive(0);
+
+      if(reps.length>1){
+        let scrollFrame=null;
+        carousel.addEventListener('scroll',function(){
+          if(scrollFrame) cancelAnimationFrame(scrollFrame);
+          scrollFrame=requestAnimationFrame(function(){
+            updateActive(Math.round(carousel.scrollLeft/carousel.clientWidth));
+          });
+        });
+        prevBtn.addEventListener('click',function(){ carousel.scrollBy({left:-carousel.clientWidth,behavior:'smooth'}); });
+        nextBtn.addEventListener('click',function(){ carousel.scrollBy({left:carousel.clientWidth,behavior:'smooth'}); });
+      }else{
+        prevBtn.disabled=true;
+        nextBtn.disabled=true;
+      }
+
+      startBtn.addEventListener('click',function(){
+        const rep=reps[currentIndex];
+        _finish(type,theme,(rep && !rep.__isDefault) ? rep : null);
+      });
     }
 
     paintRows();
@@ -557,7 +612,7 @@ const CreationFlow=(function(){
   function start(){
     _ensureDom();
     _mode='new';
-    _selectedThemeId=null; _selectedRepId=null;
+    _selectedThemeId=null;
     document.body.classList.add('creation-flow-active');
     overlay.classList.remove('hidden');
     _renderTypeScreen();
