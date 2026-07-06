@@ -5,10 +5,12 @@
     "description": "Big and bold — the classic gallery look.",
     "thumbnail": "🖼️",
     "layout": "landscape",
-    "defaultFrame": "classic-white-mat",
+    "defaultFrame": "classic-white",
     "defaultLayerPack": null,
     "background": null,
-    "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+    "actions": [
+      "editCaption"
+    ]
   },
   {
     "id": "portrait",
@@ -16,10 +18,12 @@
     "description": "Tall and centered, like a framed portrait.",
     "thumbnail": "🧍",
     "layout": "portrait",
-    "defaultFrame": "classic-white-mat",
+    "defaultFrame": "classic-white",
     "defaultLayerPack": null,
     "background": null,
-    "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
+    "actions": [
+      "editCaption"
+    ]
   },
   {
     "id": "quote",
@@ -30,6 +34,8 @@
     "defaultFrame": null,
     "defaultLayerPack": null,
     "background": null,
-    "actions": ["editQuote"]
+    "actions": [
+      "editQuote"
+    ]
   }
 ]

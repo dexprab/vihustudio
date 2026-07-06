@@ -1,0 +1,11 @@
+{
+  "id": "quote",
+  "name": "Quote",
+  "aspect": "quote",
+  "description": "No picture — a centered quote, beautifully set.",
+  "captionPosition": "below",
+  "padding": 24,
+  "spacing": 16,
+  "alignment": "center",
+  "composition": "quote"
+}

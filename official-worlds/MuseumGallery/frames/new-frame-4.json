@@ -1,0 +1,12 @@
+{
+  "id": "new-frame-4",
+  "name": "Floating Frame",
+  "description": "No border line — the picture appears to float above a wide white mat.",
+  "fields": {
+    "matWidth": 56,
+    "frameThickness": 0,
+    "borderColor": "#ffffff",
+    "wallTone": "#ffffff",
+    "shadow": "floating"
+  }
+}

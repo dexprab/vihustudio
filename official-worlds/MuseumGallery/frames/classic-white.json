@@ -1,0 +1,12 @@
+{
+  "id": "classic-white",
+  "name": "Classic White",
+  "description": "Pure inheritance — the gallery preset's own base defaults.",
+  "fields": {
+    "matWidth": 24,
+    "frameThickness": 2,
+    "borderColor": "#ffffff",
+    "wallTone": "#ffffff",
+    "shadow": "soft"
+  }
+}

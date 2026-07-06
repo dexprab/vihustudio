@@ -153,6 +153,44 @@ Project is never briefly invalid while being edited.
 
 ---
 
+## Contract corrections (Sprint B2.0)
+
+Producing a real Official World end-to-end through the Builder (see
+`FIRST_OFFICIAL_WORLD_REPORT.md`) surfaced two schema bugs in how
+Sprint B1.0/B1.1 generated and edited `layouts/` and `frames/` entries
+— both are corrected as of this sprint, in both `templates.js` (initial
+generation) and `projectModel.js` (every subsequent edit):
+
+- **Layout `name` is required** (`docs/THEME_PROJECT_SPEC.md` §5). The
+  original template generator produced `{id, aspect}` only; the real
+  `validator.js` requires `name` on every Layout entry, so this was a
+  latent validation failure nothing had exercised until Sprint B2.0
+  actually ran Validation for real. Every Layout now carries a `name`
+  from the moment it is created (a template's own starter Layouts, and
+  the Layouts state's own "+ Add Layout").
+- **A Frame Variation's presentation fields live under a nested
+  `fields` object**, not flat on the entry (`docs/THEME_PROJECT_SPEC.md`
+  §6: `{id, name, description, fields: {matWidth, frameThickness, ...}}`).
+  The original generator put these fields flat on the entry — `builder.js`
+  doesn't reject this shape (it doesn't validate `fields` nesting), so
+  it silently compiled "successfully" into a package the runtime's own
+  frame-variation resolver would never actually read correctly. Every
+  Frame now carries a real `fields: {}` object from creation onward.
+- **`theme.json.name` must equal `manifest.json.name`** — Overview's
+  World Name field previously updated `manifest.name`/`metadata.displayName`
+  but left `theme.name` stale, so validation failed the instant a
+  creator renamed their World away from its template default (which
+  every real creator does). `ProjectModel.setIdentity` now updates all
+  three together.
+
+None of these were caught by Sprint B1.0/B1.1's own Playwright
+verification because that verification checked *generation* (a template
+produces a complete file map) and basic UI wiring, never actually ran
+the real `validator.js` against the result — Sprint B2.0 is the first
+sprint to run Validation for real, and it is exactly what caught these.
+
+---
+
 ## Change History
 
 - v1.0 — Initial canonical document, written for Sprint B1.0 (World
@@ -170,3 +208,11 @@ Project is never briefly invalid while being edited.
   accessor/mutator layer the Workspace edits a Project's file map
   through, keeping LOCK 03 true across the Project's whole editable
   lifetime, not just at creation.
+- v1.2 — Sprint B2.0 (First Official World Platform Validation). Adds
+  "Contract corrections" documenting three schema bugs found and fixed
+  by actually running Validation/Build against a real, fully-authored
+  World for the first time (Museum Gallery) — missing required Layout
+  `name`, un-nested Frame `fields`, and stale `theme.name` after a
+  rename. All three are corrected in `templates.js` and
+  `projectModel.js`; see `FIRST_OFFICIAL_WORLD_REPORT.md` for the full
+  account of what this sprint's end-to-end validation exercise found.

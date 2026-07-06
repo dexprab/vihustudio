@@ -1,0 +1,12 @@
+{
+  "id": "new-frame-2",
+  "name": "Natural Linen",
+  "description": "A textured canvas paper and a muted linen wall.",
+  "fields": {
+    "matWidth": 24,
+    "frameThickness": 2,
+    "borderColor": "#c7b99b",
+    "wallTone": "#e9e2d0",
+    "shadow": "soft"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "new-frame",
+  "name": "Warm Ivory",
+  "description": "A soft cream mat and a warm ivory wall — cozy, not clinical.",
+  "fields": {
+    "matWidth": 26,
+    "frameThickness": 3,
+    "borderColor": "#d9c7a3",
+    "wallTone": "#f2e8d5",
+    "shadow": "soft"
+  }
+}

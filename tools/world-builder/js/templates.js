@@ -17,12 +17,25 @@ const WorldTemplates = (function () {
     return new Date().toISOString().slice(0, 10);
   }
 
-  function _layout(id, aspect) {
-    return { id: id, aspect: aspect };
+  // Sprint B2.0 fix: `name` is a **required** Layout field
+  // (docs/THEME_PROJECT_SPEC.md §5) — the pre-B2.0 shape (`{id, aspect}`
+  // only) would fail the real validator.js the instant Validation ran
+  // for real (Sprint B1.0/B1.1 never exercised it). See
+  // FIRST_OFFICIAL_WORLD_REPORT.md, "Platform gaps discovered."
+  function _layout(id, name, aspect, description) {
+    return { id: id, name: name, aspect: aspect, description: description || '' };
   }
 
-  function _frame(id, name, fields) {
-    return Object.assign({ id: id, name: name }, fields);
+  // Sprint B2.0 fix: a Frame Variation's presentation fields live under
+  // a nested `fields` object (docs/THEME_PROJECT_SPEC.md §6), not flat
+  // on the entry itself — the pre-B2.0 shape put them flat, which
+  // `builder.js`/`validator.js` don't reject (neither enforces `fields`
+  // nesting) but which the runtime's own frame-variation resolver
+  // (`renderer/slideRenderer.js`) reads from `.fields`, so a flat shape
+  // would compile "successfully" yet silently fail to apply at render
+  // time. See FIRST_OFFICIAL_WORLD_REPORT.md.
+  function _frame(id, name, description, fields) {
+    return { id: id, name: name, description: description || '', fields: fields || {} };
   }
 
   function _representation(id, name, description, thumbnail, layout, defaultFrame) {
@@ -141,8 +154,12 @@ const WorldTemplates = (function () {
         supportedCreationTypes: ['artwork'],
         tags: ['gallery', 'art'],
         themeFields: { presentation: 'gallery', caption: 'none', enhancement: [] },
-        layouts: [_layout('landscape', 'landscape'), _layout('portrait', 'portrait'), _layout('quote', 'quote')],
-        frames: [_frame('classic-white', 'Classic White', { matWidth: 24, frameThickness: 10, borderColor: '#FFFFFF', wallTone: '#F4F1EC' })],
+        layouts: [
+          _layout('landscape', 'Landscape', 'landscape', 'The classic gallery wall — a wide picture, caption below.'),
+          _layout('portrait', 'Portrait', 'portrait', 'Tall and centered, like a framed portrait.'),
+          _layout('quote', 'Quote', 'quote', 'No picture — a centered quote, beautifully set.')
+        ],
+        frames: [_frame('classic-white', 'Classic White', 'A clean white mat, always in style.', { matWidth: 24, frameThickness: 10, borderColor: '#FFFFFF', wallTone: '#F4F1EC' })],
         layerPack: [],
         representations: [
           _representation('showcase', 'Showcase', 'Big and bold — the classic gallery look.', '🖼️', 'landscape', 'classic-white'),
@@ -174,8 +191,8 @@ const WorldTemplates = (function () {
           footerText: { font: 'Georgia, serif', size: 24, color: '#FFFFFF' },
           watermark: { font: 'Georgia, serif', size: 24, color: '#FFFFFF' }
         },
-        layouts: [_layout('classic', 'portrait')],
-        frames: [_frame('classic', 'Classic', { frameThickness: 8 })],
+        layouts: [_layout('classic', 'Classic', 'portrait', 'A single storybook page.')],
+        frames: [_frame('classic', 'Classic', 'A simple book-page frame.', { frameThickness: 8 })],
         layerPack: [],
         representations: [
           _representation('cover', 'Cover', 'Your story’s opening page.', '📕', 'classic', 'classic'),
@@ -201,8 +218,8 @@ const WorldTemplates = (function () {
         supportedCreationTypes: ['quote'],
         tags: ['quote', 'words'],
         themeFields: { presentation: 'gallery', caption: 'none', enhancement: [] },
-        layouts: [_layout('quote', 'quote')],
-        frames: [_frame('simple', 'Simple', { matWidth: 16, frameThickness: 0, borderColor: '#FFFFFF', wallTone: '#FFFFFF' })],
+        layouts: [_layout('quote', 'Quote', 'quote', 'No picture — a centered quote, beautifully set.')],
+        frames: [_frame('simple', 'Simple', 'A plain, quiet mat.', { matWidth: 16, frameThickness: 0, borderColor: '#FFFFFF', wallTone: '#FFFFFF' })],
         layerPack: [],
         representations: [
           _representation('quote', 'Quote', 'Just your words, beautifully centered.', '💬', 'quote', 'simple')
@@ -226,8 +243,11 @@ const WorldTemplates = (function () {
         supportedCreationTypes: ['artwork'],
         tags: ['sketch', 'draft'],
         themeFields: { presentation: 'gallery', caption: 'none', enhancement: [] },
-        layouts: [_layout('landscape', 'landscape'), _layout('portrait', 'portrait')],
-        frames: [_frame('kraft', 'Kraft Paper', { matWidth: 12, frameThickness: 4, borderColor: '#C9B79C', wallTone: '#EFE7D8' })],
+        layouts: [
+          _layout('landscape', 'Landscape', 'landscape', 'Wide and casual, like an open sketchbook.'),
+          _layout('portrait', 'Portrait', 'portrait', 'Tall and centered.')
+        ],
+        frames: [_frame('kraft', 'Kraft Paper', 'A warm, hand-made paper mat.', { matWidth: 12, frameThickness: 4, borderColor: '#C9B79C', wallTone: '#EFE7D8' })],
         layerPack: [],
         representations: [
           _representation('sketch', 'Sketch', 'Wide and casual, like an open sketchbook.', '✏️', 'landscape', 'kraft'),
@@ -252,8 +272,8 @@ const WorldTemplates = (function () {
         supportedCreationTypes: ['card'],
         tags: ['card', 'greeting'],
         themeFields: { presentation: 'gallery', caption: 'none', enhancement: [] },
-        layouts: [_layout('portrait', 'portrait')],
-        frames: [_frame('festive', 'Festive', { matWidth: 10, frameThickness: 6, borderColor: '#E8B4B8', wallTone: '#FFF6F2' })],
+        layouts: [_layout('portrait', 'Portrait', 'portrait', 'A card-shaped page, ready for a message.')],
+        frames: [_frame('festive', 'Festive', 'A soft, celebratory mat.', { matWidth: 10, frameThickness: 6, borderColor: '#E8B4B8', wallTone: '#FFF6F2' })],
         layerPack: [],
         representations: [
           _representation('card', 'Card', 'A card-shaped page, ready for a message.', '💌', 'portrait', 'festive')
@@ -283,8 +303,8 @@ const WorldTemplates = (function () {
           footerText: { font: 'Georgia, serif', size: 20, color: '#FFFFFF' },
           watermark: { font: 'Georgia, serif', size: 20, color: '#FFFFFF' }
         },
-        layouts: [_layout('default', 'portrait')],
-        frames: [_frame('plain', 'Plain', { frameThickness: 0 })],
+        layouts: [_layout('default', 'Default', 'portrait', 'A single blank page.')],
+        frames: [_frame('plain', 'Plain', 'No border at all.', { frameThickness: 0 })],
         layerPack: [],
         representations: []
       }

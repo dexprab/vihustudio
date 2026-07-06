@@ -81,6 +81,22 @@ A future sprint that closes the `hero`/`thumbnail` gap should update
 this document's status accordingly rather than leaving the distinction
 undocumented.
 
+**Sprint B2.0 update:** the World Builder's Assets Workspace state
+(`docs/WORLD_ASSET_SPEC.md`) implements Identity (`thumbnail`/`hero`)
+against exactly the already-shipped mechanism described above —
+`thumbnail.png` / `preview.png` at the Project root, resolved by the
+unmodified `builder.js` into `manifest.thumbnail` / `metadata.previewImage`
+— not the `assets/thumbnail.webp` / `assets/hero.webp` convention this
+document reserves for the future. The `assets/thumbnail.webp` /
+`assets/hero.webp` gap named above remains open; Sprint B2.0
+deliberately built against what the compiler already resolves correctly
+rather than introducing an unverified second path. The
+`showcase`/`portrait`/`quote`-under-`assets/` half of this convention
+remains valid and unchanged — Sprint B2.0's Assets state can upload a
+per-Representation preview image at `assets/frames/<frameId>.png` for
+Frame previews specifically, using the same "Representation.thumbnail
+accepts a relative path" mechanism this document already describes.
+
 ---
 
 ## Rules
@@ -140,6 +156,15 @@ a signal to the World's author, not something for Studio to paper over.
 
 ## Change History
 
+- v1.2 — Sprint B2.0 (First Official World Platform Validation). Notes
+  that the World Builder's Assets Workspace state implements Identity
+  (`thumbnail`/`hero`) against the already-shipped root-file mechanism,
+  not the reserved `assets/thumbnail.webp`/`assets/hero.webp`
+  convention — that gap remains open by design (see
+  `docs/WORLD_ASSET_SPEC.md`). Records that Museum Gallery, re-authored
+  entirely through the Builder this sprint, is the first World to prove
+  the Import Parity rule against Builder-produced (not hand-authored)
+  output.
 - v1.1 — Added the permanent Import Parity rule (Sprint 11.2 — Official
   World Platform): an Official World is complete only when its compiled
   package, imported into a clean install, provides exactly the same

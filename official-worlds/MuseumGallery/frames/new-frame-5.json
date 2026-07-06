@@ -1,0 +1,12 @@
+{
+  "id": "new-frame-5",
+  "name": "Black Matte",
+  "description": "A bold black mat and border on a light wall — modern and graphic.",
+  "fields": {
+    "matWidth": 20,
+    "frameThickness": 2,
+    "borderColor": "#0a0a0a",
+    "wallTone": "#d6d6d6",
+    "shadow": "floating"
+  }
+}

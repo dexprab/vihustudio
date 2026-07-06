@@ -1,0 +1,11 @@
+{
+  "id": "portrait",
+  "name": "Portrait",
+  "aspect": "portrait",
+  "description": "Tall and centered, like a framed portrait.",
+  "captionPosition": "below",
+  "padding": 24,
+  "spacing": 16,
+  "alignment": "center",
+  "composition": "below"
+}

@@ -37,7 +37,13 @@ separation `docs/THEME_PROJECT_SPEC.md` §0 already draws between a
 Theme Project, Theme Builder, and VihuStudio — World Builder is that
 same pipeline, given a creative front door instead of a developer one.
 
-### Sprint B1.1 — what exists today
+### Sprint B2.0 — what exists today
+
+Every Builder Workspace state from the storyboard is now implemented.
+Museum Gallery was authored entirely through this pipeline — Overview
+through Publish — with zero manual JSON/folder editing, then imported
+into a clean Runtime and verified end-to-end; see
+`FIRST_OFFICIAL_WORLD_REPORT.md` for the full account.
 
 | Stage | Status |
 |---|---|
@@ -48,11 +54,13 @@ same pipeline, given a creative front door instead of a developer one.
 | Builder Workspace — Overview state | **Implemented** |
 | Builder Workspace — Representations state | **Implemented** |
 | Builder Workspace — Layouts state | **Implemented** |
-| Builder Workspace — Frames / Layer Packs / Assets states | Stubbed — reachable in Navigation, show "Coming in the next sprint," Preview and Context Panel stay mounted. Not yet built. |
-| Validation (UI) | Not yet — future sprint. The validation *engine* (`js/services/validator.js`) already exists and works, reachable today only by internal tooling (`verify/goldenBuild.js`), not by a Builder screen. Stubbed in Navigation this sprint. |
-| Build (UI) | Not yet — future sprint. Same story as Validation: `js/services/builder.js` works today, with no Build button anywhere yet. Stubbed in Navigation this sprint. |
-| Publish | Not yet — future sprint. Stubbed in Navigation this sprint. |
-| Runtime | **Unchanged** — VihuStudio still imports a `.vtheme` exactly as it always has (`docs/VTHEME_PACKAGE_SPEC.md`); nothing about how Studio consumes a World changed this sprint. |
+| Builder Workspace — Frames state | **Implemented** (Sprint B2.0) — create/duplicate/rename/delete/reorder, full field editor (thickness/padding/inset/border/wall tone/shadow/corner radius/default margin), all through `ProjectModel`. |
+| Builder Workspace — Layer Packs state | **Implemented** (Sprint B2.0) — multiple named packs (Builder-only organization; the compiled Runtime still merges every `layer-packs/*.json` file into one flat array, unchanged), Default Layer Pack writes the real, previously-reserved `theme.json.defaultLayerPack` field, per-layer visibility/lock/reorder/type/target/anchor/position/offset/z-index/text-source. |
+| Builder Workspace — Assets state | **Implemented** (Sprint B2.0) — generated entirely from `docs/WORLD_ASSET_SPEC.md` / `js/assetSpec.js`; real file upload (FileReader → data URI) for Identity (required) and Frames/Textures/Decorations/Icons/Fonts/Backgrounds (optional); live completion tracking. |
+| Validation (UI) | **Implemented** (Sprint B2.0) — runs the real, unmodified `js/services/validator.js` via a new in-memory adapter (`js/projectCompiler.js`), not a second opinion of "valid." Reports pass/warning/error grouped by category (World Contract/Representations/Layouts/Frames/Layer Packs/Assets/References/Metadata/Version). |
+| Build (UI) | **Implemented** (Sprint B2.0) — runs the real, unmodified `js/services/builder.js` via the same adapter, producing a genuine `{manifest, theme, assets}` `.vtheme` package stored on the Project (`project.lastBuild`). |
+| Publish (UI) | **Implemented** (Sprint B2.0) — Export Package and Official World both download exactly the Build-produced package, byte-for-byte; Community World is an honest, inert "Coming soon" placeholder. |
+| Runtime | **Unchanged** — VihuStudio still imports a `.vtheme` exactly as it always has (`docs/VTHEME_PACKAGE_SPEC.md`); verified this sprint against a Builder-produced (not hand-authored) package for the first time. |
 
 ---
 
@@ -179,6 +187,31 @@ separate "Save" action for Project data; the Header's Save button is
 reserved for a future, different purpose (per the storyboard) and is
 inert this sprint.
 
+### Validation and Build reuse the real engines (Sprint B2.0)
+
+`tools/world-builder/js/projectCompiler.js` is the adapter that makes
+good on this document's own earlier promise — "a future Build stage can
+feed [a World Project] to the same unmodified `validator.js`/`builder.js`
+with no translation layer." Both engines only ever talk to the global
+`projectLoader` singleton (`js/services/projectLoader.js`), populated
+historically by picking a real folder via `<input webkitdirectory>`.
+`projectCompiler.js`'s entire job is populating that same singleton from
+an in-memory World Project instead — every `project.files[path]` entry
+becomes a real `Blob` (JSON-stringified for `.json` files, decoded from
+its stored data URI for an asset) so `projectLoader`'s own
+`FileReader`-based `readFile`/`readFileAsDataURL` work unmodified. This
+means Validation and Build are not a second, Builder-specific opinion
+of "valid" or "compiled" — they are the identical rules and identical
+compiled output a hand-authored Theme Project would get from the same
+services, proven this sprint by running Museum Gallery through them for
+the first time (`FIRST_OFFICIAL_WORLD_REPORT.md`).
+
+The Assets Workspace state is generated entirely from
+`tools/world-builder/js/assetSpec.js` (the Builder-readable mirror of
+`docs/WORLD_ASSET_SPEC.md`) — every category and slot the Assets screen
+can ever show is declared once there; the screen itself contains no
+per-category markup.
+
 ---
 
 ## Retirement note
@@ -212,3 +245,13 @@ for exactly what was kept and why.
   now stubbed (previously "not yet" with no UI at all); Validation/Build/
   Publish remain engine-only. Records that Screen 2's template selection
   now opens the Workspace directly instead of returning to Screen 1.
+- v2.0 — Sprint B2.0 (First Official World Platform Validation). Every
+  remaining Builder Workspace state is implemented (Frames, Layer Packs,
+  Assets, Validation, Build, Publish). Adds the "Validation and Build
+  reuse the real engines" section documenting `projectCompiler.js`'s
+  in-memory adapter over the unmodified `validator.js`/`builder.js`, and
+  notes the Assets state is entirely generated from
+  `docs/WORLD_ASSET_SPEC.md`/`assetSpec.js`. Records that Museum Gallery
+  was authored end-to-end through this pipeline with zero manual
+  JSON/folder editing, built into a real `.vtheme`, and verified against
+  a clean Runtime import — see `FIRST_OFFICIAL_WORLD_REPORT.md`.

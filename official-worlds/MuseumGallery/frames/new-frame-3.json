@@ -1,0 +1,12 @@
+{
+  "id": "new-frame-3",
+  "name": "Dark Gallery",
+  "description": "A dramatic dark wall behind a bright white mat, like a night exhibition.",
+  "fields": {
+    "matWidth": 22,
+    "frameThickness": 2,
+    "borderColor": "#2a2a2a",
+    "wallTone": "#1d1f24",
+    "shadow": "floating"
+  }
+}

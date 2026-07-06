@@ -2,21 +2,19 @@
   "manifest": {
     "id": "museum-gallery",
     "name": "Museum Gallery",
-    "version": "1.2.0",
-    "builderVersion": "1.2.0",
+    "version": "1.3.0",
+    "builderVersion": "1.0.0",
     "minStudioVersion": "9.5.0",
     "author": "Vihu",
-    "category": "Official",
+    "category": "Community",
     "tags": [
       "gallery",
-      "art",
-      "museum",
-      "artwork"
+      "art"
     ],
     "description": "A quiet gallery wall — white mat, soft light, centered.",
     "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAACWCAIAAACaSNt3AAAA2ElEQVR42u3QMQ0AAAgDsPkXy0XCiwt4mlRBM10ciALRohEtWrQF0aIRLVq0BdGiES1aNKJFI1q0aESLRrRo0YgWjWjRohEtGtGiRSNaNKJFi0a0aESLFo1o0YgWLRrRohEtWjSiRSNatGhEi0a0aNGIFo1o0aIRLRrRokUjWjSiRYtGtGhEixaNaNGIFi0a0aIRLVo0okUjWrRoRItGtGjRiBaNaNGiES0a0aJFI1o0okWLRrRoRIsWjWjRiBYtGtGiES1aNKJFI1q0aESLRrRo0YgWjehPC7oQRYmtVCzKAAAAAElFTkSuQmCC",
-    "createdDate": "2026-07-04",
-    "updatedDate": "2026-07-05",
+    "createdDate": "2026-07-06",
+    "updatedDate": "2026-07-06",
     "type": "artwork",
     "displayName": "Museum Gallery",
     "purpose": "Present a child's artwork like a professional museum exhibition.",
@@ -24,191 +22,140 @@
     "bestFor": [
       "Fine art & paintings",
       "Photography",
-      "Portraits",
-      "Keepsake gifts"
+      "Portraits"
     ],
-    "notRecommendedFor": [
-      "Silly, high-energy stories"
-    ],
+    "notRecommendedFor": [],
     "themeIcon": "🖼️",
     "previewImage": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAH0CAIAAACcuOzXAAAE20lEQVR42u3UsQkAAAgEsd9/WCvB1jmUQCa44jJdACdEAsCwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCDEsFwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIMSwXAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAAw5IAMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsADDUgEwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAMNSATAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzgtwWUJT2gbLwxYwAAAABJRU5ErkJggg=="
   },
   "theme": {
     "id": "museum-gallery",
     "name": "Museum Gallery",
-    "description": "A quiet gallery wall — white mat, soft light, centered.",
-    "presentation": "gallery",
-    "caption": "none",
-    "enhancement": [],
     "supportedCreationTypes": [
       "artwork",
       "artwork-collection"
     ],
-    "editor": {
-      "slide": {
-        "sections": [
-          "layout",
-          "quoteText",
-          "title"
-        ]
-      },
-      "frame": {
-        "sections": [
-          "fill",
-          "shadow",
-          "paper"
-        ]
-      },
-      "holder": {
-        "image": [
-          "presentation",
-          "frameVariation",
-          "lighting",
-          "caption",
-          "museumCaption"
-        ],
-        "text": [
-          "typography"
-        ],
-        "sticker": []
-      }
-    },
+    "presentation": "gallery",
+    "caption": "none",
+    "enhancement": [],
     "layouts": [
       {
         "id": "landscape",
         "name": "Landscape",
-        "description": "The classic gallery wall — a wide picture, caption below.",
         "aspect": "landscape",
-        "holders": 1,
-        "supportedFrames": [
-          "classic-white-mat",
-          "warm-ivory",
-          "natural-linen",
-          "dark-gallery",
-          "floating-frame",
-          "black-matte",
-          "gold-accent"
-        ]
+        "description": "The classic gallery wall — a wide picture, caption below.",
+        "captionPosition": "below",
+        "padding": 24,
+        "spacing": 16,
+        "alignment": "center",
+        "composition": "below"
       },
       {
         "id": "portrait",
         "name": "Portrait",
-        "description": "Tall and centered, like a framed portrait on a gallery wall.",
         "aspect": "portrait",
-        "holders": 1,
-        "supportedFrames": [
-          "classic-white-mat",
-          "warm-ivory",
-          "natural-linen",
-          "dark-gallery",
-          "floating-frame",
-          "black-matte",
-          "gold-accent"
-        ]
+        "description": "Tall and centered, like a framed portrait.",
+        "captionPosition": "below",
+        "padding": 24,
+        "spacing": 16,
+        "alignment": "center",
+        "composition": "below"
       },
       {
         "id": "quote",
         "name": "Quote",
-        "description": "No picture — a centered quote, poem, or certificate text.",
         "aspect": "quote",
-        "holders": 1,
+        "description": "No picture — a centered quote, beautifully set.",
+        "captionPosition": "below",
+        "padding": 24,
+        "spacing": 16,
+        "alignment": "center",
         "composition": "quote"
       }
     ],
     "frameVariations": [
       {
-        "id": "classic-white-mat",
+        "id": "classic-white",
         "name": "Classic White",
-        "description": "Pure inheritance — the gallery preset's own base defaults. The reference frame every other variation is a deliberate departure from.",
-        "fields": {}
+        "description": "Pure inheritance — the gallery preset's own base defaults.",
+        "fields": {
+          "matWidth": 24,
+          "frameThickness": 2,
+          "borderColor": "#ffffff",
+          "wallTone": "#ffffff",
+          "shadow": "soft"
+        }
       },
       {
-        "id": "warm-ivory",
+        "id": "new-frame",
         "name": "Warm Ivory",
         "description": "A soft cream mat and a warm ivory wall — cozy, not clinical.",
         "fields": {
-          "background": "cream",
-          "frame": "white-mat",
-          "paper": "smooth",
-          "shadow": "soft",
           "matWidth": 26,
           "frameThickness": 3,
-          "borderColor": "#D9C7A3",
-          "wallTone": "#F2E8D5"
+          "borderColor": "#d9c7a3",
+          "wallTone": "#f2e8d5",
+          "shadow": "soft"
         }
       },
       {
-        "id": "natural-linen",
+        "id": "new-frame-2",
         "name": "Natural Linen",
         "description": "A textured canvas paper and a muted linen wall.",
         "fields": {
-          "background": "cream",
-          "frame": "white-mat",
-          "paper": "canvas",
-          "shadow": "soft",
           "matWidth": 24,
           "frameThickness": 2,
-          "borderColor": "#C7B99B",
-          "wallTone": "#E9E2D0"
+          "borderColor": "#c7b99b",
+          "wallTone": "#e9e2d0",
+          "shadow": "soft"
         }
       },
       {
-        "id": "dark-gallery",
+        "id": "new-frame-3",
         "name": "Dark Gallery",
         "description": "A dramatic dark wall behind a bright white mat, like a night exhibition.",
         "fields": {
-          "background": "white",
-          "frame": "white-mat",
-          "paper": "smooth",
-          "shadow": "floating",
           "matWidth": 22,
           "frameThickness": 2,
-          "borderColor": "#2A2A2A",
-          "wallTone": "#1D1F24"
+          "borderColor": "#2a2a2a",
+          "wallTone": "#1d1f24",
+          "shadow": "floating"
         }
       },
       {
-        "id": "floating-frame",
+        "id": "new-frame-4",
         "name": "Floating Frame",
         "description": "No border line — the picture appears to float above a wide white mat.",
         "fields": {
-          "background": "white",
-          "frame": "floating",
-          "paper": "smooth",
-          "shadow": "floating",
           "matWidth": 56,
           "frameThickness": 0,
-          "wallTone": "#FFFFFF"
+          "borderColor": "#ffffff",
+          "wallTone": "#ffffff",
+          "shadow": "floating"
         }
       },
       {
-        "id": "black-matte",
+        "id": "new-frame-5",
         "name": "Black Matte",
         "description": "A bold black mat and border on a light wall — modern and graphic.",
         "fields": {
-          "background": "black",
-          "frame": "white-mat",
-          "paper": "smooth",
-          "shadow": "floating",
           "matWidth": 20,
           "frameThickness": 2,
-          "borderColor": "#0A0A0A",
-          "wallTone": "#D6D6D6"
+          "borderColor": "#0a0a0a",
+          "wallTone": "#d6d6d6",
+          "shadow": "floating"
         }
       },
       {
-        "id": "gold-accent",
+        "id": "new-frame-6",
         "name": "Gold Accent",
         "description": "A warm, premium gold border on a white mat.",
         "fields": {
-          "background": "white",
-          "frame": "white-mat",
-          "paper": "smooth",
-          "shadow": "gallery",
           "matWidth": 24,
           "frameThickness": 4,
-          "borderColor": "#C9A227",
-          "wallTone": "#F8F2E4"
+          "borderColor": "#c9a227",
+          "wallTone": "#f8f2e4",
+          "shadow": "gallery"
         }
       }
     ],
@@ -218,38 +165,49 @@
         "type": "text",
         "target": "holder",
         "anchor": "bottom-center",
+        "offsetX": 0,
         "offsetY": 16,
         "zIndex": 1,
+        "visible": true,
+        "locked": false,
         "text": {
-          "source": "museumCaption",
-          "font": "Georgia, serif",
-          "size": 20,
-          "color": "#3A3A3A"
+          "source": "museumCaption"
         }
       },
       {
         "id": "page-number",
         "type": "text",
         "target": "slide",
+        "anchor": "bottom-center",
+        "offsetX": 0,
+        "offsetY": 0,
+        "zIndex": 1,
+        "visible": true,
+        "locked": false,
         "position": "bottom-left"
       },
       {
         "id": "handle",
-        "type": "text",
+        "type": "decoration",
         "target": "slide",
+        "anchor": "bottom-center",
+        "offsetX": 0,
+        "offsetY": 0,
+        "zIndex": 1,
+        "visible": true,
+        "locked": false,
         "position": "bottom-right"
       },
       {
         "id": "gallery-spotlight",
         "type": "decoration",
-        "target": "slide",
+        "target": "frame",
         "anchor": "top-center",
+        "offsetX": 0,
+        "offsetY": 0,
         "zIndex": 0,
-        "decoration": {
-          "kind": "spotlight",
-          "alpha": 0.14,
-          "radius": 640
-        }
+        "visible": true,
+        "locked": false
       },
       {
         "id": "wax-seal",
@@ -258,7 +216,9 @@
         "anchor": "bottom-right",
         "offsetX": -28,
         "offsetY": -28,
-        "zIndex": 2
+        "zIndex": 2,
+        "visible": true,
+        "locked": false
       }
     ],
     "representations": [
@@ -268,13 +228,10 @@
         "description": "Big and bold — the classic gallery look.",
         "thumbnail": "🖼️",
         "layout": "landscape",
-        "defaultFrame": "classic-white-mat",
+        "defaultFrame": "classic-white",
         "defaultLayerPack": null,
         "background": null,
         "actions": [
-          "replaceArtwork",
-          "cropRotate",
-          "frameVariation",
           "editCaption"
         ]
       },
@@ -284,13 +241,10 @@
         "description": "Tall and centered, like a framed portrait.",
         "thumbnail": "🧍",
         "layout": "portrait",
-        "defaultFrame": "classic-white-mat",
+        "defaultFrame": "classic-white",
         "defaultLayerPack": null,
         "background": null,
         "actions": [
-          "replaceArtwork",
-          "cropRotate",
-          "frameVariation",
           "editCaption"
         ]
       },

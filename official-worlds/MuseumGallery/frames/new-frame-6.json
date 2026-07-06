@@ -1,0 +1,12 @@
+{
+  "id": "new-frame-6",
+  "name": "Gold Accent",
+  "description": "A warm, premium gold border on a white mat.",
+  "fields": {
+    "matWidth": 24,
+    "frameThickness": 4,
+    "borderColor": "#c9a227",
+    "wallTone": "#f8f2e4",
+    "shadow": "gallery"
+  }
+}
