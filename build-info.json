@@ -1,9 +1,9 @@
 {
-  "version": "1.5.2",
-  "sprint": "S11.0",
-  "task": "Studio Arrival Experience (Screen 2 two-column)",
-  "build": "0064",
+  "version": "1.6.0",
+  "sprint": "Foundation",
+  "task": "Product Asset System",
+  "build": "0065",
   "buildDate": "2026-07-05",
-  "commit": "36c4c9a",
+  "commit": "4e0606b",
   "environment": "Release"
 }
