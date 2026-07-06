@@ -1,9 +1,9 @@
 {
-  "version": "2.0.0",
-  "sprint": "SB2.0",
-  "task": "First Official World Platform Validation",
-  "build": "0070",
+  "version": "2.0.1",
+  "sprint": "SB2.0.1",
+  "task": "Builder Stabilization",
+  "build": "0071",
   "buildDate": "2026-07-06",
-  "commit": "3623006",
+  "commit": "3a7ebf7",
   "environment": "Release"
 }
