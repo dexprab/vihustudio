@@ -111,6 +111,48 @@ your project" step before it's considered real.
 
 ---
 
+## Automatic World Project creation
+
+Generation is a two-step, synchronous pipeline the creator never
+watches happen — there is no loading state, no progress bar, and no
+intermediate "empty project" the creator could see between the steps:
+
+```
+Screen 2 (template card clicked)
+   ↓
+WorldTemplates.generate(templateId)   — tools/world-builder/js/templates.js
+   returns { name, tagline, description, icon, files }
+   `files` already contains every entry this contract requires
+   (README.md, manifest.json, metadata.json, theme.json, layouts/*.json,
+   frames/*.json, layer-packs/basic.json, representations/all.json
+   when the template has any, docs/WORLD_SPEC.md, docs/WORLD_ASSET_SPEC.md)
+   ↓
+ProjectStore.create(templateId, generated)   — tools/world-builder/js/projectStore.js
+   wraps it with the fields the Builder itself owns (id, status:'draft',
+   createdAt/updatedAt) and persists it to localStorage
+   ↓
+Builder Workspace opens on the new Project immediately (Sprint B1.1)
+```
+
+The creator only ever sees the last step. Per the Template Rule
+(Sprint B1.1): the instant a template card is clicked, the template
+grid is gone — the Builder opens the Workspace on a real, already-valid
+World Project, not on the template that produced it. There is no
+"return to Welcome and find your new draft" intermediate step; that
+only happens later, when the creator deliberately leaves the Workspace
+(the Header's home button).
+
+Every field the Workspace lets a creator edit — World Name, Tagline,
+Description, Publisher, Version, Representations, Layouts, and so on —
+is read and written through `tools/world-builder/js/projectModel.js`,
+the single accessor/mutator layer over a Project's file map. This is
+what keeps LOCK 03 true for the entire life of a Project, not just the
+instant it's created: every edit is applied directly to the same
+already-valid structure `WorldTemplates.generate` produced, so the
+Project is never briefly invalid while being edited.
+
+---
+
 ## Change History
 
 - v1.0 — Initial canonical document, written for Sprint B1.0 (World
@@ -119,3 +161,12 @@ your project" step before it's considered real.
   `docs/THEME_PROJECT_SPEC.md`'s hand-authored Theme Project, and
   reserves the per-project `docs/WORLD_SPEC.md` /
   `docs/WORLD_ASSET_SPEC.md` convention.
+- v1.1 — Sprint B1.1 (World Builder Workspace Foundation). Adds the
+  "Automatic World Project creation" section documenting the
+  `WorldTemplates.generate` → `ProjectStore.create` → Builder Workspace
+  pipeline, and records the Template Rule: selecting a template opens
+  the Workspace immediately rather than returning to Screen 1. Notes
+  that `tools/world-builder/js/projectModel.js` is the single
+  accessor/mutator layer the Workspace edits a Project's file map
+  through, keeping LOCK 03 true across the Project's whole editable
+  lifetime, not just at creation.

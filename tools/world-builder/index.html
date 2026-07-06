@@ -32,7 +32,7 @@
                     <div id="wb-my-worlds-list" class="wb-my-worlds-list">
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
-                    <p id="wb-my-worlds-empty" class="wb-empty-note">You haven't started a World yet — Create New World to begin.</p>
+                    <p id="wb-my-worlds-empty" class="wb-empty-note">✨ Your worlds will appear here.<br>Create your first world to begin your journey.</p>
                 </section>
 
                 <section class="wb-section wb-explore">
@@ -69,6 +69,42 @@
                 <!-- rendered by worldBuilderApp.js -->
             </div>
         </section>
+
+        <!-- Screen 3 — Builder Workspace -->
+        <section id="wb-screen-workspace" class="wb-screen wb-screen-workspace wb-hidden">
+            <header class="wb-workspace-header">
+                <div class="wb-workspace-header-left">
+                    <button id="wb-workspace-home" class="wb-workspace-home-btn" type="button" title="Back to My World Projects">🏠</button>
+                    <span id="wb-workspace-name" class="wb-workspace-name">Untitled World</span>
+                    <span class="wb-workspace-saved">● <span id="wb-workspace-saved-text">Draft Saved</span></span>
+                </div>
+                <div class="wb-workspace-header-right">
+                    <button class="wb-workspace-btn" type="button" title="Coming in the next sprint">Preview</button>
+                    <button class="wb-workspace-btn" type="button" title="Coming in the next sprint">Settings</button>
+                    <button class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Coming in the next sprint">💾 Save</button>
+                    <button class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="Coming in the next sprint">⋮</button>
+                </div>
+            </header>
+
+            <div class="wb-workspace-body">
+                <nav id="wb-workspace-nav" class="wb-workspace-nav">
+                    <!-- rendered by worldBuilderApp.js -->
+                </nav>
+
+                <main class="wb-workspace-preview-column">
+                    <div id="wb-preview-canvas" class="wb-preview-canvas">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                    <div id="wb-preview-selector" class="wb-preview-selector">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                </main>
+
+                <aside id="wb-context-panel" class="wb-context-panel">
+                    <!-- rendered by worldBuilderApp.js -->
+                </aside>
+            </div>
+        </section>
     </div>
 
     <footer class="wb-footer">
@@ -84,6 +120,7 @@
     <!-- Builder application -->
     <script src="js/templates.js"></script>
     <script src="js/projectStore.js"></script>
+    <script src="js/projectModel.js"></script>
     <script src="js/worldBuilderApp.js"></script>
     <script src="js/buildInfo.js"></script>
 </body>

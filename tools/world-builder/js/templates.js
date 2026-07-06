@@ -128,6 +128,7 @@ const WorldTemplates = (function () {
       id: 'artwork-gallery',
       title: 'Artwork Gallery',
       icon: '🖼️',
+      blurb: 'Showcase paintings, drawings and photography beautifully.',
       spec: {
         name: 'My Artwork Gallery',
         tagline: 'A world to showcase art and creativity.',
@@ -154,6 +155,7 @@ const WorldTemplates = (function () {
       id: 'storybook',
       title: 'Storybook',
       icon: '📖',
+      blurb: 'Tell a story, page by page, with warmth and wonder.',
       spec: {
         name: 'My Storybook',
         tagline: 'A world for telling stories, page by page.',
@@ -186,6 +188,7 @@ const WorldTemplates = (function () {
       id: 'quotes',
       title: 'Quotes',
       icon: '💬',
+      blurb: 'Turn your favorite words into elegant, shareable art.',
       spec: {
         name: 'My Quotes',
         tagline: 'Art is my voice.',
@@ -210,6 +213,7 @@ const WorldTemplates = (function () {
       id: 'sketchbook',
       title: 'Sketchbook',
       icon: '✏️',
+      blurb: 'Share sketches and drafts, just as they are.',
       spec: {
         name: 'My Sketchbook',
         tagline: 'A world for sketches, doodles, and drafts.',
@@ -235,6 +239,7 @@ const WorldTemplates = (function () {
       id: 'greeting-cards',
       title: 'Greeting Cards',
       icon: '❤️',
+      blurb: 'Make a heartfelt card for someone special.',
       spec: {
         name: 'My Greeting Cards',
         tagline: 'A world for cards made with love.',
@@ -259,6 +264,7 @@ const WorldTemplates = (function () {
       id: 'blank',
       title: 'Blank World',
       icon: '➕',
+      blurb: 'Start from nothing and make it your own.',
       spec: {
         name: 'My Blank World',
         tagline: 'Start from nothing and make it your own.',
@@ -286,7 +292,7 @@ const WorldTemplates = (function () {
   ];
 
   function list() {
-    return TEMPLATES.map(function (t) { return { id: t.id, title: t.title, icon: t.icon }; });
+    return TEMPLATES.map(function (t) { return { id: t.id, title: t.title, icon: t.icon, blurb: t.blurb }; });
   }
 
   function generate(templateId) {
