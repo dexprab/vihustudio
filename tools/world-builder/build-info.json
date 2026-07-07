@@ -1,9 +1,9 @@
 {
-  "version": "2.0.4-WB",
-  "sprint": "B2.0.4",
-  "task": "Workspace Ergonomics",
-  "build": "0007",
+  "version": "2.0.5-WB",
+  "sprint": "B2.0.5",
+  "task": "Builder Workspace Polish",
+  "build": "0008",
   "buildDate": "2026-07-07",
-  "commit": "776932c",
+  "commit": "37b71b6",
   "environment": "Release"
 }
