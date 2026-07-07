@@ -270,6 +270,102 @@ the label would clip against `.wb-working-canvas-wrap`'s own
 own top (or bottom, for the Padding guide) edge instead of floating
 outside it — a purely cosmetic change, no guide geometry logic touched.
 
+### Workspace Polish — edge-to-edge, correct aspect ratio, Draft Management (Sprint B2.0.5)
+
+Sprint B2.0.5 is a visual-polish sprint on top of Sprint B2.0.4's grid —
+no new screens, no Workspace states, no rendering pipeline change. Real
+authoring surfaced two genuine defects and one missing capability.
+
+**The `#wb-root` ancestor-padding bug.** `#wb-root` (wrapping all three
+Screens) carried `max-width:1080px; margin:0 auto; padding:48px 32px
+96px;` intended for Screens 1–2's comfortable reading-column layout. The
+Workspace (`.wb-screen-workspace`, `height:100vh`) inherited it too —
+and because `100vh` is viewport-relative, independent of an ancestor's
+padding, the Workspace's own fixed height plus its parent's 144px of
+vertical padding together overflowed the true viewport, while the 64px
+of horizontal padding stole width from every Workspace region. This was
+the single largest contributor to "excessive whitespace" / "not
+edge-to-edge." Fixed by moving that padding/max-width/margin onto
+`.wb-screen-welcome, .wb-screen-templates` specifically — the two
+screens that actually want it — leaving `#wb-root` as bare
+`min-height:100%`. The Workspace now measures exactly `0,0,<viewport
+width>,<viewport height>`.
+
+**The flex + aspect-ratio distortion bug.** Working View's and Runtime
+Preview's canvas-wrap elements combined `flex:1` (which resolves a
+definite main-axis size — height, in a column flex container — via
+flex-grow) with `aspect-ratio` and `max-width:100%` on the same element.
+When `max-width` later became the binding cross-axis constraint, the
+browser did not retroactively shrink the already-flex-resolved height to
+match — a real, measurable distortion (Runtime Preview measured ratio
+1.573 against a correct 1.25; Working View happened to escape the bug
+only because its wider column never triggered the `max-width` clamp).
+Fixed with the same two-layer technique the Sprint B2.0.2 Preview modal
+already used: an outer plain `flex:1` sizing container (no
+`aspect-ratio`, just `display:flex; align-items:center;
+justify-content:center; overflow:hidden;`) wrapping a new inner box
+(`.wb-working-canvas-inner` / `.wb-runtime-preview-canvas-inner`) that
+alone carries `width:auto; height:auto; max-width:100%; max-height:100%;
+aspect-ratio:1080/1350;` plus the visual styling (radius/shadow/
+background). Splitting the sizing role from the aspect-locking role
+across two elements is what lets the browser's standard
+fit-within-both-constraints algorithm apply correctly. `index.html`
+gained the corresponding wrapper `<div>`s; canvas element ids are
+unchanged, so no JS changed.
+
+**Space reallocation.** `.wb-workspace-body`'s grid columns moved from
+Sprint B2.0.4's implicit split to explicit `170px 1fr 380px` (Nav /
+Working View / Runtime Preview), and rows from `40% 60%` to `64% 36%`
+(top row / Inspector) — Nav shrinks to what its icon+label+padding
+actually need, and the reclaimed width/height goes to Working View and
+Runtime Preview per the sprint's explicit P0 priority, not split evenly.
+Inspector's row-height share shrank in the process, but its architecture
+(full-width, beneath both, independently scrollable) is unchanged — it
+remains fully usable at any height since it was already the one region
+allowed to scroll. Padding/gap values were tightened throughout Nav,
+Working View, Runtime Preview, and Inspector (each by a few px, not
+rearchitected) as the "reduce gutters" P0 item.
+
+A container being the largest and most prominent *region* of the screen
+is not the same claim as its rendered *page* filling that region
+edge-to-edge — a portrait page (0.8:1) inside a wide container can only
+do the latter through distortion or cropping, both explicitly
+prohibited by the ticket ("Do NOT simply stretch," "Do not distort
+aspect ratios"). Working View satisfies "the largest visual region" by
+being the widest column on screen; the empty horizontal margin around
+its smaller portrait page is the same relationship Figma's own canvas
+has to a smaller artboard — not a defect.
+
+**Draft Management.** The Welcome screen's project cards previously had
+no way to Rename, Duplicate, or Delete a draft — the only way to "start
+over" was manually clearing `localStorage`. All three actions reuse
+existing, already-real functions rather than adding new persistence:
+`ProjectModel.setIdentity(project, {name})` (the same function Overview's
+own World Name field already calls) for Rename; `ProjectStore.duplicate()`
+/ `ProjectStore.remove()` (both shipped in Sprint B2.0.1 for the
+Workspace header's overflow menu, just never exposed on the Welcome
+screen) for Duplicate/Delete. `window.prompt()`/`window.confirm()` are
+used for the same reason the header's own Delete already uses
+`window.confirm()` — a consistent, zero-new-infrastructure pattern.
+Because `ProjectStore.remove()` only ever touches `ProjectStore`'s own
+`localStorage` key — a Builder-only draft record — it has no code path
+that can reach `ThemeRegistry`'s imported-themes key, `official-worlds/`,
+`themes/`, or a downloaded `.vtheme` file; those are architecturally
+separate persistence layers that were never wired together, so "never
+delete a published World" holds by construction, not by an added guard.
+The project card itself changed from a `<button>` to a `role="button"`
+`<div>` (with a matching `keydown` handler for Enter/Space) since a
+native button cannot legally contain the three new nested action
+buttons — the same pattern already used for Frame/Layout list rows,
+each of whose own controls call `e.stopPropagation()` so a control click
+never also triggers the row's open action. Widening the card grid's
+`minmax()` floor from 220px to 320px was a companion fix: the original
+220px card had no button-shaped content in it, so the exact same
+`repeat(auto-fill, minmax(...))` value collapsed the name column to
+a few pixels and overlapped it with the new controls once they were
+added — a real, verified-via-screenshot layout defect, not a subjective
+tightening choice.
+
 ### The State System
 
 Each Navigation item maps to one Context Panel renderer function. A
@@ -596,3 +692,32 @@ for exactly what was kept and why.
   Representations, and Overview. Verified via a new 25-assertion
   Playwright suite plus full regression across every prior sprint's
   suite (all passing unchanged).
+- v2.5 — Sprint B2.0.5 (Builder Workspace Polish). Visual-polish and
+  Draft Management sprint — no new screens, no architecture change.
+  Fixes two real, measured CSS defects: the `#wb-root` ancestor-padding
+  bug (the always-`100vh` Workspace was rendered inside 144px of dead
+  vertical and 64px of dead horizontal padding meant only for Screens
+  1–2's reading-column layout, the largest single contributor to
+  "excessive whitespace"), and a flex+`aspect-ratio` distortion bug in
+  Working View's and Runtime Preview's canvases (combining `flex:1` with
+  `aspect-ratio`+`max-width` on one element let `max-width` clamp width
+  without retroactively correcting the already flex-resolved height;
+  fixed with the same outer-sizing/inner-aspect-locked two-layer split
+  the Sprint B2.0.2 Preview modal already used). Rebalances
+  `.wb-workspace-body`'s grid to `170px 1fr 380px` columns / `64% 36%`
+  rows, giving Nav only what its icon+label+padding need and the
+  reclaimed space to Working View/Runtime Preview per the ticket's P0
+  priority; Inspector's architecture (full-width, beneath both,
+  independently scrollable) is unchanged. Adds basic Draft Management to
+  the Welcome screen's project cards — Rename/Duplicate/Delete, each
+  reusing an existing function (`ProjectModel.setIdentity`/
+  `ProjectStore.duplicate`/`ProjectStore.remove`) rather than adding new
+  persistence, with Delete architecturally incapable of touching a
+  published Official Theme or exported `.vtheme` since those live in
+  entirely separate persistence layers; the project card changed from a
+  `<button>` to a `role="button"` `div` so it can legally contain its
+  own nested action buttons, and the card grid's `minmax()` floor widened
+  from 220px to 320px to fix a real overlap the new controls caused at
+  the old width. Verified via a new 20-assertion Playwright suite plus
+  full regression across every prior sprint's suite (all passing
+  unchanged).

@@ -190,3 +190,46 @@ scroll length in the panels that had grown longest.
 
 None recorded this sprint — B2.0.4 was scoped to Workspace layout only,
 with no new authoring surfaces to observe gaps in.
+
+## Sprint B2.0.5 — Builder Workspace Polish
+
+### Builder Issues (fixed this sprint)
+
+**The `#wb-root` ancestor-padding bug.** `#wb-root` carried padding and
+a max-width meant for Screens 1–2's comfortable reading-column layout,
+but as an ancestor of `.wb-screen-workspace` (a fixed `100vh` region,
+independent of ancestor padding) it caused the Workspace's true
+rendered footprint to overflow the viewport by exactly that padding
+amount, while also stealing width — measured directly via
+`getBoundingClientRect()`, not a subjective "feels tight" complaint.
+This was the largest single contributor to the sprint's "excessive
+whitespace" / "not edge-to-edge" observation. Fixed by moving that
+padding/max-width onto `.wb-screen-welcome, .wb-screen-templates`
+specifically.
+
+**A flex + `aspect-ratio` distortion bug in Working View and Runtime
+Preview.** Combining `flex:1` with `aspect-ratio` and `max-width:100%`
+on one element let the browser resolve height via flex-grow before
+`max-width` clamped width, so height was never retroactively corrected
+to match — a real, measured distortion (Runtime Preview's canvas
+measured ratio 1.573 against a correct 1.25). This was not something
+the sprint ticket named as a known defect — it only asked to "review
+scaling logic... do not distort aspect ratios" — but turned out to be a
+literal, verifiable bug once measured. Fixed with the same two-layer
+outer-sizing/inner-aspect-locked split the Sprint B2.0.2 Preview modal
+already used successfully.
+
+**The project card grid overlapped its own new controls.** Adding
+Rename/Duplicate/Delete buttons to the Welcome screen's project card
+(this sprint's Draft Management requirement) immediately collided with
+the pre-existing `minmax(220px, 1fr)` card grid — a width that was never
+wrong until the card grew new button-shaped content, at which point the
+name column collapsed to a few pixels and visibly overlapped the
+buttons. Fixed by widening the floor to `minmax(320px, 1fr)`, verified
+via screenshot before and after.
+
+### Future Product Insights (not implemented — documented only)
+
+None recorded this sprint — B2.0.5 was scoped to visual polish and
+Draft Management, both of which reused existing engines/functions with
+no new authoring surface to observe gaps in.

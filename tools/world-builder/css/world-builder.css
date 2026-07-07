@@ -30,12 +30,27 @@ html, body {
 }
 
 #wb-root {
+    min-height: 100%;
+}
+
+.wb-hidden { display: none !important; }
+
+/* Sprint B2.0.5 — the comfortable, centered-column padding belongs to
+   Screens 1-2 (Welcome/Choose a Template — ordinary product-page
+   reading widths) only. It used to live on #wb-root itself, which
+   meant the Builder Workspace (Screen 3) inherited it too: 48px/96px of
+   dead vertical padding plus a 1080px cap that made a 100vh-tall
+   Workspace overflow the real viewport by exactly that padding amount
+   — the single biggest source of "the Builder feels like a centered
+   web page, not edge-to-edge." The Workspace (`.wb-screen-workspace`)
+   already set its own padding:0/width:100%/max-width:none; it just
+   needed the ancestor to stop adding padding back around it. */
+.wb-screen-welcome,
+.wb-screen-templates {
     max-width: 1080px;
     margin: 0 auto;
     padding: 48px 32px 96px;
 }
-
-.wb-hidden { display: none !important; }
 
 /* ---------- Screen 1 — Welcome ---------- */
 
@@ -125,7 +140,10 @@ html, body {
 
 .wb-my-worlds-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* Sprint B2.0.5 — widened from 220px: the row now also carries the
+       Rename/Duplicate/Delete controls, which need room alongside the
+       thumbnail and name without the name column collapsing to nothing. */
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 16px;
 }
 
@@ -204,6 +222,36 @@ html, body {
     padding: 2px 8px;
     border-radius: 999px;
 }
+
+/* Sprint B2.0.5 — Draft Management controls on each project card.
+   Same visual language as the Workspace's own .wb-row-controls/.wb-row-btn
+   (Frame/Layout list rows), sized for the wider card row. stopPropagation()
+   on each button (in worldBuilderApp.js) keeps a control click from also
+   opening the Workspace, which is why the card itself is a role="button"
+   div rather than a native <button> — a native button cannot legally
+   contain other buttons. */
+.wb-project-card-controls {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.wb-project-card-btn {
+    font-size: 13px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.wb-project-card-btn:hover { border-color: var(--wb-gold); }
 
 .wb-empty-note {
     color: var(--wb-text-secondary);
@@ -498,11 +546,24 @@ html, body {
    finally gets more room than a narrow, shared right-hand column ever
    could. Nav spans both rows (fixed, present regardless of what's
    being edited). */
+/* Sprint B2.0.5 — Navigation only needs enough width for icon + label +
+   comfortable padding (170px, down from 200px); that recovered width
+   plus the #wb-root padding fix above go to Working View (the flexible
+   1fr column) and Runtime Preview (widened from 260px to 380px so it
+   renders a genuinely readable page, not a thumbnail — its own render
+   is width-bound by this column, unlike Working View's, which is
+   height-bound by the row split below). The row split shifts from
+   40/60 to 64/36 — Working View/Runtime Preview become the visually
+   dominant regions per this sprint's own objective (both rendered
+   pages noticeably larger, at their correct 1080:1350 ratio — see
+   .wb-working-canvas-inner/.wb-runtime-preview-canvas-inner), while the
+   Inspector (still full width, still independently scrollable) keeps a
+   genuinely usable, if smaller, share. */
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 200px 1fr 260px;
-    grid-template-rows: 40% 60%;
+    grid-template-columns: 170px 1fr 380px;
+    grid-template-rows: 64% 36%;
     grid-template-areas:
         "nav working runtime"
         "nav inspector inspector";
@@ -513,7 +574,7 @@ html, body {
     grid-area: nav;
     background: var(--wb-paper);
     border-right: 1px solid var(--wb-border);
-    padding: 16px 10px;
+    padding: 12px 8px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -523,16 +584,17 @@ html, body {
 .wb-nav-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 9px 10px;
     background: none;
     border: none;
     border-radius: 10px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--wb-text);
     cursor: pointer;
     text-align: left;
+    white-space: nowrap;
 }
 
 .wb-nav-item:hover { background: var(--wb-sand); }
@@ -557,8 +619,8 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 16px;
+    gap: 6px;
+    padding: 10px 14px;
     overflow: hidden;
     background: var(--wb-cream);
     min-height: 0;
@@ -622,21 +684,38 @@ html, body {
    modal did) rather than by width — otherwise a width-first box would
    overflow the row and force a scrollbar, which "never scrolls" rules
    out. */
+/* Sprint B2.0.5 — split into a plain flex:1 sizing box (this) and an
+   aspect-ratio-locked inner box (.wb-working-canvas-inner). Putting
+   flex:1 (a definite main-axis/height size, via flex-grow) AND
+   aspect-ratio on the SAME element was the bug: once max-width also
+   became the binding constraint (as it does whenever Runtime Preview's
+   narrower column makes width the tighter fit), the browser had no way
+   to shrink the already flex-resolved height back down to match the
+   ratio — the box quietly stopped being 1080:1350 and every rendered
+   page looked stretched. Splitting sizing (here) from the ratio (the
+   inner box) is the same two-layer technique the Sprint B2.0.2 Preview
+   modal already used correctly. */
 .wb-working-canvas-wrap {
-    position: relative;
     flex: 1;
     min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.wb-working-canvas-inner {
+    position: relative;
     width: auto;
-    height: 100%;
+    height: auto;
     max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 1080 / 1350;
     border-radius: 14px;
     box-shadow: 0 10px 30px var(--wb-shadow);
     overflow: hidden;
     background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .wb-working-canvas {
@@ -734,13 +813,13 @@ html, body {
     grid-area: runtime;
     min-height: 0;
     min-width: 0;
-    padding: 12px 14px;
+    padding: 10px 16px;
     border-left: 1px solid var(--wb-border);
     background: var(--wb-sand);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     overflow: hidden;
 }
 
@@ -767,12 +846,25 @@ html, body {
    cell's height is fixed by the grid row, so the canvas must scale
    from that rather than from width, or it would overflow and force a
    scrollbar — ruled out by "never scrolls." */
+/* Sprint B2.0.5 — same outer-sizing/inner-ratio split as
+   .wb-working-canvas-wrap above, fixing the same distortion bug (here
+   it was actually visible, since Runtime Preview's narrower column
+   makes max-width the binding constraint far more often). */
 .wb-runtime-preview-canvas-wrap {
     flex: 1;
     min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.wb-runtime-preview-canvas-inner {
     width: auto;
-    height: 100%;
+    height: auto;
     max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 1080 / 1350;
     border-radius: 8px;
     box-shadow: 0 6px 16px var(--wb-shadow);
@@ -832,7 +924,7 @@ html, body {
     min-width: 0;
     border-top: 1px solid var(--wb-border);
     background: var(--wb-paper);
-    padding: 18px 24px;
+    padding: 16px 22px;
     overflow-y: auto;
 }
 
@@ -852,8 +944,8 @@ html, body {
 .wb-field-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: 5px;
+    margin-bottom: 13px;
 }
 
 .wb-field-label {

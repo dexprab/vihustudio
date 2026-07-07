@@ -49,10 +49,26 @@
     // Screen 1 — Welcome
     // ---------------------------------------------------------------
 
+    // Sprint B2.0.5 — Draft Management. Real authoring exposed that
+    // there was no visual way to restart from a clean slate: no Rename,
+    // Duplicate, or Delete for a World Project once created. All three
+    // reuse existing, already-real functions (ProjectModel.setIdentity,
+    // ProjectStore.duplicate/remove — the last two shipped in Sprint
+    // B2.0.1 for the Workspace header's own overflow menu, just never
+    // exposed here); no new persistence logic, no filesystem operation,
+    // and Delete only ever removes this Builder Project record — a
+    // published Official Theme or exported .vtheme package lives
+    // entirely outside ProjectStore's localStorage key, so neither is
+    // touched. The card itself changes from a <button> to a
+    // role="button" <div> so it can contain its own action <button>s
+    // without illegal nested buttons — same pattern already used for
+    // Frame/Layout rows in the Workspace (each row's own controls call
+    // e.stopPropagation() so a control click never also opens the row).
     function _projectCard(project) {
-        const card = document.createElement('button');
-        card.type = 'button';
+        const card = document.createElement('div');
         card.className = 'wb-project-card';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
 
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
@@ -80,11 +96,57 @@
         info.appendChild(name);
         info.appendChild(metaLine);
 
+        const ctrls = document.createElement('span');
+        ctrls.className = 'wb-project-card-controls';
+        [
+            ['✎', 'Rename', function (e) {
+                e.stopPropagation();
+                const next = window.prompt('Rename this World', project.name);
+                if (next === null) return;
+                const trimmed = next.trim();
+                if (!trimmed) return;
+                window.ProjectModel.setIdentity(project, { name: trimmed });
+                window.ProjectStore.save(project);
+                renderMyWorlds();
+            }],
+            ['⧉', 'Duplicate', function (e) {
+                e.stopPropagation();
+                window.ProjectStore.duplicate(project);
+                renderMyWorlds();
+            }],
+            ['🗑', 'Delete', function (e) {
+                e.stopPropagation();
+                // Deletes only this Builder Project record (the
+                // localStorage draft) — never a published Official
+                // Theme or an exported .vtheme package, which live
+                // outside ProjectStore entirely and are never touched.
+                if (!window.confirm('Delete "' + project.name + '"? This cannot be undone.')) return;
+                window.ProjectStore.remove(project.id);
+                renderMyWorlds();
+            }]
+        ].forEach(function (t) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-project-card-btn';
+            btn.title = t[1];
+            btn.setAttribute('aria-label', t[1]);
+            btn.textContent = t[0];
+            btn.addEventListener('click', t[2]);
+            ctrls.appendChild(btn);
+        });
+
         card.appendChild(thumb);
         card.appendChild(info);
+        card.appendChild(ctrls);
 
         card.addEventListener('click', function () {
             openWorkspace(project);
+        });
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openWorkspace(project);
+            }
         });
 
         return card;

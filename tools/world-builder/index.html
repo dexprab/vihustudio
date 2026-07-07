@@ -108,8 +108,10 @@
                         <span class="wb-working-view-sub">Editing guides shown here only — never saved</span>
                     </div>
                     <div class="wb-working-canvas-wrap">
-                        <canvas id="wb-working-canvas" class="wb-working-canvas"></canvas>
-                        <div id="wb-working-overlays" class="wb-working-overlays"></div>
+                        <div class="wb-working-canvas-inner">
+                            <canvas id="wb-working-canvas" class="wb-working-canvas"></canvas>
+                            <div id="wb-working-overlays" class="wb-working-overlays"></div>
+                        </div>
                     </div>
                     <div id="wb-preview-selector" class="wb-preview-selector">
                         <!-- rendered by worldBuilderApp.js -->
@@ -127,7 +129,9 @@
                         <span class="wb-runtime-preview-sub">What the reader will see</span>
                     </div>
                     <div class="wb-runtime-preview-canvas-wrap">
-                        <canvas id="wb-runtime-preview-canvas" class="wb-runtime-preview-canvas"></canvas>
+                        <div class="wb-runtime-preview-canvas-inner">
+                            <canvas id="wb-runtime-preview-canvas" class="wb-runtime-preview-canvas"></canvas>
+                        </div>
                     </div>
                 </aside>
 
