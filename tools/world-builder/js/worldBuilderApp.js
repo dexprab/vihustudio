@@ -984,13 +984,60 @@
         sceneHeaderEl.appendChild(glance);
     }
 
+    // ---------- Place activity (Builder V2 — Blueprint §8) ----------
+    // Selection-driven, matching Blueprint §6.1 exactly: clicking a
+    // Holder in Working View selects it, populates Context Inspector,
+    // and switches the activity indicator to Place — regardless of
+    // which activity was active a moment before.
+
+    function _selectedHolderId() {
+        if (currentInspectorTarget && currentInspectorTarget.indexOf('holder:') === 0) {
+            return currentInspectorTarget.slice('holder:'.length);
+        }
+        return null;
+    }
+
+    function _pointInHolder(fx, fy, holder) {
+        return fx >= holder.position.x && fx <= holder.position.x + holder.size.w &&
+            fy >= holder.position.y && fy <= holder.position.y + holder.size.h;
+    }
+
+    function _roundedRectPath(ctx, x, y, w, h, r) {
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function _drawHolderShapePath(ctx, x, y, w, hgt, shape) {
+        ctx.beginPath();
+        if (shape === 'circle') {
+            const r = Math.min(w, hgt) / 2;
+            ctx.arc(x + w / 2, y + hgt / 2, r, 0, Math.PI * 2);
+        } else if (shape === 'rounded') {
+            _roundedRectPath(ctx, x, y, w, hgt, Math.min(w, hgt) * 0.08);
+        } else {
+            ctx.rect(x, y, w, hgt);
+        }
+    }
+
+    function _holderFrameFields(holder) {
+        if (!holder.frame) return null;
+        const frame = window.ProjectModel.findFrame(currentProject, holder.frame);
+        return frame ? (frame.fields || {}) : null;
+    }
+
     // Draws a Scene's Canvas shape directly with the 2D context — no
-    // Elements exist yet to paint (Place/Decorations/Text are stubbed
+    // Elements exist yet to paint (Decorations/Text are still stubbed
     // this slice), so this is generic Holder placeholder chrome
     // (Engine Canon §6 — never a real upload) plus, in Working View
     // only, a felt Safe Area guide (Blueprint §7 — never a labeled
-    // numeric field, never a hard wall).
-    function _drawSceneCanvas(canvasEl, scene, showGuides) {
+    // numeric field, never a hard wall) and a selection outline + resize
+    // handle for whichever Holder Place currently has selected.
+    function _drawSceneCanvas(canvasEl, scene, opts) {
+        opts = opts || {};
         const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
         canvasEl.width = aspect.width;
         canvasEl.height = aspect.height;
@@ -999,24 +1046,53 @@
         ctx.fillStyle = '#F4F1EC';
         ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
 
-        scene.holders.forEach(function (h) {
+        const selectedId = opts.interactive ? _selectedHolderId() : null;
+
+        scene.holders.forEach(function (raw) {
+            const h = window.ProjectModel.findHolder(currentProject, scene.id, raw.id) || raw;
             const x = h.position.x * canvasEl.width;
             const y = h.position.y * canvasEl.height;
             const w = h.size.w * canvasEl.width;
             const hgt = h.size.h * canvasEl.height;
+            const fields = _holderFrameFields(h);
+            const borderColor = (fields && fields.borderColor) || '#C9B79C';
+            const thickness = fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4;
+
+            ctx.save();
+            _drawHolderShapePath(ctx, x, y, w, hgt, h.shape);
             ctx.fillStyle = '#E4DCCB';
-            ctx.fillRect(x, y, w, hgt);
-            ctx.strokeStyle = '#C9B79C';
-            ctx.lineWidth = Math.max(2, canvasEl.width * 0.002);
-            ctx.strokeRect(x, y, w, hgt);
+            ctx.fill();
+            if (thickness > 0) {
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = Math.max(2, canvasEl.width * 0.001 * thickness);
+                ctx.stroke();
+            }
+            ctx.clip();
             ctx.fillStyle = '#9C8B6E';
-            ctx.font = Math.round(canvasEl.width * 0.05) + 'px sans-serif';
+            ctx.font = Math.round(Math.min(w, hgt) * 0.3) + 'px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('🖼️', x + w / 2, y + hgt / 2);
+            ctx.restore();
+
+            if (selectedId === h.id) {
+                ctx.save();
+                ctx.strokeStyle = '#1D3457';
+                ctx.setLineDash([canvasEl.width * 0.01, canvasEl.width * 0.006]);
+                ctx.lineWidth = Math.max(2, canvasEl.width * 0.0025);
+                ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
+                ctx.restore();
+                const handleR = Math.max(10, canvasEl.width * 0.014);
+                ctx.save();
+                ctx.fillStyle = '#1D3457';
+                ctx.beginPath();
+                ctx.arc(x + w, y + hgt, handleR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         });
 
-        if (showGuides && aspect.safeInset > 0) {
+        if (opts.guides && aspect.safeInset > 0) {
             const inset = aspect.safeInset;
             const x = canvasEl.width * inset;
             const y = canvasEl.height * inset;
@@ -1029,6 +1105,14 @@
             ctx.strokeRect(x, y, w, hgt);
             ctx.restore();
         }
+    }
+
+    function _redrawSceneCanvases(sceneId) {
+        if (currentNav !== 'scenes' || currentSceneId !== sceneId) return;
+        const scene = window.ProjectModel.findScene(currentProject, sceneId);
+        if (!scene) return;
+        _drawSceneCanvas(workingCanvas, scene, { guides: true, interactive: true });
+        _drawSceneCanvas(runtimePreviewCanvas, scene, { guides: false, interactive: false });
     }
 
     function _renderScenesWorkingView() {
@@ -1050,10 +1134,98 @@
 
         workingCanvas.classList.remove('wb-hidden');
         workingOverlays.innerHTML = '';
-        _drawSceneCanvas(workingCanvas, scene, true);
-        _drawSceneCanvas(runtimePreviewCanvas, scene, false);
+        _drawSceneCanvas(workingCanvas, scene, { guides: true, interactive: true });
+        _drawSceneCanvas(runtimePreviewCanvas, scene, { guides: false, interactive: false });
         _renderActivitySwitcher();
     }
+
+    // Click-to-select + drag-to-move + drag-to-resize, wired once at
+    // module init (never re-bound per render) — state is read live from
+    // the module's own currentNav/currentSceneId/currentActivity at
+    // event time, matching Blueprint §6.1's "selection drives the
+    // slice" rule: hitting a Holder always selects it and switches to
+    // Place, regardless of which activity was showing a moment before.
+    let _holderDragState = null;
+
+    function _canvasFraction(canvasEl, evt) {
+        const rect = canvasEl.getBoundingClientRect();
+        return {
+            fx: (evt.clientX - rect.left) / rect.width,
+            fy: (evt.clientY - rect.top) / rect.height
+        };
+    }
+
+    workingCanvas.addEventListener('mousedown', function (e) {
+        if (currentNav !== 'scenes' || !currentSceneId) return;
+        const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
+        if (!scene) return;
+        const pt = _canvasFraction(workingCanvas, e);
+
+        if (currentActivity === 'place') {
+            const selectedId = _selectedHolderId();
+            const selectedHolder = selectedId ? window.ProjectModel.findHolder(currentProject, scene.id, selectedId) : null;
+            if (selectedHolder) {
+                const hx = selectedHolder.position.x + selectedHolder.size.w;
+                const hy = selectedHolder.position.y + selectedHolder.size.h;
+                if (Math.abs(pt.fx - hx) < 0.03 && Math.abs(pt.fy - hy) < 0.03) {
+                    _holderDragState = {
+                        mode: 'resize', sceneId: scene.id, holderId: selectedHolder.id,
+                        startFX: pt.fx, startFY: pt.fy, startW: selectedHolder.size.w, startH: selectedHolder.size.h
+                    };
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+
+        let hit = null;
+        for (let i = scene.holders.length - 1; i >= 0; i--) {
+            if (_pointInHolder(pt.fx, pt.fy, scene.holders[i])) { hit = scene.holders[i]; break; }
+        }
+
+        if (hit) {
+            currentActivity = 'place';
+            currentInspectorTarget = 'holder:' + hit.id;
+            _holderDragState = {
+                mode: 'move', sceneId: scene.id, holderId: hit.id,
+                startFX: pt.fx, startFY: pt.fy, startX: hit.position.x, startY: hit.position.y
+            };
+            _renderWorkspace();
+            e.preventDefault();
+        } else if (currentActivity === 'place' && _selectedHolderId()) {
+            currentInspectorTarget = null;
+            _renderWorkspace();
+        }
+    });
+
+    window.addEventListener('mousemove', function (e) {
+        if (!_holderDragState) return;
+        const pt = _canvasFraction(workingCanvas, e);
+        const dx = pt.fx - _holderDragState.startFX;
+        const dy = pt.fy - _holderDragState.startFY;
+        const holder = window.ProjectModel.findHolder(currentProject, _holderDragState.sceneId, _holderDragState.holderId);
+        if (!holder) return;
+        if (_holderDragState.mode === 'move') {
+            holder.position.x = Math.min(1 - holder.size.w, Math.max(0, _holderDragState.startX + dx));
+            holder.position.y = Math.min(1 - holder.size.h, Math.max(0, _holderDragState.startY + dy));
+        } else {
+            holder.size.w = Math.min(1 - holder.position.x, Math.max(0.06, _holderDragState.startW + dx));
+            holder.size.h = Math.min(1 - holder.position.y, Math.max(0.06, _holderDragState.startH + dy));
+        }
+        _redrawSceneCanvases(_holderDragState.sceneId);
+    });
+
+    window.addEventListener('mouseup', function () {
+        if (!_holderDragState) return;
+        const sceneId = _holderDragState.sceneId;
+        _holderDragState = null;
+        _persist();
+        // Refresh the Inspector's numeric fields to match the drag
+        // result — via the shared dispatcher (_renderContextPanel), not
+        // the Scenes-specific renderer directly, since only the
+        // dispatcher clears contextPanel first.
+        if (currentNav === 'scenes' && currentSceneId === sceneId) _renderContextPanel();
+    });
 
     function _renderRuntimePreviewEmpty(message) {
         const ctx = runtimePreviewCanvas.getContext('2d');
@@ -1535,19 +1707,276 @@
             return _renderSceneConfigPanel(scene);
         }
 
-        // Place/Decorations/Text — an honest stub this slice (Vision §3;
-        // Blueprint §8-§10 land in a following slice). Never presented as
+        const selectedHolderId = _selectedHolderId();
+        if (selectedHolderId) {
+            const holder = window.ProjectModel.findHolder(currentProject, scene.id, selectedHolderId);
+            if (holder) return _renderHolderPanel(scene, holder);
+            currentInspectorTarget = null; // stale reference (e.g. Holder was just deleted)
+        }
+
+        if (currentActivity === 'place') {
+            return _renderPlacePanel(scene);
+        }
+
+        // Decorations/Text — an honest stub this slice (Vision §3;
+        // Blueprint §9-§10 land in a following slice). Never presented as
         // broken or dead — just not built yet, matching this Builder's
         // own established stub pattern (Sprint B1.1).
         const activity = ACTIVITIES.find(function (a) { return a.id === currentActivity; }) || ACTIVITIES[0];
         _heading(activity.icon + ' ' + activity.label, 'Coming in the next sprint.');
         const descriptions = {
-            place: 'Where the photo goes — position, size, shape, and how it’s framed.',
             decorations: 'This Scene’s atmosphere — background, texture, and scattered ornamentation.',
             text: 'The words this Scene needs, and how they look.'
         };
         contextPanel.appendChild(_fieldHelp(descriptions[activity.id] || ''));
-        contextPanel.appendChild(_fieldHelp('For now, use the Scene Configuration glance above Working View to set this Scene’s shape.'));
+        contextPanel.appendChild(_fieldHelp('For now, use the Scene Configuration glance above Working View to set this Scene’s shape, or the Place activity to work with its Holders.'));
+    }
+
+    // ---------- Place — no Holder selected: the Holder list + Add (Blueprint §8) ----------
+
+    function _renderPlacePanel(scene) {
+        _heading('🖼️ Place', 'Where does the photo go, how big, what shape, and how is it framed?');
+        contextPanel.appendChild(_stateIntroText('Click a Holder in Working View to select it (drag to move, drag its corner handle to resize), or add a new one below. The Engine places no upper bound on a Scene’s Holder count.'));
+
+        if (scene.holders.length) {
+            const list = document.createElement('div');
+            list.className = 'wb-scene-library-grid';
+            scene.holders.forEach(function (h) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card';
+                const name = document.createElement('div');
+                name.className = 'wb-scene-template-name';
+                name.textContent = h.name;
+                const desc = document.createElement('div');
+                desc.className = 'wb-scene-template-desc';
+                desc.textContent = Math.round(h.size.w * 100) + '% × ' + Math.round(h.size.h * 100) + '%';
+                card.appendChild(name);
+                card.appendChild(desc);
+                card.addEventListener('click', function () {
+                    currentInspectorTarget = 'holder:' + h.id;
+                    _renderWorkspace();
+                });
+                list.appendChild(card);
+            });
+            contextPanel.appendChild(list);
+        } else {
+            contextPanel.appendChild(_fieldHelp('This Scene has no Holders yet — add one below.'));
+        }
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+        addBtn.style.marginTop = '12px';
+        addBtn.textContent = '➕ Add a Holder';
+        addBtn.addEventListener('click', function () {
+            const holder = window.ProjectModel.addHolder(currentProject, scene.id);
+            if (holder) {
+                currentInspectorTarget = 'holder:' + holder.id;
+                _persist();
+                _renderWorkspace();
+            }
+        });
+        contextPanel.appendChild(addBtn);
+    }
+
+    function _stateIntroText(text) {
+        const p = document.createElement('p');
+        p.className = 'wb-field-help';
+        p.textContent = text;
+        return p;
+    }
+
+    // ---------- Place — a Holder is selected: its full property panel ----------
+
+    function _renderHolderPanel(scene, holder) {
+        _heading('🖼️ Place — ' + holder.name, 'Position/Size/Shape/Padding/Fit, plus its Frame — ending in the shared Story-Author-permission block (Blueprint §6.2, §8).');
+
+        contextPanel.appendChild(_buildFieldGroup('Holder Name', _textInput(holder.name, function (v) {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { name: v });
+            _persist();
+        })));
+
+        const xGroup = _buildFieldGroup('Position X %', _range(0, 100, Math.round(holder.position.x * 100), function (v) {
+            holder.position.x = Math.min(1 - holder.size.w, Math.max(0, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const yGroup = _buildFieldGroup('Position Y %', _range(0, 100, Math.round(holder.position.y * 100), function (v) {
+            holder.position.y = Math.min(1 - holder.size.h, Math.max(0, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        _fieldRow(xGroup, yGroup);
+
+        const wGroup = _buildFieldGroup('Width %', _range(6, 100, Math.round(holder.size.w * 100), function (v) {
+            holder.size.w = Math.min(1 - holder.position.x, Math.max(0.06, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const hGroup = _buildFieldGroup('Height %', _range(6, 100, Math.round(holder.size.h * 100), function (v) {
+            holder.size.h = Math.min(1 - holder.position.y, Math.max(0.06, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        _fieldRow(wGroup, hGroup);
+
+        const shapeGroup = _buildFieldGroup('Shape', _select(window.EngineSchema.HOLDER_SHAPES, holder.shape, function (v) {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { shape: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const fitGroup = _buildFieldGroup('Fit', _select(window.EngineSchema.HOLDER_FITS, holder.fit, function (v) {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { fit: v });
+            _persist();
+        }));
+        _fieldRow(shapeGroup, fitGroup);
+
+        _fieldGroup('Padding', _range(0, 40, holder.padding, function (v) {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { padding: v });
+            _persist();
+        }), 'Inset between the Holder’s edge and its content — its visual effect becomes clearer once a real photo replaces this placeholder.');
+
+        _renderFramePicker(scene, holder);
+        _renderHolderPermissionBlock(scene, holder);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'wb-workspace-btn';
+        removeBtn.style.marginTop = '14px';
+        removeBtn.textContent = '🗑 Remove this Holder';
+        removeBtn.addEventListener('click', function () {
+            if (!window.confirm('Remove "' + holder.name + '"? This cannot be undone.')) return;
+            window.ProjectModel.deleteHolder(currentProject, scene.id, holder.id);
+            currentInspectorTarget = null;
+            _persist();
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(removeBtn);
+
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'wb-workspace-btn';
+        backBtn.style.marginTop = '8px';
+        backBtn.textContent = '← All Holders';
+        backBtn.addEventListener('click', function () {
+            currentInspectorTarget = null;
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(backBtn);
+    }
+
+    // Frame editing lives in Place, not Decorations — confirmed by
+    // Engine Canon §9's own rule that a Frame Element is placed inside a
+    // Holder Layer (Blueprint §8). The overlay is scoped to Frames only
+    // (§6.3); "Manage Theme Assets" bridges to the full Frames screen,
+    // reintroduced here as a reachable link rather than a Global
+    // Navigation peer (Vision §1).
+    function _renderFramePicker(scene, holder) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        const label = document.createElement('label');
+        label.className = 'wb-field-label';
+        label.textContent = 'Frame';
+        wrap.appendChild(label);
+
+        const frames = window.ProjectModel.frames(currentProject);
+        const currentFrame = holder.frame ? window.ProjectModel.findFrame(currentProject, holder.frame) : null;
+        wrap.appendChild(_fieldHelp(currentFrame ? ('Current: ' + currentFrame.name) : 'No Frame chosen yet — Border/Shadow/Mat come from whichever Frame is picked.'));
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-template-grid';
+        grid.appendChild(_frameOptionCard('✕ None', null, !holder.frame, function () { _setHolderFrame(scene, holder, null); }));
+        frames.forEach(function (f) {
+            grid.appendChild(_frameOptionCard(f.name, (f.fields && f.fields.borderColor) || null, holder.frame === f.id, function () { _setHolderFrame(scene, holder, f.id); }));
+        });
+        wrap.appendChild(grid);
+
+        const manageLink = document.createElement('button');
+        manageLink.type = 'button';
+        manageLink.className = 'wb-workspace-btn';
+        manageLink.style.marginTop = '8px';
+        manageLink.textContent = '🖌️ Manage Theme Assets (Frames) →';
+        manageLink.addEventListener('click', function () {
+            currentNav = 'frames';
+            _renderNav();
+            _renderWorkspace();
+        });
+        wrap.appendChild(manageLink);
+
+        contextPanel.appendChild(wrap);
+    }
+
+    function _frameOptionCard(name, swatchColor, active, onClick) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'wb-scene-template-card' + (active ? ' active' : '');
+        if (swatchColor) {
+            const swatch = document.createElement('div');
+            swatch.style.width = '100%';
+            swatch.style.height = '18px';
+            swatch.style.borderRadius = '4px';
+            swatch.style.background = swatchColor;
+            card.appendChild(swatch);
+        }
+        const nameEl = document.createElement('div');
+        nameEl.className = 'wb-scene-template-name';
+        nameEl.textContent = name;
+        card.appendChild(nameEl);
+        card.addEventListener('click', onClick);
+        return card;
+    }
+
+    function _setHolderFrame(scene, holder, frameId) {
+        window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { frame: frameId });
+        _persist();
+        _redrawSceneCanvases(scene.id);
+        _renderContextPanel();
+    }
+
+    // The Holder variant of the shared Story-Author-permission block
+    // (Blueprint §6.2) — skips "can the Story Author populate this"
+    // (that's not a permission, it's the Holder's entire reason for
+    // existing, Engine Invariant 10) and asks only what happens after.
+    // Collapsed by default (UX Package Part 6's adopted refinement),
+    // reusing the same `<details>` mechanics as every state's guidance.
+    function _renderHolderPermissionBlock(scene, holder) {
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro';
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        const isOpen = holder.permissions.moveable || holder.permissions.editable;
+        summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
+        body.appendChild(_permissionCheckbox('Can a Story Author move this?', holder.permissions.moveable, function (v) {
+            holder.permissions.moveable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Can a Story Author change this? (its Frame, once populated)', holder.permissions.editable, function (v) {
+            holder.permissions.editable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', holder.permissions.visible, function (v) {
+            holder.permissions.visible = v;
+            _persist();
+        }));
+        details.appendChild(body);
+        contextPanel.appendChild(details);
+    }
+
+    function _permissionCheckbox(labelText, checked, onChange) {
+        const row = document.createElement('label');
+        row.className = 'wb-permission-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = !!checked;
+        input.addEventListener('change', function () { onChange(input.checked); });
+        row.appendChild(input);
+        row.appendChild(document.createTextNode(labelText));
+        return row;
     }
 
     // Vision §2's "how Scene Configuration is actually edited" — the one
@@ -2238,6 +2667,25 @@
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Frames', 'Create beautiful frames.');
+
+        // Reached from the Place activity's Frame picker (Blueprint §6.3
+        // — "manage the full shelf" bridge) rather than a Global
+        // Navigation peer (Vision §1) — a Scene stays open behind this
+        // screen, so returning to it is one click, not a re-navigation.
+        if (currentSceneId) {
+            const back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'wb-workspace-btn';
+            back.style.marginBottom = '12px';
+            back.textContent = '← Back to Scene';
+            back.addEventListener('click', function () {
+                currentNav = 'scenes';
+                _renderNav();
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(back);
+        }
+
         _stateIntro('frames');
 
         const frames = window.ProjectModel.frames(project);

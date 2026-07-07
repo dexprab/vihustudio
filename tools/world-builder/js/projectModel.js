@@ -341,6 +341,10 @@ const ProjectModel = (function () {
         project.files['scenes/' + scene.id + '.json'] = scene;
     }
 
+    function _defaultHolderPermissions() {
+        return { moveable: true, editable: true, visible: true };
+    }
+
     function _holdersFor(layoutId) {
         const rects = (window.EngineSchema && window.EngineSchema.HOLDER_LAYOUTS[layoutId]) || [];
         return rects.map(function (r, i) {
@@ -352,9 +356,23 @@ const ProjectModel = (function () {
                 shape: 'rectangle',
                 padding: 0,
                 fit: 'fit',
-                frame: null
+                frame: null,
+                permissions: _defaultHolderPermissions()
             };
         });
+    }
+
+    // Retrofits defaults onto a Holder authored before a given field
+    // existed (e.g. Scenes created before `permissions` shipped) —
+    // read-time reconciliation, the same pattern `_ordered` already uses
+    // for stale ids, so nothing crashes and nothing needs a migration.
+    function _ensureHolderDefaults(holder) {
+        if (!holder) return holder;
+        if (!holder.permissions) holder.permissions = _defaultHolderPermissions();
+        if (!holder.shape) holder.shape = 'rectangle';
+        if (holder.padding === undefined || holder.padding === null) holder.padding = 0;
+        if (!holder.fit) holder.fit = 'fit';
+        return holder;
     }
 
     // Creates a Scene from an Engine Scene Template — never from a blank
@@ -427,6 +445,55 @@ const ProjectModel = (function () {
         if (!scene) return;
         scene.canvas.aspectRatio = aspectId;
         scene.canvas.safeArea = window.EngineSchema.aspectInfo(aspectId).safeArea;
+    }
+
+    // ---------------------------------------------------------------
+    // Holders (Builder V2 — Blueprint §8 "Place" slice; Engine V2 Canon
+    // §6, §10). The Engine places no upper bound on a Scene's Holder
+    // count (Canon §2: "Holder (0..N)") — Add/Remove here is the same
+    // pattern Scenes already uses for itself, so a Scene stays curatable
+    // past whatever count its starting Template happened to choose.
+    // ---------------------------------------------------------------
+
+    function findHolder(project, sceneId, holderId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        const holder = scene.holders.find(function (h) { return h.id === holderId; }) || null;
+        return _ensureHolderDefaults(holder);
+    }
+
+    function updateHolder(project, sceneId, holderId, patch) {
+        const holder = findHolder(project, sceneId, holderId);
+        if (holder) Object.assign(holder, patch);
+        return holder;
+    }
+
+    function addHolder(project, sceneId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        const existingIds = scene.holders.map(function (h) { return h.id; });
+        const id = _uniqueId(existingIds, 'holder');
+        const n = scene.holders.length;
+        const offset = (n % 4) * 0.04;
+        const holder = {
+            id: id,
+            name: 'Holder ' + (n + 1),
+            position: { x: 0.15 + offset, y: 0.15 + offset },
+            size: { w: 0.6, h: 0.5 },
+            shape: 'rectangle',
+            padding: 0,
+            fit: 'fit',
+            frame: null,
+            permissions: _defaultHolderPermissions()
+        };
+        scene.holders.push(holder);
+        return holder;
+    }
+
+    function deleteHolder(project, sceneId, holderId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return;
+        scene.holders = scene.holders.filter(function (h) { return h.id !== holderId; });
     }
 
     // ---------------------------------------------------------------
@@ -617,6 +684,10 @@ const ProjectModel = (function () {
         deleteScene: deleteScene,
         moveScene: moveScene,
         setSceneAspect: setSceneAspect,
+        findHolder: findHolder,
+        updateHolder: updateHolder,
+        addHolder: addHolder,
+        deleteHolder: deleteHolder,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,
         setAsset: setAsset,

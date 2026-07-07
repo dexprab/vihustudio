@@ -83,11 +83,28 @@ const EngineSchema = (function () {
         return ASPECT_RATIOS[aspectId] || ASPECT_RATIOS.portrait;
     }
 
+    // Holder vocabulary (Engine Canon §6 — Shape is the Holder's own
+    // clip/mask, Fit is how the Primary Element resolves against its
+    // bounds; both continuous with the current engine's proven set).
+    const HOLDER_SHAPES = [
+        { value: 'rectangle', label: 'Rectangle' },
+        { value: 'rounded', label: 'Rounded Rectangle' },
+        { value: 'circle', label: 'Circle' }
+    ];
+
+    const HOLDER_FITS = [
+        { value: 'fit', label: 'Fit (show the whole photo)' },
+        { value: 'fill', label: 'Fill (crop to the frame)' },
+        { value: 'original', label: 'Original (natural size)' }
+    ];
+
     return {
         ASPECT_RATIOS: ASPECT_RATIOS,
         ASPECT_ORDER: ASPECT_ORDER,
         HOLDER_LAYOUTS: HOLDER_LAYOUTS,
         SCENE_TEMPLATES: SCENE_TEMPLATES,
+        HOLDER_SHAPES: HOLDER_SHAPES,
+        HOLDER_FITS: HOLDER_FITS,
         findSceneTemplate: findSceneTemplate,
         aspectInfo: aspectInfo
     };

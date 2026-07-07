@@ -1757,9 +1757,22 @@ html, body {
 }
 
 .wb-scene-template-card:hover { border-color: var(--wb-gold); }
+.wb-scene-template-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
 .wb-scene-template-icon { font-size: 22px; }
 .wb-scene-template-name { font-size: 13px; font-weight: 700; color: var(--wb-navy); }
 .wb-scene-template-desc { font-size: 11px; color: var(--wb-text-secondary); }
+
+/* ---------- Place — the shared Story-Author-permission block's
+   checkbox rows (Blueprint §6.2, Holder variant) ---------- */
+
+.wb-permission-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 13px;
+    cursor: pointer;
+}
 
 /* ---------- Footer ---------- */
 
