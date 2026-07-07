@@ -1,9 +1,9 @@
 {
-  "version": "2.0.5-WB",
-  "sprint": "B2.0.5",
-  "task": "Builder Workspace Polish",
-  "build": "0008",
+  "version": "2.0.6-WB",
+  "sprint": "B2.0.6",
+  "task": "Builder Workspace Maturity",
+  "build": "0009",
   "buildDate": "2026-07-07",
-  "commit": "37b71b6",
+  "commit": "e1c0b7c",
   "environment": "Release"
 }
