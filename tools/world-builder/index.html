@@ -195,6 +195,11 @@
     <script src="js/services/validator.js"></script>
     <script src="js/services/builder.js"></script>
 
+    <!-- The native Engine V2 Runtime (docs/ENGINE_V2_SCENE_MODEL.md §5,
+         LOCK V2-04) — loads after engineSchema.js (aspect resolution)
+         and before worldBuilderApp.js (its only consumer so far). -->
+    <script src="js/services/engineRuntime.js"></script>
+
     <!-- VihuStudio Runtime engine (reused, unmodified — Sprint B2.0.1's
          Preview renders through the exact same pipeline Runtime uses,
          never a Builder-owned re-implementation). -->

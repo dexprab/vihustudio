@@ -1035,170 +1035,52 @@
             fy >= obj.position.y && fy <= obj.position.y + obj.size.h;
     }
 
-    function _roundedRectPath(ctx, x, y, w, h, r) {
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-    }
-
-    function _drawHolderShapePath(ctx, x, y, w, hgt, shape) {
-        ctx.beginPath();
-        if (shape === 'circle') {
-            const r = Math.min(w, hgt) / 2;
-            ctx.arc(x + w / 2, y + hgt / 2, r, 0, Math.PI * 2);
-        } else if (shape === 'rounded') {
-            _roundedRectPath(ctx, x, y, w, hgt, Math.min(w, hgt) * 0.08);
-        } else {
-            ctx.rect(x, y, w, hgt);
-        }
-    }
-
+    // The Scene Model's one cross-reference (Scene Model §2): a Holder's
+    // `frame` id resolves to a Theme Asset (Frame) this Builder owns —
+    // the native Runtime (`js/services/engineRuntime.js`) knows nothing
+    // about Theme Asset storage, so this resolver is injected at every
+    // call site instead.
     function _holderFrameFields(holder) {
         if (!holder.frame) return null;
         const frame = window.ProjectModel.findFrame(currentProject, holder.frame);
         return frame ? (frame.fields || {}) : null;
     }
 
-    function _drawHolderEntry(ctx, canvasEl, h, selected) {
-        const x = h.position.x * canvasEl.width;
-        const y = h.position.y * canvasEl.height;
-        const w = h.size.w * canvasEl.width;
-        const hgt = h.size.h * canvasEl.height;
-        const fields = _holderFrameFields(h);
-        const borderColor = (fields && fields.borderColor) || '#C9B79C';
-        const thickness = fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4;
-
-        ctx.save();
-        _drawHolderShapePath(ctx, x, y, w, hgt, h.shape);
-        ctx.fillStyle = '#E4DCCB';
-        ctx.fill();
-        if (thickness > 0) {
-            ctx.strokeStyle = borderColor;
-            ctx.lineWidth = Math.max(2, canvasEl.width * 0.001 * thickness);
-            ctx.stroke();
-        }
-        ctx.clip();
-        ctx.fillStyle = '#9C8B6E';
-        ctx.font = Math.round(Math.min(w, hgt) * 0.3) + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🖼️', x + w / 2, y + hgt / 2);
-        ctx.restore();
-
-        if (selected) {
-            ctx.save();
-            ctx.strokeStyle = '#1D3457';
-            ctx.setLineDash([canvasEl.width * 0.01, canvasEl.width * 0.006]);
-            ctx.lineWidth = Math.max(2, canvasEl.width * 0.0025);
-            ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
-            ctx.restore();
-            const handleR = Math.max(10, canvasEl.width * 0.014);
-            ctx.save();
-            ctx.fillStyle = '#1D3457';
-            ctx.beginPath();
-            ctx.arc(x + w, y + hgt, handleR, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
-    }
-
-    // Top-down word wrap for a text Element's own bounding box — a
-    // separate routine from `_wrapText` (below), which vertically
-    // centers a message and is used only for the Scenes-Library empty
-    // state; a placed text Element instead starts at its box's own top
-    // edge (`textBaseline='top'`).
-    function _drawTextBlock(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = (text || '').split(' ');
-        let line = '';
-        let cy = y;
-        words.forEach(function (word) {
-            const test = line + word + ' ';
-            if (ctx.measureText(test).width > maxWidth && line) {
-                ctx.fillText(line.trim(), x, cy);
-                line = word + ' ';
-                cy += lineHeight;
-            } else {
-                line = test;
-            }
-        });
-        ctx.fillText(line.trim(), x, cy);
-    }
-
-    function _drawLayerEntry(ctx, canvasEl, l, selected) {
-        const x = l.position.x * canvasEl.width;
-        const y = l.position.y * canvasEl.height;
-        const w = l.size.w * canvasEl.width;
-        const hgt = l.size.h * canvasEl.height;
-
-        if (l.kind === 'fill') {
-            ctx.fillStyle = l.color;
-            ctx.fillRect(x, y, w, hgt);
-        } else if (l.kind === 'text') {
-            ctx.save();
-            ctx.fillStyle = l.color || '#1D3457';
-            ctx.font = (l.fontSize || 48) + 'px ' + (l.font || 'Georgia, serif');
-            ctx.textAlign = l.align || 'left';
-            ctx.textBaseline = 'top';
-            const tx = l.align === 'center' ? x + w / 2 : (l.align === 'right' ? x + w : x);
-            _drawTextBlock(ctx, l.text || 'New text', tx, y, w, (l.fontSize || 48) * 1.25);
-            ctx.restore();
-        } else {
-            ctx.save();
-            ctx.font = Math.round(Math.min(w, hgt)) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(l.glyph, x + w / 2, y + hgt / 2);
-            ctx.restore();
-        }
-
-        if (selected) {
-            ctx.save();
-            ctx.strokeStyle = '#1D3457';
-            ctx.setLineDash([canvasEl.width * 0.008, canvasEl.width * 0.005]);
-            ctx.lineWidth = Math.max(2, canvasEl.width * 0.002);
-            ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
-            ctx.restore();
-        }
-    }
-
-    // Draws the Scene's full Scene Stack (Engine Canon §5 — Scene Layers
-    // and Holders together, bottom to top; Canvas owns this order but is
-    // never itself a member of it) directly with the 2D context, plus,
-    // in Working View only, a felt Safe Area guide (Blueprint §7 —
-    // never a labeled numeric field, never a hard wall) and a selection
-    // outline (+ resize handle, Holders only) for whichever object is
-    // currently selected. `visible` is the only Base Object property
-    // that gates render (Engine Invariant 22) — `moveable`/`editable`
-    // affect only editing-surface affordances, checked nowhere here.
+    // Draws the Scene's full Scene Stack through the native Engine V2
+    // Runtime (Engine Canon §5 — Scene Layers and Holders together,
+    // bottom to top; Canvas owns this order but is never itself a
+    // member of it; LOCK V2-04 — Runtime, Validation, Build, and Publish
+    // operate directly on this same canonical Scene Model, no
+    // translation layer), then layers Builder-only authoring affordances
+    // on top: in Working View only, a felt Safe Area guide (Blueprint
+    // §7 — never a labeled numeric field, never a hard wall) and a
+    // selection outline (+ resize handle, Holders only) for whichever
+    // object is currently selected. Neither affordance is something
+    // `EngineV2Runtime.render` itself ever draws — a published/reader
+    // render has no editing surface (Engine Canon §5 step 5).
     function _drawSceneCanvas(canvasEl, scene, opts) {
         opts = opts || {};
-        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
-        canvasEl.width = aspect.width;
-        canvasEl.height = aspect.height;
+        const graph = window.EngineV2Runtime.load(scene, _holderFrameFields);
+        canvasEl.width = graph.width;
+        canvasEl.height = graph.height;
         const ctx = canvasEl.getContext('2d');
 
-        ctx.fillStyle = '#F4F1EC';
-        ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+        window.EngineV2Runtime.render(ctx, graph);
 
-        const selectedHolderId = opts.interactive ? _selectedHolderId() : null;
-        const selectedLayerId = opts.interactive ? _selectedLayerId() : null;
-        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
+        if (opts.interactive) {
+            const selectedHolderId = _selectedHolderId();
+            const selectedLayerId = _selectedLayerId();
+            graph.stack.forEach(function (entry) {
+                if (entry.type === 'holder' && entry.object.id === selectedHolderId) {
+                    _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, true);
+                } else if (entry.type === 'layer' && entry.object.id === selectedLayerId) {
+                    _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, false);
+                }
+            });
+        }
 
-        stack.forEach(function (entry) {
-            if (entry.type === 'holder') {
-                const h = window.ProjectModel.findHolder(currentProject, scene.id, entry.id);
-                if (h) _drawHolderEntry(ctx, canvasEl, h, selectedHolderId === h.id);
-            } else {
-                const l = window.ProjectModel.findSceneLayer(currentProject, scene.id, entry.id);
-                if (l && l.permissions.visible !== false) _drawLayerEntry(ctx, canvasEl, l, selectedLayerId === l.id);
-            }
-        });
-
-        if (opts.guides && aspect.safeInset > 0) {
-            const inset = aspect.safeInset;
+        if (opts.guides && graph.aspect.safeInset > 0) {
+            const inset = graph.aspect.safeInset;
             const x = canvasEl.width * inset;
             const y = canvasEl.height * inset;
             const w = canvasEl.width * (1 - inset * 2);
@@ -1208,6 +1090,27 @@
             ctx.setLineDash([canvasEl.width * 0.012, canvasEl.width * 0.008]);
             ctx.lineWidth = Math.max(2, canvasEl.width * 0.003);
             ctx.strokeRect(x, y, w, hgt);
+            ctx.restore();
+        }
+    }
+
+    // Builder-only selection chrome — a dashed outline, plus a
+    // bottom-right resize handle for Holders only (Decorations/Text
+    // reposition but never resize via a handle, Blueprint §9/§10).
+    function _drawSelectionOutline(ctx, rect, canvasWidth, withResizeHandle) {
+        ctx.save();
+        ctx.strokeStyle = '#1D3457';
+        ctx.setLineDash([canvasWidth * (withResizeHandle ? 0.01 : 0.008), canvasWidth * (withResizeHandle ? 0.006 : 0.005)]);
+        ctx.lineWidth = Math.max(2, canvasWidth * (withResizeHandle ? 0.0025 : 0.002));
+        ctx.strokeRect(rect.x - 4, rect.y - 4, rect.w + 8, rect.h + 8);
+        ctx.restore();
+        if (withResizeHandle) {
+            const handleR = Math.max(10, canvasWidth * 0.014);
+            ctx.save();
+            ctx.fillStyle = '#1D3457';
+            ctx.beginPath();
+            ctx.arc(rect.x + rect.w, rect.y + rect.h, handleR, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
         }
     }

@@ -5,12 +5,16 @@
 // one fixed base resolution," never a Theme-Author-typed number), and the
 // starting Holder arrangement each Engine Scene Template pre-populates.
 //
-// This is authoring-time data only — it has no relationship to the
-// compiled `.vtheme` package or the Runtime's own rendering pipeline
-// (`js/themeEngine.js`, `renderer/slideRenderer.js`), which still speak
-// Engine V1's Representation/Layout/Frame/Layer-Pack vocabulary. No
-// Engine V2 compiled-package format exists yet in any frozen document —
-// that gap is deliberate and documented, not silently bridged here.
+// This is authoring-time data, also consumed directly by the native
+// Engine V2 Runtime (`js/services/engineRuntime.js`, LOCK V2-04) for
+// pixel-size resolution — the same vocabulary, not a second copy of it.
+// It has no relationship to the Engine V1 pipeline (`js/themeEngine.js`,
+// `renderer/slideRenderer.js`), which still speaks Engine V1's
+// Representation/Layout/Frame/Layer-Pack vocabulary and remains legacy,
+// unmodified, per `docs/ENGINE_V2_SCENE_MODEL.md` §6. No Engine V2
+// compiled-package *format* exists yet in any frozen document — that
+// gap (Build's exact output shape) is deliberate and documented, not
+// silently bridged here.
 const EngineSchema = (function () {
     'use strict';
 
