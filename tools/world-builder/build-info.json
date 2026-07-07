@@ -1,9 +1,9 @@
 {
-  "version": "2.0.3-WB",
-  "sprint": "B2.0.3",
-  "task": "Working View + Runtime Preview",
-  "build": "0006",
+  "version": "2.0.4-WB",
+  "sprint": "B2.0.4",
+  "task": "Workspace Ergonomics",
+  "build": "0007",
   "buildDate": "2026-07-07",
-  "commit": "75a4734",
+  "commit": "776932c",
   "environment": "Release"
 }
