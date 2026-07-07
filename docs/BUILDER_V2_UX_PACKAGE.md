@@ -1,15 +1,19 @@
 # Builder V2 UX Design Package
 
-**Status:** UX Design Package — the last document before implementation
-begins. Read, in order: `docs/ENGINE_V2_CANON.md`,
-`docs/BUILDER_V2_MENTAL_MODEL.md`, `docs/BUILDER_V2_STORYBOARD.md`,
-`docs/BUILDER_V2_BLUEPRINT.md`. All four remain authoritative and are
-not redesigned here — this package validates, storyboards, wireframes,
-and critically reviews what they already established. It makes exactly
-one vocabulary change (below) and one screen-placement change (Part 1,
-Theme Assets), both argued explicitly rather than assumed, and one
-candidate simplification is proposed but deliberately **not** adopted
-without sign-off (Part 7, Canvas).
+**Status:** UX Design Package, revised after `docs/BUILDER_V2_VISION.md`
+— the last document before implementation begins. Read, in order:
+`docs/ENGINE_V2_CANON.md`, `docs/BUILDER_V2_MENTAL_MODEL.md`,
+`docs/BUILDER_V2_STORYBOARD.md`, `docs/BUILDER_V2_BLUEPRINT.md`,
+`docs/BUILDER_V2_VISION.md`. All five remain authoritative. This
+package originally validated, storyboarded, wireframed, and critically
+reviewed the Blueprint's four-activity, left-navigation model; the
+Vision document's reset (top Global Navigation, a Scene Header carrying
+Scene Configuration, three creative activities, Context Inspector
+replacing Property Editor) is now applied throughout, and every section
+below reflects it — nothing here contradicts the Vision document, and
+where this package's own Part 7 critical review first proposed a
+change the Vision document later adopted (Canvas), that is noted in
+place rather than presented as if it had been the plan from the start.
 **Scope:** The complete authoring experience — information architecture,
 the full journey for both a first-time and a returning Theme Author,
 desktop paper wireframes for every screen, step-by-step interaction
@@ -21,53 +25,55 @@ not that conversation.
 
 ## Vocabulary note, read before anything else
 
-This phase's brief introduces **Place** as the Builder-facing name for
-what the Engine calls a **Holder**, and asks that "Holder," "Layer," and
-"Element" stay internal wherever possible. This is not an architecture
-change — every rule Blueprint §8 wrote for the Holders slice still
-applies exactly as written — it is a vocabulary correction the prior
-documents didn't fully make: they used "Holder" fairly often in
-Builder-facing prose (e.g. the storyboard's own "Decide Where the Photo
-Goes" stage). From here on:
+Two Builder-facing renames apply throughout this package, both from
+Engine nouns to creator language, neither an architecture change —
+every rule the Blueprint wrote for the underlying Engine concept still
+applies exactly as written:
 
-- **Place** — what a Theme Author sees, reads, and clicks. The Scene
-  Editor's second activity, where a photo will eventually go.
-- **Holder** — the Engine noun, used only when this package or its
-  predecessors discuss Engine mechanics (ownership, the Content Layer)
-  that a Theme Author never sees.
+- **Place** — what the Engine calls a **Holder**. The activity where a
+  photo will eventually go.
+- **Scene Configuration** — what the Engine calls **Canvas**
+  (`docs/BUILDER_V2_VISION.md` §2, §5). Surfaced as a glanceable summary
+  in the Scene Header, not as its own activity — see Part 1 and Part 5,
+  below, for what this changes from this package's original Blueprint-
+  era structure.
 
-Every other term carries over unchanged: Scene, Canvas, Decorations,
+"Holder" and "Canvas" remain correct only when this package or its
+predecessors discuss Engine mechanics (ownership, the Content Layer,
+Size/Aspect Ratio/Safe Area as Engine properties) that a Theme Author
+never sees. Every other term carries over unchanged: Scene, Decorations,
 Text, Theme Assets, Scene Stack (never shown), Layer (never shown).
 
 ---
 
 # Part 1 — Builder Information Architecture
 
-The tree, restated with Place in place of Holders:
+The tree, restated per `docs/BUILDER_V2_VISION.md`: Global Navigation
+across the top, structurally separate from the Scene Editor; opening a
+Scene adds a Scene Header (breadcrumb + Scene Configuration summary)
+above a three-activity editor.
 
 ```
-World
-├── Overview
-├── Scenes
-│    ├── Scene 1 → Scene Editor: Canvas · Place · Decorations · Text
-│    ├── Scene 2 → Scene Editor: Canvas · Place · Decorations · Text
-│    └── …
-├── Validation
-├── Build
-└── Publish
+World | Scenes | Validation | Build | Publish        ← Global Navigation (top, always visible)
+
+Scenes
+├── Scene 1 → Scene Header (breadcrumb + Scene Configuration) → Place · Decorations · Text
+├── Scene 2 → Scene Header (breadcrumb + Scene Configuration) → Place · Decorations · Text
+└── …
 ```
 
 Every destination is examined below on the same two questions: **why
 does this exist**, and **does it survive being challenged**.
 
-### Overview — survives
+### World — survives
 
 Answers "what is this World called, and what's it about" (Blueprint
-§4). Low-frequency, but real — nothing else is a candidate home for
-World identity. Challenged against merging into Scenes: rejected,
+§4, there named "Overview" — renamed per Vision §1; same screen, same
+purpose). Low-frequency, but real — nothing else is a candidate home
+for World identity. Challenged against merging into Scenes: rejected,
 because Scenes' entire value is answering one question cleanly ("is my
 collection of pages complete") and mixing in unrelated identity fields
-would cost that clarity for no real gain. Overview also becomes the
+would cost that clarity for no real gain. World also becomes the
 practical entry point for stocking Theme Assets before any Scene
 exists — see below.
 
@@ -77,14 +83,16 @@ The single most load-bearing screen in the whole IA — the literal,
 felt expression of "a Theme is a curated library of Scenes" (Engine
 Canon §0; Mental Model §1, point 1). Nothing about it is negotiable.
 
-### The Scene Editor's four activities — three survive without
-question; Canvas is challenged in Part 7
+### The Scene Editor's three activities — all three survive; Canvas is resolved, not merely challenged
 
-- **Canvas** — settles the page's shape. Real, but Blueprint §7 already
-  flags it as "the lightest slice," visited once and rarely again. That
-  frequency observation is examined properly in Part 7 rather than
-  resolved here, since it's a genuine design question, not a
-  contradiction to wave through.
+Blueprint originally listed four activities (Canvas, Place, Decorations,
+Text) and this package's own Part 7 first raised whether Canvas
+belonged in that list at all. `docs/BUILDER_V2_VISION.md` has since
+resolved it: Canvas is no longer a peer activity, full stop — it is
+surfaced instead as the Scene Header's Scene Configuration summary
+(Vision §2). What remains in the switcher is exactly the three
+activities that earn a place there by being genuinely recurring:
+
 - **Place** — decide where the photo goes and how it's framed.
   Survives without qualification: this is the Holder's own reason for
   existing (Engine Canon §1), so it is necessarily the Builder's own
@@ -101,9 +109,9 @@ question; Canvas is challenged in Part 7
 ### Theme Assets — changed, and here is why
 
 Blueprint §11 gave Theme Assets its own top-level World destination,
-*in addition to* the in-Scene "Browse" overlay. This phase's own
-Builder Structure diagram omits it from the top-level list entirely —
-examined here rather than silently adopted or silently ignored:
+*in addition to* the in-Scene "Browse" overlay. Vision §1 confirms it
+stays absent from the top-level Global Navigation list — examined here
+rather than silently adopted or silently ignored:
 
 A full top-level "Theme Assets" destination earns its place only if a
 Theme Author regularly needs to manage the shelf *independent of any
@@ -115,23 +123,23 @@ The one case the overlay cannot cover is stocking the shelf **before a
 World's first Scene exists** (Storyboard, Stage 9, "can happen before
 decorating"), since the overlay only opens from inside a Scene.
 
-**Resolution:** Theme Assets is no longer an independent, equally-
-weighted item beside Scenes/Validation/Build/Publish. It is reachable
-two ways, matching the two moments that actually need it:
+**Resolution:** Theme Assets is not one of the five Global Navigation
+destinations. It is reachable two ways, matching the two moments that
+actually need it:
 
 1. **From inside a Scene** — the "Browse Theme Assets" overlay
    (unchanged from Blueprint §6.3), for picking, with its own bridge
    into full management.
-2. **From Overview** — a single, secondary "Manage Theme Assets" entry
+2. **From World** — a single, secondary "Manage Theme Assets" entry
    point, for the rare pre-first-Scene stocking case, and for anyone
    who genuinely prefers to organize the shelf as its own task.
 
 Both paths lead to the same underlying screen (Blueprint §11's
 Purpose/Information/Actions are unchanged) — only its standing in the
-top-level nav list changes, from a permanent peer to a secondary,
+navigation changes, from a permanent peer to a secondary,
 occasion-driven entry point. This is a real simplification, not a
-renaming: the top-level nav now lists only things a Theme Author visits
-by habit (Overview once in a while, Scenes constantly, Validation/
+renaming: Global Navigation now lists only things a Theme Author visits
+by habit (World once in a while, Scenes constantly, Validation/
 Build/Publish at the end), and Theme Assets — visited by *need*, not by
 habit — no longer competes for that same permanent attention.
 
@@ -139,7 +147,8 @@ habit — no longer competes for that same permanent attention.
 
 Examined for collapse in Part 7 (Validation into Build) and rejected
 there, with reasoning; kept here as three distinct, single-purpose
-destinations, exactly as this phase's own Builder Structure specifies.
+Global Navigation destinations, exactly as `docs/BUILDER_V2_VISION.md`
+§1 specifies.
 
 ---
 
@@ -156,7 +165,7 @@ repeated here — only its shape, renamed to this package's vocabulary:
 | 1. Arrival | "Let me see what I'm already building, or start something new." |
 | 2. Name This World | "What is this World called, what's it about?" |
 | 3. Add a Scene | "What kind of page is this — give me a sensible starting point." |
-| 4. Confirm the Page's Shape (Canvas) | "Is this page tall, wide, square — and is that right?" |
+| 4. Confirm the Page's Shape (now a Scene Header glance at Scene Configuration, not a dedicated activity — `docs/BUILDER_V2_VISION.md` §2) | "Is this page tall, wide, square — and is that right?" |
 | 5. Decide Where the Photo Goes (Place) | "Where does the photo go, how big, what shape, how is it framed?" |
 | 6. Decorate the Scene | "What does this page feel like?" |
 | 7. Write the Words (Text) | "What does this page say, and how should it look?" |
@@ -177,9 +186,9 @@ first-timer's path, and where it lets out.
 The majority case. **Intent:** "Get me back to exactly what I was
 doing, with zero re-orientation." **Entry:** Arrival recognizes the
 World instantly (by name/identity, per Blueprint §3) and opens it
-directly to the *exact* screen and slice last visited — not Overview,
+directly to the *exact* screen and activity last visited — not World,
 not Scenes, unless that's genuinely where they left off. A first-timer
-is *placed* into Overview deliberately (Blueprint §4, "automatically,
+is *placed* into World deliberately (Blueprint §4, "automatically,
 right after creating a new World"); a returning author is never routed
 through a screen they didn't ask for. **Exit:** wherever the resumed
 task naturally ends — same as any mid-Scene exit point already defined.
@@ -188,7 +197,7 @@ task naturally ends — same as any mid-Scene exit point already defined.
 
 **Intent:** grow an already-established library, confidently, with
 little exploration — the Theme's style and shelf are already familiar.
-**Entry:** Arrival → Scenes directly (skipping Overview entirely — they
+**Entry:** Arrival → Scenes directly (skipping World entirely — they
 already know what this World is). **Difference from first-time:** the
 Template choice (Storyboard Stage 3) is faster and more decisive; Theme
 Assets browsing (Storyboard Stage 9) is closer to "I know exactly which
@@ -202,14 +211,15 @@ wrong, a decoration that needs moving — prompted by something noticed
 after the fact (their own second look, or someone else's feedback).
 **Entry:** Arrival → Scenes → the specific Scene → directly into
 whichever *activity* the fix requires (Place for a frame issue, Text
-for a typo, Decorations for a misplaced sticker) — **never Canvas
-first**, unlike a first-timer's natural Canvas → Place → Decorations →
-Text progression. This is the clearest evidence that the four
-activities must be freely, independently reachable (Blueprint §6, the
-switcher's fixed-but-unforced order) — a returning author's entry point
-is whichever activity matches their specific complaint, full stop.
-**Exit:** immediately back to Scenes, or straight out of the World
-entirely — a targeted fix does not imply a longer session.
+for a typo, Decorations for a misplaced sticker) — **never by way of
+Scene Configuration first**, unlike a first-timer's natural
+Configuration-glance → Place → Decorations → Text progression. This is
+the clearest evidence that the three activities must be freely,
+independently reachable (Blueprint §6, the switcher's fixed-but-unforced
+order) — a returning author's entry point is whichever activity matches
+their specific complaint, full stop. **Exit:** immediately back to
+Scenes, or straight out of the World entirely — a targeted fix does not
+imply a longer session.
 
 ### Scenario 4 — "Time to ship it"
 
@@ -229,10 +239,10 @@ Blueprint §12).
 and the Theme Author needs to know that *immediately*, without having
 to remember or re-discover it. **This is the one genuinely new
 requirement returning-author journeys surface that a first-timer's
-journey never needs:** Arrival (and Scenes, and Overview) must show a
+journey never needs:** Arrival (and Scenes, and World) must show a
 glanceable, honest signal when a World's last known state was "not
 ready" — not buried inside Validation until someone thinks to check it.
-**Entry:** Arrival shows the signal → World-level nav → Validation,
+**Entry:** Arrival shows the signal → Global Navigation → Validation,
 already scrolled to (or otherwise foregrounding) the unresolved
 failures. **Exit:** back into whichever Scene the failure names, via
 the same "Fix Now" bridge Blueprint §12 already defines — this
@@ -245,10 +255,16 @@ surface earlier than it currently does.
 # Part 3 — Desktop Paper Wireframes
 
 Box-and-arrow only, exactly as the prior documents' own wireframe
-sections — no visual styling, no component choices. Every Builder
-screen, plus each Scene Editor activity shown on its own.
+sections — no visual styling, no component choices. Redrawn throughout
+for `docs/BUILDER_V2_VISION.md`'s top Global Navigation, Scene Header,
+and three-pane workspace. Every Builder screen, plus each of the three
+Scene Editor activities shown on its own.
 
 ### Arrival
+
+Unchanged from the original package — Arrival has no World open yet, so
+Global Navigation doesn't appear here regardless of top-vs-side
+placement.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -269,75 +285,66 @@ screen, plus each Scene Editor activity shown on its own.
 The "⚠ not ready" badge is Scenario 5's signal — glanceable here,
 before opening anything.
 
-### Overview
+### World
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [World name]                                     [Save●]  │
-├───────────┬────────────────────────────────────────────────┤
-│ Overview ←│  World Name   [_____________________]           │
-│ Scenes    │  Description  [_____________________]           │
-│ Validation│                                                  │
-│ Build     │  Manage Theme Assets →   (secondary entry point) │
-│ Publish   │                                                  │
-│           │  ✨ No Scenes yet — add your first one → Scenes  │
-└───────────┴────────────────────────────────────────────────┘
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │  Global Navigation
+├──────────────────────────────────────────────────────────┤
+│  World Name   [_____________________]                     │
+│  Description  [_____________________]                     │
+│                                                            │
+│  Manage Theme Assets →   (secondary entry point)           │
+│                                                            │
+│  ✨ No Scenes yet — add your first one → Scenes             │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### Scene Library (Scenes)
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ [World name]                                     [Save●]  │
-├───────────┬────────────────────────────────────────────────┤
-│ Overview  │  [+ Add Scene]                                  │
-│ Scenes  ← │                                                  │
-│ Validation│  ┌────────┐ ┌────────┐ ┌────────┐               │
-│ Build     │  │ Cover  │ │ Photo  │ │ Quote  │  … one card    │
-│ Publish   │  │ [thumb]│ │ Spread │ │ [thumb]│    per Scene,  │
-│           │  └────────┘ │[thumb] │ └────────┘    live-       │
-│           │             └────────┘                updating   │
-└───────────┴────────────────────────────────────────────────┘
-```
-
-### Scene Editor — shared shell (applies to all four activities below)
+### Scenes — Scene Library
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [World name] › [Scene name]                      [Save●]  │
-├───────────┬───────────────────────┬───────────────────────┤
-│ Overview  │ Canvas · Place ·      │                        │
-│ Scenes  ← │ Decorations · Text    │    Runtime Preview     │
-│ Validation│ (activity switcher)   │   (clean, complete,    │
-│ Build     │ ┌───────────────────┐ │    never interactive,  │
-│ Publish   │ │                   │ │    identical no matter │
-│           │ │   Working View    │ │    which activity is   │
-│           │ │ (current activity,│ │    active)             │
-│           │ │  Builder guides)  │ │                        │
-│           │ └───────────────────┘ │                        │
-│           ├───────────────────────┴───────────────────────┤
-│           │  Property Editor — context-aware to selection   │
-└───────────┴─────────────────────────────────────────────────┘
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │
+├──────────────────────────────────────────────────────────┤
+│  [+ Add Scene]                                             │
+│                                                            │
+│  ┌────────┐ ┌────────┐ ┌────────┐                          │
+│  │ Cover  │ │ Photo  │ │ Quote  │   … one card per Scene,  │
+│  │ [thumb]│ │ Spread │ │ [thumb]│     live-updating         │
+│  └────────┘ │[thumb] │ └────────┘                          │
+│             └────────┘                                     │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### Scene Editor — Canvas activity (Working View + Property Editor detail)
+### Scene Editor — shared shell (applies to all three activities below)
 
 ```
- Working View                       Property Editor
-┌─────────────────────┐            ┌───────────────────────┐
-│  ┌ ─ ─ safe area ─ ┐ │            │ Page Shape             │
-│  ┆               ┆  │            │  ( ) Portrait          │
-│  ┆   the page,   ┆  │            │  (•) Landscape         │
-│  ┆   full size   ┆  │            │  ( ) Square             │
-│  ┆               ┆  │            │  ( ) Wide               │
-│  └ ─ ─ ─ ─ ─ ─ ─ ┘ │            │  ( ) Quote              │
-└─────────────────────┘            └───────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │  Global Navigation
+├──────────────────────────────────────────────────────────┤
+│ Museum Gallery › Gallery Portrait                          │  Scene Header
+│ 📄 Portrait   📐 Instagram Safe Area   📦 1080 × 1350      │  (Scene Configuration)
+├───────────────────────┬───────────────────┬───────────────┤
+│  Place · Decorations  │                   │               │
+│  · Text (switcher)    │                   │               │
+│ ┌───────────────────┐ │                   │               │
+│ │                   │ │  Runtime Preview  │   Context      │
+│ │   Working View    │ │  (clean, complete,│   Inspector    │
+│ │ (current activity,│ │   never          │  (context-aware│
+│ │  Builder guides)  │ │   interactive)    │   to selection)│
+│ └───────────────────┘ │                   │               │
+└───────────────────────┴───────────────────┴───────────────┘
 ```
+
+Clicking the Scene Header's Scene Configuration summary (`📄 Portrait …`)
+selects it the same way clicking any object does — Context Inspector
+shows Aspect Ratio choices; Working View keeps showing whichever
+activity was already active (Vision §2).
 
 ### Scene Editor — Place activity
 
 ```
- Working View                       Property Editor
+ Working View                       Context Inspector
 ┌─────────────────────┐            ┌───────────────────────┐
 │                      │            │ Selected: Place 1      │
 │   ┌───────────┐      │            │  Position  [x] [y]     │
@@ -346,83 +353,88 @@ before opening anything.
 │   │  + frame] │      │            │  Fit       (fit ▾)     │
 │   └───────────┘      │            │  Frame  [Browse… ]     │
 │                      │            │ ── Story Author may ── │
-└─────────────────────┘            │  ☑ move   ☑ resize      │
+└─────────────────────┘            │  🔒 Locked  [Change]    │
                                     └───────────────────────┘
 ```
 
 ### Scene Editor — Decorations activity
 
 ```
- Working View                       Property Editor
+ Working View                       Context Inspector
 ┌─────────────────────┐            ┌───────────────────────┐
 │      🌸              │            │ Selected: 🌸 Flower     │
 │   ┌───────────┐      │            │  Position  [x] [y]     │
 │   │  [photo]  │  🎀   │            │  Bring forward /       │
 │   └───────────┘      │            │  Send backward         │
 │         📎           │            │ ── Story Author may ── │
-│  [+ Browse Theme     │            │  ☐ move  ☐ change       │
-│     Assets]          │            │  ☐ add their own here   │
+│  [+ Browse Theme     │            │  🔒 Locked  [Change]    │
+│     Assets]          │            │  (expands to move/     │
+│                      │            │   change/add-their-own)│
 └─────────────────────┘            └───────────────────────┘
 ```
 
 ### Scene Editor — Text activity
 
 ```
- Working View                       Property Editor
+ Working View                       Context Inspector
 ┌─────────────────────┐            ┌───────────────────────┐
 │   ┌───────────┐      │            │ Selected: Caption       │
 │   │  [photo]  │      │            │  Typography [font ▾]   │
 │   └───────────┘      │            │  Colour     [■]         │
 │   "A day at the      │            │  Alignment  [≡][⟸][⟹]  │
 │    museum"           │            │ ── Story Author may ── │
-│   [+ Add Text]       │            │  ☑ change wording       │
+│   [+ Add Text]       │            │  🔒 Locked  [Change]    │
 └─────────────────────┘            └───────────────────────┘
 ```
+
+Both Place and Decorations wireframes above show the permission block
+in its collapsed default state (Part 6/7) — one line, one action — with
+a note in Decorations of what expanding it reveals, rather than
+repeating the full three-question form in every wireframe.
 
 ### Validation
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [World name]                                     [Save●]  │
-├───────────┬────────────────────────────────────────────────┤
-│ Overview  │  [▶ Run Validation]                             │
-│ Scenes    │                                                  │
-│ Validation←│  ⚠ 2 issues found                              │
-│ Build     │   Scenes            ⚠ Error   → Fix Now          │
-│ Publish   │   Place             ✓ All good                  │
-│           │   Decorations       ⚠ Warning → Fix Now          │
-│           │   Text              ✓ All good                  │
-└───────────┴────────────────────────────────────────────────┘
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │
+├──────────────────────────────────────────────────────────┤
+│  [▶ Run Validation]                                        │
+│                                                            │
+│  ⚠ 2 issues found                                          │
+│   Scenes            ⚠ Error   → Fix Now                    │
+│   Place             ✓ All good                             │
+│   Decorations       ⚠ Warning → Fix Now                    │
+│   Text              ✓ All good                             │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### Build
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [World name]                                     [Save●]  │
-├───────────┬────────────────────────────────────────────────┤
-│ Overview  │  Output File     museum-gallery.vtheme          │
-│ Scenes    │  Last Validation  Passed                        │
-│ Validation│                                                  │
-│ Build   ← │  [🎁 Build World Package]                        │
-│ Publish   │                                                  │
-│           │  ✓ Built — 340 KB — just now                     │
-│           │  [Continue to Publish →]                         │
-└───────────┴────────────────────────────────────────────────┘
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │
+├──────────────────────────────────────────────────────────┤
+│  Output File     museum-gallery.vtheme                     │
+│  Last Validation  Passed                                   │
+│                                                            │
+│  [🎁 Build World Package]                                   │
+│                                                            │
+│  ✓ Built — 340 KB — just now                                │
+│  [Continue to Publish →]                                    │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### Publish
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [World name]                                     [Save●]  │
-├───────────┬────────────────────────────────────────────────┤
-│ Overview  │  ┌───────────┐ ┌───────────┐ ┌───────────┐     │
-│ Scenes    │  │ 💾 Export │ │ 🏛️ Publish│ │ 🌐 Community│    │
-│ Validation│  │  Package  │ │  Official  │ │ Coming Soon│    │
-│ Build     │  └───────────┘ └───────────┘ └───────────┘     │
-│ Publish ← │                                                  │
-└───────────┴────────────────────────────────────────────────┘
+│ World │ Scenes │ Validation │ Build │ Publish     [Save●] │
+├──────────────────────────────────────────────────────────┤
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐                 │
+│  │ 💾 Export │ │ 🏛️ Publish│ │ 🌐 Community│                │
+│  │  Package  │ │  Official  │ │ Coming Soon│                │
+│  └───────────┘ └───────────┘ └───────────┘                 │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -438,7 +450,7 @@ Each walked through step by step, grounded in Blueprint §6.
 3. Working View draws selection handles around it.
 4. The activity switcher's highlight moves to **Place**, regardless of
    which activity was active a moment ago (Blueprint §6.1).
-5. Property Editor repopulates with Position/Size/Shape/Padding/Fit and
+5. Context Inspector repopulates with Position/Size/Shape/Padding/Fit and
    the Frame control, ending in the permission block.
 6. Runtime Preview does not change at all — it never shows a selection
    state (§6 shared shell).
@@ -450,7 +462,7 @@ Each walked through step by step, grounded in Blueprint §6.
    decorations don't resize the same way a Place does; they mostly
    move and reorder).
 3. Switcher highlight moves to **Decorations**.
-4. Property Editor shows that decoration's own properties, ending in
+4. Context Inspector shows that decoration's own properties, ending in
    the permission block *with* the Decoration Slot line ("let the
    Story Author add their own here too").
 
@@ -460,7 +472,7 @@ Each walked through step by step, grounded in Blueprint §6.
 2. A text-editing caret appears in place — typing edits the words
    immediately, no separate "open editor" step.
 3. Switcher highlight moves to **Text**.
-4. Property Editor shows Typography/Colour/Alignment for the selected
+4. Context Inspector shows Typography/Colour/Alignment for the selected
    text, ending in the permission block (this time governing wording
    vs. restyling independently, Blueprint §10).
 
@@ -469,11 +481,28 @@ Each walked through step by step, grounded in Blueprint §6.
 1. Theme Author is actively working in Decorations.
 2. They click the Place (the photo) instead of a decoration.
 3. Without any extra step or confirmation, the switcher moves to
-   **Place** and the Property Editor updates to match.
+   **Place** and the Context Inspector updates to match.
 4. Nothing about Working View's overlay guides "flickers" — Decorations'
    guides are simply replaced by Place's guides in the same frame the
    selection changes, since both are the same rendering pass with a
    different guide layer on top (Mental Model §4).
+
+### Adjusting Scene Configuration
+
+1. Theme Author clicks the Scene Header's Scene Configuration summary
+   (`📄 Portrait  📐 Instagram Safe Area  📦 1080 × 1350`).
+2. It is selected exactly the way any other object is (Vision §2) —
+   Context Inspector shows Aspect Ratio choices.
+3. Working View does **not** change activity — whichever of Place/
+   Decorations/Text was active stays on screen, since Scene
+   Configuration has no guides or page object of its own to show there.
+4. Choosing a new Aspect Ratio updates the Scene Header's summary, the
+   Scene's actual shape in both Working View and Runtime Preview,
+   immediately — the same live-update guarantee every other edit
+   already has.
+5. Clicking anywhere else (an object on the page, or a different
+   activity) clears this selection the same way any other object's
+   selection would clear.
 
 ### Theme Asset overlay
 
@@ -492,21 +521,21 @@ Each walked through step by step, grounded in Blueprint §6.
 1. The moment an asset is picked, the overlay closes automatically —
    no separate "done" step.
 2. The picked asset appears already placed on the Scene, in Working
-   View, selected (so its Property Editor is immediately available if
+   View, selected (so its Context Inspector is immediately available if
    the Theme Author wants to adjust it right away).
 3. Focus returns exactly to the activity the overlay was opened from —
    opening it from Place returns to Place, not to Decorations.
 
-### Property Editor updates
+### Context Inspector updates
 
-1. Nothing is selected: Property Editor shows lightweight, activity-
+1. Nothing is selected: Context Inspector shows lightweight, activity-
    level guidance only (e.g. Decorations with nothing selected might
    show "click a decoration to edit it, or Browse Theme Assets to add
    one") — never a blank void, never a long generic form.
-2. Something is selected: Property Editor repopulates immediately, no
+2. Something is selected: Context Inspector repopulates immediately, no
    transition delay — the selected object's own type-specific
    properties first, the permission block last, always in that order,
-   on every activity, so the Property Editor's *shape* never surprises
+   on every activity, so the Context Inspector's *shape* never surprises
    a Theme Author even when its *content* changes completely.
 
 ### Runtime Preview behaviour
@@ -526,7 +555,7 @@ Each walked through step by step, grounded in Blueprint §6.
 ### Object selection (general)
 
 1. Clicking empty space (no object under the cursor) clears the
-   current selection — Property Editor returns to its activity-level
+   current selection — Context Inspector returns to its activity-level
    guidance, switcher stays on whichever activity was active.
 2. Clicking a different object replaces the selection outright — there
    is no multi-select in this Blueprint's scope (nothing in the four
@@ -537,12 +566,14 @@ Each walked through step by step, grounded in Blueprint §6.
 
 ### Navigation between Scenes
 
-1. From inside any Scene Editor, "back to Scenes" (World-level nav,
-   always visible per §6 shared shell) returns to the Scene Library.
+1. From inside any Scene Editor, "back to Scenes" (Global Navigation,
+   always visible at the top, per `docs/BUILDER_V2_VISION.md` §1)
+   returns to the Scene Library.
 2. Selecting a different Scene card opens straight into that Scene's
    editor, resuming on whichever activity it was last left on (never
-   forced back to Canvas) — this is what makes Returning Scenario 3
-   ("fix one specific thing") work without friction.
+   forced back to a "start from Scene Configuration" step) — this is
+   what makes Returning Scenario 3 ("fix one specific thing") work
+   without friction.
 3. There is no "are you sure, unsaved changes" interruption at any
    point in this flow — autosave (Part 6) means there is never
    anything unsaved to lose.
@@ -551,27 +582,41 @@ Each walked through step by step, grounded in Blueprint §6.
 
 # Part 5 — Workspace Design
 
-Each region's purpose, and what breaks if it's removed — the
-falsifiability test this Part is built around.
+Five regions now, not four — `docs/BUILDER_V2_VISION.md` splits what
+was one "Header" region into Global Navigation (top, permanent, outside
+the editing workspace entirely) and the Scene Header (appears only once
+a Scene is open). Each region's purpose, and what breaks if it's
+removed — the falsifiability test this Part is built around.
 
-### Header
+### Global Navigation
 
-**Purpose:** orientation (which World, which Scene) and save-state
-confidence, always visible. **Why it cannot be removed:** without it, a
-Theme Author has no persistent answer to "where am I" once several
-Scenes deep, and no persistent answer to "is my last edit safe" — both
-questions this whole product line has already learned matter enough to
-solve once and reuse everywhere (Builder V1, Sprint B2.0.6).
+**Purpose:** orientation at the World level — World / Scenes /
+Validation / Build / Publish, plus save-state confidence — always
+visible, always at the top, structurally outside the editing workspace.
+**Why it cannot be removed:** without it, a Theme Author has no
+persistent answer to "where am I" once several Scenes deep, and no
+persistent answer to "is my last edit safe" — both questions this whole
+product line has already learned matter enough to solve once and reuse
+everywhere (Builder V1, Sprint B2.0.6). **Why it moved here specifically
+(top, not the workspace's own left edge):** Returning Scenario 3
+depends entirely on "back to Scenes" being immediate, not a retreat
+through a region that could be mistaken for part of the Scene Editor
+itself — separating it structurally makes that distinction physical,
+not just conventional.
 
-### Navigation (World-level)
+### Scene Header
 
-**Purpose:** keeps Overview/Scenes/Validation/Build/Publish one click
-away, permanently, regardless of how deep into a Scene's activities the
-Theme Author currently is. **Why it cannot be removed:** Returning
-Scenario 3 depends entirely on "back to Scenes" being immediate, not a
-multi-step retreat out of a modal-feeling editing surface. Remove this
-region and every Scene Editor becomes a dead end you can only escape by
-finishing, not by choosing to leave.
+**Purpose:** two things, together, only once a Scene is open — the
+breadcrumb (which Scene, inside which World) and the Scene Configuration
+summary (page shape, Safe Area, dimensions), both answering questions
+that matter continuously while editing but don't belong to any one
+creative activity. **Why it cannot be removed:** without the breadcrumb,
+a Theme Author several activities deep loses track of which Scene
+they're even in; without the Scene Configuration summary being
+glanceable here, Canvas's information would have nowhere to live at all
+now that it's not a peer activity (Vision §2) — removing this region
+doesn't just lose a convenience, it loses the only remaining home for a
+real, necessary piece of information.
 
 ### Working View
 
@@ -593,15 +638,22 @@ imagine the real result — an error-prone, cognitively expensive habit
 this design deliberately never asks anyone to form (Mental Model §1,
 "what should always remain visible").
 
-### Property Editor
+### Context Inspector
 
 **Purpose:** the *only* place an object's own properties and its
 Story-Author permissions are edited — context-aware to activity and
-selection. **Why it cannot be removed:** without it, the four
-activities would have nowhere to expose type-specific properties
-(Typography, Frame, Fit) without cluttering Working View itself with
+selection. **Why it cannot be removed:** without it, the three
+activities (and Scene Configuration, selected the same way any object
+is) would have nowhere to expose type-specific properties (Typography,
+Frame, Fit, Aspect Ratio) without cluttering Working View itself with
 form controls drawn on top of the canvas — which would immediately
 reintroduce the "generic inspector" problem in a different location.
+**On its column width:** `docs/BUILDER_V2_VISION.md` §4 already flags
+that an equal three-way split with Working View and Runtime Preview
+would under-serve this region the same way Builder V1's old shared-
+column Property Editor was once under-served — carried forward here as
+a standing constraint on whatever the next, concrete design pass
+decides for exact proportions.
 
 None of these five regions is optional in the sense that removing it
 would merely be "less convenient" — each removal breaks a specific,
@@ -617,7 +669,7 @@ authoring — nothing added for completeness' sake.
 
 **Selection.** Click to select, matching Part 4's walkthroughs exactly.
 Selection is always singular (no multi-select) and always drives both
-the switcher and the Property Editor together, never one without the
+the switcher and the Context Inspector together, never one without the
 other.
 
 **Hover.** A light indication (an outline, not a full selection state)
@@ -666,7 +718,7 @@ a third state would describe a gap in time that doesn't exist (Sprint
 B2.0.6's own reasoning, unchanged here).
 
 **Empty states.** Every screen that can be empty says so invitingly,
-never as a dead end: a World with zero Scenes (Overview points at
+never as a dead end: a World with zero Scenes (World points at
 Scenes directly); a Scene's unfilled Place (a generic upload-style
 placeholder, never mistaken for real Theme Author content); an empty
 Decorations activity ("click Browse Theme Assets to add your first
@@ -691,18 +743,21 @@ objects never need revisited.
 # Part 7 — Critical Review
 
 Four real candidates for removal or simplification, argued honestly —
-two adopted, one rejected with reasoning, one proposed but deliberately
-left for explicit sign-off rather than adopted unilaterally.
+two adopted at the time this Part was first written, one rejected with
+reasoning, and one proposed-but-deliberately-left-open that has since
+been resolved by a later document rather than by this one.
 
-### 1. Should Canvas be demoted out of the four-way switcher? — proposed, not adopted
+### 1. Should Canvas be demoted out of the four-way switcher? — adopted, see `docs/BUILDER_V2_VISION.md`
 
 Canvas is Blueprint's own "lightest slice" — visited once per Scene,
-almost never again (§7). A real case exists for removing it from the
-switcher entirely and replacing it with a compact "Page Shape" control
-near Working View's header (sketched informally: `Page Shape:
-Landscape ▾`), leaving the switcher as **Place · Decorations · Text** —
-three activities, all genuinely recurring, all visited repeatedly while
-building one Scene.
+almost never again (§7). This Part originally raised, but deliberately
+did not adopt, removing it from the switcher entirely and replacing it
+with a compact glance at the Scene's shape, leaving the switcher as
+**Place · Decorations · Text** — three activities, all genuinely
+recurring, all visited repeatedly while building one Scene. The
+reasoning below is kept verbatim as the historical record of that
+original argument; it is what `docs/BUILDER_V2_VISION.md` §0 refers to
+as "left unadopted pending sign-off."
 
 **In favor:** matches actual usage frequency exactly; a leaner
 three-item switcher is easier to hold in mind than four; nothing about
@@ -716,15 +771,16 @@ permissions default above. It also very slightly reduces
 discoverability for the rare-but-real case of reconsidering a Scene's
 aspect ratio well after first creating it.
 
-**Disposition:** genuinely worth doing, but treated here as a
-**recommendation for explicit product sign-off**, not adopted — the
-distinction Part 7 is supposed to respect is "propose confidently" vs.
-"redesign unilaterally," and this one crosses from vocabulary/
-presentation into the Blueprint's own screen model. If accepted, Parts
-1–6 above would need one mechanical update: replace "the four
-activities" with "the three activities, plus Canvas's Page Shape
-control" throughout, and retire Canvas's wireframe (Part 3) into a
-one-line header sketch instead.
+**Disposition: adopted.** Product sign-off has since happened —
+`docs/BUILDER_V2_VISION.md` §2–§3 is that sign-off, made explicit and
+permanent. Canvas is no longer a peer activity; it now lives as the
+Scene Header's Scene Configuration summary, edited by selecting it the
+same way any other object is (Vision §2), never by switching Working
+View to a fourth activity state. Every Part above (1, 2, 3, 4, 5) has
+already been updated to reflect this — "the four activities" no longer
+appears anywhere in this document outside this historical note, and
+the standalone Canvas wireframe (Part 3) has been retired in favor of
+the Scene Header's own wireframe.
 
 ### 2. Should Validation merge into Build? — considered, rejected
 
@@ -748,15 +804,15 @@ has to exist and be read either way.
 An even leaner alternative: no standalone screen at all, ever — only
 the in-Scene overlay, with its "manage the full shelf" mode simply
 being a fuller version of the same overlay, never reachable from
-Overview.
+World.
 
 **Against:** the pre-first-Scene stocking case (Part 1's own reasoning)
 is real and would have no home at all under this model — a brand-new
 World would force a Theme Author to create a throwaway Scene just to
-open an overlay, which is worse than the secondary Overview entry point
+open an overlay, which is worse than the secondary World entry point
 this package already proposes.
 
-**Disposition:** Part 1's resolution (secondary entry from Overview,
+**Disposition:** Part 1's resolution (secondary entry from World,
 plus the overlay) stands, confirmed rather than second-guessed.
 
 ### 4. Should the permission block show all three questions, always? — considered, changed
@@ -770,8 +826,9 @@ repeated here.
 Every screen answers exactly one question (Part 1's own test, applied
 to itself). Every activity a Theme Author repeats often (Place,
 Decorations, Text) is one click away, always in the same place. Every
-activity they rarely repeat (Canvas, Theme Assets, Validation/Build/
-Publish) costs slightly more to reach, on purpose, because that cost is
+glanceable thing they rarely revisit (Scene Configuration, Theme
+Assets, Validation/Build/Publish) costs slightly more to reach, on
+purpose, because that cost is
 what keeps the frequent activities cheap. Nothing on screen ever asks
 "what would you like to configure" — everything asks "what are you
 making," which is the whole thesis this entire derivation chain has
@@ -791,22 +848,30 @@ This document depends on, and does not restate in full:
   summarizes rather than repeats.
 - `docs/BUILDER_V2_BLUEPRINT.md` — the per-screen architecture Part 1,
   3, 4, and 5 all build directly on top of.
+- `docs/BUILDER_V2_VISION.md` — the later sign-off document this
+  package has been updated to match throughout: Global Navigation's
+  move to the top, the Scene Header, Canvas's demotion (Part 7, item 1),
+  the three-pane workspace, and the Context Inspector rename all
+  originate there, not here.
 
 ## Open questions carried forward
 
 Genuinely unresolved, not decided by omission:
 
-1. **Canvas's placement in the switcher** (Part 7, item 1) — proposed,
-   explicitly not adopted, awaiting product sign-off before Parts 1–6
-   are amended.
-2. Everything Blueprint §16 already carried forward as Engine-level
+1. Everything Blueprint §16 already carried forward as Engine-level
    (Theme Settings' exact scope, Holder placeholder branding, Scene
    Template persistence, per-slot Decoration constraint vocabulary)
    remains exactly as open as it was there — nothing in this UX pass
    needed any of them resolved to proceed, which is itself a small
    confirmation that Blueprint §16 drew its boundaries correctly.
-3. **Whether dragging a Place past its Canvas Safe Area should be a
+2. **Whether dragging a Place past the Scene's Safe Area should be a
    hard constraint or a soft guide** (Part 6, "Drag") — flagged there,
    not resolved here; a decision for the concrete design pass that
-   follows this package, once Canvas's own fate (item 1, above) is
-   settled.
+   follows this package. Canvas's own fate, the precondition this item
+   once waited on, is now settled (`docs/BUILDER_V2_VISION.md` §2–§3),
+   so this is the one remaining open item this pass surfaces.
+3. **Exact column proportions for the three-pane workspace** — newly
+   surfaced by `docs/BUILDER_V2_VISION.md` §4, not by this package:
+   Context Inspector must be sized generously, not as a naive equal
+   third, but the precise widths are explicitly left to the next
+   concrete design pass.
