@@ -497,6 +497,164 @@ const ProjectModel = (function () {
     }
 
     // ---------------------------------------------------------------
+    // The Scene Stack + Scene Layers (Builder V2 — Blueprint §9
+    // "Decorations" slice; Engine V2 Canon §5, §7). The Scene Stack is
+    // the single ordered sequence of Scene Layers and Holders together
+    // that paints bottom to top (Canon §5) — "bring forward / send
+    // backward" is the one Builder verb that covers everything this
+    // ordering would otherwise require a Layer Stack panel for
+    // (Blueprint §9). Reconciled lazily on read, the same pattern
+    // `_ordered` already uses for frameOrder/sceneOrder, so a Scene
+    // authored before `stack` existed never crashes.
+    //
+    // Decorations here are simple placed Elements (an emoji glyph, or a
+    // full-bleed colour fill standing in for "the background," Engine
+    // Canon §4 — there is no separate background field). A real Theme
+    // Decoration Pack browsing system (Engine Canon §9) does not exist
+    // in this Builder yet — that is Theme Assets consolidation, out of
+    // this slice's scope, and is a disclosed limitation, not a silent
+    // one.
+    // ---------------------------------------------------------------
+
+    function _defaultLayerPermissions() {
+        return { moveable: true, editable: true, visible: true };
+    }
+
+    function _ensureSceneLayerDefaults(layer) {
+        if (!layer) return layer;
+        if (!layer.permissions) layer.permissions = _defaultLayerPermissions();
+        if (layer.decorationSlot === undefined) layer.decorationSlot = false;
+        return layer;
+    }
+
+    function _ensureStack(scene) {
+        if (!Array.isArray(scene.layers)) scene.layers = [];
+        if (!Array.isArray(scene.stack)) {
+            scene.stack = scene.holders.map(function (h) { return { type: 'holder', id: h.id }; });
+        }
+        const holderIds = scene.holders.map(function (h) { return h.id; });
+        const layerIds = scene.layers.map(function (l) { return l.id; });
+        scene.stack = scene.stack.filter(function (e) {
+            return e.type === 'holder' ? holderIds.indexOf(e.id) !== -1 : layerIds.indexOf(e.id) !== -1;
+        });
+        holderIds.forEach(function (id) {
+            if (!scene.stack.some(function (e) { return e.type === 'holder' && e.id === id; })) {
+                scene.stack.push({ type: 'holder', id: id });
+            }
+        });
+        layerIds.forEach(function (id) {
+            if (!scene.stack.some(function (e) { return e.type === 'layer' && e.id === id; })) {
+                scene.stack.push({ type: 'layer', id: id });
+            }
+        });
+        return scene.stack;
+    }
+
+    function sceneStack(project, sceneId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return [];
+        return _ensureStack(scene);
+    }
+
+    function findSceneLayer(project, sceneId, layerId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        const layer = (scene.layers || []).find(function (l) { return l.id === layerId; }) || null;
+        return _ensureSceneLayerDefaults(layer);
+    }
+
+    function updateSceneLayer(project, sceneId, layerId, patch) {
+        const layer = findSceneLayer(project, sceneId, layerId);
+        if (layer) Object.assign(layer, patch);
+        return layer;
+    }
+
+    function addSceneLayer(project, sceneId, spec) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        _ensureStack(scene);
+        const existingIds = scene.layers.map(function (l) { return l.id; });
+        const id = _uniqueId(existingIds, spec.kind === 'fill' ? 'background' : 'decoration');
+        const layer = {
+            id: id,
+            name: spec.name || (spec.kind === 'fill' ? 'Background' : 'Decoration'),
+            kind: spec.kind,
+            color: spec.color || '#F4F1EC',
+            glyph: spec.glyph || '✨',
+            position: spec.position || { x: 0.4, y: 0.4 },
+            size: spec.size || { w: 0.14, h: 0.14 },
+            permissions: _defaultLayerPermissions(),
+            decorationSlot: false
+        };
+        scene.layers.push(layer);
+        scene.stack.push({ type: 'layer', id: id });
+        if (spec.atBottom) {
+            scene.stack = scene.stack.filter(function (e) { return !(e.type === 'layer' && e.id === id); });
+            scene.stack.unshift({ type: 'layer', id: id });
+        }
+        return layer;
+    }
+
+    function deleteSceneLayer(project, sceneId, layerId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return;
+        scene.layers = (scene.layers || []).filter(function (l) { return l.id !== layerId; });
+        if (Array.isArray(scene.stack)) {
+            scene.stack = scene.stack.filter(function (e) { return !(e.type === 'layer' && e.id === layerId); });
+        }
+    }
+
+    // "Bring forward" / "send backward" — the single verb Blueprint §9
+    // uses in place of a Layer Stack panel a Theme Author would
+    // otherwise need to understand.
+    function moveInStack(project, sceneId, type, id, direction) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return;
+        _ensureStack(scene);
+        const idx = scene.stack.findIndex(function (e) { return e.type === type && e.id === id; });
+        if (idx === -1) return;
+        const swapWith = direction === 'forward' ? idx + 1 : idx - 1;
+        if (swapWith < 0 || swapWith >= scene.stack.length) return;
+        const tmp = scene.stack[idx];
+        scene.stack[idx] = scene.stack[swapWith];
+        scene.stack[swapWith] = tmp;
+    }
+
+    // "Set the background" (Blueprint §9) is a convenience action, not a
+    // structural concept of its own (Engine Canon §4 — Canvas has no
+    // background property; a special `scene.background` field would be
+    // exactly the "second way to do something Elements-in-Layers already
+    // do" Invariant 8 forbids). This reuses, or creates, an ordinary
+    // full-bleed fill Scene Layer pinned to the bottom of the Stack.
+    function _bottomFillLayer(project, sceneId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        _ensureStack(scene);
+        const bottom = scene.stack[0];
+        if (!bottom || bottom.type !== 'layer') return null;
+        const layer = findSceneLayer(project, sceneId, bottom.id);
+        if (layer && layer.kind === 'fill' && layer.size.w >= 0.99 && layer.size.h >= 0.99) return layer;
+        return null;
+    }
+
+    function setSceneBackground(project, sceneId, color) {
+        const existing = _bottomFillLayer(project, sceneId);
+        if (existing) {
+            existing.color = color;
+            return existing;
+        }
+        return addSceneLayer(project, sceneId, {
+            kind: 'fill', name: 'Background', color: color,
+            position: { x: 0, y: 0 }, size: { w: 1, h: 1 }, atBottom: true
+        });
+    }
+
+    function getSceneBackgroundColor(project, sceneId) {
+        const layer = _bottomFillLayer(project, sceneId);
+        return layer ? layer.color : '#F4F1EC';
+    }
+
+    // ---------------------------------------------------------------
     // Assets (Sprint B2.0)
     // ---------------------------------------------------------------
 
@@ -688,6 +846,14 @@ const ProjectModel = (function () {
         updateHolder: updateHolder,
         addHolder: addHolder,
         deleteHolder: deleteHolder,
+        sceneStack: sceneStack,
+        findSceneLayer: findSceneLayer,
+        updateSceneLayer: updateSceneLayer,
+        addSceneLayer: addSceneLayer,
+        deleteSceneLayer: deleteSceneLayer,
+        moveInStack: moveInStack,
+        setSceneBackground: setSceneBackground,
+        getSceneBackgroundColor: getSceneBackgroundColor,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,
         setAsset: setAsset,

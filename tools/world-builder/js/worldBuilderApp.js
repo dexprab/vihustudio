@@ -997,9 +997,26 @@
         return null;
     }
 
-    function _pointInHolder(fx, fy, holder) {
-        return fx >= holder.position.x && fx <= holder.position.x + holder.size.w &&
-            fy >= holder.position.y && fy <= holder.position.y + holder.size.h;
+    // ---------- Decorations activity (Builder V2 — Blueprint §9) ----------
+    // Same selection-driven pattern as Place (§6.1): clicking a
+    // decoration in Working View selects it and switches the activity
+    // indicator to Decorations.
+
+    function _selectedLayerId() {
+        if (currentInspectorTarget && currentInspectorTarget.indexOf('layer:') === 0) {
+            return currentInspectorTarget.slice('layer:'.length);
+        }
+        return null;
+    }
+
+    const DECORATION_GLYPHS = ['🎀', '🌸', '⭐', '🍃', '🦋', '💫', '🌿', '❤️', '✨', '🎈'];
+
+    // A generic fractional-rect hit test — works for a Holder or a Scene
+    // Layer alike, since both carry the same {position:{x,y}, size:{w,h}}
+    // shape.
+    function _pointInHolder(fx, fy, obj) {
+        return fx >= obj.position.x && fx <= obj.position.x + obj.size.w &&
+            fy >= obj.position.y && fy <= obj.position.y + obj.size.h;
     }
 
     function _roundedRectPath(ctx, x, y, w, h, r) {
@@ -1029,13 +1046,86 @@
         return frame ? (frame.fields || {}) : null;
     }
 
-    // Draws a Scene's Canvas shape directly with the 2D context — no
-    // Elements exist yet to paint (Decorations/Text are still stubbed
-    // this slice), so this is generic Holder placeholder chrome
-    // (Engine Canon §6 — never a real upload) plus, in Working View
-    // only, a felt Safe Area guide (Blueprint §7 — never a labeled
-    // numeric field, never a hard wall) and a selection outline + resize
-    // handle for whichever Holder Place currently has selected.
+    function _drawHolderEntry(ctx, canvasEl, h, selected) {
+        const x = h.position.x * canvasEl.width;
+        const y = h.position.y * canvasEl.height;
+        const w = h.size.w * canvasEl.width;
+        const hgt = h.size.h * canvasEl.height;
+        const fields = _holderFrameFields(h);
+        const borderColor = (fields && fields.borderColor) || '#C9B79C';
+        const thickness = fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4;
+
+        ctx.save();
+        _drawHolderShapePath(ctx, x, y, w, hgt, h.shape);
+        ctx.fillStyle = '#E4DCCB';
+        ctx.fill();
+        if (thickness > 0) {
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = Math.max(2, canvasEl.width * 0.001 * thickness);
+            ctx.stroke();
+        }
+        ctx.clip();
+        ctx.fillStyle = '#9C8B6E';
+        ctx.font = Math.round(Math.min(w, hgt) * 0.3) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🖼️', x + w / 2, y + hgt / 2);
+        ctx.restore();
+
+        if (selected) {
+            ctx.save();
+            ctx.strokeStyle = '#1D3457';
+            ctx.setLineDash([canvasEl.width * 0.01, canvasEl.width * 0.006]);
+            ctx.lineWidth = Math.max(2, canvasEl.width * 0.0025);
+            ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
+            ctx.restore();
+            const handleR = Math.max(10, canvasEl.width * 0.014);
+            ctx.save();
+            ctx.fillStyle = '#1D3457';
+            ctx.beginPath();
+            ctx.arc(x + w, y + hgt, handleR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function _drawLayerEntry(ctx, canvasEl, l, selected) {
+        const x = l.position.x * canvasEl.width;
+        const y = l.position.y * canvasEl.height;
+        const w = l.size.w * canvasEl.width;
+        const hgt = l.size.h * canvasEl.height;
+
+        if (l.kind === 'fill') {
+            ctx.fillStyle = l.color;
+            ctx.fillRect(x, y, w, hgt);
+        } else {
+            ctx.save();
+            ctx.font = Math.round(Math.min(w, hgt)) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(l.glyph, x + w / 2, y + hgt / 2);
+            ctx.restore();
+        }
+
+        if (selected) {
+            ctx.save();
+            ctx.strokeStyle = '#1D3457';
+            ctx.setLineDash([canvasEl.width * 0.008, canvasEl.width * 0.005]);
+            ctx.lineWidth = Math.max(2, canvasEl.width * 0.002);
+            ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
+            ctx.restore();
+        }
+    }
+
+    // Draws the Scene's full Scene Stack (Engine Canon §5 — Scene Layers
+    // and Holders together, bottom to top; Canvas owns this order but is
+    // never itself a member of it) directly with the 2D context, plus,
+    // in Working View only, a felt Safe Area guide (Blueprint §7 —
+    // never a labeled numeric field, never a hard wall) and a selection
+    // outline (+ resize handle, Holders only) for whichever object is
+    // currently selected. `visible` is the only Base Object property
+    // that gates render (Engine Invariant 22) — `moveable`/`editable`
+    // affect only editing-surface affordances, checked nowhere here.
     function _drawSceneCanvas(canvasEl, scene, opts) {
         opts = opts || {};
         const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
@@ -1046,49 +1136,17 @@
         ctx.fillStyle = '#F4F1EC';
         ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
 
-        const selectedId = opts.interactive ? _selectedHolderId() : null;
+        const selectedHolderId = opts.interactive ? _selectedHolderId() : null;
+        const selectedLayerId = opts.interactive ? _selectedLayerId() : null;
+        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
 
-        scene.holders.forEach(function (raw) {
-            const h = window.ProjectModel.findHolder(currentProject, scene.id, raw.id) || raw;
-            const x = h.position.x * canvasEl.width;
-            const y = h.position.y * canvasEl.height;
-            const w = h.size.w * canvasEl.width;
-            const hgt = h.size.h * canvasEl.height;
-            const fields = _holderFrameFields(h);
-            const borderColor = (fields && fields.borderColor) || '#C9B79C';
-            const thickness = fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4;
-
-            ctx.save();
-            _drawHolderShapePath(ctx, x, y, w, hgt, h.shape);
-            ctx.fillStyle = '#E4DCCB';
-            ctx.fill();
-            if (thickness > 0) {
-                ctx.strokeStyle = borderColor;
-                ctx.lineWidth = Math.max(2, canvasEl.width * 0.001 * thickness);
-                ctx.stroke();
-            }
-            ctx.clip();
-            ctx.fillStyle = '#9C8B6E';
-            ctx.font = Math.round(Math.min(w, hgt) * 0.3) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🖼️', x + w / 2, y + hgt / 2);
-            ctx.restore();
-
-            if (selectedId === h.id) {
-                ctx.save();
-                ctx.strokeStyle = '#1D3457';
-                ctx.setLineDash([canvasEl.width * 0.01, canvasEl.width * 0.006]);
-                ctx.lineWidth = Math.max(2, canvasEl.width * 0.0025);
-                ctx.strokeRect(x - 4, y - 4, w + 8, hgt + 8);
-                ctx.restore();
-                const handleR = Math.max(10, canvasEl.width * 0.014);
-                ctx.save();
-                ctx.fillStyle = '#1D3457';
-                ctx.beginPath();
-                ctx.arc(x + w, y + hgt, handleR, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
+        stack.forEach(function (entry) {
+            if (entry.type === 'holder') {
+                const h = window.ProjectModel.findHolder(currentProject, scene.id, entry.id);
+                if (h) _drawHolderEntry(ctx, canvasEl, h, selectedHolderId === h.id);
+            } else {
+                const l = window.ProjectModel.findSceneLayer(currentProject, scene.id, entry.id);
+                if (l && l.permissions.visible !== false) _drawLayerEntry(ctx, canvasEl, l, selectedLayerId === l.id);
             }
         });
 
@@ -1155,12 +1213,20 @@
         };
     }
 
+    function _findByKind(sceneId, kind, id) {
+        return kind === 'holder'
+            ? window.ProjectModel.findHolder(currentProject, sceneId, id)
+            : window.ProjectModel.findSceneLayer(currentProject, sceneId, id);
+    }
+
     workingCanvas.addEventListener('mousedown', function (e) {
         if (currentNav !== 'scenes' || !currentSceneId) return;
         const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
         if (!scene) return;
         const pt = _canvasFraction(workingCanvas, e);
 
+        // Resize handle — Holders only (Blueprint §9 gives Decorations
+        // "reposition" and "bring forward/send backward," never resize).
         if (currentActivity === 'place') {
             const selectedId = _selectedHolderId();
             const selectedHolder = selectedId ? window.ProjectModel.findHolder(currentProject, scene.id, selectedId) : null;
@@ -1169,7 +1235,7 @@
                 const hy = selectedHolder.position.y + selectedHolder.size.h;
                 if (Math.abs(pt.fx - hx) < 0.03 && Math.abs(pt.fy - hy) < 0.03) {
                     _holderDragState = {
-                        mode: 'resize', sceneId: scene.id, holderId: selectedHolder.id,
+                        mode: 'resize', kind: 'holder', sceneId: scene.id, id: selectedHolder.id,
                         startFX: pt.fx, startFY: pt.fy, startW: selectedHolder.size.w, startH: selectedHolder.size.h
                     };
                     e.preventDefault();
@@ -1178,21 +1244,26 @@
             }
         }
 
+        // Hit-test the whole Scene Stack, topmost first (Blueprint §6.1
+        // — selection drives the activity, not the other way around).
+        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
         let hit = null;
-        for (let i = scene.holders.length - 1; i >= 0; i--) {
-            if (_pointInHolder(pt.fx, pt.fy, scene.holders[i])) { hit = scene.holders[i]; break; }
+        for (let i = stack.length - 1; i >= 0; i--) {
+            const entry = stack[i];
+            const obj = _findByKind(scene.id, entry.type, entry.id);
+            if (obj && _pointInHolder(pt.fx, pt.fy, obj)) { hit = { kind: entry.type, obj: obj }; break; }
         }
 
         if (hit) {
-            currentActivity = 'place';
-            currentInspectorTarget = 'holder:' + hit.id;
+            currentActivity = hit.kind === 'holder' ? 'place' : 'decorations';
+            currentInspectorTarget = (hit.kind === 'holder' ? 'holder:' : 'layer:') + hit.obj.id;
             _holderDragState = {
-                mode: 'move', sceneId: scene.id, holderId: hit.id,
-                startFX: pt.fx, startFY: pt.fy, startX: hit.position.x, startY: hit.position.y
+                mode: 'move', kind: hit.kind, sceneId: scene.id, id: hit.obj.id,
+                startFX: pt.fx, startFY: pt.fy, startX: hit.obj.position.x, startY: hit.obj.position.y
             };
             _renderWorkspace();
             e.preventDefault();
-        } else if (currentActivity === 'place' && _selectedHolderId()) {
+        } else if ((currentActivity === 'place' && _selectedHolderId()) || (currentActivity === 'decorations' && _selectedLayerId())) {
             currentInspectorTarget = null;
             _renderWorkspace();
         }
@@ -1203,14 +1274,14 @@
         const pt = _canvasFraction(workingCanvas, e);
         const dx = pt.fx - _holderDragState.startFX;
         const dy = pt.fy - _holderDragState.startFY;
-        const holder = window.ProjectModel.findHolder(currentProject, _holderDragState.sceneId, _holderDragState.holderId);
-        if (!holder) return;
+        const obj = _findByKind(_holderDragState.sceneId, _holderDragState.kind, _holderDragState.id);
+        if (!obj) return;
         if (_holderDragState.mode === 'move') {
-            holder.position.x = Math.min(1 - holder.size.w, Math.max(0, _holderDragState.startX + dx));
-            holder.position.y = Math.min(1 - holder.size.h, Math.max(0, _holderDragState.startY + dy));
+            obj.position.x = Math.min(1 - obj.size.w, Math.max(0, _holderDragState.startX + dx));
+            obj.position.y = Math.min(1 - obj.size.h, Math.max(0, _holderDragState.startY + dy));
         } else {
-            holder.size.w = Math.min(1 - holder.position.x, Math.max(0.06, _holderDragState.startW + dx));
-            holder.size.h = Math.min(1 - holder.position.y, Math.max(0.06, _holderDragState.startH + dy));
+            obj.size.w = Math.min(1 - obj.position.x, Math.max(0.06, _holderDragState.startW + dx));
+            obj.size.h = Math.min(1 - obj.position.y, Math.max(0.06, _holderDragState.startH + dy));
         }
         _redrawSceneCanvases(_holderDragState.sceneId);
     });
@@ -1714,22 +1785,28 @@
             currentInspectorTarget = null; // stale reference (e.g. Holder was just deleted)
         }
 
+        const selectedLayerId = _selectedLayerId();
+        if (selectedLayerId) {
+            const layer = window.ProjectModel.findSceneLayer(currentProject, scene.id, selectedLayerId);
+            if (layer) return _renderLayerPanel(scene, layer);
+            currentInspectorTarget = null; // stale reference (e.g. decoration was just deleted)
+        }
+
         if (currentActivity === 'place') {
             return _renderPlacePanel(scene);
         }
 
-        // Decorations/Text — an honest stub this slice (Vision §3;
-        // Blueprint §9-§10 land in a following slice). Never presented as
-        // broken or dead — just not built yet, matching this Builder's
-        // own established stub pattern (Sprint B1.1).
-        const activity = ACTIVITIES.find(function (a) { return a.id === currentActivity; }) || ACTIVITIES[0];
-        _heading(activity.icon + ' ' + activity.label, 'Coming in the next sprint.');
-        const descriptions = {
-            decorations: 'This Scene’s atmosphere — background, texture, and scattered ornamentation.',
-            text: 'The words this Scene needs, and how they look.'
-        };
-        contextPanel.appendChild(_fieldHelp(descriptions[activity.id] || ''));
-        contextPanel.appendChild(_fieldHelp('For now, use the Scene Configuration glance above Working View to set this Scene’s shape, or the Place activity to work with its Holders.'));
+        if (currentActivity === 'decorations') {
+            return _renderDecorationsPanel(scene);
+        }
+
+        // Text — an honest stub this slice (Vision §3; Blueprint §10
+        // lands in a following slice). Never presented as broken or
+        // dead — just not built yet, matching this Builder's own
+        // established stub pattern (Sprint B1.1).
+        _heading('✍️ Text', 'Coming in the next sprint.');
+        contextPanel.appendChild(_fieldHelp('The words this Scene needs, and how they look.'));
+        contextPanel.appendChild(_fieldHelp('For now, use Place to work with Holders, or Decorations to set the atmosphere.'));
     }
 
     // ---------- Place — no Holder selected: the Holder list + Add (Blueprint §8) ----------
@@ -1977,6 +2054,195 @@
         row.appendChild(input);
         row.appendChild(document.createTextNode(labelText));
         return row;
+    }
+
+    // ---------- Decorations — no decoration selected: background + list + add (Blueprint §9) ----------
+
+    function _renderDecorationsPanel(scene) {
+        _heading('✨ Decorations', 'What does this page feel like — what’s behind the photo, and what’s scattered around it?');
+
+        const bgColor = window.ProjectModel.getSceneBackgroundColor(currentProject, scene.id);
+        _fieldGroup('Background', _colorInput(bgColor, function (v) {
+            window.ProjectModel.setSceneBackground(currentProject, scene.id, v);
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }), 'Whatever sits at the very bottom of the page (Engine V2 Canon §4) — there is no separate background setting anywhere else; this simply edits it.');
+
+        contextPanel.appendChild(_fieldHelp('Click a decoration in Working View to select it and drag to reposition, or add a new one below.'));
+
+        const decorations = (scene.layers || []).filter(function (l) { return l.kind !== 'fill'; });
+        if (decorations.length) {
+            const list = document.createElement('div');
+            list.className = 'wb-scene-library-grid';
+            decorations.forEach(function (l) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card';
+                const glyph = document.createElement('div');
+                glyph.className = 'wb-scene-template-icon';
+                glyph.textContent = l.glyph;
+                const name = document.createElement('div');
+                name.className = 'wb-scene-template-name';
+                name.textContent = l.name;
+                card.appendChild(glyph);
+                card.appendChild(name);
+                card.addEventListener('click', function () {
+                    currentInspectorTarget = 'layer:' + l.id;
+                    _renderWorkspace();
+                });
+                list.appendChild(card);
+            });
+            contextPanel.appendChild(list);
+        }
+
+        const addWrap = document.createElement('div');
+        addWrap.className = 'wb-field-group';
+        const addLabel = document.createElement('label');
+        addLabel.className = 'wb-field-label';
+        addLabel.textContent = 'Add a Decoration';
+        addWrap.appendChild(addLabel);
+        addWrap.appendChild(_fieldHelp('A small built-in set for now — real Theme Decoration Pack browsing (Engine Canon §9) is a future slice, not yet built here.'));
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-template-grid';
+        DECORATION_GLYPHS.forEach(function (g) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-scene-template-card';
+            card.style.fontSize = '22px';
+            card.style.textAlign = 'center';
+            card.textContent = g;
+            card.addEventListener('click', function () {
+                const layer = window.ProjectModel.addSceneLayer(currentProject, scene.id, {
+                    kind: 'decoration', glyph: g, name: 'Decoration',
+                    position: { x: 0.4, y: 0.4 }, size: { w: 0.14, h: 0.14 }
+                });
+                currentInspectorTarget = 'layer:' + layer.id;
+                _persist();
+                _renderWorkspace();
+            });
+            grid.appendChild(card);
+        });
+        addWrap.appendChild(grid);
+        contextPanel.appendChild(addWrap);
+    }
+
+    // ---------- Decorations — a decoration is selected: its full property panel ----------
+
+    function _renderLayerPanel(scene, layer) {
+        _heading('✨ Decorations — ' + layer.name, 'Reposition, bring it forward or send it backward, or mark this spot open for Story Authors too.');
+
+        contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
+            _persist();
+        })));
+
+        const xGroup = _buildFieldGroup('Position X %', _range(0, 100, Math.round(layer.position.x * 100), function (v) {
+            layer.position.x = Math.min(1 - layer.size.w, Math.max(0, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const yGroup = _buildFieldGroup('Position Y %', _range(0, 100, Math.round(layer.position.y * 100), function (v) {
+            layer.position.y = Math.min(1 - layer.size.h, Math.max(0, v / 100));
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        _fieldRow(xGroup, yGroup);
+
+        _fieldGroup('Size %', _range(4, 60, Math.round(layer.size.w * 100), function (v) {
+            const frac = Math.max(0.03, v / 100);
+            layer.size.w = frac;
+            layer.size.h = frac; // decorations keep a square footprint this slice
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+
+        const stackRow = document.createElement('div');
+        stackRow.className = 'wb-row-controls';
+        stackRow.style.marginBottom = '12px';
+        const fwdBtn = document.createElement('button');
+        fwdBtn.type = 'button';
+        fwdBtn.textContent = '⬆ Bring Forward';
+        fwdBtn.addEventListener('click', function () {
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', layer.id, 'forward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        });
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.textContent = '⬇ Send Backward';
+        backBtn.addEventListener('click', function () {
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', layer.id, 'backward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        });
+        stackRow.appendChild(fwdBtn);
+        stackRow.appendChild(backBtn);
+        contextPanel.appendChild(stackRow);
+
+        _renderLayerPermissionBlock(scene, layer);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'wb-workspace-btn';
+        removeBtn.style.marginTop = '14px';
+        removeBtn.textContent = '🗑 Remove this Decoration';
+        removeBtn.addEventListener('click', function () {
+            window.ProjectModel.deleteSceneLayer(currentProject, scene.id, layer.id);
+            currentInspectorTarget = null;
+            _persist();
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(removeBtn);
+
+        const backAllBtn = document.createElement('button');
+        backAllBtn.type = 'button';
+        backAllBtn.className = 'wb-workspace-btn';
+        backAllBtn.style.marginTop = '8px';
+        backAllBtn.textContent = '← All Decorations';
+        backAllBtn.addEventListener('click', function () {
+            currentInspectorTarget = null;
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(backAllBtn);
+    }
+
+    // The Decorations variant of the shared Story-Author-permission
+    // block (Blueprint §6.2) gains one line beyond the standard three —
+    // "let the Story Author add their own decorations here too." Saying
+    // yes is the entire mechanism by which this Scene Layer becomes a
+    // Decoration Slot (Engine Canon §7); there is no separate "mark as
+    // Slot" control anywhere.
+    function _renderLayerPermissionBlock(scene, layer) {
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro';
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        const isOpen = layer.permissions.moveable || layer.permissions.editable || layer.decorationSlot;
+        summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
+        body.appendChild(_permissionCheckbox('Can a Story Author move this?', layer.permissions.moveable, function (v) {
+            layer.permissions.moveable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Can a Story Author change this?', layer.permissions.editable, function (v) {
+            layer.permissions.editable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', layer.permissions.visible, function (v) {
+            layer.permissions.visible = v;
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        body.appendChild(_permissionCheckbox('Let the Story Author add their own decorations here too', layer.decorationSlot, function (v) {
+            layer.decorationSlot = v;
+            _persist();
+        }));
+        details.appendChild(body);
+        contextPanel.appendChild(details);
     }
 
     // Vision §2's "how Scene Configuration is actually edited" — the one
