@@ -3960,11 +3960,91 @@
         return grid;
     }
 
+    // Engine V2 Build — a deliberately separate section from the Engine
+    // V1 build below it, never merged (LOCK V2-04: Build operates
+    // directly on the canonical Scene Model, no translation layer). The
+    // package itself is plain JSON, so no Blob/FileReader round trip is
+    // strictly required to *produce* it, but `project.lastSceneBuild`
+    // stores a dataURL anyway so Publish's existing `_downloadDataURL`
+    // helper (and its "never read project.files, only the built
+    // package" discipline, Sprint B2.0.1) works identically for both
+    // engines' output.
+    function _renderSceneBuildSection(project) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-heading';
+        heading.style.marginTop = '4px';
+        heading.style.fontSize = '13px';
+        heading.textContent = 'Scenes (Engine V2)';
+        contextPanel.appendChild(heading);
+
+        const manifest = window.ProjectModel.manifest(project);
+        contextPanel.appendChild(_statCardGrid([
+            ['Output File', (manifest.id || 'world') + '.v2world.json'],
+            ['Scenes', String(window.ProjectModel.scenes(project).length)],
+            ['Last Scene Validation', lastSceneValidation ? (lastSceneValidation.isValid ? 'Passed' : 'Failed') : 'Not run yet']
+        ]));
+
+        const buildBtn = document.createElement('button');
+        buildBtn.type = 'button';
+        buildBtn.className = 'wb-add-btn wb-build-btn';
+        buildBtn.textContent = '🎬 Build Scene Package';
+        buildBtn.addEventListener('click', function () {
+            lastSceneValidation = window.EngineV2Validator.validate(project);
+            const result = window.EngineV2Builder.build(project);
+            if (!result.ok) {
+                _renderBuildPanel();
+                const err = document.createElement('div');
+                err.className = 'wb-validation-status fail';
+                err.textContent = '⚠️ Build failed — fix Scene Validation errors first.';
+                contextPanel.insertBefore(err, contextPanel.firstChild.nextSibling);
+                return;
+            }
+            const json = JSON.stringify(result.package, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const filename = (manifest.id || 'world') + '.v2world.json';
+            const reader = new FileReader();
+            reader.onload = function () {
+                project.lastSceneBuild = {
+                    filename: filename,
+                    size: blob.size,
+                    builtAt: result.package.builtAt,
+                    dataURL: reader.result
+                };
+                _persist();
+                _renderBuildPanel();
+            };
+            reader.readAsDataURL(blob);
+        });
+        contextPanel.appendChild(buildBtn);
+
+        if (project.lastSceneBuild) {
+            const success = document.createElement('div');
+            success.className = 'wb-validation-status pass';
+            success.textContent = '✓ Scene Package Built';
+            contextPanel.appendChild(success);
+
+            contextPanel.appendChild(_statCardGrid([
+                ['Package Name', project.lastSceneBuild.filename],
+                ['Package Size', _formatBytes(project.lastSceneBuild.size)],
+                ['Build Timestamp', new Date(project.lastSceneBuild.builtAt).toLocaleString()]
+            ]));
+        }
+
+        const divider = document.createElement('h3');
+        divider.className = 'wb-context-heading';
+        divider.style.marginTop = '20px';
+        divider.style.fontSize = '13px';
+        divider.textContent = 'World Package (Engine V1)';
+        contextPanel.appendChild(divider);
+    }
+
     function _renderBuildPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Build', 'Build your World Package.');
         _stateIntro('build');
+
+        _renderSceneBuildSection(project);
 
         const manifest = window.ProjectModel.manifest(project);
         contextPanel.appendChild(_statCardGrid([
@@ -4059,11 +4139,62 @@
         return await resp.json();
     }
 
+    // Engine V2 Publish — deliberately just "share the built package,"
+    // mirroring Engine V1's Publish stage in kind (Scene Model §5's own
+    // closing bullet: "sharing mechanics... are unchanged in *kind*").
+    // Only Export exists so far: there is no Engine V2 Runtime outside
+    // this Builder yet for "Official Themes" to install into (LOCK
+    // V2-04's native Runtime is implemented here, not as a standalone
+    // reader-facing consumer) — a disclosed gap, not an oversight, and
+    // not this slice's scope to close. Operates only on
+    // `project.lastSceneBuild`, never `project.files`, matching the
+    // same "Publish never reads editable Project data" discipline
+    // Engine V1's own Publish established (Sprint B2.0.1).
+    function _renderScenePublishSection(project) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-heading';
+        heading.style.marginTop = '4px';
+        heading.style.fontSize = '13px';
+        heading.textContent = 'Scenes (Engine V2)';
+        contextPanel.appendChild(heading);
+
+        if (!project.lastSceneBuild) {
+            const hint = document.createElement('p');
+            hint.className = 'wb-field-hint';
+            hint.textContent = 'Build a Scene Package first — Publish always ships exactly what Build produced.';
+            contextPanel.appendChild(hint);
+        } else {
+            const grid = document.createElement('div');
+            grid.className = 'wb-publish-grid';
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-publish-option';
+            card.innerHTML =
+                '<span class="wb-publish-icon">💾</span>' +
+                '<span class="wb-publish-text"><span class="wb-publish-title">Export Scene Package</span>' +
+                '<span class="wb-publish-note">Download the built Engine V2 package to your computer — no Engine V2 Runtime exists outside this Builder yet to install it into.</span></span>';
+            card.addEventListener('click', function () {
+                _downloadDataURL(project.lastSceneBuild.dataURL, project.lastSceneBuild.filename);
+            });
+            grid.appendChild(card);
+            contextPanel.appendChild(grid);
+        }
+
+        const divider = document.createElement('h3');
+        divider.className = 'wb-context-heading';
+        divider.style.marginTop = '20px';
+        divider.style.fontSize = '13px';
+        divider.textContent = 'World Package (Engine V1)';
+        contextPanel.appendChild(divider);
+    }
+
     function _renderPublishPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
         _heading('Publish', 'Share your World with the world.');
         _stateIntro('publish');
+
+        _renderScenePublishSection(project);
 
         if (!project.lastBuild) {
             const hint = document.createElement('p');
