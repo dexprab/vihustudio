@@ -201,26 +201,18 @@ plain vocabulary, before the detail.
 | **Serialization** | `scene.canvas: { aspectRatio: 'portrait'\|'landscape'\|'square'\|'wide'\|'full-bleed'\|'quote', safeArea: string }` — `safeArea` is a derived display label (`EngineSchema.aspectInfo(aspectRatio).safeArea`), not independently authored, since Engine Canon §4 does not let Aspect Ratio and Safe Area vary independently. |
 | **Runtime meaning** | Establishes the frame everything else renders into (Engine Canon §5, pipeline step 2) — "nothing below can change it." Carries none of the Base Object contract's four properties (Engine Invariant 20); asking whether Scene Configuration is "editable" is a category error, same as Canvas itself. |
 
-> **Flagged, not applied.** An architectural-review request described
-> Canvas's properties as "Orientation, Dimensions, Safe Area,
-> Background." Orientation/Dimensions/Safe Area are Aspect Ratio and its
-> derived values, already covered by the table above. **Background is
-> not added to Canvas's schema here** — Engine Canon Invariant 8 states
-> plainly that "Canvas has no background property... a special-cased
-> background field would be a second way to do something
-> Elements-in-Layers already do, and this engine has no second ways to
-> do anything," and Builder V2 already implements Background exactly
-> that way (a `kind: 'fill'` Scene Layer pinned to the bottom of the
-> Stack — see Decoration, below). Adding a literal `canvas.background`
-> field would directly contradict that Invariant, not merely rename
-> something. This is called out rather than silently applied or
-> silently ignored; it needs explicit confirmation — either Invariant 8
-> is being deliberately overturned (a real Engine Canon change, out of
-> this document's own scope to make unilaterally) or "Background" was
-> meant descriptively (Canvas as "the whole visual context," of which
-> the bottom Scene Layer is part) rather than as a literal new field.
-> Until resolved, Canvas's serialization stays exactly `{ aspectRatio,
-> safeArea }`.
+> **Confirmed by explicit architectural decision.** An
+> architectural-review request described Canvas's properties as
+> "Orientation, Dimensions, Safe Area, Background," which read as a
+> possible Invariant 8 reversal — flagged here rather than silently
+> applied. Product has since confirmed: **Background remains a
+> bottom-of-stack Scene Layer; Canvas gains no background property;
+> Engine Canon Invariant 8 stands, unmodified.** "Background" in that
+> review request is descriptive only — Canvas as "the whole visual
+> context" a Theme Author sees, of which the bottom Scene Layer is
+> part — not a schema instruction. Canvas's serialization is confirmed
+> exactly `{ aspectRatio, safeArea }`, matching Builder V2's existing
+> implementation with no code change required.
 
 ### Place (Engine: Holder)
 
@@ -512,16 +504,13 @@ blocked pretending an answer exists when it doesn't.
    authored file, no per-Scene "is this offered" record living outside
    the Scene itself). Left genuinely open, deliberately harder than
    before, since the easy answer is exactly the one now excluded.
-1a. **NEW — Does Canvas carry a Background property?** An
-   architectural-review request described Canvas as having
-   "Orientation, Dimensions, Safe Area, Background." §2's Scene
-   Configuration section flags this directly: Engine Canon Invariant 8
-   states Canvas has no background property, and Builder V2 already
-   implements Background as a bottom-of-stack fill Scene Layer, not a
-   Canvas field. This document has not changed Canvas's schema, pending
-   confirmation of which is intended — a deliberate Invariant 8 reversal
-   (a real Engine Canon change), or a descriptive, non-schema use of the
-   word "Background."
+1a. **RESOLVED — Canvas does not carry a Background property.**
+   Confirmed by explicit architectural decision: Background remains a
+   bottom-of-stack Scene Layer; Engine Canon Invariant 8 stands
+   unmodified. The "Orientation, Dimensions, Safe Area, Background"
+   description in the review request that raised this was descriptive,
+   not a schema instruction. Canvas's serialization (§2, §3) is
+   unchanged — `{ aspectRatio, safeArea }` only.
 2. **Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution
    paths (genuine V2 Runtime / translation layer to V1 / permanent
    parallel surfaces) should Validation/Build/Publish actually
@@ -593,3 +582,9 @@ blocked pretending an answer exists when it doesn't.
   contradicts Engine Canon Invariant 8 and Builder V2's existing
   implementation (Background as a bottom-of-stack fill Scene Layer);
   Canvas's schema is unchanged pending explicit confirmation of intent.
+- v1.2 — Confirmed by explicit architectural decision: Background
+  remains a bottom-of-stack Scene Layer; Canvas gains no background
+  property; Engine Canon Invariant 8 stands, unmodified. Open Decisions
+  item 1a and §2's Scene Configuration flag are both marked resolved.
+  No code change required — Builder V2's existing implementation was
+  already correct.
