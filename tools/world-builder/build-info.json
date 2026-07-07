@@ -1,10 +1,10 @@
 {
-  "version": "2.2.0-EV2",
-  "phase": "Engine V2 Implementation",
-  "milestone": "Build & Publish",
-  "slice": "Build and Publish against the canonical Scene Model",
-  "build": "0013",
+  "version": "2.2.1-EV2",
+  "phase": "Authoring Validation",
+  "milestone": "AV-001",
+  "slice": "Working View/Runtime Preview adopt the Scene's own Aspect Ratio",
+  "build": "0014",
   "buildDate": "2026-07-07",
-  "commit": "889d921",
+  "commit": "aad9ed3",
   "environment": "Release"
 }
