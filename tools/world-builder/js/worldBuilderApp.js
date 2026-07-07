@@ -1083,6 +1083,19 @@
         const graph = window.EngineV2Runtime.load(scene, _holderFrameFields);
         canvasEl.width = graph.width;
         canvasEl.height = graph.height;
+        // AV-001 — the Scene's own Aspect Ratio must drive the editing
+        // surface's shape, not just the canvas's internal pixel buffer
+        // (Engine Canon §4: Canvas geometry is determined by the
+        // Scene's Aspect Ratio). `.wb-working-canvas-inner`/
+        // `.wb-runtime-preview-canvas-inner` (this canvas's own parent)
+        // carry a fixed `aspect-ratio: 1080/1350` in the stylesheet only
+        // as a before-first-render fallback; every real draw overrides
+        // it inline so a Landscape/Square/Quote Scene is actually
+        // authored on a Landscape/Square/Quote-shaped surface, not a
+        // portrait box with a stretched bitmap inside it.
+        if (canvasEl.parentElement) {
+            canvasEl.parentElement.style.aspectRatio = graph.width + ' / ' + graph.height;
+        }
         const ctx = canvasEl.getContext('2d');
 
         window.EngineV2Runtime.render(ctx, graph);

@@ -900,6 +900,15 @@ html, body {
     overflow: hidden;
 }
 
+/* AV-001 — the `aspect-ratio` below is a before-first-render fallback
+   only (so nothing looks broken for an instant before JS runs). Every
+   real draw overrides it inline (`worldBuilderApp.js`'s
+   `_drawSceneCanvas`, via `canvasEl.parentElement.style.aspectRatio`)
+   to match the active Scene's own Aspect Ratio — Engine Canon §4:
+   Canvas geometry is determined by the Scene's Aspect Ratio, not fixed
+   to one shape. This was previously hardcoded to 1080/1350, silently
+   stretching every non-portrait Scene's bitmap into a portrait-shaped
+   box during authoring. */
 .wb-working-canvas-inner {
     position: relative;
     width: auto;
@@ -1055,6 +1064,8 @@ html, body {
     overflow: hidden;
 }
 
+/* AV-001 — same before-first-render fallback as
+   .wb-working-canvas-inner above; overridden inline per-Scene. */
 .wb-runtime-preview-canvas-inner {
     width: auto;
     height: auto;
