@@ -1,17 +1,25 @@
 # Builder V2 — The Engine Compile Gap
 
-**Status:** A disclosed, unresolved implementation blocker, written during
-Builder V2 implementation (not design). This is not a sixth design
-document alongside `ENGINE_V2_CANON.md`/`BUILDER_V2_MENTAL_MODEL.md`/
+**Status:** **Resolved and implemented.** This document originally
+disclosed an unresolved implementation blocker, written during Builder
+V2 implementation (not design) — it is not a sixth design document
+alongside `ENGINE_V2_CANON.md`/`BUILDER_V2_MENTAL_MODEL.md`/
 `BUILDER_V2_STORYBOARD.md`/`BUILDER_V2_BLUEPRINT.md`/`BUILDER_V2_UX_PACKAGE.md`/
-`BUILDER_V2_VISION.md` — it does not propose a design. It records a gap
-those six documents leave open, discovered only once implementation
-reached the point where it mattered, per this implementation phase's own
-instruction: *"If a genuine architectural contradiction is found:
-document it, explain it, stop before changing architecture."*
+`BUILDER_V2_VISION.md` — it did not propose a design, only recorded a
+gap those six documents left open. That gap is now closed: the
+architectural resolution (§4 below) was made explicitly (a native
+Engine V2 Runtime, `docs/ENGINE_V2_SCENE_MODEL.md` §7/LOCK V2-04), and
+every stage this document named as blocked has since been implemented
+directly against the canonical Scene Model — `tools/world-builder/js/services/engineRuntime.js`
+(Runtime), `engineValidator.js` (Validation), `engineBuilder.js`
+(Build), and matching "Scenes (Engine V2)" sections in the Validation/
+Build/Publish screens (Publish: Export only so far, disclosed below).
+The rest of this document is preserved as the historical record of the
+gap and the reasoning that led to its resolution, not rewritten.
 **Scope:** Why `tools/world-builder`'s Validation, Build, and Publish
-screens (Blueprint §12–§14) cannot be extended to cover Scenes without a
-product decision this document does not make.
+screens (Blueprint §12–§14) could not be extended to cover Scenes
+without a product decision this document did not make — and, as of the
+Status above, how that decision was made and acted on.
 
 ---
 
@@ -72,19 +80,31 @@ mid-implementation — precisely the "changing architecture" this
 implementation phase's own brief says to stop before doing, not work
 around quietly.
 
-## 3. What this blocks, concretely
+## 3. What this blocked, concretely (historical — see §0 Status)
 
-- **Validation** cannot meaningfully validate a Scene's Holders/Layers
-  against anything, because there is no contract to validate them
-  against.
-- **Build** cannot compile Scenes into the `.vtheme` package, because no
-  format exists for them to compile into.
-- **Publish** ships whatever Build produced — with nothing to add.
+- **Validation** could not meaningfully validate a Scene's Holders/
+  Layers against anything, because there was no contract to validate
+  them against. **Resolved:** `tools/world-builder/js/services/engineValidator.js`
+  checks every Scene against Scene Model §5's four named constraints.
+- **Build** could not compile Scenes into the `.vtheme` package, because
+  no format existed for them to compile into. **Resolved:**
+  `tools/world-builder/js/services/engineBuilder.js` compiles a
+  validated World's Scenes into a package — deliberately a new, plain
+  JSON format (`<id>.v2world.json`), not `.vtheme`, since the two are
+  not interchangeable (Scene Model §5/LOCK V2-02).
+- **Publish** shipped whatever Build produced — with nothing to add.
+  **Resolved, partially by design:** Publish now offers Export for the
+  Engine V2 package; Official/Community are not offered for Engine V2
+  yet, since no standalone Engine V2 Runtime exists outside this
+  Builder for such an install to target — a disclosed scope boundary,
+  not a remaining blocker of the kind this document originally recorded.
 
-A Theme Author can fully author Scenes in Builder V2 today; that
-authoring work currently has no path to becoming a package the Runtime
-can load. Builder V2's own Scene Editor is real and complete; the bridge
-from it to a shippable World is not.
+A Theme Author can fully author Scenes in Builder V2, and that
+authoring work now has a real path to becoming a package a Runtime can
+load — the native Engine V2 Runtime implemented directly inside this
+Builder's own Working View/Runtime Preview (`docs/ENGINE_V2_SCENE_MODEL.md`,
+LOCK V2-04). The bridge this section originally said didn't exist now
+does.
 
 ## 4. Paths forward — not decided here
 
