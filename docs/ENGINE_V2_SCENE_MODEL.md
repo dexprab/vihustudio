@@ -1,12 +1,16 @@
 # Engine V2 — Canonical Scene Model & Execution Pipeline
 
-**Status:** Canonical, pending product sign-off on §7's open items — the
-architecture-documentation counterpart to `docs/ENGINE_V2_CANON.md`,
-written once Builder V2's Scene Editor (Place/Decorations/Text) was
-fully implemented and exposed the exact gap this document exists to
-close. This is a **documentation-only** deliverable: nothing in this
-document is implemented. It defines what Runtime, Validation, Build,
-and Publish would need to do; it does not build any of them.
+**Status:** Canonical and frozen for everything §2 defines (the Scene
+Model itself, Representation's retirement, Canvas's schema, and Scene
+Template) — the architecture-documentation counterpart to
+`docs/ENGINE_V2_CANON.md`, written once Builder V2's Scene Editor
+(Place/Decorations/Text) was fully implemented and exposed the exact
+gap this document exists to close. §7's remaining items (which
+Validation/Build/Publish resolution path to implement; Holder Layers;
+Personal Decoration Packs) are still open, pending further product
+decisions. This is a **documentation-only** deliverable: nothing in
+this document is implemented. It defines what Runtime, Validation,
+Build, and Publish would need to do; it does not build any of them.
 **Scope:** The canonical, single-source-of-truth data model a Scene
 compiles to — the thing Builder produces, Runtime would consume, and
 Validation/Build/Publish would all operate on identically — plus the
@@ -225,7 +229,7 @@ plain vocabulary, before the detail.
 | **Lifecycle** | Created with its Scene or added later; edited freely; deleted freely; never persists past its owning Scene's deletion. |
 | **Relationships** | Optionally references one Theme Asset (a Frame, by id) — the only cross-object reference in the entire Scene Model, matching Engine Canon §9's Frame Resolution rule (a Frame Element is placed inside a Holder Layer). No other cross-references exist anywhere in §2. |
 | **Serialization** | `{ id, name, position: {x, y}, size: {w, h}, shape: 'rectangle'\|'rounded'\|'circle', padding: number, fit: 'fit'\|'fill'\|'original', frame: string \| null, permissions: { moveable, editable, visible } }` — `position`/`size` are fractions of the Scene Configuration's frame (0–1), never absolute pixels or a separately-typed Size (consistent with Scene Configuration's own "Size is derived" rule extended to every object placed inside it). |
-| **Runtime meaning** | Paints its internal Holder Stack (today: generic placeholder chrome only — no Holder Layers or Content Layer are yet separately authored in Builder V2; see Open Decision §7 item 3), clipped to Shape, inset by Padding, resolved per Fit — then composited into the Scene Stack at its own stack position (§ below). |
+| **Runtime meaning** | Paints its internal Holder Stack (today: generic placeholder chrome only — no Holder Layers or Content Layer are yet separately authored in Builder V2; see Open Decision §7 item 2), clipped to Shape, inset by Padding, resolved per Fit — then composited into the Scene Stack at its own stack position (§ below). |
 
 ### Decoration (Engine: a Scene Layer, `kind: 'decoration'` or `'fill'`)
 
@@ -282,16 +286,64 @@ remains what `docs/ENGINE_V2_CANON.md`'s Appendix already said it was —
 a **legacy Engine V1 concept only**, superseded by Scene, never a
 parallel or successor object in Engine V2.
 
-This retirement reopens, deliberately, the real Runtime question the
+This retirement reopened, deliberately, the real Runtime question the
 retired proposal was trying to answer: *how does Studio's Creation Flow
-know which Scenes to offer a Story Author, in what order?* That
-question is not resolved here — see the note in §7 (Open Decisions)
-explicitly carried forward, with the explicit constraint that whatever
-eventually answers it **must not resemble Engine V1's Representation
-abstraction** (no cross-referencing wrapper object, no separate
-authored file). Output-format concerns (PNG/PDF/MP4, etc.) are Build/
-Publish concerns operating directly on a Scene (§5) and must likewise
-never route through a Representation-shaped intermediary.
+know which Scenes to offer a Story Author, in what order?* That question
+is now **resolved** — see Scene Template, immediately below — without
+reintroducing anything Representation-shaped. Output-format concerns
+(PNG/PDF/MP4, etc.) remain Build/Publish concerns operating directly on
+a Scene (§5) and likewise never route through any wrapper object.
+
+### Scene Template — Builder/Studio-only, Engine-invisible (resolves the reopened Creation Flow question)
+
+**Not an Engine object. Not serialized. Not consumed by Runtime,
+Validation, Build, or Publish.** Scene Template is UI vocabulary only —
+the answer to "how does Creation Flow know which Scenes to offer" turns
+out to require no new data at all, because a World's Scenes are already
+everything that question needs:
+
+> **Creation Flow offers every Scene in a World, by its own name and
+> thumbnail, in Scene Library order.** Picking one starts a new,
+> personal page seeded from that Scene's existing Canvas/Place/
+> Decoration/Text content — exactly the "Story Author personalizes,
+> never designs, and never starts from blank" rule already frozen in
+> Engine Canon Invariant 3. No separate authored list, no per-Scene
+> "is this offered" flag, no label/thumbnail override distinct from the
+> Scene's own — the Scene Library's existing name and (Slice 5's) live
+> thumbnail *are* what Creation Flow shows. This is Open Decision item
+> 1's own alternative (b), now confirmed rather than merely proposed.
+
+Two distinct moments now share the term "Scene Template," deliberately
+disambiguated here to avoid confusing them:
+
+1. **Theme-Author-facing, at Scene-authoring-time** — the existing,
+   unchanged **Engine Scene Template** (Engine Canon §10: Single
+   Holder, Dual Holder, Quote, Cover, Timeline, Comic, Gallery). A
+   Theme Author picks one of these seven fixed shapes to bootstrap a
+   *brand-new* Scene's starting Canvas/Holders/Layers while authoring a
+   World in Builder V2. Nothing about this changes.
+2. **Story-Author-facing, at Creation-Flow-time** — the concept this
+   section introduces. A Story Author picks one of a World's
+   *already-authored* Scenes (by name — "Story Page," "Cover," "Quote,"
+   "Showcase," whatever the Theme Author called it) as the starting
+   point for their own new page. This is not a fixed shape from a
+   built-in list; it is literally any Scene the Theme Author has
+   already built, offered back to a Story Author under a friendlier
+   frame ("pick a starting point") than "browse this World's internal
+   authoring library."
+
+Both moments preconfigure the same things (Canvas preset, Safe Area,
+initial Places, initial Layer Stack including any placeholder text or
+default decorations) because both are, structurally, just "here is an
+already-shaped Scene to build from" — the only difference is *who* is
+picking (Theme Author bootstrapping new authoring content vs. Story
+Author starting a new personal page) and *what* they're picking from
+(seven fixed Engine shapes vs. this World's own finished Scenes). In
+both cases, **the moment the Scene is created or the personal page is
+seeded, the template's job is done** — nothing downstream (Runtime,
+Validation, Build, Publish) ever needs to know a template was involved
+at all, satisfying LOCK V2-01 (the Scene Model is the only canonical
+representation) without exception.
 
 ---
 
@@ -433,7 +485,7 @@ consumable in the first place.
 stage would need to satisfy, per LOCK V2-03 — it does not build any of
 them, and per `docs/BUILDER_V2_ENGINE_GAP.md` §4, which of the three
 resolution paths eventually fills these in is still an open product
-decision (§7 item 2 here).**
+decision (§7 item 1 here).**
 
 - **Validation** would check every Scene in a World against §2's own
   rules as real constraints, not merely as documentation: every Scene
@@ -448,7 +500,7 @@ decision (§7 item 2 here).**
   `position`/`size` stays within `[0, 1]` and does not place an object
   fully outside its Canvas.
 - **Build** would compile a validated World's Scenes into whatever
-  package format is eventually decided (§7 item 2) — this document
+  package format is eventually decided (§7 item 1) — this document
   takes no position on that format, per its own commissioning
   constraint ("Do not invent compiled package formats as the canonical
   representation"). Whatever form Build takes, its *input* is exactly
@@ -478,7 +530,7 @@ touches `js/services/validator.js`, `js/services/builder.js`,
 continue to validate/build/render exactly as they did before Builder V2
 existed. This document defines a second, parallel *target* pipeline for
 Engine V2 data, not yet implemented, not yet wired to anything. Whether
-these two pipelines eventually merge (a translation layer, §7 item 2's
+these two pipelines eventually merge (a translation layer, §7 item 1's
 option B), whether V2 gets its own independent Runtime (option A), or
 whether they run permanently side by side (option C) is exactly the
 decision `docs/BUILDER_V2_ENGINE_GAP.md` §4 already declined to make and
@@ -493,25 +545,22 @@ these is a genuine product decision this document deliberately does not
 make, listed so Builder V2 (or a future Engine implementation) is not
 blocked pretending an answer exists when it doesn't.
 
-1. **RESOLVED — Representation is retired.** The prior draft of this
-   document proposed "Representation" as a new Engine V2 concept; an
-   explicit architectural decision retired it outright (§2). The
-   question it was trying to answer — *how does Studio's Creation Flow
-   know which Scenes to offer a Story Author, in what order* — is
-   **reopened, not closed**, with one hard constraint now attached:
-   whatever answers it must not resemble Engine V1's Representation
-   abstraction (no cross-referencing wrapper object, no separately
-   authored file, no per-Scene "is this offered" record living outside
-   the Scene itself). Left genuinely open, deliberately harder than
-   before, since the easy answer is exactly the one now excluded.
-1a. **RESOLVED — Canvas does not carry a Background property.**
-   Confirmed by explicit architectural decision: Background remains a
-   bottom-of-stack Scene Layer; Engine Canon Invariant 8 stands
-   unmodified. The "Orientation, Dimensions, Safe Area, Background"
-   description in the review request that raised this was descriptive,
-   not a schema instruction. Canvas's serialization (§2, §3) is
-   unchanged — `{ aspectRatio, safeArea }` only.
-2. **Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution
+### Resolved this pass (no longer open)
+
+- ~~Is "Representation" the right shape for Creation-Flow exposure?~~ —
+  **Resolved: retired outright, no replacement Engine object.** Creation
+  Flow's "which Scenes to offer" question is answered by Scene Template
+  (§2) — a Builder/Studio-only UI concept requiring zero new Engine
+  data. Every Scene in a World is offered, by its own name/thumbnail, in
+  Scene Library order.
+- ~~Does Canvas carry a Background property?~~ — **Resolved: no.**
+  Background remains a bottom-of-stack Scene Layer; Engine Canon
+  Invariant 8 stands unmodified; Canvas's serialization is unchanged
+  (§2, §3).
+
+### Still open
+
+1. **Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution
    paths (genuine V2 Runtime / translation layer to V1 / permanent
    parallel surfaces) should Validation/Build/Publish actually
    implement?** This document's entire purpose is to make that decision
@@ -520,7 +569,7 @@ blocked pretending an answer exists when it doesn't.
    outstanding and is a prerequisite for any Runtime/Validation/Build/
    Publish implementation work, per this sprint's own explicit
    instruction to stop before that work begins.
-3. **Do Holder Layers and a reserved Content Layer need separate
+2. **Do Holder Layers and a reserved Content Layer need separate
    authoring**, or does Builder V2's current single-Frame-per-Holder
    model (no independently-orderable Holder Layer stack, no explicit
    Content Layer object) already cover every case a Theme Author needs?
@@ -530,7 +579,7 @@ blocked pretending an answer exists when it doesn't.
    is the only thing a Theme Author places "inside" a Holder today).
    Left open until a real authoring need (e.g., multiple decorative
    layers inside one Holder, not just one Frame) surfaces it.
-4. **Personal Decoration Packs** (Engine Canon §12 item 1) remains as
+3. **Personal Decoration Packs** (Engine Canon §12 item 1) remains as
    open here as it was in Engine Canon itself — nothing in Builder V2's
    Decoration implementation (a small built-in emoji palette) resolves
    it, since Builder V2 deliberately did not build Theme Decoration Pack
@@ -546,7 +595,7 @@ blocked pretending an answer exists when it doesn't.
   additive pointer to it (see that document's own end).
 - `docs/BUILDER_V2_ENGINE_GAP.md` — the implementation report that
   first surfaced the need for this document; its three resolution
-  paths (§4 there) are what §7 item 2 here still leaves open.
+  paths (§4 there) are what §7 item 1 here still leaves open.
 - `docs/BUILDER_V2_VISION.md` / `BUILDER_V2_BLUEPRINT.md` /
   `BUILDER_V2_STORYBOARD.md` / `BUILDER_V2_MENTAL_MODEL.md` /
   `BUILDER_V2_UX_PACKAGE.md` — the frozen Builder V2 product
@@ -560,8 +609,8 @@ blocked pretending an answer exists when it doesn't.
   here.
 - `docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md` — the Runtime-side
   consumer (`theme.representations`) whose Engine V1 dependency §2's
-  retirement note explains, and whose Engine V2 equivalent remains
-  genuinely open (§7 item 1).
+  retirement note explains; its Engine V2 equivalent is now resolved by
+  Scene Template (§2, §7 "Resolved this pass").
 
 ---
 
@@ -588,3 +637,17 @@ blocked pretending an answer exists when it doesn't.
   item 1a and §2's Scene Configuration flag are both marked resolved.
   No code change required — Builder V2's existing implementation was
   already correct.
+- v1.3 — Architecture Lock pass. Closed the remaining open item from
+  Representation's retirement: introduces **Scene Template** (§2) as a
+  Builder/Studio-only, Engine-invisible concept answering "how does
+  Creation Flow know which Scenes to offer" — every Scene in a World,
+  by its own name/thumbnail, in Scene Library order, requiring no new
+  Engine data. Explicitly distinguishes this from the existing,
+  unchanged **Engine Scene Template** (Engine Canon §10's seven
+  bootstrap shapes) since the two now share similar naming but describe
+  different moments (Theme-Author Scene-authoring-time vs.
+  Story-Author Creation-Flow-time). §7's "Resolved this pass"
+  subsection replaces the old numbered items 1/1a; remaining items
+  renumbered 1-3. Status line updated: the Scene Model, Representation's
+  retirement, Canvas's schema, and Scene Template are now frozen; only
+  §7's three remaining items stay open.
