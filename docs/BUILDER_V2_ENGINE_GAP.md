@@ -88,6 +88,16 @@ from it to a shippable World is not.
 
 ## 4. Paths forward — not decided here
 
+**Resolved after this document was written** — see
+`docs/ENGINE_V2_SCENE_MODEL.md` §7/LOCK V2-04: by explicit architectural
+decision, path 1 (a genuine Engine V2 Runtime) is the chosen resolution;
+paths 2 and 3 below are rejected outright. Validation, Runtime, Build,
+and Publish will operate directly on the canonical Scene Model that
+document defines — no translation layer to Engine V1, no permanent
+parallel Runtime architecture. The three paths are left below,
+unedited, as the historical record of what this document considered
+before that decision was made:
+
 Three shapes a resolution could take, listed to make the decision
 concrete, not to pick one:
 
@@ -148,6 +158,6 @@ phase's own brief:
 - `docs/ENGINE_V2_SCENE_MODEL.md` — written after this document, in a
   follow-up documentation-only sprint. It formalizes §2's "what is the
   canonical Scene data" half of this gap (already answered — Builder V2
-  has been producing it since Slice 1) as canonical, while explicitly
-  leaving §4's resolution-path choice open, exactly as this document
-  left it.
+  has been producing it since Slice 1) as canonical, and its §7/LOCK
+  V2-04 resolves §4's resolution-path choice: a native Engine V2
+  Runtime, no translation layer, no permanent parallel architecture.

@@ -1,28 +1,30 @@
 # Engine V2 — Canonical Scene Model & Execution Pipeline
 
-**Status:** Canonical and frozen for everything §2 defines (the Scene
-Model itself, Representation's retirement, Canvas's schema, and Scene
-Template) — the architecture-documentation counterpart to
-`docs/ENGINE_V2_CANON.md`, written once Builder V2's Scene Editor
-(Place/Decorations/Text) was fully implemented and exposed the exact
-gap this document exists to close. §7's remaining items (which
-Validation/Build/Publish resolution path to implement; Holder Layers;
-Personal Decoration Packs) are still open, pending further product
-decisions. This is a **documentation-only** deliverable: nothing in
-this document is implemented. It defines what Runtime, Validation,
-Build, and Publish would need to do; it does not build any of them.
+**Status:** Canonical and frozen in full — every architectural decision
+this document exists to make is now resolved (the Scene Model itself,
+Representation's retirement, Canvas's schema, Scene Template, and, as of
+this pass, the Runtime resolution path: a **native Engine V2 Runtime**,
+operating directly on the canonical Scene Model — no translation layer
+to Engine V1, no permanent parallel architecture). §7's remaining items
+(Holder Layers; Personal Decoration Packs) are narrower, lower-stakes
+authoring questions, not blocking architecture. This is still a
+**documentation-only** deliverable: nothing in this document is
+implemented. It defines what Runtime, Validation, Build, and Publish
+must do, and now which architecture they must be built as; it does not
+build any of them.
 **Scope:** The canonical, single-source-of-truth data model a Scene
-compiles to — the thing Builder produces, Runtime would consume, and
-Validation/Build/Publish would all operate on identically — plus the
-execution pipeline that model flows through. `docs/ENGINE_V2_CANON.md`
-defines the *object model* (Theme → Scene → Canvas/Holder/Layer →
-Element, ownership, invariants); this document defines the *serialized
-shape* of that model as Builder V2 already produces it, and the
-pipeline stages downstream of it. It does not redesign Builder V2 (see
-`docs/BUILDER_V2_VISION.md`/`BUILDER_V2_BLUEPRINT.md`, frozen, untouched
-by this document) and it does not implement Runtime, Validation, Build,
-or Publish — see §5 and `docs/BUILDER_V2_ENGINE_GAP.md` for why those
-remain a product decision, not an engineering default.
+compiles to — the thing Builder produces and Runtime, Validation,
+Build, and Publish all consume identically, natively, with no
+intermediate form — plus the execution pipeline that model flows
+through. `docs/ENGINE_V2_CANON.md` defines the *object model* (Theme →
+Scene → Canvas/Holder/Layer → Element, ownership, invariants); this
+document defines the *serialized shape* of that model as Builder V2
+already produces it, and the pipeline stages downstream of it. It does
+not redesign Builder V2 (see `docs/BUILDER_V2_VISION.md`/
+`BUILDER_V2_BLUEPRINT.md`, frozen, untouched by this document) and it
+does not implement Runtime, Validation, Build, or Publish — see §5 and
+`docs/BUILDER_V2_ENGINE_GAP.md` for the now-resolved architectural
+question of what they consume and how.
 
 ---
 
@@ -41,10 +43,13 @@ parts, easy to conflate but genuinely separate:
    it is not inventing new data, only naming and specifying what
    already exists and works.
 2. **What do Runtime/Validation/Build/Publish do with that data, and in
-   what package format?** — this part is still genuinely undecided (see
-   §5, §7) and this document does not decide it. Format and
-   compilation are explicitly downstream of the Scene Model, never the
-   Scene Model itself (see the Constraints this document was
+   what package format?** — the first half is now resolved (§5, §7,
+   LOCK V2-04): a native Engine V2 Runtime operating directly on the
+   Scene Model, not a translation layer or a permanent parallel
+   architecture. The exact compiled package *format* remains
+   genuinely undecided and this document does not decide it — format
+   and compilation are explicitly downstream of the Scene Model, never
+   the Scene Model itself (see the Constraints this document was
    commissioned under: "Do not invent compiled package formats as the
    canonical representation").
 
@@ -114,15 +119,22 @@ implementation is required to satisfy what's written here, not to
 invent Runtime semantics as an implementation detail nobody wrote down
 first.
 
-**LOCK V2-04 — This document does not choose a resolution path.**
+**LOCK V2-04 — Engine V2 is a native Runtime, resolved.**
 `docs/BUILDER_V2_ENGINE_GAP.md` §4 named three possible shapes a
 Runtime/Validation/Build/Publish resolution could take (a genuine V2
 Runtime; a translation layer down to the existing V1 Runtime; two
-permanently parallel authoring surfaces). This document is written to
-be equally implementable under any of the three — it specifies the
-Scene Model and the pipeline shape, not which of the three paths fills
-in Runtime/Validation/Build/Publish. That remains a product decision
-(§7).
+permanently parallel authoring surfaces). By explicit architectural
+decision, the first is chosen and the other two are rejected outright:
+**Validation, Runtime, Build, and Publish will all operate directly on
+the canonical Scene Model — no translation layer to Engine V1, and no
+permanent parallel Runtime architecture.** Engine V1
+(Representations/Layouts/Frames/Layer Packs, and the pipeline that
+serves them) remains legacy — it keeps running, unmodified, for Engine
+V1 data only (§6) — but it is not, and will never become, a
+compatibility path Engine V2 routes through. This document was already
+written to be implementable under a native Runtime (LOCK V2-01 through
+V2-03 all assume direct consumption of the Scene Model); this lock only
+makes that assumption binding rather than merely convenient.
 
 ---
 
@@ -229,7 +241,7 @@ plain vocabulary, before the detail.
 | **Lifecycle** | Created with its Scene or added later; edited freely; deleted freely; never persists past its owning Scene's deletion. |
 | **Relationships** | Optionally references one Theme Asset (a Frame, by id) — the only cross-object reference in the entire Scene Model, matching Engine Canon §9's Frame Resolution rule (a Frame Element is placed inside a Holder Layer). No other cross-references exist anywhere in §2. |
 | **Serialization** | `{ id, name, position: {x, y}, size: {w, h}, shape: 'rectangle'\|'rounded'\|'circle', padding: number, fit: 'fit'\|'fill'\|'original', frame: string \| null, permissions: { moveable, editable, visible } }` — `position`/`size` are fractions of the Scene Configuration's frame (0–1), never absolute pixels or a separately-typed Size (consistent with Scene Configuration's own "Size is derived" rule extended to every object placed inside it). |
-| **Runtime meaning** | Paints its internal Holder Stack (today: generic placeholder chrome only — no Holder Layers or Content Layer are yet separately authored in Builder V2; see Open Decision §7 item 2), clipped to Shape, inset by Padding, resolved per Fit — then composited into the Scene Stack at its own stack position (§ below). |
+| **Runtime meaning** | Paints its internal Holder Stack (today: generic placeholder chrome only — no Holder Layers or Content Layer are yet separately authored in Builder V2; see Open Decision §7 item 1), clipped to Shape, inset by Padding, resolved per Fit — then composited into the Scene Stack at its own stack position (§ below). |
 
 ### Decoration (Engine: a Scene Layer, `kind: 'decoration'` or `'fill'`)
 
@@ -482,10 +494,12 @@ consumable in the first place.
 ## 5. How the same model must flow through Validation, Build, and Publish
 
 **Not implemented. This section specifies the target contract each
-stage would need to satisfy, per LOCK V2-03 — it does not build any of
-them, and per `docs/BUILDER_V2_ENGINE_GAP.md` §4, which of the three
-resolution paths eventually fills these in is still an open product
-decision (§7 item 1 here).**
+stage must satisfy, per LOCK V2-03 — it does not build any of them.**
+Which architecture they are built as is no longer open: LOCK V2-04
+resolves it as a native Engine V2 Runtime, so every bullet below
+describes each stage consuming the canonical Scene Model **directly**
+— never through a translation step, never through an Engine V1
+intermediary.
 
 - **Validation** would check every Scene in a World against §2's own
   rules as real constraints, not merely as documentation: every Scene
@@ -499,19 +513,23 @@ decision (§7 item 1 here).**
   set, resolves to a real Theme Asset id; every fractional
   `position`/`size` stays within `[0, 1]` and does not place an object
   fully outside its Canvas.
-- **Build** would compile a validated World's Scenes into whatever
-  package format is eventually decided (§7 item 1) — this document
-  takes no position on that format, per its own commissioning
-  constraint ("Do not invent compiled package formats as the canonical
-  representation"). Whatever form Build takes, its *input* is exactly
-  §2/§3's Scene Model — Build is a pure function from Scene Model to
-  package, never a stage that requires additional undocumented fields
-  (LOCK V2-02). **Output-format variation (PNG/PDF/MP4, or any future
-  export target) is a Build/Publish concern operating directly on a
-  Scene** — a format choice, not a second content-selection object.
-  Nothing about producing a PNG vs. a PDF from the same Scene implies a
-  Representation-shaped wrapper; it implies a Build stage with more than
-  one output routine over the same canonical input.
+- **Build** would compile a validated World's Scenes into a package
+  format — this document still takes no position on the *exact* format
+  (file layout, naming, whether it keeps the `.vtheme` name), per its
+  own commissioning constraint ("Do not invent compiled package formats
+  as the canonical representation") and per LOCK V2-02. That is an
+  ordinary implementation decision for whoever builds Build, not a
+  blocking architectural one — LOCK V2-04 has already settled the part
+  that *was* architectural (native, direct consumption of the Scene
+  Model; no translation; no parallel path). Whatever form Build takes,
+  its *input* is exactly §2/§3's Scene Model — Build is a pure function
+  from Scene Model to package, never a stage that requires additional
+  undocumented fields. **Output-format variation (PNG/PDF/MP4, or any
+  future export target) is a Build/Publish concern operating directly
+  on a Scene** — a format choice, not a second content-selection
+  object. Nothing about producing a PNG vs. a PDF from the same Scene
+  implies a Representation-shaped wrapper; it implies a Build stage
+  with more than one output routine over the same canonical input.
 - **Publish** would share whatever Build produced — sharing mechanics
   (Official/Community/Export) are unchanged in *kind* from Engine V1's
   own Publish stage (`docs/WORLD_BUILDER_ARCHITECTURE.md`'s Architecture
@@ -528,13 +546,19 @@ decision (§7 item 1 here).**
 touches `js/services/validator.js`, `js/services/builder.js`,
 `js/themeEngine.js`, or `renderer/slideRenderer.js`, all of which
 continue to validate/build/render exactly as they did before Builder V2
-existed. This document defines a second, parallel *target* pipeline for
-Engine V2 data, not yet implemented, not yet wired to anything. Whether
-these two pipelines eventually merge (a translation layer, §7 item 1's
-option B), whether V2 gets its own independent Runtime (option A), or
-whether they run permanently side by side (option C) is exactly the
-decision `docs/BUILDER_V2_ENGINE_GAP.md` §4 already declined to make and
-this document also declines to make — see §7.
+existed, and will keep doing so indefinitely: **Engine V1 remains
+legacy, not a compatibility path Engine V2 ever routes through.**
+
+This document defines a second, independent pipeline for Engine V2
+data — not yet implemented, not yet wired to anything, but now
+architecturally settled (LOCK V2-04): a **native Runtime**, operating
+directly on the canonical Scene Model. The two pipelines do not merge
+(the translation-layer option is rejected); Engine V2 does not become a
+second, permanently-parallel authoring surface bolted onto Engine V1
+(that option is also rejected) — it is its own, self-sufficient
+pipeline, sharing nothing at runtime with Engine V1's beyond both
+existing in the same repository during the (indefinite) period Engine
+V1 content continues to be supported.
 
 ---
 
@@ -557,19 +581,21 @@ blocked pretending an answer exists when it doesn't.
   Background remains a bottom-of-stack Scene Layer; Engine Canon
   Invariant 8 stands unmodified; Canvas's serialization is unchanged
   (§2, §3).
+- ~~Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution paths
+  should Validation/Build/Publish actually implement?~~ — **Resolved: a
+  native Engine V2 Runtime.** By explicit architectural decision,
+  Validation, Runtime, Build, and Publish will all operate directly on
+  the canonical Scene Model defined here — no translation layer down to
+  Engine V1, and no permanent parallel Runtime architecture. Both other
+  paths named in the Gap document are rejected outright. Engine V1
+  (Representations/Layouts/Frames/Layer Packs, and the pipeline that
+  serves them, §6) remains legacy — it keeps running, unmodified, for
+  Engine V1 data only — but is not, and will never become, a
+  compatibility path Engine V2 routes through. See LOCK V2-04.
 
 ### Still open
 
-1. **Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution
-   paths (genuine V2 Runtime / translation layer to V1 / permanent
-   parallel surfaces) should Validation/Build/Publish actually
-   implement?** This document's entire purpose is to make that decision
-   safe to defer — the Scene Model (§2/§3) is stable and implementable
-   regardless of which path is chosen — but the choice itself remains
-   outstanding and is a prerequisite for any Runtime/Validation/Build/
-   Publish implementation work, per this sprint's own explicit
-   instruction to stop before that work begins.
-2. **Do Holder Layers and a reserved Content Layer need separate
+1. **Do Holder Layers and a reserved Content Layer need separate
    authoring**, or does Builder V2's current single-Frame-per-Holder
    model (no independently-orderable Holder Layer stack, no explicit
    Content Layer object) already cover every case a Theme Author needs?
@@ -578,13 +604,17 @@ blocked pretending an answer exists when it doesn't.
    has not yet needed to expose that internal stack directly (a Frame
    is the only thing a Theme Author places "inside" a Holder today).
    Left open until a real authoring need (e.g., multiple decorative
-   layers inside one Holder, not just one Frame) surfaces it.
-3. **Personal Decoration Packs** (Engine Canon §12 item 1) remains as
+   layers inside one Holder, not just one Frame) surfaces it. Narrower
+   than an architectural blocker — an authoring-completeness question,
+   not a prerequisite for Runtime/Validation/Build/Publish
+   implementation to begin.
+2. **Personal Decoration Packs** (Engine Canon §12 item 1) remains as
    open here as it was in Engine Canon itself — nothing in Builder V2's
    Decoration implementation (a small built-in emoji palette) resolves
    it, since Builder V2 deliberately did not build Theme Decoration Pack
    browsing at all yet (a disclosed, Builder-level gap, not an
-   Engine-level one).
+   Engine-level one). Likewise not a blocker to beginning
+   implementation.
 
 ---
 
@@ -595,7 +625,8 @@ blocked pretending an answer exists when it doesn't.
   additive pointer to it (see that document's own end).
 - `docs/BUILDER_V2_ENGINE_GAP.md` — the implementation report that
   first surfaced the need for this document; its three resolution
-  paths (§4 there) are what §7 item 1 here still leaves open.
+  paths (§4 there) are resolved by this document's §7 (native Runtime
+  chosen; LOCK V2-04) — see that document's own updated §5/Cross-references.
 - `docs/BUILDER_V2_VISION.md` / `BUILDER_V2_BLUEPRINT.md` /
   `BUILDER_V2_STORYBOARD.md` / `BUILDER_V2_MENTAL_MODEL.md` /
   `BUILDER_V2_UX_PACKAGE.md` — the frozen Builder V2 product
@@ -651,3 +682,25 @@ blocked pretending an answer exists when it doesn't.
   renumbered 1-3. Status line updated: the Scene Model, Representation's
   retirement, Canvas's schema, and Scene Template are now frozen; only
   §7's three remaining items stay open.
+- v1.4 — Architecture Lock pass. Resolves the last blocking Open
+  Decision: **Engine V2 will implement a native Runtime over the
+  canonical Scene Model.** By explicit architectural decision, a
+  translation layer to Engine V1 and a permanent parallel Runtime
+  architecture are both rejected outright — Validation, Runtime, Build,
+  and Publish will all operate directly on the Scene Model defined here;
+  Engine V1 remains legacy, running unmodified for Engine V1 data only,
+  never a compatibility path Engine V2 routes through. LOCK V2-04
+  rewritten from "does not choose a resolution path" to state this
+  outcome directly; §5's intro and Build bullet, and §6's closing
+  paragraph, updated to describe direct/native consumption rather than
+  an undecided architecture. §7's former item 1 (the three-path
+  question) moves to "Resolved this pass"; the remaining two items
+  (Holder Layers/Content Layer authoring; Personal Decoration Packs)
+  renumber to 1-2 and are recharacterized as narrower authoring/product
+  questions, not architectural blockers. `docs/BUILDER_V2_ENGINE_GAP.md`
+  gains a matching "Resolved" pointer in its own §4/Cross-references.
+  **With this resolved, no architectural Open Decisions remain: Engine
+  V2 Architecture is now completely frozen. Runtime, Validation, Build,
+  and Publish implementation may begin against the canonical Scene
+  Model defined in this document, with no further design sign-off
+  required.**
