@@ -1434,6 +1434,25 @@
         _renderWorkspace();
     }
 
+    // Blueprint §5 — "each [Scene] shown live... by a live-updating
+    // thumbnail of its actual composition." Reuses `_drawSceneCanvas`
+    // directly at native resolution (no guides, no selection state,
+    // since the Library isn't an editing surface) — the same real
+    // Scene Stack render the Scene Editor uses, never a second,
+    // Library-owned drawing routine.
+    function _sceneCardThumb(scene) {
+        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-scene-card-thumb';
+        wrap.style.aspectRatio = aspect.width + ' / ' + aspect.height;
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        wrap.appendChild(canvas);
+        _drawSceneCanvas(canvas, scene, { guides: false, interactive: false });
+        return wrap;
+    }
+
     function _sceneCard(scene) {
         const card = document.createElement('div');
         card.className = 'wb-scene-card' + (scene.id === currentSceneId ? ' active' : '');
@@ -1441,10 +1460,6 @@
         card.setAttribute('tabindex', '0');
 
         const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
-        const thumb = document.createElement('div');
-        thumb.className = 'wb-scene-card-thumb';
-        thumb.style.aspectRatio = aspect.width + ' / ' + aspect.height;
-        thumb.textContent = aspect.icon;
 
         const name = document.createElement('div');
         name.className = 'wb-scene-card-name';
@@ -1453,6 +1468,24 @@
         const sub = document.createElement('div');
         sub.className = 'wb-scene-card-sub';
         sub.textContent = aspect.label + (scene.holders.length ? ' · ' + scene.holders.length + ' Holder' + (scene.holders.length > 1 ? 's' : '') : ' · No Holder');
+
+        // Reorder — Blueprint §5's own "Rename, duplicate, delete,
+        // reorder a Scene," reusing ProjectModel.moveScene the same way
+        // Frame rows already reuse moveFrame.
+        const reorderRow = document.createElement('div');
+        reorderRow.className = 'wb-row-controls';
+        reorderRow.appendChild(_smallBtn('↑', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveScene(currentProject, scene.id, 'up');
+            _persist();
+            _renderWorkspace();
+        }));
+        reorderRow.appendChild(_smallBtn('↓', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveScene(currentProject, scene.id, 'down');
+            _persist();
+            _renderWorkspace();
+        }));
 
         const controls = document.createElement('div');
         controls.className = 'wb-scene-card-controls';
@@ -1479,9 +1512,10 @@
             _renderWorkspace();
         }));
 
-        card.appendChild(thumb);
+        card.appendChild(_sceneCardThumb(scene));
         card.appendChild(name);
         card.appendChild(sub);
+        card.appendChild(reorderRow);
         card.appendChild(controls);
 
         card.addEventListener('click', function () { _openScene(scene.id); });
