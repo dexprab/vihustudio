@@ -131,6 +131,37 @@ described the same way Engine Canon §11's Ownership Matrix does: Who
 owns it? Who edits it? Who supplies it? Who renders it? — plus its
 purpose, its lifecycle, and its serialized shape.
 
+**The canonical Engine V2 authoring flow**, confirmed by explicit
+architectural decision (see Change History) and stated here in Builder
+vocabulary directly, since that vocabulary is now also the correct
+Engine-level one:
+
+```
+World
+  ↓
+Scene
+  ↓
+Canvas          (Builder-facing: Scene Configuration)
+  ↓
+Place           (Builder-facing: Holder)
+  ↓
+Decoration      (a Scene Layer, kind: 'fill' | 'decoration')
+  ↓
+Text            (a Scene Layer, kind: 'text')
+```
+
+**Read this as authoring order, not an ownership chain.** Canvas,
+Place, Decoration, and Text are siblings under Scene, not nested inside
+one another — Scene owns exactly one Canvas, 0..N Holders, and 0..N
+Layers directly (Engine Canon §2's own tree, unchanged by this
+diagram). The arrows above describe the sequence a Theme Author
+typically moves through (confirm the shape, then place photos, then
+decorate, then add words — `docs/BUILDER_V2_STORYBOARD.md` Stages 4–7),
+not a containment relationship. The per-object tables below, and the
+TypeScript interfaces in §3, are the actual technical specification;
+this diagram exists only so the canonical flow can be stated once, in
+plain vocabulary, before the detail.
+
 ### World
 
 | | |
@@ -169,6 +200,27 @@ purpose, its lifecycle, and its serialized shape.
 | **Relationships** | Every Holder's and every Scene Layer's `position`/`size` fractions (0–1) are relative to this Canvas's frame — nothing in §2 stores absolute pixels; pixels are derived by multiplying a fraction by the Aspect Ratio's own `width`/`height` (`js/services/engineSchema.js`'s `ASPECT_RATIOS` table). |
 | **Serialization** | `scene.canvas: { aspectRatio: 'portrait'\|'landscape'\|'square'\|'wide'\|'full-bleed'\|'quote', safeArea: string }` — `safeArea` is a derived display label (`EngineSchema.aspectInfo(aspectRatio).safeArea`), not independently authored, since Engine Canon §4 does not let Aspect Ratio and Safe Area vary independently. |
 | **Runtime meaning** | Establishes the frame everything else renders into (Engine Canon §5, pipeline step 2) — "nothing below can change it." Carries none of the Base Object contract's four properties (Engine Invariant 20); asking whether Scene Configuration is "editable" is a category error, same as Canvas itself. |
+
+> **Flagged, not applied.** An architectural-review request described
+> Canvas's properties as "Orientation, Dimensions, Safe Area,
+> Background." Orientation/Dimensions/Safe Area are Aspect Ratio and its
+> derived values, already covered by the table above. **Background is
+> not added to Canvas's schema here** — Engine Canon Invariant 8 states
+> plainly that "Canvas has no background property... a special-cased
+> background field would be a second way to do something
+> Elements-in-Layers already do, and this engine has no second ways to
+> do anything," and Builder V2 already implements Background exactly
+> that way (a `kind: 'fill'` Scene Layer pinned to the bottom of the
+> Stack — see Decoration, below). Adding a literal `canvas.background`
+> field would directly contradict that Invariant, not merely rename
+> something. This is called out rather than silently applied or
+> silently ignored; it needs explicit confirmation — either Invariant 8
+> is being deliberately overturned (a real Engine Canon change, out of
+> this document's own scope to make unilaterally) or "Background" was
+> meant descriptively (Canvas as "the whole visual context," of which
+> the bottom Scene Layer is part) rather than as a literal new field.
+> Until resolved, Canvas's serialization stays exactly `{ aspectRatio,
+> safeArea }`.
 
 ### Place (Engine: Holder)
 
@@ -222,51 +274,40 @@ purpose, its lifecycle, and its serialized shape.
 | **Serialization** | `Array<{ type: 'holder' \| 'layer', id: string }>`, index 0 = bottom of stack. |
 | **Runtime meaning** | *Is* the render order (Engine Canon §11 — "not rendered itself... it is the render order"). A Runtime implementation would iterate this array bottom to top, dispatching each entry to the Holder-paint or Layer-paint routine per its `type`. |
 
-### Representation — new Engine-level terminology, flagged as such
+### Representation — retired, by explicit architectural decision
 
-**This concept does not appear in any of the six frozen Builder V2
-documents** (`BUILDER_V2_VISION.md`, `_BLUEPRINT.md`, `_STORYBOARD.md`,
-`_MENTAL_MODEL.md`, `_UX_PACKAGE.md`) — none of them define a
-"Representation" object, screen, or activity for Builder V2. The term
-exists only in `docs/ENGINE_V2_CANON.md`'s own Appendix, where it names
-the **Engine V1** concept Scene already supersedes ("A Scene, authored
-directly... no cross-references between separately-named parts").
-Reintroducing it here is **not** restoring a Builder concept — it is
-this document defining a genuinely new Engine-level answer to a real,
-still-live Runtime question the Appendix mapping left unaddressed:
-Studio's Creation Flow Preview carousel (`docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md`)
-depends on `theme.representations`, "the authored, user-facing wrapper
-around `theme.layouts`," to know which page styles to offer a Story
-Author and in what order. Engine V2 has no Layouts to wrap — but the
-Runtime-facing question itself ("which of this World's Scenes are
-offered as Creation Flow starting points, in what order, under what
-label/thumbnail") does not go away just because Layouts did.
+An earlier draft of this document proposed "Representation" as a new
+Engine V2 concept (a thin, Runtime-facing wrapper letting Studio's
+Creation Flow know which Scenes to offer a Story Author). That proposal
+is now **retired outright** by explicit architectural decision: **the
+canonical Engine V2 authoring flow is `World → Scene → Canvas → Place →
+Decoration → Text`, with no `Representation` object anywhere in it.**
+Nothing in Engine V2 depends on, or reintroduces, the Engine V1
+`Representation → Layout → Frame → Layer Pack` pipeline (`docs/BUILDER_V2_ENGINE_GAP.md`
+§2 documents that legacy pipeline; it continues to run, unmodified,
+purely for Engine V1 data, per this document's own §6). `Representation`
+remains what `docs/ENGINE_V2_CANON.md`'s Appendix already said it was —
+a **legacy Engine V1 concept only**, superseded by Scene, never a
+parallel or successor object in Engine V2.
 
-| | |
-|---|---|
-| **Purpose** | The ordered, labeled subset of a World's Scenes that Studio's Creation Flow offers a Story Author as a starting point. |
-| **Ownership** | Owned by World; references Scenes, never contains them. |
-| **Edited by** | Proposed: Theme Author, from the Scenes Library — not a new screen or activity, but a lightweight per-Scene toggle ("offer this Scene in Creation Flow") plus a label/thumbnail override, analogous to how a Decoration Slot is one flag on an existing object rather than a new object type. **Not yet built; not yet confirmed** — see §7 item 1. |
-| **Supplied by** | Proposed: defaults to "every Scene is offered, in Scene Library order," so a World with no explicit Representation authoring still has a complete Creation Flow, mirroring `docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md`'s own "a World that defines none still shows a Preview" guarantee. |
-| **Lifecycle** | Derived from Scenes, never independently created — deleting a Scene removes its Representation entry automatically; there is no orphaned Representation state possible. |
-| **Relationships** | References exactly one Scene by id; carries its own display label/thumbnail/`supportedCreationTypes`, independent of the Scene's own `name` (a Scene named for the Theme Author's own reference — "Cover" — may want a different, friendlier Story-Author-facing label). |
-| **Serialization (proposed, not yet implemented)** | `representations: Array<{ sceneId: string, label: string, thumbnail: string, supportedCreationTypes: string[] }>` at the World level — the direct V2 analogue of Engine V1's `theme.representations`, referencing a Scene id instead of a Layout id + Frame id + Layer Pack id. |
-| **Runtime meaning** | Drives Studio's Creation Flow Preview carousel exactly as `theme.representations` does today — unchanged Runtime behaviour, only what it wraps changes (a Scene reference, not a Layout+Frame+LayerPack cross-reference). |
-
-This entire subsection is marked **proposed**, not decided — see §7
-item 1. It is documented here, at the same rigor as the other six
-objects, precisely because leaving it out would silently drop a real
-Runtime requirement (Creation Flow needs *something* to drive its
-carousel) rather than surfacing it for a decision.
+This retirement reopens, deliberately, the real Runtime question the
+retired proposal was trying to answer: *how does Studio's Creation Flow
+know which Scenes to offer a Story Author, in what order?* That
+question is not resolved here — see the note in §7 (Open Decisions)
+explicitly carried forward, with the explicit constraint that whatever
+eventually answers it **must not resemble Engine V1's Representation
+abstraction** (no cross-referencing wrapper object, no separate
+authored file). Output-format concerns (PNG/PDF/MP4, etc.) are Build/
+Publish concerns operating directly on a Scene (§5) and must likewise
+never route through a Representation-shaped intermediary.
 
 ---
 
 ## 3. TypeScript interfaces
 
 Directly reflecting §2 — no field here is speculative; every one is
-either already written by `tools/world-builder/js/projectModel.js`
-(marked accordingly) or explicitly proposed in §2's Representation
-subsection (marked `// proposed`).
+already written by `tools/world-builder/js/projectModel.js` today.
+There is no `Representation` interface — that concept is retired (§2).
 
 ```typescript
 type AspectRatioId = 'portrait' | 'landscape' | 'square' | 'wide' | 'full-bleed' | 'quote';
@@ -348,14 +389,6 @@ interface Scene {
   stack: StackEntry[]; // reconciled lazily; always covers every holders[]/layers[] entry exactly once
 }
 
-// proposed — not yet implemented, see §2's Representation subsection and §7 item 1
-interface Representation {
-  sceneId: string;
-  label: string;
-  thumbnail: string;
-  supportedCreationTypes: string[];
-}
-
 interface World {
   // manifest.json / metadata.json / theme.json — unchanged in shape
   // from docs/THEME_PROJECT_SPEC.md §2-§4; omitted here since this
@@ -363,7 +396,10 @@ interface World {
   // Engine V2 does not change.
   scenes: Scene[];
   sceneOrder: string[]; // display order; scenes[] itself is unordered storage
-  representations?: Representation[]; // proposed
+  // No `representations` field — that concept is retired (§2). How
+  // Creation Flow discovers which Scenes to offer is an open question
+  // (§7), deliberately left unanswered here rather than reintroducing
+  // a Representation-shaped field to answer it.
 }
 ```
 
@@ -426,7 +462,12 @@ decision (§7 item 2 here).**
   representation"). Whatever form Build takes, its *input* is exactly
   §2/§3's Scene Model — Build is a pure function from Scene Model to
   package, never a stage that requires additional undocumented fields
-  (LOCK V2-02).
+  (LOCK V2-02). **Output-format variation (PNG/PDF/MP4, or any future
+  export target) is a Build/Publish concern operating directly on a
+  Scene** — a format choice, not a second content-selection object.
+  Nothing about producing a PNG vs. a PDF from the same Scene implies a
+  Representation-shaped wrapper; it implies a Build stage with more than
+  one output routine over the same canonical input.
 - **Publish** would share whatever Build produced — sharing mechanics
   (Official/Community/Export) are unchanged in *kind* from Engine V1's
   own Publish stage (`docs/WORLD_BUILDER_ARCHITECTURE.md`'s Architecture
@@ -460,16 +501,27 @@ these is a genuine product decision this document deliberately does not
 make, listed so Builder V2 (or a future Engine implementation) is not
 blocked pretending an answer exists when it doesn't.
 
-1. **Is "Representation" (§2) the right shape for Creation-Flow
-   exposure, and should it be Builder-authored at all?** Three real
-   alternatives exist: (a) as proposed — an explicit, Theme-Author-set
-   per-Scene toggle + label/thumbnail; (b) implicit — every Scene is
-   always offered, in Scene Library order, with no separate authoring
-   step at all (simpler, but removes the "some Scenes are internal-only"
-   capability Engine V1's Representation model implicitly allowed by
-   omission); (c) something not yet imagined. This document assumes (a)
-   only provisionally, for concreteness — it is the least-decided part
-   of this whole document and should not be treated as settled.
+1. **RESOLVED — Representation is retired.** The prior draft of this
+   document proposed "Representation" as a new Engine V2 concept; an
+   explicit architectural decision retired it outright (§2). The
+   question it was trying to answer — *how does Studio's Creation Flow
+   know which Scenes to offer a Story Author, in what order* — is
+   **reopened, not closed**, with one hard constraint now attached:
+   whatever answers it must not resemble Engine V1's Representation
+   abstraction (no cross-referencing wrapper object, no separately
+   authored file, no per-Scene "is this offered" record living outside
+   the Scene itself). Left genuinely open, deliberately harder than
+   before, since the easy answer is exactly the one now excluded.
+1a. **NEW — Does Canvas carry a Background property?** An
+   architectural-review request described Canvas as having
+   "Orientation, Dimensions, Safe Area, Background." §2's Scene
+   Configuration section flags this directly: Engine Canon Invariant 8
+   states Canvas has no background property, and Builder V2 already
+   implements Background as a bottom-of-stack fill Scene Layer, not a
+   Canvas field. This document has not changed Canvas's schema, pending
+   confirmation of which is intended — a deliberate Invariant 8 reversal
+   (a real Engine Canon change), or a descriptive, non-schema use of the
+   word "Background."
 2. **Which of `docs/BUILDER_V2_ENGINE_GAP.md` §4's three resolution
    paths (genuine V2 Runtime / translation layer to V1 / permanent
    parallel surfaces) should Validation/Build/Publish actually
@@ -518,5 +570,26 @@ blocked pretending an answer exists when it doesn't.
   leave running, unchanged, alongside the V2 target pipeline defined
   here.
 - `docs/STUDIO_SCREEN_2_INFORMATION_ARCHITECTURE.md` — the Runtime-side
-  consumer (`theme.representations`) that motivates §2's Representation
-  subsection.
+  consumer (`theme.representations`) whose Engine V1 dependency §2's
+  retirement note explains, and whose Engine V2 equivalent remains
+  genuinely open (§7 item 1).
+
+---
+
+## Change History
+
+- v1.0 — Initial version. Proposed "Representation" as a new Engine V2
+  object (a Runtime-facing wrapper for Creation Flow exposure), marked
+  provisional in its own Open Decisions section.
+- v1.1 — Architectural review retired Representation outright: the
+  canonical Engine V2 authoring flow is confirmed as `World → Scene →
+  Canvas → Place → Decoration → Text`, with no Representation object
+  anywhere in it, and no dependency on Engine V1's
+  `Representation → Layout → Frame → Layer Pack` pipeline. The question
+  Representation was answering (Creation Flow Scene exposure) is
+  reopened, explicitly barred from resolving back to a
+  Representation-shaped answer. Also flagged, not applied: a Canvas
+  "Background" property described in the same review request directly
+  contradicts Engine Canon Invariant 8 and Builder V2's existing
+  implementation (Background as a bottom-of-stack fill Scene Layer);
+  Canvas's schema is unchanged pending explicit confirmation of intent.
