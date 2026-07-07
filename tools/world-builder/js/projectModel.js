@@ -524,6 +524,12 @@ const ProjectModel = (function () {
         if (!layer) return layer;
         if (!layer.permissions) layer.permissions = _defaultLayerPermissions();
         if (layer.decorationSlot === undefined) layer.decorationSlot = false;
+        if (layer.kind === 'text') {
+            if (layer.text === undefined) layer.text = '';
+            if (!layer.font) layer.font = 'Georgia, serif';
+            if (!layer.fontSize) layer.fontSize = 48;
+            if (!layer.align) layer.align = 'left';
+        }
         return layer;
     }
 
@@ -569,15 +575,21 @@ const ProjectModel = (function () {
         return layer;
     }
 
+    function _defaultLayerName(kind) {
+        if (kind === 'fill') return 'Background';
+        if (kind === 'text') return 'Text';
+        return 'Decoration';
+    }
+
     function addSceneLayer(project, sceneId, spec) {
         const scene = findScene(project, sceneId);
         if (!scene) return null;
         _ensureStack(scene);
         const existingIds = scene.layers.map(function (l) { return l.id; });
-        const id = _uniqueId(existingIds, spec.kind === 'fill' ? 'background' : 'decoration');
-        const layer = {
+        const id = _uniqueId(existingIds, spec.kind === 'fill' ? 'background' : (spec.kind === 'text' ? 'text' : 'decoration'));
+        const layer = Object.assign({
             id: id,
-            name: spec.name || (spec.kind === 'fill' ? 'Background' : 'Decoration'),
+            name: spec.name || _defaultLayerName(spec.kind),
             kind: spec.kind,
             color: spec.color || '#F4F1EC',
             glyph: spec.glyph || '✨',
@@ -585,7 +597,12 @@ const ProjectModel = (function () {
             size: spec.size || { w: 0.14, h: 0.14 },
             permissions: _defaultLayerPermissions(),
             decorationSlot: false
-        };
+        }, spec.kind === 'text' ? {
+            text: spec.text || '',
+            font: spec.font || 'Georgia, serif',
+            fontSize: spec.fontSize || 48,
+            align: spec.align || 'left'
+        } : {});
         scene.layers.push(layer);
         scene.stack.push({ type: 'layer', id: id });
         if (spec.atBottom) {

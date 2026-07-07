@@ -1089,6 +1089,28 @@
         }
     }
 
+    // Top-down word wrap for a text Element's own bounding box — a
+    // separate routine from `_wrapText` (below), which vertically
+    // centers a message and is used only for the Scenes-Library empty
+    // state; a placed text Element instead starts at its box's own top
+    // edge (`textBaseline='top'`).
+    function _drawTextBlock(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = (text || '').split(' ');
+        let line = '';
+        let cy = y;
+        words.forEach(function (word) {
+            const test = line + word + ' ';
+            if (ctx.measureText(test).width > maxWidth && line) {
+                ctx.fillText(line.trim(), x, cy);
+                line = word + ' ';
+                cy += lineHeight;
+            } else {
+                line = test;
+            }
+        });
+        ctx.fillText(line.trim(), x, cy);
+    }
+
     function _drawLayerEntry(ctx, canvasEl, l, selected) {
         const x = l.position.x * canvasEl.width;
         const y = l.position.y * canvasEl.height;
@@ -1098,6 +1120,15 @@
         if (l.kind === 'fill') {
             ctx.fillStyle = l.color;
             ctx.fillRect(x, y, w, hgt);
+        } else if (l.kind === 'text') {
+            ctx.save();
+            ctx.fillStyle = l.color || '#1D3457';
+            ctx.font = (l.fontSize || 48) + 'px ' + (l.font || 'Georgia, serif');
+            ctx.textAlign = l.align || 'left';
+            ctx.textBaseline = 'top';
+            const tx = l.align === 'center' ? x + w / 2 : (l.align === 'right' ? x + w : x);
+            _drawTextBlock(ctx, l.text || 'New text', tx, y, w, (l.fontSize || 48) * 1.25);
+            ctx.restore();
         } else {
             ctx.save();
             ctx.font = Math.round(Math.min(w, hgt)) + 'px sans-serif';
@@ -1246,16 +1277,22 @@
 
         // Hit-test the whole Scene Stack, topmost first (Blueprint §6.1
         // — selection drives the activity, not the other way around).
+        // A full-bleed Background fill is deliberately excluded — it is
+        // an edit made through the Decorations colour picker, never a
+        // clickable object in its own right (Blueprint §9's own "set
+        // the background" phrasing, not "select the background").
         const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
         let hit = null;
         for (let i = stack.length - 1; i >= 0; i--) {
             const entry = stack[i];
             const obj = _findByKind(scene.id, entry.type, entry.id);
-            if (obj && _pointInHolder(pt.fx, pt.fy, obj)) { hit = { kind: entry.type, obj: obj }; break; }
+            if (!obj) continue;
+            if (entry.type === 'layer' && obj.kind === 'fill') continue;
+            if (_pointInHolder(pt.fx, pt.fy, obj)) { hit = { kind: entry.type, obj: obj }; break; }
         }
 
         if (hit) {
-            currentActivity = hit.kind === 'holder' ? 'place' : 'decorations';
+            currentActivity = hit.kind === 'holder' ? 'place' : (hit.obj.kind === 'text' ? 'text' : 'decorations');
             currentInspectorTarget = (hit.kind === 'holder' ? 'holder:' : 'layer:') + hit.obj.id;
             _holderDragState = {
                 mode: 'move', kind: hit.kind, sceneId: scene.id, id: hit.obj.id,
@@ -1263,7 +1300,10 @@
             };
             _renderWorkspace();
             e.preventDefault();
-        } else if ((currentActivity === 'place' && _selectedHolderId()) || (currentActivity === 'decorations' && _selectedLayerId())) {
+        } else if (
+            (currentActivity === 'place' && _selectedHolderId()) ||
+            ((currentActivity === 'decorations' || currentActivity === 'text') && _selectedLayerId())
+        ) {
             currentInspectorTarget = null;
             _renderWorkspace();
         }
@@ -1788,8 +1828,8 @@
         const selectedLayerId = _selectedLayerId();
         if (selectedLayerId) {
             const layer = window.ProjectModel.findSceneLayer(currentProject, scene.id, selectedLayerId);
-            if (layer) return _renderLayerPanel(scene, layer);
-            currentInspectorTarget = null; // stale reference (e.g. decoration was just deleted)
+            if (layer) return layer.kind === 'text' ? _renderTextLayerPanel(scene, layer) : _renderLayerPanel(scene, layer);
+            currentInspectorTarget = null; // stale reference (e.g. the Element was just deleted)
         }
 
         if (currentActivity === 'place') {
@@ -1800,13 +1840,7 @@
             return _renderDecorationsPanel(scene);
         }
 
-        // Text — an honest stub this slice (Vision §3; Blueprint §10
-        // lands in a following slice). Never presented as broken or
-        // dead — just not built yet, matching this Builder's own
-        // established stub pattern (Sprint B1.1).
-        _heading('✍️ Text', 'Coming in the next sprint.');
-        contextPanel.appendChild(_fieldHelp('The words this Scene needs, and how they look.'));
-        contextPanel.appendChild(_fieldHelp('For now, use Place to work with Holders, or Decorations to set the atmosphere.'));
+        return _renderTextPanel(scene);
     }
 
     // ---------- Place — no Holder selected: the Holder list + Add (Blueprint §8) ----------
@@ -2240,6 +2274,177 @@
         body.appendChild(_permissionCheckbox('Let the Story Author add their own decorations here too', layer.decorationSlot, function (v) {
             layer.decorationSlot = v;
             _persist();
+        }));
+        details.appendChild(body);
+        contextPanel.appendChild(details);
+    }
+
+    // ---------- Text (Builder V2 — Blueprint §10) ----------
+    // Unlike a decoration, text is not sourced from a Theme Asset shelf
+    // (Blueprint §2's own resolved contradiction) — wording is always
+    // bespoke to its Scene, so nothing constrains adding more of it the
+    // way the shelf constrains decorations.
+
+    const TEXT_FONT_OPTIONS = [
+        { value: 'Georgia, serif', label: 'Georgia (Serif)' },
+        { value: '"Iowan Old Style", "Palatino Linotype", serif', label: 'Iowan Old Style' },
+        { value: 'Helvetica, Arial, sans-serif', label: 'Helvetica (Sans)' },
+        { value: '"Comic Sans MS", cursive', label: 'Comic Sans' },
+        { value: '"Palatino Linotype", Palatino, serif', label: 'Palatino' }
+    ];
+
+    const TEXT_ALIGN_OPTIONS = [
+        { value: 'left', label: 'Left' },
+        { value: 'center', label: 'Center' },
+        { value: 'right', label: 'Right' }
+    ];
+
+    // No decoration selected: the text-element list + Add (mirrors
+    // _renderPlacePanel/_renderDecorationsPanel's own no-selection shape).
+    function _renderTextPanel(scene) {
+        _heading('✍️ Text', 'What does this page say, and what should the words look like?');
+        contextPanel.appendChild(_fieldHelp('Click a text element in Working View to select it and drag to reposition, or add a new one below — text is never sourced from a shelf, so nothing constrains adding more of it.'));
+
+        const texts = (scene.layers || []).filter(function (l) { return l.kind === 'text'; });
+        if (texts.length) {
+            const list = document.createElement('div');
+            list.className = 'wb-scene-library-grid';
+            texts.forEach(function (l) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card';
+                const name = document.createElement('div');
+                name.className = 'wb-scene-template-name';
+                name.textContent = l.name;
+                const desc = document.createElement('div');
+                desc.className = 'wb-scene-template-desc';
+                desc.textContent = (l.text || '').slice(0, 40) || '(empty)';
+                card.appendChild(name);
+                card.appendChild(desc);
+                card.addEventListener('click', function () {
+                    currentInspectorTarget = 'layer:' + l.id;
+                    _renderWorkspace();
+                });
+                list.appendChild(card);
+            });
+            contextPanel.appendChild(list);
+        }
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+        addBtn.style.marginTop = '12px';
+        addBtn.textContent = '➕ Add Text';
+        addBtn.addEventListener('click', function () {
+            const layer = window.ProjectModel.addSceneLayer(currentProject, scene.id, {
+                kind: 'text', name: 'Text', text: 'New text',
+                font: 'Georgia, serif', fontSize: 48, color: '#1D3457', align: 'left',
+                position: { x: 0.15, y: 0.1 }, size: { w: 0.7, h: 0.15 }
+            });
+            currentInspectorTarget = 'layer:' + layer.id;
+            _persist();
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(addBtn);
+    }
+
+    // A text element is selected: write the words directly, then style
+    // them (Blueprint §10's own two-step framing).
+    function _renderTextLayerPanel(scene, layer) {
+        _heading('✍️ Text — ' + layer.name, 'Write the words directly, then style them.');
+
+        contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
+            _persist();
+        })));
+
+        contextPanel.appendChild(_fieldGroup('Words', _textarea(layer.text, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { text: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        })));
+
+        const fontGroup = _buildFieldGroup('Font', _select(TEXT_FONT_OPTIONS, layer.font, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { font: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const alignGroup = _buildFieldGroup('Alignment', _select(TEXT_ALIGN_OPTIONS, layer.align, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { align: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        _fieldRow(fontGroup, alignGroup);
+
+        const sizeGroup = _buildFieldGroup('Size', _range(16, 120, layer.fontSize, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { fontSize: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        const colorGroup = _buildFieldGroup('Colour', _colorInput(layer.color, function (v) {
+            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { color: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }));
+        _fieldRow(sizeGroup, colorGroup);
+
+        _renderTextPermissionBlock(scene, layer);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'wb-workspace-btn';
+        removeBtn.style.marginTop = '14px';
+        removeBtn.textContent = '🗑 Remove this Text';
+        removeBtn.addEventListener('click', function () {
+            window.ProjectModel.deleteSceneLayer(currentProject, scene.id, layer.id);
+            currentInspectorTarget = null;
+            _persist();
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(removeBtn);
+
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'wb-workspace-btn';
+        backBtn.style.marginTop = '8px';
+        backBtn.textContent = '← All Text';
+        backBtn.addEventListener('click', function () {
+            currentInspectorTarget = null;
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(backBtn);
+    }
+
+    // The Text-variant permission block (Blueprint §10) — no Decoration
+    // Slot line (that mechanism is specific to Decorations, Engine
+    // Canon §7); `editable` here covers both wording and styling
+    // together, exactly as Blueprint §10 specifies: "for text
+    // specifically, editable governs whether a Story Author may change
+    // the wording itself, distinct from whether they may restyle it,
+    // both expressible through the same three questions."
+    function _renderTextPermissionBlock(scene, layer) {
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro';
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        const isOpen = layer.permissions.moveable || layer.permissions.editable;
+        summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
+        body.appendChild(_permissionCheckbox('Can a Story Author move this?', layer.permissions.moveable, function (v) {
+            layer.permissions.moveable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Can a Story Author change the wording or styling?', layer.permissions.editable, function (v) {
+            layer.permissions.editable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', layer.permissions.visible, function (v) {
+            layer.permissions.visible = v;
+            _persist();
+            _redrawSceneCanvases(scene.id);
         }));
         details.appendChild(body);
         contextPanel.appendChild(details);
