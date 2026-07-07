@@ -1,9 +1,9 @@
 {
-  "version": "2.0.2",
-  "sprint": "SB2.0.2",
-  "task": "Museum Gallery Authoring Feedback",
-  "build": "0072",
-  "buildDate": "2026-07-06",
-  "commit": "866cf80",
+  "version": "2.0.3",
+  "sprint": "SB2.0.3",
+  "task": "Working View + Runtime Preview",
+  "build": "0073",
+  "buildDate": "2026-07-07",
+  "commit": "75a4734",
   "environment": "Release"
 }
