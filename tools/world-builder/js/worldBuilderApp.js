@@ -2014,9 +2014,17 @@
     // Frame editing lives in Place, not Decorations — confirmed by
     // Engine Canon §9's own rule that a Frame Element is placed inside a
     // Holder Layer (Blueprint §8). The overlay is scoped to Frames only
-    // (§6.3); "Manage Theme Assets" bridges to the full Frames screen,
+    // (§6.3); "Manage Frames" bridges to the full Frames screen,
     // reintroduced here as a reachable link rather than a Global
-    // Navigation peer (Vision §1).
+    // Navigation peer (Vision §1). Named "Manage Frames," not "Manage
+    // Theme Assets," to avoid colliding with World's own "Manage Theme
+    // Assets" link (§_renderOverviewPanel), which goes to a different
+    // screen (Assets — uploads/textures) — Blueprint §11's eventual
+    // one-shelf consolidation of Frames/Decorations/Textures/Fonts/
+    // Icons/Patterns hasn't happened yet (see docs/BUILDER_V2_ENGINE_GAP.md
+    // for why the related Build/Validate/Publish work is blocked;
+    // this specific consolidation isn't blocked by that gap, just not
+    // yet done).
     function _renderFramePicker(scene, holder) {
         const wrap = document.createElement('div');
         wrap.className = 'wb-field-group';
@@ -2041,7 +2049,7 @@
         manageLink.type = 'button';
         manageLink.className = 'wb-workspace-btn';
         manageLink.style.marginTop = '8px';
-        manageLink.textContent = '🖌️ Manage Theme Assets (Frames) →';
+        manageLink.textContent = '🖌️ Manage Frames →';
         manageLink.addEventListener('click', function () {
             currentNav = 'frames';
             _renderNav();
