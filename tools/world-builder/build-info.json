@@ -1,9 +1,10 @@
 {
-  "version": "2.0.6-WB",
-  "sprint": "B2.0.6",
-  "task": "Builder Workspace Maturity",
-  "build": "0009",
+  "version": "2.1.0-EV2",
+  "phase": "Engine V2 Implementation",
+  "milestone": "Native Runtime & Validation",
+  "slice": "Validation against the canonical Scene Model",
+  "build": "0012",
   "buildDate": "2026-07-07",
-  "commit": "e1c0b7c",
+  "commit": "7aca3fa",
   "environment": "Release"
 }
