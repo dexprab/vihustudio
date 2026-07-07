@@ -1,9 +1,11 @@
 # Engine V2 Canon
 
-**Status:** Canonical. Frozen once approved — this document is the single
-source of truth for Engine V2. No Builder V2 design or implementation
-work may begin until this canon is signed off (see "Open Decisions for
-Product Sign-off" at the end — those must be resolved first).
+**Status:** Canonical, finalization pass. Frozen once approved — this
+document is the single source of truth for Engine V2. No Builder V2
+design or implementation work may begin until this canon is signed off
+(see §12, "Open Decisions for Product Sign-off" — five items remain
+open; two items from the prior pass are resolved and recorded there
+under "Resolved this pass").
 **Scope:** The object model, ownership rules, rendering pipeline, and
 universal invariants of VihuStudio's rendering engine. This document
 describes the *engine* — what a Theme, a Scene, and everything inside a
@@ -108,6 +110,11 @@ is this object positioned in?**
   Element cannot exist outside a Layer, and belongs to exactly one
   Layer at a time (moving an Element to a different Layer is a
   re-parenting operation, not a copy).
+- **A Scene Layer may be designated a Decoration Slot.** A Decoration
+  Slot is an ordinary Scene Layer the Theme Author has marked as open
+  for Story-Author-added decoration — see §7 for the full rule. It is
+  still owned by Canvas like any other Scene Layer; nothing new is
+  owned differently, only who is allowed to add Elements to it changes.
 - **The Holder's Content Layer is reserved.** Every Holder has at least
   one Holder Layer, and exactly one of them is the **Content Layer** —
   the only Layer allowed to hold the Primary Element (§6). A Theme
@@ -156,10 +163,10 @@ siblings under Scene, while also saying Canvas *owns* Scene Layers.
 Both are true at once, and reconciling them is the key rendering
 concept in this canon:
 
-> **Canvas defines the coordinate frame. It is not itself a member of
-> the paint order.** The **Scene Stack** is the single ordered sequence
-> of paintable entities — Scene Layers and Holders together — that
-> paints into that frame, bottom to top.
+> **Canvas owns the Scene Stack, but Canvas is not itself a member of
+> it.** Canvas defines the coordinate frame; the **Scene Stack** is the
+> single ordered sequence of paintable entities — Scene Layers and
+> Holders together — that paints into that frame, bottom to top.
 
 A Theme Author authoring a Scene is really doing one thing: deciding
 the order of the Scene Stack. A background Scene Layer sits at the
@@ -226,12 +233,13 @@ Base Object property (§8) on the Primary Element itself (e.g. letting
 them nudge its position or zoom within the fixed Holder frame).
 
 **No AI-generated content may automatically appear inside a Holder.**
-This is an engine invariant, not a UI suggestion (§9, #10) — the
-Content Layer's only legitimate occupant is something the Story Author
-actually chose or uploaded. An empty, not-yet-filled Holder shows
-Engine-level placeholder chrome (an upload prompt), which is Engine UI,
-not a Theme Asset and not the Primary Element — see Open Decisions
-(§11) for whether that placeholder is Theme-brandable.
+This is an engine invariant, not a UI suggestion (see Engine
+Invariants, §13) — the Content Layer's only legitimate occupant is
+something the Story Author actually chose or uploaded. An empty,
+not-yet-filled Holder shows Engine-level placeholder chrome (an upload
+prompt), which is Engine UI, not a Theme Asset and not the Primary
+Element — see Open Decisions (§12) for whether that placeholder is
+Theme-brandable.
 
 ---
 
@@ -278,15 +286,61 @@ belongs to a Layer for organizational grouping (e.g. "this narration
 clip belongs with this page"), but it never participates in the Scene
 Stack's *paint* order, only in its organizational grouping.
 
-> **Resolved inconsistency — "Frame Layer."** An earlier working
-> example described "Frame Layer" as if Frame were a Layer subtype with
-> its own Border/Shadow/Mat properties. That contradicts this section's
-> own rule that Layers carry no visual properties. This canon resolves
-> it in favor of the stronger rule: **Frame is a Theme Asset, and
-> becomes a Frame *Element*** — placed inside a Holder Layer like any
-> other Element — carrying Border/Shadow/Mat as its own type-specific
-> properties. "Frame Layer" was informal shorthand for "the Holder
-> Layer that holds the Frame Element," not a distinct object type.
+### Decorations and Decoration Slots
+
+Decorations (tape, stickers, flowers, washi, corner flourishes — any
+purely ornamental Element) are **Scene Elements, never Holder
+Elements.** A decoration may visually overlap a Holder's photo — that's
+often the point, a piece of tape appearing to pin the photo down — but
+it belongs structurally to the Scene, sitting in its own position in
+the Scene Stack, not inside the Holder it happens to cover:
+
+```
+Scene Stack (bottom → top)
+  Background            (Scene Layer)
+  Holder                (Primary Element inside)
+  Decoration Slot        (Tape, Sticker, Flower — Scene Layer)
+  Foreground            (Scene Layer)
+```
+
+This preserves the Holder's one hard rule without exception: **a Holder
+always contains exactly one Primary Element, never more, and never a
+decoration.** Positioning a Decoration Slot above the Holder in the
+Scene Stack (as shown) is what lets a decoration visually cover the
+photo's edge while remaining, structurally, a completely separate
+object the Holder knows nothing about. A Theme Author decides where a
+Decoration Slot sits in the stack like any other Scene Layer — above
+the Holder for an "overlapping" look, below it for an "underlay" look,
+or both if the Scene defines more than one Decoration Slot.
+
+A **Decoration Slot is an ordinary Scene Layer**, with exactly one
+difference from any other Scene Layer: the Theme Author has marked it
+as open for the Story Author to add and remove decorative Elements
+into, sourced only from:
+
+- **Theme Decoration Packs** — decorations that ship with this
+  specific Theme, curated to match its look.
+- **Personal Decoration Packs** — a decoration catalog that isn't tied
+  to any one Theme (see Open Decisions, item 6, for exactly what
+  "personal" means here).
+
+A Story Author never creates a Decoration Slot and never chooses which
+Scene Layer is one — the Theme Author already decided that when
+authoring the Scene. The Story Author's whole experience is "add a
+decoration, pick where it goes" from a curated set; the fact that this
+writes into a specific, pre-designated Scene Layer is invisible to
+them, consistent with Layers never being a Story Author concept.
+
+> **Confirmed — "Frame Layer."** An earlier working example described
+> "Frame Layer" as if Frame were a Layer subtype with its own
+> Border/Shadow/Mat properties. That would contradict this section's
+> own rule that Layers carry no visual properties. Product has since
+> confirmed the resolution this canon already proposed: **Frame is a
+> Theme Asset, and becomes a Frame *Element*** — placed inside a Holder
+> Layer like any other Element — carrying Border/Shadow/Mat as its own
+> type-specific properties. "Frame Layer" was informal shorthand for
+> "the Holder Layer that holds the Frame Element," not a distinct
+> object type. See §9 for the full placement workflow.
 
 ---
 
@@ -308,12 +362,28 @@ These four are independent: an object can be `moveable` but not
 The Theme Author sets the starting value of all four for every object a
 Story Author will ever encounter; nothing defaults to "wide open."
 
-**Canvas carries none of the four** — it is configuration, not a
-paintable or selectable object. **A Layer carries only Show/Hide** (its
-position in the Layer Stack is set once by the Theme Author during
-authoring and is not a Story-Author-facing "moveable" concept) —
-Layers never gained the other three because they were never candidates
-for Story Author interaction in the first place (§7).
+Three kinds of object explicitly sit **outside** this contract —
+naming them is the refinement this section exists to make precise:
+
+- **Canvas carries none of the four.** It is configuration (how big,
+  what shape, what's safe), not a paintable or selectable object. There
+  is no `canvas.editable`; asking whether Canvas is "editable" is a
+  category error, not a "false."
+- **A Layer is not a Base Object at all.** It does not inherit
+  `editable`, `moveable`, `visible`, or `clickable` — it has exactly
+  one property of its own, **Show/Hide**, which is a separate, simpler
+  mechanism reserved for Theme Author authoring convenience, not a
+  member of this four-property contract. A Layer's position in the
+  Layer Stack is set once, by the Theme Author, during authoring; it
+  is never a Story-Author-facing "moveable" concept, and a Layer is
+  never independently clickable or editable — only the Elements inside
+  it are.
+- **A Theme Asset carries none of the four until it is placed.** Before
+  placement it is library material, not yet an object in any Scene —
+  there is nothing to make editable, move, show, or click. The instant
+  it is placed into a Layer it becomes an Element (§9) and only then
+  does the full Base Object contract apply to it, exactly as it would
+  to any other Element of that type.
 
 Object-specific properties, gated by `editable`, belong to the object's
 *type*, never to the engine's universal contract:
@@ -328,8 +398,8 @@ Object-specific properties, gated by `editable`, belong to the object's
 
 ## 9. Theme Assets
 
-Theme Assets are the Theme's raw material — never rendered directly,
-never themselves part of a Scene, until placed.
+Theme Assets are raw material — never rendered directly, never
+themselves part of a Scene, until placed.
 
 Categories:
 - Frames
@@ -341,6 +411,18 @@ Categories:
 - Icons
 - Patterns
 
+Two different *sources* supply Theme Assets, and the distinction
+matters because it decides who's allowed to place them (§10):
+
+- **Theme Decoration Packs** — authored by the Theme Author, scoped to
+  one Theme, matched to its look. Placement (into any Layer) is a
+  Theme-authoring-time act only.
+- **Personal Decoration Packs** — a decoration catalog not tied to any
+  one Theme (see Open Decisions, item 6, for exactly what "personal"
+  means). A Story Author may draw from this catalog too, but only into
+  a Decoration Slot (§7) — never into a Holder, never into an arbitrary
+  Scene Layer.
+
 **A Theme Asset becomes an Element the moment it is placed into a
 Layer.** Before that moment it is inert library material; a Theme
 Author browses it the way they'd browse a sticker sheet, not the way
@@ -349,10 +431,24 @@ they'd inspect an already-placed object. Once placed, it stops being
 Element like any other, subject to the full Base Object contract (§8)
 and whatever type-specific properties its Element type defines.
 
-Placement is a Theme-authoring-time act (§11 flags whether Story
-Authors ever get a placement action of their own — the Primary Element
-insertion into a Holder is the one placement act they always have;
-anything beyond that is an open decision, not an assumed capability).
+### Frame Resolution
+
+Frame is the clearest example of "Theme Asset becomes Element" in
+practice, and is worth walking through explicitly since an earlier
+working draft blurred it (§7):
+
+```
+Theme Asset (Frame)
+      ↓  placed into a Holder Layer
+Frame Element
+      ↓
+Rendered — Border / Shadow / Mat are this Element's own
+           type-specific properties, never the Layer's
+```
+
+Frame is never a Layer subtype and never a property of the Holder
+itself — it is an ordinary Element, subject to the same placement rule
+as every other Theme Asset.
 
 ---
 
@@ -372,13 +468,22 @@ anything beyond that is an open decision, not an assumed capability).
 - The Layer Stack
 - Any Engine-level construct or vocabulary
 
-**Story Author** simply:
-- chooses a Scene (already a complete, curated experience)
-- inserts their one Primary Element into whichever Holder(s) that Scene
-  offers
-- adjusts whatever the Theme Author left `editable`/`moveable` on any
-  Element they're allowed to touch — nothing more, nothing the Theme
-  Author didn't explicitly leave open
+**Story Author** never designs a Scene — they personalize one. They may:
+
+1. Populate a Holder with their own original Primary Element.
+2. Modify a Theme-provided Element, only where the Theme Author has
+   explicitly left it `editable`/`moveable` (§8) — nothing more,
+   nothing the Theme Author didn't explicitly leave open.
+3. Add decorative Elements into a Decoration Slot (§7), drawn only from
+   Theme Decoration Packs or Personal Decoration Packs (§9).
+
+**Story Author may not:**
+- create a Holder
+- create a Layer (including a Decoration Slot — they add *into* one the
+  Theme Author already designated, never designate one themselves)
+- modify Canvas
+- alter Scene structure
+- reorder the Scene Stack
 
 ### Scene creation always starts from an Engine Scene Template
 
@@ -399,27 +504,60 @@ Holder arrangement, and a starter Layer set. The Theme Author then
 curates it — repositioning Holders, adding decoration, choosing Theme
 Assets — into the Scene a Story Author will actually see. Whether the
 resulting Scene keeps any lasting link back to the Template it started
-from is an open decision (§11) — this canon does not assume one exists.
+from is an open decision (§12) — this canon does not assume one exists.
 
 ---
 
-## 11. Open Decisions for Product Sign-off
+## 11. Ownership Matrix
+
+The engine model is only complete if these four questions have a clear
+answer for every object type: **Who owns it? Who edits it? Who supplies
+it? Who renders it?** This table is that check, applied exhaustively.
+
+| Object | Who owns it | Who edits it | Who supplies it | Who renders it |
+|---|---|---|---|---|
+| **Theme** | — (top of the tree) | Theme Author | Theme Author | Never rendered itself — its active Scene is |
+| **Theme Settings** | Theme | Theme Author | Theme Author | Never rendered — configuration only |
+| **Theme Assets (library)** | Theme (Theme Decoration Packs) or the cross-Theme catalog (Personal Decoration Packs, §9) | Theme Author (Theme packs); nobody edits Personal packs from inside a Theme | Theme Author authors Theme packs; the product supplies the Personal pack catalog | Never — not an Element until placed |
+| **Scene** | Theme | Theme Author | Theme Author, starting from an Engine Scene Template | The rendering pipeline (whichever Scene is active) |
+| **Canvas** | Scene (exactly one) | Theme Author only | Theme Author, from the Scene Template's default | Never rendered itself — it is the frame others render into |
+| **Scene Stack** | Canvas | Theme Author only (Story Author may never reorder it, §10) | Theme Author | Not rendered itself — it *is* the render order |
+| **Scene Layer** (ordinary) | Canvas | Theme Author only | Theme Author | Its Elements, in Scene Stack order |
+| **Decoration Slot** (a marked Scene Layer) | Canvas | Theme Author designates the slot; Story Author may only add/remove decorative Elements inside it — never move it, resize it, or reorder it in the stack | Theme Author designates which Scene Layer is a slot | Its Elements, in normal Scene Stack order |
+| **Holder** | Scene | Theme Author (Position/Size/Shape/Padding/Fit) — Story Author never edits Holder geometry | Theme Author, from the Scene Template's default | Its Holder Stack, clipped to Holder geometry |
+| **Holder Stack** | Holder | Theme Author only | Theme Author | Not rendered itself — it *is* the Holder's internal render order |
+| **Content Layer** (the reserved Holder Layer) | Holder (exactly one) | Its existence/position is fixed by the Theme Author; its one Element (the Primary Element) is supplied and, within Theme-allowed bounds, adjusted by the Story Author | Story Author supplies the Primary Element; Theme Author supplies the Content Layer itself | Its one Element, clipped to Holder geometry |
+| **Holder Layer** (decorative, non-Content) | Holder | Theme Author only | Theme Author, from Theme Assets | Inside the Holder's own stack |
+| **Element — Primary Element** | Content Layer | Story Author (their own content), plus whatever the Theme Author left `editable`/`moveable` (crop, position, zoom) | Story Author uploads/chooses it | As part of the Holder Stack |
+| **Element — Theme-placed** (frame, background fill, title text, …) | Whichever Layer the Theme Author placed it in | Theme Author always; Story Author only if that Element's `editable` is left on | Theme Author, from Theme Assets | Wherever its owning Layer sits in whichever stack it's in |
+| **Element — Story-added decoration** | A Decoration Slot (a Scene Layer) | Story Author (add/remove/reposition, within whatever bounds the Theme Author set for that Decoration Slot) | Story Author, choosing from Theme or Personal Decoration Packs | In the Decoration Slot's position in the Scene Stack |
+
+If any future object type can't fill in all four columns without a
+paragraph of caveats, that object isn't ready for the engine yet —
+that ambiguity means an ownership question got skipped, not that this
+table is too rigid.
+
+---
+
+## 12. Open Decisions for Product Sign-off
 
 These are the places this canon made a deliberate call rather than
-finding one obvious answer in the ticket that founded it. Each is a
-real product decision, not an implementation detail — resolve them
-before Builder V2 design begins, since each one changes what Builder V2
-needs to expose.
+finding one obvious answer in the brief that founded it. Each is a real
+product decision, not an implementation detail — resolve them before
+Builder V2 design begins, since each one changes what Builder V2 needs
+to expose.
 
-1. **Can a Story Author ever place a brand-new Element themselves** (the
-   V1 "open Sticker Studio, drop in a decoration" capability), or is
-   *all* Element placement — beyond the one Primary-Element insertion
-   into a Holder — exclusively a Theme Author activity? This canon
-   currently assumes the latter (§9, §10), which is a real, visible
-   capability change from Engine V1 if confirmed. If Story Authors
-   should keep some placement ability, this canon needs a defined,
-   narrow placement contract for them (e.g. "may place Sticker Elements
-   only, only into Layers the Theme Author marked open for it").
+1. **What exactly is a "Personal Decoration Pack"?** (§9, §11) Two
+   readings are both consistent with everything specified so far, and
+   they have very different implications: (a) a **per-account personal
+   collection** — decorations *this specific Story Author* has
+   uploaded or favorited, which implies accounts/identity the rest of
+   this product line may not currently require, or (b) a **shared,
+   cross-Theme catalog** — functionally a rename of Engine V1's
+   existing product-wide Sticker Library (`js/stickerLibrary.js`),
+   just no longer scoped to one Theme. This canon does not assume
+   either reading; Builder V2 cannot design a "Personal Decoration
+   Pack" UI until this is picked.
 2. **Do Scenes remember which Engine Scene Template they were created
    from?** A persisted link would enable a future "swap template" or
    "reset to template" tool; no persisted link keeps the Template
@@ -430,16 +568,97 @@ needs to expose.
    guarantees it's never mistaken for Theme Asset content; a
    Theme-brandable one lets Theme Authors keep visual consistency in
    the unfilled state. This canon assumes fixed generic chrome.
-4. **Frame Layer resolved as Frame Element** (§7) — flagged explicitly
-   because it contradicts the founding ticket's literal example text
-   rather than merely filling a gap in it. Confirm before Builder V2
-   assumes Frame decoration is authored exactly like any other Element.
-5. **Does Theme Settings need anything defined now**, or does it stay
+4. **Does Theme Settings need anything defined now**, or does it stay
    an intentionally empty placeholder (name/description/category-style
    metadata, by analogy with Engine V1's Theme manifest) until a
    concrete Builder V2 screen needs it? This canon takes no position —
    Theme Settings is named in §2 as a sibling of Theme Assets and
    Scenes and left otherwise undefined on purpose.
+5. **Can a Decoration Slot's Story-Author-facing bounds be constrained
+   per-slot** (e.g. "stickers only, no text decorations," or "at most
+   3 decorations")? Nothing in this canon prevents it, but nothing
+   defines the constraint vocabulary either — left for Builder V2 to
+   surface once this canon freezes.
+
+### Resolved this pass (no longer open)
+
+- ~~Can a Story Author ever place a brand-new Element themselves?~~ —
+  **Resolved: yes, but narrowly.** Only decorative Elements, only into
+  a Theme-Author-designated Decoration Slot, only from Theme or
+  Personal Decoration Packs (§7, §9, §10). They may never place a
+  Text/Image/Shape/etc. Element anywhere else, never create a Layer or
+  Holder to hold one.
+- ~~Is "Frame is a Layer subtype" or "Frame is an Element" correct?~~ —
+  **Resolved: Frame is a Theme Asset that becomes an Element**, exactly
+  like every other Theme Asset (§7, §9). Confirmed, not just proposed.
+
+---
+
+## 13. Engine Invariants
+
+Every statement below must hold for every Theme, every Scene, every
+object, with no exceptions carved out later. If a future feature would
+require breaking one of these, the feature is wrong, or this list is —
+either way, that's a canon discussion, not a quiet workaround.
+
+**Theme and Scene**
+1. A Theme is a curated library of Scenes.
+2. A Scene is a complete, authored experience.
+3. A Story Author never starts from a blank Scene — every Scene they
+   encounter was already fully authored by a Theme Author.
+4. A Scene is always created from an Engine Scene Template, never from
+   a blank Canvas.
+
+**Canvas and the Scene Stack**
+5. Every Scene owns exactly one Canvas.
+6. Canvas owns the Scene Stack; Canvas is never itself a member of it.
+7. The Scene Stack contains Scene Layers and Holders, interleaved,
+   bottom to top.
+8. Canvas has no background property — the visual background is
+   whatever Element occupies the lowest Scene Stack position.
+
+**Holder**
+9. Every Holder owns an independent Holder Stack, clipped by that
+   Holder's own geometry.
+10. Every Holder presents exactly one Primary Element.
+11. The Holder is sacred: no AI-generated content may automatically
+    appear inside it — its Content Layer's only legitimate occupant is
+    something the Story Author actually chose or uploaded.
+12. A Holder's Content Layer is reserved — only it may hold the Primary
+    Element, and exactly one exists per Holder.
+13. Decorations are Scene Elements and never belong to a Holder, even
+    when they visually overlap one.
+
+**Layers and Elements**
+14. Containers (Canvas, Holder) own Layers; a Layer owns Elements.
+15. Layers are transparent by default and carry no visual properties of
+    their own.
+16. Layers organize; Elements render.
+17. Every Element belongs to exactly one Layer.
+18. A Theme Asset becomes an Element only after being placed into a
+    Layer — never before.
+19. Frame is a Theme Asset, not a Layer subtype; it becomes a Frame
+    Element like any other placed asset.
+
+**The Base Object contract**
+20. Only Elements and Holders carry `editable`/`moveable`/`visible`/
+    `clickable`. Canvas carries none of the four; a Layer carries none
+    of the four (only its own separate Show/Hide); a Theme Asset
+    carries none of the four until placed.
+21. The four Base Object properties are independent and freely
+    combinable. `editable` gates exposure of an object's type-specific
+    properties — it is not itself a visual property.
+22. `visible` is the only Base Object property that affects rendered
+    output. `editable`/`moveable`/`clickable` govern editing-surface
+    affordances only and are inert in a published/reader render.
+
+**Authoring boundaries**
+23. A Story Author may add a decorative Element only into a
+    Theme-Author-designated Decoration Slot, sourced only from a Theme
+    or Personal Decoration Pack — never anywhere else, and never by
+    creating a new Layer or Holder to hold one.
+24. A Story Author may never create a Holder or a Layer, modify Canvas,
+    alter Scene structure, or reorder the Scene Stack.
 
 ---
 
@@ -454,6 +673,7 @@ mapping is visible and nothing feels silently discarded.
 | Layout (aspect, composition, padding, spacing, alignment, caption position) | Canvas (Size, Aspect Ratio, Safe Area) + Holder placement (Position, Size, Shape, Padding, Fit) — authored per-Scene, not a separately reusable object |
 | Frame (mat, border, wall tone, shadow) | A Frame Element, placed into a Holder Layer like any other Element (§7) |
 | Layer Pack (a named, reusable set of caption/decoration layers shared across Representations) | Layers belonging directly to their Scene; no cross-Scene reuse is assumed in this foundation (a future Theme-level preset system is possible, but not part of V2's starting model) |
+| Sticker Library (`js/stickerLibrary.js`, a product-wide catalog spanning every Theme) | Likely continuity for **Personal Decoration Packs** (§9) — probably the same cross-Theme catalog, renamed to fit V2's vocabulary, rather than a new capability. Not confirmed; see Open Decisions, item 1. |
 
 ---
 
