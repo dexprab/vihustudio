@@ -441,13 +441,23 @@ html, body {
     text-overflow: ellipsis;
 }
 
+/* Sprint B2.0.6 — Editing Confidence. Two states only (dirty/saved) —
+   see worldBuilderApp.js's _setSaveState() for why a distinct "Saving…"
+   sub-state would never be observably different from "dirty" given a
+   synchronous save. The dot is a literal 🟠/🟢 emoji glyph, so no CSS
+   colour is needed for it; the label text still gets a colour to match. */
 .wb-workspace-saved {
     font-size: 12px;
-    color: var(--wb-sage);
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.wb-workspace-saved span { color: var(--wb-text-secondary); }
+#wb-save-dot { font-size: 9px; line-height: 1; }
+
+.wb-workspace-saved.wb-save-dirty #wb-workspace-saved-text { color: #B86C21; font-weight: 700; }
+.wb-workspace-saved.wb-save-saved #wb-workspace-saved-text { color: var(--wb-text-secondary); }
 
 .wb-workspace-header-right {
     display: flex;
@@ -474,6 +484,12 @@ html, body {
     border-color: transparent;
     font-weight: 700;
     color: #4A3A10;
+}
+
+/* Sprint B2.0.6 — a visible ring while changes are pending, so the Save
+   button itself (not just the header badge) communicates state. */
+.wb-workspace-btn-primary.wb-save-btn-dirty {
+    box-shadow: 0 0 0 2px rgba(184, 108, 33, .35);
 }
 
 .wb-workspace-btn-icon {
@@ -517,19 +533,49 @@ html, body {
 
 .wb-menu-item-danger { color: #A03A3A; }
 
-/* ---------- Builder guidance (Sprint B2.0.1) ---------- */
+/* ---------- Builder guidance (Sprint B2.0.1, collapsed by default
+   since Sprint B2.0.6 — see worldBuilderApp.js's _stateIntro()) ---------- */
 
 .wb-state-intro {
     background: var(--wb-sky);
     border-radius: 12px;
-    padding: 12px 14px;
+    padding: 10px 14px;
     margin-bottom: 16px;
     font-size: 12.5px;
     line-height: 1.5;
     color: var(--wb-text);
 }
 
+.wb-state-intro-summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--wb-navy);
+    list-style: none;
+    user-select: none;
+}
+
+.wb-state-intro-summary::-webkit-details-marker { display: none; }
+.wb-state-intro-summary::before { content: '▸ '; }
+.wb-state-intro[open] .wb-state-intro-summary::before { content: '▾ '; }
+
+.wb-state-intro-body { margin-top: 8px; }
+
 .wb-state-intro strong { color: var(--wb-navy); }
+
+/* Short, single-purpose status banners (e.g. "Previewing:", "Current
+   Representation:") — always visible, never collapsed, so they're kept
+   visually distinct from the collapsible guidance above. */
+.wb-info-banner {
+    background: var(--wb-sky);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--wb-text);
+}
+
+.wb-info-banner strong { color: var(--wb-navy); }
 
 .wb-field-help {
     font-size: 11px;
@@ -559,15 +605,61 @@ html, body {
    .wb-working-canvas-inner/.wb-runtime-preview-canvas-inner), while the
    Inspector (still full width, still independently scrollable) keeps a
    genuinely usable, if smaller, share. */
+/* Sprint B2.0.6 — Workspace Customisation. Nav/Runtime width and
+   Inspector height are now CSS custom properties (set inline by
+   worldBuilderApp.js's _applyWorkspaceLayout(), defaulting to the
+   Sprint B2.0.5 values below when nothing is persisted yet), and three
+   6px sash tracks (navsash/rtsash/tbsash) carry the drag handles. This
+   is the same nav/working/runtime/inspector architecture as before —
+   only the track *sizes* became adjustable; the regions, their roles,
+   and their grid-area names are unchanged. Working View stays "1fr" (it
+   always gets whatever's left after Nav + Runtime Preview), so dragging
+   the Working View ↔ Runtime Preview sash only ever changes
+   --wb-runtime-w — Working View's share follows automatically. */
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 170px 1fr 380px;
-    grid-template-rows: 64% 36%;
+    grid-template-columns: var(--wb-nav-w, 190px) 6px 1fr 6px var(--wb-runtime-w, 380px);
+    grid-template-rows: 1fr 6px var(--wb-inspector-h, 320px);
     grid-template-areas:
-        "nav working runtime"
-        "nav inspector inspector";
+        "nav navsash working rtsash runtime"
+        "nav navsash tbsash tbsash tbsash"
+        "nav navsash inspector inspector inspector";
     min-height: 0;
+}
+
+.wb-resize-handle {
+    position: relative;
+    background: transparent;
+    z-index: 5;
+}
+
+.wb-resize-handle-v { cursor: col-resize; }
+.wb-resize-handle-h { cursor: row-resize; }
+
+#wb-resize-nav { grid-area: navsash; }
+#wb-resize-runtime { grid-area: rtsash; }
+#wb-resize-inspector { grid-area: tbsash; }
+
+.wb-resize-handle::after {
+    content: '';
+    position: absolute;
+    background: var(--wb-border);
+    border-radius: 2px;
+    transition: background .12s ease;
+}
+
+.wb-resize-handle-v::after { top: 8%; bottom: 8%; left: 2px; width: 2px; }
+.wb-resize-handle-h::after { left: 8%; right: 8%; top: 2px; height: 2px; }
+
+.wb-resize-handle:hover::after,
+.wb-resize-handle.wb-resize-dragging::after {
+    background: var(--wb-gold);
+}
+
+.wb-resize-handle:focus-visible {
+    outline: 2px solid var(--wb-gold);
+    outline-offset: -2px;
 }
 
 .wb-workspace-nav {
@@ -1210,14 +1302,38 @@ html, body {
     white-space: nowrap;
 }
 
-/* ---------- Assets (Sprint B2.0) ---------- */
+/* ---------- Assets (Sprint B2.0; upload cards since Sprint B2.0.6) ---------- */
+
+.wb-asset-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 6px;
+}
 
 .wb-asset-slot-row {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--wb-border);
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 14px;
+    background: var(--wb-cream);
+}
+
+.wb-asset-slot-row .wb-asset-thumb {
+    width: 100%;
+    height: 72px;
+    border-radius: 10px;
+    font-size: 24px;
+}
+
+.wb-asset-spec-line { line-height: 1.4; }
+
+.wb-asset-slot-row .wb-asset-change-btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 2px;
 }
 
 .wb-asset-slot-info {
@@ -1282,17 +1398,6 @@ html, body {
     transition: width .2s ease;
 }
 
-.wb-asset-spec-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px 12px;
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--wb-text-secondary);
-}
-
-.wb-asset-spec-grid span strong { color: var(--wb-text); font-weight: 600; }
-
 /* ---------- Validation "Fix Now" (Sprint B2.0.1) ---------- */
 
 .wb-fix-now-btn {
@@ -1354,29 +1459,62 @@ html, body {
     margin: 4px 0 8px;
 }
 
-/* ---------- Build / Publish (Sprint B2.0) ---------- */
+/* ---------- Build / Publish (Sprint B2.0; compact cards since B2.0.6) ---------- */
 
+/* Sprint B2.0.6 — was a single tall box of stacked <p><strong> lines;
+   now a grid of small stat cards (see worldBuilderApp.js's
+   _statCardGrid()) matching the ticket's "Build: Compact card layout." */
 .wb-build-info-box {
-    background: var(--wb-cream);
-    border: 1px solid var(--wb-border);
-    border-radius: 12px;
-    padding: 12px 14px;
-    font-size: 13px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
     margin-bottom: 14px;
 }
 
-.wb-build-info-box p { margin: 0 0 8px; }
-.wb-build-info-box p:last-child { margin-bottom: 0; }
+.wb-build-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.wb-build-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--wb-text-secondary);
+}
+
+.wb-build-stat-value {
+    font-size: 13px;
+    color: var(--wb-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .wb-build-btn { font-size: 15px; padding: 12px; }
 
+/* Sprint B2.0.6 — "Publish: Compact action cards": a grid of vertical
+   cards (icon, title, note stacked) instead of full-width horizontal
+   rows stacked one per line. */
+.wb-publish-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
 .wb-publish-option {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     width: 100%;
     padding: 14px;
-    margin-bottom: 10px;
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);
     border-radius: 12px;

@@ -255,23 +255,37 @@
         publish: 'What: share the World Package Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: choose Export (download for backup/sharing) or Publish to Official Themes (installs it where Studio will find it). Next: open VihuStudio and confirm your World appears.'
     };
 
+    // Sprint B2.0.6 — Builder Information Density. This guidance was
+    // always useful once, rarely useful twice — but it used to occupy
+    // permanent, premium Property Editor space above every single field.
+    // A native <details> collapses it by default (no `open` attribute)
+    // so documentation never competes with editing, while staying one
+    // click away for whoever still wants it; no JS toggle logic needed,
+    // the browser already does this correctly and accessibly.
     function _stateIntro(navId) {
         const text = STATE_GUIDANCE[navId];
         if (!text) return;
         const parts = text.split(/(What:|Why:|Do:|Next:)/).filter(function (s) { return s.trim().length; });
-        const box = document.createElement('div');
-        box.className = 'wb-state-intro';
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro';
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        summary.textContent = 'What is this, and what should I do here?';
+        details.appendChild(summary);
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
         for (let i = 0; i < parts.length; i += 2) {
             const label = parts[i];
-            const body = parts[i + 1] || '';
+            const bodyText = parts[i + 1] || '';
             const p = document.createElement('div');
             const strong = document.createElement('strong');
             strong.textContent = label + ' ';
             p.appendChild(strong);
-            p.appendChild(document.createTextNode(body.trim()));
-            box.appendChild(p);
+            p.appendChild(document.createTextNode(bodyText.trim()));
+            body.appendChild(p);
         }
-        contextPanel.appendChild(box);
+        details.appendChild(body);
+        contextPanel.appendChild(details);
     }
 
     function _fieldHelp(text) {
@@ -311,7 +325,10 @@
     const btnMenu = $('wb-btn-menu');
     const menuDropdown = $('wb-menu-dropdown');
     const menuDuplicate = $('wb-menu-duplicate');
+    const menuResetLayout = $('wb-menu-reset-layout');
     const menuDelete = $('wb-menu-delete');
+    const savedBadge = $('wb-workspace-saved');
+    const saveDot = $('wb-save-dot');
     const savedText = $('wb-workspace-saved-text');
 
     // Settings — Overview already IS "World Settings" (World Name /
@@ -325,22 +342,42 @@
         _renderWorkspace();
     });
 
+    // Sprint B2.0.6 — Editing Confidence. "Draft Saved" was a single,
+    // static label that never actually told a creator whether their
+    // most recent keystroke had been saved. Every edit already
+    // autosaves synchronously (ProjectStore.save is a plain localStorage
+    // write — there is no genuine async gap to bridge), so rather than
+    // fake a "Saving…" sub-state that would never be observably
+    // different from "dirty" in the same synchronous tick, the save
+    // itself still happens immediately and only the *visible* return to
+    // "saved" is deliberately debounced off the trailing edge of edits —
+    // this both gives the 🟠 Unsaved Changes state a real, perceptible
+    // moment on screen, and keeps the indicator from flickering on every
+    // keystroke while a creator is still typing.
+    let _saveDisplayTimer = null;
+    function _setSaveState(state) {
+        if (state === 'dirty') {
+            saveDot.textContent = '🟠';
+            savedText.textContent = 'Unsaved Changes';
+        } else {
+            saveDot.textContent = '🟢';
+            savedText.textContent = 'All Changes Saved';
+        }
+        savedBadge.classList.toggle('wb-save-dirty', state === 'dirty');
+        savedBadge.classList.toggle('wb-save-saved', state !== 'dirty');
+        btnSave.classList.toggle('wb-save-btn-dirty', state === 'dirty');
+    }
+
     // Save — every field already autosaves on change (ProjectStore.save
     // per edit); this button's job is an explicit, user-visible
     // confirmation that nothing is pending, not a second save mechanism.
     btnSave.addEventListener('click', function () {
         window.ProjectStore.save(currentProject);
-        const original = savedText.textContent;
-        btnSave.textContent = '✓ Saved';
-        savedText.textContent = 'Saved just now';
-        setTimeout(function () {
-            btnSave.innerHTML = '💾 Save';
-            savedText.textContent = original;
-        }, 1500);
+        clearTimeout(_saveDisplayTimer);
+        _setSaveState('saved');
     });
 
-    // Overflow menu — Duplicate/Delete, the two real, non-redundant
-    // actions a Project Workspace needs. No dead entries.
+    // Overflow menu — Duplicate/Reset Layout/Delete. No dead entries.
     btnMenu.addEventListener('click', function (e) {
         e.stopPropagation();
         menuDropdown.classList.toggle('wb-hidden');
@@ -356,11 +393,120 @@
         showWelcome();
     });
 
+    menuResetLayout.addEventListener('click', function () {
+        _resetWorkspaceLayout();
+        menuDropdown.classList.add('wb-hidden');
+    });
+
     menuDelete.addEventListener('click', function () {
         if (!window.confirm('Delete "' + currentProject.name + '"? This cannot be undone.')) return;
         window.ProjectStore.remove(currentProject.id);
         menuDropdown.classList.add('wb-hidden');
         showWelcome();
+    });
+
+    // ---------------------------------------------------------------
+    // Sprint B2.0.6 — Workspace Customisation. Three sash-style resize
+    // handles, each a real CSS Grid track (see world-builder.css's
+    // .wb-workspace-body rule) rather than an absolutely-positioned
+    // overlay recomputed after every render — a real grid track can
+    // never drift out of sync with the panel boundary it drags, and
+    // resizing it is nothing more than writing one CSS custom property.
+    // This is deliberately a preference layer on top of the frozen
+    // nav/working/runtime/inspector architecture, not a change to it —
+    // the same four regions, same roles, same grid-area names as Sprint
+    // B2.0.4/B2.0.5, just with their track sizes now adjustable and
+    // persisted instead of hardcoded.
+    // ---------------------------------------------------------------
+
+    const WORKSPACE_LAYOUT_KEY = 'vihustudio.worldBuilder.workspaceLayout';
+    const LAYOUT_DEFAULTS = { navW: 190, runtimeW: 380, inspectorH: 320 };
+    const NAV_W_MIN = 180, NAV_W_MAX = 280;
+    const RUNTIME_PCT_MIN = 0.25, RUNTIME_PCT_MAX = 0.65; // Working View >=35%, Runtime Preview >=25% of the combined width
+    const INSPECTOR_H_MIN = 220;
+
+    const workspaceBody = $('wb-workspace-body');
+    const resizeNav = $('wb-resize-nav');
+    const resizeRuntime = $('wb-resize-runtime');
+    const resizeInspector = $('wb-resize-inspector');
+
+    function _loadWorkspaceLayout() {
+        try {
+            const raw = window.localStorage.getItem(WORKSPACE_LAYOUT_KEY);
+            if (!raw) return Object.assign({}, LAYOUT_DEFAULTS);
+            const parsed = JSON.parse(raw);
+            return {
+                navW: typeof parsed.navW === 'number' ? parsed.navW : LAYOUT_DEFAULTS.navW,
+                runtimeW: typeof parsed.runtimeW === 'number' ? parsed.runtimeW : LAYOUT_DEFAULTS.runtimeW,
+                inspectorH: typeof parsed.inspectorH === 'number' ? parsed.inspectorH : LAYOUT_DEFAULTS.inspectorH
+            };
+        } catch (e) {
+            return Object.assign({}, LAYOUT_DEFAULTS);
+        }
+    }
+
+    function _saveWorkspaceLayout(layout) {
+        try {
+            window.localStorage.setItem(WORKSPACE_LAYOUT_KEY, JSON.stringify(layout));
+        } catch (e) { /* localStorage unavailable — layout simply won't persist */ }
+    }
+
+    function _applyWorkspaceLayout() {
+        const layout = _loadWorkspaceLayout();
+        workspaceBody.style.setProperty('--wb-nav-w', layout.navW + 'px');
+        workspaceBody.style.setProperty('--wb-runtime-w', layout.runtimeW + 'px');
+        workspaceBody.style.setProperty('--wb-inspector-h', layout.inspectorH + 'px');
+    }
+
+    // Reset Workspace Layout (three-dot menu) — clears the persisted
+    // preference and reapplies the shipped defaults immediately, on
+    // this Workspace, without a reload.
+    function _resetWorkspaceLayout() {
+        try { window.localStorage.removeItem(WORKSPACE_LAYOUT_KEY); } catch (e) { /* ignore */ }
+        _applyWorkspaceLayout();
+    }
+
+    // One shared drag driver for all three handles — each just supplies
+    // how to read/clamp/write its own dimension from a pointer position.
+    function _wireResizeHandle(handle, onDrag) {
+        handle.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            handle.classList.add('wb-resize-dragging');
+            const bodyRect = workspaceBody.getBoundingClientRect();
+            function move(ev) { onDrag(ev, bodyRect); }
+            function up() {
+                handle.classList.remove('wb-resize-dragging');
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                const layout = _loadWorkspaceLayout();
+                const current = getComputedStyle(workspaceBody);
+                layout.navW = parseFloat(current.getPropertyValue('--wb-nav-w')) || layout.navW;
+                layout.runtimeW = parseFloat(current.getPropertyValue('--wb-runtime-w')) || layout.runtimeW;
+                layout.inspectorH = parseFloat(current.getPropertyValue('--wb-inspector-h')) || layout.inspectorH;
+                _saveWorkspaceLayout(layout);
+            }
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        });
+    }
+
+    _wireResizeHandle(resizeNav, function (e, bodyRect) {
+        const navW = Math.min(NAV_W_MAX, Math.max(NAV_W_MIN, e.clientX - bodyRect.left));
+        workspaceBody.style.setProperty('--wb-nav-w', navW + 'px');
+    });
+
+    _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
+        const navW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-nav-w')) || LAYOUT_DEFAULTS.navW;
+        const combinedW = bodyRect.width - navW - 12; // minus the two 6px sash tracks
+        if (combinedW <= 0) return;
+        const runtimeW = Math.min(combinedW * RUNTIME_PCT_MAX, Math.max(combinedW * RUNTIME_PCT_MIN, bodyRect.right - e.clientX));
+        workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
+    });
+
+    _wireResizeHandle(resizeInspector, function (e, bodyRect) {
+        const maxH = Math.min(bodyRect.height - 150, window.innerHeight * 0.65);
+        const inspectorH = Math.min(maxH, Math.max(INSPECTOR_H_MIN, bodyRect.bottom - e.clientY));
+        workspaceBody.style.setProperty('--wb-inspector-h', inspectorH + 'px');
     });
 
     // ---------------------------------------------------------------
@@ -574,10 +720,22 @@
         _renderWorkspaceHeader();
         _renderNav();
         _renderWorkspace();
+        _applyWorkspaceLayout();
+        _setSaveState('saved');
     }
 
+    // Sprint B2.0.6 — see _setSaveState above for why this shows the
+    // dirty indicator immediately, saves synchronously (no data-loss
+    // risk from debouncing the real write), and only debounces the
+    // *return* to "saved" so rapid edits settle into one clean
+    // confirmation instead of flickering.
     function _persist() {
+        _setSaveState('dirty');
         window.ProjectStore.save(currentProject);
+        clearTimeout(_saveDisplayTimer);
+        _saveDisplayTimer = setTimeout(function () {
+            _setSaveState('saved');
+        }, 600);
         _renderWorkspaceHeader();
     }
 
@@ -1142,7 +1300,7 @@
         if (reps.length) {
             const activeRep = window.ProjectModel.findRepresentation(project, currentRepresentationId) || reps[0];
             const repBox = document.createElement('div');
-            repBox.className = 'wb-state-intro';
+            repBox.className = 'wb-info-banner';
             const repTitle = document.createElement('div');
             const repStrong = document.createElement('strong');
             repStrong.textContent = 'Previewing: ';
@@ -1156,45 +1314,24 @@
             contextPanel.appendChild(_fieldHelp('Pick a different thumbnail below the Preview to browse this World\'s Representations. Edit their details in the Representations state.'));
         }
 
-        _fieldGroup('World Name', _textInput(project.name, function (v) {
+        // Sprint B2.0.6 — Property Editor grouping. Short, related
+        // fields pair side by side (Name|Tagline, Publisher|Version,
+        // Purpose|Mood, Thumbnail|Hero Image as upload cards); only
+        // Description (multiline) and the two full-width identity rows
+        // (World Id, Creation Types) stay their own row, per the
+        // sprint's own "only multiline content should span full width"
+        // rule.
+        const nameGroup = _buildFieldGroup('World Name', _textInput(project.name, function (v) {
             window.ProjectModel.setIdentity(project, { name: v });
             _persist();
         }));
-
-        _fieldGroup('Tagline', _textInput(project.tagline, function (v) {
+        const taglineGroup = _buildFieldGroup('Tagline', _textInput(project.tagline, function (v) {
             window.ProjectModel.setIdentity(project, { tagline: v });
             _persist();
             _renderPreview();
         }));
+        _fieldRow(nameGroup, taglineGroup);
 
-        _fieldGroup('Description', _textarea(project.description, function (v) {
-            window.ProjectModel.setIdentity(project, { description: v });
-            _persist();
-        }));
-
-        _fieldGroup('World Id', _readOnlyField(man.id),
-            'Auto-generated when this World was created. It never changes, so nothing that references this World (Studio, links, other Worlds) ever breaks.');
-
-        const typeRow = document.createElement('div');
-        typeRow.className = 'wb-creation-type-row';
-        const activeTypes = window.ProjectModel.creationTypes(project);
-        window.ProjectModel.ALL_CREATION_TYPES.forEach(function (t) {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'wb-creation-type-chip' + (activeTypes.indexOf(t) !== -1 ? ' active' : '');
-            chip.title = t;
-            chip.textContent = CREATION_TYPE_ICONS[t] || '✨';
-            chip.addEventListener('click', function () {
-                window.ProjectModel.toggleCreationType(project, t);
-                _persist();
-                _renderOverviewPanel();
-            });
-            typeRow.appendChild(chip);
-        });
-        _fieldGroup('Creation Types', typeRow);
-
-        // Sprint B2.0.4 — paired side by side now that the Inspector has
-        // the width to spare.
         const publisherGroup = _buildFieldGroup('Publisher', _textInput(man.author, function (v) {
             window.ProjectModel.setIdentity(project, { publisher: v });
             _persist();
@@ -1217,7 +1354,28 @@
         }));
         _fieldRow(purposeGroup, moodGroup);
 
-        _fieldGroup('Thumbnail', _assetUploadRow(
+        _fieldGroup('World Id', _readOnlyField(man.id),
+            'Auto-generated when this World was created. It never changes, so nothing that references this World (Studio, links, other Worlds) ever breaks.');
+
+        const typeRow = document.createElement('div');
+        typeRow.className = 'wb-creation-type-row';
+        const activeTypes = window.ProjectModel.creationTypes(project);
+        window.ProjectModel.ALL_CREATION_TYPES.forEach(function (t) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'wb-creation-type-chip' + (activeTypes.indexOf(t) !== -1 ? ' active' : '');
+            chip.title = t;
+            chip.textContent = CREATION_TYPE_ICONS[t] || '✨';
+            chip.addEventListener('click', function () {
+                window.ProjectModel.toggleCreationType(project, t);
+                _persist();
+                _renderOverviewPanel();
+            });
+            typeRow.appendChild(chip);
+        });
+        _fieldGroup('Creation Types', typeRow);
+
+        const thumbnailGroup = _buildFieldGroup('Thumbnail', _assetUploadRow(
             project.icon || '🌎',
             window.ProjectModel.getAsset(project, 'thumbnail.png'),
             function (dataURL) {
@@ -1226,7 +1384,7 @@
                 _renderWorkspace();
             }
         ));
-        _fieldGroup('Hero Image', _assetUploadRow(
+        const heroGroup = _buildFieldGroup('Hero Image', _assetUploadRow(
             '🖼️',
             window.ProjectModel.getAsset(project, 'preview.png'),
             function (dataURL) {
@@ -1235,6 +1393,12 @@
                 _renderWorkspace();
             }
         ));
+        _fieldRow(thumbnailGroup, heroGroup);
+
+        _fieldGroup('Description', _textarea(project.description, function (v) {
+            window.ProjectModel.setIdentity(project, { description: v });
+            _persist();
+        }));
     }
 
     // ---------- State 2: Representations ----------
@@ -1302,24 +1466,21 @@
         divider.textContent = 'Selected Representation';
         contextPanel.appendChild(divider);
 
-        _fieldGroup('Name', _textInput(rep.name, function (v) {
+        // Sprint B2.0.6 — Property Editor grouping: Name|Default Layout,
+        // Default Frame|Layer Pack, Supported Actions its own row
+        // (chips, not naturally pairable), Description last (multiline,
+        // full width).
+        const nameGroup = _buildFieldGroup('Name', _textInput(rep.name, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'name', v);
             _persist();
             _renderPreviewSelector();
         }));
-
-        _fieldGroup('Description', _textarea(rep.description, function (v) {
-            window.ProjectModel.setRepresentationField(project, rep.id, 'description', v);
-            _persist();
-        }));
-
-        // Sprint B2.0.4 — paired side by side (both short selects,
-        // naturally related) now that the Inspector has room to spare.
         const defaultLayoutGroup = _buildFieldGroup('Default Layout', _select(_representationOptionsFor('layout'), rep.layout, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'layout', v);
             _persist();
             _renderPreview();
         }), 'Which Layout this Representation opens with. Defined in Layouts.');
+        _fieldRow(nameGroup, defaultLayoutGroup);
 
         const defaultFrameGroup = _buildFieldGroup('Default Frame', _select(_representationOptionsFor('frame'), rep.defaultFrame, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultFrame', v || null);
@@ -1327,15 +1488,14 @@
             _renderPreview();
         }), 'Which Frame Variation this Representation suggests first. Defined in Frames.');
 
-        _fieldRow(defaultLayoutGroup, defaultFrameGroup);
-
         const packOptions = window.ProjectModel.listLayerPacks(project).map(function (p) {
             return { value: p.id, label: p.name };
         });
-        _fieldGroup('Layer Pack', _select(packOptions, rep.defaultLayerPack || packOptions[0].value, function (v) {
+        const layerPackGroup = _buildFieldGroup('Layer Pack', _select(packOptions, rep.defaultLayerPack || packOptions[0].value, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultLayerPack', v);
             _persist();
         }), 'Every new World begins with a default Layer Pack called Basic — a small set of captions and decorations placed on the page. You can customise or rename it later in the Layer Packs state.');
+        _fieldRow(defaultFrameGroup, layerPackGroup);
 
         const actionRow = document.createElement('div');
         actionRow.className = 'wb-action-chip-row';
@@ -1357,6 +1517,11 @@
             actionRow.appendChild(chip);
         });
         _fieldGroup('Supported Actions', actionRow);
+
+        _fieldGroup('Description', _textarea(rep.description, function (v) {
+            window.ProjectModel.setRepresentationField(project, rep.id, 'description', v);
+            _persist();
+        }));
     }
 
     // ---------- State 3: Layouts ----------
@@ -1377,7 +1542,7 @@
         const activeRepForLayouts = window.ProjectModel.findRepresentation(project, currentRepresentationId);
         if (activeRepForLayouts) {
             const repBanner = document.createElement('div');
-            repBanner.className = 'wb-state-intro';
+            repBanner.className = 'wb-info-banner';
             const repBannerTitle = document.createElement('div');
             const repBannerStrong = document.createElement('strong');
             repBannerStrong.textContent = 'Current Representation: ';
@@ -1444,7 +1609,12 @@
         divider.textContent = 'Selected Layout';
         contextPanel.appendChild(divider);
 
-        _fieldGroup('Layout Name', _textInput(layout.name || _capitalize(layout.id), function (v) {
+        // Sprint B2.0.6 — Property Editor grouping: Name|Aspect,
+        // Composition|Caption Position, Padding|Spacing, Alignment|Used
+        // By (a compact readout of the same reuse data the list above
+        // already shows per-row, surfaced here too since "Used By" is
+        // part of this Layout's own property grid per the sprint spec).
+        const nameGroup = _buildFieldGroup('Layout Name', _textInput(layout.name || _capitalize(layout.id), function (v) {
             layout.name = v;
             _persist();
             _renderPreviewSelector();
@@ -1472,6 +1642,7 @@
             _renderLayoutsPanel();
             _renderPreview();
         }), 'The page shape this Layout resolves to.');
+        _fieldRow(nameGroup, aspectGroup);
 
         const isQuoteAspect = layout.aspect === 'quote';
         const compositionOptions = isQuoteAspect
@@ -1490,9 +1661,17 @@
             ? 'Fixed for a Quote-aspect Layout.'
             : 'How the Frame and caption are arranged.');
 
-        // Sprint B2.0.4 — Inspector is wider now; pair short, related
-        // fields side by side instead of one long vertical form.
-        _fieldRow(aspectGroup, compositionGroup);
+        const captionPositionGroup = _buildFieldGroup('Caption Position', _select([
+            { value: 'below', label: 'Below' },
+            { value: 'right', label: 'Right' },
+            { value: 'overlay', label: 'Overlay' },
+            { value: 'none', label: 'None' }
+        ], layout.captionPosition, function (v) {
+            layout.captionPosition = v;
+            _persist();
+            _renderPreview();
+        }), 'Moves the sample caption in the Working View.');
+        _fieldRow(compositionGroup, captionPositionGroup);
 
         const holderDiagram = document.createElement('div');
         holderDiagram.className = 'wb-holder-area-diagram';
@@ -1513,17 +1692,6 @@
 
         _fieldRow(paddingGroup, spacingGroup);
 
-        const captionPositionGroup = _buildFieldGroup('Caption Position', _select([
-            { value: 'below', label: 'Below' },
-            { value: 'right', label: 'Right' },
-            { value: 'overlay', label: 'Overlay' },
-            { value: 'none', label: 'None' }
-        ], layout.captionPosition, function (v) {
-            layout.captionPosition = v;
-            _persist();
-            _renderPreview();
-        }), 'Moves the sample caption in the Working View.');
-
         const alignRow = document.createElement('div');
         alignRow.className = 'wb-alignment-row';
         ['left', 'center', 'right'].forEach(function (align) {
@@ -1542,7 +1710,16 @@
         });
         const alignmentGroup = _buildFieldGroup('Alignment', alignRow);
 
-        _fieldRow(captionPositionGroup, alignmentGroup);
+        const usedBySelected = allReps.filter(function (r) { return r.layout === layout.id; });
+        const usedByReadout = document.createElement('p');
+        usedByReadout.className = 'wb-field-hint';
+        usedByReadout.style.margin = '9px 0 0';
+        usedByReadout.textContent = usedBySelected.length
+            ? usedBySelected.map(function (r) { return '✓ ' + r.name; }).join('   ')
+            : 'Not used by any Representation yet';
+        const usedByGroup = _buildFieldGroup('Used By', usedByReadout);
+
+        _fieldRow(alignmentGroup, usedByGroup);
     }
 
     // ---------- State 4: Frames (Sprint B2.0) ----------
@@ -1623,51 +1800,32 @@
         divider.textContent = 'Selected Frame';
         contextPanel.appendChild(divider);
 
-        _fieldGroup('Frame Name', _textInput(frame.name, function (v) {
+        // Sprint B2.0.6 — Property Editor grouping: Name|Wall Tone,
+        // Border|Corner Radius, Shadow|Inset, Padding|Margin, Thickness
+        // alone (doesn't pair naturally with what's left), Description
+        // last (multiline, full width).
+        const nameGroup = _buildFieldGroup('Frame Name', _textInput(frame.name, function (v) {
             window.ProjectModel.setFrameField(project, frame.id, 'name', v);
             _persist();
             _renderPreviewSelector();
-        }));
-
-        _fieldGroup('Description', _textarea(frame.description, function (v) {
-            window.ProjectModel.setFrameField(project, frame.id, 'description', v);
-            _persist();
-        }));
-
-        // Sprint B2.0.4 — paired side by side now that the Inspector has
-        // the width to spare (see the Layouts state for the same idea).
-        const thicknessGroup = _buildFieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'frameThickness', v);
-            _persist();
-            _renderPreview();
-        }));
-        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'matWidth', v);
-            _persist();
-        }));
-        _fieldRow(thicknessGroup, matWidthGroup);
-
-        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'inset', v);
-            _persist();
-        }));
-        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
-            _persist();
-        }));
-        _fieldRow(insetGroup, cornerRadiusGroup);
-
-        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'borderColor', v);
-            _persist();
-            _renderPreview();
         }));
         const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'wallTone', v);
             _persist();
             _renderPreview();
         }));
-        _fieldRow(borderColorGroup, wallToneGroup);
+        _fieldRow(nameGroup, wallToneGroup);
+
+        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'borderColor', v);
+            _persist();
+            _renderPreview();
+        }));
+        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
+            _persist();
+        }));
+        _fieldRow(borderColorGroup, cornerRadiusGroup);
 
         const shadowGroup = _buildFieldGroup('Shadow', _select([
             { value: 'none', label: 'None' },
@@ -1678,11 +1836,32 @@
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'shadow', v);
             _persist();
         }));
+        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'inset', v);
+            _persist();
+        }));
+        _fieldRow(shadowGroup, insetGroup);
+
+        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'matWidth', v);
+            _persist();
+        }));
         const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'defaultMargin', v);
             _persist();
         }));
-        _fieldRow(shadowGroup, defaultMarginGroup);
+        _fieldRow(matWidthGroup, defaultMarginGroup);
+
+        _fieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'frameThickness', v);
+            _persist();
+            _renderPreview();
+        }));
+
+        _fieldGroup('Description', _textarea(frame.description, function (v) {
+            window.ProjectModel.setFrameField(project, frame.id, 'description', v);
+            _persist();
+        }));
     }
 
     // ---------- State 5: Layer Packs (Sprint B2.0) ----------
@@ -1909,6 +2088,13 @@
         layerDivider.textContent = 'Selected Layer';
         contextPanel.appendChild(layerDivider);
 
+        // Sprint B2.0.6 — Property Editor grouping: Type|Target, Anchor|
+        // Position, Offset X|Offset Y — the ticket's own master-detail
+        // flow (Layer List → Selected Layer → Target → Anchor → Offsets
+        // → Visibility → Lock), with Visibility/Lock already living as
+        // inline icon buttons on each Layer List row above rather than
+        // stacked fields down here. Layer Id and Z-Index/Text Source
+        // don't pair naturally with anything left, so they stay solo.
         _fieldGroup('Layer Id', _textInput(layer.id, function (v) {
             if (!v) return;
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { id: v });
@@ -1916,17 +2102,17 @@
             _persist();
         }));
 
-        _fieldGroup('Type', _select(LAYER_TYPES_OPTS, layer.type, function (v) {
+        const typeGroup = _buildFieldGroup('Type', _select(LAYER_TYPES_OPTS, layer.type, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { type: v });
             _persist();
         }));
-
-        _fieldGroup('Target Container', _select(LAYER_TARGETS_OPTS, layer.target, function (v) {
+        const targetGroup = _buildFieldGroup('Target Container', _select(LAYER_TARGETS_OPTS, layer.target, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { target: v });
             _persist();
         }), 'Which containership scope this Layer draws on: the whole Slide, the Frame, the picture Holder, or a specific Element.');
+        _fieldRow(typeGroup, targetGroup);
 
-        _fieldGroup('Anchor', _select([
+        const anchorGroup = _buildFieldGroup('Anchor', _select([
             { value: '', label: '(none — uses position instead)' },
             { value: 'top-left', label: 'Top Left' },
             { value: 'top-center', label: 'Top Center' },
@@ -1938,8 +2124,7 @@
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { anchor: v || undefined });
             _persist();
         }), 'Where this Layer sits within its Target Container. Use Anchor for most Layers; use Position only for a Slide-targeted shorthand like a page number.');
-
-        _fieldGroup('Position (Slide-targeted shorthand)', _select([
+        const positionGroup = _buildFieldGroup('Position (Slide-targeted shorthand)', _select([
             { value: '', label: '(none — uses anchor instead)' },
             { value: 'bottom-left', label: 'Bottom Left' },
             { value: 'bottom-right', label: 'Bottom Right' },
@@ -1949,16 +2134,17 @@
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { position: v || undefined });
             _persist();
         }));
+        _fieldRow(anchorGroup, positionGroup);
 
-        _fieldGroup('Offset X', _range(-60, 60, layer.offsetX || 0, function (v) {
+        const offsetXGroup = _buildFieldGroup('Offset X', _range(-60, 60, layer.offsetX || 0, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { offsetX: v });
             _persist();
         }));
-
-        _fieldGroup('Offset Y', _range(-60, 60, layer.offsetY || 0, function (v) {
+        const offsetYGroup = _buildFieldGroup('Offset Y', _range(-60, 60, layer.offsetY || 0, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { offsetY: v });
             _persist();
         }));
+        _fieldRow(offsetXGroup, offsetYGroup);
 
         _fieldGroup('Z-Index (Layer Order)', _range(0, 10, layer.zIndex || 0, function (v) {
             window.ProjectModel.updateLayer(project, pack.id, layer.id, { zIndex: v });
@@ -2005,9 +2191,17 @@
             catDesc.textContent = cat.description;
             contextPanel.appendChild(catDesc);
 
+            // Sprint B2.0.6 — Assets Property Editor: upload cards in a
+            // grid instead of one full-width stacked row per slot.
+            // Dimensions/formats/required-state still shown per card —
+            // just laid out for scanning at a glance instead of reading
+            // top to bottom.
+            const cardGrid = document.createElement('div');
+            cardGrid.className = 'wb-asset-card-grid';
             cat.slots.forEach(function (slot) {
-                contextPanel.appendChild(_assetSlotRow(project, slot));
+                cardGrid.appendChild(_assetSlotRow(project, slot));
             });
+            contextPanel.appendChild(cardGrid);
         });
 
         const progressWrap = document.createElement('div');
@@ -2034,9 +2228,16 @@
         }
     }
 
+    // Sprint B2.0.6 — Assets Property Editor: rebuilt as a vertical
+    // upload card (thumb on top, then name/badge, purpose, a compact
+    // one-line spec summary, status, and the upload button) instead of
+    // a wide horizontal row, so several fit side by side in
+    // _renderAssetsPanel's new .wb-asset-card-grid. Every value is still
+    // read straight off AssetSpec.resolve()'s own slot object — no
+    // second, duplicated set of dimensions/formats/required-state.
     function _assetSlotRow(project, slot) {
-        const row = document.createElement('div');
-        row.className = 'wb-asset-slot-row';
+        const card = document.createElement('div');
+        card.className = 'wb-asset-slot-row';
 
         const thumb = document.createElement('span');
         thumb.className = 'wb-asset-thumb';
@@ -2071,30 +2272,20 @@
         purpose.className = 'wb-field-hint';
         purpose.textContent = slot.purpose;
 
-        const usage = document.createElement('p');
-        usage.className = 'wb-field-hint';
-        usage.textContent = 'Used by: ' + slot.usedBy;
-
         // Sprint B2.0.1 — every value here is read straight off the
         // slot itself (AssetSpec.resolve/js/assetSpec.js, the mirror of
         // docs/WORLD_ASSET_SPEC.md) — no second, duplicated set of
-        // dimensions/formats lives in this screen.
-        const specGrid = document.createElement('div');
-        specGrid.className = 'wb-asset-spec-grid';
-        const specEntries = [
-            ['Dimensions', slot.recommendedDimensions],
-            ['Aspect Ratio', slot.aspectRatio],
-            ['Formats', (slot.formats || []).join(', ').toUpperCase()],
-            ['Max Size', slot.maxFileSizeMB ? slot.maxFileSizeMB + ' MB' : '—']
-        ];
-        specEntries.forEach(function (pair) {
-            const span = document.createElement('span');
-            const strong = document.createElement('strong');
-            strong.textContent = pair[0] + ': ';
-            span.appendChild(strong);
-            span.appendChild(document.createTextNode(pair[1] || '—'));
-            specGrid.appendChild(span);
-        });
+        // dimensions/formats lives in this screen. Condensed to one
+        // compact line (Sprint B2.0.6) now that the card is narrower.
+        const specLine = document.createElement('p');
+        specLine.className = 'wb-field-hint wb-asset-spec-line';
+        const specParts = [slot.recommendedDimensions, (slot.formats || []).join('/').toUpperCase()];
+        if (slot.maxFileSizeMB) specParts.push('≤' + slot.maxFileSizeMB + 'MB');
+        specLine.textContent = specParts.filter(Boolean).join(' · ');
+
+        const usage = document.createElement('p');
+        usage.className = 'wb-field-hint';
+        usage.textContent = 'Used by: ' + slot.usedBy;
 
         const status = document.createElement('span');
         status.className = 'wb-asset-status' + (existing ? ' filled' : '');
@@ -2102,7 +2293,7 @@
 
         info.appendChild(nameRow);
         info.appendChild(purpose);
-        info.appendChild(specGrid);
+        info.appendChild(specLine);
         info.appendChild(usage);
         info.appendChild(status);
 
@@ -2121,11 +2312,11 @@
         });
         btn.addEventListener('click', function () { input.click(); });
 
-        row.appendChild(thumb);
-        row.appendChild(info);
-        row.appendChild(btn);
-        row.appendChild(input);
-        return row;
+        card.appendChild(thumb);
+        card.appendChild(info);
+        card.appendChild(btn);
+        card.appendChild(input);
+        return card;
     }
 
     // ---------- State 7: Validation (Sprint B2.0) ----------
@@ -2284,6 +2475,27 @@
 
     // ---------- State 8: Build (Sprint B2.0) ----------
 
+    // Sprint B2.0.6 — Build/Publish Property Editor: compact stat cards
+    // in a grid instead of a single tall box of stacked <p> lines.
+    function _statCardGrid(entries) {
+        const grid = document.createElement('div');
+        grid.className = 'wb-build-info-box';
+        entries.forEach(function (pair) {
+            const card = document.createElement('div');
+            card.className = 'wb-build-stat';
+            const label = document.createElement('span');
+            label.className = 'wb-build-stat-label';
+            label.textContent = pair[0];
+            const value = document.createElement('span');
+            value.className = 'wb-build-stat-value';
+            value.textContent = pair[1];
+            card.appendChild(label);
+            card.appendChild(value);
+            grid.appendChild(card);
+        });
+        return grid;
+    }
+
     function _renderBuildPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
@@ -2291,13 +2503,11 @@
         _stateIntro('build');
 
         const manifest = window.ProjectModel.manifest(project);
-        const infoBox = document.createElement('div');
-        infoBox.className = 'wb-build-info-box';
-        infoBox.innerHTML =
-            '<p><strong>Output File</strong><br>' + (manifest.id || 'world') + '.vtheme</p>' +
-            '<p><strong>Version</strong><br>' + (manifest.version || '1.0.0') + '</p>' +
-            '<p><strong>Last Validation</strong><br>' + (lastValidation ? (lastValidation.isValid ? 'Passed' : 'Failed') : 'Not run yet') + '</p>';
-        contextPanel.appendChild(infoBox);
+        contextPanel.appendChild(_statCardGrid([
+            ['Output File', (manifest.id || 'world') + '.vtheme'],
+            ['Version', manifest.version || '1.0.0'],
+            ['Last Validation', lastValidation ? (lastValidation.isValid ? 'Passed' : 'Failed') : 'Not run yet']
+        ]));
 
         const buildBtn = document.createElement('button');
         buildBtn.type = 'button';
@@ -2339,13 +2549,11 @@
             success.textContent = '✓ World Package Built';
             contextPanel.appendChild(success);
 
-            const details = document.createElement('div');
-            details.className = 'wb-build-info-box';
-            details.innerHTML =
-                '<p><strong>Package Name</strong><br>' + project.lastBuild.filename + '</p>' +
-                '<p><strong>Package Size</strong><br>' + _formatBytes(project.lastBuild.size) + '</p>' +
-                '<p><strong>Build Timestamp</strong><br>' + new Date(project.lastBuild.builtAt).toLocaleString() + '</p>';
-            contextPanel.appendChild(details);
+            contextPanel.appendChild(_statCardGrid([
+                ['Package Name', project.lastBuild.filename],
+                ['Package Size', _formatBytes(project.lastBuild.size)],
+                ['Build Timestamp', new Date(project.lastBuild.builtAt).toLocaleString()]
+            ]));
 
             const continueBtn = document.createElement('button');
             continueBtn.type = 'button';
@@ -2452,18 +2660,21 @@
             }
         ];
 
+        const grid = document.createElement('div');
+        grid.className = 'wb-publish-grid';
         options.forEach(function (opt) {
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'wb-publish-option';
-            row.disabled = !opt.action;
-            row.innerHTML =
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-publish-option';
+            card.disabled = !opt.action;
+            card.innerHTML =
                 '<span class="wb-publish-icon">' + opt.icon + '</span>' +
                 '<span class="wb-publish-text"><span class="wb-publish-title">' + opt.title + '</span>' +
                 '<span class="wb-publish-note">' + opt.note + '</span></span>';
-            if (opt.action) row.addEventListener('click', opt.action);
-            contextPanel.appendChild(row);
+            if (opt.action) card.addEventListener('click', opt.action);
+            grid.appendChild(card);
         });
+        contextPanel.appendChild(grid);
 
         contextPanel.appendChild(resultBox);
     }

@@ -366,6 +366,113 @@ a few pixels and overlapped it with the new controls once they were
 added — a real, verified-via-screenshot layout defect, not a subjective
 tightening choice.
 
+### Property Editor grouping, Editing Confidence, and Workspace Customisation (Sprint B2.0.6)
+
+Sprint B2.0.6 is the Workspace's final maturity pass before it freezes —
+no new screens, no new states, no architecture change. It turns the
+Inspector into a genuine Property Editor and gives the Workspace two
+capabilities real authoring had been missing: an honest save-state
+indicator, and creator-adjustable region sizes.
+
+**Property Editor grouping.** Every state's field order was re-paired to
+match related fields side by side instead of one field per row —
+Overview (World Name|Tagline, Publisher|Version, Purpose|Mood,
+Thumbnail|Hero Image as upload cards, Description last since it's the
+only multiline field), Representations (Name|Default Layout, Default
+Frame|Layer Pack, Supported Actions, Description), Layouts (Layout
+Name|Aspect, Composition|Caption Position, Padding|Spacing,
+Alignment|Used By — "Used By" is a new compact readout of the same
+reuse data the Layout list already showed per row, now also visible in
+the Selected Layout detail per the sprint's own property grid), Frames
+(Frame Name|Wall Tone, Border|Corner Radius, Shadow|Inset,
+Padding|Margin, Thickness alone since nothing pairs with it,
+Description last), and the Layer Packs' Selected Layer form
+(Type|Target Container, Anchor|Position, Offset X|Offset Y — Visibility
+and Lock were already inline icon buttons on each Layer List row, not
+stacked fields, so they already satisfied "avoid long vertical forms"
+before this sprint). Every pairing uses the pre-existing `_fieldRow()`/
+`_buildFieldGroup()` machinery from Sprint B2.0.4 — no new field-layout
+mechanism, only different field-to-row assignments.
+
+**Assets became upload cards.** `_renderAssetsPanel`'s per-category
+slots now render into a `.wb-asset-card-grid` (a real CSS grid,
+`repeat(auto-fill, minmax(190px,1fr))`) instead of a single stacked
+column of full-width rows; `_assetSlotRow` was rebuilt from a horizontal
+row into a vertical card (thumb on top, name/badge, purpose, a
+condensed one-line spec summary, status, upload button) so several fit
+side by side. Every value shown is still read straight off
+`AssetSpec.resolve()`'s own slot object — no duplicated spec data, just
+a different layout for the same information.
+
+**Build and Publish became compact cards.** Build's two info boxes
+(Output File/Version/Last Validation; Package Name/Size/Timestamp) were
+stacked `<p><strong>` lines; a new shared `_statCardGrid()` renders them
+as a grid of small `.wb-build-stat` cards instead. Publish's three
+options (Export Package/Community World/Publish to Official Themes)
+now sit in a `.wb-publish-grid` instead of stacked full-width rows —
+same three buttons, same handlers, just arranged as a grid of vertical
+cards.
+
+**Builder Information Density.** The Sprint B2.0.1 What/Why/Do/Next
+guidance block, previously always-visible above every state's fields,
+is now a native `<details>`/`<summary>` (`_stateIntro()`) — collapsed by
+default, one click away, no JS toggle logic needed since the browser
+already handles open/closed state correctly. Short single-purpose status
+banners ("Previewing:", "Current Representation:") were split into a
+separate, always-visible `.wb-info-banner` class so they're not
+mistakenly treated as collapsible guidance.
+
+**Editing Confidence — Dirty/Saved state.** The static "Draft Saved"
+label is replaced by a real two-state indicator (`_setSaveState()`):
+🟠 "Unsaved Changes" the instant `_persist()` is called (i.e. the moment
+an edit's handler runs, before the write), 🟢 "All Changes Saved" once
+it settles. There is deliberately no separate "Saving…" sub-state: the
+actual write (`ProjectStore.save()`, a synchronous `localStorage` call)
+always happens immediately inside `_persist()` — never debounced —
+because deferring the real write risks losing an edit if the creator
+navigates away before a debounce timer fires. What *is* debounced
+(600ms) is only the visible return to "saved," so rapid typing shows one
+continuous "Unsaved Changes" instead of flickering on every keystroke,
+while the data is already safe in `localStorage` the whole time. The
+Header Save button gets a matching `wb-save-btn-dirty` ring so the
+button itself, not just the badge, communicates state; clicking it still
+performs the same explicit, user-visible confirmation Sprint B2.0.1
+gave it.
+
+**Workspace Customisation — resize handles.** `.wb-workspace-body`'s
+grid gained three 6px sash tracks (`navsash`/`rtsash`/`tbsash`,
+`grid-template-areas` unchanged in region names — see the diagram in
+"The Workspace is one CSS Grid" above, now with sash columns/rows
+threaded through it) carrying real, draggable handle elements
+(`#wb-resize-nav`/`#wb-resize-runtime`/`#wb-resize-inspector`). Each
+handle only ever writes one CSS custom property
+(`--wb-nav-w`/`--wb-runtime-w`/`--wb-inspector-h`) via a shared
+`_wireResizeHandle()` mouse-drag driver — because the handles are real
+grid tracks (not absolutely-positioned overlays recomputed after every
+render), they can never drift out of sync with the panel boundary they
+drag. Nav clamps to [180,280]px; the Working View ↔ Runtime Preview
+handle clamps Runtime Preview's width to [25%,65%] of the combined
+Working+Runtime space (Working View, styled `1fr`, always takes
+whatever's left, so its own effective minimum is the complementary
+35%); the Inspector's height clamps to [220px, 65% of viewport height].
+The layout persists to one Builder-wide `localStorage` key
+(`vihustudio.worldBuilder.workspaceLayout`, deliberately not per-Project
+— it's a creator's workspace preference, not World data) and is
+reapplied via `_applyWorkspaceLayout()` every time a Workspace opens.
+"Reset Workspace Layout," a new item in the header's three-dot menu,
+clears that key and reapplies the shipped defaults immediately, no
+reload required.
+
+Verified via a new 34-assertion Playwright suite covering every
+re-paired field row, the collapsed-by-default/opens-on-click guidance
+panel, the full dirty→saved cycle (including that the edit is actually
+in `localStorage` throughout, proving the debounce never risks data
+loss), all three resize handles (drag direction, clamping, persistence
+across a Workspace reopen), Reset Workspace Layout, the Assets/Build/
+Publish grid layouts, and that Sprint B2.0.5's Draft Management is
+unaffected — plus full regression across every prior sprint's suite and
+`goldenBuild.js`.
+
 ### The State System
 
 Each Navigation item maps to one Context Panel renderer function. A
@@ -721,3 +828,32 @@ for exactly what was kept and why.
   the old width. Verified via a new 20-assertion Playwright suite plus
   full regression across every prior sprint's suite (all passing
   unchanged).
+- v2.6 — Sprint B2.0.6 (Property Editor + Editing Confidence + Workspace
+  Customisation). The Workspace's final maturity pass — no new screens,
+  no new states, no architecture change; this sprint freezes the
+  Workspace. Every state's fields were re-paired into a genuine property
+  grid (Overview, Representations, Layouts, Frames, and the Layer Packs
+  Selected Layer form all gained new side-by-side field pairings — see
+  "Property Editor grouping" above for the exact pairs); Assets moved
+  from stacked full-width rows to a real `.wb-asset-card-grid`; Build's
+  info boxes and Publish's three options both moved from stacked
+  elements to compact card grids via a shared `_statCardGrid()`/
+  `.wb-publish-grid`. The Sprint B2.0.1 guidance block is now a native
+  `<details>`, collapsed by default. Replaces the static "Draft Saved"
+  label with a real two-state 🟠 Unsaved Changes / 🟢 All Changes Saved
+  indicator (`_setSaveState()`) — the underlying `localStorage` write
+  stays synchronous and immediate inside `_persist()` (never debounced,
+  so a quick navigate-away can never lose an edit); only the *visible*
+  return to "saved" debounces 600ms so continuous typing doesn't flicker
+  the indicator. Adds three real CSS-grid resize handles (Nav↔Working
+  View, Working View↔Runtime Preview, Top Workspace↕Property Editor),
+  each writing one CSS custom property with its own clamp range, backed
+  by one Builder-wide `localStorage` key and a new "Reset Workspace
+  Layout" item in the header's three-dot menu. Verified via a new
+  34-assertion Playwright suite (every field pairing, the collapsed/
+  expandable guidance panel, the full dirty→saved cycle with a
+  `localStorage` data-loss check, all three resize handles including
+  drag direction/clamping/cross-reopen persistence, Reset Workspace
+  Layout, the Assets/Build/Publish grids, and that Sprint B2.0.5's Draft
+  Management still works) plus full regression across every prior
+  sprint's suite and `goldenBuild.js`.

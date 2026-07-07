@@ -76,7 +76,7 @@
                 <div class="wb-workspace-header-left">
                     <button id="wb-workspace-home" class="wb-workspace-home-btn" type="button" title="Back to My World Projects">🏠</button>
                     <span id="wb-workspace-name" class="wb-workspace-name">Untitled World</span>
-                    <span class="wb-workspace-saved">● <span id="wb-workspace-saved-text">Draft Saved</span></span>
+                    <span id="wb-workspace-saved" class="wb-workspace-saved"><span id="wb-save-dot">🟢</span> <span id="wb-workspace-saved-text">All Changes Saved</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
                     <button id="wb-btn-settings" class="wb-workspace-btn" type="button" title="Open World Settings (Overview)">Settings</button>
@@ -85,16 +85,29 @@
                         <button id="wb-btn-menu" class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="More actions">⋮</button>
                         <div id="wb-menu-dropdown" class="wb-menu-dropdown wb-hidden">
                             <button id="wb-menu-duplicate" class="wb-menu-item" type="button">⧉ Duplicate World</button>
+                            <button id="wb-menu-reset-layout" class="wb-menu-item" type="button">↺ Reset Workspace Layout</button>
                             <button id="wb-menu-delete" class="wb-menu-item wb-menu-item-danger" type="button">🗑 Delete World</button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div class="wb-workspace-body">
+            <div id="wb-workspace-body" class="wb-workspace-body">
                 <nav id="wb-workspace-nav" class="wb-workspace-nav">
                     <!-- rendered by worldBuilderApp.js -->
                 </nav>
+
+                <!-- Sprint B2.0.6 — Workspace Customisation. Three sash-style
+                     resize handles, each a real CSS Grid track (not an
+                     absolutely-positioned overlay), so a handle can never
+                     drift out of sync with the panel boundary it drags —
+                     see css/world-builder.css's ".wb-workspace-body is one
+                     CSS Grid" section (B2.0.4) for why this is safe to add
+                     without touching the nav/working/runtime/inspector
+                     architecture itself. -->
+                <div id="wb-resize-nav" class="wb-resize-handle wb-resize-handle-v" data-resize="nav" title="Drag to resize Navigation" tabindex="0" role="separator" aria-orientation="vertical"></div>
+                <div id="wb-resize-runtime" class="wb-resize-handle wb-resize-handle-v" data-resize="runtime" title="Drag to resize Working View / Runtime Preview" tabindex="0" role="separator" aria-orientation="vertical"></div>
+                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-h" data-resize="inspector" title="Drag to resize the Property Editor" tabindex="0" role="separator" aria-orientation="horizontal"></div>
 
                 <!-- Working View (Sprint B2.0.3) — the context-aware editing
                      surface. Renders through the same real renderer.js

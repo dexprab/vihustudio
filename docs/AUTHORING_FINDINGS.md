@@ -233,3 +233,40 @@ via screenshot before and after.
 None recorded this sprint — B2.0.5 was scoped to visual polish and
 Draft Management, both of which reused existing engines/functions with
 no new authoring surface to observe gaps in.
+
+## Sprint B2.0.6 — Property Editor + Editing Confidence + Workspace Customisation
+
+### Builder Issues (fixed this sprint)
+
+**A synchronous save has no real "Saving…" moment to show.** The
+sprint's own spec asked for a Dirty/Saving/Saved cycle, but
+`ProjectStore.save()` is a plain, instant `localStorage.setItem()` — an
+actual "Saving…" sub-state would never be visually distinct from
+"dirty" in the same synchronous tick, since nothing yields between them.
+Rather than fake a state the engine doesn't have, the indicator collapses
+to the two states that are real (dirty/saved), and the debounce is
+applied only to the *display's* return to "saved" — not to the write
+itself, which stays immediate specifically so a quick navigate-away can
+never lose an edit. This is a deliberate, disclosed simplification, not
+an oversight.
+
+**Property grouping choices that don't map onto real fields weren't
+fabricated.** The ticket's own Overview example listed a "Category |
+Visibility" pair; neither field exists anywhere in the World Project
+Contract or `ProjectModel`, and inventing two new unused fields just to
+match an illustrative example would have produced dead UI with no
+backing data — a "half-finished implementation" by this codebase's own
+standing rule. Overview's actual pairing (World Name|Tagline,
+Publisher|Version, Purpose|Mood, Thumbnail|Hero Image) uses only fields
+that already exist and are already read by Validation/Build/Runtime.
+
+### Future Product Insights (not implemented — documented only)
+
+**Workspace layout preference is Builder-wide, not per-Project.** Nav
+width / Runtime Preview width / Property Editor height persist to one
+shared `localStorage` key rather than one key per World Project. This
+was a deliberate reading of "remember the creator's preferred workspace
+layout" as a personal tool preference (like an IDE remembering panel
+sizes across every file you open) rather than per-document state — but
+it's worth revisiting if a future creator reports wanting different
+layouts for, say, a Quote-heavy World versus an Artwork-heavy one.
