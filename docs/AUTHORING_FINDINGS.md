@@ -145,3 +145,48 @@ page layers, drag-resizable Holders, context-aware object selection —
 remains the long-term direction, explicitly out of scope for this and
 every B2.x sprint per its own ticket. Recorded here only so the
 direction stays on record.
+
+---
+
+## Sprint B2.0.4 — Workspace Ergonomics
+
+### Builder Issues (fixed this sprint)
+
+**Runtime Preview shared a column with the Inspector, starving the
+Inspector of usable width.** Sprint B2.0.3's Runtime Preview sat at the
+top of the same right-hand flex column the Inspector filled below it —
+correct for making Runtime Preview *exist*, wrong for how much of the
+Workspace the Inspector (where a creator actually spends their editing
+time) got to use. As more Builder options were added to any one panel,
+the Inspector required excessive scrolling in a column barely a third
+of the Workspace's width. Fixed by making the Workspace one CSS Grid
+instead of nested flex columns — Runtime Preview and the Inspector are
+now full grid siblings, the Inspector spanning the entire width beneath
+Working View and Runtime Preview rather than squeezed beside them. See
+`docs/WORLD_BUILDER_ARCHITECTURE.md`'s "The Workspace is one CSS Grid"
+section for the mechanics.
+
+**A guide-label clipping bug, surfaced by the layout change itself.**
+Working View's guide labels (Sprint B2.0.3) floated *above* their guide
+box by default — harmless when Working View owned the whole right-hand
+column's height, but once its grid row shrank to a fixed percentage of
+the Workspace, a label near the canvas's own top edge could spill past
+`.wb-working-canvas-wrap`'s `overflow:hidden` and get clipped. Fixed by
+moving every label inside its box's own edge instead of floating outside
+it — cosmetic only, no guide geometry logic changed.
+
+**The Inspector never used its own `.wb-field-row` pairing mechanism.**
+`.wb-field-row`/`.wb-field-group` CSS existed since Sprint B1.1 but no
+panel had ever actually used it — every field stacked vertically
+regardless of how short or related two fields were. A new
+`_fieldRow()`/`_buildFieldGroup()` pair wires it up for Layouts
+(Aspect|Composition, Padding|Spacing, Caption Position|Alignment),
+Frames (Thickness|Padding, Inset|Corner Radius, Border Color|Wall Tone,
+Shadow|Default Margin), Representations (Default Layout|Default Frame),
+and Overview (Publisher|Version, Purpose|Mood) — reducing vertical
+scroll length in the panels that had grown longest.
+
+### Future Product Insights (not implemented — documented only)
+
+None recorded this sprint — B2.0.4 was scoped to Workspace layout only,
+with no new authoring surfaces to observe gaps in.

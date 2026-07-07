@@ -490,14 +490,27 @@ html, body {
     line-height: 1.4;
 }
 
+/* Sprint B2.0.4 — Runtime Preview decoupled from the Inspector: the top
+   row is Nav | Working View | Runtime Preview (a compact reference
+   pane); the Inspector — the primary editing surface, per this
+   sprint's own "think like an IDE" framing — spans the full width of
+   the bottom row, under both Working View and Runtime Preview, so it
+   finally gets more room than a narrow, shared right-hand column ever
+   could. Nav spans both rows (fixed, present regardless of what's
+   being edited). */
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 200px 1fr 340px;
+    grid-template-columns: 200px 1fr 260px;
+    grid-template-rows: 40% 60%;
+    grid-template-areas:
+        "nav working runtime"
+        "nav inspector inspector";
     min-height: 0;
 }
 
 .wb-workspace-nav {
+    grid-area: nav;
     background: var(--wb-paper);
     border-right: 1px solid var(--wb-border);
     padding: 16px 10px;
@@ -539,14 +552,17 @@ html, body {
    visible — no modal, no separate "Preview" click required. */
 
 .wb-workspace-working-column {
+    grid-area: working;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 20px 24px;
-    overflow: auto;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    overflow: hidden;
     background: var(--wb-cream);
+    min-height: 0;
+    min-width: 0;
 }
 
 /* Identity card — Working View's fallback for Overview when the World
@@ -582,6 +598,7 @@ html, body {
 }
 
 .wb-working-view-heading {
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -599,11 +616,19 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
+/* Sprint B2.0.4 — the top row is now a fixed, comparatively short
+   percentage of viewport height (Inspector gets the rest), so this
+   must scale by *height* first (like the old fit-to-viewport Preview
+   modal did) rather than by width — otherwise a width-first box would
+   overflow the row and force a scrollbar, which "never scrolls" rules
+   out. */
 .wb-working-canvas-wrap {
     position: relative;
-    flex-shrink: 0;
-    width: 100%;
-    max-width: 420px;
+    flex: 1;
+    min-height: 0;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
     aspect-ratio: 1080 / 1350;
     border-radius: 14px;
     box-shadow: 0 10px 30px var(--wb-shadow);
@@ -643,11 +668,16 @@ html, body {
 .wb-guide-box.wb-guide-padding { border-color: rgba(76, 130, 89, 0.55); border-style: dotted; }
 .wb-guide-box.wb-guide-margin { border-color: rgba(51, 48, 42, 0.28); border-style: solid; }
 
+/* Sprint B2.0.4 — sits just inside the guide box's own top edge rather
+   than floating above it. The Working View cell is now much shorter
+   (Inspector claims most of the vertical space), so a label positioned
+   above its box — as it was in Sprint B2.0.3, when Working View had
+   the whole right-hand column's height to spare — can spill past the
+   canvas wrap's own top edge and get clipped by its overflow:hidden. */
 .wb-guide-label {
     position: absolute;
-    top: -1px;
+    top: 2px;
     left: 2px;
-    transform: translateY(-100%);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: .02em;
@@ -657,6 +687,9 @@ html, body {
     background: var(--wb-paper);
     color: var(--wb-navy);
     white-space: nowrap;
+    max-width: calc(100% - 8px);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Padding's guide is nested just inside Holder Boundary, so its label
@@ -664,10 +697,9 @@ html, body {
    Holder/Caption labels at the same top-left point. */
 .wb-guide-label-bottom {
     top: auto;
-    bottom: -1px;
+    bottom: 2px;
     left: auto;
     right: 2px;
-    transform: translateY(100%);
 }
 
 .wb-guide-align-line {
@@ -694,18 +726,26 @@ html, body {
    guide/overlay — literal SlideRenderer output only, answering
    "what will the reader see?" */
 
+/* Sprint B2.0.4 — Runtime Preview is now its own grid cell (top-right)
+   instead of the top of a column it shared with the Inspector. Fully
+   decoupled: resizing/adding Inspector content below can never push on
+   this cell or make it scroll. */
 .wb-runtime-preview-wrap {
-    flex-shrink: 0;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--wb-border);
+    grid-area: runtime;
+    min-height: 0;
+    min-width: 0;
+    padding: 12px 14px;
+    border-left: 1px solid var(--wb-border);
     background: var(--wb-sand);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    overflow: hidden;
 }
 
 .wb-runtime-preview-heading {
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -723,9 +763,16 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
+/* Height-first fit, same reasoning as .wb-working-canvas-wrap: this
+   cell's height is fixed by the grid row, so the canvas must scale
+   from that rather than from width, or it would overflow and force a
+   scrollbar — ruled out by "never scrolls." */
 .wb-runtime-preview-canvas-wrap {
-    width: 100%;
-    max-width: 160px;
+    flex: 1;
+    min-height: 0;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
     aspect-ratio: 1080 / 1350;
     border-radius: 8px;
     box-shadow: 0 6px 16px var(--wb-shadow);
@@ -739,18 +786,14 @@ html, body {
     height: 100%;
 }
 
-.wb-workspace-right-column {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border-left: 1px solid var(--wb-border);
-}
-
 .wb-preview-selector {
+    flex: 0 0 auto;
+    max-width: 100%;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
+    overflow: hidden;
 }
 
 .wb-selector-chip {
@@ -780,11 +823,16 @@ html, body {
 
 .wb-selector-chip-icon { font-size: 18px; }
 
+/* Sprint B2.0.4 — the primary editing surface: full width beneath
+   Working View + Runtime Preview, its own independent scroll, and the
+   only region of the Workspace that's allowed to scroll at all. */
 .wb-context-panel {
-    flex: 1;
+    grid-area: inspector;
     min-height: 0;
+    min-width: 0;
+    border-top: 1px solid var(--wb-border);
     background: var(--wb-paper);
-    padding: 20px;
+    padding: 18px 24px;
     overflow-y: auto;
 }
 

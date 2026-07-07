@@ -128,20 +128,28 @@ Never tools.").
 Introduced in Sprint B1.1, the Builder Workspace is the permanent home
 of World editing — everything that happens to a World Project after
 Screen 2 happens inside it. It is one screen, never a sequence of pages.
-Sprint B2.0.3 (Working View + Runtime Preview) restructured the center/
-right regions in place — still the same one screen, no new physical
-screen added:
+Sprint B2.0.3 introduced Working View + Runtime Preview; Sprint B2.0.4
+(Workspace Ergonomics) rearranged the same four regions into a CSS Grid
+so the Inspector — "where creators spend most of their time," per that
+sprint's own framing — is no longer squeezed into a narrow column
+shared with Runtime Preview. Still the same one screen, no new physical
+screen, no new region:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Header — World Name · Draft Saved · Settings/Save/⋮      │
-├───────────┬───────────────────────┬──────────┬──────────┤
-│           │                       │ Runtime  │          │
-│ Builder   │     Working View      │ Preview  │Inspector │
-│ Navigation│  (context-aware, +    ├──────────┤(Context  │
-│           │   guide overlays)     │(always,  │  Panel)  │
-│           │                       │ no guides│          │
-└───────────┴───────────────────────┴──────────┴──────────┘
+├───────────┬───────────────────────────────┬─────────────┤
+│           │                               │  Runtime    │
+│ Builder   │        Working View           │  Preview    │
+│ Navigation│  (context-aware, + guide      │ (always,    │
+│  (spans   │        overlays)              │ no guides)  │
+│   both    │                               │             │
+│   rows)   ├───────────────────────────────┴─────────────┤
+│           │              Inspector                       │
+│           │   (the primary editing surface — full        │
+│           │    width, independent scroll, paired          │
+│           │    fields where related — Sprint B2.0.4)      │
+└───────────┴───────────────────────────────────────────────┘
 ```
 
 - **Header** — shows the World Project's own `manifest.json` name (never
@@ -154,24 +162,41 @@ screen added:
   Representations, Layouts, Frames, Layer Packs, Assets, Validation,
   Build, Publish. Selecting one never opens a new page — it only swaps
   which state is active, exactly like VihuStudio Studio's own object
-  selection model (`docs/STUDIO_DESIGN_CANON.md` §7).
-- **Working View** (center) — permanent; never disappears, regardless of
-  which Navigation state is active. As of Sprint B2.0.3 this renders
-  through VihuStudio's own real `renderer/slideRenderer.js` (the same
-  engine Runtime uses — see "Working View and Runtime Preview reuse the
-  real engine" below), with Builder-only guide overlays drawn on top in
-  DOM for the Layouts state. Overview is the one exception: it isn't
-  editing a rendered page at all (World identity has no Slide concept),
-  so it keeps a small identity card instead.
-- **Runtime Preview** (top of the right column) — permanent; the same
+  selection model (`docs/STUDIO_DESIGN_CANON.md` §7). Spans the full
+  height of both grid rows (Sprint B2.0.4's `.wb-workspace-body` grid),
+  so it stays present and fixed regardless of what's being edited.
+- **Working View** (top-center) — permanent; never disappears, regardless
+  of which Navigation state is active, and never scrolls (Sprint B2.0.4 —
+  its canvas now scales by *height* first, the same fit-to-viewport
+  technique the old Preview modal used, since its grid row is a fixed
+  percentage of the Workspace's height rather than "however much the
+  column needs"). Renders through VihuStudio's own real
+  `renderer/slideRenderer.js` (the same engine Runtime uses — see
+  "Working View and Runtime Preview reuse the real engine" below), with
+  Builder-only guide overlays drawn on top in DOM for the Layouts state.
+  Overview is the one exception: it isn't editing a rendered page at all
+  (World identity has no Slide concept), so it keeps a small identity
+  card instead.
+- **Runtime Preview** (top-right) — permanent, never scrolls; the same
   render Working View shows, with zero overlays, answering "what will
   the reader see?" Replaces the pre-B2.0.3 on-demand Preview modal.
-- **Inspector** (the rest of the right column, `#wb-context-panel`) —
-  exactly one mount point, reused by every Navigation state. It never
-  spawns a second panel or a dialog; changing Navigation state re-paints
-  its contents in place. Unchanged in shape and behavior from every
-  prior sprint — only its position (now below Runtime Preview instead of
-  the sole right-hand region) changed.
+  Sprint B2.0.4 gave it its own grid cell — previously it sat *above* the
+  Inspector in a shared right-hand column, competing for the same
+  vertical space; now the two are full siblings in the Workspace grid,
+  and neither can push on the other.
+- **Inspector** (bottom row, spanning under both Working View and Runtime
+  Preview, `#wb-context-panel`) — exactly one mount point, reused by
+  every Navigation state; still never spawns a second panel or a dialog.
+  Sprint B2.0.4 made it the Workspace's primary surface: full width
+  instead of a ~340px shared column, and the *only* region allowed to
+  scroll (Working View/Runtime Preview explicitly never do). Panels with
+  several short, related fields now pair them side by side via a new
+  `_fieldRow()` helper (Layouts: Aspect|Composition, Padding|Spacing,
+  Caption Position|Alignment; Frames: Thickness|Padding, Inset|Corner
+  Radius, Border Color|Wall Tone, Shadow|Default Margin; Representations:
+  Default Layout|Default Frame; Overview: Publisher|Version,
+  Purpose|Mood) — the pre-existing `.wb-field-row` CSS class from Sprint
+  B1.1 had never actually been wired up to anything until now.
 
 ### Working View and Runtime Preview reuse the real engine (Sprint B2.0.3)
 
@@ -212,6 +237,38 @@ did and did not make visually change, including the honest limits of
 Working View's guide overlays where the Runtime contract itself has no
 equivalent concept yet (Layout's Padding/Spacing/Alignment/Caption
 Position fields).
+
+### The Workspace is one CSS Grid, not nested flex columns (Sprint B2.0.4)
+
+`.wb-workspace-body` is a single `display:grid` with named areas
+(`nav`/`working`/`runtime`/`inspector`) rather than the Sprint B2.0.3
+arrangement of nested flex columns (a right-hand column whose own two
+flex children were Runtime Preview and the Inspector). Nav spans both
+grid rows; the top row splits between Working View and Runtime Preview;
+the bottom row is the Inspector alone, spanning both of the top row's
+columns. This is what actually decouples Runtime Preview from the
+Inspector — they are full siblings in the grid, so nothing about the
+Inspector's height (however long a panel's form gets) can push on
+Runtime Preview, and nothing about Runtime Preview's width can shrink
+the Inspector.
+
+Making Working View and Runtime Preview literally never scroll — a
+named acceptance criterion — required switching their canvases from a
+*width*-first fit (`width:100%; max-width:420px; aspect-ratio:...`,
+correct when the column had as much height as it needed) to a
+*height*-first fit (`height:100%; max-width:100%; aspect-ratio:...`,
+the same technique the Sprint B2.0.2 Preview modal used to guarantee no
+scrollbar), since both regions are now a fixed percentage of the
+Workspace's height (`grid-template-rows: 40% 60%`) rather than sized to
+their content. A guide-label positioning bug surfaced by this: Working
+View's guide labels (Sprint B2.0.3) rendered *above* their guide box by
+default, relying on the column having enough surrounding padding for
+that overflow to stay visible — true when Working View owned the whole
+right-hand column's height, false in the new, shorter top row, where
+the label would clip against `.wb-working-canvas-wrap`'s own
+`overflow:hidden`. Fixed by moving every guide label inside its box's
+own top (or bottom, for the Padding guide) edge instead of floating
+outside it — a purely cosmetic change, no guide geometry logic touched.
 
 ### The State System
 
@@ -518,3 +575,24 @@ for exactly what was kept and why.
   the real Runtime render today, a gap Working View's overlays make
   honest rather than hide. Verified via a new 35-assertion Playwright
   suite plus full regression across every prior sprint's suite.
+- v2.4 — Sprint B2.0.4 (Workspace Ergonomics). Layout-only sprint — no
+  Builder logic, rendering, contracts, Project model, Runtime,
+  Validation, Build, or Publish changes. Real authoring exposed that
+  Sprint B2.0.3's Runtime Preview shared a column with the Inspector,
+  starving the Inspector of usable width as more Builder options were
+  added. `.wb-workspace-body` becomes one CSS Grid (`nav`/`working`/
+  `runtime`/`inspector` named areas) instead of nested flex columns: Nav
+  spans both rows; the top row splits Working View (center) and Runtime
+  Preview (right); the bottom row is the Inspector alone, spanning the
+  full width beneath both. Working View and Runtime Preview switch from
+  width-first to height-first canvas fitting (mirroring the Sprint
+  B2.0.2 Preview modal's own fit-to-viewport technique) so neither ever
+  scrolls now that each is a fixed percentage of the Workspace's height;
+  fixes a guide-label clipping bug this surfaced (labels floating above
+  their guide box, fine when Working View owned a whole column's height,
+  clipped once it didn't). A new `_fieldRow()`/`_buildFieldGroup()` pair
+  wires up the previously-unused Sprint B1.1 `.wb-field-row` CSS class
+  to pair short, related fields side by side in Layouts, Frames,
+  Representations, and Overview. Verified via a new 25-assertion
+  Playwright suite plus full regression across every prior sprint's
+  suite (all passing unchanged).

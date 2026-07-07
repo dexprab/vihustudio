@@ -889,7 +889,10 @@
         }
     }
 
-    function _fieldGroup(labelText, inputEl, helpText) {
+    // Builds a field group without mounting it — the shared piece
+    // _fieldGroup() and _fieldRow() (Sprint B2.0.4) both need, since a
+    // paired row must build two groups before appending either one.
+    function _buildFieldGroup(labelText, inputEl, helpText) {
         const group = document.createElement('div');
         group.className = 'wb-field-group';
         const label = document.createElement('label');
@@ -898,8 +901,27 @@
         group.appendChild(label);
         group.appendChild(inputEl);
         if (helpText) group.appendChild(_fieldHelp(helpText));
+        return group;
+    }
+
+    function _fieldGroup(labelText, inputEl, helpText) {
+        const group = _buildFieldGroup(labelText, inputEl, helpText);
         contextPanel.appendChild(group);
         return group;
+    }
+
+    // Sprint B2.0.4 — the Inspector is now the primary workspace and
+    // has substantially more width to work with; pairs of short,
+    // related fields (Aspect|Composition, Padding|Spacing, ...) sit
+    // side by side instead of stacking the full form vertically, per
+    // this sprint's own "logical horizontal grouping" instruction.
+    function _fieldRow() {
+        const groups = Array.prototype.slice.call(arguments);
+        const row = document.createElement('div');
+        row.className = 'wb-field-row';
+        groups.forEach(function (g) { row.appendChild(g); });
+        contextPanel.appendChild(row);
+        return row;
     }
 
     function _textInput(value, onInput) {
@@ -1109,27 +1131,29 @@
         });
         _fieldGroup('Creation Types', typeRow);
 
-        _fieldGroup('Publisher', _textInput(man.author, function (v) {
+        // Sprint B2.0.4 — paired side by side now that the Inspector has
+        // the width to spare.
+        const publisherGroup = _buildFieldGroup('Publisher', _textInput(man.author, function (v) {
             window.ProjectModel.setIdentity(project, { publisher: v });
             _persist();
         }));
-
-        _fieldGroup('Version', _textInput(man.version, function (v) {
+        const versionGroup = _buildFieldGroup('Version', _textInput(man.version, function (v) {
             window.ProjectModel.setIdentity(project, { version: v });
             _persist();
         }));
+        _fieldRow(publisherGroup, versionGroup);
 
         const meta = window.ProjectModel.metadata(project);
 
-        _fieldGroup('Purpose', _textInput(meta.purpose, function (v) {
+        const purposeGroup = _buildFieldGroup('Purpose', _textInput(meta.purpose, function (v) {
             window.ProjectModel.setIdentity(project, { purpose: v });
             _persist();
         }));
-
-        _fieldGroup('Mood', _textInput(meta.mood, function (v) {
+        const moodGroup = _buildFieldGroup('Mood', _textInput(meta.mood, function (v) {
             window.ProjectModel.setIdentity(project, { mood: v });
             _persist();
         }));
+        _fieldRow(purposeGroup, moodGroup);
 
         _fieldGroup('Thumbnail', _assetUploadRow(
             project.icon || '🌎',
@@ -1227,17 +1251,21 @@
             _persist();
         }));
 
-        _fieldGroup('Default Layout', _select(_representationOptionsFor('layout'), rep.layout, function (v) {
+        // Sprint B2.0.4 — paired side by side (both short selects,
+        // naturally related) now that the Inspector has room to spare.
+        const defaultLayoutGroup = _buildFieldGroup('Default Layout', _select(_representationOptionsFor('layout'), rep.layout, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'layout', v);
             _persist();
             _renderPreview();
-        }), 'Which Layout (aspect + composition) this Representation opens with. Defined in the Layouts state.');
+        }), 'Which Layout this Representation opens with. Defined in Layouts.');
 
-        _fieldGroup('Default Frame', _select(_representationOptionsFor('frame'), rep.defaultFrame, function (v) {
+        const defaultFrameGroup = _buildFieldGroup('Default Frame', _select(_representationOptionsFor('frame'), rep.defaultFrame, function (v) {
             window.ProjectModel.setRepresentationField(project, rep.id, 'defaultFrame', v || null);
             _persist();
             _renderPreview();
-        }), 'Which Frame Variation this Representation suggests first. A child can still change it. Defined in the Frames state.');
+        }), 'Which Frame Variation this Representation suggests first. Defined in Frames.');
+
+        _fieldRow(defaultLayoutGroup, defaultFrameGroup);
 
         const packOptions = window.ProjectModel.listLayerPacks(project).map(function (p) {
             return { value: p.id, label: p.name };
@@ -1367,7 +1395,7 @@
         // drives Composition automatically — no invalid state is
         // reachable through the UI at all, so nothing needs to explain
         // an implementation rule a creator could otherwise violate.
-        _fieldGroup('Aspect', _select([
+        const aspectGroup = _buildFieldGroup('Aspect', _select([
             { value: 'landscape', label: 'Landscape' },
             { value: 'portrait', label: 'Portrait' },
             { value: 'square', label: 'Square' },
@@ -1381,12 +1409,7 @@
             _persist();
             _renderLayoutsPanel();
             _renderPreview();
-        }), 'The page shape this Layout resolves to. Quote is a text-only page with no picture.');
-
-        const holderDiagram = document.createElement('div');
-        holderDiagram.className = 'wb-holder-area-diagram';
-        holderDiagram.textContent = 'Holder Area';
-        _fieldGroup('Holder Area', holderDiagram);
+        }), 'The page shape this Layout resolves to.');
 
         const isQuoteAspect = layout.aspect === 'quote';
         const compositionOptions = isQuoteAspect
@@ -1401,11 +1424,34 @@
             _renderPreview();
         });
         if (isQuoteAspect) compositionSelect.disabled = true;
-        _fieldGroup('Composition', compositionSelect, isQuoteAspect
-            ? 'Fixed for a Quote-aspect Layout — nothing else to choose.'
-            : 'How the Frame and caption are arranged on the page.');
+        const compositionGroup = _buildFieldGroup('Composition', compositionSelect, isQuoteAspect
+            ? 'Fixed for a Quote-aspect Layout.'
+            : 'How the Frame and caption are arranged.');
 
-        _fieldGroup('Caption Position', _select([
+        // Sprint B2.0.4 — Inspector is wider now; pair short, related
+        // fields side by side instead of one long vertical form.
+        _fieldRow(aspectGroup, compositionGroup);
+
+        const holderDiagram = document.createElement('div');
+        holderDiagram.className = 'wb-holder-area-diagram';
+        holderDiagram.textContent = 'Holder Area';
+        _fieldGroup('Holder Area', holderDiagram);
+
+        const paddingGroup = _buildFieldGroup('Padding', _range(0, 48, layout.padding, function (v) {
+            layout.padding = v;
+            _persist();
+            _renderPreview();
+        }), 'Shrinks the Padding guide in the Working View.');
+
+        const spacingGroup = _buildFieldGroup('Spacing', _range(0, 32, layout.spacing, function (v) {
+            layout.spacing = v;
+            _persist();
+            _renderPreview();
+        }));
+
+        _fieldRow(paddingGroup, spacingGroup);
+
+        const captionPositionGroup = _buildFieldGroup('Caption Position', _select([
             { value: 'below', label: 'Below' },
             { value: 'right', label: 'Right' },
             { value: 'overlay', label: 'Overlay' },
@@ -1414,19 +1460,7 @@
             layout.captionPosition = v;
             _persist();
             _renderPreview();
-        }), 'Moves the sample caption shown in the Working View.');
-
-        _fieldGroup('Padding', _range(0, 48, layout.padding, function (v) {
-            layout.padding = v;
-            _persist();
-            _renderPreview();
-        }), 'Shrinks the Padding guide inside the Holder Boundary in the Working View.');
-
-        _fieldGroup('Spacing', _range(0, 32, layout.spacing, function (v) {
-            layout.spacing = v;
-            _persist();
-            _renderPreview();
-        }));
+        }), 'Moves the sample caption in the Working View.');
 
         const alignRow = document.createElement('div');
         alignRow.className = 'wb-alignment-row';
@@ -1444,7 +1478,9 @@
             });
             alignRow.appendChild(btn);
         });
-        _fieldGroup('Alignment', alignRow);
+        const alignmentGroup = _buildFieldGroup('Alignment', alignRow);
+
+        _fieldRow(captionPositionGroup, alignmentGroup);
     }
 
     // ---------- State 4: Frames (Sprint B2.0) ----------
@@ -1536,35 +1572,42 @@
             _persist();
         }));
 
-        _fieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, function (v) {
+        // Sprint B2.0.4 — paired side by side now that the Inspector has
+        // the width to spare (see the Layouts state for the same idea).
+        const thicknessGroup = _buildFieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'frameThickness', v);
             _persist();
             _renderPreview();
         }));
-
-        _fieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
+        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'matWidth', v);
             _persist();
         }));
+        _fieldRow(thicknessGroup, matWidthGroup);
 
-        _fieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
+        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'inset', v);
             _persist();
         }));
+        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
+            window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
+            _persist();
+        }));
+        _fieldRow(insetGroup, cornerRadiusGroup);
 
-        _fieldGroup('Border Color', _colorInput(f.borderColor, function (v) {
+        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'borderColor', v);
             _persist();
             _renderPreview();
         }));
-
-        _fieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, function (v) {
+        const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'wallTone', v);
             _persist();
             _renderPreview();
         }));
+        _fieldRow(borderColorGroup, wallToneGroup);
 
-        _fieldGroup('Shadow', _select([
+        const shadowGroup = _buildFieldGroup('Shadow', _select([
             { value: 'none', label: 'None' },
             { value: 'soft', label: 'Soft' },
             { value: 'floating', label: 'Floating' },
@@ -1573,16 +1616,11 @@
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'shadow', v);
             _persist();
         }));
-
-        _fieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
-            _persist();
-        }));
-
-        _fieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, function (v) {
+        const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'defaultMargin', v);
             _persist();
         }));
+        _fieldRow(shadowGroup, defaultMarginGroup);
     }
 
     // ---------- State 5: Layer Packs (Sprint B2.0) ----------
