@@ -689,3 +689,16 @@ leak into product-facing copy.
 | Layer Stack | z-index | Show / Hide | Visible / Hidden |
 | Holder | — | Canvas | — |
 | Primary Element | — | Engine Scene Template | — |
+
+---
+
+## Related documents
+
+`docs/ENGINE_V2_SCENE_MODEL.md` — written once Builder V2's Scene
+Editor (Place/Decorations/Text) was fully implemented and exposed a gap
+this canon does not itself close: this canon defines the *object
+model*; it does not specify a serialized shape, a Runtime rendering
+path, or how Validation/Build/Publish would consume one. That document
+formalizes the canonical Scene data shape Builder V2 already produces
+and the execution pipeline it would flow through — additive to this
+canon, not a revision of it.

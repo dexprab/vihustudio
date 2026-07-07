@@ -145,3 +145,9 @@ phase's own brief:
 - `docs/THEME_PROJECT_SPEC.md` / `docs/VTHEME_PACKAGE_SPEC.md` — the
   Engine V1 equivalents this document's §2 points out have no Engine V2
   counterpart yet.
+- `docs/ENGINE_V2_SCENE_MODEL.md` — written after this document, in a
+  follow-up documentation-only sprint. It formalizes §2's "what is the
+  canonical Scene data" half of this gap (already answered — Builder V2
+  has been producing it since Slice 1) as canonical, while explicitly
+  leaving §4's resolution-path choice open, exactly as this document
+  left it.
