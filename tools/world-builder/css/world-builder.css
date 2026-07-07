@@ -605,26 +605,29 @@ html, body {
    .wb-working-canvas-inner/.wb-runtime-preview-canvas-inner), while the
    Inspector (still full width, still independently scrollable) keeps a
    genuinely usable, if smaller, share. */
-/* Sprint B2.0.6 — Workspace Customisation. Nav/Runtime width and
-   Inspector height are now CSS custom properties (set inline by
-   worldBuilderApp.js's _applyWorkspaceLayout(), defaulting to the
-   Sprint B2.0.5 values below when nothing is persisted yet), and three
-   6px sash tracks (navsash/rtsash/tbsash) carry the drag handles. This
-   is the same nav/working/runtime/inspector architecture as before —
-   only the track *sizes* became adjustable; the regions, their roles,
-   and their grid-area names are unchanged. Working View stays "1fr" (it
-   always gets whatever's left after Nav + Runtime Preview), so dragging
-   the Working View ↔ Runtime Preview sash only ever changes
-   --wb-runtime-w — Working View's share follows automatically. */
+/* Builder V2 — Vision §4: three permanent, full-height regions —
+   Working View | Runtime Preview | Context Inspector — side by side in
+   one row, never Inspector spanning a row beneath the other two. This
+   replaces the Sprint B2.0.4/B2.0.5/B2.0.6 two-row shape (Working View +
+   Runtime Preview on top, Inspector as a full-width row underneath),
+   which was correct for Engine V1's Builder Workspace but left Builder
+   V2 out of alignment with the frozen Vision the moment Global
+   Navigation moved to a top bar and freed up a column for the Inspector
+   to occupy directly. Both remaining resize sashes are now vertical
+   (col-resize): one between Working View and Runtime Preview, one
+   between Runtime Preview and Context Inspector. Working View stays
+   "1fr" — it always gets whatever's left after Runtime Preview +
+   Inspector, so dragging either sash only ever changes --wb-runtime-w
+   or --wb-inspector-w; Working View's share follows automatically. Per
+   Vision §4's own explicit warning against a naive equal three-way
+   split, Context Inspector's default width (420px) is deliberately
+   generous, not a naive third. */
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 6px var(--wb-runtime-w, 380px);
-    grid-template-rows: 1fr 6px var(--wb-inspector-h, 320px);
-    grid-template-areas:
-        "working rtsash runtime"
-        "tbsash tbsash tbsash"
-        "inspector inspector inspector";
+    grid-template-columns: 1fr 6px var(--wb-runtime-w, 340px) 6px var(--wb-inspector-w, 420px);
+    grid-template-rows: 1fr;
+    grid-template-areas: "working rtsash runtime inspsash inspector";
     min-height: 0;
 }
 
@@ -638,7 +641,7 @@ html, body {
 .wb-resize-handle-h { cursor: row-resize; }
 
 #wb-resize-runtime { grid-area: rtsash; }
-#wb-resize-inspector { grid-area: tbsash; }
+#wb-resize-inspector { grid-area: inspsash; }
 
 .wb-resize-handle::after {
     content: '';
@@ -1103,15 +1106,46 @@ html, body {
 
 .wb-selector-chip-icon { font-size: 18px; }
 
-/* Sprint B2.0.4 — the primary editing surface: full width beneath
-   Working View + Runtime Preview, its own independent scroll, and the
-   only region of the Workspace that's allowed to scroll at all. */
-.wb-context-panel {
+/* Builder V2 — Vision §4: Context Inspector is now its own full-height
+   column, the third of three permanent regions, matching Working View
+   and Runtime Preview's own heading chrome so all three read as peer
+   panes. It remains the only region of the Workspace allowed to scroll
+   at all (Sprint B2.0.4's own rule, unchanged — only its geometry
+   changed, not this constraint). */
+.wb-inspector-wrap {
     grid-area: inspector;
     min-height: 0;
     min-width: 0;
-    border-top: 1px solid var(--wb-border);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--wb-border);
     background: var(--wb-paper);
+}
+
+.wb-inspector-heading {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 22px 6px;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.wb-inspector-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-inspector-sub {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-context-panel {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
     padding: 16px 22px;
     overflow-y: auto;
 }
@@ -1631,7 +1665,21 @@ html, body {
 .wb-publish-note { font-size: 12px; color: var(--wb-text-secondary); }
 
 @media (max-width: 900px) {
-    .wb-workspace-body { grid-template-columns: 1fr 280px; }
+    /* Narrow-viewport fallback only — the frozen 3-pane layout (Vision
+       §4) is the primary desktop authoring shape; below 900px there
+       isn't room for three full-height columns, so Context Inspector
+       drops to a full-width row beneath Working View + Runtime Preview,
+       and both resize sashes (which have nothing sensible to drag at
+       this width) hide. */
+    .wb-workspace-body {
+        grid-template-columns: 1fr 220px;
+        grid-template-rows: 1fr 240px;
+        grid-template-areas:
+            "working runtime"
+            "inspector inspector";
+    }
+    #wb-resize-runtime, #wb-resize-inspector { display: none; }
+    .wb-inspector-wrap { border-left: none; border-top: 1px solid var(--wb-border); }
     .wb-nav-item span:last-child { display: none; }
     .wb-workspace-name { max-width: 160px; }
 }

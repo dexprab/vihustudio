@@ -463,23 +463,29 @@
     });
 
     // ---------------------------------------------------------------
-    // Sprint B2.0.6 — Workspace Customisation. Three sash-style resize
-    // handles, each a real CSS Grid track (see world-builder.css's
+    // Builder V2 — Vision §4 realignment. Two sash-style resize handles,
+    // each a real CSS Grid track (see world-builder.css's
     // .wb-workspace-body rule) rather than an absolutely-positioned
     // overlay recomputed after every render — a real grid track can
     // never drift out of sync with the panel boundary it drags, and
     // resizing it is nothing more than writing one CSS custom property.
-    // This is deliberately a preference layer on top of the frozen
-    // nav/working/runtime/inspector architecture, not a change to it —
-    // the same four regions, same roles, same grid-area names as Sprint
-    // B2.0.4/B2.0.5, just with their track sizes now adjustable and
-    // persisted instead of hardcoded.
+    // Previously (Sprint B2.0.6) the Inspector sash resized its *height*,
+    // since Context Inspector was a full-width row beneath Working View +
+    // Runtime Preview. Vision §4 makes Context Inspector a third
+    // full-height column instead, so both sashes are now vertical
+    // (col-resize) and both persisted dimensions are widths:
+    // --wb-runtime-w (Working View ↔ Runtime Preview boundary) and
+    // --wb-inspector-w (Runtime Preview ↔ Context Inspector boundary).
     // ---------------------------------------------------------------
 
     const WORKSPACE_LAYOUT_KEY = 'vihustudio.worldBuilder.workspaceLayout';
-    const LAYOUT_DEFAULTS = { runtimeW: 380, inspectorH: 320 };
-    const RUNTIME_PCT_MIN = 0.25, RUNTIME_PCT_MAX = 0.65; // Working View >=35%, Runtime Preview >=25% of the combined width
-    const INSPECTOR_H_MIN = 220;
+    // Vision §4's own explicit warning: a naive equal three-way split
+    // would under-serve Context Inspector, so its default (420px) is
+    // deliberately generous relative to Runtime Preview's (340px), not a
+    // naive third of the workspace.
+    const LAYOUT_DEFAULTS = { runtimeW: 340, inspectorW: 420 };
+    const RUNTIME_PCT_MIN = 0.25, RUNTIME_PCT_MAX = 0.65; // Working View >=35%, Runtime Preview >=25% of the Working+Runtime share
+    const INSPECTOR_W_MIN = 320, INSPECTOR_PCT_MAX = 0.5; // Context Inspector never exceeds half the full workspace width
 
     const workspaceBody = $('wb-workspace-body');
     const resizeRuntime = $('wb-resize-runtime');
@@ -492,7 +498,7 @@
             const parsed = JSON.parse(raw);
             return {
                 runtimeW: typeof parsed.runtimeW === 'number' ? parsed.runtimeW : LAYOUT_DEFAULTS.runtimeW,
-                inspectorH: typeof parsed.inspectorH === 'number' ? parsed.inspectorH : LAYOUT_DEFAULTS.inspectorH
+                inspectorW: typeof parsed.inspectorW === 'number' ? parsed.inspectorW : LAYOUT_DEFAULTS.inspectorW
             };
         } catch (e) {
             return Object.assign({}, LAYOUT_DEFAULTS);
@@ -508,7 +514,7 @@
     function _applyWorkspaceLayout() {
         const layout = _loadWorkspaceLayout();
         workspaceBody.style.setProperty('--wb-runtime-w', layout.runtimeW + 'px');
-        workspaceBody.style.setProperty('--wb-inspector-h', layout.inspectorH + 'px');
+        workspaceBody.style.setProperty('--wb-inspector-w', layout.inspectorW + 'px');
     }
 
     // Reset Workspace Layout (three-dot menu) — clears the persisted
@@ -519,11 +525,11 @@
         _applyWorkspaceLayout();
     }
 
-    // One shared drag driver for both remaining handles — each just
-    // supplies how to read/clamp/write its own dimension from a pointer
-    // position. The Navigation sash retired along with the left sidebar
-    // it used to resize (Builder V2 — Vision §1 moves Navigation to a
-    // top bar with nothing left to drag).
+    // One shared drag driver for both handles — each just supplies how
+    // to read/clamp/write its own dimension from a pointer position. The
+    // Navigation sash retired along with the left sidebar it used to
+    // resize (Builder V2 — Vision §1 moves Navigation to a top bar with
+    // nothing left to drag).
     function _wireResizeHandle(handle, onDrag) {
         handle.addEventListener('mousedown', function (e) {
             e.preventDefault();
@@ -537,7 +543,7 @@
                 const layout = _loadWorkspaceLayout();
                 const current = getComputedStyle(workspaceBody);
                 layout.runtimeW = parseFloat(current.getPropertyValue('--wb-runtime-w')) || layout.runtimeW;
-                layout.inspectorH = parseFloat(current.getPropertyValue('--wb-inspector-h')) || layout.inspectorH;
+                layout.inspectorW = parseFloat(current.getPropertyValue('--wb-inspector-w')) || layout.inspectorW;
                 _saveWorkspaceLayout(layout);
             }
             document.addEventListener('mousemove', move);
@@ -545,17 +551,27 @@
         });
     }
 
+    // Working View ↔ Runtime Preview boundary. Bounded as a percentage of
+    // the width available to those two columns alone (total width minus
+    // both 6px sashes minus Context Inspector's own current width), so
+    // resizing Inspector first and then this sash still yields sane
+    // Working/Runtime proportions.
     _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
-        const combinedW = bodyRect.width - 6; // minus the one remaining 6px sash track
+        const inspectorW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-inspector-w')) || LAYOUT_DEFAULTS.inspectorW;
+        const combinedW = bodyRect.width - 12 - inspectorW; // both 6px sashes + Inspector's own column
         if (combinedW <= 0) return;
-        const runtimeW = Math.min(combinedW * RUNTIME_PCT_MAX, Math.max(combinedW * RUNTIME_PCT_MIN, bodyRect.right - e.clientX));
+        const rightEdge = bodyRect.right - inspectorW - 6; // boundary of Runtime Preview's own right edge
+        const runtimeW = Math.min(combinedW * RUNTIME_PCT_MAX, Math.max(combinedW * RUNTIME_PCT_MIN, rightEdge - e.clientX));
         workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
     });
 
+    // Runtime Preview ↔ Context Inspector boundary. Context Inspector is
+    // the rightmost column, so its width is simply the distance from the
+    // cursor to the workspace's own right edge.
     _wireResizeHandle(resizeInspector, function (e, bodyRect) {
-        const maxH = Math.min(bodyRect.height - 150, window.innerHeight * 0.65);
-        const inspectorH = Math.min(maxH, Math.max(INSPECTOR_H_MIN, bodyRect.bottom - e.clientY));
-        workspaceBody.style.setProperty('--wb-inspector-h', inspectorH + 'px');
+        const maxW = Math.min(bodyRect.width * INSPECTOR_PCT_MAX, bodyRect.width - 12 - 300);
+        const inspectorW = Math.min(maxW, Math.max(INSPECTOR_W_MIN, bodyRect.right - e.clientX));
+        workspaceBody.style.setProperty('--wb-inspector-w', inspectorW + 'px');
     });
 
     // ---------------------------------------------------------------

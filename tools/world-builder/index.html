@@ -112,12 +112,18 @@
             </div>
 
             <div id="wb-workspace-body" class="wb-workspace-body">
-                <!-- Sprint B2.0.6 — Workspace Customisation, carried
-                     forward for the two panes still worth resizing.
-                     The Navigation sash retired along with the left
-                     sidebar it used to resize (Builder V2 — Vision §1). -->
+                <!-- Builder V2 — Vision §4: three permanent, full-height
+                     regions side by side (Working View | Runtime Preview |
+                     Context Inspector). Both remaining sashes are vertical
+                     (col-resize) — one between Working View and Runtime
+                     Preview, one between Runtime Preview and Context
+                     Inspector. The Navigation sash retired along with the
+                     left sidebar it used to resize (Vision §1); the old
+                     horizontal Inspector-height sash retired along with
+                     the old below-the-fold Inspector row this reset
+                     replaces. -->
                 <div id="wb-resize-runtime" class="wb-resize-handle wb-resize-handle-v" data-resize="runtime" title="Drag to resize Working View / Runtime Preview" tabindex="0" role="separator" aria-orientation="vertical"></div>
-                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-h" data-resize="inspector" title="Drag to resize the Context Inspector" tabindex="0" role="separator" aria-orientation="horizontal"></div>
+                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-v" data-resize="inspector" title="Drag to resize Runtime Preview / Context Inspector" tabindex="0" role="separator" aria-orientation="vertical"></div>
 
                 <!-- Working View (Sprint B2.0.3) — the context-aware editing
                      surface. Renders through the same real renderer.js
@@ -158,14 +164,22 @@
                     </div>
                 </aside>
 
-                <!-- Inspector (Sprint B2.0.4) — the primary editing
-                     surface, now spanning the full width beneath Working
-                     View + Runtime Preview instead of being squeezed into
-                     a narrow right column. Same #wb-context-panel mount
-                     point every state has always rendered into. -->
-                <div id="wb-context-panel" class="wb-context-panel">
-                    <!-- rendered by worldBuilderApp.js -->
-                </div>
+                <!-- Context Inspector (Builder V2 — Vision §4) — the
+                     third permanent, full-height region, always
+                     reflecting the current selection. Same
+                     #wb-context-panel mount point every state has always
+                     rendered into; only its geometry (now its own
+                     full-height column, not a full-width row beneath
+                     Working View + Runtime Preview) changed. -->
+                <aside class="wb-inspector-wrap">
+                    <div class="wb-inspector-heading">
+                        <span class="wb-inspector-title">🔍 Context Inspector</span>
+                        <span class="wb-inspector-sub">Properties for whatever is selected</span>
+                    </div>
+                    <div id="wb-context-panel" class="wb-context-panel">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                </aside>
             </div>
         </section>
     </div>
