@@ -619,12 +619,12 @@ html, body {
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: var(--wb-nav-w, 190px) 6px 1fr 6px var(--wb-runtime-w, 380px);
+    grid-template-columns: 1fr 6px var(--wb-runtime-w, 380px);
     grid-template-rows: 1fr 6px var(--wb-inspector-h, 320px);
     grid-template-areas:
-        "nav navsash working rtsash runtime"
-        "nav navsash tbsash tbsash tbsash"
-        "nav navsash inspector inspector inspector";
+        "working rtsash runtime"
+        "tbsash tbsash tbsash"
+        "inspector inspector inspector";
     min-height: 0;
 }
 
@@ -637,7 +637,6 @@ html, body {
 .wb-resize-handle-v { cursor: col-resize; }
 .wb-resize-handle-h { cursor: row-resize; }
 
-#wb-resize-nav { grid-area: navsash; }
 #wb-resize-runtime { grid-area: rtsash; }
 #wb-resize-inspector { grid-area: tbsash; }
 
@@ -662,22 +661,27 @@ html, body {
     outline-offset: -2px;
 }
 
-.wb-workspace-nav {
-    grid-area: nav;
-    background: var(--wb-paper);
-    border-right: 1px solid var(--wb-border);
-    padding: 12px 8px;
+/* ---------- Global Navigation (Builder V2 — Vision §1) ---------- */
+/* Moved to the top, structurally outside the workspace grid entirely —
+   a Theme Author's "where am I" question is answered here, once, and
+   never competes with editing-surface space the way the old left
+   sidebar did. */
+
+.wb-global-nav {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow-y: auto;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 20px;
+    background: var(--wb-paper);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
 }
 
 .wb-nav-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 9px 10px;
+    gap: 7px;
+    padding: 8px 14px;
     background: none;
     border: none;
     border-radius: 10px;
@@ -685,7 +689,6 @@ html, body {
     font-size: 13px;
     color: var(--wb-text);
     cursor: pointer;
-    text-align: left;
     white-space: nowrap;
 }
 
@@ -697,7 +700,100 @@ html, body {
     font-weight: 700;
 }
 
-.wb-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.wb-nav-icon { font-size: 15px; }
+
+/* ---------- Scene Header (Builder V2 — Vision §2) ---------- */
+/* Present only while a Scene is open: breadcrumb + a glanceable Scene
+   Configuration summary — Canvas's one remaining home now that it is
+   no longer a peer creative activity (Blueprint §7, superseded). */
+
+.wb-scene-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--wb-cream);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+}
+
+.wb-scene-breadcrumb {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-scene-breadcrumb strong { color: var(--wb-navy); font-weight: 700; }
+
+.wb-scene-config-glance {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--wb-text);
+    white-space: nowrap;
+}
+
+.wb-scene-config-glance:hover { border-color: var(--wb-gold); }
+
+.wb-scene-config-glance.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sky);
+}
+
+.wb-scene-config-chip { display: inline-flex; align-items: center; gap: 4px; }
+.wb-scene-config-chip + .wb-scene-config-chip { margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--wb-border); }
+
+/* ---------- Activity switcher (Builder V2 — Vision §3) ---------- */
+/* Place · Decorations · Text, in Working View's own toolbar row —
+   Scene Configuration is deliberately not a fourth entry here (it has
+   no page object to draw guides around, Vision §2). */
+
+.wb-activity-switcher {
+    display: flex;
+    gap: 6px;
+}
+
+.wb-activity-item {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wb-text);
+    cursor: pointer;
+}
+
+.wb-activity-item:hover { border-color: var(--wb-gold); }
+
+.wb-activity-item.active {
+    background: var(--wb-navy);
+    border-color: var(--wb-navy);
+    color: #fff;
+}
+
+/* ---------- Scene canvas guides (Working View only) ---------- */
+
+.wb-scene-safe-area-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-gold);
+    background: rgba(29, 52, 87, .85);
+    padding: 2px 8px;
+    border-radius: 999px;
+    pointer-events: none;
+    white-space: nowrap;
+}
 
 /* ---------- Working View (Sprint B2.0.3) ---------- */
 /* The center column. Context-aware: renders the real World through
@@ -1535,10 +1631,135 @@ html, body {
 .wb-publish-note { font-size: 12px; color: var(--wb-text-secondary); }
 
 @media (max-width: 900px) {
-    .wb-workspace-body { grid-template-columns: 64px 1fr 280px; }
+    .wb-workspace-body { grid-template-columns: 1fr 280px; }
     .wb-nav-item span:last-child { display: none; }
     .wb-workspace-name { max-width: 160px; }
 }
+
+/* ---------- Scenes Library (Builder V2 — Blueprint §5) ---------- */
+/* The felt expression of "a Theme is a curated library of Scenes"
+   (Engine Canon §0) — every Scene recognizable at a glance by name and
+   a live thumbnail, never an internal id. Rendered directly into
+   Working View when Scenes is open with no Scene selected yet. */
+
+.wb-scene-library {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.wb-scene-library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+}
+
+.wb-scene-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.wb-scene-card:hover { border-color: var(--wb-gold); }
+.wb-scene-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
+
+.wb-scene-card-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 8px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    position: relative;
+    overflow: hidden;
+}
+
+.wb-scene-card-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-scene-card-sub {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-scene-card-controls {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.wb-scene-card-controls button {
+    flex: 1;
+    font-size: 11px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    cursor: pointer;
+}
+
+.wb-scene-card-controls button:hover { border-color: var(--wb-gold); }
+
+.wb-scene-card-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 4/5.6;
+    border: 2px dashed var(--wb-border);
+    border-radius: 12px;
+    background: none;
+    cursor: pointer;
+    color: var(--wb-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wb-scene-card-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
+.wb-scene-card-add-icon { font-size: 26px; }
+
+/* Engine Scene Template picker overlay — Engine Canon §10, §12 item 2;
+   Add a Scene always starts here, never from a blank Canvas (Invariant 4). */
+
+.wb-scene-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.wb-scene-template-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-paper);
+    cursor: pointer;
+    text-align: left;
+}
+
+.wb-scene-template-card:hover { border-color: var(--wb-gold); }
+.wb-scene-template-icon { font-size: 22px; }
+.wb-scene-template-name { font-size: 13px; font-weight: 700; color: var(--wb-navy); }
+.wb-scene-template-desc { font-size: 11px; color: var(--wb-text-secondary); }
 
 /* ---------- Footer ---------- */
 

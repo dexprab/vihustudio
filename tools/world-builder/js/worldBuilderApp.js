@@ -169,6 +169,27 @@
     // Screen 2 — Choose a Template
     // ---------------------------------------------------------------
 
+    // Builder V2 — each World template seeds exactly one starter Scene
+    // (Engine V2's genuinely new, additive authoring surface), using the
+    // Engine Scene Template that best matches that World template's own
+    // spirit. Blank World deliberately seeds none — Blueprint §5's own
+    // "World with zero Scenes" empty state is exactly this template's
+    // "no assumptions" intent, not an oversight.
+    const TEMPLATE_STARTER_SCENE = {
+        'artwork-gallery': { template: 'single-holder', name: 'Showcase' },
+        storybook: { template: 'cover', name: 'Cover' },
+        quotes: { template: 'quote', name: 'Quote' },
+        sketchbook: { template: 'single-holder', name: 'Sketch' },
+        'greeting-cards': { template: 'single-holder', name: 'Card' }
+    };
+
+    function _seedStarterScene(project, templateId) {
+        const starter = TEMPLATE_STARTER_SCENE[templateId];
+        if (!starter) return;
+        const scene = window.ProjectModel.addScene(project, starter.template);
+        window.ProjectModel.renameScene(project, scene.id, starter.name);
+    }
+
     function _templateCard(entry) {
         const card = document.createElement('button');
         card.type = 'button';
@@ -201,6 +222,8 @@
             const generated = window.WorldTemplates.generate(entry.id);
             if (!generated) { card.classList.remove('wb-busy'); return; }
             const project = window.ProjectStore.create(entry.id, generated);
+            _seedStarterScene(project, entry.id);
+            window.ProjectStore.save(project);
             openWorkspace(project);
         });
 
@@ -222,16 +245,38 @@
     // Screen 3 — Builder Workspace
     // ---------------------------------------------------------------
 
+    // Builder V2 — Global Navigation (docs/BUILDER_V2_VISION.md §1):
+    // World | Scenes | Validation | Build | Publish, exactly five
+    // destinations, moved to the top and structurally outside the
+    // workspace. Theme Assets is reachable only as a secondary link from
+    // World (Vision §1) — 'assets' stays a valid internal state but is
+    // deliberately not one of these five entries.
+    //
+    // Representations/Layouts/Frames/Layer Packs are no longer top-level
+    // destinations — Engine V2 folds Canvas+Holders directly into each
+    // Scene (Engine Canon §2). Their render functions below
+    // (_renderRepresentationsPanel etc.) are retained, not deleted:
+    // Frame selection returns inside the Place activity per Blueprint §8
+    // once that activity is built (a following slice), and rewriting
+    // that logic from scratch then would be wasted work. Until that
+    // slice lands they are unreachable from this nav — a disclosed,
+    // temporary gap, not a silent one (see this slice's own commit
+    // message / implementation report).
     const NAV_ITEMS = [
-        { id: 'overview', icon: '🏠', label: 'Overview' },
-        { id: 'representations', icon: '🖼️', label: 'Representations' },
-        { id: 'layouts', icon: '📐', label: 'Layouts' },
-        { id: 'frames', icon: '🖌️', label: 'Frames' },
-        { id: 'layerpacks', icon: '📚', label: 'Layer Packs' },
-        { id: 'assets', icon: '📦', label: 'Assets' },
+        { id: 'overview', icon: '🌍', label: 'World' },
+        { id: 'scenes', icon: '🎬', label: 'Scenes' },
         { id: 'validation', icon: '✅', label: 'Validation' },
         { id: 'build', icon: '🔨', label: 'Build' },
         { id: 'publish', icon: '📤', label: 'Publish' }
+    ];
+
+    // Builder V2 — the three Creative Activities (Vision §3). Scene
+    // Configuration is deliberately not a fourth entry (Vision §2) — it
+    // is selected via the Scene Header's glance, not this switcher.
+    const ACTIVITIES = [
+        { id: 'place', icon: '🖼️', label: 'Place' },
+        { id: 'decorations', icon: '✨', label: 'Decorations' },
+        { id: 'text', icon: '✍️', label: 'Text' }
     ];
 
     const CREATION_TYPE_ICONS = {
@@ -244,7 +289,8 @@
     // leave the Builder to open a contract doc. Kept short on purpose —
     // this is a one-paragraph orientation, not documentation.
     const STATE_GUIDANCE = {
-        overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Representations to decide how creations look.',
+        overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Scenes to add the pages this World offers.',
+        scenes: 'What: the actual pages of your World — each one a complete, curated Scene (a shape, its photo spots, its decoration, its words). Why: a World is a curated library of Scenes (Engine V2 Canon §0) — this is that library. Do: press Add a Scene, choose an Engine Scene Template, then open it to set its shape in the Scene Configuration glance above Working View. Next: Place/Decorations/Text — the activities for designing what\'s actually on the page — arrive in a following slice.',
         representations: 'What: the page styles a child can choose (e.g. Showcase, Portrait, Quote). Why: Studio\'s Creation Flow shows exactly these, nothing more. Do: pick or add a Representation, then set its Default Layout and Default Frame. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
         layouts: 'What: the geometry each page can use — aspect ratio, caption position, composition. Why: a Representation always points at one of these. Do: adjust Aspect/Composition/Spacing for the selected Layout, or add a new one. Next: design a Frame to go with it.',
         frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
@@ -295,7 +341,8 @@
         return p;
     }
 
-    const workspaceNav = $('wb-workspace-nav');
+    const workspaceNav = $('wb-global-nav');
+    const sceneHeaderEl = $('wb-scene-header');
     const workspaceName = $('wb-workspace-name');
     const workspaceHome = $('wb-workspace-home');
     const workingCanvas = $('wb-working-canvas');
@@ -312,6 +359,16 @@
     let currentLayerPackId = null;
     let currentLayerId = null;
     let lastValidation = null;
+
+    // Builder V2 — Scenes state. `currentSceneId` null means the Scenes
+    // Library is showing; set means a specific Scene's editor is open.
+    // `currentInspectorTarget` is the selection driving Context Inspector
+    // independently of `currentActivity` (Vision §2 — Scene Configuration
+    // is a selectable target but never an activity of its own).
+    let currentSceneId = null;
+    let currentActivity = 'place';
+    let currentInspectorTarget = null;
+    let scenesShowingTemplatePicker = false;
 
     workspaceHome.addEventListener('click', showWelcome);
 
@@ -420,13 +477,11 @@
     // ---------------------------------------------------------------
 
     const WORKSPACE_LAYOUT_KEY = 'vihustudio.worldBuilder.workspaceLayout';
-    const LAYOUT_DEFAULTS = { navW: 190, runtimeW: 380, inspectorH: 320 };
-    const NAV_W_MIN = 180, NAV_W_MAX = 280;
+    const LAYOUT_DEFAULTS = { runtimeW: 380, inspectorH: 320 };
     const RUNTIME_PCT_MIN = 0.25, RUNTIME_PCT_MAX = 0.65; // Working View >=35%, Runtime Preview >=25% of the combined width
     const INSPECTOR_H_MIN = 220;
 
     const workspaceBody = $('wb-workspace-body');
-    const resizeNav = $('wb-resize-nav');
     const resizeRuntime = $('wb-resize-runtime');
     const resizeInspector = $('wb-resize-inspector');
 
@@ -436,7 +491,6 @@
             if (!raw) return Object.assign({}, LAYOUT_DEFAULTS);
             const parsed = JSON.parse(raw);
             return {
-                navW: typeof parsed.navW === 'number' ? parsed.navW : LAYOUT_DEFAULTS.navW,
                 runtimeW: typeof parsed.runtimeW === 'number' ? parsed.runtimeW : LAYOUT_DEFAULTS.runtimeW,
                 inspectorH: typeof parsed.inspectorH === 'number' ? parsed.inspectorH : LAYOUT_DEFAULTS.inspectorH
             };
@@ -453,7 +507,6 @@
 
     function _applyWorkspaceLayout() {
         const layout = _loadWorkspaceLayout();
-        workspaceBody.style.setProperty('--wb-nav-w', layout.navW + 'px');
         workspaceBody.style.setProperty('--wb-runtime-w', layout.runtimeW + 'px');
         workspaceBody.style.setProperty('--wb-inspector-h', layout.inspectorH + 'px');
     }
@@ -466,8 +519,11 @@
         _applyWorkspaceLayout();
     }
 
-    // One shared drag driver for all three handles — each just supplies
-    // how to read/clamp/write its own dimension from a pointer position.
+    // One shared drag driver for both remaining handles — each just
+    // supplies how to read/clamp/write its own dimension from a pointer
+    // position. The Navigation sash retired along with the left sidebar
+    // it used to resize (Builder V2 — Vision §1 moves Navigation to a
+    // top bar with nothing left to drag).
     function _wireResizeHandle(handle, onDrag) {
         handle.addEventListener('mousedown', function (e) {
             e.preventDefault();
@@ -480,7 +536,6 @@
                 document.removeEventListener('mouseup', up);
                 const layout = _loadWorkspaceLayout();
                 const current = getComputedStyle(workspaceBody);
-                layout.navW = parseFloat(current.getPropertyValue('--wb-nav-w')) || layout.navW;
                 layout.runtimeW = parseFloat(current.getPropertyValue('--wb-runtime-w')) || layout.runtimeW;
                 layout.inspectorH = parseFloat(current.getPropertyValue('--wb-inspector-h')) || layout.inspectorH;
                 _saveWorkspaceLayout(layout);
@@ -490,14 +545,8 @@
         });
     }
 
-    _wireResizeHandle(resizeNav, function (e, bodyRect) {
-        const navW = Math.min(NAV_W_MAX, Math.max(NAV_W_MIN, e.clientX - bodyRect.left));
-        workspaceBody.style.setProperty('--wb-nav-w', navW + 'px');
-    });
-
     _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
-        const navW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-nav-w')) || LAYOUT_DEFAULTS.navW;
-        const combinedW = bodyRect.width - navW - 12; // minus the two 6px sash tracks
+        const combinedW = bodyRect.width - 6; // minus the one remaining 6px sash track
         if (combinedW <= 0) return;
         const runtimeW = Math.min(combinedW * RUNTIME_PCT_MAX, Math.max(combinedW * RUNTIME_PCT_MIN, bodyRect.right - e.clientX));
         workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
@@ -715,6 +764,10 @@
         currentLayerPackId = window.ProjectModel.getDefaultLayerPack(project) || (packs.length ? packs[0].id : null);
         currentLayerId = null;
         lastValidation = null;
+        currentSceneId = null;
+        currentActivity = 'place';
+        currentInspectorTarget = null;
+        scenesShowingTemplatePicker = false;
         _hideAllScreens();
         screenWorkspace.classList.remove('wb-hidden');
         _renderWorkspaceHeader();
@@ -758,6 +811,15 @@
             btn.appendChild(label);
             btn.addEventListener('click', function () {
                 currentNav = item.id;
+                // "Back to Scenes" is always one click on the Scenes
+                // item itself (Blueprint §6 — World-level navigation
+                // stays reachable the entire time a Scene is open),
+                // whether arriving from elsewhere or already there.
+                if (item.id === 'scenes') {
+                    currentSceneId = null;
+                    scenesShowingTemplatePicker = false;
+                    currentInspectorTarget = null;
+                }
                 _renderNav();
                 _renderWorkspace();
             });
@@ -766,6 +828,7 @@
     }
 
     function _renderWorkspace() {
+        _renderSceneHeader();
         _renderPreview();
         _renderContextPanel();
     }
@@ -833,6 +896,9 @@
     // Sample artwork loads once and is cached; every call after the
     // first resolves synchronously.
     function _renderPreview() {
+        if (currentNav === 'scenes') {
+            return _renderScenesWorkingView();
+        }
         if (_workingViewIsIdentityCard()) {
             workingOverlays.innerHTML = '';
             _renderIdentityCard(workingCanvas.parentElement);
@@ -857,6 +923,355 @@
         });
 
         _renderPreviewSelector();
+    }
+
+    // ---------- Scenes (Builder V2 — Blueprint §5, §6-§7; Vision §2-§4) ----------
+    // Deliberately not routed through SlideRenderer: no Engine V2 render
+    // pipeline exists yet for Scene/Canvas/Holder/Layer/Element (Engine
+    // Canon's object model has no compiled-package or Runtime
+    // counterpart in any frozen document). Working View and Runtime
+    // Preview here are a small, self-contained canvas draw routine —
+    // Canvas shape, Safe Area guide, and generic Holder placeholder
+    // chrome only. This is a disclosed, temporary gap, not a silent
+    // reuse of the Engine V1 renderer for a shape it knows nothing about.
+
+    function _sceneHeaderTitleFor(scene) {
+        return (currentProject.name || 'Untitled World') + ' › ' + scene.name;
+    }
+
+    function _renderSceneHeader() {
+        const scene = (currentNav === 'scenes' && currentSceneId) ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
+        if (!scene) {
+            sceneHeaderEl.classList.add('wb-hidden');
+            sceneHeaderEl.innerHTML = '';
+            return;
+        }
+        sceneHeaderEl.classList.remove('wb-hidden');
+        sceneHeaderEl.innerHTML = '';
+
+        const crumb = document.createElement('div');
+        crumb.className = 'wb-scene-breadcrumb';
+        const worldStrong = document.createElement('strong');
+        worldStrong.textContent = currentProject.name || 'Untitled World';
+        crumb.appendChild(worldStrong);
+        crumb.appendChild(document.createTextNode(' › ' + scene.name));
+
+        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
+        const glance = document.createElement('button');
+        glance.type = 'button';
+        glance.className = 'wb-scene-config-glance' + (currentInspectorTarget === 'sceneConfig' ? ' active' : '');
+        glance.title = 'Scene Configuration — select to edit Aspect Ratio';
+
+        const chip1 = document.createElement('span');
+        chip1.className = 'wb-scene-config-chip';
+        chip1.textContent = aspect.icon + ' ' + aspect.label;
+        const chip2 = document.createElement('span');
+        chip2.className = 'wb-scene-config-chip';
+        chip2.textContent = '📐 ' + scene.canvas.safeArea;
+        const chip3 = document.createElement('span');
+        chip3.className = 'wb-scene-config-chip';
+        chip3.textContent = '📦 ' + aspect.width + ' × ' + aspect.height;
+        glance.appendChild(chip1);
+        glance.appendChild(chip2);
+        glance.appendChild(chip3);
+
+        glance.addEventListener('click', function () {
+            currentInspectorTarget = 'sceneConfig';
+            _renderWorkspace();
+        });
+
+        sceneHeaderEl.appendChild(crumb);
+        sceneHeaderEl.appendChild(glance);
+    }
+
+    // Draws a Scene's Canvas shape directly with the 2D context — no
+    // Elements exist yet to paint (Place/Decorations/Text are stubbed
+    // this slice), so this is generic Holder placeholder chrome
+    // (Engine Canon §6 — never a real upload) plus, in Working View
+    // only, a felt Safe Area guide (Blueprint §7 — never a labeled
+    // numeric field, never a hard wall).
+    function _drawSceneCanvas(canvasEl, scene, showGuides) {
+        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
+        canvasEl.width = aspect.width;
+        canvasEl.height = aspect.height;
+        const ctx = canvasEl.getContext('2d');
+
+        ctx.fillStyle = '#F4F1EC';
+        ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+
+        scene.holders.forEach(function (h) {
+            const x = h.position.x * canvasEl.width;
+            const y = h.position.y * canvasEl.height;
+            const w = h.size.w * canvasEl.width;
+            const hgt = h.size.h * canvasEl.height;
+            ctx.fillStyle = '#E4DCCB';
+            ctx.fillRect(x, y, w, hgt);
+            ctx.strokeStyle = '#C9B79C';
+            ctx.lineWidth = Math.max(2, canvasEl.width * 0.002);
+            ctx.strokeRect(x, y, w, hgt);
+            ctx.fillStyle = '#9C8B6E';
+            ctx.font = Math.round(canvasEl.width * 0.05) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🖼️', x + w / 2, y + hgt / 2);
+        });
+
+        if (showGuides && aspect.safeInset > 0) {
+            const inset = aspect.safeInset;
+            const x = canvasEl.width * inset;
+            const y = canvasEl.height * inset;
+            const w = canvasEl.width * (1 - inset * 2);
+            const hgt = canvasEl.height * (1 - inset * 2);
+            ctx.save();
+            ctx.strokeStyle = '#D9A441';
+            ctx.setLineDash([canvasEl.width * 0.012, canvasEl.width * 0.008]);
+            ctx.lineWidth = Math.max(2, canvasEl.width * 0.003);
+            ctx.strokeRect(x, y, w, hgt);
+            ctx.restore();
+        }
+    }
+
+    function _renderScenesWorkingView() {
+        const strayFrame = workingCanvas.parentElement.querySelector('.wb-preview-frame');
+        if (strayFrame) strayFrame.remove();
+
+        if (!currentSceneId) {
+            workingCanvas.classList.add('wb-hidden');
+            workingOverlays.innerHTML = '';
+            _renderSceneLibrary(workingCanvas.parentElement);
+            _renderRuntimePreviewEmpty('Select a Scene, or add one, to preview it here.');
+            previewSelector.innerHTML = '';
+            return;
+        }
+
+        _removeSceneLibrary(workingCanvas.parentElement);
+        const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
+        if (!scene) { currentSceneId = null; return _renderScenesWorkingView(); }
+
+        workingCanvas.classList.remove('wb-hidden');
+        workingOverlays.innerHTML = '';
+        _drawSceneCanvas(workingCanvas, scene, true);
+        _drawSceneCanvas(runtimePreviewCanvas, scene, false);
+        _renderActivitySwitcher();
+    }
+
+    function _renderRuntimePreviewEmpty(message) {
+        const ctx = runtimePreviewCanvas.getContext('2d');
+        runtimePreviewCanvas.width = 1080;
+        runtimePreviewCanvas.height = 1350;
+        ctx.fillStyle = '#F4F1EC';
+        ctx.fillRect(0, 0, runtimePreviewCanvas.width, runtimePreviewCanvas.height);
+        ctx.fillStyle = '#8B7355';
+        ctx.font = '44px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        _wrapText(ctx, message, runtimePreviewCanvas.width / 2, runtimePreviewCanvas.height / 2, 800, 56);
+    }
+
+    function _wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        const lines = [];
+        words.forEach(function (word) {
+            const test = line + word + ' ';
+            if (ctx.measureText(test).width > maxWidth && line) {
+                lines.push(line);
+                line = word + ' ';
+            } else {
+                line = test;
+            }
+        });
+        lines.push(line);
+        const startY = y - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach(function (l, i) { ctx.fillText(l.trim(), x, startY + i * lineHeight); });
+    }
+
+    function _renderActivitySwitcher() {
+        if (!currentSceneId) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-activity-switcher';
+        ACTIVITIES.forEach(function (a) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-activity-item' + (currentActivity === a.id && currentInspectorTarget !== 'sceneConfig' ? ' active' : '');
+            btn.textContent = a.icon + ' ' + a.label;
+            btn.addEventListener('click', function () {
+                currentActivity = a.id;
+                currentInspectorTarget = a.id;
+                _renderWorkspace();
+            });
+            wrap.appendChild(btn);
+        });
+        previewSelector.innerHTML = '';
+        previewSelector.appendChild(wrap);
+    }
+
+    // ---------- Scenes Library (Blueprint §5) ----------
+
+    function _renderSceneLibrary(target) {
+        let lib = target.querySelector('.wb-scene-library');
+        if (!lib) {
+            lib = document.createElement('div');
+            lib.className = 'wb-scene-library';
+            target.appendChild(lib);
+        }
+        lib.innerHTML = '';
+
+        if (scenesShowingTemplatePicker) {
+            lib.appendChild(_sceneTemplatePicker());
+            return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-library-grid';
+        window.ProjectModel.scenes(currentProject).forEach(function (scene) {
+            grid.appendChild(_sceneCard(scene));
+        });
+        grid.appendChild(_sceneAddCard());
+        lib.appendChild(grid);
+    }
+
+    function _removeSceneLibrary(target) {
+        const lib = target.querySelector('.wb-scene-library');
+        if (lib) lib.remove();
+    }
+
+    function _smallBtn(label, onClick) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    function _openScene(sceneId) {
+        currentSceneId = sceneId;
+        currentActivity = 'place';
+        currentInspectorTarget = null;
+        _renderWorkspace();
+    }
+
+    function _sceneCard(scene) {
+        const card = document.createElement('div');
+        card.className = 'wb-scene-card' + (scene.id === currentSceneId ? ' active' : '');
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+
+        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
+        const thumb = document.createElement('div');
+        thumb.className = 'wb-scene-card-thumb';
+        thumb.style.aspectRatio = aspect.width + ' / ' + aspect.height;
+        thumb.textContent = aspect.icon;
+
+        const name = document.createElement('div');
+        name.className = 'wb-scene-card-name';
+        name.textContent = scene.name;
+
+        const sub = document.createElement('div');
+        sub.className = 'wb-scene-card-sub';
+        sub.textContent = aspect.label + (scene.holders.length ? ' · ' + scene.holders.length + ' Holder' + (scene.holders.length > 1 ? 's' : '') : ' · No Holder');
+
+        const controls = document.createElement('div');
+        controls.className = 'wb-scene-card-controls';
+        controls.appendChild(_smallBtn('Rename', function (e) {
+            e.stopPropagation();
+            const next = window.prompt('Rename Scene', scene.name);
+            if (next && next.trim()) {
+                window.ProjectModel.renameScene(currentProject, scene.id, next.trim());
+                _persist();
+                _renderWorkspace();
+            }
+        }));
+        controls.appendChild(_smallBtn('Duplicate', function (e) {
+            e.stopPropagation();
+            const copy = window.ProjectModel.duplicateScene(currentProject, scene.id);
+            if (copy) { _persist(); _renderWorkspace(); }
+        }));
+        controls.appendChild(_smallBtn('Delete', function (e) {
+            e.stopPropagation();
+            if (!window.confirm('Delete "' + scene.name + '"? This cannot be undone.')) return;
+            window.ProjectModel.deleteScene(currentProject, scene.id);
+            if (currentSceneId === scene.id) currentSceneId = null;
+            _persist();
+            _renderWorkspace();
+        }));
+
+        card.appendChild(thumb);
+        card.appendChild(name);
+        card.appendChild(sub);
+        card.appendChild(controls);
+
+        card.addEventListener('click', function () { _openScene(scene.id); });
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openScene(scene.id); }
+        });
+        return card;
+    }
+
+    function _sceneAddCard() {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'wb-scene-card-add';
+        const icon = document.createElement('span');
+        icon.className = 'wb-scene-card-add-icon';
+        icon.textContent = '➕';
+        const label = document.createElement('span');
+        label.textContent = 'Add a Scene';
+        card.appendChild(icon);
+        card.appendChild(label);
+        card.addEventListener('click', function () {
+            scenesShowingTemplatePicker = true;
+            _renderWorkspace();
+        });
+        return card;
+    }
+
+    // Engine Scene Template picker (Engine Canon §10 — a new Scene never
+    // starts from a blank Canvas, Invariant 4).
+    function _sceneTemplatePicker() {
+        const wrap = document.createElement('div');
+
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'wb-selector-chip';
+        back.style.marginBottom = '12px';
+        back.textContent = '← Back to Scenes';
+        back.addEventListener('click', function () {
+            scenesShowingTemplatePicker = false;
+            _renderWorkspace();
+        });
+        wrap.appendChild(back);
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-template-grid';
+        window.EngineSchema.SCENE_TEMPLATES.forEach(function (t) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-scene-template-card';
+
+            const icon = document.createElement('div');
+            icon.className = 'wb-scene-template-icon';
+            icon.textContent = t.icon;
+            const name = document.createElement('div');
+            name.className = 'wb-scene-template-name';
+            name.textContent = t.name;
+            const desc = document.createElement('div');
+            desc.className = 'wb-scene-template-desc';
+            desc.textContent = t.description;
+
+            card.appendChild(icon);
+            card.appendChild(name);
+            card.appendChild(desc);
+            card.addEventListener('click', function () {
+                const scene = window.ProjectModel.addScene(currentProject, t.id);
+                scenesShowingTemplatePicker = false;
+                _persist();
+                _openScene(scene.id);
+            });
+            grid.appendChild(card);
+        });
+        wrap.appendChild(grid);
+        return wrap;
     }
 
     // ---------- Working View guide overlays (Layouts only, Sprint B2.0.3) ----------
@@ -1085,6 +1500,7 @@
     function _renderContextPanel() {
         contextPanel.innerHTML = '';
         if (currentNav === 'overview') return _renderOverviewPanel();
+        if (currentNav === 'scenes') return _renderScenesContextPanel();
         if (currentNav === 'representations') return _renderRepresentationsPanel();
         if (currentNav === 'layouts') return _renderLayoutsPanel();
         if (currentNav === 'frames') return _renderFramesPanel();
@@ -1094,6 +1510,64 @@
         if (currentNav === 'build') return _renderBuildPanel();
         if (currentNav === 'publish') return _renderPublishPanel();
         return _renderStubPanel();
+    }
+
+    // ---------- Scenes — Context Inspector (Blueprint §5-§10; Vision §2-§3) ----------
+
+    function _renderScenesContextPanel() {
+        if (!currentSceneId) {
+            _heading('Scenes', 'The pages of this World — recognizable at a glance, never by an internal id.');
+            _stateIntro('scenes');
+            if (scenesShowingTemplatePicker) {
+                contextPanel.appendChild(_fieldHelp('Choose an Engine Scene Template to start from — every Scene begins from one, never a blank Canvas.'));
+            } else if (!window.ProjectModel.scenes(currentProject).length) {
+                contextPanel.appendChild(_fieldHelp('This World has no Scenes yet. Press "Add a Scene" in Working View to add its first page.'));
+            } else {
+                contextPanel.appendChild(_fieldHelp('Select a Scene to open its editor, or press "Add a Scene" to add another.'));
+            }
+            return;
+        }
+
+        const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
+        if (!scene) return;
+
+        if (currentInspectorTarget === 'sceneConfig') {
+            return _renderSceneConfigPanel(scene);
+        }
+
+        // Place/Decorations/Text — an honest stub this slice (Vision §3;
+        // Blueprint §8-§10 land in a following slice). Never presented as
+        // broken or dead — just not built yet, matching this Builder's
+        // own established stub pattern (Sprint B1.1).
+        const activity = ACTIVITIES.find(function (a) { return a.id === currentActivity; }) || ACTIVITIES[0];
+        _heading(activity.icon + ' ' + activity.label, 'Coming in the next sprint.');
+        const descriptions = {
+            place: 'Where the photo goes — position, size, shape, and how it’s framed.',
+            decorations: 'This Scene’s atmosphere — background, texture, and scattered ornamentation.',
+            text: 'The words this Scene needs, and how they look.'
+        };
+        contextPanel.appendChild(_fieldHelp(descriptions[activity.id] || ''));
+        contextPanel.appendChild(_fieldHelp('For now, use the Scene Configuration glance above Working View to set this Scene’s shape.'));
+    }
+
+    // Vision §2's "how Scene Configuration is actually edited" — the one
+    // real Scene Configuration edit this slice implements. Changing
+    // Aspect Ratio also refreshes the Safe Area label, since Engine
+    // Canon §4 does not let them vary independently.
+    function _renderSceneConfigPanel(scene) {
+        _heading('Scene Configuration', 'This Scene’s shape (Engine V2 Canon §4) — selected the same way any other object is (Vision §2), never a fourth activity.');
+
+        const options = window.EngineSchema.ASPECT_ORDER.map(function (id) {
+            const info = window.EngineSchema.aspectInfo(id);
+            return { value: id, label: info.icon + ' ' + info.label + ' (' + info.width + '×' + info.height + ')' };
+        });
+        _fieldGroup('Aspect Ratio', _select(options, scene.canvas.aspectRatio, function (value) {
+            window.ProjectModel.setSceneAspect(currentProject, scene.id, value);
+            _persist();
+            _renderWorkspace();
+        }), 'Size is derived from Aspect Ratio, never typed directly (Blueprint §7).');
+
+        contextPanel.appendChild(_fieldHelp('Safe Area: ' + scene.canvas.safeArea + '. Shown as a felt guide in Working View only — never a hard wall unless a future Theme explicitly wants one.'));
     }
 
     function _heading(title, sub) {
@@ -1288,8 +1762,44 @@
         const project = currentProject;
         const man = window.ProjectModel.manifest(project);
         const theme = window.ProjectModel.theme(project);
-        _heading('Overview', 'Give your world a wonderful identity.');
+        // "World" — renamed from "Overview," label only (Vision §1);
+        // same screen, same purpose, still every project's first stop.
+        _heading('World', 'Give your world a wonderful identity.');
         _stateIntro('overview');
+
+        // Blueprint §4 — "for a brand-new World with zero Scenes,
+        // Overview also shows an inviting, unmissable prompt toward
+        // Scenes." Scenes now owns Canvas/Holders directly (Engine V2),
+        // so this is the natural next stop for a fresh World.
+        if (!window.ProjectModel.scenes(project).length) {
+            const prompt = document.createElement('div');
+            prompt.className = 'wb-info-banner';
+            const promptBtn = document.createElement('button');
+            promptBtn.type = 'button';
+            promptBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            promptBtn.textContent = '✨ No Scenes yet — add your first one →';
+            promptBtn.addEventListener('click', function () {
+                currentNav = 'scenes';
+                _renderNav();
+                _renderWorkspace();
+            });
+            prompt.appendChild(promptBtn);
+            contextPanel.appendChild(prompt);
+        }
+
+        // Theme Assets — a secondary entry from World, never a Global
+        // Navigation peer (Vision §1; Blueprint §11).
+        const assetsLink = document.createElement('button');
+        assetsLink.type = 'button';
+        assetsLink.className = 'wb-workspace-btn';
+        assetsLink.style.marginBottom = '16px';
+        assetsLink.textContent = '📦 Manage Theme Assets →';
+        assetsLink.addEventListener('click', function () {
+            currentNav = 'assets';
+            _renderNav();
+            _renderWorkspace();
+        });
+        contextPanel.appendChild(assetsLink);
 
         // Sprint B2.0.1 — Overview consumes the SAME shared
         // currentRepresentationId selection Representations uses (no

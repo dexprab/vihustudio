@@ -316,6 +316,120 @@ const ProjectModel = (function () {
     }
 
     // ---------------------------------------------------------------
+    // Scenes (Builder V2 — Engine V2 Canon §2, §10). A Scene is the one
+    // object a Theme Author now authors directly: Canvas configuration
+    // (Aspect Ratio, Safe Area label) plus its starting Holders, seeded
+    // from an Engine Scene Template and freely curated afterward. This
+    // is genuinely new, additive data — it does not replace or migrate
+    // `representations/`, `layouts/`, `frames/`, or `layer-packs/`,
+    // which Validate/Build/Publish still compile from unchanged, since
+    // no Engine V2 compiled-package format exists yet in any frozen
+    // document (see docs/BUILDER_V2_VISION.md's own implementation
+    // report for this gap, disclosed rather than silently bridged).
+    // ---------------------------------------------------------------
+
+    function scenes(project) {
+        const list = _filesWithPrefix(project, 'scenes/').map(function (e) { return e.data; });
+        return _ordered(project, 'sceneOrder', list);
+    }
+
+    function findScene(project, id) {
+        return scenes(project).find(function (s) { return s.id === id; }) || null;
+    }
+
+    function setScene(project, scene) {
+        project.files['scenes/' + scene.id + '.json'] = scene;
+    }
+
+    function _holdersFor(layoutId) {
+        const rects = (window.EngineSchema && window.EngineSchema.HOLDER_LAYOUTS[layoutId]) || [];
+        return rects.map(function (r, i) {
+            return {
+                id: 'holder-' + (i + 1),
+                name: rects.length > 1 ? 'Holder ' + (i + 1) : 'Holder',
+                position: { x: r.x, y: r.y },
+                size: { w: r.w, h: r.h },
+                shape: 'rectangle',
+                padding: 0,
+                fit: 'fit',
+                frame: null
+            };
+        });
+    }
+
+    // Creates a Scene from an Engine Scene Template — never from a blank
+    // Canvas (Engine Invariant 4). `startedFrom` is informational
+    // provenance only, per Engine Canon §12 item 2's own "no persisted
+    // link" assumption — nothing reads it to offer a "reset to template"
+    // action.
+    function addScene(project, templateId) {
+        const template = window.EngineSchema.findSceneTemplate(templateId);
+        const existingIds = scenes(project).map(function (s) { return s.id; });
+        const id = _uniqueId(existingIds, template.id);
+        const aspect = template.defaultAspect;
+        const scene = {
+            id: id,
+            name: template.name,
+            startedFrom: template.id,
+            canvas: {
+                aspectRatio: aspect,
+                safeArea: window.EngineSchema.aspectInfo(aspect).safeArea
+            },
+            holders: _holdersFor(template.holderLayout),
+            layers: []
+        };
+        setScene(project, scene);
+        return scene;
+    }
+
+    function renameScene(project, id, name) {
+        const scene = findScene(project, id);
+        if (scene) scene.name = name;
+    }
+
+    function duplicateScene(project, id) {
+        const source = findScene(project, id);
+        if (!source) return null;
+        const existingIds = scenes(project).map(function (s) { return s.id; });
+        const newId = _uniqueId(existingIds, id + '-copy');
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.id = newId;
+        copy.name = source.name + ' Copy';
+        setScene(project, copy);
+        return copy;
+    }
+
+    function deleteScene(project, id) {
+        delete project.files['scenes/' + id + '.json'];
+        if (Array.isArray(project.sceneOrder)) {
+            project.sceneOrder = project.sceneOrder.filter(function (x) { return x !== id; });
+        }
+    }
+
+    function moveScene(project, id, direction) {
+        scenes(project); // ensures project.sceneOrder is reconciled
+        const order = project.sceneOrder;
+        const idx = order.indexOf(id);
+        if (idx === -1) return;
+        const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapWith < 0 || swapWith >= order.length) return;
+        const tmp = order[idx];
+        order[idx] = order[swapWith];
+        order[swapWith] = tmp;
+    }
+
+    // The one Scene Configuration edit this slice implements (Vision
+    // §2's "how Scene Configuration is actually edited") — changing
+    // Aspect Ratio also refreshes the Safe Area label, since the two are
+    // not independently choosable (Engine Canon §4).
+    function setSceneAspect(project, id, aspectId) {
+        const scene = findScene(project, id);
+        if (!scene) return;
+        scene.canvas.aspectRatio = aspectId;
+        scene.canvas.safeArea = window.EngineSchema.aspectInfo(aspectId).safeArea;
+    }
+
+    // ---------------------------------------------------------------
     // Assets (Sprint B2.0)
     // ---------------------------------------------------------------
 
@@ -494,6 +608,15 @@ const ProjectModel = (function () {
         updateLayer: updateLayer,
         deleteLayer: deleteLayer,
         moveLayer: moveLayer,
+        scenes: scenes,
+        findScene: findScene,
+        setScene: setScene,
+        addScene: addScene,
+        renameScene: renameScene,
+        duplicateScene: duplicateScene,
+        deleteScene: deleteScene,
+        moveScene: moveScene,
+        setSceneAspect: setSceneAspect,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,
         setAsset: setAsset,

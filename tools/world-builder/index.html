@@ -92,22 +92,32 @@
                 </div>
             </header>
 
-            <div id="wb-workspace-body" class="wb-workspace-body">
-                <nav id="wb-workspace-nav" class="wb-workspace-nav">
-                    <!-- rendered by worldBuilderApp.js -->
-                </nav>
+            <!-- Global Navigation (Builder V2 — docs/BUILDER_V2_VISION.md §1).
+                 Moved to the top, structurally outside the three-pane
+                 workspace, replacing the old left Builder Navigation
+                 sidebar. World | Scenes | Validation | Build | Publish —
+                 exactly five destinations; Theme Assets is a secondary
+                 entry reachable from World, not a peer here (Vision §1). -->
+            <nav id="wb-global-nav" class="wb-global-nav">
+                <!-- rendered by worldBuilderApp.js -->
+            </nav>
 
-                <!-- Sprint B2.0.6 — Workspace Customisation. Three sash-style
-                     resize handles, each a real CSS Grid track (not an
-                     absolutely-positioned overlay), so a handle can never
-                     drift out of sync with the panel boundary it drags —
-                     see css/world-builder.css's ".wb-workspace-body is one
-                     CSS Grid" section (B2.0.4) for why this is safe to add
-                     without touching the nav/working/runtime/inspector
-                     architecture itself. -->
-                <div id="wb-resize-nav" class="wb-resize-handle wb-resize-handle-v" data-resize="nav" title="Drag to resize Navigation" tabindex="0" role="separator" aria-orientation="vertical"></div>
+            <!-- Scene Header (Builder V2 — Vision §2). Present only while a
+                 Scene is open: the breadcrumb (World › Scene) and the
+                 Scene Configuration glance (Aspect Ratio / Safe Area /
+                 pixel Size) — Canvas's one remaining home now that it is
+                 no longer a peer creative activity. -->
+            <div id="wb-scene-header" class="wb-scene-header wb-hidden">
+                <!-- rendered by worldBuilderApp.js -->
+            </div>
+
+            <div id="wb-workspace-body" class="wb-workspace-body">
+                <!-- Sprint B2.0.6 — Workspace Customisation, carried
+                     forward for the two panes still worth resizing.
+                     The Navigation sash retired along with the left
+                     sidebar it used to resize (Builder V2 — Vision §1). -->
                 <div id="wb-resize-runtime" class="wb-resize-handle wb-resize-handle-v" data-resize="runtime" title="Drag to resize Working View / Runtime Preview" tabindex="0" role="separator" aria-orientation="vertical"></div>
-                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-h" data-resize="inspector" title="Drag to resize the Property Editor" tabindex="0" role="separator" aria-orientation="horizontal"></div>
+                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-h" data-resize="inspector" title="Drag to resize the Context Inspector" tabindex="0" role="separator" aria-orientation="horizontal"></div>
 
                 <!-- Working View (Sprint B2.0.3) — the context-aware editing
                      surface. Renders through the same real renderer.js
@@ -166,6 +176,7 @@
 
     <!-- Internal services (reused, unmodified — see docs/WORLD_BUILDER_ARCHITECTURE.md) -->
     <script src="js/services/constants.js"></script>
+    <script src="js/services/engineSchema.js"></script>
     <script src="js/services/projectLoader.js"></script>
     <script src="js/services/validator.js"></script>
     <script src="js/services/builder.js"></script>
