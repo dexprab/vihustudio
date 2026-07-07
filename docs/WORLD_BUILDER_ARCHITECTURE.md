@@ -127,43 +127,91 @@ Never tools.").
 
 Introduced in Sprint B1.1, the Builder Workspace is the permanent home
 of World editing — everything that happens to a World Project after
-Screen 2 happens inside it. It is one screen with three permanent
-regions, never a sequence of pages:
+Screen 2 happens inside it. It is one screen, never a sequence of pages.
+Sprint B2.0.3 (Working View + Runtime Preview) restructured the center/
+right regions in place — still the same one screen, no new physical
+screen added:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Header — World Name · Draft Saved · Preview/Settings/Save│
-├───────────┬───────────────────────────────┬──────────────┤
-│           │                               │              │
-│ Builder   │        Live Preview           │   Context    │
-│ Navigation│      (always visible)         │    Panel     │
-│           │                               │              │
-└───────────┴───────────────────────────────┴──────────────┘
+│ Header — World Name · Draft Saved · Settings/Save/⋮      │
+├───────────┬───────────────────────┬──────────┬──────────┤
+│           │                       │ Runtime  │          │
+│ Builder   │     Working View      │ Preview  │Inspector │
+│ Navigation│  (context-aware, +    ├──────────┤(Context  │
+│           │   guide overlays)     │(always,  │  Panel)  │
+│           │                       │ no guides│          │
+└───────────┴───────────────────────┴──────────┴──────────┘
 ```
 
 - **Header** — shows the World Project's own `manifest.json` name (never
   the template it was created from — the Builder edits a World Project,
-  not a Template) and a Draft Saved status. Preview / Settings / Save /
-  overflow menu are present per the storyboard; none of them do
-  anything beyond this sprint's scope yet.
+  not a Template) and a Draft Saved status. Settings/Save/overflow menu
+  are all real (Sprint B2.0.1); the header's own Preview button was
+  removed in Sprint B2.0.3 once Preview became two permanently-visible
+  surfaces instead of an on-demand modal — see below.
 - **Builder Navigation** (left) — a fixed list of nine states: Overview,
   Representations, Layouts, Frames, Layer Packs, Assets, Validation,
   Build, Publish. Selecting one never opens a new page — it only swaps
   which state is active, exactly like VihuStudio Studio's own object
   selection model (`docs/STUDIO_DESIGN_CANON.md` §7).
-- **Live Preview** (center) — permanent; never disappears, regardless of
-  which Navigation state is active. Per LOCK 01, this is *not* Studio's
-  Runtime renderer reused inside the Builder — the Builder still never
-  renders a page the way Studio does. It is an illustrative mockup
-  (`tools/world-builder/js/worldBuilderApp.js`'s `_renderPreview`) built
-  from the World Project's own data — icon, name, tagline, the active
-  Representation's or Layout's aspect ratio and frame colour/thickness —
-  so it updates immediately as the Context Panel edits the Project, without
-  duplicating Runtime rendering code.
-- **Context Panel** (right) — exactly one mount point
-  (`#wb-context-panel`), reused by every Navigation state. It never
+- **Working View** (center) — permanent; never disappears, regardless of
+  which Navigation state is active. As of Sprint B2.0.3 this renders
+  through VihuStudio's own real `renderer/slideRenderer.js` (the same
+  engine Runtime uses — see "Working View and Runtime Preview reuse the
+  real engine" below), with Builder-only guide overlays drawn on top in
+  DOM for the Layouts state. Overview is the one exception: it isn't
+  editing a rendered page at all (World identity has no Slide concept),
+  so it keeps a small identity card instead.
+- **Runtime Preview** (top of the right column) — permanent; the same
+  render Working View shows, with zero overlays, answering "what will
+  the reader see?" Replaces the pre-B2.0.3 on-demand Preview modal.
+- **Inspector** (the rest of the right column, `#wb-context-panel`) —
+  exactly one mount point, reused by every Navigation state. It never
   spawns a second panel or a dialog; changing Navigation state re-paints
-  its contents in place.
+  its contents in place. Unchanged in shape and behavior from every
+  prior sprint — only its position (now below Runtime Preview instead of
+  the sole right-hand region) changed.
+
+### Working View and Runtime Preview reuse the real engine (Sprint B2.0.3)
+
+Both surfaces call the exact same `window.SlideRenderer.render(s)` —
+one function, two target canvases — fed by one synthetic slide object
+`_buildPreviewSlide()` builds per render. There is no second, Builder-
+owned rendering implementation; Working View's guide overlays are a
+separate DOM layer drawn *after* the canvas render, never touching the
+canvas pixels themselves, which is exactly why Runtime Preview (a second
+`render()` call against a different canvas, no overlay pass) never shows
+them.
+
+Because every edit must re-render with **no Save/Build/Validate step**,
+neither surface can afford the heavier, Blob/FileReader-based
+`ProjectCompiler`/`builder.js` pipeline Validate/Build use (see below) —
+that path is correct for a one-shot compile, not for continuous
+per-keystroke re-rendering. Instead, `worldBuilderApp.js` computes a
+*lightweight* live theme synchronously: `_collectFolderLight` mirrors
+`builder.js`'s own `collectFolder()` flattening rule (a folder's `.json`
+files each hold one object or an array; flatten to one array either way)
+by reading `project.files` directly — already-parsed JS values in
+memory, no Blob round trip — and `_buildLiveManifest`/`_buildLiveTheme`
+mirror `buildManifest()`/`buildTheme()`'s merge rules exactly. Same
+rules, computed cheaply; Validate/Build still run the real,
+unmodified services for the one-shot compile that actually matters for
+correctness.
+
+A generic Sample Artwork image (drawn once into an offscreen canvas,
+cached as a real `Image`) and generic sample metadata (title/artist/
+age/date/caption/quote/attribution — `SAMPLE_METADATA`) are fed into
+every render, so Layout/Frame/Representation editing always has
+something to look at even before a creator uploads real artwork or
+authors a real caption Layer. Neither is ever part of the Project or the
+compiled Package.
+
+See `docs/AUTHORING_FINDINGS.md` (Sprint B2.0.3 section) for what this
+did and did not make visually change, including the honest limits of
+Working View's guide overlays where the Runtime contract itself has no
+equivalent concept yet (Layout's Padding/Spacing/Alignment/Caption
+Position fields).
 
 ### The State System
 
@@ -183,9 +231,9 @@ code that knows the World Project's file-map shape
 `frames/*.json`/`representations/all.json`); the Workspace UI itself
 never touches `project.files[...]` directly. Every edit calls
 `ProjectStore.save()` immediately (`js/projectStore.js`) — there is no
-separate "Save" action for Project data; the Header's Save button is
-reserved for a future, different purpose (per the storyboard) and is
-inert this sprint.
+separate "Save" action for Project data; the Header's Save button
+(Sprint B2.0.1) is a real, explicit confirmation that nothing is
+pending, not a second save mechanism.
 
 ### Validation and Build reuse the real engines (Sprint B2.0)
 
@@ -447,3 +495,26 @@ for exactly what was kept and why.
   whether "Portrait" belongs as a Layout instead) are recorded as open,
   deliberately unresolved pending more Official Worlds to compare
   against; a future Visual Theme Composer is noted as out of scope.
+- v2.3 — Sprint B2.0.3 (Working View + Runtime Preview). Replaces the
+  illustrative DOM-mockup Live Preview and the on-demand Preview modal
+  with two permanently-visible surfaces that both render through the
+  real `renderer/slideRenderer.js` — Working View (center, context-aware,
+  Builder-only guide overlays) and Runtime Preview (right column,
+  always-clean). Adds a lightweight, synchronous live-theme resolver
+  (`_collectFolderLight`/`_buildLiveManifest`/`_buildLiveTheme`) so every
+  edit can re-render with no Save/Build/Validate step, mirroring
+  `builder.js`'s own merge rules without its Blob/FileReader overhead.
+  Adds generic sample artwork/caption/metadata so Layout/Frame/
+  Representation editing always has something to show. Layouts gained
+  guide overlays (Holder Boundary, Caption Area, Safe Margin, Padding,
+  Alignment line, a caption-position-aware sample caption) and an
+  automatic Aspect↔Composition lock that makes the invalid "Quote aspect
+  without Quote composition" combination unreachable through the UI
+  instead of merely warning about it; the Layout list gained "Used By."
+  Introduces `docs/AUTHORING_FINDINGS.md`, splitting what real authoring
+  surfaces into Builder Issues (fixed) and Future Product Insights
+  (documented only, not implemented) — most notably that Layout's
+  Padding/Spacing/Alignment/Caption Position fields have no effect on
+  the real Runtime render today, a gap Working View's overlays make
+  honest rather than hide. Verified via a new 35-assertion Playwright
+  suite plus full regression across every prior sprint's suite.

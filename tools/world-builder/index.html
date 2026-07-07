@@ -79,7 +79,6 @@
                     <span class="wb-workspace-saved">● <span id="wb-workspace-saved-text">Draft Saved</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
-                    <button id="wb-btn-preview" class="wb-workspace-btn" type="button" title="Preview this World using VihuStudio's real renderer">Preview</button>
                     <button id="wb-btn-settings" class="wb-workspace-btn" type="button" title="Open World Settings (Overview)">Settings</button>
                     <button id="wb-btn-save" class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Save this World Project now">💾 Save</button>
                     <div class="wb-menu-wrap">
@@ -97,39 +96,46 @@
                     <!-- rendered by worldBuilderApp.js -->
                 </nav>
 
-                <main class="wb-workspace-preview-column">
-                    <div id="wb-preview-canvas" class="wb-preview-canvas">
-                        <!-- rendered by worldBuilderApp.js -->
+                <!-- Working View (Sprint B2.0.3) — the context-aware editing
+                     surface. Renders through the same real renderer.js
+                     pipeline as Runtime Preview (no separate rendering
+                     logic), then draws Builder-only guide overlays on top
+                     for whichever state is active. These overlays never
+                     reach the World Package. -->
+                <main class="wb-workspace-working-column">
+                    <div class="wb-working-view-heading">
+                        <span class="wb-working-view-title">✏️ Working View</span>
+                        <span class="wb-working-view-sub">Editing guides shown here only — never saved</span>
+                    </div>
+                    <div class="wb-working-canvas-wrap">
+                        <canvas id="wb-working-canvas" class="wb-working-canvas"></canvas>
+                        <div id="wb-working-overlays" class="wb-working-overlays"></div>
                     </div>
                     <div id="wb-preview-selector" class="wb-preview-selector">
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
                 </main>
 
-                <aside id="wb-context-panel" class="wb-context-panel">
-                    <!-- rendered by worldBuilderApp.js -->
+                <!-- Right column (Sprint B2.0.3) — Runtime Preview (always
+                     visible, always clean — no overlays, no guides) stacked
+                     above the Inspector (the existing Context Panel property
+                     editor, unchanged). Replaces the old Preview modal. -->
+                <aside class="wb-workspace-right-column">
+                    <div class="wb-runtime-preview-wrap">
+                        <div class="wb-runtime-preview-heading">
+                            <span class="wb-runtime-preview-title">👁️ Runtime Preview</span>
+                            <span class="wb-runtime-preview-sub">What the reader will see</span>
+                        </div>
+                        <div class="wb-runtime-preview-canvas-wrap">
+                            <canvas id="wb-runtime-preview-canvas" class="wb-runtime-preview-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div id="wb-context-panel" class="wb-context-panel">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
                 </aside>
             </div>
         </section>
-    </div>
-
-    <!-- Preview modal (Sprint B2.0.1) — renders the current World through
-         VihuStudio's own real rendering pipeline (renderer/slideRenderer.js),
-         not the Workspace's illustrative Live Preview. Overlay, not a new
-         physical screen. -->
-    <div id="wb-preview-modal" class="wb-modal-overlay wb-hidden">
-        <div class="wb-modal-box wb-preview-modal-box">
-            <div class="wb-modal-header">
-                <span class="wb-modal-title">👁️ Preview — rendered by VihuStudio's real engine</span>
-                <button id="wb-preview-close" class="wb-modal-close" type="button">✕</button>
-            </div>
-            <div class="wb-preview-modal-body">
-                <div class="wb-preview-canvas-wrap">
-                    <canvas id="wb-preview-real-canvas" class="wb-preview-real-canvas"></canvas>
-                </div>
-                <p id="wb-preview-modal-note" class="wb-preview-modal-note"></p>
-            </div>
-        </div>
     </div>
 
     <footer class="wb-footer">

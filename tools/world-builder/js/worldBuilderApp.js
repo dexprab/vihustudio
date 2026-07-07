@@ -177,11 +177,6 @@
         'artwork-collection': '🗂️', poem: '📝'
     };
 
-    const ASPECT_RATIOS = {
-        landscape: '4 / 3', portrait: '3 / 4', square: '1 / 1',
-        wide: '16 / 9', quote: '3 / 4', 'full-bleed': '4 / 3'
-    };
-
     // Sprint B2.0.1 — Builder Guidance. Every Workspace state opens with
     // a concise What/Why/Do/Next explanation so a creator never has to
     // leave the Builder to open a contract doc. Kept short on purpose —
@@ -227,7 +222,9 @@
     const workspaceNav = $('wb-workspace-nav');
     const workspaceName = $('wb-workspace-name');
     const workspaceHome = $('wb-workspace-home');
-    const previewCanvas = $('wb-preview-canvas');
+    const workingCanvas = $('wb-working-canvas');
+    const workingOverlays = $('wb-working-overlays');
+    const runtimePreviewCanvas = $('wb-runtime-preview-canvas');
     const previewSelector = $('wb-preview-selector');
     const contextPanel = $('wb-context-panel');
 
@@ -247,7 +244,6 @@
     // real, none decorative).
     // ---------------------------------------------------------------
 
-    const btnPreview = $('wb-btn-preview');
     const btnSettings = $('wb-btn-settings');
     const btnSave = $('wb-btn-save');
     const btnMenu = $('wb-btn-menu');
@@ -305,94 +301,197 @@
         showWelcome();
     });
 
-    btnPreview.addEventListener('click', function () { _openPreviewModal(); });
-
     // ---------------------------------------------------------------
-    // Preview modal (Sprint B2.0.1) — renders through VihuStudio's own
-    // real engine (renderer/slideRenderer.js), the same pipeline
-    // Runtime uses, NOT the Workspace's illustrative Live Preview. This
-    // is a genuinely different surface from the always-visible center
-    // Preview: that one stays a lightweight mockup (LOCK 01 — the
-    // Builder never renders like Runtime as its everyday editing
-    // surface); this modal is a deliberate, on-demand exception that
-    // reuses the unmodified renderer, so "what you see is what Studio
-    // will render" is literally true, not just implied.
+    // Sprint B2.0.3 — Working View + Runtime Preview. Both are real
+    // renders through VihuStudio's own engine (renderer/slideRenderer.js,
+    // unmodified) — the same pipeline Runtime uses, fed from a
+    // lightweight, synchronous "live theme" built straight off
+    // ProjectModel accessors (below), not the heavier
+    // ProjectCompiler/builder.js Blob-based pipeline Validate/Build use.
+    // That heavier path is correct for a one-shot compile; it is far too
+    // slow to re-run on every keystroke, and every edit here must
+    // re-render with no Save/Build/Validate step. There is exactly one
+    // render call (SlideRenderer.render) invoked twice — once per
+    // canvas — never a second, Builder-owned rendering implementation.
     // ---------------------------------------------------------------
 
-    const previewModal = $('wb-preview-modal');
-    const previewRealCanvas = $('wb-preview-real-canvas');
-    const previewModalNote = $('wb-preview-modal-note');
-    const previewCloseBtn = $('wb-preview-close');
+    // Mirrors builder.js's collectFolder() exactly (spec §5/§6/§7: a
+    // folder's .json files each hold either one object or an array;
+    // flatten to one array either way) but reads project.files directly
+    // — already-parsed JS values in memory, no Blob/FileReader round
+    // trip — since this must be cheap enough to call on every edit.
+    function _collectFolderLight(project, folderPrefix) {
+        const out = [];
+        const prefix = folderPrefix + '/';
+        Object.keys(project.files).forEach(function (path) {
+            if (path.indexOf(prefix) !== 0) return;
+            const val = project.files[path];
+            if (Array.isArray(val)) out.push.apply(out, val);
+            else if (val && typeof val === 'object') out.push(val);
+        });
+        return out;
+    }
 
-    previewCloseBtn.addEventListener('click', function () {
-        previewModal.classList.add('wb-hidden');
-    });
-    previewModal.addEventListener('click', function (e) {
-        if (e.target === previewModal) previewModal.classList.add('wb-hidden');
-    });
+    // Mirrors builder.js's buildManifest()/buildTheme() merge rules
+    // exactly (metadata fields fill gaps manifest.json doesn't set;
+    // layouts/frameVariations/layerPack/representations flatten onto
+    // theme.json only when theme.json doesn't already define them) —
+    // same compiled shape Build produces, computed synchronously.
+    function _buildLiveManifest(project) {
+        const man = window.ProjectModel.manifest(project);
+        const meta = window.ProjectModel.metadata(project);
+        const manifest = Object.assign({}, man);
+        Object.keys(meta).forEach(function (key) {
+            if (manifest[key] === undefined) manifest[key] = meta[key];
+        });
+        return manifest;
+    }
 
-    async function _openPreviewModal() {
-        previewModal.classList.remove('wb-hidden');
-        previewModalNote.textContent = 'Rendering…';
+    function _buildLiveTheme(project, manifest) {
+        const theme = Object.assign({}, window.ProjectModel.theme(project));
+        theme.id = manifest.id;
+        theme.name = manifest.name;
+        const layouts = _collectFolderLight(project, 'layouts');
+        const frameVariations = _collectFolderLight(project, 'frames');
+        const layerPack = _collectFolderLight(project, 'layer-packs');
+        const representations = _collectFolderLight(project, 'representations');
+        if (theme.layouts === undefined && layouts.length) theme.layouts = layouts;
+        if (theme.frameVariations === undefined && frameVariations.length) theme.frameVariations = frameVariations;
+        if (theme.layerPack === undefined) theme.layerPack = layerPack;
+        if (theme.representations === undefined && representations.length) theme.representations = representations;
+        return theme;
+    }
+
+    // A generic sample artwork image, drawn once into an offscreen
+    // canvas and cached — Layout/Frame/Representation editing always
+    // has *something* to show in the picture holder, without a real
+    // upload (Sprint B2.0.3 "Layout Sample Content"). Never saved,
+    // never part of the Project — purely an in-memory Image the
+    // renderer treats like any other s.image.
+    let _cachedSampleImage = null;
+    let _sampleImageWaiters = [];
+    function _sampleArtworkImage(onReady) {
+        if (_cachedSampleImage) { onReady(_cachedSampleImage); return; }
+        _sampleImageWaiters.push(onReady);
+        if (_sampleImageWaiters.length > 1) return;
+        const off = document.createElement('canvas');
+        off.width = 640; off.height = 640;
+        const octx = off.getContext('2d');
+        const grad = octx.createLinearGradient(0, 0, 0, 640);
+        grad.addColorStop(0, '#9FB0CB');
+        grad.addColorStop(1, '#3D5A82');
+        octx.fillStyle = grad;
+        octx.fillRect(0, 0, 640, 640);
+        octx.fillStyle = '#FFD27A';
+        octx.beginPath();
+        octx.arc(640 * 0.72, 640 * 0.28, 60, 0, Math.PI * 2);
+        octx.fill();
+        octx.fillStyle = 'rgba(255,255,255,0.9)';
+        octx.font = 'bold 34px Georgia, serif';
+        octx.textAlign = 'center';
+        octx.textBaseline = 'middle';
+        octx.fillText('Sample Artwork', 320, 560);
+        const img = new Image();
+        img.onload = function () {
+            _cachedSampleImage = img;
+            const waiters = _sampleImageWaiters;
+            _sampleImageWaiters = [];
+            waiters.forEach(function (cb) { cb(img); });
+        };
+        img.src = off.toDataURL('image/png');
+    }
+
+    // Generic sample metadata (Museum Caption / slideCaption / Quote
+    // sources all read specific slide.metadata fields — see
+    // renderer/slideRenderer.js's _drawMuseumCaption/_drawQuoteText) so
+    // whichever text a World's own Layer Pack/Composition draws has
+    // real-looking sample content instead of rendering nothing.
+    const SAMPLE_METADATA = {
+        artworkTitle: 'Sample Artwork',
+        artist: 'Sample Artist',
+        age: '8',
+        date: 'This Year',
+        caption: 'A sample caption for this World.',
+        quoteText: 'Every world begins with a single idea.',
+        quoteAttribution: 'Sample Author'
+    };
+
+    // Same Story-runtime-chrome suppression Sprint B2.0.2 fixed for the
+    // old Preview modal (no invented page number / book-title footer /
+    // "@vihuplanet" handle) — this is a *generic sample page*, not a
+    // simulated book.
+    const SAMPLE_THEME_OPTIONS = {
+        variant: 'classic',
+        panelStyle: 'classic',
+        footerStyle: 'classic',
+        decorations: [],
+        pageNumber: 'hidden',
+        bookTitleVisibility: 'hide',
+        bookTitlePosition: 'bottom-left',
+        handleVisibility: 'hide',
+        handlePosition: 'top-right'
+    };
+
+    // Resolves which Layout/Frame this render should show for the
+    // current Nav + selection — same resolution rules the pre-B2.0.3
+    // illustrative mockup used (_activeAspectAndFrame), now driving the
+    // real renderer instead of a DOM approximation.
+    function _resolveActiveLayoutAndFrame(project) {
+        const layouts = window.ProjectModel.layouts(project);
+        const frames = window.ProjectModel.frames(project);
+        let layoutId = (layouts[0] || {}).id || null;
+        let frame = frames[0] || null;
+
+        if (currentNav === 'layouts') {
+            const layout = window.ProjectModel.findLayout(project, currentLayoutId) || layouts[0];
+            layoutId = layout ? layout.id : null;
+            const rep = window.ProjectModel.findRepresentation(project, currentRepresentationId);
+            const repFrame = rep && window.ProjectModel.findFrame(project, rep.defaultFrame);
+            if (repFrame) frame = repFrame;
+        } else if (currentNav === 'frames') {
+            frame = window.ProjectModel.findFrame(project, currentFrameId) || frame;
+        } else {
+            const rep = window.ProjectModel.findRepresentation(project, currentRepresentationId);
+            if (rep) {
+                layoutId = rep.layout || layoutId;
+                const repFrame = window.ProjectModel.findFrame(project, rep.defaultFrame);
+                if (repFrame) frame = repFrame;
+            }
+        }
+        return { layoutId: layoutId, frame: frame };
+    }
+
+    // The one shared synthetic slide both Working View and Runtime
+    // Preview render — same data, same SlideRenderer.render() call,
+    // just two target canvases (one gets Builder overlays drawn on top
+    // afterward, in DOM, never touching this object or the canvas
+    // pixels the Runtime Preview canvas also received).
+    function _buildPreviewSlide(sampleImage) {
         const project = currentProject;
-
-        // Reuses builder.js's own packaging step (unmodified) to get
-        // the exact resolved theme shape Build would produce — Preview
-        // never invents a second interpretation of the Project's data.
-        await window.ProjectCompiler.loadIntoProjectLoader(project);
-        const packageData = await builder.packageTheme();
-        const manifest = builder.buildManifest(packageData);
-        const theme = builder.buildTheme(packageData, manifest);
-
-        const rep = window.ProjectModel.findRepresentation(project, currentRepresentationId);
-        const layoutId = (rep && rep.layout) || (window.ProjectModel.layouts(project)[0] || {}).id;
-        const frameId = rep ? rep.defaultFrame : null;
+        const manifest = _buildLiveManifest(project);
+        const theme = _buildLiveTheme(project, manifest);
         const isArtwork = manifest.type === 'artwork';
+        const active = _resolveActiveLayoutAndFrame(project);
+        const frameId = active.frame ? active.frame.id : null;
 
-        // Sprint B2.0.2 — this must render a generic sample page
-        // *of this World*, not a simulated Story runtime. bookTitle/
-        // page-number/handle are per-project Story-runtime chrome the
-        // Builder has no real value for; showing them invented
-        // fictional content (a page number, and the renderer's own
-        // hardcoded "@vihuplanet" placeholder handle when none is
-        // given) that has nothing to do with the World being authored.
-        // Explicitly hiding all three keeps the Preview to exactly what
-        // this World itself defines — Frame, Layout and Layer Pack.
-        const s = {
-            image: null,
+        return {
+            image: sampleImage,
             storyBeat: '',
             bookTitle: '',
             handle: '',
             page: 1,
             totalPages: 1,
             theme: isArtwork ? null : theme,
-            themeOptions: {
-                variant: 'classic',
-                panelStyle: 'classic',
-                footerStyle: 'classic',
-                decorations: [],
-                pageNumber: 'hidden',
-                bookTitleVisibility: 'hide',
-                bookTitlePosition: 'bottom-left',
-                handleVisibility: 'hide',
-                handlePosition: 'top-right'
-            },
+            themeOptions: SAMPLE_THEME_OPTIONS,
             artworkTheme: isArtwork ? theme : null,
             imageView: null,
             overrides: null,
             pageType: 'story',
-            metadata: {
-                layout: layoutId,
+            metadata: Object.assign({
+                layout: active.layoutId,
                 cardOverrides: (isArtwork && frameId) ? { artwork: { frameVariation: frameId } } : null
-            }
+            }, SAMPLE_METADATA)
         };
-
-        window.SlideRenderer.init(previewRealCanvas, { dpr: window.devicePixelRatio || 1 });
-        window.SlideRenderer.render(s);
-
-        previewModalNote.textContent = rep
-            ? 'A generic sample page for "' + rep.name + '" — your own Frame/Layer Pack render; no artwork image is placed yet.'
-            : 'This World has no Representations yet — showing its default Layout as a generic sample page.';
     }
 
     function openWorkspace(project) {
@@ -451,130 +550,219 @@
         _renderContextPanel();
     }
 
-    // ---------- Live Preview (illustrative — the Builder never renders
-    // a page the way Studio's Runtime does; see LOCK 01) ----------
+    // ---------- Working View + Runtime Preview (Sprint B2.0.3) ----------
 
     function _capitalize(s) {
         return s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
     }
 
-    function _activeAspectAndFrame() {
-        const layouts = window.ProjectModel.layouts(currentProject);
-        const frames = window.ProjectModel.frames(currentProject);
-        let aspect = 'portrait';
-        let frame = frames[0] || null;
-
-        if (currentNav === 'layouts') {
-            const layout = window.ProjectModel.findLayout(currentProject, currentLayoutId) || layouts[0];
-            if (layout) aspect = layout.aspect;
-        } else if (currentNav === 'frames') {
-            frame = window.ProjectModel.findFrame(currentProject, currentFrameId) || frame;
-            if (layouts[0]) aspect = layouts[0].aspect;
-        } else {
-            const rep = window.ProjectModel.findRepresentation(currentProject, currentRepresentationId);
-            if (rep) {
-                const layout = window.ProjectModel.findLayout(currentProject, rep.layout);
-                if (layout) aspect = layout.aspect;
-                const repFrame = window.ProjectModel.findFrame(currentProject, rep.defaultFrame);
-                if (repFrame) frame = repFrame;
-            } else if (layouts[0]) {
-                aspect = layouts[0].aspect;
-            }
-        }
-        return { aspect: aspect, frame: frame };
+    // Overview isn't editing a rendered page at all — it's World
+    // identity (Name/Tagline/Hero/Thumbnail), which the Slide-rendering
+    // contract has no concept of. Rather than force it through
+    // SlideRenderer, Working View keeps a small identity card there
+    // (Working View is explicitly allowed to be context-aware and show
+    // something other than a rendered page); every other state edits a
+    // real page, so Working View renders it for real. Runtime Preview
+    // (the right column) always shows the real rendered page regardless
+    // of Nav, since it must always answer "what will the reader see."
+    function _workingViewIsIdentityCard() {
+        return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length === 0;
     }
 
-    const AAF_STATES = { representations: 1, layouts: 1, frames: 1 };
-
-    // Sprint B2.0.1 — Overview must consume the SAME shared
-    // `currentRepresentationId` selection Representations uses, not a
-    // second selection model. Overview shows the representation-aware
-    // Preview (not the generic identity card) whenever the World has at
-    // least one Representation to browse; a World with none (e.g. a
-    // fresh Blank World) still gets the identity card, since there is
-    // nothing to select yet.
-    function _showsRepresentationPreview() {
-        if (AAF_STATES[currentNav]) return true;
-        return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length > 0;
-    }
-
-    function _renderPreview() {
-        previewCanvas.innerHTML = '';
-        const wallTone = (function () {
-            const state = _activeAspectAndFrame();
-            return (state.frame && state.frame.fields && state.frame.fields.wallTone) || 'var(--wb-cream)';
-        })();
-        previewCanvas.style.background = wallTone;
-
+    function _renderIdentityCard(target) {
+        // Only removes a previous identity card, never the canvas/overlay
+        // siblings that also live in this wrap — those must survive so
+        // later renders can find them again.
+        const existing = target.querySelector('.wb-preview-frame');
+        if (existing) existing.remove();
         const frameEl = document.createElement('div');
         frameEl.className = 'wb-preview-frame';
-
-        if (!_showsRepresentationPreview()) {
-            frameEl.style.width = '70%';
-            frameEl.style.aspectRatio = '3 / 4';
-            frameEl.style.borderRadius = '10px';
-            const icon = document.createElement('span');
-            icon.className = 'wb-preview-icon';
-            icon.textContent = currentProject.icon || '🌎';
-            const thumbURL = window.ProjectModel.getAsset(currentProject, 'thumbnail.png');
-            if (thumbURL) {
-                const img = document.createElement('img');
-                img.src = thumbURL;
-                img.style.width = '64px';
-                img.style.height = '64px';
-                img.style.objectFit = 'cover';
-                img.style.borderRadius = '8px';
-                frameEl.appendChild(img);
-            } else {
-                frameEl.appendChild(icon);
-            }
-            const title = document.createElement('span');
-            title.className = 'wb-preview-title';
-            title.textContent = currentProject.name || 'Untitled World';
-            const tagline = document.createElement('span');
-            tagline.className = 'wb-preview-tagline';
-            tagline.textContent = currentProject.tagline || '';
-            frameEl.appendChild(title);
-            frameEl.appendChild(tagline);
+        frameEl.style.width = '70%';
+        frameEl.style.aspectRatio = '3 / 4';
+        frameEl.style.borderRadius = '10px';
+        const icon = document.createElement('span');
+        icon.className = 'wb-preview-icon';
+        icon.textContent = currentProject.icon || '🌎';
+        const thumbURL = window.ProjectModel.getAsset(currentProject, 'thumbnail.png');
+        if (thumbURL) {
+            const img = document.createElement('img');
+            img.src = thumbURL;
+            img.style.width = '64px';
+            img.style.height = '64px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '8px';
+            frameEl.appendChild(img);
         } else {
-            const state = _activeAspectAndFrame();
-            const ratio = ASPECT_RATIOS[state.aspect] || '3 / 4';
-            frameEl.style.aspectRatio = ratio;
-            frameEl.style.width = (state.aspect === 'wide' || state.aspect === 'landscape') ? '85%' : '55%';
-            frameEl.style.borderRadius = '6px';
-            const fields = (state.frame && state.frame.fields) || {};
-            if (state.frame) {
-                const thickness = fields.frameThickness || 0;
-                frameEl.style.border = thickness + 'px solid ' + (fields.borderColor || '#1D3457');
-            } else {
-                frameEl.style.border = '2px solid var(--wb-border)';
-            }
-            const icon = document.createElement('span');
-            icon.className = 'wb-preview-icon';
-            icon.textContent = currentProject.icon || '🌎';
             frameEl.appendChild(icon);
-            if (currentNav === 'layouts') {
-                const layout = window.ProjectModel.findLayout(currentProject, currentLayoutId);
-                const label = document.createElement('span');
-                label.className = 'wb-preview-tagline';
-                label.textContent = layout ? _capitalize(layout.aspect) + ' · caption ' + (layout.captionPosition || 'below') : '';
-                frameEl.appendChild(label);
-            } else if (currentNav === 'frames') {
-                const label = document.createElement('span');
-                label.className = 'wb-preview-title';
-                label.textContent = state.frame ? state.frame.name : '';
-                frameEl.appendChild(label);
-            } else {
-                const rep = window.ProjectModel.findRepresentation(currentProject, currentRepresentationId);
-                const label = document.createElement('span');
-                label.className = 'wb-preview-title';
-                label.textContent = rep ? rep.name : '';
-                frameEl.appendChild(label);
-            }
+        }
+        const title = document.createElement('span');
+        title.className = 'wb-preview-title';
+        title.textContent = currentProject.name || 'Untitled World';
+        const tagline = document.createElement('span');
+        tagline.className = 'wb-preview-tagline';
+        tagline.textContent = currentProject.tagline || '';
+        frameEl.appendChild(title);
+        frameEl.appendChild(tagline);
+        target.appendChild(frameEl);
+    }
+
+    // The single entry point every edit handler calls. Builds one
+    // synthetic slide, renders it into both canvases via the real
+    // SlideRenderer (identical call, two targets — no second rendering
+    // implementation), then draws Working-View-only guide overlays.
+    // Sample artwork loads once and is cached; every call after the
+    // first resolves synchronously.
+    function _renderPreview() {
+        if (_workingViewIsIdentityCard()) {
+            workingOverlays.innerHTML = '';
+            _renderIdentityCard(workingCanvas.parentElement);
+            workingCanvas.classList.add('wb-hidden');
+        } else {
+            workingCanvas.classList.remove('wb-hidden');
+            const stray = workingCanvas.parentElement.querySelector('.wb-preview-frame');
+            if (stray) stray.remove();
         }
 
-        previewCanvas.appendChild(frameEl);
+        _sampleArtworkImage(function (sampleImage) {
+            const s = _buildPreviewSlide(sampleImage);
+
+            window.SlideRenderer.init(runtimePreviewCanvas, { dpr: window.devicePixelRatio || 1 });
+            window.SlideRenderer.render(s);
+
+            if (!_workingViewIsIdentityCard()) {
+                window.SlideRenderer.init(workingCanvas, { dpr: window.devicePixelRatio || 1 });
+                window.SlideRenderer.render(s);
+                _renderWorkingOverlays(s);
+            }
+        });
+
         _renderPreviewSelector();
+    }
+
+    // ---------- Working View guide overlays (Layouts only, Sprint B2.0.3) ----------
+    // Builder-only annotations drawn in DOM on top of the Working View
+    // canvas, positioned as percentages of SlideRenderer's own logical
+    // 1080×1350 coordinate space (via getPanelRect/getCaptionRect) so
+    // they track the real render exactly without duplicating its
+    // geometry math. Never drawn onto the canvas pixels themselves, so
+    // Runtime Preview — the same render, no overlay pass — never shows
+    // them.
+    function _guideBox(cls, label, rectPct, labelAtBottom) {
+        const box = document.createElement('div');
+        box.className = 'wb-guide-box ' + cls;
+        box.style.left = rectPct.x + '%';
+        box.style.top = rectPct.y + '%';
+        box.style.width = rectPct.w + '%';
+        box.style.height = rectPct.h + '%';
+        if (label) {
+            const lbl = document.createElement('span');
+            lbl.className = 'wb-guide-label' + (labelAtBottom ? ' wb-guide-label-bottom' : '');
+            lbl.textContent = label;
+            box.appendChild(lbl);
+        }
+        return box;
+    }
+
+    function _toPct(rect, canvasSize) {
+        return {
+            x: (rect.x / canvasSize.w) * 100,
+            y: (rect.y / canvasSize.h) * 100,
+            w: (rect.w / canvasSize.w) * 100,
+            h: (rect.h / canvasSize.h) * 100
+        };
+    }
+
+    function _renderWorkingOverlays(s) {
+        workingOverlays.innerHTML = '';
+        if (currentNav !== 'layouts') return;
+
+        const layout = window.ProjectModel.findLayout(currentProject, currentLayoutId);
+        if (!layout) return;
+
+        const canvasSize = window.SlideRenderer.getCanvasSize();
+        const isQuote = layout.composition === 'quote';
+        const panelRect = window.SlideRenderer.getPanelRect(s);
+        const panelPct = _toPct(panelRect, canvasSize);
+
+        // Safe margins — a fixed illustrative inset from the page edge,
+        // always shown so a creator can judge how close a Frame sits to
+        // the edge of the page.
+        workingOverlays.appendChild(_guideBox('wb-guide-margin', 'Safe Margin', _toPct(
+            { x: 40, y: 40, w: canvasSize.w - 80, h: canvasSize.h - 80 }, canvasSize
+        )));
+
+        // Holder Boundary — the actual resolved Frame/picture rect for
+        // this Layout (Quote has none; the panel rect there is the
+        // centered text area instead).
+        workingOverlays.appendChild(_guideBox('wb-guide-holder', isQuote ? 'Quote Text Area' : 'Holder Boundary', panelPct));
+
+        // Padding guide — an inset within the Holder Boundary sized from
+        // the Layout's own Padding field, so dragging Padding visibly
+        // shrinks/grows this inner box immediately. Labeled at the
+        // bottom corner (not top, like Holder Boundary) since the two
+        // boxes nest almost exactly on top of each other.
+        if (!isQuote) {
+            const pad = Math.max(0, Math.min(layout.padding || 0, Math.min(panelRect.w, panelRect.h) / 2 - 4));
+            workingOverlays.appendChild(_guideBox('wb-guide-padding', 'Padding', _toPct({
+                x: panelRect.x + pad, y: panelRect.y + pad,
+                w: Math.max(1, panelRect.w - pad * 2), h: Math.max(1, panelRect.h - pad * 2)
+            }, canvasSize), true));
+        }
+
+        // Caption area — for "Right" composition this is the real,
+        // distinct rect SlideRenderer.getCaptionRect resolves (beside
+        // the Frame). For "Below" (the default) the real contract has
+        // no independent caption rect at all — a Layer Pack caption
+        // there is anchored per-layer, not to a fixed area — so this is
+        // a Builder-only illustrative band placed just under the Holder,
+        // honestly labeled as an approximation rather than reusing the
+        // real API to imply a precision that isn't there.
+        if (!isQuote) {
+            let captionRect, captionLabel;
+            if (layout.composition === 'right') {
+                captionRect = window.SlideRenderer.getCaptionRect(s);
+                captionLabel = 'Caption Boundary';
+            } else {
+                captionRect = {
+                    x: panelRect.x, w: panelRect.w, h: 100,
+                    y: Math.min(panelRect.y + panelRect.h + 24, canvasSize.h - 130)
+                };
+                captionLabel = 'Caption Area (approx.)';
+            }
+            if (captionRect) workingOverlays.appendChild(_guideBox('wb-guide-caption', captionLabel, _toPct(captionRect, canvasSize)));
+
+            // Alignment guide — a vertical line inside the Caption area
+            // at the Layout's own Alignment value, and a sample caption
+            // placeholder positioned per Caption Position, so both
+            // fields visibly move something in the Working View even
+            // though the real Runtime contract has no per-position
+            // caption concept yet (see AUTHORING_FINDINGS.md).
+            if (captionRect) {
+                const align = layout.alignment || 'center';
+                const alignX = align === 'left' ? captionRect.x + 6
+                    : align === 'right' ? captionRect.x + captionRect.w - 6
+                        : captionRect.x + captionRect.w / 2;
+                const lineEl = document.createElement('div');
+                lineEl.className = 'wb-guide-align-line';
+                lineEl.style.left = (alignX / canvasSize.w * 100) + '%';
+                lineEl.style.top = _toPct(captionRect, canvasSize).y + '%';
+                lineEl.style.height = _toPct(captionRect, canvasSize).h + '%';
+                workingOverlays.appendChild(lineEl);
+
+                const captionPosition = layout.captionPosition || 'below';
+                if (captionPosition !== 'none') {
+                    const sample = document.createElement('div');
+                    sample.className = 'wb-guide-sample-caption';
+                    sample.textContent = '“' + SAMPLE_METADATA.caption + '”';
+                    let sx = panelPct.x, sy = panelPct.y + panelPct.h + 1;
+                    if (captionPosition === 'right') { sx = panelPct.x + panelPct.w + 2; sy = panelPct.y + panelPct.h / 2 - 3; }
+                    else if (captionPosition === 'overlay') { sx = panelPct.x + 4; sy = panelPct.y + panelPct.h - 12; }
+                    sample.style.left = Math.max(0, Math.min(sx, 96)) + '%';
+                    sample.style.top = Math.max(0, Math.min(sy, 96)) + '%';
+                    workingOverlays.appendChild(sample);
+                }
+            }
+        }
     }
 
     function _renderPreviewSelector() {
@@ -1110,6 +1298,11 @@
             contextPanel.appendChild(_fieldHelp('Layouts are shared — other Representations can reuse the same one. Switch which Representation you\'re viewing from the Representations state.'));
         }
 
+        // Sprint B2.0.3 — Layout Library "Used By": communicates Layout
+        // reuse (a Layout is shared/independent, per the Current
+        // Representation banner above) by listing every Representation
+        // that currently points at each one via its Default Layout.
+        const allReps = window.ProjectModel.representations(project);
         const layouts = window.ProjectModel.layouts(project);
         layouts.forEach(function (layout) {
             const row = document.createElement('div');
@@ -1118,6 +1311,15 @@
             name.className = 'wb-rep-list-row-name';
             name.textContent = layout.name || _capitalize(layout.id);
             row.appendChild(name);
+
+            const usedBy = allReps.filter(function (r) { return r.layout === layout.id; });
+            const usedByLine = document.createElement('span');
+            usedByLine.className = 'wb-field-hint wb-layout-used-by';
+            usedByLine.textContent = usedBy.length
+                ? 'Used by: ' + usedBy.map(function (r) { return '✓ ' + r.name; }).join('   ')
+                : 'Not used by any Representation yet';
+            row.appendChild(usedByLine);
+
             row.addEventListener('click', function () {
                 currentLayoutId = layout.id;
                 _renderWorkspace();
@@ -1158,6 +1360,13 @@
             _renderPreviewSelector();
         }));
 
+        // Sprint B2.0.3 — Layout Guidance: Quote aspect and Quote
+        // composition are the same concept from two fields, and the old
+        // help text ("Must be Quote...") only ever *warned* about the
+        // invalid combination rather than preventing it. Aspect now
+        // drives Composition automatically — no invalid state is
+        // reachable through the UI at all, so nothing needs to explain
+        // an implementation rule a creator could otherwise violate.
         _fieldGroup('Aspect', _select([
             { value: 'landscape', label: 'Landscape' },
             { value: 'portrait', label: 'Portrait' },
@@ -1167,24 +1376,34 @@
             { value: 'full-bleed', label: 'Full Bleed' }
         ], layout.aspect, function (v) {
             layout.aspect = v;
+            if (v === 'quote') layout.composition = 'quote';
+            else if (layout.composition === 'quote') layout.composition = 'below';
             _persist();
+            _renderLayoutsPanel();
             _renderPreview();
-        }), 'The page shape this Layout resolves to. Pick "Quote" for a text-only page with no picture at all.');
+        }), 'The page shape this Layout resolves to. Quote is a text-only page with no picture.');
 
         const holderDiagram = document.createElement('div');
         holderDiagram.className = 'wb-holder-area-diagram';
         holderDiagram.textContent = 'Holder Area';
         _fieldGroup('Holder Area', holderDiagram);
 
-        _fieldGroup('Composition', _select([
-            { value: 'below', label: 'Below — caption under the Frame (default)' },
-            { value: 'right', label: 'Right — Frame left, caption right (Wide)' },
-            { value: 'quote', label: 'Quote — no Frame/Holder, centered text only' }
-        ], layout.composition, function (v) {
+        const isQuoteAspect = layout.aspect === 'quote';
+        const compositionOptions = isQuoteAspect
+            ? [{ value: 'quote', label: 'Quote — no Frame/Holder, centered text only' }]
+            : [
+                { value: 'below', label: 'Below — caption under the Frame (default)' },
+                { value: 'right', label: 'Right — Frame left, caption right (Wide)' }
+            ];
+        const compositionSelect = _select(compositionOptions, layout.composition, function (v) {
             layout.composition = v;
             _persist();
             _renderPreview();
-        }), 'How the Frame and caption are arranged on the page. Must be "Quote" for a Quote-aspect Layout to render correctly.');
+        });
+        if (isQuoteAspect) compositionSelect.disabled = true;
+        _fieldGroup('Composition', compositionSelect, isQuoteAspect
+            ? 'Fixed for a Quote-aspect Layout — nothing else to choose.'
+            : 'How the Frame and caption are arranged on the page.');
 
         _fieldGroup('Caption Position', _select([
             { value: 'below', label: 'Below' },
@@ -1195,16 +1414,18 @@
             layout.captionPosition = v;
             _persist();
             _renderPreview();
-        }));
+        }), 'Moves the sample caption shown in the Working View.');
 
         _fieldGroup('Padding', _range(0, 48, layout.padding, function (v) {
             layout.padding = v;
             _persist();
-        }));
+            _renderPreview();
+        }), 'Shrinks the Padding guide inside the Holder Boundary in the Working View.');
 
         _fieldGroup('Spacing', _range(0, 32, layout.spacing, function (v) {
             layout.spacing = v;
             _persist();
+            _renderPreview();
         }));
 
         const alignRow = document.createElement('div');
@@ -1219,6 +1440,7 @@
                 layout.alignment = align;
                 _persist();
                 _renderLayoutsPanel();
+                _renderPreview();
             });
             alignRow.appendChild(btn);
         });

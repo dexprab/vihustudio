@@ -1,0 +1,147 @@
+# Authoring Findings
+
+**Scope:** A living log of usability gaps and platform observations
+surfaced by actually *using* World Builder to author a World — as
+distinct from `docs/WORLD_BUILDER_ARCHITECTURE.md` (how the Builder is
+built) and `docs/WORLD_PROJECT_CONTRACT.md`/`docs/THEME_PROJECT_SPEC.md`
+(what a World Project/Package must contain). This document records what
+authoring *felt* like, split into two kinds of finding:
+
+- **Builder Issues** — real usability gaps fixed (or fixable) inside
+  the Builder itself, with no World/Runtime contract change required.
+- **Future Product Insights** — observations that would require a
+  Runtime or World Project Contract change, a larger architectural
+  decision, or more Official Worlds authored before deciding. These are
+  **documented only, never implemented** on the strength of one
+  authoring pass — see each sprint's own "do not implement" scope.
+
+Per-sprint sections are appended in order; nothing here is retroactively
+rewritten, only added to.
+
+---
+
+## Sprint B2.0.3 — Working View + Runtime Preview
+
+### Builder Issues (fixed this sprint)
+
+**The old Preview button/modal was a one-shot, on-demand surface; the
+Builder is now two continuously-synced surfaces.** Before this sprint,
+seeing a real render meant clicking "Preview," waiting for a heavier
+compile (`ProjectCompiler.loadIntoProjectLoader` → `builder.js`'s
+Blob/FileReader-based `packageTheme()`), and looking at a modal that
+closed the moment you wanted to keep editing. Now the Workspace has a
+permanent **Working View** (center — context-aware, shows Builder-only
+guide overlays) and **Runtime Preview** (right column — always visible,
+guide-free, literally "what the reader will see"), both re-rendered on
+every edit with no Save/Build/Validate step. Making this fast enough to
+re-run per keystroke required a second, *lightweight* theme resolver —
+`_collectFolderLight`/`_buildLiveManifest`/`_buildLiveTheme` in
+`worldBuilderApp.js` — that mirrors `builder.js`'s own
+`buildManifest()`/`buildTheme()` merge rules exactly but reads
+`project.files` directly (already-parsed JS values) instead of round-
+tripping through Blobs. This is *not* a second interpretation of "what
+the compiled theme looks like" — it is the same merge rules, computed
+synchronously because the heavier path is provably too slow for
+continuous live authoring. Validate/Build still use the original,
+unmodified `ProjectCompiler`/`builder.js` path, since that one-shot
+compile is exactly where the real validator belongs.
+
+**Sample content was entirely missing.** Editing a Layout/Frame/
+Representation with no artwork placed and an empty default Layer Pack
+rendered a blank Holder and no caption at all — nothing to visually
+judge. A generic Sample Artwork image (drawn once into an offscreen
+canvas and cached as a real `Image`) and generic sample metadata
+(`artworkTitle`/`artist`/`age`/`date`/`caption`/`quoteText`/
+`quoteAttribution` — see `SAMPLE_METADATA` in `worldBuilderApp.js`) are
+now always fed into both surfaces. Never part of the Project, never
+exported.
+
+**Layout editing had five fields that silently updated data with no
+visible feedback** (Composition, Caption Position, Padding, Spacing,
+Alignment). Composition and (indirectly) Aspect are real Runtime
+contract fields, so feeding them into the live-rendered slide alone
+made them visibly change both surfaces. Caption Position/Padding/
+Alignment are not consumed by the Runtime at all (see the Future
+Product Insight below) — these now drive Working-View-only guide
+overlays (`_renderWorkingOverlays`): a Padding inset box, an Alignment
+guide line, and a sample-caption placeholder that moves per Caption
+Position. Honestly labeled as Builder-only annotations, not implied to
+be literal Runtime behavior.
+
+**"Must be Quote for a Quote-aspect Layout to render correctly" was a
+warning about a reachable invalid state, not a preventer of it.** Aspect
+and Composition now stay in lockstep automatically: setting Aspect to
+`quote` forces Composition to `quote` and disables that selector (there
+is nothing else valid to choose); leaving `quote` resets Composition to
+`below`. The invalid combination is no longer reachable through the UI,
+so the warning text was deleted rather than reworded.
+
+**Layout Library gained "Used By."** Each Layout row now lists every
+Representation whose Default Layout points at it (or "Not used by any
+Representation yet"), making Layout reuse visible without opening each
+Representation individually.
+
+### Future Product Insights (not implemented — documented only)
+
+**Layout's Padding/Spacing/Alignment/Caption Position fields have no
+effect on the real Runtime render.** `renderer/slideRenderer.js` never
+reads `layout.padding`/`layout.spacing`/`layout.alignment`/
+`layout.captionPosition` anywhere — they are, and always have been,
+Builder-only data with no corresponding Runtime concept. This sprint
+made them visibly affect the *Working View* (honestly, via overlays
+that are never mistaken for the real render, since Runtime Preview sits
+right beside it showing no change), but did not — and per this sprint's
+explicit "no Runtime contract changes" instruction, could not — make
+them affect Runtime Preview or the actual published page. Two paths
+forward, neither decided here: (a) the Runtime/World Project Contract
+grows a real caption-layout concept these fields feed (a Slide→Frame→
+Holder→Element-shaped addition, matching the existing containership
+model), or (b) the Builder stops presenting them as independently
+authorable until it does, since right now a creator can carefully tune
+values that visibly do nothing once published.
+
+**Composition's "Below" vs "Right" only visibly differ when the active
+Layer Pack actually draws a caption.** Every starter template ships an
+empty default "Basic" Layer Pack (`layerPack: []` in `templates.js`).
+With no caption-drawing Layer authored, `below` and `right` composition
+render pixel-identical (both only affect *where* a caption would sit,
+and Below's own "caption rect" isn't even a real, independent Runtime
+concept — see above). This isn't a Working View bug; it's a real
+authoring-order dependency worth surfacing to a first-time creator
+("Composition won't look different until you add a caption Layer") that
+the Builder does not currently explain anywhere.
+
+**Working View's "Caption Area" for the default (Below) composition is
+a Builder-only illustrative approximation**, not derived from the real
+per-Layer anchor math the Layer Engine actually uses (a caption Layer
+anchors to wherever its own `anchor`/`offset` fields say, not to one
+fixed rect). Only the "Right" composition has a genuine, renderer-
+resolved caption rect (`SlideRenderer.getCaptionRect`). A future
+iteration could resolve the *actual* position of the active Layer
+Pack's caption-sourced Layer(s) instead of guessing a fixed band, but
+that requires the Working View overlay logic to become Layer Pack-aware,
+which this sprint's scope didn't require.
+
+**Per-state Working View highlighting beyond Layouts is unbuilt.** This
+sprint's ticket described Working View as context-aware with
+illustrative examples per state (Overview: Hero/Thumbnail; Frame:
+Border/Mat/Shadow/Corner Radius; Layer Pack: Image/Text/Decoration
+Layers; Assets: the slot being configured) but its concrete P0/P1
+requirements were scoped to Layouts specifically (Composition/Caption
+Position/Padding/Spacing/Alignment + guides). Layouts got the full guide
+treatment; the other states render the real page (so editing a Frame's
+thickness, for instance, is already visible in both surfaces) but have
+no bespoke highlight overlay yet. A natural next increment, not started
+here.
+
+**A-005 / A-006 (carried over from Sprint B2.0.2, still open):**
+whether a Layout should become owned by a single Representation instead
+of staying independent/reusable, and whether "Portrait" (currently a
+Representation) belongs as a Layout instead. Still unresolved pending
+more Official Worlds authored for comparison.
+
+**Visual Theme Composer** — interactive page anatomy, click-to-edit
+page layers, drag-resizable Holders, context-aware object selection —
+remains the long-term direction, explicitly out of scope for this and
+every B2.x sprint per its own ticket. Recorded here only so the
+direction stays on record.

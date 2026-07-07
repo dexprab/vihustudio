@@ -469,103 +469,6 @@ html, body {
 
 .wb-menu-item-danger { color: #A03A3A; }
 
-/* ---------- Modal overlay (Sprint B2.0.1 — Preview) ---------- */
-
-.wb-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(30, 24, 10, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-}
-
-.wb-modal-box {
-    background: var(--wb-cream);
-    border-radius: 18px;
-    box-shadow: 0 20px 50px rgba(0,0,0,.35);
-    max-width: 90vw;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.wb-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--wb-border);
-    background: var(--wb-paper);
-}
-
-.wb-modal-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--wb-navy);
-}
-
-.wb-modal-close {
-    font-family: inherit;
-    font-size: 16px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--wb-text-secondary);
-    padding: 4px 8px;
-}
-
-/* Sprint B2.0.2 — the Preview must always fit the viewport with no
-   scrollbars: a fixed-height box (so the flex body below can claim
-   "everything left after the header") + a canvas that scales by
-   height first, width second, never exceeding either. */
-.wb-preview-modal-box { width: 620px; height: 88vh; }
-
-.wb-preview-modal-body {
-    flex: 1;
-    min-height: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    overflow: hidden;
-}
-
-/* The canvas sizes against THIS wrapper (flex:1, min-height:0), not the
-   whole modal body — so the note below always gets its own space
-   instead of being squeezed out by a canvas computed at 100% of the
-   body's height. */
-.wb-preview-canvas-wrap {
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.wb-preview-real-canvas {
-    width: auto;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    aspect-ratio: 1080 / 1350;
-    border-radius: 10px;
-    box-shadow: 0 8px 22px var(--wb-shadow);
-    background: #fff;
-}
-
-.wb-preview-modal-note {
-    flex: 0 0 auto;
-    font-size: 12px;
-    color: var(--wb-text-secondary);
-    text-align: center;
-    margin: 0;
-}
-
 /* ---------- Builder guidance (Sprint B2.0.1) ---------- */
 
 .wb-state-intro {
@@ -590,7 +493,7 @@ html, body {
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 200px 1fr 320px;
+    grid-template-columns: 200px 1fr 340px;
     min-height: 0;
 }
 
@@ -629,33 +532,25 @@ html, body {
 
 .wb-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
 
-.wb-workspace-preview-column {
+/* ---------- Working View (Sprint B2.0.3) ---------- */
+/* The center column. Context-aware: renders the real World through
+   SlideRenderer (same pipeline as Runtime Preview) with Builder-only
+   guide overlays drawn on top for whichever state is active. Always
+   visible — no modal, no separate "Preview" click required. */
+
+.wb-workspace-working-column {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 24px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 20px 24px;
     overflow: auto;
     background: var(--wb-cream);
 }
 
-.wb-preview-canvas {
-    flex-shrink: 0;
-    width: 100%;
-    max-width: 520px;
-    aspect-ratio: 4 / 3;
-    border-radius: 18px;
-    box-shadow: 0 10px 30px var(--wb-shadow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-    padding: 20px;
-    transition: background .2s ease;
-}
-
+/* Identity card — Working View's fallback for Overview when the World
+   has zero Representations yet (nothing to render as a page). */
 .wb-preview-frame {
     position: relative;
     display: flex;
@@ -665,6 +560,8 @@ html, body {
     gap: 10px;
     background: var(--wb-paper);
     box-shadow: 0 4px 14px rgba(0,0,0,.15);
+    border-radius: 10px;
+    padding: 16px;
 }
 
 .wb-preview-icon { font-size: 48px; }
@@ -682,6 +579,171 @@ html, body {
     color: var(--wb-text-secondary);
     text-align: center;
     padding: 0 16px;
+}
+
+.wb-working-view-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.wb-working-view-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-working-view-sub {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-working-canvas-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1080 / 1350;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px var(--wb-shadow);
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wb-working-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Guide overlays — absolutely positioned in percentages of the canvas
+   wrapper, so they track the real render's own geometry (read via
+   SlideRenderer.getPanelRect/getCaptionRect) without any resize-
+   listener math. Never rendered onto the canvas itself — purely a DOM
+   layer on top, so Runtime Preview (a second, guide-free instance of
+   the same canvas render) never shows them. */
+.wb-working-overlays {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.wb-guide-box {
+    position: absolute;
+    border: 1.5px dashed rgba(29, 52, 87, 0.55);
+    border-radius: 4px;
+}
+
+.wb-guide-box.wb-guide-holder { border-color: rgba(29, 52, 87, 0.55); }
+.wb-guide-box.wb-guide-caption { border-color: rgba(184, 108, 33, 0.6); }
+.wb-guide-box.wb-guide-padding { border-color: rgba(76, 130, 89, 0.55); border-style: dotted; }
+.wb-guide-box.wb-guide-margin { border-color: rgba(51, 48, 42, 0.28); border-style: solid; }
+
+.wb-guide-label {
+    position: absolute;
+    top: -1px;
+    left: 2px;
+    transform: translateY(-100%);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--wb-paper);
+    color: var(--wb-navy);
+    white-space: nowrap;
+}
+
+/* Padding's guide is nested just inside Holder Boundary, so its label
+   goes at the opposite (bottom) corner to avoid stacking on top of the
+   Holder/Caption labels at the same top-left point. */
+.wb-guide-label-bottom {
+    top: auto;
+    bottom: -1px;
+    left: auto;
+    right: 2px;
+    transform: translateY(100%);
+}
+
+.wb-guide-align-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 1.5px dashed rgba(184, 33, 33, 0.55);
+}
+
+.wb-guide-sample-caption {
+    position: absolute;
+    font-size: 9px;
+    color: var(--wb-text-secondary);
+    background: rgba(255, 253, 248, 0.9);
+    border: 1px dashed rgba(184, 108, 33, 0.6);
+    border-radius: 4px;
+    padding: 2px 6px;
+    max-width: 46%;
+}
+
+/* ---------- Runtime Preview (Sprint B2.0.3) ---------- */
+/* Top of the right column, permanently visible, never contains a
+   guide/overlay — literal SlideRenderer output only, answering
+   "what will the reader see?" */
+
+.wb-runtime-preview-wrap {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--wb-border);
+    background: var(--wb-sand);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.wb-runtime-preview-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+.wb-runtime-preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-runtime-preview-sub {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-runtime-preview-canvas-wrap {
+    width: 100%;
+    max-width: 160px;
+    aspect-ratio: 1080 / 1350;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px var(--wb-shadow);
+    overflow: hidden;
+    background: #fff;
+}
+
+.wb-runtime-preview-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.wb-workspace-right-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--wb-border);
 }
 
 .wb-preview-selector {
@@ -719,8 +781,9 @@ html, body {
 .wb-selector-chip-icon { font-size: 18px; }
 
 .wb-context-panel {
+    flex: 1;
+    min-height: 0;
     background: var(--wb-paper);
-    border-left: 1px solid var(--wb-border);
     padding: 20px;
     overflow-y: auto;
 }

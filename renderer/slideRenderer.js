@@ -1864,6 +1864,18 @@ const SlideRenderer=(()=>{
   // fixed rect exactly as before, for any caller not yet slide-aware.
   function getPanelRect(s){ return s!==undefined ? _panelRectFor(s) : {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
 
+  // Sprint B2.0.3 — World Builder Working View guides. Read-only query,
+  // no new rendering behaviour: mirrors render()'s own caption-rect
+  // resolution (_captionRectFor falling back to _holderRectFor) so a
+  // tool can draw a "Caption Boundary" guide without duplicating that
+  // logic or being told about it out-of-band.
+  function getCaptionRect(s){
+    const panelRect=_panelRectFor(s);
+    const border=_resolveBorder(s);
+    const composition=_layoutCompositionFor(s);
+    return _captionRectFor(panelRect,composition)||_holderRectFor(panelRect,border);
+  }
+
   // Sprint 9.0.2 — WYSIWYE. Canonical canvas size in *logical* pixels
   // (the coordinate space every downstream renderer / hit-tester uses,
   // regardless of DPR-scaled backing store). Hit-testing on the editor
@@ -2235,7 +2247,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
+  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();
