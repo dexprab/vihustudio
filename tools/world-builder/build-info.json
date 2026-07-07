@@ -1,10 +1,10 @@
 {
-  "version": "2.1.0-EV2",
+  "version": "2.2.0-EV2",
   "phase": "Engine V2 Implementation",
-  "milestone": "Native Runtime & Validation",
-  "slice": "Validation against the canonical Scene Model",
-  "build": "0012",
+  "milestone": "Build & Publish",
+  "slice": "Build and Publish against the canonical Scene Model",
+  "build": "0013",
   "buildDate": "2026-07-07",
-  "commit": "7aca3fa",
+  "commit": "889d921",
   "environment": "Release"
 }
