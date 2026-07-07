@@ -23,15 +23,20 @@
     function render(j) {
         try {
             var v = j.version || '';
-            var s = j.sprint || '';
-            var t = j.task || '';
+            // Engine V2 implementation phase — phase/milestone/slice
+            // (falling back to the older sprint/task naming so a
+            // pre-existing build-info.json never breaks the footer).
+            var phase = j.phase || j.sprint || '';
+            var milestone = j.milestone || j.task || '';
+            var slice = j.slice || '';
             var b = j.build || '';
             var c = j.commit || '';
             var e = j.environment || '';
-            var st = s && t ? (s + '-' + t) : '';
+            var pm = phase && milestone ? (phase + ' — ' + milestone) : (phase || milestone);
             var parts = [];
             parts.push(v ? (WB_NAME + ' ' + v) : WB_NAME);
-            if (st) parts.push(st);
+            if (pm) parts.push(pm);
+            if (slice) parts.push('Slice: ' + slice);
             if (b) parts.push('Build ' + b);
             if (c) parts.push(c);
             if (e) parts.push(e);

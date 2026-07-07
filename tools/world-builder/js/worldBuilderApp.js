@@ -359,6 +359,12 @@
     let currentLayerPackId = null;
     let currentLayerId = null;
     let lastValidation = null;
+    // Engine V2's own Validation report (Scenes) — deliberately a
+    // separate result, not merged into `lastValidation`'s V1 category
+    // list, since Scene Model §5/LOCK V2-04 treats Engine V2 Validation
+    // as its own pipeline operating directly on the canonical Scene
+    // Model, never routed through or interleaved with Engine V1's.
+    let lastSceneValidation = null;
 
     // Builder V2 — Scenes state. `currentSceneId` null means the Scenes
     // Library is showing; set means a specific Scene's editor is open.
@@ -463,29 +469,31 @@
     });
 
     // ---------------------------------------------------------------
-    // Builder V2 — Vision §4 realignment. Two sash-style resize handles,
-    // each a real CSS Grid track (see world-builder.css's
+    // Builder V2 — Vision §4 realignment (v1.1 reorder: Working View |
+    // Context Inspector | Runtime Preview). Two sash-style resize
+    // handles, each a real CSS Grid track (see world-builder.css's
     // .wb-workspace-body rule) rather than an absolutely-positioned
     // overlay recomputed after every render — a real grid track can
     // never drift out of sync with the panel boundary it drags, and
     // resizing it is nothing more than writing one CSS custom property.
     // Previously (Sprint B2.0.6) the Inspector sash resized its *height*,
     // since Context Inspector was a full-width row beneath Working View +
-    // Runtime Preview. Vision §4 makes Context Inspector a third
-    // full-height column instead, so both sashes are now vertical
-    // (col-resize) and both persisted dimensions are widths:
-    // --wb-runtime-w (Working View ↔ Runtime Preview boundary) and
-    // --wb-inspector-w (Runtime Preview ↔ Context Inspector boundary).
+    // Runtime Preview. Vision §4 makes Context Inspector a full-height
+    // column instead, so both sashes are vertical (col-resize) and both
+    // persisted dimensions are widths: --wb-inspector-w (Working View ↔
+    // Context Inspector boundary) and --wb-runtime-w (Context Inspector ↔
+    // Runtime Preview boundary).
     // ---------------------------------------------------------------
 
     const WORKSPACE_LAYOUT_KEY = 'vihustudio.worldBuilder.workspaceLayout';
     // Vision §4's own explicit warning: a naive equal three-way split
     // would under-serve Context Inspector, so its default (420px) is
-    // deliberately generous relative to Runtime Preview's (340px), not a
-    // naive third of the workspace.
+    // deliberately generous relative to Runtime Preview's (340px) —
+    // Working View largest, Context Inspector medium, Runtime Preview
+    // smallest, per its own lower edit-frequency role (v1.1).
     const LAYOUT_DEFAULTS = { runtimeW: 340, inspectorW: 420 };
-    const RUNTIME_PCT_MIN = 0.25, RUNTIME_PCT_MAX = 0.65; // Working View >=35%, Runtime Preview >=25% of the Working+Runtime share
-    const INSPECTOR_W_MIN = 320, INSPECTOR_PCT_MAX = 0.5; // Context Inspector never exceeds half the full workspace width
+    const INSPECTOR_PCT_MIN = 0.25, INSPECTOR_PCT_MAX = 0.65; // Working View >=35%, Context Inspector >=25% of the Working+Inspector share
+    const RUNTIME_W_MIN = 260, RUNTIME_PCT_MAX = 0.4; // Runtime Preview never exceeds 40% of the full workspace width, and has a smaller floor since it's the smallest pane
 
     const workspaceBody = $('wb-workspace-body');
     const resizeRuntime = $('wb-resize-runtime');
@@ -551,27 +559,27 @@
         });
     }
 
-    // Working View ↔ Runtime Preview boundary. Bounded as a percentage of
-    // the width available to those two columns alone (total width minus
-    // both 6px sashes minus Context Inspector's own current width), so
-    // resizing Inspector first and then this sash still yields sane
-    // Working/Runtime proportions.
-    _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
-        const inspectorW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-inspector-w')) || LAYOUT_DEFAULTS.inspectorW;
-        const combinedW = bodyRect.width - 12 - inspectorW; // both 6px sashes + Inspector's own column
+    // Working View ↔ Context Inspector boundary. Bounded as a percentage
+    // of the width available to those two columns alone (total width
+    // minus both 6px sashes minus Runtime Preview's own current width),
+    // so resizing Runtime Preview first and then this sash still yields
+    // sane Working/Inspector proportions.
+    _wireResizeHandle(resizeInspector, function (e, bodyRect) {
+        const runtimeW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-runtime-w')) || LAYOUT_DEFAULTS.runtimeW;
+        const combinedW = bodyRect.width - 12 - runtimeW; // both 6px sashes + Runtime Preview's own column
         if (combinedW <= 0) return;
-        const rightEdge = bodyRect.right - inspectorW - 6; // boundary of Runtime Preview's own right edge
-        const runtimeW = Math.min(combinedW * RUNTIME_PCT_MAX, Math.max(combinedW * RUNTIME_PCT_MIN, rightEdge - e.clientX));
-        workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
+        const rightEdge = bodyRect.right - runtimeW - 6; // boundary of Context Inspector's own right edge
+        const inspectorW = Math.min(combinedW * INSPECTOR_PCT_MAX, Math.max(combinedW * INSPECTOR_PCT_MIN, rightEdge - e.clientX));
+        workspaceBody.style.setProperty('--wb-inspector-w', inspectorW + 'px');
     });
 
-    // Runtime Preview ↔ Context Inspector boundary. Context Inspector is
+    // Context Inspector ↔ Runtime Preview boundary. Runtime Preview is
     // the rightmost column, so its width is simply the distance from the
     // cursor to the workspace's own right edge.
-    _wireResizeHandle(resizeInspector, function (e, bodyRect) {
-        const maxW = Math.min(bodyRect.width * INSPECTOR_PCT_MAX, bodyRect.width - 12 - 300);
-        const inspectorW = Math.min(maxW, Math.max(INSPECTOR_W_MIN, bodyRect.right - e.clientX));
-        workspaceBody.style.setProperty('--wb-inspector-w', inspectorW + 'px');
+    _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
+        const maxW = Math.min(bodyRect.width * RUNTIME_PCT_MAX, bodyRect.width - 12 - 300);
+        const runtimeW = Math.min(maxW, Math.max(RUNTIME_W_MIN, bodyRect.right - e.clientX));
+        workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
     });
 
     // ---------------------------------------------------------------
@@ -780,6 +788,7 @@
         currentLayerPackId = window.ProjectModel.getDefaultLayerPack(project) || (packs.length ? packs[0].id : null);
         currentLayerId = null;
         lastValidation = null;
+        lastSceneValidation = null;
         currentSceneId = null;
         currentActivity = 'place';
         currentInspectorTarget = null;
@@ -1060,6 +1069,17 @@
     // render has no editing surface (Engine Canon §5 step 5).
     function _drawSceneCanvas(canvasEl, scene, opts) {
         opts = opts || {};
+        // Reconciles scene.stack in place before handing the Scene to
+        // the Runtime — a Scene created before `stack` existed (or
+        // missing an entry for a newly-added Holder/Layer) has no
+        // persisted stack at all until this runs (js/projectModel.js's
+        // `_ensureStack`). EngineV2Runtime.load is deliberately pure and
+        // never reconciles or mutates on its own (Scene Model §5 —
+        // reconciliation is Builder-only read-time convenience,
+        // Validation only *reports* a Scene that needed it); this is the
+        // one Builder-side call responsible for making that convenience
+        // still true before every render.
+        window.ProjectModel.sceneStack(currentProject, scene.id);
         const graph = window.EngineV2Runtime.load(scene, _holderFrameFields);
         canvasEl.width = graph.width;
         canvasEl.height = graph.height;
@@ -3773,6 +3793,41 @@
         return { why: null, fixNav: null, fixLabel: null };
     }
 
+    // Engine V2's own Validation report — a deliberately separate block
+    // from the Engine V1 category list above it, never interleaved with
+    // it (LOCK V2-04: Engine V2 Validation operates directly on the
+    // canonical Scene Model, no translation layer, no merging with
+    // Engine V1's own report). Each message is a plain string produced
+    // by js/services/engineValidator.js — shown verbatim, since Scene
+    // Model §5's four checks are already precise and Scene-name-scoped.
+    function _renderSceneValidationSection(sceneResult) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-heading';
+        heading.style.marginTop = '4px';
+        heading.style.fontSize = '13px';
+        heading.textContent = 'Scenes (Engine V2)';
+        contextPanel.appendChild(heading);
+
+        const banner = document.createElement('div');
+        banner.className = 'wb-validation-status ' + (sceneResult.isValid ? 'pass' : 'fail');
+        banner.textContent = sceneResult.isValid
+            ? '✅ Every Scene checks out against the canonical Scene Model.'
+            : '⚠️ ' + sceneResult.errors.length + ' error' + (sceneResult.errors.length === 1 ? '' : 's') + ' to fix.';
+        contextPanel.appendChild(banner);
+
+        const countsLine = document.createElement('p');
+        countsLine.className = 'wb-field-hint';
+        countsLine.textContent = 'Errors: ' + sceneResult.errors.length + ' · Warnings: ' + sceneResult.warnings.length;
+        contextPanel.appendChild(countsLine);
+
+        sceneResult.errors.concat(sceneResult.warnings).forEach(function (msg) {
+            const detail = document.createElement('p');
+            detail.className = 'wb-field-hint wb-validation-detail';
+            detail.textContent = msg;
+            contextPanel.appendChild(detail);
+        });
+    }
+
     function _renderValidationPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
@@ -3782,10 +3837,17 @@
         const runBtn = document.createElement('button');
         runBtn.type = 'button';
         runBtn.className = 'wb-add-btn';
-        runBtn.textContent = lastValidation ? '↻ Run Validation Again' : '▶ Run Validation';
+        runBtn.textContent = (lastValidation || lastSceneValidation) ? '↻ Run Validation Again' : '▶ Run Validation';
         runBtn.addEventListener('click', function () {
             runBtn.textContent = 'Validating…';
             runBtn.disabled = true;
+            // Two independent validation engines, run together but never
+            // merged (LOCK V2-04 — Engine V2 Validation operates directly
+            // on the canonical Scene Model, no translation layer, no
+            // interleaving with Engine V1's own report). Engine V2's is
+            // synchronous (plain JS objects already in memory); Engine
+            // V1's is async (projectLoader's Blob/FileReader pipeline).
+            lastSceneValidation = window.EngineV2Validator.validate(project);
             window.ProjectCompiler.runValidation(project).then(function (result) {
                 lastValidation = result;
                 _renderValidationPanel();
@@ -3793,12 +3855,24 @@
         });
         contextPanel.appendChild(runBtn);
 
-        if (!lastValidation) {
+        if (!lastValidation && !lastSceneValidation) {
             const hint = document.createElement('p');
             hint.className = 'wb-field-hint';
             hint.textContent = 'Run validation to check this World against the World Project Contract.';
             contextPanel.appendChild(hint);
             return;
+        }
+
+        if (lastSceneValidation) _renderSceneValidationSection(lastSceneValidation);
+        if (!lastValidation) return;
+
+        if (lastSceneValidation) {
+            const v1Heading = document.createElement('h3');
+            v1Heading.className = 'wb-context-heading';
+            v1Heading.style.marginTop = '20px';
+            v1Heading.style.fontSize = '13px';
+            v1Heading.textContent = 'World Contract (Engine V1)';
+            contextPanel.appendChild(v1Heading);
         }
 
         const result = lastValidation;

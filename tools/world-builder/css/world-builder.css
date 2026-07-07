@@ -605,29 +605,33 @@ html, body {
    .wb-working-canvas-inner/.wb-runtime-preview-canvas-inner), while the
    Inspector (still full width, still independently scrollable) keeps a
    genuinely usable, if smaller, share. */
-/* Builder V2 — Vision §4: three permanent, full-height regions —
-   Working View | Runtime Preview | Context Inspector — side by side in
-   one row, never Inspector spanning a row beneath the other two. This
-   replaces the Sprint B2.0.4/B2.0.5/B2.0.6 two-row shape (Working View +
-   Runtime Preview on top, Inspector as a full-width row underneath),
-   which was correct for Engine V1's Builder Workspace but left Builder
-   V2 out of alignment with the frozen Vision the moment Global
-   Navigation moved to a top bar and freed up a column for the Inspector
-   to occupy directly. Both remaining resize sashes are now vertical
-   (col-resize): one between Working View and Runtime Preview, one
-   between Runtime Preview and Context Inspector. Working View stays
-   "1fr" — it always gets whatever's left after Runtime Preview +
-   Inspector, so dragging either sash only ever changes --wb-runtime-w
-   or --wb-inspector-w; Working View's share follows automatically. Per
-   Vision §4's own explicit warning against a naive equal three-way
-   split, Context Inspector's default width (420px) is deliberately
-   generous, not a naive third. */
+/* Builder V2 — Vision §4 (v1.1 reorder): three permanent, full-height
+   regions — Working View | Context Inspector | Runtime Preview — side
+   by side in one row, never Inspector spanning a row beneath the other
+   two. This replaces the Sprint B2.0.4/B2.0.5/B2.0.6 two-row shape
+   (Working View + Runtime Preview on top, Inspector as a full-width row
+   underneath), which was correct for Engine V1's Builder Workspace but
+   left Builder V2 out of alignment with the frozen Vision the moment
+   Global Navigation moved to a top bar and freed up a column for the
+   Inspector to occupy directly. The original three-column order (Vision
+   v1.0) put Runtime Preview in the middle; a later explicit product
+   decision (Vision v1.1) swapped the two right-hand columns so Context
+   Inspector sits beside Working View and Runtime Preview is rightmost.
+   Both resize sashes are vertical (col-resize): one between Working View
+   and Context Inspector, one between Context Inspector and Runtime
+   Preview. Working View stays "1fr" — it always gets whatever's left
+   after Inspector + Runtime Preview, so dragging either sash only ever
+   changes --wb-inspector-w or --wb-runtime-w; Working View's share
+   follows automatically. Per Vision §4's own explicit warning against a
+   naive equal three-way split, widths stay Working View (largest) >
+   Context Inspector (medium, 420px default) > Runtime Preview (smallest,
+   340px default) — only their left-to-right position changed. */
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 6px var(--wb-runtime-w, 340px) 6px var(--wb-inspector-w, 420px);
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-runtime-w, 340px);
     grid-template-rows: 1fr;
-    grid-template-areas: "working rtsash runtime inspsash inspector";
+    grid-template-areas: "working inspsash inspector rtsash runtime";
     min-height: 0;
 }
 
@@ -640,8 +644,8 @@ html, body {
 .wb-resize-handle-v { cursor: col-resize; }
 .wb-resize-handle-h { cursor: row-resize; }
 
-#wb-resize-runtime { grid-area: rtsash; }
 #wb-resize-inspector { grid-area: inspsash; }
+#wb-resize-runtime { grid-area: rtsash; }
 
 .wb-resize-handle::after {
     content: '';
@@ -1667,19 +1671,20 @@ html, body {
 @media (max-width: 900px) {
     /* Narrow-viewport fallback only — the frozen 3-pane layout (Vision
        §4) is the primary desktop authoring shape; below 900px there
-       isn't room for three full-height columns, so Context Inspector
-       drops to a full-width row beneath Working View + Runtime Preview,
-       and both resize sashes (which have nothing sensible to drag at
-       this width) hide. */
+       isn't room for three full-height columns, so Runtime Preview (the
+       lowest edit-frequency pane, per Vision §4 v1.1) drops to a
+       full-width row beneath Working View + Context Inspector, and both
+       resize sashes (which have nothing sensible to drag at this width)
+       hide. */
     .wb-workspace-body {
         grid-template-columns: 1fr 220px;
         grid-template-rows: 1fr 240px;
         grid-template-areas:
-            "working runtime"
-            "inspector inspector";
+            "working inspector"
+            "runtime runtime";
     }
     #wb-resize-runtime, #wb-resize-inspector { display: none; }
-    .wb-inspector-wrap { border-left: none; border-top: 1px solid var(--wb-border); }
+    .wb-runtime-preview-wrap { border-left: none; border-top: 1px solid var(--wb-border); }
     .wb-nav-item span:last-child { display: none; }
     .wb-workspace-name { max-width: 160px; }
 }

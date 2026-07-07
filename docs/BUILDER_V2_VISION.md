@@ -130,10 +130,20 @@ block (Blueprint §6.2, collapsed by default per UX Package Part 6).
 ```
 +------------------+------------------+------------------+
 |                  |                  |                  |
-|   Working View   | Runtime Preview  | Context Inspector|
+|   Working View   |Context Inspector | Runtime Preview  |
 |                  |                  |                  |
 +------------------+------------------+------------------+
 ```
+
+> **Amended.** The original UX-review pass ordered these
+> Working View | Runtime Preview | Context Inspector — the order
+> `docs/BUILDER_V2_UX_PACKAGE.md`'s own diagram matched. A later,
+> explicit product decision reordered the two right-hand columns:
+> **Context Inspector now sits in the middle, immediately beside
+> Working View, with Runtime Preview last.** Nothing about each
+> region's own responsibility (below) changed — only their left-to-right
+> position. `docs/BUILDER_V2_UX_PACKAGE.md`'s Part 5 diagram is amended
+> to match (see that document's own Change History).
 
 Present, unchanged, regardless of which activity is active — this
 stability requirement is not new (Mental Model §4, "the Scene must
@@ -142,16 +152,20 @@ stay visible regardless of activity"), only the arrangement is.
 - **Working View** — shows only the active creative activity, with its
   own Builder-only guides. Unchanged in responsibility from Blueprint
   §6.
-- **Runtime Preview** — always the complete, clean Scene exactly as
-  Runtime will render it. Never interactive, never shows a guide —
-  both firm rules, unchanged from Blueprint §6.
 - **Context Inspector** — renamed from "Property Editor." Same
   responsibility: always reflects the current selection, contextual to
   the active activity, ends in the shared permission block. The rename
   is deliberate — "Inspector" names what it's for (inspecting whatever
   is currently selected) without implying a form to fill out, matching
   this whole effort's running argument against "generic inspectors"
-  meaning something narrower and better than it used to.
+  meaning something narrower and better than it used to. Now positioned
+  immediately beside Working View (see amendment above), since editing
+  the current selection is the higher-frequency action relative to
+  Runtime Preview's lower-frequency "what will the reader see" check.
+- **Runtime Preview** — always the complete, clean Scene exactly as
+  Runtime will render it. Never interactive, never shows a guide —
+  both firm rules, unchanged from Blueprint §6. Now the rightmost
+  column (see amendment above).
 
 ### A layout risk worth naming, not silently avoiding
 
@@ -173,7 +187,11 @@ instead of height starvation). This document does not fix exact column
 proportions — that is an implementation decision for the next pass —
 but it states plainly that Context Inspector should be sized generously
 relative to Working View and Runtime Preview, not as a naive equal
-third, so the same lesson isn't re-learned from scratch.
+third, so the same lesson isn't re-learned from scratch. The later
+reorder (above) carries this forward explicitly: Working View remains
+largest, Context Inspector medium, Runtime Preview smallest — Runtime
+Preview's lower edit-frequency role justifies it taking the least
+space, not Context Inspector.
 
 ---
 
@@ -243,6 +261,23 @@ the storyboard's own intent-first framing survives without needing a
 line changed. `docs/ENGINE_V2_CANON.md` is untouched — nothing here is
 an Engine decision; Canvas is still exactly what Engine Canon §4 says
 it is, only how the Builder surfaces it has changed.
+
+---
+
+## Change History
+
+- v1.0 — Initial reset. Establishes Global Navigation as a top bar,
+  the Scene Header, three Creative Activities (Canvas demoted out of
+  the switcher), the three-column Workspace (Working View | Runtime
+  Preview | Context Inspector), and the Canvas/Scene Configuration
+  vocabulary rule.
+- v1.1 — Workspace column reorder, by explicit product decision: the
+  two right-hand columns swap, so the permanent order is now **Working
+  View | Context Inspector | Runtime Preview** (§4). Widths follow the
+  same reasoning as before — Working View largest, Context Inspector
+  medium, Runtime Preview smallest — only the left-to-right position of
+  the latter two changed. `docs/BUILDER_V2_UX_PACKAGE.md`'s matching
+  Part 5/shared-shell diagram is amended alongside this document.
 
 ---
 

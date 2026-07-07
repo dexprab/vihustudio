@@ -328,13 +328,20 @@ before opening anything.
 │  Place · Decorations  │                   │               │
 │  · Text (switcher)    │                   │               │
 │ ┌───────────────────┐ │                   │               │
-│ │                   │ │  Runtime Preview  │   Context      │
-│ │   Working View    │ │  (clean, complete,│   Inspector    │
-│ │ (current activity,│ │   never          │  (context-aware│
-│ │  Builder guides)  │ │   interactive)    │   to selection)│
+│ │                   │ │    Context        │  Runtime      │
+│ │   Working View    │ │    Inspector       │  Preview      │
+│ │ (current activity,│ │  (context-aware   │  (clean,      │
+│ │  Builder guides)  │ │   to selection)   │   complete,   │
+│ │                   │ │                   │   never       │
+│ │                   │ │                   │   interactive)│
 │ └───────────────────┘ │                   │               │
 └───────────────────────┴───────────────────┴───────────────┘
 ```
+
+> **Amended** — see `docs/BUILDER_V2_VISION.md` §4/Change History v1.1.
+> The original design ordered these Working View | Runtime Preview |
+> Context Inspector; a later explicit product decision swapped the two
+> right-hand columns to the order shown above.
 
 Clicking the Scene Header's Scene Configuration summary (`📄 Portrait …`)
 selects it the same way clicking any object does — Context Inspector
@@ -628,16 +635,6 @@ without it, every edit would have to happen through form fields alone,
 which is precisely the "long generic inspector" every upstream document
 argued against.
 
-### Runtime Preview
-
-**Purpose:** answers "what will the reader actually see," continuously,
-with zero interpretation required. **Why it cannot be removed:**
-without a guide-free, always-current second view, a Theme Author would
-have to mentally subtract their own Builder guides from Working View to
-imagine the real result — an error-prone, cognitively expensive habit
-this design deliberately never asks anyone to form (Mental Model §1,
-"what should always remain visible").
-
 ### Context Inspector
 
 **Purpose:** the *only* place an object's own properties and its
@@ -651,9 +648,24 @@ reintroduce the "generic inspector" problem in a different location.
 **On its column width:** `docs/BUILDER_V2_VISION.md` §4 already flags
 that an equal three-way split with Working View and Runtime Preview
 would under-serve this region the same way Builder V1's old shared-
-column Property Editor was once under-served — carried forward here as
-a standing constraint on whatever the next, concrete design pass
-decides for exact proportions.
+column Property Editor was once under-served — sized medium (larger
+than Runtime Preview, smaller than Working View), not a naive equal
+third. **On its position:** moved beside Working View (Vision §4/Change
+History v1.1) since editing the current selection is the
+higher-frequency action, relative to Runtime Preview's lower-frequency
+"what will the reader see" check.
+
+### Runtime Preview
+
+**Purpose:** answers "what will the reader actually see," continuously,
+with zero interpretation required. **Why it cannot be removed:**
+without a guide-free, always-current second view, a Theme Author would
+have to mentally subtract their own Builder guides from Working View to
+imagine the real result — an error-prone, cognitively expensive habit
+this design deliberately never asks anyone to form (Mental Model §1,
+"what should always remain visible"). Now the rightmost, smallest
+column (Vision §4/Change History v1.1) — its lower edit-frequency role
+justifies the least space, not Context Inspector.
 
 None of these five regions is optional in the sense that removing it
 would merely be "less convenient" — each removal breaks a specific,
