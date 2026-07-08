@@ -1,10 +1,10 @@
 {
-  "version": "2.2.9-EV2",
+  "version": "2.2.10-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-008",
-  "slice": "Builder workspace model — resume last context, inactive states, nav, timestamps",
-  "build": "0022",
+  "milestone": "AV-009",
+  "slice": "Fix Hero Image persistence — swallowed localStorage quota failure",
+  "build": "0023",
   "buildDate": "2026-07-08",
-  "commit": "fc75d71",
+  "commit": "b977d48",
   "environment": "Release"
 }
