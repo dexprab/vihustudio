@@ -1049,9 +1049,19 @@
     // the native Runtime (`js/services/engineRuntime.js`) knows nothing
     // about Theme Asset storage, so this resolver is injected at every
     // call site instead.
-    function _holderFrameFields(holder) {
-        if (!holder.frame) return null;
-        const frame = window.ProjectModel.findFrame(currentProject, holder.frame);
+    //
+    // AV-003 — takes a Frame *id* (a string), matching exactly how
+    // `EngineV2Runtime`'s `_paintHolder` already calls it
+    // (`graph.resolveFrame(holder.frame)`). A previous version of this
+    // function took a Holder object and read `.frame` off it — since a
+    // string has no `.frame` property, that mismatch made this resolver
+    // return null unconditionally, silently defaulting every Holder to
+    // no-Frame chrome regardless of which Frame was actually picked.
+    // This was the root cause of Frame changes never appearing in
+    // either rendering surface.
+    function _holderFrameFields(frameId) {
+        if (!frameId) return null;
+        const frame = window.ProjectModel.findFrame(currentProject, frameId);
         return frame ? (frame.fields || {}) : null;
     }
 
@@ -1943,13 +1953,24 @@
         const fitGroup = _buildFieldGroup('Fit', _select(window.EngineSchema.HOLDER_FITS, holder.fit, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { fit: v });
             _persist();
+            _redrawSceneCanvases(scene.id);
         }));
         _fieldRow(shapeGroup, fitGroup);
 
+        // AV-003 — Fit and Padding persisted correctly but never
+        // triggered a redraw (unlike every other Holder field above and
+        // below them), so neither view ever reflected the new value
+        // until some unrelated edit happened to redraw the canvas. Both
+        // now redraw immediately, matching every other presentation
+        // property. Padding's own live visual effect (an inset between
+        // the Holder's edge and its content, Engine Canon §6) also
+        // wasn't implemented in the Runtime's paint routine — fixed
+        // alongside in js/services/engineRuntime.js's `_paintHolder`.
         _fieldGroup('Padding', _range(0, 40, holder.padding, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { padding: v });
             _persist();
-        }), 'Inset between the Holder’s edge and its content — its visual effect becomes clearer once a real photo replaces this placeholder.');
+            _redrawSceneCanvases(scene.id);
+        }), 'Inset between the Holder’s edge and its content.');
 
         _renderFramePicker(scene, holder);
         _renderHolderPermissionBlock(scene, holder);
