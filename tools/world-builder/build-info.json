@@ -1,10 +1,10 @@
 {
-  "version": "2.2.10-EV2",
+  "version": "2.2.11-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-009",
-  "slice": "Fix Hero Image persistence — swallowed localStorage quota failure",
-  "build": "0023",
+  "milestone": "AV-010/AV-011",
+  "slice": "Text bounds auto-size to width; emoji authoring via reused EmojiPicker",
+  "build": "0024",
   "buildDate": "2026-07-08",
-  "commit": "b977d48",
+  "commit": "1484030",
   "environment": "Release"
 }
