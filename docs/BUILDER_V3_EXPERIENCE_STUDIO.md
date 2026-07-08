@@ -1,17 +1,19 @@
 # Builder V3 — Experience Studio (UX Package & Paper Validation)
 
-**Status:** Draft — paper stage only, pending review. No implementation
-accompanies this document. It extends, and in one place supersedes,
-`docs/BUILDER_V3_WIREFRAMES.md`: the Lifecycle model below
-(Nurturing → Personal → Public) replaces that document's earlier
-Visibility axis (Public/Private) as the primary maturity concept.
-Attachment (Attached/Free) is unchanged in meaning from that document.
-**Both Canon Conflicts flagged in `docs/BUILDER_V3_WIREFRAMES.md` §0
-carry forward here, unresolved** — this document does not decide
-either; see §0 below.
+**Status:** Draft — paper stage only, pending review; amended in v1.1
+(see Change History) against a set of frozen Canon Decisions. No
+implementation accompanies this document. It extends, and in one place
+supersedes, `docs/BUILDER_V3_WIREFRAMES.md`: the Lifecycle model below
+(Nurturing → Personal/Public, a fork not a ladder as of v1.1) replaces
+that document's earlier Visibility axis (Public/Private) as the primary
+maturity concept. Attachment (Attached/Free) is unchanged in meaning
+from that document. **Of the two Canon Conflicts flagged in
+`docs/BUILDER_V3_WIREFRAMES.md` §0, one (Artwork-as-Experience) is now
+resolved by omission; one ("Place" as a new Foundation tier) remains
+genuinely open** — see §0 below.
 **Scope:** The complete Experience Studio — navigation, the Experience
 Lifecycle, Experience Home as a creative gallery, the Experience Card,
-the Inspector-vs-dedicated-workspace question, the Promotion workflow,
+the Inspector-vs-dedicated-workspace question, the Graduation workflow,
 Public reuse, contextual authoring, the Usage Explorer — validated
 against a full paper walkthrough of Museum Theme authoring, with every
 friction point the walkthrough actually surfaced recorded, not
@@ -19,33 +21,69 @@ speculated. No code, no components, no data structures.
 
 ---
 
-## 0. Carried forward, unresolved
+## 0. Carried forward — one resolved, one still open, two confirmed by the continuation pass
 
-Two Canon Conflicts from `docs/BUILDER_V3_WIREFRAMES.md` §0 are neither
-resolved nor reopened by this document:
+`docs/BUILDER_V3_WIREFRAMES.md` §0 flagged two Canon Conflicts and this
+document's own v1.0 flagged a third open item (demotion). The
+continuation brief ("Builder V3 — Experience Studio (Paper Design
+Continuation)") resolves or corroborates three of these directly:
 
 1. **"Place" as a new Foundation tier vs. the existing Place=Holder
-   rename** (Vision §5). This document's own Experience Organization
-   brief (§3) lists **Scene Foundations / Holder Foundations / Free
-   Experiences** — notably, no "Place Foundations" category — which is
-   mild corroborating evidence for the conservative reading already
-   adopted (Place as a Builder-only grouping label, not a new
-   attachment point), but it is evidence, not a decision. Still pending
-   explicit sign-off.
-2. **"Artwork" as an attached Experience vs. Engine Invariant 10/11.**
-   Not mentioned in this task's brief at all; the conservative reading
-   (representative/preview artwork only, never permanent Story-Author
-   content) is carried forward unchanged.
+   rename — still genuinely open.** The continuation brief restates
+   the Foundation diagram unchanged and declares "Foundation is now
+   considered stable." That freezes the *diagram*, but does not by
+   itself answer the specific technical question this document keeps
+   flagging: is Place a new persisted Engine ownership tier, or a
+   Builder-only grouping label over Holders that still belong directly
+   to their Scene? Stability of the drawing and resolution of what it
+   means underneath are two different things. Recorded once more here,
+   briefly, rather than re-argued at length — this is the one item this
+   document still cannot close on its own.
+2. **"Artwork" as an attached Experience — resolved by omission,
+   confirmed.** The continuation brief's own Experience examples
+   ("Frames, Decorations, Atmosphere, Lighting, Text Styles, Effects,
+   Future enrichments") no longer include Artwork at all. This
+   corroborates the conservative reading already adopted (Artwork,
+   wherever it's discussed, means the existing representative/preview
+   mechanism, never permanent Holder content) strongly enough to
+   consider it settled rather than merely carried forward.
+3. **Demotion — resolved by Canon Decision #8, "Theme Experiences are
+   permanent."** v1.0's Friction item 1 (what happens to a Public
+   Experience's other attachments if it's pulled back to Personal) is
+   now moot: there is no demotion path at all. A Theme Experience
+   (Personal or Public) may evolve, be hidden, or eventually be
+   archived — it is never deleted and never returned to the Nursery.
+   Delete exists only inside the Nursery. See Part 6's rewritten
+   Promotion (now Graduation) workflow.
+4. **"Draft" removal scope — confirmed exactly as this document's v1.0
+   already read it.** The continuation brief states directly: "This
+   rename applies only to Experience terminology… Do not rename
+   unrelated Builder concepts such as Project Drafts or publication
+   status." No further action needed — v1.0's narrow reading stands,
+   confirmed rather than merely assumed.
 
-One new scope question this document's own brief raises, addressed
-directly in §12: **"Builder should stop using the word Draft… replace
-it throughout Builder"** — read narrowly here, as scoped to Experience
-terminology only. Builder V1's existing World Project "draft" status
-label (Sprint B2.0.5, "My World Projects," "draft · edited Xh ago") is
-a different, unrelated concept (a World's publication readiness, not an
-Experience's creative maturity) and is not touched by this document. A
-Theme-Author-facing global rename sweep, if wanted, is a separate,
-disclosed decision — not silently assumed here.
+One small new open question the continuation brief's own wording
+introduces, not yet significant enough to block anything: **is
+"Archived" a distinct state from "Hidden," or a further description of
+the same thing?** ("It may become hidden. It may eventually become
+archived.") Recorded in Part 11, not resolved here — low-stakes, since
+neither changes Delete's Nursery-only rule either way.
+
+### Frozen Canon Decisions
+
+Adopted verbatim from the continuation brief, governing every Part
+below:
+
+1. Foundation remains unchanged.
+2. Experiences enrich Foundation.
+3. Experience Home owns every Experience.
+4. Nursery contains Nurturing ideas.
+5. Gallery contains Theme Experiences.
+6. Personal and Public are ownership scopes.
+7. Attachment is independent.
+8. Theme Experiences are permanent.
+9. Delete exists only for Nurturing Experiences.
+10. Builder remains a storytelling studio, never a graphics editor.
 
 ---
 
@@ -64,19 +102,36 @@ between Validation and Publish, resolving that document's Friction item
 
 ## Part 2 — Experience Lifecycle
 
-Three creative states, replacing the earlier Visibility axis entirely
-— not an addition alongside it:
+Not software inheritance — creative work. Two domains, not a three-step
+ladder: the **Nursery** (Nurturing ideas) and the **Theme** (Personal or
+Public Experiences, once graduated):
 
-| State | Meaning | Can attach? | Visible in Theme? | Reusable? |
-|---|---|---|---|---|
-| 🌱 **Nurturing** | Still evolving, protected | No | No — exists only in Experience Studio | N/A |
-| 👤 **Personal** | Matured, scoped to one Scene | Yes | Yes, within its one Scene | No |
-| 🌍 **Public** | Part of the Theme | Yes | Yes, everywhere | Yes, across any compatible Host |
+| Domain | State | Meaning | Can attach? | Visible in Theme? | Deletable? |
+|---|---|---|---|---|---|
+| Nursery | 🌱 **Nurturing** | Still evolving, protected | No | No — visible only inside the Nursery | Yes — the only place Delete exists |
+| Theme | 👤 **Personal** | Belongs to one Scene | Yes | Yes, within its one Scene | No — permanent |
+| Theme | 🌍 **Public** | Belongs to the Theme | Yes | Yes, everywhere | No — permanent |
 
-**Attachment (Attached/Free) is orthogonal, not a fourth Lifecycle
-state.** A Frame is naturally Attached; a Floating Butterfly is
-naturally Free; either can independently be Nurturing, Personal, or
-Public. The two axes combine, they don't collapse into one.
+```
+                Nursery
+             🌱 Nurturing
+              /         \
+             /           \
+    👤 Personal       🌍 Public
+        Theme Experiences (permanent)
+```
+
+**There is no promotion ladder.** Graduation is one decision, not a
+forced sequence — an idea may graduate straight to Public, or straight
+to Personal, whichever fits. "How should this idea live inside the
+Theme?" is the whole question (Part 6). A Personal Experience may
+*later* choose to become Public as a separate, additional step — but
+nothing ever requires passing through Personal first.
+
+**Attachment (Attached/Free) is orthogonal, independent of ownership.**
+A Frame is naturally Attached; a Floating Butterfly is naturally Free;
+either can independently be Nurturing, Personal, or Public. The two
+axes combine, they don't collapse into one.
 
 **A Nurturing Experience has an intended Type and an intended
 Attachment kind from the moment it's created** (chosen once, in the
@@ -85,9 +140,12 @@ be a Butterfly, meant to roam Free") — but zero actual placements. This
 is what makes it invisible in the Theme: there is nothing anywhere for
 it to be visible *as*, yet.
 
-**Promotion is one-directional in intent, but not irreversible in
-practice** — see Part 6 for the concrete workflow and the one real
-open question the walkthrough surfaced about demotion.
+**Once graduated, an Experience gains permanent identity (Canon
+Decision #8).** It may evolve forever, stop being used, become hidden,
+or eventually become archived — it is never deleted, and it never
+returns to the Nursery. Delete exists only inside the Nursery, where
+ideas are still sketches, not yet part of the Theme. See Part 6 for the
+graduation workflow this replaces the old promotion ladder with.
 
 ---
 
@@ -142,18 +200,21 @@ from Visibility to Lifecycle-stage-within-The-Gallery.
 ```
 The Nursery — Still Growing
 ──────────────────────────────────────────────────────
-🌱 Wax Seal            (intends: Free, Decoration)
-🌱 Gold Accent v2       (intends: Attached, Frame)
-🌱 New caption idea     (intends: Attached, Text)
+🌱 Wax Seal            (intends: Free, Decoration)     [ Delete ]
+🌱 Gold Accent v2       (intends: Attached, Frame)      [ Delete ]
+🌱 New caption idea     (intends: Attached, Text)       [ Delete ]
 ──────────────────────────────────────────────────────
 + New Idea
 ```
 
-No Personal/Public tabs here — meaningless before promotion. Loosely
+No Personal/Public tabs here — meaningless before graduation. Loosely
 grouped by intended Type only, since intended Attachment/Foundation
 fit isn't settled until the Theme Author starts really placing it. The
 tone is deliberately different: "Still Growing," "+ New Idea" — plain,
 warm language, never "Draft," matching the brief's own instruction.
+**Delete is visible here and only here** — a sketch on the desk can be
+thrown away freely; nothing in the Theme ever shows this action (Part
+5, Part 6).
 
 ---
 
@@ -179,7 +240,7 @@ existence anywhere in Builder.
 │  Classic White Frame       │
 │  "A clean museum mat and   │
 │   thin white border."      │
-│  Frame · Attached · 🌍     │
+│  Frame · Attached · 🌍 Public│
 │  Used by 7 Hosts            │
 │  #museum #classic #white   │
 └───────────────────────────┘
@@ -187,9 +248,33 @@ existence anywhere in Builder.
 
 Every required field present, in one deliberate order: **see it, name
 it, understand it, place it, gauge its reach, find it again** — render
-→ name → description → type/attachment/lifecycle → usage → tags. The
-lifecycle badge (🌱/👤/🌍) is the single glanceable signal that answers
-"can I even use this yet," matching Part 2's table exactly.
+→ name → description → type/attachment/ownership → usage → tags. No
+IDs, no technical labels, anywhere on the card — authors recognize
+Experiences by what they look like, never by what they're called
+internally.
+
+**The card is domain-sensitive, not one fixed template.** A Gallery
+card (above) shows ownership (👤/🌍) and Usage, because both are real
+and meaningful for a graduated Experience. **A Nursery card drops
+both:**
+
+```
+┌───────────────────────────┐
+│  ┌─────────────────────┐  │
+│  │  [miniature render]  │  │
+│  │   🕯                 │  │
+│  └─────────────────────┘  │
+│  Wax Seal                  │
+│  "A small wax seal for      │
+│   the corner of a page."    │
+│  Decoration · Free · 🌱     │
+└───────────────────────────┘
+```
+
+No ownership field (nothing has been chosen yet), no Usage (nothing
+is attached anywhere yet) — showing either would imply a fact that
+isn't true yet. This distinction was confirmed, not assumed, during the
+walkthrough (Part 10, step 8).
 
 ---
 
@@ -212,8 +297,8 @@ Experience
 Name         Classic White Frame
 Type         Frame
 Attachment   Attached
-State        🌍 Public
-Host         7 Hosts →
+Ownership    🌍 Public
+Used by      7 Hosts →
 ──────────────────────────────
 Properties
   Mat Width         [24]
@@ -221,11 +306,18 @@ Properties
   Border Colour     [■ #FFFFFF]
   Wall Tone         [■ #FFFFFF]
   Shadow            (soft ▾)
+──────────────────────────────
+[ Hide ]                        ← no Delete — permanent, per Canon #8
 ```
 
 No canvas is missing here because none was ever needed — this
 paper-confirms a dedicated Workspace would have added a whole region
-for nothing to draw in it.
+for nothing to draw in it. **The only lifecycle action available on a
+Theme Experience is Hide** (and, later, Archive — §0's one remaining
+small open question) — never Delete. A Nurturing Experience's
+Inspector, by contrast, always shows Delete, never Hide/Archive, since
+those are Theme-only concepts for something that isn't in the Theme
+yet.
 
 ### Why Free Experiences need one bridge, not a dedicated Workspace
 
@@ -242,7 +334,7 @@ Experience
 Name         Floating Butterfly
 Type         Decoration
 Attachment   Free
-State        👤 Personal — Gallery Portrait
+Ownership    👤 Personal — Gallery Portrait
 ──────────────────────────────
 Position     X [0.82]   Y [0.10]
 Rotation     [12°]
@@ -251,7 +343,7 @@ Scale        [0.8]
 Properties
   Glyph      🦋
 ──────────────────────────────
-[ Adjust in Scene → ]
+[ Adjust in Scene → ]           [ Hide ]
 ```
 
 But paper-walking real placement (Part 10, step 5) confirmed what
@@ -274,46 +366,51 @@ jump-to-context bridge for Free Experiences. No second Workspace.**
 
 ---
 
-## Part 6 — Experience Promotion Workflow
+## Part 6 — Experience Graduation Workflow
+
+**Not a ladder — one fork, asked once.** Superseding v1.0's staged
+Nurturing→Personal→Public promotion entirely, per Canon: there is no
+forced middle step.
 
 ```
 🌱 Nurturing
-   │  "This is ready — where does it belong?"
-   ▼
-👤 Personal            (choose: which Scene does this belong to)
-   │  "This works well here — should it be part of the Theme?"
-   ▼
-🌍 Public               (no further input needed — becomes
-                         discoverable/reusable from any Scene or
-                         compatible Host)
+   │
+   │  "How should this idea live inside the Theme?"
+   │
+   ├───────────────────────┬───────────────────────┐
+   ▼                       ▼
+👤 Personal            🌍 Public
+(choose: which Scene    (no further input needed —
+ does this belong to)    discoverable/reusable from
+                          any Scene or compatible Host
+                          immediately)
 ```
 
-**Promoting Nurturing → Personal asks one question: which Scene.**
-This is the moment "belongs to one Scene only" becomes concrete — not
-a specific Holder yet (that's attachment, a separate, later action),
-just which Scene's Gallery this Experience now lives in.
+**Graduating to Personal asks one question: which Scene.** This is the
+moment "belongs to one Scene only" becomes concrete — not a specific
+Holder yet (that's attachment, a separate, later action), just which
+Scene's Gallery this Experience now lives in.
 
-**Promoting Personal → Public asks nothing** — its existing single
-attachment (if any) is untouched; it simply becomes visible and
-reusable from every other Scene/Holder's "Reuse Existing" picker from
-this point forward.
+**Graduating straight to Public asks nothing beyond the choice
+itself** — an idea confident enough to be Theme-wide from day one
+never has to pass through a Personal stage it doesn't need.
 
-### The one open question the walkthrough surfaced: demotion
+**A Personal Experience may later choose to become Public** — a
+one-directional, additional step, not a reversal of anything:
 
-Paper-walking Part 10 (step 7) hit a real scenario: a Theme Author
-promotes a Frame to Public, reuses it in three Scenes, then realizes it
-was premature — they wanted to keep iterating on it privately a while
-longer. **Nothing in the brief defines what happens to those three
-existing attachments if a Public Experience is demoted back to
-Personal**, which by definition belongs to only one Scene. Two honest
-options, neither decided here: (a) demotion is blocked while more than
-one Host uses it — Usage itself becomes the gate; or (b) demotion is
-allowed, and every attachment beyond the one chosen Scene is silently
-detached, which is a real, potentially surprising data change disguised
-as a lifecycle label change. **Recommend (a)** — treat multi-Host usage
-as a hard block on demotion, the same way this document already treats
-Usage as a hard governance concept elsewhere (Part 9) — but this is
-this document's own recommendation, not yet a confirmed decision.
+```
+👤 Personal  ──"make this available Theme-wide"──▶  🌍 Public
+```
+
+**There is no path back.** Once graduated — to Personal or to Public —
+an Experience is permanent (Canon #8): it may evolve, be hidden, or
+eventually be archived, but it never demotes and never returns to the
+Nursery. This closes v1.0's open demotion question outright, rather
+than choosing between the two options that document weighed: **neither
+applies, because demotion isn't a real workflow at all.** Editing a
+widely-used Public Experience still needs Usage-informed care (Part 9)
+— that risk doesn't disappear — but it's a risk managed by looking
+before editing, never by an undo-the-lifecycle escape hatch.
 
 ---
 
@@ -378,12 +475,13 @@ Classic White Frame — Used By 7 Hosts
 ```
 
 Unchanged from `docs/BUILDER_V3_WIREFRAMES.md` §1.6, now explicitly
-framed as **governance**, not merely information: per Part 6's
-recommendation, Usage is the gate that decides whether an edit or a
-demotion is safe to make silently or needs to be stopped and confirmed.
-"Used by 1 Host" / "5 Hosts" / "12 Hosts" is the glanceable number every
-Card (Part 4) and every Inspector (Part 5) already surfaces before a
-Theme Author ever opens this detail view.
+framed as **governance**, not merely information: since graduation is
+permanent and irreversible (Part 6), Usage is the *only* safeguard a
+widely-used Experience has — there is no demotion escape hatch to fall
+back on if an edit turns out to be wrong for one of several
+attachments. "Used by 1 Host" / "5 Hosts" / "12 Hosts" is the glanceable
+number every Card (Part 4) and every Inspector (Part 5) already
+surfaces before a Theme Author ever opens this detail view.
 
 ---
 
@@ -407,19 +505,23 @@ Frame, Black Matte, Gold Accent) and its Museum Caption fields
    brief asks for, and the Card preview (Part 4) is what makes it
    possible to judge the idea at all before it touches anything real.
 
-3. **Promoting Nurturing → Personal.** Satisfied with the mat/border
-   combination (it will become "Classic White"), the Theme Author
-   promotes it, choosing Scene: Gallery Portrait (Part 6). It now
-   belongs to Gallery Portrait alone — attaching it to Holder 1 is a
-   separate, immediate next step (Part 8's Holder shortcut). No
-   friction.
+3. **Graduating to Personal first.** Satisfied with the mat/border
+   combination (it will become "Classic White"), but not yet sure it'll
+   be needed anywhere else, the Theme Author graduates it choosing
+   Scene: Gallery Portrait (Part 6). It now belongs to Gallery Portrait
+   alone — attaching it to Holder 1 is a separate, immediate next step
+   (Part 8's Holder shortcut). No friction.
 
-4. **Promoting Personal → Public.** Wanting the same Frame on Holder 2
-   and Holder 3 too — and eventually reused for "Museum Entrance" and
+4. **Later choosing Public.** Wanting the same Frame on Holder 2 and
+   Holder 3 too — and eventually reused for "Museum Entrance" and
    "Dinosaur Gallery," different Worlds' Scenes entirely — the Theme
-   Author promotes Classic White to Public. No further input required
-   (Part 6). It is now discoverable via "Reuse Existing" (Part 7) from
-   any Holder anywhere in the World.
+   Author makes Classic White Public. No further input required (Part
+   6). It is now discoverable via "Reuse Existing" (Part 7) from any
+   Holder anywhere in the World. **Confirms the fork model concretely:**
+   nothing forced a return trip through Nurturing, and nothing about
+   graduating straight to Public (had the Theme Author known from the
+   start they wanted Theme-wide reuse) would have looked any different
+   in kind — only in timing.
 
 5. **Reusing across the Gallery Wall, and a real spatial case for
    Free.** Holder 2 and Holder 3 each "Reuse Existing" → Classic White.
@@ -442,14 +544,19 @@ Frame, Black Matte, Gold Accent) and its Museum Caption fields
    first-class concept** — the Theme Author genuinely paused because of
    what they saw, not because a dialog stopped them.
 
-7. **A real friction point: demotion.** Having reused Classic White
-   across three Scenes, the Theme Author has second thoughts about one
-   specific detail and wants to "pull it back" to Personal to iterate
-   more freely, without affecting the other Scenes yet. **Nothing in
-   the brief or in this document's Part 6 fully resolves what demotion
-   does to the other six attachments** — recorded as Friction item 1
-   below, not invented for the sake of finding something to report; it
-   is the one genuine gap this walkthrough actually hit.
+7. **Second thoughts about a Public Experience — no demotion, and that
+   turns out fine.** Having reused Classic White across three Scenes,
+   the Theme Author has second thoughts about one specific detail and,
+   from habit, reaches for something like "pull it back to Personal to
+   iterate more freely." There is no such action (Canon #8) — Public is
+   permanent. Re-walking this with that constraint in mind: the actual
+   available path is editing Classic White directly, informed by Usage
+   (step 6, Part 9), or graduating a **new**, separate Nurturing idea
+   (a variant, not the same Experience) if the change is experimental
+   enough to want isolation first. **No friction, once re-walked against
+   the corrected model** — v1.0's demotion concern was real evidence at
+   the time, and Canon #8 is a genuine, direct answer to it, not a
+   sidestep.
 
 8. **Managing a Nursery item that never graduates.** Wax Seal, sketched
    early, never gets promoted — it simply sits in The Nursery
@@ -472,30 +579,38 @@ Frame, Black Matte, Gold Accent) and its Museum Caption fields
 
 ## Part 11 — UX Friction Log
 
-Ranked by what the walkthrough actually hit, not by theoretical concern:
+Ranked by what the walkthrough actually hit, not by theoretical concern.
+Superseded items from v1.0 are marked resolved rather than deleted, so
+the record of what changed and why stays visible.
 
-1. **Demotion's effect on existing multi-Host attachments is
-   undefined** (walkthrough step 7). This is the single most consequential
-   open item — an under-specified demotion path risks silently breaking
-   a Theme's other Scenes the first time a real Theme Author uses it.
-   Part 6 records a recommendation (block demotion above one attachment)
-   but it is not yet a confirmed decision.
-2. **Canon Conflicts carried forward, still open** (§0) — Place-as-new-tier
-   and Artwork-as-Experience. Neither newly surfaced by this pass, but
-   neither resolved by it either; both still block a fully confident
-   Foundation/Experience boundary.
-3. **"Draft" removal scope is ambiguous** (§0) — read narrowly here
-   (Experience terminology only); a broader Builder-wide sweep, if
-   wanted, needs its own explicit instruction rather than inference
-   from this brief.
-4. **No friction found in:** Nurturing→Personal→Public promotion itself
-   (steps 2–4); Public reuse across multiple Holders (step 5's Frame
-   half); Usage-informed editing (step 6); the Nursery/Gallery split
-   (step 2, validated directly against the Wax Seal case in step 8);
-   Validation absorbing Experiences without a category redesign (step
-   9). These all transferred cleanly from the brief with no design gap
-   left unanswered.
-5. **Confirmed by the walkthrough, not merely asserted:** typed numeric
+1. **RESOLVED (was: demotion undefined).** Canon Decision #8 (Theme
+   Experiences are permanent, Delete exists only in the Nursery) directly
+   answers v1.0's top open item. Re-walked in step 7: the corrected
+   model doesn't just avoid the question, it gives a real, workable
+   alternative (edit directly, informed by Usage; or graduate a separate
+   variant idea if isolation is wanted). No further decision needed.
+2. **Still open — "Place" as a new Foundation tier vs. the existing
+   Place=Holder rename** (§0). Declaring Foundation "stable" freezes the
+   diagram, not this specific question. The only genuinely open item
+   left in this whole document.
+3. **RESOLVED (was: Artwork-as-Experience risking Engine Invariant
+   10/11).** The continuation brief's own Experience examples list no
+   longer includes Artwork at all (§0) — settled by omission.
+4. **RESOLVED (was: "Draft" removal scope ambiguous).** The continuation
+   brief confirms the narrow reading directly and explicitly (§0) — no
+   further action needed.
+5. **New, low-stakes — "Archived" vs. "Hidden" distinction unstated**
+   (§0). Doesn't block anything (Delete's Nursery-only rule holds
+   regardless of how many post-graduation states exist), but should be
+   defined before either action is built.
+6. **No friction found in:** the fork-not-ladder graduation model itself
+   (steps 3–4); Public reuse across multiple Holders (step 5's Frame
+   half); Usage-informed editing (step 6); the Nursery/Gallery split,
+   including the domain-sensitive Card (step 2, validated directly
+   against the Wax Seal case in step 8); Validation absorbing
+   Experiences without a category redesign (step 9). These all
+   transferred cleanly with no design gap left unanswered.
+7. **Confirmed by the walkthrough, not merely asserted:** typed numeric
    position fields alone are workably sufficient for a Free
    Experience's *first* placement, but real fine-tuning wants a live
    canvas — validating Part 5's Inspector-plus-bridge conclusion with
@@ -506,43 +621,46 @@ Ranked by what the walkthrough actually hit, not by theoretical concern:
 
 ## Part 12 — Final UX Recommendation
 
-**Adopt this design as drawn, with two items requiring explicit
-decision before implementation, and one requiring only confirmation:**
+**Adopt this design as drawn. Exactly one item still requires explicit
+decision before implementation; one more is low-stakes and can be
+settled alongside it:**
 
-- **Requires decision:** demotion's effect on existing attachments
-  (Friction 1) — recommend blocking demotion above one attachment,
-  per Part 6, but this needs sign-off, not inference.
-- **Requires decision:** both carried-forward Canon Conflicts (Friction
-  2) — Place-as-new-tier and Artwork-as-Experience — neither should be
-  allowed to reach implementation undecided, since Foundation stability
-  is this whole overhaul's own stated non-negotiable.
-- **Requires confirmation only:** "Draft" removal's scope (Friction 3)
-  — this document's narrow reading (Experience terminology only) is
-  reasonable but should be confirmed, not assumed, before any existing
-  World Project copy is touched.
+- **Requires decision:** "Place" as a new Foundation tier vs. the
+  existing Place=Holder rename (Friction 2) — the only remaining item
+  that could still touch Foundation itself, which this whole overhaul
+  treats as non-negotiable. Everything else in this document is either
+  resolved or safely Builder-only.
+- **Low-stakes, settle alongside it:** whether "Hidden" and "Archived"
+  are one state or two (Friction 5) — doesn't block Inspector or Card
+  design either way, but should have one answer before either action
+  ships.
 
-**Everything else validates cleanly:** Inspector-based authoring (no
+**Everything else now validates cleanly, including what v1.0 flagged as
+blocking:** the fork-shaped Graduation workflow (no ladder, no
+demotion, permanent Theme Experiences); Inspector-based authoring (no
 dedicated Experience Workspace) with one jump-to-Scene bridge for Free
 Experiences; the Gallery/Nursery split as the mechanism that keeps
-Nurturing ideas from cluttering real, placeable material; Foundation-
-first organization inside the Gallery; Usage as a governance concept
-that actually changed behavior during the walkthrough, not just an
-information panel. Museum Theme authoring, walked through in full,
-never once needed Builder to expose a Layer, a Z-Order, a render pass,
-or any technical vocabulary — every decision was phrased as "what is
-this," "where does it belong," "who else is using it," matching the
+Nurturing ideas from cluttering real, placeable material, including a
+Card that changes shape by domain rather than hiding fields that don't
+apply yet; Foundation-first organization inside the Gallery; Usage as
+the sole, real governance mechanism now that there is no demotion
+escape hatch to fall back on. Museum Theme authoring, walked through in
+full, never once needed Builder to expose a Layer, a Z-Order, a render
+pass, or any technical vocabulary — every decision was phrased as "what
+is this," "where does it belong," "who else is using it," matching the
 success criteria's own framing exactly. **Experience Studio, as
-designed here, is ready for review — implementation should wait on the
-three items above, not on anything else in this document.**
+designed here, is ready for review — implementation should wait only on
+the Place question, not on anything else in this document.**
 
 ---
 
 ## Cross-references
 
 - `docs/BUILDER_V3_WIREFRAMES.md` — the prior paper pass this document
-  extends; its two Canon Conflicts (§0) carry forward unresolved; its
-  Visibility (Public/Private) axis is superseded by this document's
-  Lifecycle model.
+  extends; its Artwork-as-Experience Canon Conflict is now resolved by
+  omission (§0); its Place-as-new-tier conflict is the one item this
+  document still cannot close on its own; its Visibility (Public/Private)
+  axis is superseded outright by this document's Lifecycle model.
 - `docs/BUILDER_V2_EXPERIENCE_CANON.md` — the ownership/philosophy model
   (Attachment, Ownership belongs to the Theme) this document assumes
   unchanged throughout.
@@ -564,7 +682,25 @@ three items above, not on anything else in this document.**
 - v1.0 — Initial Experience Studio UX package: the Lifecycle model
   (Nurturing/Personal/Public) replacing Visibility, the Gallery/Nursery
   split, the Experience Card, the Inspector-plus-bridge conclusion for
-  Free Experiences, the Promotion workflow, and a full Museum Theme
+  Free Experiences, a staged Promotion workflow, and a full Museum Theme
   paper walkthrough with its friction log. One new open item (demotion)
   and two carried-forward Canon Conflicts flagged as blocking; not
   implemented pending review and approval.
+- v1.1 — Amended per the "Builder V3 — Experience Studio (Paper Design
+  Continuation)" brief and its ten frozen Canon Decisions. The staged
+  Promotion ladder (Nurturing→Personal→Public as a forced sequence) is
+  replaced outright by a one-time fork (Graduation, Part 6): an idea
+  graduates directly to Personal *or* Public, with Personal→Public
+  available as a separate, later, one-directional step, and no path
+  back to the Nursery ever. This resolves v1.0's top friction item
+  (demotion) by removing the concept entirely rather than defining it —
+  Theme Experiences are permanent (Canon #8); Delete exists only in the
+  Nursery. The Card (Part 4) is now explicitly domain-sensitive
+  (Gallery cards show ownership + Usage; Nursery cards show neither).
+  The Artwork-as-Experience Canon Conflict is resolved by omission (the
+  continuation brief's own Experience examples no longer list it). The
+  Place-as-new-tier Canon Conflict remains the one open item. "Draft"
+  removal's scope is confirmed exactly as v1.0 already read it
+  (Experience terminology only). One new, low-stakes open question
+  (Hidden vs. Archived) recorded, not resolved. Not implemented; pending
+  review and approval before any development work begins.
