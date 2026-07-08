@@ -672,6 +672,121 @@ const ProjectModel = (function () {
     }
 
     // ---------------------------------------------------------------
+    // Experiences (Builder V3 Milestone 2 — Experience Foundation).
+    // A generic Builder authoring concept (docs/BUILDER_V3_EXPERIENCE_STUDIO.md,
+    // docs/BUILDER_V2_EXPERIENCE_CANON.md): an Experience enriches
+    // Foundation (a Scene or a Place) but is never owned by either —
+    // ownership always belongs to the Theme (the World), matching every
+    // other Theme-scoped collection here (Frames, Layer Packs). This is
+    // deliberately NOT modeled around Frame — Frame is one Experience
+    // *type* among an open, extensible vocabulary
+    // (js/services/experienceSchema.js's EXPERIENCE_TYPES), never a
+    // hardcoded shape of its own. Milestone 2 scope only: every
+    // Experience is created Nurturing (Canon Decision #2) with no
+    // attachment and no Graduation yet — `host`/`scopeSceneId` exist on
+    // the shape now so Milestone 3 has somewhere to write, but nothing
+    // in this milestone sets them to anything but null.
+    // ---------------------------------------------------------------
+
+    function experiences(project) {
+        const list = _filesWithPrefix(project, 'experiences/').map(function (e) {
+            return _ensureExperienceDefaults(e.data);
+        });
+        return _ordered(project, 'experienceOrder', list);
+    }
+
+    function findExperience(project, id) {
+        return experiences(project).find(function (e) { return e.id === id; }) || null;
+    }
+
+    function setExperience(project, experience) {
+        project.files['experiences/' + experience.id + '.json'] = experience;
+    }
+
+    // Read-time reconciliation for a project saved before a given field
+    // existed — the same pattern `_ensureHolderDefaults`/`_ensureStack`
+    // already use, so an older project never crashes and never needs an
+    // explicit migration step.
+    function _ensureExperienceDefaults(exp) {
+        if (!exp) return exp;
+        if (typeof exp.description !== 'string') exp.description = '';
+        if (!exp.type) exp.type = (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value) || 'frame';
+        if (!exp.attachment) exp.attachment = 'attached';
+        if (!exp.lifecycle) exp.lifecycle = 'nurturing';
+        if (exp.host === undefined) exp.host = null;
+        if (exp.scopeSceneId === undefined) exp.scopeSceneId = null;
+        if (!Array.isArray(exp.tags)) exp.tags = [];
+        if (!exp.properties || typeof exp.properties !== 'object') exp.properties = {};
+        if (!exp.createdAt) exp.createdAt = exp.updatedAt || Date.now();
+        if (!exp.updatedAt) exp.updatedAt = exp.createdAt;
+        return exp;
+    }
+
+    // Placeholder creation only (Milestone 2's own scope): Name, Type,
+    // intended Attachment, Description. Always born Nurturing (Canon
+    // Decision #2) — Graduation, attachment, and editing beyond these
+    // fields are Milestone 3.
+    function addExperience(project, spec) {
+        spec = spec || {};
+        const existingIds = experiences(project).map(function (e) { return e.id; });
+        const base = spec.name ? _slug(spec.name) : 'experience';
+        const id = _uniqueId(existingIds, base);
+        const now = Date.now();
+        const experience = _ensureExperienceDefaults({
+            id: id,
+            name: spec.name || 'New Experience',
+            description: spec.description || '',
+            type: spec.type,
+            attachment: spec.attachment,
+            lifecycle: 'nurturing',
+            host: null,
+            scopeSceneId: null,
+            tags: [],
+            properties: {},
+            createdAt: now,
+            updatedAt: now
+        });
+        setExperience(project, experience);
+        return experience;
+    }
+
+    function updateExperience(project, id, patch) {
+        const experience = findExperience(project, id);
+        if (!experience) return null;
+        Object.assign(experience, patch);
+        experience.updatedAt = Date.now();
+        return experience;
+    }
+
+    // Delete exists only for Nurturing Experiences (Canon Decision #9)
+    // — enforced here, at the single choke point every deletion call
+    // passes through, not left to the UI to remember.
+    function deleteExperience(project, id) {
+        const experience = findExperience(project, id);
+        if (!experience || experience.lifecycle !== 'nurturing') return false;
+        delete project.files['experiences/' + id + '.json'];
+        if (Array.isArray(project.experienceOrder)) {
+            project.experienceOrder = project.experienceOrder.filter(function (x) { return x !== id; });
+        }
+        return true;
+    }
+
+    // A plain, standalone validation hook — not yet wired into the
+    // Validation screen (Milestone 3's own "Validation UX changes"
+    // scope). Nurturing Experiences are never checked, since they
+    // aren't part of the Theme yet ("Nursery items are ignored").
+    function validateExperiences(project) {
+        const findings = [];
+        experiences(project).forEach(function (exp) {
+            if (exp.lifecycle === 'nurturing') return;
+            if (!exp.name || !exp.name.trim()) {
+                findings.push({ level: 'error', experienceId: exp.id, message: 'An Experience is missing a name.' });
+            }
+        });
+        return findings;
+    }
+
+    // ---------------------------------------------------------------
     // Assets (Sprint B2.0)
     // ---------------------------------------------------------------
 
@@ -871,6 +986,13 @@ const ProjectModel = (function () {
         moveInStack: moveInStack,
         setSceneBackground: setSceneBackground,
         getSceneBackgroundColor: getSceneBackgroundColor,
+        experiences: experiences,
+        findExperience: findExperience,
+        setExperience: setExperience,
+        addExperience: addExperience,
+        updateExperience: updateExperience,
+        deleteExperience: deleteExperience,
+        validateExperiences: validateExperiences,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,
         setAsset: setAsset,
