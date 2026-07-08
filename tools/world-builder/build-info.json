@@ -1,10 +1,10 @@
 {
-  "version": "2.2.2-EV2",
+  "version": "2.2.3-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-002",
-  "slice": "Scene becomes a first-class selectable object",
-  "build": "0015",
+  "milestone": "AV-003",
+  "slice": "Complete Holder presentation pipeline (Frame/Fit/Padding) actually renders",
+  "build": "0016",
   "buildDate": "2026-07-07",
-  "commit": "6d42a79",
+  "commit": "c562936",
   "environment": "Release"
 }
