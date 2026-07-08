@@ -1,10 +1,10 @@
 {
-  "version": "2.2.7-EV2",
+  "version": "2.2.8-EV2",
   "phase": "Authoring Validation",
-  "milestone": "Project Card Representation",
-  "slice": "Welcome screen project cards show the authored World thumbnail",
-  "build": "0020",
+  "milestone": "AV-007/EV-002",
+  "slice": "Holder Fit/Fill made visually meaningful via the World's own representative artwork",
+  "build": "0021",
   "buildDate": "2026-07-08",
-  "commit": "a748d94",
+  "commit": "08d6383",
   "environment": "Release"
 }
