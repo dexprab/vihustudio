@@ -1135,6 +1135,35 @@
         return frame ? (frame.fields || {}) : null;
     }
 
+    // EV-002 — the World's own authored Hero Image is its representative
+    // artwork; Thumbnail is the fallback when no Hero Image has been
+    // uploaded yet (the ticket's own "prefer its original high-resolution
+    // source rather than the exported thumbnail" instruction — Overview's
+    // own Hero Image field already uploads to `preview.png`, a
+    // higher-resolution source than the small `thumbnail.png` card
+    // image). Deliberately reuses the World's own asset rather than
+    // inventing a second "sample artwork" concept (the ticket's own
+    // explicit instruction) — `_sampleArtworkImage` above is a wholly
+    // separate, generic stand-in the legacy Engine V1 specimen path
+    // uses and is untouched by this. Cached by data-URL so a change to
+    // either asset (re-upload) is picked up on the very next redraw
+    // without re-decoding an unchanged image every frame.
+    let _repArtCache = { src: null, img: null };
+    function _representativeArtworkImage(project, sceneId) {
+        const src = window.ProjectModel.getAsset(project, 'preview.png') || window.ProjectModel.getAsset(project, 'thumbnail.png');
+        if (!src) { _repArtCache = { src: null, img: null }; return null; }
+        if (_repArtCache.src === src) return _repArtCache.img;
+        _repArtCache = { src: src, img: null };
+        const img = new Image();
+        img.onload = function () {
+            if (_repArtCache.src !== src) return; // superseded by a newer upload before this one finished loading
+            _repArtCache.img = img;
+            _redrawSceneCanvases(sceneId);
+        };
+        img.src = src;
+        return null; // not decoded yet this frame — falls back to placeholder chrome until onload fires
+    }
+
     // Draws the Scene's full Scene Stack through the native Engine V2
     // Runtime (Engine Canon §5 — Scene Layers and Holders together,
     // bottom to top; Canvas owns this order but is never itself a
@@ -1160,7 +1189,8 @@
         // one Builder-side call responsible for making that convenience
         // still true before every render.
         window.ProjectModel.sceneStack(currentProject, scene.id);
-        const graph = window.EngineV2Runtime.load(scene, _holderFrameFields);
+        const repImage = _representativeArtworkImage(currentProject, scene.id);
+        const graph = window.EngineV2Runtime.load(scene, _holderFrameFields, repImage);
         canvasEl.width = graph.width;
         canvasEl.height = graph.height;
         // AV-001 — the Scene's own Aspect Ratio must drive the editing

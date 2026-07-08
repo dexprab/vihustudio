@@ -34,7 +34,15 @@ const EngineV2Runtime = (function () {
     // Scene's Canvas frame and its Scene Stack. Returns a plain object
     // describing the paint-ready graph; never mutates the Scene.
     // ---------------------------------------------------------------
-    function load(scene, resolveFrame) {
+    // `representativeImage` (EV-002) — an optional, already-loaded
+    // `Image`, standing in for the not-yet-authored Primary Element
+    // (Scene Model §7 open item 1) inside an empty Holder. Like
+    // `resolveFrame`, this is the caller's own concern to resolve (the
+    // World's own authored Hero Image/Thumbnail, `worldBuilderApp.js`'s
+    // `_representativeArtworkImage`) — this module only ever draws
+    // whatever `Image` it's handed, or falls back to Engine-level
+    // placeholder chrome when none is given.
+    function load(scene, resolveFrame, representativeImage) {
         if (!scene || !scene.canvas) {
             throw new Error('EngineV2Runtime.load requires a Scene with a canvas (Engine Canon §4 — a Scene without a Canvas is not a Scene)');
         }
@@ -56,7 +64,8 @@ const EngineV2Runtime = (function () {
             height: aspect.height,
             aspect: aspect,
             stack: stack,
-            resolveFrame: typeof resolveFrame === 'function' ? resolveFrame : function () { return null; }
+            resolveFrame: typeof resolveFrame === 'function' ? resolveFrame : function () { return null; },
+            representativeImage: representativeImage || null
         };
     }
 
@@ -244,30 +253,72 @@ const EngineV2Runtime = (function () {
         const contentRect = _band(insets.contentInset, matPx > 0 ? '#F5F2EA' : '#E4DCCB');
         const cx = contentRect.x, cy = contentRect.y, cw = contentRect.w, chgt = contentRect.h;
 
-        // Fit — how the (placeholder standing in for the) Primary
-        // Element resolves against the Holder's own bounds (Engine
-        // Canon §6): 'fit' sizes it to sit fully inside the content
-        // rect (today's long-standing default), 'fill' sizes it larger
-        // so it visibly overflows/crops at the Shape clip, 'original'
-        // renders it at a fixed size independent of the Holder's own
-        // dimensions — the same three-way distinction the existing
-        // Engine V1 image viewer already draws for a real photo,
-        // applied here to the placeholder since no Primary Element is
-        // authored yet (Scene Model §7 open item 1).
-        let glyphSize;
-        if (holder.fit === 'fill') {
-            glyphSize = Math.min(cw, chgt) * 0.55;
-        } else if (holder.fit === 'original') {
-            glyphSize = 64;
+        // Fit — how the Primary Element resolves against the Holder's
+        // own content bounds (Engine Canon §6): 'fit' (contain) sizes it
+        // to sit fully inside the content rect, 'fill' (cover) sizes it
+        // to cover the whole content rect and crops the overflow,
+        // 'original' renders it at native size — the same vocabulary the
+        // existing Engine V1 image viewer already draws for a real
+        // photo. Since no Primary Element is separately authored yet
+        // (Scene Model §7 open item 1), a Theme's own representative
+        // artwork (EV-002 — the World's authored Hero Image/Thumbnail,
+        // resolved by the caller and handed in as `graph.
+        // representativeImage`) stands in for it when available, clipped
+        // to the content rect so 'fill' genuinely crops rather than
+        // merely growing a centered icon; the emoji glyph remains the
+        // fallback only when no artwork has been authored at all.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cx, cy, cw, chgt);
+        ctx.clip();
+        if (graph.representativeImage) {
+            _drawImageWithFit(ctx, graph.representativeImage, { x: cx, y: cy, w: cw, h: chgt }, holder.fit);
         } else {
-            glyphSize = Math.min(cw, chgt) * 0.3;
+            // AV-007 — 'fill' must actually overflow the content rect
+            // (previously 0.55 of it, i.e. always smaller, so it could
+            // never crop against the clip above and read as barely
+            // different from 'fit'); 'original' stays a fixed size.
+            let glyphSize;
+            if (holder.fit === 'fill') {
+                glyphSize = Math.min(cw, chgt) * 1.4;
+            } else if (holder.fit === 'original') {
+                glyphSize = 64;
+            } else {
+                glyphSize = Math.min(cw, chgt) * 0.3;
+            }
+            ctx.fillStyle = '#9C8B6E';
+            ctx.font = Math.round(Math.max(0, glyphSize)) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🖼️', cx + cw / 2, cy + chgt / 2);
         }
-        ctx.fillStyle = '#9C8B6E';
-        ctx.font = Math.round(Math.max(0, glyphSize)) + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🖼️', cx + cw / 2, cy + chgt / 2);
         ctx.restore();
+        ctx.restore();
+    }
+
+    // AV-007/EV-002 — object-fit-style scaling for a real representative
+    // image: 'fit' contains (letterboxed, no crop), 'fill' covers (crops
+    // overflow at the caller's own clip), 'original' draws at native
+    // pixel size. Pure geometry, no Scene Model/Engine V2 pipeline change
+    // — just how a Holder's content resolves an image it's handed.
+    function _drawImageWithFit(ctx, img, rect, fit) {
+        const iw = img.naturalWidth || img.width;
+        const ih = img.naturalHeight || img.height;
+        if (!iw || !ih) return;
+        let dw, dh;
+        if (fit === 'original') {
+            dw = iw;
+            dh = ih;
+        } else {
+            const scale = fit === 'fill'
+                ? Math.max(rect.w / iw, rect.h / ih)
+                : Math.min(rect.w / iw, rect.h / ih);
+            dw = iw * scale;
+            dh = ih * scale;
+        }
+        const dx = rect.x + (rect.w - dw) / 2;
+        const dy = rect.y + (rect.h - dh) / 2;
+        ctx.drawImage(img, dx, dy, dw, dh);
     }
 
     // AV-004 — a read-only query, never a draw call: returns the exact
