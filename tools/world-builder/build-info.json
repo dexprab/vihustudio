@@ -1,10 +1,10 @@
 {
-  "version": "2.4.0-EV2",
+  "version": "2.5.0-EV2",
   "phase": "Experience Studio",
-  "milestone": "Milestone 2",
-  "slice": "Experience Foundation + Experience Home (Gallery/Nursery)",
-  "build": "0026",
+  "milestone": "Milestone 3",
+  "slice": "Experience Authoring — Inspector, Graduation, Attachment, Usage, Reuse, Validation",
+  "build": "0027",
   "buildDate": "2026-07-08",
-  "commit": "e80e9d1",
+  "commit": "5b5d869",
   "environment": "Release"
 }
