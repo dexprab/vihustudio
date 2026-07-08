@@ -159,6 +159,27 @@ const EngineV2Runtime = (function () {
     // cross-section: wall margin (defaultMargin+inset, wallTone) → frame
     // border (frameThickness, borderColor, cornerRadius) → mat
     // (matWidth) → content (Holder's own padding, then Fit).
+    // The Holder's own Frame-band geometry, shared by the actual paint
+    // routine below and by `holderBands` (the read-only query Builder-
+    // only Working View overlays use, AV-004) — one source of truth for
+    // "where does each band sit," so an authoring guide can never drift
+    // from what was actually painted.
+    function _holderInsets(holder, fields, graph) {
+        const thicknessPx = Math.max(0, fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4) * graph.width * 0.001;
+        const marginPx = Math.max(0, ((fields && fields.defaultMargin) || 0) + ((fields && fields.inset) || 0)) * graph.width * 0.001;
+        const matPx = Math.max(0, (fields && fields.matWidth) || 0) * graph.width * 0.001;
+        const paddingPx = Math.max(0, (holder.padding || 0) * graph.width * 0.001);
+        return {
+            thicknessPx: thicknessPx,
+            marginPx: marginPx,
+            matPx: matPx,
+            paddingPx: paddingPx,
+            borderInset: marginPx,
+            matInset: marginPx + thicknessPx,
+            contentInset: marginPx + thicknessPx + matPx + paddingPx
+        };
+    }
+
     function _paintHolder(ctx, holder, graph) {
         if (holder.permissions && holder.permissions.visible === false) return;
         const rect = rectFor(holder, graph);
@@ -167,10 +188,9 @@ const EngineV2Runtime = (function () {
         // own contract (`worldBuilderApp.js`'s `_holderFrameFields`).
         const fields = holder.frame ? (graph.resolveFrame(holder.frame) || {}) : null;
         const borderColor = (fields && fields.borderColor) || '#C9B79C';
-        const thicknessPx = Math.max(0, fields && typeof fields.frameThickness === 'number' ? fields.frameThickness : 4) * graph.width * 0.001;
         const wallTone = fields && fields.wallTone;
-        const marginPx = Math.max(0, ((fields && fields.defaultMargin) || 0) + ((fields && fields.inset) || 0)) * graph.width * 0.001;
-        const matPx = Math.max(0, (fields && fields.matWidth) || 0) * graph.width * 0.001;
+        const insets = _holderInsets(holder, fields, graph);
+        const thicknessPx = insets.thicknessPx, marginPx = insets.marginPx, matPx = insets.matPx;
         const cornerRadiusPx = fields && typeof fields.cornerRadius === 'number' ? Math.max(0, fields.cornerRadius) * graph.width * 0.001 : 0;
         const shadowPreset = SHADOW_PRESETS[(fields && fields.shadow) || 'none'];
 
@@ -210,19 +230,18 @@ const EngineV2Runtime = (function () {
         ctx.clip();
 
         // Frame border band, inset by the wall margin.
-        if (thicknessPx > 0) _band(marginPx, borderColor);
+        if (thicknessPx > 0) _band(insets.borderInset, borderColor);
 
         // Mat band, inset by the border's own thickness — a fixed,
         // neutral mat-board tone regardless of wallTone (traditionally
         // white/cream regardless of the wall behind the frame).
-        if (matPx > 0) _band(marginPx + thicknessPx, '#F5F2EA');
+        if (matPx > 0) _band(insets.matInset, '#F5F2EA');
 
         // Content band — the Holder's own Padding (Engine Canon §6:
         // "inset between the Holder's edge and its content"), applied
         // after the Frame's own mat, so the two compose rather than
         // overriding each other.
-        const paddingPx = Math.max(0, (holder.padding || 0) * graph.width * 0.001);
-        const contentRect = _band(marginPx + thicknessPx + matPx + paddingPx, matPx > 0 ? '#F5F2EA' : '#E4DCCB');
+        const contentRect = _band(insets.contentInset, matPx > 0 ? '#F5F2EA' : '#E4DCCB');
         const cx = contentRect.x, cy = contentRect.y, cw = contentRect.w, chgt = contentRect.h;
 
         // Fit — how the (placeholder standing in for the) Primary
@@ -249,6 +268,39 @@ const EngineV2Runtime = (function () {
         ctx.textBaseline = 'middle';
         ctx.fillText('🖼️', cx + cw / 2, cy + chgt / 2);
         ctx.restore();
+    }
+
+    // AV-004 — a read-only query, never a draw call: returns the exact
+    // band rects `_paintHolder` just painted (outer Holder edge / wall
+    // margin's inner edge / frame border's inner edge / mat's inner
+    // edge, i.e. the content rect), plus which optional bands are
+    // actually present. This is what lets Working View draw Builder-
+    // only authoring guide lines at the Holder's *real* boundaries
+    // without a second, independently-derived geometry — the "no
+    // second renderer" constraint applies to guides too, not just
+    // pixels: a guide computed from different math than the paint
+    // routine could silently drift out of sync with what's actually
+    // drawn.
+    function holderBands(holder, graph) {
+        const rect = rectFor(holder, graph);
+        const fields = holder.frame ? (graph.resolveFrame(holder.frame) || {}) : null;
+        const insets = _holderInsets(holder, fields, graph);
+        function rectAt(insetPx) {
+            return {
+                x: rect.x + insetPx, y: rect.y + insetPx,
+                w: Math.max(0, rect.w - insetPx * 2), h: Math.max(0, rect.h - insetPx * 2)
+            };
+        }
+        return {
+            outer: rectAt(0),
+            border: rectAt(insets.borderInset),
+            mat: rectAt(insets.matInset),
+            content: rectAt(insets.contentInset),
+            hasWall: insets.marginPx > 0,
+            hasFrame: insets.thicknessPx > 0,
+            hasMat: insets.matPx > 0,
+            hasPadding: insets.paddingPx > 0
+        };
     }
 
     // Top-down word wrap for a text Element's own bounding box — starts
@@ -303,7 +355,8 @@ const EngineV2Runtime = (function () {
     return {
         load: load,
         render: render,
-        rectFor: rectFor
+        rectFor: rectFor,
+        holderBands: holderBands
     };
 })();
 

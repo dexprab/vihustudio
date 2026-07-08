@@ -1115,6 +1115,11 @@
             const selectedLayerId = _selectedLayerId();
             graph.stack.forEach(function (entry) {
                 if (entry.type === 'holder' && entry.object.id === selectedHolderId) {
+                    // AV-004 — construction guides first, selection
+                    // outline drawn on top of them (so the outline stays
+                    // the clearest, outermost line even when Frame bands
+                    // are also shown).
+                    _drawHolderConstructionGuides(ctx, entry.object, graph, canvasEl.width);
                     _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, true);
                 } else if (entry.type === 'layer' && entry.object.id === selectedLayerId) {
                     _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, false);
@@ -1135,6 +1140,44 @@
             ctx.strokeRect(x, y, w, hgt);
             ctx.restore();
         }
+    }
+
+    // AV-004 — Working View's own construction affordance for a
+    // selected Holder: felt guide lines at the real Frame-band
+    // boundaries (Wall → Frame → Mat → Artwork), read from
+    // `EngineV2Runtime.holderBands` — the same geometry the Runtime just
+    // painted, never re-derived independently, so a guide can never
+    // drift from what's actually there. Builder-only: never drawn into
+    // Runtime Preview (only called from the `opts.interactive` branch,
+    // Working View's own), never serialized, never affects the Scene
+    // Model, Build, or Publish. Runtime Preview stays the stable,
+    // guide-free "what the reader gets" verification window (Vision's
+    // own "never shows a guide" rule for that surface, unchanged);
+    // Working View is where construction detail belongs.
+    function _drawHolderConstructionGuides(ctx, holder, graph, canvasWidth) {
+        const bands = window.EngineV2Runtime.holderBands(holder, graph);
+        const candidates = [
+            { rect: bands.border, label: 'Wall → Frame', show: bands.hasWall },
+            { rect: bands.mat, label: bands.hasMat ? 'Frame → Mat' : 'Frame → Artwork', show: bands.hasFrame },
+            { rect: bands.content, label: 'Artwork', show: bands.hasMat || bands.hasPadding }
+        ];
+        ctx.save();
+        ctx.strokeStyle = 'rgba(29,52,87,0.5)';
+        ctx.lineWidth = Math.max(1, canvasWidth * 0.0012);
+        ctx.setLineDash([canvasWidth * 0.006, canvasWidth * 0.004]);
+        ctx.font = Math.max(9, Math.round(canvasWidth * 0.011)) + 'px sans-serif';
+        ctx.fillStyle = 'rgba(29,52,87,0.8)';
+        ctx.textBaseline = 'bottom';
+        let lastKey = null;
+        candidates.forEach(function (c) {
+            if (!c.show) return;
+            const key = Math.round(c.rect.x) + ':' + Math.round(c.rect.w);
+            if (key === lastKey) return; // two bands with identical bounds (e.g. Mat width 0) draw one line, not two
+            lastKey = key;
+            ctx.strokeRect(c.rect.x, c.rect.y, c.rect.w, c.rect.h);
+            ctx.fillText(c.label.toUpperCase(), c.rect.x + 4, Math.max(10, c.rect.y - 4));
+        });
+        ctx.restore();
     }
 
     // Builder-only selection chrome — a dashed outline, plus a
