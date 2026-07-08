@@ -1802,7 +1802,7 @@
 
         const sub = document.createElement('div');
         sub.className = 'wb-scene-card-sub';
-        sub.textContent = aspect.label + (scene.holders.length ? ' · ' + scene.holders.length + ' Holder' + (scene.holders.length > 1 ? 's' : '') : ' · No Holder');
+        sub.textContent = aspect.label + (scene.holders.length ? ' · ' + scene.holders.length + ' Place' + (scene.holders.length > 1 ? 's' : '') : ' · No Place');
 
         // Reorder — Blueprint §5's own "Rename, duplicate, delete,
         // reorder a Scene," reusing ProjectModel.moveScene the same way
@@ -1981,7 +1981,7 @@
         // Holder Boundary — the actual resolved Frame/picture rect for
         // this Layout (Quote has none; the panel rect there is the
         // centered text area instead).
-        workingOverlays.appendChild(_guideBox('wb-guide-holder', isQuote ? 'Quote Text Area' : 'Holder Boundary', panelPct));
+        workingOverlays.appendChild(_guideBox('wb-guide-holder', isQuote ? 'Quote Text Area' : 'Place Boundary', panelPct));
 
         // Padding guide — an inset within the Holder Boundary sized from
         // the Layout's own Padding field, so dragging Padding visibly
@@ -2212,11 +2212,16 @@
         return _renderTextPanel(scene);
     }
 
-    // ---------- Place — no Holder selected: the Holder list + Add (Blueprint §8) ----------
+    // ---------- Place — no Place selected: the Place list + Add (Blueprint §8) ----------
+    // "Place" is the Builder-facing rename of Engine's Holder (Builder V3
+    // Foundation Final) — a storytelling location, not a technical
+    // container. Internal identifiers (holder, findHolder, updateHolder,
+    // addHolder, deleteHolder) are unchanged by design: this is a Builder
+    // authoring-language change only, not a new Engine ownership tier.
 
     function _renderPlacePanel(scene) {
         _heading('Place', 'Where does the photo go, how big, what shape, and how is it framed?', ICONS.place);
-        contextPanel.appendChild(_stateIntroText('Click a Holder in Working View to select it (drag to move, drag its corner handle to resize), or add a new one below. Add as many Holders as this Scene needs.'));
+        contextPanel.appendChild(_stateIntroText('Click a Place in Working View to select it (drag to move, drag its corner handle to resize), or add a new one below. Add as many Places as this Scene needs.'));
 
         if (scene.holders.length) {
             const list = document.createElement('div');
@@ -2241,14 +2246,14 @@
             });
             contextPanel.appendChild(list);
         } else {
-            contextPanel.appendChild(_fieldHelp('This Scene has no Holders yet — add one below.'));
+            contextPanel.appendChild(_fieldHelp('This Scene has no Places yet — add one below.'));
         }
 
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
         addBtn.style.marginTop = '12px';
-        addBtn.textContent = '➕ Add a Holder';
+        addBtn.textContent = '➕ Add a Place';
         addBtn.addEventListener('click', function () {
             const holder = window.ProjectModel.addHolder(currentProject, scene.id);
             if (holder) {
@@ -2267,12 +2272,12 @@
         return p;
     }
 
-    // ---------- Place — a Holder is selected: its full property panel ----------
+    // ---------- Place — a Place is selected: its full property panel ----------
 
     function _renderHolderPanel(scene, holder) {
         _heading('Place — ' + holder.name, 'Position, size, shape, padding, fit, and Frame for this photo — plus what a Story Author is allowed to do with it.', ICONS.place);
 
-        contextPanel.appendChild(_buildFieldGroup('Holder Name', _textInput(holder.name, function (v) {
+        contextPanel.appendChild(_buildFieldGroup('Place Name', _textInput(holder.name, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { name: v });
             _persist();
         })));
@@ -2326,7 +2331,7 @@
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { padding: v });
             _persist();
             _redrawSceneCanvases(scene.id);
-        }), 'Inset between the Holder’s edge and its content.');
+        }), 'Inset between the Place’s edge and its content.');
 
         _renderFramePicker(scene, holder);
         _renderHolderPermissionBlock(scene, holder);
@@ -2335,7 +2340,7 @@
         removeBtn.type = 'button';
         removeBtn.className = 'wb-workspace-btn';
         removeBtn.style.marginTop = '14px';
-        removeBtn.textContent = '🗑 Remove this Holder';
+        removeBtn.textContent = '🗑 Remove this Place';
         removeBtn.addEventListener('click', function () {
             if (!window.confirm('Remove "' + holder.name + '"? This cannot be undone.')) return;
             window.ProjectModel.deleteHolder(currentProject, scene.id, holder.id);
@@ -2349,7 +2354,7 @@
         backBtn.type = 'button';
         backBtn.className = 'wb-workspace-btn';
         backBtn.style.marginTop = '8px';
-        backBtn.textContent = '← All Holders';
+        backBtn.textContent = '← All Places';
         backBtn.addEventListener('click', function () {
             currentInspectorTarget = null;
             _renderWorkspace();

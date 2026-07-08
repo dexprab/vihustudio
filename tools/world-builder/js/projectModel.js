@@ -350,7 +350,7 @@ const ProjectModel = (function () {
         return rects.map(function (r, i) {
             return {
                 id: 'holder-' + (i + 1),
-                name: rects.length > 1 ? 'Holder ' + (i + 1) : 'Holder',
+                name: rects.length > 1 ? 'Place ' + (i + 1) : 'Place',
                 position: { x: r.x, y: r.y },
                 size: { w: r.w, h: r.h },
                 shape: 'rectangle',
@@ -477,7 +477,7 @@ const ProjectModel = (function () {
         const offset = (n % 4) * 0.04;
         const holder = {
             id: id,
-            name: 'Holder ' + (n + 1),
+            name: 'Place ' + (n + 1),
             position: { x: 0.15 + offset, y: 0.15 + offset },
             size: { w: 0.6, h: 0.5 },
             shape: 'rectangle',
