@@ -447,7 +447,14 @@
     // keystroke while a creator is still typing.
     let _saveDisplayTimer = null;
     function _setSaveState(state) {
-        if (state === 'dirty') {
+        if (state === 'error') {
+            // AV-009 — a real, visible failure state: the previous binary
+            // dirty/saved model had no way to say "this did not actually
+            // save," which is exactly how a quota-exceeded write went
+            // unnoticed until the next reload silently reverted it.
+            saveDot.textContent = '🔴';
+            savedText.textContent = 'Save Failed — try a smaller image';
+        } else if (state === 'dirty') {
             saveDot.textContent = '🟠';
             savedText.textContent = 'Unsaved Changes';
         } else {
@@ -455,17 +462,18 @@
             savedText.textContent = 'All Changes Saved';
         }
         savedBadge.classList.toggle('wb-save-dirty', state === 'dirty');
-        savedBadge.classList.toggle('wb-save-saved', state !== 'dirty');
-        btnSave.classList.toggle('wb-save-btn-dirty', state === 'dirty');
+        savedBadge.classList.toggle('wb-save-saved', state === 'saved');
+        savedBadge.classList.toggle('wb-save-error', state === 'error');
+        btnSave.classList.toggle('wb-save-btn-dirty', state !== 'saved');
     }
 
     // Save — every field already autosaves on change (ProjectStore.save
     // per edit); this button's job is an explicit, user-visible
     // confirmation that nothing is pending, not a second save mechanism.
     btnSave.addEventListener('click', function () {
-        window.ProjectStore.save(currentProject);
+        const result = window.ProjectStore.save(currentProject);
         clearTimeout(_saveDisplayTimer);
-        _setSaveState('saved');
+        _setSaveState(result.ok ? 'saved' : 'error');
     });
 
     // Overflow menu — Duplicate/Reset Layout/Delete. No dead entries.
@@ -921,11 +929,21 @@
     // confirmation instead of flickering.
     function _persist() {
         _setSaveState('dirty');
-        window.ProjectStore.save(currentProject);
+        const result = window.ProjectStore.save(currentProject);
         clearTimeout(_saveDisplayTimer);
-        _saveDisplayTimer = setTimeout(function () {
-            _setSaveState('saved');
-        }, 600);
+        if (!result.ok) {
+            // AV-009 — a save that didn't actually reach localStorage
+            // (quota exceeded is the realistic case, e.g. a very large
+            // upload) must never claim "All Changes Saved" — that lie is
+            // exactly what let Hero Image uploads silently vanish on the
+            // next reload. Show the real state and keep it visible
+            // (no auto-return to "saved") until a save actually succeeds.
+            _setSaveState('error');
+        } else {
+            _saveDisplayTimer = setTimeout(function () {
+                _setSaveState('saved');
+            }, 600);
+        }
         _renderWorkspaceHeader();
     }
 
@@ -2973,6 +2991,48 @@
         return wrap;
     }
 
+    // AV-009 — a raw camera-resolution photo can produce a multi-megabyte
+    // data URL; every uploaded asset lands in the single JSON blob
+    // ProjectStore keeps in one localStorage key (the same World Project
+    // Contract persistence choice, unchanged), so one large upload could
+    // silently push a save past the browser's per-origin quota. Root
+    // cause traced to `_writeAll`'s pre-existing try/catch swallowing
+    // that failure with no visible error — a save that never reached
+    // localStorage still showed "All Changes Saved" until the very next
+    // reload silently reverted it (see ProjectStore.save's own AV-009
+    // note for the other half of this fix). Rather than only detect the
+    // failure after the fact, large uploads are downscaled/re-compressed
+    // here, before they ever reach ProjectModel/ProjectStore, so a
+    // realistic photo actually fits; anything already small enough
+    // (icons, small graphics) passes through untouched, byte-for-byte,
+    // since there's no reason to lossily recompress something that was
+    // never a risk.
+    const UPLOAD_DOWNSCALE_THRESHOLD_BYTES = 1.5 * 1024 * 1024;
+    const UPLOAD_MAX_DIMENSION = 1600;
+
+    function _downscaleImageDataURL(dataURL, onDone) {
+        const img = new Image();
+        img.onload = function () {
+            const longestEdge = Math.max(img.naturalWidth, img.naturalHeight);
+            const scale = Math.min(1, UPLOAD_MAX_DIMENSION / longestEdge);
+            const w = Math.max(1, Math.round(img.naturalWidth * scale));
+            const h = Math.max(1, Math.round(img.naturalHeight * scale));
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const out = canvas.toDataURL('image/jpeg', 0.85);
+                onDone(out.length < dataURL.length ? out : dataURL);
+            } catch (e) {
+                onDone(dataURL); // canvas export failed — fall back to the original upload
+            }
+        };
+        img.onerror = function () { onDone(dataURL); };
+        img.src = dataURL;
+    }
+
     // Real upload — a hidden file input read via FileReader into a data
     // URI, the same embedding approach js/services/builder.js already
     // expects for assets/preview.png/thumbnail.png (Sprint B2.0; no
@@ -2986,7 +3046,15 @@
             const file = input.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function () { onFile(reader.result); };
+            reader.onload = function () {
+                const dataURL = reader.result;
+                const isImage = file.type && file.type.indexOf('image/') === 0;
+                if (isImage && dataURL.length > UPLOAD_DOWNSCALE_THRESHOLD_BYTES) {
+                    _downscaleImageDataURL(dataURL, onFile);
+                } else {
+                    onFile(dataURL);
+                }
+            };
             reader.readAsDataURL(file);
         });
         return input;

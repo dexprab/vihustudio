@@ -22,10 +22,22 @@ const ProjectStore = (function () {
     }
   }
 
+  // AV-009 — this used to swallow a thrown QuotaExceededError silently:
+  // a large upload (a realistic photo's data URL routinely runs several
+  // megabytes) could push the serialized array past the browser's
+  // per-origin localStorage quota, the write would throw, and the catch
+  // here discarded that failure with no signal anywhere — the Workspace
+  // still showed "All Changes Saved" while the actual write never
+  // happened, so the next reload silently reverted to the last value
+  // that *did* fit. Callers now get a real ok/error result instead of a
+  // lie.
   function _writeAll(projects) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    } catch (e) {}
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e };
+    }
   }
 
   function _newId() {
@@ -68,14 +80,19 @@ const ProjectStore = (function () {
     return project;
   }
 
+  // Returns { project, ok, error } — `ok:false` means the write did NOT
+  // reach localStorage (quota exceeded is the realistic case) and
+  // `project.updatedAt` was bumped in memory but not actually persisted;
+  // no existing caller read this function's return value before AV-009,
+  // so widening it to an object here changes no other behaviour.
   function save(project) {
     project.updatedAt = new Date().toISOString();
     const projects = _readAll();
     const idx = projects.findIndex(function (p) { return p.id === project.id; });
     if (idx === -1) projects.push(project);
     else projects[idx] = project;
-    _writeAll(projects);
-    return project;
+    const result = _writeAll(projects);
+    return { project: project, ok: result.ok, error: result.error };
   }
 
   // Sprint B2.0.1 — Duplicate/Delete, the header overflow menu's two

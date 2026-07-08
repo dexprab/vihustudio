@@ -465,6 +465,7 @@ html, body {
 
 .wb-workspace-saved.wb-save-dirty #wb-workspace-saved-text { color: #B86C21; font-weight: 700; }
 .wb-workspace-saved.wb-save-saved #wb-workspace-saved-text { color: var(--wb-text-secondary); }
+.wb-workspace-saved.wb-save-error #wb-workspace-saved-text { color: #C0392B; font-weight: 700; }
 
 .wb-workspace-header-right {
     display: flex;
