@@ -1620,16 +1620,30 @@
         const obj = _findByKind(_holderDragState.sceneId, _holderDragState.kind, _holderDragState.id);
         if (!obj) return;
         if (_holderDragState.mode === 'move') {
-            // AV-006 — clamp a text Layer against its measured rendered
-            // footprint, not its declared size.h, which is only ever a
-            // wrap-width + creation-time placeholder disconnected from
-            // what actually renders (see _effectiveObjectRect above).
-            let clampH = obj.size.h;
+            // AV-006/AV-010 — clamp a text Layer against its measured
+            // rendered footprint (both width and height), not its
+            // declared size.w/size.h, which are only ever a wrap-width
+            // and a creation-time placeholder height disconnected from
+            // what actually renders (see _effectiveObjectRect above). The
+            // footprint's x-offset from the declared box's own left edge
+            // is constant for a given piece of text (it depends only on
+            // alignment/content, never on position), so it's measured
+            // once from the object's current position and reused to
+            // convert a footprint-based clamp back into a position.x
+            // clamp — correct for left/center/right alignment alike.
+            let clampMinX = 0, clampMaxX = 1 - obj.size.w, clampH = obj.size.h;
             if (_holderDragState.kind === 'layer' && obj.kind === 'text') {
                 const footprint = _effectiveObjectRect(obj, 'layer', workingCanvas);
-                if (footprint) clampH = footprint.h / workingCanvas.height;
+                if (footprint) {
+                    const rect = window.EngineV2Runtime.rectFor(obj, { width: workingCanvas.width, height: workingCanvas.height });
+                    const offsetXFraction = (footprint.x - rect.x) / workingCanvas.width;
+                    const footprintWFraction = footprint.w / workingCanvas.width;
+                    clampMinX = -offsetXFraction;
+                    clampMaxX = 1 - footprintWFraction - offsetXFraction;
+                    clampH = footprint.h / workingCanvas.height;
+                }
             }
-            obj.position.x = Math.min(1 - obj.size.w, Math.max(0, _holderDragState.startX + dx));
+            obj.position.x = Math.min(clampMaxX, Math.max(clampMinX, _holderDragState.startX + dx));
             obj.position.y = Math.min(1 - clampH, Math.max(0, _holderDragState.startY + dy));
         } else {
             obj.size.w = Math.min(1 - obj.position.x, Math.max(0.06, _holderDragState.startW + dx));
@@ -2732,11 +2746,18 @@
             _persist();
         })));
 
-        contextPanel.appendChild(_fieldGroup('Words', _textarea(layer.text, function (v) {
+        // AV-011 — the same reusable EmojiPicker every Text Element field
+        // in the main Studio app already uses (Sprint 9.6), wrapped
+        // around the existing textarea rather than a second, Builder-only
+        // picker: inserting an emoji just dispatches a real 'input' event
+        // on the same element, so it persists through the exact save path
+        // this field already had.
+        const wordsInput = _textarea(layer.text, function (v) {
             window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { text: v });
             _persist();
             _redrawSceneCanvases(scene.id);
-        })));
+        });
+        contextPanel.appendChild(_fieldGroup('Words', window.EmojiPicker ? window.EmojiPicker.wrap(wordsInput) : wordsInput));
 
         const fontGroup = _buildFieldGroup('Font', _select(TEXT_FONT_OPTIONS, layer.font, function (v) {
             window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { font: v });

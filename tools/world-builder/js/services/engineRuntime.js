@@ -385,30 +385,49 @@ const EngineV2Runtime = (function () {
         });
     }
 
-    // AV-006 — a text Layer's declared position/size box is only ever a
-    // wrap-width and a creation-time placeholder height (Scene Model §3
-    // gives every Layer a generic fractional rect, but unlike a Holder
-    // or Decoration — whose rect literally is what gets drawn — a text
-    // Layer's actual rendered vertical extent depends on its own word
-    // count and line-wrapping, completely decoupled from that declared
-    // box). Builder-side hit-testing/dragging clamped against the
-    // declared box produced a real, invisible movement barrier once the
-    // rendered text was shorter than the box (a real authoring bug, not
-    // a rendering one — Runtime output is unaffected). This is a pure,
+    // AV-006/AV-010 — a text Layer's declared position/size box is only
+    // ever a wrap-width and a creation-time placeholder height (Scene
+    // Model §3 gives every Layer a generic fractional rect, but unlike a
+    // Holder or Decoration — whose rect literally is what gets drawn —
+    // a text Layer's actual rendered extent depends on its own content,
+    // completely decoupled from that declared box once real words are
+    // typed). Builder-side hit-testing/dragging clamped against the
+    // declared box produced a real, invisible movement barrier whenever
+    // the rendered text was smaller than the box in either dimension (a
+    // real authoring bug, not a rendering one — Runtime output is
+    // unaffected). AV-006 fixed height; AV-010 fixes width the same
+    // way — measuring the widest wrapped line (never wider than the
+    // declared wrap width, since that's still the wrap boundary) and
+    // offsetting by `align` exactly as `_paintLayer` does, so a short
+    // line of centred/right-aligned text reports the true glyph
+    // position, not the declared box's own left edge. This is a pure,
     // read-only measurement of what _paintLayer actually renders, reusing
-    // _wrapLines so it can never drift from the real paint.
+    // _wrapLines so it can never drift from the real paint. Only an
+    // explicit fixed-width text container (not a capability this Builder
+    // has built yet) would need to keep the declared box's own width —
+    // by default every text Layer auto-sizes to its content.
     function textFootprint(ctx, layer, graph) {
         const rect = rectFor(layer, graph);
         ctx.save();
         ctx.font = (layer.fontSize || 48) + 'px ' + (layer.font || 'Georgia, serif');
         const lineHeight = (layer.fontSize || 48) * 1.25;
-        const lineCount = _wrapLines(ctx, layer.text || '', rect.w).length;
+        const lines = _wrapLines(ctx, layer.text || '', rect.w);
+        let maxLineWidth = 0;
+        lines.forEach(function (line) {
+            const lw = ctx.measureText(line).width;
+            if (lw > maxLineWidth) maxLineWidth = lw;
+        });
         ctx.restore();
-        const h = Math.max(lineHeight, lineCount * lineHeight);
+        const h = Math.max(lineHeight, lines.length * lineHeight);
+        const w = Math.min(rect.w, Math.max(1, maxLineWidth));
+        const align = layer.align || 'left';
+        const x = align === 'center' ? rect.x + (rect.w - w) / 2
+            : align === 'right' ? rect.x + rect.w - w
+            : rect.x;
         return {
-            x: rect.x,
+            x: x,
             y: rect.y,
-            w: rect.w,
+            w: w,
             h: Math.min(h, graph.height - rect.y)
         };
     }
