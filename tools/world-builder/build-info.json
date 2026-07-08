@@ -1,10 +1,10 @@
 {
-  "version": "2.3.0-EV2",
+  "version": "2.4.0-EV2",
   "phase": "Experience Studio",
-  "milestone": "Milestone 1",
-  "slice": "Foundation Final — Holder renamed to Place in Builder-facing copy",
-  "build": "0025",
+  "milestone": "Milestone 2",
+  "slice": "Experience Foundation + Experience Home (Gallery/Nursery)",
+  "build": "0026",
   "buildDate": "2026-07-08",
-  "commit": "4c444ee",
+  "commit": "e80e9d1",
   "environment": "Release"
 }
