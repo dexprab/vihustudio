@@ -920,6 +920,20 @@
     // implementation), then draws Working-View-only guide overlays.
     // Sample artwork loads once and is cached; every call after the
     // first resolves synchronously.
+    // AV-005 — Runtime Preview is project-scoped, never editor-scoped: it
+    // continues rendering the current Museum Scene through the real
+    // Engine V2 pipeline whenever one is open behind the active editor,
+    // regardless of which reusable-asset editor (Frames/Layer Packs/etc.,
+    // reached via the Place activity's "manage the full shelf" bridges,
+    // Blueprint §6.3) Working View currently shows instead. Working View
+    // itself is unaffected — it stays free to become a specialized editor
+    // for whatever `currentNav` names, per AV-004's own "Working View is
+    // editor-scoped" rule.
+    function _activeSceneForRuntimePreview() {
+        if (!currentSceneId) return null;
+        return window.ProjectModel.findScene(currentProject, currentSceneId) || null;
+    }
+
     function _renderPreview() {
         if (currentNav === 'scenes') {
             return _renderScenesWorkingView();
@@ -934,11 +948,18 @@
             if (stray) stray.remove();
         }
 
+        const activeScene = _activeSceneForRuntimePreview();
+        if (activeScene) {
+            _drawSceneCanvas(runtimePreviewCanvas, activeScene, { guides: false, interactive: false });
+        }
+
         _sampleArtworkImage(function (sampleImage) {
             const s = _buildPreviewSlide(sampleImage);
 
-            window.SlideRenderer.init(runtimePreviewCanvas, { dpr: window.devicePixelRatio || 1 });
-            window.SlideRenderer.render(s);
+            if (!activeScene) {
+                window.SlideRenderer.init(runtimePreviewCanvas, { dpr: window.devicePixelRatio || 1 });
+                window.SlideRenderer.render(s);
+            }
 
             if (!_workingViewIsIdentityCard()) {
                 window.SlideRenderer.init(workingCanvas, { dpr: window.devicePixelRatio || 1 });
@@ -1202,11 +1223,17 @@
     }
 
     function _redrawSceneCanvases(sceneId) {
-        if (currentNav !== 'scenes' || currentSceneId !== sceneId) return;
+        if (currentSceneId !== sceneId) return;
         const scene = window.ProjectModel.findScene(currentProject, sceneId);
         if (!scene) return;
-        _drawSceneCanvas(workingCanvas, scene, { guides: true, interactive: true });
+        // AV-005 — Runtime Preview redraws whenever the active Scene's
+        // data changes, regardless of currentNav, since it is
+        // project-scoped rather than editor-scoped (unlike Working View,
+        // which only shows the Scene editor while Scenes nav is open).
         _drawSceneCanvas(runtimePreviewCanvas, scene, { guides: false, interactive: false });
+        if (currentNav === 'scenes') {
+            _drawSceneCanvas(workingCanvas, scene, { guides: true, interactive: true });
+        }
     }
 
     function _renderScenesWorkingView() {
@@ -3328,6 +3355,7 @@
         const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
             _persist();
+            _renderPreview();
         }));
         _fieldRow(borderColorGroup, cornerRadiusGroup);
 
@@ -3339,20 +3367,24 @@
         ], f.shadow, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'shadow', v);
             _persist();
+            _renderPreview();
         }));
         const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'inset', v);
             _persist();
+            _renderPreview();
         }));
         _fieldRow(shadowGroup, insetGroup);
 
         const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'matWidth', v);
             _persist();
+            _renderPreview();
         }));
         const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, function (v) {
             window.ProjectModel.setFrameFieldValue(project, frame.id, 'defaultMargin', v);
             _persist();
+            _renderPreview();
         }));
         _fieldRow(matWidthGroup, defaultMarginGroup);
 
