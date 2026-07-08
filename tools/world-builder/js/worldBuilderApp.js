@@ -99,7 +99,7 @@
 
         const status = document.createElement('span');
         status.className = 'wb-project-status';
-        status.textContent = project.status || 'draft';
+        status.textContent = project.status === 'draft' ? 'growing' : (project.status || 'growing');
 
         const updated = document.createTextNode('Edited ' + _timeAgo(project.updatedAt));
 

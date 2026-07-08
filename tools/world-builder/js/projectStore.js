@@ -69,7 +69,7 @@ const ProjectStore = (function () {
       tagline: generated.tagline,
       description: generated.description,
       icon: generated.icon,
-      status: 'draft',
+      status: 'growing',
       createdAt: now,
       updatedAt: now,
       files: generated.files
@@ -104,7 +104,7 @@ const ProjectStore = (function () {
     const copy = JSON.parse(JSON.stringify(project));
     copy.id = _newId();
     copy.name = project.name + ' (Copy)';
-    copy.status = 'draft';
+    copy.status = 'growing';
     copy.createdAt = now;
     copy.updatedAt = now;
     delete copy.lastBuild;
