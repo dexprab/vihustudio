@@ -1,10 +1,10 @@
 {
-  "version": "2.2.6-EV2",
+  "version": "2.2.7-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AP-001/AP-002/AV-006",
-  "slice": "Builder Authoring Polish — dev-language cleanup, panel icons, text drag fix",
-  "build": "0019",
+  "milestone": "Project Card Representation",
+  "slice": "Welcome screen project cards show the authored World thumbnail",
+  "build": "0020",
   "buildDate": "2026-07-08",
-  "commit": "b1be32f",
+  "commit": "a748d94",
   "environment": "Release"
 }
