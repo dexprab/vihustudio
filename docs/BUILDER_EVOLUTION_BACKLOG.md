@@ -141,12 +141,129 @@ complete.
 
 ---
 
+## EV-003 — Theme Expression System
+
+**Status:** Proposed
+**Priority:** Medium
+**Phase:** Builder Evolution (Post Museum Theme Validation)
+**Architecture impact:** No Engine V2 change — the entry's own framing
+is explicit that this does not affect Engine V2 and does not block
+Museum Theme acceptance. Any Builder-side change is additive to the
+existing insertion mechanism (see "Architecture" below), not a new one.
+
+### Background
+
+AV-011 added inline emoji authoring by reusing `js/emojiPicker.js` — a
+small, generic, already-existing module (also used by the main Studio
+app's Text Element fields) wrapping a text field with a toggle button
+and a fixed 40-emoji grid. It works, and it satisfied AV-011's own
+acceptance criteria in full. But validating it against real Museum
+Theme authoring surfaced a product gap distinct from a bug: the picker
+is a generic Unicode emoji utility, unaware of which Theme is active,
+while a Theme in this repository's own architecture already carries a
+specific visual identity (Frame Variations, Layer Packs, wall tones,
+mood/purpose metadata) that a text-insertion affordance currently has
+no way to reflect.
+
+### Proposal
+
+Evolve the existing emoji picker into a **Theme Expression System** — a
+unified insertion palette capable of surfacing several content
+categories, not just raw emoji:
+
+```
+Expression Palette
+  Theme Decorations   (the active Theme's own decoration assets)
+  Theme Symbols       (a Theme-curated icon/glyph set)
+  Theme Icons         (functional glyphs matching the Theme's style)
+  Curated Emojis      (a Theme-scoped subset of Unicode emoji, not the
+                       full catalogue)
+  Recently Used       (author's own recent insertions)
+  Story Favorites     (author-starred, reused across a World)
+```
+
+The active Theme decides what populates the default view — e.g. a
+Museum Theme surfacing gallery/nature/heart symbols, a Space Theme
+surfacing rockets/planets/stars, a Fairy Theme surfacing
+fairies/magic/creatures (see the ticket's own worked examples). A Theme
+with no curated set defined falls back to today's generic emoji grid —
+this must remain a strict superset of AV-011's shipped behaviour, never
+a regression for a Theme that hasn't opted in.
+
+### Design principles
+
+- **One insertion mechanism, not several.** The existing
+  `EmojiPicker.wrap(el)` call site (the Text Layer's "Words" field) is
+  the single place this evolves from — a Theme Symbol or Decoration
+  insertion must dispatch through the same `input`-event path AV-011
+  already established, never a second, parallel insertion API.
+- **Themes gain a curated vocabulary, not a new asset system.** "Theme
+  Symbols"/"Theme Icons" should be evaluated against the Theme Asset
+  categories `docs/THEME_PROJECT_SPEC.md` already defines (Frame
+  Variations, Layer Packs, Decoration Packs) before inventing a new
+  asset kind — the same "reuse before extending" bar EV-001 was held
+  to.
+- **Curated, not exhaustive.** The product principle is explicit:
+  authors should never have to browse the full Unicode catalogue to
+  find a Theme-appropriate symbol. A curated default view is the whole
+  point, not an optional filter.
+- **Falls back safely.** A Theme that defines no curated set is
+  unaffected — the palette must degrade to AV-011's current generic
+  grid, never to an empty or broken state.
+- **Builder-only UI evolution.** Recently Used / Story Favorites are
+  Builder-side authoring conveniences (comparable to `_saveEditingContext`'s
+  navigation-memory pattern from AV-008 — real, but never part of the
+  Scene Model or Engine V2's own object graph).
+
+### Open questions (not resolved by this entry)
+
+- Where does a Theme's curated vocabulary live — a new field on the
+  Theme Project Contract (sibling to `frameVariations`/`layerPacks`),
+  or a lighter-weight manifest list that doesn't require full Theme
+  Asset tooling?
+- Do "Theme Symbols"/"Theme Icons" need to be new authored image assets
+  (like Decoration Pack entries already are), or can they stay
+  Unicode-emoji-based (a curated *subset*, not new artwork) for a first
+  pass — the same "no technical constraint forced a new asset concept"
+  question EV-002 already had to answer once for representative
+  artwork?
+- Should "Story Favorites" persist per-World (Builder-owned, alongside
+  `ProjectStore`) or per-author across Worlds? Distinct persistence and
+  privacy implications either way.
+- How much of "Builder UX Evolution"'s list (hover feedback, auto-close,
+  search, spacing polish) is a visual-only change to the existing panel
+  versus something that needs the categorised-content model above to
+  exist first?
+
+None of these are answered here on purpose — resolving them is the work
+of a future decision pass, not this backlog entry.
+
+### Deferred
+
+This proposal is intentionally deferred. It does not block Museum Theme
+acceptance and does not affect Engine V2. Current priority remains:
+
+```
+Authoring Validation
+      ↓
+Museum Theme Completion
+```
+
+---
+
 ## Change History
 
 - v1.0 — Initial document. Adds EV-001 (Rich Frame Layer Host), captured
   after AV-003 validated the current Frame model end to end and
   surfaced the need for Frame-owned reusable visual content for future
   themes beyond Museum Gallery.
+- v1.1 — Adds EV-003 (Theme Expression System), captured after AV-011's
+  emoji-authoring implementation was validated against real Museum
+  Theme authoring and found to work correctly but read as a generic
+  utility rather than an integrated part of the Theme system. (EV-002,
+  Theme Representative Artwork, was proposed and resolved directly
+  within the AV-007 ticket rather than staged through this backlog, so
+  it does not appear here as a separate numbered entry.)
 
 ---
 
@@ -167,4 +284,10 @@ complete.
   for any B2.x sprint. EV-001 is narrower in scope (Frame-owned Layers
   specifically) and does not supersede or replace that note.
 - `docs/THEME_PROJECT_SPEC.md` §6 / §7 — the current Frame Variation and
-  Layer Pack specs this proposal would extend, if accepted.
+  Layer Pack specs EV-001 would extend, if accepted, and the Theme
+  Asset categories EV-003's own "Design principles" section says must
+  be checked before inventing a new asset kind for Theme Symbols/Icons.
+- `js/emojiPicker.js` / `js/stickerLibrary.js` — the two existing,
+  already-shipped insertion/catalogue mechanisms EV-003 proposes
+  evolving from and drawing precedent from, respectively, rather than
+  replacing.
