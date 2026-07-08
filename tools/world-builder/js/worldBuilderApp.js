@@ -3133,8 +3133,15 @@
 
     let experienceHomeZone = 'gallery'; // 'gallery' | 'nursery'
     let experienceCreateFormOpen = false;
+    let experienceInspectorId = null;
 
     function _renderExperiencesPanel() {
+        if (experienceInspectorId) {
+            const exp = window.ProjectModel.findExperience(currentProject, experienceInspectorId);
+            if (exp) return _renderExperienceInspector(exp);
+            experienceInspectorId = null; // stale reference (e.g. deleted elsewhere)
+        }
+
         _heading('Experiences', 'What enriches this World — frames, decorations, atmosphere, and more.');
         _stateIntro('experiences');
 
@@ -3239,6 +3246,15 @@
         const type = window.ExperienceSchema.findType(exp.type);
         const card = document.createElement('div');
         card.className = 'wb-scene-card wb-experience-card';
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
+        card.addEventListener('click', function () {
+            experienceInspectorId = exp.id;
+            _renderContextPanel();
+        });
+        card.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); card.click(); }
+        });
 
         const thumb = document.createElement('div');
         thumb.className = 'wb-scene-card-thumb wb-experience-card-thumb';
@@ -3269,12 +3285,13 @@
         card.appendChild(meta);
 
         // Usage is a Gallery-only concept (Canon: ownership/usage don't
-        // exist yet for a Nurturing idea). Milestone 2 has no attachment
-        // workflow at all yet, so this is always 0 until Milestone 3.
+        // exist yet for a Nurturing idea) — real attachment counts, per
+        // Milestone 3's Usage Explorer.
         if (domain === 'gallery') {
+            const count = window.ProjectModel.usageOf(currentProject, exp.id).length;
             const usage = document.createElement('div');
             usage.className = 'wb-scene-card-sub';
-            usage.textContent = 'Used by 0 Hosts';
+            usage.textContent = 'Used by ' + count + (count === 1 ? ' Host' : ' Hosts');
             card.appendChild(usage);
         }
 
@@ -3303,6 +3320,291 @@
         }
 
         return card;
+    }
+
+    // ---------- Experience Inspector (Builder V3 Milestone 3) ----------
+    // Same Context Inspector philosophy as every other selectable object
+    // (Blueprint §6.1) — no dedicated Experience workspace. Attached
+    // Experiences show only identity + Properties (bounds/clipping are
+    // inherited from the Host, never edited here); Free Experiences also
+    // expose Position/Rotation/Scale plus "Adjust in Scene," reusing
+    // Working View exactly like every other Free/Scene-level object
+    // already does (Blueprint §9's own drag-to-reposition).
+
+    function _renderExperienceInspector(exp) {
+        const type = window.ExperienceSchema.findType(exp.type);
+        const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
+        _heading('Experience — ' + exp.name, type.label + ' · ' + (exp.attachment === 'free' ? 'Free' : 'Attached'), null);
+
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'wb-workspace-btn';
+        backBtn.textContent = '← Back';
+        backBtn.addEventListener('click', function () {
+            experienceInspectorId = null;
+            _renderContextPanel();
+        });
+        contextPanel.appendChild(backBtn);
+
+        contextPanel.appendChild(_buildFieldGroup('Name', _textInput(exp.name, function (v) {
+            window.ProjectModel.updateExperience(currentProject, exp.id, { name: v });
+            _persist();
+        })));
+        contextPanel.appendChild(_buildFieldGroup('Description', _textarea(exp.description, function (v) {
+            window.ProjectModel.updateExperience(currentProject, exp.id, { description: v });
+            _persist();
+        })));
+
+        _renderExperienceProperties(exp, type);
+        _renderExperienceOwnership(exp, lifecycleInfo);
+
+        if (exp.lifecycle !== 'nurturing') {
+            _renderExperienceUsage(exp);
+            _renderExperienceAttachPicker(exp, type);
+        }
+
+        if (exp.lifecycle === 'nurturing') {
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'wb-workspace-btn';
+            delBtn.style.marginTop = '14px';
+            delBtn.textContent = '🗑 Delete';
+            delBtn.addEventListener('click', function () {
+                if (!window.confirm('Delete "' + exp.name + '"? This cannot be undone.')) return;
+                window.ProjectModel.deleteExperience(currentProject, exp.id);
+                experienceInspectorId = null;
+                _persist();
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(delBtn);
+        }
+    }
+
+    // Properties mirror the exact field shape the existing Frame/
+    // Decoration/Text authoring surfaces already use (js/services/
+    // experienceSchema.js's defaultProperties), so editing here and
+    // editing the old surface would never disagree about what a field
+    // means. Every edit re-syncs any live attachment immediately
+    // (updateExperienceProperty → _syncExperienceAttachments).
+    function _renderExperienceProperties(exp, type) {
+        const props = exp.properties || {};
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Properties';
+        contextPanel.appendChild(heading);
+
+        function field(key, label, input) {
+            contextPanel.appendChild(_buildFieldGroup(label, input));
+        }
+        function onProp(key) {
+            return function (v) {
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+            };
+        }
+
+        if (exp.type === 'frame') {
+            field('matWidth', 'Mat Width', _range(0, 80, props.matWidth || 0, onProp('matWidth')));
+            field('frameThickness', 'Frame Thickness', _range(0, 20, props.frameThickness || 0, onProp('frameThickness')));
+            field('borderColor', 'Border Colour', _colorInput(props.borderColor, onProp('borderColor')));
+            field('wallTone', 'Wall Tone', _colorInput(props.wallTone, onProp('wallTone')));
+            field('shadow', 'Shadow', _select([
+                { value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' },
+                { value: 'floating', label: 'Floating' }, { value: 'gallery', label: 'Gallery' }
+            ], props.shadow || 'soft', onProp('shadow')));
+        } else if (exp.type === 'decoration') {
+            field('glyph', 'Glyph', _textInput(props.glyph, onProp('glyph')));
+            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+        } else if (exp.type === 'text') {
+            field('text', 'Words', _textarea(props.text, onProp('text')));
+            field('font', 'Font', _select([
+                { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
+                { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
+            ], props.font || 'Georgia, serif', onProp('font')));
+            field('fontSize', 'Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize')));
+            field('align', 'Alignment', _select([
+                { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
+            ], props.align || 'left', onProp('align')));
+            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+        } else if (exp.type === 'text-style') {
+            field('font', 'Font', _select([
+                { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' }
+            ], props.font || 'Georgia, serif', onProp('font')));
+            field('fontSize', 'Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize')));
+            field('align', 'Alignment', _select([
+                { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
+            ], props.align || 'left', onProp('align')));
+        } else {
+            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+        }
+
+        if (!type.renders.attached && !type.renders.free) {
+            contextPanel.appendChild(_fieldHelp('Engine V2 doesn’t have a way to paint ' + type.label + ' yet — this Experience can be authored and attached, but won’t appear on the page until a future Builder release adds that.'));
+        } else if (exp.attachment === 'attached' && !type.renders.attached) {
+            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when Attached to a Place yet (Engine V2 has no Place-level Layers today) — try Free instead.'));
+        }
+    }
+
+    function _redrawSceneCanvasesForExperience(exp) {
+        exp.attachments.forEach(function (a) { _redrawSceneCanvases(a.sceneId); });
+    }
+
+    // The Creative Journey's one fork (Milestone 3): Nurturing graduates
+    // directly to Personal (choosing a Scene) or straight to Public;
+    // Personal may later become Public. No reverse path, ever (Canon
+    // Decisions #6, #8) — this Inspector never shows a "make Personal"
+    // or "return to Nursery" action for a graduated Experience.
+    function _renderExperienceOwnership(exp, lifecycleInfo) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Ownership';
+        contextPanel.appendChild(heading);
+
+        if (exp.lifecycle === 'nurturing') {
+            contextPanel.appendChild(_fieldHelp(lifecycleInfo.icon + ' Nurturing — still growing, not yet part of the Theme.'));
+            const scenes = window.ProjectModel.scenes(currentProject);
+            if (scenes.length) {
+                const sceneSelect = _select(scenes.map(function (s) { return { value: s.id, label: s.name }; }), scenes[0].id, function () {});
+                contextPanel.appendChild(_buildFieldGroup('Graduate to Personal — belongs to', sceneSelect));
+                const personalBtn = document.createElement('button');
+                personalBtn.type = 'button';
+                personalBtn.className = 'wb-workspace-btn';
+                personalBtn.textContent = '👤 Graduate to Personal';
+                personalBtn.addEventListener('click', function () {
+                    window.ProjectModel.graduateToPersonal(currentProject, exp.id, sceneSelect.value);
+                    _persist();
+                    _renderContextPanel();
+                });
+                contextPanel.appendChild(personalBtn);
+            } else {
+                contextPanel.appendChild(_fieldHelp('Add a Scene first to graduate this Experience to Personal.'));
+            }
+            const publicBtn = document.createElement('button');
+            publicBtn.type = 'button';
+            publicBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            publicBtn.style.marginTop = '8px';
+            publicBtn.textContent = '🌍 Graduate to Public';
+            publicBtn.addEventListener('click', function () {
+                window.ProjectModel.graduateToPublic(currentProject, exp.id);
+                _persist();
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(publicBtn);
+        } else if (exp.lifecycle === 'personal') {
+            const scene = window.ProjectModel.findScene(currentProject, exp.scopeSceneId);
+            contextPanel.appendChild(_fieldHelp(lifecycleInfo.icon + ' Personal — belongs to ' + (scene ? scene.name : '(deleted Scene)') + '. Permanent — never deleted, never returns to the Nursery.'));
+            const publicBtn = document.createElement('button');
+            publicBtn.type = 'button';
+            publicBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            publicBtn.textContent = '🌍 Make Public';
+            publicBtn.addEventListener('click', function () {
+                window.ProjectModel.graduateToPublic(currentProject, exp.id);
+                _persist();
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(publicBtn);
+        } else {
+            contextPanel.appendChild(_fieldHelp(lifecycleInfo.icon + ' Public — part of the Theme, reusable everywhere. Permanent — never deleted, never returns to the Nursery.'));
+        }
+    }
+
+    // Usage Explorer (Milestone 3) — every Theme Experience answers
+    // "where is this used," from real attachment records, each entry
+    // clickable to jump straight to that Scene/Place.
+    function _renderExperienceUsage(exp) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Used In';
+        contextPanel.appendChild(heading);
+
+        const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+        if (!usage.length) {
+            contextPanel.appendChild(_fieldHelp('Not used anywhere yet.'));
+            return;
+        }
+        usage.forEach(function (u) {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'wb-workspace-btn';
+            row.style.display = 'block';
+            row.style.width = '100%';
+            row.style.textAlign = 'left';
+            row.style.marginBottom = '6px';
+            row.textContent = '✓ ' + u.sceneName + (u.placeName ? ' — ' + u.placeName : '') + '  (detach)';
+            row.addEventListener('click', function () {
+                window.ProjectModel.detachExperience(currentProject, exp.id, { sceneId: u.sceneId, placeId: u.placeId });
+                _persist();
+                _redrawSceneCanvases(u.sceneId);
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(row);
+        });
+    }
+
+    // Attach / Reuse (Milestone 3) — a Personal Experience may only
+    // attach within its own scopeSceneId ("belongs to one Scene only");
+    // a Public Experience may attach to any compatible Host. This same
+    // control is what makes an Inspector opened from the Gallery double
+    // as "Reuse Existing" — there is no separate reuse mechanism.
+    function _renderExperienceAttachPicker(exp, type) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Attach';
+        contextPanel.appendChild(heading);
+
+        const allScenes = window.ProjectModel.scenes(currentProject);
+        const scenes = exp.lifecycle === 'personal'
+            ? allScenes.filter(function (s) { return s.id === exp.scopeSceneId; })
+            : allScenes;
+        if (!scenes.length) {
+            contextPanel.appendChild(_fieldHelp('No Scenes available to attach to.'));
+            return;
+        }
+
+        let selectedSceneId = scenes[0].id;
+        const sceneSelect = _select(scenes.map(function (s) { return { value: s.id, label: s.name }; }), selectedSceneId, function (v) {
+            selectedSceneId = v;
+            placeSelect.innerHTML = '';
+            _populatePlaceOptions(placeSelect, selectedSceneId);
+        });
+        contextPanel.appendChild(_buildFieldGroup('Scene', sceneSelect));
+
+        const placeSelect = document.createElement('select');
+        placeSelect.className = 'wb-field-select';
+        _populatePlaceOptions(placeSelect, selectedSceneId);
+        if (exp.attachment === 'attached') {
+            contextPanel.appendChild(_buildFieldGroup('Place', placeSelect));
+        }
+
+        const attachBtn = document.createElement('button');
+        attachBtn.type = 'button';
+        attachBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+        attachBtn.textContent = '📎 Attach Here';
+        attachBtn.addEventListener('click', function () {
+            const placeId = exp.attachment === 'attached' ? placeSelect.value : null;
+            const ok = window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: selectedSceneId, placeId: placeId });
+            if (!ok) { window.alert('Could not attach — check this Experience’s ownership scope.'); return; }
+            _persist();
+            _redrawSceneCanvases(selectedSceneId);
+            _renderContextPanel();
+        });
+        contextPanel.appendChild(attachBtn);
+    }
+
+    function _populatePlaceOptions(selectEl, sceneId) {
+        const scene = window.ProjectModel.findScene(currentProject, sceneId);
+        const holders = scene ? scene.holders : [];
+        holders.forEach(function (h) {
+            const opt = document.createElement('option');
+            opt.value = h.id;
+            opt.textContent = h.name;
+            selectEl.appendChild(opt);
+        });
     }
 
     // Placeholder creation flow only (Milestone 2's own scope): Name,
