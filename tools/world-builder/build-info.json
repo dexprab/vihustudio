@@ -1,10 +1,10 @@
 {
-  "version": "2.5.0-EV2",
+  "version": "2.5.1-EV2",
   "phase": "Experience Studio",
-  "milestone": "Milestone 3",
-  "slice": "Experience Authoring — Inspector, Graduation, Attachment, Usage, Reuse, Validation",
-  "build": "0027",
+  "milestone": "Canon Alignment Sprint",
+  "slice": "Product Model Purification — Hosted By (Place/Scene/Free), Engine Adapter boundary, terminology audit",
+  "build": "0028",
   "buildDate": "2026-07-08",
-  "commit": "5b5d869",
+  "commit": "bd3c753",
   "environment": "Release"
 }
