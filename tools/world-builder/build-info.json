@@ -1,10 +1,10 @@
 {
-  "version": "2.2.4-EV2",
+  "version": "2.2.5-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-004",
-  "slice": "Working View adopts adaptive construction guides, decoupled from frozen Runtime Preview",
-  "build": "0017",
+  "milestone": "AV-005",
+  "slice": "Runtime Preview stays project-scoped when entering a reusable-asset editor",
+  "build": "0018",
   "buildDate": "2026-07-08",
-  "commit": "235fc7c",
+  "commit": "6779fb5",
   "environment": "Release"
 }
