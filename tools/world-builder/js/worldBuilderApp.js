@@ -72,7 +72,20 @@
 
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
-        thumb.textContent = project.icon || '🌎';
+        // The authored World thumbnail is its canonical visual
+        // representation wherever a World is shown as a card — the same
+        // getAsset/fallback pattern the Overview identity card already
+        // uses (_renderIdentityCard) — falling back to the icon glyph
+        // only when nothing has been uploaded yet.
+        const thumbURL = window.ProjectModel.getAsset(project, 'thumbnail.png');
+        if (thumbURL) {
+            const img = document.createElement('img');
+            img.src = thumbURL;
+            img.alt = '';
+            thumb.appendChild(img);
+        } else {
+            thumb.textContent = project.icon || '🌎';
+        }
 
         const info = document.createElement('div');
         info.className = 'wb-project-info';
