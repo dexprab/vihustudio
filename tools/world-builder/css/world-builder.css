@@ -422,13 +422,20 @@ html, body {
 }
 
 .wb-workspace-home-btn {
-    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wb-navy);
     background: none;
-    border: none;
+    border: 1px solid var(--wb-border);
     cursor: pointer;
-    padding: 4px 6px;
+    padding: 6px 12px;
     border-radius: 8px;
 }
+
+.wb-workspace-home-btn span { font-size: 18px; }
 
 .wb-workspace-home-btn:hover { background: var(--wb-sand); }
 
@@ -852,6 +859,44 @@ html, body {
     color: var(--wb-text-secondary);
     text-align: center;
     padding: 0 16px;
+}
+
+/* AV-008 — Working View's explicit inactive state: shown whenever no
+   Scene is currently being authored (a brand-new World with none yet,
+   or an existing World simply not viewing one right now), replacing
+   the old pseudo-preview of unrelated World metadata. Mounted as a
+   plain flex child of .wb-working-canvas-wrap (not the aspect-ratio-
+   locked -inner box, which collapses to near-zero size once its only
+   normally-sized content — the canvas — is hidden) so it's reliably
+   visible and centered regardless of canvas state. */
+.wb-inactive-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 24px;
+    max-width: 280px;
+}
+
+.wb-inactive-state-icon {
+    font-size: 40px;
+    opacity: .5;
+}
+
+.wb-inactive-state-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0;
+}
+
+.wb-inactive-state-body {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    margin: 0 0 6px;
+    max-width: 240px;
 }
 
 .wb-working-view-heading {

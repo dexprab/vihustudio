@@ -803,6 +803,60 @@
         };
     }
 
+    // AV-008 — Builder navigation memory (which nav/Scene/Holder/Frame an
+    // author was last looking at), deliberately kept out of the Project
+    // itself: it never touches `project.updatedAt` or `ProjectStore.save`,
+    // so merely opening/browsing a World can never be mistaken for
+    // *editing* it — exactly the "open time vs. edit time" conflation
+    // this ticket's own Project Activity investigation flagged as a risk.
+    // A brand-new World has no entry here yet, which is precisely what
+    // makes it correctly start on World (New World Behaviour) — no
+    // separate "is this new" flag needed.
+    const EDITING_CONTEXT_KEY = 'vihu-world-builder-editing-context';
+
+    function _readEditingContexts() {
+        try {
+            const raw = localStorage.getItem(EDITING_CONTEXT_KEY);
+            const parsed = raw ? JSON.parse(raw) : {};
+            return (parsed && typeof parsed === 'object') ? parsed : {};
+        } catch (e) { return {}; }
+    }
+
+    function _saveEditingContext() {
+        if (!currentProject) return;
+        try {
+            const map = _readEditingContexts();
+            map[currentProject.id] = {
+                nav: currentNav,
+                sceneId: currentSceneId,
+                activity: currentActivity,
+                inspectorTarget: currentInspectorTarget,
+                frameId: currentFrameId
+            };
+            localStorage.setItem(EDITING_CONTEXT_KEY, JSON.stringify(map));
+        } catch (e) {}
+    }
+
+    function _loadEditingContext(projectId) {
+        return _readEditingContexts()[projectId] || null;
+    }
+
+    // Validates a restored `currentInspectorTarget` still resolves to a
+    // real object — a Holder/Layer/Frame remembered from a previous
+    // session may have been deleted since.
+    function _isValidInspectorTarget(project, sceneId, target) {
+        if (!target) return false;
+        if (target === 'sceneConfig') return !!sceneId;
+        if (!sceneId) return false;
+        if (target.indexOf('holder:') === 0) {
+            return !!window.ProjectModel.findHolder(project, sceneId, target.slice('holder:'.length));
+        }
+        if (target.indexOf('layer:') === 0) {
+            return !!window.ProjectModel.findSceneLayer(project, sceneId, target.slice('layer:'.length));
+        }
+        return false;
+    }
+
     function openWorkspace(project) {
         currentProject = project;
         currentNav = 'overview';
@@ -821,6 +875,36 @@
         currentActivity = 'place';
         currentInspectorTarget = null;
         scenesShowingTemplatePicker = false;
+
+        // AV-008 — resume the author's last meaningful editing context
+        // (Scene → Holder → Frame, Scene → Text, Scene → Decorations, or
+        // simply the last Global Nav tab) instead of always restarting
+        // on World, whenever it's still valid — a Scene/Holder/Layer/
+        // Frame remembered from a previous session may have been deleted
+        // since, in which case this falls back to today's defaults
+        // rather than opening onto a reference that no longer exists.
+        // No architectural constraint prevented this: the same
+        // ProjectModel lookups Working View already uses to render each
+        // state are enough to validate a remembered selection.
+        const restored = _loadEditingContext(project.id);
+        if (restored && restored.nav) {
+            const navNeedsScene = restored.nav === 'scenes' || restored.nav === 'frames' || restored.nav === 'layerpacks';
+            const scene = restored.sceneId ? window.ProjectModel.findScene(project, restored.sceneId) : null;
+            if (!navNeedsScene || scene) {
+                currentNav = restored.nav;
+                currentSceneId = scene ? scene.id : null;
+                currentActivity = restored.activity || 'place';
+                if (restored.frameId && window.ProjectModel.findFrame(project, restored.frameId)) {
+                    currentFrameId = restored.frameId;
+                }
+                if (_isValidInspectorTarget(project, currentSceneId, restored.inspectorTarget)) {
+                    currentInspectorTarget = restored.inspectorTarget;
+                } else if (currentSceneId) {
+                    currentInspectorTarget = 'sceneConfig';
+                }
+            }
+        }
+
         _hideAllScreens();
         screenWorkspace.classList.remove('wb-hidden');
         _renderWorkspaceHeader();
@@ -881,6 +965,7 @@
     }
 
     function _renderWorkspace() {
+        _saveEditingContext();
         _renderSceneHeader();
         _renderPreview();
         _renderContextPanel();
@@ -911,6 +996,9 @@
         // later renders can find them again.
         const existing = target.querySelector('.wb-preview-frame');
         if (existing) existing.remove();
+        target.classList.remove('wb-hidden');
+        const strayInactive = target.parentElement.querySelector('.wb-inactive-state');
+        if (strayInactive) strayInactive.remove();
         const frameEl = document.createElement('div');
         frameEl.className = 'wb-preview-frame';
         frameEl.style.width = '70%';
@@ -962,33 +1050,100 @@
         return window.ProjectModel.findScene(currentProject, currentSceneId) || null;
     }
 
+    // AV-008 — Working View and Runtime Preview only ever "activate"
+    // while a Scene is actually being authored (the Scene editor itself,
+    // or a Scene-anchored bridge editor like Manage Frames/Layer Packs —
+    // both keep currentSceneId set). Outside that, showing a legacy
+    // Engine V1 specimen (built from whichever Representation/Layout/
+    // Frame happens to be selected) was a pseudo-preview of World
+    // metadata Museum Theme authoring doesn't actually use — this
+    // replaces that with an explicit, honest inactive state instead,
+    // with a direct path into Scene authoring.
+    function _renderInactiveWorkspace() {
+        const hasAnyScenes = window.ProjectModel.scenes(currentProject).length > 0;
+
+        workingOverlays.innerHTML = '';
+        const strayFrame = workingCanvas.parentElement.querySelector('.wb-preview-frame');
+        if (strayFrame) strayFrame.remove();
+        workingCanvas.classList.add('wb-hidden');
+        // The aspect-ratio-locked -inner box collapses to near-zero size
+        // once its only normally-sized content (the canvas) is hidden —
+        // mount the panel on the outer wrap instead, which keeps its own
+        // real flex:1 size regardless of canvas state, and hide the now-
+        // empty inner box outright so it doesn't leave a stray 0-size gap.
+        const wrap = workingCanvas.parentElement.parentElement;
+        workingCanvas.parentElement.classList.add('wb-hidden');
+
+        let panel = wrap.querySelector('.wb-inactive-state');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.className = 'wb-inactive-state';
+            wrap.appendChild(panel);
+        }
+        panel.innerHTML = '';
+        const icon = document.createElement('span');
+        icon.className = 'wb-inactive-state-icon';
+        icon.textContent = '🎬';
+        const title = document.createElement('p');
+        title.className = 'wb-inactive-state-title';
+        title.textContent = hasAnyScenes ? 'No Scene open.' : 'No Scene yet.';
+        const body = document.createElement('p');
+        body.className = 'wb-inactive-state-body';
+        body.textContent = hasAnyScenes
+            ? 'Select a Scene to begin authoring.'
+            : 'Create your first Scene to begin authoring.';
+        const cta = document.createElement('button');
+        cta.type = 'button';
+        cta.className = 'wb-add-btn';
+        cta.textContent = hasAnyScenes ? 'Go to Scenes' : '+ Create Scene';
+        cta.addEventListener('click', function () {
+            currentNav = 'scenes';
+            if (!hasAnyScenes) scenesShowingTemplatePicker = true;
+            _renderNav();
+            _renderWorkspace();
+        });
+        panel.appendChild(icon);
+        panel.appendChild(title);
+        panel.appendChild(body);
+        panel.appendChild(cta);
+
+        _renderRuntimePreviewEmpty(hasAnyScenes
+            ? 'Runtime Preview becomes available once a Scene is open.'
+            : 'Runtime Preview becomes available once a Scene has been created.');
+
+        previewSelector.innerHTML = '';
+    }
+
     function _renderPreview() {
         if (currentNav === 'scenes') {
             return _renderScenesWorkingView();
         }
+
+        const activeScene = _activeSceneForRuntimePreview();
+        if (!activeScene) {
+            return _renderInactiveWorkspace();
+        }
+
+        // Runtime Preview is project-scoped (AV-005): it keeps showing
+        // the active Scene through the real Engine V2 pipeline
+        // regardless of which editor Working View shows instead.
+        _drawSceneCanvas(runtimePreviewCanvas, activeScene, { guides: false, interactive: false });
+
         if (_workingViewIsIdentityCard()) {
             workingOverlays.innerHTML = '';
             _renderIdentityCard(workingCanvas.parentElement);
             workingCanvas.classList.add('wb-hidden');
         } else {
             workingCanvas.classList.remove('wb-hidden');
+            workingCanvas.parentElement.classList.remove('wb-hidden');
             const stray = workingCanvas.parentElement.querySelector('.wb-preview-frame');
             if (stray) stray.remove();
-        }
-
-        const activeScene = _activeSceneForRuntimePreview();
-        if (activeScene) {
-            _drawSceneCanvas(runtimePreviewCanvas, activeScene, { guides: false, interactive: false });
+            const strayInactive = workingCanvas.parentElement.parentElement.querySelector('.wb-inactive-state');
+            if (strayInactive) strayInactive.remove();
         }
 
         _sampleArtworkImage(function (sampleImage) {
             const s = _buildPreviewSlide(sampleImage);
-
-            if (!activeScene) {
-                window.SlideRenderer.init(runtimePreviewCanvas, { dpr: window.devicePixelRatio || 1 });
-                window.SlideRenderer.render(s);
-            }
-
             if (!_workingViewIsIdentityCard()) {
                 window.SlideRenderer.init(workingCanvas, { dpr: window.devicePixelRatio || 1 });
                 window.SlideRenderer.render(s);
@@ -1326,6 +1481,9 @@
     function _renderScenesWorkingView() {
         const strayFrame = workingCanvas.parentElement.querySelector('.wb-preview-frame');
         if (strayFrame) strayFrame.remove();
+        workingCanvas.parentElement.classList.remove('wb-hidden');
+        const strayInactive = workingCanvas.parentElement.parentElement.querySelector('.wb-inactive-state');
+        if (strayInactive) strayInactive.remove();
 
         if (!currentSceneId) {
             workingCanvas.classList.add('wb-hidden');
