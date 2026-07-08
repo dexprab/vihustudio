@@ -278,6 +278,7 @@
     const NAV_ITEMS = [
         { id: 'overview', icon: '🌍', label: 'World' },
         { id: 'scenes', icon: '🎬', label: 'Scenes' },
+        { id: 'experiences', icon: '🌟', label: 'Experiences' },
         { id: 'validation', icon: '✅', label: 'Validation' },
         { id: 'build', icon: '🔨', label: 'Build' },
         { id: 'publish', icon: '📤', label: 'Publish' }
@@ -319,6 +320,7 @@
     const STATE_GUIDANCE = {
         overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Scenes to add the pages this World offers.',
         scenes: 'What: the actual pages of your World — each one a complete, curated Scene (a shape, its photo spots, its decoration, its words). Why: a World is a curated library of Scenes — this is that library. Do: press Add a Scene, choose a Scene Template, then open it to set its shape in the Scene Configuration glance above Working View. Next: use Place/Decorations/Text to design what\'s actually on the page.',
+        experiences: 'What: everything that enriches this World — frames, decorations, atmosphere, and more — kept in one home instead of scattered across Scenes. Why: an Experience always belongs to the Theme, never to one Scene or Place, so it can be found and reused wherever it fits. Do: grow a new idea in the Nursery — it starts as a protected sketch you can freely change or delete. Next: once an idea feels ready, it will graduate into the Gallery as part of the Theme.',
         representations: 'What: the page styles a child can choose (e.g. Showcase, Portrait, Quote). Why: Studio\'s Creation Flow shows exactly these, nothing more. Do: pick or add a Representation, then set its Default Layout and Default Frame. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
         layouts: 'What: the geometry each page can use — aspect ratio, caption position, composition. Why: a Representation always points at one of these. Do: adjust Aspect/Composition/Spacing for the selected Layout, or add a new one. Next: design a Frame to go with it.',
         frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
@@ -1005,6 +1007,7 @@
     // (the right column) always shows the real rendered page regardless
     // of Nav, since it must always answer "what will the reader see."
     function _workingViewIsIdentityCard() {
+        if (currentNav === 'experiences') return true;
         return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length === 0;
     }
 
@@ -2153,6 +2156,7 @@
         contextPanel.innerHTML = '';
         if (currentNav === 'overview') return _renderOverviewPanel();
         if (currentNav === 'scenes') return _renderScenesContextPanel();
+        if (currentNav === 'experiences') return _renderExperiencesPanel();
         if (currentNav === 'representations') return _renderRepresentationsPanel();
         if (currentNav === 'layouts') return _renderLayoutsPanel();
         if (currentNav === 'frames') return _renderFramesPanel();
@@ -3112,6 +3116,248 @@
         row.appendChild(btn);
         row.appendChild(input);
         return row;
+    }
+
+    // ---------- Experiences — Experience Home (Builder V3 Milestone 2) ----------
+    // Two creative spaces, per docs/BUILDER_V3_EXPERIENCE_STUDIO.md: The
+    // Gallery (Theme Experiences — Personal/Public, "what can I use
+    // today?") and The Nursery (Nurturing ideas only, "what am I still
+    // growing?"). Milestone 2 scope: the Gallery is honestly empty —
+    // nothing can graduate yet, that is Milestone 3's Graduation
+    // workflow — and the Nursery supports only the minimal creation
+    // flow this milestone specifies (Name/Type/Intended Attachment/
+    // Description) plus Delete (Canon Decision #9 — the only place
+    // Delete exists). No Inspector, no attach-to-Place/Scene, no
+    // Graduation, no Reuse Existing, no Usage Explorer yet — those are
+    // explicitly out of this milestone's scope.
+
+    let experienceHomeZone = 'gallery'; // 'gallery' | 'nursery'
+    let experienceCreateFormOpen = false;
+
+    function _renderExperiencesPanel() {
+        _heading('Experiences', 'What enriches this World — frames, decorations, atmosphere, and more.');
+        _stateIntro('experiences');
+
+        const tabs = document.createElement('div');
+        tabs.className = 'wb-experience-tabs';
+        tabs.appendChild(_experienceTabButton('🖼️ Gallery', experienceHomeZone === 'gallery', function () {
+            experienceHomeZone = 'gallery';
+            experienceCreateFormOpen = false;
+            _renderContextPanel();
+        }));
+        tabs.appendChild(_experienceTabButton('🌱 Nursery', experienceHomeZone === 'nursery', function () {
+            experienceHomeZone = 'nursery';
+            _renderContextPanel();
+        }));
+        contextPanel.appendChild(tabs);
+
+        if (experienceHomeZone === 'gallery') {
+            _renderExperienceGallery();
+        } else {
+            _renderExperienceNursery();
+        }
+    }
+
+    function _experienceTabButton(label, active, onClick) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wb-experience-tab' + (active ? ' active' : '');
+        btn.textContent = label;
+        btn.addEventListener('click', onClick);
+        return btn;
+    }
+
+    // The Gallery answers "what can I use today?" — only Theme
+    // Experiences (Personal or Public) ever appear here; Nurturing
+    // ideas are never mixed in (Canon Decision #5).
+    function _renderExperienceGallery() {
+        const themeExperiences = window.ProjectModel.experiences(currentProject)
+            .filter(function (e) { return e.lifecycle !== 'nurturing'; });
+
+        if (!themeExperiences.length) {
+            contextPanel.appendChild(_fieldHelp('Nothing has joined the Theme yet — grow an idea in the Nursery, then graduate it here once it feels ready.'));
+            const goBtn = document.createElement('button');
+            goBtn.type = 'button';
+            goBtn.className = 'wb-add-btn';
+            goBtn.textContent = '🌱 Go to the Nursery';
+            goBtn.addEventListener('click', function () {
+                experienceHomeZone = 'nursery';
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(goBtn);
+            return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-library-grid';
+        themeExperiences.forEach(function (exp) {
+            grid.appendChild(_experienceCard(exp, 'gallery'));
+        });
+        contextPanel.appendChild(grid);
+    }
+
+    // The Nursery answers "what am I still growing?" — Nurturing ideas
+    // only, never mixed with the Gallery (Canon Decision #4). Delete
+    // exists only here (Canon Decision #9).
+    function _renderExperienceNursery() {
+        const nurturing = window.ProjectModel.experiences(currentProject)
+            .filter(function (e) { return e.lifecycle === 'nurturing'; });
+
+        if (nurturing.length) {
+            const grid = document.createElement('div');
+            grid.className = 'wb-scene-library-grid';
+            nurturing.forEach(function (exp) {
+                grid.appendChild(_experienceCard(exp, 'nursery'));
+            });
+            contextPanel.appendChild(grid);
+        } else {
+            contextPanel.appendChild(_fieldHelp('Nothing is growing yet — every Experience starts here, as a sketch you can freely change or throw away.'));
+        }
+
+        if (experienceCreateFormOpen) {
+            _renderExperienceCreateForm();
+        } else {
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            addBtn.style.marginTop = '12px';
+            addBtn.textContent = '➕ New Experience';
+            addBtn.addEventListener('click', function () {
+                experienceCreateFormOpen = true;
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(addBtn);
+        }
+    }
+
+    // Preview-first: a miniature composition, not a database row (Part
+    // 4 of docs/BUILDER_V3_EXPERIENCE_STUDIO.md). Domain-sensitive —
+    // Gallery cards show ownership + usage; Nursery cards deliberately
+    // omit both, since neither concept exists yet for an idea that
+    // hasn't graduated.
+    function _experienceCard(exp, domain) {
+        const type = window.ExperienceSchema.findType(exp.type);
+        const card = document.createElement('div');
+        card.className = 'wb-scene-card wb-experience-card';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'wb-scene-card-thumb wb-experience-card-thumb';
+        thumb.textContent = type.icon;
+        card.appendChild(thumb);
+
+        const name = document.createElement('div');
+        name.className = 'wb-scene-card-name';
+        name.textContent = exp.name;
+        card.appendChild(name);
+
+        if (exp.description) {
+            const desc = document.createElement('div');
+            desc.className = 'wb-scene-card-sub';
+            desc.textContent = exp.description;
+            card.appendChild(desc);
+        }
+
+        const attachmentLabel = exp.attachment === 'free' ? 'Free' : 'Attached';
+        const meta = document.createElement('div');
+        meta.className = 'wb-experience-card-meta';
+        if (domain === 'gallery') {
+            const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
+            meta.textContent = type.label + ' · ' + attachmentLabel + ' · ' + lifecycleInfo.icon + ' ' + lifecycleInfo.label;
+        } else {
+            meta.textContent = type.label + ' · ' + attachmentLabel;
+        }
+        card.appendChild(meta);
+
+        // Usage is a Gallery-only concept (Canon: ownership/usage don't
+        // exist yet for a Nurturing idea). Milestone 2 has no attachment
+        // workflow at all yet, so this is always 0 until Milestone 3.
+        if (domain === 'gallery') {
+            const usage = document.createElement('div');
+            usage.className = 'wb-scene-card-sub';
+            usage.textContent = 'Used by 0 Hosts';
+            card.appendChild(usage);
+        }
+
+        if (exp.tags && exp.tags.length) {
+            const tags = document.createElement('div');
+            tags.className = 'wb-experience-card-tags';
+            tags.textContent = exp.tags.map(function (t) { return '#' + t; }).join(' ');
+            card.appendChild(tags);
+        }
+
+        if (domain === 'nursery') {
+            const controls = document.createElement('div');
+            controls.className = 'wb-scene-card-controls';
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.textContent = '🗑 Delete';
+            delBtn.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                if (!window.confirm('Delete "' + exp.name + '"? This cannot be undone.')) return;
+                window.ProjectModel.deleteExperience(currentProject, exp.id);
+                _persist();
+                _renderContextPanel();
+            });
+            controls.appendChild(delBtn);
+            card.appendChild(controls);
+        }
+
+        return card;
+    }
+
+    // Placeholder creation flow only (Milestone 2's own scope): Name,
+    // Type, Intended Attachment, Description. Always born Nurturing
+    // (Canon Decision #2) — no Inspector, no Graduation here.
+    function _renderExperienceCreateForm() {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        wrap.style.marginTop = '12px';
+
+        const draft = {
+            name: '',
+            type: window.ExperienceSchema.EXPERIENCE_TYPES[0].value,
+            attachment: window.ExperienceSchema.EXPERIENCE_ATTACHMENTS[0].value,
+            description: ''
+        };
+
+        wrap.appendChild(_buildFieldGroup('Name', _textInput(draft.name, function (v) { draft.name = v; })));
+        wrap.appendChild(_buildFieldGroup('Type', _select(window.ExperienceSchema.EXPERIENCE_TYPES, draft.type, function (v) { draft.type = v; })));
+        wrap.appendChild(_buildFieldGroup('Intended Attachment', _select(window.ExperienceSchema.EXPERIENCE_ATTACHMENTS, draft.attachment, function (v) { draft.attachment = v; })));
+        wrap.appendChild(_buildFieldGroup('Description', _textarea(draft.description, function (v) { draft.description = v; })));
+
+        const actions = document.createElement('div');
+        actions.className = 'wb-experience-create-actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+        saveBtn.textContent = '🌱 Start Growing';
+        saveBtn.addEventListener('click', function () {
+            window.ProjectModel.addExperience(currentProject, {
+                name: draft.name.trim() || 'New Experience',
+                type: draft.type,
+                attachment: draft.attachment,
+                description: draft.description.trim()
+            });
+            experienceCreateFormOpen = false;
+            _persist();
+            _renderContextPanel();
+        });
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'wb-workspace-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            experienceCreateFormOpen = false;
+            _renderContextPanel();
+        });
+
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        wrap.appendChild(actions);
+
+        contextPanel.appendChild(wrap);
     }
 
     // ---------- State 1: Overview ----------

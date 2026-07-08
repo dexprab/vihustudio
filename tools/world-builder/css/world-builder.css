@@ -1882,6 +1882,52 @@ html, body {
 .wb-scene-template-name { font-size: 13px; font-weight: 700; color: var(--wb-navy); }
 .wb-scene-template-desc { font-size: 11px; color: var(--wb-text-secondary); }
 
+/* ---------- Experience Home (Builder V3 Milestone 2) — Gallery
+   ("what can I use today?") + Nursery ("what am I still growing?"),
+   docs/BUILDER_V3_EXPERIENCE_STUDIO.md. Cards reuse .wb-scene-card's
+   proven preview-first layout rather than inventing a second card
+   pattern — only the extra meta/tags rows an Experience needs are new. */
+
+.wb-experience-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.wb-experience-tab {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border: 1px solid var(--wb-border);
+    border-radius: 999px;
+    background: var(--wb-paper);
+    color: var(--wb-text-secondary);
+    cursor: pointer;
+}
+
+.wb-experience-tab:hover { border-color: var(--wb-gold); }
+.wb-experience-tab.active { border-color: var(--wb-gold); background: var(--wb-sky); color: var(--wb-navy); }
+
+.wb-experience-card-thumb { font-size: 30px; }
+
+.wb-experience-card-meta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-navy);
+}
+
+.wb-experience-card-tags {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-experience-create-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
 /* ---------- Place — the shared Story-Author-permission block's
    checkbox rows (Blueprint §6.2, Holder variant) ---------- */
 
