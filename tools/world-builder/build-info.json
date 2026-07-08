@@ -1,10 +1,10 @@
 {
-  "version": "2.2.5-EV2",
+  "version": "2.2.6-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-005",
-  "slice": "Runtime Preview stays project-scoped when entering a reusable-asset editor",
-  "build": "0018",
+  "milestone": "AP-001/AP-002/AV-006",
+  "slice": "Builder Authoring Polish — dev-language cleanup, panel icons, text drag fix",
+  "build": "0019",
   "buildDate": "2026-07-08",
-  "commit": "6779fb5",
+  "commit": "b1be32f",
   "environment": "Release"
 }
