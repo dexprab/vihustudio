@@ -1252,11 +1252,19 @@
             };
             _renderWorkspace();
             e.preventDefault();
-        } else if (
-            (currentActivity === 'place' && _selectedHolderId()) ||
-            ((currentActivity === 'decorations' || currentActivity === 'text') && _selectedLayerId())
-        ) {
-            currentInspectorTarget = null;
+        } else if (currentInspectorTarget !== 'sceneConfig') {
+            // AV-002 — the empty Canvas is the Scene's own natural hit
+            // target: hitting nothing (no Holder, Decoration, or Text
+            // underneath the click) selects the Scene itself, exactly
+            // the way clicking an object selects that object (Blueprint
+            // §6.1's rule extended to the one remaining selectable
+            // object in the Engine hierarchy, Scene → Place/Decorations/
+            // Text). This replaces the old behaviour of merely clearing
+            // whatever was selected back to nothing — Working View never
+            // has to leave selection empty, since Scene Configuration is
+            // itself a real Context Inspector state (Vision §2) and
+            // never a fourth Working View activity.
+            currentInspectorTarget = 'sceneConfig';
             _renderWorkspace();
         }
     });
@@ -1382,7 +1390,16 @@
     function _openScene(sceneId) {
         currentSceneId = sceneId;
         currentActivity = 'place';
-        currentInspectorTarget = null;
+        // AV-002 — a Scene is a first-class selectable object in the
+        // Engine hierarchy (Scene → Place/Decorations/Text), so opening
+        // one (whether just created or reopened from the Library)
+        // selects the Scene itself first, exactly like clicking it in
+        // Working View does (see the mousedown handler's "no hit"
+        // branch below) — never a Holder, which used to be the
+        // effective default the moment Place's own Holder-list panel
+        // rendered. Configuring the Scene's own shape is the first
+        // authoring action, not editing a Holder.
+        currentInspectorTarget = 'sceneConfig';
         _renderWorkspace();
     }
 
