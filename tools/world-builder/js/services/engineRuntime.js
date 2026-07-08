@@ -303,25 +303,63 @@ const EngineV2Runtime = (function () {
         };
     }
 
+    // Line-wrap measurement shared by _drawWrappedText (paint) and
+    // textFootprint (query, AV-006) — extracted so painting and
+    // measuring can never diverge, the same one-source-of-truth pattern
+    // AV-004's _holderInsets/holderBands already established.
+    function _wrapLines(ctx, text, maxWidth) {
+        const words = (text || '').split(' ');
+        const lines = [];
+        let line = '';
+        words.forEach(function (word) {
+            const test = line + word + ' ';
+            if (ctx.measureText(test).width > maxWidth && line) {
+                lines.push(line.trim());
+                line = word + ' ';
+            } else {
+                line = test;
+            }
+        });
+        lines.push(line.trim());
+        return lines;
+    }
+
     // Top-down word wrap for a text Element's own bounding box — starts
     // at the box's own top edge (`textBaseline='top'`), unlike a
     // vertically-centered message (that's a Builder-only Scenes-Library
     // empty-state concern, out of this module's scope entirely).
     function _drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = (text || '').split(' ');
-        let line = '';
-        let cy = y;
-        words.forEach(function (word) {
-            const test = line + word + ' ';
-            if (ctx.measureText(test).width > maxWidth && line) {
-                ctx.fillText(line.trim(), x, cy);
-                line = word + ' ';
-                cy += lineHeight;
-            } else {
-                line = test;
-            }
+        _wrapLines(ctx, text, maxWidth).forEach(function (line, i) {
+            ctx.fillText(line, x, y + i * lineHeight);
         });
-        ctx.fillText(line.trim(), x, cy);
+    }
+
+    // AV-006 — a text Layer's declared position/size box is only ever a
+    // wrap-width and a creation-time placeholder height (Scene Model §3
+    // gives every Layer a generic fractional rect, but unlike a Holder
+    // or Decoration — whose rect literally is what gets drawn — a text
+    // Layer's actual rendered vertical extent depends on its own word
+    // count and line-wrapping, completely decoupled from that declared
+    // box). Builder-side hit-testing/dragging clamped against the
+    // declared box produced a real, invisible movement barrier once the
+    // rendered text was shorter than the box (a real authoring bug, not
+    // a rendering one — Runtime output is unaffected). This is a pure,
+    // read-only measurement of what _paintLayer actually renders, reusing
+    // _wrapLines so it can never drift from the real paint.
+    function textFootprint(ctx, layer, graph) {
+        const rect = rectFor(layer, graph);
+        ctx.save();
+        ctx.font = (layer.fontSize || 48) + 'px ' + (layer.font || 'Georgia, serif');
+        const lineHeight = (layer.fontSize || 48) * 1.25;
+        const lineCount = _wrapLines(ctx, layer.text || '', rect.w).length;
+        ctx.restore();
+        const h = Math.max(lineHeight, lineCount * lineHeight);
+        return {
+            x: rect.x,
+            y: rect.y,
+            w: rect.w,
+            h: Math.min(h, graph.height - rect.y)
+        };
     }
 
     // Paints a Scene Layer — a Decoration (`kind: 'fill' | 'decoration'`)
@@ -356,7 +394,8 @@ const EngineV2Runtime = (function () {
         load: load,
         render: render,
         rectFor: rectFor,
-        holderBands: holderBands
+        holderBands: holderBands,
+        textFootprint: textFootprint
     };
 })();
 

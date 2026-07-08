@@ -279,6 +279,21 @@
         { id: 'text', icon: '✍️', label: 'Text' }
     ];
 
+    // AP-002 — small inline line-icon set (currentColor, no binary
+    // assets) for the Context Inspector's own panel-title headings —
+    // the specific emoji-as-heading usage AP-002 flagged. Nav bar/
+    // Activity switcher/row-control glyphs are a separate, established
+    // emoji-based visual language used consistently across the whole
+    // app (Story Meadow, Sticker Studio, etc.) and are out of this
+    // narrower scope, since no built vector icon set exists yet to
+    // replace them with (assets/icons/* are still empty placeholder
+    // folders reserved by the Product Asset System sprint).
+    const ICONS = {
+        place: '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><circle cx="7" cy="8.5" r="1.4"/><path d="M3.5 14.5l4.5-4.5 3 3 5-5"/></svg>',
+        decorations: '<svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor"><path d="M10 1.5l1.7 6.3 6.3 1.7-6.3 1.7L10 18.5l-1.7-6.3-6.3-1.7 6.3-1.7z"/></svg>',
+        text: '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5V13l9-9 3.5 3.5-9 9H3z"/><path d="M11 5l3.5 3.5"/></svg>'
+    };
+
     const CREATION_TYPE_ICONS = {
         story: '📖', artwork: '🖼️', quote: '💬', card: '💌',
         'artwork-collection': '🗂️', poem: '📝'
@@ -290,7 +305,7 @@
     // this is a one-paragraph orientation, not documentation.
     const STATE_GUIDANCE = {
         overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Scenes to add the pages this World offers.',
-        scenes: 'What: the actual pages of your World — each one a complete, curated Scene (a shape, its photo spots, its decoration, its words). Why: a World is a curated library of Scenes (Engine V2 Canon §0) — this is that library. Do: press Add a Scene, choose an Engine Scene Template, then open it to set its shape in the Scene Configuration glance above Working View. Next: Place/Decorations/Text — the activities for designing what\'s actually on the page — arrive in a following slice.',
+        scenes: 'What: the actual pages of your World — each one a complete, curated Scene (a shape, its photo spots, its decoration, its words). Why: a World is a curated library of Scenes — this is that library. Do: press Add a Scene, choose a Scene Template, then open it to set its shape in the Scene Configuration glance above Working View. Next: use Place/Decorations/Text to design what\'s actually on the page.',
         representations: 'What: the page styles a child can choose (e.g. Showcase, Portrait, Quote). Why: Studio\'s Creation Flow shows exactly these, nothing more. Do: pick or add a Representation, then set its Default Layout and Default Frame. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
         layouts: 'What: the geometry each page can use — aspect ratio, caption position, composition. Why: a Representation always points at one of these. Do: adjust Aspect/Composition/Spacing for the selected Layout, or add a new one. Next: design a Frame to go with it.',
         frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
@@ -1060,7 +1075,28 @@
     // A generic fractional-rect hit test — works for a Holder or a Scene
     // Layer alike, since both carry the same {position:{x,y}, size:{w,h}}
     // shape.
-    function _pointInHolder(fx, fy, obj) {
+    // AV-006 — a text Layer's editable footprint is its measured,
+    // rendered line-wrap height (EngineV2Runtime.textFootprint), not its
+    // declared position/size box, which only ever set the wrap width and
+    // a creation-time placeholder height, disconnected from what actually
+    // renders once real words are typed. Holders/Decorations are
+    // unaffected — their rect literally is what gets drawn.
+    function _effectiveObjectRect(obj, kind, canvasEl) {
+        if (kind === 'layer' && obj.kind === 'text' && canvasEl) {
+            const ctx = canvasEl.getContext('2d');
+            return window.EngineV2Runtime.textFootprint(ctx, obj, { width: canvasEl.width, height: canvasEl.height });
+        }
+        return null;
+    }
+
+    function _pointInHolder(fx, fy, obj, kind, canvasEl) {
+        const footprint = _effectiveObjectRect(obj, kind, canvasEl);
+        if (footprint && canvasEl) {
+            const fxPx = fx * canvasEl.width;
+            const fyPx = fy * canvasEl.height;
+            return fxPx >= footprint.x && fxPx <= footprint.x + footprint.w &&
+                fyPx >= footprint.y && fyPx <= footprint.y + footprint.h;
+        }
         return fx >= obj.position.x && fx <= obj.position.x + obj.size.w &&
             fy >= obj.position.y && fy <= obj.position.y + obj.size.h;
     }
@@ -1143,7 +1179,15 @@
                     _drawHolderConstructionGuides(ctx, entry.object, graph, canvasEl.width);
                     _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, true);
                 } else if (entry.type === 'layer' && entry.object.id === selectedLayerId) {
-                    _drawSelectionOutline(ctx, window.EngineV2Runtime.rectFor(entry.object, graph), canvasEl.width, false);
+                    // AV-006 — a selected text Layer's outline traces its
+                    // measured rendered footprint, not its declared
+                    // position/size box, so the selection genuinely
+                    // matches what the author sees (see
+                    // _effectiveObjectRect).
+                    const outlineRect = entry.object.kind === 'text'
+                        ? window.EngineV2Runtime.textFootprint(ctx, entry.object, graph)
+                        : window.EngineV2Runtime.rectFor(entry.object, graph);
+                    _drawSelectionOutline(ctx, outlineRect, canvasEl.width, false);
                 }
             });
         }
@@ -1320,7 +1364,7 @@
             const obj = _findByKind(scene.id, entry.type, entry.id);
             if (!obj) continue;
             if (entry.type === 'layer' && obj.kind === 'fill') continue;
-            if (_pointInHolder(pt.fx, pt.fy, obj)) { hit = { kind: entry.type, obj: obj }; break; }
+            if (_pointInHolder(pt.fx, pt.fy, obj, entry.type, workingCanvas)) { hit = { kind: entry.type, obj: obj }; break; }
         }
 
         if (hit) {
@@ -1357,8 +1401,17 @@
         const obj = _findByKind(_holderDragState.sceneId, _holderDragState.kind, _holderDragState.id);
         if (!obj) return;
         if (_holderDragState.mode === 'move') {
+            // AV-006 — clamp a text Layer against its measured rendered
+            // footprint, not its declared size.h, which is only ever a
+            // wrap-width + creation-time placeholder disconnected from
+            // what actually renders (see _effectiveObjectRect above).
+            let clampH = obj.size.h;
+            if (_holderDragState.kind === 'layer' && obj.kind === 'text') {
+                const footprint = _effectiveObjectRect(obj, 'layer', workingCanvas);
+                if (footprint) clampH = footprint.h / workingCanvas.height;
+            }
             obj.position.x = Math.min(1 - obj.size.w, Math.max(0, _holderDragState.startX + dx));
-            obj.position.y = Math.min(1 - obj.size.h, Math.max(0, _holderDragState.startY + dy));
+            obj.position.y = Math.min(1 - clampH, Math.max(0, _holderDragState.startY + dy));
         } else {
             obj.size.w = Math.min(1 - obj.position.x, Math.max(0.06, _holderDragState.startW + dx));
             obj.size.h = Math.min(1 - obj.position.y, Math.max(0.06, _holderDragState.startH + dy));
@@ -1885,7 +1938,7 @@
             _heading('Scenes', 'The pages of this World — recognizable at a glance, never by an internal id.');
             _stateIntro('scenes');
             if (scenesShowingTemplatePicker) {
-                contextPanel.appendChild(_fieldHelp('Choose an Engine Scene Template to start from — every Scene begins from one, never a blank Canvas.'));
+                contextPanel.appendChild(_fieldHelp('Choose a Scene Template to start from — every Scene begins from one, never a blank Canvas.'));
             } else if (!window.ProjectModel.scenes(currentProject).length) {
                 contextPanel.appendChild(_fieldHelp('This World has no Scenes yet. Press "Add a Scene" in Working View to add its first page.'));
             } else {
@@ -1929,8 +1982,8 @@
     // ---------- Place — no Holder selected: the Holder list + Add (Blueprint §8) ----------
 
     function _renderPlacePanel(scene) {
-        _heading('🖼️ Place', 'Where does the photo go, how big, what shape, and how is it framed?');
-        contextPanel.appendChild(_stateIntroText('Click a Holder in Working View to select it (drag to move, drag its corner handle to resize), or add a new one below. The Engine places no upper bound on a Scene’s Holder count.'));
+        _heading('Place', 'Where does the photo go, how big, what shape, and how is it framed?', ICONS.place);
+        contextPanel.appendChild(_stateIntroText('Click a Holder in Working View to select it (drag to move, drag its corner handle to resize), or add a new one below. Add as many Holders as this Scene needs.'));
 
         if (scene.holders.length) {
             const list = document.createElement('div');
@@ -1984,7 +2037,7 @@
     // ---------- Place — a Holder is selected: its full property panel ----------
 
     function _renderHolderPanel(scene, holder) {
-        _heading('🖼️ Place — ' + holder.name, 'Position/Size/Shape/Padding/Fit, plus its Frame — ending in the shared Story-Author-permission block (Blueprint §6.2, §8).');
+        _heading('Place — ' + holder.name, 'Position, size, shape, padding, fit, and Frame for this photo — plus what a Story Author is allowed to do with it.', ICONS.place);
 
         contextPanel.appendChild(_buildFieldGroup('Holder Name', _textInput(holder.name, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { name: v });
@@ -2195,14 +2248,14 @@
     // ---------- Decorations — no decoration selected: background + list + add (Blueprint §9) ----------
 
     function _renderDecorationsPanel(scene) {
-        _heading('✨ Decorations', 'What does this page feel like — what’s behind the photo, and what’s scattered around it?');
+        _heading('Decorations', 'What does this page feel like — what’s behind the photo, and what’s scattered around it?', ICONS.decorations);
 
         const bgColor = window.ProjectModel.getSceneBackgroundColor(currentProject, scene.id);
         _fieldGroup('Background', _colorInput(bgColor, function (v) {
             window.ProjectModel.setSceneBackground(currentProject, scene.id, v);
             _persist();
             _redrawSceneCanvases(scene.id);
-        }), 'Whatever sits at the very bottom of the page (Engine V2 Canon §4) — there is no separate background setting anywhere else; this simply edits it.');
+        }), 'Whatever sits at the very bottom of the page — there is no separate background setting anywhere else; this simply edits it.');
 
         contextPanel.appendChild(_fieldHelp('Click a decoration in Working View to select it and drag to reposition, or add a new one below.'));
 
@@ -2237,7 +2290,7 @@
         addLabel.className = 'wb-field-label';
         addLabel.textContent = 'Add a Decoration';
         addWrap.appendChild(addLabel);
-        addWrap.appendChild(_fieldHelp('A small built-in set for now — real Theme Decoration Pack browsing (Engine Canon §9) is a future slice, not yet built here.'));
+        addWrap.appendChild(_fieldHelp('Choose a decoration to place in your scene.'));
 
         const grid = document.createElement('div');
         grid.className = 'wb-scene-template-grid';
@@ -2266,7 +2319,7 @@
     // ---------- Decorations — a decoration is selected: its full property panel ----------
 
     function _renderLayerPanel(scene, layer) {
-        _heading('✨ Decorations — ' + layer.name, 'Reposition, bring it forward or send it backward, or mark this spot open for Story Authors too.');
+        _heading('Decorations — ' + layer.name, 'Reposition, bring it forward or send it backward, or mark this spot open for Story Authors too.', ICONS.decorations);
 
         contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
             window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
@@ -2404,7 +2457,7 @@
     // No decoration selected: the text-element list + Add (mirrors
     // _renderPlacePanel/_renderDecorationsPanel's own no-selection shape).
     function _renderTextPanel(scene) {
-        _heading('✍️ Text', 'What does this page say, and what should the words look like?');
+        _heading('Text', 'What does this page say, and what should the words look like?', ICONS.text);
         contextPanel.appendChild(_fieldHelp('Click a text element in Working View to select it and drag to reposition, or add a new one below — text is never sourced from a shelf, so nothing constrains adding more of it.'));
 
         const texts = (scene.layers || []).filter(function (l) { return l.kind === 'text'; });
@@ -2453,7 +2506,7 @@
     // A text element is selected: write the words directly, then style
     // them (Blueprint §10's own two-step framing).
     function _renderTextLayerPanel(scene, layer) {
-        _heading('✍️ Text — ' + layer.name, 'Write the words directly, then style them.');
+        _heading('Text — ' + layer.name, 'Write the words directly, then style them.', ICONS.text);
 
         contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
             window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
@@ -2557,7 +2610,7 @@
     // Aspect Ratio also refreshes the Safe Area label, since Engine
     // Canon §4 does not let them vary independently.
     function _renderSceneConfigPanel(scene) {
-        _heading('Scene Configuration', 'This Scene’s shape (Engine V2 Canon §4) — selected the same way any other object is (Vision §2), never a fourth activity.');
+        _heading('Scene Configuration', 'This Scene’s shape — click an empty area of the Canvas any time to come back here.');
 
         const options = window.EngineSchema.ASPECT_ORDER.map(function (id) {
             const info = window.EngineSchema.aspectInfo(id);
@@ -2567,15 +2620,24 @@
             window.ProjectModel.setSceneAspect(currentProject, scene.id, value);
             _persist();
             _renderWorkspace();
-        }), 'Size is derived from Aspect Ratio, never typed directly (Blueprint §7).');
+        }), 'Size is set automatically from the Aspect Ratio you choose.');
 
-        contextPanel.appendChild(_fieldHelp('Safe Area: ' + scene.canvas.safeArea + '. Shown as a felt guide in Working View only — never a hard wall unless a future Theme explicitly wants one.'));
+        contextPanel.appendChild(_fieldHelp('Safe Area: ' + scene.canvas.safeArea + '. Shown as a guide in Working View to help you compose — it won’t stop you from placing things outside it.'));
     }
 
-    function _heading(title, sub) {
+    function _heading(title, sub, iconSvg) {
         const h = document.createElement('h2');
         h.className = 'wb-context-heading';
-        h.textContent = title;
+        if (iconSvg) {
+            const iconEl = document.createElement('span');
+            iconEl.className = 'wb-heading-icon';
+            iconEl.setAttribute('aria-hidden', 'true');
+            iconEl.innerHTML = iconSvg;
+            h.appendChild(iconEl);
+            h.appendChild(document.createTextNode(title));
+        } else {
+            h.textContent = title;
+        }
         contextPanel.appendChild(h);
         if (sub) {
             const p = document.createElement('p');
@@ -3931,13 +3993,13 @@
         heading.className = 'wb-context-heading';
         heading.style.marginTop = '4px';
         heading.style.fontSize = '13px';
-        heading.textContent = 'Scenes (Engine V2)';
+        heading.textContent = 'Scenes';
         contextPanel.appendChild(heading);
 
         const banner = document.createElement('div');
         banner.className = 'wb-validation-status ' + (sceneResult.isValid ? 'pass' : 'fail');
         banner.textContent = sceneResult.isValid
-            ? '✅ Every Scene checks out against the canonical Scene Model.'
+            ? '✅ Every Scene checks out.'
             : '⚠️ ' + sceneResult.errors.length + ' error' + (sceneResult.errors.length === 1 ? '' : 's') + ' to fix.';
         contextPanel.appendChild(banner);
 
@@ -3997,7 +4059,7 @@
             v1Heading.className = 'wb-context-heading';
             v1Heading.style.marginTop = '20px';
             v1Heading.style.fontSize = '13px';
-            v1Heading.textContent = 'World Contract (Engine V1)';
+            v1Heading.textContent = 'World Contract';
             contextPanel.appendChild(v1Heading);
         }
 
@@ -4100,7 +4162,7 @@
         heading.className = 'wb-context-heading';
         heading.style.marginTop = '4px';
         heading.style.fontSize = '13px';
-        heading.textContent = 'Scenes (Engine V2)';
+        heading.textContent = 'Scenes';
         contextPanel.appendChild(heading);
 
         const manifest = window.ProjectModel.manifest(project);
@@ -4160,7 +4222,7 @@
         divider.className = 'wb-context-heading';
         divider.style.marginTop = '20px';
         divider.style.fontSize = '13px';
-        divider.textContent = 'World Package (Engine V1)';
+        divider.textContent = 'World Package';
         contextPanel.appendChild(divider);
     }
 
@@ -4281,7 +4343,7 @@
         heading.className = 'wb-context-heading';
         heading.style.marginTop = '4px';
         heading.style.fontSize = '13px';
-        heading.textContent = 'Scenes (Engine V2)';
+        heading.textContent = 'Scenes';
         contextPanel.appendChild(heading);
 
         if (!project.lastSceneBuild) {
@@ -4298,7 +4360,7 @@
             card.innerHTML =
                 '<span class="wb-publish-icon">💾</span>' +
                 '<span class="wb-publish-text"><span class="wb-publish-title">Export Scene Package</span>' +
-                '<span class="wb-publish-note">Download the built Engine V2 package to your computer — no Engine V2 Runtime exists outside this Builder yet to install it into.</span></span>';
+                '<span class="wb-publish-note">Download the built Scene Package to your computer to back it up or share it.</span></span>';
             card.addEventListener('click', function () {
                 _downloadDataURL(project.lastSceneBuild.dataURL, project.lastSceneBuild.filename);
             });
@@ -4310,7 +4372,7 @@
         divider.className = 'wb-context-heading';
         divider.style.marginTop = '20px';
         divider.style.fontSize = '13px';
-        divider.textContent = 'World Package (Engine V1)';
+        divider.textContent = 'World Package';
         contextPanel.appendChild(divider);
     }
 
@@ -4415,7 +4477,7 @@
         title.textContent = item ? item.label : '';
         const note = document.createElement('span');
         note.className = 'wb-stub-note';
-        note.textContent = 'Coming in the next sprint.';
+        note.textContent = 'Coming soon.';
         wrap.appendChild(icon);
         wrap.appendChild(title);
         wrap.appendChild(note);

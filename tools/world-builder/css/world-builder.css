@@ -1172,6 +1172,16 @@ html, body {
     margin: 0 0 4px;
 }
 
+/* AP-002 — small inline icon set replacing emoji on panel-title
+   headings (Place/Decorations/Text and the three permanent pane
+   headings). currentColor so it always matches the heading's own text
+   colour with no separate theming. */
+.wb-heading-icon {
+    display: inline-flex;
+    vertical-align: -3px;
+    margin-right: 6px;
+}
+
 .wb-context-subheading {
     font-size: 13px;
     color: var(--wb-text-secondary);
