@@ -597,7 +597,7 @@ const ProjectModel = (function () {
             size: spec.size || { w: 0.14, h: 0.14 },
             permissions: _defaultLayerPermissions(),
             decorationSlot: false
-        }, spec.kind === 'text' ? {
+        }, spec.sourceExperienceId ? { sourceExperienceId: spec.sourceExperienceId } : {}, spec.kind === 'text' ? {
             text: spec.text || '',
             font: spec.font || 'Georgia, serif',
             fontSize: spec.fontSize || 48,
@@ -706,15 +706,23 @@ const ProjectModel = (function () {
     // Read-time reconciliation for a project saved before a given field
     // existed — the same pattern `_ensureHolderDefaults`/`_ensureStack`
     // already use, so an older project never crashes and never needs an
-    // explicit migration step.
+    // explicit migration step. Milestone 3 replaces the Milestone 2
+    // placeholder singular `host` with a real `attachments` array (a
+    // Public Experience may attach to many Hosts at once) — an existing
+    // Milestone-2-era Experience's `host` was always null in practice
+    // (Milestone 2 shipped no attachment workflow at all), so this is a
+    // safe, lossless migration, not a destructive one.
     function _ensureExperienceDefaults(exp) {
         if (!exp) return exp;
         if (typeof exp.description !== 'string') exp.description = '';
         if (!exp.type) exp.type = (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value) || 'frame';
         if (!exp.attachment) exp.attachment = 'attached';
         if (!exp.lifecycle) exp.lifecycle = 'nurturing';
-        if (exp.host === undefined) exp.host = null;
         if (exp.scopeSceneId === undefined) exp.scopeSceneId = null;
+        if (!Array.isArray(exp.attachments)) {
+            exp.attachments = (exp.host && exp.host.sceneId) ? [exp.host] : [];
+        }
+        delete exp.host;
         if (!Array.isArray(exp.tags)) exp.tags = [];
         if (!exp.properties || typeof exp.properties !== 'object') exp.properties = {};
         if (!exp.createdAt) exp.createdAt = exp.updatedAt || Date.now();
@@ -722,27 +730,30 @@ const ProjectModel = (function () {
         return exp;
     }
 
-    // Placeholder creation only (Milestone 2's own scope): Name, Type,
-    // intended Attachment, Description. Always born Nurturing (Canon
-    // Decision #2) — Graduation, attachment, and editing beyond these
-    // fields are Milestone 3.
+    // Placeholder creation (Milestone 2) plus real type-specific
+    // Properties, seeded from js/services/experienceSchema.js's
+    // `defaultProperties(type)` so the Inspector (Milestone 3) always
+    // has something sensible to edit immediately, matching the existing
+    // Frame/Decoration/Text authoring surfaces' own default values.
+    // Always born Nurturing (Canon Decision #2).
     function addExperience(project, spec) {
         spec = spec || {};
         const existingIds = experiences(project).map(function (e) { return e.id; });
         const base = spec.name ? _slug(spec.name) : 'experience';
         const id = _uniqueId(existingIds, base);
         const now = Date.now();
+        const type = spec.type || (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value);
         const experience = _ensureExperienceDefaults({
             id: id,
             name: spec.name || 'New Experience',
             description: spec.description || '',
-            type: spec.type,
+            type: type,
             attachment: spec.attachment,
             lifecycle: 'nurturing',
-            host: null,
             scopeSceneId: null,
+            attachments: [],
             tags: [],
-            properties: {},
+            properties: (window.ExperienceSchema && window.ExperienceSchema.defaultProperties(type)) || {},
             createdAt: now,
             updatedAt: now
         });
@@ -755,6 +766,16 @@ const ProjectModel = (function () {
         if (!experience) return null;
         Object.assign(experience, patch);
         experience.updatedAt = Date.now();
+        return experience;
+    }
+
+    function updateExperienceProperty(project, id, key, value) {
+        const experience = findExperience(project, id);
+        if (!experience) return null;
+        if (!experience.properties) experience.properties = {};
+        experience.properties[key] = value;
+        experience.updatedAt = Date.now();
+        _syncExperienceAttachments(project, experience);
         return experience;
     }
 
@@ -771,10 +792,156 @@ const ProjectModel = (function () {
         return true;
     }
 
+    // ---------------------------------------------------------------
+    // Graduation (Builder V3 Milestone 3) — the Creative Journey's one
+    // fork, never a ladder: Nurturing graduates directly to Personal
+    // (choosing which Scene it belongs to) or straight to Public; a
+    // Personal Experience may later choose to become Public. There is
+    // no reverse path and nothing ever returns to the Nursery — Theme
+    // Experiences are permanent (Canon Decisions #6, #8).
+    // ---------------------------------------------------------------
+
+    function graduateToPersonal(project, id, sceneId) {
+        const experience = findExperience(project, id);
+        if (!experience || experience.lifecycle !== 'nurturing') return false;
+        if (!findScene(project, sceneId)) return false;
+        experience.lifecycle = 'personal';
+        experience.scopeSceneId = sceneId;
+        experience.updatedAt = Date.now();
+        return true;
+    }
+
+    function graduateToPublic(project, id) {
+        const experience = findExperience(project, id);
+        if (!experience) return false;
+        if (experience.lifecycle === 'public') return true;
+        if (experience.lifecycle !== 'nurturing' && experience.lifecycle !== 'personal') return false;
+        experience.lifecycle = 'public';
+        experience.updatedAt = Date.now();
+        return true;
+    }
+
+    // ---------------------------------------------------------------
+    // Attachment (Builder V3 Milestone 3) — real Usage, real rendering
+    // where an existing Engine V2 mechanism already exists to project
+    // onto (js/services/experienceSchema.js's `rendersWhenAttached`
+    // documents exactly which type+attachment combinations that is).
+    // A Nurturing Experience can never attach (Canon: "cannot yet be
+    // attached"); a Personal Experience may only attach within its own
+    // `scopeSceneId` ("belongs to one Scene only"); a Public Experience
+    // may attach to any compatible Host.
+    // ---------------------------------------------------------------
+
+    function _sameAttachment(a, b) {
+        return a.sceneId === b.sceneId && (a.placeId || null) === (b.placeId || null);
+    }
+
+    function attachExperience(project, id, target) {
+        const experience = findExperience(project, id);
+        if (!experience || !target || !target.sceneId) return false;
+        if (experience.lifecycle === 'nurturing') return false;
+        if (experience.lifecycle === 'personal' && target.sceneId !== experience.scopeSceneId) return false;
+        if (target.placeId && !findHolder(project, target.sceneId, target.placeId)) return false;
+        if (!target.placeId && !findScene(project, target.sceneId)) return false;
+
+        const entry = { sceneId: target.sceneId, placeId: target.placeId || null };
+        if (!experience.attachments.some(function (a) { return _sameAttachment(a, entry); })) {
+            experience.attachments.push(entry);
+        }
+        _syncExperienceAttachments(project, experience);
+        return true;
+    }
+
+    function detachExperience(project, id, target) {
+        const experience = findExperience(project, id);
+        if (!experience || !target) return false;
+        const entry = { sceneId: target.sceneId, placeId: target.placeId || null };
+        experience.attachments = experience.attachments.filter(function (a) { return !_sameAttachment(a, entry); });
+        _clearMirror(project, experience, entry);
+        return true;
+    }
+
+    function usageOf(project, id) {
+        const experience = findExperience(project, id);
+        if (!experience) return [];
+        return experience.attachments.map(function (a) {
+            const scene = findScene(project, a.sceneId);
+            const place = a.placeId && scene ? (scene.holders || []).find(function (h) { return h.id === a.placeId; }) : null;
+            return {
+                sceneId: a.sceneId,
+                placeId: a.placeId || null,
+                sceneName: scene ? scene.name : '(deleted Scene)',
+                placeName: place ? place.name : null
+            };
+        });
+    }
+
+    // The mirroring bridge — a compatibility shortcut into the existing,
+    // unmodified Engine V2 rendering mechanisms (a Place's `frame` slot;
+    // a Scene's `layers` array), never a change to js/services/engineRuntime.js
+    // or the Scene Model itself. Re-synced on every attach and on every
+    // property edit so an Experience's Inspector is the single place a
+    // Theme Author edits its look, regardless of how many Hosts use it.
+    function _syncExperienceAttachments(project, experience) {
+        if (!window.ExperienceSchema) return;
+        experience.attachments.forEach(function (a) {
+            const attachment = a.placeId ? 'attached' : 'free';
+            if (!window.ExperienceSchema.rendersWhenAttached(experience.type, attachment)) return;
+            if (experience.type === 'frame' && a.placeId) {
+                _mirrorFrame(project, experience);
+                updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
+            } else if ((experience.type === 'decoration' || experience.type === 'text') && !a.placeId) {
+                _mirrorSceneLayer(project, a.sceneId, experience);
+            }
+        });
+    }
+
+    function _mirrorFrame(project, experience) {
+        setFrame(project, {
+            id: experience.id,
+            name: experience.name,
+            description: 'Mirrored from Experience "' + experience.name + '".',
+            fields: Object.assign({}, experience.properties)
+        });
+    }
+
+    function _findMirroredLayer(project, sceneId, experienceId) {
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        return (scene.layers || []).find(function (l) { return l.sourceExperienceId === experienceId; }) || null;
+    }
+
+    function _mirrorSceneLayer(project, sceneId, experience) {
+        const existing = _findMirroredLayer(project, sceneId, experience.id);
+        const props = experience.properties || {};
+        if (existing) {
+            Object.assign(existing, experience.type === 'text'
+                ? { name: experience.name, text: props.text, font: props.font, fontSize: props.fontSize, align: props.align }
+                : { name: experience.name, glyph: props.glyph, color: props.color });
+            return existing;
+        }
+        return addSceneLayer(project, sceneId, Object.assign({
+            name: experience.name,
+            kind: experience.type === 'text' ? 'text' : 'decoration',
+            sourceExperienceId: experience.id
+        }, props));
+    }
+
+    function _clearMirror(project, experience, entry) {
+        if (experience.type === 'frame' && entry.placeId) {
+            const holder = findHolder(project, entry.sceneId, entry.placeId);
+            if (holder && holder.frame === experience.id) updateHolder(project, entry.sceneId, entry.placeId, { frame: null });
+        } else if ((experience.type === 'decoration' || experience.type === 'text') && !entry.placeId) {
+            const layer = _findMirroredLayer(project, entry.sceneId, experience.id);
+            if (layer) deleteSceneLayer(project, entry.sceneId, layer.id);
+        }
+    }
+
     // A plain, standalone validation hook — not yet wired into the
-    // Validation screen (Milestone 3's own "Validation UX changes"
-    // scope). Nurturing Experiences are never checked, since they
-    // aren't part of the Theme yet ("Nursery items are ignored").
+    // Validation screen until this milestone (see below, "Experiences"
+    // category added to _renderValidationPanel). Nurturing Experiences
+    // are never checked, since they aren't part of the Theme yet
+    // ("Nursery items are ignored").
     function validateExperiences(project) {
         const findings = [];
         experiences(project).forEach(function (exp) {
@@ -782,6 +949,18 @@ const ProjectModel = (function () {
             if (!exp.name || !exp.name.trim()) {
                 findings.push({ level: 'error', experienceId: exp.id, message: 'An Experience is missing a name.' });
             }
+            if (exp.lifecycle === 'personal' && !findScene(project, exp.scopeSceneId)) {
+                findings.push({ level: 'error', experienceId: exp.id, message: '"' + exp.name + '" belongs to a Scene that no longer exists.' });
+            }
+            exp.attachments.forEach(function (a) {
+                if (!findScene(project, a.sceneId)) {
+                    findings.push({ level: 'error', experienceId: exp.id, message: '"' + exp.name + '" is attached to a Scene that no longer exists.' });
+                } else if (a.placeId && !findHolder(project, a.sceneId, a.placeId)) {
+                    findings.push({ level: 'error', experienceId: exp.id, message: '"' + exp.name + '" is attached to a Place that no longer exists.' });
+                } else if (exp.lifecycle === 'personal' && a.sceneId !== exp.scopeSceneId) {
+                    findings.push({ level: 'error', experienceId: exp.id, message: '"' + exp.name + '" is Personal to one Scene but attached elsewhere.' });
+                }
+            });
         });
         return findings;
     }
@@ -991,7 +1170,13 @@ const ProjectModel = (function () {
         setExperience: setExperience,
         addExperience: addExperience,
         updateExperience: updateExperience,
+        updateExperienceProperty: updateExperienceProperty,
         deleteExperience: deleteExperience,
+        graduateToPersonal: graduateToPersonal,
+        graduateToPublic: graduateToPublic,
+        attachExperience: attachExperience,
+        detachExperience: detachExperience,
+        usageOf: usageOf,
         validateExperiences: validateExperiences,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,
