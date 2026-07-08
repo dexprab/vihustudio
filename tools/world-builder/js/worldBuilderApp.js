@@ -2338,6 +2338,11 @@
         }), 'Inset between the Place’s edge and its content.');
 
         _renderFramePicker(scene, holder);
+        _renderContextualExperienceActions(scene, { sceneId: scene.id, placeId: holder.id }, {
+            compatibleType: 'frame',
+            defaultName: 'Frame for ' + holder.name,
+            attachedExperience: holder.frame ? window.ProjectModel.findExperience(currentProject, holder.frame) : null
+        });
         _renderHolderPermissionBlock(scene, holder);
 
         const removeBtn = document.createElement('button');
@@ -2500,6 +2505,12 @@
         }), 'Whatever sits at the very bottom of the page — there is no separate background setting anywhere else; this simply edits it.');
 
         contextPanel.appendChild(_fieldHelp('Click a decoration in Working View to select it and drag to reposition, or add a new one below.'));
+
+        _renderContextualExperienceActions(scene, { sceneId: scene.id, placeId: null }, {
+            compatibleType: 'decoration',
+            defaultName: 'New Decoration',
+            attachedExperience: null
+        });
 
         const decorations = (scene.layers || []).filter(function (l) { return l.kind !== 'fill'; });
         if (decorations.length) {
@@ -2701,6 +2712,12 @@
     function _renderTextPanel(scene) {
         _heading('Text', 'What does this page say, and what should the words look like?', ICONS.text);
         contextPanel.appendChild(_fieldHelp('Click a text element in Working View to select it and drag to reposition, or add a new one below — text is never sourced from a shelf, so nothing constrains adding more of it.'));
+
+        _renderContextualExperienceActions(scene, { sceneId: scene.id, placeId: null }, {
+            compatibleType: 'text',
+            defaultName: 'New Text',
+            attachedExperience: null
+        });
 
         const texts = (scene.layers || []).filter(function (l) { return l.kind === 'text'; });
         if (texts.length) {
@@ -3134,6 +3151,8 @@
     let experienceHomeZone = 'gallery'; // 'gallery' | 'nursery'
     let experienceCreateFormOpen = false;
     let experienceInspectorId = null;
+    let contextualQuickCreateOpen = false;
+    let contextualReuseOpen = false;
 
     function _renderExperiencesPanel() {
         if (experienceInspectorId) {
@@ -3604,6 +3623,144 @@
             opt.value = h.id;
             opt.textContent = h.name;
             selectEl.appendChild(opt);
+        });
+    }
+
+    // ---------- Contextual Authoring (Builder V3 Milestone 3) ----------
+    // Reachable from Place and Scene, per docs/BUILDER_V3_EXPERIENCE_STUDIO.md
+    // — every path resolves back to the one Experience, never a copy of
+    // it (Blueprint's own "no duplicate editors" rule, restated for
+    // Experiences). Creating here is a deliberate convenience: a
+    // Nurturing Experience cannot attach (Canon), so "+ Add Experience"
+    // from a Place/Scene creates it Nurturing, then immediately
+    // graduates it to Personal (scoped to this Scene) and attaches it —
+    // a Theme Author clicking this wants it here, now, not a separate
+    // trip to the Nursery to babysit it. "Reuse Existing" browses
+    // already-Public Experiences compatible with this context and
+    // attaches directly, since nothing to graduate is needed.
+
+    function _renderContextualExperienceActions(scene, target, opts) {
+        // opts: { compatibleType: 'frame'|null (null = any Free-rendering type), label }
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Experiences';
+        contextPanel.appendChild(heading);
+
+        if (opts.attachedExperience) {
+            contextPanel.appendChild(_fieldHelp('Attached: ' + opts.attachedExperience.name));
+            const openBtn = document.createElement('button');
+            openBtn.type = 'button';
+            openBtn.className = 'wb-workspace-btn';
+            openBtn.textContent = 'Open in Experience Home →';
+            openBtn.addEventListener('click', function () {
+                currentNav = 'experiences';
+                experienceHomeZone = opts.attachedExperience.lifecycle === 'nurturing' ? 'nursery' : 'gallery';
+                experienceInspectorId = opts.attachedExperience.id;
+                _renderNav();
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(openBtn);
+            return;
+        }
+
+        if (contextualQuickCreateOpen) {
+            _renderContextualQuickCreateForm(scene, target, opts);
+        } else {
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            addBtn.textContent = '➕ Add Experience';
+            addBtn.addEventListener('click', function () {
+                contextualQuickCreateOpen = true;
+                contextualReuseOpen = false;
+                _renderContextPanel();
+            });
+            contextPanel.appendChild(addBtn);
+        }
+
+        const reuseBtn = document.createElement('button');
+        reuseBtn.type = 'button';
+        reuseBtn.className = 'wb-workspace-btn';
+        reuseBtn.style.marginTop = '6px';
+        reuseBtn.textContent = 'Reuse Existing Experience';
+        reuseBtn.addEventListener('click', function () {
+            contextualReuseOpen = !contextualReuseOpen;
+            contextualQuickCreateOpen = false;
+            _renderContextPanel();
+        });
+        contextPanel.appendChild(reuseBtn);
+
+        if (contextualReuseOpen) {
+            _renderContextualReuseList(scene, target, opts);
+        }
+    }
+
+    function _renderContextualQuickCreateForm(scene, target, opts) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        let name = opts.defaultName || 'New Experience';
+        wrap.appendChild(_buildFieldGroup('Name', _textInput(name, function (v) { name = v; })));
+
+        const actions = document.createElement('div');
+        actions.className = 'wb-experience-create-actions';
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+        saveBtn.textContent = '📎 Create & Attach';
+        saveBtn.addEventListener('click', function () {
+            const exp = window.ProjectModel.addExperience(currentProject, {
+                name: name.trim() || opts.defaultName,
+                type: opts.compatibleType,
+                attachment: target.placeId ? 'attached' : 'free'
+            });
+            window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+            window.ProjectModel.attachExperience(currentProject, exp.id, target);
+            contextualQuickCreateOpen = false;
+            _persist();
+            _redrawSceneCanvases(scene.id);
+            _renderWorkspace();
+        });
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'wb-workspace-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            contextualQuickCreateOpen = false;
+            _renderContextPanel();
+        });
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        wrap.appendChild(actions);
+        contextPanel.appendChild(wrap);
+    }
+
+    function _renderContextualReuseList(scene, target, opts) {
+        const options = window.ProjectModel.experiences(currentProject).filter(function (e) {
+            if (e.lifecycle !== 'public') return false;
+            return opts.compatibleType ? e.type === opts.compatibleType : e.type !== 'frame';
+        });
+        if (!options.length) {
+            contextPanel.appendChild(_fieldHelp('No compatible Public Experiences yet.'));
+            return;
+        }
+        options.forEach(function (exp) {
+            const type = window.ExperienceSchema.findType(exp.type);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-workspace-btn';
+            btn.style.display = 'block';
+            btn.style.width = '100%';
+            btn.style.marginBottom = '6px';
+            btn.textContent = type.icon + ' ' + exp.name;
+            btn.addEventListener('click', function () {
+                window.ProjectModel.attachExperience(currentProject, exp.id, target);
+                contextualReuseOpen = false;
+                _persist();
+                _redrawSceneCanvases(scene.id);
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(btn);
         });
     }
 
