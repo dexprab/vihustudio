@@ -1,10 +1,10 @@
 {
-  "version": "2.2.3-EV2",
+  "version": "2.2.4-EV2",
   "phase": "Authoring Validation",
-  "milestone": "AV-003",
-  "slice": "Complete Holder presentation pipeline (Frame/Fit/Padding) actually renders",
-  "build": "0016",
-  "buildDate": "2026-07-07",
-  "commit": "c562936",
+  "milestone": "AV-004",
+  "slice": "Working View adopts adaptive construction guides, decoupled from frozen Runtime Preview",
+  "build": "0017",
+  "buildDate": "2026-07-08",
+  "commit": "235fc7c",
   "environment": "Release"
 }
