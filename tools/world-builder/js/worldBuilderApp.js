@@ -395,6 +395,10 @@
     // as its own pipeline operating directly on the canonical Scene
     // Model, never routed through or interleaved with Engine V1's.
     let lastSceneValidation = null;
+    // Experiences (Builder V3 Milestone 3) — likewise its own report,
+    // never merged into either of the above; Nurturing Experiences are
+    // excluded entirely, since they aren't part of the Theme yet.
+    let lastExperienceValidation = null;
 
     // Builder V2 — Scenes state. `currentSceneId` null means the Scenes
     // Library is showing; set means a specific Scene's editor is open.
@@ -5016,6 +5020,34 @@
         });
     }
 
+    // Experiences (Builder V3 Milestone 3) — Nursery items are ignored
+    // entirely (they aren't part of the Theme yet), matching every
+    // other "Nursery items are excluded" rule this milestone specifies.
+    function _renderExperienceValidationSection(findings) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-heading';
+        heading.style.marginTop = '20px';
+        heading.style.fontSize = '13px';
+        heading.textContent = 'Experiences';
+        contextPanel.appendChild(heading);
+
+        const errors = findings.filter(function (f) { return f.level === 'error'; });
+        const isValid = errors.length === 0;
+        const banner = document.createElement('div');
+        banner.className = 'wb-validation-status ' + (isValid ? 'pass' : 'fail');
+        banner.textContent = isValid
+            ? '✅ Every Experience checks out.'
+            : '⚠️ ' + errors.length + ' error' + (errors.length === 1 ? '' : 's') + ' to fix.';
+        contextPanel.appendChild(banner);
+
+        findings.forEach(function (f) {
+            const detail = document.createElement('p');
+            detail.className = 'wb-field-hint wb-validation-detail';
+            detail.textContent = f.message;
+            contextPanel.appendChild(detail);
+        });
+    }
+
     function _renderValidationPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
@@ -5025,17 +5057,17 @@
         const runBtn = document.createElement('button');
         runBtn.type = 'button';
         runBtn.className = 'wb-add-btn';
-        runBtn.textContent = (lastValidation || lastSceneValidation) ? '↻ Run Validation Again' : '▶ Run Validation';
+        runBtn.textContent = (lastValidation || lastSceneValidation || lastExperienceValidation) ? '↻ Run Validation Again' : '▶ Run Validation';
         runBtn.addEventListener('click', function () {
             runBtn.textContent = 'Validating…';
             runBtn.disabled = true;
-            // Two independent validation engines, run together but never
-            // merged (LOCK V2-04 — Engine V2 Validation operates directly
-            // on the canonical Scene Model, no translation layer, no
-            // interleaving with Engine V1's own report). Engine V2's is
-            // synchronous (plain JS objects already in memory); Engine
-            // V1's is async (projectLoader's Blob/FileReader pipeline).
+            // Three independent validation engines, run together but
+            // never merged (LOCK V2-04 — Engine V2 Validation operates
+            // directly on the canonical Scene Model, no translation
+            // layer, no interleaving with Engine V1's own report).
+            // Experiences' is likewise its own, separate report.
             lastSceneValidation = window.EngineV2Validator.validate(project);
+            lastExperienceValidation = window.ProjectModel.validateExperiences(project);
             window.ProjectCompiler.runValidation(project).then(function (result) {
                 lastValidation = result;
                 _renderValidationPanel();
@@ -5043,7 +5075,7 @@
         });
         contextPanel.appendChild(runBtn);
 
-        if (!lastValidation && !lastSceneValidation) {
+        if (!lastValidation && !lastSceneValidation && !lastExperienceValidation) {
             const hint = document.createElement('p');
             hint.className = 'wb-field-hint';
             hint.textContent = 'Run validation to check this World against the World Project Contract.';
@@ -5052,6 +5084,7 @@
         }
 
         if (lastSceneValidation) _renderSceneValidationSection(lastSceneValidation);
+        if (lastExperienceValidation) _renderExperienceValidationSection(lastExperienceValidation);
         if (!lastValidation) return;
 
         if (lastSceneValidation) {
