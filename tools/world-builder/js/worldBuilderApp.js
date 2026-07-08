@@ -3260,6 +3260,15 @@
         }
     }
 
+    // Short, product-language label for an Experience's Hosted By value
+    // ('place'/'scene'/'free') — used anywhere a compact meta line needs
+    // it, so no call site re-derives its own wording.
+    function _hostedByLabel(exp) {
+        if (exp.hostedBy === 'scene') return 'Scene';
+        if (exp.hostedBy === 'free') return 'Free';
+        return 'Place';
+    }
+
     // Preview-first: a miniature composition, not a database row (Part
     // 4 of docs/BUILDER_V3_EXPERIENCE_STUDIO.md). Domain-sensitive —
     // Gallery cards show ownership + usage; Nursery cards deliberately
@@ -3296,20 +3305,20 @@
             card.appendChild(desc);
         }
 
-        const attachmentLabel = exp.attachment === 'free' ? 'Free' : 'Attached';
+        const hostedByLabel = _hostedByLabel(exp);
         const meta = document.createElement('div');
         meta.className = 'wb-experience-card-meta';
         if (domain === 'gallery') {
             const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
-            meta.textContent = type.label + ' · ' + attachmentLabel + ' · ' + lifecycleInfo.icon + ' ' + lifecycleInfo.label;
+            meta.textContent = type.label + ' · Hosted by ' + hostedByLabel + ' · ' + lifecycleInfo.icon + ' ' + lifecycleInfo.label;
         } else {
-            meta.textContent = type.label + ' · ' + attachmentLabel;
+            meta.textContent = type.label + ' · Hosted by ' + hostedByLabel;
         }
         card.appendChild(meta);
 
         // Usage is a Gallery-only concept (Canon: ownership/usage don't
-        // exist yet for a Nurturing idea) — real attachment counts, per
-        // Milestone 3's Usage Explorer.
+        // exist yet for a Nurturing idea) — real Hosted-By usage counts,
+        // per Milestone 3's Usage Explorer.
         if (domain === 'gallery') {
             const count = window.ProjectModel.usageOf(currentProject, exp.id).length;
             const usage = document.createElement('div');
@@ -3347,17 +3356,17 @@
 
     // ---------- Experience Inspector (Builder V3 Milestone 3) ----------
     // Same Context Inspector philosophy as every other selectable object
-    // (Blueprint §6.1) — no dedicated Experience workspace. Attached
-    // Experiences show only identity + Properties (bounds/clipping are
-    // inherited from the Host, never edited here); Free Experiences also
-    // expose Position/Rotation/Scale plus "Adjust in Scene," reusing
-    // Working View exactly like every other Free/Scene-level object
-    // already does (Blueprint §9's own drag-to-reposition).
+    // (Blueprint §6.1) — no dedicated Experience workspace. A Place-
+    // hosted Experience shows only identity + Properties (bounds/
+    // clipping are inherited from its Host, never edited here); a Free
+    // Experience also exposes Position/Rotation/Scale plus "Adjust in
+    // Scene," reusing Working View exactly like every other Free/Scene-
+    // level object already does (Blueprint §9's own drag-to-reposition).
 
     function _renderExperienceInspector(exp) {
         const type = window.ExperienceSchema.findType(exp.type);
         const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
-        _heading('Experience — ' + exp.name, type.label + ' · ' + (exp.attachment === 'free' ? 'Free' : 'Attached'), null);
+        _heading('Experience — ' + exp.name, type.label + ' · Hosted by ' + _hostedByLabel(exp), null);
 
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
@@ -3407,8 +3416,9 @@
     // Decoration/Text authoring surfaces already use (js/services/
     // experienceSchema.js's defaultProperties), so editing here and
     // editing the old surface would never disagree about what a field
-    // means. Every edit re-syncs any live attachment immediately
-    // (updateExperienceProperty → _syncExperienceAttachments).
+    // means. Every edit re-syncs any live Hosting immediately
+    // (updateExperienceProperty → _syncExperienceAttachments, the
+    // Engine Adapter).
     function _renderExperienceProperties(exp, type) {
         const props = exp.properties || {};
         const heading = document.createElement('h3');
@@ -3463,10 +3473,14 @@
             field('color', 'Colour', _colorInput(props.color, onProp('color')));
         }
 
-        if (!type.renders.attached && !type.renders.free) {
-            contextPanel.appendChild(_fieldHelp('Engine V2 doesn’t have a way to paint ' + type.label + ' yet — this Experience can be authored and attached, but won’t appear on the page until a future Builder release adds that.'));
-        } else if (exp.attachment === 'attached' && !type.renders.attached) {
-            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when Attached to a Place yet (Engine V2 has no Place-level Layers today) — try Free instead.'));
+        if (!type.renders.place && !type.renders.scene && !type.renders.free) {
+            contextPanel.appendChild(_fieldHelp(type.label + ' can be authored and hosted, but doesn’t appear on the page yet — that\'s coming in a future Builder release.'));
+        } else if (exp.hostedBy === 'place' && !type.renders.place) {
+            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when hosted by a Place yet — try Scene or Free instead.'));
+        } else if (exp.hostedBy === 'scene' && !type.renders.scene) {
+            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when hosted by a Scene yet — try Free instead.'));
+        } else if (exp.hostedBy === 'free' && !type.renders.free) {
+            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when Free yet — try Place or Scene instead.'));
         }
     }
 
@@ -3568,16 +3582,16 @@
         });
     }
 
-    // Attach / Reuse (Milestone 3) — a Personal Experience may only
-    // attach within its own scopeSceneId ("belongs to one Scene only");
-    // a Public Experience may attach to any compatible Host. This same
-    // control is what makes an Inspector opened from the Gallery double
-    // as "Reuse Existing" — there is no separate reuse mechanism.
+    // Host / Reuse (Milestone 3) — a Personal Experience may only host
+    // within its own scopeSceneId ("belongs to one Scene only"); a
+    // Public Experience may host wherever compatible. This same control
+    // is what makes an Inspector opened from the Gallery double as
+    // "Reuse Existing" — there is no separate reuse mechanism.
     function _renderExperienceAttachPicker(exp, type) {
         const heading = document.createElement('h3');
         heading.className = 'wb-context-subheading';
         heading.style.marginTop = '14px';
-        heading.textContent = 'Attach';
+        heading.textContent = 'Host Here';
         contextPanel.appendChild(heading);
 
         const allScenes = window.ProjectModel.scenes(currentProject);
@@ -3585,7 +3599,7 @@
             ? allScenes.filter(function (s) { return s.id === exp.scopeSceneId; })
             : allScenes;
         if (!scenes.length) {
-            contextPanel.appendChild(_fieldHelp('No Scenes available to attach to.'));
+            contextPanel.appendChild(_fieldHelp('No Scenes available to host in.'));
             return;
         }
 
@@ -3600,18 +3614,18 @@
         const placeSelect = document.createElement('select');
         placeSelect.className = 'wb-field-select';
         _populatePlaceOptions(placeSelect, selectedSceneId);
-        if (exp.attachment === 'attached') {
+        if (exp.hostedBy === 'place') {
             contextPanel.appendChild(_buildFieldGroup('Place', placeSelect));
         }
 
         const attachBtn = document.createElement('button');
         attachBtn.type = 'button';
         attachBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-        attachBtn.textContent = '📎 Attach Here';
+        attachBtn.textContent = '📎 Host Here';
         attachBtn.addEventListener('click', function () {
-            const placeId = exp.attachment === 'attached' ? placeSelect.value : null;
+            const placeId = exp.hostedBy === 'place' ? placeSelect.value : null;
             const ok = window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: selectedSceneId, placeId: placeId });
-            if (!ok) { window.alert('Could not attach — check this Experience’s ownership scope.'); return; }
+            if (!ok) { window.alert('Could not host here — check this Experience’s ownership scope.'); return; }
             _persist();
             _redrawSceneCanvases(selectedSceneId);
             _renderContextPanel();
@@ -3652,7 +3666,7 @@
         contextPanel.appendChild(heading);
 
         if (opts.attachedExperience) {
-            contextPanel.appendChild(_fieldHelp('Attached: ' + opts.attachedExperience.name));
+            contextPanel.appendChild(_fieldHelp('Hosting: ' + opts.attachedExperience.name));
             const openBtn = document.createElement('button');
             openBtn.type = 'button';
             openBtn.className = 'wb-workspace-btn';
@@ -3716,7 +3730,7 @@
             const exp = window.ProjectModel.addExperience(currentProject, {
                 name: name.trim() || opts.defaultName,
                 type: opts.compatibleType,
-                attachment: target.placeId ? 'attached' : 'free'
+                hostedBy: target.placeId ? 'place' : 'free'
             });
             window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
             window.ProjectModel.attachExperience(currentProject, exp.id, target);
@@ -3769,8 +3783,8 @@
     }
 
     // Placeholder creation flow only (Milestone 2's own scope): Name,
-    // Type, Intended Attachment, Description. Always born Nurturing
-    // (Canon Decision #2) — no Inspector, no Graduation here.
+    // Type, Hosted By, Description. Always born Nurturing (Canon
+    // Decision #2) — no Inspector, no Graduation here.
     function _renderExperienceCreateForm() {
         const wrap = document.createElement('div');
         wrap.className = 'wb-field-group';
@@ -3779,13 +3793,13 @@
         const draft = {
             name: '',
             type: window.ExperienceSchema.EXPERIENCE_TYPES[0].value,
-            attachment: window.ExperienceSchema.EXPERIENCE_ATTACHMENTS[0].value,
+            hostedBy: window.ExperienceSchema.EXPERIENCE_HOSTS[0].value,
             description: ''
         };
 
         wrap.appendChild(_buildFieldGroup('Name', _textInput(draft.name, function (v) { draft.name = v; })));
         wrap.appendChild(_buildFieldGroup('Type', _select(window.ExperienceSchema.EXPERIENCE_TYPES, draft.type, function (v) { draft.type = v; })));
-        wrap.appendChild(_buildFieldGroup('Intended Attachment', _select(window.ExperienceSchema.EXPERIENCE_ATTACHMENTS, draft.attachment, function (v) { draft.attachment = v; })));
+        wrap.appendChild(_buildFieldGroup('Hosted By', _select(window.ExperienceSchema.EXPERIENCE_HOSTS, draft.hostedBy, function (v) { draft.hostedBy = v; })));
         wrap.appendChild(_buildFieldGroup('Description', _textarea(draft.description, function (v) { draft.description = v; })));
 
         const actions = document.createElement('div');
@@ -3799,7 +3813,7 @@
             window.ProjectModel.addExperience(currentProject, {
                 name: draft.name.trim() || 'New Experience',
                 type: draft.type,
-                attachment: draft.attachment,
+                hostedBy: draft.hostedBy,
                 description: draft.description.trim()
             });
             experienceCreateFormOpen = false;

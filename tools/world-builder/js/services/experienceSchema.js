@@ -1,5 +1,5 @@
-// js/services/experienceSchema.js — Builder V3 Milestone 2. The small,
-// open vocabulary for Experiences: a Builder-only authoring concept
+// js/services/experienceSchema.js — Builder V3. The small, open
+// vocabulary for Experiences: a Builder-only authoring concept
 // (docs/BUILDER_V3_EXPERIENCE_STUDIO.md, docs/BUILDER_V2_EXPERIENCE_CANON.md)
 // that enriches Foundation (a Scene or a Place) without ever being owned
 // by either — ownership always belongs to the Theme. This is
@@ -13,36 +13,43 @@
 // this list. Frame is one entry among many, never a hardcoded shape of
 // its own (Milestone 2's own explicit instruction: "Do not build around
 // Frames. Frames should become one Experience type.").
+//
+// Canon Alignment Sprint: "Attachment" (a two-way Attached/Free split)
+// is replaced by "Hosted By" (Place / Scene / Free) — the product
+// model's own vocabulary for where an Experience lives, independent of
+// how any particular engine happens to implement that hosting. Whether
+// and how a hosted Experience actually paints is an Engine Adapter
+// concern (see projectModel.js's _syncExperienceAttachments) — this
+// schema only records what the author intended.
 const ExperienceSchema = (function () {
     'use strict';
 
-    // `renders` discloses honestly, per type, which Attachment mode (if
-    // any) Engine V2 can actually paint today — Milestone 3's own
-    // "stop and document gaps" finding, not a limitation invented here.
-    // Frame projects onto a Place's existing single Frame slot
-    // (Engine Canon §9's Frame Resolution); Decoration/Text project onto
-    // a Scene's existing Layer array (Engine Canon §7) when Free. There
-    // is no Holder Layer mechanism yet (Scene Model §7, still an open
-    // question) for anything to attach to a Place *except* Frame — so
-    // "attached" Decoration/Text/Atmosphere/Lighting, and any Attachment
-    // for Atmosphere/Lighting at all, record real Usage but paint
-    // nothing yet. This is disclosed to the Theme Author directly
-    // (worldBuilderApp.js's Inspector), never silently pretended.
+    // `renders` discloses honestly, per type, which Hosted-By mode (if
+    // any) the current Engine Adapter can actually paint today —
+    // Milestone 3's own "stop and document gaps" finding, not a
+    // limitation invented here. This is Engine Adapter metadata riding
+    // on a product field: it tells the Inspector what to disclose, but
+    // the Hosted-By choice itself remains a product concept regardless
+    // of what any engine can currently do with it (Canon Alignment
+    // Objective 3 — the field's purpose here is honest disclosure, not
+    // engine capability control).
     const EXPERIENCE_TYPES = [
-        { value: 'frame', label: 'Frame', icon: '🖼️', renders: { attached: true, free: false } },
-        { value: 'decoration', label: 'Decoration', icon: '✨', renders: { attached: false, free: true } },
-        { value: 'text', label: 'Text', icon: '✍️', renders: { attached: false, free: true } },
-        { value: 'atmosphere', label: 'Atmosphere', icon: '🌫️', renders: { attached: false, free: false } },
-        { value: 'lighting', label: 'Lighting', icon: '💡', renders: { attached: false, free: false } },
-        { value: 'text-style', label: 'Text Style', icon: '🔤', renders: { attached: false, free: false } }
+        { value: 'frame', label: 'Frame', icon: '🖼️', renders: { place: true, scene: false, free: false } },
+        { value: 'decoration', label: 'Decoration', icon: '✨', renders: { place: false, scene: true, free: true } },
+        { value: 'text', label: 'Text', icon: '✍️', renders: { place: false, scene: false, free: true } },
+        { value: 'atmosphere', label: 'Atmosphere', icon: '🌫️', renders: { place: false, scene: false, free: false } },
+        { value: 'lighting', label: 'Lighting', icon: '💡', renders: { place: false, scene: false, free: false } },
+        { value: 'text-style', label: 'Text Style', icon: '🔤', renders: { place: false, scene: false, free: false } }
     ];
 
-    // Attachment (Attached/Free) is independent of Lifecycle/Ownership —
-    // this is the *intended* attachment kind, chosen at creation time,
-    // before any real placement exists (Milestone 3).
-    const EXPERIENCE_ATTACHMENTS = [
-        { value: 'attached', label: 'Attached — lives inside a Place' },
-        { value: 'free', label: 'Free — roams a Scene' }
+    // Hosted By is independent of Lifecycle/Ownership — this is the
+    // *intended* hosting, chosen at creation time, before any real
+    // placement exists (Milestone 3), and later exercised for real by
+    // Attach/Reuse Existing.
+    const EXPERIENCE_HOSTS = [
+        { value: 'place', label: 'A Place — lives inside one Place' },
+        { value: 'scene', label: 'A Scene — fills the whole Scene' },
+        { value: 'free', label: 'Free — roams a Scene on its own' }
     ];
 
     const LIFECYCLE_LABELS = {
@@ -81,22 +88,23 @@ const ExperienceSchema = (function () {
         }
     }
 
-    // Whether `type` can actually be painted by Engine V2 today when
-    // attached the given way (`'attached'` or `'free'`) — see the
-    // EXPERIENCE_TYPES comment above for why this isn't uniformly true.
-    function rendersWhenAttached(type, attachment) {
+    // Whether `type` can actually be painted by the current Engine
+    // Adapter today when hosted the given way (`'place'`, `'scene'`, or
+    // `'free'`) — see the EXPERIENCE_TYPES comment above for why this
+    // isn't uniformly true.
+    function rendersWhenHosted(type, hostedBy) {
         const t = findType(type);
-        return !!(t.renders && t.renders[attachment]);
+        return !!(t.renders && t.renders[hostedBy]);
     }
 
     return {
         EXPERIENCE_TYPES: EXPERIENCE_TYPES,
-        EXPERIENCE_ATTACHMENTS: EXPERIENCE_ATTACHMENTS,
+        EXPERIENCE_HOSTS: EXPERIENCE_HOSTS,
         LIFECYCLE_LABELS: LIFECYCLE_LABELS,
         findType: findType,
         lifecycleInfo: lifecycleInfo,
         defaultProperties: defaultProperties,
-        rendersWhenAttached: rendersWhenAttached
+        rendersWhenHosted: rendersWhenHosted
     };
 })();
 try { window.ExperienceSchema = ExperienceSchema; } catch (e) {}

@@ -149,6 +149,47 @@ graduation workflow this replaces the old promotion ladder with.
 
 ---
 
+## Part 2.1 — Canon Alignment Addendum: Hosted By supersedes Attachment
+
+Added by the Builder V3 Canon Alignment Sprint (Change History v1.2).
+Implementation work on Milestone 3 exposed a real product-model gap: the
+paper design's binary **Attachment** axis (Attached/Free) only had a
+name for "lives inside a Place" and "roams a Scene independently" — it
+had no way to say "fills the whole Scene" (a full-bleed background, for
+instance), even though that is a third, equally real way an Experience
+can live in the world. The frozen Canon Alignment product model
+resolves this with a three-way **Hosted By** axis: **Place**, **Scene**,
+or **Free**. This is a strict superset, not a redefinition — every
+Experience that was "Attached" under the old model is "Hosted by
+Place" under this one; every Experience that was "Free" stays "Free."
+Nothing that could be expressed before stops being expressible.
+
+**Read every other Part of this document's "Attachment"/"Attached"/
+"Free" language as this table:**
+
+| This document says (v1.0/v1.1) | Read it as (v1.2+) |
+|---|---|
+| Attachment (Attached/Free) | Hosted By (Place/Scene/Free) |
+| "Attached" | "Hosted by Place" |
+| "Free" | "Hosted by Free" (unchanged in meaning) |
+| (no equivalent existed) | "Hosted by Scene" (new) |
+| "Attach" (the verb/action) | "Host" |
+| Attach/Reuse picker, "Attach Here" | Host/Reuse picker, "Host Here" |
+
+This is a terminology and vocabulary change only — the Lifecycle model
+(Part 2), the Card (Part 4), the Inspector (Part 5), Graduation (Part
+6), Reuse (Part 7), Contextual Authoring (Part 8), and Usage (Part 9)
+are otherwise unchanged in shape and behavior; only the word
+"Attachment" in each of those Parts should be read through this table
+rather than taken as the current, canonical name. See
+`docs/BUILDER_V3_CANON_ALIGNMENT_REPORT.md` for the full audit this
+addendum summarizes, including which Experience Types can actually
+render under each Hosted-By mode today (an Engine Adapter capability
+question, not a product-model one — see that report's Engine Adapter
+Concepts section).
+
+---
+
 ## Part 3 — Experience Organization & Experience Home
 
 **Two zones, not one list**, discovered necessary during paper-walking
@@ -662,8 +703,13 @@ the Place question, not on anything else in this document.**
   document still cannot close on its own; its Visibility (Public/Private)
   axis is superseded outright by this document's Lifecycle model.
 - `docs/BUILDER_V2_EXPERIENCE_CANON.md` — the ownership/philosophy model
-  (Attachment, Ownership belongs to the Theme) this document assumes
-  unchanged throughout.
+  (Hosting, Ownership belongs to the Theme) this document assumes
+  unchanged throughout; see Part 2.1 for the Attachment→Hosted By
+  terminology supersession.
+- `docs/BUILDER_V3_CANON_ALIGNMENT_REPORT.md` — the Canon Alignment
+  Sprint's full audit (confirmed product concepts, isolated Engine
+  Adapter concepts, resolved inconsistencies, open questions) that
+  produced Part 2.1 and the Hosted By rename.
 - `docs/ENGINE_V2_CANON.md` / `docs/ENGINE_V2_SCENE_MODEL.md` — untouched;
   no Engine or Scene Model implication introduced by the Lifecycle model,
   which is Builder-only bookkeeping (a state label on an Experience, not
@@ -704,3 +750,28 @@ the Place question, not on anything else in this document.**
   (Experience terminology only). One new, low-stakes open question
   (Hidden vs. Archived) recorded, not resolved. Not implemented; pending
   review and approval before any development work begins.
+- v1.2 — Amended per the Builder V3 Canon Alignment Sprint (Product
+  Model Purification). Implementation of Milestone 3 exposed that the
+  binary Attachment axis (Attached/Free) couldn't express "fills the
+  whole Scene" (e.g. a full-bleed background), only "lives inside a
+  Place" and "roams a Scene independently" — a real product-model gap,
+  not a Builder bug. Resolved by the frozen three-way **Hosted By**
+  axis (Place/Scene/Free), added as Part 2.1 rather than by silently
+  rewriting Parts 2/4/5/7/8/9's existing "Attachment" language in place
+  (Part 2.1 is the authoritative translation table). Implemented:
+  `js/services/experienceSchema.js`'s `EXPERIENCE_ATTACHMENTS` →
+  `EXPERIENCE_HOSTS` (place/scene/free) and `rendersWhenAttached` →
+  `rendersWhenHosted`; `js/projectModel.js`'s `exp.attachment` →
+  `exp.hostedBy` (lossless migration: old `'attached'` → `'place'`,
+  old `'free'` → `'free'`); "Hosted by Scene" for a Decoration Type
+  projects onto the pre-existing full-bleed background fill mechanism
+  (`setSceneBackground`), not a new Engine capability. Two confirmed
+  author-facing "Engine V2" wording leaks in the Inspector's disclosure
+  notes were rewritten in plain product language. See
+  `docs/BUILDER_V3_CANON_ALIGNMENT_REPORT.md` for the full audit,
+  including the Experience Type field's documented purpose split
+  (product vs. Engine Adapter) and the Engine Adapter boundary
+  identification (`_syncExperienceAttachments`). No new capability
+  added; no Experience feature work resumed — this sprint was
+  conceptual clarity only, per its own explicit "pause feature
+  development" instruction.

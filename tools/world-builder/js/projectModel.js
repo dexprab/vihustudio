@@ -682,8 +682,8 @@ const ProjectModel = (function () {
     // *type* among an open, extensible vocabulary
     // (js/services/experienceSchema.js's EXPERIENCE_TYPES), never a
     // hardcoded shape of its own. Milestone 2 scope only: every
-    // Experience is created Nurturing (Canon Decision #2) with no
-    // attachment and no Graduation yet — `host`/`scopeSceneId` exist on
+    // Experience is created Nurturing (Canon Decision #2) with no real
+    // Hosting and no Graduation yet — `host`/`scopeSceneId` exist on
     // the shape now so Milestone 3 has somewhere to write, but nothing
     // in this milestone sets them to anything but null.
     // ---------------------------------------------------------------
@@ -706,17 +706,20 @@ const ProjectModel = (function () {
     // Read-time reconciliation for a project saved before a given field
     // existed — the same pattern `_ensureHolderDefaults`/`_ensureStack`
     // already use, so an older project never crashes and never needs an
-    // explicit migration step. Milestone 3 replaces the Milestone 2
+    // explicit migration step. Milestone 3 replaced the Milestone 2
     // placeholder singular `host` with a real `attachments` array (a
-    // Public Experience may attach to many Hosts at once) — an existing
-    // Milestone-2-era Experience's `host` was always null in practice
-    // (Milestone 2 shipped no attachment workflow at all), so this is a
-    // safe, lossless migration, not a destructive one.
+    // Public Experience may attach to many Hosts at once); the Canon
+    // Alignment Sprint replaces the two-way `attachment` field
+    // ('attached'/'free') with the product model's own three-way
+    // `hostedBy` ('place'/'scene'/'free') — an old 'attached' record
+    // means "hosted by a Place" (that was the only real Place-hosting
+    // this Builder ever offered), so the migration is lossless.
     function _ensureExperienceDefaults(exp) {
         if (!exp) return exp;
         if (typeof exp.description !== 'string') exp.description = '';
         if (!exp.type) exp.type = (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value) || 'frame';
-        if (!exp.attachment) exp.attachment = 'attached';
+        if (!exp.hostedBy) exp.hostedBy = (exp.attachment === 'attached') ? 'place' : (exp.attachment || 'free');
+        delete exp.attachment;
         if (!exp.lifecycle) exp.lifecycle = 'nurturing';
         if (exp.scopeSceneId === undefined) exp.scopeSceneId = null;
         if (!Array.isArray(exp.attachments)) {
@@ -748,7 +751,7 @@ const ProjectModel = (function () {
             name: spec.name || 'New Experience',
             description: spec.description || '',
             type: type,
-            attachment: spec.attachment,
+            hostedBy: spec.hostedBy,
             lifecycle: 'nurturing',
             scopeSceneId: null,
             attachments: [],
@@ -822,14 +825,22 @@ const ProjectModel = (function () {
     }
 
     // ---------------------------------------------------------------
-    // Attachment (Builder V3 Milestone 3) — real Usage, real rendering
-    // where an existing Engine V2 mechanism already exists to project
-    // onto (js/services/experienceSchema.js's `rendersWhenAttached`
-    // documents exactly which type+attachment combinations that is).
-    // A Nurturing Experience can never attach (Canon: "cannot yet be
-    // attached"); a Personal Experience may only attach within its own
-    // `scopeSceneId` ("belongs to one Scene only"); a Public Experience
-    // may attach to any compatible Host.
+    // Hosting (Builder V3 Milestone 3, renamed from "Attachment" by the
+    // Canon Alignment Sprint) — real Usage, real rendering wherever the
+    // Engine Adapter already has a mechanism to project onto
+    // (js/services/experienceSchema.js's `rendersWhenHosted` documents
+    // exactly which type+Hosted-By combinations that is today). A
+    // Nurturing Experience can never be hosted for real (Canon: "cannot
+    // yet be attached"); a Personal Experience may only host within its
+    // own `scopeSceneId` ("belongs to one Scene only"); a Public
+    // Experience may host wherever compatible.
+    //
+    // Each real usage entry is still `{sceneId, placeId}` — placeId set
+    // means "lives inside this one Place," placeId null means the
+    // Experience's own `hostedBy` ('scene' or 'free') decides whether it
+    // fills the whole Scene or roams it independently; see
+    // _syncExperienceAttachments below, the Engine Adapter boundary
+    // where that product distinction is translated into a real render.
     // ---------------------------------------------------------------
 
     function _sameAttachment(a, b) {
@@ -876,22 +887,40 @@ const ProjectModel = (function () {
         });
     }
 
-    // The mirroring bridge — a compatibility shortcut into the existing,
-    // unmodified Engine V2 rendering mechanisms (a Place's `frame` slot;
-    // a Scene's `layers` array), never a change to js/services/engineRuntime.js
-    // or the Scene Model itself. Re-synced on every attach and on every
-    // property edit so an Experience's Inspector is the single place a
-    // Theme Author edits its look, regardless of how many Hosts use it.
+    // The Engine Adapter — the one place a Builder-facing Experience
+    // (Hosted By Place/Scene/Free) is projected into Engine V2's own,
+    // unmodified rendering mechanisms (a Place's `frame` slot; a
+    // Scene's full-bleed background fill Layer; a Scene's ordinary
+    // `layers` array), never a change to js/services/engineRuntime.js
+    // or the Scene Model itself (Canon Alignment Objective 5 —
+    // Experience ↓ Frame ↓ Scene Layer ↓ Runtime is this function's own
+    // chain, and it alone should ever know that chain exists). Re-synced
+    // on every host and on every property edit so an Experience's
+    // Inspector is the single place a Theme Author edits its look,
+    // regardless of how many Hosts use it.
     function _syncExperienceAttachments(project, experience) {
         if (!window.ExperienceSchema) return;
         experience.attachments.forEach(function (a) {
-            const attachment = a.placeId ? 'attached' : 'free';
-            if (!window.ExperienceSchema.rendersWhenAttached(experience.type, attachment)) return;
-            if (experience.type === 'frame' && a.placeId) {
-                _mirrorFrame(project, experience);
-                updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
-            } else if ((experience.type === 'decoration' || experience.type === 'text') && !a.placeId) {
-                _mirrorSceneLayer(project, a.sceneId, experience);
+            if (a.placeId) {
+                // Hosted by a Place.
+                if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'place')) return;
+                if (experience.type === 'frame') {
+                    _mirrorFrame(project, experience);
+                    updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
+                }
+            } else if (experience.hostedBy === 'scene') {
+                // Hosted by the Scene itself — projects onto the Scene's
+                // existing full-bleed background fill mechanism, not a
+                // new Engine capability.
+                if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'scene')) return;
+                const color = (experience.properties && experience.properties.color) || '#F4F1EC';
+                setSceneBackground(project, a.sceneId, color);
+            } else {
+                // Free — roams the Scene as its own independent Layer.
+                if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'free')) return;
+                if (experience.type === 'decoration' || experience.type === 'text') {
+                    _mirrorSceneLayer(project, a.sceneId, experience);
+                }
             }
         });
     }
