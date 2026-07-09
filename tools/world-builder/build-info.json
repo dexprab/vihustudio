@@ -5,6 +5,6 @@
   "slice": "Frame field-set reconciliation (background/frame/paper), Layer target:element now renders, compiled assets map preserved through import + ThemeRegistry.getAsset() — see docs/THEME_CONTRACT.md",
   "build": "0037",
   "buildDate": "2026-07-09",
-  "commit": "pending",
+  "commit": "b83168a",
   "environment": "Release"
 }
