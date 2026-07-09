@@ -653,6 +653,39 @@ const ThemeRegistry=(function(){
     });
   }
 
+  // ---------- Supabase-backed repository discovery (Platform
+  // Hardening Sprint — Repository Architecture Transition) ----------
+  // Registers Official + Personal Supabase-backed themes into the
+  // exact same _registry/_setImported mechanism every other theme
+  // already goes through — Studio's own consumption code
+  // (list/getCatalog/get/getAsset) needs zero changes to see them,
+  // per that sprint's own "Studio should never know where a theme
+  // originated" goal. Deliberately does NOT call _persistImported():
+  // Supabase is the source of truth for these, refetched fresh on
+  // every boot, not shadow-cached into localStorage too — the whole
+  // point of this sprint is replacing local persistence, not
+  // duplicating it. A theme imported the old way (file upload) still
+  // persists to localStorage exactly as before; the two paths stay
+  // cleanly separate. Never throws — a misconfigured or unreachable
+  // Supabase project is a normal, silent no-op, matching every other
+  // ThemeRepositoryClient failure mode.
+  function refreshFromRepository(){
+    if(typeof window.ThemeRepositoryClient==='undefined') return Promise.resolve(false);
+    return window.ThemeRepositoryClient.discover().then(function(repos){
+      return Promise.all(repos.map(function(repo){
+        return window.ThemeRepositoryClient.list(repo.id).then(function(entries){
+          return Promise.all(entries.map(function(entry){
+            return window.ThemeRepositoryClient.load(repo.id,entry.theme_id).then(function(pkg){
+              const problems=validatePackage(pkg);
+              if(problems.length>0) return; // silently skip, never crash boot
+              _setImported(_normalizeManifest(pkg.manifest),pkg.theme,pkg.assets);
+            }).catch(function(){}); // one broken theme never blocks the rest
+          }));
+        }).catch(function(){});
+      }));
+    }).then(function(){ return true; }).catch(function(){ return false; });
+  }
+
   // Self-initializing, same convention as storyDestinations.js's
   // REGISTRY — no separate init step required by ThemeEngine or
   // anything else that loads after this script.
@@ -672,7 +705,8 @@ const ThemeRegistry=(function(){
     getCatalog:getCatalog,
     validatePackage:validatePackage,
     registerOfficial:registerOfficial,
-    importPackage:importPackage
+    importPackage:importPackage,
+    refreshFromRepository:refreshFromRepository
   };
   try{ window.ThemeRegistry=api; }catch(e){}
   return api;

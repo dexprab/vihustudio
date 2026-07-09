@@ -6174,31 +6174,46 @@
             resultBox.appendChild(div);
         }
 
-        // Publish to Official Themes — operates ONLY on the Build
-        // output (never project.files), and installs it through the
-        // exact same ThemeRegistry.importPackage() a real "Import
-        // Theme" click uses (unmodified — no privileged pipeline, per
-        // the Import Parity rule). Builder and Runtime share one
-        // origin, so ThemeRegistry's own existing localStorage
-        // persistence (_persistImported/_loadImported) is what "Runtime
-        // automatically discovers the updated package" means here —
-        // opening VihuStudio next shows it immediately, with no
-        // re-import step.
-        async function publishToOfficialThemes() {
-            if (typeof window.ThemeRegistry === 'undefined') {
-                showResult('fail', '⚠️ ThemeRegistry is not available in this environment.');
+        // Publish to Official Themes / Publish to My Themes — Platform
+        // Hardening Sprint (Repository Architecture Transition, Supabase
+        // MEP). Both operate ONLY on the Build output (never
+        // project.files, unchanged from before this sprint), but now
+        // install it into the Supabase-backed repository
+        // (js/themeRepositoryClient.js) instead of ThemeRegistry's
+        // localStorage — "replace only the storage layer," per this
+        // sprint's own instruction. VihuStudio discovers either kind
+        // the next time it boots, via ThemeRegistry.refreshFromRepository()
+        // (js/app.js's session bootstrap already awaits this once,
+        // before Creation Flow's first paint) — no re-import step,
+        // same promise the old localStorage path made, now backed by a
+        // real repository instead of same-origin localStorage sharing.
+        async function _publishToRepository(repositoryId, label) {
+            if (typeof window.ThemeRepositoryClient === 'undefined') {
+                showResult('fail', '⚠️ The repository client is not available in this environment.');
                 return;
             }
-            const pkg = await _lastBuiltPackage(project);
-            const result = window.ThemeRegistry.importPackage(pkg, { onDuplicate: 'replace' });
-            if (result.ok) {
-                showResult('pass', '✓ Published "' + result.manifest.name + '" — VihuStudio will discover it automatically the next time it loads (existing versions replaced).');
-            } else if (result.problems) {
-                showResult('fail', '⚠️ The built package failed registration: ' + result.problems.join('; '));
-            } else {
-                showResult('fail', '⚠️ Could not publish — try Building again.');
+            const configured = await window.ThemeRepositoryClient.isConfigured();
+            if (!configured) {
+                showResult('fail', '⚠️ Supabase is not configured — see supabase-config.example.json.');
+                return;
+            }
+            showResult('pending', 'Publishing…');
+            try {
+                const pkg = await _lastBuiltPackage(project);
+                const result = await window.ThemeRepositoryClient.publish(repositoryId, {
+                    manifest: pkg.manifest, theme: pkg.theme, assetsRaw: pkg.assets
+                });
+                if (result && result.ok) {
+                    showResult('pass', '✓ Published "' + pkg.manifest.name + '" to ' + label + ' — VihuStudio will discover it automatically the next time it loads.');
+                } else {
+                    showResult('fail', '⚠️ Could not publish — try Building again.');
+                }
+            } catch (e) {
+                showResult('fail', '⚠️ Publish failed: ' + ((e && e.message) || 'unknown error'));
             }
         }
+        function publishToOfficialThemes() { return _publishToRepository('official', 'Official Themes'); }
+        function publishToMyThemes() { return _publishToRepository('personal', 'My Themes'); }
 
         const options = [
             {
@@ -6210,8 +6225,12 @@
                 action: null
             },
             {
-                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs the built package where VihuStudio will find it, replacing any existing version. Uses only the .vtheme Build produced — never this Project\'s editable files.',
+                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs the built package into the Official Theme Repository — visible to every VihuStudio reader. Uses only the .vtheme Build produced — never this Project\'s editable files.',
                 action: publishToOfficialThemes
+            },
+            {
+                icon: '📁', title: 'Publish to My Themes', note: 'Installs the built package into your own Personal Theme Repository — visible only to you, in this browser. Uses only the .vtheme Build produced — never this Project\'s editable files.',
+                action: publishToMyThemes
             }
         ];
 

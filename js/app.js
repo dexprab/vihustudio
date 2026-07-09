@@ -1303,8 +1303,31 @@ function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden
 // (Creation Type -> Theme -> Representation) instead of sitting on the
 // hardcoded default AppState. Restoring a saved session is unchanged —
 // it goes straight to the editor exactly as before.
+//
+// Repository Architecture Transition (Supabase MEP) — Creation Flow's
+// Screen 2 reads whatever ThemeRegistry.list()/getCatalog() already
+// has registered at the moment it renders; a Supabase-backed theme
+// only exists there once ThemeRegistry.refreshFromRepository() (a real
+// network round trip) resolves. Awaiting it here, once, before the
+// wizard's first paint, is the small, contained way to make that
+// registration race-free without adding any reactive re-render
+// machinery to CreationFlow itself (out of this sprint's "no new
+// Studio capabilities" scope). A short timeout keeps a slow/unreachable
+// Supabase project from blocking the app open — Studio boots exactly
+// as it always has either way, just possibly without those themes yet.
+function _refreshRepositoryWithTimeout(){
+  if(typeof ThemeRegistry==='undefined' || typeof ThemeRegistry.refreshFromRepository!=='function'){
+    return Promise.resolve();
+  }
+  return Promise.race([
+    ThemeRegistry.refreshFromRepository().catch(function(){}),
+    new Promise(function(resolve){ setTimeout(resolve,4000); })
+  ]);
+}
 function _startCreationFlow(){
-  if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+  _refreshRepositoryWithTimeout().then(function(){
+    if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+  });
 }
 (function bootstrapSession(){
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }

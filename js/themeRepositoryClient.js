@@ -27,7 +27,17 @@ const ThemeRepositoryClient = (function () {
   'use strict';
 
   const SUPABASE_ESM_URL = 'https://esm.sh/@supabase/supabase-js@2';
-  const CONFIG_URL = 'supabase-config.json';
+  // Resolved relative to this script's own file (js/themeRepositoryClient.js
+  // sits one folder below the project root, where supabase-config.json
+  // lives) rather than the page that loaded it — a bare relative path
+  // would otherwise resolve differently for index.html (project root)
+  // vs. tools/world-builder/index.html (two folders deeper), silently
+  // 404ing for the Builder and making it look "not configured" even with
+  // a real config file in place.
+  const CONFIG_URL = (function () {
+    const scriptEl = document.currentScript;
+    return scriptEl ? new URL('../supabase-config.json', scriptEl.src).href : 'supabase-config.json';
+  })();
   const ASSET_BUCKET = 'theme-assets';
   const OFFICIAL_OWNER_SEGMENT = '_official';
   // Postgres treats every NULL as distinct for uniqueness purposes, so
@@ -108,12 +118,16 @@ const ThemeRepositoryClient = (function () {
   function list(repositoryId) {
     return _getClient().then(function (client) {
       return _authIfPersonal(repositoryId).then(function (session) {
-        let q = client.from('themes').select('theme_id,name,version,manifest').eq('repository', repositoryId);
+        // Selecting the full manifest (rather than denormalized name/
+        // version columns the simplified schema deliberately doesn't
+        // have — see supabase/schema.sql's own header note) keeps this
+        // a listing, not a load: theme/assets are still left out.
+        let q = client.from('themes').select('theme_id,manifest').eq('repository', repositoryId);
         if (repositoryId === 'personal') q = q.eq('owner_id', session.user.id);
         return q.then(function (res) {
           if (res.error) throw res.error;
           return (res.data || []).map(function (row) {
-            return { theme_id: row.theme_id, name: row.name, version: row.version, manifest: row.manifest };
+            return { theme_id: row.theme_id, name: row.manifest && row.manifest.name, version: row.manifest && row.manifest.version, manifest: row.manifest };
           });
         });
       });
@@ -206,8 +220,6 @@ const ThemeRepositoryClient = (function () {
             repository: repositoryId,
             owner_id: ownerId,
             theme_id: themeId,
-            name: manifest.name,
-            version: manifest.version,
             manifest: manifest,
             theme: theme
           }, { onConflict: 'repository,owner_id,theme_id' }).then(function (res) {

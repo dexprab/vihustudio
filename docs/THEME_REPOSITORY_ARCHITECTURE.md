@@ -1,7 +1,9 @@
 # Theme Repository Architecture
 
 **Sprint:** Platform Hardening Sprint — Repository Architecture Transition
-(Phase 1 — Repository Foundation).
+(Phase 1 — Repository Foundation; Phases 2–4 — Publish, Registry
+refresh, and Studio boot wiring — completed in the same continued
+sprint, see §8).
 **Status:** Canonical. This document defines the repository-first
 architecture the platform is transitioning to; maintain it going forward
 the same way `docs/THEME_CONTRACT.md` is maintained for the compiled
@@ -74,17 +76,18 @@ the shape Studio already understands needs to change:
 
 ### 2.1 The Theme record (Postgres table `themes`)
 
+Trimmed to the minimum this sprint actually needs — see §9 for exactly
+what was cut from the original Phase 1 draft and why.
+
 | Column | Type | Meaning |
 |---|---|---|
 | `id` | `uuid`, PK | Surrogate key — a repository row's own identity, never exposed to Studio. |
 | `repository` | `text` | `'official'` \| `'personal'` — which repository this row belongs to. |
-| `owner_id` | `text`, not null | `''` (empty-string sentinel) for Official; the authenticated anonymous user's id (§4) for Personal. A real `NULL` is deliberately avoided here — Postgres treats every `NULL` as distinct from every other `NULL` for uniqueness purposes, which would silently defeat the `(repository, owner_id, theme_id)` uniqueness constraint below for every Official row. |
+| `owner_id` | `text`, not null, default `''` | `''` (empty-string sentinel) for Official; the authenticated anonymous user's id (§4) for Personal. A real `NULL` is deliberately avoided here — Postgres treats every `NULL` as distinct from every other `NULL` for uniqueness purposes, which would silently defeat the `(repository, owner_id, theme_id)` uniqueness constraint below for every Official row. |
 | `theme_id` | `text` | The Theme's own `manifest.id` (kebab-case, per `docs/THEME_PROJECT_SPEC.md` §10). |
-| `name` | `text` | Denormalized from `manifest.name`, for listing without decoding `manifest`. |
-| `version` | `text` | Denormalized from `manifest.version`. |
-| `manifest` | `jsonb` | The complete manifest object, exactly as `docs/VTHEME_PACKAGE_SPEC.md` §Manifest defines it. |
+| `manifest` | `jsonb` | The complete manifest object, exactly as `docs/VTHEME_PACKAGE_SPEC.md` §Manifest defines it. Name/version are read from here directly (see §9 — no denormalized columns). |
 | `theme` | `jsonb` | The complete theme object (`layouts`/`frameVariations`/`layerPack`/`representations`/`supportedCreationTypes`/etc.) — **without** embedded asset data; see §2.2. |
-| `created_at` / `updated_at` | `timestamptz` | Standard provenance. |
+| `created_at` | `timestamptz` | Standard provenance. No `updated_at`/trigger — see §9. |
 
 A unique constraint on `(repository, owner_id, theme_id)` is the real
 identity key — the same Theme id may exist once in Official and, quite
@@ -93,7 +96,10 @@ global-uniqueness requirement across repositories, since Studio always
 resolves a Theme through one specific repository, never by bare id
 alone (this is the concrete meaning of "the source becomes irrelevant"
 in §4 below — irrelevant to *how Studio renders it*, not to *how it's
-addressed*).
+addressed*). Publishing again with the same `(repository, owner_id,
+theme_id)` is an **upsert** (replace-in-place), not a new row — matching
+the existing local-import "Replace" behaviour Studio's Theme Library
+already has for a duplicate id.
 
 ### 2.2 Assets (Supabase Storage, not embedded base64)
 
@@ -196,20 +202,75 @@ migration, since the `auth.uid()` stays the same).
 
 ---
 
-## 5. What Builder does in this phase (foundation only)
+## 5. What Builder does now (Phase 2, completed)
 
-Nothing yet. Per the sprint's own Phase 1 scope ("Do not redesign
-Builder or Studio"), this phase does not change `publishToOfficialThemes()`
-or any other World Builder call site. `js/themeRepositoryClient.js`
-(§6) is added as new, standalone, uncalled code — proven correct on its
-own terms (a small manual verification script, not a Playwright
-end-to-end pass, since nothing in the product calls it yet) — so Phase
-2 has a real, working repository client to wire Publish into, rather
-than building the wiring and the backend in the same step.
+`tools/world-builder/js/worldBuilderApp.js`'s `_renderPublishPanel()`
+gained a shared `_publishToRepository(repositoryId, label)` helper.
+Both **Publish to Official Themes** and **Publish to My Themes** (a new
+4th Publish card, alongside the pre-existing Export Package and the
+still-inert Community World) call it with `'official'`/`'personal'`
+respectively. It:
+
+1. Checks `ThemeRepositoryClient.isConfigured()` — if no
+   `supabase-config.json` is present, shows a plain, disclosed
+   "Supabase is not configured" message; never a crash.
+2. Reads `project.lastBuild` (the exact `.vtheme` payload Build already
+   produced — Publish still never reads `project.files` directly,
+   preserving the Builder-owns-Projects/Runtime-owns-Packages split
+   every earlier Publish sprint established).
+3. Calls `ThemeRepositoryClient.publish(repositoryId, {manifest, theme,
+   assetsRaw})`.
+4. Shows "✓ Published … — VihuStudio will discover it automatically the
+   next time it loads." on success, or a graceful failure message
+   otherwise (network failure, not-configured, or a thrown error's own
+   message).
+
+The pre-existing `publishToOfficialThemes()`/`publishToMyThemes()`
+names are kept as one-line wrappers around the shared helper — no
+Builder screen, nav item, or UI copy changed beyond the one new card
+and the two result messages. This is the whole of "replace only the
+storage layer": the Publish screen's shape, the Build-then-Publish
+mental model, and every other Publish option are unchanged.
+
+## 6. What Studio does now (Phase 3/4, completed)
+
+`js/themeRegistry.js` gained `refreshFromRepository()` — discovers
+every repository (`ThemeRepositoryClient.discover()`), lists each
+repository's themes, loads and validates each one
+(`validatePackage()`, the same check a local `.vtheme` import already
+runs), and registers anything valid via the existing
+`_setImported(manifest, theme, assets)` — the identical code path a
+drag-and-drop local-file import already uses. **Deliberately not**
+persisted to `localStorage` (`_persistImported()` is skipped for
+repository-sourced themes): Supabase is the source of truth and is
+refetched on every boot, so the old file-import `localStorage` path
+and the new repository path stay cleanly separate and never fight over
+which one "wins." A theme that fails to load or fails validation is
+silently skipped — one broken repository row never blocks discovery of
+the rest, matching `_setImported`'s own existing per-theme error
+isolation.
+
+Both Official- and Personal-repository themes register with
+`source: 'imported'` — the same tag a local file import already uses —
+so they appear in Studio's existing "World Library" row with **zero new
+UI**, per directive #7 ("no per-source branching"). This is a
+deliberate, disclosed trade-off: a Supabase-sourced Official Theme is
+not visually distinguished from a Supabase-sourced Personal Theme or a
+locally-imported file in today's Theme Library. Building that
+distinction is new Studio UI and out of this phase's "replace only the
+storage layer" scope.
+
+`js/app.js`'s `_startCreationFlow()` now awaits
+`ThemeRegistry.refreshFromRepository()` (via a small
+`_refreshRepositoryWithTimeout()` wrapper) racing a 4-second timeout
+before calling `CreationFlow.start()` — the only boot-sequence change.
+No new reactive re-render machinery was added to `CreationFlow` itself;
+this one `await` point is sufficient because discovery always finishes
+(or times out) before Screen 2 is ever painted.
 
 ---
 
-## 6. Implementation notes (this phase's actual deliverable)
+## 7. Implementation notes
 
 - **`supabase-config.example.json`** (committed) — a template with empty
   `url`/`anonKey` fields. **`supabase-config.json`** (gitignored) is
@@ -227,24 +288,70 @@ than building the wiring and the backend in the same step.
   loads the Supabase JS client via its official ESM CDN build (matching
   this repo's zero-build-step convention — no `package.json`, no
   bundler), and implements the four-function interface from §3 against
-  two Supabase tables/bucket conventions from §2. Not yet imported by
-  `index.html` or any World Builder screen.
-- **Not implemented this phase:** the actual Supabase project (needs
-  real credentials only a human can create), the SQL migration that
-  creates the `themes` table + RLS policies + Storage bucket (drafted
-  in `supabase/schema.sql` for a human to run once a project exists),
-  and any Builder/Studio call site.
+  the Supabase tables/bucket conventions from §2. Loaded by both
+  `index.html` (Studio) and `tools/world-builder/index.html` (Builder).
+  **Real bug found and fixed while wiring Builder's Publish screen**:
+  the config path was a bare relative string (`'supabase-config.json'`),
+  which resolves against the *page's* URL — correct for Studio's root
+  `index.html`, but silently 404ing for Builder (two folders deeper),
+  making a correctly-configured project look "not configured" from
+  Builder alone. Fixed by resolving the path relative to this script's
+  own `<script src>` location (`document.currentScript.src` + a `../`
+  hop), which is stable regardless of which HTML page loads it.
+- **`supabase/schema.sql`** — see §9 for what changed from the Phase 1
+  draft.
 
 ---
 
-## 7. Explicitly deferred (per the sprint's Out of Scope list)
+## 8. Explicitly deferred (per the sprint's Out of Scope list)
 
-- Publish replacement (Phase 2), `ThemeRegistry` refactor (Phase 3),
-  Studio consumption changes (Phase 4), full happy-flow validation
-  (Phase 5).
+- Phase 5 (full happy-flow validation with a real Supabase project) —
+  this environment cannot reach `supabase.co` (outbound egress policy),
+  so live verification is performed by the project owner locally; see
+  the sprint's own manual verification checklist for the exact steps.
 - The `.vtheme` ZIP transport/export format (a separate, later sprint,
   per the sprint's own instruction — this document's §2.2 Storage
   design is a repository concept, deliberately not conflated with the
   file-transport question).
 - Marketplace, Community, Collaboration, Theme versioning beyond
   `manifest.version`'s existing informational field.
+- Distinguishing repository-sourced themes from locally-imported ones
+  in Studio's Theme Library UI (§6's disclosed trade-off).
+- Who may publish an Official Theme (§9's disclosed security gap) — no
+  authorization model exists yet; today, anyone holding the anon key
+  can write/overwrite any Official Theme row.
+
+---
+
+## 9. Schema simplification (this continued sprint)
+
+The Phase 1 draft's `themes` table carried denormalized `name`/`version`
+columns, an `updated_at` column with a trigger to maintain it, and extra
+indexes — all premature for "a few themes," per this sprint's explicit
+"keep the schema as small as possible" instruction. Removed:
+
+- `name`/`version` columns — every real reader already has the full
+  `manifest` JSONB in hand (`list()` selects `theme_id, manifest` and
+  derives name/version from it in application code); a denormalized
+  copy is one more place for the two to drift out of sync for no
+  actual query-performance need at this scale.
+- `updated_at` + trigger — publishing again is a plain upsert; `created_at`
+  alone is enough provenance for now, and a trigger is one more moving
+  part with nothing yet reading it.
+- Extra indexes beyond the primary key and the uniqueness constraint —
+  not required until table size or query patterns justify them.
+
+One thing was **added** beyond the Phase 1 draft, not removed: **Official
+rows are now writable by the anon role** (`themes_official_write`/
+`themes_official_update`, and the matching `theme_assets_official_write`/
+`_update` Storage policies). Phase 1's original draft gave Official rows
+select-only RLS, deferring "who may publish Official" as an open
+question. But this sprint's own explicit happy-flow requirement is
+"Builder → Publish Official Theme → Supabase → Studio discovers Official
+Themes" — which is not possible with a select-only policy. This is a
+**disclosed, deliberate gap**, not an oversight: with no accounts and no
+authorization model, *anyone* holding the public anon key (which, per
+§7, is meant to be public) can currently publish, replace, or overwrite
+any Official Theme. Resolving real Official-publish authorization (an
+allowlist, a service-role-gated Edge Function, a review step) is
+necessary future work, out of this sprint's own scope to invent.
