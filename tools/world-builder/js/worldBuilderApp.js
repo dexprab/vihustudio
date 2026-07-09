@@ -2647,9 +2647,17 @@
     function _renderLayerPanel(scene, layer) {
         _heading('Decorations — ' + layer.name, 'Reposition, bring it forward or send it backward, or mark this spot open for Story Authors too.', ICONS.decorations);
 
+        // Builder V3 MEP Freeze audit — same class of bug as the Text
+        // Layer panel: when this Decoration is Experience-sourced,
+        // renaming it here must go through the Experience itself, or
+        // the name silently reverts the next time the Experience's own
+        // Properties re-sync (`_mirrorSceneLayer` always writes
+        // `name: experience.name`).
         contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
+            if (layer.sourceExperienceId) window.ProjectModel.updateExperience(currentProject, layer.sourceExperienceId, { name: v });
+            else window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
             _persist();
+            _redrawSceneCanvases(scene.id);
         })));
 
         const xGroup = _buildFieldGroup('Position X %', _range(0, 100, Math.round(layer.position.x * 100), function (v) {
@@ -2837,13 +2845,42 @@
 
     // A text element is selected: write the words directly, then style
     // them (Blueprint §10's own two-step framing).
+    // Builder V3 MEP Freeze audit finding (Audit 1, a first-time-author
+    // pass): clicking a Text object directly in Working View lands here
+    // — the pre-Experience per-Layer editor, kept fully functional
+    // alongside Experience-first authoring (Milestone 3's own "both
+    // paths side by side" decision). For an ordinary, non-Experience
+    // Text Layer that's fine. But when this Layer is Experience-sourced
+    // (`sourceExperienceId` set — true for any Text created via
+    // "+ Add Experience"), writing straight to the Layer here bypassed
+    // the Experience's own `properties` entirely; the Experience's next
+    // unrelated edit (from its own Inspector) re-synced the mirror from
+    // its stale `properties` and silently wiped whatever had just been
+    // typed here — a real data-loss bug, the same class this MEP
+    // already fixed once for the legacy Frame picker (`_setHolderFrame`).
+    // Fixed the same way: when Experience-sourced, these fields route
+    // through `updateExperience`/`updateExperienceProperty` (which
+    // re-syncs the mirror itself) instead of `updateSceneLayer` directly,
+    // so both editing surfaces always agree on the one source of truth.
     function _renderTextLayerPanel(scene, layer) {
         _heading('Text — ' + layer.name, 'Write the words directly, then style them.', ICONS.text);
+        const expId = layer.sourceExperienceId;
 
         contextPanel.appendChild(_buildFieldGroup('Name', _textInput(layer.name, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
+            if (expId) window.ProjectModel.updateExperience(currentProject, expId, { name: v });
+            else window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { name: v });
             _persist();
+            _redrawSceneCanvases(scene.id);
         })));
+
+        function onField(key) {
+            return function (v) {
+                if (expId) window.ProjectModel.updateExperienceProperty(currentProject, expId, key, v);
+                else window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { [key]: v });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            };
+        }
 
         // AV-011 — the same reusable EmojiPicker every Text Element field
         // in the main Studio app already uses (Sprint 9.6), wrapped
@@ -2851,35 +2888,15 @@
         // picker: inserting an emoji just dispatches a real 'input' event
         // on the same element, so it persists through the exact save path
         // this field already had.
-        const wordsInput = _textarea(layer.text, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { text: v });
-            _persist();
-            _redrawSceneCanvases(scene.id);
-        });
+        const wordsInput = _textarea(layer.text, onField('text'));
         contextPanel.appendChild(_fieldGroup('Words', window.EmojiPicker ? window.EmojiPicker.wrap(wordsInput) : wordsInput));
 
-        const fontGroup = _buildFieldGroup('Font', _select(TEXT_FONT_OPTIONS, layer.font, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { font: v });
-            _persist();
-            _redrawSceneCanvases(scene.id);
-        }));
-        const alignGroup = _buildFieldGroup('Alignment', _select(TEXT_ALIGN_OPTIONS, layer.align, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { align: v });
-            _persist();
-            _redrawSceneCanvases(scene.id);
-        }));
+        const fontGroup = _buildFieldGroup('Font', _select(TEXT_FONT_OPTIONS, layer.font, onField('font')));
+        const alignGroup = _buildFieldGroup('Alignment', _select(TEXT_ALIGN_OPTIONS, layer.align, onField('align')));
         _fieldRow(fontGroup, alignGroup);
 
-        const sizeGroup = _buildFieldGroup('Size', _range(16, 120, layer.fontSize, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { fontSize: v });
-            _persist();
-            _redrawSceneCanvases(scene.id);
-        }));
-        const colorGroup = _buildFieldGroup('Colour', _colorInput(layer.color, function (v) {
-            window.ProjectModel.updateSceneLayer(currentProject, scene.id, layer.id, { color: v });
-            _persist();
-            _redrawSceneCanvases(scene.id);
-        }));
+        const sizeGroup = _buildFieldGroup('Size', _range(16, 120, layer.fontSize, onField('fontSize')));
+        const colorGroup = _buildFieldGroup('Colour', _colorInput(layer.color, onField('color')));
         _fieldRow(sizeGroup, colorGroup);
 
         _renderTextPermissionBlock(scene, layer);
@@ -3495,7 +3512,12 @@
             delBtn.type = 'button';
             delBtn.className = 'wb-workspace-btn';
             delBtn.style.marginTop = '14px';
-            delBtn.textContent = '🗑 Delete';
+            // "Delete" (not "Remove," matching Place/Decoration/Text's
+            // own panel-button wording) is deliberate — this is the one
+            // real deletion Canon Decision #9 allows, distinct from
+            // "detach" (Used In) or "remove this Place/Decoration/Text"
+            // (an object leaving a Scene, not an idea ceasing to exist).
+            delBtn.textContent = '🗑 Delete this Experience';
             delBtn.addEventListener('click', function () {
                 if (!window.confirm('Delete "' + exp.name + '"? This cannot be undone.')) return;
                 window.ProjectModel.deleteExperience(currentProject, exp.id);
@@ -3921,7 +3943,10 @@
         const saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-        saveBtn.textContent = '📎 Create & Attach';
+        // Builder V3 MEP Freeze audit — the Canon Alignment Sprint's
+        // Attach→Host rename (js/worldBuilderApp.js's "Host Here"
+        // elsewhere) missed this one button's own label.
+        saveBtn.textContent = '📎 Create & Host';
         saveBtn.addEventListener('click', function () {
             const exp = window.ProjectModel.addExperience(currentProject, {
                 name: name.trim() || opts.defaultName,
@@ -4600,6 +4625,31 @@
         if (f.wallTone === undefined) f.wallTone = '#F4F1EC';
         if (f.shadow === undefined) f.shadow = 'soft';
 
+        // Builder V3 MEP Freeze audit finding: a Frame record can be
+        // Experience-backed (`_mirrorFrame` writes `id: experience.id`,
+        // so this "Manage Frames" screen and the Experience Properties
+        // panel edit the exact same record by construction) — but this
+        // screen was writing straight to the Frame's own fields via
+        // `setFrameFieldValue`, bypassing the Experience's `properties`
+        // entirely. The next unrelated Experience edit re-synced the
+        // mirror from those stale `properties` and silently discarded
+        // whatever had just been changed here — the same data-loss bug
+        // class this milestone already found and fixed for Text/
+        // Decoration. Fixed the same way: when backed by a live Frame
+        // Experience, field/name edits route through
+        // `updateExperienceProperty`/`updateExperience` instead.
+        const backingExp = window.ProjectModel.findExperience(project, frame.id);
+        const isExpBacked = !!(backingExp && backingExp.type === 'frame');
+
+        function onFrameField(key) {
+            return function (v) {
+                if (isExpBacked) window.ProjectModel.updateExperienceProperty(project, frame.id, key, v);
+                else window.ProjectModel.setFrameFieldValue(project, frame.id, key, v);
+                _persist();
+                _renderPreview();
+            };
+        }
+
         const divider = document.createElement('h3');
         divider.className = 'wb-context-heading';
         divider.style.marginTop = '20px';
@@ -4612,27 +4662,16 @@
         // alone (doesn't pair naturally with what's left), Description
         // last (multiline, full width).
         const nameGroup = _buildFieldGroup('Frame Name', _textInput(frame.name, function (v) {
-            window.ProjectModel.setFrameField(project, frame.id, 'name', v);
+            if (isExpBacked) window.ProjectModel.updateExperience(project, frame.id, { name: v });
+            else window.ProjectModel.setFrameField(project, frame.id, 'name', v);
             _persist();
             _renderPreviewSelector();
         }));
-        const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'wallTone', v);
-            _persist();
-            _renderPreview();
-        }));
+        const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, onFrameField('wallTone')));
         _fieldRow(nameGroup, wallToneGroup);
 
-        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'borderColor', v);
-            _persist();
-            _renderPreview();
-        }));
-        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'cornerRadius', v);
-            _persist();
-            _renderPreview();
-        }));
+        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, onFrameField('borderColor')));
+        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, onFrameField('cornerRadius')));
         _fieldRow(borderColorGroup, cornerRadiusGroup);
 
         const shadowGroup = _buildFieldGroup('Shadow', _select([
@@ -4640,35 +4679,15 @@
             { value: 'soft', label: 'Soft' },
             { value: 'floating', label: 'Floating' },
             { value: 'gallery', label: 'Gallery' }
-        ], f.shadow, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'shadow', v);
-            _persist();
-            _renderPreview();
-        }));
-        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'inset', v);
-            _persist();
-            _renderPreview();
-        }));
+        ], f.shadow, onFrameField('shadow')));
+        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, onFrameField('inset')));
         _fieldRow(shadowGroup, insetGroup);
 
-        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'matWidth', v);
-            _persist();
-            _renderPreview();
-        }));
-        const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'defaultMargin', v);
-            _persist();
-            _renderPreview();
-        }));
+        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, onFrameField('matWidth')));
+        const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, onFrameField('defaultMargin')));
         _fieldRow(matWidthGroup, defaultMarginGroup);
 
-        _fieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, function (v) {
-            window.ProjectModel.setFrameFieldValue(project, frame.id, 'frameThickness', v);
-            _persist();
-            _renderPreview();
-        }));
+        _fieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, onFrameField('frameThickness')));
 
         _fieldGroup('Description', _textarea(frame.description, function (v) {
             window.ProjectModel.setFrameField(project, frame.id, 'description', v);

@@ -953,7 +953,12 @@ const ProjectModel = (function () {
         const props = experience.properties || {};
         if (existing) {
             Object.assign(existing, experience.type === 'text'
-                ? { name: experience.name, text: props.text, font: props.font, fontSize: props.fontSize, align: props.align }
+                // Colour was missing here (Builder V3 MEP Freeze audit
+                // finding) — a Text Experience's Colour field persisted
+                // correctly but was silently never mirrored onto the
+                // real rendered Layer, so it had no visible effect at
+                // all, breaking "Text = Text + Colour" content editing.
+                ? { name: experience.name, text: props.text, font: props.font, fontSize: props.fontSize, align: props.align, color: props.color }
                 // Image and Glyph are both simply optional properties,
                 // never mutually exclusive (Builder V3 MEP) — both are
                 // mirrored so the Runtime can prefer Image when present.

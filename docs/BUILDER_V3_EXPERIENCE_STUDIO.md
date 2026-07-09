@@ -916,3 +916,66 @@ the Place question, not on anything else in this document.**
   concepts; every fix reuses existing mechanisms
   (`attachExperience`/`detachExperience`, `_fieldRow`/`_buildFieldGroup`,
   `usageOf`, `setSceneAspect`).
+- v1.5 — Builder V3 MEP Freeze audit (the Release Candidate pass —
+  "treat Builder V3 as if it is shipping tomorrow"). A genuinely fresh
+  authoring pass, not a feature review, surfaced the milestone's most
+  significant finding: **a systemic data-loss bug class affecting all
+  three Experience-backed legacy editing surfaces**. Every one of the
+  pre-Experience per-object editors kept intentionally functional
+  alongside Experience-first authoring since Milestone 3 ("both paths
+  side by side") — the Text Layer panel, the Decoration Layer panel's
+  Name field, and the "Manage Frames" screen — wrote directly to the
+  mirrored Layer/Frame record via `updateSceneLayer`/`setFrameField`/
+  `setFrameFieldValue`, completely bypassing the owning Experience's own
+  `properties`. Since `_mirrorSceneLayer`/`_mirrorFrame` (the Engine
+  Adapter) unconditionally re-derive the mirror from the Experience's
+  `properties` on every sync, the *very next* unrelated edit made from
+  the Experience's own Inspector silently discarded whatever had just
+  been typed or changed through the legacy surface — confirmed to
+  reproduce with real data (typed Museum Caption words vanishing after
+  an unrelated Colour edit; a Manage-Frames Wall Tone change reverting
+  after an unrelated Shadow edit). Fixed identically in all three
+  places, mirroring the exact pattern already established for the
+  legacy Frame picker in the previous milestone: when the Layer/Frame
+  record is Experience-backed (`sourceExperienceId` set, or the Frame's
+  own `id` resolves to a live Frame-type Experience), field writes route
+  through `updateExperience`/`updateExperienceProperty` instead of
+  writing the mirror directly, so every editing surface converges on
+  the same one source of truth. A related, smaller bug in the same
+  investigation: `_mirrorSceneLayer`'s `text`-branch sync omitted
+  `color` entirely, so a Text Experience's Colour field persisted
+  correctly but silently never affected the actual rendered Layer at
+  all — fixed by adding it to the synced field set. **Consistency
+  audit**: a full terminology sweep found the Canon Alignment Sprint's
+  Attachment→Hosted-By rename had missed one button
+  ("📎 Create & Attach" → "📎 Create & Host"), and normalized the
+  Experience Inspector's delete button to "Delete this Experience"
+  (matching Place/Decoration/Text's own "Remove this X" panel-button
+  convention, while keeping the deliberately stronger "Delete" verb —
+  Canon Decision #9's one real, permanent deletion, distinct from
+  "detach"). Confirmed clean: no "Engine V1"/"Engine V2"/"Scene Layer"
+  in any literal UI string; the one remaining "Holder" occurrence
+  (`_renderLayoutsPanel`'s "Holder Area" diagram) is unreachable from
+  any UI control in Builder V3 (the legacy Layouts screen has had no
+  Global Navigation entry or bridge link since Slice 1), so it can
+  never actually surface to an author — left as the pre-existing,
+  already-documented dead code it is, not touched. **Pixel-level Working
+  View vs. Runtime Preview review**: a full-canvas (not sampled) diff
+  found 12,240 differing pixels out of 1,458,000 on a fully-authored
+  Scene with nothing selected — traced to a thin, border-shaped pattern
+  spanning 976 of 1,080 rows at ~12.5 px/row, matching exactly the
+  known, always-on Safe Area guide (Blueprint §7, Working-View-only by
+  design) rather than any accidental content difference; confirmed
+  intentional, left unchanged. **End-to-end proof**: authored a complete
+  3-Scene Museum Theme (Showcase/Portrait/Quote, matching the real
+  Museum Gallery board) — a Public Frame Experience reused across two
+  Scenes, a Text Experience for the Museum Caption, a Decoration
+  Experience for a Wax Seal, a Scene-hosted background colour on the
+  Quote Scene — reaching a clean Validation (0 errors, 0 warnings across
+  every category), a successful Scene Package Build, a successful World
+  Package Build, and a fully functional Publish screen. Full regression
+  across `goldenBuild.js` (30/30) and every prior Milestone/Canon-
+  Alignment/MEP/AV/AP/runtime/validation/build/reorder/place-rename
+  suite passes unchanged. No Engine V2/Scene Model/Runtime redesign; no
+  new Builder concepts; every fix reuses the exact adapter-routing
+  pattern already established for the legacy Frame picker.
