@@ -198,6 +198,17 @@ new login system" from the author's point of view (nothing appears in
 the UI; it happens once, silently, on first Builder use) while giving
 *real* enforcement instead of security-by-obscurity.
 
+**Required one-time project setting, easy to miss**: Supabase projects
+ship with Anonymous Sign-Ins **disabled** by default. Until it's turned
+on (Dashboard → Authentication → Sign In / Providers → **Anonymous** →
+enable "Allow anonymous sign-ins"), `signInAnonymously()` fails with a
+`422` on `/auth/v1/signup` — visible as a console error on every page
+load, since Studio's boot sequence always attempts to discover the
+Personal repository. This is harmless to Studio itself (the failure is
+caught per-repository in `refreshFromRepository()`, so boot proceeds
+with Official only), but it means **Publish to My Themes** will fail
+with a real, disclosed error message until this toggle is switched on.
+
 The session persists via Supabase's own client-side session storage
 (itself `localStorage`-backed, invisible to the rest of this app) —
 clearing the browser's storage loses that identity and its Personal
