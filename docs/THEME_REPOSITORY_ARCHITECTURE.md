@@ -282,14 +282,20 @@ this one `await` point is sufficient because discovery always finishes
 ## 7. Implementation notes
 
 - **`supabase-config.example.json`** (committed) — a template with empty
-  `url`/`anonKey` fields. **`supabase-config.json`** (gitignored) is
-  where real values go. A Supabase **anon/public key is designed to be
-  public** — the project's Row Level Security policies, not the key's
-  secrecy, are what actually protect data — so committing a *filled-in*
-  config is not a secrets leak the way a `service_role` key would be;
-  it is gitignored anyway so each deployment can point at its own
-  project without merge noise, and so a fork or PR never accidentally
-  ships a specific project's URL.
+  `url`/`anonKey` fields, kept alongside the real file as documentation
+  of the expected shape. **`supabase-config.json`** is also committed,
+  with this project's real values. A Supabase **anon/public key is
+  designed to be public** — the project's Row Level Security policies,
+  not the key's secrecy, are what actually protect data — so this is
+  not a secrets leak the way a `service_role` key would be. It was
+  briefly gitignored during Phase 1/2 development; committed once the
+  static GitHub Pages deployment needed the file to actually be present
+  at the served URL (a gitignored file never reaches a static host with
+  no build step to inject it at deploy time) — the simplest correct
+  choice for this single-deployment project. A future multi-deployment
+  setup (e.g. a staging Supabase project) would revisit this in favor
+  of an injected-at-deploy-time file, per the alternative this decision
+  weighed against.
 - **`js/themeRepositoryClient.js`** — loads `supabase-config.json` at
   runtime (the exact resilient fetch-with-fallback shape
   `js/buildInfo.js` already uses for `build-info.json` — "no config

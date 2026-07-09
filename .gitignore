@@ -1,8 +1,2 @@
 scratchpad-*
 scratchpad-out/
-
-# Real Supabase project credentials for this deployment — see
-# supabase-config.example.json for the template and
-# docs/THEME_REPOSITORY_ARCHITECTURE.md for why this is gitignored
-# even though the anon key it holds is meant to be public.
-supabase-config.json
