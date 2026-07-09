@@ -5,6 +5,6 @@
   "slice": "End-to-end verification: Create/Validate/Build/Publish in Builder, automatic Theme discovery + Story authoring + Publish in Studio, real Reader output — zero application code changes",
   "build": "0035",
   "buildDate": "2026-07-09",
-  "commit": "pending",
+  "commit": "27951e6",
   "environment": "Release"
 }
