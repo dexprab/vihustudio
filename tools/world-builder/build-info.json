@@ -1,10 +1,10 @@
 {
-  "version": "3.1.1",
+  "version": "3.1.2",
   "phase": "Builder V3.1",
-  "milestone": "Working View Experience Studio",
-  "slice": "Restores Working View as isolated Experience authoring workspace; Runtime Preview stays the full published Scene",
-  "build": "0033",
+  "milestone": "Authoring Convergence Sprint",
+  "slice": "Converge Decoration/Text creation onto Experience pipeline; Runtime consistency disclosure; Host Here redundancy fix",
+  "build": "0034",
   "buildDate": "2026-07-09",
-  "commit": "0406c26",
+  "commit": "1d5912e",
   "environment": "Release"
 }
