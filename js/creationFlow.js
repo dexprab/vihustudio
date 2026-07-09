@@ -156,8 +156,17 @@ const CreationFlow=(function(){
   function _themePreview(theme){
     const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(theme.id) : null;
     const manifest=(rec && rec.manifest) || {};
+    // Asset Repository Transition — manifest.previewImage may be a bare
+    // relative-path reference (builder.js/_buildPackageFromZipFiles no
+    // longer embed it directly) rather than a ready data:/http(s) src;
+    // resolveAssetRef resolves it through this theme's own assets map
+    // either way (local-import data URI or a repository's signed URL),
+    // unchanged for the legacy already-embedded case.
+    const previewImage=(typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
+      ? ThemeRegistry.resolveAssetRef(theme.id,manifest.previewImage)
+      : manifest.previewImage;
     return {
-      image:manifest.previewImage||null,
+      image:previewImage||null,
       icon:manifest.themeIcon||'🎨',
       color:(theme.frame && theme.frame.color) || '#EFEFEF'
     };
@@ -190,10 +199,10 @@ const CreationFlow=(function(){
     if(!t) return {text:'🎭'};
     if(/^(data:|https?:)/i.test(t)) return {image:t};
     if(/\.(png|jpe?g|svg|webp)$/i.test(t)){
-      const resolved=(themeId && typeof ThemeRegistry!=='undefined' && ThemeRegistry.getAsset)
-        ? ThemeRegistry.getAsset(themeId,t)
-        : null;
-      return {image:resolved||t};
+      const resolved=(themeId && typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
+        ? ThemeRegistry.resolveAssetRef(themeId,t)
+        : t;
+      return {image:resolved};
     }
     return {text:t};
   }

@@ -92,9 +92,7 @@ class BuildEngine {
             frameVariations: [],
             layerPack: [],
             representations: [],
-            assets: {},
-            previewDataURL: null,
-            thumbnailDataURL: null
+            assets: {}
         };
 
         // Get core files
@@ -128,14 +126,22 @@ class BuildEngine {
             if (dataURL) package_.assets[relPath] = dataURL;
         }
 
-        // preview.png / thumbnail.png — embedded as data URIs so the
-        // compiled package carries real image bytes, not a placeholder
-        // string.
+        // Asset Repository Transition — preview.png / thumbnail.png join
+        // the SAME assets map every assets/* file already uses, keyed by
+        // their own root-level filename, instead of a separate
+        // previewDataURL/thumbnailDataURL pair that buildManifest() used
+        // to embed directly into the manifest. manifest.thumbnail /
+        // manifest.previewImage stay plain relative-path references
+        // (buildManifest() below) — the theme's own definition never
+        // carries embedded bytes; only this map does, and only this map
+        // is what Publish uploads to a repository.
         if (projectLoader.projectStructure.hasPreview) {
-            package_.previewDataURL = await projectLoader.getFileAsDataURL('preview.png');
+            const dataURL = await projectLoader.getFileAsDataURL('preview.png');
+            if (dataURL) package_.assets['preview.png'] = dataURL;
         }
         if (projectLoader.projectStructure.hasThumbnail) {
-            package_.thumbnailDataURL = await projectLoader.getFileAsDataURL('thumbnail.png');
+            const dataURL = await projectLoader.getFileAsDataURL('thumbnail.png');
+            if (dataURL) package_.assets['thumbnail.png'] = dataURL;
         }
 
         return package_;
@@ -186,9 +192,18 @@ class BuildEngine {
      * Build the runtime manifest — starts from manifest.json, merges
      * metadata.json's rich fields additively (never overwriting a
      * field the manifest already set, same rule
-     * _buildPackageFromZipFiles uses for a zipped package), and embeds
-     * preview.png/thumbnail.png as data URIs onto the exact fields the
-     * runtime already reads (manifest.thumbnail / manifest.previewImage).
+     * _buildPackageFromZipFiles uses for a zipped package).
+     *
+     * Asset Repository Transition — manifest.thumbnail / .previewImage
+     * are left exactly as manifest.json/metadata.json declared them
+     * (ordinarily the plain relative-path placeholders 'thumbnail.png'/
+     * 'preview.png'), never overwritten with embedded bytes. The real
+     * bytes live only in the assets map (packageTheme(), above) — the
+     * code consuming these fields is responsible for resolving the
+     * reference against that map (ThemeRegistry.getAsset() /
+     * .resolveAssetRef(), same convention validator.js's
+     * findAssetPaths() already established for every Layout/Frame/
+     * Layer/Representation image field).
      */
     buildManifest(packageData) {
         const manifest = Object.assign({}, packageData.manifest);
@@ -197,13 +212,6 @@ class BuildEngine {
         Object.keys(metadata).forEach(key => {
             if (manifest[key] === undefined) manifest[key] = metadata[key];
         });
-
-        if (packageData.thumbnailDataURL && (!manifest.thumbnail || manifest.thumbnail === 'thumbnail.png')) {
-            manifest.thumbnail = packageData.thumbnailDataURL;
-        }
-        if (packageData.previewDataURL && (!manifest.previewImage || manifest.previewImage === 'preview.png')) {
-            manifest.previewImage = packageData.previewDataURL;
-        }
 
         return manifest;
     }

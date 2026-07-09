@@ -144,7 +144,7 @@ about how it looks.
 | `category` | **Required** | string | Grouping shown in the Theme Library (`"Official"`, `"Imported"`, etc.). Official themes always use `"Official"`. |
 | `tags` | **Required** | string array | Free-form search/filter tags. May be an empty array. |
 | `description` | **Required** | string | Short one-line summary. May duplicate `metadata.description` for tooling that only reads the manifest. |
-| `thumbnail` | **Required** | string | Authoring-time: relative path to the thumbnail image (conventionally `"thumbnail.png"`). The compiler replaces this with an embedded data URI — see `docs/VTHEME_PACKAGE_SPEC.md`. |
+| `thumbnail` | **Required** | string | Authoring-time: relative path to the thumbnail image (conventionally `"thumbnail.png"`). Asset Repository Transition (Sprint 2) — the compiler leaves this as the plain reference; it no longer replaces it with an embedded data URI. The real bytes join the compiled `assets` map under the same key, and the code consuming this field resolves it via `ThemeRegistry.resolveAssetRef()` — see `docs/VTHEME_PACKAGE_SPEC.md`. |
 | `createdDate` / `updatedDate` | **Required** | `YYYY-MM-DD` | Authoring provenance. Not read by the runtime; required anyway, matching `js/themeRegistry.js`'s `REQUIRED_MANIFEST_FIELDS` exactly — one canonical required-field list, no divergence between authoring and runtime. |
 | `type` | Optional | `"story"` \| `"artwork"` | Which of VihuStudio's two theme types this is. Missing/invalid normalizes to `"story"` — never omit it for an Artwork Theme. |
 
@@ -708,13 +708,16 @@ three.** Recorded here for history, not as an open punch list:
 
 2. **Compiled package shape — resolved.** `tools/world-builder/js/
    services/builder.js`'s `generateVThemePackage()` now emits the canonical flat
-   `{ manifest, theme, assets }` shape directly — `theme.layouts`/
+   { manifest, theme, assets }` shape directly — `theme.layouts`/
    `frameVariations`/`layerPack` are real flattened arrays (not `{file,
-   data}` pairs), `assets` is a real `{relativePath: dataURI}` map, and
-   `preview.png`/`thumbnail.png` are embedded as real data URIs onto
-   `manifest.previewImage`/`manifest.thumbnail` — nothing is replaced with
-   a placeholder string. See `docs/VTHEME_PACKAGE_SPEC.md` for the full
-   compiled-package contract.
+   data}` pairs), `assets` is a real `{relativePath: dataURI}` map. Asset
+   Repository Transition (Sprint 2) — `preview.png`/`thumbnail.png`'s
+   real bytes join that same `assets` map (keyed by their own filename)
+   rather than being embedded directly onto `manifest.previewImage`/
+   `manifest.thumbnail`; those two fields stay the plain relative-path
+   reference they always were, resolved via `ThemeRegistry.
+   resolveAssetRef()` wherever they're read as an image `src`. See
+   `docs/VTHEME_PACKAGE_SPEC.md` for the full compiled-package contract.
 
 3. **Duplicate-ID and reference validation — resolved.** `tools/theme-
    builder/js/validator.js`'s `validateReferences()` now performs real

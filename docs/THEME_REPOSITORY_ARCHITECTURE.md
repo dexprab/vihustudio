@@ -381,3 +381,64 @@ authorization model, *anyone* holding the public anon key (which, per
 any Official Theme. Resolving real Official-publish authorization (an
 allowlist, a service-role-gated Edge Function, a review step) is
 necessary future work, out of this sprint's own scope to invent.
+
+---
+
+## 10. Asset Externalization (Sprint 2 — completes the repository
+transition this document started)
+
+§2.2 already established that a Theme's `assets` map is uploaded to
+Storage rather than embedded — but one real gap remained: `manifest.
+thumbnail` and `manifest.previewImage` were *not* part of that map at
+all. `builder.js`/`js/themeEngine.js`'s zip-import producer both
+overwrote these two fields with a literal embedded data URI at Build/
+Import time, so — regardless of what Publish itself did — the `themes`
+table's `manifest` JSONB column always carried embedded image bytes for
+these two fields. Traced to its root (per this sprint's own explicit
+instruction to find every embedding site before writing any fix):
+
+- **Everything else in the compiled package was already reference-based
+  and needed no change**: `assets/*` files were already a map, not
+  embedded fields; every Layout/Frame/Layer/Representation field
+  `validator.js`'s `findAssetPaths()` recognizes was already a bare
+  relative path; `supabase/schema.sql`'s `themes` table has no `assets`
+  column, so `assetsRaw` already never reached a repository row.
+- **The only two embedding sites** were `builder.js`'s `buildManifest()`
+  (via a `thumbnailDataURL`/`previewDataURL` pair `packageTheme()` built
+  separately from the `assets` map) and `js/themeEngine.js`'s
+  `_buildPackageFromZipFiles()` (the "Local Repository" producer this
+  document's §1 always intended to give the same shape as Cloud). Both
+  fixed identically: the real bytes now join the *same* `assets` map
+  every other asset already uses (keyed by the file's own relative
+  name), and the manifest field is left as the plain reference it always
+  was meant to be (`"thumbnail.png"`/`"preview.png"`, matching the
+  placeholder convention `manifest.json`/`metadata.json` already
+  default to).
+- **Publish and `load()` needed zero code changes** — `ThemeRepositoryClient.
+  publish()` already uploads every key in the built package's `assets`
+  map, and `load()`/`_resolveAssets()` already resolves the whole map to
+  signed URLs; once `thumbnail.png`/`preview.png` joined that map, they
+  started flowing through the exact same path automatically.
+- **The one real consumer-side addition**: `ThemeRegistry.
+  resolveAssetRef(id, value)` — a data:/http(s) value (a legacy embedded
+  package, or a repository's already-resolved signed URL) passes
+  through unchanged; a bare relative-path reference resolves via
+  `getAsset()`. Factored out of `js/creationFlow.js`'s pre-existing
+  `_repThumbnail`, which had already discovered this exact rule
+  independently for Representation thumbnails — now the one shared
+  place every manifest-level image reference (`_renderThemeCard()`,
+  `_themePreview()`) goes through, per directive #7's "Studio should
+  never know where a theme originated."
+- **Local/Cloud parity, proven, not just asserted**: a Playwright pass
+  registered a theme with its `assets` map holding **signed-URL-shaped
+  strings** (the literal shape a real Supabase `load()` produces, not a
+  data URI) and confirmed the World Library card's actual `<img src>` in
+  the live DOM resolved to that signed URL — with zero changes to any
+  card-rendering code. The identical mechanism handles a local import's
+  data URI and a repository's signed URL; Studio genuinely does not know
+  which one it received.
+- See `docs/THEME_CONTRACT.md` §8.4 for the full root-cause/fix/verify
+  writeup and `tools/world-builder/verify/goldenBuild.js`'s updated
+  assertions (still 30/30, now also proving no embedded base64 survives
+  on either manifest field and that `resolveAssetRef()` round-trips a
+  freshly-imported reference back to real bytes).

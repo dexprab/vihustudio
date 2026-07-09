@@ -74,7 +74,7 @@ of the package itself; see `tools/world-builder/js/services/builder.js`'s
   "description": "A quiet gallery wall — white mat, soft light, centered.",
   "category": "Official",
   "tags": ["gallery", "art", "museum"],
-  "thumbnail": "data:image/png;base64,...",
+  "thumbnail": "thumbnail.png",
   "createdDate": "2026-01-01",
   "updatedDate": "2026-07-05",
   "minStudioVersion": "9.5.0",
@@ -84,7 +84,7 @@ of the package itself; see `tools/world-builder/js/services/builder.js`'s
   "bestFor": ["Fine art & paintings", "Photography"],
   "notRecommendedFor": ["Silly, high-energy stories"],
   "themeIcon": "🖼️",
-  "previewImage": "data:image/png;base64,..."
+  "previewImage": "preview.png"
 }
 ```
 
@@ -101,11 +101,11 @@ the compiler and the importer check against:
 | `description` | **Required** | |
 | `category` | **Required** | |
 | `tags` | **Required** | May be an empty array. |
-| `thumbnail` | **Required** | A data URI (embedded by the compiler from `thumbnail.png`) or an empty string — never a bare relative filename; nothing downstream resolves one. |
+| `thumbnail` | **Required** | Asset Repository Transition (Sprint 2) — a plain relative-path **reference** into the compiled `assets` map (typically `"thumbnail.png"`), or an empty string. Never embedded as a data URI by the compiler any more (`builder.js`/`js/themeEngine.js`'s zip-import producer both stopped doing that at the source) — the real bytes live in `assets["thumbnail.png"]`, uploaded to a repository's Storage separately from this field. A legacy already-embedded `data:` value (an older package built before this sprint) still works — `ThemeRegistry.resolveAssetRef()` passes it through unchanged, since it's already a usable `src`. |
 | `createdDate` / `updatedDate` | **Required** | `YYYY-MM-DD`. Not read by the runtime; present because the importer's field list requires them. |
 | `minStudioVersion` | **Required** | Checked against `ThemeRegistry.THEME_SYSTEM_VERSION` via `ThemeRegistry.isCompatible()`. An incompatible package is rejected at import with a friendly message, never a crash. |
 | `type` | Optional | `"story"` \| `"artwork"`. Missing/invalid normalizes to `"story"` (`ThemeRegistry._normalizeManifest`). |
-| `previewImage`, `purpose`, `mood`, `bestFor`, `notRecommendedFor`, `themeIcon` | Optional | Rich Theme Library metadata. Read directly by `ThemeEngine._renderThemeCard()` when present; absent for any theme that doesn't set them. |
+| `previewImage`, `purpose`, `mood`, `bestFor`, `notRecommendedFor`, `themeIcon` | Optional | Rich Theme Library metadata. `previewImage` follows the exact same reference convention as `thumbnail` above (Sprint 2) — resolved via `ThemeRegistry.resolveAssetRef()`, not read as a ready `src` directly. Read by `ThemeEngine._renderThemeCard()`/`js/creationFlow.js`'s `_themePreview()` when present; absent for any theme that doesn't set them. |
 
 **Field name note.** This is `minStudioVersion`, not `minimumStudioVersion`.
 There is exactly one canonical name across Theme Builder, Theme Registry,

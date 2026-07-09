@@ -156,8 +156,16 @@ async function main() {
         assert(!!pkg && !!pkg.manifest && !!pkg.theme && !!pkg.assets, 'compiled package has exactly {manifest, theme, assets}');
         assert(pkg.manifest.id === 'golden-test-theme', 'compiled manifest.id is correct');
         assert(pkg.manifest.minStudioVersion === '9.5.0', 'compiled manifest.minStudioVersion is present (canonical field name)');
-        assert(typeof pkg.manifest.thumbnail === 'string' && pkg.manifest.thumbnail.startsWith('data:image/'), 'manifest.thumbnail is a real embedded data URI, not a placeholder');
-        assert(typeof pkg.manifest.previewImage === 'string' && pkg.manifest.previewImage.startsWith('data:image/'), 'manifest.previewImage is a real embedded data URI');
+        // Asset Repository Transition — manifest.thumbnail/.previewImage
+        // must be plain relative-path REFERENCES, not embedded base64;
+        // the real bytes belong only in pkg.assets, which is what a
+        // repository actually uploads/stores separately from the Theme
+        // definition (manifest/theme JSON).
+        assert(pkg.manifest.thumbnail === 'thumbnail.png', 'manifest.thumbnail is a plain relative-path reference, not an embedded data URI');
+        assert(pkg.manifest.previewImage === 'preview.png', 'manifest.previewImage is a plain relative-path reference, not an embedded data URI');
+        assert(!/^data:/.test(pkg.manifest.thumbnail) && !/^data:/.test(pkg.manifest.previewImage), 'no embedded base64 remains on either manifest field');
+        assert(!!pkg.assets['thumbnail.png'] && pkg.assets['thumbnail.png'].startsWith('data:image/'), 'the real thumbnail bytes live in pkg.assets, keyed by the manifest reference');
+        assert(!!pkg.assets['preview.png'] && pkg.assets['preview.png'].startsWith('data:image/'), 'the real preview bytes live in pkg.assets, keyed by the manifest reference');
         assert(Array.isArray(pkg.theme.layouts) && pkg.theme.layouts.length === 1 && pkg.theme.layouts[0].id === 'portrait', 'theme.layouts is a flattened array (not {file,data} pairs)');
         assert(Array.isArray(pkg.theme.frameVariations) && pkg.theme.frameVariations[0].id === 'classic-white', 'theme.frameVariations is a flattened array');
         assert(Array.isArray(pkg.theme.layerPack) && pkg.theme.layerPack.length === 2, 'theme.layerPack is a flattened array');
@@ -206,7 +214,15 @@ async function main() {
                 representationsCount: resolved && Array.isArray(resolved.representations) ? resolved.representations.length : -1,
                 representationName: resolved && Array.isArray(resolved.representations) && resolved.representations[0] && resolved.representations[0].name,
                 appliedId: applied && applied.id,
-                activeId
+                activeId,
+                // Asset Repository Transition — prove the reference on
+                // record.manifest.thumbnail/.previewImage actually
+                // resolves back to real bytes through the same
+                // ThemeRegistry mechanism Studio's own UI (theme cards,
+                // Creation Flow) uses, not just that the field is a
+                // string of the expected shape.
+                thumbnailResolved: window.ThemeRegistry.resolveAssetRef('golden-test-theme', record.manifest.thumbnail),
+                previewResolved: window.ThemeRegistry.resolveAssetRef('golden-test-theme', record.manifest.previewImage)
             };
         }, pkg);
 
@@ -220,6 +236,8 @@ async function main() {
             assert(importResult.layerPackCount === 2, 'ThemeEngine.getTheme() resolves theme.layerPack');
             assert(importResult.representationsCount === 1 && importResult.representationName === 'Portrait View', 'ThemeEngine.getTheme() resolves theme.representations (TB-4.7 — Studio would read this, never a hardcoded name)');
             assert(importResult.appliedId === 'golden-test-theme' && importResult.activeId === 'golden-test-theme', 'ThemeEngine.applyArtworkTheme() activates the imported theme — Render step complete');
+            assert(typeof importResult.thumbnailResolved === 'string' && importResult.thumbnailResolved.startsWith('data:image/'), 'ThemeRegistry.resolveAssetRef() resolves the imported thumbnail reference back to real bytes');
+            assert(typeof importResult.previewResolved === 'string' && importResult.previewResolved.startsWith('data:image/'), 'ThemeRegistry.resolveAssetRef() resolves the imported preview reference back to real bytes');
         }
         assert(consoleErrors.length === 0, `no uncaught page errors during import (${consoleErrors.join('; ')})`);
         await page3.close();

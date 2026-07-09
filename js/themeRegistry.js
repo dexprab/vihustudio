@@ -597,6 +597,30 @@ const ThemeRegistry=(function(){
     return rec.assets[relativePath]||null;
   }
 
+  // Asset Repository Transition — the one, shared place that decides
+  // whether a manifest/theme field's string value is already a usable
+  // src (a data: URI, an http(s) URL — e.g. a legacy embedded package,
+  // or an already-resolved Supabase signed URL) or a bare relative-path
+  // reference into this theme's own assets map (e.g. "thumbnail.png",
+  // the plain form builder.js/_buildPackageFromZipFiles now produce)
+  // that still needs resolving via getAsset(). Factored out of
+  // js/creationFlow.js's _repThumbnail, which established this exact
+  // pattern first for Representation thumbnails — every other
+  // manifest-level image reference (manifest.thumbnail/.previewImage)
+  // uses the identical rule, so it lives here once instead of being
+  // reimplemented per call site. Returns the value unchanged when it
+  // isn't a resolvable image/font reference at all (an emoji, a plain
+  // label) or when no matching asset exists — the caller's own
+  // fallback (an emoji glyph, a css swatch) still applies exactly as
+  // before this existed.
+  function resolveAssetRef(id,value){
+    if(!value) return value;
+    if(/^(data:|https?:)/i.test(value)) return value;
+    if(!/\.(png|jpe?g|svg|webp|woff2?|ttf)$/i.test(value)) return value;
+    const resolved=getAsset(id,value);
+    return resolved||value;
+  }
+
   // Registers a validated package, resolving an id collision per
   // opts.onDuplicate ('replace' | 'copy' | 'cancel' | undefined).
   // With no onDuplicate and a real collision, returns
@@ -701,6 +725,7 @@ const ThemeRegistry=(function(){
     get:get,
     getRecord:getRecord,
     getAsset:getAsset,
+    resolveAssetRef:resolveAssetRef,
     list:list,
     getCatalog:getCatalog,
     validatePackage:validatePackage,

@@ -49,6 +49,8 @@ Each row names a field or field-group from the compiled package
 | `type` | Yes | Yes — normalized to `"story"` if absent | Aligned |
 | `purpose`, `mood`, `bestFor`, `notRecommendedFor`, `themeIcon`, `previewImage` | Yes, when authored | Yes — `ThemeEngine._renderThemeCard()` | Aligned |
 
+**Asset Repository Transition** — `thumbnail`/`previewImage` are a plain relative-path **reference** (e.g. `"thumbnail.png"`), never an embedded data URI, as of `builder.js`'s `buildManifest()` / `js/themeEngine.js`'s `_buildPackageFromZipFiles()`. The real bytes live only in the compiled package's `assets` map, keyed by that same reference — exactly the convention `validator.js`'s `findAssetPaths()` already established for every Layout/Frame/Layer/Representation image field, now applied uniformly to these two manifest fields too. Every consumer reads the resolved value via `ThemeRegistry.resolveAssetRef(id, value)` (`js/themeEngine.js`'s `_renderThemeCard()`, `js/creationFlow.js`'s `_themePreview()`/`_repThumbnail()`) rather than treating the manifest field as a ready `src` — a data:/http(s) value (a legacy already-embedded package, or a repository's resolved signed URL) passes through unchanged, a bare reference resolves against `getAsset()`. This is what lets a Theme published to a Supabase repository carry zero embedded base64 in its `manifest`/`theme` row while still rendering correctly — see `docs/THEME_REPOSITORY_ARCHITECTURE.md` §10.
+
 ## 3. Theme (top level)
 
 | Field | Produced? | Consumed? | Status |
@@ -96,7 +98,8 @@ Layer's `target` may be: `slide`, `frame`, `holder`, `element`.
 |---|---|---|
 | Builder compiles `assets/` into `{relativePath: dataURI}` | Correct — `builder.js`'s `packageTheme()` | Aligned (unchanged) |
 | `ThemeRegistry.importPackage()` stores it on the registered theme record | **Did not** — only `manifest`/`theme` were kept; `pkg.assets` was read, validated implicitly, and then discarded | **Fixed this sprint** — see §8.3. |
-| A relative asset path (e.g. a Representation `thumbnail`) resolves back to its data URI | **Could not** — the map that would answer the lookup no longer existed by the time any consumer needed it | **Fixed this sprint** for the one reachable consumer (`js/creationFlow.js`'s Representation thumbnail); see §8.3. |
+| A relative asset path (e.g. a Representation `thumbnail`) resolves back to its data URI | **Could not** — the map that would answer the lookup no longer existed by the time any consumer needed it | **Fixed** for the one reachable consumer at the time (`js/creationFlow.js`'s Representation thumbnail); see §8.3. |
+| `manifest.thumbnail`/`.previewImage` resolve the same way | **Could not** — these two fields were embedded base64 at Build time, never references, so no repository could externalize them | **Fixed this sprint** — the embedding was removed at its two producer sites and both fields now resolve through the same generic mechanism `resolveAssetRef` factors out; see §8.4 and `docs/THEME_REPOSITORY_ARCHITECTURE.md` §10. |
 
 ---
 
@@ -192,6 +195,63 @@ unchanged, including its own negative fixture. None of the three fixes
 touch Validation, Build eligibility, or Publish behaviour — only what
 gets stored and read once a package already validated and built
 correctly.
+
+### 8.4 — `manifest.thumbnail`/`.previewImage` were embedded base64, not references (Asset Repository Transition)
+
+- **Root cause.** Every other image-bearing field in a compiled package
+  (`assets/*`, and any Layout/Frame/Layer/Representation field
+  `validator.js`'s `findAssetPaths()` recognizes) was already a plain
+  relative-path reference, resolved lazily by whichever code consumes
+  it. `manifest.thumbnail`/`.previewImage` were the two exceptions:
+  `builder.js`'s `buildManifest()` and `js/themeEngine.js`'s
+  `_buildPackageFromZipFiles()` both overwrote the placeholder path
+  (`"thumbnail.png"`/`"preview.png"`) with a literal embedded data URI
+  "so the compiled package carries real image bytes, not a placeholder
+  string" — the right instinct at the time, but it meant these two
+  fields could never be externalized to a repository: `supabase/
+  schema.sql`'s `themes` table has no `assets` column at all, so
+  whatever landed in the `manifest` JSONB column *was* the theme's
+  permanent, embedded copy.
+- **Fix, at the source, in both producers.** `packageTheme()`/
+  `buildManifest()` (`builder.js`) and `_buildPackageFromZipFiles()`
+  (`js/themeEngine.js`) now merge `thumbnail.png`/`preview.png`'s real
+  bytes into the *same* `assets` map every `assets/*` file already uses,
+  and leave the manifest fields as the plain reference they were always
+  meant to be. Both producers needed the identical fix — this is what
+  gives the sprint's "Cloud Repository (Supabase) and Local Repository
+  (a zip/extracted package) must behave identically" requirement real
+  teeth, not just a shared interface on paper.
+- **Consumer side.** A new `ThemeRegistry.resolveAssetRef(id, value)` —
+  factored out of `js/creationFlow.js`'s pre-existing `_repThumbnail`,
+  which had already independently discovered this exact rule for
+  Representation thumbnails — is the one place that decides whether a
+  string is already a usable `src` (`data:`/`http(s):` — a legacy
+  embedded package, or a repository's resolved signed URL) or a bare
+  reference that still needs `getAsset()`. Wired into the two real
+  consumers, `js/themeEngine.js`'s `_renderThemeCard()` and
+  `js/creationFlow.js`'s `_themePreview()`; `_repThumbnail` itself now
+  calls the shared helper instead of duplicating the rule a third time.
+- **Why Publish needed no code change at all.** `ThemeRepositoryClient.
+  publish()` already uploads every key of the built package's `assets`
+  map to Storage, and `supabase/schema.sql`'s `themes` table already has
+  no column for it — once `thumbnail.png`/`preview.png` joined that map,
+  they started uploading automatically. Same for `load()`: it already
+  resolves the *whole* assets map to signed URLs, so
+  `assets['thumbnail.png']` becomes a real, working URL with zero
+  Repository-layer changes.
+- **Verified**: `goldenBuild.js` gained assertions that
+  `manifest.thumbnail === 'thumbnail.png'` (not a `data:` URI) and that
+  `pkg.assets['thumbnail.png']` holds the real bytes, plus a round-trip
+  check that `ThemeRegistry.resolveAssetRef()` resolves the imported
+  reference back to real bytes after `importPackage()`. A separate
+  Playwright pass built a real Theme end-to-end through World Builder's
+  own UI (upload → Build) and confirmed the same two fields are bare
+  references with real bytes in `assets`; a second pass registered a
+  theme with `assets` resolved to **signed-URL-shaped strings** (the
+  exact shape a real Supabase `load()` produces) and confirmed the
+  World Library card's actual `<img src>` in the live DOM resolved to
+  that signed URL — proving the existing card-rendering code needed no
+  changes at all to work against a repository-sourced Theme.
 
 ---
 

@@ -643,10 +643,17 @@ const ThemeEngine=(function(){
     // getCatalog()'s shape stays untouched (no Theme Registry redesign).
     const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(t.id) : null;
     const manifest=(rec && rec.manifest) || {};
-    if(manifest.previewImage){
+    // Asset Repository Transition — manifest.previewImage may be a bare
+    // relative-path reference rather than an embedded/ready src; resolve
+    // it through this theme's own assets map (resolveAssetRef leaves an
+    // already-embedded/ready value untouched).
+    const previewImage=(typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
+      ? ThemeRegistry.resolveAssetRef(t.id,manifest.previewImage)
+      : manifest.previewImage;
+    if(previewImage){
       const img=document.createElement('img');
       img.className='theme-card-preview-image';
-      img.src=manifest.previewImage;
+      img.src=previewImage;
       img.alt='';
       preview.appendChild(img);
     }else if(type==='artwork'){
@@ -665,7 +672,7 @@ const ThemeEngine=(function(){
       preview.style.background=t.frame.color;
       panel.style.background=t.panel.color;
     }
-    if(!manifest.previewImage) preview.appendChild(panel);
+    if(!previewImage) preview.appendChild(panel);
     card.appendChild(preview);
     if(manifest.themeIcon){
       const icon=document.createElement('span');
@@ -861,14 +868,21 @@ const ThemeEngine=(function(){
     }
 
     // preview.png / thumbnail.png (or .jpg/.jpeg/.webp) — package-level
-    // images, embedded as data URIs so nothing downstream needs to know
-    // the theme ever lived as separate files on disk.
+    // images. Asset Repository Transition — joins the SAME pkg.assets
+    // map every assets/* file below uses (keyed by its own relative
+    // filename, e.g. "thumbnail.jpg"), rather than being embedded
+    // directly onto the manifest field; the manifest field becomes a
+    // plain reference to that key. This is what gives the zip-import
+    // "Local Repository" producer the same shape as Theme Builder's
+    // builder.js — the same reference resolved through
+    // ThemeRegistry.getAsset()/resolveAssetRef() either way.
     ['preview','thumbnail'].forEach(function(field){
       const found=names.find(function(n){ return new RegExp('^'+root.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+field+'\\.(png|jpg|jpeg|webp)$','i').test(n); });
-      if(found && !pkg.manifest[field==='preview'?'previewImage':field]){
-        const key=field==='preview'?'previewImage':field;
-        pkg.manifest[key]=ZipReader.bytesToDataURL(files[found],_mimeFor(found));
-      }
+      if(!found) return;
+      const key=field==='preview'?'previewImage':field;
+      const relPath=found.slice(root.length);
+      pkg.assets[relPath]=ZipReader.bytesToDataURL(files[found],_mimeFor(found));
+      if(!pkg.manifest[key]) pkg.manifest[key]=relPath;
     });
 
     // layouts/ frames/ layer-packs/ representations/ — each a folder of
