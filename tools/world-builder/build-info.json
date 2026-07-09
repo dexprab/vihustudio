@@ -1,10 +1,10 @@
 {
-  "version": "2.7.0-MEP",
+  "version": "3.0.0-MEP",
   "phase": "Builder MEP",
-  "milestone": "Museum Authoring Complete",
-  "slice": "Authoring friction pass — Frame/Usage desync fix, Scene defaults, spawn positions, Inspector grouping, Gallery previews",
-  "build": "0030",
+  "milestone": "MEP Freeze — Release Candidate",
+  "slice": "5-audit Release Candidate pass — Experience-Adapter desync fix (Text/Decoration/Frame), consistency sweep, pixel parity review, full regression",
+  "build": "0031",
   "buildDate": "2026-07-09",
-  "commit": "89f92c5",
+  "commit": "18d77f1",
   "environment": "Release"
 }
