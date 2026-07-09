@@ -826,3 +826,93 @@ the Place question, not on anything else in this document.**
   Alignment/AV/AP/runtime/validation/build/reorder/place-rename suite
   passes unchanged. No Engine V2/Scene Model redesign; no Parts array;
   no migration; no Type removal; no new Builder concepts.
+- v1.4 — Builder V3 MEP, "Museum Authoring Complete" milestone: a
+  hands-on authoring pass (build the actual Museum Theme through the
+  Builder, exactly as a Theme Author would) rather than a feature
+  review, per the milestone's own "does this help an author build the
+  Museum Theme?" test. Six real friction points were found and fixed,
+  every one additive/corrective — no new Builder concepts, no
+  architecture change. **(1) Starter Scene name/shape mismatch**: the
+  Artwork Gallery template's seeded Scene was literally named
+  "Showcase" ("big and bold, the classic gallery look") but defaulted
+  to Portrait, since its underlying Engine Scene Template
+  (`single-holder`) always does — `TEMPLATE_STARTER_SCENE` gained an
+  optional `aspect` override, applied once via the already-existing
+  `setSceneAspect` right after seeding. **(2) Legacy Frame picker/
+  Usage desync — a real correctness bug, not just confusion**: the
+  Place panel's pre-Experience "FRAME" picker (kept fully functional
+  since Milestone 3's own "both paths side by side" decision) wrote
+  `holder.frame` directly via `updateHolder`, bypassing
+  `attachExperience`/`detachExperience` entirely — switching or
+  clearing a Place's Frame through that picker left a hosting
+  Experience's own `attachments` record stale, so Usage/Gallery
+  bookkeeping silently lied about where an Experience was really
+  hosted. Fixed by making `_setHolderFrame` Experience-aware: it now
+  detaches any currently-hosting Frame Experience properly before
+  applying a new selection, and attaches through the real mechanism
+  when the newly-picked Frame is itself Experience-backed — both UI
+  entry points stay functional, but data can no longer drift between
+  them. **(3) Decorations list leaked Text layers**: `_renderDecorationsPanel`'s
+  existing-items list filtered `kind !== 'fill'` instead of
+  `kind === 'decoration'`, so a Scene's Text layers appeared misfiled
+  inside the Decorations activity too — a one-line filter fix, plus the
+  card's icon now shows an uploaded Image (Prompt 1's own Decoration
+  Image support) instead of only ever reading `.glyph`. **(4) New
+  Decorations/Text spawned dead-center**: `addSceneLayer`'s default
+  `position` was `{0.4, 0.4}` — directly on top of a Scene's usual
+  Place — so a freshly-created Free Experience (e.g. a Wax Seal) was
+  often invisible or accidentally selected instead of the artwork right
+  after creation; moved to `{0.38, 0.82}` (clear of a typical Place,
+  still exactly as draggable as before), fixed at both call sites
+  (`addSceneLayer`'s own default and the standalone "Add a Decoration"
+  glyph-picker's hardcoded duplicate). This also serendipitously
+  improved the Experience-based Text creation path's default position
+  to match a real Museum Caption's actual placement (below the photo)
+  better than the pre-existing, differently-purposed "Add Text"
+  button's own top-of-canvas default, which was left untouched since it
+  never had the collision problem. **(5) Inspector field grouping**:
+  the Experience Properties panel was the one Inspector still stacking
+  every field full-width; paired via the same `_fieldRow`/
+  `_buildFieldGroup` convention Frames/Layouts/Overview already use
+  (Mat Width|Frame Thickness, Border Colour|Wall Tone for Frame;
+  Glyph|Colour for Decoration; Font|Alignment, Font Size|Colour for
+  Text/Text Style). **(6) Usage completeness — "what will be affected
+  by edits"**: nothing anywhere told an author that editing a reused
+  Public Experience's Properties silently changes every place it's
+  hosted; `_renderExperienceProperties` now shows one line — "Editing
+  this updates everywhere it's hosted — N places right now" — whenever
+  real usage exceeds one, reading the same `usageOf` data "Used In"
+  already lists, just surfaced before editing starts rather than only
+  after. A seventh item, **Gallery card previews**, closed the same
+  "preview-first, not a database row" gap Part 4 always intended but
+  never fully delivered: every card showed the same generic Type icon
+  regardless of content, so several Frame variations or Decorations
+  were indistinguishable at a glance; a Frame card now shows its real
+  border-colour swatch (the same style the legacy Frame picker already
+  uses) and a Decoration card shows its real Image or Glyph. **Considered
+  and deliberately declined**: fast-pathing "Hosted by Scene" creation
+  from the Decorations panel's contextual "+ Add Experience" — the
+  Decorations panel's own pre-existing, dedicated Background colour
+  field already fully covers the real Museum Theme need (per-Scene wall
+  colour) with zero ceremony, and `hostedBy:'scene'` Experiences remain
+  fully reachable via the Nursery's full creation form plus Reuse for
+  the rarer "keep this exact colour consistent across Scenes" case;
+  adding a Hosted-By selector to the fast quick-create form would cut
+  against the milestone's own "smooth creation flow" goal for no
+  Museum-Theme-blocking gain. Verified via a new consolidated Playwright
+  regression covering all six fixes plus a full end-to-end Museum Theme
+  authoring pass (Scene → Place → Frame Experience → Text Experience →
+  Decoration Experience → cross-scene reuse → Usage Explorer → Gallery →
+  Validation → Build → Publish, with a 900-sample pixel-parity check
+  confirming zero difference between Working View and Runtime Preview);
+  full regression across `goldenBuild.js` (30/30) and every prior
+  Milestone/Canon-Alignment/MEP/AV/AP/runtime/validation/build/reorder/
+  place-rename suite passes unchanged (one test's own hardcoded pixel-
+  sample coordinates needed updating for the intentional decoration
+  spawn-position fix — not a product regression; one pre-existing
+  timing-flaky test, `wb_av009_full_verify.js`, was confirmed flaky on
+  the unmodified baseline too via `git stash`, unrelated to this
+  milestone). No Engine V2/Scene Model/Runtime redesign; no new Builder
+  concepts; every fix reuses existing mechanisms
+  (`attachExperience`/`detachExperience`, `_fieldRow`/`_buildFieldGroup`,
+  `usageOf`, `setSceneAspect`).

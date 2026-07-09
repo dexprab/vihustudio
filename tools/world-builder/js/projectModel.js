@@ -593,7 +593,15 @@ const ProjectModel = (function () {
             kind: spec.kind,
             color: spec.color || '#F4F1EC',
             glyph: spec.glyph || '✨',
-            position: spec.position || { x: 0.4, y: 0.4 },
+            // A new Decoration/Text used to spawn dead-center (0.4, 0.4)
+            // — directly on top of a Scene's usual Place, so it was
+            // often invisible or accidentally selected instead of the
+            // artwork right after creation (Builder V3 MEP finding).
+            // Spawning lower on the Canvas, clear of a typical Place's
+            // extent, still leaves it exactly as draggable as before —
+            // just not born hidden under the one thing every Museum
+            // Gallery Scene already has.
+            position: spec.position || { x: 0.38, y: 0.82 },
             size: spec.size || { w: 0.14, h: 0.14 },
             permissions: _defaultLayerPermissions(),
             decorationSlot: false

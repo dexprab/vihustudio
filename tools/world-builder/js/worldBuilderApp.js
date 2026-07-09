@@ -187,9 +187,16 @@
     // Engine Scene Template that best matches that World template's own
     // spirit. Blank World deliberately seeds none — Blueprint §5's own
     // "World with zero Scenes" empty state is exactly this template's
-    // "no assumptions" intent, not an oversight.
+    // "no assumptions" intent, not an oversight. An optional `aspect`
+    // overrides the Engine Scene Template's own default when the two
+    // disagree — 'single-holder' always defaults to Portrait, but a
+    // "Showcase" Scene (Builder V3 MEP finding, from authoring the
+    // Museum Theme) means "big and bold, the classic gallery look,"
+    // which reads as Landscape; seeding it Portrait left every new
+    // Artwork Gallery World's first Scene mismatched against its own
+    // name until a Theme Author noticed and fixed it by hand.
     const TEMPLATE_STARTER_SCENE = {
-        'artwork-gallery': { template: 'single-holder', name: 'Showcase' },
+        'artwork-gallery': { template: 'single-holder', name: 'Showcase', aspect: 'landscape' },
         storybook: { template: 'cover', name: 'Cover' },
         quotes: { template: 'quote', name: 'Quote' },
         sketchbook: { template: 'single-holder', name: 'Sketch' },
@@ -201,6 +208,7 @@
         if (!starter) return;
         const scene = window.ProjectModel.addScene(project, starter.template);
         window.ProjectModel.renameScene(project, scene.id, starter.name);
+        if (starter.aspect) window.ProjectModel.setSceneAspect(project, scene.id, starter.aspect);
     }
 
     function _templateCard(entry) {
@@ -2467,8 +2475,30 @@
         return card;
     }
 
+    // Builder V3 MEP — the legacy Frame picker (still fully functional
+    // alongside Experience-first authoring, Milestone 3's own "both
+    // paths side by side" decision) was writing `holder.frame` directly,
+    // bypassing attachExperience/detachExperience — so switching a
+    // Place's Frame here left a hosting Experience's own Usage record
+    // stale (still claiming to be hosted at a Place it no longer
+    // actually renders at). Fixed by routing through the real Engine
+    // Adapter entry points whenever either side of the change is
+    // Experience-backed, so Usage/Gallery bookkeeping can never drift
+    // from what's actually on the Place, regardless of which control a
+    // Theme Author used to change it.
     function _setHolderFrame(scene, holder, frameId) {
-        window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { frame: frameId });
+        if (holder.frame) {
+            const hostingExp = window.ProjectModel.findExperience(currentProject, holder.frame);
+            if (hostingExp && hostingExp.type === 'frame') {
+                window.ProjectModel.detachExperience(currentProject, hostingExp.id, { sceneId: scene.id, placeId: holder.id });
+            }
+        }
+        const newExp = frameId ? window.ProjectModel.findExperience(currentProject, frameId) : null;
+        if (newExp && newExp.type === 'frame' && window.ProjectModel.attachExperience(currentProject, newExp.id, { sceneId: scene.id, placeId: holder.id })) {
+            // attachExperience already set holder.frame + re-synced the mirror.
+        } else {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { frame: frameId });
+        }
         _persist();
         _redrawSceneCanvases(scene.id);
         _renderContextPanel();
@@ -2539,7 +2569,11 @@
             attachedExperience: null
         });
 
-        const decorations = (scene.layers || []).filter(function (l) { return l.kind !== 'fill'; });
+        // `l.kind === 'decoration'` specifically — a Scene's layers also
+        // include 'fill' (Background, edited above) and 'text' (its own
+        // Text activity); a broader `!== 'fill'` check here used to leak
+        // Text layers into this list too.
+        const decorations = (scene.layers || []).filter(function (l) { return l.kind === 'decoration'; });
         if (decorations.length) {
             const list = document.createElement('div');
             list.className = 'wb-scene-library-grid';
@@ -2549,7 +2583,16 @@
                 card.className = 'wb-scene-template-card';
                 const glyph = document.createElement('div');
                 glyph.className = 'wb-scene-template-icon';
-                glyph.textContent = l.glyph;
+                if (l.image) {
+                    const img = document.createElement('img');
+                    img.src = l.image;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'contain';
+                    glyph.appendChild(img);
+                } else {
+                    glyph.textContent = l.glyph;
+                }
                 const name = document.createElement('div');
                 name.className = 'wb-scene-template-name';
                 name.textContent = l.name;
@@ -2582,9 +2625,12 @@
             card.style.textAlign = 'center';
             card.textContent = g;
             card.addEventListener('click', function () {
+                // No explicit position/size — addSceneLayer's own default
+                // (bottom of Canvas, clear of a typical Place) applies,
+                // so a freshly-added Decoration is never born hidden
+                // under the artwork (Builder V3 MEP finding).
                 const layer = window.ProjectModel.addSceneLayer(currentProject, scene.id, {
-                    kind: 'decoration', glyph: g, name: 'Decoration',
-                    position: { x: 0.4, y: 0.4 }, size: { w: 0.14, h: 0.14 }
+                    kind: 'decoration', glyph: g, name: 'Decoration'
                 });
                 currentInspectorTarget = 'layer:' + layer.id;
                 _persist();
@@ -3311,9 +3357,34 @@
             if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); card.click(); }
         });
 
+        // Builder V3 MEP — "Preview-first: a miniature composition, not
+        // a database row" (this Part's own comment above) wasn't fully
+        // true: every card showed the same generic Type icon regardless
+        // of content, so a Gallery with several Frame variations or
+        // Decorations was indistinguishable at a glance — exactly the
+        // "natural place to discover reusable Experiences" this
+        // milestone asks the Gallery to become. Frame shows its real
+        // border colour (the same swatch style the legacy Frame picker
+        // already uses); Decoration shows its real Image or Glyph;
+        // other types keep the Type icon, which is already the most
+        // meaningful preview available for them.
         const thumb = document.createElement('div');
         thumb.className = 'wb-scene-card-thumb wb-experience-card-thumb';
-        thumb.textContent = type.icon;
+        const props = exp.properties || {};
+        if (exp.type === 'frame' && props.borderColor) {
+            thumb.style.background = props.borderColor;
+        } else if (exp.type === 'decoration' && props.image) {
+            const img = document.createElement('img');
+            img.src = props.image;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            thumb.appendChild(img);
+        } else if (exp.type === 'decoration' && props.glyph) {
+            thumb.textContent = props.glyph;
+        } else {
+            thumb.textContent = type.icon;
+        }
         card.appendChild(thumb);
 
         const name = document.createElement('div');
@@ -3451,6 +3522,16 @@
         heading.textContent = 'Properties';
         contextPanel.appendChild(heading);
 
+        // An author should always know what will be affected by an edit
+        // (Builder V3 MEP — Usage completeness): a reused Experience's
+        // Properties change everywhere it's hosted, silently, unless
+        // said so up front — this reads the same real Usage records
+        // "Used In" (below) lists, just surfaced before editing starts.
+        const usageCount = window.ProjectModel.usageOf(currentProject, exp.id).length;
+        if (usageCount > 1) {
+            contextPanel.appendChild(_fieldHelp('Editing this updates everywhere it’s hosted — ' + usageCount + ' places right now.'));
+        }
+
         function field(key, label, input) {
             contextPanel.appendChild(_buildFieldGroup(label, input));
         }
@@ -3462,41 +3543,58 @@
             };
         }
 
+        // Paired via _fieldRow — the same short-related-fields-side-by-
+        // side convention Frames/Layouts/Overview already use elsewhere
+        // in the Builder (Sprint B2.0.4/B2.0.6) — this panel was the one
+        // Inspector still stacking every field full-width (Builder V3
+        // MEP finding).
         if (exp.type === 'frame') {
-            field('matWidth', 'Mat Width', _range(0, 80, props.matWidth || 0, onProp('matWidth')));
-            field('frameThickness', 'Frame Thickness', _range(0, 20, props.frameThickness || 0, onProp('frameThickness')));
-            field('borderColor', 'Border Colour', _colorInput(props.borderColor, onProp('borderColor')));
-            field('wallTone', 'Wall Tone', _colorInput(props.wallTone, onProp('wallTone')));
+            _fieldRow(
+                _buildFieldGroup('Mat Width', _range(0, 80, props.matWidth || 0, onProp('matWidth'))),
+                _buildFieldGroup('Frame Thickness', _range(0, 20, props.frameThickness || 0, onProp('frameThickness')))
+            );
+            _fieldRow(
+                _buildFieldGroup('Border Colour', _colorInput(props.borderColor, onProp('borderColor'))),
+                _buildFieldGroup('Wall Tone', _colorInput(props.wallTone, onProp('wallTone')))
+            );
             field('shadow', 'Shadow', _select([
                 { value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' },
                 { value: 'floating', label: 'Floating' }, { value: 'gallery', label: 'Gallery' }
             ], props.shadow || 'soft', onProp('shadow')));
         } else if (exp.type === 'decoration') {
-            field('glyph', 'Glyph', _textInput(props.glyph, onProp('glyph')));
-            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+            _fieldRow(
+                _buildFieldGroup('Glyph', _textInput(props.glyph, onProp('glyph'))),
+                _buildFieldGroup('Colour', _colorInput(props.color, onProp('color')))
+            );
             // Image and Glyph are both simply optional (Builder V3 MEP)
             // — an uploaded Image is preferred by the Runtime when
             // present, but setting one doesn't clear the Glyph.
             field('image', 'Image', _assetUploadRow('🖼️', props.image, onProp('image')));
         } else if (exp.type === 'text') {
             field('text', 'Words', _textarea(props.text, onProp('text')));
-            field('font', 'Font', _select([
-                { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
-                { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
-            ], props.font || 'Georgia, serif', onProp('font')));
-            field('fontSize', 'Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize')));
-            field('align', 'Alignment', _select([
-                { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
-            ], props.align || 'left', onProp('align')));
-            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+            _fieldRow(
+                _buildFieldGroup('Font', _select([
+                    { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
+                    { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
+                ], props.font || 'Georgia, serif', onProp('font'))),
+                _buildFieldGroup('Alignment', _select([
+                    { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
+                ], props.align || 'left', onProp('align')))
+            );
+            _fieldRow(
+                _buildFieldGroup('Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize'))),
+                _buildFieldGroup('Colour', _colorInput(props.color, onProp('color')))
+            );
         } else if (exp.type === 'text-style') {
-            field('font', 'Font', _select([
-                { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' }
-            ], props.font || 'Georgia, serif', onProp('font')));
+            _fieldRow(
+                _buildFieldGroup('Font', _select([
+                    { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' }
+                ], props.font || 'Georgia, serif', onProp('font'))),
+                _buildFieldGroup('Alignment', _select([
+                    { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
+                ], props.align || 'left', onProp('align')))
+            );
             field('fontSize', 'Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize')));
-            field('align', 'Alignment', _select([
-                { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
-            ], props.align || 'left', onProp('align')));
         } else {
             field('color', 'Colour', _colorInput(props.color, onProp('color')));
         }
