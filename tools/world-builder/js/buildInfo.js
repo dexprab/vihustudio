@@ -20,23 +20,17 @@
 
     var fallback = WB_NAME + ' • Development';
 
+    // Kept deliberately minimal — just enough to tell one deploy apart
+    // from another at a glance: which commit, which build number, and
+    // whether it's a dev or release build. Version/phase/milestone/
+    // slice used to be included too, but that made the footer read like
+    // a changelog rather than a build stamp.
     function render(j) {
         try {
-            var v = j.version || '';
-            // Engine V2 implementation phase — phase/milestone/slice
-            // (falling back to the older sprint/task naming so a
-            // pre-existing build-info.json never breaks the footer).
-            var phase = j.phase || j.sprint || '';
-            var milestone = j.milestone || j.task || '';
-            var slice = j.slice || '';
             var b = j.build || '';
             var c = j.commit || '';
             var e = j.environment || '';
-            var pm = phase && milestone ? (phase + ' — ' + milestone) : (phase || milestone);
-            var parts = [];
-            parts.push(v ? (WB_NAME + ' ' + v) : WB_NAME);
-            if (pm) parts.push(pm);
-            if (slice) parts.push('Slice: ' + slice);
+            var parts = [WB_NAME];
             if (b) parts.push('Build ' + b);
             if (c) parts.push(c);
             if (e) parts.push(e);
