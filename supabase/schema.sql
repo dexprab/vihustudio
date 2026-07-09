@@ -15,6 +15,16 @@
 -- writable by the anon role, because "Builder -> Publish Official
 -- Theme -> Supabase" is this sprint's own explicit requirement — see
 -- the disclosure comment above those policies below.
+--
+-- Idempotency note: PostgreSQL's CREATE POLICY has no IF NOT EXISTS
+-- clause (unlike CREATE TABLE/INDEX/SCHEMA) — an earlier draft of this
+-- file used that syntax and would have failed with a syntax error on
+-- the very first policy statement against a real project. Every policy
+-- below is instead made re-runnable with `drop policy if exists ...`
+-- immediately before `create policy ...` (DROP POLICY does support IF
+-- EXISTS), so this whole script can be run more than once against the
+-- same project with no error, matching CREATE TABLE IF NOT EXISTS's
+-- and INSERT ... ON CONFLICT's own idempotency below.
 
 -- ---------------------------------------------------------------
 -- Table: themes
@@ -37,7 +47,8 @@ create table if not exists public.themes (
 alter table public.themes enable row level security;
 
 -- Anyone (anonymous or authenticated) can read Official Themes.
-create policy if not exists themes_official_select
+drop policy if exists themes_official_select on public.themes;
+create policy themes_official_select
   on public.themes for select
   using (repository = 'official');
 
@@ -50,11 +61,13 @@ create policy if not exists themes_official_select
 -- key can currently overwrite any Official Theme. Resolving "who may
 -- publish Official" is real, necessary future work (a small allowlist
 -- or a real authenticated admin role), not something to invent here.
-create policy if not exists themes_official_write
+drop policy if exists themes_official_write on public.themes;
+create policy themes_official_write
   on public.themes for insert
   with check (repository = 'official');
 
-create policy if not exists themes_official_update
+drop policy if exists themes_official_update on public.themes;
+create policy themes_official_update
   on public.themes for update
   using (repository = 'official')
   with check (repository = 'official');
@@ -62,15 +75,18 @@ create policy if not exists themes_official_update
 -- A Personal Theme is only visible to and writable by the anonymous/
 -- authenticated user that owns it (auth.uid(), not a client-supplied
 -- id — see docs/THEME_REPOSITORY_ARCHITECTURE.md §4).
-create policy if not exists themes_personal_select
+drop policy if exists themes_personal_select on public.themes;
+create policy themes_personal_select
   on public.themes for select
   using (repository = 'personal' and owner_id = auth.uid()::text);
 
-create policy if not exists themes_personal_write
+drop policy if exists themes_personal_write on public.themes;
+create policy themes_personal_write
   on public.themes for insert
   with check (repository = 'personal' and owner_id = auth.uid()::text);
 
-create policy if not exists themes_personal_update
+drop policy if exists themes_personal_update on public.themes;
+create policy themes_personal_update
   on public.themes for update
   using (repository = 'personal' and owner_id = auth.uid()::text)
   with check (repository = 'personal' and owner_id = auth.uid()::text);
@@ -86,23 +102,28 @@ insert into storage.buckets (id, name, public)
 values ('theme-assets', 'theme-assets', false)
 on conflict (id) do nothing;
 
-create policy if not exists theme_assets_official_read
+drop policy if exists theme_assets_official_read on storage.objects;
+create policy theme_assets_official_read
   on storage.objects for select
   using (bucket_id = 'theme-assets' and (storage.foldername(name))[1] = 'official');
 
-create policy if not exists theme_assets_official_write
+drop policy if exists theme_assets_official_write on storage.objects;
+create policy theme_assets_official_write
   on storage.objects for insert
   with check (bucket_id = 'theme-assets' and (storage.foldername(name))[1] = 'official');
 
-create policy if not exists theme_assets_official_update
+drop policy if exists theme_assets_official_update on storage.objects;
+create policy theme_assets_official_update
   on storage.objects for update
   using (bucket_id = 'theme-assets' and (storage.foldername(name))[1] = 'official')
   with check (bucket_id = 'theme-assets' and (storage.foldername(name))[1] = 'official');
 
 -- A Personal asset is scoped to its owner (js/themeRepositoryClient.js
--- reads Personal assets via createSignedUrl(), which itself checks
--- this select policy at signing time — not a public URL).
-create policy if not exists theme_assets_personal_read
+-- reads every asset via createSignedUrl(), which itself checks this
+-- select policy at signing time — not a public URL; see
+-- docs/THEME_REPOSITORY_ARCHITECTURE.md §2.2).
+drop policy if exists theme_assets_personal_read on storage.objects;
+create policy theme_assets_personal_read
   on storage.objects for select
   using (
     bucket_id = 'theme-assets'
@@ -110,7 +131,8 @@ create policy if not exists theme_assets_personal_read
     and (storage.foldername(name))[2] = auth.uid()::text
   );
 
-create policy if not exists theme_assets_personal_write
+drop policy if exists theme_assets_personal_write on storage.objects;
+create policy theme_assets_personal_write
   on storage.objects for insert
   with check (
     bucket_id = 'theme-assets'
@@ -118,7 +140,8 @@ create policy if not exists theme_assets_personal_write
     and (storage.foldername(name))[2] = auth.uid()::text
   );
 
-create policy if not exists theme_assets_personal_update
+drop policy if exists theme_assets_personal_update on storage.objects;
+create policy theme_assets_personal_update
   on storage.objects for update
   using (
     bucket_id = 'theme-assets'
