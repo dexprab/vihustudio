@@ -1,10 +1,10 @@
 {
-  "version": "3.1.4",
-  "phase": "Platform Hardening",
-  "milestone": "Builder to Studio contract hardening",
-  "slice": "Frame field-set reconciliation (background/frame/paper), Layer target:element now renders, compiled assets map preserved through import + ThemeRegistry.getAsset() — see docs/THEME_CONTRACT.md",
-  "build": "0037",
+  "version": "3.2.0",
+  "phase": "Repository Architecture Transition",
+  "milestone": "Phase 1 — Repository Foundation",
+  "slice": "New, additive, uncalled repository foundation: docs/THEME_REPOSITORY_ARCHITECTURE.md, js/themeRepositoryClient.js (Supabase-backed discover/list/load/publish), supabase/schema.sql draft — no Builder/Studio call site wired yet",
+  "build": "0038",
   "buildDate": "2026-07-09",
-  "commit": "b83168a",
+  "commit": "pending",
   "environment": "Release"
 }
