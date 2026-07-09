@@ -725,7 +725,7 @@ const ProjectModel = (function () {
     function _ensureExperienceDefaults(exp) {
         if (!exp) return exp;
         if (typeof exp.description !== 'string') exp.description = '';
-        if (!exp.type) exp.type = (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value) || 'frame';
+        if (!exp.type) exp.type = (window.ExperienceSchema && window.ExperienceSchema.DEFAULT_EXPERIENCE_TYPE) || 'decoration';
         if (!exp.hostedBy) exp.hostedBy = (exp.attachment === 'attached') ? 'place' : (exp.attachment || 'free');
         delete exp.attachment;
         if (!exp.lifecycle) exp.lifecycle = 'nurturing';
@@ -736,9 +736,51 @@ const ProjectModel = (function () {
         delete exp.host;
         if (!Array.isArray(exp.tags)) exp.tags = [];
         if (!exp.properties || typeof exp.properties !== 'object') exp.properties = {};
+        _ensureUniversalContentDefaults(exp);
         if (!exp.createdAt) exp.createdAt = exp.updatedAt || Date.now();
         if (!exp.updatedAt) exp.updatedAt = exp.createdAt;
         return exp;
+    }
+
+    // Builder V3.1 — Universal Experience Authoring. Every Experience
+    // gets the four universal content fields (js/services/
+    // experienceSchema.js's `defaultUniversalContent`), read-time-
+    // reconciled exactly like every other "authored before this field
+    // existed" migration in this file (`_ensureHolderDefaults`/
+    // `_ensureStack`'s own pattern). A pre-existing Frame/Decoration/
+    // Text Experience's legacy fields (`color`, `image`, `text`, `font`,
+    // `fontSize`, `align`, `matWidth`, ...) are never deleted or
+    // reinterpreted — only copied once into the new namespaced fields,
+    // so the Inspector shows sensible starting content instead of a
+    // blank slate, and — because the Engine Adapter now renders
+    // Scene/Free hosting from these same namespaced fields going
+    // forward — a migrated Experience keeps rendering identically to
+    // before this milestone (the copied values start out identical).
+    function _ensureUniversalContentDefaults(exp) {
+        const props = exp.properties;
+        const defaults = (window.ExperienceSchema && window.ExperienceSchema.defaultUniversalContent()) || {};
+        Object.keys(defaults).forEach(function (key) {
+            if (props[key] === undefined) props[key] = defaults[key];
+        });
+        if (exp._universalMigrated) return;
+        if (exp.type === 'decoration') {
+            // `color` on a legacy Decoration SceneLayer was already
+            // inert (`_paintLayer`'s decoration branch never reads
+            // `.color`) — copy the value so the Colour picker isn't
+            // blank, but leave `colorTransparent` at its fresh default
+            // (true) so a pre-existing Decoration's render is provably
+            // unaffected; an author must deliberately uncheck
+            // Transparent to make it visible for the first time.
+            if (props.color !== undefined) props.colorValue = props.color;
+            if (props.image) props.imageSrc = props.image;
+        } else if (exp.type === 'text') {
+            if (props.text !== undefined) props.textContent = props.text;
+            if (props.font) props.textFont = props.font;
+            if (props.fontSize) props.textSize = props.fontSize;
+            if (props.align) props.textAlign = props.align;
+            if (props.color) props.textColor = props.color;
+        }
+        exp._universalMigrated = true;
     }
 
     // Placeholder creation (Milestone 2) plus real type-specific
@@ -753,7 +795,11 @@ const ProjectModel = (function () {
         const base = spec.name ? _slug(spec.name) : 'experience';
         const id = _uniqueId(existingIds, base);
         const now = Date.now();
-        const type = spec.type || (window.ExperienceSchema && window.ExperienceSchema.EXPERIENCE_TYPES[0].value);
+        // Builder V3.1 — an author never picks a Type anymore; contextual
+        // creation (Place/Decorations/Text quick-create) still passes one
+        // internally for Engine Adapter dispatch, but a bare "+ New
+        // Experience" (the Nursery) always defaults here.
+        const type = spec.type || (window.ExperienceSchema && window.ExperienceSchema.DEFAULT_EXPERIENCE_TYPE) || 'decoration';
         const experience = _ensureExperienceDefaults({
             id: id,
             name: spec.name || 'New Experience',
@@ -910,25 +956,21 @@ const ProjectModel = (function () {
         if (!window.ExperienceSchema) return;
         experience.attachments.forEach(function (a) {
             if (a.placeId) {
-                // Hosted by a Place.
+                // Hosted by a Place — unchanged, legacy Frame-only path
+                // (Builder V3.1 disclosed gap: Text/Image/Graphics/Colour
+                // don't yet have a Place-hosted rendering mechanism —
+                // there is still only one Frame slot per Place).
                 if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'place')) return;
                 if (experience.type === 'frame') {
                     _mirrorFrame(project, experience);
                     updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
                 }
-            } else if (experience.hostedBy === 'scene') {
-                // Hosted by the Scene itself — projects onto the Scene's
-                // existing full-bleed background fill mechanism, not a
-                // new Engine capability.
-                if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'scene')) return;
-                const color = (experience.properties && experience.properties.color) || '#F4F1EC';
-                setSceneBackground(project, a.sceneId, color);
             } else {
-                // Free — roams the Scene as its own independent Layer.
-                if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'free')) return;
-                if (experience.type === 'decoration' || experience.type === 'text') {
-                    _mirrorSceneLayer(project, a.sceneId, experience);
-                }
+                // Scene or Free — Builder V3.1 Universal Experience
+                // Authoring: every Experience, regardless of `type`,
+                // projects its four universal content sections (Text/
+                // Image/Graphics/Colour) the same way.
+                _syncUniversalContent(project, a.sceneId, experience, experience.hostedBy === 'scene' ? 'scene' : 'free');
             }
         });
     }
@@ -942,43 +984,196 @@ const ProjectModel = (function () {
         });
     }
 
-    function _findMirroredLayer(project, sceneId, experienceId) {
+    // `slot` is one of 'text'/'image'/'graphic' (a dedicated mirrored
+    // Scene Layer per populated universal content section) or undefined
+    // (a pre-Builder-V3.1 legacy single mirrored layer — Frame's old
+    // Decoration/Text single-Layer-per-Experience mechanism). Kept
+    // slot-aware rather than replaced so a legacy layer already on a
+    // Scene can be found and claimed (see `_claimLegacyMirrorLayer`)
+    // instead of silently duplicated.
+    function _findMirroredLayer(project, sceneId, experienceId, slot) {
         const scene = findScene(project, sceneId);
         if (!scene) return null;
-        return (scene.layers || []).find(function (l) { return l.sourceExperienceId === experienceId; }) || null;
+        return (scene.layers || []).find(function (l) {
+            return l.sourceExperienceId === experienceId && (slot === undefined ? !l.contentSlot : l.contentSlot === slot);
+        }) || null;
     }
 
-    function _mirrorSceneLayer(project, sceneId, experience) {
-        const existing = _findMirroredLayer(project, sceneId, experience.id);
+    // A pre-existing (pre-Builder-V3.1) Experience already mirrored a
+    // single mirrored Layer with no `contentSlot` tag — reusing it in
+    // place (rather than leaving it orphaned and creating a fresh one)
+    // means the Wax Seal/Museum Caption/etc an author already
+    // positioned keeps its exact Scene position the first time its
+    // owning Experience is touched under the new Universal model,
+    // instead of visually duplicating or jumping to a fresh default rect.
+    function _claimLegacyMirrorLayer(project, sceneId, experience, wantKind) {
+        const legacy = _findMirroredLayer(project, sceneId, experience.id, undefined);
+        if (!legacy || legacy.kind !== wantKind) return null;
+        return legacy;
+    }
+
+    function _removeMirroredLayer(project, sceneId, experienceId, slot) {
+        const layer = _findMirroredLayer(project, sceneId, experienceId, slot);
+        if (layer) deleteSceneLayer(project, sceneId, layer.id);
+    }
+
+    // The rect a Free-hosted Experience's Colour fill should cover when
+    // there's no dedicated "Experience bounds" concept anymore (Builder
+    // V3.1 — each content section owns its own Transform instead) — the
+    // bounding box of whichever sections actually have content, so
+    // Colour reads as "a backdrop behind what's here," never an
+    // arbitrary independent rectangle.
+    function _universalContentFootprint(props) {
+        const rects = [];
+        if (props.imageSrc) rects.push({ x: props.imageX, y: props.imageY, w: props.imageW, h: props.imageH });
+        if (props.graphicSrc) rects.push({ x: props.graphicX, y: props.graphicY, w: props.graphicW, h: props.graphicH });
+        if (props.textContent && props.textContent.trim()) rects.push({ x: props.textX, y: props.textY, w: props.textW, h: props.textH });
+        if (!rects.length) return { x: 0.3, y: 0.3, w: 0.4, h: 0.4 };
+        const x0 = Math.min.apply(null, rects.map(function (r) { return r.x; }));
+        const y0 = Math.min.apply(null, rects.map(function (r) { return r.y; }));
+        const x1 = Math.max.apply(null, rects.map(function (r) { return r.x + r.w; }));
+        const y1 = Math.max.apply(null, rects.map(function (r) { return r.y + r.h; }));
+        return { x: x0, y: y0, w: Math.max(0.02, x1 - x0), h: Math.max(0.02, y1 - y0) };
+    }
+
+    // Builder V3.1 Universal Experience Authoring — the Engine Adapter
+    // entry point every Scene/Free-hosted Experience now syncs through,
+    // regardless of `type`: up to four tagged Scene Layers (one per
+    // populated content section), each reusing an existing, unmodified
+    // Engine V2 Layer kind (`fill` for Colour, `text` for Text,
+    // `decoration` for Image/Graphics — Image and Graphics are both
+    // simply a Layer's `.image` field, the same mechanism Builder V3
+    // MEP's Decoration Image support already proved out). A section
+    // with no content (empty Colour/Text/Image/Graphics) mirrors
+    // nothing — no empty, invisible Layers cluttering the Scene Stack.
+    function _syncUniversalContent(project, sceneId, experience, fillMode) {
         const props = experience.properties || {};
-        if (existing) {
-            Object.assign(existing, experience.type === 'text'
-                // Colour was missing here (Builder V3 MEP Freeze audit
-                // finding) — a Text Experience's Colour field persisted
-                // correctly but was silently never mirrored onto the
-                // real rendered Layer, so it had no visible effect at
-                // all, breaking "Text = Text + Colour" content editing.
-                ? { name: experience.name, text: props.text, font: props.font, fontSize: props.fontSize, align: props.align, color: props.color }
-                // Image and Glyph are both simply optional properties,
-                // never mutually exclusive (Builder V3 MEP) — both are
-                // mirrored so the Runtime can prefer Image when present.
-                : { name: experience.name, glyph: props.glyph, color: props.color, image: props.image });
-            return existing;
+
+        // Colour.
+        if (fillMode === 'scene') {
+            // Hosted by the Scene itself — the existing full-bleed
+            // background fill mechanism, not a new Engine capability.
+            // Transparent means "leave whatever background already
+            // exists" — there's no new "no background" state to write.
+            if (props.colorTransparent === false) {
+                setSceneBackground(project, sceneId, props.colorValue || '#F4F1EC');
+            }
+        } else {
+            if (props.colorTransparent === false) {
+                // The Colour section has no Transform of its own — its
+                // rect is always the live footprint of whatever Text/
+                // Image/Graphics is currently populated (recomputed on
+                // every sync, not just at creation, since nothing else
+                // ever owns or edits this rect the way a Transform
+                // would), so it reads as "a backdrop behind what's
+                // here" even as content is added/moved/removed later.
+                const rect = _universalContentFootprint(props);
+                const existing = _findMirroredLayer(project, sceneId, experience.id, 'color');
+                if (existing) {
+                    existing.color = props.colorValue;
+                    existing.opacity = props.colorOpacity;
+                    existing.position = { x: rect.x, y: rect.y };
+                    existing.size = { w: rect.w, h: rect.h };
+                } else {
+                    const layer = addSceneLayer(project, sceneId, {
+                        kind: 'fill', name: experience.name + ' — Colour', color: props.colorValue,
+                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h }, atBottom: true
+                    });
+                    layer.opacity = props.colorOpacity;
+                    layer.sourceExperienceId = experience.id;
+                    layer.contentSlot = 'color';
+                }
+            } else {
+                _removeMirroredLayer(project, sceneId, experience.id, 'color');
+            }
         }
-        return addSceneLayer(project, sceneId, Object.assign({
-            name: experience.name,
-            kind: experience.type === 'text' ? 'text' : 'decoration',
-            sourceExperienceId: experience.id
-        }, props));
+
+        // Text.
+        if (props.textContent && props.textContent.trim()) {
+            let layer = _findMirroredLayer(project, sceneId, experience.id, 'text');
+            if (!layer) {
+                const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'text');
+                if (legacy) {
+                    legacy.contentSlot = 'text';
+                    props.textX = legacy.position.x; props.textY = legacy.position.y;
+                    props.textW = legacy.size.w; props.textH = legacy.size.h;
+                    layer = legacy;
+                }
+            }
+            if (layer) {
+                Object.assign(layer, {
+                    name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize,
+                    align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
+                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH }
+                });
+            } else {
+                const created = addSceneLayer(project, sceneId, {
+                    kind: 'text', name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize, align: props.textAlign,
+                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH }
+                });
+                created.color = props.textColor;
+                created.opacity = props.textOpacity;
+                created.sourceExperienceId = experience.id;
+                created.contentSlot = 'text';
+            }
+        } else {
+            _removeMirroredLayer(project, sceneId, experience.id, 'text');
+        }
+
+        // Image and Graphics — both a Layer's `.image` field (the same
+        // Runtime mechanism), kept as two separate Layers/slots so each
+        // owns its own independent Transform.
+        [{ slot: 'image', srcKey: 'imageSrc', xKey: 'imageX', yKey: 'imageY', wKey: 'imageW', hKey: 'imageH', opKey: 'imageOpacity' },
+            { slot: 'graphic', srcKey: 'graphicSrc', xKey: 'graphicX', yKey: 'graphicY', wKey: 'graphicW', hKey: 'graphicH', opKey: 'graphicOpacity' }
+        ].forEach(function (spec) {
+            const src = props[spec.srcKey];
+            if (src) {
+                let layer = _findMirroredLayer(project, sceneId, experience.id, spec.slot);
+                if (!layer) {
+                    const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'decoration');
+                    if (legacy) {
+                        legacy.contentSlot = spec.slot;
+                        props[spec.xKey] = legacy.position.x; props[spec.yKey] = legacy.position.y;
+                        props[spec.wKey] = legacy.size.w; props[spec.hKey] = legacy.size.h;
+                        layer = legacy;
+                    }
+                }
+                const position = { x: props[spec.xKey], y: props[spec.yKey] };
+                const size = { w: props[spec.wKey], h: props[spec.hKey] };
+                // Only the Image section has a Fit control (Graphics'
+                // own Properties are Upload/Replace/Remove/Preview/
+                // Opacity only, per the spec) — `layer.fit` stays
+                // undefined for a Graphics Layer, which
+                // `engineRuntime.js`'s `_paintLayer` already defaults to
+                // 'fit' (contain).
+                const fit = spec.slot === 'image' ? (props.imageFit || 'fit') : undefined;
+                if (layer) {
+                    Object.assign(layer, { name: experience.name, image: src, opacity: props[spec.opKey], fit: fit, position: position, size: size });
+                } else {
+                    const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: experience.name, image: src, position: position, size: size });
+                    created.opacity = props[spec.opKey];
+                    created.fit = fit;
+                    created.sourceExperienceId = experience.id;
+                    created.contentSlot = spec.slot;
+                }
+            } else {
+                _removeMirroredLayer(project, sceneId, experience.id, spec.slot);
+            }
+        });
     }
 
     function _clearMirror(project, experience, entry) {
         if (experience.type === 'frame' && entry.placeId) {
             const holder = findHolder(project, entry.sceneId, entry.placeId);
             if (holder && holder.frame === experience.id) updateHolder(project, entry.sceneId, entry.placeId, { frame: null });
-        } else if ((experience.type === 'decoration' || experience.type === 'text') && !entry.placeId) {
-            const layer = _findMirroredLayer(project, entry.sceneId, experience.id);
-            if (layer) deleteSceneLayer(project, entry.sceneId, layer.id);
+        } else if (!entry.placeId) {
+            ['color', 'text', 'image', 'graphic'].forEach(function (slot) {
+                _removeMirroredLayer(project, entry.sceneId, experience.id, slot);
+            });
+            // A legacy (pre-Builder-V3.1), never-claimed single mirrored
+            // layer — only present for an old Experience whose content
+            // section was never touched under the new model.
+            _removeMirroredLayer(project, entry.sceneId, experience.id, undefined);
         }
     }
 

@@ -445,15 +445,28 @@ const EngineV2Runtime = (function () {
 
     // Paints a Scene Layer — a Decoration (`kind: 'fill' | 'decoration'`)
     // or Text (`kind: 'text'`), Scene Model §2's own vocabulary.
+    //
+    // Builder V3.1 Universal Experience Authoring — `layer.opacity`
+    // (0..1, defaulting to 1 when unset so every pre-existing Layer
+    // renders exactly as before) is a small, generic addition read here
+    // for every Layer kind alike, since Opacity is one of the four
+    // universal content sections' own Properties (Text/Image/Graphics/
+    // Colour all list it) — not a per-type special case.
     function _paintLayer(ctx, layer, graph) {
         if (layer.permissions && layer.permissions.visible === false) return;
         const rect = rectFor(layer, graph);
+        const opacity = typeof layer.opacity === 'number' ? Math.max(0, Math.min(1, layer.opacity)) : 1;
+        if (opacity <= 0) return;
 
         if (layer.kind === 'fill') {
+            ctx.save();
+            ctx.globalAlpha = opacity;
             ctx.fillStyle = layer.color;
             ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+            ctx.restore();
         } else if (layer.kind === 'text') {
             ctx.save();
+            ctx.globalAlpha = opacity;
             ctx.fillStyle = layer.color || '#1D3457';
             ctx.font = (layer.fontSize || 48) + 'px ' + (layer.font || 'Georgia, serif');
             ctx.textAlign = layer.align || 'left';
@@ -462,19 +475,26 @@ const EngineV2Runtime = (function () {
             _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
             ctx.restore();
         } else {
-            // Decoration — Image and Glyph are both simply optional
-            // properties on the same Layer (Builder V3 MEP), never
-            // mutually exclusive in the model; a real, loaded Image
-            // (resolved by the host, never this module — see `load`'s
-            // `resolveLayerImage`) is preferred when available, falling
-            // back to the existing glyph rendering otherwise.
+            // Decoration — a Universal Experience's Image or Graphics
+            // section (Builder V3.1), or a legacy Glyph. Image and Glyph
+            // are both simply optional properties on the same Layer
+            // (Builder V3 MEP), never mutually exclusive in the model; a
+            // real, loaded Image (resolved by the host, never this
+            // module — see `load`'s `resolveLayerImage`) is preferred
+            // when available, falling back to the existing glyph
+            // rendering otherwise. `fit` (Universal Image's own Fit
+            // control) defaults to 'fit' (contain) — a Graphics asset
+            // has no Fit control of its own (Properties: Upload/
+            // Replace/Remove/Preview/Opacity only) and always contains.
             const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
             if (img) {
                 ctx.save();
-                _drawImageWithFit(ctx, img, rect, 'fit');
+                ctx.globalAlpha = opacity;
+                _drawImageWithFit(ctx, img, rect, layer.fit || 'fit');
                 ctx.restore();
             } else {
                 ctx.save();
+                ctx.globalAlpha = opacity;
                 ctx.font = Math.round(Math.min(rect.w, rect.h)) + 'px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';

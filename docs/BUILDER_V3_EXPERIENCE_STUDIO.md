@@ -979,3 +979,159 @@ the Place question, not on anything else in this document.**
   suite passes unchanged. No Engine V2/Scene Model/Runtime redesign; no
   new Builder concepts; every fix reuses the exact adapter-routing
   pattern already established for the legacy Frame picker.
+- v1.6 — **Builder V3.1, "Universal Experience Authoring."** Real Museum
+  Theme authoring across the MEP milestones kept surfacing the same
+  friction point: the Type picker. Choosing Frame/Decoration/Text/
+  Atmosphere/Lighting/Text Style before an idea even existed forced an
+  author to think in implementation terms before creative ones — exactly
+  the thing "an Experience is a reusable creative idea" (this document's
+  own Builder Philosophy) argues against. This milestone removes it.
+  **Type selector removed**: the Nursery's "+ New Experience" form
+  (`_renderExperienceCreateForm`) no longer shows a Type field at all;
+  every new Experience is internally the existing Decoration
+  implementation (`js/services/experienceSchema.js`'s new
+  `DEFAULT_EXPERIENCE_TYPE`), an Engine Adapter detail the author never
+  sees — `type` still exists on the record (Frame's own dedicated
+  rendering path and Place-hosting's disclosure both still key off it),
+  it is simply never author-chosen again. Both the Experience Card and
+  the Inspector header dropped their Type label to match (an author
+  never picks or sees one, so showing "Decoration" on every single card
+  would only read as noise). **Universal content**: every Experience —
+  new or pre-existing — now exposes the same four content sections in
+  its Inspector, each with its own Properties and Transform (Move/
+  Resize): 📝 Text (Content/Font/Size/Weight/Alignment/Colour/Opacity),
+  🖼 Image (Upload/Replace/Remove/Preview/Fit/Opacity), 🎭 Graphics (a
+  reusable SVG/PNG visual asset — Upload/Replace/Remove/Preview/
+  Opacity, no Fit control since it has no "cover vs. contain" role the
+  way a photo does), and 🎨 Colour (Colour Picker/Opacity/a Transparent
+  checkbox so an Experience can be pure Text/Image/Graphics with no
+  fill at all). Implemented additively per this milestone's own
+  "reuse existing implementation wherever possible" instruction rather
+  than a persistence redesign: `js/services/experienceSchema.js` gained
+  `defaultUniversalContent()`, a set of entirely new, namespaced
+  property keys (`textContent`/`textFont`/`textSize`/`textWeight`/
+  `textAlign`/`textColor`/`textOpacity`/`textX`/`textY`/`textW`/`textH`,
+  the equivalent `image*`/`graphic*` sets, and `colorValue`/
+  `colorOpacity`/`colorTransparent`) merged into every type's
+  `defaultProperties()` — deliberately distinct from every legacy field
+  name (`text`/`font`/`fontSize`/`align`/`color`/`image`/`glyph`/
+  `matWidth`/...) so this is purely additive: a pre-existing Frame's
+  mat/border/wallTone/shadow fields, and a pre-existing Decoration's or
+  Text's legacy fields, are never touched, reinterpreted, or deleted.
+  `js/projectModel.js`'s `_ensureExperienceDefaults` gained
+  `_ensureUniversalContentDefaults`, a read-time reconciliation
+  (matching the file's own established `_ensureHolderDefaults`/
+  `_ensureStack` pattern) that seeds the new fields and, once per
+  Experience (`_universalMigrated`), copies a legacy Decoration's
+  `image`→`imageSrc` and a legacy Text's `text`/`font`/`fontSize`/
+  `align`/`color`→`textContent`/`textFont`/`textSize`/`textAlign`/
+  `textColor` — a legacy Decoration's own `color` is copied to
+  `colorValue` but `colorTransparent` deliberately stays at its fresh
+  default (`true`) rather than being flipped to `false`, since
+  `color` was already inert on a Decoration Layer (`_paintLayer` never
+  read it) and flipping it live would have been a real, undisclosed
+  visual regression for every pre-existing Decoration Experience, not a
+  migration. **The Engine Adapter, extended not replaced**: Scene- and
+  Free-hosted Experiences now sync through a new `_syncUniversalContent`
+  (Place-hosting is unchanged — still Frame-only, a disclosed gap, see
+  below) that mirrors up to four tagged Scene Layers per Experience —
+  one each for a populated Text/Image/Graphics/Colour section — reusing
+  the exact, unmodified Layer kinds Engine V2 already renders (`fill`
+  for Colour, `text` for Text, `decoration` with `.image` set for both
+  Image and Graphics, the same mechanism Builder V3 MEP's Decoration
+  Image support already proved out). An empty section mirrors nothing —
+  no invisible Layers cluttering the Scene Stack. Colour has no
+  Transform of its own (per the spec's own field list); its rect is the
+  live bounding box of whichever Text/Image/Graphics is currently
+  populated (`_universalContentFootprint`, recomputed on every sync, not
+  just at creation, since nothing else ever owns this rect the way a
+  Transform would), reading as "a backdrop behind what's here" even as
+  content is added, moved, or removed later. A pre-existing (pre-V3.1)
+  Experience's single untagged mirrored Layer is *claimed* in place the
+  first time its owning Experience is touched under the new model
+  (`_claimLegacyMirrorLayer`) — its exact existing position/size is
+  copied back into the matching Transform fields and it is simply
+  re-tagged, rather than being orphaned while a fresh duplicate Layer is
+  created at a default rect; verified directly (a hand-constructed
+  legacy Decoration Experience with an author-positioned mirrored Layer
+  keeps that exact position after an Image upload, with exactly one
+  Layer remaining, not two). The Free-hosted "Bounds" editor Builder V3
+  MEP added (one single editable X/Y/Width/Height rect) is superseded —
+  each content section's own Transform now owns Move/Resize instead, a
+  finer-grained equivalent living with the content it actually
+  positions rather than a separate, redundant control surface; the
+  Inspector's Bounds section is now purely informational for all three
+  Hosted-By values. **Opacity and Graphics rendering**:
+  `js/services/engineRuntime.js`'s `_paintLayer` gained a small, generic
+  `layer.opacity` read (0..1, defaulting to 1 so every pre-existing
+  Layer renders byte-identically) applied via `ctx.globalAlpha` for
+  every Layer kind alike — not a per-content-type special case — plus
+  an `imageFit`-aware `layer.fit` read (defaulting to 'fit', matching
+  the prior hardcoded behaviour exactly) so the Image section's own Fit
+  control has a visible effect; a Graphics Layer simply never sets
+  `.fit`, always containing. **The P0 image upload bug, root-caused,
+  not patched**: instrumented the real pipeline end to end (upload →
+  Asset → Experience property → Engine Adapter mirror → Working View →
+  Runtime Preview) and found every one of those six links already
+  worked correctly — the Experience's `properties.imageSrc` set
+  correctly, the mirrored Layer's `.image` set correctly, both canvases
+  painting the uploaded pixels correctly, surviving a full reload. The
+  actual defect was one step earlier and entirely different: the
+  Inspector's own Image/Graphics upload row (`_assetUploadRow`) never
+  re-rendered after a successful upload — `onProp`'s persist-and-redraw
+  never called back into the panel, so the row visibly stayed on
+  "Upload" with no thumbnail, even though the upload had already fully
+  succeeded everywhere else — exactly what an author watching the one
+  place they're looking would reasonably read as "the button doesn't
+  work." Fixed with a second, narrowly-scoped `onUploadProp(key)` used
+  only by the Image/Graphics upload rows (not every Properties field,
+  which don't need it — a colour swatch or slider already shows its own
+  new value inherently) that re-renders the panel after persisting, so
+  the row immediately shows the new thumbnail and "Replace"/"Remove."
+  `_assetUploadRow` itself also gained a Remove action (clearing the
+  asset via `onUpload(null)`), matching the Image/Graphics section's own
+  listed Properties (`Upload/Replace/Remove/Preview`) — a side effect
+  also reaching Overview's pre-existing Thumbnail/Hero Image rows, which
+  gained the same ability to clear an asset for the first time. **Card
+  previews**: the Gallery/Nursery card thumbnail now prefers whichever
+  universal section is actually populated (Image, then Graphics, then a
+  non-transparent Colour) over the old Type-icon fallback, so a card
+  previews real authored content rather than an implementation detail —
+  a pre-existing Frame's border swatch and an unmigrated Decoration's
+  own glyph remain as fallbacks so nothing already authored loses its
+  preview. **Disclosed, not silently bridged**: Place-hosting still only
+  renders a Frame — there is still only one Frame slot per Place and no
+  Holder Layer stack for anything else to project onto (Scene Model §7,
+  still open) — the Inspector says so plainly ("Text/Image/Graphics/
+  Colour don't render when hosted by a Place yet — try Scene or Free
+  instead") rather than pretending otherwise. Verified via Playwright
+  end to end: the Nursery form shows no Type field and creates a
+  `type: 'decoration'` Experience with the full universal-content shape
+  already seeded; the Inspector shows all four sections with working
+  Transform sliders for every Experience regardless of legacy type
+  (including a legacy Frame Experience, which additionally keeps its
+  own dedicated mat/border/shadow fields, unchanged); an Image upload's
+  row updates immediately without navigating away, and the uploaded
+  pixels render identically in Working View and Runtime Preview; a
+  Colour fill with Transparent unchecked renders at the live footprint
+  of populated Text/Image/Graphics content, confirmed by direct pixel
+  sampling once positioned clear of the Place; a Graphics upload at 50%
+  Opacity renders a visibly blended (not full-strength, not fully
+  transparent) pixel; a hand-constructed pre-V3.1 legacy Decoration
+  Experience migrates its Colour/Image fields correctly on read without
+  flipping Transparent, keeps rendering from its original untouched
+  mirrored Layer until first touched under the new model, and is then
+  claimed in place (same position, same single Layer, now tagged) with
+  no duplication; a full Museum Theme authoring pass (Place → Frame
+  Experience, Text → Museum Caption via the universal Text section,
+  Decorations → Wax Seal) reaches a clean Validation, a successful
+  Scene Package Build, a successful World Package Build, and a
+  functional Publish screen. Full regression across `goldenBuild.js`
+  (30/30) passes unchanged; zero console errors throughout. No Engine
+  V2/Scene Model/Runtime redesign beyond the two small, generic
+  `_paintLayer` additions (opacity, fit) described above; no
+  persistence redesign; the Engine Adapter boundary
+  (`_syncExperienceAttachments`/the Frame and Universal Content sync
+  functions) remains the one place a Builder-facing Experience is
+  projected onto Engine V2's own, otherwise-unmodified rendering
+  mechanisms.

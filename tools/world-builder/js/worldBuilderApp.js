@@ -3197,7 +3197,7 @@
         return input;
     }
 
-    function _assetUploadRow(iconFallback, existingDataURL, onUpload) {
+    function _assetUploadRow(iconFallback, existingDataURL, onUpload, accept) {
         const row = document.createElement('div');
         row.className = 'wb-asset-row';
         const thumb = document.createElement('span');
@@ -3217,11 +3217,19 @@
         btn.type = 'button';
         btn.className = 'wb-asset-change-btn';
         btn.textContent = existingDataURL ? 'Replace' : 'Upload';
-        const input = _fileInputUpload('image/*', onUpload);
+        const input = _fileInputUpload(accept || 'image/*', onUpload);
         btn.addEventListener('click', function () { input.click(); });
         row.appendChild(thumb);
         row.appendChild(btn);
         row.appendChild(input);
+        if (existingDataURL) {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'wb-asset-change-btn';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', function () { onUpload(null); });
+            row.appendChild(removeBtn);
+        }
         return row;
     }
 
@@ -3361,7 +3369,6 @@
     // omit both, since neither concept exists yet for an idea that
     // hasn't graduated.
     function _experienceCard(exp, domain) {
-        const type = window.ExperienceSchema.findType(exp.type);
         const card = document.createElement('div');
         card.className = 'wb-scene-card wb-experience-card';
         card.setAttribute('role', 'button');
@@ -3388,19 +3395,34 @@
         const thumb = document.createElement('div');
         thumb.className = 'wb-scene-card-thumb wb-experience-card-thumb';
         const props = exp.properties || {};
-        if (exp.type === 'frame' && props.borderColor) {
-            thumb.style.background = props.borderColor;
-        } else if (exp.type === 'decoration' && props.image) {
+        // Builder V3.1 — prefers whichever universal content section is
+        // actually populated (Image, then Graphics, then Colour) so a
+        // Gallery/Nursery card previews real authored content, not an
+        // implementation-type icon; falls back to legacy fields (a
+        // pre-existing Frame's border swatch, an unmigrated Decoration's
+        // own glyph) so nothing already authored loses its preview.
+        if (props.imageSrc) {
             const img = document.createElement('img');
-            img.src = props.image;
+            img.src = props.imageSrc;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
             thumb.appendChild(img);
+        } else if (props.graphicSrc) {
+            const img = document.createElement('img');
+            img.src = props.graphicSrc;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            thumb.appendChild(img);
+        } else if (exp.type === 'frame' && props.borderColor) {
+            thumb.style.background = props.borderColor;
+        } else if (!props.colorTransparent && props.colorValue) {
+            thumb.style.background = props.colorValue;
         } else if (exp.type === 'decoration' && props.glyph) {
             thumb.textContent = props.glyph;
         } else {
-            thumb.textContent = type.icon;
+            thumb.textContent = '✨';
         }
         card.appendChild(thumb);
 
@@ -3416,14 +3438,18 @@
             card.appendChild(desc);
         }
 
+        // Builder V3.1 — the Type label is dropped from this line
+        // entirely (an author never picks or sees an implementation
+        // type anymore; every new Experience is internally the same
+        // one, so showing it here would only ever read as noise).
         const hostedByLabel = _hostedByLabel(exp);
         const meta = document.createElement('div');
         meta.className = 'wb-experience-card-meta';
         if (domain === 'gallery') {
             const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
-            meta.textContent = type.label + ' · Hosted by ' + hostedByLabel + ' · ' + lifecycleInfo.icon + ' ' + lifecycleInfo.label;
+            meta.textContent = 'Hosted by ' + hostedByLabel + ' · ' + lifecycleInfo.icon + ' ' + lifecycleInfo.label;
         } else {
-            meta.textContent = type.label + ' · Hosted by ' + hostedByLabel;
+            meta.textContent = 'Hosted by ' + hostedByLabel;
         }
         card.appendChild(meta);
 
@@ -3475,9 +3501,10 @@
     // level object already does (Blueprint §9's own drag-to-reposition).
 
     function _renderExperienceInspector(exp) {
-        const type = window.ExperienceSchema.findType(exp.type);
         const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
-        _heading('Experience — ' + exp.name, type.label + ' · Hosted by ' + _hostedByLabel(exp), null);
+        // Builder V3.1 — no Type label here either (see `_experienceCard`'s
+        // own identical reasoning): an author never picks or sees one.
+        _heading('Experience — ' + exp.name, 'Hosted by ' + _hostedByLabel(exp), null);
 
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
@@ -3498,13 +3525,13 @@
             _persist();
         })));
 
-        _renderExperienceProperties(exp, type);
+        _renderExperienceProperties(exp);
         _renderExperienceBounds(exp);
         _renderExperienceOwnership(exp, lifecycleInfo);
 
         if (exp.lifecycle !== 'nurturing') {
             _renderExperienceUsage(exp);
-            _renderExperienceAttachPicker(exp, type);
+            _renderExperienceAttachPicker(exp);
         }
 
         if (exp.lifecycle === 'nurturing') {
@@ -3529,20 +3556,56 @@
         }
     }
 
-    // Properties mirror the exact field shape the existing Frame/
-    // Decoration/Text authoring surfaces already use (js/services/
-    // experienceSchema.js's defaultProperties), so editing here and
-    // editing the old surface would never disagree about what a field
-    // means. Every edit re-syncs any live Hosting immediately
-    // (updateExperienceProperty → _syncExperienceAttachments, the
-    // Engine Adapter).
-    function _renderExperienceProperties(exp, type) {
-        const props = exp.properties || {};
+    const TEXT_FONT_CHOICES = [
+        { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
+        { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
+    ];
+    const TEXT_ALIGN_CHOICES = [
+        { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
+    ];
+    const TEXT_WEIGHT_CHOICES = [
+        { value: 'normal', label: 'Normal' }, { value: 'bold', label: 'Bold' }
+    ];
+    const IMAGE_FIT_CHOICES = [
+        { value: 'fit', label: 'Fit' }, { value: 'fill', label: 'Fill' }, { value: 'original', label: 'Original' }
+    ];
+
+    // A section's own Transform (Move/Resize, Builder V3.1) — X/Y/Width/
+    // Height as percentages, exactly the same fractional Scene-space
+    // convention every other Position/Size control in this Builder
+    // already uses (Place, Decorations, the pre-V3.1 Free Bounds
+    // editor this supersedes).
+    function _contentTransformFields(props, xKey, yKey, wKey, hKey, onProp) {
+        const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round((props[xKey] || 0) * 100), function (v) { onProp(xKey)(v / 100); }));
+        const yGroup = _buildFieldGroup('Y %', _range(0, 100, Math.round((props[yKey] || 0) * 100), function (v) { onProp(yKey)(v / 100); }));
+        _fieldRow(xGroup, yGroup);
+        const wGroup = _buildFieldGroup('Width %', _range(2, 100, Math.round((props[wKey] || 0.1) * 100), function (v) { onProp(wKey)(v / 100); }));
+        const hGroup = _buildFieldGroup('Height %', _range(2, 100, Math.round((props[hKey] || 0.1) * 100), function (v) { onProp(hKey)(v / 100); }));
+        _fieldRow(wGroup, hGroup);
+    }
+
+    function _contentSectionHeading(label) {
         const heading = document.createElement('h3');
         heading.className = 'wb-context-subheading';
         heading.style.marginTop = '14px';
-        heading.textContent = 'Properties';
+        heading.textContent = label;
         contextPanel.appendChild(heading);
+    }
+
+    // Builder V3.1 Universal Experience Authoring — every Experience
+    // exposes the same four content sections (Text/Image/Graphics/
+    // Colour), regardless of `type` ("Do not hide sections based on
+    // Type" — an unused section simply stays empty). `type` only still
+    // decides two things, both Engine Adapter plumbing an author never
+    // sees: a legacy Frame Experience keeps its own dedicated Properties
+    // (matWidth/frameThickness/borderColor/wallTone/shadow — the mat/
+    // border chrome a Place's own single Frame slot still needs, a
+    // concept the universal Text/Image/Graphics/Colour model doesn't
+    // replace), and Place-hosting still only renders a Frame (disclosed
+    // below) — Scene- and Free-hosting now render all four universal
+    // sections uniformly for every Experience.
+    function _renderExperienceProperties(exp) {
+        const props = exp.properties || {};
 
         // An author should always know what will be affected by an edit
         // (Builder V3 MEP — Usage completeness): a reused Experience's
@@ -3554,9 +3617,6 @@
             contextPanel.appendChild(_fieldHelp('Editing this updates everywhere it’s hosted — ' + usageCount + ' places right now.'));
         }
 
-        function field(key, label, input) {
-            contextPanel.appendChild(_buildFieldGroup(label, input));
-        }
         function onProp(key) {
             return function (v) {
                 window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
@@ -3564,13 +3624,27 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
+        // Builder V3.1 P0 fix — an Upload/Replace/Remove action needs a
+        // visible acknowledgment (a fresh thumbnail, "Replace"/"Remove"
+        // appearing) the way a slider or colour swatch already shows its
+        // own new value inherently; the root cause of the reported
+        // "Image upload doesn't work" was that `onProp` above never
+        // re-rendered this panel, so the row silently stayed on
+        // "Upload" even though the Asset/Adapter/Working View/Runtime
+        // Preview had already all updated correctly. Only the discrete,
+        // one-shot upload actions need this — not every keystroke/drag
+        // on the other Properties fields.
+        function onUploadProp(key) {
+            return function (v) {
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+                _renderContextPanel();
+            };
+        }
 
-        // Paired via _fieldRow — the same short-related-fields-side-by-
-        // side convention Frames/Layouts/Overview already use elsewhere
-        // in the Builder (Sprint B2.0.4/B2.0.6) — this panel was the one
-        // Inspector still stacking every field full-width (Builder V3
-        // MEP finding).
         if (exp.type === 'frame') {
+            _contentSectionHeading('Frame');
             _fieldRow(
                 _buildFieldGroup('Mat Width', _range(0, 80, props.matWidth || 0, onProp('matWidth'))),
                 _buildFieldGroup('Frame Thickness', _range(0, 20, props.frameThickness || 0, onProp('frameThickness')))
@@ -3579,85 +3653,105 @@
                 _buildFieldGroup('Border Colour', _colorInput(props.borderColor, onProp('borderColor'))),
                 _buildFieldGroup('Wall Tone', _colorInput(props.wallTone, onProp('wallTone')))
             );
-            field('shadow', 'Shadow', _select([
+            contextPanel.appendChild(_buildFieldGroup('Shadow', _select([
                 { value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' },
                 { value: 'floating', label: 'Floating' }, { value: 'gallery', label: 'Gallery' }
-            ], props.shadow || 'soft', onProp('shadow')));
-        } else if (exp.type === 'decoration') {
-            _fieldRow(
-                _buildFieldGroup('Glyph', _textInput(props.glyph, onProp('glyph'))),
-                _buildFieldGroup('Colour', _colorInput(props.color, onProp('color')))
-            );
-            // Image and Glyph are both simply optional (Builder V3 MEP)
-            // — an uploaded Image is preferred by the Runtime when
-            // present, but setting one doesn't clear the Glyph.
-            field('image', 'Image', _assetUploadRow('🖼️', props.image, onProp('image')));
-        } else if (exp.type === 'text') {
-            field('text', 'Words', _textarea(props.text, onProp('text')));
-            _fieldRow(
-                _buildFieldGroup('Font', _select([
-                    { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
-                    { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
-                ], props.font || 'Georgia, serif', onProp('font'))),
-                _buildFieldGroup('Alignment', _select([
-                    { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
-                ], props.align || 'left', onProp('align')))
-            );
-            _fieldRow(
-                _buildFieldGroup('Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize'))),
-                _buildFieldGroup('Colour', _colorInput(props.color, onProp('color')))
-            );
-        } else if (exp.type === 'text-style') {
-            _fieldRow(
-                _buildFieldGroup('Font', _select([
-                    { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' }
-                ], props.font || 'Georgia, serif', onProp('font'))),
-                _buildFieldGroup('Alignment', _select([
-                    { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
-                ], props.align || 'left', onProp('align')))
-            );
-            field('fontSize', 'Font Size', _range(16, 120, props.fontSize || 48, onProp('fontSize')));
-        } else {
-            field('color', 'Colour', _colorInput(props.color, onProp('color')));
+            ], props.shadow || 'soft', onProp('shadow'))));
         }
 
-        if (!type.renders.place && !type.renders.scene && !type.renders.free) {
-            contextPanel.appendChild(_fieldHelp(type.label + ' can be authored and hosted, but doesn’t appear on the page yet — that\'s coming in a future Builder release.'));
-        } else if (exp.hostedBy === 'place' && !type.renders.place) {
-            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when hosted by a Place yet — try Scene or Free instead.'));
-        } else if (exp.hostedBy === 'scene' && !type.renders.scene) {
-            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when hosted by a Scene yet — try Free instead.'));
-        } else if (exp.hostedBy === 'free' && !type.renders.free) {
-            contextPanel.appendChild(_fieldHelp(type.label + ' doesn’t render when Free yet — try Place or Scene instead.'));
+        // ---- 📝 Text ----
+        _contentSectionHeading('📝 Text');
+        // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
+        // field already gets — carries over to the universal Text
+        // section too, so this authoring path doesn't lose a capability
+        // the legacy Text Layer panel already had.
+        const textContentInput = _textarea(props.textContent, onProp('textContent'));
+        contextPanel.appendChild(_buildFieldGroup('Content', window.EmojiPicker ? window.EmojiPicker.wrap(textContentInput) : textContentInput));
+        _fieldRow(
+            _buildFieldGroup('Font', _select(TEXT_FONT_CHOICES, props.textFont || 'Georgia, serif', onProp('textFont'))),
+            _buildFieldGroup('Size', _range(12, 160, props.textSize || 32, onProp('textSize')))
+        );
+        _fieldRow(
+            _buildFieldGroup('Weight', _select(TEXT_WEIGHT_CHOICES, props.textWeight || 'normal', onProp('textWeight'))),
+            _buildFieldGroup('Alignment', _select(TEXT_ALIGN_CHOICES, props.textAlign || 'left', onProp('textAlign')))
+        );
+        _fieldRow(
+            _buildFieldGroup('Colour', _colorInput(props.textColor, onProp('textColor'))),
+            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.textOpacity == null ? 1 : props.textOpacity) * 100), function (v) { onProp('textOpacity')(v / 100); }))
+        );
+        const textTransform = document.createElement('h4');
+        textTransform.className = 'wb-context-subheading';
+        textTransform.style.marginTop = '8px';
+        textTransform.textContent = 'Transform';
+        contextPanel.appendChild(textTransform);
+        _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp);
+
+        // ---- 🖼 Image ----
+        _contentSectionHeading('🖼 Image');
+        contextPanel.appendChild(_buildFieldGroup('Photo', _assetUploadRow('🖼️', props.imageSrc, onUploadProp('imageSrc'))));
+        _fieldRow(
+            _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
+            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
+        );
+        const imageTransform = document.createElement('h4');
+        imageTransform.className = 'wb-context-subheading';
+        imageTransform.style.marginTop = '8px';
+        imageTransform.textContent = 'Transform';
+        contextPanel.appendChild(imageTransform);
+        _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp);
+
+        // ---- 🎭 Graphics ----
+        _contentSectionHeading('🎭 Graphics');
+        contextPanel.appendChild(_fieldHelp('A reusable visual asset — an SVG or PNG icon or sticker.'));
+        contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, onUploadProp('graphicSrc'), 'image/*,.svg,image/svg+xml')));
+        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
+        const graphicTransform = document.createElement('h4');
+        graphicTransform.className = 'wb-context-subheading';
+        graphicTransform.style.marginTop = '8px';
+        graphicTransform.textContent = 'Transform';
+        contextPanel.appendChild(graphicTransform);
+        _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp);
+
+        // ---- 🎨 Colour ----
+        _contentSectionHeading('🎨 Colour');
+        contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
+        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
+        contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
+
+        if (exp.hostedBy === 'place' && exp.type !== 'frame') {
+            contextPanel.appendChild(_fieldHelp('Text/Image/Graphics/Colour don’t render when hosted by a Place yet — try Scene or Free instead.'));
         }
+    }
+
+    function _checkboxField(labelText, checked, onChange) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        const row = document.createElement('label');
+        row.className = 'wb-permission-row';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = !!checked;
+        input.addEventListener('change', function () { onChange(input.checked); });
+        row.appendChild(input);
+        row.appendChild(document.createTextNode(labelText));
+        wrap.appendChild(row);
+        return wrap;
     }
 
     function _redrawSceneCanvasesForExperience(exp) {
         exp.attachments.forEach(function (a) { _redrawSceneCanvases(a.sceneId); });
     }
 
-    // Finds the one real usage entry that makes a Free-hosted
-    // Experience's bounds editable: the mirrored Scene Layer
-    // `_syncExperienceAttachments` (the Engine Adapter) already
-    // maintains for it. Returns null when there is no such usage yet
-    // (a Free Experience hosted nowhere has nothing to edit bounds on).
-    function _experienceFreeLayer(exp) {
-        const entry = (exp.attachments || []).find(function (a) { return !a.placeId; });
-        if (!entry) return null;
-        const raw = window.ProjectModel.findMirroredSceneLayer(currentProject, entry.sceneId, exp.id);
-        if (!raw) return null;
-        const layer = window.ProjectModel.findSceneLayer(currentProject, entry.sceneId, raw.id);
-        return layer ? { sceneId: entry.sceneId, layer: layer } : null;
-    }
-
-    // Host-aware Bounds (Builder V3 MEP) — the Builder Canon's own rule:
-    // Hosted by Scene / Hosted by Place inherit their bounds entirely
-    // (Bounds = Scene, Bounds = Place) — nothing is stored, nothing is
-    // editable, so the Inspector just says so. Only Hosted by Free owns
-    // editable bounds, and those bounds are simply the *same* mirrored
-    // Scene Layer's existing `position`/`size` that Working View
-    // already drags (AV-006/AV-010) — this is a second, synced entry
-    // point onto that one value, never a duplicate store.
+    // Host-aware Bounds — the Builder Canon's own rule: Hosted By
+    // determines the bounds of the Experience (Builder V3.1's own
+    // instruction, unchanged from Builder V3 MEP). Scene/Place hosting
+    // still inherit their bounds entirely (nothing stored, nothing
+    // editable here). Free hosting used to own one single editable
+    // rect here — Builder V3.1 replaces that with each content
+    // section's own Transform (`_renderExperienceProperties`'s Text/
+    // Image/Graphics Transform groups) so Move/Resize lives with the
+    // content it actually moves/resizes, rather than a separate,
+    // redundant control surface.
     function _renderExperienceBounds(exp) {
         const heading = document.createElement('h3');
         heading.className = 'wb-context-subheading';
@@ -3666,44 +3760,12 @@
         contextPanel.appendChild(heading);
 
         if (exp.hostedBy === 'scene') {
-            contextPanel.appendChild(_fieldHelp('Inherited from Scene (read-only) — this Experience fills the whole Scene.'));
-            return;
-        }
-        if (exp.hostedBy === 'place') {
+            contextPanel.appendChild(_fieldHelp('Inherited from Scene (read-only) — this Experience fills the whole Scene. Text/Image/Graphics can still be positioned within it using each section’s own Transform above.'));
+        } else if (exp.hostedBy === 'place') {
             contextPanel.appendChild(_fieldHelp('Inherited from Place (read-only) — this Experience fills whichever Place hosts it.'));
-            return;
+        } else {
+            contextPanel.appendChild(_fieldHelp('Free — each content section above (Text/Image/Graphics) has its own position and size (Transform), roaming the Scene independently.'));
         }
-
-        const found = _experienceFreeLayer(exp);
-        if (!found) {
-            contextPanel.appendChild(_fieldHelp('Host this Experience in a Scene to set its bounds.'));
-            return;
-        }
-        const sceneId = found.sceneId;
-        const layer = found.layer;
-
-        function onBound(mutate) {
-            return function (v) {
-                mutate(v / 100);
-                _persist();
-                _redrawSceneCanvases(sceneId);
-            };
-        }
-        const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round(layer.position.x * 100), onBound(function (frac) {
-            layer.position.x = Math.min(1 - layer.size.w, Math.max(0, frac));
-        })));
-        const yGroup = _buildFieldGroup('Y %', _range(0, 100, Math.round(layer.position.y * 100), onBound(function (frac) {
-            layer.position.y = Math.min(1 - layer.size.h, Math.max(0, frac));
-        })));
-        _fieldRow(xGroup, yGroup);
-
-        const wGroup = _buildFieldGroup('Width %', _range(4, 100, Math.round(layer.size.w * 100), onBound(function (frac) {
-            layer.size.w = Math.min(1 - layer.position.x, Math.max(0.04, frac));
-        })));
-        const hGroup = _buildFieldGroup('Height %', _range(4, 100, Math.round(layer.size.h * 100), onBound(function (frac) {
-            layer.size.h = Math.min(1 - layer.position.y, Math.max(0.04, frac));
-        })));
-        _fieldRow(wGroup, hGroup);
     }
 
     // The Creative Journey's one fork (Milestone 3): Nurturing graduates
@@ -3805,7 +3867,7 @@
     // Public Experience may host wherever compatible. This same control
     // is what makes an Inspector opened from the Gallery double as
     // "Reuse Existing" — there is no separate reuse mechanism.
-    function _renderExperienceAttachPicker(exp, type) {
+    function _renderExperienceAttachPicker(exp) {
         const heading = document.createElement('h3');
         heading.className = 'wb-context-subheading';
         heading.style.marginTop = '14px';
@@ -4004,8 +4066,16 @@
     }
 
     // Placeholder creation flow only (Milestone 2's own scope): Name,
-    // Type, Hosted By, Description. Always born Nurturing (Canon
-    // Decision #2) — no Inspector, no Graduation here.
+    // Hosted By, Description. Always born Nurturing (Canon Decision #2)
+    // — no Inspector, no Graduation here.
+    //
+    // Builder V3.1 Universal Experience Authoring — the Type field is
+    // gone: an author never chooses an implementation type again, every
+    // Experience exposes the same Text/Image/Graphics/Colour content
+    // sections regardless (`_renderExperienceProperties` below).
+    // Internally this always creates the Decoration implementation
+    // (`window.ExperienceSchema.DEFAULT_EXPERIENCE_TYPE`) — an Engine
+    // Adapter detail the author never sees.
     function _renderExperienceCreateForm() {
         const wrap = document.createElement('div');
         wrap.className = 'wb-field-group';
@@ -4013,13 +4083,11 @@
 
         const draft = {
             name: '',
-            type: window.ExperienceSchema.EXPERIENCE_TYPES[0].value,
             hostedBy: window.ExperienceSchema.EXPERIENCE_HOSTS[0].value,
             description: ''
         };
 
         wrap.appendChild(_buildFieldGroup('Name', _textInput(draft.name, function (v) { draft.name = v; })));
-        wrap.appendChild(_buildFieldGroup('Type', _select(window.ExperienceSchema.EXPERIENCE_TYPES, draft.type, function (v) { draft.type = v; })));
         wrap.appendChild(_buildFieldGroup('Hosted By', _select(window.ExperienceSchema.EXPERIENCE_HOSTS, draft.hostedBy, function (v) { draft.hostedBy = v; })));
         wrap.appendChild(_buildFieldGroup('Description', _textarea(draft.description, function (v) { draft.description = v; })));
 
@@ -4033,7 +4101,6 @@
         saveBtn.addEventListener('click', function () {
             window.ProjectModel.addExperience(currentProject, {
                 name: draft.name.trim() || 'New Experience',
-                type: draft.type,
                 hostedBy: draft.hostedBy,
                 description: draft.description.trim()
             });

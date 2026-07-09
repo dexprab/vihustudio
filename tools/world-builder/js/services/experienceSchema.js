@@ -42,6 +42,57 @@ const ExperienceSchema = (function () {
         { value: 'text-style', label: 'Text Style', icon: '🔤', renders: { place: false, scene: false, free: false } }
     ];
 
+    // Builder V3.1 — Universal Experience Authoring. The Type picker
+    // (EXPERIENCE_TYPES above) no longer adds authoring value — an
+    // author never chooses one again. `type` stays as internal Engine
+    // Adapter plumbing only (dispatch for the legacy Frame/Text mirror
+    // paths, `rendersWhenHosted`'s Place-hosting disclosure); every new
+    // Experience an author creates defaults to this value, per this
+    // milestone's own explicit instruction ("may default to the
+    // existing Decoration implementation. ... This is an implementation
+    // detail only.").
+    const DEFAULT_EXPERIENCE_TYPE = 'decoration';
+
+    // The four universal content sections every Experience exposes,
+    // regardless of `type` ("Do not hide sections based on Type").
+    // Namespaced field names (`textContent`, `imageSrc`, `graphicSrc`,
+    // `colorValue`, ...) are deliberately new and distinct from every
+    // legacy per-type field (`text`, `image`, `color`, `font`...) so
+    // this is purely additive — a pre-existing Frame/Decoration/Text
+    // Experience's legacy fields are never touched or reinterpreted,
+    // only migrated-copied into these new fields once
+    // (js/projectModel.js's `_ensureExperienceDefaults`), so its
+    // historical rendering is provably unaffected by this milestone.
+    function defaultUniversalContent() {
+        return {
+            // Text
+            textContent: '',
+            textFont: 'Georgia, serif',
+            textSize: 32,
+            textWeight: 'normal',
+            textAlign: 'left',
+            textColor: '#1D3457',
+            textOpacity: 1,
+            textX: 0.1, textY: 0.1, textW: 0.6, textH: 0.25,
+            // Image
+            imageSrc: null,
+            imageFit: 'fit',
+            imageOpacity: 1,
+            imageX: 0.1, imageY: 0.4, imageW: 0.4, imageH: 0.4,
+            // Graphics (reusable SVG/PNG visual assets — icons, stickers)
+            graphicSrc: null,
+            graphicOpacity: 1,
+            graphicX: 0.55, graphicY: 0.4, graphicW: 0.3, graphicH: 0.3,
+            // Colour — a fill behind whatever other content exists;
+            // `colorTransparent` defaults true so a brand-new Experience
+            // with only Text/Image/Graphics never paints an unwanted
+            // opaque box.
+            colorValue: '#F4F1EC',
+            colorOpacity: 1,
+            colorTransparent: true
+        };
+    }
+
     // Hosted By is independent of Lifecycle/Ownership — this is the
     // *intended* hosting, chosen at creation time, before any real
     // placement exists (Milestone 3), and later exercised for real by
@@ -74,18 +125,28 @@ const ExperienceSchema = (function () {
     // never has to translate between two different field vocabularies
     // for the same visual idea.
     function defaultProperties(type) {
+        let legacy;
         switch (type) {
             case 'frame':
-                return { matWidth: 20, frameThickness: 4, borderColor: '#1D3457', wallTone: '#F4F1EC', shadow: 'soft' };
+                legacy = { matWidth: 20, frameThickness: 4, borderColor: '#1D3457', wallTone: '#F4F1EC', shadow: 'soft' };
+                break;
             case 'decoration':
-                return { glyph: '✨', color: '#F4F1EC' };
+                legacy = { glyph: '✨', color: '#F4F1EC' };
+                break;
             case 'text':
-                return { text: '', font: 'Georgia, serif', fontSize: 48, align: 'left', color: '#1D3457' };
+                legacy = { text: '', font: 'Georgia, serif', fontSize: 48, align: 'left', color: '#1D3457' };
+                break;
             case 'text-style':
-                return { font: 'Georgia, serif', fontSize: 48, align: 'left', color: '#1D3457' };
+                legacy = { font: 'Georgia, serif', fontSize: 48, align: 'left', color: '#1D3457' };
+                break;
             default:
-                return { color: '#F4F1EC' };
+                legacy = { color: '#F4F1EC' };
         }
+        // Every Experience gets the universal content sections too,
+        // regardless of `type` — legacy fields above remain what the
+        // Engine Adapter's Place-hosted Frame mirror reads (unchanged);
+        // the universal fields are what Scene/Free hosting now renders.
+        return Object.assign({}, legacy, defaultUniversalContent());
     }
 
     // Whether `type` can actually be painted by the current Engine
@@ -101,9 +162,11 @@ const ExperienceSchema = (function () {
         EXPERIENCE_TYPES: EXPERIENCE_TYPES,
         EXPERIENCE_HOSTS: EXPERIENCE_HOSTS,
         LIFECYCLE_LABELS: LIFECYCLE_LABELS,
+        DEFAULT_EXPERIENCE_TYPE: DEFAULT_EXPERIENCE_TYPE,
         findType: findType,
         lifecycleInfo: lifecycleInfo,
         defaultProperties: defaultProperties,
+        defaultUniversalContent: defaultUniversalContent,
         rendersWhenHosted: rendersWhenHosted
     };
 })();
