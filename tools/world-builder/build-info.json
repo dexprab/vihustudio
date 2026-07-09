@@ -5,6 +5,6 @@
   "slice": "New, additive, uncalled repository foundation: docs/THEME_REPOSITORY_ARCHITECTURE.md, js/themeRepositoryClient.js (Supabase-backed discover/list/load/publish), supabase/schema.sql draft — no Builder/Studio call site wired yet",
   "build": "0038",
   "buildDate": "2026-07-09",
-  "commit": "pending",
+  "commit": "876df99",
   "environment": "Release"
 }
