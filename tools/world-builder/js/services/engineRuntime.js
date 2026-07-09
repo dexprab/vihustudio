@@ -42,7 +42,17 @@ const EngineV2Runtime = (function () {
     // `_representativeArtworkImage`) — this module only ever draws
     // whatever `Image` it's handed, or falls back to Engine-level
     // placeholder chrome when none is given.
-    function load(scene, resolveFrame, representativeImage) {
+    //
+    // `resolveLayerImage` (Builder V3 MEP, Decoration Image support) —
+    // an optional callback, `function(dataURI) -> Image|null`, the same
+    // "caller resolves, module only draws" shape as `resolveFrame`: a
+    // Scene Layer's `image` field is just a data URI string in the Scene
+    // Model (Engine Canon §7 — no new field type), and *loading* that
+    // string into a real, paintable `Image` (necessarily asynchronous)
+    // is the host's concern (`worldBuilderApp.js`'s own image cache),
+    // never this module's — this keeps `_paintLayer` synchronous and
+    // this module free of any redraw-triggering side effect.
+    function load(scene, resolveFrame, representativeImage, resolveLayerImage) {
         if (!scene || !scene.canvas) {
             throw new Error('EngineV2Runtime.load requires a Scene with a canvas (Engine Canon §4 — a Scene without a Canvas is not a Scene)');
         }
@@ -65,7 +75,8 @@ const EngineV2Runtime = (function () {
             aspect: aspect,
             stack: stack,
             resolveFrame: typeof resolveFrame === 'function' ? resolveFrame : function () { return null; },
-            representativeImage: representativeImage || null
+            representativeImage: representativeImage || null,
+            resolveLayerImage: typeof resolveLayerImage === 'function' ? resolveLayerImage : function () { return null; }
         };
     }
 
@@ -451,12 +462,25 @@ const EngineV2Runtime = (function () {
             _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
             ctx.restore();
         } else {
-            ctx.save();
-            ctx.font = Math.round(Math.min(rect.w, rect.h)) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(layer.glyph, rect.x + rect.w / 2, rect.y + rect.h / 2);
-            ctx.restore();
+            // Decoration — Image and Glyph are both simply optional
+            // properties on the same Layer (Builder V3 MEP), never
+            // mutually exclusive in the model; a real, loaded Image
+            // (resolved by the host, never this module — see `load`'s
+            // `resolveLayerImage`) is preferred when available, falling
+            // back to the existing glyph rendering otherwise.
+            const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
+            if (img) {
+                ctx.save();
+                _drawImageWithFit(ctx, img, rect, 'fit');
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.font = Math.round(Math.min(rect.w, rect.h)) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(layer.glyph, rect.x + rect.w / 2, rect.y + rect.h / 2);
+                ctx.restore();
+            }
         }
     }
 

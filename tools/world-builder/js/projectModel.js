@@ -946,7 +946,10 @@ const ProjectModel = (function () {
         if (existing) {
             Object.assign(existing, experience.type === 'text'
                 ? { name: experience.name, text: props.text, font: props.font, fontSize: props.fontSize, align: props.align }
-                : { name: experience.name, glyph: props.glyph, color: props.color });
+                // Image and Glyph are both simply optional properties,
+                // never mutually exclusive (Builder V3 MEP) — both are
+                // mirrored so the Runtime can prefer Image when present.
+                : { name: experience.name, glyph: props.glyph, color: props.color, image: props.image });
             return existing;
         }
         return addSceneLayer(project, sceneId, Object.assign({
@@ -1206,6 +1209,7 @@ const ProjectModel = (function () {
         attachExperience: attachExperience,
         detachExperience: detachExperience,
         usageOf: usageOf,
+        findMirroredSceneLayer: _findMirroredLayer,
         validateExperiences: validateExperiences,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,

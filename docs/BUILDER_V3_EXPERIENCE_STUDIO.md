@@ -775,3 +775,54 @@ the Place question, not on anything else in this document.**
   added; no Experience feature work resumed — this sprint was
   conceptual clarity only, per its own explicit "pause feature
   development" instruction.
+- v1.3 — Builder V3 MEP, "Experience Builder Foundation" milestone:
+  Host-aware Bounds and Decoration Image support, both explicitly
+  additive (no persistence redesign, no Parts array, no migration, no
+  Type field removal, no new Builder concepts — a scoped-down
+  implementation approved after two rounds of plan revision). **Host-
+  aware Bounds** (new Builder Canon rule): the Experience Inspector's
+  new "Bounds" section reads a read-only "Inherited from Scene"/
+  "Inherited from Place" note for those two Hosted-By values (nothing
+  stored, nothing editable — the Host already determines the bounds
+  completely), and for Hosted by Free shows real, editable X/Y/Width/
+  Height sliders that read and write the *same* mirrored Scene Layer's
+  existing `position`/`size` Working View already drags (AV-006/
+  AV-010) — a second, synced entry point onto data that already
+  existed, not a new store (`js/projectModel.js` gained one small,
+  additive export, `findMirroredSceneLayer`, exposing an existing
+  private lookup rather than duplicating it). **Decoration Image**: an
+  optional `image` property (a data URI) sits alongside Decoration's
+  existing `glyph`/`color` in the same flat `properties` bag — Image
+  and Glyph are deliberately *not* mutually exclusive in the model
+  (both are simply optional, per explicit instruction, "permissive for
+  future evolution"), only in which one the Runtime prefers when
+  painting. The Experience Properties panel's Decoration branch gained
+  one field reusing the existing `_assetUploadRow`/`_fileInputUpload`
+  pair verbatim (the same controls Overview's Thumbnail/Hero Image
+  already use) — no new upload infrastructure. `js/services/
+  engineRuntime.js`'s `_paintLayer` decoration branch is extended, not
+  rewritten: it now checks for a loaded Image first (via a new,
+  optional `resolveLayerImage` callback on `load()`, mirroring the
+  existing `resolveFrame`/`representativeImage` "caller resolves, this
+  module only draws" pattern exactly) and falls back to the pre-
+  existing glyph `fillText` when none is available — a 3-branch
+  addition, no Engine/Scene Model redesign. `worldBuilderApp.js` gained
+  a small, generic image cache (`_resolveLayerImage`/
+  `_layerImageCache`), the same async-decode-then-redraw shape EV-002's
+  `_representativeArtworkImage` already established, generalized from
+  one Holder-level artwork slot to any Scene Layer's `image` field.
+  Type is deliberately unchanged and unremoved throughout — every
+  Experience still has a `type`, still used internally by the Engine
+  Adapter for dispatch, exactly as before this milestone. Verified via
+  Playwright: Place-hosted and Scene-hosted Experiences show the
+  correct read-only Bounds note with no editable fields; a Free-hosted
+  Text Experience shows all four editable bounds fields and a Width %
+  drag correctly writes the real mirrored Layer's `size.w`; a
+  Decoration Experience's Image field uploads correctly, sets
+  `properties.image` without clearing `properties.glyph`, and the
+  Runtime visibly prefers the uploaded Image over the glyph in both
+  Working View and Runtime Preview (pixel-sampled); full regression
+  across `goldenBuild.js` (30/30) and every prior Milestone/Canon-
+  Alignment/AV/AP/runtime/validation/build/reorder/place-rename suite
+  passes unchanged. No Engine V2/Scene Model redesign; no Parts array;
+  no migration; no Type removal; no new Builder concepts.

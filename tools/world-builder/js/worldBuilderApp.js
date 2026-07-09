@@ -1344,6 +1344,27 @@
         return null; // not decoded yet this frame — falls back to placeholder chrome until onload fires
     }
 
+    // Builder V3 MEP — Decoration Image support. Same "caller resolves,
+    // module only draws" shape as `_representativeArtworkImage` above,
+    // generalized to any number of data-URI images a Scene's Layers may
+    // reference (rather than the one Holder-level artwork slot): a
+    // plain cache keyed by the data URI itself, so re-using the same
+    // uploaded image across multiple Decorations decodes it only once.
+    const _layerImageCache = {};
+    function _resolveLayerImage(dataURI, sceneId) {
+        if (!dataURI) return null;
+        const cached = _layerImageCache[dataURI];
+        if (cached) return cached.loaded ? cached.img : null;
+        const entry = { img: new Image(), loaded: false };
+        entry.img.onload = function () {
+            entry.loaded = true;
+            _redrawSceneCanvases(sceneId);
+        };
+        entry.img.src = dataURI;
+        _layerImageCache[dataURI] = entry;
+        return null; // not decoded yet this frame — falls back to glyph until onload fires
+    }
+
     // Draws the Scene's full Scene Stack through the native Engine V2
     // Runtime (Engine Canon §5 — Scene Layers and Holders together,
     // bottom to top; Canvas owns this order but is never itself a
@@ -1370,7 +1391,9 @@
         // still true before every render.
         window.ProjectModel.sceneStack(currentProject, scene.id);
         const repImage = _representativeArtworkImage(currentProject, scene.id);
-        const graph = window.EngineV2Runtime.load(scene, _holderFrameFields, repImage);
+        const graph = window.EngineV2Runtime.load(scene, _holderFrameFields, repImage, function (dataURI) {
+            return _resolveLayerImage(dataURI, scene.id);
+        });
         canvasEl.width = graph.width;
         canvasEl.height = graph.height;
         // AV-001 — the Scene's own Aspect Ratio must drive the editing
@@ -3388,6 +3411,7 @@
         })));
 
         _renderExperienceProperties(exp, type);
+        _renderExperienceBounds(exp);
         _renderExperienceOwnership(exp, lifecycleInfo);
 
         if (exp.lifecycle !== 'nurturing') {
@@ -3450,6 +3474,10 @@
         } else if (exp.type === 'decoration') {
             field('glyph', 'Glyph', _textInput(props.glyph, onProp('glyph')));
             field('color', 'Colour', _colorInput(props.color, onProp('color')));
+            // Image and Glyph are both simply optional (Builder V3 MEP)
+            // — an uploaded Image is preferred by the Runtime when
+            // present, but setting one doesn't clear the Glyph.
+            field('image', 'Image', _assetUploadRow('🖼️', props.image, onProp('image')));
         } else if (exp.type === 'text') {
             field('text', 'Words', _textarea(props.text, onProp('text')));
             field('font', 'Font', _select([
@@ -3486,6 +3514,76 @@
 
     function _redrawSceneCanvasesForExperience(exp) {
         exp.attachments.forEach(function (a) { _redrawSceneCanvases(a.sceneId); });
+    }
+
+    // Finds the one real usage entry that makes a Free-hosted
+    // Experience's bounds editable: the mirrored Scene Layer
+    // `_syncExperienceAttachments` (the Engine Adapter) already
+    // maintains for it. Returns null when there is no such usage yet
+    // (a Free Experience hosted nowhere has nothing to edit bounds on).
+    function _experienceFreeLayer(exp) {
+        const entry = (exp.attachments || []).find(function (a) { return !a.placeId; });
+        if (!entry) return null;
+        const raw = window.ProjectModel.findMirroredSceneLayer(currentProject, entry.sceneId, exp.id);
+        if (!raw) return null;
+        const layer = window.ProjectModel.findSceneLayer(currentProject, entry.sceneId, raw.id);
+        return layer ? { sceneId: entry.sceneId, layer: layer } : null;
+    }
+
+    // Host-aware Bounds (Builder V3 MEP) — the Builder Canon's own rule:
+    // Hosted by Scene / Hosted by Place inherit their bounds entirely
+    // (Bounds = Scene, Bounds = Place) — nothing is stored, nothing is
+    // editable, so the Inspector just says so. Only Hosted by Free owns
+    // editable bounds, and those bounds are simply the *same* mirrored
+    // Scene Layer's existing `position`/`size` that Working View
+    // already drags (AV-006/AV-010) — this is a second, synced entry
+    // point onto that one value, never a duplicate store.
+    function _renderExperienceBounds(exp) {
+        const heading = document.createElement('h3');
+        heading.className = 'wb-context-subheading';
+        heading.style.marginTop = '14px';
+        heading.textContent = 'Bounds';
+        contextPanel.appendChild(heading);
+
+        if (exp.hostedBy === 'scene') {
+            contextPanel.appendChild(_fieldHelp('Inherited from Scene (read-only) — this Experience fills the whole Scene.'));
+            return;
+        }
+        if (exp.hostedBy === 'place') {
+            contextPanel.appendChild(_fieldHelp('Inherited from Place (read-only) — this Experience fills whichever Place hosts it.'));
+            return;
+        }
+
+        const found = _experienceFreeLayer(exp);
+        if (!found) {
+            contextPanel.appendChild(_fieldHelp('Host this Experience in a Scene to set its bounds.'));
+            return;
+        }
+        const sceneId = found.sceneId;
+        const layer = found.layer;
+
+        function onBound(mutate) {
+            return function (v) {
+                mutate(v / 100);
+                _persist();
+                _redrawSceneCanvases(sceneId);
+            };
+        }
+        const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round(layer.position.x * 100), onBound(function (frac) {
+            layer.position.x = Math.min(1 - layer.size.w, Math.max(0, frac));
+        })));
+        const yGroup = _buildFieldGroup('Y %', _range(0, 100, Math.round(layer.position.y * 100), onBound(function (frac) {
+            layer.position.y = Math.min(1 - layer.size.h, Math.max(0, frac));
+        })));
+        _fieldRow(xGroup, yGroup);
+
+        const wGroup = _buildFieldGroup('Width %', _range(4, 100, Math.round(layer.size.w * 100), onBound(function (frac) {
+            layer.size.w = Math.min(1 - layer.position.x, Math.max(0.04, frac));
+        })));
+        const hGroup = _buildFieldGroup('Height %', _range(4, 100, Math.round(layer.size.h * 100), onBound(function (frac) {
+            layer.size.h = Math.min(1 - layer.position.y, Math.max(0.04, frac));
+        })));
+        _fieldRow(wGroup, hGroup);
     }
 
     // The Creative Journey's one fork (Milestone 3): Nurturing graduates
