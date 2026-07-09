@@ -1,10 +1,10 @@
 {
-  "version": "3.2.0",
+  "version": "3.3.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Phase 1 — Repository Foundation",
-  "slice": "New, additive, uncalled repository foundation: docs/THEME_REPOSITORY_ARCHITECTURE.md, js/themeRepositoryClient.js (Supabase-backed discover/list/load/publish), supabase/schema.sql draft — no Builder/Studio call site wired yet",
-  "build": "0038",
+  "milestone": "Phases 2-4 — Publish, Registry refresh, and Studio boot wiring",
+  "slice": "Builder Publish (Official + Personal) now calls the real Supabase repository client; ThemeRegistry.refreshFromRepository() discovers/loads themes from every repository at boot; js/app.js awaits it with a bounded timeout before Creation Flow starts; fixed a real config-path resolution bug that broke Builder's Publish under Studio's own supabase-config.json",
+  "build": "0039",
   "buildDate": "2026-07-09",
-  "commit": "876df99",
+  "commit": "e3ad44f",
   "environment": "Release"
 }
