@@ -1,10 +1,10 @@
 {
-  "version": "3.1.0",
+  "version": "3.1.1",
   "phase": "Builder V3.1",
-  "milestone": "Universal Experience Authoring",
-  "slice": "Type selector removed, universal Text/Image/Graphics/Colour sections, P0 image upload fix, opacity/graphics rendering",
-  "build": "0032",
+  "milestone": "Working View Experience Studio",
+  "slice": "Restores Working View as isolated Experience authoring workspace; Runtime Preview stays the full published Scene",
+  "build": "0033",
   "buildDate": "2026-07-09",
-  "commit": "57b3f8c",
+  "commit": "0406c26",
   "environment": "Release"
 }
