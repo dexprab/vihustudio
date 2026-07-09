@@ -1,10 +1,10 @@
 {
-  "version": "2.6.0-MEP",
+  "version": "2.7.0-MEP",
   "phase": "Builder MEP",
-  "milestone": "Experience Builder Foundation",
-  "slice": "Host-aware Bounds (Scene/Place/Free) + Decoration Image support",
-  "build": "0029",
+  "milestone": "Museum Authoring Complete",
+  "slice": "Authoring friction pass — Frame/Usage desync fix, Scene defaults, spawn positions, Inspector grouping, Gallery previews",
+  "build": "0030",
   "buildDate": "2026-07-09",
-  "commit": "f2d8f90",
+  "commit": "89f92c5",
   "environment": "Release"
 }
