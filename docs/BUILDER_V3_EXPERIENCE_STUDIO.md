@@ -1213,3 +1213,51 @@ the Place question, not on anything else in this document.**
   V2/Scene Model/Runtime redesign; no new product concepts; Working View
   is the permanent Experience authoring workspace going forward, per the
   ticket's own explicit instruction.
+- v1.8 — **Authoring Convergence Sprint.** A pause on new capability,
+  explicitly framed as convergence rather than expansion: the Builder had
+  two enrichment authoring systems (legacy Place/Decoration/Text → Scene
+  Layer → Runtime, and Experience → Engine Adapter → Runtime), and this
+  sprint began closing that gap rather than widening it further. **The two
+  concrete parallel-creation paths converged**: the Decorations panel's
+  glyph-picker grid and the Text panel's "➕ Add Text" button both used to
+  call `addSceneLayer` directly, producing a plain Scene Layer with no
+  Experience behind it at all. Both now call the same `addExperience` →
+  `graduateToPersonal` → `attachExperience` sequence "+ Add Experience"
+  already uses, landing directly on the new Experience's own Inspector — a
+  picked glyph is rasterized into a small PNG (`_rasterizeGlyphToDataURL`)
+  and stored as the Experience's Graphics section content, since the
+  Universal content model (v1.6) has no bare glyph concept of its own;
+  "Add Text" seeds the Text section's `textContent` directly. **Runtime
+  consistency (Objective 2)**: the isolated Experience Studio (v1.7) reads
+  straight from an Experience's own `properties`, independent of whether
+  it's hosted anywhere — correct for authoring, but a genuine "Working View
+  shows it, Runtime Preview doesn't" gap with no explanation. A new
+  `_experienceHostingStatus(exp)` compares real Usage against the currently
+  open Scene and shows a plain banner whenever the two views would
+  otherwise silently disagree ("Not yet hosted anywhere…" / "Hosted in
+  `<Scene>` — open that Scene to see it in Runtime Preview"), nothing at
+  all when they already match — a synchronization-status readout over the
+  existing `usageOf` data, not a new renderer. **Host Here redundancy
+  (Objective 4)**: a Personal Experience scoped to one Scene and already
+  hosted there now shows "Already hosted in `<Scene>` — nothing more to
+  host here" instead of a redundant picker; otherwise the "Host Here"
+  button itself recomputes live as the Scene/Place dropdowns change,
+  reading "✓ Already Hosted Here" (disabled) once the current selection
+  already matches a real Usage entry. **A disclosed, deliberately-deferred
+  exception**: Frame's dual identity (a reusable Theme Asset in its own
+  right, *and* something an Experience can front-end) was investigated and
+  left untouched — the sprint's own Objective 5 names only Decoration/Text
+  as legacy entry points to converge, and Frame's Manage-Frames shelf
+  (reorder/duplicate/delete identity) is a materially different, bigger
+  question than a one-click glyph grid; recorded as an open item in the new
+  `docs/BUILDER_V3_CONVERGENCE_REPORT.md` rather than silently worked
+  around. Verified via Playwright: clicking a Decoration glyph and "Add
+  Text" both produce a real, correctly-attached Experience with zero orphan
+  Scene Layers; the hosting-status banner and the Host Here button/note
+  both react correctly across hosted-here/hosted-elsewhere/never-hosted
+  states; a full Museum Theme authoring pass using only the converged
+  creation paths reaches a clean Validation and successful Scene/World
+  Package Builds. Full regression across `goldenBuild.js` (30/30) and
+  every prior Builder V3/V3.1/Working-View-Experience-Studio suite passes
+  unchanged; zero console errors. No Engine V2/Scene Model/Runtime
+  redesign; no second rendering implementation; no new Builder concepts.

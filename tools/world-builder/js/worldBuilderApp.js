@@ -1144,8 +1144,42 @@
     // `frozenStage` — supplied only by the drag handlers below, mid-
     // gesture; every other caller (an Inspector field edit, an initial
     // selection, an image finishing decode) always recomputes fresh.
+    // Authoring Convergence Sprint (Objective 2 — Runtime consistency):
+    // the isolated Studio renders straight from an Experience's own
+    // `properties`, independent of whether it's actually hosted
+    // anywhere — correct for authoring (Nurturing/Personal ideas need
+    // to be visible before they're hosted at all), but a real
+    // Working-View-shows-it/Runtime-Preview-doesn't gap unless the
+    // Builder says so. Returns `null` when the currently open Scene
+    // already has this Experience hosted (Working View and Runtime
+    // Preview already agree, nothing to disclose).
+    function _experienceHostingStatus(exp) {
+        const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+        if (!usage.length) {
+            return 'Not yet hosted anywhere — this won’t appear in Runtime Preview until it’s hosted in a Scene.';
+        }
+        if (usage.some(function (u) { return u.sceneId === currentSceneId; })) {
+            return null;
+        }
+        const names = usage.map(function (u) { return u.sceneName; })
+            .filter(function (name, i, arr) { return arr.indexOf(name) === i; });
+        return 'Hosted in ' + names.join(', ') + ' — open that Scene to see it in Runtime Preview.';
+    }
+
     function _renderExperienceStudio(exp, frozenStage) {
         workingOverlays.innerHTML = '';
+        const hostingStatus = _experienceHostingStatus(exp);
+        if (hostingStatus) {
+            const banner = document.createElement('div');
+            banner.className = 'wb-info-banner';
+            banner.style.position = 'absolute';
+            banner.style.top = '10px';
+            banner.style.left = '10px';
+            banner.style.right = '10px';
+            banner.style.zIndex = '5';
+            banner.textContent = '🌱 ' + hostingStatus;
+            workingOverlays.appendChild(banner);
+        }
         const stray = workingCanvas.parentElement.querySelector('.wb-preview-frame');
         if (stray) stray.remove();
         const strayInactive = workingCanvas.parentElement.parentElement.querySelector('.wb-inactive-state');
@@ -1473,6 +1507,24 @@
     }
 
     const DECORATION_GLYPHS = ['🎀', '🌸', '⭐', '🍃', '🦋', '💫', '🌿', '❤️', '✨', '🎈'];
+
+    // Authoring Convergence Sprint — the Universal Experience content
+    // model (Builder V3.1) has no "glyph" concept of its own (Text/
+    // Image/Graphics/Colour only); rasterizing a one-click glyph pick
+    // into a small PNG data URI and storing it as a Graphics asset lets
+    // the Decorations quick-picker below keep its exact existing one-
+    // click feel while creating a real Experience underneath, rather
+    // than inventing a fifth content section just for this.
+    function _rasterizeGlyphToDataURL(glyph) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 160; canvas.height = 160;
+        const ctx = canvas.getContext('2d');
+        ctx.font = '120px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(glyph, 80, 88);
+        return canvas.toDataURL('image/png');
+    }
 
     // A generic fractional-rect hit test — works for a Holder or a Scene
     // Layer alike, since both carry the same {position:{x,y}, size:{w,h}}
@@ -2928,15 +2980,27 @@
             card.style.textAlign = 'center';
             card.textContent = g;
             card.addEventListener('click', function () {
-                // No explicit position/size — addSceneLayer's own default
-                // (bottom of Canvas, clear of a typical Place) applies,
-                // so a freshly-added Decoration is never born hidden
-                // under the artwork (Builder V3 MEP finding).
-                const layer = window.ProjectModel.addSceneLayer(currentProject, scene.id, {
-                    kind: 'decoration', glyph: g, name: 'Decoration'
+                // Authoring Convergence Sprint — this used to create a
+                // plain Scene Layer directly (`addSceneLayer`), a second,
+                // parallel path to the same enrichment an Experience
+                // already covers. It now creates a real Experience
+                // (Nurturing → Personal → hosted here immediately,
+                // exactly like "+ Add Experience" already does elsewhere)
+                // with the picked glyph rasterized into its Graphics
+                // section, so every Decoration — however it was created
+                // — is a real Experience underneath, never an orphan
+                // Scene Layer with no Experience backing it.
+                const exp = window.ProjectModel.addExperience(currentProject, {
+                    name: 'Decoration', type: 'decoration', hostedBy: 'free'
                 });
-                currentInspectorTarget = 'layer:' + layer.id;
+                window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicSrc', _rasterizeGlyphToDataURL(g));
+                window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
+                currentNav = 'experiences';
+                experienceHomeZone = 'gallery';
+                experienceInspectorId = exp.id;
                 _persist();
+                _renderNav();
                 _renderWorkspace();
             });
             grid.appendChild(card);
@@ -3134,13 +3198,23 @@
         addBtn.style.marginTop = '12px';
         addBtn.textContent = '➕ Add Text';
         addBtn.addEventListener('click', function () {
-            const layer = window.ProjectModel.addSceneLayer(currentProject, scene.id, {
-                kind: 'text', name: 'Text', text: 'New text',
-                font: 'Georgia, serif', fontSize: 48, color: '#1D3457', align: 'left',
-                position: { x: 0.15, y: 0.1 }, size: { w: 0.7, h: 0.15 }
+            // Authoring Convergence Sprint — this used to create a plain
+            // text Scene Layer directly, a second, parallel path to the
+            // same enrichment the Experience Text section already
+            // covers. It now creates a real Experience instead (Nurturing
+            // → Personal → hosted here immediately), matching the
+            // Decorations quick-picker's identical convergence fix.
+            const exp = window.ProjectModel.addExperience(currentProject, {
+                name: 'Text', type: 'text', hostedBy: 'free'
             });
-            currentInspectorTarget = 'layer:' + layer.id;
+            window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'textContent', 'New text');
+            window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
+            currentNav = 'experiences';
+            experienceHomeZone = 'gallery';
+            experienceInspectorId = exp.id;
             _persist();
+            _renderNav();
             _renderWorkspace();
         });
         contextPanel.appendChild(addBtn);
@@ -4193,9 +4267,30 @@
         const scenes = exp.lifecycle === 'personal'
             ? allScenes.filter(function (s) { return s.id === exp.scopeSceneId; })
             : allScenes;
+
         if (!scenes.length) {
             contextPanel.appendChild(_fieldHelp('No Scenes available to host in.'));
             return;
+        }
+
+        // Authoring Convergence Sprint (Objective 4) — a Personal
+        // Experience only ever has one Scene to choose from, and if it's
+        // already hosted there with nothing further to pick (no Place
+        // choice, since only Frame-type Experiences have one), this
+        // section had nothing left to offer — it still showed a full
+        // Scene picker + an actionable-looking "Host Here" button that
+        // would only ever re-attach the exact same thing. Ownership
+        // ("belongs to X"), Usage ("used in X"), and the Hosting action
+        // itself are distinct concepts (this ticket's own framing) — an
+        // already-fully-hosted Personal Experience has nothing left to
+        // *do* here, so it says so plainly instead of implying a
+        // pointless action.
+        if (exp.hostedBy !== 'place' && scenes.length === 1) {
+            const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+            if (usage.some(function (u) { return u.sceneId === scenes[0].id; })) {
+                contextPanel.appendChild(_fieldHelp('Already hosted in ' + scenes[0].name + ' — nothing more to host here.'));
+                return;
+            }
         }
 
         let selectedSceneId = scenes[0].id;
@@ -4203,11 +4298,13 @@
             selectedSceneId = v;
             placeSelect.innerHTML = '';
             _populatePlaceOptions(placeSelect, selectedSceneId);
+            _updateAttachButtonState();
         });
         contextPanel.appendChild(_buildFieldGroup('Scene', sceneSelect));
 
         const placeSelect = document.createElement('select');
         placeSelect.className = 'wb-field-select';
+        placeSelect.addEventListener('change', _updateAttachButtonState);
         _populatePlaceOptions(placeSelect, selectedSceneId);
         if (exp.hostedBy === 'place') {
             contextPanel.appendChild(_buildFieldGroup('Place', placeSelect));
@@ -4216,7 +4313,22 @@
         const attachBtn = document.createElement('button');
         attachBtn.type = 'button';
         attachBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-        attachBtn.textContent = '📎 Host Here';
+
+        // The currently-selected Scene(+Place) target might already be
+        // exactly where this Experience is hosted — re-clicking "Host
+        // Here" would be a no-op that looks like a real action. Reflect
+        // that plainly instead of only discovering it via a redundant
+        // click.
+        function _updateAttachButtonState() {
+            const placeId = exp.hostedBy === 'place' ? placeSelect.value : null;
+            const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+            const already = usage.some(function (u) { return u.sceneId === selectedSceneId && (u.placeId || null) === (placeId || null); });
+            attachBtn.textContent = already ? '✓ Already Hosted Here' : '📎 Host Here';
+            attachBtn.disabled = already;
+            attachBtn.classList.toggle('wb-workspace-btn-primary', !already);
+        }
+        _updateAttachButtonState();
+
         attachBtn.addEventListener('click', function () {
             const placeId = exp.hostedBy === 'place' ? placeSelect.value : null;
             const ok = window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: selectedSceneId, placeId: placeId });

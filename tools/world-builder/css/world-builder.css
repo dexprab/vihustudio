@@ -487,6 +487,15 @@ html, body {
 
 .wb-workspace-btn:hover { border-color: var(--wb-gold); }
 
+.wb-workspace-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+    background: var(--wb-paper);
+    border-color: var(--wb-border);
+    color: var(--wb-text-secondary);
+}
+.wb-workspace-btn:disabled:hover { border-color: var(--wb-border); }
+
 .wb-workspace-btn-primary {
     background: linear-gradient(135deg, var(--wb-gold), #F5B93A);
     border-color: transparent;
