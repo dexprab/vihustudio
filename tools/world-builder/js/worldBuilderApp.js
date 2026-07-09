@@ -882,6 +882,22 @@
     function openWorkspace(project) {
         currentProject = project;
         currentNav = 'overview';
+
+        // Frame Reference Integrity fix — a Frame deleted before this fix
+        // shipped could leave a Representation's `defaultFrame` (or a
+        // Scene Holder's `frame`) pointing at an id that no longer
+        // exists, which Validation correctly rejects but which no
+        // Builder screen lets an author inspect or clear by hand
+        // (Representations has no reachable UI of its own). Repair it
+        // silently the moment the Project is opened — the same
+        // reconcile-on-read discipline this file already uses for a
+        // Scene's `stack`/Holder defaults — and persist immediately so
+        // the repair survives even if the author makes no other edit
+        // before Validating/Building/Publishing.
+        if (window.ProjectModel.reconcileFrameReferences(project)) {
+            try { window.ProjectStore.save(project); } catch (e) {}
+        }
+
         const reps = window.ProjectModel.representations(project);
         const layouts = window.ProjectModel.layouts(project);
         const frames = window.ProjectModel.frames(project);

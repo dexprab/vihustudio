@@ -1,10 +1,10 @@
 {
-  "version": "3.1.2",
-  "phase": "Platform Integration",
-  "milestone": "Builder to Studio proof sprint",
-  "slice": "End-to-end verification: Create/Validate/Build/Publish in Builder, automatic Theme discovery + Story authoring + Publish in Studio, real Reader output — zero application code changes",
-  "build": "0035",
+  "version": "3.1.3",
+  "phase": "P0 Fix",
+  "milestone": "AV-012 Representation/Holder Frame Reference Integrity",
+  "slice": "deleteFrame now clears defaultFrame/holder.frame references at the source; reconcileFrameReferences auto-repairs legacy Themes on open so existing authored content (e.g. the Museum Theme) validates, builds, and publishes again",
+  "build": "0036",
   "buildDate": "2026-07-09",
-  "commit": "27951e6",
+  "commit": "pending",
   "environment": "Release"
 }

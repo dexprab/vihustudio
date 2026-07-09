@@ -136,11 +136,71 @@ const ProjectModel = (function () {
         return copy;
     }
 
+    // A deleted Frame must never survive as a dangling reference — every
+    // place a Frame id can be pointed at from (a Representation's
+    // `defaultFrame`, a Scene Holder's `frame`) is cleared back to `null`
+    // in the same operation that removes the Frame itself. `null` is the
+    // schema's own pre-existing "no Frame chosen" state (the same value
+    // `addRepresentation`/`_holdersFor` seed when there's nothing to
+    // default to) — never a fabricated replacement id.
     function deleteFrame(project, frameId) {
         delete project.files['frames/' + frameId + '.json'];
         if (Array.isArray(project.frameOrder)) {
             project.frameOrder = project.frameOrder.filter(function (id) { return id !== frameId; });
         }
+        _clearFrameReferences(project, frameId);
+    }
+
+    function _clearFrameReferences(project, frameId) {
+        const reps = representations(project);
+        let repsChanged = false;
+        reps.forEach(function (rep) {
+            if (rep.defaultFrame === frameId) { rep.defaultFrame = null; repsChanged = true; }
+        });
+        if (repsChanged) setRepresentations(project, reps);
+
+        scenes(project).forEach(function (scene) {
+            let sceneChanged = false;
+            (scene.holders || []).forEach(function (holder) {
+                if (holder.frame === frameId) { holder.frame = null; sceneChanged = true; }
+            });
+            if (sceneChanged) setScene(project, scene);
+        });
+    }
+
+    // Read-time repair for Themes authored before this integrity guarantee
+    // existed (or edited by a Builder version that didn't yet clear
+    // references on delete) — the exact same "reconcile lazily, mutate,
+    // never crash" pattern `_ordered`/`_ensureHolderDefaults` already use
+    // elsewhere in this file. Call once when a Project is opened; returns
+    // true if anything was actually repaired, so the caller can decide
+    // whether to persist / log.
+    function reconcileFrameReferences(project) {
+        const frameIds = frames(project).map(function (f) { return f.id; });
+        let changed = false;
+
+        const reps = representations(project);
+        let repsChanged = false;
+        reps.forEach(function (rep) {
+            if (rep.defaultFrame && frameIds.indexOf(rep.defaultFrame) === -1) {
+                rep.defaultFrame = null;
+                repsChanged = true;
+            }
+        });
+        if (repsChanged) { setRepresentations(project, reps); changed = true; }
+
+        scenes(project).forEach(function (scene) {
+            let sceneChanged = false;
+            (scene.holders || []).forEach(function (holder) {
+                if (holder.frame && frameIds.indexOf(holder.frame) === -1) {
+                    holder.frame = null;
+                    sceneChanged = true;
+                }
+            });
+            if (sceneChanged) { setScene(project, scene); changed = true; }
+        });
+
+        return changed;
     }
 
     function setFrameField(project, frameId, field, value) {
@@ -1371,6 +1431,7 @@ const ProjectModel = (function () {
         setFrameField: setFrameField,
         setFrameFieldValue: setFrameFieldValue,
         moveFrame: moveFrame,
+        reconcileFrameReferences: reconcileFrameReferences,
         listLayerPacks: listLayerPacks,
         getLayerPack: getLayerPack,
         addLayerPack: addLayerPack,
