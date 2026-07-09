@@ -1,10 +1,10 @@
 {
-  "version": "2.5.1-EV2",
-  "phase": "Experience Studio",
-  "milestone": "Canon Alignment Sprint",
-  "slice": "Product Model Purification — Hosted By (Place/Scene/Free), Engine Adapter boundary, terminology audit",
-  "build": "0028",
-  "buildDate": "2026-07-08",
-  "commit": "bd3c753",
+  "version": "2.6.0-MEP",
+  "phase": "Builder MEP",
+  "milestone": "Experience Builder Foundation",
+  "slice": "Host-aware Bounds (Scene/Place/Free) + Decoration Image support",
+  "build": "0029",
+  "buildDate": "2026-07-09",
+  "commit": "f2d8f90",
   "environment": "Release"
 }
