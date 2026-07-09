@@ -1,10 +1,10 @@
 {
-  "version": "3.3.0",
+  "version": "3.4.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Phases 2-4 — Publish, Registry refresh, and Studio boot wiring",
-  "slice": "Builder Publish (Official + Personal) now calls the real Supabase repository client; ThemeRegistry.refreshFromRepository() discovers/loads themes from every repository at boot; js/app.js awaits it with a bounded timeout before Creation Flow starts; fixed a real config-path resolution bug that broke Builder's Publish under Studio's own supabase-config.json",
-  "build": "0039",
+  "milestone": "Sprint 2 — Asset Externalization",
+  "slice": "manifest.thumbnail/.previewImage are now plain relative-path references, never embedded base64 — fixed at the source in builder.js and themeEngine.js's zip-import producer; a new ThemeRegistry.resolveAssetRef() resolves them (and Representation thumbnails) uniformly whether the source is a legacy local import or a Supabase repository's signed URL",
+  "build": "0040",
   "buildDate": "2026-07-09",
-  "commit": "e3ad44f",
+  "commit": "320442b",
   "environment": "Release"
 }
