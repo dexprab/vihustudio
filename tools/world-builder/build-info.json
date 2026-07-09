@@ -1,10 +1,10 @@
 {
   "version": "3.1.2",
-  "phase": "Builder V3.1",
-  "milestone": "Authoring Convergence Sprint",
-  "slice": "Converge Decoration/Text creation onto Experience pipeline; Runtime consistency disclosure; Host Here redundancy fix",
-  "build": "0034",
+  "phase": "Platform Integration",
+  "milestone": "Builder to Studio proof sprint",
+  "slice": "End-to-end verification: Create/Validate/Build/Publish in Builder, automatic Theme discovery + Story authoring + Publish in Studio, real Reader output — zero application code changes",
+  "build": "0035",
   "buildDate": "2026-07-09",
-  "commit": "1d5912e",
+  "commit": "pending",
   "environment": "Release"
 }
