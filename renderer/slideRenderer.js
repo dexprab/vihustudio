@@ -1245,6 +1245,16 @@ const SlideRenderer=(()=>{
         _renderLayers(_layerPack,'frame',_panelRect,s);
         const _captionRect=_captionRectFor(_panelRect,_composition)||_holderRectFor(_panelRect,_border);
         _renderLayers(_layerPack,'holder',_captionRect,s);
+        // docs/THEME_PROJECT_SPEC.md §7/§11 — Element is a fourth, real
+        // containership scope a Layer can target ("the child's actual
+        // content"), but this renderer has never had a Diptych/Triptych
+        // multi-Holder layout (§5's "holders: Reserved, always 1 in V1")
+        // — with exactly one Holder per page, the Holder's own content
+        // rect (_captionRect, computed above) already IS the Element's
+        // rect. Reusing it here (rather than inventing separate Element
+        // geometry) is what closes target:"element" going from
+        // validating/compiling silently to actually rendering.
+        _renderLayers(_layerPack,'element',_captionRect,s);
       }
 
       // Decorations on the frame

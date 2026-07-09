@@ -178,10 +178,23 @@ const CreationFlow=(function(){
     });
   }
 
-  function _repThumbnail(r){
+  // Platform Hardening Sprint — a Representation's `thumbnail` may be a
+  // path relative to its own theme's `assets/` folder (docs/
+  // THEME_PROJECT_SPEC.md §8/§9: "the code consuming that field is
+  // responsible for the map lookup"), not only a bare data:/http(s) URI
+  // or an emoji. `themeId` lets this resolve that path through
+  // ThemeRegistry.getAsset() before falling back to using it directly —
+  // an emoji or an already-absolute URI is returned unchanged either way.
+  function _repThumbnail(r,themeId){
     const t=r.thumbnail;
     if(!t) return {text:'🎭'};
-    if(/^(data:|https?:)/i.test(t) || /\.(png|jpe?g|svg|webp)$/i.test(t)) return {image:t};
+    if(/^(data:|https?:)/i.test(t)) return {image:t};
+    if(/\.(png|jpe?g|svg|webp)$/i.test(t)){
+      const resolved=(themeId && typeof ThemeRegistry!=='undefined' && ThemeRegistry.getAsset)
+        ? ThemeRegistry.getAsset(themeId,t)
+        : null;
+      return {image:resolved||t};
+    }
     return {text:t};
   }
 
@@ -230,10 +243,10 @@ const CreationFlow=(function(){
   // sprint's scope), while the carousel slide has no click handler and
   // no selected/checkmark state of its own — the Preview's scroll
   // position is the only selection mechanism (see paintPreview).
-  function _carouselSlide(r){
+  function _carouselSlide(r,themeId){
     const slide=_el('div','creation-flow-carousel-slide');
     const art=_el('div','creation-flow-carousel-art');
-    const thumb=_repThumbnail(r);
+    const thumb=_repThumbnail(r,themeId);
     if(thumb.image){
       const img=document.createElement('img');
       img.src=thumb.image; img.alt='';
@@ -247,11 +260,11 @@ const CreationFlow=(function(){
     return slide;
   }
 
-  function _repCard(r,selected,onClick){
+  function _repCard(r,selected,onClick,themeId){
     const card=_el('button','creation-flow-card creation-flow-representation-card'+(selected?' selected':''));
     card.type='button';
     if(selected) card.appendChild(_checkBadge());
-    const thumb=_repThumbnail(r);
+    const thumb=_repThumbnail(r,themeId);
     if(thumb.image){
       const img=document.createElement('img');
       img.className='creation-flow-card-icon-image';
@@ -478,7 +491,7 @@ const CreationFlow=(function(){
       carouselWrap.appendChild(prevBtn);
       carouselWrap.appendChild(carousel);
       carouselWrap.appendChild(nextBtn);
-      reps.forEach(function(r){ carousel.appendChild(_carouselSlide(r)); });
+      reps.forEach(function(r){ carousel.appendChild(_carouselSlide(r,theme.id)); });
       preview.appendChild(carouselWrap);
 
       const dots=_el('div','creation-flow-carousel-dots');
@@ -530,14 +543,14 @@ const CreationFlow=(function(){
   // This preserves the exact Sprint 10.1 "Change Representation"
   // behavior; Sprint 11.0 only restyled Screens 1/2 of the new-project
   // flow.
-  function _renderChangeRepresentationScreen(reps){
+  function _renderChangeRepresentationScreen(reps,themeId){
     _clear();
     _setAtmosphere(true);
     _header('Choose your Page Style',_closeChangeRepresentation);
     content.appendChild(_el('h1','creation-flow-question','Choose a Page Style'));
     const grid=_el('div','creation-flow-grid');
     reps.forEach(function(r){
-      grid.appendChild(_repCard(r,false,function(){ _applyRepresentationToCurrentSlide(r); }));
+      grid.appendChild(_repCard(r,false,function(){ _applyRepresentationToCurrentSlide(r); },themeId));
     });
     content.appendChild(grid);
   }
@@ -591,13 +604,25 @@ const CreationFlow=(function(){
     return null;
   }
 
+  // Same active-theme resolution as currentRepresentations(), kept as a
+  // separate lookup rather than changing that function's own return
+  // shape (js/contextPanel.js already depends on it being a plain
+  // Representation array) — only needed here so a relative-path
+  // thumbnail can be resolved through the correct theme's asset map.
+  function _currentRepresentationsThemeId(){
+    if(typeof ThemeEngine==='undefined') return null;
+    const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+    if(artworkId) return artworkId;
+    return (ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId())||null;
+  }
+
   function changeRepresentation(){
     const reps=currentRepresentations();
     if(!reps || !reps.length) return false;
     _ensureDom();
     _mode='change-representation';
     overlay.classList.remove('hidden');
-    _renderChangeRepresentationScreen(reps);
+    _renderChangeRepresentationScreen(reps,_currentRepresentationsThemeId());
     return true;
   }
 

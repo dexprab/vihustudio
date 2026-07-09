@@ -564,7 +564,15 @@ const ThemeRegistry=(function(){
     });
   }
 
-  function _setImported(manifest,theme){
+  // Platform Hardening Sprint — docs/VTHEME_PACKAGE_SPEC.md's package is
+  // exactly `{manifest, theme, assets}`; `assets` was compiled correctly
+  // by Theme Builder and accepted by `validatePackage` but this function
+  // only ever kept `manifest`/`theme` on the registered record, so every
+  // relative-path asset reference (a Representation thumbnail, a Frame
+  // ornament image) became permanently unresolvable the moment a package
+  // was imported — the map existed in the file, then vanished. `assets`
+  // is now stored alongside `manifest`/`theme`, resolved via `getAsset()`.
+  function _setImported(manifest,theme,assets){
     const id=manifest.id;
     if(!_registry[id]){
       // Brand-new id — track it in imported order. If it previously
@@ -575,7 +583,18 @@ const ThemeRegistry=(function(){
     }else if(_registry[id].source==='official' && _importedOrder.indexOf(id)===-1){
       _importedOrder.push(id);
     }
-    _registry[id]={ manifest:manifest, theme:theme, source:'imported' };
+    _registry[id]={ manifest:manifest, theme:theme, assets:assets||{}, source:'imported' };
+  }
+
+  // Resolves a path relative to the theme's own `assets/` folder (per
+  // docs/THEME_PROJECT_SPEC.md §9 — "the code consuming that field is
+  // responsible for the map lookup") to the embedded data URI Theme
+  // Builder compiled it to. Returns null for an unknown theme/path
+  // rather than throwing, matching every other lookup in this file.
+  function getAsset(id,relativePath){
+    const rec=getRecord(id);
+    if(!rec || !rec.assets || !relativePath) return null;
+    return rec.assets[relativePath]||null;
   }
 
   // Registers a validated package, resolving an id collision per
@@ -606,7 +625,7 @@ const ThemeRegistry=(function(){
       // mode==='replace' falls through and overwrites in place.
     }
 
-    _setImported(manifest,theme);
+    _setImported(manifest,theme,pkg.assets);
     _persistImported();
     return {ok:true,theme:theme,manifest:manifest};
   }
@@ -618,7 +637,7 @@ const ThemeRegistry=(function(){
       const packages=_importedOrder
         .map(function(id){ return _registry[id]; })
         .filter(function(rec){ return rec && rec.source==='imported'; })
-        .map(function(rec){ return {manifest:rec.manifest,theme:rec.theme}; });
+        .map(function(rec){ return {manifest:rec.manifest,theme:rec.theme,assets:rec.assets||{}}; });
       localStorage.setItem(IMPORTED_STORAGE_KEY,JSON.stringify(packages));
     }catch(e){}
   }
@@ -630,7 +649,7 @@ const ThemeRegistry=(function(){
     }catch(e){ packages=[]; }
     packages.forEach(function(pkg){
       if(validatePackage(pkg).length>0) return; // silently skip corrupt entries, never crash boot
-      _setImported(_normalizeManifest(pkg.manifest),pkg.theme);
+      _setImported(_normalizeManifest(pkg.manifest),pkg.theme,pkg.assets);
     });
   }
 
@@ -648,6 +667,7 @@ const ThemeRegistry=(function(){
     hasTheme:hasTheme,
     get:get,
     getRecord:getRecord,
+    getAsset:getAsset,
     list:list,
     getCatalog:getCatalog,
     validatePackage:validatePackage,

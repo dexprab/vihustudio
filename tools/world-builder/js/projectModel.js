@@ -80,8 +80,38 @@ const ProjectModel = (function () {
     // Frames (Sprint B2.0 — full CRUD)
     // ---------------------------------------------------------------
 
+    // Platform Hardening Sprint — docs/THEME_PROJECT_SPEC.md §6 defines a
+    // Frame's real field set as background/frame/paper/shadow/matWidth/
+    // frameThickness/borderColor/wallTone; `renderer/slideRenderer.js`'s
+    // `_artworkBorder()` resolves its mat fill and frame-ornament design
+    // ONLY from `fields.background`/`fields.frame` (via
+    // ARTWORK_BACKGROUND_FILL/ARTWORK_FRAME_PRESET) — fields this
+    // Builder's own Frames screen never asked for, so every
+    // Builder-authored Frame Variation compiled with neither one, and
+    // rendered in real Studio with no mat fill and no frame ornament at
+    // all (only the border stroke/wall tone came through). Retrofitted
+    // here, on every read, the same way `_ensureHolderDefaults` repairs a
+    // Holder authored before one of its fields existed — no migration
+    // step, no UI change, every already-authored Frame (including a
+    // Theme mid-authoring, like Museum Gallery) is repaired the next time
+    // it's opened.
+    function _ensureFrameFieldDefaults(frame) {
+        if (!frame) return frame;
+        if (!frame.fields) frame.fields = {};
+        const f = frame.fields;
+        if (f.background === undefined) f.background = 'white';
+        if (f.frame === undefined) f.frame = 'white-mat';
+        if (f.paper === undefined) f.paper = 'smooth';
+        if (f.matWidth === undefined) f.matWidth = 20;
+        if (f.frameThickness === undefined) f.frameThickness = 4;
+        if (f.borderColor === undefined) f.borderColor = '#1D3457';
+        if (f.wallTone === undefined) f.wallTone = '#F4F1EC';
+        if (f.shadow === undefined) f.shadow = 'soft';
+        return frame;
+    }
+
     function frames(project) {
-        const list = _filesWithPrefix(project, 'frames/').map(function (e) { return e.data; });
+        const list = _filesWithPrefix(project, 'frames/').map(function (e) { return _ensureFrameFieldDefaults(e.data); });
         return _ordered(project, 'frameOrder', list);
     }
 
@@ -110,7 +140,7 @@ const ProjectModel = (function () {
     }
 
     function _defaultFrameFields() {
-        return { matWidth: 20, frameThickness: 4, borderColor: '#1D3457', wallTone: '#F4F1EC' };
+        return { background: 'white', frame: 'white-mat', paper: 'smooth', matWidth: 20, frameThickness: 4, borderColor: '#1D3457', wallTone: '#F4F1EC', shadow: 'soft' };
     }
 
     function addFrame(project) {
