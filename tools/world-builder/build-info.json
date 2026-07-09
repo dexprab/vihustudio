@@ -5,6 +5,6 @@
   "slice": "deleteFrame now clears defaultFrame/holder.frame references at the source; reconcileFrameReferences auto-repairs legacy Themes on open so existing authored content (e.g. the Museum Theme) validates, builds, and publishes again",
   "build": "0036",
   "buildDate": "2026-07-09",
-  "commit": "pending",
+  "commit": "4cc5520",
   "environment": "Release"
 }
