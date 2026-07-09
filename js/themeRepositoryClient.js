@@ -149,10 +149,16 @@ const ThemeRepositoryClient = (function () {
       return Promise.all(entries.map(function (entry) {
         const relativePath = entry.name;
         const objectPath = prefix + '/' + relativePath;
-        if (repositoryId === 'official') {
-          const pub = client.storage.from(ASSET_BUCKET).getPublicUrl(objectPath);
-          return Promise.resolve([relativePath, pub.data && pub.data.publicUrl]);
-        }
+        // The bucket is created private (supabase/schema.sql) so both
+        // repositories' assets stay governed by the same RLS policies
+        // as the rest of the schema — a single public bucket would let
+        // anyone fetch a Personal asset by guessing its path, bypassing
+        // RLS entirely (Supabase's public-bucket endpoint skips RLS by
+        // design). A signed URL still requires the signer to hold real
+        // SELECT permission under RLS at signing time, so Official
+        // assets (readable by anon per themes_official_select's
+        // storage-policy twin) and Personal assets (owner-only) both
+        // resolve correctly through the one, uniform call.
         return client.storage.from(ASSET_BUCKET).createSignedUrl(objectPath, 3600).then(function (signed) {
           if (signed.error) throw signed.error;
           return [relativePath, signed.data.signedUrl];

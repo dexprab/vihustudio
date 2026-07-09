@@ -117,10 +117,19 @@ theme-assets/{repository}/{owner_id-or-'_official'}/{theme_id}/{relativePath}
 e.g. `theme-assets/official/_official/museum-gallery/textures/linen.png`.
 
 A loaded Theme's `assets` map (the same `{relativePath: value}` shape
-`docs/THEME_CONTRACT.md` §7 already establishes) is populated with the
-Storage object's **public URL** (Official — public-read bucket) or a
-**signed URL** (Personal — access-controlled, see §4) rather than a data
-URI. This is the reason this isn't a breaking change to the consumption
+`docs/THEME_CONTRACT.md` §7 already establishes) is populated with a
+**signed URL** for every asset, Official and Personal alike, rather than
+a data URI. The `theme-assets` bucket is created **private**
+(`public: false`) so a single bucket can safely hold both repositories'
+assets under the same RLS-governed model the rest of this schema uses —
+a public bucket's unauthenticated endpoint bypasses Row Level Security
+entirely by design, which would let anyone fetch a Personal asset by
+guessing its path even though its `themes` row stays protected. Signing
+still requires real `SELECT` permission under RLS at signing time, so
+Official assets (readable by anyone, per `themes_official_select`'s
+Storage-policy twin) and Personal assets (owner-only) both resolve
+correctly through one uniform code path. This is the reason this isn't a
+breaking change to the consumption
 contract: every existing consumer (`<img src>`, `canvas.drawImage`,
 `ThemeRegistry.getAsset()`'s callers in `js/creationFlow.js`) already
 just uses whatever string is in that map directly — a browser treats a
