@@ -1019,7 +1019,13 @@
     // (the right column) always shows the real rendered page regardless
     // of Nav, since it must always answer "what will the reader see."
     function _workingViewIsIdentityCard() {
-        if (currentNav === 'experiences') return true;
+        // Builder V3.1 — Working View Experience Studio: once a specific
+        // Experience is open (selected from Gallery or Nursery), Working
+        // View becomes that Experience's own isolated editing workspace
+        // instead of the generic World identity card — Experience Home's
+        // own grid view (nothing selected yet) keeps the identity card,
+        // since there's still no single object to isolate there.
+        if (currentNav === 'experiences') return !experienceInspectorId;
         return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length === 0;
     }
 
@@ -1061,6 +1067,177 @@
         frameEl.appendChild(title);
         frameEl.appendChild(tagline);
         target.appendChild(frameEl);
+    }
+
+    // ---------- Working View Experience Studio (Builder V3.1) ----------
+    // Restores the Builder's original two-view philosophy: Runtime
+    // Preview is the Reader's complete published Scene (unchanged,
+    // AV-005); Working View is the Author's own workspace, and while a
+    // specific Experience is open it becomes that Experience's isolated
+    // Studio — only its own populated content, cropped away from the
+    // rest of the Scene, never the full composition. Reuses
+    // `EngineV2Runtime.paintLayer` (the exact same primitive `render()`
+    // uses for every Scene Layer) rather than a second rendering
+    // implementation — this module only ever computes *where* to draw
+    // (a cropped local coordinate space) and layers Builder-only
+    // selection/resize chrome on top, never repaints anything Runtime
+    // wouldn't recognise as the same content model.
+
+    // A fixed reference width, matching this Builder's own most common
+    // Scene resolution (Portrait/Square, 1080px), used only to scale a
+    // Text section's absolute pixel Font Size sensibly when the
+    // isolated Studio canvas is a different, typically much smaller,
+    // pixel size than the eventual Scene it may or may not even be
+    // hosted in yet (a Nurturing Experience has no Scene at all). This
+    // is a Working-View-only cosmetic approximation — Runtime Preview
+    // always renders the real Scene at its own real resolution through
+    // the unmodified Engine V2 pipeline, completely unaffected by it.
+    const EXPERIENCE_STUDIO_REFERENCE_WIDTH = 1080;
+
+    function _experienceStudioStage(exp) {
+        const props = exp.properties || {};
+        const footprint = window.ProjectModel.experienceContentFootprint(props);
+        // 18% padding on every side — handles and guide labels need
+        // room, and a single small object should never fill the Studio
+        // edge-to-edge.
+        const padX = footprint.w * 0.18, padY = footprint.h * 0.18;
+        return {
+            x: footprint.x - padX, y: footprint.y - padY,
+            w: footprint.w + padX * 2, h: footprint.h + padY * 2
+        };
+    }
+
+    function _drawCheckerboard(ctx, w, h) {
+        const cell = Math.max(10, Math.round(Math.min(w, h) / 20));
+        ctx.save();
+        ctx.fillStyle = '#EDE9DE';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#D6D0C0';
+        for (let y = 0; y * cell < h; y++) {
+            for (let x = 0; x * cell < w; x++) {
+                if ((x + y) % 2 === 0) ctx.fillRect(x * cell, y * cell, cell, cell);
+            }
+        }
+        ctx.restore();
+    }
+
+    function _experienceSlotKeys(slot) {
+        if (slot === 'text') return { x: 'textX', y: 'textY', w: 'textW', h: 'textH' };
+        if (slot === 'image') return { x: 'imageX', y: 'imageY', w: 'imageW', h: 'imageH' };
+        return { x: 'graphicX', y: 'graphicY', w: 'graphicW', h: 'graphicH' };
+    }
+
+    function _experienceAbsRect(exp, slot) {
+        const k = _experienceSlotKeys(slot);
+        const p = exp.properties || {};
+        return { x: p[k.x] || 0, y: p[k.y] || 0, w: p[k.w] || 0.1, h: p[k.h] || 0.1 };
+    }
+
+    // The one live render state the Studio's own drag handlers read —
+    // rebuilt on every non-dragging render, frozen (passed back in
+    // unchanged) for the duration of an active drag gesture so the
+    // coordinate mapping a gesture started with never shifts mid-drag
+    // (a live-recomputed stage would otherwise chase its own tail: the
+    // very rect being dragged is part of what decides the crop).
+    let _experienceStudioState = null;
+
+    // `frozenStage` — supplied only by the drag handlers below, mid-
+    // gesture; every other caller (an Inspector field edit, an initial
+    // selection, an image finishing decode) always recomputes fresh.
+    function _renderExperienceStudio(exp, frozenStage) {
+        workingOverlays.innerHTML = '';
+        const stray = workingCanvas.parentElement.querySelector('.wb-preview-frame');
+        if (stray) stray.remove();
+        const strayInactive = workingCanvas.parentElement.parentElement.querySelector('.wb-inactive-state');
+        if (strayInactive) strayInactive.remove();
+        _removeSceneLibrary(workingCanvas.parentElement);
+        workingCanvas.classList.remove('wb-hidden');
+        workingCanvas.parentElement.classList.remove('wb-hidden');
+
+        const props = exp.properties || {};
+        const stage = frozenStage || _experienceStudioStage(exp);
+
+        let canvasW, canvasH;
+        if (frozenStage && _experienceStudioState && _experienceStudioState.exp.id === exp.id) {
+            canvasW = _experienceStudioState.canvasW;
+            canvasH = _experienceStudioState.canvasH;
+        } else {
+            const target = 900;
+            if (stage.w >= stage.h) { canvasW = target; canvasH = Math.max(200, Math.round(target * (stage.h / stage.w))); }
+            else { canvasH = target; canvasW = Math.max(200, Math.round(target * (stage.w / stage.h))); }
+        }
+
+        workingCanvas.width = canvasW;
+        workingCanvas.height = canvasH;
+        if (workingCanvas.parentElement) workingCanvas.parentElement.style.aspectRatio = canvasW + ' / ' + canvasH;
+
+        const ctx = workingCanvas.getContext('2d');
+        ctx.clearRect(0, 0, canvasW, canvasH);
+
+        // Colour — the Experience's own backdrop; checkerboard is the
+        // universal "no fill" convention when Transparent is enabled.
+        if (props.colorTransparent === false) {
+            ctx.save();
+            ctx.globalAlpha = typeof props.colorOpacity === 'number' ? props.colorOpacity : 1;
+            ctx.fillStyle = props.colorValue || '#F4F1EC';
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            ctx.restore();
+        } else {
+            _drawCheckerboard(ctx, canvasW, canvasH);
+        }
+
+        function toLocal(rect) {
+            return {
+                position: { x: (rect.x - stage.x) / stage.w, y: (rect.y - stage.y) / stage.h },
+                size: { w: rect.w / stage.w, h: rect.h / stage.h }
+            };
+        }
+
+        const graph = { width: canvasW, height: canvasH, resolveLayerImage: function (dataURI) { return _resolveLayerImage(dataURI, null); } };
+        const zoom = canvasW / (stage.w * EXPERIENCE_STUDIO_REFERENCE_WIDTH);
+        const sections = [];
+
+        if (props.imageSrc) {
+            const local = toLocal(_experienceAbsRect(exp, 'image'));
+            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity }, local), graph);
+            sections.push({ slot: 'image', rect: window.EngineV2Runtime.rectFor(local, graph) });
+        }
+        if (props.graphicSrc) {
+            const local = toLocal(_experienceAbsRect(exp, 'graphic'));
+            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc, glyph: '🎭', opacity: props.graphicOpacity }, local), graph);
+            sections.push({ slot: 'graphic', rect: window.EngineV2Runtime.rectFor(local, graph) });
+        }
+        if (props.textContent && props.textContent.trim()) {
+            const local = toLocal(_experienceAbsRect(exp, 'text'));
+            const textLayer = Object.assign({
+                kind: 'text', text: props.textContent, font: props.textFont,
+                fontSize: Math.max(6, (props.textSize || 32) * zoom),
+                align: props.textAlign, color: props.textColor, opacity: props.textOpacity
+            }, local);
+            window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
+            const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
+            sections.push({ slot: 'text', rect: footprint });
+        }
+
+        // Editor-only chrome — selection outline + a resize handle for
+        // every populated section, exactly like the Scene editor's own
+        // Holder chrome (`_drawSelectionOutline`, reused verbatim) —
+        // never drawn onto Runtime Preview.
+        sections.forEach(function (sec) {
+            _drawSelectionOutline(ctx, sec.rect, canvasW, true);
+        });
+        // A soft dashed Studio boundary — the isolation frame itself,
+        // reassuring the author nothing outside it is part of what
+        // they're editing (Blueprint's own Safe-Area-guide spirit,
+        // applied to this new isolated stage rather than a full Scene).
+        ctx.save();
+        ctx.strokeStyle = 'rgba(29,52,87,0.25)';
+        ctx.setLineDash([canvasW * 0.012, canvasW * 0.008]);
+        ctx.lineWidth = Math.max(1, canvasW * 0.0015);
+        ctx.strokeRect(2, 2, canvasW - 4, canvasH - 4);
+        ctx.restore();
+
+        _experienceStudioState = { exp: exp, stage: stage, canvasW: canvasW, canvasH: canvasH, sections: sections };
     }
 
     // The single entry point every edit handler calls. Builds one
@@ -1150,6 +1327,30 @@
     function _renderPreview() {
         if (currentNav === 'scenes') {
             return _renderScenesWorkingView();
+        }
+
+        // Builder V3.1 — Working View Experience Studio takes priority
+        // over the generic identity-card path whenever a specific
+        // Experience is open. It doesn't require an active Scene at all
+        // (a Nurturing Experience can be authored before it's ever
+        // hosted anywhere) — Runtime Preview stays exactly as project-
+        // scoped as always (AV-005), independent of what Working View
+        // shows: the active Scene if one exists, or an honest empty
+        // state if not.
+        if (currentNav === 'experiences' && experienceInspectorId) {
+            const exp = window.ProjectModel.findExperience(currentProject, experienceInspectorId);
+            if (exp) {
+                const activeSceneForExp = _activeSceneForRuntimePreview();
+                if (activeSceneForExp) {
+                    _drawSceneCanvas(runtimePreviewCanvas, activeSceneForExp, { guides: false, interactive: false });
+                } else {
+                    _renderRuntimePreviewEmpty('Runtime Preview becomes available once a Scene is open.');
+                }
+                _renderExperienceStudio(exp);
+                previewSelector.innerHTML = '';
+                return;
+            }
+            experienceInspectorId = null; // stale reference — fall through to the normal dispatch below
         }
 
         const activeScene = _activeSceneForRuntimePreview();
@@ -1367,6 +1568,15 @@
         entry.img.onload = function () {
             entry.loaded = true;
             _redrawSceneCanvases(sceneId);
+            // Builder V3.1 — the Experience Studio's Image/Graphics
+            // sections resolve through this same cache but aren't Scene-
+            // keyed (a Nurturing Experience may have no Scene at all),
+            // so `_redrawSceneCanvases`'s own Scene-id early return can't
+            // reach it; give it an explicit nudge once decoding finishes.
+            if (currentNav === 'experiences' && experienceInspectorId) {
+                const exp = window.ProjectModel.findExperience(currentProject, experienceInspectorId);
+                if (exp) _renderExperienceStudio(exp);
+            }
         };
         entry.img.src = dataURI;
         _layerImageCache[dataURI] = entry;
@@ -1700,6 +1910,99 @@
         // the Scenes-specific renderer directly, since only the
         // dispatcher clears contextPanel first.
         if (currentNav === 'scenes' && currentSceneId === sceneId) _renderContextPanel();
+    });
+
+    // ---------- Working View Experience Studio — Move/Resize (Builder V3.1) ----------
+    // A separate click-to-drag driver from the Scene editor's own
+    // (`_holderDragState` above), scoped to whichever populated content
+    // section (Text/Image/Graphics) the author clicks inside the
+    // isolated Studio canvas — Colour has no Transform of its own, so
+    // it's never a drag target. Mirrors the Scene editor's own
+    // established shape (freeze-at-mousedown, mutate live on mousemove,
+    // persist + refresh Inspector on mouseup) but reads/writes an
+    // Experience's own universal properties directly instead of a Scene
+    // Holder/Layer.
+    let _experienceStudioDragState = null;
+
+    function _experienceStudioHit(state, pxX, pxY) {
+        const order = ['text', 'graphic', 'image']; // topmost-drawn-first
+        for (let i = 0; i < order.length; i++) {
+            const sec = state.sections.find(function (s) { return s.slot === order[i]; });
+            if (!sec) continue;
+            const hx = sec.rect.x + sec.rect.w, hy = sec.rect.y + sec.rect.h;
+            const handleR = Math.max(12, state.canvasW * 0.022);
+            if (Math.hypot(pxX - hx, pxY - hy) <= handleR * 1.5) {
+                return { slot: order[i], mode: 'resize' };
+            }
+        }
+        for (let i = 0; i < order.length; i++) {
+            const sec = state.sections.find(function (s) { return s.slot === order[i]; });
+            if (!sec) continue;
+            if (pxX >= sec.rect.x && pxX <= sec.rect.x + sec.rect.w && pxY >= sec.rect.y && pxY <= sec.rect.y + sec.rect.h) {
+                return { slot: order[i], mode: 'move' };
+            }
+        }
+        return null;
+    }
+
+    workingCanvas.addEventListener('mousedown', function (e) {
+        if (currentNav !== 'experiences' || !experienceInspectorId || !_experienceStudioState) return;
+        if (_experienceStudioState.exp.id !== experienceInspectorId) return;
+        const state = _experienceStudioState;
+        const pt = _canvasFraction(workingCanvas, e);
+        const pxX = pt.fx * state.canvasW, pxY = pt.fy * state.canvasH;
+        const found = _experienceStudioHit(state, pxX, pxY);
+        if (!found) return;
+        _experienceStudioDragState = {
+            mode: found.mode, slot: found.slot, exp: state.exp, stage: state.stage,
+            canvasW: state.canvasW, canvasH: state.canvasH,
+            startPxX: pxX, startPxY: pxY, startAbs: _experienceAbsRect(state.exp, found.slot)
+        };
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', function (e) {
+        if (!_experienceStudioDragState) return;
+        const d = _experienceStudioDragState;
+        const pt = _canvasFraction(workingCanvas, e);
+        const pxX = pt.fx * d.canvasW, pxY = pt.fy * d.canvasH;
+        // Local-fraction delta (canvas 0..1) converted back into
+        // absolute Scene-fraction delta via the *frozen* stage this
+        // gesture started with, per `_renderExperienceStudio`'s own
+        // `toLocal` mapping, inverted.
+        const dAbsX = ((pxX - d.startPxX) / d.canvasW) * d.stage.w;
+        const dAbsY = ((pxY - d.startPxY) / d.canvasH) * d.stage.h;
+        const k = _experienceSlotKeys(d.slot);
+        const exp = d.exp;
+        if (d.mode === 'move') {
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.x, Math.max(0, d.startAbs.x + dAbsX));
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.y, Math.max(0, d.startAbs.y + dAbsY));
+        } else {
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.w, Math.max(0.02, d.startAbs.w + dAbsX));
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.h, Math.max(0.02, d.startAbs.h + dAbsY));
+        }
+        // Working View redraws with the *same frozen stage* the gesture
+        // started with (never re-cropping mid-drag, which would chase
+        // its own tail — the very rect being dragged is part of what
+        // decides the crop); Runtime Preview redraws normally, since the
+        // full Scene's own framing never depends on this Experience's
+        // Studio crop.
+        _renderExperienceStudio(exp, d.stage);
+        exp.attachments.forEach(function (a) { _redrawSceneCanvases(a.sceneId); });
+    });
+
+    window.addEventListener('mouseup', function () {
+        if (!_experienceStudioDragState) return;
+        const exp = _experienceStudioDragState.exp;
+        _experienceStudioDragState = null;
+        _persist();
+        // Settle the Studio's crop back to a fresh (non-frozen) fit
+        // around the gesture's final result, and refresh the Inspector's
+        // Transform sliders to match.
+        if (currentNav === 'experiences' && experienceInspectorId === exp.id) {
+            _renderExperienceStudio(exp);
+            _renderContextPanel();
+        }
     });
 
     function _renderRuntimePreviewEmpty(message) {
@@ -3375,7 +3678,13 @@
         card.tabIndex = 0;
         card.addEventListener('click', function () {
             experienceInspectorId = exp.id;
-            _renderContextPanel();
+            // Builder V3.1 — selecting an Experience must also refresh
+            // Working View (into the Experience Studio) and Runtime
+            // Preview, not only the Context Inspector; `_renderContextPanel()`
+            // alone left Working View showing whatever it showed a
+            // moment before (the root cause of Working View never
+            // actually becoming the Experience Studio).
+            _renderWorkspace();
         });
         card.addEventListener('keydown', function (ev) {
             if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); card.click(); }
@@ -3512,7 +3821,7 @@
         backBtn.textContent = '← Back';
         backBtn.addEventListener('click', function () {
             experienceInspectorId = null;
-            _renderContextPanel();
+            _renderWorkspace(); // Builder V3.1 — restores Working View out of the Experience Studio
         });
         contextPanel.appendChild(backBtn);
 
@@ -3550,7 +3859,7 @@
                 window.ProjectModel.deleteExperience(currentProject, exp.id);
                 experienceInspectorId = null;
                 _persist();
-                _renderContextPanel();
+                _renderWorkspace(); // Builder V3.1 — restores Working View out of the Experience Studio
             });
             contextPanel.appendChild(delBtn);
         }
@@ -3740,6 +4049,12 @@
 
     function _redrawSceneCanvasesForExperience(exp) {
         exp.attachments.forEach(function (a) { _redrawSceneCanvases(a.sceneId); });
+        // Builder V3.1 — an Inspector field edit (Properties, not a
+        // Working-View drag) always recomputes the Studio's crop fresh;
+        // only an active drag gesture (below) needs a frozen stage.
+        if (currentNav === 'experiences' && experienceInspectorId === exp.id) {
+            _renderExperienceStudio(exp);
+        }
     }
 
     // Host-aware Bounds — the Builder Canon's own rule: Hosted By

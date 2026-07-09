@@ -1418,6 +1418,13 @@ const ProjectModel = (function () {
         detachExperience: detachExperience,
         usageOf: usageOf,
         findMirroredSceneLayer: _findMirroredLayer,
+        // Builder V3.1 — Working View Experience Studio: the same rect
+        // math the Engine Adapter already uses to size a Free-hosted
+        // Colour fill (`_universalContentFootprint`), exposed read-only
+        // so Working View can crop its isolated Experience view to just
+        // this Experience's own populated content instead of the whole
+        // Scene, without a second, independently-derived implementation.
+        experienceContentFootprint: _universalContentFootprint,
         validateExperiences: validateExperiences,
         setIdentityAsset: setIdentityAsset,
         getAsset: getAsset,

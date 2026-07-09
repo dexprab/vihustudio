@@ -1135,3 +1135,81 @@ the Place question, not on anything else in this document.**
   functions) remains the one place a Builder-facing Experience is
   projected onto Engine V2's own, otherwise-unmodified rendering
   mechanisms.
+- v1.7 — **Working View Experience Studio.** Restores the Builder's own
+  original two-view philosophy (Runtime Preview = the Reader's complete
+  published Scene; Working View = the Author's own isolated workspace),
+  which Universal Experience Authoring (v1.6) had inadvertently left
+  broken: `_workingViewIsIdentityCard()` returned `true` for the entire
+  Experiences nav unconditionally, so selecting *any* Experience from
+  the Gallery or Nursery still showed the plain World identity card in
+  Working View — never the Experience itself — while Runtime Preview
+  correctly kept showing the active Scene throughout (confirmed
+  unaffected; this was purely a Working View gap). Fixed by making
+  Working View become that Experience's own isolated Studio the moment
+  one is selected: a new `_renderExperienceStudio(exp)` crops to just
+  the Experience's own populated content — `js/projectModel.js` exposes
+  the same rect math the Engine Adapter already uses to size a Free-
+  hosted Colour fill as a new read-only export,
+  `experienceContentFootprint` — padded 18% on every side, normalized to
+  a ~900px canvas, completely independent of the rest of the Scene (a
+  Nurturing Experience with no Scene at all renders identically). Colour
+  fills the whole isolated canvas (or shows a checkerboard when
+  Transparent); Image and Graphics both paint via one new export,
+  `EngineV2Runtime.paintLayer` — the *exact* `_paintLayer` function
+  `render()` already uses internally, reused directly rather than
+  reimplemented, per the ticket's own "avoid maintaining two independent
+  rendering implementations" instruction; Text paints the same way, at
+  a font size scaled by the isolated canvas's own zoom factor against a
+  fixed 1080px reference width (a Working-View-only cosmetic
+  approximation — Runtime Preview is completely unaffected, always
+  rendering the real Scene at its own real resolution). Each populated
+  section gets a selection outline + resize handle (`_drawSelectionOutline`,
+  reused verbatim from the Scene editor's own Holder chrome) — Move and
+  Resize for Text/Image/Graphics alike, a deliberately expanded
+  affordance specific to this new isolated Studio (the old Scene-level
+  Decorations/Text convention of reposition-only, Blueprint §9/§10, is
+  untouched and still governs the Scene's own Working View). **The real
+  root cause, once traced**: `_experienceCard`'s click handler, the
+  Inspector's "← Back" button, and its "Delete this Experience" button
+  all only ever called `_renderContextPanel()` (which repaints the
+  Context Inspector alone) — never `_renderWorkspace()` (which also
+  calls `_renderPreview()`) — so Working View was structurally
+  unreachable from Experience selection no matter how the isolated
+  Studio itself was built; all three now call `_renderWorkspace()`,
+  the same fix applied at its actual source rather than papered over
+  with a redundant explicit repaint call. **Move/Resize dragging** is a
+  second click-to-drag driver (`_experienceStudioDragState`), separate
+  from the Scene editor's own `_holderDragState`, hit-testing whichever
+  populated section (Text/Image/Graphics; Colour is never a drag target
+  — it has no Transform) the author clicks inside the isolated canvas;
+  each mousemove tick writes the dragged section's `X/Y` or `W/H`
+  directly via `updateExperienceProperty` (live-syncing Runtime Preview
+  through the unmodified Engine Adapter, verified via a moved uploaded
+  image's pixels appearing at their new location in Runtime Preview
+  *during* the drag, before mouseup), redrawing the Studio with the
+  *same frozen stage/canvas size the gesture started with* rather than
+  recomputing a fresh crop on every tick — a live-recomputed crop would
+  otherwise chase its own tail, since the very rect being dragged is
+  part of what decides the crop; the stage only re-settles to a fresh
+  fit on mouseup, exactly mirroring the Scene editor's own established
+  freeze-at-mousedown/mutate-live/persist-on-mouseup shape. An image
+  finishing an asynchronous decode also nudges the Studio's own redraw
+  directly (`_resolveLayerImage`'s onload), since a Nurturing Experience
+  has no Scene id for the existing Scene-keyed redraw path to key off
+  of. Verified end to end via Playwright: selecting an Experience from
+  the Gallery now shows a small, correctly-cropped isolated canvas
+  (confirmed distinct from the full Scene's own 1350×1080 dimensions)
+  while Runtime Preview keeps showing the complete Scene unchanged;
+  Colour transparent shows a real alternating checkerboard, unchecking
+  it fills the isolated canvas with the chosen colour; an Image upload
+  and a Graphics upload both render immediately; dragging an uploaded
+  Image's body moves it, with Runtime Preview showing the moved pixels
+  mid-drag, before mouseup, at the correct new location; clicking "←
+  Back" returns Working View to the identity card; the Scene editor's
+  own Working View (Scenes nav) is completely unaffected, still showing
+  the full Scene at its own real dimensions exactly as before. Full
+  regression across `goldenBuild.js` (30/30) and every V3.1 verification
+  script passes unchanged; zero console errors throughout. No Engine
+  V2/Scene Model/Runtime redesign; no new product concepts; Working View
+  is the permanent Experience authoring workspace going forward, per the
+  ticket's own explicit instruction.

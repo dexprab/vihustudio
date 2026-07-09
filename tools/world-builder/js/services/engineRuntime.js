@@ -509,7 +509,18 @@ const EngineV2Runtime = (function () {
         render: render,
         rectFor: rectFor,
         holderBands: holderBands,
-        textFootprint: textFootprint
+        textFootprint: textFootprint,
+        // Builder V3.1 — Working View Experience Studio: exposes the
+        // exact same Layer-painting primitive `render()` already uses
+        // internally, so an isolated single-Experience view (a small
+        // canvas showing just that Experience's own content, cropped
+        // away from the rest of the Scene) can reuse it directly rather
+        // than reimplementing Text/Image/Graphics/Colour painting a
+        // second time. Takes a plain `{kind, position, size, ...}`
+        // object exactly like any Scene Layer — the caller decides what
+        // `graph` (width/height/resolveLayerImage) means for its own
+        // canvas, this function has no opinion about it.
+        paintLayer: _paintLayer
     };
 })();
 
