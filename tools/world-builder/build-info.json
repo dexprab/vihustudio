@@ -1,10 +1,10 @@
 {
-  "version": "3.7.0",
+  "version": "3.8.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Builder Convergence Sprint",
-  "slice": "Unified Build -> Publish -> Export into one canonical Published Theme: builder.js's packageTheme() now converges every Scene into the existing layouts/representations/layerPack/assets collections (convergeScenes/convergeScene/convergeSceneLayer/externalizeSceneImage), so Scene/Experience content (backgrounds, images, decorations, text) reaches Publish/the Repository/Studio for the first time; added a 5th Layer Pack target, 'overlay' (renderer/slideRenderer.js), plus scope/rect Layer fields and decoration.kind 'fill'/'image'; retired project.lastSceneBuild and its Build/Publish UI as a separate, Studio-invisible published artifact — Scene Validation stays untouched. Byte-identical for zero-Scene themes; goldenBuild.js 30/30 unchanged",
-  "build": "0043",
+  "milestone": "Happy Flow Completion Sprint",
+  "slice": "Traced the Builder to Repository to Studio Happy Flow live and fixed the real gap: a Scene's converged Representation was appended after a World Builder template's legacy, unfilled Representations in theme.representations, so Creation Flow's carousel (always starting at index 0) applied the empty legacy one on a naive Start Creating click -- Theme Application worked correctly, the wrong Representation just rendered no authored content. Fixed by prepending Scene-derived Representations in builder.js's convergeScenes(). Export investigated and confirmed already correct: it reads the identical project.lastBuild object Publish does, with embedded bytes confined to the assets side-map (required for a portable, self-contained package) and zero embedded data URIs in manifest/theme fields. Also fixed ThemeRepositoryClient.reset() reporting a false success when RLS silently blocks the delete. goldenBuild.js 30/30 unchanged; new 15-assertion Happy Flow suite passes",
+  "build": "0044",
   "buildDate": "2026-07-10",
-  "commit": "4564663",
+  "commit": "148d6b0",
   "environment": "Release"
 }
