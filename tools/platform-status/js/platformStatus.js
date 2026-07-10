@@ -260,8 +260,20 @@
             window.ThemeRepositoryClient.reset('official'),
             window.ThemeRepositoryClient.reset('personal')
         ]).then(function (results) {
-            const totalThemes = results.reduce(function (a, r) { return a + (r && r.deletedThemes || 0); }, 0);
-            showResetResult('ps-ok', '✓ Reset complete — ' + totalThemes + ' published Theme(s) removed from both repositories. Builder Projects were not affected.');
+            const totalDeleted = results.reduce(function (a, r) { return a + (r && r.deletedThemes || 0); }, 0);
+            const totalAttempted = results.reduce(function (a, r) { return a + (r && r.attemptedThemes || 0); }, 0);
+            if (totalAttempted > 0 && totalDeleted === 0) {
+                // Rows were found but the DELETE removed none of them —
+                // the unmistakable signature of RLS silently blocking
+                // the delete (no client-side error, just zero rows
+                // affected). Almost always means the live Supabase
+                // project hasn't had the delete policies from
+                // supabase/schema.sql (themes_official_delete /
+                // themes_personal_delete) applied yet.
+                showResetResult('ps-fail', '⚠️ Reset ran with no errors, but 0 of ' + totalAttempted + ' found Theme(s) were actually removed — this almost always means your Supabase project is missing the delete RLS policies. Run the latest supabase/schema.sql against your project (it adds themes_official_delete / themes_personal_delete and matching Storage policies), then try Reset again.');
+            } else {
+                showResetResult('ps-ok', '✓ Reset complete — ' + totalDeleted + ' published Theme(s) removed from both repositories. Builder Projects were not affected.');
+            }
             return runStatusCheck();
         }).catch(function (e) {
             showResetResult('ps-fail', '⚠️ Reset failed: ' + ((e && e.message) || 'unknown error'));

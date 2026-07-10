@@ -321,9 +321,19 @@ const ThemeRepositoryClient = (function () {
               });
             });
           })).then(function () {
-            return client.from('themes').delete().eq('repository', repositoryId).eq('owner_id', ownerId).then(function (res2) {
+            // Chaining .select() after .delete() makes PostgREST return
+            // the rows it actually deleted (Prefer: return=representation)
+            // instead of the default empty response — this is the ONLY
+            // reliable way to know the delete really happened. Without
+            // it, a DELETE silently blocked by a missing RLS policy
+            // still comes back with no client-side error and an empty
+            // response, indistinguishable from "nothing matched" —
+            // reporting themeIds.length (the pre-delete SELECT's count)
+            // here would lie about success in exactly that case.
+            return client.from('themes').delete().eq('repository', repositoryId).eq('owner_id', ownerId).select('theme_id').then(function (res2) {
               if (res2.error) throw res2.error;
-              return { ok: true, deletedThemes: themeIds.length };
+              const actuallyDeleted = (res2.data || []).length;
+              return { ok: true, deletedThemes: actuallyDeleted, attemptedThemes: themeIds.length };
             });
           });
         });
