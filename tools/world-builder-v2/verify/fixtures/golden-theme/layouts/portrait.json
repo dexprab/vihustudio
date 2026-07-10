@@ -1,0 +1,9 @@
+{
+  "id": "portrait",
+  "name": "Portrait",
+  "description": "Standard portrait layout.",
+  "aspect": "portrait",
+  "composition": "below",
+  "holders": 1,
+  "supportedFrames": ["classic-white"]
+}

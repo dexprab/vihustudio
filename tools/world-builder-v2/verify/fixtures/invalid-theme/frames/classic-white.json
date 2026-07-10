@@ -1,0 +1,8 @@
+{
+  "id": "classic-white",
+  "name": "Classic White",
+  "fields": {
+    "background": "white",
+    "frame": "white-mat"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "invalid-test-theme",
+  "name": "Invalid Test Theme",
+  "version": "1.0.0",
+  "minStudioVersion": "9.5.0",
+  "author": "VihuStudio QA",
+  "category": "Official",
+  "tags": ["test", "invalid"],
+  "description": "Golden build verification fixture — deliberately broken.",
+  "thumbnail": "thumbnail.png",
+  "createdDate": "2026-07-05",
+  "updatedDate": "2026-07-05",
+  "type": "artwork"
+}

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "dup-layer",
+    "type": "text",
+    "target": "holder",
+    "text": { "content": "First" }
+  },
+  {
+    "id": "bad-target-layer",
+    "type": "sticker",
+    "target": "not-a-real-target"
+  }
+]

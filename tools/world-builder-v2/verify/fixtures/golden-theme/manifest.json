@@ -1,0 +1,15 @@
+{
+  "id": "golden-test-theme",
+  "name": "Golden Test Theme",
+  "version": "1.0.0",
+  "builderVersion": "1.0.0",
+  "minStudioVersion": "9.5.0",
+  "author": "VihuStudio QA",
+  "category": "Official",
+  "tags": ["test", "golden"],
+  "description": "Golden build verification fixture.",
+  "thumbnail": "thumbnail.png",
+  "createdDate": "2026-07-05",
+  "updatedDate": "2026-07-05",
+  "type": "artwork"
+}

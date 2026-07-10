@@ -1,0 +1,17 @@
+[
+  {
+    "id": "golden-caption",
+    "type": "text",
+    "target": "holder",
+    "anchor": "bottom-center",
+    "offsetY": 16,
+    "zIndex": 1,
+    "text": { "source": "museumCaption", "font": "Georgia, serif", "size": 20, "color": "#3A3A3A" }
+  },
+  {
+    "id": "golden-page-number",
+    "type": "text",
+    "target": "slide",
+    "position": "bottom-left"
+  }
+]

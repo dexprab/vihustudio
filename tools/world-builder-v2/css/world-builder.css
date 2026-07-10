@@ -1,0 +1,2306 @@
+/* css/world-builder.css — Sprint B1.0 Product Reset.
+   Visual language borrows the same warm/watercolor palette as
+   VihuStudio's own Creation Flow (docs/STUDIO_DESIGN_CANON.md) —
+   soft cream paper, rounded cards, gold used sparingly for the one
+   primary action per screen. No dashboard chrome anywhere. */
+
+:root {
+    --wb-navy: #1D3457;
+    --wb-gold: #FFCB45;
+    --wb-cream: #FBF3E7;
+    --wb-paper: #FFFDF8;
+    --wb-sand: #EFE3CF;
+    --wb-sage: #B9CBB4;
+    --wb-sky: #DCE9F2;
+    --wb-text: #33302A;
+    --wb-text-secondary: #756D5E;
+    --wb-border: #E4D8C3;
+    --wb-shadow: rgba(51, 40, 20, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: var(--wb-cream);
+    color: var(--wb-text);
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+}
+
+#wb-root {
+    min-height: 100%;
+}
+
+.wb-hidden { display: none !important; }
+
+/* Sprint B2.0.5 — the comfortable, centered-column padding belongs to
+   Screens 1-2 (Welcome/Choose a Template — ordinary product-page
+   reading widths) only. It used to live on #wb-root itself, which
+   meant the Builder Workspace (Screen 3) inherited it too: 48px/96px of
+   dead vertical padding plus a 1080px cap that made a 100vh-tall
+   Workspace overflow the real viewport by exactly that padding amount
+   — the single biggest source of "the Builder feels like a centered
+   web page, not edge-to-edge." The Workspace (`.wb-screen-workspace`)
+   already set its own padding:0/width:100%/max-width:none; it just
+   needed the ancestor to stop adding padding back around it. */
+.wb-screen-welcome,
+.wb-screen-templates {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+}
+
+/* ---------- Screen 1 — Welcome ---------- */
+
+.wb-welcome-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.wb-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.wb-brand-mark { font-size: 40px; }
+
+.wb-brand-name {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-brand-tagline {
+    margin: 10px 0 0;
+    color: var(--wb-text-secondary);
+    font-size: 16px;
+}
+
+.wb-welcome-main {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.wb-cta-create {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    padding: 22px 28px;
+    background: linear-gradient(135deg, var(--wb-gold), #F5B93A);
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px var(--wb-shadow);
+    cursor: pointer;
+    text-align: left;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.wb-cta-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px var(--wb-shadow);
+}
+
+.wb-cta-icon {
+    font-size: 34px;
+    background: var(--wb-paper);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.wb-cta-text { display: flex; flex-direction: column; gap: 4px; }
+
+.wb-cta-title {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-cta-sub {
+    font-size: 14px;
+    color: #5B4A1E;
+}
+
+.wb-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0 0 16px;
+}
+
+.wb-my-worlds-list {
+    display: grid;
+    /* Sprint B2.0.5 — widened from 220px: the row now also carries the
+       Rename/Duplicate/Delete controls, which need room alongside the
+       thumbnail and name without the name column collapsing to nothing. */
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.wb-project-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px var(--wb-shadow);
+    cursor: default;
+}
+
+.wb-project-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.wb-project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px var(--wb-shadow);
+    border-color: var(--wb-gold);
+}
+
+.wb-project-thumb {
+    font-size: 26px;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-sky);
+    border-radius: 12px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.wb-project-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.wb-project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.wb-project-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-project-meta-line {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wb-project-status {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #7A6A2E;
+    background: var(--wb-sand);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.wb-project-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.wb-project-badge.personal {
+    color: var(--wb-navy);
+    background: var(--wb-sand);
+}
+.wb-project-badge.official {
+    color: #6B4A00;
+    background: var(--wb-gold);
+}
+
+/* Sprint B2.0.5 — Draft Management controls on each project card.
+   Same visual language as the Workspace's own .wb-row-controls/.wb-row-btn
+   (Frame/Layout list rows), sized for the wider card row. stopPropagation()
+   on each button (in worldBuilderApp.js) keeps a control click from also
+   opening the Workspace, which is why the card itself is a role="button"
+   div rather than a native <button> — a native button cannot legally
+   contain other buttons. */
+.wb-project-card-controls {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.wb-project-card-btn {
+    font-size: 13px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.wb-project-card-btn:hover { border-color: var(--wb-gold); }
+
+.wb-empty-note {
+    color: var(--wb-text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+    background: var(--wb-paper);
+    border: 1px dashed var(--wb-border);
+    border-radius: 16px;
+}
+
+.wb-explore-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.wb-explore-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 24px 16px;
+    background: var(--wb-paper);
+    border: 1px dashed var(--wb-border);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.wb-explore-icon { font-size: 30px; }
+
+.wb-explore-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-explore-note {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+}
+
+/* ---------- Screen 2 — Choose a Template ---------- */
+
+.wb-templates-header {
+    text-align: center;
+    margin-bottom: 32px;
+    position: relative;
+}
+
+.wb-back-btn {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    background: none;
+    border: none;
+    color: var(--wb-navy);
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 6px 10px;
+}
+
+.wb-back-btn:hover { text-decoration: underline; }
+
+.wb-templates-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0 0 8px;
+}
+
+.wb-templates-sub {
+    color: var(--wb-text-secondary);
+    font-size: 15px;
+    margin: 0;
+}
+
+.wb-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.wb-template-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 28px 20px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 20px;
+    box-shadow: 0 4px 12px var(--wb-shadow);
+    cursor: pointer;
+    text-align: center;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.wb-template-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px var(--wb-shadow);
+    border-color: var(--wb-gold);
+}
+
+.wb-template-card:disabled,
+.wb-template-card.wb-busy {
+    opacity: .6;
+    cursor: default;
+    transform: none;
+}
+
+.wb-template-icon {
+    font-size: 44px;
+    width: 76px;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-sand);
+    border-radius: 50%;
+}
+
+.wb-template-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-template-desc {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* ============================================================
+   Screen 3 — Builder Workspace
+   ============================================================ */
+
+.wb-screen-workspace {
+    max-width: none;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.wb-workspace-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--wb-paper);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+}
+
+.wb-workspace-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.wb-workspace-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    background: none;
+    border: 1px solid var(--wb-border);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+
+.wb-workspace-home-btn span { font-size: 18px; }
+
+.wb-workspace-home-btn:hover { background: var(--wb-sand); }
+
+.wb-workspace-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Sprint B2.0.6 — Editing Confidence. Two states only (dirty/saved) —
+   see worldBuilderApp.js's _setSaveState() for why a distinct "Saving…"
+   sub-state would never be observably different from "dirty" given a
+   synchronous save. The dot is a literal 🟠/🟢 emoji glyph, so no CSS
+   colour is needed for it; the label text still gets a colour to match. */
+.wb-workspace-saved {
+    font-size: 12px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#wb-save-dot { font-size: 9px; line-height: 1; }
+
+.wb-workspace-saved.wb-save-dirty #wb-workspace-saved-text { color: #B86C21; font-weight: 700; }
+.wb-workspace-saved.wb-save-saved #wb-workspace-saved-text { color: var(--wb-text-secondary); }
+.wb-workspace-saved.wb-save-error #wb-workspace-saved-text { color: #C0392B; font-weight: 700; }
+
+.wb-workspace-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.wb-workspace-btn {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 14px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--wb-text);
+}
+
+.wb-workspace-btn:hover { border-color: var(--wb-gold); }
+
+.wb-workspace-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+    background: var(--wb-paper);
+    border-color: var(--wb-border);
+    color: var(--wb-text-secondary);
+}
+.wb-workspace-btn:disabled:hover { border-color: var(--wb-border); }
+
+.wb-workspace-btn-primary {
+    background: linear-gradient(135deg, var(--wb-gold), #F5B93A);
+    border-color: transparent;
+    font-weight: 700;
+    color: #4A3A10;
+}
+
+/* Sprint B2.0.6 — a visible ring while changes are pending, so the Save
+   button itself (not just the header badge) communicates state. */
+.wb-workspace-btn-primary.wb-save-btn-dirty {
+    box-shadow: 0 0 0 2px rgba(184, 108, 33, .35);
+}
+
+.wb-workspace-btn-icon {
+    padding: 8px 10px;
+}
+
+/* ---------- Header menu dropdown (Sprint B2.0.1) ---------- */
+
+.wb-menu-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.wb-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px var(--wb-shadow);
+    min-width: 190px;
+    z-index: 20;
+    overflow: hidden;
+}
+
+.wb-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--wb-text);
+}
+
+.wb-menu-item:hover { background: var(--wb-sand); }
+
+.wb-menu-item-danger { color: #A03A3A; }
+
+/* ---------- Builder guidance (Sprint B2.0.1, collapsed by default
+   since Sprint B2.0.6 — see worldBuilderApp.js's _stateIntro()) ---------- */
+
+.wb-state-intro {
+    background: var(--wb-sky);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--wb-text);
+}
+
+.wb-state-intro-summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--wb-navy);
+    list-style: none;
+    user-select: none;
+}
+
+.wb-state-intro-summary::-webkit-details-marker { display: none; }
+.wb-state-intro-summary::before { content: '▸ '; }
+.wb-state-intro[open] .wb-state-intro-summary::before { content: '▾ '; }
+
+.wb-state-intro-body { margin-top: 8px; }
+
+.wb-state-intro strong { color: var(--wb-navy); }
+
+/* Short, single-purpose status banners (e.g. "Previewing:", "Current
+   Representation:") — always visible, never collapsed, so they're kept
+   visually distinct from the collapsible guidance above. */
+.wb-info-banner {
+    background: var(--wb-sky);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--wb-text);
+}
+
+.wb-info-banner strong { color: var(--wb-navy); }
+
+.wb-field-help {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    margin: -2px 0 0;
+    line-height: 1.4;
+}
+
+/* Sprint B2.0.4 — Runtime Preview decoupled from the Inspector: the top
+   row is Nav | Working View | Runtime Preview (a compact reference
+   pane); the Inspector — the primary editing surface, per this
+   sprint's own "think like an IDE" framing — spans the full width of
+   the bottom row, under both Working View and Runtime Preview, so it
+   finally gets more room than a narrow, shared right-hand column ever
+   could. Nav spans both rows (fixed, present regardless of what's
+   being edited). */
+/* Sprint B2.0.5 — Navigation only needs enough width for icon + label +
+   comfortable padding (170px, down from 200px); that recovered width
+   plus the #wb-root padding fix above go to Working View (the flexible
+   1fr column) and Runtime Preview (widened from 260px to 380px so it
+   renders a genuinely readable page, not a thumbnail — its own render
+   is width-bound by this column, unlike Working View's, which is
+   height-bound by the row split below). The row split shifts from
+   40/60 to 64/36 — Working View/Runtime Preview become the visually
+   dominant regions per this sprint's own objective (both rendered
+   pages noticeably larger, at their correct 1080:1350 ratio — see
+   .wb-working-canvas-inner/.wb-runtime-preview-canvas-inner), while the
+   Inspector (still full width, still independently scrollable) keeps a
+   genuinely usable, if smaller, share. */
+/* Builder V2 — Vision §4 (v1.1 reorder): three permanent, full-height
+   regions — Working View | Context Inspector | Runtime Preview — side
+   by side in one row, never Inspector spanning a row beneath the other
+   two. This replaces the Sprint B2.0.4/B2.0.5/B2.0.6 two-row shape
+   (Working View + Runtime Preview on top, Inspector as a full-width row
+   underneath), which was correct for Engine V1's Builder Workspace but
+   left Builder V2 out of alignment with the frozen Vision the moment
+   Global Navigation moved to a top bar and freed up a column for the
+   Inspector to occupy directly. The original three-column order (Vision
+   v1.0) put Runtime Preview in the middle; a later explicit product
+   decision (Vision v1.1) swapped the two right-hand columns so Context
+   Inspector sits beside Working View and Runtime Preview is rightmost.
+   Both resize sashes are vertical (col-resize): one between Working View
+   and Context Inspector, one between Context Inspector and Runtime
+   Preview. Working View stays "1fr" — it always gets whatever's left
+   after Inspector + Runtime Preview, so dragging either sash only ever
+   changes --wb-inspector-w or --wb-runtime-w; Working View's share
+   follows automatically. Per Vision §4's own explicit warning against a
+   naive equal three-way split, widths stay Working View (largest) >
+   Context Inspector (medium, 420px default) > Runtime Preview (smallest,
+   340px default) — only their left-to-right position changed. */
+.wb-workspace-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-runtime-w, 340px);
+    grid-template-rows: 1fr;
+    grid-template-areas: "working inspsash inspector rtsash runtime";
+    min-height: 0;
+}
+
+/* world-builder-v2 — Scenes+Experiences simultaneous view. A Scene being
+   open adds a fourth permanent column (Experiences) between Context
+   Inspector and Runtime Preview, plus its own sash; everything else keeps
+   its exact position and role. The Experiences column and its sash are
+   simply not part of the default grid-template-areas, so they get
+   `display:none` below rather than being auto-placed somewhere wrong. */
+.wb-workspace-body.wb-has-exp-col {
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px) 6px var(--wb-runtime-w, 340px);
+    grid-template-areas: "working inspsash inspector expsash experiences rtsash runtime";
+}
+
+.wb-experiences-wrap, #wb-resize-experiences { display: none; }
+.wb-workspace-body.wb-has-exp-col .wb-experiences-wrap,
+.wb-workspace-body.wb-has-exp-col #wb-resize-experiences { display: flex; }
+
+/* world-builder-v2 — dock toggle: Working View and Runtime Preview
+   default to side by side (today's real shape, unchanged); "Stacked"
+   swaps them into one column, two rows. Runtime Preview's own sash has
+   no meaning once it isn't a separate column, so it's hidden rather than
+   auto-placed somewhere wrong — the two rows split evenly instead. */
+.wb-workspace-body.wb-dock-vertical {
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px);
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas:
+        "working inspsash inspector"
+        "runtime inspsash inspector";
+}
+
+.wb-workspace-body.wb-dock-vertical.wb-has-exp-col {
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px);
+    grid-template-areas:
+        "working inspsash inspector expsash experiences"
+        "runtime inspsash inspector expsash experiences";
+}
+
+.wb-workspace-body.wb-dock-vertical #wb-resize-runtime { display: none; }
+
+.wb-workspace-body.wb-dock-vertical .wb-runtime-preview-wrap {
+    border-left: none;
+    border-top: 1px solid var(--wb-border);
+}
+
+.wb-dock-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 6px;
+    background: var(--wb-sand);
+    color: var(--wb-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.wb-dock-btn.active {
+    background: var(--wb-gold);
+    color: #fff;
+}
+
+/* world-builder-v2 — collapsible panels. Resizing (the sashes above) and
+   collapsing are two different, complementary controls: a sash changes
+   how much of the width a panel gets, a collapse button removes it from
+   consideration entirely (down to a narrow rail showing just its own
+   heading), without losing the resized width it had a moment ago — that
+   width is simply re-applied the next time it's expanded. */
+.wb-collapse-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 6px;
+    background: var(--wb-sand);
+    color: var(--wb-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+.wb-inspector-wrap.wb-panel-collapsed .wb-inspector-sub,
+.wb-inspector-wrap.wb-panel-collapsed .wb-context-panel,
+.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-sub,
+.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-panel,
+.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-sub,
+.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-canvas-wrap,
+.wb-runtime-preview-wrap.wb-panel-collapsed .wb-preview-selector {
+    display: none;
+}
+
+.wb-inspector-wrap.wb-panel-collapsed .wb-panel-title-label,
+.wb-experiences-wrap.wb-panel-collapsed .wb-panel-title-label,
+.wb-runtime-preview-wrap.wb-panel-collapsed .wb-panel-title-label {
+    display: none; /* keep the icon, hide the label text — a 44px rail has no room for it */
+}
+
+.wb-inspector-wrap.wb-panel-collapsed,
+.wb-experiences-wrap.wb-panel-collapsed,
+.wb-runtime-preview-wrap.wb-panel-collapsed {
+    padding: 10px 4px;
+}
+
+.wb-inspector-wrap.wb-panel-collapsed .wb-inspector-heading,
+.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-heading,
+.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-heading {
+    padding: 0;
+    border: none;
+}
+
+.wb-collapse-btn.wb-collapse-btn-collapsed svg { transform: rotate(180deg); }
+
+.wb-resize-handle {
+    position: relative;
+    background: transparent;
+    z-index: 5;
+}
+
+.wb-resize-handle-v { cursor: col-resize; }
+.wb-resize-handle-h { cursor: row-resize; }
+
+#wb-resize-inspector { grid-area: inspsash; }
+#wb-resize-experiences { grid-area: expsash; }
+#wb-resize-runtime { grid-area: rtsash; }
+
+.wb-resize-handle::after {
+    content: '';
+    position: absolute;
+    background: var(--wb-border);
+    border-radius: 2px;
+    transition: background .12s ease;
+}
+
+.wb-resize-handle-v::after { top: 8%; bottom: 8%; left: 2px; width: 2px; }
+.wb-resize-handle-h::after { left: 8%; right: 8%; top: 2px; height: 2px; }
+
+.wb-resize-handle:hover::after,
+.wb-resize-handle.wb-resize-dragging::after {
+    background: var(--wb-gold);
+}
+
+.wb-resize-handle:focus-visible {
+    outline: 2px solid var(--wb-gold);
+    outline-offset: -2px;
+}
+
+/* ---------- Global Navigation (Builder V2 — Vision §1) ---------- */
+/* Moved to the top, structurally outside the workspace grid entirely —
+   a Theme Author's "where am I" question is answered here, once, and
+   never competes with editing-surface space the way the old left
+   sidebar did. */
+
+.wb-global-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 20px;
+    background: var(--wb-paper);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+}
+
+.wb-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--wb-text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.wb-nav-item:hover { background: var(--wb-sand); }
+
+.wb-nav-item.active {
+    background: var(--wb-sky);
+    color: var(--wb-navy);
+    font-weight: 700;
+}
+
+.wb-nav-icon { font-size: 15px; }
+
+/* ---------- Scene Header (Builder V2 — Vision §2) ---------- */
+/* Present only while a Scene is open: breadcrumb + a glanceable Scene
+   Configuration summary — Canvas's one remaining home now that it is
+   no longer a peer creative activity (Blueprint §7, superseded). */
+
+.wb-scene-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--wb-cream);
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
+}
+
+.wb-scene-breadcrumb {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-scene-breadcrumb strong { color: var(--wb-navy); font-weight: 700; }
+
+.wb-scene-config-glance {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--wb-text);
+    white-space: nowrap;
+}
+
+.wb-scene-config-glance:hover { border-color: var(--wb-gold); }
+
+.wb-scene-config-glance.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sky);
+}
+
+.wb-scene-config-chip { display: inline-flex; align-items: center; gap: 4px; }
+.wb-scene-config-chip + .wb-scene-config-chip { margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--wb-border); }
+
+/* ---------- Activity switcher (Builder V2 — Vision §3) ---------- */
+/* Place · Decorations · Text, in Working View's own toolbar row —
+   Scene Configuration is deliberately not a fourth entry here (it has
+   no page object to draw guides around, Vision §2). */
+
+.wb-activity-switcher {
+    display: flex;
+    gap: 6px;
+}
+
+.wb-activity-item {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wb-text);
+    cursor: pointer;
+}
+
+.wb-activity-item:hover { border-color: var(--wb-gold); }
+
+.wb-activity-item.active {
+    background: var(--wb-navy);
+    border-color: var(--wb-navy);
+    color: #fff;
+}
+
+/* ---------- Scene canvas guides (Working View only) ---------- */
+
+.wb-scene-safe-area-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-gold);
+    background: rgba(29, 52, 87, .85);
+    padding: 2px 8px;
+    border-radius: 999px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* ---------- Working View (Sprint B2.0.3) ---------- */
+/* The center column. Context-aware: renders the real World through
+   SlideRenderer (same pipeline as Runtime Preview) with Builder-only
+   guide overlays drawn on top for whichever state is active. Always
+   visible — no modal, no separate "Preview" click required. */
+
+.wb-workspace-working-column {
+    grid-area: working;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    overflow: hidden;
+    background: var(--wb-cream);
+    min-height: 0;
+    min-width: 0;
+}
+
+/* Identity card — Working View's fallback for Overview when the World
+   has zero Representations yet (nothing to render as a page). */
+.wb-preview-frame {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--wb-paper);
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.wb-preview-icon { font-size: 48px; }
+
+.wb-preview-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    text-align: center;
+    padding: 0 12px;
+}
+
+.wb-preview-tagline {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+    text-align: center;
+    padding: 0 16px;
+}
+
+/* AV-008 — Working View's explicit inactive state: shown whenever no
+   Scene is currently being authored (a brand-new World with none yet,
+   or an existing World simply not viewing one right now), replacing
+   the old pseudo-preview of unrelated World metadata. Mounted as a
+   plain flex child of .wb-working-canvas-wrap (not the aspect-ratio-
+   locked -inner box, which collapses to near-zero size once its only
+   normally-sized content — the canvas — is hidden) so it's reliably
+   visible and centered regardless of canvas state. */
+.wb-inactive-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 24px;
+    max-width: 280px;
+}
+
+.wb-inactive-state-icon {
+    font-size: 40px;
+    opacity: .5;
+}
+
+.wb-inactive-state-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0;
+}
+
+.wb-inactive-state-body {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    margin: 0 0 6px;
+    max-width: 240px;
+}
+
+.wb-working-view-heading {
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.wb-working-view-heading-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.wb-dock-toggle {
+    position: absolute;
+    right: 4px;
+    top: 2px;
+    display: flex;
+    gap: 3px;
+}
+
+.wb-working-view-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-working-view-sub {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+/* Sprint B2.0.4 — the top row is now a fixed, comparatively short
+   percentage of viewport height (Inspector gets the rest), so this
+   must scale by *height* first (like the old fit-to-viewport Preview
+   modal did) rather than by width — otherwise a width-first box would
+   overflow the row and force a scrollbar, which "never scrolls" rules
+   out. */
+/* Sprint B2.0.5 — split into a plain flex:1 sizing box (this) and an
+   aspect-ratio-locked inner box (.wb-working-canvas-inner). Putting
+   flex:1 (a definite main-axis/height size, via flex-grow) AND
+   aspect-ratio on the SAME element was the bug: once max-width also
+   became the binding constraint (as it does whenever Runtime Preview's
+   narrower column makes width the tighter fit), the browser had no way
+   to shrink the already flex-resolved height back down to match the
+   ratio — the box quietly stopped being 1080:1350 and every rendered
+   page looked stretched. Splitting sizing (here) from the ratio (the
+   inner box) is the same two-layer technique the Sprint B2.0.2 Preview
+   modal already used correctly. */
+.wb-working-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* AV-001 — the `aspect-ratio` below is a before-first-render fallback
+   only (so nothing looks broken for an instant before JS runs). Every
+   real draw overrides it inline (`worldBuilderApp.js`'s
+   `_drawSceneCanvas`, via `canvasEl.parentElement.style.aspectRatio`)
+   to match the active Scene's own Aspect Ratio — Engine Canon §4:
+   Canvas geometry is determined by the Scene's Aspect Ratio, not fixed
+   to one shape. This was previously hardcoded to 1080/1350, silently
+   stretching every non-portrait Scene's bitmap into a portrait-shaped
+   box during authoring. */
+.wb-working-canvas-inner {
+    position: relative;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1080 / 1350;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px var(--wb-shadow);
+    overflow: hidden;
+    background: #fff;
+}
+
+.wb-working-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Guide overlays — absolutely positioned in percentages of the canvas
+   wrapper, so they track the real render's own geometry (read via
+   SlideRenderer.getPanelRect/getCaptionRect) without any resize-
+   listener math. Never rendered onto the canvas itself — purely a DOM
+   layer on top, so Runtime Preview (a second, guide-free instance of
+   the same canvas render) never shows them. */
+.wb-working-overlays {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.wb-guide-box {
+    position: absolute;
+    border: 1.5px dashed rgba(29, 52, 87, 0.55);
+    border-radius: 4px;
+}
+
+.wb-guide-box.wb-guide-holder { border-color: rgba(29, 52, 87, 0.55); }
+.wb-guide-box.wb-guide-caption { border-color: rgba(184, 108, 33, 0.6); }
+.wb-guide-box.wb-guide-padding { border-color: rgba(76, 130, 89, 0.55); border-style: dotted; }
+.wb-guide-box.wb-guide-margin { border-color: rgba(51, 48, 42, 0.28); border-style: solid; }
+
+/* Sprint B2.0.4 — sits just inside the guide box's own top edge rather
+   than floating above it. The Working View cell is now much shorter
+   (Inspector claims most of the vertical space), so a label positioned
+   above its box — as it was in Sprint B2.0.3, when Working View had
+   the whole right-hand column's height to spare — can spill past the
+   canvas wrap's own top edge and get clipped by its overflow:hidden. */
+.wb-guide-label {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--wb-paper);
+    color: var(--wb-navy);
+    white-space: nowrap;
+    max-width: calc(100% - 8px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Padding's guide is nested just inside Holder Boundary, so its label
+   goes at the opposite (bottom) corner to avoid stacking on top of the
+   Holder/Caption labels at the same top-left point. */
+.wb-guide-label-bottom {
+    top: auto;
+    bottom: 2px;
+    left: auto;
+    right: 2px;
+}
+
+.wb-guide-align-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 1.5px dashed rgba(184, 33, 33, 0.55);
+}
+
+.wb-guide-sample-caption {
+    position: absolute;
+    font-size: 9px;
+    color: var(--wb-text-secondary);
+    background: rgba(255, 253, 248, 0.9);
+    border: 1px dashed rgba(184, 108, 33, 0.6);
+    border-radius: 4px;
+    padding: 2px 6px;
+    max-width: 46%;
+}
+
+/* ---------- Runtime Preview (Sprint B2.0.3) ---------- */
+/* Top of the right column, permanently visible, never contains a
+   guide/overlay — literal SlideRenderer output only, answering
+   "what will the reader see?" */
+
+/* Sprint B2.0.4 — Runtime Preview is now its own grid cell (top-right)
+   instead of the top of a column it shared with the Inspector. Fully
+   decoupled: resizing/adding Inspector content below can never push on
+   this cell or make it scroll. */
+.wb-runtime-preview-wrap {
+    grid-area: runtime;
+    min-height: 0;
+    min-width: 0;
+    padding: 10px 16px;
+    border-left: 1px solid var(--wb-border);
+    background: var(--wb-sand);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+}
+
+.wb-runtime-preview-heading {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+.wb-runtime-preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-runtime-preview-sub {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+}
+
+/* Height-first fit, same reasoning as .wb-working-canvas-wrap: this
+   cell's height is fixed by the grid row, so the canvas must scale
+   from that rather than from width, or it would overflow and force a
+   scrollbar — ruled out by "never scrolls." */
+/* Sprint B2.0.5 — same outer-sizing/inner-ratio split as
+   .wb-working-canvas-wrap above, fixing the same distortion bug (here
+   it was actually visible, since Runtime Preview's narrower column
+   makes max-width the binding constraint far more often). */
+.wb-runtime-preview-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* AV-001 — same before-first-render fallback as
+   .wb-working-canvas-inner above; overridden inline per-Scene. */
+.wb-runtime-preview-canvas-inner {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1080 / 1350;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px var(--wb-shadow);
+    overflow: hidden;
+    background: #fff;
+}
+
+.wb-runtime-preview-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.wb-preview-selector {
+    flex: 0 0 auto;
+    max-width: 100%;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.wb-selector-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    min-width: 56px;
+}
+
+.wb-selector-chip:hover { border-color: var(--wb-gold); }
+
+.wb-selector-chip.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sand);
+    color: var(--wb-navy);
+    font-weight: 700;
+}
+
+.wb-selector-chip-icon { font-size: 18px; }
+
+/* Builder V2 — Vision §4: Context Inspector is now its own full-height
+   column, the third of three permanent regions, matching Working View
+   and Runtime Preview's own heading chrome so all three read as peer
+   panes. It remains the only region of the Workspace allowed to scroll
+   at all (Sprint B2.0.4's own rule, unchanged — only its geometry
+   changed, not this constraint). */
+.wb-inspector-wrap {
+    grid-area: inspector;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+}
+
+/* world-builder-v2 — Experiences column (Scenes+Experiences simultaneous
+   view). Same shell shape as Context Inspector, one column over. */
+.wb-experiences-wrap {
+    grid-area: experiences;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+    border-left: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+}
+
+.wb-experiences-heading {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.wb-experiences-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wb-experiences-sub {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-experiences-panel {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    padding: 12px 14px;
+    overflow-y: auto;
+}
+
+.wb-exp-scope-toggle {
+    display: flex;
+    background: var(--wb-sand);
+    border-radius: 999px;
+    padding: 3px;
+    margin-bottom: 10px;
+}
+
+.wb-exp-scope-toggle button {
+    flex: 1;
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--wb-text-secondary);
+    cursor: pointer;
+}
+
+.wb-exp-scope-toggle button.active {
+    background: var(--wb-paper);
+    color: var(--wb-navy);
+    box-shadow: 0 1px 3px var(--wb-shadow);
+}
+
+.wb-exp-sidebar-card {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    padding: 8px 9px;
+    margin-bottom: 7px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+}
+
+.wb-exp-sidebar-card:hover { border-color: var(--wb-gold); }
+
+.wb-exp-sidebar-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background: var(--wb-sand);
+    overflow: hidden;
+}
+
+.wb-exp-sidebar-thumb img { width: 100%; height: 100%; object-fit: contain; }
+
+.wb-exp-sidebar-info { flex: 1; min-width: 0; }
+
+.wb-exp-sidebar-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-exp-sidebar-meta {
+    font-size: 9.5px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-inspector-heading {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 22px 6px;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.wb-inspector-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-inspector-sub {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-context-panel {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    padding: 16px 22px;
+    overflow-y: auto;
+}
+
+.wb-context-heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    margin: 0 0 4px;
+}
+
+/* AP-002 — small inline icon set replacing emoji on panel-title
+   headings (Place/Decorations/Text and the three permanent pane
+   headings). currentColor so it always matches the heading's own text
+   colour with no separate theming. */
+.wb-heading-icon {
+    display: inline-flex;
+    vertical-align: -3px;
+    margin-right: 6px;
+}
+
+.wb-context-subheading {
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+    margin: 0 0 18px;
+}
+
+.wb-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 13px;
+}
+
+.wb-field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--wb-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.wb-field-input,
+.wb-field-textarea,
+.wb-field-select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 11px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-cream);
+    color: var(--wb-text);
+    width: 100%;
+}
+
+.wb-field-input:focus,
+.wb-field-textarea:focus,
+.wb-field-select:focus {
+    outline: none;
+    border-color: var(--wb-gold);
+}
+
+.wb-field-textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+/* Sprint B2.0.2 — World Id: read-only, never a disabled-looking input */
+.wb-field-readonly {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 13px;
+    padding: 9px 11px;
+    border: 1px dashed var(--wb-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--wb-text-secondary);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.wb-field-row {
+    display: flex;
+    gap: 10px;
+}
+
+.wb-field-row .wb-field-group { flex: 1; }
+
+.wb-field-hint {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-creation-type-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wb-creation-type-chip {
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wb-sky);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    opacity: .35;
+}
+
+.wb-creation-type-chip.active {
+    opacity: 1;
+    border-color: var(--wb-gold);
+    background: var(--wb-sand);
+}
+
+.wb-asset-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wb-asset-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--wb-sand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.wb-asset-change-btn {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.wb-rep-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    background: var(--wb-cream);
+}
+
+.wb-rep-list-row.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sand);
+}
+
+.wb-rep-list-row-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-add-btn {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: var(--wb-sky);
+    border: 1px dashed var(--wb-navy);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--wb-navy);
+    width: 100%;
+    margin-top: 4px;
+}
+
+.wb-action-chip-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wb-action-chip {
+    font-size: 11px;
+    padding: 5px 10px;
+    background: var(--wb-sky);
+    border-radius: 999px;
+    color: var(--wb-navy);
+}
+
+.wb-alignment-row {
+    display: flex;
+    gap: 6px;
+}
+
+.wb-alignment-btn {
+    flex: 1;
+    padding: 8px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.wb-alignment-btn.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sand);
+}
+
+.wb-holder-area-diagram {
+    border: 1px dashed var(--wb-sage);
+    border-radius: 10px;
+    background: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(185,203,180,.15) 8px, rgba(185,203,180,.15) 16px);
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wb-text-secondary);
+    font-size: 11px;
+}
+
+.wb-stub-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-align: center;
+    padding: 40px 12px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-stub-icon { font-size: 40px; }
+
+.wb-stub-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-stub-note {
+    font-size: 13px;
+}
+
+/* ---------- Frames / Layer Packs row controls (Sprint B2.0) ---------- */
+
+.wb-row-controls {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.wb-row-btn {
+    font-size: 12px;
+    padding: 3px 6px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.wb-row-btn:hover { border-color: var(--wb-gold); }
+
+.wb-layer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    background: var(--wb-cream);
+    cursor: pointer;
+}
+
+.wb-layer-row.active { border-color: var(--wb-gold); background: var(--wb-sand); }
+
+.wb-layer-row-name {
+    flex: 1;
+    font-size: 12px;
+    color: var(--wb-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- Assets (Sprint B2.0; upload cards since Sprint B2.0.6) ---------- */
+
+.wb-asset-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.wb-asset-slot-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 14px;
+    background: var(--wb-cream);
+}
+
+.wb-asset-slot-row .wb-asset-thumb {
+    width: 100%;
+    height: 72px;
+    border-radius: 10px;
+    font-size: 24px;
+}
+
+.wb-asset-spec-line { line-height: 1.4; }
+
+.wb-asset-slot-row .wb-asset-change-btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.wb-asset-slot-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.wb-asset-slot-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wb-asset-slot-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-asset-req-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--wb-sky);
+    color: var(--wb-navy);
+}
+
+.wb-asset-req-badge.required { background: var(--wb-gold); color: #4A3A10; }
+
+.wb-asset-status {
+    font-size: 11px;
+    color: #8A2E2E;
+    font-weight: 700;
+}
+
+.wb-asset-status.filled { color: #2E7D46; }
+
+.wb-asset-progress-wrap {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wb-asset-progress-bar {
+    height: 8px;
+    background: var(--wb-sand);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.wb-asset-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wb-gold), #F5B93A);
+    border-radius: 999px;
+    transition: width .2s ease;
+}
+
+/* ---------- Validation "Fix Now" (Sprint B2.0.1) ---------- */
+
+.wb-fix-now-btn {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    margin-top: 4px;
+    background: var(--wb-gold);
+    color: #4A3A10;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.wb-validation-why {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    font-style: italic;
+    margin: 2px 0 6px;
+}
+
+/* ---------- Validation (Sprint B2.0) ---------- */
+
+.wb-validation-status {
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 12px 0;
+}
+
+.wb-validation-status.pass { background: #E4F3E8; color: #2E7D46; }
+.wb-validation-status.fail { background: #FBE7E7; color: #A03A3A; }
+
+.wb-validation-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--wb-border);
+    font-size: 13px;
+}
+
+.wb-validation-chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.wb-validation-chip.pass { background: #E4F3E8; color: #2E7D46; }
+.wb-validation-chip.warning { background: #FCF1DA; color: #8A6A1E; }
+.wb-validation-chip.error { background: #FBE7E7; color: #A03A3A; }
+
+.wb-validation-detail {
+    padding-left: 10px;
+    border-left: 2px solid var(--wb-border);
+    margin: 4px 0 8px;
+}
+
+/* ---------- Build / Publish (Sprint B2.0; compact cards since B2.0.6) ---------- */
+
+/* Sprint B2.0.6 — was a single tall box of stacked <p><strong> lines;
+   now a grid of small stat cards (see worldBuilderApp.js's
+   _statCardGrid()) matching the ticket's "Build: Compact card layout." */
+.wb-build-info-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.wb-build-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.wb-build-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--wb-text-secondary);
+}
+
+.wb-build-stat-value {
+    font-size: 13px;
+    color: var(--wb-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wb-build-btn { font-size: 15px; padding: 12px; }
+
+/* Sprint B2.0.6 — "Publish: Compact action cards": a grid of vertical
+   cards (icon, title, note stacked) instead of full-width horizontal
+   rows stacked one per line. */
+.wb-publish-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.wb-publish-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+}
+
+.wb-publish-option:hover:not(:disabled) { border-color: var(--wb-gold); }
+.wb-publish-option:disabled { opacity: .5; cursor: default; }
+
+.wb-publish-icon { font-size: 24px; }
+
+.wb-publish-text { display: flex; flex-direction: column; gap: 2px; }
+
+.wb-publish-title { font-size: 14px; font-weight: 700; color: var(--wb-navy); }
+
+.wb-publish-note { font-size: 12px; color: var(--wb-text-secondary); }
+
+@media (max-width: 900px) {
+    /* Narrow-viewport fallback only — the frozen 3-pane layout (Vision
+       §4) is the primary desktop authoring shape; below 900px there
+       isn't room for three full-height columns, so Runtime Preview (the
+       lowest edit-frequency pane, per Vision §4 v1.1) drops to a
+       full-width row beneath Working View + Context Inspector, and both
+       resize sashes (which have nothing sensible to drag at this width)
+       hide. */
+    /* Higher-specificity selectors (.wb-dock-vertical / .wb-has-exp-col)
+       must not win over this fallback at narrow widths, so every real
+       combination is named explicitly here rather than relying on the
+       plain `.wb-workspace-body` rule to out-rank them by media query
+       alone (it can't — specificity, not source order, decides ties). */
+    .wb-workspace-body,
+    .wb-workspace-body.wb-dock-vertical,
+    .wb-workspace-body.wb-has-exp-col,
+    .wb-workspace-body.wb-dock-vertical.wb-has-exp-col {
+        grid-template-columns: 1fr 220px;
+        grid-template-rows: 1fr 240px;
+        grid-template-areas:
+            "working inspector"
+            "runtime runtime";
+    }
+    #wb-resize-runtime, #wb-resize-inspector, #wb-resize-experiences { display: none; }
+    .wb-experiences-wrap { display: none !important; }
+    .wb-runtime-preview-wrap { border-left: none; border-top: 1px solid var(--wb-border); }
+    .wb-nav-item span:last-child { display: none; }
+    .wb-workspace-name { max-width: 160px; }
+}
+
+/* ---------- Scenes Library (Builder V2 — Blueprint §5) ---------- */
+/* The felt expression of "a Theme is a curated library of Scenes"
+   (Engine Canon §0) — every Scene recognizable at a glance by name and
+   a live thumbnail, never an internal id. Rendered directly into
+   Working View when Scenes is open with no Scene selected yet. */
+
+.wb-scene-library {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.wb-scene-library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+}
+
+.wb-scene-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.wb-scene-card:hover { border-color: var(--wb-gold); }
+.wb-scene-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
+
+.wb-scene-card-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 8px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    position: relative;
+    overflow: hidden;
+}
+
+.wb-scene-card-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wb-scene-card-sub {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-scene-card-controls {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.wb-scene-card-controls button {
+    flex: 1;
+    font-size: 11px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    cursor: pointer;
+}
+
+.wb-scene-card-controls button:hover { border-color: var(--wb-gold); }
+
+.wb-scene-card-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 4/5.6;
+    border: 2px dashed var(--wb-border);
+    border-radius: 12px;
+    background: none;
+    cursor: pointer;
+    color: var(--wb-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wb-scene-card-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
+.wb-scene-card-add-icon { font-size: 26px; }
+
+/* Engine Scene Template picker overlay — Engine Canon §10, §12 item 2;
+   Add a Scene always starts here, never from a blank Canvas (Invariant 4). */
+
+.wb-scene-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.wb-scene-template-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-paper);
+    cursor: pointer;
+    text-align: left;
+}
+
+.wb-scene-template-card:hover { border-color: var(--wb-gold); }
+.wb-scene-template-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
+.wb-scene-template-icon { font-size: 22px; }
+.wb-scene-template-name { font-size: 13px; font-weight: 700; color: var(--wb-navy); }
+.wb-scene-template-desc { font-size: 11px; color: var(--wb-text-secondary); }
+
+/* ---------- Experience Home (Builder V3 Milestone 2) — Gallery
+   ("what can I use today?") + Nursery ("what am I still growing?"),
+   docs/BUILDER_V3_EXPERIENCE_STUDIO.md. Cards reuse .wb-scene-card's
+   proven preview-first layout rather than inventing a second card
+   pattern — only the extra meta/tags rows an Experience needs are new. */
+
+.wb-experience-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.wb-experience-tab {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border: 1px solid var(--wb-border);
+    border-radius: 999px;
+    background: var(--wb-paper);
+    color: var(--wb-text-secondary);
+    cursor: pointer;
+}
+
+.wb-experience-tab:hover { border-color: var(--wb-gold); }
+.wb-experience-tab.active { border-color: var(--wb-gold); background: var(--wb-sky); color: var(--wb-navy); }
+
+.wb-experience-card-thumb { font-size: 30px; }
+
+.wb-experience-card-meta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-navy);
+}
+
+.wb-experience-card-tags {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-experience-create-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* ---------- Place — the shared Story-Author-permission block's
+   checkbox rows (Blueprint §6.2, Holder variant) ---------- */
+
+.wb-permission-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* ---------- Emoji Picker (AV-011) ----------
+   Ported to Builder's own wb- variables — the module itself
+   (js/emojiPicker.js) is the exact same shared code the main Studio app
+   already uses for every Text Element field (Sprint 9.6); only these
+   styles are Builder-specific so the toggle/panel match its own theme. */
+.emoji-picker-field {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+}
+
+.emoji-picker-field .wb-field-textarea,
+.emoji-picker-field .wb-field-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.emoji-picker-toggle {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    margin-top: 0;
+    padding: 0;
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    background: var(--wb-cream);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.emoji-picker-toggle:hover { border-color: var(--wb-gold); }
+
+.emoji-picker-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 2px);
+    z-index: 20;
+    width: 216px;
+    padding: 6px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    box-shadow: 0 6px 18px var(--wb-shadow);
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+}
+
+.emoji-picker-panel.hidden { display: none; }
+
+.emoji-picker-option {
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.emoji-picker-option:hover { background: var(--wb-sand); }
+
+/* ---------- Footer ---------- */
+
+.wb-footer {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    opacity: .7;
+    z-index: 5;
+}
+
+@media (max-width: 600px) {
+    #wb-root { padding: 32px 16px 96px; }
+    .wb-cta-create { flex-direction: column; text-align: center; }
+    .wb-templates-header { text-align: center; }
+    .wb-back-btn { position: static; display: inline-block; margin-bottom: 8px; }
+}

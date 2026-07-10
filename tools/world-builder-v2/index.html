@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Builder</title>
+    <link rel="stylesheet" href="css/world-builder.css">
+</head>
+<body>
+    <div id="wb-root">
+        <!-- Screen 1 — Welcome -->
+        <section id="wb-screen-welcome" class="wb-screen wb-screen-welcome">
+            <header class="wb-welcome-header">
+                <div class="wb-brand">
+                    <span class="wb-brand-mark">🌎</span>
+                    <span class="wb-brand-name">World Builder</span>
+                </div>
+                <p class="wb-brand-tagline">Make a World for VihuStudio — a Story or an Artwork Showcase any child can pick.</p>
+            </header>
+
+            <div class="wb-welcome-main">
+                <button id="wb-create-new" class="wb-cta-create" type="button">
+                    <span class="wb-cta-icon">➕</span>
+                    <span class="wb-cta-text">
+                        <span class="wb-cta-title">Create New World</span>
+                        <span class="wb-cta-sub">Start from a template — it's ready the moment you pick one.</span>
+                    </span>
+                </button>
+
+                <section class="wb-section wb-my-worlds">
+                    <h2 class="wb-section-title">My World Projects</h2>
+                    <div id="wb-my-worlds-list" class="wb-my-worlds-list">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                    <p id="wb-my-worlds-empty" class="wb-empty-note">✨ Your worlds will appear here.<br>Create your first world to begin your journey.</p>
+                </section>
+
+                <section class="wb-section wb-explore">
+                    <h2 class="wb-section-title">Explore Worlds</h2>
+                    <div class="wb-explore-row">
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🏛️</span>
+                            <span class="wb-explore-name">Official Worlds</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🌐</span>
+                            <span class="wb-explore-name">Community Worlds</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                        <div class="wb-explore-card">
+                            <span class="wb-explore-icon">🧩</span>
+                            <span class="wb-explore-name">Templates</span>
+                            <span class="wb-explore-note">Coming soon</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <!-- Screen 2 — Choose a Template -->
+        <section id="wb-screen-templates" class="wb-screen wb-screen-templates wb-hidden">
+            <header class="wb-templates-header">
+                <button id="wb-back-to-welcome" class="wb-back-btn" type="button">← Back</button>
+                <h1 class="wb-templates-title">Choose a Template</h1>
+                <p class="wb-templates-sub">Pick the starting point closest to what you want to make. You can change everything later.</p>
+            </header>
+            <div id="wb-template-grid" class="wb-template-grid">
+                <!-- rendered by worldBuilderApp.js -->
+            </div>
+        </section>
+
+        <!-- Screen 3 — Builder Workspace -->
+        <section id="wb-screen-workspace" class="wb-screen wb-screen-workspace wb-hidden">
+            <header class="wb-workspace-header">
+                <div class="wb-workspace-header-left">
+                    <button id="wb-workspace-home" class="wb-workspace-home-btn" type="button" title="Back to My World Projects"><span aria-hidden="true">🏠</span> My Worlds</button>
+                    <span id="wb-workspace-name" class="wb-workspace-name">Untitled World</span>
+                    <span id="wb-workspace-saved" class="wb-workspace-saved"><span id="wb-save-dot">🟢</span> <span id="wb-workspace-saved-text">All Changes Saved</span></span>
+                </div>
+                <div class="wb-workspace-header-right">
+                    <button id="wb-btn-settings" class="wb-workspace-btn" type="button" title="Open World Settings (Overview)">Settings</button>
+                    <button id="wb-btn-save" class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Save this World Project now">💾 Save</button>
+                    <div class="wb-menu-wrap">
+                        <button id="wb-btn-menu" class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="More actions">⋮</button>
+                        <div id="wb-menu-dropdown" class="wb-menu-dropdown wb-hidden">
+                            <button id="wb-menu-duplicate" class="wb-menu-item" type="button">⧉ Duplicate World</button>
+                            <button id="wb-menu-reset-layout" class="wb-menu-item" type="button">↺ Reset Workspace Layout</button>
+                            <button id="wb-menu-delete" class="wb-menu-item wb-menu-item-danger" type="button">🗑 Delete World</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Global Navigation (Builder V2 — docs/BUILDER_V2_VISION.md §1).
+                 Moved to the top, structurally outside the three-pane
+                 workspace, replacing the old left Builder Navigation
+                 sidebar. World | Scenes | Validation | Build | Publish —
+                 exactly five destinations; Theme Assets is a secondary
+                 entry reachable from World, not a peer here (Vision §1). -->
+            <nav id="wb-global-nav" class="wb-global-nav">
+                <!-- rendered by worldBuilderApp.js -->
+            </nav>
+
+            <!-- Scene Header (Builder V2 — Vision §2). Present only while a
+                 Scene is open: the breadcrumb (World › Scene) and the
+                 Scene Configuration glance (Aspect Ratio / Safe Area /
+                 pixel Size) — Canvas's one remaining home now that it is
+                 no longer a peer creative activity. -->
+            <div id="wb-scene-header" class="wb-scene-header wb-hidden">
+                <!-- rendered by worldBuilderApp.js -->
+            </div>
+
+            <div id="wb-workspace-body" class="wb-workspace-body">
+                <!-- Builder V2 — Vision §4 (v1.1 reorder): three permanent,
+                     full-height regions side by side (Working View |
+                     Context Inspector | Runtime Preview). Both sashes are
+                     vertical (col-resize) — one between Working View and
+                     Context Inspector, one between Context Inspector and
+                     Runtime Preview. The Navigation sash retired along with
+                     the left sidebar it used to resize (Vision §1); the old
+                     horizontal Inspector-height sash retired along with the
+                     old below-the-fold Inspector row this reset replaces. -->
+                <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-v" data-resize="inspector" title="Drag to resize Working View / Context Inspector" tabindex="0" role="separator" aria-orientation="vertical"></div>
+                <div id="wb-resize-experiences" class="wb-resize-handle wb-resize-handle-v" data-resize="experiences" title="Drag to resize Context Inspector / Experiences" tabindex="0" role="separator" aria-orientation="vertical"></div>
+                <div id="wb-resize-runtime" class="wb-resize-handle wb-resize-handle-v" data-resize="runtime" title="Drag to resize Experiences / Runtime Preview" tabindex="0" role="separator" aria-orientation="vertical"></div>
+
+                <!-- Working View (Sprint B2.0.3) — the context-aware editing
+                     surface. Renders through the same real renderer.js
+                     pipeline as Runtime Preview (no separate rendering
+                     logic), then draws Builder-only guide overlays on top
+                     for whichever state is active. These overlays never
+                     reach the World Package. -->
+                <main class="wb-workspace-working-column">
+                    <div class="wb-working-view-heading">
+                        <span class="wb-working-view-heading-text">
+                            <span class="wb-working-view-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="1.5"/><path d="M3 7.5h14M7.5 3v14"/></svg>Working View</span>
+                            <span class="wb-working-view-sub">Editing guides shown here only — never saved</span>
+                        </span>
+                        <span class="wb-dock-toggle" role="group" aria-label="Working View / Runtime Preview layout">
+                            <button type="button" id="wb-dock-horizontal" class="wb-dock-btn active" title="Side by side"><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="4" width="7" height="12" rx="1.3"/><rect x="11" y="4" width="7" height="12" rx="1.3"/></svg></button>
+                            <button type="button" id="wb-dock-vertical" class="wb-dock-btn" title="Stacked"><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="2" width="12" height="7" rx="1.3"/><rect x="4" y="11" width="12" height="7" rx="1.3"/></svg></button>
+                        </span>
+                    </div>
+                    <div class="wb-working-canvas-wrap">
+                        <div class="wb-working-canvas-inner">
+                            <canvas id="wb-working-canvas" class="wb-working-canvas"></canvas>
+                            <div id="wb-working-overlays" class="wb-working-overlays"></div>
+                        </div>
+                    </div>
+                    <div id="wb-preview-selector" class="wb-preview-selector">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                </main>
+
+                <!-- Context Inspector (Builder V2 — Vision §4) — the third
+                     permanent, full-height region, always reflecting the
+                     current selection. Same #wb-context-panel mount point
+                     every state has always rendered into. Positioned
+                     beside Working View (Vision §4 v1.1) since editing the
+                     current selection is the higher-frequency action. -->
+                <aside id="wb-inspector-wrap" class="wb-inspector-wrap">
+                    <div class="wb-inspector-heading">
+                        <span class="wb-inspector-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16.5 16.5l-3.6-3.6"/></svg><span class="wb-panel-title-label">Context Inspector</span></span>
+                        <span class="wb-inspector-sub">Properties for whatever is selected</span>
+                        <button type="button" id="wb-collapse-inspector" class="wb-collapse-btn" title="Collapse Context Inspector"><svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12.5 4l-6 6 6 6"/></svg></button>
+                    </div>
+                    <div id="wb-context-panel" class="wb-context-panel">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                </aside>
+
+                <!-- Experiences (world-builder-v2 — Scenes+Experiences
+                     simultaneous view). Present only while a Scene is
+                     open (paired with #wb-resize-experiences via the
+                     wb-has-exp-col class on #wb-workspace-body) — the
+                     Experiences hosted in this Scene, browsable and
+                     selectable alongside Working View/Context Inspector/
+                     Runtime Preview instead of behind a separate, mutually
+                     exclusive Nav destination. Selecting a card sets
+                     Context Inspector to that Experience's own fields,
+                     exactly like selecting a Place/Decoration/Text already
+                     does — no second Inspector, no dedicated workspace. -->
+                <aside id="wb-experiences-wrap" class="wb-experiences-wrap">
+                    <div class="wb-experiences-heading">
+                        <span class="wb-experiences-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2l1.8 4.5L16.5 7l-3.5 3.2.9 4.8L10 12.7l-3.9 2.3.9-4.8L3.5 7l4.7-.5z"/></svg><span class="wb-panel-title-label">Experiences</span></span>
+                        <span class="wb-experiences-sub">Hosted in this Scene</span>
+                        <button type="button" id="wb-collapse-experiences" class="wb-collapse-btn" title="Collapse Experiences"><svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12.5 4l-6 6 6 6"/></svg></button>
+                    </div>
+                    <div id="wb-experiences-panel" class="wb-experiences-panel">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                </aside>
+
+                <!-- Runtime Preview (Sprint B2.0.3, decoupled from the
+                     Inspector in Sprint B2.0.4) — always visible, always
+                     clean, no overlays/guides, never scrolls. Now the
+                     rightmost, smallest column (Vision §4 v1.1). -->
+                <aside id="wb-runtime-preview-wrap" class="wb-runtime-preview-wrap">
+                    <div class="wb-runtime-preview-heading">
+                        <span class="wb-runtime-preview-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 10S4.8 4 10 4s8.5 6 8.5 6-3.3 6-8.5 6-8.5-6-8.5-6z"/><circle cx="10" cy="10" r="2.3"/></svg><span class="wb-panel-title-label">Runtime Preview</span></span>
+                        <span class="wb-runtime-preview-sub">What the reader will see</span>
+                        <button type="button" id="wb-collapse-runtime" class="wb-collapse-btn" title="Collapse Runtime Preview"><svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
+                    </div>
+                    <div class="wb-runtime-preview-canvas-wrap">
+                        <div class="wb-runtime-preview-canvas-inner">
+                            <canvas id="wb-runtime-preview-canvas" class="wb-runtime-preview-canvas"></canvas>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </div>
+
+    <footer class="wb-footer">
+        <span id="buildInfoFooter">World Builder • Development</span>
+    </footer>
+
+    <!-- Internal services (reused, unmodified — see docs/WORLD_BUILDER_ARCHITECTURE.md) -->
+    <script src="js/services/constants.js"></script>
+    <script src="js/services/engineSchema.js"></script>
+    <script src="js/services/experienceSchema.js"></script>
+    <script src="js/services/projectLoader.js"></script>
+    <script src="js/services/validator.js"></script>
+    <script src="js/services/builder.js"></script>
+
+    <!-- The native Engine V2 Runtime + Validation (docs/ENGINE_V2_SCENE_MODEL.md
+         §5, LOCK V2-04) — load after engineSchema.js (aspect resolution)
+         and before worldBuilderApp.js (their only consumer so far). -->
+    <script src="js/services/engineRuntime.js"></script>
+    <script src="js/services/engineValidator.js"></script>
+    <script src="js/services/engineBuilder.js"></script>
+
+    <!-- VihuStudio Runtime engine (reused, unmodified — Sprint B2.0.1's
+         Preview renders through the exact same pipeline Runtime uses,
+         never a Builder-owned re-implementation). -->
+    <script src="../../js/themePresets.js"></script>
+    <script src="../../js/layerEngine.js"></script>
+    <script src="../../renderer/slideRenderer.js"></script>
+    <script src="../../js/themeRegistry.js"></script>
+    <script src="../../js/themeRepositoryClient.js"></script>
+    <!-- AV-011 — the same reusable "insert emoji" affordance the main
+         Studio app already wires onto every Text Element field
+         (Sprint 9.6), reused as-is rather than building a second one. -->
+    <script src="../../js/emojiPicker.js"></script>
+
+    <!-- Builder application -->
+    <script src="js/templates.js"></script>
+    <script src="js/projectStore.js"></script>
+    <script src="js/projectModel.js"></script>
+    <script src="js/assetSpec.js"></script>
+    <script src="js/projectCompiler.js"></script>
+    <script src="js/worldBuilderApp.js"></script>
+    <script src="js/buildInfo.js"></script>
+</body>
+</html>

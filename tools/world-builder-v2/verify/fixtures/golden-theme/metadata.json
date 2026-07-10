@@ -1,0 +1,7 @@
+{
+  "displayName": "Golden Test Theme",
+  "description": "Golden build verification fixture.",
+  "category": "Official",
+  "purpose": "Prove the Theme Builder -> VihuStudio pipeline end to end.",
+  "previewImage": "preview.png"
+}
