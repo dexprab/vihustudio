@@ -592,3 +592,149 @@ and both repository buttons still produce a real, graceful — not
 crashed — result. Only repository persistence differs between Official
 and Personal; the Theme representation, Studio's discovery mechanism,
 and rendering are otherwise identical, per §11.6.
+
+---
+
+## 12. Platform Status & Repository Reset
+
+A standalone developer/QA diagnostic — deliberately **not** a Builder or
+Studio feature, no product styling, reached only by opening
+`tools/platform-status/index.html` directly. Answers the four questions
+this document's own Philosophy names: is everything connected? what
+exists? what is published? can I safely start over? — without opening
+Supabase's own dashboard.
+
+### 12.1 What the page shows
+
+- **Platform Health** — 🟢/🟡/🔴 for Builder, Build Pipeline, Repository
+  Connection, Official Repository, Personal Repository, Theme Registry,
+  and Studio Discovery. Red means a real problem (repository configured
+  but a query failed); yellow means "nothing to judge yet" (no Builder
+  Project open, or not configured at all), never a false alarm for a
+  normal, unconfigured local dev environment.
+- **Builder** — this tool's own version (`tools/world-builder/
+  build-info.json`, fetched read-only) and, if this browser has any
+  World Builder Project in `localStorage` (the same `vihu-world-builder-
+  projects` key `tools/world-builder/js/projectStore.js` already owns —
+  read-only, never written to by this page), the most recently edited
+  one's name, build status, and last Build timestamp.
+- **Repository** — Official and Personal Theme + Storage-object counts,
+  via a new `ThemeRepositoryClient.getStats(repositoryId)`.
+- **Theme Registry** — how many of the repository's own Themes would
+  actually register cleanly if `ThemeRegistry.refreshFromRepository()`
+  ran right now, computed by mirroring that function's own list → load →
+  `validatePackage()` steps directly (see §12.3 for why this page never
+  calls `refreshFromRepository()`/`.list()`/`.getCatalog()` itself).
+- **Studio** — whether `ThemeRegistry` is present at all, and whether
+  the discovery pass above completed without a systemic failure (a
+  per-theme validation failure is normal and doesn't count as one).
+- **Platform Summary** — a compact plain-text readout of all of the
+  above, in the exact shape this sprint's own prompt specified.
+
+### 12.2 `ThemeRepositoryClient.getStats(repositoryId)`
+
+`{themeCount, assetCount}` — `themeCount` is a real row count scoped to
+this repository (and, for Personal, this browser's own anonymous
+session — there is no admin/service-role credential anywhere in this
+client-side app to see across users, so a "Personal Repository" count
+is always just "mine," never "everyone's"). `assetCount` walks every one
+of those Themes' Storage prefixes with a new recursive lister,
+`_listAllObjectPaths` (§12.4), so the count always matches what would
+actually resolve — never an undercount from a shallow, one-level listing.
+
+### 12.3 Why this page never calls `ThemeRegistry.refreshFromRepository()`
+
+`js/themeRegistry.js` self-registers its own hardcoded built-in Official
+Story/Artwork themes (`storybook-classic`, `adventure`, `sketchbook`, …)
+and reloads any locally-imported Theme sitting in this same origin's
+`localStorage` the instant the script loads — both completely unrelated
+to what's actually published in a Supabase repository. Calling
+`refreshFromRepository()`/`.list()`/`.getCatalog()` on this page would
+silently inflate its counts with that unrelated data. Instead, this page
+reuses only the one genuinely pure, side-effect-free export,
+`ThemeRegistry.validatePackage(pkg)`, applied directly to what
+`ThemeRepositoryClient.list()`/`.load()` return — mirroring
+`refreshFromRepository()`'s own internal logic exactly, without ever
+touching the live registry it mutates.
+
+### 12.4 `ThemeRepositoryClient.reset(repositoryId)` — the Repository Reset contract
+
+Implements the repository abstraction's newest member — the UI never
+touches Supabase directly, only this one function, so a future
+`LocalRepository` implements the identical contract with no UI change.
+For the given `repositoryId` (called once for `'official'`, once for
+`'personal'` — "Reset Repositories" resets both):
+
+1. Lists every Theme row this repository/owner scope actually owns.
+2. For each one, recursively lists every Storage object under its
+   `{repository}/{owner_id-or-'_official'}/{theme_id}/` prefix (the new
+   `_listAllObjectPaths` — also what fixed a real, pre-existing bug in
+   `_resolveAssets`, which only ever listed one folder level and would
+   have silently missed a nested asset like `assets/textures/linen.png`)
+   and deletes them via one batched `storage.remove()` call.
+3. Deletes every matching `themes` row in one statement.
+
+Assets are deleted **before** their Theme row, specifically so a
+mid-failure never leaves a Theme row pointing at already-deleted-but-
+still-referenced assets, or a row deleted while its assets survive
+orphaned with no coordinating row at all — the ordering that most
+cleanly fails.
+
+**Reset scope — explicit, per this sprint's own requirement:**
+
+| Deleted | Never touched |
+|---|---|
+| Published Theme rows (both repositories) | Builder Projects (a completely separate persistence layer — `ProjectStore`'s own `localStorage` key, never read or written by `ThemeRepositoryClient` at all) |
+| Uploaded Storage assets (both repositories) | Current Builder state / open Project |
+| — | Settings / Preferences |
+| — | `supabase-config.json` |
+| — | Authentication (the anonymous session itself survives a reset — only the Theme *rows* that session owned are gone) |
+| — | Database schema (tables, policies) |
+| — | Storage buckets (the bucket itself; only objects inside it) |
+| — | Application code |
+
+**New RLS policies required** (`supabase/schema.sql`) — the one
+capability every earlier draft of this schema deliberately left out
+("not part of the Publish → Discover happy flow"): `themes_official_delete`
+/`themes_personal_delete` on `public.themes`, and
+`theme_assets_official_delete`/`theme_assets_personal_delete` on
+`storage.objects` — the same disclosed Official-authorization gap
+`themes_official_write`/`_update` already carry (anyone holding the anon
+key can reset the Official Repository; real authorization is necessary
+future work, not invented here).
+
+### 12.5 Confirmation
+
+Reset requires an explicit confirmation modal (Cancel / Reset
+Repositories) before it fires — the exact copy this sprint's own prompt
+specified, verbatim.
+
+### 12.6 Verified
+
+- **Schema**: the new delete policies were verified against a real local
+  PostgreSQL 16 instance (the same stand-in-Supabase-schema method used
+  for every earlier `schema.sql` change) — a fresh run and a second,
+  idempotent re-run both succeed with zero errors; functionally, as a
+  non-superuser role: an Official row/asset deletes for any caller, a
+  Personal row/asset deletes only for its own owner, and — the critical
+  negative case — a Personal row/asset belonging to a *different*
+  `auth.uid()` is correctly left untouched (confirmed by querying as
+  superuser afterward, not merely by the delete reporting zero rows,
+  since RLS would also hide that row from a `SELECT` for an unrelated
+  reason).
+- **UI**: verified via Playwright against this sandbox's real (but
+  network-blocked) `supabase-config.json` — Platform Health renders all
+  7 indicators, the Builder section reads real `build-info.json` data,
+  the Reset confirmation modal opens/closes correctly on Cancel, and
+  confirming Reset produces a graceful, disclosed failure message
+  (`Failed to fetch dynamically imported module...`) rather than a
+  crash — the same class of network-blocked failure every other
+  Supabase-touching feature in this app already handles the same way.
+  Full live verification against a real, reachable Supabase project is
+  the project owner's own local browser's to do, per this sprint's
+  standing environment limitation (§8).
+- **Regression**: `goldenBuild.js` still passes unchanged — it exercises
+  only the local-import path, never `ThemeRepositoryClient`, so this
+  sprint's changes (including the `_resolveAssets` recursive-listing
+  fix) had zero surface area to regress there; re-run anyway per the
+  Working Method's own verification discipline.

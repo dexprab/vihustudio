@@ -16,6 +16,12 @@
 -- Theme -> Supabase" is this sprint's own explicit requirement — see
 -- the disclosure comment above those policies below.
 --
+-- Platform Status & Repository Reset sprint added delete policies for
+-- both repositories/both tables (themes + storage.objects) — the one
+-- capability deliberately left out of every earlier draft, now required
+-- so ThemeRepositoryClient.reset() can actually remove published Themes
+-- and their assets, restoring a clean post-install state on demand.
+--
 -- Idempotency note: PostgreSQL's CREATE POLICY has no IF NOT EXISTS
 -- clause (unlike CREATE TABLE/INDEX/SCHEMA) — an earlier draft of this
 -- file used that syntax and would have failed with a syntax error on
@@ -91,8 +97,23 @@ create policy themes_personal_update
   using (repository = 'personal' and owner_id = auth.uid()::text)
   with check (repository = 'personal' and owner_id = auth.uid()::text);
 
--- No delete policy on either repository this sprint — not part of the
--- Publish -> Discover happy flow; trivial to add later if needed.
+-- Delete policies (Platform Status & Repository Reset sprint) — the one
+-- capability the original schema deliberately left out ("not part of
+-- the Publish -> Discover happy flow"), now required by
+-- ThemeRepositoryClient.reset(). Official delete carries the same
+-- disclosed, deliberate authorization gap as themes_official_write/
+-- _update above — anyone holding the anon key can reset the Official
+-- Repository; real Official-authorization is the same necessary future
+-- work already named for write/update.
+drop policy if exists themes_official_delete on public.themes;
+create policy themes_official_delete
+  on public.themes for delete
+  using (repository = 'official');
+
+drop policy if exists themes_personal_delete on public.themes;
+create policy themes_personal_delete
+  on public.themes for delete
+  using (repository = 'personal' and owner_id = auth.uid()::text);
 
 -- ---------------------------------------------------------------
 -- Storage bucket: theme-assets
@@ -149,6 +170,23 @@ create policy theme_assets_personal_update
     and (storage.foldername(name))[2] = auth.uid()::text
   )
   with check (
+    bucket_id = 'theme-assets'
+    and (storage.foldername(name))[1] = 'personal'
+    and (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+-- Delete policies (Platform Status & Repository Reset sprint) — required
+-- by ThemeRepositoryClient.reset() to actually remove uploaded assets,
+-- not just the themes row that referenced them.
+drop policy if exists theme_assets_official_delete on storage.objects;
+create policy theme_assets_official_delete
+  on storage.objects for delete
+  using (bucket_id = 'theme-assets' and (storage.foldername(name))[1] = 'official');
+
+drop policy if exists theme_assets_personal_delete on storage.objects;
+create policy theme_assets_personal_delete
+  on storage.objects for delete
+  using (
     bucket_id = 'theme-assets'
     and (storage.foldername(name))[1] = 'personal'
     and (storage.foldername(name))[2] = auth.uid()::text

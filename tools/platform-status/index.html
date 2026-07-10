@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Status — VihuStudio</title>
+    <link rel="stylesheet" href="css/platform-status.css">
+</head>
+<body>
+    <!-- Platform Hardening — Platform Status & Repository Reset.
+         A developer/QA diagnostic utility, deliberately NOT a Builder or
+         Studio feature: no product styling, no Creation Flow, no
+         Workspace. Answers "is everything connected? what exists? what
+         is published? can I safely start over?" without opening
+         Supabase's own dashboard — see docs/THEME_REPOSITORY_ARCHITECTURE.md
+         §12 for the full contract this page implements. -->
+    <div id="ps-root">
+        <header class="ps-header">
+            <h1>Platform Status</h1>
+            <p class="ps-subtitle">Builder ↔ Repository ↔ Studio — a developer diagnostic, not a Builder or Studio feature.</p>
+            <button id="ps-refresh-btn" class="ps-btn ps-btn-secondary" type="button">↻ Refresh</button>
+        </header>
+
+        <section class="ps-section" id="ps-health-section">
+            <h2>Platform Health</h2>
+            <ul class="ps-health-list" id="ps-health-list"><!-- rendered by platformStatus.js --></ul>
+        </section>
+
+        <section class="ps-section" id="ps-builder-section">
+            <h2>Builder</h2>
+            <dl class="ps-field-list" id="ps-builder-fields"><!-- rendered by platformStatus.js --></dl>
+        </section>
+
+        <section class="ps-section" id="ps-repository-section">
+            <h2>Repository</h2>
+            <div class="ps-repo-grid">
+                <div class="ps-repo-card">
+                    <h3>Official Repository</h3>
+                    <dl class="ps-field-list" id="ps-repo-official"></dl>
+                </div>
+                <div class="ps-repo-card">
+                    <h3>Personal Repository</h3>
+                    <dl class="ps-field-list" id="ps-repo-personal"></dl>
+                </div>
+            </div>
+        </section>
+
+        <section class="ps-section" id="ps-registry-section">
+            <h2>Theme Registry</h2>
+            <dl class="ps-field-list" id="ps-registry-fields"><!-- rendered by platformStatus.js --></dl>
+        </section>
+
+        <section class="ps-section" id="ps-studio-section">
+            <h2>Studio</h2>
+            <dl class="ps-field-list" id="ps-studio-fields"><!-- rendered by platformStatus.js --></dl>
+        </section>
+
+        <section class="ps-section" id="ps-summary-section">
+            <h2>Platform Summary</h2>
+            <pre class="ps-summary" id="ps-summary-text">Loading…</pre>
+        </section>
+
+        <section class="ps-section" id="ps-reset-section">
+            <h2>Repository Reset</h2>
+            <p class="ps-reset-note">Returns both repositories to a clean post-install state — deletes only published Themes and their uploaded assets. Builder Projects, Settings, Preferences, Supabase configuration, authentication, database schema, and Storage buckets are never touched.</p>
+            <button id="ps-reset-open-btn" class="ps-btn ps-btn-danger" type="button">Reset Repositories</button>
+            <div id="ps-reset-result" class="ps-reset-result"></div>
+        </section>
+    </div>
+
+    <div id="ps-reset-modal" class="ps-modal-overlay ps-hidden">
+        <div class="ps-modal" role="dialog" aria-modal="true" aria-labelledby="ps-modal-title">
+            <h3 id="ps-modal-title">Reset Published Repositories?</h3>
+            <p>This will permanently remove all published Themes and uploaded assets from both the Official and Personal repositories.</p>
+            <p><strong>Builder Projects will NOT be affected.</strong></p>
+            <div class="ps-modal-actions">
+                <button id="ps-modal-cancel" class="ps-btn ps-btn-secondary" type="button">Cancel</button>
+                <button id="ps-modal-confirm" class="ps-btn ps-btn-danger" type="button">Reset Repositories</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="ps-footer" id="ps-footer">Platform Status • Development</footer>
+
+    <!-- Reused, unmodified — the same Repository abstraction Builder's
+         Publish screen and Studio's boot sequence already depend on.
+         js/themeRegistry.js is loaded only for its pure, side-effect-
+         free validatePackage() (confirming a discovered Theme would
+         actually register cleanly) — this page never calls
+         refreshFromRepository()/list()/getCatalog() on it, so its own
+         built-in Official themes and any locally-imported Themes in
+         this browser's localStorage never leak into this page's counts. -->
+    <script src="../../js/themeRegistry.js"></script>
+    <script src="../../js/themeRepositoryClient.js"></script>
+    <script src="js/platformStatus.js"></script>
+</body>
+</html>

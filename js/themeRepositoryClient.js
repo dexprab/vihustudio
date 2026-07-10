@@ -106,7 +106,7 @@ const ThemeRepositoryClient = (function () {
   function discover() {
     return isConfigured().then(function (ok) {
       const repos = [{ id: 'official', kind: 'official', label: 'Official Themes' }];
-      if (ok) repos.push({ id: 'personal', kind: 'personal', label: 'My Themes' });
+      if (ok) repos.push({ id: 'personal', kind: 'personal', label: 'Personal Themes' });
       return repos;
     });
   }
@@ -134,6 +134,31 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // Supabase Storage's list(path) returns only that folder's immediate
+  // children — a real file has a real `id`; a "folder" is a synthetic
+  // grouping entry with `id: null`, not a real object. Recurses into
+  // every folder so a nested asset (e.g. docs/THEME_PROJECT_SPEC.md §9's
+  // own example, "textures/linen.png") is actually found — a flat,
+  // one-level list silently missed anything not sitting directly under
+  // the theme's own root, which is exactly what the golden fixture's
+  // own assets/textures/linen.png exercises. Returns full object paths;
+  // callers strip their own starting prefix to get a relativePath.
+  function _listAllObjectPaths(client, prefix) {
+    return client.storage.from(ASSET_BUCKET).list(prefix, { limit: 1000 }).then(function (res) {
+      if (res.error) throw res.error;
+      const entries = (res.data || []).filter(function (e) { return e && e.name; });
+      return Promise.all(entries.map(function (entry) {
+        const childPath = prefix + '/' + entry.name;
+        if (entry.id === null || entry.id === undefined) {
+          return _listAllObjectPaths(client, childPath);
+        }
+        return Promise.resolve([childPath]);
+      })).then(function (groups) {
+        return groups.reduce(function (acc, g) { return acc.concat(g); }, []);
+      });
+    });
+  }
+
   // Assets are resolved by actually listing what's in Storage under
   // this Theme's own prefix — the same "trust what's really there,
   // don't require a separate manifest of it" approach
@@ -143,12 +168,9 @@ const ThemeRepositoryClient = (function () {
   // declared list).
   function _resolveAssets(client, repositoryId, ownerSegment, themeId) {
     const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
-    return client.storage.from(ASSET_BUCKET).list(prefix, { limit: 1000 }).then(function (res) {
-      if (res.error) throw res.error;
-      const entries = (res.data || []).filter(function (e) { return e && e.name; });
-      return Promise.all(entries.map(function (entry) {
-        const relativePath = entry.name;
-        const objectPath = prefix + '/' + relativePath;
+    return _listAllObjectPaths(client, prefix).then(function (paths) {
+      return Promise.all(paths.map(function (objectPath) {
+        const relativePath = objectPath.slice(prefix.length + 1);
         // The bucket is created private (supabase/schema.sql) so both
         // repositories' assets stay governed by the same RLS policies
         // as the rest of the schema — a single public bucket would let
@@ -237,12 +259,86 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // Platform Status page (Platform Hardening — Platform Status &
+  // Repository Reset). Read-only introspection: how many Theme rows and
+  // how many Storage objects a repository actually holds right now —
+  // "what exists" without opening Supabase's own dashboard. themeCount
+  // is a real row count (this repository/owner scope only — a Personal
+  // count is always just the current anonymous session's own rows,
+  // since there is no admin/service-role credential in this client-side
+  // app to see across users); assetCount walks every one of those
+  // themes' asset prefixes via _listAllObjectPaths, the same recursive
+  // lister _resolveAssets uses, so the count always matches what would
+  // actually resolve.
+  function getStats(repositoryId) {
+    return _getClient().then(function (client) {
+      return _authIfPersonal(repositoryId).then(function (session) {
+        const ownerId = _ownerIdFor(repositoryId, session);
+        const ownerSegment = _ownerSegmentFor(repositoryId, session);
+        return client.from('themes').select('theme_id').eq('repository', repositoryId).eq('owner_id', ownerId).then(function (res) {
+          if (res.error) throw res.error;
+          const themeIds = (res.data || []).map(function (r) { return r.theme_id; });
+          return Promise.all(themeIds.map(function (themeId) {
+            const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
+            return _listAllObjectPaths(client, prefix).then(function (paths) { return paths.length; });
+          })).then(function (counts) {
+            const assetCount = counts.reduce(function (a, b) { return a + b; }, 0);
+            return { themeCount: themeIds.length, assetCount: assetCount };
+          });
+        });
+      });
+    });
+  }
+
+  // Repository Reset (Platform Hardening — Platform Status & Repository
+  // Reset). Returns a repository to a clean post-install state: every
+  // published Theme row AND every uploaded asset object for this
+  // repository/owner scope, nothing else — never Builder Projects
+  // (an entirely separate persistence layer, ProjectStore's own
+  // localStorage key, never touched by this module at all), never
+  // Supabase configuration/auth/schema/buckets themselves. Deletes
+  // Storage objects before the theme rows (so a Storage failure never
+  // leaves a theme row pointing at now-orphaned-but-still-real assets
+  // partway through), then deletes every matching themes row in one
+  // statement. Requires the themes_official_delete/themes_personal_delete
+  // and matching theme_assets_*_delete Storage policies (supabase/
+  // schema.sql) — this sprint's own necessary addition, since deleting
+  // was never part of the Publish -> Discover happy flow before now.
+  function reset(repositoryId) {
+    return _getClient().then(function (client) {
+      return _authIfPersonal(repositoryId).then(function (session) {
+        const ownerId = _ownerIdFor(repositoryId, session);
+        const ownerSegment = _ownerSegmentFor(repositoryId, session);
+        return client.from('themes').select('theme_id').eq('repository', repositoryId).eq('owner_id', ownerId).then(function (res) {
+          if (res.error) throw res.error;
+          const themeIds = (res.data || []).map(function (r) { return r.theme_id; });
+          return Promise.all(themeIds.map(function (themeId) {
+            const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
+            return _listAllObjectPaths(client, prefix).then(function (paths) {
+              if (!paths.length) return null;
+              return client.storage.from(ASSET_BUCKET).remove(paths).then(function (removeRes) {
+                if (removeRes.error) throw removeRes.error;
+              });
+            });
+          })).then(function () {
+            return client.from('themes').delete().eq('repository', repositoryId).eq('owner_id', ownerId).then(function (res2) {
+              if (res2.error) throw res2.error;
+              return { ok: true, deletedThemes: themeIds.length };
+            });
+          });
+        });
+      });
+    });
+  }
+
   const api = {
     isConfigured: isConfigured,
     discover: discover,
     list: list,
     load: load,
-    publish: publish
+    publish: publish,
+    getStats: getStats,
+    reset: reset
   };
   try { window.ThemeRepositoryClient = api; } catch (e) {}
   return api;
