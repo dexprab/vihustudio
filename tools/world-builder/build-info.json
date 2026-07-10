@@ -1,10 +1,10 @@
 {
-  "version": "3.6.0",
+  "version": "3.7.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Platform Status & Repository Reset",
-  "slice": "New standalone developer utility at tools/platform-status/ — Platform Health, Repository/Theme Registry/Studio stats via new ThemeRepositoryClient.getStats()/reset(), and a confirmation-gated Repository Reset action; fixed a real pre-existing bug where _resolveAssets() only listed one Storage folder level (nested assets like assets/textures/linen.png never resolved); added the delete RLS policies Reset requires to supabase/schema.sql",
-  "build": "0042",
+  "milestone": "Builder Convergence Sprint",
+  "slice": "Unified Build -> Publish -> Export into one canonical Published Theme: builder.js's packageTheme() now converges every Scene into the existing layouts/representations/layerPack/assets collections (convergeScenes/convergeScene/convergeSceneLayer/externalizeSceneImage), so Scene/Experience content (backgrounds, images, decorations, text) reaches Publish/the Repository/Studio for the first time; added a 5th Layer Pack target, 'overlay' (renderer/slideRenderer.js), plus scope/rect Layer fields and decoration.kind 'fill'/'image'; retired project.lastSceneBuild and its Build/Publish UI as a separate, Studio-invisible published artifact — Scene Validation stays untouched. Byte-identical for zero-Scene themes; goldenBuild.js 30/30 unchanged",
+  "build": "0043",
   "buildDate": "2026-07-10",
-  "commit": "905938f",
+  "commit": "4564663",
   "environment": "Release"
 }
