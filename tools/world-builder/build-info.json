@@ -1,10 +1,10 @@
 {
-  "version": "3.4.0",
+  "version": "3.5.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Sprint 2 — Asset Externalization",
-  "slice": "manifest.thumbnail/.previewImage are now plain relative-path references, never embedded base64 — fixed at the source in builder.js and themeEngine.js's zip-import producer; a new ThemeRegistry.resolveAssetRef() resolves them (and Representation thumbnails) uniformly whether the source is a legacy local import or a Supabase repository's signed URL",
-  "build": "0040",
-  "buildDate": "2026-07-09",
-  "commit": "320442b",
+  "milestone": "Closure Sprint — Publish Contract Alignment & MEP Finalization",
+  "slice": "Publish screen reorganized into separate Publish (Official/Personal Repository) and Export sections; 'World Package' terminology removed from Build/Publish screens; 'My Themes' renamed to 'Personal Themes'; Community World card removed outright (no disabled placeholder); MEP decisions (Asset Ownership, atomic Publish replace, no signed-URL persistence, Repository Independence) verified against the real implementation and locked in docs/THEME_REPOSITORY_ARCHITECTURE.md §11 and docs/WORLD_BUILDER_ARCHITECTURE.md LOCK 02",
+  "build": "0041",
+  "buildDate": "2026-07-10",
+  "commit": "9c1796a",
   "environment": "Release"
 }
