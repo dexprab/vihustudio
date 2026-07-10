@@ -61,6 +61,19 @@
 const CreationFlow=(function(){
   'use strict';
 
+  // WEP Scope Freeze — Import Deferred. A deliberate product decision,
+  // not a technical limitation: the WEP proves one complete authoring
+  // workflow (Builder Project -> Build -> Publish to Personal Repository
+  // -> Promote to Official Repository -> Studio Consumption) before any
+  // additional entry point is introduced. Import is not removed — every
+  // function below it (_importInput/_wireImportButton/ThemeEngine.
+  // importThemeFile) is untouched and fully working — it is only no
+  // longer reachable from Screen 2's UI while this flag is false. Future
+  // milestone: re-enable for .vtheme sharing / Marketplace / Community
+  // exchange / local repository sync / backup-restore (see
+  // docs/THEME_REPOSITORY_ARCHITECTURE.md's WEP Scope section).
+  const IMPORT_ENABLED=false;
+
   // Storyboard "Choose What To Create" cards — six tiles, wording and
   // icons transcribed from the canonical storyboard. supportedCreationTypes
   // stays theme-owned data (Sprint 10.1); a type with zero compatible
@@ -386,9 +399,11 @@ const CreationFlow=(function(){
     back.type='button';
     back.addEventListener('click',_renderTypeScreen);
     topRow.appendChild(back);
-    const headerAddBtn=_el('button','creation-flow-add-world-header-btn','⊕ Add New World');
-    headerAddBtn.type='button';
-    topRow.appendChild(headerAddBtn);
+    const headerAddBtn=IMPORT_ENABLED ? _el('button','creation-flow-add-world-header-btn','⊕ Add New World') : null;
+    if(headerAddBtn){
+      headerAddBtn.type='button';
+      topRow.appendChild(headerAddBtn);
+    }
     content.appendChild(topRow);
 
     content.appendChild(_el('h1','creation-flow-question','🌿 Choose Your Creative World 🌿'));
@@ -430,7 +445,7 @@ const CreationFlow=(function(){
       if(added){ _selectedThemeId=added.id; }
       _renderWorldScreen(type);
     }
-    _wireImportButton(headerAddBtn,onImported);
+    if(IMPORT_ENABLED) _wireImportButton(headerAddBtn,onImported);
 
     function paintRows(){
       if(officialRow){
@@ -443,9 +458,17 @@ const CreationFlow=(function(){
       importedThemes.forEach(function(theme){
         importedRow.appendChild(_worldRowCard(theme,theme.id===_selectedThemeId,function(){ selectWorld(theme.id); }));
       });
-      const addCard=_addWorldCard();
-      _wireImportButton(addCard,onImported);
-      importedRow.appendChild(addCard);
+      if(IMPORT_ENABLED){
+        const addCard=_addWorldCard();
+        _wireImportButton(addCard,onImported);
+        importedRow.appendChild(addCard);
+      }else if(!importedThemes.length){
+        // WEP Scope Freeze — with Import hidden, an empty World Library
+        // row would otherwise be a dead end; Worlds arrive here only by
+        // being Published/Promoted from World Builder in the WEP flow,
+        // so say that honestly instead of showing a blank row.
+        importedRow.appendChild(_el('p','creation-flow-preview-empty','No worlds published yet — publish one from World Builder to see it here.'));
+      }
     }
 
     // Sprint 11.1 — the Preview IS the layout selector: a horizontally

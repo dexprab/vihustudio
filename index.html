@@ -369,7 +369,8 @@
 <div id='themeLibraryArtworkImported' class='theme-cards'></div>
 </div>
 </div>
-<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn'>+ Import Theme</button>
+<!-- WEP Scope Freeze — Import Deferred: hidden from the active WEP workflow (Builder -> Publish to Personal -> Promote to Official -> Studio), not deleted. _wireImportButton()/importThemeFile() in js/themeEngine.js are untouched and fully functional; only this entry point is hidden. -->
+<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn' style='display:none'>+ Import Theme</button>
 </div>
 <div class='modal-actions'>
 <button id='themePickerClose' class='modal-btn' type='button'>Cancel</button>

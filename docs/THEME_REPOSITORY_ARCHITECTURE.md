@@ -738,3 +738,142 @@ specified, verbatim.
   sprint's changes (including the `_resolveAssets` recursive-listing
   fix) had zero surface area to regress there; re-run anyway per the
   Working Method's own verification discipline.
+
+---
+
+## 13. WEP Scope Freeze — Import Deferred, Personal-first Repository Model
+
+**A deliberate product decision, not a technical limitation.** The WEP
+(Working Enablement Path) proves exactly one complete authoring workflow
+before any additional entry point is introduced:
+
+```
+Builder Project
+      |
+      v
+Build Theme
+      |
+      v
+Publish to Personal Repository
+      |
+      v
+Author / Test / Iterate
+      |
+      v
+Promote to Official Repository
+      |
+      v
+Studio Consumption
+```
+
+### The two WEP repositories
+
+- **Personal Repository** — the author's own working environment. Every
+  Theme authored in Builder is published here first. **This is not an
+  offline mode or a staging area separate from "real" authoring — it is
+  the normal, primary authoring workflow.** A Theme Author builds, tests,
+  and iterates against their Personal Repository the same way they'd use
+  any other working directory.
+- **Official Repository** — the curated, released environment. Only
+  Themes that have been authored, published to Personal, tested in
+  Studio, and judged ready for public use are **promoted** here.
+
+Builder Projects are editable source, owned by the Builder
+(`docs/WORLD_BUILDER_ARCHITECTURE.md`'s LOCK 02, unchanged); Studio
+consumes published Themes only, never a Builder Project directly
+(unchanged).
+
+### Publish vs. Promote — two different operations, not two labels for one
+
+Per explicit product refinement, the Official-repository action is named
+**Promote**, not "Publish to Official" — because it is not the same kind
+of operation as Publish, and the rename reflects a real mechanical
+difference, not just friendlier wording:
+
+- **Publish** (`ThemeRepositoryClient.publish()`) reads whatever Build
+  just produced (`project.lastBuild`) and installs it into a Repository
+  — this is how a Theme reaches the *Personal* Repository, and it is the
+  only way any new Build output ever reaches either repository.
+- **Promote** (`ThemeRepositoryClient.promote(themeId)`, new this
+  sprint) creates nothing new. It reads whatever is *already* published
+  to the Personal Repository — the Theme row and every one of its
+  Storage assets, copied directly via Supabase Storage's own `copy()`
+  (no client-side download/re-upload round trip) — and installs that
+  exact, already-tested content into the Official Repository. Promoting
+  a Theme with no Personal-repository row yet fails with a clear,
+  distinguishable reason (`{ok:false, reason:'not_published_to_personal'}`)
+  rather than silently building one on the spot, which would defeat the
+  entire point of "test in Personal first." A second Promote replaces
+  the previously promoted Official copy atomically (assets cleared and
+  re-copied, then the row upserted), matching Publish's own established
+  "publishing again replaces, no version history" convention.
+
+`tools/world-builder/js/worldBuilderApp.js`'s Publish screen reflects
+this ordering directly: a **Publish** section (Personal Repository only
+— the primary, first step) followed by a **Promote** section (Official
+Repository — a later, dependent step), followed by **Export** (see
+below). Nothing about the Repository abstraction itself (§3's four/now
+five-function interface), the schema, or Studio's consumption path
+changed — `promote()` is implemented entirely in terms of the existing
+`ASSET_BUCKET`/RLS policies already granting the anon role read access to
+its own Personal-owned objects and write access to the Official prefix
+(§9/§11's existing storage policies already cover the source-read +
+destination-write `copy()` needs; no schema change was required).
+
+### Import — deferred, not removed
+
+Import (`js/themeEngine.js`'s `importThemeFile`, `js/themeRegistry.js`'s
+`importPackage`, `js/creationFlow.js`'s `_wireImportButton`/`_importInput`)
+is completely unmodified and fully functional in code. It is hidden from
+every active WEP UI surface:
+
+- Studio's Creation Flow Screen 2 no longer renders its header-level
+  "⊕ Add New World" button or the World Library row's own "Add New
+  World" card — gated behind `js/creationFlow.js`'s `IMPORT_ENABLED`
+  constant (`false` for the WEP). An empty World Library row shows an
+  honest "No worlds published yet — publish one from World Builder to
+  see it here" message instead of a dead-end blank row.
+- The original Theme Library modal's own "+ Import Theme" button
+  (`index.html`'s `#importThemeBtn`) is hidden via `style="display:none"`
+  — not deleted — so `js/themeEngine.js`'s `_wireImportButton()` still
+  finds and wires it correctly the instant it's ever un-hidden again.
+- World Builder has no Import UI of its own to hide (it has never
+  imported Theme packages — only Publish/Promote/Export exist there).
+
+**Future Phase.** Import returns in a later milestone, expected to cover:
+`.vtheme` package import, Theme sharing, Marketplace distribution,
+Community exchange, local repository synchronization, and backup/restore.
+None of these are WEP scope; re-enabling Import when that milestone
+begins is a one-line flip of `IMPORT_ENABLED` plus un-hiding
+`#importThemeBtn` — no code needs to be rewritten, since nothing was
+removed.
+
+### Export — available, not primary
+
+Export (`_downloadDataURL(project.lastBuild.dataURL, ...)`) remains
+fully available in World Builder's Publish screen, rendered as its own
+section below Publish/Promote. Its stated purpose is portability, backup,
+and future interoperability — it is explicitly not part of the primary
+WEP authoring workflow (Publish to Personal -> Promote to Official), and
+its own card copy says so directly.
+
+### Success criteria (verified)
+
+- The Builder -> Personal Repository -> Studio workflow is reliable —
+  unchanged from the Happy Flow Completion Sprint's own verification.
+- Promotion from Personal to Official is reliable — verified via a new
+  Playwright suite confirming `ThemeRepositoryClient.promote` is exposed,
+  the Publish screen's copy/wiring match the WEP flow exactly, and the
+  "not published to Personal yet" failure path is distinguishable from a
+  generic error.
+- Studio consumes published Themes only — unchanged; Import's removal
+  from the UI doesn't touch `ThemeRegistry.refreshFromRepository()`,
+  which is how Studio discovers Personal/Official Themes regardless of
+  this sprint.
+- Import is documented but excluded from the active workflow — this
+  section, plus inline comments at every hidden entry point.
+- `goldenBuild.js`'s full 30-assertion regression suite and the Happy
+  Flow Completion Sprint's own 15-assertion suite both pass unchanged —
+  this sprint touched UI visibility, one new repository-to-repository
+  copy function, and documentation only; no rendering, Build, or
+  Validation behavior changed.

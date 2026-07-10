@@ -336,7 +336,7 @@
         assets: 'What: the images (and other files) this World needs. Why: Thumbnail and Hero Image are required before you can Build; everything else is optional polish. Do: upload what you have — the checklist shows exactly what\'s missing and why. Next: run Validation once everything looks complete.',
         validation: 'What: a real check of this World against the World Project Contract — the same rules Studio itself enforces. Why: catches problems before you spend time Building. Do: press Run Validation, then fix anything marked Error (Warnings are optional polish). Next: once it says "All Good!", move on to Build.',
         build: 'What: compiles this World Project into a real .vtheme-shaped Theme, the same shape VihuStudio imports. Why: nothing can be Published until it\'s Built. Do: press Build Theme (Validation must pass first). Next: once built, continue to Publish.',
-        publish: 'What: share the Theme Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: choose Publish (installs it into the Official or Personal Repository, where Studio will find it) or Export (downloads a portable .vtheme package for backup/sharing). Next: open VihuStudio and confirm your World appears.'
+        publish: 'What: share the Theme Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: Publish to your Personal Repository first — this is your normal working environment, where you test and iterate in Studio — then Promote to the Official Repository once it\'s ready for everyone. Export is also available (a portable .vtheme package for backup), but it\'s not part of this primary workflow. Next: open VihuStudio and confirm your World appears.'
     };
 
     // Sprint B2.0.6 — Builder Information Density. This guidance was
@@ -6054,23 +6054,23 @@
             resultBox.appendChild(div);
         }
 
-        // Platform Hardening Closure Sprint — Publish Contract Alignment.
-        // Publish installs this Theme into a Repository (Official or
-        // Personal); it never creates a package of its own — it reads
-        // exactly what Build already produced (never project.files) and
-        // sends it to js/themeRepositoryClient.js's publish(), which
-        // upserts the one Theme row a Repository ever holds for this id
-        // (repository, owner_id, theme_id) — publishing again replaces
-        // that published Theme atomically, with no version history, per
-        // the locked MEP contract. Export is the separate, unrelated
-        // operation below that DOES produce a portable .vtheme package —
-        // the two are rendered as clearly separate sections so neither
-        // reads as a variant of the other. VihuStudio discovers a
-        // published Theme the next time it boots, via
-        // ThemeRegistry.refreshFromRepository() (js/app.js's session
-        // bootstrap already awaits this once, before Creation Flow's
-        // first paint) — no re-import step needed.
-        async function _publishToRepository(repositoryId, label) {
+        // WEP Scope Freeze — Repository Model. The WEP proves exactly one
+        // authoring workflow: Builder Project -> Build Theme -> Publish to
+        // Personal Repository -> Author/Test/Iterate -> Promote to
+        // Official Repository -> Studio Consumption. Personal is the
+        // primary, ordinary authoring environment (not an "offline mode")
+        // — every Theme is published there first; Official is the
+        // curated, released environment a Theme graduates into once it's
+        // ready, and Promote is deliberately a *different* operation from
+        // Publish, not a second copy of the same one: it never builds or
+        // reads project.lastBuild again — "nothing new is created" — it
+        // takes whatever is already published to Personal and copies it,
+        // verbatim (Theme row + every Storage asset), into Official via
+        // js/themeRepositoryClient.js's promote(). Promoting a Theme that
+        // hasn't been published to Personal yet fails with a clear
+        // message rather than silently building one on the spot, since
+        // that would defeat the whole point of "test in Personal first."
+        async function _publishToPersonal() {
             if (typeof window.ThemeRepositoryClient === 'undefined') {
                 showResult('fail', '⚠️ The repository client is not available in this environment.');
                 return;
@@ -6083,11 +6083,11 @@
             showResult('pending', 'Publishing…');
             try {
                 const pkg = await _lastBuiltPackage(project);
-                const result = await window.ThemeRepositoryClient.publish(repositoryId, {
+                const result = await window.ThemeRepositoryClient.publish('personal', {
                     manifest: pkg.manifest, theme: pkg.theme, assetsRaw: pkg.assets
                 });
                 if (result && result.ok) {
-                    showResult('pass', '✓ Published "' + pkg.manifest.name + '" to the ' + label + ' — VihuStudio will discover it automatically the next time it loads.');
+                    showResult('pass', '✓ Published "' + pkg.manifest.name + '" to the Personal Repository — test it in Studio, then Promote when it\'s ready.');
                 } else {
                     showResult('fail', '⚠️ Could not publish — try Building again.');
                 }
@@ -6095,8 +6095,32 @@
                 showResult('fail', '⚠️ Publish failed: ' + ((e && e.message) || 'unknown error'));
             }
         }
-        function publishToOfficialRepository() { return _publishToRepository('official', 'Official Repository'); }
-        function publishToPersonalRepository() { return _publishToRepository('personal', 'Personal Repository'); }
+
+        async function _promoteToOfficial() {
+            if (typeof window.ThemeRepositoryClient === 'undefined') {
+                showResult('fail', '⚠️ The repository client is not available in this environment.');
+                return;
+            }
+            const configured = await window.ThemeRepositoryClient.isConfigured();
+            if (!configured) {
+                showResult('fail', '⚠️ Supabase is not configured — see supabase-config.example.json.');
+                return;
+            }
+            showResult('pending', 'Promoting…');
+            try {
+                const manifest = window.ProjectModel.manifest(project);
+                const result = await window.ThemeRepositoryClient.promote(manifest.id);
+                if (result && result.ok) {
+                    showResult('pass', '✓ Promoted "' + (result.name || manifest.name) + '" to the Official Repository — visible to every VihuStudio reader.');
+                } else if (result && result.reason === 'not_published_to_personal') {
+                    showResult('fail', '⚠️ Publish to the Personal Repository first — Promote copies a Theme that\'s already there, it doesn\'t build a new one.');
+                } else {
+                    showResult('fail', '⚠️ Could not promote — try again.');
+                }
+            } catch (e) {
+                showResult('fail', '⚠️ Promote failed: ' + ((e && e.message) || 'unknown error'));
+            }
+        }
 
         function _publishCard(opt) {
             const card = document.createElement('button');
@@ -6111,9 +6135,10 @@
             return card;
         }
 
-        // Publish — installs into a Repository. Community is out of
-        // scope for this MEP; no disabled placeholder is shown for it —
-        // this screen only exposes completed workflows.
+        // Publish — installs into the Personal Repository, the primary
+        // WEP authoring step, listed first. Community/Marketplace/Import
+        // are out of WEP scope; no disabled placeholder is shown for
+        // them — this screen only exposes completed workflows.
         const publishHeading = document.createElement('h3');
         publishHeading.className = 'wb-context-heading';
         publishHeading.style.marginTop = '4px';
@@ -6123,20 +6148,32 @@
 
         const publishGrid = document.createElement('div');
         publishGrid.className = 'wb-publish-grid';
-        [
-            {
-                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs this Theme into the Official Repository — visible to every VihuStudio reader. Publishing again replaces the previously published Theme; there is no version history.',
-                action: publishToOfficialRepository
-            },
-            {
-                icon: '📁', title: 'Publish to Personal Themes', note: 'Installs this Theme into your own Personal Repository — visible only to you, in this browser. Publishing again replaces the previously published Theme; there is no version history.',
-                action: publishToPersonalRepository
-            }
-        ].forEach(function (opt) { publishGrid.appendChild(_publishCard(opt)); });
+        publishGrid.appendChild(_publishCard({
+            icon: '📁', title: 'Publish to Personal Repository', note: 'Your working environment — installs this Theme so you can test and iterate in Studio. Publishing again replaces the previously published Theme; there is no version history.',
+            action: _publishToPersonal
+        }));
         contextPanel.appendChild(publishGrid);
 
-        // Export — an unrelated operation that produces a portable
-        // .vtheme package. Export never installs into a Repository.
+        // Promote — a distinct, later step: takes what's already in the
+        // Personal Repository and copies it into Official, once it's
+        // been tested and is ready for release.
+        const promoteHeading = document.createElement('h3');
+        promoteHeading.className = 'wb-context-heading';
+        promoteHeading.style.marginTop = '20px';
+        promoteHeading.style.fontSize = '13px';
+        promoteHeading.textContent = 'Promote';
+        contextPanel.appendChild(promoteHeading);
+
+        const promoteGrid = document.createElement('div');
+        promoteGrid.className = 'wb-publish-grid';
+        promoteGrid.appendChild(_publishCard({
+            icon: '🏛️', title: 'Promote to Official Repository', note: 'Copies the Theme already published to your Personal Repository into Official, once it\'s tested and ready — visible to every VihuStudio reader. Promoting again replaces the previously promoted Theme; there is no version history.',
+            action: _promoteToOfficial
+        }));
+        contextPanel.appendChild(promoteGrid);
+
+        // Export — portability/backup, not part of the primary WEP
+        // authoring workflow. Export never installs into a Repository.
         const exportHeading = document.createElement('h3');
         exportHeading.className = 'wb-context-heading';
         exportHeading.style.marginTop = '20px';
@@ -6147,7 +6184,7 @@
         const exportGrid = document.createElement('div');
         exportGrid.className = 'wb-publish-grid';
         exportGrid.appendChild(_publishCard({
-            icon: '💾', title: 'Export .vtheme Package', note: 'Downloads a portable .vtheme package to your computer — for backup, sharing, or manual import elsewhere. Export never installs into a Repository.',
+            icon: '💾', title: 'Export .vtheme Package', note: 'Downloads a portable .vtheme package to your computer, for backup or future interoperability. Not part of the primary Publish -> Promote workflow, and Export never installs into a Repository.',
             action: function () { _downloadDataURL(project.lastBuild.dataURL, project.lastBuild.filename); }
         }));
         contextPanel.appendChild(exportGrid);

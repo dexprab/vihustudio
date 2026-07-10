@@ -259,6 +259,60 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // Promote to Official Repository (WEP Scope Freeze). Per the WEP's own
+  // Repository Model, every Theme is authored and validated in the
+  // Personal Repository first — Promote never builds or publishes
+  // anything new; it takes whatever Theme is *already* published to
+  // Personal and copies it, verbatim, into Official. Requires a real
+  // Personal row to exist (fails with a clear, distinguishable reason if
+  // not, so the caller can say "Publish to Personal Repository first"
+  // instead of a generic error). Storage objects are copied directly
+  // (client.storage.copy — no client-side download+reupload round trip),
+  // clearing any previous Official copies for this Theme first so a
+  // second Promote cleanly replaces the first, matching publish()'s own
+  // "publishing again replaces" convention.
+  function promote(themeId) {
+    return _getClient().then(function (client) {
+      return _authIfPersonal('personal').then(function (session) {
+        const personalOwnerId = session.user.id;
+        const personalOwnerSegment = session.user.id;
+        return client.from('themes').select('manifest,theme').eq('repository', 'personal').eq('owner_id', personalOwnerId).eq('theme_id', themeId).single().then(function (res) {
+          if (res.error || !res.data) return { ok: false, reason: 'not_published_to_personal' };
+          const manifest = res.data.manifest, theme = res.data.theme;
+          const personalPrefix = 'personal/' + personalOwnerSegment + '/' + themeId;
+          const officialPrefix = 'official/' + OFFICIAL_OWNER_SEGMENT + '/' + themeId;
+          return _listAllObjectPaths(client, personalPrefix).then(function (personalPaths) {
+            return _listAllObjectPaths(client, officialPrefix).then(function (existingOfficialPaths) {
+              const clearOld = existingOfficialPaths.length
+                ? client.storage.from(ASSET_BUCKET).remove(existingOfficialPaths).then(function (r) { if (r.error) throw r.error; })
+                : Promise.resolve();
+              return clearOld.then(function () {
+                return Promise.all(personalPaths.map(function (fromPath) {
+                  const relativePath = fromPath.slice(personalPrefix.length + 1);
+                  const toPath = officialPrefix + '/' + relativePath;
+                  return client.storage.from(ASSET_BUCKET).copy(fromPath, toPath).then(function (r) {
+                    if (r.error) throw r.error;
+                  });
+                }));
+              }).then(function () {
+                return client.from('themes').upsert({
+                  repository: 'official',
+                  owner_id: OFFICIAL_OWNER_ID,
+                  theme_id: themeId,
+                  manifest: manifest,
+                  theme: theme
+                }, { onConflict: 'repository,owner_id,theme_id' }).then(function (res2) {
+                  if (res2.error) throw res2.error;
+                  return { ok: true, theme_id: themeId, name: manifest && manifest.name };
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
   // Platform Status page (Platform Hardening — Platform Status &
   // Repository Reset). Read-only introspection: how many Theme rows and
   // how many Storage objects a repository actually holds right now —
@@ -347,6 +401,7 @@ const ThemeRepositoryClient = (function () {
     list: list,
     load: load,
     publish: publish,
+    promote: promote,
     getStats: getStats,
     reset: reset
   };
