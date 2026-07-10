@@ -335,8 +335,8 @@
         layerpacks: 'What: small elements placed on the page — captions, page numbers, stickers. Why: this is how a World adds its own personality on top of a Layout/Frame. Do: add Layers and set their Target Container/Anchor. Next: check Assets for anything these Layers need (like a decoration image).',
         assets: 'What: the images (and other files) this World needs. Why: Thumbnail and Hero Image are required before you can Build; everything else is optional polish. Do: upload what you have — the checklist shows exactly what\'s missing and why. Next: run Validation once everything looks complete.',
         validation: 'What: a real check of this World against the World Project Contract — the same rules Studio itself enforces. Why: catches problems before you spend time Building. Do: press Run Validation, then fix anything marked Error (Warnings are optional polish). Next: once it says "All Good!", move on to Build.',
-        build: 'What: compiles this World Project into a real .vtheme package, the same file format VihuStudio imports. Why: nothing can be Published until it\'s Built. Do: press Build World Package (Validation must pass first). Next: once built, continue to Publish.',
-        publish: 'What: share the World Package Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: choose Export (download for backup/sharing) or Publish to Official Themes (installs it where Studio will find it). Next: open VihuStudio and confirm your World appears.'
+        build: 'What: compiles this World Project into a real .vtheme-shaped Theme, the same shape VihuStudio imports. Why: nothing can be Published until it\'s Built. Do: press Build Theme (Validation must pass first). Next: once built, continue to Publish.',
+        publish: 'What: share the Theme Build just produced. Why: a World only reaches VihuStudio once it leaves the Builder. Do: choose Publish (installs it into the Official or Personal Repository, where Studio will find it) or Export (downloads a portable .vtheme package for backup/sharing). Next: open VihuStudio and confirm your World appears.'
     };
 
     // Sprint B2.0.6 — Builder Information Density. This guidance was
@@ -5994,14 +5994,14 @@
         divider.className = 'wb-context-heading';
         divider.style.marginTop = '20px';
         divider.style.fontSize = '13px';
-        divider.textContent = 'World Package';
+        divider.textContent = 'Theme';
         contextPanel.appendChild(divider);
     }
 
     function _renderBuildPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
-        _heading('Build', 'Build your World Package.');
+        _heading('Build', 'Build your Theme.');
         _stateIntro('build');
 
         _renderSceneBuildSection(project);
@@ -6016,7 +6016,7 @@
         const buildBtn = document.createElement('button');
         buildBtn.type = 'button';
         buildBtn.className = 'wb-add-btn wb-build-btn';
-        buildBtn.textContent = '🎁 Build World Package';
+        buildBtn.textContent = '🎁 Build Theme';
         buildBtn.addEventListener('click', function () {
             buildBtn.textContent = 'Building…';
             buildBtn.disabled = true;
@@ -6050,7 +6050,7 @@
         if (project.lastBuild) {
             const success = document.createElement('div');
             success.className = 'wb-validation-status pass';
-            success.textContent = '✓ World Package Built';
+            success.textContent = '✓ Theme Built';
             contextPanel.appendChild(success);
 
             contextPanel.appendChild(_statCardGrid([
@@ -6144,7 +6144,7 @@
         divider.className = 'wb-context-heading';
         divider.style.marginTop = '20px';
         divider.style.fontSize = '13px';
-        divider.textContent = 'World Package';
+        divider.textContent = 'Theme';
         contextPanel.appendChild(divider);
     }
 
@@ -6159,7 +6159,7 @@
         if (!project.lastBuild) {
             const hint = document.createElement('p');
             hint.className = 'wb-field-hint';
-            hint.textContent = 'Build your World Package first — Publish always ships exactly what Build produced.';
+            hint.textContent = 'Build your Theme first — Publish always ships exactly what Build produced.';
             contextPanel.appendChild(hint);
             return;
         }
@@ -6174,19 +6174,22 @@
             resultBox.appendChild(div);
         }
 
-        // Publish to Official Themes / Publish to My Themes — Platform
-        // Hardening Sprint (Repository Architecture Transition, Supabase
-        // MEP). Both operate ONLY on the Build output (never
-        // project.files, unchanged from before this sprint), but now
-        // install it into the Supabase-backed repository
-        // (js/themeRepositoryClient.js) instead of ThemeRegistry's
-        // localStorage — "replace only the storage layer," per this
-        // sprint's own instruction. VihuStudio discovers either kind
-        // the next time it boots, via ThemeRegistry.refreshFromRepository()
-        // (js/app.js's session bootstrap already awaits this once,
-        // before Creation Flow's first paint) — no re-import step,
-        // same promise the old localStorage path made, now backed by a
-        // real repository instead of same-origin localStorage sharing.
+        // Platform Hardening Closure Sprint — Publish Contract Alignment.
+        // Publish installs this Theme into a Repository (Official or
+        // Personal); it never creates a package of its own — it reads
+        // exactly what Build already produced (never project.files) and
+        // sends it to js/themeRepositoryClient.js's publish(), which
+        // upserts the one Theme row a Repository ever holds for this id
+        // (repository, owner_id, theme_id) — publishing again replaces
+        // that published Theme atomically, with no version history, per
+        // the locked MEP contract. Export is the separate, unrelated
+        // operation below that DOES produce a portable .vtheme package —
+        // the two are rendered as clearly separate sections so neither
+        // reads as a variant of the other. VihuStudio discovers a
+        // published Theme the next time it boots, via
+        // ThemeRegistry.refreshFromRepository() (js/app.js's session
+        // bootstrap already awaits this once, before Creation Flow's
+        // first paint) — no re-import step needed.
         async function _publishToRepository(repositoryId, label) {
             if (typeof window.ThemeRepositoryClient === 'undefined') {
                 showResult('fail', '⚠️ The repository client is not available in this environment.');
@@ -6204,7 +6207,7 @@
                     manifest: pkg.manifest, theme: pkg.theme, assetsRaw: pkg.assets
                 });
                 if (result && result.ok) {
-                    showResult('pass', '✓ Published "' + pkg.manifest.name + '" to ' + label + ' — VihuStudio will discover it automatically the next time it loads.');
+                    showResult('pass', '✓ Published "' + pkg.manifest.name + '" to the ' + label + ' — VihuStudio will discover it automatically the next time it loads.');
                 } else {
                     showResult('fail', '⚠️ Could not publish — try Building again.');
                 }
@@ -6212,31 +6215,10 @@
                 showResult('fail', '⚠️ Publish failed: ' + ((e && e.message) || 'unknown error'));
             }
         }
-        function publishToOfficialThemes() { return _publishToRepository('official', 'Official Themes'); }
-        function publishToMyThemes() { return _publishToRepository('personal', 'My Themes'); }
+        function publishToOfficialRepository() { return _publishToRepository('official', 'Official Repository'); }
+        function publishToPersonalRepository() { return _publishToRepository('personal', 'Personal Repository'); }
 
-        const options = [
-            {
-                icon: '💾', title: 'Export Package', note: 'Download the built .vtheme to your computer — for backup, sharing, or manual import elsewhere.',
-                action: function () { _downloadDataURL(project.lastBuild.dataURL, project.lastBuild.filename); }
-            },
-            {
-                icon: '🌐', title: 'Community World', note: 'Share with the community. Coming soon.',
-                action: null
-            },
-            {
-                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs the built package into the Official Theme Repository — visible to every VihuStudio reader. Uses only the .vtheme Build produced — never this Project\'s editable files.',
-                action: publishToOfficialThemes
-            },
-            {
-                icon: '📁', title: 'Publish to My Themes', note: 'Installs the built package into your own Personal Theme Repository — visible only to you, in this browser. Uses only the .vtheme Build produced — never this Project\'s editable files.',
-                action: publishToMyThemes
-            }
-        ];
-
-        const grid = document.createElement('div');
-        grid.className = 'wb-publish-grid';
-        options.forEach(function (opt) {
+        function _publishCard(opt) {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'wb-publish-option';
@@ -6246,9 +6228,49 @@
                 '<span class="wb-publish-text"><span class="wb-publish-title">' + opt.title + '</span>' +
                 '<span class="wb-publish-note">' + opt.note + '</span></span>';
             if (opt.action) card.addEventListener('click', opt.action);
-            grid.appendChild(card);
-        });
-        contextPanel.appendChild(grid);
+            return card;
+        }
+
+        // Publish — installs into a Repository. Community is out of
+        // scope for this MEP; no disabled placeholder is shown for it —
+        // this screen only exposes completed workflows.
+        const publishHeading = document.createElement('h3');
+        publishHeading.className = 'wb-context-heading';
+        publishHeading.style.marginTop = '4px';
+        publishHeading.style.fontSize = '13px';
+        publishHeading.textContent = 'Publish';
+        contextPanel.appendChild(publishHeading);
+
+        const publishGrid = document.createElement('div');
+        publishGrid.className = 'wb-publish-grid';
+        [
+            {
+                icon: '🏛️', title: 'Publish to Official Themes', note: 'Installs this Theme into the Official Repository — visible to every VihuStudio reader. Publishing again replaces the previously published Theme; there is no version history.',
+                action: publishToOfficialRepository
+            },
+            {
+                icon: '📁', title: 'Publish to Personal Themes', note: 'Installs this Theme into your own Personal Repository — visible only to you, in this browser. Publishing again replaces the previously published Theme; there is no version history.',
+                action: publishToPersonalRepository
+            }
+        ].forEach(function (opt) { publishGrid.appendChild(_publishCard(opt)); });
+        contextPanel.appendChild(publishGrid);
+
+        // Export — an unrelated operation that produces a portable
+        // .vtheme package. Export never installs into a Repository.
+        const exportHeading = document.createElement('h3');
+        exportHeading.className = 'wb-context-heading';
+        exportHeading.style.marginTop = '20px';
+        exportHeading.style.fontSize = '13px';
+        exportHeading.textContent = 'Export';
+        contextPanel.appendChild(exportHeading);
+
+        const exportGrid = document.createElement('div');
+        exportGrid.className = 'wb-publish-grid';
+        exportGrid.appendChild(_publishCard({
+            icon: '💾', title: 'Export .vtheme Package', note: 'Downloads a portable .vtheme package to your computer — for backup, sharing, or manual import elsewhere. Export never installs into a Repository.',
+            action: function () { _downloadDataURL(project.lastBuild.dataURL, project.lastBuild.filename); }
+        }));
+        contextPanel.appendChild(exportGrid);
 
         contextPanel.appendChild(resultBox);
     }

@@ -206,8 +206,8 @@ enable "Allow anonymous sign-ins"), `signInAnonymously()` fails with a
 load, since Studio's boot sequence always attempts to discover the
 Personal repository. This is harmless to Studio itself (the failure is
 caught per-repository in `refreshFromRepository()`, so boot proceeds
-with Official only), but it means **Publish to My Themes** will fail
-with a real, disclosed error message until this toggle is switched on.
+with Official only), but it means **Publish to Personal Themes** will
+fail with a real, disclosed error message until this toggle is switched on.
 
 The session persists via Supabase's own client-side session storage
 (itself `localStorage`-backed, invisible to the rest of this app) —
@@ -226,10 +226,12 @@ migration, since the `auth.uid()` stays the same).
 
 `tools/world-builder/js/worldBuilderApp.js`'s `_renderPublishPanel()`
 gained a shared `_publishToRepository(repositoryId, label)` helper.
-Both **Publish to Official Themes** and **Publish to My Themes** (a new
-4th Publish card, alongside the pre-existing Export Package and the
-still-inert Community World) call it with `'official'`/`'personal'`
-respectively. It:
+Both **Publish to Official Themes** and **Publish to Personal Themes**
+call it with `'official'`/`'personal'` respectively. (The Publish Contract
+Alignment Closure Sprint — §11 — later reorganized this screen into a
+clearly separated Publish/Export layout and removed the Community World
+placeholder entirely, rather than leaving it inert; renamed "My Themes"
+to "Personal Themes" throughout.) It:
 
 1. Checks `ThemeRepositoryClient.isConfigured()` — if no
    `supabase-config.json` is present, shows a plain, disclosed
@@ -442,3 +444,151 @@ instruction to find every embedding site before writing any fix):
   assertions (still 30/30, now also proving no embedded base64 survives
   on either manifest field and that `resolveAssetRef()` round-trips a
   freshly-imported reference back to real bytes).
+
+---
+
+## 11. Publish Contract Alignment & MEP Finalization (Closure Sprint)
+
+This sprint added no new capability — it locked the terminology, UI, and
+documentation of everything Phases 1–2 (§1–§10) already built into one
+canonical contract, and verified nothing in the implementation actually
+contradicted it. The following are now **locked MEP decisions**:
+
+### 11.1 Canonical models — three, not two, never merged
+
+```
+Builder Project
+   ↓
+Published Theme
+   ↓
+Studio
+```
+
+**Builder Project** — Builder-owned, mutable, meaningless to Studio.
+**Published Theme** — the Theme definition (`manifest`/`theme`) plus its
+assets, as it exists once it has left the Builder — either installed
+into a Repository (Publish) or written to a portable file (Export).
+**Studio** — consumes only Published Themes, never a Builder Project;
+Builder edits never affect Studio until Publish (or a fresh Export/
+import) actually runs. These three models are kept deliberately
+distinct — no attempt was made, or should be made, to converge them
+into one shared representation. See `docs/WORLD_BUILDER_ARCHITECTURE.md`
+LOCK 02 for the same diagram in the Builder's own architecture doc.
+
+### 11.2 Publish vs. Export — the distinction, made explicit everywhere
+
+**Publish** installs a Theme into a Repository (Official or Personal).
+Publish never creates a package — it reads exactly what Build already
+produced (`project.lastBuild`, decoded back into `{manifest, theme,
+assets}`) and sends it directly to `ThemeRepositoryClient.publish()`.
+
+**Export** creates a portable `.vtheme` file. Export never installs into
+a Repository — it only ever downloads.
+
+Before this sprint, both operations lived in one flat list under a
+single "World Package" heading, with no structural distinction between
+them. `tools/world-builder/js/worldBuilderApp.js`'s `_renderPublishPanel()`
+now renders two separately-headed sections — **Publish** (Official
+Repository card, Personal Repository card) and **Export** (one card,
+retitled "Export .vtheme Package") — so the two operations can never be
+mistaken for variants of one another. "World Package" as a compound
+term is removed from the Build screen and Publish screen alike (the
+Build button is now "🎁 Build Theme", its success state "✓ Theme
+Built", and the divider separating the Engine V2 Scene section from the
+main Theme section now reads "Theme" instead of "World Package") — the
+word "package" is used only where something genuinely is one (Export's
+`.vtheme` file, the Engine V2 "Scene Package").
+
+### 11.3 Publish Behavior — atomic replace, no history
+
+Publishing installs exactly one row per `(repository, owner_id,
+theme_id)` — `ThemeRepositoryClient.publish()`'s `upsert(...,
+{onConflict:'repository,owner_id,theme_id'})` already implemented this
+correctly before this sprint; nothing needed to change in code.
+Publishing again **replaces** the previously published Theme atomically.
+There is no repository version history and no internal version
+management — `manifest.version` remains a purely informational field
+the author sets, never a repository-tracked history.
+
+**Verified, not just asserted**: two consecutive Builds of the same
+unmodified Builder Project were compared byte-for-byte and found
+identical — the compiled `{manifest, theme, assets}` JSON a Publish
+would send is deterministic. Since the DB row is a single upsert (never
+an append), publishing the same unmodified Project twice produces an
+identical published Theme, identical asset layout, and identical
+repository representation, exactly as the MEP requires.
+
+### 11.4 Asset Ownership — self-contained, no cross-theme sharing
+
+Each Theme owns all assets required to render itself — decorations,
+layouts, frames, images, thumbnails, preview images, fonts, and any
+future asset type — with **no cross-theme sharing, no deduplication, no
+hashing, no reference counting, and no garbage collection**. This is a
+locked, deliberate simplicity choice, not an oversight: `Storage.upload
+(..., {upsert:true})` writes are scoped to `{repository}/{owner_id-or-
+'_official'}/{theme_id}/{relativePath}`, so one Theme's assets can never
+collide with another's, and a Theme's assets are never pruned or rewritten
+when unrelated data changes elsewhere. A Theme that stops referencing an
+asset it once used leaves that object orphaned in Storage rather than
+deleting it — an explicit, accepted consequence of "no garbage
+collection," not a bug to fix in a future MEP sprint.
+
+### 11.5 Signed URLs never persisted
+
+The stored Theme (`themes.manifest`/`themes.theme`, the Postgres JSONB
+columns) never contains a signed URL — confirmed unchanged since Sprint
+2 (`docs/THEME_CONTRACT.md` §8.4): `manifest.thumbnail`/`.previewImage`
+are plain relative-path references, and no code path anywhere writes a
+resolved value back into a stored record. Repositories generate signed
+URLs only transiently, while `ThemeRepositoryClient.load()` resolves
+assets for a caller — the canonical stored Theme remains fully portable
+between repositories (a Personal Theme promoted to Official, or a
+Theme exported and later Published from a different repository, would
+carry no stale, repository-specific URLs).
+
+### 11.6 Repository Independence
+
+Official Repository, Personal Repository, and any future Local
+Repository must expose exactly the same published Theme representation
+— `{manifest, theme, assets}`, assets resolved to real `src` values by
+`load()`. Repositories differ only in *where bytes are stored*, never in
+the shape of what they hand back; `js/themeRegistry.js`'s
+`refreshFromRepository()` and `ThemeRegistry.resolveAssetRef()` already
+treat every repository identically, with no per-source branching
+anywhere in Studio. A future Local Repository implements the same
+4-function interface (§3) — no special Theme format, no Local-specific
+representation.
+
+### 11.7 UI terminology — locked
+
+| Use | Not |
+|---|---|
+| Builder Project | Project (ambiguous with a repository "project") |
+| Published Theme | "World Package" as a catch-all |
+| Official Repository / Official Themes | — |
+| Personal Repository / Personal Themes | "My Themes" |
+| Export Package / Export .vtheme Package | "World Package" (Export's own artifact is correctly still called a package — it *is* one) |
+
+The Community World card is removed from the Publish screen entirely —
+not left as a disabled placeholder — since Community is out of MEP
+scope and this screen only exposes completed workflows. (The unrelated,
+pre-existing "Community Worlds — Coming soon" card on the Welcome
+screen's Explore section is a different, long-standing Builder feature
+area and is untouched by this sprint.)
+
+### 11.8 Happy Flow, re-verified end to end
+
+```
+Builder Project → Build → Publish → Official Repository → Theme Registry → Studio
+```
+
+and the same flow substituting Personal Repository, were both
+re-verified after this sprint's changes (Playwright, against the real
+Builder UI and a signed-URL-shaped simulated repository response, per
+this sandbox's standing network restriction — see §8): the Publish
+screen renders exactly 3 cards (Official, Personal, Export — no
+Community), contains no "World Package" or "My Themes" text anywhere,
+and both repository buttons still produce a real, graceful — not
+crashed — result. Only repository persistence differs between Official
+and Personal; the Theme representation, Studio's discovery mechanism,
+and rendering are otherwise identical, per §11.6.

@@ -81,22 +81,26 @@ established in Sprint 11.2 and unbroken by this one). The Builder, in
 turn, never renders a page the way Studio does — it edits and validates
 Project data, nothing more.
 
-### LOCK 02 — The Builder owns Projects; the Runtime owns Worlds
+### LOCK 02 — The Builder owns Projects; Studio consumes Published Themes
 
 ```
-Project
+Builder Project
    ↓ editable
 Builder
    ↓ build
-World Package (.vtheme)
+Published Theme
    ↓
-Runtime
+Studio
 ```
 
-A **Project** is Builder-owned, mutable, and has no meaning to Studio.
-A **World Package** is Runtime-owned, immutable once built, and has no
-editable state — Studio never mutates a `.vtheme` in place. Nothing
-ever holds both roles at once.
+A **Builder Project** is Builder-owned, mutable, and has no meaning to
+Studio. A **Published Theme** — installed into a Repository by Publish,
+or a portable `.vtheme` produced by the separate Export operation — is
+Runtime-owned, immutable once built, and has no editable state — Studio
+never mutates a Published Theme in place. Nothing ever holds both roles
+at once. (Terminology locked by the Platform Hardening Closure Sprint —
+see `docs/THEME_REPOSITORY_ARCHITECTURE.md` §11 for the full Publish vs.
+Export contract this diagram now reflects.)
 
 ### LOCK 03 — A New World is born valid
 
