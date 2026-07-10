@@ -256,6 +256,36 @@ correctly.
 
 ---
 
+## 8.5 Happy Flow Completion Sprint — Representation ordering, Export confirmed correct
+
+A real Theme (legacy template Representations + one authored Scene) was
+traced live end to end, per the sprint's own "instrument first, no
+speculative fixes" instruction. Two symptoms were reported, one real, one
+not:
+
+- **Real bug, fixed**: `theme.representations` had every Scene's
+  converged Representation appended *after* the legacy, template-seeded
+  ones (`js/creationFlow.js`'s carousel always starts at index 0 and
+  "Start Creating" applies whichever index is current) — so a Theme
+  Author who never swiped the carousel got an empty legacy
+  Representation instead of their own authored content, even though the
+  Theme itself was correctly discovered and applied. Fixed in
+  `builder.js`'s `convergeScenes()`: Scene-derived Representations are
+  now prepended, not appended. See `docs/THEME_PROJECT_SPEC.md`'s "Happy
+  Flow Completion Sprint — Representation Ordering" section for the full
+  trace and fix.
+- **Not a bug, confirmed by direct comparison**: Export
+  (`_downloadDataURL(project.lastBuild.dataURL, ...)`) and Publish
+  (`_lastBuiltPackage()`'s `fetch(project.lastBuild.dataURL)`) read the
+  identical object — there is no second serialization path to converge.
+  The `assets` map legitimately holds embedded `data:image/...` bytes in
+  both; `manifest`/`theme` fields hold zero (verified by recursive scan).
+  This is required, not accidental — Export's whole purpose is producing
+  a self-contained, portable file that doesn't depend on a reachable
+  Repository/Storage bucket to open later. No code change was made here.
+
+---
+
 ## 9. Disclosed gaps — found, not fixed (by design)
 
 Per the Working Rules ("no new Builder capabilities, no new Studio

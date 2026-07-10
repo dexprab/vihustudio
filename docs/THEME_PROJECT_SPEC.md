@@ -875,3 +875,68 @@ values (`"fill"`/`"image"`); Museum Gallery (a theme with no Scenes)
 still imports/renders/applies with zero behavior change; the golden-
 theme fixture's full 30-assertion regression suite
 (`tools/world-builder/verify/goldenBuild.js`) still passes unchanged.
+
+---
+
+### Happy Flow Completion Sprint — Representation Ordering
+
+A real, live-traced gap surfaced once a Theme with both a hand-authored
+Scene and a World Builder template's own default Representations (e.g.
+Artwork Gallery's "Showcase"/"Portrait"/"Quote", seeded into
+`representations/all.json` at World-creation time, pointing at empty
+template Layouts with no relationship to any Scene) was actually
+published and opened in Studio: Theme Discovery and Theme Application
+both worked correctly — `ThemeEngine.applyArtworkTheme()` activated the
+right Theme — but the *page* that appeared showed no authored content,
+reading as "the default placeholder experience." Traced (not assumed)
+to `js/creationFlow.js`'s Screen 2: its Representation carousel always
+starts at index 0, and "Start Creating" applies `reps[currentIndex]` —
+whichever Representation is current when clicked. Since
+`packageTheme()`'s Scene convergence (previous section) appended each
+Scene's Representation *after* `collectFolder('representations')`'s
+legacy entries, a real Theme Author's own authored Scene landed *last*
+in `theme.representations` — a naive "Start Creating" click, with no
+manual carousel swipe, applied the empty legacy Representation instead.
+
+**Fixed at the source, in `builder.js`'s `convergeScenes()`**: every
+Scene's converged Representation is now collected separately and
+*prepended* ahead of the legacy, template-seeded ones, rather than
+appended after them — real, authored content takes priority over
+untouched scaffolding. Legacy Representations are not removed (a Theme
+Author may still want them reachable via the carousel's later slides or
+Context Panel's "Change Representation"); only their position changes.
+`layouts`/`frameVariations`/`layerPack` ordering is unaffected — nothing
+else in the pipeline reads "the first entry" as a default the way
+Creation Flow's carousel does.
+
+**Export was investigated in the same pass and found to already satisfy
+the platform's own established asset contract, with no code change
+needed.** World Builder's Export button (`_downloadDataURL(project.
+lastBuild.dataURL, project.lastBuild.filename)`) reads the identical
+`project.lastBuild` object Publish's `_lastBuiltPackage()` fetches —
+confirmed by direct comparison of both call sites, not by inspection
+alone — so there is no second, parallel serialization path to converge.
+The reported "embedded `data:image/...` base64" is real, but it is the
+`assets` side-map, exactly as the Asset Repository Transition sprint
+established: `manifest`/`theme` fields hold only plain relative-path
+references (verified: zero embedded data URIs anywhere in either), while
+the separate `assets` map legitimately holds real bytes — required for
+Export's own stated purpose ("a portable `.vtheme` package for outside
+transport," `docs/THEME_REPOSITORY_ARCHITECTURE.md` §11's locked
+terminology), since a truly portable, self-contained file cannot
+reference a Supabase Storage URL that may not exist on whatever machine
+later opens it. Publish externalizes those same bytes into Storage as
+part of installing into a Repository; Export does not, because Export's
+destination is not a Repository.
+
+Verified end-to-end (`node happy_flow_full.js`, a 15-assertion
+Playwright suite exercising Build → Representation ordering → asset
+cleanliness → simulated Publish (asset externalization, since live
+Supabase is unreachable from a sandboxed CI environment) → Studio
+Theme Selection → Theme Application → Renderer → Export identity →
+re-import → re-publish): a naive "Start Creating" with no carousel swipe
+now selects the authored Scene Representation and the Renderer actually
+paints the authored background colour; Export and Publish are confirmed
+to originate from the literal same object; re-import and re-publish
+both succeed identically with no state drift. `goldenBuild.js`'s full
+30-assertion regression suite still passes unchanged throughout.

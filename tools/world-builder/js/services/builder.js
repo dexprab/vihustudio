@@ -189,12 +189,43 @@ class BuildEngine {
      * else in the pipeline.
      */
     async convergeScenes(package_) {
+        // Happy Flow Completion Sprint — root cause traced live: Creation
+        // Flow's Screen 2 (js/creationFlow.js's paintPreview) always
+        // starts its Representation carousel at index 0 and "Start
+        // Creating" reads whichever index is current — a real Theme
+        // Author who never swipes the carousel gets reps[0]. Every World
+        // Builder template (templates.js) seeds legacy, unfilled
+        // Representations (e.g. Artwork Gallery's "Showcase"/"Portrait"/
+        // "Quote", pointing at empty template Layouts) INTO
+        // representations/all.json, compiled first by packageTheme()'s
+        // collectFolder('representations') call above — a Scene's own
+        // converged Representation (real, authored content) was being
+        // appended AFTER those, landing last in the array. A Theme
+        // Author who authors a Scene and publishes never sees their own
+        // content by default; Studio wasn't substituting a fallback
+        // Theme (the Theme itself applies correctly) — it was correctly
+        // rendering the FIRST Representation in the array, which simply
+        // wasn't the authored one. Fixed by collecting every Scene's
+        // converged Representation separately and prepending them ahead
+        // of the legacy, collectFolder-derived ones: a Scene a Theme
+        // Author actually filled in is real content and belongs first;
+        // an untouched template scaffold is not. Layouts/Frame
+        // Variations/Layer Pack ordering is unaffected (Layer Pack
+        // entries are resolved by `scope` match, never by array
+        // position; Layouts/Frames are resolved by id, never by "first
+        // in array" — the only ordering-sensitive consumer of this
+        // array is Creation Flow's own reps[0] default).
+        const sceneRepresentations = [];
         for (const file of projectLoader.getFilesInFolder('scenes')) {
             if (!file.endsWith('.json')) continue;
             const content = await projectLoader.getFileContent(file);
             const scene = projectLoader.parseJSON(content);
             if (!scene || !scene.id) continue;
-            await this.convergeScene(scene, package_);
+            const rep = await this.convergeScene(scene, package_);
+            if (rep) sceneRepresentations.push(rep);
+        }
+        if (sceneRepresentations.length) {
+            package_.representations = sceneRepresentations.concat(package_.representations);
         }
     }
 
@@ -231,7 +262,7 @@ class BuildEngine {
         const holders = Array.isArray(scene.holders) ? scene.holders : [];
         const firstHolder = holders[0] || null;
 
-        package_.representations.push({
+        const representation = {
             id: layoutId,
             name: scene.name || 'Scene',
             description: '',
@@ -240,7 +271,7 @@ class BuildEngine {
             defaultLayerPack: null,
             background: null,
             actions: []
-        });
+        };
 
         const stack = Array.isArray(scene.stack) ? scene.stack : [];
         const layersById = {};
@@ -255,6 +286,8 @@ class BuildEngine {
             const compiled = await this.convergeSceneLayer(scene, layer, z, layoutId, package_);
             if (compiled) package_.layerPack.push(compiled);
         }
+
+        return representation;
     }
 
     /**
