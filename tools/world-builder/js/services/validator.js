@@ -325,12 +325,25 @@ class ValidationEngine {
 
     /**
      * Validate representations folder (TB-4.7 — Theme Driven
-     * Representations). Optional, unlike layouts/frames/layer-packs — a
-     * theme with no Representations (nothing required this sprint)
-     * simply compiles with none, exactly like assets/.
+     * Representations; requirement added by the Builder & Studio
+     * Alignment Sprint). The `representations/` folder itself stays
+     * optional — a Scene (`scenes/*.json`) converges into its own
+     * Representation at Build time (builder.js's convergeScenes()), so
+     * a Theme authored entirely through Scenes with no hand-written
+     * `representations/` file is completely valid. What the Platform
+     * Representation Contract actually requires is that the COMPILED
+     * Theme end up with at least one Representation from either source
+     * — never a specific name, never more than one as a minimum. This
+     * is the only structural requirement; which names an author uses,
+     * and how many beyond one, are entirely up to them.
      */
     async validateRepresentations(result) {
-        return this.collectFolderEntries('representations', result, 'representations');
+        const representations = await this.collectFolderEntries('representations', result, 'representations');
+        const sceneFiles = projectLoader.getFilesInFolder('scenes').filter(function (f) { return f.endsWith('.json'); });
+        if (representations.length === 0 && sceneFiles.length === 0) {
+            result.errors.push('Theme must contain at least one Representation — add one under representations/, or add a Scene (which converges into one automatically at Build)');
+        }
+        return representations;
     }
 
     /**

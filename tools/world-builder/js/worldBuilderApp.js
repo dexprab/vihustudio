@@ -189,14 +189,24 @@
     // "World with zero Scenes" empty state is exactly this template's
     // "no assumptions" intent, not an oversight. An optional `aspect`
     // overrides the Engine Scene Template's own default when the two
-    // disagree — 'single-holder' always defaults to Portrait, but a
-    // "Showcase" Scene (Builder V3 MEP finding, from authoring the
-    // Museum Theme) means "big and bold, the classic gallery look,"
-    // which reads as Landscape; seeding it Portrait left every new
-    // Artwork Gallery World's first Scene mismatched against its own
-    // name until a Theme Author noticed and fixed it by hand.
+    // disagree — 'single-holder' always defaults to Portrait, but Artwork
+    // Gallery's own starter Scene means "big and bold, the classic
+    // gallery look," which reads as Landscape; seeding it Portrait left
+    // every new Artwork Gallery World's first Scene mismatched against
+    // its own intent until a Theme Author noticed and fixed it by hand.
+    //
+    // Builder & Studio Alignment Sprint — this starter Scene's own name
+    // converges into this World's one default Representation (see
+    // builder.js's convergeScenes()), so it is exactly the kind of
+    // content the platform must not prescribe as if it were reserved.
+    // Artwork Gallery's starter Scene is renamed from "Showcase" (one of
+    // the three names this sprint explicitly calls out) to the neutral
+    // "Story" the sprint itself suggests; the other four templates'
+    // names (Cover/Quote/Sketch/Card) were never part of that flagged
+    // set and already read as ordinary, template-appropriate authorial
+    // choices, not platform-reserved vocabulary, so they are unchanged.
     const TEMPLATE_STARTER_SCENE = {
-        'artwork-gallery': { template: 'single-holder', name: 'Showcase', aspect: 'landscape' },
+        'artwork-gallery': { template: 'single-holder', name: 'Story', aspect: 'landscape' },
         storybook: { template: 'cover', name: 'Cover' },
         quotes: { template: 'quote', name: 'Quote' },
         sketchbook: { template: 'single-holder', name: 'Sketch' },
@@ -329,7 +339,7 @@
         overview: 'What: your World\'s identity — name, tagline, description, and how it introduces itself. Why: this is the card a child sees before picking your World. Do: fill in the fields below and upload a Thumbnail/Hero Image. Next: head to Scenes to add the pages this World offers.',
         scenes: 'What: the actual pages of your World — each one a complete, curated Scene (a shape, its photo spots, its decoration, its words). Why: a World is a curated library of Scenes — this is that library. Do: press Add a Scene, choose a Scene Template, then open it to set its shape in the Scene Configuration glance above Working View. Next: use Place/Decorations/Text to design what\'s actually on the page.',
         experiences: 'What: everything that enriches this World — frames, decorations, atmosphere, and more — kept in one home instead of scattered across Scenes. Why: an Experience always belongs to the Theme, never to one Scene or Place, so it can be found and reused wherever it fits. Do: grow a new idea in the Nursery — it starts as a protected sketch you can freely change or delete. Next: once an idea feels ready, it will graduate into the Gallery as part of the Theme.',
-        representations: 'What: the page styles a child can choose (e.g. Showcase, Portrait, Quote). Why: Studio\'s Creation Flow shows exactly these, nothing more. Do: pick or add a Representation, then set its Default Layout and Default Frame. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
+        representations: 'What: the page styles a child can choose — name them anything that fits your World (Story, Journey, Discovery, Comic... whatever you like). Why: Studio\'s Creation Flow shows exactly these, nothing more — the platform never prescribes what a Representation is called. Do: pick or add a Representation, then set its Default Layout and Default Frame. A Theme needs at least one; add more only if they genuinely improve the experience. Next: make sure every Layout/Frame you reference actually exists (see Layouts/Frames).',
         layouts: 'What: the geometry each page can use — aspect ratio, caption position, composition. Why: a Representation always points at one of these. Do: adjust Aspect/Composition/Spacing for the selected Layout, or add a new one. Next: design a Frame to go with it.',
         frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
         layerpacks: 'What: small elements placed on the page — captions, page numbers, stickers. Why: this is how a World adds its own personality on top of a Layout/Frame. Do: add Layers and set their Target Container/Anchor. Next: check Assets for anything these Layers need (like a decoration image).',

@@ -435,9 +435,9 @@ contains. See `js/creationFlow.js` and `js/contextPanel.js`.
 
 ```json
 {
-  "id": "showcase",
-  "name": "Showcase",
-  "description": "Big and bold — the classic gallery look.",
+  "id": "story",
+  "name": "Story",
+  "description": "A page of your World.",
   "thumbnail": "🖼️",
   "supportedCreationTypes": ["artwork"],
   "layout": "landscape",
@@ -447,6 +447,27 @@ contains. See `js/creationFlow.js` and `js/contextPanel.js`.
   "actions": ["replaceArtwork", "cropRotate", "frameVariation", "editCaption"]
 }
 ```
+
+**The Platform Representation Contract (Builder & Studio Alignment
+Sprint).** Representations belong to the Theme Author; the platform
+defines only the structure:
+
+- **MUST** — a Theme contains at least one valid Representation. This is
+  the only structural requirement, enforced by `tools/world-builder/js/
+  services/validator.js`'s `validateRepresentations()` (counting either
+  a hand-authored `representations/*.json` entry or a converged Scene —
+  see "Builder Convergence Sprint — Scene Convergence," below — since
+  both compile into the same `theme.representations` array).
+- **SHOULD** — a Theme contains multiple Representations when they
+  genuinely improve the storytelling experience. Guidance only, never
+  enforced.
+- **CAN** — a Theme defines any Representation names at all: Showcase,
+  Portrait, Quote, Journey, Discovery, Comic, Timeline, Puzzle, Story, or
+  anything else an author invents. **The platform never reserves a
+  Representation name.** Museum Gallery's own `showcase`/`portrait`/
+  `quote` ids (§14, Sprint 10.2) are one Theme's own authorial choice,
+  not a platform vocabulary any other Theme is expected to match or
+  avoid.
 
 | Field | Required? | Meaning |
 |---|---|---|
@@ -940,3 +961,86 @@ paints the authored background colour; Export and Publish are confirmed
 to originate from the literal same object; re-import and re-publish
 both succeed identically with no state drift. `goldenBuild.js`'s full
 30-assertion regression suite still passes unchanged throughout.
+
+---
+
+### Builder & Studio Alignment Sprint — Author-Owned Representations
+
+A deliberate platform-alignment pass, not a redesign of Builder, Studio,
+or the Repository: locks the Platform Representation Contract stated in
+§8 above (MUST have ≥1, SHOULD have more when it helps, CAN be named
+anything) and fixes the concrete places the platform was still treating
+Showcase/Portrait/Quote — one Theme's own authorial choice (Museum
+Gallery, §14's Sprint 10.2) — as if they were reserved defaults.
+
+**A real, systemic double-counting bug found while auditing, not
+assumed.** Every World Builder template except Blank World already seeds
+exactly one starter Scene (Builder V2, `worldBuilderApp.js`'s
+`TEMPLATE_STARTER_SCENE`/`_seedStarterScene`), which converges into
+exactly one Representation at Build time (the Builder Convergence Sprint,
+above). But every one of those same templates *also* still seeded a
+static legacy `representations/*.json` array (`templates.js`) — Artwork
+Gallery alone seeded three (Showcase/Portrait/Quote), and even the
+single-entry templates (Quotes' "Quote," Greeting Cards' "Card") produced
+a *second*, separate Representation once combined with their own starter
+Scene's own converged one. Every template compiled with 2-4
+Representations, never the one the platform intends as the baseline.
+Fixed by removing every template's static `representations` array
+entirely (`representations: []`) — the starter Scene's own converged
+Representation is now the *sole* source of each template's default,
+verified via a real Build (not just Project-level inspection) to produce
+exactly one Representation per non-blank template. Artwork Gallery's
+starter Scene is renamed from "Showcase" (one of the three names this
+sprint's own commissioning brief explicitly calls out) to "Story" — the
+sprint's own suggested neutral default; the other four templates' names
+(Cover/Quote/Sketch/Card) were never part of that flagged set and already
+read as ordinary, template-appropriate authorial choices rather than
+platform-reserved vocabulary, so they are unchanged. The now-unused
+`_representation()` factory helper in `templates.js` was removed as
+genuine dead code (distinct from the WEP Scope Freeze sprint's
+deliberately-preserved, merely UI-hidden Import functions — this had zero
+remaining call sites and no future re-enablement path to preserve).
+
+**Validation gained the one rule the contract actually requires.**
+`validator.js`'s `validateRepresentations()` previously enforced nothing
+at all — a Theme with zero Representations from any source validated
+cleanly. It now reports an error when both the `representations/` folder
+and `scenes/` folder are empty (since either alone converges into at
+least one Representation at Build time), and never checks for a specific
+name or a minimum greater than one, matching the MUST rule exactly.
+
+**Studio required no changes at all**, confirmed by direct source
+audit rather than assumed: `js/creationFlow.js`'s `_representationsForTheme`/
+`paintPreview`/`_finish` and `js/contextPanel.js`'s `_activeRepresentations`
+already read `theme.representations` generically, with zero hardcoded
+name/id/count branching anywhere (a discipline established since Sprint
+10.1/11.2 and reconfirmed here) — a Theme with one Representation already
+shows a single-slide carousel with no swiping required before Start
+Creating, and a Theme with several already shows exactly those, in
+exactly the order the Theme itself declares.
+
+**Backward compatibility, verified not assumed.** Museum Gallery's
+compiled `.vtheme` (`themes/MuseumGallery.vtheme`) still carries its
+original `showcase`/`portrait`/`quote` ids and names, completely
+untouched — no migration, no automatic rename, no compatibility shim of
+any kind. It is simply one more Theme whose author happened to choose
+those three names.
+
+Verified end-to-end via a new 15-assertion Playwright suite
+(`representation_alignment_verify.js`): every one of the six World
+Builder templates compiles to exactly one Representation (Blank World to
+zero, its own deliberate "no assumptions" baseline); Artwork Gallery's
+sole Representation is named "Story," never "Showcase"; a hand-authored
+Theme with three custom Representations (Adventure/Puzzle/Ending)
+compiles with exactly those three names, in that exact order; Museum
+Gallery's original three Representations are confirmed unchanged;
+Representation structure (id/name/order) is confirmed byte-identical
+between a simulated Personal-repository copy and a simulated
+Official-repository promotion, with zero mutation relative to the
+original Build output. `goldenBuild.js`'s full 30-assertion suite, the
+Happy Flow Completion Sprint's 15-assertion suite, and the WEP Scope
+Freeze sprint's own suite all pass unchanged — this sprint touched
+template defaults, one validation rule, and documentation only; no
+Builder/Studio/Repository redesign, no new capabilities, Import stays
+deferred, and the Personal → Official promotion workflow is completely
+unchanged.

@@ -38,19 +38,6 @@ const WorldTemplates = (function () {
     return { id: id, name: name, description: description || '', fields: fields || {} };
   }
 
-  function _representation(id, name, description, thumbnail, layout, defaultFrame) {
-    return {
-      id: id,
-      name: name,
-      description: description,
-      thumbnail: thumbnail,
-      layout: layout,
-      defaultFrame: defaultFrame || null,
-      defaultLayerPack: null,
-      background: null,
-      actions: []
-    };
-  }
 
   // Every template shares the same manifest/metadata shape — only the
   // creative specifics differ. Building it once here means a new
@@ -161,11 +148,17 @@ const WorldTemplates = (function () {
         ],
         frames: [_frame('classic-white', 'Classic White', 'A clean white mat, always in style.', { matWidth: 24, frameThickness: 10, borderColor: '#FFFFFF', wallTone: '#F4F1EC' })],
         layerPack: [],
-        representations: [
-          _representation('showcase', 'Showcase', 'Big and bold — the classic gallery look.', '🖼️', 'landscape', 'classic-white'),
-          _representation('portrait', 'Portrait', 'Tall and centered, like a framed portrait.', '🧍', 'portrait', 'classic-white'),
-          _representation('quote', 'Quote', 'Just your words, beautifully centered.', '💬', 'quote', null)
-        ]
+        // Builder & Studio Alignment Sprint — Representations belong to
+        // the Theme Author, not the platform. This template no longer
+        // seeds Showcase/Portrait/Quote as if they were reserved
+        // defaults — the World's starter Scene (TEMPLATE_STARTER_SCENE
+        // in worldBuilderApp.js) converges into exactly one
+        // Representation on its own, satisfying "a Theme must contain
+        // at least one valid Representation" without the platform
+        // prescribing what it's called. The extra landscape/portrait/
+        // quote Layouts above remain available for an author who wants
+        // to add more Representations later.
+        representations: []
       }
     },
     {
@@ -194,11 +187,10 @@ const WorldTemplates = (function () {
         layouts: [_layout('classic', 'Classic', 'portrait', 'A single storybook page.')],
         frames: [_frame('classic', 'Classic', 'A simple book-page frame.', { frameThickness: 8 })],
         layerPack: [],
-        representations: [
-          _representation('cover', 'Cover', 'Your story’s opening page.', '📕', 'classic', 'classic'),
-          _representation('story', 'Story', 'A page of your story.', '📖', 'classic', 'classic'),
-          _representation('ending', 'Ending', 'How your story wraps up.', '🏁', 'classic', 'classic')
-        ]
+        // Builder & Studio Alignment Sprint — see the matching note on
+        // Artwork Gallery above; the starter Scene ("Cover") converges
+        // into this World's one Representation.
+        representations: []
       }
     },
     {
@@ -221,9 +213,10 @@ const WorldTemplates = (function () {
         layouts: [_layout('quote', 'Quote', 'quote', 'No picture — a centered quote, beautifully set.')],
         frames: [_frame('simple', 'Simple', 'A plain, quiet mat.', { matWidth: 16, frameThickness: 0, borderColor: '#FFFFFF', wallTone: '#FFFFFF' })],
         layerPack: [],
-        representations: [
-          _representation('quote', 'Quote', 'Just your words, beautifully centered.', '💬', 'quote', 'simple')
-        ]
+        // Builder & Studio Alignment Sprint — see the matching note on
+        // Artwork Gallery above; the starter Scene ("Quote") converges
+        // into this World's one Representation.
+        representations: []
       }
     },
     {
@@ -249,10 +242,11 @@ const WorldTemplates = (function () {
         ],
         frames: [_frame('kraft', 'Kraft Paper', 'A warm, hand-made paper mat.', { matWidth: 12, frameThickness: 4, borderColor: '#C9B79C', wallTone: '#EFE7D8' })],
         layerPack: [],
-        representations: [
-          _representation('sketch', 'Sketch', 'Wide and casual, like an open sketchbook.', '✏️', 'landscape', 'kraft'),
-          _representation('portrait', 'Portrait', 'Tall and centered.', '🧍', 'portrait', 'kraft')
-        ]
+        // Builder & Studio Alignment Sprint — see the matching note on
+        // Artwork Gallery above; the starter Scene ("Sketch") converges
+        // into this World's one Representation. The extra portrait
+        // Layout remains available for an author who adds more later.
+        representations: []
       }
     },
     {
@@ -275,9 +269,10 @@ const WorldTemplates = (function () {
         layouts: [_layout('portrait', 'Portrait', 'portrait', 'A card-shaped page, ready for a message.')],
         frames: [_frame('festive', 'Festive', 'A soft, celebratory mat.', { matWidth: 10, frameThickness: 6, borderColor: '#E8B4B8', wallTone: '#FFF6F2' })],
         layerPack: [],
-        representations: [
-          _representation('card', 'Card', 'A card-shaped page, ready for a message.', '💌', 'portrait', 'festive')
-        ]
+        // Builder & Studio Alignment Sprint — see the matching note on
+        // Artwork Gallery above; the starter Scene ("Card") converges
+        // into this World's one Representation.
+        representations: []
       }
     },
     {
