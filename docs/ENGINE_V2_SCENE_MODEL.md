@@ -535,6 +535,24 @@ intermediary.
   own Publish stage (`docs/WORLD_BUILDER_ARCHITECTURE.md`'s Architecture
   Locks), so this document does not re-specify them.
 
+> **Amended by the Builder Convergence Sprint (see Change History v1.5).**
+> The Build/Publish bullets above described a *native* Engine V2
+> Build/Publish, operating on the Scene Model with no Engine V1
+> intermediary — the actual implementation took a different, explicitly
+> product-directed path instead: Scene content converges *into* Engine
+> V1's existing Build (`tools/world-builder/js/services/builder.js`'s
+> `packageTheme()`), producing exactly one Published Theme, because
+> Studio's real Runtime (`renderer/slideRenderer.js`) has no Engine V2
+> concept to consume a native Scene Model package with. A native Engine
+> V2 Build (`js/services/engineBuilder.js`, `project.lastSceneBuild`) was
+> implemented once, then retired — it produced a real, well-formed
+> package, but as a *second*, Studio-invisible published artifact, which
+> the Builder Convergence Sprint's own commissioning brief explicitly
+> named as the problem to solve ("Do not maintain parallel Theme
+> formats"). See §6 below and `docs/THEME_PROJECT_SPEC.md`'s "Builder
+> Convergence Sprint — Scene Convergence" section for the actual
+> mapping.
+
 ---
 
 ## 6. Relationship to the Engine V1 pipeline
@@ -559,6 +577,26 @@ second, permanently-parallel authoring surface bolted onto Engine V1
 pipeline, sharing nothing at runtime with Engine V1's beyond both
 existing in the same repository during the (indefinite) period Engine
 V1 content continues to be supported.
+
+> **Amended by the Builder Convergence Sprint (see Change History v1.5).**
+> The **authoring-time Runtime** half of this paragraph stands unmodified
+> — Working View and Runtime Preview inside World Builder still render
+> Scenes directly off the canonical Scene Model via
+> `tools/world-builder/js/services/engineRuntime.js`, exactly as this
+> document specifies, with no Engine V1 involvement. The **published-
+> artifact** half is superseded: rather than remaining "its own, self-
+> sufficient pipeline" all the way to a Published Theme, Scene content
+> now converges into Engine V1's Build (`packageTheme()`) as its final
+> step, so Publish/the Repository/Studio see exactly one Theme, never
+> two. This was an explicit, deliberate product decision made after this
+> document was written and after a native Engine V2 Build/Publish had
+> already been built once (see §5's amendment) — not a rediscovery that
+> the "translation-layer option" this paragraph rejected was secretly
+> fine all along. The distinction that matters: Engine V2's Scene Model
+> remains the one canonical *authoring* representation (unchanged);
+> only the *compiled/published* representation converges into Engine
+> V1's, because a second published format with zero Studio consumers
+> served no one.
 
 ---
 
@@ -704,3 +742,21 @@ blocked pretending an answer exists when it doesn't.
   and Publish implementation may begin against the canonical Scene
   Model defined in this document, with no further design sign-off
   required.**
+- v1.5 — Builder Convergence Sprint. Runtime, Validation, and the
+  authoring-time half of Build/Publish (v1.4's "native Runtime") were all
+  implemented exactly as specified and remain unmodified. The published-
+  artifact half of Build/Publish was implemented once as a fully native,
+  parallel pipeline (`js/services/engineBuilder.js`, `project.
+  lastSceneBuild`, a real, well-formed `{format:'engine-v2-world-
+  package', ...}` compiled package) — then explicitly retired by later
+  product direction: Studio's actual Runtime has no Engine V2 concept to
+  consume that package with, so it was a second, Studio-invisible
+  published artifact rather than a working parallel pipeline. Scene
+  content now converges into Engine V1's existing Build/Publish instead
+  (§5/§6 above carry inline "Amended" notes; the actual field-by-field
+  mapping lives in `docs/THEME_PROJECT_SPEC.md`'s "Builder Convergence
+  Sprint — Scene Convergence" section, not duplicated here). This is a
+  deliberate reversal of this document's own "the two pipelines do not
+  merge" position for the *published-artifact* question only — the
+  canonical *authoring* Scene Model, and the native authoring-time
+  Runtime that renders it inside the Builder, are completely unchanged.

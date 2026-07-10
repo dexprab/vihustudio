@@ -7,9 +7,14 @@
 //   {
 //     id, type: 'text'|'sticker'|'decoration',
 //     target: 'slide'|'frame'|'holder'|'element',
-//     anchor, offsetX, offsetY, zIndex, visible,
+//     anchor, offsetX, offsetY, zIndex, visible, scope,
+//     rect: {x,y,w,h} (optional, fractional, overrides anchor placement),
 //     text: {...} | sticker: {...} | decoration: {...}   // per-type payload
 //   }
+// `scope` (optional) is a Layout id a layer is restricted to — omitted
+// (every layer authored before Builder Convergence) means global, exactly
+// as before; the caller (SlideRenderer._activeLayerPack) is what actually
+// filters by it, this module only defines the field's existence.
 //
 // This module is intentionally small: it filters a layer pack down to
 // "every layer that targets scope X, in z-order" and resolves an
@@ -55,6 +60,24 @@ const LayerEngine=(function(){
     return {x:x,y:y,hAlign:hAlign,vAlign:vAlign};
   }
 
+  // A layer's own optional `rect` (fractional {x,y,w,h} within the
+  // target's rect) is how a Builder-Convergence-authored Layer (a
+  // Scene's own free-form Place/Decoration/Text position — no anchor
+  // vocabulary of its own) places itself. Absent `rect` (every layer
+  // authored before this), `layerRect` stays null and the anchor
+  // resolves against the target rect exactly as before — zero
+  // behavior change for any pre-existing theme.
+  function _resolveLayerRect(layer,rect){
+    const r=layer && layer.rect;
+    if(!r || typeof r.x!=='number' || typeof r.y!=='number') return null;
+    return {
+      x:rect.x+r.x*rect.w,
+      y:rect.y+r.y*rect.h,
+      w:(typeof r.w==='number'?r.w:0)*rect.w,
+      h:(typeof r.h==='number'?r.h:0)*rect.h
+    };
+  }
+
   // Renders every layer targeting `target` against `rect`, dispatching
   // to whichever `helpers.draw<Type>` the caller supplied. A helper the
   // caller omits simply means that layer type is skipped at this call
@@ -64,12 +87,13 @@ const LayerEngine=(function(){
   function render(pack,target,rect,helpers){
     if(!rect || !helpers) return;
     forTarget(pack,target).forEach(function(layer){
-      const anchor=resolveAnchor(layer.anchor,rect);
+      const layerRect=_resolveLayerRect(layer,rect);
+      const anchor=resolveAnchor(layer.anchor,layerRect||rect);
       anchor.x+=(typeof layer.offsetX==='number')?layer.offsetX:0;
       anchor.y+=(typeof layer.offsetY==='number')?layer.offsetY:0;
-      if(layer.type==='text' && typeof helpers.drawText==='function') helpers.drawText(layer,anchor,rect);
-      else if(layer.type==='sticker' && typeof helpers.drawSticker==='function') helpers.drawSticker(layer,anchor,rect);
-      else if(layer.type==='decoration' && typeof helpers.drawDecoration==='function') helpers.drawDecoration(layer,anchor,rect);
+      if(layer.type==='text' && typeof helpers.drawText==='function') helpers.drawText(layer,anchor,rect,layerRect);
+      else if(layer.type==='sticker' && typeof helpers.drawSticker==='function') helpers.drawSticker(layer,anchor,rect,layerRect);
+      else if(layer.type==='decoration' && typeof helpers.drawDecoration==='function') helpers.drawDecoration(layer,anchor,rect,layerRect);
     });
   }
 

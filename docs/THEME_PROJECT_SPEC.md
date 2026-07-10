@@ -384,20 +384,37 @@ same active Layer Pack.
 |---|---|---|
 | `id` | **Required** | Kebab-case, unique across the *entire compiled pack* (not just one file — see §12). |
 | `type` | **Required** | `"text"` \| `"sticker"` \| `"decoration"`. |
-| `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` — one of the four frozen containership scopes. A Layer never targets more than one scope. |
-| `anchor` | Optional, default `"bottom-center"` | One of the nine standard anchor points (`top`/`bottom`/`middle` × `left`/`center`/`right`, e.g. `"top-left"`), resolved relative to whatever rect the target scope hands it. |
+| `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` \| `"overlay"` — one of five containership scopes. A Layer never targets more than one scope. |
+| `scope` | Optional, default none (global) | A Layout id this Layer is restricted to. Omitted (every hand-authored Layer before the Builder Convergence Sprint) means the Layer is active for every Layout/Representation in the theme, exactly as before. Set, the Layer only renders when the current slide's `metadata.layout` matches — this is how a Builder-authored Scene's own Layers stay scoped to the one Layout/Representation that Scene converged into, without cross-contaminating any other page using the same theme. |
+| `rect` | Optional, default none (anchor-based) | A fractional `{ x, y, w, h }` (0–1 of whatever rect the target scope hands it) giving the Layer a free-form absolute position/size, as an alternative to `anchor`/`offsetX`/`offsetY`. Omitted (every hand-authored Layer before the Builder Convergence Sprint), the Layer resolves via anchor exactly as before. This is how a Scene's own Place/Decoration/Text position survives compilation. |
+| `anchor` | Optional, default `"bottom-center"` | One of the nine standard anchor points (`top`/`bottom`/`middle` × `left`/`center`/`right`, e.g. `"top-left"`), resolved relative to whatever rect the target scope hands it (or `rect`, when present). |
 | `offsetX` / `offsetY` | Optional, default `0` | Pixel nudge from the resolved anchor point. |
 | `zIndex` | Optional, default `0` | Draw order within the same target scope. Lower draws first (further back). |
 | `visible` | Optional, default `true` | Set `false` to author a Layer that ships disabled by default. |
 | `text` | Required when `type: "text"` | `{ source, content, font, size, color }`. `source` names a known dynamic binding (`"museumCaption"`, `"slideCaption"`) or is omitted for a static `content` string. An entry with neither `text.source` nor `text.content` (e.g. `page-number`, `handle`) is a **declarative-only** entry: it documents that this Layer exists in the theme's inventory, but the actual pixels are still drawn by the pre-existing, unrelated engine feature it names (see `position`, below) — never a second, competing renderer for the same content. |
 | `sticker` | Required when `type: "sticker"` | `{ glyph, size, color }`. `glyph` may be any single character/emoji; omitted, a themed default (by `id`, where one is registered) or a plain drawn ornament is used instead. |
-| `decoration` | Required when `type: "decoration"` | `{ kind, alpha, radius, ... }`. `kind` selects which decorative effect draws (`"spotlight"`, `"paperTexture"`, `"shadowWash"`, …). |
+| `decoration` | Required when `type: "decoration"` | `{ kind, alpha, radius, color, image, fit, ... }`. `kind` selects which decorative effect draws: `"spotlight"` \| `"paperTexture"` \| `"shadowWash"` (the original three, radius/alpha-driven glow/texture/vignette effects) or `"fill"` \| `"image"` (added by the Builder Convergence Sprint — a solid `color` rect, or a real `image` drawn into the Layer's rect per `fit` (`"fit"` \| `"fill"`), resolved the same way any other Theme asset reference resolves — `ThemeRegistry.resolveAssetRef()`). |
 | `position` | Optional, only meaningful on the declarative `handle` / `page-number` ids | Pins that engine feature to a specific corner (`"bottom-left"`, `"bottom-right"`, etc.) for this theme, overriding the Story Theme's own default position. |
 
 **Ordering.** Layers of the same `target` draw in ascending `zIndex`;
 Layers of different targets draw at the point in the render pipeline
 their scope naturally occurs (Slide background → Frame → Holder →
-Element), never interleaved by authored order across scopes.
+Element → **Overlay**, the last one painted, on top of literally
+everything else on the page — footer, page number, legacy Scene
+elements, stickers), never interleaved by authored order across scopes.
+
+**The `overlay` target** (Builder Convergence Sprint). The original four
+containership scopes each render at one specific point *inside* the
+Frame/Panel pipeline, and three of them (`frame`/`holder`/`element`) only
+render at all when the page has a resolved Picture Border — correct for
+theme-authored ornaments tied to an actual picture, wrong for a Scene's
+own foreground content (an image or caption meant to sit above the
+artwork unconditionally, at an absolute Scene-canvas position). `overlay`
+is a fifth, generic scope with no such gating, painted last, at full-
+canvas fractional coordinates. No hand-authored theme uses it directly —
+it exists so a Builder-authored Scene's Decoration/Text Layers have
+somewhere correct to converge into (see "Builder Convergence Sprint" at
+the end of this document's history, below).
 
 **Visibility.** `visible: false` is the only way to ship a Layer that
 exists in the pack (and therefore appears in any future layer-management
@@ -768,3 +785,93 @@ Bleed, present in the pre-10.2 in-code version, were never reachable
 through the Context Panel and so were not re-authored) and why it has no
 `assets/` folder (nothing this theme renders is a raster image — every
 Frame field is an enum resolved to a drawn canvas routine).
+
+---
+
+### Builder Convergence Sprint — Scene Convergence
+
+Before this sprint, World Builder produced **two independent, parallel
+compiled artifacts**: Engine V1's `{manifest, theme, assets}` (§4 of this
+spec — the only shape Publish/the Repository/Studio ever understood) and
+Engine V2's `{format:'engine-v2-world-package', scenes, frames, ...}`
+(Scene/Place/Experience authoring's own compiled package, `project.
+lastSceneBuild`, exportable but never publishable — see the historical
+"Engine V2 — Build and Publish" entry in `CLAUDE.md`). A Theme Author's
+Scene content — a background, a Decoration, a Text Experience — could be
+authored and previewed in the Builder, but never reached a Published
+Theme, never reached the Repository, and Studio never rendered it. This
+sprint closes that gap by converging Scene content into the one existing
+Published Theme representation instead of maintaining a second one.
+
+**The rule**: `tools/world-builder/js/services/builder.js`'s
+`packageTheme()` now walks every `scenes/*.json` file (via
+`convergeScenes()`/`convergeScene()`/`convergeSceneLayer()`) after its
+four pre-existing `collectFolder()` calls, and *appends* to the exact
+same `layouts`/`representations`/`layerPack`/`assets` arrays/maps those
+calls already populate — a project with no `scenes/` folder (every theme
+authored before Scenes existed) appends nothing, so the compiled package
+is byte-identical to before this sprint.
+
+**One Scene converges into:**
+
+- **One Layout** (§5), `id: "scene-<sceneId>"`, `aspect` taken directly
+  from `scene.canvas.aspectRatio` — the Engine V2 Aspect Ratio vocabulary
+  (`portrait`/`landscape`/`square`/`wide`/`full-bleed`/`quote`) is
+  already identical to this spec's own `LAYOUT_ASPECTS`, so no
+  translation is needed.
+- **One Representation** (§8), same id, `layout` pointing at that same
+  Layout id, `defaultFrame` taken from the Scene's first Place's `frame`
+  reference (a Frame id already compiled by the existing `frames`
+  `collectFolder()` call — Place and Frame already share the same id
+  space, so no translation is needed there either). Only the *first*
+  Place converges onto `defaultFrame` — Engine V1 has exactly one Holder
+  per page (§5's "holders: Reserved, always 1 in V1"), a pre-existing,
+  disclosed ceiling this sprint does not lift.
+- **One Layer Pack entry per Scene Layer** (§7), in Scene Stack order (so
+  z-ordering survives), each carrying `scope: "scene-<sceneId>"` so it
+  never renders on any other page. A full-bleed fill Layer (a Scene
+  Background) converges onto `target: "slide"` (wall-level, behind the
+  Frame — correct). Every other Layer (an image Decoration, a partial-
+  rect colour patch, Text) converges onto the new `target: "overlay"`
+  (foreground content, unconditionally on top — see §7's own `overlay`
+  documentation above). A Scene Layer's `.image` field is always a raw
+  data URI (Builder upload fields never write a project-relative path
+  for Scene content) — `builder.js`'s `externalizeSceneImage()`
+  externalizes it into the same `assets` map every other asset already
+  uses, under `scenes/<sceneId>/<layerId>.png`, leaving the Layer Pack
+  entry holding a plain relative-path reference resolved the same way
+  every other asset reference resolves (`ThemeRegistry.resolveAssetRef()`).
+
+**Publish/Export/Repository/Studio needed zero Scene-specific code.**
+Publish already reads whatever `packageTheme()`/`buildManifest()`/
+`buildTheme()` produced (`project.lastBuild`) and uploads its `assets`
+map wholesale (`js/themeRepositoryClient.js`'s `publish()`); Export
+already serializes the same compiled package to a `.vtheme` file; Studio
+already resolves `theme.layouts`/`theme.representations`/`theme.layerPack`
+generically. None of the three needed to learn what a "Scene" is —
+convergence happens once, entirely inside `builder.js`.
+
+**`project.lastSceneBuild` is retired** as a concept — World Builder's
+Build screen shows exactly one Build action ("🎁 Build Theme") and
+Publish shows exactly one Theme's worth of Publish/Export options;
+"Scenes" is now shown only as an informational stat (how many Scenes
+this Theme has), never a second buildable/publishable artifact. Engine
+V2 Scene *Validation* (`EngineV2Validator`, a Scene Model consistency
+check, unrelated to compilation) is untouched — Validation still shows
+its own separate "Scenes" report alongside the Theme's own Validation
+report, since checking a Scene's internal consistency and converging its
+content into a Published Theme are different concerns.
+
+Verified end-to-end: a Scene authored with a full-bleed colour
+background, an image Decoration, and a Text Layer converges correctly
+into `theme.layouts`/`theme.representations`/`theme.layerPack`/`assets`;
+the compiled package imports into the real Studio runtime with zero
+console errors; rendering a real slide against the Scene-derived
+Representation actually paints the background colour, the Decoration
+image (pixel-sampled), and reserves space for the Text — all through the
+unmodified `renderer/slideRenderer.js` render pipeline, plus one new,
+additive `target: "overlay"` render pass and two new `decoration.kind`
+values (`"fill"`/`"image"`); Museum Gallery (a theme with no Scenes)
+still imports/renders/applies with zero behavior change; the golden-
+theme fixture's full 30-assertion regression suite
+(`tools/world-builder/verify/goldenBuild.js`) still passes unchanged.

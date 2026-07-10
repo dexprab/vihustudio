@@ -116,6 +116,19 @@ class BuildEngine {
         // Step 3", the same as before this existed).
         package_.representations = await this.collectFolder('representations');
 
+        // Builder Convergence Sprint — a Scene (Engine V2's own
+        // authoring model: Scene -> Place/Layer -> Runtime Preview) has
+        // no compiled representation of its own; it converges into the
+        // exact same Layout/Representation/Layer Pack vocabulary every
+        // hand-authored theme.json already uses, so Publish/Repository/
+        // Studio need zero Scene-specific code — this is the one and
+        // only place that translation happens. A project with no
+        // scenes/ folder (every theme authored before Scenes existed)
+        // converges zero entries, appending nothing to any of the four
+        // arrays above — byte-identical output, same as before this
+        // sprint.
+        await this.convergeScenes(package_);
+
         // Assets — flattened to a { relativePath: dataURI } map, paths
         // relative to assets/ (spec §8), exactly the shape
         // js/zipReader.js + themeEngine.js's _buildPackageFromZipFiles
@@ -162,6 +175,192 @@ class BuildEngine {
             else if (json) out.push(json);
         }
         return out;
+    }
+
+    /**
+     * Builder Convergence Sprint — walks every scenes/*.json file and
+     * appends each Scene's converged Layout/Representation/Layer Pack
+     * entries + externalized image assets directly onto the same
+     * package_ arrays collectFolder() already populated from
+     * layouts/frames/layer-packs/representations. This is the ONE
+     * place Scene content becomes canonical Theme content: Publish,
+     * Export, the Repository, and Studio all consume whatever this
+     * function produced with no separate Scene-aware code anywhere
+     * else in the pipeline.
+     */
+    async convergeScenes(package_) {
+        for (const file of projectLoader.getFilesInFolder('scenes')) {
+            if (!file.endsWith('.json')) continue;
+            const content = await projectLoader.getFileContent(file);
+            const scene = projectLoader.parseJSON(content);
+            if (!scene || !scene.id) continue;
+            await this.convergeScene(scene, package_);
+        }
+    }
+
+    /**
+     * One Scene converges into exactly one Layout + one Representation
+     * (both keyed 'scene-<id>' so a slide using this Representation's
+     * `layout` field resolves back to this same Layout, and a Layer
+     * Pack entry's `scope` — see below — matches slide.metadata.layout
+     * at render time, per renderer/slideRenderer.js's _activeLayerPack).
+     *
+     * Only the Scene's first Place's Frame reference converges onto the
+     * Representation's defaultFrame — Engine V1 has exactly one Holder
+     * per page (docs/THEME_PROJECT_SPEC.md §5's "holders: Reserved,
+     * always 1 in V1"), a pre-existing, disclosed ceiling this sprint
+     * does not lift. Every Scene Layer (Background fill / Decoration /
+     * Text — Holders themselves aside) converges via convergeSceneLayer
+     * below, in Scene Stack order so z-ordering survives the trip.
+     */
+    async convergeScene(scene, package_) {
+        const layoutId = 'scene-' + scene.id;
+        const aspect = (scene.canvas && scene.canvas.aspectRatio) || 'portrait';
+
+        package_.layouts.push({
+            id: layoutId,
+            name: scene.name || 'Scene',
+            aspect: aspect,
+            description: 'Converged from Builder Scene "' + (scene.name || scene.id) + '"',
+            captionPosition: 'below',
+            padding: 24,
+            spacing: 16,
+            alignment: 'center'
+        });
+
+        const holders = Array.isArray(scene.holders) ? scene.holders : [];
+        const firstHolder = holders[0] || null;
+
+        package_.representations.push({
+            id: layoutId,
+            name: scene.name || 'Scene',
+            description: '',
+            layout: layoutId,
+            defaultFrame: (firstHolder && firstHolder.frame) || null,
+            defaultLayerPack: null,
+            background: null,
+            actions: []
+        });
+
+        const stack = Array.isArray(scene.stack) ? scene.stack : [];
+        const layersById = {};
+        (Array.isArray(scene.layers) ? scene.layers : []).forEach(function (l) { layersById[l.id] = l; });
+
+        let z = 0;
+        for (const entry of stack) {
+            z += 1;
+            if (!entry || entry.type !== 'layer') continue;
+            const layer = layersById[entry.id];
+            if (!layer) continue;
+            const compiled = await this.convergeSceneLayer(scene, layer, z, layoutId, package_);
+            if (compiled) package_.layerPack.push(compiled);
+        }
+    }
+
+    /**
+     * One Scene Layer converges into one Layer Pack entry. `rect`
+     * (fractional, matching js/layerEngine.js's new optional field) is
+     * how a Scene's own free-form position/size survives — every
+     * pre-existing Layer Pack entry has no `rect` and keeps resolving
+     * via anchor/offset exactly as before. `scope` restricts this entry
+     * to the one Layout/Representation this Scene converged into, so
+     * one theme with many converged Scenes never cross-contaminates
+     * (renderer/slideRenderer.js's _activeLayerPack filters on it).
+     */
+    async convergeSceneLayer(scene, layer, zIndex, layoutId, package_) {
+        const position = layer.position || { x: 0, y: 0 };
+        const size = layer.size || { w: 0, h: 0 };
+        const rect = { x: position.x || 0, y: position.y || 0, w: size.w || 0, h: size.h || 0 };
+        const alpha = (typeof layer.opacity === 'number') ? layer.opacity : undefined;
+        const visible = !(layer.permissions && layer.permissions.visible === false);
+        // A true full-bleed fill (Scene Background, position 0,0 size
+        // 1,1 — see js/projectModel.js's setSceneBackground) is wall-
+        // level content that belongs BEHIND the Frame/Panel, exactly
+        // like Museum Gallery's own Gallery Spotlight Layer — so it
+        // converges onto the existing `target:'slide'` scope, which
+        // renders first. Every other Scene Layer (an image, partial-
+        // rect colour patch, or text) is foreground content authored to
+        // sit above the artwork — Engine V1's existing slide/frame/
+        // holder/element targets all render at specific points *inside*
+        // the Frame/Panel pipeline (some gated on a border/image
+        // existing at all), which is the wrong place for that. These
+        // converge onto the new `target:'overlay'` scope instead
+        // (renderer/slideRenderer.js's render(s), a 5th target painted
+        // unconditionally on top of everything).
+        const isFullBleed = rect.w >= 0.98 && rect.h >= 0.98;
+        const target = (layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay';
+        const base = {
+            id: 'scene-' + scene.id + '-' + layer.id,
+            target: target,
+            scope: layoutId,
+            rect: rect,
+            zIndex: zIndex,
+            visible: visible
+        };
+
+        if (layer.kind === 'text') {
+            return Object.assign({}, base, {
+                type: 'text',
+                anchor: 'top-left',
+                text: {
+                    content: layer.text || '',
+                    font: layer.font || 'Georgia, serif',
+                    size: layer.fontSize || 48,
+                    color: layer.color || '#333333'
+                }
+            });
+        }
+
+        if (layer.kind === 'fill') {
+            return Object.assign({}, base, {
+                type: 'decoration',
+                anchor: 'top-left',
+                decoration: { kind: 'fill', color: layer.color || '#F4F1EC', alpha: alpha }
+            });
+        }
+
+        if (layer.kind === 'decoration' && layer.image) {
+            const assetPath = this.externalizeSceneImage(scene, layer, package_);
+            return Object.assign({}, base, {
+                type: 'decoration',
+                anchor: 'top-left',
+                decoration: { kind: 'image', image: assetPath, fit: layer.fit || 'fill', alpha: alpha }
+            });
+        }
+
+        if (layer.kind === 'decoration') {
+            // A glyph-only Decoration (no image uploaded) has no Layer
+            // Pack decoration kind of its own — 'sticker' already IS
+            // "draw this glyph at this point" (Sprint 9.6's existing
+            // vocabulary), so it converges there instead of inventing a
+            // second glyph-drawing path.
+            return Object.assign({}, base, {
+                type: 'sticker',
+                anchor: 'top-left',
+                sticker: { glyph: layer.glyph || '✨', size: 36 }
+            });
+        }
+
+        return null;
+    }
+
+    /**
+     * A Scene Layer's `.image` field is always a raw data URI (Builder
+     * upload fields never write a project-relative asset path for
+     * Scene content — see js/projectModel.js's _syncUniversalContent) —
+     * so it must be externalized into the SAME package_.assets map
+     * every assets/*, preview.png and thumbnail.png entry already uses
+     * (packageTheme(), above), replacing it with a plain relative-path
+     * reference resolved at render time via
+     * ThemeRegistry.resolveAssetRef() — identical discipline to the
+     * Asset Repository Transition sprint's own externalization fix.
+     */
+    externalizeSceneImage(scene, layer, package_) {
+        const relPath = 'scenes/' + scene.id + '/' + layer.id + '.png';
+        if (typeof layer.image === 'string' && layer.image.indexOf('data:') === 0) {
+            package_.assets[relPath] = layer.image;
+        }
+        return relPath;
     }
 
     /**

@@ -931,9 +931,20 @@ const SlideRenderer=(()=>{
   // z-ordering and anchor resolution; every actual canvas-2d call
   // stays here, same discipline as the rest of this file.
   // ===========================================================
+  // Builder Convergence — a Scene's own Layer Pack entries are only
+  // ever meant for the one Layout that Scene converged into (a Layout
+  // id shared with the Scene-derived Representation's own `layout`
+  // field); without this filter every converged Scene's Layers would
+  // leak onto every other page using the same theme. A layer with no
+  // `scope` (every layer authored before this) always passes — the
+  // theme.layerPack global scheme every pre-existing theme relies on
+  // is completely unaffected.
   function _activeLayerPack(s){
     const theme=_layoutTheme(s);
-    return (theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
+    const pack=(theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
+    if(!pack) return null;
+    const chosenLayoutId=(s && s.metadata && s.metadata.layout) || null;
+    return pack.filter(function(l){ return !l || !l.scope || l.scope===chosenLayoutId; });
   }
 
   // Sprint 9.7 — a declarative Layer Pack entry (Handle / Page Number)
@@ -1055,9 +1066,17 @@ const SlideRenderer=(()=>{
   // rather than a bespoke drawing routine: 'paperTexture' (the same
   // mottled paper wash Holder-scope paper textures already use) and
   // 'shadowWash' (a soft vignette at the Slide's edges).
-  function _layerDrawDecoration(layer,anchor,rect){
+  // Builder Convergence — a converged Scene Layer's `decoration.kind`
+  // can be 'fill' (a solid-colour rect, the mirrored form of a Scene's
+  // Background/Colour content) or 'image' (a real uploaded/Experience
+  // image, the mirrored form of a Scene's Image/Graphics content).
+  // Both draw against `layerRect` (the layer's own free-form Scene
+  // position) when present, else the target rect — same fallback
+  // discipline as everywhere else in this convergence.
+  function _layerDrawDecoration(layer,anchor,rect,s,layerRect){
     const d=layer.decoration||{};
     const kind=d.kind||'spotlight';
+    const r=layerRect||rect;
     if(kind==='spotlight'){
       const radius=(typeof d.radius==='number')?d.radius:Math.max(rect.w,rect.h)*0.6;
       const alpha=(typeof d.alpha==='number')?d.alpha:0.12;
@@ -1072,15 +1091,64 @@ const SlideRenderer=(()=>{
       x.fillStyle=grad;
       x.fillRect(rect.x,rect.y,rect.w,rect.h);
       x.restore();
+    }else if(kind==='fill'){
+      x.save();
+      x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
+      x.fillStyle=d.color||'rgba(0,0,0,0.08)';
+      x.fillRect(r.x,r.y,r.w,r.h);
+      x.restore();
+    }else if(kind==='image'){
+      _layerDrawDecorationImage(d,r,s);
     }
+  }
+
+  // Same per-src Image cache + onload/redraw-nudge discipline
+  // _ensureStickerImage already established (line ~1509) — a second,
+  // parallel cache rather than reusing that one since sticker ids and
+  // asset references are different keyspaces, but identical mechanics.
+  const _decorationImgCache={};
+  function _ensureDecorationImage(src){
+    if(!src) return null;
+    if(_decorationImgCache[src]) return _decorationImgCache[src];
+    const img=new Image();
+    img.onload=function(){
+      img.__ready=true;
+      if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
+        try{ window.redrawPreview(); }catch(_){}
+      }
+    };
+    img.src=src;
+    _decorationImgCache[src]=img;
+    return img;
+  }
+  function _layerDrawDecorationImage(d,rect,s){
+    if(!d.image) return;
+    let src=d.image;
+    const theme=_layoutTheme(s);
+    const themeId=theme && theme.id;
+    if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+      try{ src=ThemeRegistry.resolveAssetRef(themeId,d.image)||d.image; }catch(e){}
+    }
+    const img=_ensureDecorationImage(src);
+    if(!img || !img.__ready || !img.width || !img.height) return;
+    const fit=d.fit||'fill';
+    x.save();
+    x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
+    x.beginPath(); x.rect(rect.x,rect.y,rect.w,rect.h); x.clip();
+    const iw=img.width, ih=img.height;
+    const base=fit==='fit' ? Math.min(rect.w/iw,rect.h/ih) : Math.max(rect.w/iw,rect.h/ih);
+    const dw=iw*base, dh=ih*base;
+    const dx=rect.x+rect.w/2-dw/2, dy=rect.y+rect.h/2-dh/2;
+    x.drawImage(img,dx,dy,dw,dh);
+    x.restore();
   }
 
   function _renderLayers(pack,target,rect,s){
     if(!pack || typeof LayerEngine==='undefined') return;
     LayerEngine.render(pack,target,rect,{
-      drawText:function(layer,anchor){ _layerDrawText(layer,anchor,rect,s); },
+      drawText:function(layer,anchor,r,layerRect){ _layerDrawText(layer,anchor,layerRect||rect,s); },
       drawSticker:function(layer,anchor){ _layerDrawSticker(layer,anchor,rect); },
-      drawDecoration:function(layer,anchor){ _layerDrawDecoration(layer,anchor,rect); }
+      drawDecoration:function(layer,anchor,r,layerRect){ _layerDrawDecoration(layer,anchor,rect,s,layerRect); }
     });
   }
 
@@ -1301,6 +1369,22 @@ const SlideRenderer=(()=>{
         _lastSceneElements.push(_stickerBbox(st));
       }
     }
+
+    // Builder Convergence Sprint — a 5th Layer Pack target, 'overlay',
+    // sitting on top of literally everything above (frame/image/
+    // decorations/footer/page number/legacy Scene elements/stickers),
+    // at full-canvas fractional coordinates. The existing four targets
+    // (slide/frame/holder/element, docs/THEME_PROJECT_SPEC.md §7/§11)
+    // all render at specific points *within* the Slide->Frame->Holder->
+    // Element containership chain, gated on a border/image existing —
+    // exactly wrong for a converged Scene's own foreground content
+    // (Decorations/Text authored to sit above the artwork, absolute
+    // Scene-canvas position), which needs to paint unconditionally, on
+    // top, regardless of whether this page even has a picture. No
+    // pre-existing theme ever sets `target:'overlay'` on a layer, so
+    // this is purely additive — zero effect on any theme that doesn't
+    // use it.
+    _renderLayers(_layerPack,'overlay',{x:0,y:0,w:W,h:H},s);
 
     // Drag guides (Sprint 4.4) — drawn under the selection outline so the
     // outline stays on top of the canvas center crosshair.

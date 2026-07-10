@@ -91,6 +91,7 @@ Layer's `target` may be: `slide`, `frame`, `holder`, `element`.
 |---|---|---|---|
 | `slide`, `frame`, `holder` | Yes | Yes — `renderer/slideRenderer.js` calls `_renderLayers(...)` for each | Aligned |
 | `element` | Yes — `validator.js`, `constants.js`'s `LAYER_TARGETS`, and World Builder's own Layer Pack editor all treat it as valid | **No, before this sprint** — `slideRenderer.js` never called `_renderLayers` for this scope at all | **Fixed this sprint** — see §8.2. |
+| `overlay` (added by the Builder Convergence Sprint) | Not authorable through World Builder's own Layer Pack editor or `validator.js`'s `LAYER_TARGETS` — it is only ever produced by `builder.js`'s Scene convergence (`convergeSceneLayer()`), never hand-authored | Yes — `renderer/slideRenderer.js` calls `_renderLayers(...)` for it, painted last, on top of everything | Aligned by construction (producer and consumer added together); see `docs/THEME_PROJECT_SPEC.md`'s "Builder Convergence Sprint — Scene Convergence" section for the full mapping (also documents the new `scope`/`rect` Layer fields and the `decoration.kind:"fill"`/`"image"` values). |
 
 ## 7. Assets (`assets/*` → the compiled `assets` map)
 
