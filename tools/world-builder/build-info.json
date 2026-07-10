@@ -1,10 +1,10 @@
 {
-  "version": "3.5.0",
+  "version": "3.6.0",
   "phase": "Repository Architecture Transition",
-  "milestone": "Closure Sprint — Publish Contract Alignment & MEP Finalization",
-  "slice": "Publish screen reorganized into separate Publish (Official/Personal Repository) and Export sections; 'World Package' terminology removed from Build/Publish screens; 'My Themes' renamed to 'Personal Themes'; Community World card removed outright (no disabled placeholder); MEP decisions (Asset Ownership, atomic Publish replace, no signed-URL persistence, Repository Independence) verified against the real implementation and locked in docs/THEME_REPOSITORY_ARCHITECTURE.md §11 and docs/WORLD_BUILDER_ARCHITECTURE.md LOCK 02",
-  "build": "0041",
+  "milestone": "Platform Status & Repository Reset",
+  "slice": "New standalone developer utility at tools/platform-status/ — Platform Health, Repository/Theme Registry/Studio stats via new ThemeRepositoryClient.getStats()/reset(), and a confirmation-gated Repository Reset action; fixed a real pre-existing bug where _resolveAssets() only listed one Storage folder level (nested assets like assets/textures/linen.png never resolved); added the delete RLS policies Reset requires to supabase/schema.sql",
+  "build": "0042",
   "buildDate": "2026-07-10",
-  "commit": "9c1796a",
+  "commit": "905938f",
   "environment": "Release"
 }
