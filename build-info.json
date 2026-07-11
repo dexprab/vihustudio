@@ -4,6 +4,6 @@
   "task": "Studio boot was showing the raw editor workspace briefly before Creation Flow's first screen appeared -- _startCreationFlow() (js/app.js) awaited a Supabase repository refresh (up to a 4s timeout) before calling CreationFlow.start(), the only call that hides #app. Fixed by calling CreationFlow.start() immediately and running the repository refresh in the background instead of blocking first paint -- Screen 1 doesn't read ThemeRegistry at all, and Screen 2 reads it live at render time, so themes published mid-refresh still show up by the time a user reaches Screen 2 in the common case. Verified via Playwright: #app stays display:none from the very first sample after DOMContentLoaded (no flash window at all, not just a shortened one), Screen 1 renders immediately, zero console errors. Both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
   "build": "0078",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "06b134b",
   "environment": "Release"
 }
