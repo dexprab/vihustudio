@@ -6357,6 +6357,13 @@
         if ((m = msg.match(/^(.+) "([^"]+)" references missing asset "([^"]+)"$/))) {
             return { why: 'This asset file hasn\'t been uploaded yet, so nothing would actually draw at runtime.', fixNav: 'assets', fixLabel: 'Open Assets and upload it' };
         }
+        if ((m = msg.match(/^(manifest\.thumbnail|metadata\.previewImage) references "([^"]+)" which does not exist in the project$/))) {
+            return { why: 'Thumbnail and Hero Image are uploaded from Overview, not Assets — this field is set automatically once you upload one there.', fixNav: 'overview', fixLabel: 'Open Overview and upload a Thumbnail/Hero Image' };
+        }
+        if ((m = msg.match(/^Missing (preview\.png|thumbnail\.png) \(recommended\)$/))) {
+            const label = m[1] === 'preview.png' ? 'Hero Image' : 'Thumbnail';
+            return { why: 'This is the picture a creator sees for this World before opening it — Overview is where it\'s uploaded.', fixNav: 'overview', fixLabel: 'Open Overview and upload a ' + label };
+        }
         return { why: null, fixNav: null, fixLabel: null };
     }
 
