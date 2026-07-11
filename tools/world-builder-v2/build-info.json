@@ -1,10 +1,10 @@
 {
-  "version": "3.13.1",
+  "version": "3.13.2",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "View Mode indicator mirrored into the header bar",
-  "slice": "View Mode (Build 0055) was only visible via the full-width banner below the header and via disabled Check & Build/Publish buttons -- nothing in the header bar itself said \"this is read-only,\" where a creator is already looking at World name and Save/Backup status. Adds a matching \"View Only\" chip beside \"All Changes Saved\"/\"Backed up\", same visibility rule (currentProjectReadOnly), same read-only red as the banner below.",
-  "build": "0056",
+  "milestone": "View Mode gaps closed — Aspect Ratio dropdown, Reset Workspace Layout",
+  "slice": "Two controls were still usable while an Official World was open in View Mode: the Scene Header's Aspect Ratio dropdown (hand-built outside the shared _select() helper that already gates read-only, so it was never disabled) and the overflow menu's Reset Workspace Layout (previously left enabled on purpose, since it only touches a local preference -- now disabled alongside Delete since it still reads as \"you can change something\" on a read-only World). Both gained visible :disabled styling so they read as clearly inert.",
+  "build": "0057",
   "buildDate": "2026-07-11",
-  "commit": "f544d3c",
+  "commit": "pending",
   "environment": "Release"
 }
