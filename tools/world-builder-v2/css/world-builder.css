@@ -240,6 +240,12 @@ html, body {
     color: #6B4A00;
     background: var(--wb-gold);
 }
+.wb-project-badge.muted {
+    color: var(--wb-text-secondary);
+    background: var(--wb-cream);
+    border: 1px dashed var(--wb-border);
+    cursor: help;
+}
 .wb-project-badge.error {
     color: #A13A2E;
     background: #FBE4E0;

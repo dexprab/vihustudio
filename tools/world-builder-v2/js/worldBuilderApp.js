@@ -133,11 +133,6 @@
                 window.ProjectStore.save(project);
                 renderMyWorlds();
             }],
-            ['⧉', 'Duplicate', function (e) {
-                e.stopPropagation();
-                window.ProjectStore.duplicate(project);
-                renderMyWorlds();
-            }],
             ['🗑', 'Delete', function (e) {
                 e.stopPropagation();
                 // Deletes only this Builder Project record (the
@@ -190,21 +185,58 @@
         _annotateProjectBadges(projects);
     }
 
+    // Stamps every project card's badge with the same text/class/tooltip
+    // — used for the diagnostic states below (unavailable/unconfigured/
+    // unreachable) where every card shares one explanation, as opposed
+    // to the per-card Personal/Official match further down.
+    function _markAllBadges(projects, text, cls, title) {
+        projects.forEach(function (project) {
+            const worldId = window.ProjectModel.manifest(project).id;
+            const card = worldId && myWorldsList.querySelector('[data-world-id="' + worldId.replace(/"/g, '') + '"]');
+            const badge = card && card.querySelector('.wb-project-badge');
+            if (!badge) return;
+            badge.textContent = text;
+            badge.className = 'wb-project-badge ' + cls;
+            if (title) badge.title = title;
+        });
+    }
+
     // world-builder-v2 — real Growing/Personal/Official badge. A Builder
     // Project's own status is always just "growing" (ProjectStore has no
     // concept of Publish/Promote at all); Personal/Official describe
     // whether this World's own id has actually been Published/Promoted
     // into a Repository — a separate system (ThemeRepositoryClient) with
     // no built-in cross-reference to ProjectStore. This resolves that
-    // cross-reference for real, asynchronously, and simply leaves a
-    // card's badge hidden (its pre-existing "growing" status text is
-    // already there) whenever the Repository is unconfigured/unreachable
-    // or this World was never actually published — never a guess.
+    // cross-reference for real, asynchronously.
+    //
+    // Every exit path below now leaves a visible trace on the card —
+    // an earlier version silently `return`ed on all three of "script
+    // didn't load," "Supabase isn't configured," and "fetch failed,"
+    // which made all three indistinguishable from "genuinely never
+    // published" (every card just stayed on plain "growing"). A Theme
+    // Author who really had published had no way to tell "it's not
+    // showing because nothing's configured" from "it's not showing
+    // because something's broken" from "it's not showing, wait, did my
+    // Publish even work?" — this makes each state say which one it is.
     async function _annotateProjectBadges(projects) {
-        if (!window.ThemeRepositoryClient) return;
+        if (!window.ThemeRepositoryClient) {
+            _markAllBadges(projects, '⚪ Repository unavailable', 'muted', 'js/themeRepositoryClient.js did not load in this deployment.');
+            return;
+        }
+        let configured;
+        try {
+            configured = await window.ThemeRepositoryClient.isConfigured();
+        } catch (e) {
+            console.error('World Builder: ThemeRepositoryClient.isConfigured() threw', e);
+            _markAllBadges(projects, '⚠️ Repository check failed', 'error', (e && e.message) || 'See browser console for details.');
+            return;
+        }
+        if (!configured) {
+            _markAllBadges(projects, '⚪ Not connected to a Repository', 'muted', 'supabase-config.json is missing or empty in this deployment — Publish/Promote in the Workspace will show the same message.');
+            return;
+        }
         let personalRows, officialRows;
         try {
-            if (!(await window.ThemeRepositoryClient.isConfigured())) return;
             const results = await Promise.all([
                 window.ThemeRepositoryClient.list('personal'),
                 window.ThemeRepositoryClient.list('official')
@@ -212,23 +244,8 @@
             personalRows = results[0];
             officialRows = results[1];
         } catch (e) {
-            // Previously a silent `return` here made "Repository
-            // unreachable" and "genuinely never published" look
-            // identical — a card just stayed on plain "growing" either
-            // way, with nothing to tell a Theme Author which one they
-            // were looking at after a real Publish. Logging the real
-            // error (visible in devtools) plus a visible ⚠ badge turns
-            // that into a diagnosable state instead of a silent no-op.
             console.error('World Builder: could not check Repository status for My World Projects', e);
-            projects.forEach(function (project) {
-                const worldId = window.ProjectModel.manifest(project).id;
-                const card = worldId && myWorldsList.querySelector('[data-world-id="' + worldId.replace(/"/g, '') + '"]');
-                const badge = card && card.querySelector('.wb-project-badge');
-                if (!badge) return;
-                badge.textContent = '⚠️ Couldn’t check Repository';
-                badge.title = (e && e.message) || 'See browser console for details.';
-                badge.className = 'wb-project-badge error';
-            });
+            _markAllBadges(projects, '⚠️ Couldn’t check Repository', 'error', (e && e.message) || 'See browser console for details.');
             return;
         }
         const personalIds = new Set((personalRows || []).map(function (r) { return r.theme_id; }));
