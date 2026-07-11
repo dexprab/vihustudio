@@ -1164,7 +1164,10 @@ html, body {
 .wb-working-canvas-wrap {
     /* Draggable via #wb-resize-stage — Runtime Preview's own flex:1
        fills whatever's left, so this is the only side that needs a
-       persisted share of the main axis. */
+       persisted share of the main axis. Deliberately no background of
+       its own — the column's own cream shows through around it, so the
+       aspect-locked card below is the only bounded rectangle on
+       screen, and it always matches the Scene's real shape. */
     flex: 0 0 var(--wb-stage-split, 60%);
     min-height: 0;
     min-width: 0;
@@ -1285,15 +1288,21 @@ html, body {
    world-builder-v2 — nested inside Working View's own column as a
    second flex stage (see .wb-working-stages above) rather than a
    separate grid aside; the dock toggle decides whether it sits beside
-   or beneath the editing canvas. */
+   or beneath the editing canvas.
+
+   Deliberately no background/border/padding "card" of its own — that
+   used to fill this block's entire flex share regardless of the
+   Scene's own shape, so a Square or Landscape Scene sat inside a big
+   loose sand-coloured rectangle that visibly didn't match it. The only
+   visible boundary now is .wb-runtime-preview-canvas-inner below,
+   which is the aspect-ratio-locked box itself — the same "the stage
+   IS the shaped card, nothing looser around it" rule the approved
+   Working View reference already uses for the editing canvas. */
 .wb-runtime-preview-block {
     flex: 1;
     min-height: 0;
     min-width: 0;
-    padding: 8px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--wb-border);
-    background: var(--wb-sand);
+    padding: 4px 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1355,7 +1364,11 @@ html, body {
 }
 
 /* AV-001 — same before-first-render fallback as
-   .wb-working-canvas-inner above; overridden inline per-Scene. */
+   .wb-working-canvas-inner above; overridden inline per-Scene. Now the
+   only visible boundary in Runtime Preview (the old surrounding
+   .wb-runtime-preview-block "card" was removed above) — the dashed
+   border is this box's own visual cue that it's a live preview, not a
+   second copy of Working View's solid-shadow editing card. */
 .wb-runtime-preview-canvas-inner {
     width: auto;
     height: auto;
@@ -1363,6 +1376,7 @@ html, body {
     max-height: 100%;
     aspect-ratio: 1080 / 1350;
     border-radius: 8px;
+    border: 1.5px dashed var(--wb-gold);
     box-shadow: 0 6px 16px var(--wb-shadow);
     overflow: hidden;
     background: #fff;
