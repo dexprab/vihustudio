@@ -4,6 +4,6 @@
   "task": "All 8 Official themes (OFFICIAL_THEMES, OFFICIAL_ARTWORK_THEMES) commented out in js/themeRegistry.js -- preserved, not deleted -- along with their registerOfficial() calls. Studio now boots with zero built-in themes, relying entirely on imported/published themes (Import or a configured Repository). storybook-classic stays the hardcoded default project theme id / Runtime fallback by explicit decision, left unresolved rather than rewired. Verified via Playwright: ThemeRegistry.list() returns 0, zero console errors, Creation Flow's existing empty states (Screen 1 unaffected, Screen 2's \"No worlds published yet\") handle the zero-theme state gracefully with no new code needed. Both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
   "build": "0077",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "7dd7c44",
   "environment": "Release"
 }
