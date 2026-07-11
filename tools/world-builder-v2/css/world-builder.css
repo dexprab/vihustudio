@@ -151,12 +151,16 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 18px;
+    /* Extra right padding reserves room for the corner-anchored Rename/
+       Delete controls (see .wb-project-card-controls below) so the name/
+       meta-line never runs underneath them. */
+    padding: 18px 78px 18px 18px;
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);
     border-radius: 16px;
     box-shadow: 0 4px 12px var(--wb-shadow);
     cursor: default;
+    position: relative;
 }
 
 .wb-project-card {
@@ -263,7 +267,13 @@ html, body {
     display: flex;
     gap: 4px;
     flex-shrink: 0;
-    margin-left: auto;
+    /* Anchored to the card's own top-right corner instead of sitting
+       inline at the end of the row — inline placement put these buttons
+       at the row's vertical center, where they visually collided with
+       the status/badge chip line beneath the name. */
+    position: absolute;
+    top: 10px;
+    right: 10px;
 }
 
 .wb-project-card-btn {
