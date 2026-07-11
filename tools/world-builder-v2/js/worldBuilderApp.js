@@ -451,11 +451,50 @@
     const workingOverlays = $('wb-working-overlays');
     const runtimePreviewCanvas = $('wb-runtime-preview-canvas');
     const previewSelector = $('wb-preview-selector');
-    const contextPanel = $('wb-context-panel');
+    let contextPanel = $('wb-context-panel');
     const experiencesPanel = $('wb-experiences-panel');
 
+    // world-builder-v2 — Global Nav retired: World/Check & Build/Publish
+    // and the legacy Engine V1 management screens (Representations/
+    // Layouts/Frames/Layer Packs/Assets) all now open as a modal layered
+    // on top of the always-visible workspace, instead of a mutually-
+    // exclusive tab. `currentNav` keeps its exact pre-existing meaning
+    // and every pre-existing dispatch site is unchanged — only where
+    // that dispatch's OUTPUT gets mounted (into #wb-modal-body instead
+    // of #wb-context-panel) is new. 'scenes' is the one non-modal,
+    // "resting" value.
+    const MODAL_NAVS = new Set(['overview', 'checkbuild', 'publish', 'representations', 'layouts', 'frames', 'layerpacks', 'assets']);
+    // Working View keeps showing its own real content (the open Scene,
+    // or the Experience Studio) behind most modals — only these navs
+    // have a genuine Working View "specimen" of their own (AV-005's
+    // already-correct Frame/Layout/Representation specimen editor, and
+    // the Experience Studio), so every other modal nav (Overview/
+    // Check&Build/Publish/Layer Packs/Assets) leaves Working View
+    // showing the Scene/inactive-state exactly as if nav were 'scenes'.
+    const WORKING_VIEW_PASSTHROUGH_NAVS = new Set(['representations', 'layouts', 'frames', 'experiences']);
+    function _workingViewNav() {
+        if (MODAL_NAVS.has(currentNav) && !WORKING_VIEW_PASSTHROUGH_NAVS.has(currentNav)) return 'scenes';
+        return currentNav;
+    }
+    const modalOverlay = $('wb-modal');
+    const modalBody = $('wb-modal-body');
+    const modalTitleEl = $('wb-modal-title');
+    const modalCloseBtn = $('wb-modal-close');
+    const MODAL_TITLES = {
+        overview: '🌍 World Settings', checkbuild: '✅ Check & Build', publish: '📤 Publish',
+        representations: '🎭 Representations', layouts: '📐 Layouts', frames: '🖼️ Frames',
+        layerpacks: '🧩 Layer Packs', assets: '📦 Assets'
+    };
+    function _closeModal() {
+        currentNav = 'scenes';
+        _renderNav();
+        _renderWorkspace();
+    }
+    modalCloseBtn.addEventListener('click', _closeModal);
+    modalOverlay.querySelector('.wb-modal-backdrop').addEventListener('click', _closeModal);
+
     let currentProject = null;
-    let currentNav = 'overview';
+    let currentNav = 'scenes';
     // Scenes+Experiences simultaneous view — 'scene' shows only what's
     // hosted in the currently open Scene, 'all' shows every Theme
     // Experience (Nurturing excluded, same rule the Gallery itself uses).
@@ -486,6 +525,13 @@
     let currentActivity = 'place';
     let currentInspectorTarget = null;
     let scenesShowingTemplatePicker = false;
+    // world-builder-v2 — Scenes strip reorder mode (session-only, not
+    // persisted): toggles whether each strip card shows its ↑/↓
+    // controls, mirroring the same reorder affordance the old Scenes
+    // Library grid already had per card, just opt-in here since the
+    // strip is visible at all times and reorder controls aren't needed
+    // on every glance at it.
+    let scenesReorderMode = false;
 
     workspaceHome.addEventListener('click', showWelcome);
 
@@ -515,6 +561,57 @@
         _renderNav();
         _renderWorkspace();
     });
+
+    // world-builder-v2 — Check & Build and Publish move from Nav tabs to
+    // top-bar pill buttons, each opening the exact same, unmodified
+    // _renderCheckBuildPanel()/_renderPublishPanel() content as a modal.
+    const btnCheckBuild = $('wb-btn-checkbuild');
+    const btnPublish = $('wb-btn-publish');
+    btnCheckBuild.addEventListener('click', function () {
+        currentNav = 'checkbuild';
+        _renderWorkspace();
+    });
+    btnPublish.addEventListener('click', function () {
+        currentNav = 'publish';
+        _renderWorkspace();
+    });
+
+    // Status pill — a live Errors/Warnings readout in the top bar,
+    // summed across all three independent validation reports
+    // (World Contract/Scenes/Experiences, LOCK V2-04 — never merged
+    // into one). Validation itself stays manual (pressing "Run
+    // Validation" inside the Check & Build modal), so the pill reflects
+    // the last run's result rather than performing an expensive
+    // Blob-based check on every render; before any run, it stays
+    // hidden rather than fabricating a status nothing has checked yet.
+    const statusPillEl = $('wb-status-pill');
+    function _renderStatusPill() {
+        if (!lastValidation && !lastSceneValidation && !lastExperienceValidation) {
+            statusPillEl.classList.add('wb-hidden');
+            return;
+        }
+        let errors = 0, warnings = 0;
+        [lastValidation, lastSceneValidation].forEach(function (r) {
+            if (!r) return;
+            errors += r.errors.length;
+            warnings += r.warnings.length;
+        });
+        // validateExperiences() returns a plain findings array (every
+        // entry `level:'error'` today — see _renderExperienceValidationSection,
+        // the same treatment this mirrors), not the {errors,warnings}
+        // shape the other two engines share.
+        if (lastExperienceValidation) errors += lastExperienceValidation.length;
+        statusPillEl.innerHTML = '';
+        const errorItem = document.createElement('span');
+        errorItem.className = 'wb-status-pill-item';
+        errorItem.innerHTML = '<span class="wb-status-pill-dot ' + (errors ? 'error' : 'ok') + '"></span>' + errors + ' Error' + (errors === 1 ? '' : 's');
+        const warnItem = document.createElement('span');
+        warnItem.className = 'wb-status-pill-item';
+        warnItem.innerHTML = '<span class="wb-status-pill-dot ' + (warnings ? 'warn' : 'ok') + '"></span>' + warnings + ' Warning' + (warnings === 1 ? '' : 's');
+        statusPillEl.appendChild(errorItem);
+        statusPillEl.appendChild(warnItem);
+        statusPillEl.classList.remove('wb-hidden');
+    }
 
     // Sprint B2.0.6 — Editing Confidence. "Draft Saved" was a single,
     // static label that never actually told a creator whether their
@@ -605,23 +702,21 @@
     // ---------------------------------------------------------------
 
     const WORKSPACE_LAYOUT_KEY = 'vihustudio.worldBuilder.workspaceLayout';
-    // Vision §4's own explicit warning: a naive equal three-way split
-    // would under-serve Context Inspector, so its default (420px) is
-    // deliberately generous relative to Runtime Preview's (340px) —
-    // Working View largest, Context Inspector medium, Runtime Preview
-    // smallest, per its own lower edit-frequency role (v1.1). Experiences
-    // (world-builder-v2's fourth column, present only while a Scene is
-    // open) gets its own smaller default (280px) between Inspector and
-    // Runtime Preview.
-    const LAYOUT_DEFAULTS = { runtimeW: 340, inspectorW: 420, experiencesW: 280, dock: 'horizontal' };
-    const INSPECTOR_PCT_MIN = 0.25, INSPECTOR_PCT_MAX = 0.65; // Working View >=35%, Context Inspector >=25% of the Working+Inspector share
-    const RUNTIME_W_MIN = 260, RUNTIME_PCT_MAX = 0.4; // Runtime Preview never exceeds 40% of the full workspace width, and has a smaller floor since it's the smallest pane
+    // world-builder-v2 — Runtime Preview no longer has its own grid
+    // track (it nests inside Working View's own column, see
+    // .wb-working-stages), so --wb-runtime-w/runtimeW/RUNTIME_* are
+    // retired; only Context Inspector's and Experiences' widths, plus
+    // the Scenes strip's own height, are still persisted.
+    const LAYOUT_DEFAULTS = { inspectorW: 420, experiencesW: 280, scenesH: 220, dock: 'horizontal' };
+    const INSPECTOR_PCT_MIN = 0.25, INSPECTOR_PCT_MAX = 0.65; // Working View >=35%, Context Inspector >=25% of the Working+Inspector+Experiences share
     const EXPERIENCES_W_MIN = 220, EXPERIENCES_PCT_MAX = 0.3;
+    const SCENES_H_MIN = 96, SCENES_PCT_MAX = 0.45;
 
     const workspaceBody = $('wb-workspace-body');
-    const resizeRuntime = $('wb-resize-runtime');
+    const scenesStripWrap = $('wb-scenes-strip-wrap');
     const resizeInspector = $('wb-resize-inspector');
     const resizeExperiences = $('wb-resize-experiences');
+    const resizeScenes = $('wb-resize-scenes');
 
     function _loadWorkspaceLayout() {
         try {
@@ -629,9 +724,9 @@
             if (!raw) return Object.assign({}, LAYOUT_DEFAULTS);
             const parsed = JSON.parse(raw);
             return {
-                runtimeW: typeof parsed.runtimeW === 'number' ? parsed.runtimeW : LAYOUT_DEFAULTS.runtimeW,
                 inspectorW: typeof parsed.inspectorW === 'number' ? parsed.inspectorW : LAYOUT_DEFAULTS.inspectorW,
                 experiencesW: typeof parsed.experiencesW === 'number' ? parsed.experiencesW : LAYOUT_DEFAULTS.experiencesW,
+                scenesH: typeof parsed.scenesH === 'number' ? parsed.scenesH : LAYOUT_DEFAULTS.scenesH,
                 dock: parsed.dock === 'vertical' ? 'vertical' : LAYOUT_DEFAULTS.dock
             };
         } catch (e) {
@@ -647,20 +742,24 @@
 
     function _applyWorkspaceLayout() {
         const layout = _loadWorkspaceLayout();
-        workspaceBody.style.setProperty('--wb-runtime-w', layout.runtimeW + 'px');
         workspaceBody.style.setProperty('--wb-inspector-w', layout.inspectorW + 'px');
         workspaceBody.style.setProperty('--wb-experiences-w', layout.experiencesW + 'px');
+        scenesStripWrap.style.setProperty('--wb-scenes-h', layout.scenesH + 'px');
         _applyDock(layout.dock);
     }
 
-    // Working View / Runtime Preview dock — "horizontal" (side by side)
-    // is the real, pre-existing shape; "vertical" (stacked) is the one
-    // new alternative, toggled from Working View's own heading.
+    // Working View's two internal stages (its own editing canvas, and
+    // Runtime Preview nested beside/beneath it) — "horizontal" (side by
+    // side) is the real, pre-existing default; "vertical" (stacked) is
+    // the one alternative, toggled from Working View's own heading. No
+    // longer a grid-level toggle (Runtime Preview isn't a grid column
+    // any more) — just a flex-direction switch on #wb-working-stages.
     const dockHorizontalBtn = $('wb-dock-horizontal');
     const dockVerticalBtn = $('wb-dock-vertical');
+    const workingStages = $('wb-working-stages');
 
     function _applyDock(dock) {
-        workspaceBody.classList.toggle('wb-dock-vertical', dock === 'vertical');
+        workingStages.classList.toggle('wb-stage-stack', dock === 'vertical');
         dockHorizontalBtn.classList.toggle('active', dock !== 'vertical');
         dockVerticalBtn.classList.toggle('active', dock === 'vertical');
     }
@@ -676,23 +775,25 @@
     dockVerticalBtn.addEventListener('click', function () { _setDock('vertical'); });
 
     // Collapsible panels (world-builder-v2) — a collapse button on
-    // Context Inspector, Experiences, and Runtime Preview shrinks that
-    // column to a narrow icon-only rail without losing its resized width,
-    // which is simply re-applied the next time it's expanded. Session-
-    // only state (not persisted), independent of the resize/dock
-    // preferences above.
+    // Context Inspector, Experiences, and Scenes shrinks that region to
+    // a narrow rail without losing its resized width/height, which is
+    // simply re-applied the next time it's expanded. Session-only state
+    // (not persisted), independent of the resize/dock preferences above.
+    // Working View/Runtime Preview are never collapsible — collapsing
+    // the one editing canvas isn't a useful affordance, and Runtime
+    // Preview no longer has an independent track of its own to collapse.
     const COLLAPSED_TRACK_W = 44;
+    const COLLAPSED_TRACK_H = 44;
     const inspectorWrap = $('wb-inspector-wrap');
     const experiencesWrapEl = $('wb-experiences-wrap');
-    const runtimeWrapEl = $('wb-runtime-preview-wrap');
     const collapseInspectorBtn = $('wb-collapse-inspector');
     const collapseExperiencesBtn = $('wb-collapse-experiences');
-    const collapseRuntimeBtn = $('wb-collapse-runtime');
-    const panelCollapsed = { inspector: false, experiences: false, runtime: false };
+    const collapseScenesBtn = $('wb-collapse-scenes');
+    const panelCollapsed = { inspector: false, experiences: false, scenes: false };
     const PANEL_COLLAPSE_META = {
-        inspector: { wrap: inspectorWrap, btn: collapseInspectorBtn, cssVar: '--wb-inspector-w', layoutKey: 'inspectorW' },
-        experiences: { wrap: experiencesWrapEl, btn: collapseExperiencesBtn, cssVar: '--wb-experiences-w', layoutKey: 'experiencesW' },
-        runtime: { wrap: runtimeWrapEl, btn: collapseRuntimeBtn, cssVar: '--wb-runtime-w', layoutKey: 'runtimeW' }
+        inspector: { wrap: inspectorWrap, btn: collapseInspectorBtn, cssVar: '--wb-inspector-w', layoutKey: 'inspectorW', target: workspaceBody, collapsedSize: COLLAPSED_TRACK_W },
+        experiences: { wrap: experiencesWrapEl, btn: collapseExperiencesBtn, cssVar: '--wb-experiences-w', layoutKey: 'experiencesW', target: workspaceBody, collapsedSize: COLLAPSED_TRACK_W },
+        scenes: { wrap: scenesStripWrap, btn: collapseScenesBtn, cssVar: '--wb-scenes-h', layoutKey: 'scenesH', target: scenesStripWrap, collapsedSize: COLLAPSED_TRACK_H }
     };
 
     function _applyPanelCollapse(which) {
@@ -701,14 +802,10 @@
         meta.wrap.classList.toggle('wb-panel-collapsed', collapsed);
         meta.btn.classList.toggle('wb-collapse-btn-collapsed', collapsed);
         if (collapsed) {
-            workspaceBody.style.setProperty(meta.cssVar, COLLAPSED_TRACK_W + 'px');
+            meta.target.style.setProperty(meta.cssVar, meta.collapsedSize + 'px');
         } else {
             const layout = _loadWorkspaceLayout();
-            workspaceBody.style.setProperty(meta.cssVar, layout[meta.layoutKey] + 'px');
-            // Runtime Preview's canvas backing store can go stale while
-            // its column is width:44px — force a real redraw once it has
-            // its real width back, rather than leaving it blurry/cropped.
-            if (which === 'runtime') _renderPreview();
+            meta.target.style.setProperty(meta.cssVar, layout[meta.layoutKey] + 'px');
         }
     }
 
@@ -719,7 +816,7 @@
 
     collapseInspectorBtn.addEventListener('click', function () { _toggleCollapse('inspector'); });
     collapseExperiencesBtn.addEventListener('click', function () { _toggleCollapse('experiences'); });
-    collapseRuntimeBtn.addEventListener('click', function () { _toggleCollapse('runtime'); });
+    collapseScenesBtn.addEventListener('click', function () { _toggleCollapse('scenes'); });
 
     // Reset Workspace Layout (three-dot menu) — clears the persisted
     // preference and reapplies the shipped defaults immediately, on
@@ -729,26 +826,27 @@
         _applyWorkspaceLayout();
     }
 
-    // One shared drag driver for both handles — each just supplies how
-    // to read/clamp/write its own dimension from a pointer position. The
-    // Navigation sash retired along with the left sidebar it used to
-    // resize (Builder V2 — Vision §1 moves Navigation to a top bar with
-    // nothing left to drag).
+    // One shared drag driver for both vertical (column-resize) handles
+    // — each just supplies how to read/clamp/write its own dimension
+    // from a pointer position. The Navigation sash retired along with
+    // the left sidebar it used to resize (Builder V2 — Vision §1 moves
+    // Navigation to a top bar with nothing left to drag).
     function _wireResizeHandle(handle, onDrag) {
         handle.addEventListener('mousedown', function (e) {
             e.preventDefault();
             handle.classList.add('wb-resize-dragging');
             const bodyRect = workspaceBody.getBoundingClientRect();
-            function move(ev) { onDrag(ev, bodyRect); }
+            const scenesRect = scenesStripWrap.getBoundingClientRect();
+            function move(ev) { onDrag(ev, bodyRect, scenesRect); }
             function up() {
                 handle.classList.remove('wb-resize-dragging');
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
                 const layout = _loadWorkspaceLayout();
-                const current = getComputedStyle(workspaceBody);
-                layout.runtimeW = parseFloat(current.getPropertyValue('--wb-runtime-w')) || layout.runtimeW;
-                layout.inspectorW = parseFloat(current.getPropertyValue('--wb-inspector-w')) || layout.inspectorW;
-                layout.experiencesW = parseFloat(current.getPropertyValue('--wb-experiences-w')) || layout.experiencesW;
+                const bodyStyle = getComputedStyle(workspaceBody);
+                layout.inspectorW = parseFloat(bodyStyle.getPropertyValue('--wb-inspector-w')) || layout.inspectorW;
+                layout.experiencesW = parseFloat(bodyStyle.getPropertyValue('--wb-experiences-w')) || layout.experiencesW;
+                layout.scenesH = parseFloat(getComputedStyle(scenesStripWrap).getPropertyValue('--wb-scenes-h')) || layout.scenesH;
                 _saveWorkspaceLayout(layout);
             }
             document.addEventListener('mousemove', move);
@@ -756,50 +854,49 @@
         });
     }
 
-    // The Experiences column (world-builder-v2) only occupies a track
-    // when a Scene is open (`.wb-has-exp-col`) — every boundary
-    // calculation below reads its current width only when that class is
-    // present, so nothing shifts when it's hidden.
-    function _experiencesTrackW() {
-        if (!workspaceBody.classList.contains('wb-has-exp-col')) return 0;
-        const w = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-experiences-w')) || LAYOUT_DEFAULTS.experiencesW;
-        return w + 6; // its own column plus its own sash
-    }
-
     // Working View ↔ Context Inspector boundary. Bounded as a percentage
     // of the width available to those two columns alone (total width
-    // minus every sash minus Runtime Preview's and, when present,
-    // Experiences' own current width), so resizing either of those first
-    // and then this sash still yields sane Working/Inspector proportions.
+    // minus every sash minus Experiences' own current width), so
+    // resizing either sash first still yields sane proportions.
     _wireResizeHandle(resizeInspector, function (e, bodyRect) {
-        const runtimeW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-runtime-w')) || LAYOUT_DEFAULTS.runtimeW;
-        const expTrackW = _experiencesTrackW();
-        const combinedW = bodyRect.width - 12 - expTrackW - runtimeW; // both fixed sashes + Runtime/Experiences columns
+        const expTrackW = (parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-experiences-w')) || LAYOUT_DEFAULTS.experiencesW) + 6;
+        const combinedW = bodyRect.width - 12 - expTrackW; // both fixed sashes + Experiences' own column
         if (combinedW <= 0) return;
-        const rightEdge = bodyRect.right - expTrackW - runtimeW - 6; // boundary of Context Inspector's own right edge
+        const rightEdge = bodyRect.right - expTrackW - 6; // boundary of Context Inspector's own right edge
         const inspectorW = Math.min(combinedW * INSPECTOR_PCT_MAX, Math.max(combinedW * INSPECTOR_PCT_MIN, rightEdge - e.clientX));
         workspaceBody.style.setProperty('--wb-inspector-w', inspectorW + 'px');
     });
 
-    // Context Inspector ↔ Experiences boundary (world-builder-v2, only
-    // draggable while the Experiences column is actually shown). Its
-    // width is the distance from the cursor to Runtime Preview's own
-    // left edge.
+    // Context Inspector ↔ Experiences boundary. Experiences is the
+    // rightmost column, so its width is simply the distance from the
+    // cursor to the workspace's own right edge.
     _wireResizeHandle(resizeExperiences, function (e, bodyRect) {
-        const runtimeW = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-runtime-w')) || LAYOUT_DEFAULTS.runtimeW;
-        const rightEdge = bodyRect.right - runtimeW - 6;
-        const maxW = Math.min(bodyRect.width * EXPERIENCES_PCT_MAX, bodyRect.width - 12 - runtimeW - 300);
-        const experiencesW = Math.min(maxW, Math.max(EXPERIENCES_W_MIN, rightEdge - e.clientX));
+        const maxW = Math.min(bodyRect.width * EXPERIENCES_PCT_MAX, bodyRect.width - 12 - 300);
+        const experiencesW = Math.min(maxW, Math.max(EXPERIENCES_W_MIN, bodyRect.right - e.clientX));
         workspaceBody.style.setProperty('--wb-experiences-w', experiencesW + 'px');
     });
 
-    // Experiences/Context Inspector ↔ Runtime Preview boundary. Runtime
-    // Preview is the rightmost column, so its width is simply the
-    // distance from the cursor to the workspace's own right edge.
-    _wireResizeHandle(resizeRuntime, function (e, bodyRect) {
-        const maxW = Math.min(bodyRect.width * RUNTIME_PCT_MAX, bodyRect.width - 12 - 300);
-        const runtimeW = Math.min(maxW, Math.max(RUNTIME_W_MIN, bodyRect.right - e.clientX));
-        workspaceBody.style.setProperty('--wb-runtime-w', runtimeW + 'px');
+    // Scenes strip height — a horizontal (row-resize) sash above the
+    // strip, dragging its own height rather than a width.
+    resizeScenes.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        resizeScenes.classList.add('wb-resize-dragging');
+        function move(ev) {
+            const workspaceRect = document.getElementById('wb-screen-workspace').getBoundingClientRect();
+            const maxH = Math.min(workspaceRect.height * SCENES_PCT_MAX, workspaceRect.height - 200);
+            const scenesH = Math.min(maxH, Math.max(SCENES_H_MIN, workspaceRect.bottom - ev.clientY));
+            scenesStripWrap.style.setProperty('--wb-scenes-h', scenesH + 'px');
+        }
+        function up() {
+            resizeScenes.classList.remove('wb-resize-dragging');
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+            const layout = _loadWorkspaceLayout();
+            layout.scenesH = parseFloat(getComputedStyle(scenesStripWrap).getPropertyValue('--wb-scenes-h')) || layout.scenesH;
+            _saveWorkspaceLayout(layout);
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
     });
 
     // ---------------------------------------------------------------
@@ -1051,7 +1148,11 @@
 
     function openWorkspace(project) {
         currentProject = project;
-        currentNav = 'overview';
+        // world-builder-v2 — 'scenes' is the one resting, non-modal nav:
+        // Working View/Context Inspector/Experiences/Scenes strip are
+        // always visible, so a brand-new World opens straight onto them
+        // instead of into the World Settings modal.
+        currentNav = 'scenes';
 
         // Frame Reference Integrity fix — a Frame deleted before this fix
         // shipped could leave a Representation's `defaultFrame` (or a
@@ -1079,6 +1180,7 @@
         currentLayerId = null;
         lastValidation = null;
         lastSceneValidation = null;
+        lastExperienceValidation = null;
         currentSceneId = null;
         currentActivity = 'place';
         currentInspectorTarget = null;
@@ -1184,11 +1286,12 @@
 
     function _renderWorkspace() {
         _saveEditingContext();
-        workspaceBody.classList.toggle('wb-has-exp-col', currentNav === 'scenes' && !!currentSceneId);
         _renderSceneHeader();
         _renderPreview();
         _renderContextPanel();
         _renderScenesExperiencesSidebar();
+        _renderScenesStrip();
+        _renderStatusPill();
     }
 
     // ---------- Working View + Runtime Preview (Sprint B2.0.3) ----------
@@ -1213,8 +1316,9 @@
         // instead of the generic World identity card — Experience Home's
         // own grid view (nothing selected yet) keeps the identity card,
         // since there's still no single object to isolate there.
-        if (currentNav === 'experiences') return !experienceInspectorId;
-        return currentNav === 'overview' && window.ProjectModel.representations(currentProject).length === 0;
+        const nav = _workingViewNav();
+        if (nav === 'experiences') return !experienceInspectorId;
+        return nav === 'overview' && window.ProjectModel.representations(currentProject).length === 0;
     }
 
     function _renderIdentityCard(target) {
@@ -1522,22 +1626,27 @@
         const body = document.createElement('p');
         body.className = 'wb-inactive-state-body';
         body.textContent = hasAnyScenes
-            ? 'Select a Scene to begin authoring.'
+            ? 'Select a Scene from the strip below to begin authoring.'
             : 'Create your first Scene to begin authoring.';
-        const cta = document.createElement('button');
-        cta.type = 'button';
-        cta.className = 'wb-add-btn';
-        cta.textContent = hasAnyScenes ? 'Go to Scenes' : '+ Create Scene';
-        cta.addEventListener('click', function () {
-            currentNav = 'scenes';
-            if (!hasAnyScenes) scenesShowingTemplatePicker = true;
-            _renderNav();
-            _renderWorkspace();
-        });
         panel.appendChild(icon);
         panel.appendChild(title);
         panel.appendChild(body);
-        panel.appendChild(cta);
+        // world-builder-v2 — Scenes is a permanent strip now, always
+        // visible right below Working View, so "go to Scenes" has
+        // nothing left to navigate to when at least one already exists;
+        // only the zero-Scenes case still needs a real CTA (opening the
+        // Scene Template picker, Engine Invariant 4).
+        if (!hasAnyScenes) {
+            const cta = document.createElement('button');
+            cta.type = 'button';
+            cta.className = 'wb-add-btn';
+            cta.textContent = '+ Create Scene';
+            cta.addEventListener('click', function () {
+                scenesShowingTemplatePicker = true;
+                _renderWorkspace();
+            });
+            panel.appendChild(cta);
+        }
 
         _renderRuntimePreviewEmpty(hasAnyScenes
             ? 'Runtime Preview becomes available once a Scene is open.'
@@ -1584,7 +1693,7 @@
             experienceInspectorId = null; // stale reference — fall through to the normal dispatch below
         }
 
-        if (currentNav === 'scenes') {
+        if (_workingViewNav() === 'scenes') {
             return _renderScenesWorkingView();
         }
 
@@ -1638,7 +1747,7 @@
     }
 
     function _renderSceneHeader() {
-        const scene = (currentNav === 'scenes' && currentSceneId) ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
+        const scene = (_workingViewNav() === 'scenes' && currentSceneId) ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
         if (!scene) {
             sceneHeaderEl.classList.add('wb-hidden');
             sceneHeaderEl.innerHTML = '';
@@ -1992,23 +2101,39 @@
         // project-scoped rather than editor-scoped (unlike Working View,
         // which only shows the Scene editor while Scenes nav is open).
         _drawSceneCanvas(runtimePreviewCanvas, scene, { guides: false, interactive: false });
-        if (currentNav === 'scenes') {
+        if (_workingViewNav() === 'scenes') {
             _drawSceneCanvas(workingCanvas, scene, { guides: true, interactive: true });
         }
     }
 
     function _renderScenesWorkingView() {
+        // world-builder-v2 — Scenes now has its own permanent strip
+        // beneath the workspace (see _renderScenesStrip), so Working
+        // View no longer duplicates that browsing grid when no Scene is
+        // open. The one thing it still shows here is the Scene Template
+        // picker (Engine Invariant 4 — a new Scene never starts from a
+        // blank Canvas), triggered by the strip's own "+ Add Scene" —
+        // checked first and unconditionally, since "Add a Scene" is now
+        // reachable from the strip even while a different Scene is
+        // already open in Working View (a new interaction path this
+        // always-visible strip enables); otherwise, with no picker and
+        // no Scene open, it falls through to the honest AV-008 empty
+        // state.
+        if (!scenesShowingTemplatePicker && !currentSceneId) {
+            return _renderInactiveWorkspace();
+        }
+
         const strayFrame = workingCanvas.parentElement.querySelector('.wb-preview-frame');
         if (strayFrame) strayFrame.remove();
         workingCanvas.parentElement.classList.remove('wb-hidden');
         const strayInactive = workingCanvas.parentElement.parentElement.querySelector('.wb-inactive-state');
         if (strayInactive) strayInactive.remove();
 
-        if (!currentSceneId) {
+        if (scenesShowingTemplatePicker) {
             workingCanvas.classList.add('wb-hidden');
             workingOverlays.innerHTML = '';
             _renderSceneLibrary(workingCanvas.parentElement);
-            _renderRuntimePreviewEmpty('Select a Scene, or add one, to preview it here.');
+            _renderRuntimePreviewEmpty('Choose a Scene Template to start from — every Scene begins from one, never a blank Canvas.');
             previewSelector.innerHTML = '';
             return;
         }
@@ -2047,7 +2172,7 @@
     }
 
     workingCanvas.addEventListener('mousedown', function (e) {
-        if (currentNav !== 'scenes' || !currentSceneId) return;
+        if (_workingViewNav() !== 'scenes' || !currentSceneId) return;
         const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
         if (!scene) return;
         const pt = _canvasFraction(workingCanvas, e);
@@ -2472,6 +2597,114 @@
         return card;
     }
 
+    // ---------- Scenes strip (world-builder-v2) ----------
+    // A permanent horizontal row beneath Working View/Context Inspector/
+    // Experiences — picking a Scene is a quick, occasional switch, not
+    // something that needs a whole screen of its own. Reuses the exact
+    // same _sceneCardThumb (a real, live-updating Scene Stack render)
+    // and ProjectModel.moveScene the old Scenes Library grid already
+    // used; only the card's own layout is new.
+    const scenesStripEl = $('wb-scenes-strip');
+    const scenesStripSub = $('wb-scenes-strip-sub');
+    const scenesReorderToggleBtn = $('wb-scenes-reorder-toggle');
+    const scenesAddBtn = $('wb-scenes-add-btn');
+
+    function _sceneStripCard(scene, index, total) {
+        const card = document.createElement('div');
+        card.className = 'wb-scene-strip-card' + (scene.id === currentSceneId ? ' active' : '');
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+
+        card.appendChild(_sceneCardThumb(scene));
+
+        const row = document.createElement('div');
+        row.className = 'wb-scene-strip-row';
+        const num = document.createElement('span');
+        num.className = 'wb-scene-strip-num';
+        num.textContent = String(index + 1);
+        const name = document.createElement('span');
+        name.className = 'wb-scene-strip-name';
+        name.textContent = scene.name;
+        row.appendChild(num);
+        row.appendChild(name);
+        card.appendChild(row);
+
+        if (scenesReorderMode) {
+            const reorderRow = document.createElement('div');
+            reorderRow.className = 'wb-scene-strip-reorder';
+            const upBtn = _smallBtn('↑', function (e) {
+                e.stopPropagation();
+                window.ProjectModel.moveScene(currentProject, scene.id, 'up');
+                _persist();
+                _renderScenesStrip();
+            });
+            upBtn.disabled = index === 0;
+            const downBtn = _smallBtn('↓', function (e) {
+                e.stopPropagation();
+                window.ProjectModel.moveScene(currentProject, scene.id, 'down');
+                _persist();
+                _renderScenesStrip();
+            });
+            downBtn.disabled = index === total - 1;
+            reorderRow.appendChild(upBtn);
+            reorderRow.appendChild(downBtn);
+            card.appendChild(reorderRow);
+        }
+
+        card.addEventListener('click', function () { _openScene(scene.id); });
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openScene(scene.id); }
+        });
+        return card;
+    }
+
+    function _sceneStripAddCard() {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'wb-scene-strip-add';
+        const icon = document.createElement('span');
+        icon.className = 'wb-scene-strip-add-icon';
+        icon.textContent = '➕';
+        const label = document.createElement('span');
+        label.textContent = 'Add a Scene';
+        card.appendChild(icon);
+        card.appendChild(label);
+        card.addEventListener('click', function () {
+            scenesShowingTemplatePicker = true;
+            _renderWorkspace();
+        });
+        return card;
+    }
+
+    function _renderScenesStrip() {
+        scenesStripEl.innerHTML = '';
+        const scenes = window.ProjectModel.scenes(currentProject);
+        scenesStripSub.textContent = scenes.length
+            ? (scenes.length + ' Scene' + (scenes.length > 1 ? 's' : ''))
+            : 'No Scenes yet';
+        if (!scenes.length) {
+            const empty = document.createElement('span');
+            empty.className = 'wb-scenes-strip-empty';
+            empty.textContent = 'This World has no Scenes yet — press "Add Scene" to add its first page.';
+            scenesStripEl.appendChild(empty);
+        } else {
+            scenes.forEach(function (scene, i) {
+                scenesStripEl.appendChild(_sceneStripCard(scene, i, scenes.length));
+            });
+        }
+        scenesStripEl.appendChild(_sceneStripAddCard());
+        scenesReorderToggleBtn.classList.toggle('wb-scenes-reorder-toggle-active', scenesReorderMode);
+    }
+
+    scenesReorderToggleBtn.addEventListener('click', function () {
+        scenesReorderMode = !scenesReorderMode;
+        _renderScenesStrip();
+    });
+    scenesAddBtn.addEventListener('click', function () {
+        scenesShowingTemplatePicker = true;
+        _renderWorkspace();
+    });
+
     // Engine Scene Template picker (Engine Canon §10 — a new Scene never
     // starts from a blank Canvas, Invariant 4).
     function _sceneTemplatePicker() {
@@ -2744,6 +2977,17 @@
     // ---------- Context Panel — one mount point, reused by every state ----------
 
     function _renderContextPanel() {
+        // world-builder-v2 — modal mount. Every screen that used to be a
+        // mutually-exclusive Nav tab (World Settings/Check & Build/
+        // Publish/the legacy Engine V1 management screens) now mounts
+        // into the shared modal instead of the permanent Context
+        // Inspector column whenever `currentNav` names one of them —
+        // the dispatch chain below is completely unchanged, only where
+        // its output lands differs.
+        const isModal = MODAL_NAVS.has(currentNav);
+        modalOverlay.classList.toggle('wb-hidden', !isModal);
+        if (isModal) modalTitleEl.textContent = MODAL_TITLES[currentNav] || '';
+        contextPanel = isModal ? modalBody : $('wb-context-panel');
         contextPanel.innerHTML = '';
         if (currentNav === 'overview') return _renderOverviewPanel();
         // Scenes+Experiences simultaneous view — an Experience picked from
@@ -2768,44 +3012,47 @@
         return _renderStubPanel();
     }
 
-    // ---------- Experiences-in-this-Scene sidebar (world-builder-v2) ----------
-    // The always-visible fourth column: Scenes and Experiences no longer
-    // force a choice between them (the original problem this reset set
-    // out to fix) — whichever Experiences are hosted in the open Scene
-    // are just there, beside Working View/Context Inspector/Runtime
-    // Preview, the whole time a Theme Author is working on that Scene.
-    // A "This Scene"/"All Experiences" toggle switches between that
-    // scoped view and the full Theme Gallery (Nurturing excluded either
-    // way, same rule the Gallery itself already uses) — reordering here
-    // never touches the real Scene Stack order (that's still the ↑/↓
-    // controls in Place/Decorations/Text); this is a browse-and-select
-    // surface only.
+    // ---------- Experiences column (world-builder-v2) ----------
+    // Permanently visible, third workspace column — Scenes and
+    // Experiences no longer force a choice between them (the original
+    // problem this reset set out to fix), and Experiences no longer
+    // needs a Scene open at all: it's always there, beside Working
+    // View/Context Inspector, whether authoring a Scene or just browsing
+    // the Theme's full library. A "This Scene"/"All Experiences" toggle
+    // switches between what's hosted in the currently open Scene and
+    // the full Theme Gallery (Nurturing excluded either way, same rule
+    // the Gallery itself already uses) — reordering here never touches
+    // the real Scene Stack order (that's still the ↑/↓ controls in
+    // Place/Decorations/Text); this is a browse-and-select surface only.
     function _renderScenesExperiencesSidebar() {
         experiencesPanel.innerHTML = '';
-        if (!(currentNav === 'scenes' && currentSceneId)) return;
-        const scene = window.ProjectModel.findScene(currentProject, currentSceneId);
-        if (!scene) return;
+        const scene = currentSceneId ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
 
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-        addBtn.style.width = '100%';
-        addBtn.style.marginBottom = '10px';
-        addBtn.textContent = '➕ New Experience';
-        addBtn.addEventListener('click', function () {
-            // Same create → graduate-to-Personal (scoped here) → attach
-            // Free sequence the Convergence Sprint already established
-            // for "+ Add Experience"/"Add Text" — no second creation path.
-            const exp = window.ProjectModel.addExperience(currentProject, {
-                name: 'New Experience', type: 'decoration', hostedBy: 'free'
+        // The quick-create shortcut graduates straight to Personal,
+        // scoped to a Scene (the same create → graduate → attach
+        // sequence "+ Add Experience"/"Add Text" already use) — it
+        // needs a Scene to scope to, so it only appears while one is
+        // open. Browsing/creating without a Scene open still works via
+        // the full Experience Library link below.
+        if (scene) {
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            addBtn.style.width = '100%';
+            addBtn.style.marginBottom = '10px';
+            addBtn.textContent = '➕ New Experience';
+            addBtn.addEventListener('click', function () {
+                const exp = window.ProjectModel.addExperience(currentProject, {
+                    name: 'New Experience', type: 'decoration', hostedBy: 'free'
+                });
+                window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+                window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
+                experienceInspectorId = exp.id;
+                _persist();
+                _renderWorkspace();
             });
-            window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
-            window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
-            experienceInspectorId = exp.id;
-            _persist();
-            _renderWorkspace();
-        });
-        experiencesPanel.appendChild(addBtn);
+            experiencesPanel.appendChild(addBtn);
+        }
 
         const toggle = document.createElement('div');
         toggle.className = 'wb-exp-scope-toggle';
@@ -2822,6 +3069,11 @@
         });
         experiencesPanel.appendChild(toggle);
 
+        if (scenesExperiencesScope === 'scene' && !scene) {
+            experiencesPanel.appendChild(_fieldHelp('Open a Scene to see what\'s hosted in it — or switch to "All Experiences" to browse the whole Theme.'));
+            return;
+        }
+
         const all = window.ProjectModel.experiences(currentProject).filter(function (e) { return e.lifecycle !== 'nurturing'; });
         const list = scenesExperiencesScope === 'scene'
             ? all.filter(function (e) { return e.attachments.some(function (a) { return a.sceneId === scene.id; }); })
@@ -2830,8 +3082,7 @@
         if (!list.length) {
             experiencesPanel.appendChild(_fieldHelp(scenesExperiencesScope === 'scene'
                 ? 'Nothing hosted in this Scene yet — press "+ New Experience," or switch to "All Experiences" to reuse one from elsewhere in this Theme.'
-                : 'Nothing has joined the Theme yet — press "+ New Experience" to start one.'));
-            return;
+                : 'Nothing has joined the Theme yet — open the full Experience Library below to start one.'));
         }
 
         list.forEach(function (exp) {
@@ -2877,6 +3128,23 @@
             });
             experiencesPanel.appendChild(card);
         });
+
+        // The full Experience Library — search, Nursery ideas still
+        // growing, and the richer Gallery/Nursery creation form this
+        // compact column deliberately doesn't duplicate — stays reachable
+        // as a modal, the same "Manage Theme Assets" bridge pattern
+        // Place's Frame picker already uses.
+        const libraryLink = document.createElement('button');
+        libraryLink.type = 'button';
+        libraryLink.className = 'wb-workspace-btn';
+        libraryLink.style.width = '100%';
+        libraryLink.style.marginTop = '10px';
+        libraryLink.textContent = '📚 Open full Experience Library →';
+        libraryLink.addEventListener('click', function () {
+            currentNav = 'experiences';
+            _renderWorkspace();
+        });
+        experiencesPanel.appendChild(libraryLink);
     }
 
     // ---------- Scenes — Context Inspector (Blueprint §5-§10; Vision §2-§3) ----------
@@ -6132,6 +6400,7 @@
             window.ProjectCompiler.runValidation(project).then(function (result) {
                 lastValidation = result;
                 _renderCheckBuildPanel();
+                _renderStatusPill();
             });
         });
         contextPanel.appendChild(runBtn);

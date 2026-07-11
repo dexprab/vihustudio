@@ -531,6 +531,45 @@ html, body {
     padding: 8px 10px;
 }
 
+/* world-builder-v2 — top-bar status pill (live Errors/Warnings count,
+   computed from the same validator.js + EngineV2Validator results the
+   Check & Build modal itself shows) and a plain visual divider before
+   the Settings/Save/menu group. */
+.wb-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--wb-sand);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-text-secondary);
+    white-space: nowrap;
+}
+
+.wb-status-pill-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wb-status-pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+.wb-status-pill-dot.ok { background: #2E9E5B; }
+.wb-status-pill-dot.warn { background: #D97706; }
+.wb-status-pill-dot.error { background: #C0392B; }
+
+.wb-header-divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 4px 2px;
+    background: var(--wb-border);
+}
+
 /* ---------- Header menu dropdown (Sprint B2.0.1) ---------- */
 
 .wb-menu-wrap {
@@ -664,53 +703,18 @@ html, body {
 .wb-workspace-body {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-runtime-w, 340px);
+    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px);
     grid-template-rows: 1fr;
-    grid-template-areas: "working inspsash inspector rtsash runtime";
+    grid-template-areas: "working inspsash inspector expsash experiences";
     min-height: 0;
 }
 
-/* world-builder-v2 — Scenes+Experiences simultaneous view. A Scene being
-   open adds a fourth permanent column (Experiences) between Context
-   Inspector and Runtime Preview, plus its own sash; everything else keeps
-   its exact position and role. The Experiences column and its sash are
-   simply not part of the default grid-template-areas, so they get
-   `display:none` below rather than being auto-placed somewhere wrong. */
-.wb-workspace-body.wb-has-exp-col {
-    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px) 6px var(--wb-runtime-w, 340px);
-    grid-template-areas: "working inspsash inspector expsash experiences rtsash runtime";
-}
-
-.wb-experiences-wrap, #wb-resize-experiences { display: none; }
-.wb-workspace-body.wb-has-exp-col .wb-experiences-wrap,
-.wb-workspace-body.wb-has-exp-col #wb-resize-experiences { display: flex; }
-
-/* world-builder-v2 — dock toggle: Working View and Runtime Preview
-   default to side by side (today's real shape, unchanged); "Stacked"
-   swaps them into one column, two rows. Runtime Preview's own sash has
-   no meaning once it isn't a separate column, so it's hidden rather than
-   auto-placed somewhere wrong — the two rows split evenly instead. */
-.wb-workspace-body.wb-dock-vertical {
-    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px);
-    grid-template-rows: 1fr 1fr;
-    grid-template-areas:
-        "working inspsash inspector"
-        "runtime inspsash inspector";
-}
-
-.wb-workspace-body.wb-dock-vertical.wb-has-exp-col {
-    grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px);
-    grid-template-areas:
-        "working inspsash inspector expsash experiences"
-        "runtime inspsash inspector expsash experiences";
-}
-
-.wb-workspace-body.wb-dock-vertical #wb-resize-runtime { display: none; }
-
-.wb-workspace-body.wb-dock-vertical .wb-runtime-preview-wrap {
-    border-left: none;
-    border-top: 1px solid var(--wb-border);
-}
+/* world-builder-v2 — dock toggle. Runtime Preview no longer has its own
+   grid column (it nests inside Working View's own column as a second
+   stage) — the toggle now switches a plain flex row/column on
+   #wb-working-stages instead of the outer grid; see the
+   .wb-working-stages rules below. Working View/Context Inspector/
+   Experiences are unaffected by dock state either way. */
 
 .wb-dock-btn {
     width: 24px;
@@ -753,33 +757,39 @@ html, body {
 .wb-inspector-wrap.wb-panel-collapsed .wb-inspector-sub,
 .wb-inspector-wrap.wb-panel-collapsed .wb-context-panel,
 .wb-experiences-wrap.wb-panel-collapsed .wb-experiences-sub,
-.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-panel,
-.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-sub,
-.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-canvas-wrap,
-.wb-runtime-preview-wrap.wb-panel-collapsed .wb-preview-selector {
+.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-panel {
     display: none;
 }
 
 .wb-inspector-wrap.wb-panel-collapsed .wb-panel-title-label,
-.wb-experiences-wrap.wb-panel-collapsed .wb-panel-title-label,
-.wb-runtime-preview-wrap.wb-panel-collapsed .wb-panel-title-label {
+.wb-experiences-wrap.wb-panel-collapsed .wb-panel-title-label {
     display: none; /* keep the icon, hide the label text — a 44px rail has no room for it */
 }
 
 .wb-inspector-wrap.wb-panel-collapsed,
-.wb-experiences-wrap.wb-panel-collapsed,
-.wb-runtime-preview-wrap.wb-panel-collapsed {
+.wb-experiences-wrap.wb-panel-collapsed {
     padding: 10px 4px;
 }
 
 .wb-inspector-wrap.wb-panel-collapsed .wb-inspector-heading,
-.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-heading,
-.wb-runtime-preview-wrap.wb-panel-collapsed .wb-runtime-preview-heading {
+.wb-experiences-wrap.wb-panel-collapsed .wb-experiences-heading {
     padding: 0;
     border: none;
 }
 
+/* world-builder-v2 — Scenes strip collapse (a horizontal panel, so it
+   collapses in height rather than width — same complementary-to-resize
+   relationship as the vertical panels above). */
+.wb-scenes-strip-wrap.wb-panel-collapsed .wb-scenes-strip-sub,
+.wb-scenes-strip-wrap.wb-panel-collapsed .wb-scenes-strip {
+    display: none;
+}
+.wb-scenes-strip-wrap.wb-panel-collapsed {
+    padding-bottom: 6px;
+}
+
 .wb-collapse-btn.wb-collapse-btn-collapsed svg { transform: rotate(180deg); }
+.wb-collapse-btn-h.wb-collapse-btn-collapsed svg { transform: rotate(180deg); }
 
 .wb-resize-handle {
     position: relative;
@@ -792,7 +802,17 @@ html, body {
 
 #wb-resize-inspector { grid-area: inspsash; }
 #wb-resize-experiences { grid-area: expsash; }
-#wb-resize-runtime { grid-area: rtsash; }
+
+/* The Scenes strip sash isn't a grid item (the strip is a plain flex
+   sibling of .wb-workspace-body, not one of its grid tracks) — position
+   it along the strip's own top edge instead. */
+#wb-resize-scenes {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+}
 
 .wb-resize-handle::after {
     content: '';
@@ -1074,6 +1094,24 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
+/* world-builder-v2 — Working View's two stages (its own editing canvas,
+   and Runtime Preview nested inside the same column) sit side by side by
+   default; the dock toggle switches this to a stacked column. Neither
+   stage has its own grid track any more — both are plain flex children
+   sized 1:1, so #wb-resize-runtime/--wb-runtime-w is retired along with
+   the grid column it used to resize. */
+.wb-working-stages {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.wb-working-stages.wb-stage-stack {
+    flex-direction: column;
+}
+
 /* Sprint B2.0.4 — the top row is now a fixed, comparatively short
    percentage of viewport height (Inspector gets the rest), so this
    must scale by *height* first (like the old fit-to-viewport Preview
@@ -1094,6 +1132,7 @@ html, body {
 .wb-working-canvas-wrap {
     flex: 1;
     min-height: 0;
+    min-width: 0;
     width: 100%;
     display: flex;
     align-items: center;
@@ -1206,20 +1245,19 @@ html, body {
 }
 
 /* ---------- Runtime Preview (Sprint B2.0.3) ---------- */
-/* Top of the right column, permanently visible, never contains a
-   guide/overlay — literal SlideRenderer output only, answering
-   "what will the reader see?" */
-
-/* Sprint B2.0.4 — Runtime Preview is now its own grid cell (top-right)
-   instead of the top of a column it shared with the Inspector. Fully
-   decoupled: resizing/adding Inspector content below can never push on
-   this cell or make it scroll. */
-.wb-runtime-preview-wrap {
-    grid-area: runtime;
+/* Permanently visible, never contains a guide/overlay — literal
+   SlideRenderer output only, answering "what will the reader see?".
+   world-builder-v2 — nested inside Working View's own column as a
+   second flex stage (see .wb-working-stages above) rather than a
+   separate grid aside; the dock toggle decides whether it sits beside
+   or beneath the editing canvas. */
+.wb-runtime-preview-block {
+    flex: 1;
     min-height: 0;
     min-width: 0;
-    padding: 10px 16px;
-    border-left: 1px solid var(--wb-border);
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--wb-border);
     background: var(--wb-sand);
     display: flex;
     flex-direction: column;
@@ -1231,15 +1269,31 @@ html, body {
 .wb-runtime-preview-heading {
     flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .wb-runtime-preview-title {
     font-size: 12px;
     font-weight: 700;
     color: var(--wb-navy);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wb-runtime-preview-live {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: #2E9E5B;
+    border-radius: 999px;
+    padding: 2px 7px;
 }
 
 .wb-runtime-preview-sub {
@@ -2008,32 +2062,23 @@ html, body {
 .wb-publish-note { font-size: 12px; color: var(--wb-text-secondary); }
 
 @media (max-width: 900px) {
-    /* Narrow-viewport fallback only — the frozen 3-pane layout (Vision
-       §4) is the primary desktop authoring shape; below 900px there
-       isn't room for three full-height columns, so Runtime Preview (the
-       lowest edit-frequency pane, per Vision §4 v1.1) drops to a
-       full-width row beneath Working View + Context Inspector, and both
-       resize sashes (which have nothing sensible to drag at this width)
-       hide. */
-    /* Higher-specificity selectors (.wb-dock-vertical / .wb-has-exp-col)
-       must not win over this fallback at narrow widths, so every real
-       combination is named explicitly here rather than relying on the
-       plain `.wb-workspace-body` rule to out-rank them by media query
-       alone (it can't — specificity, not source order, decides ties). */
-    .wb-workspace-body,
-    .wb-workspace-body.wb-dock-vertical,
-    .wb-workspace-body.wb-has-exp-col,
-    .wb-workspace-body.wb-dock-vertical.wb-has-exp-col {
+    /* Narrow-viewport fallback only — the always-visible desktop
+       Workspace (Working View | Context Inspector | Experiences, plus
+       the Scenes strip) is the primary authoring shape; below 900px
+       there isn't room for all three columns, so Experiences (the
+       lowest edit-frequency pane while a Scene is being actively
+       worked on) hides and Working View's own two internal stages
+       (its canvas + the nested Runtime Preview) force into a stacked
+       column via the same .wb-stage-stack class the dock toggle uses,
+       since side-by-side has no room to be legible this narrow. */
+    .wb-workspace-body {
         grid-template-columns: 1fr 220px;
-        grid-template-rows: 1fr 240px;
-        grid-template-areas:
-            "working inspector"
-            "runtime runtime";
+        grid-template-areas: "working inspector";
     }
-    #wb-resize-runtime, #wb-resize-inspector, #wb-resize-experiences { display: none; }
+    #wb-resize-experiences { display: none; }
     .wb-experiences-wrap { display: none !important; }
-    .wb-runtime-preview-wrap { border-left: none; border-top: 1px solid var(--wb-border); }
-    .wb-nav-item span:last-child { display: none; }
+    .wb-working-stages { flex-direction: column; }
+    .wb-dock-toggle { display: none; }
     .wb-workspace-name { max-width: 160px; }
 }
 
@@ -2135,6 +2180,178 @@ html, body {
 
 .wb-scene-card-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
 .wb-scene-card-add-icon { font-size: 26px; }
+
+/* ---------- Scenes strip (world-builder-v2) — a permanent horizontal
+   row beneath the three columns, replacing the old Working-View-shows-
+   a-Scene-Library-grid-when-nothing's-open behaviour: picking a Scene
+   is now a quick, occasional switch, always reachable, never a whole
+   screen of its own. */
+
+.wb-scenes-strip-wrap {
+    flex: 0 0 auto;
+    height: var(--wb-scenes-h, 220px);
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    padding: 10px 20px 14px;
+    position: relative;
+}
+
+.wb-scenes-strip-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 10px;
+}
+
+.wb-scenes-strip-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wb-scenes-strip-sub {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-scenes-reorder-toggle-active {
+    border-color: var(--wb-gold) !important;
+    background: var(--wb-sky) !important;
+}
+
+.wb-scenes-strip {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+}
+
+.wb-scenes-strip-empty {
+    display: flex;
+    align-items: center;
+    color: var(--wb-text-secondary);
+    font-size: 12px;
+    padding: 0 4px;
+}
+
+.wb-scene-strip-card {
+    flex: 0 0 auto;
+    width: 118px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border: 1.5px solid transparent;
+    border-radius: 12px;
+    padding: 6px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+}
+
+.wb-scene-strip-card:hover { border-color: var(--wb-border); }
+.wb-scene-strip-card.active {
+    border-color: var(--wb-gold);
+    background: var(--wb-sky);
+    box-shadow: 0 0 0 3px rgba(255, 203, 69, 0.25);
+}
+.wb-scene-strip-card.active::before {
+    content: 'Editing';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--wb-gold);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+.wb-scene-strip-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 8px;
+    background: var(--wb-cream);
+    border: 1px solid var(--wb-border);
+    overflow: hidden;
+}
+.wb-scene-strip-thumb canvas { width: 100%; height: 100%; display: block; }
+
+.wb-scene-strip-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wb-scene-strip-num {
+    font-size: 10px;
+    color: var(--wb-text-secondary);
+    flex: 0 0 auto;
+}
+
+.wb-scene-strip-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wb-navy);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wb-scene-strip-reorder {
+    display: flex;
+    gap: 3px;
+    margin-top: 2px;
+}
+.wb-scene-strip-reorder button {
+    flex: 1;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 5px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    cursor: pointer;
+}
+.wb-scene-strip-reorder button:hover { border-color: var(--wb-gold); }
+
+.wb-scene-strip-add {
+    flex: 0 0 auto;
+    width: 118px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 2px dashed var(--wb-border);
+    border-radius: 12px;
+    background: none;
+    cursor: pointer;
+    color: var(--wb-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+.wb-scene-strip-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
+.wb-scene-strip-add-icon { font-size: 20px; }
+
+/* The Scene Template picker, shown inline in Working View
+   (.wb-scene-library) when "+ Add Scene" is pressed — unchanged, just
+   no longer paired with a Scene grid in that same spot. */
 
 /* Engine Scene Template picker overlay — Engine Canon §10, §12 item 2;
    Add a Scene always starts here, never from a blank Canvas (Invariant 4). */
@@ -2285,6 +2502,66 @@ html, body {
 }
 
 .emoji-picker-option:hover { background: var(--wb-sand); }
+
+/* ---------- Shared modal (world-builder-v2) ---------- */
+/* Every screen that used to be a mutually-exclusive Nav tab (World
+   Settings/Check & Build/Publish/the legacy Engine V1 management
+   screens) now opens here, layered on top of the always-visible
+   Working View/Context Inspector/Experiences/Scenes workspace instead
+   of replacing it — the exact same #wb-context-panel render functions,
+   just mounted into #wb-modal-body. */
+
+.wb-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+}
+
+.wb-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(29, 52, 87, 0.45);
+}
+
+.wb-modal-panel {
+    position: relative;
+    width: min(720px, 100%);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--wb-paper);
+    border-radius: 16px;
+    box-shadow: 0 30px 60px rgba(29, 52, 87, 0.35);
+    overflow: hidden;
+}
+
+.wb-modal-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--wb-border);
+    background: var(--wb-cream);
+}
+
+.wb-modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px;
+}
 
 /* ---------- Footer ---------- */
 
