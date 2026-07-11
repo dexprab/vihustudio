@@ -1,10 +1,10 @@
 {
-  "version": "3.14.0",
+  "version": "3.14.1",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Continuous Builder — Scene Stack + Experience Library tabs, full-height right panel",
-  "slice": "Two changes, Builder-workspace-only. (1) The right-side authoring panel (Context Inspector + Experiences) now runs the full Workspace height, uninterrupted by the Scene filmstrip -- the filmstrip moved from a full-width flex sibling beneath the whole 3-column grid into a grid item of its own inside .wb-workspace-body's new second row; Inspector/Experiences span both rows via grid-template-areas, so only Working View's row shares space with the filmstrip. Default filmstrip height reduced 220px -> 128px, the minimum practical size for Scene thumbnails. (2) The Experiences column's \"This Scene\"/\"All Experiences\" toggle becomes \"Scene Stack\" (default) / \"Experience Library\" tabs -- Scene Stack renders directly from ProjectModel.sceneStack, walking Holders and Layers together in one ordered list, a Holder's attached Frame Experience shown nested and read-only beneath it, reorderable via moveInStack(...,'holder',...) for the first time from any UI. Found and fixed a real bug while verifying: the new reorder buttons' forward/backward edge-disabling was inverted (Bring Forward disabled at index 0 instead of the last index). Verified end-to-end via Playwright including actual Holder-vs-Layer reordering, independent panel scrolling, resize/collapse/Reset Workspace Layout, and View Mode disabling every new control.",
-  "build": "0059",
+  "milestone": "Story Author permission block added to the Experience Inspector",
+  "slice": "The Move/Edit/Visible permission block existed for Place, Decoration, and Text panels but was never wired into the Experience Inspector at all -- a pre-existing gap the Continuous Builder sprint's new Scene Stack made far more visible, since Experience-backed rows now route there by default. Experience itself carries no .permissions field; the real permission object lives on whichever hosted object the Experience currently projects onto. Place-hosted (Frame) Experiences don't get a separate block -- already covered by the Holder's own \"Can a Story Author change this? (its Frame, once populated)\" checkbox. Scene/Free-hosted Experiences get the identical 3-checkbox block, reading and writing the one real mirrored Scene Layer this Experience currently has in the open Scene (\"Only-one-content-type-at-a-time\" guarantees at most one exists, so there's never an ambiguous instance to edit). Shown only once the Experience is actually hosted in the currently open Scene. Verified via Playwright: identical wording/behavior to the existing Place/Decoration/Text blocks; toggling a checkbox persists to the real mirrored Layer; a Place-hosted Frame Experience correctly shows no separate block of its own.",
+  "build": "0060",
   "buildDate": "2026-07-11",
-  "commit": "1ef7b07",
+  "commit": "pending",
   "environment": "Release"
 }
