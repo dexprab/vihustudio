@@ -5,6 +5,6 @@
   "slice": "The Rename/Delete controls on each My World Projects card sat inline at the row's vertical center, right where they visually collided with the status/badge chip beneath the project name (most visible once a real Personal/Official badge started appearing there). Anchored them to the card's own top-right corner instead (position: absolute, top/right 10px), with extra right padding reserved on the card so the name/meta-line text never runs underneath them. No behavior change -- Rename/Delete still call the same ProjectModel.setIdentity/ProjectStore.remove functions, only their position moved.",
   "build": "0051",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "c8e17ea",
   "environment": "Release"
 }
