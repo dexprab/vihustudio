@@ -1,10 +1,10 @@
 {
-  "version": "3.13.2",
+  "version": "3.13.3",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "View Mode gaps closed — Aspect Ratio dropdown, Reset Workspace Layout",
-  "slice": "Two controls were still usable while an Official World was open in View Mode: the Scene Header's Aspect Ratio dropdown (hand-built outside the shared _select() helper that already gates read-only, so it was never disabled) and the overflow menu's Reset Workspace Layout (previously left enabled on purpose, since it only touches a local preference -- now disabled alongside Delete since it still reads as \"you can change something\" on a read-only World). Both gained visible :disabled styling so they read as clearly inert.",
-  "build": "0057",
+  "milestone": "Builder Workspace Polish — Scrolling & Layout",
+  "slice": "The Experiences panel was silently forcing the whole Builder page to scroll instead of scrolling itself: .wb-experiences-wrap declared flex-direction:column but never display:flex, so .wb-experiences-panel's own flex:1/min-height:0/overflow-y:auto rules were inert and it grew to its full content height, pushing the Workspace grid row taller than the viewport. Fixed with the one missing display:flex declaration -- verified via an inflated-content diagnostic that the page never scrolls, the panel clips to its available height and scrolls internally with its heading staying pinned, and the resize sash is unaffected. Every other panel (Context Inspector, Working View/Runtime Preview, the Scenes filmstrip) was already correct and needed no change. CSS-only; no Runtime/Build/Theme Contract/Repository/Engine/data-model or functional changes.",
+  "build": "0058",
   "buildDate": "2026-07-11",
-  "commit": "3050a63",
+  "commit": "pending",
   "environment": "Release"
 }
