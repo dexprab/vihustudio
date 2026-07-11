@@ -152,9 +152,10 @@ html, body {
     flex-direction: column;
     gap: 8px;
     /* Extra right padding reserves room for the corner-anchored Rename/
-       Delete controls (see .wb-project-card-controls below) so the name/
-       meta-line never runs underneath them. */
-    padding: 18px 78px 18px 18px;
+       Duplicate/Delete controls (see .wb-project-card-controls below) so
+       the name/meta-line never runs underneath them. 3 buttons (30px
+       each) + 2 gaps (4px) + the controls' own 10px inset from the edge. */
+    padding: 18px 112px 18px 18px;
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);
     border-radius: 16px;
@@ -473,6 +474,17 @@ html, body {
     align-items: center;
     gap: 12px;
     min-width: 0;
+}
+
+.wb-view-mode-banner {
+    padding: 10px 24px;
+    background: #FBE4E0;
+    color: #A13A2E;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 1px solid var(--wb-border);
+    flex-shrink: 0;
 }
 
 .wb-workspace-home-btn {

@@ -133,6 +133,30 @@
                 window.ProjectStore.save(project);
                 renderMyWorlds();
             }],
+            // Restored — the only way to get an editable copy of an
+            // Official World (which opens read-only, see View Mode)
+            // without touching the Official original itself. Duplicate
+            // is a plain deep copy with a fresh id/timestamps (see
+            // ProjectStore.duplicate) — it never carries the source's
+            // own Personal/Official publish status, since the copy has
+            // never been published anywhere itself.
+            ['⧉', 'Duplicate', function (e) {
+                e.stopPropagation();
+                const copy = window.ProjectStore.duplicate(project);
+                // A duplicate must be a genuinely distinct World — a
+                // plain deep copy (ProjectStore.duplicate) keeps the
+                // exact same manifest.json id as the source, which is
+                // what openWorkspace's View Mode check (and the
+                // Personal/Official badge match) is keyed on. Left
+                // unfixed, duplicating an Official World would silently
+                // open the copy in View Mode too, defeating the whole
+                // point of duplicating it. Regenerate the id so the
+                // copy has never itself been published anywhere.
+                const man = window.ProjectModel.manifest(copy);
+                man.id = man.id + '-copy-' + Math.random().toString(36).slice(2, 8);
+                window.ProjectStore.save(copy);
+                renderMyWorlds();
+            }],
             ['🗑', 'Delete', function (e) {
                 e.stopPropagation();
                 // Deletes only this Builder Project record (the
@@ -267,6 +291,8 @@
             // badge, since those describe the *check*, not the Project's
             // own status, and don't read as a competing state.
             const statusEl = card && card.querySelector('.wb-project-status');
+            if (officialIds.has(worldId)) _lastKnownOfficialIds.add(worldId);
+            else _lastKnownOfficialIds.delete(worldId);
             if (officialIds.has(worldId)) {
                 if (statusEl) { statusEl.textContent = '🌍 Official'; statusEl.className = 'wb-project-status wb-project-status-official'; }
                 badge.className = 'wb-project-badge wb-hidden';
@@ -491,6 +517,7 @@
     const workspaceNav = $('wb-global-nav');
     const sceneHeaderEl = $('wb-scene-header');
     const workspaceName = $('wb-workspace-name');
+    const viewModeBanner = $('wb-view-mode-banner');
     const workspaceHome = $('wb-workspace-home');
     const workingCanvas = $('wb-working-canvas');
     const workingOverlays = $('wb-working-overlays');
@@ -539,6 +566,21 @@
     modalOverlay.querySelector('.wb-modal-backdrop').addEventListener('click', _closeModal);
 
     let currentProject = null;
+    // View Mode — an Official World opens read-only: every property is
+    // visible, nothing is editable, protecting the curated Official
+    // Repository from an accidental overwrite (Publish/Promote replace
+    // in place with no version history). Personal stays fully editable,
+    // matching the existing "Personal is your working/iteration space"
+    // model. The only way out of View Mode is Duplicate (Welcome
+    // screen), which creates a fresh, unpublished, fully editable copy —
+    // deliberately no in-Workspace "Edit Anyway" unlock, so an Official
+    // World can never be modified in place through the Builder.
+    let currentProjectReadOnly = false;
+    // Cached the moment the Welcome screen's own Official-repository
+    // check (_annotateProjectBadges) resolves — openWorkspace() reads
+    // this rather than firing a second live Supabase lookup on every
+    // open. Starts empty (not read-only) until a real check succeeds.
+    let _lastKnownOfficialIds = new Set();
     let currentNav = 'scenes';
     // Scenes+Experiences simultaneous view — 'scene' shows only what's
     // hosted in the currently open Scene, 'all' shows every Theme
@@ -1290,6 +1332,16 @@
 
     function openWorkspace(project) {
         currentProject = project;
+        // View Mode — reuses the Welcome screen's own already-resolved
+        // Official-repository check (_annotateProjectBadges, cached in
+        // _lastKnownOfficialIds the moment it succeeds) rather than
+        // firing a second live Supabase lookup on every open; if that
+        // check hasn't resolved yet or Supabase is unreachable, this
+        // fails open (editable) rather than blocking the Workspace on a
+        // possibly-unreachable network call — matching every other
+        // Repository check's own graceful-degradation discipline.
+        const worldId = window.ProjectModel.manifest(project).id;
+        currentProjectReadOnly = !!(worldId && _lastKnownOfficialIds.has(worldId));
         // world-builder-v2 — 'scenes' is the one resting, non-modal nav:
         // Working View/Context Inspector/Experiences/Scenes strip are
         // always visible, so a brand-new World opens straight onto them
@@ -1375,6 +1427,14 @@
     // *return* to "saved" so rapid edits settle into one clean
     // confirmation instead of flickering.
     function _persist() {
+        // View Mode's real backstop: even if some individual control
+        // somewhere in the Workspace was missed when disabling inputs
+        // (a large, mostly-shared-helper-gated surface, but not a
+        // 100%-audited one), no in-memory mutation of an Official World
+        // can ever actually reach localStorage or Supabase, since every
+        // real mutation path in this file funnels through this one
+        // function before being saved.
+        if (currentProjectReadOnly) return;
         _setSaveState('dirty');
         const result = window.ProjectStore.save(currentProject);
         clearTimeout(_saveDisplayTimer);
@@ -1401,6 +1461,16 @@
 
     function _renderWorkspaceHeader() {
         workspaceName.textContent = currentProject.name || 'Untitled World';
+        viewModeBanner.classList.toggle('wb-hidden', !currentProjectReadOnly);
+        // View Mode disables the two actions that would otherwise mutate
+        // and persist state (Check & Build writes lastValidation/
+        // lastBuild; Delete removes the Project outright) — Duplicate
+        // and Reset Workspace Layout stay enabled, since duplicating is
+        // exactly how you're meant to leave View Mode, and layout is a
+        // creator preference, not Project data.
+        btnCheckBuild.disabled = currentProjectReadOnly;
+        btnPublish.disabled = currentProjectReadOnly;
+        menuDelete.disabled = currentProjectReadOnly;
     }
 
     function _renderNav() {
@@ -2760,6 +2830,7 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'wb-scene-card-add';
+        card.disabled = currentProjectReadOnly;
         const icon = document.createElement('span');
         icon.className = 'wb-scene-card-add-icon';
         icon.textContent = '➕';
@@ -3329,6 +3400,7 @@
                 upBtn.className = 'wb-row-btn';
                 upBtn.title = 'Bring forward';
                 upBtn.textContent = '⬆';
+                upBtn.disabled = currentProjectReadOnly;
                 upBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
                     window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'forward');
@@ -3341,6 +3413,7 @@
                 downBtn.className = 'wb-row-btn';
                 downBtn.title = 'Send backward';
                 downBtn.textContent = '⬇';
+                downBtn.disabled = currentProjectReadOnly;
                 downBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
                     window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'backward');
@@ -3722,6 +3795,7 @@
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.checked = !!checked;
+        input.disabled = currentProjectReadOnly;
         input.addEventListener('change', function () { onChange(input.checked); });
         row.appendChild(input);
         row.appendChild(document.createTextNode(labelText));
@@ -4233,6 +4307,7 @@
         input.type = 'text';
         input.className = 'wb-field-input';
         input.value = value || '';
+        input.disabled = currentProjectReadOnly;
         input.addEventListener('input', function () { onInput(input.value); });
         return input;
     }
@@ -4252,6 +4327,7 @@
         const ta = document.createElement('textarea');
         ta.className = 'wb-field-textarea';
         ta.value = value || '';
+        ta.disabled = currentProjectReadOnly;
         ta.addEventListener('input', function () { onInput(ta.value); });
         return ta;
     }
@@ -4266,6 +4342,7 @@
             if (opt.value === selected) o.selected = true;
             sel.appendChild(o);
         });
+        sel.disabled = currentProjectReadOnly;
         sel.addEventListener('change', function () { onChange(sel.value); });
         return sel;
     }
@@ -4281,6 +4358,7 @@
         input.max = max;
         input.value = value;
         input.style.flex = '1';
+        input.disabled = currentProjectReadOnly;
         const readout = document.createElement('span');
         readout.className = 'wb-field-hint';
         readout.textContent = value;
@@ -4303,6 +4381,7 @@
         input.value = /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#1D3457';
         input.style.width = '44px';
         input.style.height = '32px';
+        input.disabled = currentProjectReadOnly;
         input.style.border = 'none';
         input.style.background = 'none';
         input.style.cursor = 'pointer';
@@ -4407,6 +4486,7 @@
         btn.type = 'button';
         btn.className = 'wb-asset-change-btn';
         btn.textContent = existingDataURL ? 'Replace' : 'Upload';
+        btn.disabled = currentProjectReadOnly;
         const input = _fileInputUpload(accept || 'image/*', onUpload);
         btn.addEventListener('click', function () { input.click(); });
         row.appendChild(thumb);
@@ -4417,6 +4497,7 @@
             removeBtn.type = 'button';
             removeBtn.className = 'wb-asset-change-btn';
             removeBtn.textContent = 'Remove';
+            removeBtn.disabled = currentProjectReadOnly;
             removeBtn.addEventListener('click', function () { onUpload(null); });
             row.appendChild(removeBtn);
         }
@@ -5102,6 +5183,7 @@
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.checked = !!checked;
+        input.disabled = currentProjectReadOnly;
         input.addEventListener('change', function () { onChange(input.checked); });
         row.appendChild(input);
         row.appendChild(document.createTextNode(labelText));
