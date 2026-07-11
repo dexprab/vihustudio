@@ -3150,32 +3150,6 @@
         experiencesPanel.innerHTML = '';
         const scene = currentSceneId ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
 
-        // The quick-create shortcut graduates straight to Personal,
-        // scoped to a Scene (the same create → graduate → attach
-        // sequence "+ Add Experience"/"Add Text" already use) — it
-        // needs a Scene to scope to, so it only appears while one is
-        // open. Browsing/creating without a Scene open still works via
-        // the full Experience Library link below.
-        if (scene) {
-            const addBtn = document.createElement('button');
-            addBtn.type = 'button';
-            addBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-            addBtn.style.width = '100%';
-            addBtn.style.marginBottom = '10px';
-            addBtn.textContent = '➕ New Experience';
-            addBtn.addEventListener('click', function () {
-                const exp = window.ProjectModel.addExperience(currentProject, {
-                    name: 'New Experience', type: 'decoration', hostedBy: 'free'
-                });
-                window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
-                window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
-                experienceInspectorId = exp.id;
-                _persist();
-                _renderWorkspace();
-            });
-            experiencesPanel.appendChild(addBtn);
-        }
-
         const toggle = document.createElement('div');
         toggle.className = 'wb-exp-scope-toggle';
         ['scene', 'all'].forEach(function (scope) {
@@ -3203,8 +3177,8 @@
 
         if (!list.length) {
             experiencesPanel.appendChild(_fieldHelp(scenesExperiencesScope === 'scene'
-                ? 'Nothing hosted in this Scene yet — press "+ New Experience," or switch to "All Experiences" to reuse one from elsewhere in this Theme.'
-                : 'Nothing has joined the Theme yet — open the full Experience Library below to start one.'));
+                ? 'Nothing hosted in this Scene yet — press "➕ New Experience" below to start one, or switch to "All Experiences" to reuse one from elsewhere in this Theme.'
+                : 'Nothing has joined the Theme yet — press "➕ New Experience" below to start one.'));
         }
 
         list.forEach(function (exp) {
@@ -3251,17 +3225,24 @@
             experiencesPanel.appendChild(card);
         });
 
-        // The full Experience Library — search, Nursery ideas still
-        // growing, and the richer Gallery/Nursery creation form this
-        // compact column deliberately doesn't duplicate — stays reachable
-        // as a modal, the same "Manage Theme Assets" bridge pattern
+        // The one and only creation entry point for this column — the
+        // former quick-create shortcut here graduated straight to
+        // Personal, skipping the Nursery entirely (a real
+        // inconsistency: the Library's own "Start Growing" form is the
+        // only place an Experience is born Nurturing, per canon). Removed
+        // rather than fixed in place, since the full Experience Library
+        // — search, every Nursery idea still growing, and the richer
+        // Gallery/Nursery creation form this compact column deliberately
+        // doesn't duplicate — already exists and is one click away; this
+        // button is also still how you browse/reuse everything already
+        // in the Theme, the same "Manage Theme Assets" bridge pattern
         // Place's Frame picker already uses.
         const libraryLink = document.createElement('button');
         libraryLink.type = 'button';
-        libraryLink.className = 'wb-workspace-btn';
+        libraryLink.className = 'wb-workspace-btn wb-workspace-btn-primary';
         libraryLink.style.width = '100%';
         libraryLink.style.marginTop = '10px';
-        libraryLink.textContent = '📚 Open full Experience Library →';
+        libraryLink.textContent = '➕ New Experience →';
         libraryLink.addEventListener('click', function () {
             currentNav = 'experiences';
             _renderWorkspace();
