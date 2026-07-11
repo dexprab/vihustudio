@@ -1468,7 +1468,7 @@
 
     function _experienceStudioStage(exp) {
         const props = exp.properties || {};
-        const footprint = window.ProjectModel.experienceContentFootprint(props);
+        const footprint = window.ProjectModel.experienceContentFootprint(props, exp.contentKind || 'text');
         // 18% padding on every side — handles and guide labels need
         // room, and a single small object should never fill the Studio
         // edge-to-edge.
@@ -1561,6 +1561,19 @@
         workingCanvas.parentElement.classList.remove('wb-hidden');
 
         const props = exp.properties || {};
+        // Only-one-content-type-at-a-time — this isolated Studio used to
+        // paint every populated section simultaneously (Colour+Text+
+        // Image+Graphics all at once if each happened to have data),
+        // matching the old V3.1 "show everything" model but never
+        // updated when that model was replaced. Since switching kinds
+        // deliberately preserves the *other* sections' stored data
+        // (non-destructive, so switching back shows what was there
+        // before), leaving this ungated meant Working View kept
+        // painting stale, now-inactive content the real Adapter
+        // (ProjectModel._syncUniversalContent, already gated) had
+        // correctly stopped mirroring — a real Working View/Runtime
+        // Preview mismatch, not just a stale-redraw timing issue.
+        const kind = exp.contentKind || 'text';
         const stage = frozenStage || _experienceStudioStage(exp);
 
         let canvasW, canvasH;
@@ -1581,8 +1594,9 @@
         ctx.clearRect(0, 0, canvasW, canvasH);
 
         // Colour — the Experience's own backdrop; checkerboard is the
-        // universal "no fill" convention when Transparent is enabled.
-        if (props.colorTransparent === false) {
+        // universal "no fill" convention when Transparent is enabled
+        // (or, now, whenever Colour simply isn't the active kind).
+        if (kind === 'colour' && props.colorTransparent === false) {
             ctx.save();
             ctx.globalAlpha = typeof props.colorOpacity === 'number' ? props.colorOpacity : 1;
             ctx.fillStyle = props.colorValue || '#F4F1EC';
@@ -1603,17 +1617,17 @@
         const zoom = canvasW / (stage.w * EXPERIENCE_STUDIO_REFERENCE_WIDTH);
         const sections = [];
 
-        if (props.imageSrc) {
+        if (kind === 'image' && props.imageSrc) {
             const local = toLocal(_experienceAbsRect(exp, 'image'));
             window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity }, local), graph);
             sections.push({ slot: 'image', rect: window.EngineV2Runtime.rectFor(local, graph) });
         }
-        if (props.graphicSrc) {
+        if (kind === 'graphics' && props.graphicSrc) {
             const local = toLocal(_experienceAbsRect(exp, 'graphic'));
             window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc, glyph: '🎭', opacity: props.graphicOpacity }, local), graph);
             sections.push({ slot: 'graphic', rect: window.EngineV2Runtime.rectFor(local, graph) });
         }
-        if (props.textContent && props.textContent.trim()) {
+        if (kind === 'text' && props.textContent && props.textContent.trim()) {
             const local = toLocal(_experienceAbsRect(exp, 'text'));
             const textLayer = Object.assign({
                 kind: 'text', text: props.textContent, font: props.textFont,
@@ -4691,64 +4705,64 @@
         return outer;
     }
 
-    // The reference's compact per-card "Hosted By / Usage / Already
-    // Hosted Here or Make Public" foot — deliberately a read-out plus
-    // the one most relevant action, not a duplicate of the full Host
-    // Here picker or Used In list (those stay shared, once, below every
-    // card; see the comment on .wb-content-section-card in
-    // world-builder.css for why). Nurturing has neither concept yet
-    // (Canon: ownership/usage don't exist before graduation), so this
-    // is skipped entirely for a still-growing idea. Must be called
-    // while `contextPanel` still points at the open card (i.e. before
+    // A compact, read-only "Hosted By / Usage / Lifecycle" summary per
+    // card — deliberately no action button of any kind. This used to
+    // also carry its own "Make Public" button (matching the approved
+    // reference's own per-card mockup), but that duplicated the real
+    // Nurturing→Personal→Public journey the Ownership section below
+    // already implements in full (Graduate to Personal, which Scene it
+    // belongs to, Graduate to Public, the "permanent, no reverse path"
+    // messaging) — two buttons calling the identical graduateToPublic
+    // action in two different places, with this one silently skipping
+    // the Nurturing stage entirely, read as broken/confusing rather
+    // than helpful. This card foot is now purely informational; the
+    // Ownership section is the one and only place lifecycle actions
+    // live. Nurturing still has no Usage concept yet (Canon: it doesn't
+    // exist before graduation), so only the lifecycle line shows for a
+    // still-growing idea, not a blank foot. Must be called while
+    // `contextPanel` still points at the open card (i.e. before
     // restoring it via `_openContentCard`'s returned outer reference).
     function _contentCardFoot(exp) {
-        if (exp.lifecycle === 'nurturing') return;
-
+        const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
         const foot = document.createElement('div');
         foot.className = 'wb-content-section-card-foot';
 
-        const hostedRow = document.createElement('div');
-        hostedRow.className = 'wb-content-section-card-stat';
-        const hostedLabel = document.createElement('span');
-        hostedLabel.textContent = 'Hosted By';
-        const hostedValue = document.createElement('strong');
-        hostedValue.textContent = _hostedByLabel(exp);
-        hostedRow.appendChild(hostedLabel);
-        hostedRow.appendChild(hostedValue);
-        foot.appendChild(hostedRow);
+        if (exp.lifecycle !== 'nurturing') {
+            const hostedRow = document.createElement('div');
+            hostedRow.className = 'wb-content-section-card-stat';
+            const hostedLabel = document.createElement('span');
+            hostedLabel.textContent = 'Hosted By';
+            const hostedValue = document.createElement('strong');
+            hostedValue.textContent = _hostedByLabel(exp);
+            hostedRow.appendChild(hostedLabel);
+            hostedRow.appendChild(hostedValue);
+            foot.appendChild(hostedRow);
 
-        const usage = window.ProjectModel.usageOf(currentProject, exp.id);
-        const usageRow = document.createElement('div');
-        usageRow.className = 'wb-content-section-card-stat';
-        const usageLabel = document.createElement('span');
-        usageLabel.textContent = 'Usage';
-        const usageValue = document.createElement('strong');
-        usageValue.textContent = usage.length
-            ? usage[0].sceneName + (usage.length > 1 ? ' +' + (usage.length - 1) : '')
-            : 'Not yet used';
-        usageRow.appendChild(usageLabel);
-        usageRow.appendChild(usageValue);
-        foot.appendChild(usageRow);
+            const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+            const usageRow = document.createElement('div');
+            usageRow.className = 'wb-content-section-card-stat';
+            const usageLabel = document.createElement('span');
+            usageLabel.textContent = 'Usage';
+            const usageValue = document.createElement('strong');
+            usageValue.textContent = usage.length
+                ? usage[0].sceneName + (usage.length > 1 ? ' +' + (usage.length - 1) : '')
+                : 'Not yet used';
+            usageRow.appendChild(usageLabel);
+            usageRow.appendChild(usageValue);
+            foot.appendChild(usageRow);
+        }
+
+        const lifecycleRow = document.createElement('div');
+        lifecycleRow.className = 'wb-content-section-card-stat';
+        const lifecycleLabel = document.createElement('span');
+        lifecycleLabel.textContent = 'Lifecycle';
+        const lifecycleValue = document.createElement('strong');
+        lifecycleValue.textContent = lifecycleInfo.icon + ' ' + lifecycleInfo.label;
+        lifecycleRow.appendChild(lifecycleLabel);
+        lifecycleRow.appendChild(lifecycleValue);
+        foot.appendChild(lifecycleRow);
 
         contextPanel.appendChild(foot);
-
-        if (exp.lifecycle === 'personal') {
-            const publicBtn = document.createElement('button');
-            publicBtn.type = 'button';
-            publicBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
-            publicBtn.textContent = '🌍 Make Public';
-            publicBtn.addEventListener('click', function () {
-                window.ProjectModel.graduateToPublic(currentProject, exp.id);
-                _persist();
-                _renderContextPanel();
-            });
-            foot.appendChild(publicBtn);
-        } else {
-            const status = document.createElement('div');
-            status.className = 'wb-content-section-card-status';
-            status.textContent = '✓ Public — reusable everywhere';
-            foot.appendChild(status);
-        }
     }
 
     // Only-one-content-type-at-a-time (a direct product simplification

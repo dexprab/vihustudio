@@ -1143,23 +1143,29 @@ const ProjectModel = (function () {
         if (layer) deleteSceneLayer(project, sceneId, layer.id);
     }
 
-    // The rect a Free-hosted Experience's Colour fill should cover when
-    // there's no dedicated "Experience bounds" concept anymore (Builder
-    // V3.1 — each content section owns its own Transform instead) — the
-    // bounding box of whichever sections actually have content, so
-    // Colour reads as "a backdrop behind what's here," never an
-    // arbitrary independent rectangle.
-    function _universalContentFootprint(props) {
-        const rects = [];
-        if (props.imageSrc) rects.push({ x: props.imageX, y: props.imageY, w: props.imageW, h: props.imageH });
-        if (props.graphicSrc) rects.push({ x: props.graphicX, y: props.graphicY, w: props.graphicW, h: props.graphicH });
-        if (props.textContent && props.textContent.trim()) rects.push({ x: props.textX, y: props.textY, w: props.textW, h: props.textH });
-        if (!rects.length) return { x: 0.3, y: 0.3, w: 0.4, h: 0.4 };
-        const x0 = Math.min.apply(null, rects.map(function (r) { return r.x; }));
-        const y0 = Math.min.apply(null, rects.map(function (r) { return r.y; }));
-        const x1 = Math.max.apply(null, rects.map(function (r) { return r.x + r.w; }));
-        const y1 = Math.max.apply(null, rects.map(function (r) { return r.y + r.h; }));
-        return { x: x0, y: y0, w: Math.max(0.02, x1 - x0), h: Math.max(0.02, y1 - y0) };
+    // The rect a Free-hosted Experience's active content occupies —
+    // originally the bounding box of whichever *of Text/Image/Graphics*
+    // had content, so a simultaneously-rendered Colour fill read as "a
+    // backdrop behind what's here." Only-one-content-type-at-a-time
+    // retires that premise: Colour is now itself a `kind`, not a
+    // backdrop for a different kind rendering alongside it, so when
+    // `kind === 'colour'` there is no longer any "what's here" to back
+    // up — it gets the same sensible default rect as "nothing
+    // populated yet." For every other kind, this returns that one
+    // kind's own rect if it has real content, gated exactly like
+    // `_syncUniversalContent`'s own render gate so a stray, inactive
+    // section's leftover Transform can never influence this either.
+    function _universalContentFootprint(props, kind) {
+        if (kind === 'image' && props.imageSrc) {
+            return { x: props.imageX, y: props.imageY, w: props.imageW, h: props.imageH };
+        }
+        if (kind === 'graphics' && props.graphicSrc) {
+            return { x: props.graphicX, y: props.graphicY, w: props.graphicW, h: props.graphicH };
+        }
+        if (kind === 'text' && props.textContent && props.textContent.trim()) {
+            return { x: props.textX, y: props.textY, w: props.textW, h: props.textH };
+        }
+        return { x: 0.3, y: 0.3, w: 0.4, h: 0.4 };
     }
 
     // Builder V3.1 Universal Experience Authoring — the Engine Adapter
@@ -1194,14 +1200,11 @@ const ProjectModel = (function () {
             }
         } else {
             if (kind === 'colour' && props.colorTransparent === false) {
-                // The Colour section has no Transform of its own — its
-                // rect is always the live footprint of whatever Text/
-                // Image/Graphics is currently populated (recomputed on
-                // every sync, not just at creation, since nothing else
-                // ever owns or edits this rect the way a Transform
-                // would), so it reads as "a backdrop behind what's
-                // here" even as content is added/moved/removed later.
-                const rect = _universalContentFootprint(props);
+                // The Colour section has no Transform of its own — since
+                // only one kind is ever active at a time, Colour (when
+                // active) is never "a backdrop behind" Text/Image/
+                // Graphics, so its rect is just a default centered rect.
+                const rect = _universalContentFootprint(props, kind);
                 const existing = _findMirroredLayer(project, sceneId, experience.id, 'color');
                 if (existing) {
                     existing.color = props.colorValue;
