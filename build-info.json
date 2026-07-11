@@ -4,6 +4,6 @@
   "task": "refreshFromRepository() (js/themeRegistry.js) discovered and registered themes from every repository indiscriminately -- Official and Personal alike -- so a Theme published to the Personal Repository (the author's own working/testing environment, per the WEP Repository Model) showed up in Studio's World Library indistinguishably from finished Official content. Fixed by filtering the discovered repository list to repo.kind === 'official' before listing/loading -- Studio now only ever discovers Official Repository themes, regardless of how many Personal themes exist or what they're named. World Builder and Platform Status are unaffected, since both call ThemeRepositoryClient directly and still see Personal -- authoring/status tooling is a different audience than the reader-facing app this function serves. Verified via Playwright with a stubbed repository client (one Official + two Personal themes registered only the Official one); both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
   "build": "0079",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "81d3e9d",
   "environment": "Release"
 }
