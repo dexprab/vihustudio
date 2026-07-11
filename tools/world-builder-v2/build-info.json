@@ -5,6 +5,6 @@
   "slice": "The Experiences panel was silently forcing the whole Builder page to scroll instead of scrolling itself: .wb-experiences-wrap declared flex-direction:column but never display:flex, so .wb-experiences-panel's own flex:1/min-height:0/overflow-y:auto rules were inert and it grew to its full content height, pushing the Workspace grid row taller than the viewport. Fixed with the one missing display:flex declaration -- verified via an inflated-content diagnostic that the page never scrolls, the panel clips to its available height and scrolls internally with its heading staying pinned, and the resize sash is unaffected. Every other panel (Context Inspector, Working View/Runtime Preview, the Scenes filmstrip) was already correct and needed no change. CSS-only; no Runtime/Build/Theme Contract/Repository/Engine/data-model or functional changes.",
   "build": "0058",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "f317273",
   "environment": "Release"
 }
