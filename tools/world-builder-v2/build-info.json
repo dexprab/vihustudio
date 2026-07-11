@@ -5,6 +5,6 @@
   "slice": "Two controls were still usable while an Official World was open in View Mode: the Scene Header's Aspect Ratio dropdown (hand-built outside the shared _select() helper that already gates read-only, so it was never disabled) and the overflow menu's Reset Workspace Layout (previously left enabled on purpose, since it only touches a local preference -- now disabled alongside Delete since it still reads as \"you can change something\" on a read-only World). Both gained visible :disabled styling so they read as clearly inert.",
   "build": "0057",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "3050a63",
   "environment": "Release"
 }
