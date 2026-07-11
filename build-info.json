@@ -1,9 +1,9 @@
 {
-  "version": "2.0.8",
-  "sprint": "Boot Flash Fix",
-  "task": "Studio boot was showing the raw editor workspace briefly before Creation Flow's first screen appeared -- _startCreationFlow() (js/app.js) awaited a Supabase repository refresh (up to a 4s timeout) before calling CreationFlow.start(), the only call that hides #app. Fixed by calling CreationFlow.start() immediately and running the repository refresh in the background instead of blocking first paint -- Screen 1 doesn't read ThemeRegistry at all, and Screen 2 reads it live at render time, so themes published mid-refresh still show up by the time a user reaches Screen 2 in the common case. Verified via Playwright: #app stays display:none from the very first sample after DOMContentLoaded (no flash window at all, not just a shortened one), Screen 1 renders immediately, zero console errors. Both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
-  "build": "0078",
+  "version": "2.0.9",
+  "sprint": "Studio Reads Official Repository Only",
+  "task": "refreshFromRepository() (js/themeRegistry.js) discovered and registered themes from every repository indiscriminately -- Official and Personal alike -- so a Theme published to the Personal Repository (the author's own working/testing environment, per the WEP Repository Model) showed up in Studio's World Library indistinguishably from finished Official content. Fixed by filtering the discovered repository list to repo.kind === 'official' before listing/loading -- Studio now only ever discovers Official Repository themes, regardless of how many Personal themes exist or what they're named. World Builder and Platform Status are unaffected, since both call ThemeRepositoryClient directly and still see Personal -- authoring/status tooling is a different audience than the reader-facing app this function serves. Verified via Playwright with a stubbed repository client (one Official + two Personal themes registered only the Official one); both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
+  "build": "0079",
   "buildDate": "2026-07-11",
-  "commit": "06b134b",
+  "commit": "pending",
   "environment": "Release"
 }
