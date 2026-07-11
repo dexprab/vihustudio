@@ -174,6 +174,20 @@ const ThemeRegistry=(function(){
   // or story changes as a result — see registerOfficial() below,
   // which wraps each entry in an auto-derived manifest but never
   // touches the theme object's own fields.
+  /* Hardcoded themes disabled — Studio no longer ships any built-in
+     themes. All 8 Official theme definitions (OFFICIAL_THEMES,
+     OFFICIAL_ARTWORK_THEMES) are preserved below, commented out, not
+     deleted — the code is intact for easy restoration. Studio now
+     relies entirely on imported/published themes (Import, or a
+     configured Repository via refreshFromRepository()) — matching the
+     precedent Museum Gallery already set in Sprint 10.2, extended to
+     every theme rather than just one. `storybook-classic` remains the
+     hardcoded default project theme id (js/state.js) and Runtime
+     fallback (js/themeEngine.js's DEFAULT_THEME_ID) — deliberately left
+     unresolved rather than rewired, since neither theme now exists
+     until reintroduced by import/publish.
+  */
+  /*
   const OFFICIAL_THEMES=[
     {
       id:'storybook-classic',
@@ -402,6 +416,7 @@ const ThemeRegistry=(function(){
       enhancement:[]
     }
   ];
+  */
 
   // id -> {manifest, theme, source}. Single map so resolution
   // (get/list) is always O(1) and "last write wins" the same way the
@@ -713,8 +728,12 @@ const ThemeRegistry=(function(){
   // Self-initializing, same convention as storyDestinations.js's
   // REGISTRY — no separate init step required by ThemeEngine or
   // anything else that loads after this script.
-  registerOfficial(OFFICIAL_THEMES,'story');
-  registerOfficial(OFFICIAL_ARTWORK_THEMES,'artwork');
+  // Hardcoded themes disabled — see the commented-out OFFICIAL_THEMES/
+  // OFFICIAL_ARTWORK_THEMES arrays above. Studio boots with zero
+  // built-in themes now; re-enable both calls below (and un-comment
+  // the two arrays) to restore them.
+  // registerOfficial(OFFICIAL_THEMES,'story');
+  // registerOfficial(OFFICIAL_ARTWORK_THEMES,'artwork');
   _loadImported();
 
   const api={
