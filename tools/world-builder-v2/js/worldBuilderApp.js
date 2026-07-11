@@ -256,12 +256,23 @@
             const card = myWorldsList.querySelector('[data-world-id="' + worldId.replace(/"/g, '') + '"]');
             const badge = card && card.querySelector('.wb-project-badge');
             if (!badge) return;
+            // Growing/Personal/Official are one status, not two badges
+            // shown side by side — a card used to show "GROWING" (the
+            // status pill) and "🌍 OFFICIAL" (a second, separate badge)
+            // at once, which reads as two contradictory states on the
+            // same card. A real repository match now replaces the status
+            // pill itself instead of adding a competing one beside it;
+            // the diagnostic states above (Repository unavailable/not
+            // configured/check failed) are left exactly as a separate
+            // badge, since those describe the *check*, not the Project's
+            // own status, and don't read as a competing state.
+            const statusEl = card && card.querySelector('.wb-project-status');
             if (officialIds.has(worldId)) {
-                badge.textContent = '🌍 Official';
-                badge.className = 'wb-project-badge official';
+                if (statusEl) { statusEl.textContent = '🌍 Official'; statusEl.className = 'wb-project-status wb-project-status-official'; }
+                badge.className = 'wb-project-badge wb-hidden';
             } else if (personalIds.has(worldId)) {
-                badge.textContent = '👤 Personal';
-                badge.className = 'wb-project-badge personal';
+                if (statusEl) { statusEl.textContent = '👤 Personal'; statusEl.className = 'wb-project-status wb-project-status-personal'; }
+                badge.className = 'wb-project-badge wb-hidden';
             }
         });
     }

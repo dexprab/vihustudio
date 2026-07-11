@@ -227,6 +227,21 @@ html, body {
     border-radius: 999px;
 }
 
+/* Growing/Personal/Official are one status pill, not a status pill plus
+   a second competing badge — a real Repository match (_annotateProjectBadges)
+   replaces .wb-project-status's own text/class in place. Same colours the
+   old .wb-project-badge.personal/.official carried, so nothing about how
+   Personal/Official read visually actually changed, only that a card
+   never shows two states at once. */
+.wb-project-status-personal {
+    color: var(--wb-navy);
+    background: var(--wb-sand);
+}
+.wb-project-status-official {
+    color: #6B4A00;
+    background: var(--wb-gold);
+}
+
 .wb-project-badge {
     font-size: 10px;
     font-weight: 700;
