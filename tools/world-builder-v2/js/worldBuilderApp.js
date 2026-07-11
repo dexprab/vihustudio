@@ -1815,28 +1815,36 @@
         crumb.appendChild(document.createTextNode(' › ' + scene.name));
 
         const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
-        const glance = document.createElement('button');
-        glance.type = 'button';
-        glance.className = 'wb-scene-config-glance' + (currentInspectorTarget === 'sceneConfig' ? ' active' : '');
-        glance.title = 'Scene Configuration — select to edit Aspect Ratio';
+        const glance = document.createElement('span');
+        glance.className = 'wb-scene-config-glance';
+        glance.title = 'Scene Configuration — change this Scene\'s Aspect Ratio';
 
-        const chip1 = document.createElement('span');
-        chip1.className = 'wb-scene-config-chip';
-        chip1.textContent = aspect.icon + ' ' + aspect.label;
+        const aspectSelect = document.createElement('select');
+        aspectSelect.className = 'wb-scene-aspect-select';
+        window.EngineSchema.ASPECT_ORDER.forEach(function (id) {
+            const info = window.EngineSchema.aspectInfo(id);
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = info.icon + ' ' + info.label;
+            if (id === scene.canvas.aspectRatio) opt.selected = true;
+            aspectSelect.appendChild(opt);
+        });
+        aspectSelect.addEventListener('change', function () {
+            window.ProjectModel.setSceneAspect(currentProject, scene.id, aspectSelect.value);
+            _persist();
+            _renderWorkspace();
+        });
+        aspectSelect.addEventListener('click', function (e) { e.stopPropagation(); });
+
         const chip2 = document.createElement('span');
         chip2.className = 'wb-scene-config-chip';
         chip2.textContent = '📐 ' + scene.canvas.safeArea;
         const chip3 = document.createElement('span');
         chip3.className = 'wb-scene-config-chip';
         chip3.textContent = '📦 ' + aspect.width + ' × ' + aspect.height;
-        glance.appendChild(chip1);
+        glance.appendChild(aspectSelect);
         glance.appendChild(chip2);
         glance.appendChild(chip3);
-
-        glance.addEventListener('click', function () {
-            currentInspectorTarget = 'sceneConfig';
-            _renderWorkspace();
-        });
 
         sceneHeaderEl.appendChild(crumb);
         sceneHeaderEl.appendChild(glance);
@@ -3993,24 +4001,13 @@
         contextPanel.appendChild(details);
     }
 
-    // Vision §2's "how Scene Configuration is actually edited" — the one
-    // real Scene Configuration edit this slice implements. Changing
-    // Aspect Ratio also refreshes the Safe Area label, since Engine
-    // Canon §4 does not let them vary independently.
+    // Aspect Ratio now lives as a real dropdown in the top bar's Scene
+    // glance (_renderSceneHeader) — this panel is what shows when nothing
+    // else is selected, since Scene Configuration itself has no other
+    // editable field.
     function _renderSceneConfigPanel(scene) {
-        _heading('Scene Configuration', 'This Scene’s shape — click an empty area of the Canvas any time to come back here.');
-
-        const options = window.EngineSchema.ASPECT_ORDER.map(function (id) {
-            const info = window.EngineSchema.aspectInfo(id);
-            return { value: id, label: info.icon + ' ' + info.label + ' (' + info.width + '×' + info.height + ')' };
-        });
-        _fieldGroup('Aspect Ratio', _select(options, scene.canvas.aspectRatio, function (value) {
-            window.ProjectModel.setSceneAspect(currentProject, scene.id, value);
-            _persist();
-            _renderWorkspace();
-        }), 'Size is set automatically from the Aspect Ratio you choose.');
-
-        contextPanel.appendChild(_fieldHelp('Safe Area: ' + scene.canvas.safeArea + '. Shown as a guide in Working View to help you compose — it won’t stop you from placing things outside it.'));
+        _heading('Nothing selected', 'Click a Place, Decoration, or Text on the Canvas to edit it.');
+        contextPanel.appendChild(_fieldHelp('This Scene is ' + window.EngineSchema.aspectInfo(scene.canvas.aspectRatio).label + ' with a ' + scene.canvas.safeArea + '. Change the shape any time from the dropdown at the top of the screen.'));
     }
 
     function _heading(title, sub, iconSvg) {

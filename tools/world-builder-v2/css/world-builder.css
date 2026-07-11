@@ -905,6 +905,10 @@ html, body {
 
 .wb-scene-breadcrumb strong { color: var(--wb-navy); font-weight: 700; }
 
+/* The glance is now a real Aspect Ratio dropdown (the Scene
+   Configurator itself, see _renderSceneHeader) plus two read-only
+   derived-value chips (Safe Area, pixel Size) — no longer a button
+   that only ever navigated to a separate Inspector form. */
 .wb-scene-config-glance {
     display: flex;
     align-items: center;
@@ -913,22 +917,35 @@ html, body {
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);
     border-radius: 10px;
-    cursor: pointer;
     font-size: 12px;
     color: var(--wb-text);
     white-space: nowrap;
     flex-shrink: 0;
 }
 
-.wb-scene-config-glance:hover { border-color: var(--wb-gold); }
+.wb-scene-config-glance:focus-within { border-color: var(--wb-gold); }
 
-.wb-scene-config-glance.active {
-    border-color: var(--wb-gold);
-    background: var(--wb-sky);
+.wb-scene-aspect-select {
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--wb-navy);
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
 }
+.wb-scene-aspect-select:hover { color: var(--wb-gold); }
+.wb-scene-aspect-select:focus { outline: none; }
 
-.wb-scene-config-chip { display: inline-flex; align-items: center; gap: 4px; }
-.wb-scene-config-chip + .wb-scene-config-chip { margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--wb-border); }
+.wb-scene-config-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-secondary); }
+.wb-scene-config-chip + .wb-scene-config-chip,
+.wb-scene-aspect-select + .wb-scene-config-chip {
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid var(--wb-border);
+}
 
 /* ---------- Activity switcher (Builder V2 — Vision §3) ---------- */
 /* Place · Decorations · Text, in Working View's own toolbar row —
