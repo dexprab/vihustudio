@@ -1,9 +1,9 @@
 {
-  "version": "2.0.7",
-  "sprint": "Hardcoded Themes Disabled",
-  "task": "All 8 Official themes (OFFICIAL_THEMES, OFFICIAL_ARTWORK_THEMES) commented out in js/themeRegistry.js -- preserved, not deleted -- along with their registerOfficial() calls. Studio now boots with zero built-in themes, relying entirely on imported/published themes (Import or a configured Repository). storybook-classic stays the hardcoded default project theme id / Runtime fallback by explicit decision, left unresolved rather than rewired. Verified via Playwright: ThemeRegistry.list() returns 0, zero console errors, Creation Flow's existing empty states (Screen 1 unaffected, Screen 2's \"No worlds published yet\") handle the zero-theme state gracefully with no new code needed. Both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
-  "build": "0077",
+  "version": "2.0.8",
+  "sprint": "Boot Flash Fix",
+  "task": "Studio boot was showing the raw editor workspace briefly before Creation Flow's first screen appeared -- _startCreationFlow() (js/app.js) awaited a Supabase repository refresh (up to a 4s timeout) before calling CreationFlow.start(), the only call that hides #app. Fixed by calling CreationFlow.start() immediately and running the repository refresh in the background instead of blocking first paint -- Screen 1 doesn't read ThemeRegistry at all, and Screen 2 reads it live at render time, so themes published mid-refresh still show up by the time a user reaches Screen 2 in the common case. Verified via Playwright: #app stays display:none from the very first sample after DOMContentLoaded (no flash window at all, not just a shortened one), Screen 1 renders immediately, zero console errors. Both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
+  "build": "0078",
   "buildDate": "2026-07-11",
-  "commit": "7dd7c44",
+  "commit": "pending",
   "environment": "Release"
 }
