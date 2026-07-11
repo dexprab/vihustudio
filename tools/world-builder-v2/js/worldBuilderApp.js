@@ -212,7 +212,24 @@
             personalRows = results[0];
             officialRows = results[1];
         } catch (e) {
-            return; // Repository unreachable — every card just keeps its plain "growing" status
+            // Previously a silent `return` here made "Repository
+            // unreachable" and "genuinely never published" look
+            // identical — a card just stayed on plain "growing" either
+            // way, with nothing to tell a Theme Author which one they
+            // were looking at after a real Publish. Logging the real
+            // error (visible in devtools) plus a visible ⚠ badge turns
+            // that into a diagnosable state instead of a silent no-op.
+            console.error('World Builder: could not check Repository status for My World Projects', e);
+            projects.forEach(function (project) {
+                const worldId = window.ProjectModel.manifest(project).id;
+                const card = worldId && myWorldsList.querySelector('[data-world-id="' + worldId.replace(/"/g, '') + '"]');
+                const badge = card && card.querySelector('.wb-project-badge');
+                if (!badge) return;
+                badge.textContent = '⚠️ Couldn’t check Repository';
+                badge.title = (e && e.message) || 'See browser console for details.';
+                badge.className = 'wb-project-badge error';
+            });
+            return;
         }
         const personalIds = new Set((personalRows || []).map(function (r) { return r.theme_id; }));
         const officialIds = new Set((officialRows || []).map(function (r) { return r.theme_id; }));

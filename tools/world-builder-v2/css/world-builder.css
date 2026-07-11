@@ -240,6 +240,11 @@ html, body {
     color: #6B4A00;
     background: var(--wb-gold);
 }
+.wb-project-badge.error {
+    color: #A13A2E;
+    background: #FBE4E0;
+    cursor: help;
+}
 
 /* Sprint B2.0.5 — Draft Management controls on each project card.
    Same visual language as the Workspace's own .wb-row-controls/.wb-row-btn

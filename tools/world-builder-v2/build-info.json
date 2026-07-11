@@ -1,10 +1,10 @@
 {
-  "version": "3.10.0",
-  "phase": "Repository Architecture Transition",
-  "milestone": "Builder & Studio Alignment Sprint",
-  "slice": "Locked the Platform Representation Contract: a Theme MUST have >=1 valid Representation (only structural requirement), SHOULD have more when it helps, CAN use any names -- the platform never reserves one. Found and fixed a real double-counting bug: every World Builder template still carried a static legacy representations/*.json array from before Scenes existed, ON TOP of the starter Scene that already converges into one Representation at Build -- every template compiled 2-4 Representations, never the intended baseline. Removed every template's static representations array; the starter Scene is now the sole default. Artwork Gallery's starter Scene renamed Showcase -> Story (the sprint's suggested neutral default); Cover/Quote/Sketch/Card left unchanged (never part of the flagged set). validator.js now requires >=1 Representation from either representations/ or scenes/, with no name/count-above-one requirement. Studio required zero changes (already fully data-driven). Museum Gallery's showcase/portrait/quote verified unchanged -- no migration. New 15-assertion Playwright suite plus goldenBuild.js 30/30, Happy Flow suite, and WEP scope suite all pass unchanged",
-  "build": "0046",
-  "buildDate": "2026-07-10",
-  "commit": "374d0dc",
+  "version": "3.11.0",
+  "phase": "Builder V2 Workspace Redesign",
+  "milestone": "Approved Workspace Visual Polish",
+  "slice": "Scene Aspect Ratio dropdown replaces the read-only top-bar glance chip and retires the separate Scene Configuration Inspector panel. Working View / Runtime Preview canvases fixed to genuinely hug the Scene's own Aspect Ratio -- removed a mismatched-shape background box that used to surround the correctly-sized card. Fixed a real space-allocation bug where Runtime Preview could collapse to zero height in stacked dock on a short viewport (Working View's canvas wrap is now shrinkable instead of forcing its sibling to zero). Check & Build's Thumbnail/Hero Image validation error/warnings now show a working Fix Now button pointing at World Settings. Experience Inspector's Text/Image/Graphics/Colour sections are now self-contained bordered cards (icon+title header, compact Hosted By/Usage/Make Public footer) matching the approved Authoring view reference. Full regression (goldenBuild.js 30/30 + Playwright Workspace smoke suite) passes unchanged throughout; zero console errors.",
+  "build": "0047",
+  "buildDate": "2026-07-11",
+  "commit": "6eda4af",
   "environment": "Release"
 }
