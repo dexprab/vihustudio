@@ -707,10 +707,11 @@
     // .wb-working-stages), so --wb-runtime-w/runtimeW/RUNTIME_* are
     // retired; only Context Inspector's and Experiences' widths, plus
     // the Scenes strip's own height, are still persisted.
-    const LAYOUT_DEFAULTS = { inspectorW: 420, experiencesW: 280, scenesH: 220, dock: 'horizontal' };
+    const LAYOUT_DEFAULTS = { inspectorW: 420, experiencesW: 280, scenesH: 220, stageSplit: 60, dock: 'horizontal' };
     const INSPECTOR_PCT_MIN = 0.25, INSPECTOR_PCT_MAX = 0.65; // Working View >=35%, Context Inspector >=25% of the Working+Inspector+Experiences share
     const EXPERIENCES_W_MIN = 220, EXPERIENCES_PCT_MAX = 0.3;
     const SCENES_H_MIN = 96, SCENES_PCT_MAX = 0.45;
+    const STAGE_SPLIT_MIN = 25, STAGE_SPLIT_MAX = 75; // Working View's own share of the stages' main axis, in percent
 
     const workspaceBody = $('wb-workspace-body');
     const scenesStripWrap = $('wb-scenes-strip-wrap');
@@ -727,6 +728,7 @@
                 inspectorW: typeof parsed.inspectorW === 'number' ? parsed.inspectorW : LAYOUT_DEFAULTS.inspectorW,
                 experiencesW: typeof parsed.experiencesW === 'number' ? parsed.experiencesW : LAYOUT_DEFAULTS.experiencesW,
                 scenesH: typeof parsed.scenesH === 'number' ? parsed.scenesH : LAYOUT_DEFAULTS.scenesH,
+                stageSplit: typeof parsed.stageSplit === 'number' ? parsed.stageSplit : LAYOUT_DEFAULTS.stageSplit,
                 dock: parsed.dock === 'vertical' ? 'vertical' : LAYOUT_DEFAULTS.dock
             };
         } catch (e) {
@@ -745,6 +747,7 @@
         workspaceBody.style.setProperty('--wb-inspector-w', layout.inspectorW + 'px');
         workspaceBody.style.setProperty('--wb-experiences-w', layout.experiencesW + 'px');
         scenesStripWrap.style.setProperty('--wb-scenes-h', layout.scenesH + 'px');
+        workingStages.style.setProperty('--wb-stage-split', layout.stageSplit + '%');
         _applyDock(layout.dock);
     }
 
@@ -754,14 +757,21 @@
     // the one alternative, toggled from Working View's own heading. No
     // longer a grid-level toggle (Runtime Preview isn't a grid column
     // any more) — just a flex-direction switch on #wb-working-stages.
+    // #wb-resize-stage's own orientation classes follow the same
+    // toggle, since a col-resize sash makes no sense once the stages
+    // are stacked vertically (and vice versa).
     const dockHorizontalBtn = $('wb-dock-horizontal');
     const dockVerticalBtn = $('wb-dock-vertical');
     const workingStages = $('wb-working-stages');
+    const resizeStage = $('wb-resize-stage');
 
     function _applyDock(dock) {
         workingStages.classList.toggle('wb-stage-stack', dock === 'vertical');
         dockHorizontalBtn.classList.toggle('active', dock !== 'vertical');
         dockVerticalBtn.classList.toggle('active', dock === 'vertical');
+        resizeStage.classList.toggle('wb-resize-handle-v', dock !== 'vertical');
+        resizeStage.classList.toggle('wb-resize-handle-h', dock === 'vertical');
+        resizeStage.setAttribute('aria-orientation', dock === 'vertical' ? 'horizontal' : 'vertical');
     }
 
     function _setDock(dock) {
@@ -773,6 +783,37 @@
 
     dockHorizontalBtn.addEventListener('click', function () { _setDock('horizontal'); });
     dockVerticalBtn.addEventListener('click', function () { _setDock('vertical'); });
+
+    // Working View ↔ Runtime Preview split, within the stages themselves
+    // — a plain mousedown/mousemove/mouseup driver (not the shared
+    // _wireResizeHandle below, since that one measures the workspace
+    // body's own rect and this sash's boundary lives inside a nested
+    // flex container instead) computing Working View's share of
+    // whichever axis is currently the main one (width when side by
+    // side, height when stacked).
+    resizeStage.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        resizeStage.classList.add('wb-resize-dragging');
+        function move(ev) {
+            const rect = workingStages.getBoundingClientRect();
+            const stacked = workingStages.classList.contains('wb-stage-stack');
+            const pct = stacked
+                ? ((ev.clientY - rect.top) / rect.height) * 100
+                : ((ev.clientX - rect.left) / rect.width) * 100;
+            const clamped = Math.min(STAGE_SPLIT_MAX, Math.max(STAGE_SPLIT_MIN, pct));
+            workingStages.style.setProperty('--wb-stage-split', clamped + '%');
+        }
+        function up() {
+            resizeStage.classList.remove('wb-resize-dragging');
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+            const layout = _loadWorkspaceLayout();
+            layout.stageSplit = parseFloat(getComputedStyle(workingStages).getPropertyValue('--wb-stage-split')) || layout.stageSplit;
+            _saveWorkspaceLayout(layout);
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+    });
 
     // Collapsible panels (world-builder-v2) — a collapse button on
     // Context Inspector, Experiences, and Scenes shrinks that region to

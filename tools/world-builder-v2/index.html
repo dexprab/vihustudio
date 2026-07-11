@@ -162,6 +162,11 @@
                                 <div id="wb-working-overlays" class="wb-working-overlays"></div>
                             </div>
                         </div>
+                        <!-- Resize sash between Working View's own canvas
+                             and the nested Runtime Preview — orientation
+                             (col-resize/row-resize) follows the dock
+                             toggle, see _applyDock in worldBuilderApp.js. -->
+                        <div id="wb-resize-stage" class="wb-resize-handle wb-resize-handle-v" data-resize="stage" title="Drag to resize Working View / Runtime Preview" tabindex="0" role="separator" aria-orientation="vertical"></div>
                         <!-- Runtime Preview (Sprint B2.0.3) — always
                              visible, always clean, no overlays/guides,
                              never scrolls. Nested inside Working View's

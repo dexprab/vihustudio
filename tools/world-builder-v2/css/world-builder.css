@@ -1097,20 +1097,31 @@ html, body {
 /* world-builder-v2 — Working View's two stages (its own editing canvas,
    and Runtime Preview nested inside the same column) sit side by side by
    default; the dock toggle switches this to a stacked column. Neither
-   stage has its own grid track any more — both are plain flex children
-   sized 1:1, so #wb-resize-runtime/--wb-runtime-w is retired along with
-   the grid column it used to resize. */
+   stage has its own grid track any more — both are plain flex children,
+   so #wb-resize-runtime/--wb-runtime-w is retired along with the grid
+   column it used to resize. Their split is now itself draggable via
+   #wb-resize-stage: Working View's own canvas takes a persisted
+   percentage of the main axis (--wb-stage-split, a flex-basis), Runtime
+   Preview's flex:1 fills whatever's left — the same one variable works
+   for both dock orientations, since flex-basis percentage is always a
+   share of the current main axis regardless of row/column direction. */
 .wb-working-stages {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 0;
 }
 
 .wb-working-stages.wb-stage-stack {
     flex-direction: column;
 }
+
+/* Sizing follows whichever of .wb-resize-handle-v/-h worldBuilderApp.js
+   has applied (the same classes that already drive its cursor and
+   ::after bar orientation elsewhere) — one toggle, both concerns. */
+#wb-resize-stage.wb-resize-handle-v { flex: 0 0 auto; width: 8px; align-self: stretch; }
+#wb-resize-stage.wb-resize-handle-h { flex: 0 0 auto; height: 8px; width: 100%; }
 
 /* Sprint B2.0.4 — the top row is now a fixed, comparatively short
    percentage of viewport height (Inspector gets the rest), so this
@@ -1130,7 +1141,10 @@ html, body {
    inner box) is the same two-layer technique the Sprint B2.0.2 Preview
    modal already used correctly. */
 .wb-working-canvas-wrap {
-    flex: 1;
+    /* Draggable via #wb-resize-stage — Runtime Preview's own flex:1
+       fills whatever's left, so this is the only side that needs a
+       persisted share of the main axis. */
+    flex: 0 0 var(--wb-stage-split, 60%);
     min-height: 0;
     min-width: 0;
     width: 100%;
