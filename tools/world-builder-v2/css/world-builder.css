@@ -758,12 +758,23 @@ html, body {
    naive equal three-way split, widths stay Working View (largest) >
    Context Inspector (medium, 420px default) > Runtime Preview (smallest,
    340px default) — only their left-to-right position changed. */
+/* Builder Workspace Polish — Continuous Builder. Second row added for the
+   Scene filmstrip (moved here from a full-width flex sibling below the
+   whole grid — see index.html's own comment on #wb-scenes-strip-wrap).
+   "inspector"/"inspsash"/"experiences"/"expsash" each repeat across both
+   rows, which is what makes a grid-template-areas name span them (a
+   contiguous rectangle, same column, no gap) — Context Inspector and
+   Experiences run the Workspace's full height, unbroken by the
+   filmstrip; only Working View's own row (1fr) shrinks to leave the
+   filmstrip its own dedicated row beneath it. */
 .wb-workspace-body {
     flex: 1;
     display: grid;
     grid-template-columns: 1fr 6px var(--wb-inspector-w, 420px) 6px var(--wb-experiences-w, 280px);
-    grid-template-rows: 1fr;
-    grid-template-areas: "working inspsash inspector expsash experiences";
+    grid-template-rows: 1fr var(--wb-scenes-h, 128px);
+    grid-template-areas:
+        "working    inspsash inspector expsash experiences"
+        "filmstrip  inspsash inspector expsash experiences";
     min-height: 0;
 }
 
@@ -1657,6 +1668,18 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
+/* Scene Stack — a Place's attached Frame Experience, nested beneath it
+   and visually subordinate (indented, no reorder controls beside it —
+   it has no Stack entry of its own to move, see
+   worldBuilderApp.js's _sceneStackHolderRow). */
+.wb-scene-stack-child {
+    margin: -3px 0 7px 22px;
+    width: calc(100% - 22px);
+    opacity: .85;
+    border-style: dashed;
+}
+.wb-scene-stack-child:hover { opacity: 1; }
+
 .wb-inspector-heading {
     flex: 0 0 auto;
     display: flex;
@@ -2221,7 +2244,10 @@ html, body {
        since side-by-side has no room to be legible this narrow. */
     .wb-workspace-body {
         grid-template-columns: 1fr 220px;
-        grid-template-areas: "working inspector";
+        grid-template-rows: 1fr var(--wb-scenes-h, 128px);
+        grid-template-areas:
+            "working    inspector"
+            "filmstrip  inspector";
     }
     #wb-resize-experiences { display: none; }
     .wb-experiences-wrap { display: none !important; }
@@ -2329,28 +2355,31 @@ html, body {
 .wb-scene-card-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
 .wb-scene-card-add-icon { font-size: 26px; }
 
-/* ---------- Scenes strip (world-builder-v2) — a permanent horizontal
-   row beneath the three columns, replacing the old Working-View-shows-
-   a-Scene-Library-grid-when-nothing's-open behaviour: picking a Scene
-   is now a quick, occasional switch, always reachable, never a whole
-   screen of its own. */
-
+/* ---------- Scenes strip (world-builder-v2) — Scene navigation only,
+   beneath Working View. Picking a Scene is a quick, occasional switch,
+   always reachable, never a whole screen of its own.
+   Builder Workspace Polish — Continuous Builder: this is now a grid
+   item ("filmstrip", .wb-workspace-body's own second row) instead of a
+   flex sibling of the whole Workspace body — its height comes from that
+   row's own track size (var(--wb-scenes-h), set on workspaceBody, not
+   here — see worldBuilderApp.js's _applyWorkspaceLayout) rather than a
+   `height` declared directly on this element, so it no longer reduces
+   Context Inspector/Experiences' own height (both span both grid rows,
+   full Workspace height, untouched by whatever this row's size is). */
 .wb-scenes-strip-wrap {
-    flex: 0 0 auto;
-    height: var(--wb-scenes-h, 220px);
+    grid-area: filmstrip;
     /* Matches COLLAPSED_TRACK_H in worldBuilderApp.js — low enough that
-       collapsing the strip actually gives its space away (a stale
-       96px floor here previously fought the JS's 44px collapsed
-       target, so the strip could never shrink past 96px no matter what
-       the collapse button did). Below this, .wb-workspace-body's own
-       flex:1 automatically claims every pixel the strip gives up —
-       both are flex children of the same column, nothing else needed. */
-    min-height: 56px;
+       collapsing the strip actually gives its space away to Working
+       View above it (both share the left column's own two grid rows;
+       the grid's own row sizing claims whatever height the strip gives
+       up, same mechanism as before, just a grid row instead of a flex
+       basis). */
+    min-height: 44px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--wb-border);
     background: var(--wb-paper);
-    padding: 10px 20px 14px;
+    padding: 8px 20px 10px;
     position: relative;
 }
 

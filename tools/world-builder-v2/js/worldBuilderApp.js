@@ -583,10 +583,12 @@
     // open. Starts empty (not read-only) until a real check succeeds.
     let _lastKnownOfficialIds = new Set();
     let currentNav = 'scenes';
-    // Scenes+Experiences simultaneous view — 'scene' shows only what's
-    // hosted in the currently open Scene, 'all' shows every Theme
-    // Experience (Nurturing excluded, same rule the Gallery itself uses).
-    let scenesExperiencesScope = 'scene';
+    // Builder Workspace Polish — Continuous Builder. The right-side
+    // authoring panel is two tabs: 'stack' (default) walks the current
+    // Scene's real scene.stack directly (Holders + Layers, together,
+    // reorderable); 'library' is the Theme-wide Experience collection,
+    // unfiltered by Scene.
+    let experiencesTab = 'stack';
     let currentRepresentationId = null;
     let currentLayoutId = null;
     let currentFrameId = null;
@@ -846,7 +848,15 @@
     // .wb-working-stages), so --wb-runtime-w/runtimeW/RUNTIME_* are
     // retired; only Context Inspector's and Experiences' widths, plus
     // the Scenes strip's own height, are still persisted.
-    const LAYOUT_DEFAULTS = { inspectorW: 420, experiencesW: 280, scenesH: 220, stageSplit: 60, dock: 'horizontal' };
+    // Builder Workspace Polish — Continuous Builder: scenesH's default
+    // shrinks from 220 to 128 — the filmstrip is Scene navigation only
+    // (a thumbnail + a name/number badge), not a peer editing surface, so
+    // it no longer needs to claim nearly a quarter of the Workspace's
+    // height by default; 128px is enough for a legible thumbnail plus
+    // the strip's own head row. SCENES_H_MIN (the drag floor) is
+    // unchanged — 96px was already the practical minimum for a
+    // recognizable thumbnail.
+    const LAYOUT_DEFAULTS = { inspectorW: 420, experiencesW: 280, scenesH: 128, stageSplit: 60, dock: 'horizontal' };
     const INSPECTOR_PCT_MIN = 0.25, INSPECTOR_PCT_MAX = 0.65; // Working View >=35%, Context Inspector >=25% of the Working+Inspector+Experiences share
     const EXPERIENCES_W_MIN = 220, EXPERIENCES_PCT_MAX = 0.3;
     const SCENES_H_MIN = 96, SCENES_PCT_MAX = 0.45;
@@ -885,7 +895,14 @@
         const layout = _loadWorkspaceLayout();
         workspaceBody.style.setProperty('--wb-inspector-w', layout.inspectorW + 'px');
         workspaceBody.style.setProperty('--wb-experiences-w', layout.experiencesW + 'px');
-        scenesStripWrap.style.setProperty('--wb-scenes-h', layout.scenesH + 'px');
+        // Builder Workspace Polish — Continuous Builder: --wb-scenes-h is
+        // now read by .wb-workspace-body's own grid-template-rows (the
+        // filmstrip is a grid row of the Workspace body, not a flex
+        // sibling of it any more), so it must be set here, on
+        // workspaceBody itself — a CSS custom property only reaches a
+        // property that reads it via inheritance from an ancestor (or the
+        // element itself), never from a descendant like scenesStripWrap.
+        workspaceBody.style.setProperty('--wb-scenes-h', layout.scenesH + 'px');
         workingStages.style.setProperty('--wb-stage-split', layout.stageSplit + '%');
         _applyDock(layout.dock);
     }
@@ -964,11 +981,12 @@
     // Preview no longer has an independent track of its own to collapse.
     const COLLAPSED_TRACK_W = 44;
     // Matches .wb-scenes-strip-wrap's own CSS min-height — low enough
-    // that collapsing genuinely gives the strip's space away to
-    // Working View/Context Inspector/Experiences above it (both are
-    // flex children of the same column, so .wb-workspace-body's own
-    // flex:1 automatically claims whatever height the strip gives up).
-    const COLLAPSED_TRACK_H = 56;
+    // that collapsing genuinely gives the strip's space away to Working
+    // View above it (both now share the left grid column's own two rows,
+    // so .wb-workspace-body's own grid row sizing claims whatever height
+    // the strip gives up — Context Inspector/Experiences, spanning both
+    // rows, are unaffected either way).
+    const COLLAPSED_TRACK_H = 44;
     const inspectorWrap = $('wb-inspector-wrap');
     const experiencesWrapEl = $('wb-experiences-wrap');
     const collapseInspectorBtn = $('wb-collapse-inspector');
@@ -978,7 +996,10 @@
     const PANEL_COLLAPSE_META = {
         inspector: { wrap: inspectorWrap, btn: collapseInspectorBtn, cssVar: '--wb-inspector-w', layoutKey: 'inspectorW', target: workspaceBody, collapsedSize: COLLAPSED_TRACK_W },
         experiences: { wrap: experiencesWrapEl, btn: collapseExperiencesBtn, cssVar: '--wb-experiences-w', layoutKey: 'experiencesW', target: workspaceBody, collapsedSize: COLLAPSED_TRACK_W },
-        scenes: { wrap: scenesStripWrap, btn: collapseScenesBtn, cssVar: '--wb-scenes-h', layoutKey: 'scenesH', target: scenesStripWrap, collapsedSize: COLLAPSED_TRACK_H }
+        // target: workspaceBody, not scenesStripWrap — see
+        // _applyWorkspaceLayout's own comment on why --wb-scenes-h must
+        // be set on the grid container that actually reads it.
+        scenes: { wrap: scenesStripWrap, btn: collapseScenesBtn, cssVar: '--wb-scenes-h', layoutKey: 'scenesH', target: workspaceBody, collapsedSize: COLLAPSED_TRACK_H }
     };
 
     function _applyPanelCollapse(which) {
@@ -1031,7 +1052,7 @@
                 const bodyStyle = getComputedStyle(workspaceBody);
                 layout.inspectorW = parseFloat(bodyStyle.getPropertyValue('--wb-inspector-w')) || layout.inspectorW;
                 layout.experiencesW = parseFloat(bodyStyle.getPropertyValue('--wb-experiences-w')) || layout.experiencesW;
-                layout.scenesH = parseFloat(getComputedStyle(scenesStripWrap).getPropertyValue('--wb-scenes-h')) || layout.scenesH;
+                layout.scenesH = parseFloat(bodyStyle.getPropertyValue('--wb-scenes-h')) || layout.scenesH;
                 _saveWorkspaceLayout(layout);
             }
             document.addEventListener('mousemove', move);
@@ -1070,14 +1091,17 @@
             const workspaceRect = document.getElementById('wb-screen-workspace').getBoundingClientRect();
             const maxH = Math.min(workspaceRect.height * SCENES_PCT_MAX, workspaceRect.height - 200);
             const scenesH = Math.min(maxH, Math.max(SCENES_H_MIN, workspaceRect.bottom - ev.clientY));
-            scenesStripWrap.style.setProperty('--wb-scenes-h', scenesH + 'px');
+            // Set on workspaceBody, not scenesStripWrap — see
+            // _applyWorkspaceLayout's own comment; --wb-scenes-h now
+            // sizes .wb-workspace-body's own grid row.
+            workspaceBody.style.setProperty('--wb-scenes-h', scenesH + 'px');
         }
         function up() {
             resizeScenes.classList.remove('wb-resize-dragging');
             document.removeEventListener('mousemove', move);
             document.removeEventListener('mouseup', up);
             const layout = _loadWorkspaceLayout();
-            layout.scenesH = parseFloat(getComputedStyle(scenesStripWrap).getPropertyValue('--wb-scenes-h')) || layout.scenesH;
+            layout.scenesH = parseFloat(getComputedStyle(workspaceBody).getPropertyValue('--wb-scenes-h')) || layout.scenesH;
             _saveWorkspaceLayout(layout);
         }
         document.addEventListener('mousemove', move);
@@ -3281,67 +3305,317 @@
     }
 
     // ---------- Experiences column (world-builder-v2) ----------
-    // Permanently visible, third workspace column — Scenes and
-    // Experiences no longer force a choice between them (the original
-    // problem this reset set out to fix), and Experiences no longer
-    // needs a Scene open at all: it's always there, beside Working
-    // View/Context Inspector, whether authoring a Scene or just browsing
-    // the Theme's full library. A "This Scene"/"All Experiences" toggle
-    // switches between what's hosted in the currently open Scene and
-    // the full Theme Gallery (Nurturing excluded either way, same rule
-    // the Gallery itself already uses) — reordering here never touches
-    // the real Scene Stack order (that's still the ↑/↓ controls in
-    // Place/Decorations/Text); this is a browse-and-select surface only.
+    // Builder Workspace Polish — Continuous Builder. Permanently visible,
+    // right-side workspace column — Scenes and Experiences no longer
+    // force a choice between them, and this column no longer needs a
+    // Scene open at all: it's always there, beside Working View/Context
+    // Inspector, whether authoring a Scene or browsing the Theme's full
+    // library. Two tabs replace the old "This Scene"/"All Experiences"
+    // toggle: Scene Stack (default) renders directly from the current
+    // Scene's real scene.stack — the actual, authoritative composition
+    // and reorder order — and Experience Library is the Theme-wide
+    // collection, unfiltered by Scene, unchanged in behavior from the
+    // old "All Experiences" branch.
     function _renderScenesExperiencesSidebar() {
         experiencesPanel.innerHTML = '';
         const scene = currentSceneId ? window.ProjectModel.findScene(currentProject, currentSceneId) : null;
 
-        const toggle = document.createElement('div');
-        toggle.className = 'wb-exp-scope-toggle';
-        ['scene', 'all'].forEach(function (scope) {
+        const tabs = document.createElement('div');
+        tabs.className = 'wb-exp-scope-toggle';
+        [['stack', 'Scene Stack'], ['library', 'Experience Library']].forEach(function (pair) {
+            const id = pair[0], label = pair[1];
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = scenesExperiencesScope === scope ? 'active' : '';
-            btn.textContent = scope === 'scene' ? 'This Scene' : 'All Experiences';
+            btn.className = experiencesTab === id ? 'active' : '';
+            btn.textContent = label;
             btn.addEventListener('click', function () {
-                scenesExperiencesScope = scope;
+                experiencesTab = id;
                 _renderScenesExperiencesSidebar();
             });
-            toggle.appendChild(btn);
+            tabs.appendChild(btn);
         });
-        experiencesPanel.appendChild(toggle);
+        experiencesPanel.appendChild(tabs);
 
-        if (scenesExperiencesScope === 'scene' && !scene) {
-            experiencesPanel.appendChild(_fieldHelp('Open a Scene to see what\'s hosted in it — or switch to "All Experiences" to browse the whole Theme.'));
+        if (experiencesTab === 'stack') {
+            _renderSceneStackTab(scene);
+        } else {
+            _renderExperienceLibraryTab();
+        }
+    }
+
+    // Scene Stack — renders directly from window.ProjectModel.sceneStack,
+    // the real, authoritative Scene composition (Engine Canon §5): every
+    // Holder and every Scene Layer, in real paint order, Holders and
+    // Layers together in one list. A Holder's attached Frame Experience
+    // (if any) is shown nested beneath it, read-only — it has no Stack
+    // entry of its own (Frame projects onto its Place's single frame
+    // slot, Engine Canon §9), so it is structurally incapable of drifting
+    // out of sync with its Place: moving the Place in the Stack carries
+    // it along for free, nothing to keep in sync. A Layer resolves to its
+    // owning Experience by sourceExperienceId when one exists (Free- or
+    // Scene-hosted); a Layer with none is a legacy, pre-Experience entry,
+    // shown by its own name/kind. The bottom-most full-bleed fill Layer
+    // is labelled Background — the same identity check
+    // window.ProjectModel's own _bottomFillLayer uses internally.
+    function _renderSceneStackTab(scene) {
+        if (!scene) {
+            experiencesPanel.appendChild(_fieldHelp('Open a Scene to see what belongs to it — or switch to "Experience Library" to browse the whole Theme.'));
             return;
         }
+        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
+        if (!stack.length) {
+            experiencesPanel.appendChild(_fieldHelp('This Scene is empty — add a Place below, or press "➕ New Experience" in Experience Library.'));
+            return;
+        }
+        stack.forEach(function (entry, index) {
+            if (entry.type === 'holder') {
+                const holder = (scene.holders || []).find(function (h) { return h.id === entry.id; });
+                if (holder) experiencesPanel.appendChild(_sceneStackHolderRow(scene, holder, index, stack.length));
+            } else {
+                const layer = (scene.layers || []).find(function (l) { return l.id === entry.id; });
+                if (layer) experiencesPanel.appendChild(_sceneStackLayerRow(scene, layer, index, stack.length));
+            }
+        });
 
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'wb-workspace-btn';
+        addBtn.style.width = '100%';
+        addBtn.style.marginTop = '10px';
+        addBtn.textContent = '➕ Add a Place';
+        addBtn.disabled = currentProjectReadOnly;
+        addBtn.addEventListener('click', function () {
+            const holder = window.ProjectModel.addHolder(currentProject, scene.id);
+            if (holder) {
+                currentInspectorTarget = 'holder:' + holder.id;
+                experienceInspectorId = null;
+                _persist();
+                _renderWorkspace();
+            }
+        });
+        experiencesPanel.appendChild(addBtn);
+    }
+
+    function _sceneStackHolderRow(scene, holder, index, total) {
+        const wrap = document.createElement('div');
+
+        const row = document.createElement('div');
+        row.className = 'wb-exp-sidebar-row';
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'wb-exp-sidebar-card';
+        const thumb = document.createElement('span');
+        thumb.className = 'wb-exp-sidebar-thumb';
+        thumb.textContent = '🖼️';
+        card.appendChild(thumb);
+        const info = document.createElement('span');
+        info.className = 'wb-exp-sidebar-info';
+        const name = document.createElement('span');
+        name.className = 'wb-exp-sidebar-name';
+        name.textContent = holder.name;
+        const meta = document.createElement('span');
+        meta.className = 'wb-exp-sidebar-meta';
+        meta.textContent = 'Place · ' + Math.round(holder.size.w * 100) + '% × ' + Math.round(holder.size.h * 100) + '%';
+        info.appendChild(name);
+        info.appendChild(meta);
+        card.appendChild(info);
+        card.addEventListener('click', function () {
+            currentInspectorTarget = 'holder:' + holder.id;
+            experienceInspectorId = null;
+            _renderWorkspace();
+        });
+        row.appendChild(card);
+
+        const controls = document.createElement('div');
+        controls.className = 'wb-row-controls';
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'wb-row-btn';
+        upBtn.title = 'Bring forward';
+        upBtn.textContent = '⬆';
+        // moveInStack's 'forward' is index+1 (projectModel.js) — disabled
+        // only once already at the frontmost (highest-index) position.
+        upBtn.disabled = currentProjectReadOnly || index === total - 1;
+        upBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'holder', holder.id, 'forward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+            _renderScenesExperiencesSidebar();
+        });
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'wb-row-btn';
+        downBtn.title = 'Send backward';
+        downBtn.textContent = '⬇';
+        // 'backward' is index-1 — disabled only once already backmost.
+        downBtn.disabled = currentProjectReadOnly || index === 0;
+        downBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'holder', holder.id, 'backward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+            _renderScenesExperiencesSidebar();
+        });
+        controls.appendChild(upBtn);
+        controls.appendChild(downBtn);
+        row.appendChild(controls);
+        wrap.appendChild(row);
+
+        // The attached Frame Experience, nested and read-only — it has no
+        // Stack entry of its own to reorder (see this function's own
+        // header comment), so no ⬆/⬇ controls are offered on it at all.
+        if (holder.frame) {
+            const attached = window.ProjectModel.findExperience(currentProject, holder.frame);
+            if (attached) {
+                const child = document.createElement('button');
+                child.type = 'button';
+                child.className = 'wb-exp-sidebar-card wb-scene-stack-child';
+                const childThumb = document.createElement('span');
+                childThumb.className = 'wb-exp-sidebar-thumb';
+                const attachedProps = attached.properties || {};
+                if (attachedProps.borderColor) childThumb.style.background = attachedProps.borderColor;
+                else childThumb.textContent = '🖼️';
+                child.appendChild(childThumb);
+                const childInfo = document.createElement('span');
+                childInfo.className = 'wb-exp-sidebar-info';
+                const childName = document.createElement('span');
+                childName.className = 'wb-exp-sidebar-name';
+                childName.textContent = attached.name;
+                const childMeta = document.createElement('span');
+                childMeta.className = 'wb-exp-sidebar-meta';
+                childMeta.textContent = 'Attached Frame';
+                childInfo.appendChild(childName);
+                childInfo.appendChild(childMeta);
+                child.appendChild(childInfo);
+                child.addEventListener('click', function () {
+                    experienceInspectorId = attached.id;
+                    _renderWorkspace();
+                });
+                wrap.appendChild(child);
+            }
+        }
+
+        return wrap;
+    }
+
+    function _sceneStackLayerRow(scene, layer, index, total) {
+        const isBackground = index === 0 && layer.kind === 'fill'
+            && layer.position.x <= 0.01 && layer.position.y <= 0.01
+            && layer.size.w >= 0.99 && layer.size.h >= 0.99;
+        const owningExp = layer.sourceExperienceId ? window.ProjectModel.findExperience(currentProject, layer.sourceExperienceId) : null;
+
+        const row = document.createElement('div');
+        row.className = 'wb-exp-sidebar-row';
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'wb-exp-sidebar-card';
+        const thumb = document.createElement('span');
+        thumb.className = 'wb-exp-sidebar-thumb';
+        if (isBackground) {
+            thumb.style.background = layer.color || '#F4F1EC';
+        } else if (owningExp) {
+            const props = owningExp.properties || {};
+            if (props.imageSrc || props.graphicSrc) {
+                const img = document.createElement('img');
+                img.src = props.imageSrc || props.graphicSrc;
+                img.alt = '';
+                thumb.appendChild(img);
+            } else if (!props.colorTransparent && props.colorValue) {
+                thumb.style.background = props.colorValue;
+            } else {
+                thumb.textContent = '✨';
+            }
+        } else if (layer.kind === 'text') {
+            thumb.textContent = '✍️';
+        } else if (layer.image) {
+            const img = document.createElement('img');
+            img.src = layer.image;
+            img.alt = '';
+            thumb.appendChild(img);
+        } else {
+            thumb.textContent = layer.glyph || '✨';
+        }
+        card.appendChild(thumb);
+
+        const info = document.createElement('span');
+        info.className = 'wb-exp-sidebar-info';
+        const name = document.createElement('span');
+        name.className = 'wb-exp-sidebar-name';
+        name.textContent = isBackground ? '🎨 Background' : (owningExp ? owningExp.name : layer.name);
+        const meta = document.createElement('span');
+        meta.className = 'wb-exp-sidebar-meta';
+        meta.textContent = isBackground ? 'Background'
+            : owningExp ? ('Experience · ' + _hostedByLabel(owningExp))
+            : ('Legacy Layer · ' + (layer.kind === 'text' ? 'Text' : 'Decoration'));
+        info.appendChild(name);
+        info.appendChild(meta);
+        card.appendChild(info);
+
+        card.addEventListener('click', function () {
+            if (owningExp) {
+                experienceInspectorId = owningExp.id;
+            } else {
+                currentInspectorTarget = 'layer:' + layer.id;
+                experienceInspectorId = null;
+            }
+            _renderWorkspace();
+        });
+        row.appendChild(card);
+
+        const controls = document.createElement('div');
+        controls.className = 'wb-row-controls';
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'wb-row-btn';
+        upBtn.title = 'Bring forward';
+        upBtn.textContent = '⬆';
+        // moveInStack's 'forward' is index+1 (projectModel.js) — disabled
+        // only once already at the frontmost (highest-index) position.
+        upBtn.disabled = currentProjectReadOnly || index === total - 1;
+        upBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', layer.id, 'forward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+            _renderScenesExperiencesSidebar();
+        });
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'wb-row-btn';
+        downBtn.title = 'Send backward';
+        downBtn.textContent = '⬇';
+        // 'backward' is index-1 — disabled only once already backmost.
+        downBtn.disabled = currentProjectReadOnly || index === 0;
+        downBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', layer.id, 'backward');
+            _persist();
+            _redrawSceneCanvases(scene.id);
+            _renderScenesExperiencesSidebar();
+        });
+        controls.appendChild(upBtn);
+        controls.appendChild(downBtn);
+        row.appendChild(controls);
+
+        return row;
+    }
+
+    // Experience Library — the Theme-wide collection (Nurturing excluded,
+    // same rule the Gallery itself uses), unfiltered by which Scene (if
+    // any) is open. Unchanged in behavior from the old "All Experiences"
+    // branch: browse, select (opens the Experience Inspector — the same
+    // "Host Here"/attachment workflow every other entry point already
+    // uses), or create a new one.
+    function _renderExperienceLibraryTab() {
         const all = window.ProjectModel.experiences(currentProject).filter(function (e) { return e.lifecycle !== 'nurturing'; });
-        let list = scenesExperiencesScope === 'scene'
-            ? all.filter(function (e) { return e.attachments.some(function (a) { return a.sceneId === scene.id; }); })
-            : all;
 
-        // "This Scene" reflects the real Scene Stack order, not creation
-        // order — reordering here (the ⬆/⬇ controls below) only means
-        // anything if the list you're looking at is the list you're
-        // reordering. A Place-hosted Experience has no Stack entry of
-        // its own (it projects onto its Place's single frame slot) and
-        // sorts to the end; everything else sorts by its real position.
-        if (scenesExperiencesScope === 'scene') {
-            list = list.slice().sort(function (a, b) {
-                const ia = _experienceSceneStackInfo(a, scene);
-                const ib = _experienceSceneStackInfo(b, scene);
-                return (ia ? ia.index : Infinity) - (ib ? ib.index : Infinity);
-            });
+        if (!all.length) {
+            experiencesPanel.appendChild(_fieldHelp('Nothing has joined the Theme yet — press "➕ New Experience" below to start one.'));
         }
 
-        if (!list.length) {
-            experiencesPanel.appendChild(_fieldHelp(scenesExperiencesScope === 'scene'
-                ? 'Nothing hosted in this Scene yet — press "➕ New Experience" below to start one, or switch to "All Experiences" to reuse one from elsewhere in this Theme.'
-                : 'Nothing has joined the Theme yet — press "➕ New Experience" below to start one.'));
-        }
-
-        list.forEach(function (exp) {
+        all.forEach(function (exp) {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'wb-exp-sidebar-card';
@@ -3373,7 +3647,7 @@
             const lifecycleInfo = window.ExperienceSchema.lifecycleInfo(exp.lifecycle);
             const hereCount = exp.attachments.length;
             meta.textContent = lifecycleInfo.icon + ' ' + lifecycleInfo.label
-                + (scenesExperiencesScope === 'all' && hereCount ? ' · ' + hereCount + (hereCount === 1 ? ' Host' : ' Hosts') : '');
+                + (hereCount ? ' · ' + hereCount + (hereCount === 1 ? ' Host' : ' Hosts') : '');
             info.appendChild(name);
             info.appendChild(meta);
             card.appendChild(info);
@@ -3383,70 +3657,15 @@
                 _renderWorkspace();
             });
 
-            // Reorder only makes real sense for a Free-hosted Experience
-            // with an actual mirrored Scene Layer — a Place-hosted one
-            // has no Stack entry of its own to move (it projects onto
-            // its Place's single frame slot), and a Scene-hosted one is
-            // the wall colour, not "content" to shuffle against other
-            // content. Reuses moveInStack directly (the same mechanism
-            // the legacy Decorations/Text panels' own Bring Forward/Send
-            // Backward buttons already call) rather than a second
-            // reordering concept.
-            const stackInfo = scenesExperiencesScope === 'scene' && exp.hostedBy === 'free'
-                ? _experienceSceneStackInfo(exp, scene) : null;
-            if (stackInfo) {
-                const row = document.createElement('div');
-                row.className = 'wb-exp-sidebar-row';
-                row.appendChild(card);
-                const controls = document.createElement('div');
-                controls.className = 'wb-row-controls';
-                const upBtn = document.createElement('button');
-                upBtn.type = 'button';
-                upBtn.className = 'wb-row-btn';
-                upBtn.title = 'Bring forward';
-                upBtn.textContent = '⬆';
-                upBtn.disabled = currentProjectReadOnly;
-                upBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'forward');
-                    _persist();
-                    _redrawSceneCanvases(scene.id);
-                    _renderScenesExperiencesSidebar();
-                });
-                const downBtn = document.createElement('button');
-                downBtn.type = 'button';
-                downBtn.className = 'wb-row-btn';
-                downBtn.title = 'Send backward';
-                downBtn.textContent = '⬇';
-                downBtn.disabled = currentProjectReadOnly;
-                downBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'backward');
-                    _persist();
-                    _redrawSceneCanvases(scene.id);
-                    _renderScenesExperiencesSidebar();
-                });
-                controls.appendChild(upBtn);
-                controls.appendChild(downBtn);
-                row.appendChild(controls);
-                experiencesPanel.appendChild(row);
-            } else {
-                experiencesPanel.appendChild(card);
-            }
+            experiencesPanel.appendChild(card);
         });
 
-        // The one and only creation entry point for this column — the
-        // former quick-create shortcut here graduated straight to
-        // Personal, skipping the Nursery entirely (a real
-        // inconsistency: the Library's own "Start Growing" form is the
-        // only place an Experience is born Nurturing, per canon). Removed
-        // rather than fixed in place, since the full Experience Library
-        // — search, every Nursery idea still growing, and the richer
-        // Gallery/Nursery creation form this compact column deliberately
-        // doesn't duplicate — already exists and is one click away; this
-        // button is also still how you browse/reuse everything already
-        // in the Theme, the same "Manage Theme Assets" bridge pattern
-        // Place's Frame picker already uses.
+        // The one and only creation entry point for this column — opens
+        // the full Experience Home (search across Gallery/Nursery, every
+        // idea still growing, the richer creation form this compact
+        // column deliberately doesn't duplicate) — also still how you
+        // browse/reuse everything already in the Theme, the same "Manage
+        // Theme Assets" bridge pattern Place's Frame picker already uses.
         const libraryLink = document.createElement('button');
         libraryLink.type = 'button';
         libraryLink.className = 'wb-workspace-btn wb-workspace-btn-primary';
@@ -4649,24 +4868,6 @@
         if (kind === 'graphics') return 'graphic';
         if (kind === 'colour') return 'color';
         return 'text';
-    }
-
-    // Resolves an Experience to its real position in a Scene's own
-    // Stack — used both to sort the "This Scene" sidebar list by actual
-    // render order (not creation order) and to know which Layer a
-    // reorder button should move. Returns null for anything with no
-    // Stack entry of its own (a Place-hosted Experience projects onto
-    // its Place's frame slot, not a Layer; an unpopulated section mirrors
-    // nothing at all yet).
-    function _experienceSceneStackInfo(exp, scene) {
-        if (!scene) return null;
-        const slot = _experienceMirroredSlot(exp);
-        const layer = window.ProjectModel.findMirroredSceneLayer(currentProject, scene.id, exp.id, slot);
-        if (!layer) return null;
-        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
-        const index = stack.findIndex(function (e) { return e.type === 'layer' && e.id === layer.id; });
-        if (index === -1) return null;
-        return { layerId: layer.id, index: index };
     }
 
     // Preview-first: a miniature composition, not a database row (Part

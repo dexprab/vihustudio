@@ -155,15 +155,21 @@
             </nav>
 
             <div id="wb-workspace-body" class="wb-workspace-body">
-                <!-- world-builder-v2 — three permanent, full-height
-                     columns side by side: Working View (with Runtime
-                     Preview nested inside it as a second stage) |
-                     Context Inspector | Experiences. Both sashes are
-                     vertical (col-resize). Runtime Preview no longer has
-                     its own grid column/sash — the dock toggle now
-                     switches how it sits *inside* Working View's own
-                     column (side by side or stacked), matching the
-                     approved workspace redesign. -->
+                <!-- world-builder-v2 — three columns side by side: Working
+                     View (with Runtime Preview nested inside it as a second
+                     stage, and the Scene filmstrip beneath it) | Context
+                     Inspector | Experiences. Both vertical sashes
+                     (col-resize) run the full Workspace height. Builder
+                     Workspace Polish (Continuous Builder) made this a
+                     2-row grid: Working View + the filmstrip share the
+                     left column's own two rows, while Context Inspector
+                     and Experiences each span both rows via
+                     grid-template-areas — the right-side authoring panel
+                     is the tallest, most uninterrupted region in the
+                     Workspace, never reduced by the filmstrip's own
+                     height. Runtime Preview has no grid column/sash of its
+                     own — the dock toggle switches how it sits *inside*
+                     Working View's own column (side by side or stacked). -->
                 <div id="wb-resize-inspector" class="wb-resize-handle wb-resize-handle-v" data-resize="inspector" title="Drag to resize Working View / Context Inspector" tabindex="0" role="separator" aria-orientation="vertical"></div>
                 <div id="wb-resize-experiences" class="wb-resize-handle wb-resize-handle-v" data-resize="experiences" title="Drag to resize Context Inspector / Experiences" tabindex="0" role="separator" aria-orientation="vertical"></div>
 
@@ -257,26 +263,37 @@
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
                 </aside>
-            </div>
 
-            <!-- Scenes — a permanent horizontal strip beneath the three
-                 columns (world-builder-v2). Picking a Scene is a quick,
-                 occasional switch, not something that needs a whole
-                 permanent column of its own — every Scene shown as a
-                 live-thumbnail card, always reachable, never gated behind
-                 a Nav destination. -->
-            <div id="wb-scenes-strip-wrap" class="wb-scenes-strip-wrap">
-                <div id="wb-resize-scenes" class="wb-resize-handle wb-resize-handle-h" data-resize="scenes" title="Drag to resize the Scenes strip" tabindex="0" role="separator" aria-orientation="horizontal"></div>
-                <div class="wb-scenes-strip-head">
-                    <span class="wb-scenes-strip-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><path d="M2.5 8h15"/></svg>Scenes</span>
-                    <span id="wb-scenes-strip-sub" class="wb-scenes-strip-sub"></span>
-                    <span class="wb-flex-spacer"></span>
-                    <button type="button" id="wb-scenes-reorder-toggle" class="wb-workspace-btn" title="Reorder Scenes">↕ Reorder Scenes</button>
-                    <button type="button" id="wb-scenes-add-btn" class="wb-workspace-btn wb-workspace-btn-primary" title="Add a Scene">➕ Add Scene</button>
-                    <button type="button" id="wb-collapse-scenes" class="wb-collapse-btn wb-collapse-btn-h" title="Collapse Scenes"><svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12l5-5 5 5"/></svg></button>
-                </div>
-                <div id="wb-scenes-strip" class="wb-scenes-strip">
-                    <!-- rendered by worldBuilderApp.js -->
+                <!-- Scenes — Builder Workspace Polish (Continuous Builder):
+                     moved inside the Workspace grid itself (previously a
+                     full-width flex sibling beneath the whole grid, which
+                     meant it reduced the height of the Context Inspector/
+                     Experiences columns too, not just Working View). Now a
+                     grid item of its own ("filmstrip") occupying only the
+                     row beneath Working View — Context Inspector and
+                     Experiences both span both grid rows (see
+                     .wb-workspace-body's grid-template-areas), so the
+                     right-side authoring panel runs the Workspace's full
+                     height, uninterrupted, exactly as before it existed but
+                     now genuinely tall rather than sharing a row with it.
+                     Picking a Scene is a quick, occasional switch, not
+                     something that needs a whole permanent column of its
+                     own — every Scene shown as a live-thumbnail card,
+                     always reachable, never gated behind a Nav
+                     destination. -->
+                <div id="wb-scenes-strip-wrap" class="wb-scenes-strip-wrap">
+                    <div id="wb-resize-scenes" class="wb-resize-handle wb-resize-handle-h" data-resize="scenes" title="Drag to resize the Scenes strip" tabindex="0" role="separator" aria-orientation="horizontal"></div>
+                    <div class="wb-scenes-strip-head">
+                        <span class="wb-scenes-strip-title"><svg class="wb-heading-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><path d="M2.5 8h15"/></svg>Scenes</span>
+                        <span id="wb-scenes-strip-sub" class="wb-scenes-strip-sub"></span>
+                        <span class="wb-flex-spacer"></span>
+                        <button type="button" id="wb-scenes-reorder-toggle" class="wb-workspace-btn" title="Reorder Scenes">↕ Reorder Scenes</button>
+                        <button type="button" id="wb-scenes-add-btn" class="wb-workspace-btn wb-workspace-btn-primary" title="Add a Scene">➕ Add Scene</button>
+                        <button type="button" id="wb-collapse-scenes" class="wb-collapse-btn wb-collapse-btn-h" title="Collapse Scenes"><svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12l5-5 5 5"/></svg></button>
+                    </div>
+                    <div id="wb-scenes-strip" class="wb-scenes-strip">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
                 </div>
             </div>
         </section>
