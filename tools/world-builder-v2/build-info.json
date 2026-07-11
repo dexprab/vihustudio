@@ -1,10 +1,10 @@
 {
   "version": "3.12.0",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Experience quick-create no longer skips the Nursery",
-  "slice": "Found and fixed the one Experience-creation path in the whole app that skipped the Nursery: the 4th panel's \"+ New Experience\" button created an Experience and, in the same motion, called graduateToPersonal + attachExperience -- born Personal, never Nurturing, unlike every other creation path (the Library's own \"Start Growing\" form, the legacy Decoration/Text quick-add buttons the Convergence Sprint converged onto Experience creation) which all correctly land Nurturing first. Removed the shortcut outright rather than teaching it to graduate correctly, since the full Experience Library (Gallery/Nursery tabs, search, the real Nursery creation form) already exists one click away and is the only place that decision belongs. The former \"Open full Experience Library\" link is renamed \"New Experience ->\" and promoted to the panel's primary action, since it is now the sole way to create an Experience from this column; the two empty-state help strings that referenced the removed button were updated to match.",
-  "build": "0050",
+  "milestone": "Welcome screen project card corner fix",
+  "slice": "The Rename/Delete controls on each My World Projects card sat inline at the row's vertical center, right where they visually collided with the status/badge chip beneath the project name (most visible once a real Personal/Official badge started appearing there). Anchored them to the card's own top-right corner instead (position: absolute, top/right 10px), with extra right padding reserved on the card so the name/meta-line text never runs underneath them. No behavior change -- Rename/Delete still call the same ProjectModel.setIdentity/ProjectStore.remove functions, only their position moved.",
+  "build": "0051",
   "buildDate": "2026-07-11",
-  "commit": "abbe2bf",
+  "commit": "pending",
   "environment": "Release"
 }
