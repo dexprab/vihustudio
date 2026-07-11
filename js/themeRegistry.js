@@ -694,24 +694,33 @@ const ThemeRegistry=(function(){
 
   // ---------- Supabase-backed repository discovery (Platform
   // Hardening Sprint — Repository Architecture Transition) ----------
-  // Registers Official + Personal Supabase-backed themes into the
-  // exact same _registry/_setImported mechanism every other theme
-  // already goes through — Studio's own consumption code
-  // (list/getCatalog/get/getAsset) needs zero changes to see them,
-  // per that sprint's own "Studio should never know where a theme
-  // originated" goal. Deliberately does NOT call _persistImported():
-  // Supabase is the source of truth for these, refetched fresh on
-  // every boot, not shadow-cached into localStorage too — the whole
-  // point of this sprint is replacing local persistence, not
-  // duplicating it. A theme imported the old way (file upload) still
-  // persists to localStorage exactly as before; the two paths stay
-  // cleanly separate. Never throws — a misconfigured or unreachable
-  // Supabase project is a normal, silent no-op, matching every other
-  // ThemeRepositoryClient failure mode.
+  // Registers Official Supabase-backed themes into the exact same
+  // _registry/_setImported mechanism every other theme already goes
+  // through — Studio's own consumption code (list/getCatalog/get/
+  // getAsset) needs zero changes to see them, per that sprint's own
+  // "Studio should never know where a theme originated" goal.
+  // Deliberately does NOT call _persistImported(): Supabase is the
+  // source of truth for these, refetched fresh on every boot, not
+  // shadow-cached into localStorage too — the whole point of that
+  // sprint is replacing local persistence, not duplicating it. A theme
+  // imported the old way (file upload) still persists to localStorage
+  // exactly as before; the two paths stay cleanly separate. Never
+  // throws — a misconfigured or unreachable Supabase project is a
+  // normal, silent no-op, matching every other ThemeRepositoryClient
+  // failure mode.
+  //
+  // Personal Repository themes are deliberately excluded — Personal is
+  // the author's own working/testing environment (WEP Repository
+  // Model: every Theme is authored and iterated on there before being
+  // Promoted to Official), not reader-facing content. Studio only ever
+  // reads the Official Repository; World Builder and Platform Status
+  // still see both, since authoring/status tooling is a different
+  // audience than the reader-facing app this function serves.
   function refreshFromRepository(){
     if(typeof window.ThemeRepositoryClient==='undefined') return Promise.resolve(false);
     return window.ThemeRepositoryClient.discover().then(function(repos){
-      return Promise.all(repos.map(function(repo){
+      const officialOnly=repos.filter(function(repo){ return repo.kind==='official'; });
+      return Promise.all(officialOnly.map(function(repo){
         return window.ThemeRepositoryClient.list(repo.id).then(function(entries){
           return Promise.all(entries.map(function(entry){
             return window.ThemeRepositoryClient.load(repo.id,entry.theme_id).then(function(pkg){

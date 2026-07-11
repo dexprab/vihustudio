@@ -986,3 +986,30 @@ end-to-end verification against a real, reachable Supabase project
 round-trips) is explicitly deferred to the project owner's own local
 browser, matching every other Supabase-touching feature's own disclosed
 verification limits in this sandboxed environment.
+
+## 15. Studio Reads Official Only
+
+Studio's `ThemeRegistry.refreshFromRepository()` (`js/themeRegistry.js`)
+originally discovered and registered themes from *every* repository
+`ThemeRepositoryClient.discover()` returned — Official and Personal
+alike — per §11's original "Studio should never know where a theme
+originated" framing. In practice this meant Personal Repository themes
+(an author's own working/testing drafts, published there as the normal
+first step of the WEP workflow before Promote) appeared in Studio's
+World Library indistinguishably from finished, curated Official
+content — confusing for a reader-facing app, and not what the
+Personal/Official split was for.
+
+Fixed by filtering `refreshFromRepository()`'s repository list to
+`repo.kind === 'official'` before listing/loading. Studio now only ever
+discovers Official Repository themes; Personal Repository themes never
+reach it, regardless of how many exist or what they're named. World
+Builder (`ThemeRepositoryClient.discover()`/`.list()` called directly)
+and Platform Status (`getStats()`) are unaffected — both still see
+Personal, since authoring/status tooling is a different audience than
+the reader-facing app `refreshFromRepository()` serves.
+
+Verified via Playwright: a stubbed `ThemeRepositoryClient` returning one
+Official theme and two Personal themes registers only the Official one
+after `refreshFromRepository()` runs; both `goldenBuild.js` suites
+(30/30 each) pass unchanged.
