@@ -575,7 +575,6 @@
     // ---------------------------------------------------------------
 
     const btnSettings = $('wb-btn-settings');
-    const btnSave = $('wb-btn-save');
     const btnMenu = $('wb-btn-menu');
     const menuDropdown = $('wb-menu-dropdown');
     const menuDuplicate = $('wb-menu-duplicate');
@@ -584,6 +583,9 @@
     const savedBadge = $('wb-workspace-saved');
     const saveDot = $('wb-save-dot');
     const savedText = $('wb-workspace-saved-text');
+    const cloudSyncBadge = $('wb-cloud-sync');
+    const cloudSyncDot = $('wb-cloud-sync-dot');
+    const cloudSyncText = $('wb-cloud-sync-text');
 
     // Settings — Overview already IS "World Settings" (World Name /
     // Tagline / Description / Publisher / Version / Icon / Purpose /
@@ -678,17 +680,66 @@
         savedBadge.classList.toggle('wb-save-dirty', state === 'dirty');
         savedBadge.classList.toggle('wb-save-saved', state === 'saved');
         savedBadge.classList.toggle('wb-save-error', state === 'error');
-        btnSave.classList.toggle('wb-save-btn-dirty', state !== 'saved');
     }
 
-    // Save — every field already autosaves on change (ProjectStore.save
-    // per edit); this button's job is an explicit, user-visible
-    // confirmation that nothing is pending, not a second save mechanism.
-    btnSave.addEventListener('click', function () {
-        const result = window.ProjectStore.save(currentProject);
-        clearTimeout(_saveDisplayTimer);
-        _setSaveState(result.ok ? 'saved' : 'error');
-    });
+    // Cloud backup indicator — a second, separate readout from the local
+    // save badge above. The local write (js/projectStore.js) is still
+    // the only thing the Workspace actually reads from and is already
+    // honestly reported by _setSaveState; this one reports the
+    // best-effort background copy pushed to Supabase's builder_projects
+    // table (js/services/projectSync.js), so "my work is safe" doesn't
+    // rest on trusting an invisible mechanism. Hidden entirely until the
+    // Repository's configured state is actually known (mirrors
+    // #wb-status-pill's own "no status pill until there's a real status"
+    // discipline) rather than guessing.
+    function _setCloudSyncState(state) {
+        cloudSyncBadge.classList.remove('wb-hidden');
+        if (state === 'unavailable') {
+            cloudSyncDot.textContent = '⚪';
+            cloudSyncText.textContent = 'Cloud backup unavailable';
+            cloudSyncBadge.title = 'Supabase is not configured in this deployment — your work is still saved locally in this browser.';
+        } else if (state === 'pending') {
+            cloudSyncDot.textContent = '🌤️';
+            cloudSyncText.textContent = 'Backing up…';
+            cloudSyncBadge.title = '';
+        } else if (state === 'error') {
+            cloudSyncDot.textContent = '⚠️';
+            cloudSyncText.textContent = 'Cloud backup failed';
+            cloudSyncBadge.title = 'The background copy to your Personal space did not go through — your work is still saved locally in this browser.';
+        } else {
+            cloudSyncDot.textContent = '☁️';
+            cloudSyncText.textContent = 'Backed up';
+            cloudSyncBadge.title = 'A copy of this World Project is saved to your Personal space.';
+        }
+        cloudSyncBadge.classList.toggle('wb-save-dirty', state === 'pending');
+        cloudSyncBadge.classList.toggle('wb-save-error', state === 'error');
+    }
+
+    // Debounced separately from the local save (which is synchronous and
+    // immediate, per AV-009/Sprint B2.0.6) — a network push on every
+    // keystroke would be wasteful and would just queue up redundant
+    // requests behind each other. 2s of no further edits before the
+    // background copy actually goes out; ProjectSync.push() itself never
+    // throws (see its own header comment), so this never needs a
+    // try/catch of its own.
+    let _cloudSyncTimer = null;
+    function _scheduleCloudSync() {
+        if (!window.ProjectSync) return;
+        clearTimeout(_cloudSyncTimer);
+        _cloudSyncTimer = setTimeout(function () {
+            const project = currentProject;
+            window.ProjectSync.isAvailable().then(function (ok) {
+                if (!ok) { _setCloudSyncState('unavailable'); return; }
+                _setCloudSyncState('pending');
+                window.ProjectSync.push(project).then(function (result) {
+                    // A later edit may have already fired a newer sync —
+                    // never let a stale response overwrite a fresher state.
+                    if (project !== currentProject) return;
+                    _setCloudSyncState(result.ok ? 'synced' : 'error');
+                });
+            });
+        }, 2000);
+    }
 
     // Overflow menu — Duplicate/Reset Layout/Delete. No dead entries.
     btnMenu.addEventListener('click', function (e) {
@@ -1302,6 +1353,9 @@
         _renderWorkspace();
         _applyWorkspaceLayout();
         _setSaveState('saved');
+        // Reflects the cloud badge's real state shortly after opening,
+        // not only after the author's first edit.
+        _scheduleCloudSync();
     }
 
     // Sprint B2.0.6 — see _setSaveState above for why this shows the
@@ -1325,6 +1379,11 @@
             _saveDisplayTimer = setTimeout(function () {
                 _setSaveState('saved');
             }, 600);
+            // Only schedule a cloud backup for a write that actually
+            // reached localStorage — an errored local save already shows
+            // its own real failure state, and pushing to Supabase
+            // wouldn't make an unsaved edit any safer.
+            _scheduleCloudSync();
         }
         _renderWorkspaceHeader();
     }

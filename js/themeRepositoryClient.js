@@ -403,7 +403,14 @@ const ThemeRepositoryClient = (function () {
     publish: publish,
     promote: promote,
     getStats: getStats,
-    reset: reset
+    reset: reset,
+    // Exposed so a second, unrelated Supabase-backed feature (Builder
+    // Project cloud backup — js/services/projectSync.js) can reuse the
+    // exact same client/anonymous-session — never a second sign-in, a
+    // second config fetch, or a second Supabase client instance for
+    // what is, underneath, the same one project/session.
+    getClient: _getClient,
+    getSession: _ensureAuth
   };
   try { window.ThemeRepositoryClient = api; } catch (e) {}
   return api;

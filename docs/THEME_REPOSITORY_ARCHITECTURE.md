@@ -877,3 +877,112 @@ its own card copy says so directly.
   this sprint touched UI visibility, one new repository-to-repository
   copy function, and documentation only; no rendering, Build, or
   Validation behavior changed.
+
+## 14. Builder Project Cloud Backup — a deliberate extension beyond "Repositories only"
+
+Every earlier section of this document scoped Supabase to "the Official +
+Personal Theme *Repositories* only — not a Builder backend, not a Studio
+backend, not a session store." That boundary held until now: `themes`
+only ever stored a *compiled* Theme (Build output); the editable World
+Builder Project itself (Scenes/Places/Experiences/Frames, everything
+authored before a Build ever runs) lived only in this browser's own
+`localStorage` (`js/projectStore.js`), with no backup anywhere. A cleared
+browser, a different device, or a `localStorage` quota failure could
+silently lose in-progress authoring — explicitly disclosed and accepted
+as a real gap when it was raised.
+
+**The decision, made explicitly rather than assumed**: extend Supabase's
+role to also hold a background copy of the raw, editable Project — a
+second, deliberate boundary crossing, not a silent one. Two product
+choices were confirmed before building this:
+
+- **Local-primary, cloud backup** — `localStorage` remains the only
+  source of truth the Workspace actually reads from and renders
+  immediately; the Supabase copy is a best-effort backup pushed in the
+  background, never a second read path. If Supabase is unreachable,
+  authoring works exactly as it always has.
+- **The identity caveat is disclosed, not hidden.** The anonymous
+  session (`ThemeRepositoryClient.getSession()`, the same
+  `signInAnonymously()` mechanism the Personal Theme Repository already
+  uses) is itself a token stored in *this browser's* `localStorage` —
+  clearing all browser data loses that identity too, so this does not
+  fully solve "my work survives anything." It solves real, narrower
+  problems today: `localStorage` quota failures, accidental local-only
+  data loss, and resuming on the same browser later. A real account
+  system would close the remaining gap; none exists yet. Shipped anyway,
+  with the caveat surfaced in the cloud badge's own tooltip, per explicit
+  product direction (single-user product today).
+
+### 14.1 `builder_projects` — a new, separate table
+
+Deliberately not folded into `themes`, which has no shape for
+pre-compilation authoring data and no reason to grow one — a Builder
+Project isn't a portable, shared, referenced-file bundle the way a
+compiled Theme is (no `assets` Storage folder, no manifest/theme split);
+it's one creator's own private working copy, so `builder_projects` is
+one row per Project holding the *exact* JSON shape `ProjectStore`
+already persists to `localStorage`, verbatim, in a single `jsonb data`
+column. Owner-scoped via `auth.uid()`, the same RLS pattern
+`themes_personal_*` already established — no "official" or "shared"
+concept exists for a Builder Project at all. See `supabase/schema.sql`'s
+own header comment on the table for the exact columns/policies.
+
+### 14.2 `js/services/projectSync.js` — reuses the Repository's client, never a second sign-in
+
+A new, small, standalone module — `ProjectSync.isAvailable()` /
+`ProjectSync.push(project)` — deliberately built on top of
+`ThemeRepositoryClient.getClient()`/`.getSession()` (two small additions
+to that module's own exported API) rather than duplicating the
+config-fetch/Supabase-client-init/anonymous-sign-in sequence a second
+time: both features are, underneath, the same one Supabase project and
+the same one anonymous session. `push()` never throws — every failure
+(not configured, network, RLS) resolves `{ok:false, error}`, matching
+every other `ThemeRepositoryClient` method's own "missing config is a
+normal, handled state" discipline.
+
+### 14.3 The cloud badge — a second, honest indicator, not a replacement for the local one
+
+`worldBuilderApp.js`'s pre-existing 🟢/🟠/🔴 "All Changes Saved" badge
+already told the truth about the *local* write (Sprint B2.0.6, hardened
+by AV-009) — that indicator is unchanged. A second badge,
+`#wb-cloud-sync`, reports the background Supabase copy specifically:
+hidden until the Repository's configured state is actually known, then
+one of unavailable (Supabase not configured at all) / pending (push in
+flight) / synced (confirmed) / error (configured, but the push failed —
+disclosed, not silently swallowed). Debounced 2 seconds off the trailing
+edge of edits (separately from the local save's own 600ms display
+debounce), since a network push on every keystroke would just queue
+redundant requests.
+
+### 14.4 The Save button — removed, not just demoted
+
+`_persist()` already saved to `localStorage` synchronously on every
+edit; the header's own "💾 Save" button re-ran the identical write and
+existed only "as an explicit, user-visible confirmation that nothing is
+pending" (its own pre-existing code comment). With the local badge
+already reporting that truth immediately and the new cloud badge now
+reporting the *additional* truth this ticket asked for, no click-driven
+action added anything real — removed outright rather than left as
+inert reassurance. `index.html`, `worldBuilderApp.js`, and
+`world-builder.css` all had their Save-button-specific code/markup/rules
+removed together; the local-save badge's CSS was generalized from
+id-scoped selectors to a shared `.wb-save-dot-glyph`/`.wb-save-text`
+class pair so the new cloud badge could reuse the exact same dirty/
+saved/error styling without duplicating it.
+
+### 14.5 Verified
+
+`node --check` on all three touched JS files; a Playwright pass
+confirming the Save button no longer exists in the DOM, the local save
+badge continues to work completely independently of the cloud one, and
+— against this sandbox's own real (but network-blocked)
+`supabase-config.json` — the cloud badge correctly distinguishes
+"configured but unreachable" (a real attempted push that fails,
+reported honestly as "Cloud backup failed") from what "not configured
+at all" would show, never silently lying about success either way;
+`goldenBuild.js`'s full 30-assertion suite passes unchanged. Live
+end-to-end verification against a real, reachable Supabase project
+(confirming a pushed row actually lands in `builder_projects` and
+round-trips) is explicitly deferred to the project owner's own local
+browser, matching every other Supabase-touching feature's own disclosed
+verification limits in this sandboxed environment.

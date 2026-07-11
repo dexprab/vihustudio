@@ -88,7 +88,16 @@
                     <div id="wb-scene-header" class="wb-scene-header wb-hidden">
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
-                    <span id="wb-workspace-saved" class="wb-workspace-saved"><span id="wb-save-dot">🟢</span> <span id="wb-workspace-saved-text">All Changes Saved</span></span>
+                    <span id="wb-workspace-saved" class="wb-workspace-saved"><span id="wb-save-dot" class="wb-save-dot-glyph">🟢</span> <span id="wb-workspace-saved-text" class="wb-save-text">All Changes Saved</span></span>
+                    <!-- Builder Project cloud backup — a second, separate
+                         indicator from the local-save one above (which is
+                         still the honest, immediate truth about the
+                         localStorage write). This one reports the
+                         background Supabase copy: hidden until the
+                         Repository's configured state is known, then one
+                         of unavailable/pending/synced/error. See
+                         js/services/projectSync.js. -->
+                    <span id="wb-cloud-sync" class="wb-workspace-saved wb-hidden"><span id="wb-cloud-sync-dot" class="wb-save-dot-glyph">☁️</span> <span id="wb-cloud-sync-text" class="wb-save-text">Backed up</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
                     <div id="wb-status-pill" class="wb-status-pill wb-hidden">
@@ -98,7 +107,6 @@
                     <button id="wb-btn-publish" class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Share the built Theme">📤 Publish</button>
                     <span class="wb-header-divider" aria-hidden="true"></span>
                     <button id="wb-btn-settings" class="wb-workspace-btn" type="button" title="Open World Settings (Overview)">Settings</button>
-                    <button id="wb-btn-save" class="wb-workspace-btn wb-workspace-btn-primary" type="button" title="Save this World Project now">💾 Save</button>
                     <div class="wb-menu-wrap">
                         <button id="wb-btn-menu" class="wb-workspace-btn wb-workspace-btn-icon" type="button" title="More actions">⋮</button>
                         <div id="wb-menu-dropdown" class="wb-menu-dropdown wb-hidden">
@@ -316,6 +324,9 @@
     <script src="js/projectModel.js"></script>
     <script src="js/assetSpec.js"></script>
     <script src="js/projectCompiler.js"></script>
+    <!-- Builder Project cloud backup — reuses ThemeRepositoryClient's
+         already-loaded Supabase client/session, never a second sign-in. -->
+    <script src="js/services/projectSync.js"></script>
     <script src="js/worldBuilderApp.js"></script>
     <script src="js/buildInfo.js"></script>
 </body>

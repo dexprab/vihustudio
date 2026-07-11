@@ -491,7 +491,12 @@ html, body {
    see worldBuilderApp.js's _setSaveState() for why a distinct "Saving…"
    sub-state would never be observably different from "dirty" given a
    synchronous save. The dot is a literal 🟠/🟢 emoji glyph, so no CSS
-   colour is needed for it; the label text still gets a colour to match. */
+   colour is needed for it; the label text still gets a colour to match.
+   Shared by both #wb-workspace-saved (the local save) and #wb-cloud-sync
+   (the background Supabase backup, js/services/projectSync.js) via the
+   .wb-save-dot-glyph/.wb-save-text classes rather than the id-scoped
+   selectors this used to be, so one badge's state styling doesn't need
+   duplicating for the other. */
 .wb-workspace-saved {
     font-size: 12px;
     white-space: nowrap;
@@ -500,11 +505,11 @@ html, body {
     gap: 4px;
 }
 
-#wb-save-dot { font-size: 9px; line-height: 1; }
+.wb-save-dot-glyph { font-size: 9px; line-height: 1; }
 
-.wb-workspace-saved.wb-save-dirty #wb-workspace-saved-text { color: #B86C21; font-weight: 700; }
-.wb-workspace-saved.wb-save-saved #wb-workspace-saved-text { color: var(--wb-text-secondary); }
-.wb-workspace-saved.wb-save-error #wb-workspace-saved-text { color: #C0392B; font-weight: 700; }
+.wb-workspace-saved.wb-save-dirty .wb-save-text { color: #B86C21; font-weight: 700; }
+.wb-workspace-saved.wb-save-saved .wb-save-text { color: var(--wb-text-secondary); }
+.wb-workspace-saved.wb-save-error .wb-save-text { color: #C0392B; font-weight: 700; }
 
 .wb-workspace-header-right {
     display: flex;
@@ -540,12 +545,6 @@ html, body {
     border-color: transparent;
     font-weight: 700;
     color: #4A3A10;
-}
-
-/* Sprint B2.0.6 — a visible ring while changes are pending, so the Save
-   button itself (not just the header badge) communicates state. */
-.wb-workspace-btn-primary.wb-save-btn-dirty {
-    box-shadow: 0 0 0 2px rgba(184, 108, 33, .35);
 }
 
 .wb-workspace-btn-icon {

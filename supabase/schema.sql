@@ -191,3 +191,64 @@ create policy theme_assets_personal_delete
     and (storage.foldername(name))[1] = 'personal'
     and (storage.foldername(name))[2] = auth.uid()::text
   );
+
+-- ---------------------------------------------------------------
+-- Table: builder_projects
+-- A deliberate, disclosed extension beyond this file's original scope
+-- note above ("Official Themes + Personal Themes, nothing else"): the
+-- `themes` table only ever holds a *compiled* Theme (Build output).
+-- `builder_projects` is the raw, editable World Builder Project itself
+-- (Scenes/Places/Experiences/Frames, pre-compilation) — previously
+-- localStorage-only (js/projectStore.js), so a cleared browser or a
+-- quota failure could silently lose in-progress authoring with no
+-- backup anywhere. This table is a background cloud copy of that same
+-- data, owner-scoped via the same anonymous-session auth.uid() the
+-- Personal Theme Repository already uses — "local-primary, cloud
+-- backup," never a second source of truth: js/projectStore.js's
+-- localStorage write is still what the Workspace reads from/renders
+-- immediately; this table only exists so that write isn't the only
+-- copy of a Project that exists anywhere.
+--
+-- One row per Project, `data` holding the exact same JSON shape
+-- ProjectStore already persists to localStorage (id/name/tagline/
+-- description/icon/status/createdAt/updatedAt/files/lastBuild) — no
+-- separate asset-extraction/Storage-object pipeline the way `themes`
+-- has, since a Builder Project isn't meant to be a portable, shared,
+-- referenced-file bundle the way a compiled Theme is; it is one
+-- creator's own private working copy. A very large authored Project
+-- (many uploaded images, each already downscaled client-side per
+-- AV-009) fits comfortably in a jsonb column at this scale — revisit
+-- only if that stops being true.
+-- ---------------------------------------------------------------
+create table if not exists public.builder_projects (
+  id          text primary key,
+  owner_id    text not null,
+  data        jsonb not null,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.builder_projects enable row level security;
+
+-- Owner-only, full stop — a Builder Project has no "official" or
+-- "shared" concept the way a Theme does; every row is exactly one
+-- anonymous session's own private backup.
+drop policy if exists builder_projects_select on public.builder_projects;
+create policy builder_projects_select
+  on public.builder_projects for select
+  using (owner_id = auth.uid()::text);
+
+drop policy if exists builder_projects_insert on public.builder_projects;
+create policy builder_projects_insert
+  on public.builder_projects for insert
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists builder_projects_update on public.builder_projects;
+create policy builder_projects_update
+  on public.builder_projects for update
+  using (owner_id = auth.uid()::text)
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists builder_projects_delete on public.builder_projects;
+create policy builder_projects_delete
+  on public.builder_projects for delete
+  using (owner_id = auth.uid()::text);
