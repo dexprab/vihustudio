@@ -5,6 +5,6 @@
   "slice": "The 4th panel's \"This Scene\" Experience list sorted by creation order with no way to change stacking, unlike Frames/Layouts/Scenes elsewhere in the Builder which already have real reorder controls. New _experienceSceneStackInfo(exp, scene) resolves an Experience's active content kind to its real mirrored Scene Layer (the same slot mapping ProjectModel._syncUniversalContent already uses) and finds its position in the Scene's own Stack; \"This Scene\" now sorts by that real position, and each Free-hosted Experience with a populated section gets ⬆/⬇ buttons calling the existing moveInStack directly -- the same mechanism the legacy Decorations/Text panels' own Bring Forward/Send Backward already use. Deliberately scoped to Free-hosted Experiences only: a Place-hosted one has no Stack entry of its own (it projects onto its Place's frame slot), and a Scene-hosted one is the wall colour, not content to shuffle.",
   "build": "0053",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "ab4f212",
   "environment": "Release"
 }
