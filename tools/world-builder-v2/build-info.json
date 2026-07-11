@@ -5,6 +5,6 @@
   "slice": "Found and fixed the one Experience-creation path in the whole app that skipped the Nursery: the 4th panel's \"+ New Experience\" button created an Experience and, in the same motion, called graduateToPersonal + attachExperience -- born Personal, never Nurturing, unlike every other creation path (the Library's own \"Start Growing\" form, the legacy Decoration/Text quick-add buttons the Convergence Sprint converged onto Experience creation) which all correctly land Nurturing first. Removed the shortcut outright rather than teaching it to graduate correctly, since the full Experience Library (Gallery/Nursery tabs, search, the real Nursery creation form) already exists one click away and is the only place that decision belongs. The former \"Open full Experience Library\" link is renamed \"New Experience ->\" and promoted to the panel's primary action, since it is now the sole way to create an Experience from this column; the two empty-state help strings that referenced the removed button were updated to match.",
   "build": "0050",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "abbe2bf",
   "environment": "Release"
 }
