@@ -1325,9 +1325,17 @@ function _refreshRepositoryWithTimeout(){
   ]);
 }
 function _startCreationFlow(){
-  _refreshRepositoryWithTimeout().then(function(){
-    if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
-  });
+  // Show Creation Flow immediately — CreationFlow.start() is what hides
+  // #app (the raw editor), so waiting on the repository refresh here
+  // was leaving the editor visibly flashing on screen for up to 4s
+  // before Screen 1 ever appeared. Screen 1 doesn't read ThemeRegistry
+  // at all, and Screen 2 (js/creationFlow.js:138) reads
+  // ThemeRegistry.getCatalog() live at render time, so running the
+  // refresh in the background — instead of blocking first paint —
+  // still reaches Screen 2 with up-to-date themes for the common case
+  // where the user takes any time at all to get there.
+  if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+  _refreshRepositoryWithTimeout();
 }
 (function bootstrapSession(){
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
