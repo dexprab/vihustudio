@@ -4257,6 +4257,56 @@
         contextPanel.appendChild(details);
     }
 
+    // The Experience variant of the shared Story-Author-permission block
+    // (Blueprint §6.2) — Experience itself has no `.permissions` field
+    // (js/projectModel.js's Experience shape); the real permission
+    // object lives on whichever real, hosted object this Experience
+    // currently projects onto in the open Scene (Place-hosted: the
+    // Holder's own block, already shown in the Place panel — a Frame
+    // Experience's "editable" is literally the Holder panel's "Can a
+    // Story Author change this? (its Frame, once populated)" checkbox,
+    // so nothing new is needed there). Scene/Free-hosted: the one real
+    // mirrored Scene Layer this Experience currently has in
+    // currentSceneId — "Only-one-content-type-at-a-time" guarantees at
+    // most one exists per Scene, so there is never an ambiguous choice
+    // of which instance's permissions to edit. Shown only once the
+    // Experience is actually hosted here (a Nurturing idea, or one not
+    // yet attached to the open Scene, has no real object yet to set
+    // permissions on).
+    function _renderExperiencePermissionBlock(exp) {
+        if (exp.hostedBy === 'place') return;
+        if (!currentSceneId) return;
+        const slot = _experienceMirroredSlot(exp);
+        const layer = window.ProjectModel.findMirroredSceneLayer(currentProject, currentSceneId, exp.id, slot);
+        if (!layer || !layer.permissions) return;
+
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro';
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        const isOpen = layer.permissions.moveable || layer.permissions.editable;
+        summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
+        body.appendChild(_permissionCheckbox('Can a Story Author move this?', layer.permissions.moveable, function (v) {
+            layer.permissions.moveable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Can a Story Author change this?', layer.permissions.editable, function (v) {
+            layer.permissions.editable = v;
+            _persist();
+        }));
+        body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', layer.permissions.visible, function (v) {
+            layer.permissions.visible = v;
+            _persist();
+            _redrawSceneCanvases(currentSceneId);
+        }));
+        details.appendChild(body);
+        contextPanel.appendChild(details);
+    }
+
     // ---------- Text (Builder V2 — Blueprint §10) ----------
     // Unlike a decoration, text is not sourced from a Theme Asset shelf
     // (Blueprint §2's own resolved contradiction) — wording is always
@@ -5045,6 +5095,7 @@
         if (exp.lifecycle !== 'nurturing') {
             _renderExperienceUsage(exp);
             _renderExperienceAttachPicker(exp);
+            _renderExperiencePermissionBlock(exp);
         }
 
         if (exp.lifecycle === 'nurturing') {
