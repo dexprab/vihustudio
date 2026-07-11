@@ -1519,11 +1519,20 @@ html, body {
 }
 
 /* world-builder-v2 — Experiences column (Scenes+Experiences simultaneous
-   view). Same shell shape as Context Inspector, one column over. */
+   view). Same shell shape as Context Inspector, one column over.
+   Builder Workspace Polish — Scrolling & Layout: `display: flex` was
+   missing here (unlike .wb-inspector-wrap's identical shell just
+   above), so `flex-direction: column` and .wb-experiences-panel's own
+   `flex: 1; overflow-y: auto` below were both silently inert —
+   .wb-experiences-panel grew to its full content height instead of
+   being clipped to the grid row's own height, forcing the whole
+   Workspace grid row taller than the viewport and scrolling the entire
+   page rather than just this one panel. */
 .wb-experiences-wrap {
     grid-area: experiences;
     min-height: 0;
     min-width: 0;
+    display: flex;
     flex-direction: column;
     border-left: 1px solid var(--wb-border);
     background: var(--wb-paper);
