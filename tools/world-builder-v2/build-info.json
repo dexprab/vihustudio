@@ -1,10 +1,10 @@
 {
-  "version": "3.13.3",
+  "version": "3.14.0",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Builder Workspace Polish — Scrolling & Layout",
-  "slice": "The Experiences panel was silently forcing the whole Builder page to scroll instead of scrolling itself: .wb-experiences-wrap declared flex-direction:column but never display:flex, so .wb-experiences-panel's own flex:1/min-height:0/overflow-y:auto rules were inert and it grew to its full content height, pushing the Workspace grid row taller than the viewport. Fixed with the one missing display:flex declaration -- verified via an inflated-content diagnostic that the page never scrolls, the panel clips to its available height and scrolls internally with its heading staying pinned, and the resize sash is unaffected. Every other panel (Context Inspector, Working View/Runtime Preview, the Scenes filmstrip) was already correct and needed no change. CSS-only; no Runtime/Build/Theme Contract/Repository/Engine/data-model or functional changes.",
-  "build": "0058",
+  "milestone": "Continuous Builder — Scene Stack + Experience Library tabs, full-height right panel",
+  "slice": "Two changes, Builder-workspace-only. (1) The right-side authoring panel (Context Inspector + Experiences) now runs the full Workspace height, uninterrupted by the Scene filmstrip -- the filmstrip moved from a full-width flex sibling beneath the whole 3-column grid into a grid item of its own inside .wb-workspace-body's new second row; Inspector/Experiences span both rows via grid-template-areas, so only Working View's row shares space with the filmstrip. Default filmstrip height reduced 220px -> 128px, the minimum practical size for Scene thumbnails. (2) The Experiences column's \"This Scene\"/\"All Experiences\" toggle becomes \"Scene Stack\" (default) / \"Experience Library\" tabs -- Scene Stack renders directly from ProjectModel.sceneStack, walking Holders and Layers together in one ordered list, a Holder's attached Frame Experience shown nested and read-only beneath it, reorderable via moveInStack(...,'holder',...) for the first time from any UI. Found and fixed a real bug while verifying: the new reorder buttons' forward/backward edge-disabling was inverted (Bring Forward disabled at index 0 instead of the last index). Verified end-to-end via Playwright including actual Holder-vs-Layer reordering, independent panel scrolling, resize/collapse/Reset Workspace Layout, and View Mode disabling every new control.",
+  "build": "0059",
   "buildDate": "2026-07-11",
-  "commit": "f317273",
+  "commit": "pending",
   "environment": "Release"
 }
