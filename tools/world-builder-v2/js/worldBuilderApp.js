@@ -1797,10 +1797,15 @@
         if (!scene) {
             sceneHeaderEl.classList.add('wb-hidden');
             sceneHeaderEl.innerHTML = '';
+            workspaceName.classList.remove('wb-hidden');
             return;
         }
         sceneHeaderEl.classList.remove('wb-hidden');
         sceneHeaderEl.innerHTML = '';
+        // The breadcrumb already repeats the World name, so the plain
+        // name display hides while it's showing rather than sitting
+        // beside it — one line, not two, in the same top-bar row.
+        workspaceName.classList.add('wb-hidden');
 
         const crumb = document.createElement('div');
         crumb.className = 'wb-scene-breadcrumb';

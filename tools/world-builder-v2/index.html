@@ -76,6 +76,18 @@
                 <div class="wb-workspace-header-left">
                     <button id="wb-workspace-home" class="wb-workspace-home-btn" type="button" title="Back to My World Projects"><span aria-hidden="true">🏠</span> My Worlds</button>
                     <span id="wb-workspace-name" class="wb-workspace-name">Untitled World</span>
+                    <!-- Scene Header (Builder V2 — Vision §2), folded into
+                         the top bar rather than its own row: the
+                         breadcrumb (World › Scene) and the Scene
+                         Configuration glance (Aspect Ratio / Safe Area /
+                         pixel Size) — Canvas's one remaining home now
+                         that it is no longer a peer creative activity.
+                         Present only while a Scene is open, replacing
+                         #wb-workspace-name (which already repeats the
+                         World name) rather than sitting beside it. -->
+                    <div id="wb-scene-header" class="wb-scene-header wb-hidden">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
                     <span id="wb-workspace-saved" class="wb-workspace-saved"><span id="wb-save-dot">🟢</span> <span id="wb-workspace-saved-text">All Changes Saved</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
@@ -115,15 +127,6 @@
             <nav id="wb-global-nav" class="wb-global-nav wb-hidden">
                 <!-- rendered by worldBuilderApp.js (invisible, unused) -->
             </nav>
-
-            <!-- Scene Header (Builder V2 — Vision §2). Present only while a
-                 Scene is open: the breadcrumb (World › Scene) and the
-                 Scene Configuration glance (Aspect Ratio / Safe Area /
-                 pixel Size) — Canvas's one remaining home now that it is
-                 no longer a peer creative activity. -->
-            <div id="wb-scene-header" class="wb-scene-header wb-hidden">
-                <!-- rendered by worldBuilderApp.js -->
-            </div>
 
             <div id="wb-workspace-body" class="wb-workspace-body">
                 <!-- world-builder-v2 — three permanent, full-height
