@@ -1,10 +1,10 @@
 {
   "version": "3.12.0",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Builder Project cloud backup, Save button removed",
-  "slice": "A deliberate, disclosed extension of Supabase's scope beyond the Official/Personal Theme Repositories: every in-progress Builder Project used to live only in this browser's localStorage, with no backup anywhere. New builder_projects Supabase table (owner-scoped via the same auth.uid() pattern the Personal Theme Repository uses) plus new js/services/projectSync.js push a background copy on every edit (2s debounce), reusing ThemeRepositoryClient's already-established client/anonymous session rather than a second sign-in. Local-primary, cloud backup: localStorage remains the only source of truth the Workspace reads from; Supabase is best-effort. A second, honest header badge reports the background copy's own state (unavailable/pending/synced/error) completely independently of the pre-existing local-save badge. The Save button was removed outright -- every edit already autosaved synchronously and the local badge already reported that truth immediately, so a button that just re-ran the identical write added nothing real. Disclosed caveat: the anonymous session identity is itself a localStorage token, so a cleared browser loses that too -- this narrows real risk rather than eliminating it.",
-  "build": "0052",
+  "milestone": "Reorder Experiences in the This Scene sidebar",
+  "slice": "The 4th panel's \"This Scene\" Experience list sorted by creation order with no way to change stacking, unlike Frames/Layouts/Scenes elsewhere in the Builder which already have real reorder controls. New _experienceSceneStackInfo(exp, scene) resolves an Experience's active content kind to its real mirrored Scene Layer (the same slot mapping ProjectModel._syncUniversalContent already uses) and finds its position in the Scene's own Stack; \"This Scene\" now sorts by that real position, and each Free-hosted Experience with a populated section gets ⬆/⬇ buttons calling the existing moveInStack directly -- the same mechanism the legacy Decorations/Text panels' own Bring Forward/Send Backward already use. Deliberately scoped to Free-hosted Experiences only: a Place-hosted one has no Stack entry of its own (it projects onto its Place's frame slot), and a Scene-hosted one is the wall colour, not content to shuffle.",
+  "build": "0053",
   "buildDate": "2026-07-11",
-  "commit": "be8a8ee",
+  "commit": "pending",
   "environment": "Release"
 }
