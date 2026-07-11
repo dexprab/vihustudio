@@ -4751,20 +4751,57 @@
         }
     }
 
-    // Builder V3.1 Universal Experience Authoring — every Experience
-    // exposes the same four content sections (Text/Image/Graphics/
-    // Colour), regardless of `type` ("Do not hide sections based on
-    // Type" — an unused section simply stays empty). `type` only still
-    // decides two things, both Engine Adapter plumbing an author never
-    // sees: a legacy Frame Experience keeps its own dedicated Properties
-    // (matWidth/frameThickness/borderColor/wallTone/shadow — the mat/
-    // border chrome a Place's own single Frame slot still needs, a
-    // concept the universal Text/Image/Graphics/Colour model doesn't
-    // replace), and Place-hosting still only renders a Frame (disclosed
-    // below) — Scene- and Free-hosting now render all four universal
-    // sections uniformly for every Experience.
+    // Only-one-content-type-at-a-time (a direct product simplification
+    // request, superseding Builder V3.1's original "every Experience
+    // exposes all four sections simultaneously, do not hide any of
+    // them" instruction): `exp.contentKind` picks exactly one of Text/
+    // Image/Graphics/Colour, shown as a segmented control above the
+    // single matching card — switching it only changes which card is
+    // visible/editable here; it never destroys the other sections' own
+    // stored data, so switching back shows whatever was there before.
+    // The real, Engine-level enforcement lives in
+    // `ProjectModel._syncUniversalContent`'s own `kind` gate — this
+    // Inspector's one-card-at-a-time display and that gate are two
+    // views of the same single field, never two separate rules that
+    // could drift apart. `type` still decides one thing, Engine Adapter
+    // plumbing an author never sees: a legacy Frame Experience keeps
+    // its own dedicated Properties (matWidth/frameThickness/
+    // borderColor/wallTone/shadow — the mat/border chrome a Place's own
+    // single Frame slot still needs, a concept the universal content
+    // model doesn't replace) alongside whichever universal section is
+    // active.
+    const CONTENT_KIND_META = {
+        text: { icon: '📝', label: 'Text' },
+        image: { icon: '🖼', label: 'Image' },
+        graphics: { icon: '🎭', label: 'Graphics' },
+        colour: { icon: '🎨', label: 'Colour' }
+    };
+    const CONTENT_KIND_ORDER = ['text', 'image', 'graphics', 'colour'];
+
+    function _renderContentKindSelector(exp, kind) {
+        const row = document.createElement('div');
+        row.className = 'wb-content-kind-selector';
+        CONTENT_KIND_ORDER.forEach(function (k) {
+            const meta = CONTENT_KIND_META[k];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-content-kind-btn' + (k === kind ? ' active' : '');
+            btn.innerHTML = '<span>' + meta.icon + '</span>' + meta.label;
+            btn.addEventListener('click', function () {
+                if (k === kind) return;
+                window.ProjectModel.updateExperience(currentProject, exp.id, { contentKind: k });
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+                _renderContextPanel();
+            });
+            row.appendChild(btn);
+        });
+        contextPanel.appendChild(row);
+    }
+
     function _renderExperienceProperties(exp) {
         const props = exp.properties || {};
+        const kind = exp.contentKind || 'text';
 
         // An author should always know what will be affected by an edit
         // (Builder V3 MEP — Usage completeness): a reused Experience's
@@ -4818,8 +4855,10 @@
             ], props.shadow || 'soft', onProp('shadow'))));
         }
 
+        _renderContentKindSelector(exp, kind);
+
         // ---- 📝 Text ----
-        {
+        if (kind === 'text') {
             const outer = _openContentCard('📝', 'Text');
             // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
             // field already gets — carries over to the universal Text
@@ -4850,7 +4889,7 @@
         }
 
         // ---- 🖼 Image ----
-        {
+        if (kind === 'image') {
             const outer = _openContentCard('🖼', 'Image');
             contextPanel.appendChild(_buildFieldGroup('Photo', _assetUploadRow('🖼️', props.imageSrc, onUploadProp('imageSrc'))));
             _fieldRow(
@@ -4868,7 +4907,7 @@
         }
 
         // ---- 🎭 Graphics ----
-        {
+        if (kind === 'graphics') {
             const outer = _openContentCard('🎭', 'Graphics');
             contextPanel.appendChild(_fieldHelp('A reusable visual asset — an SVG or PNG icon or sticker.'));
             contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, onUploadProp('graphicSrc'), 'image/*,.svg,image/svg+xml')));
@@ -4884,7 +4923,7 @@
         }
 
         // ---- 🎨 Colour ----
-        {
+        if (kind === 'colour') {
             const outer = _openContentCard('🎨', 'Colour');
             contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
             contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));

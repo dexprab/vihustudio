@@ -2539,6 +2539,45 @@ html, body {
    once, below every card — duplicating those interactive flows into
    all four cards would repeat the same live state four times over for
    no real benefit, so only this compact summary is repeated. */
+/* Only-one-content-type-at-a-time — the segmented control that picks
+   which single .wb-content-section-card (below) is shown/editable.
+   Same visual language as .wb-exp-scope-toggle (This Scene/All
+   Experiences), reused here for consistency rather than inventing a
+   second segmented-control style. */
+.wb-content-kind-selector {
+    display: flex;
+    gap: 4px;
+    background: var(--wb-sand);
+    border-radius: 999px;
+    padding: 3px;
+    margin: 4px 0 14px;
+}
+
+.wb-content-kind-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--wb-text-secondary);
+    cursor: pointer;
+}
+
+.wb-content-kind-btn span { font-size: 15px; line-height: 1; }
+
+.wb-content-kind-btn.active {
+    background: var(--wb-paper);
+    color: var(--wb-navy);
+    box-shadow: 0 1px 3px var(--wb-shadow);
+}
+
 .wb-content-section-card {
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);

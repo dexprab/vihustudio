@@ -1,10 +1,10 @@
 {
-  "version": "3.11.0",
+  "version": "3.12.0",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Approved Workspace Visual Polish",
-  "slice": "Scene Aspect Ratio dropdown replaces the read-only top-bar glance chip and retires the separate Scene Configuration Inspector panel. Working View / Runtime Preview canvases fixed to genuinely hug the Scene's own Aspect Ratio -- removed a mismatched-shape background box that used to surround the correctly-sized card. Fixed a real space-allocation bug where Runtime Preview could collapse to zero height in stacked dock on a short viewport (Working View's canvas wrap is now shrinkable instead of forcing its sibling to zero). Check & Build's Thumbnail/Hero Image validation error/warnings now show a working Fix Now button pointing at World Settings. Experience Inspector's Text/Image/Graphics/Colour sections are now self-contained bordered cards (icon+title header, compact Hosted By/Usage/Make Public footer) matching the approved Authoring view reference. Full regression (goldenBuild.js 30/30 + Playwright Workspace smoke suite) passes unchanged throughout; zero console errors.",
-  "build": "0047",
+  "milestone": "Only-one-content-type Experiences",
+  "slice": "My World Projects' Repository badge now shows a distinct visible state on every exit path (script unavailable, Supabase not configured, config check throwing, list() failing, or a real Personal/Official match) instead of three different silent no-ops that all looked like plain growing; removed the Duplicate action from project cards, keeping only Rename and Delete. Experience Inspector's Text/Image/Graphics/Colour sections are no longer shown simultaneously -- a new segmented Content Type selector picks exactly one active section at a time (exp.contentKind), non-destructively (switching kinds preserves the other sections' own stored data for later). Enforced at the Engine Adapter boundary, not just the Inspector: ProjectModel._syncUniversalContent only ever mirrors the active kind's Scene Layer, gated by contentKind, so stray data in an inactive section can never still render alongside the active one; updateExperience now re-syncs attachments on every patch (previously only updateExperienceProperty did), so switching kind immediately updates Working View/Runtime Preview instead of waiting for an unrelated edit. Found and fixed a real, pre-existing bug while verifying this end-to-end: addSceneLayer's own field whitelist silently dropped a brand-new Image/Graphics Layer's `image` value entirely (only a later edit, which used a different, unfiltered code path, ever actually set it) -- fixed by explicitly assigning `created.image` right after creation, matching how opacity/fit/sourceExperienceId/contentSlot are already set there.",
+  "build": "0048",
   "buildDate": "2026-07-11",
-  "commit": "6eda4af",
+  "commit": "pending",
   "environment": "Release"
 }

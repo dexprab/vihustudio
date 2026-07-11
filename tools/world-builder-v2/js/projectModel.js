@@ -827,6 +827,19 @@ const ProjectModel = (function () {
         if (!Array.isArray(exp.tags)) exp.tags = [];
         if (!exp.properties || typeof exp.properties !== 'object') exp.properties = {};
         _ensureUniversalContentDefaults(exp);
+        // Only-one-content-type-at-a-time — a direct product simplification
+        // request, after Builder V3.1 deliberately let every Experience
+        // hold Text+Image+Graphics+Colour simultaneously. `contentKind`
+        // ('text'|'image'|'graphics'|'colour') is which one is actually
+        // active; `_syncUniversalContent` below only ever mirrors that one,
+        // regardless of what stray data might sit in the other fields, so
+        // this is enforced at the Engine Adapter boundary, not just hidden
+        // in the Inspector. Inferred once, read-time, for any Experience
+        // that predates this field (the same reconciliation pattern as
+        // every other field on this object) — picks whichever section
+        // already has real content rather than defaulting blind and
+        // silently hiding an author's existing work.
+        if (!exp.contentKind) exp.contentKind = _inferContentKind(exp.properties);
         if (!exp.createdAt) exp.createdAt = exp.updatedAt || Date.now();
         if (!exp.updatedAt) exp.updatedAt = exp.createdAt;
         return exp;
@@ -873,6 +886,21 @@ const ProjectModel = (function () {
         exp._universalMigrated = true;
     }
 
+    // Priority mirrors the existing Gallery/Nursery card-thumbnail
+    // preference (`_experienceCard` in worldBuilderApp.js: Image, then
+    // Graphics, then a non-transparent Colour) with Text slotted in
+    // ahead of Colour, since real text content is a more deliberate
+    // authoring choice than a leftover default fill colour. A brand-new
+    // Experience with nothing populated yet starts on Text — the
+    // friendliest, lowest-friction thing to type into first.
+    function _inferContentKind(props) {
+        if (props.imageSrc) return 'image';
+        if (props.graphicSrc) return 'graphics';
+        if (props.textContent && props.textContent.trim()) return 'text';
+        if (props.colorTransparent === false) return 'colour';
+        return 'text';
+    }
+
     // Placeholder creation (Milestone 2) plus real type-specific
     // Properties, seeded from js/services/experienceSchema.js's
     // `defaultProperties(type)` so the Inspector (Milestone 3) always
@@ -913,6 +941,14 @@ const ProjectModel = (function () {
         if (!experience) return null;
         Object.assign(experience, patch);
         experience.updatedAt = Date.now();
+        // Matches updateExperienceProperty's own re-sync below — a patch
+        // through this generic path (e.g. contentKind, switching which
+        // single content section is active) can affect what the Engine
+        // Adapter should be mirroring just as much as a Properties edit
+        // can, so it gets the identical re-sync rather than silently
+        // leaving Working View/Runtime Preview showing stale content
+        // until some other, unrelated edit happens to trigger one.
+        _syncExperienceAttachments(project, experience);
         return experience;
     }
 
@@ -1138,6 +1174,14 @@ const ProjectModel = (function () {
     // nothing — no empty, invisible Layers cluttering the Scene Stack.
     function _syncUniversalContent(project, sceneId, experience, fillMode) {
         const props = experience.properties || {};
+        // Only-one-content-type-at-a-time — see _ensureExperienceDefaults'
+        // own comment. Gated here, not just in the Inspector, so stray
+        // data left in a non-active section (e.g. typed text, then
+        // switched to Image) can never still render alongside the
+        // active one — every non-matching section below explicitly
+        // takes the "no content" branch regardless of what its own
+        // fields hold.
+        const kind = experience.contentKind || _inferContentKind(props);
 
         // Colour.
         if (fillMode === 'scene') {
@@ -1145,11 +1189,11 @@ const ProjectModel = (function () {
             // background fill mechanism, not a new Engine capability.
             // Transparent means "leave whatever background already
             // exists" — there's no new "no background" state to write.
-            if (props.colorTransparent === false) {
+            if (kind === 'colour' && props.colorTransparent === false) {
                 setSceneBackground(project, sceneId, props.colorValue || '#F4F1EC');
             }
         } else {
-            if (props.colorTransparent === false) {
+            if (kind === 'colour' && props.colorTransparent === false) {
                 // The Colour section has no Transform of its own — its
                 // rect is always the live footprint of whatever Text/
                 // Image/Graphics is currently populated (recomputed on
@@ -1179,7 +1223,7 @@ const ProjectModel = (function () {
         }
 
         // Text.
-        if (props.textContent && props.textContent.trim()) {
+        if (kind === 'text' && props.textContent && props.textContent.trim()) {
             let layer = _findMirroredLayer(project, sceneId, experience.id, 'text');
             if (!layer) {
                 const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'text');
@@ -1213,10 +1257,10 @@ const ProjectModel = (function () {
         // Image and Graphics — both a Layer's `.image` field (the same
         // Runtime mechanism), kept as two separate Layers/slots so each
         // owns its own independent Transform.
-        [{ slot: 'image', srcKey: 'imageSrc', xKey: 'imageX', yKey: 'imageY', wKey: 'imageW', hKey: 'imageH', opKey: 'imageOpacity' },
-            { slot: 'graphic', srcKey: 'graphicSrc', xKey: 'graphicX', yKey: 'graphicY', wKey: 'graphicW', hKey: 'graphicH', opKey: 'graphicOpacity' }
+        [{ slot: 'image', kindMatch: 'image', srcKey: 'imageSrc', xKey: 'imageX', yKey: 'imageY', wKey: 'imageW', hKey: 'imageH', opKey: 'imageOpacity' },
+            { slot: 'graphic', kindMatch: 'graphics', srcKey: 'graphicSrc', xKey: 'graphicX', yKey: 'graphicY', wKey: 'graphicW', hKey: 'graphicH', opKey: 'graphicOpacity' }
         ].forEach(function (spec) {
-            const src = props[spec.srcKey];
+            const src = (kind === spec.kindMatch) ? props[spec.srcKey] : null;
             if (src) {
                 let layer = _findMirroredLayer(project, sceneId, experience.id, spec.slot);
                 if (!layer) {
@@ -1240,7 +1284,25 @@ const ProjectModel = (function () {
                 if (layer) {
                     Object.assign(layer, { name: experience.name, image: src, opacity: props[spec.opKey], fit: fit, position: position, size: size });
                 } else {
-                    const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: experience.name, image: src, position: position, size: size });
+                    // A real, pre-existing bug found while testing —
+                    // addSceneLayer's own Object.assign only ever copies
+                    // a fixed field set from `spec` (id/name/kind/color/
+                    // glyph/position/size/permissions/decorationSlot,
+                    // plus sourceExperienceId and text-kind fields when
+                    // present) — `image` was never one of them, so a
+                    // brand-new Image/Graphics Layer's `spec.image` above
+                    // was silently discarded and the Layer was created
+                    // with no image at all; only a later edit (which
+                    // hits the `Object.assign(layer, {...})` update
+                    // branch above, a real mutation with no such filter)
+                    // ever actually set it. Explicit post-creation
+                    // assignment here, matching opacity/fit/
+                    // sourceExperienceId/contentSlot's own existing
+                    // pattern on the very next lines, fixes it at the
+                    // same place those are already set rather than
+                    // touching addSceneLayer's generic field list.
+                    const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: experience.name, position: position, size: size });
+                    created.image = src;
                     created.opacity = props[spec.opKey];
                     created.fit = fit;
                     created.sourceExperienceId = experience.id;
