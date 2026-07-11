@@ -1167,8 +1167,17 @@ html, body {
        persisted share of the main axis. Deliberately no background of
        its own — the column's own cream shows through around it, so the
        aspect-locked card below is the only bounded rectangle on
-       screen, and it always matches the Scene's real shape. */
-    flex: 0 0 var(--wb-stage-split, 60%);
+       screen, and it always matches the Scene's real shape.
+
+       flex-shrink is 1 (not 0) so this side gives up space under real
+       pressure — on a short viewport in stacked dock, the persisted
+       60% share plus Runtime Preview's own heading could otherwise
+       squeeze .wb-runtime-preview-block below zero (flex clamps a 0-
+       shrink sibling's size floor at its full basis, so the *other*
+       flex:1 sibling absorbed the entire deficit and disappeared
+       first). Runtime Preview's own min-height is the other half of
+       this fix — see .wb-runtime-preview-block below. */
+    flex: 0 1 var(--wb-stage-split, 60%);
     min-height: 0;
     min-width: 0;
     width: 100%;
@@ -1300,8 +1309,14 @@ html, body {
    Working View reference already uses for the editing canvas. */
 .wb-runtime-preview-block {
     flex: 1;
-    min-height: 0;
-    min-width: 0;
+    /* A real floor, not 0 — paired with .wb-working-canvas-wrap's own
+       flex-shrink:1 above, this is what actually stops Runtime Preview
+       from disappearing on a short viewport in stacked dock: Working
+       View's side gives up space first, and once it can't give up any
+       more, this floor still guarantees room for the heading plus a
+       small but visible canvas rather than shrinking to 0. */
+    min-height: 96px;
+    min-width: 96px;
     padding: 4px 8px;
     display: flex;
     flex-direction: column;
