@@ -5,6 +5,6 @@
   "slice": "A project card showed \"GROWING\" (the status pill) and \"PERSONAL\"/\"OFFICIAL\" (a separate badge) at the same time, reading as two contradictory states on one card -- these are meant to be a single progression, not independent facts. _annotateProjectBadges() now replaces the status pill's own text/class in place when a real Repository match is found (Official winning over Personal), instead of adding a second badge beside it. The diagnostic states (Repository unavailable/not configured/check failed) are left as a separate badge, since those describe the connectivity check itself, not the Project's own status, and don't read as a competing state.",
   "build": "0054",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "d5bbb49",
   "environment": "Release"
 }
