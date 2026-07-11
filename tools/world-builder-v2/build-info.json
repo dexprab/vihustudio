@@ -5,6 +5,6 @@
   "slice": "Two changes, Builder-workspace-only. (1) The right-side authoring panel (Context Inspector + Experiences) now runs the full Workspace height, uninterrupted by the Scene filmstrip -- the filmstrip moved from a full-width flex sibling beneath the whole 3-column grid into a grid item of its own inside .wb-workspace-body's new second row; Inspector/Experiences span both rows via grid-template-areas, so only Working View's row shares space with the filmstrip. Default filmstrip height reduced 220px -> 128px, the minimum practical size for Scene thumbnails. (2) The Experiences column's \"This Scene\"/\"All Experiences\" toggle becomes \"Scene Stack\" (default) / \"Experience Library\" tabs -- Scene Stack renders directly from ProjectModel.sceneStack, walking Holders and Layers together in one ordered list, a Holder's attached Frame Experience shown nested and read-only beneath it, reorderable via moveInStack(...,'holder',...) for the first time from any UI. Found and fixed a real bug while verifying: the new reorder buttons' forward/backward edge-disabling was inverted (Bring Forward disabled at index 0 instead of the last index). Verified end-to-end via Playwright including actual Holder-vs-Layer reordering, independent panel scrolling, resize/collapse/Reset Workspace Layout, and View Mode disabling every new control.",
   "build": "0059",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "1ef7b07",
   "environment": "Release"
 }
