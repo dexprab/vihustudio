@@ -1464,14 +1464,16 @@
         workspaceName.textContent = currentProject.name || 'Untitled World';
         viewModeBanner.classList.toggle('wb-hidden', !currentProjectReadOnly);
         viewOnlyChip.classList.toggle('wb-hidden', !currentProjectReadOnly);
-        // View Mode disables the two actions that would otherwise mutate
-        // and persist state (Check & Build writes lastValidation/
-        // lastBuild; Delete removes the Project outright) — Duplicate
-        // and Reset Workspace Layout stay enabled, since duplicating is
-        // exactly how you're meant to leave View Mode, and layout is a
-        // creator preference, not Project data.
+        // View Mode disables every action in the overflow menu except
+        // Duplicate — Delete removes the Project outright, and Reset
+        // Workspace Layout still writes to this browser's stored
+        // preferences while an Official World is open, which reads as
+        // "changing something" even though it isn't Project data.
+        // Duplicate alone stays enabled, since it's exactly how you're
+        // meant to leave View Mode.
         btnCheckBuild.disabled = currentProjectReadOnly;
         btnPublish.disabled = currentProjectReadOnly;
+        menuResetLayout.disabled = currentProjectReadOnly;
         menuDelete.disabled = currentProjectReadOnly;
     }
 
@@ -2011,6 +2013,7 @@
 
         const aspectSelect = document.createElement('select');
         aspectSelect.className = 'wb-scene-aspect-select';
+        aspectSelect.disabled = currentProjectReadOnly;
         window.EngineSchema.ASPECT_ORDER.forEach(function (id) {
             const info = window.EngineSchema.aspectInfo(id);
             const opt = document.createElement('option');

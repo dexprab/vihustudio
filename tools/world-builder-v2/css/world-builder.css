@@ -659,6 +659,12 @@ html, body {
 
 .wb-menu-item-danger { color: #A03A3A; }
 
+.wb-menu-item:disabled {
+    opacity: .45;
+    cursor: default;
+    background: none;
+}
+
 /* ---------- Builder guidance (Sprint B2.0.1, collapsed by default
    since Sprint B2.0.6 — see worldBuilderApp.js's _stateIntro()) ---------- */
 
@@ -989,6 +995,10 @@ html, body {
     cursor: pointer;
 }
 .wb-scene-aspect-select:hover { color: var(--wb-gold); }
+.wb-scene-aspect-select:disabled {
+    color: var(--wb-text-secondary);
+    cursor: default;
+}
 .wb-scene-aspect-select:focus { outline: none; }
 
 .wb-scene-config-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-secondary); }
