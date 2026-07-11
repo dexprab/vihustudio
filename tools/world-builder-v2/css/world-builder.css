@@ -2517,6 +2517,73 @@ html, body {
     margin-top: 8px;
 }
 
+/* Builder V3.1 content sections (Text/Image/Graphics/Colour), boxed to
+   match the approved "Authoring view" reference — "every section is
+   self-contained, not a tab": each becomes its own bordered card with
+   its own icon+title header and, at the foot, a compact read-out of
+   where this Experience is hosted/published plus the one most relevant
+   action, rather than one long undifferentiated scroll of fields. The
+   full multi-Scene Host Here picker, the complete Used In list, and
+   the Nurturing graduate flow stay exactly where they already were,
+   once, below every card — duplicating those interactive flows into
+   all four cards would repeat the same live state four times over for
+   no real benefit, so only this compact summary is repeated. */
+.wb-content-section-card {
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.wb-content-section-card-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 12px;
+}
+
+.wb-content-section-card-icon { font-size: 15px; line-height: 1; }
+
+.wb-content-section-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+
+.wb-content-section-card .wb-field-group:last-child { margin-bottom: 0; }
+
+.wb-content-section-card-foot {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--wb-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wb-content-section-card-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-content-section-card-stat strong { color: var(--wb-navy); font-weight: 600; }
+
+.wb-content-section-card-foot .wb-workspace-btn { margin-top: 6px; width: 100%; }
+
+.wb-content-section-card-status {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #2E9E5B;
+    background: #EAF7EF;
+    border-radius: 999px;
+    padding: 6px 10px;
+}
+
 /* ---------- Place — the shared Story-Author-permission block's
    checkbox rows (Blueprint §6.2, Holder variant) ---------- */
 

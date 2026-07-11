@@ -4627,6 +4627,96 @@
         contextPanel.appendChild(heading);
     }
 
+    // Approved "Authoring view" reference — each of Text/Image/Graphics/
+    // Colour becomes its own self-contained, bordered card (icon+title
+    // header) instead of one long undifferentiated scroll of fields.
+    // Redirects the module-level `contextPanel` to the card body for
+    // the duration of that section, the same swap-and-restore trick
+    // already used for the shared modal (`_renderContextPanel`) — every
+    // existing `_buildFieldGroup`/`_fieldRow`/etc. call keeps working
+    // unmodified, it just lands inside the card instead of the raw
+    // Inspector. Returns the outer contextPanel so the caller can
+    // restore it once the section (and its foot, below) is done.
+    function _openContentCard(icon, title) {
+        const outer = contextPanel;
+        const card = document.createElement('div');
+        card.className = 'wb-content-section-card';
+        const header = document.createElement('div');
+        header.className = 'wb-content-section-card-header';
+        const iconEl = document.createElement('span');
+        iconEl.className = 'wb-content-section-card-icon';
+        iconEl.textContent = icon;
+        const titleEl = document.createElement('span');
+        titleEl.className = 'wb-content-section-card-title';
+        titleEl.textContent = title;
+        header.appendChild(iconEl);
+        header.appendChild(titleEl);
+        card.appendChild(header);
+        outer.appendChild(card);
+        contextPanel = card;
+        return outer;
+    }
+
+    // The reference's compact per-card "Hosted By / Usage / Already
+    // Hosted Here or Make Public" foot — deliberately a read-out plus
+    // the one most relevant action, not a duplicate of the full Host
+    // Here picker or Used In list (those stay shared, once, below every
+    // card; see the comment on .wb-content-section-card in
+    // world-builder.css for why). Nurturing has neither concept yet
+    // (Canon: ownership/usage don't exist before graduation), so this
+    // is skipped entirely for a still-growing idea. Must be called
+    // while `contextPanel` still points at the open card (i.e. before
+    // restoring it via `_openContentCard`'s returned outer reference).
+    function _contentCardFoot(exp) {
+        if (exp.lifecycle === 'nurturing') return;
+
+        const foot = document.createElement('div');
+        foot.className = 'wb-content-section-card-foot';
+
+        const hostedRow = document.createElement('div');
+        hostedRow.className = 'wb-content-section-card-stat';
+        const hostedLabel = document.createElement('span');
+        hostedLabel.textContent = 'Hosted By';
+        const hostedValue = document.createElement('strong');
+        hostedValue.textContent = _hostedByLabel(exp);
+        hostedRow.appendChild(hostedLabel);
+        hostedRow.appendChild(hostedValue);
+        foot.appendChild(hostedRow);
+
+        const usage = window.ProjectModel.usageOf(currentProject, exp.id);
+        const usageRow = document.createElement('div');
+        usageRow.className = 'wb-content-section-card-stat';
+        const usageLabel = document.createElement('span');
+        usageLabel.textContent = 'Usage';
+        const usageValue = document.createElement('strong');
+        usageValue.textContent = usage.length
+            ? usage[0].sceneName + (usage.length > 1 ? ' +' + (usage.length - 1) : '')
+            : 'Not yet used';
+        usageRow.appendChild(usageLabel);
+        usageRow.appendChild(usageValue);
+        foot.appendChild(usageRow);
+
+        contextPanel.appendChild(foot);
+
+        if (exp.lifecycle === 'personal') {
+            const publicBtn = document.createElement('button');
+            publicBtn.type = 'button';
+            publicBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            publicBtn.textContent = '🌍 Make Public';
+            publicBtn.addEventListener('click', function () {
+                window.ProjectModel.graduateToPublic(currentProject, exp.id);
+                _persist();
+                _renderContextPanel();
+            });
+            foot.appendChild(publicBtn);
+        } else {
+            const status = document.createElement('div');
+            status.className = 'wb-content-section-card-status';
+            status.textContent = '✓ Public — reusable everywhere';
+            foot.appendChild(status);
+        }
+    }
+
     // Builder V3.1 Universal Experience Authoring — every Experience
     // exposes the same four content sections (Text/Image/Graphics/
     // Colour), regardless of `type` ("Do not hide sections based on
@@ -4695,63 +4785,79 @@
         }
 
         // ---- 📝 Text ----
-        _contentSectionHeading('📝 Text');
-        // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
-        // field already gets — carries over to the universal Text
-        // section too, so this authoring path doesn't lose a capability
-        // the legacy Text Layer panel already had.
-        const textContentInput = _textarea(props.textContent, onProp('textContent'));
-        contextPanel.appendChild(_buildFieldGroup('Content', window.EmojiPicker ? window.EmojiPicker.wrap(textContentInput) : textContentInput));
-        _fieldRow(
-            _buildFieldGroup('Font', _select(TEXT_FONT_CHOICES, props.textFont || 'Georgia, serif', onProp('textFont'))),
-            _buildFieldGroup('Size', _range(12, 160, props.textSize || 32, onProp('textSize')))
-        );
-        _fieldRow(
-            _buildFieldGroup('Weight', _select(TEXT_WEIGHT_CHOICES, props.textWeight || 'normal', onProp('textWeight'))),
-            _buildFieldGroup('Alignment', _select(TEXT_ALIGN_CHOICES, props.textAlign || 'left', onProp('textAlign')))
-        );
-        _fieldRow(
-            _buildFieldGroup('Colour', _colorInput(props.textColor, onProp('textColor'))),
-            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.textOpacity == null ? 1 : props.textOpacity) * 100), function (v) { onProp('textOpacity')(v / 100); }))
-        );
-        const textTransform = document.createElement('h4');
-        textTransform.className = 'wb-context-subheading';
-        textTransform.style.marginTop = '8px';
-        textTransform.textContent = 'Transform';
-        contextPanel.appendChild(textTransform);
-        _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp);
+        {
+            const outer = _openContentCard('📝', 'Text');
+            // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
+            // field already gets — carries over to the universal Text
+            // section too, so this authoring path doesn't lose a capability
+            // the legacy Text Layer panel already had.
+            const textContentInput = _textarea(props.textContent, onProp('textContent'));
+            contextPanel.appendChild(_buildFieldGroup('Content', window.EmojiPicker ? window.EmojiPicker.wrap(textContentInput) : textContentInput));
+            _fieldRow(
+                _buildFieldGroup('Font', _select(TEXT_FONT_CHOICES, props.textFont || 'Georgia, serif', onProp('textFont'))),
+                _buildFieldGroup('Size', _range(12, 160, props.textSize || 32, onProp('textSize')))
+            );
+            _fieldRow(
+                _buildFieldGroup('Weight', _select(TEXT_WEIGHT_CHOICES, props.textWeight || 'normal', onProp('textWeight'))),
+                _buildFieldGroup('Alignment', _select(TEXT_ALIGN_CHOICES, props.textAlign || 'left', onProp('textAlign')))
+            );
+            _fieldRow(
+                _buildFieldGroup('Colour', _colorInput(props.textColor, onProp('textColor'))),
+                _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.textOpacity == null ? 1 : props.textOpacity) * 100), function (v) { onProp('textOpacity')(v / 100); }))
+            );
+            const textTransform = document.createElement('h4');
+            textTransform.className = 'wb-context-subheading';
+            textTransform.style.marginTop = '8px';
+            textTransform.textContent = 'Transform';
+            contextPanel.appendChild(textTransform);
+            _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp);
+            _contentCardFoot(exp);
+            contextPanel = outer;
+        }
 
         // ---- 🖼 Image ----
-        _contentSectionHeading('🖼 Image');
-        contextPanel.appendChild(_buildFieldGroup('Photo', _assetUploadRow('🖼️', props.imageSrc, onUploadProp('imageSrc'))));
-        _fieldRow(
-            _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
-            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
-        );
-        const imageTransform = document.createElement('h4');
-        imageTransform.className = 'wb-context-subheading';
-        imageTransform.style.marginTop = '8px';
-        imageTransform.textContent = 'Transform';
-        contextPanel.appendChild(imageTransform);
-        _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp);
+        {
+            const outer = _openContentCard('🖼', 'Image');
+            contextPanel.appendChild(_buildFieldGroup('Photo', _assetUploadRow('🖼️', props.imageSrc, onUploadProp('imageSrc'))));
+            _fieldRow(
+                _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
+                _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
+            );
+            const imageTransform = document.createElement('h4');
+            imageTransform.className = 'wb-context-subheading';
+            imageTransform.style.marginTop = '8px';
+            imageTransform.textContent = 'Transform';
+            contextPanel.appendChild(imageTransform);
+            _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp);
+            _contentCardFoot(exp);
+            contextPanel = outer;
+        }
 
         // ---- 🎭 Graphics ----
-        _contentSectionHeading('🎭 Graphics');
-        contextPanel.appendChild(_fieldHelp('A reusable visual asset — an SVG or PNG icon or sticker.'));
-        contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, onUploadProp('graphicSrc'), 'image/*,.svg,image/svg+xml')));
-        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
-        const graphicTransform = document.createElement('h4');
-        graphicTransform.className = 'wb-context-subheading';
-        graphicTransform.style.marginTop = '8px';
-        graphicTransform.textContent = 'Transform';
-        contextPanel.appendChild(graphicTransform);
-        _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp);
+        {
+            const outer = _openContentCard('🎭', 'Graphics');
+            contextPanel.appendChild(_fieldHelp('A reusable visual asset — an SVG or PNG icon or sticker.'));
+            contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, onUploadProp('graphicSrc'), 'image/*,.svg,image/svg+xml')));
+            contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
+            const graphicTransform = document.createElement('h4');
+            graphicTransform.className = 'wb-context-subheading';
+            graphicTransform.style.marginTop = '8px';
+            graphicTransform.textContent = 'Transform';
+            contextPanel.appendChild(graphicTransform);
+            _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp);
+            _contentCardFoot(exp);
+            contextPanel = outer;
+        }
 
         // ---- 🎨 Colour ----
-        _contentSectionHeading('🎨 Colour');
-        contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
-        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
-        contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
+        {
+            const outer = _openContentCard('🎨', 'Colour');
+            contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
+            contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
+            contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
+            _contentCardFoot(exp);
+            contextPanel = outer;
+        }
 
         if (exp.hostedBy === 'place' && exp.type !== 'frame') {
             contextPanel.appendChild(_fieldHelp('Text/Image/Graphics/Colour don’t render when hosted by a Place yet — try Scene or Free instead.'));
