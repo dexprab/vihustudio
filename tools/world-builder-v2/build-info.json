@@ -1,10 +1,10 @@
 {
-  "version": "3.12.0",
+  "version": "3.13.0",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Growing/Personal/Official is one status pill, not two badges",
-  "slice": "A project card showed \"GROWING\" (the status pill) and \"PERSONAL\"/\"OFFICIAL\" (a separate badge) at the same time, reading as two contradictory states on one card -- these are meant to be a single progression, not independent facts. _annotateProjectBadges() now replaces the status pill's own text/class in place when a real Repository match is found (Official winning over Personal), instead of adding a second badge beside it. The diagnostic states (Repository unavailable/not configured/check failed) are left as a separate badge, since those describe the connectivity check itself, not the Project's own status, and don't read as a competing state.",
-  "build": "0054",
+  "milestone": "Read-only View Mode for Official worlds, Duplicate restored",
+  "slice": "Opening a Builder Project whose World Id matches a published Official Repository entry now opens in a read-only View Mode -- every property stays visible but no field or control can be edited, with a banner explaining why and a _persist() backstop guaranteeing no write ever reaches a read-only project's data. Personal Repository projects are completely unaffected and stay fully editable. The Welcome screen's project card regains a Duplicate button (Rename / Duplicate / Delete) -- the only way to get an editable copy of an Official world, regenerating the copy's own World Id so it opens fully editable rather than inheriting View Mode. Lets an author clone an Official theme and rapidly author a new one from it.",
+  "build": "0055",
   "buildDate": "2026-07-11",
-  "commit": "d5bbb49",
+  "commit": "pending",
   "environment": "Release"
 }
