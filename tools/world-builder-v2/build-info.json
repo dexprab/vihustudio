@@ -5,6 +5,6 @@
   "slice": "View Mode (Build 0055) was only visible via the full-width banner below the header and via disabled Check & Build/Publish buttons -- nothing in the header bar itself said \"this is read-only,\" where a creator is already looking at World name and Save/Backup status. Adds a matching \"View Only\" chip beside \"All Changes Saved\"/\"Backed up\", same visibility rule (currentProjectReadOnly), same read-only red as the banner below.",
   "build": "0056",
   "buildDate": "2026-07-11",
-  "commit": "pending",
+  "commit": "f544d3c",
   "environment": "Release"
 }
