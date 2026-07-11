@@ -1,10 +1,10 @@
 {
-  "version": "3.13.0",
+  "version": "3.13.1",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Read-only View Mode for Official worlds, Duplicate restored",
-  "slice": "Opening a Builder Project whose World Id matches a published Official Repository entry now opens in a read-only View Mode -- every property stays visible but no field or control can be edited, with a banner explaining why and a _persist() backstop guaranteeing no write ever reaches a read-only project's data. Personal Repository projects are completely unaffected and stay fully editable. The Welcome screen's project card regains a Duplicate button (Rename / Duplicate / Delete) -- the only way to get an editable copy of an Official world, regenerating the copy's own World Id so it opens fully editable rather than inheriting View Mode. Lets an author clone an Official theme and rapidly author a new one from it.",
-  "build": "0055",
+  "milestone": "View Mode indicator mirrored into the header bar",
+  "slice": "View Mode (Build 0055) was only visible via the full-width banner below the header and via disabled Check & Build/Publish buttons -- nothing in the header bar itself said \"this is read-only,\" where a creator is already looking at World name and Save/Backup status. Adds a matching \"View Only\" chip beside \"All Changes Saved\"/\"Backed up\", same visibility rule (currentProjectReadOnly), same read-only red as the banner below.",
+  "build": "0056",
   "buildDate": "2026-07-11",
-  "commit": "2c614fe",
+  "commit": "pending",
   "environment": "Release"
 }
