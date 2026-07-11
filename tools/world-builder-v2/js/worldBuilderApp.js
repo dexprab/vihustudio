@@ -783,7 +783,12 @@
     // the one editing canvas isn't a useful affordance, and Runtime
     // Preview no longer has an independent track of its own to collapse.
     const COLLAPSED_TRACK_W = 44;
-    const COLLAPSED_TRACK_H = 44;
+    // Matches .wb-scenes-strip-wrap's own CSS min-height — low enough
+    // that collapsing genuinely gives the strip's space away to
+    // Working View/Context Inspector/Experiences above it (both are
+    // flex children of the same column, so .wb-workspace-body's own
+    // flex:1 automatically claims whatever height the strip gives up).
+    const COLLAPSED_TRACK_H = 56;
     const inspectorWrap = $('wb-inspector-wrap');
     const experiencesWrapEl = $('wb-experiences-wrap');
     const collapseInspectorBtn = $('wb-collapse-inspector');
@@ -2609,25 +2614,40 @@
     const scenesReorderToggleBtn = $('wb-scenes-reorder-toggle');
     const scenesAddBtn = $('wb-scenes-add-btn');
 
+    // The card IS the thumbnail: height comes from the strip (flex
+    // stretch), width is derived from the Scene's own Aspect Ratio via
+    // an inline `aspect-ratio`, so a Portrait Scene renders as a narrow
+    // tall card and a Landscape/Wide Scene as a short wide one — neither
+    // ever gets squeezed into the other's shape. Name/number and (in
+    // reorder mode) the ↑/↓ controls are absolutely-positioned overlays
+    // on top of the canvas rather than flow content below it, so they
+    // never compete with the thumbnail for vertical space; the strip's
+    // own height is the only thing that changes when it's resized or
+    // collapsed, and the thumbnail scales with it automatically.
     function _sceneStripCard(scene, index, total) {
+        const aspect = window.EngineSchema.aspectInfo(scene.canvas.aspectRatio);
         const card = document.createElement('div');
         card.className = 'wb-scene-strip-card' + (scene.id === currentSceneId ? ' active' : '');
+        card.style.aspectRatio = aspect.width + ' / ' + aspect.height;
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
 
-        card.appendChild(_sceneCardThumb(scene));
+        const canvas = document.createElement('canvas');
+        canvas.className = 'wb-scene-strip-canvas';
+        card.appendChild(canvas);
+        _drawSceneCanvas(canvas, scene, { guides: false, interactive: false });
 
-        const row = document.createElement('div');
-        row.className = 'wb-scene-strip-row';
+        const overlay = document.createElement('div');
+        overlay.className = 'wb-scene-strip-overlay';
         const num = document.createElement('span');
         num.className = 'wb-scene-strip-num';
         num.textContent = String(index + 1);
         const name = document.createElement('span');
         name.className = 'wb-scene-strip-name';
         name.textContent = scene.name;
-        row.appendChild(num);
-        row.appendChild(name);
-        card.appendChild(row);
+        overlay.appendChild(num);
+        overlay.appendChild(name);
+        card.appendChild(overlay);
 
         if (scenesReorderMode) {
             const reorderRow = document.createElement('div');

@@ -2190,7 +2190,14 @@ html, body {
 .wb-scenes-strip-wrap {
     flex: 0 0 auto;
     height: var(--wb-scenes-h, 220px);
-    min-height: 96px;
+    /* Matches COLLAPSED_TRACK_H in worldBuilderApp.js — low enough that
+       collapsing the strip actually gives its space away (a stale
+       96px floor here previously fought the JS's 44px collapsed
+       target, so the strip could never shrink past 96px no matter what
+       the collapse button did). Below this, .wb-workspace-body's own
+       flex:1 automatically claims every pixel the strip gives up —
+       both are flex children of the same column, nothing else needed. */
+    min-height: 56px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--wb-border);
@@ -2245,31 +2252,37 @@ html, body {
     padding: 0 4px;
 }
 
+/* The card itself is the thumbnail (Blueprint-style media-card
+   pattern): height comes from the strip's own available height via
+   flex `align-items:stretch` above, width is derived automatically
+   from the inline `aspect-ratio` worldBuilderApp.js sets per Scene —
+   a Portrait Scene renders as a narrow tall card, a Landscape/Wide
+   Scene as a short wide one, never distorted into the other's shape.
+   Name/number and (in reorder mode) ↑/↓ live as absolutely-positioned
+   overlays on top of the canvas, so nothing below the image competes
+   with it for the card's height — squeezing the strip only ever
+   shrinks every card's height (and proportionally its derived width),
+   never crops or stretches the artwork. */
 .wb-scene-strip-card {
     flex: 0 0 auto;
-    width: 118px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    border: 1.5px solid transparent;
+    height: 100%;
     border-radius: 12px;
-    padding: 6px;
-    background: none;
+    border: 1.5px solid transparent;
+    background: var(--wb-cream);
     cursor: pointer;
-    text-align: left;
     position: relative;
+    overflow: hidden;
 }
 
 .wb-scene-strip-card:hover { border-color: var(--wb-border); }
 .wb-scene-strip-card.active {
     border-color: var(--wb-gold);
-    background: var(--wb-sky);
     box-shadow: 0 0 0 3px rgba(255, 203, 69, 0.25);
 }
 .wb-scene-strip-card.active::before {
     content: 'Editing';
     position: absolute;
-    top: -8px;
+    top: 6px;
     left: 50%;
     transform: translateX(-50%);
     font-size: 8.5px;
@@ -2279,34 +2292,40 @@ html, body {
     border-radius: 999px;
     padding: 2px 8px;
     white-space: nowrap;
+    z-index: 2;
 }
 
-.wb-scene-strip-thumb {
+.wb-scene-strip-canvas {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    aspect-ratio: 4 / 5;
-    border-radius: 8px;
-    background: var(--wb-cream);
-    border: 1px solid var(--wb-border);
-    overflow: hidden;
+    height: 100%;
+    display: block;
 }
-.wb-scene-strip-thumb canvas { width: 100%; height: 100%; display: block; }
 
-.wb-scene-strip-row {
+.wb-scene-strip-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     gap: 5px;
+    padding: 16px 8px 6px;
+    background: linear-gradient(to top, rgba(20, 18, 14, 0.75), rgba(20, 18, 14, 0));
+    z-index: 1;
 }
 
 .wb-scene-strip-num {
     font-size: 10px;
-    color: var(--wb-text-secondary);
+    color: rgba(255, 255, 255, 0.75);
     flex: 0 0 auto;
 }
 
 .wb-scene-strip-name {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--wb-navy);
+    font-weight: 700;
+    color: #fff;
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -2315,24 +2334,30 @@ html, body {
 }
 
 .wb-scene-strip-reorder {
+    position: absolute;
+    top: 6px;
+    right: 6px;
     display: flex;
     gap: 3px;
-    margin-top: 2px;
+    z-index: 2;
 }
 .wb-scene-strip-reorder button {
-    flex: 1;
+    width: 20px;
+    height: 20px;
     font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 5px;
-    border: 1px solid var(--wb-border);
-    background: var(--wb-paper);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(20, 18, 14, 0.55);
+    color: #fff;
     cursor: pointer;
 }
-.wb-scene-strip-reorder button:hover { border-color: var(--wb-gold); }
+.wb-scene-strip-reorder button:hover { background: rgba(20, 18, 14, 0.8); }
+.wb-scene-strip-reorder button:disabled { opacity: 0.4; cursor: default; }
 
 .wb-scene-strip-add {
     flex: 0 0 auto;
-    width: 118px;
+    width: 84px;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2345,6 +2370,8 @@ html, body {
     color: var(--wb-text-secondary);
     font-size: 11px;
     font-weight: 600;
+    text-align: center;
+    padding: 4px;
 }
 .wb-scene-strip-add:hover { border-color: var(--wb-gold); color: var(--wb-navy); }
 .wb-scene-strip-add-icon { font-size: 20px; }
