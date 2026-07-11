@@ -3230,9 +3230,23 @@
         }
 
         const all = window.ProjectModel.experiences(currentProject).filter(function (e) { return e.lifecycle !== 'nurturing'; });
-        const list = scenesExperiencesScope === 'scene'
+        let list = scenesExperiencesScope === 'scene'
             ? all.filter(function (e) { return e.attachments.some(function (a) { return a.sceneId === scene.id; }); })
             : all;
+
+        // "This Scene" reflects the real Scene Stack order, not creation
+        // order — reordering here (the ⬆/⬇ controls below) only means
+        // anything if the list you're looking at is the list you're
+        // reordering. A Place-hosted Experience has no Stack entry of
+        // its own (it projects onto its Place's single frame slot) and
+        // sorts to the end; everything else sorts by its real position.
+        if (scenesExperiencesScope === 'scene') {
+            list = list.slice().sort(function (a, b) {
+                const ia = _experienceSceneStackInfo(a, scene);
+                const ib = _experienceSceneStackInfo(b, scene);
+                return (ia ? ia.index : Infinity) - (ib ? ib.index : Infinity);
+            });
+        }
 
         if (!list.length) {
             experiencesPanel.appendChild(_fieldHelp(scenesExperiencesScope === 'scene'
@@ -3281,7 +3295,55 @@
                 experienceInspectorId = exp.id;
                 _renderWorkspace();
             });
-            experiencesPanel.appendChild(card);
+
+            // Reorder only makes real sense for a Free-hosted Experience
+            // with an actual mirrored Scene Layer — a Place-hosted one
+            // has no Stack entry of its own to move (it projects onto
+            // its Place's single frame slot), and a Scene-hosted one is
+            // the wall colour, not "content" to shuffle against other
+            // content. Reuses moveInStack directly (the same mechanism
+            // the legacy Decorations/Text panels' own Bring Forward/Send
+            // Backward buttons already call) rather than a second
+            // reordering concept.
+            const stackInfo = scenesExperiencesScope === 'scene' && exp.hostedBy === 'free'
+                ? _experienceSceneStackInfo(exp, scene) : null;
+            if (stackInfo) {
+                const row = document.createElement('div');
+                row.className = 'wb-exp-sidebar-row';
+                row.appendChild(card);
+                const controls = document.createElement('div');
+                controls.className = 'wb-row-controls';
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.className = 'wb-row-btn';
+                upBtn.title = 'Bring forward';
+                upBtn.textContent = '⬆';
+                upBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'forward');
+                    _persist();
+                    _redrawSceneCanvases(scene.id);
+                    _renderScenesExperiencesSidebar();
+                });
+                const downBtn = document.createElement('button');
+                downBtn.type = 'button';
+                downBtn.className = 'wb-row-btn';
+                downBtn.title = 'Send backward';
+                downBtn.textContent = '⬇';
+                downBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    window.ProjectModel.moveInStack(currentProject, scene.id, 'layer', stackInfo.layerId, 'backward');
+                    _persist();
+                    _redrawSceneCanvases(scene.id);
+                    _renderScenesExperiencesSidebar();
+                });
+                controls.appendChild(upBtn);
+                controls.appendChild(downBtn);
+                row.appendChild(controls);
+                experiencesPanel.appendChild(row);
+            } else {
+                experiencesPanel.appendChild(card);
+            }
         });
 
         // The one and only creation entry point for this column — the
@@ -4478,6 +4540,36 @@
         if (exp.hostedBy === 'scene') return 'Scene';
         if (exp.hostedBy === 'free') return 'Free';
         return 'Place';
+    }
+
+    // The Scene Layer "slot" an Experience's active content kind mirrors
+    // onto (ProjectModel._syncUniversalContent's own naming) — matches
+    // the Adapter's own kind->slot mapping exactly, so a lookup here
+    // finds the same Layer the Adapter just wrote.
+    function _experienceMirroredSlot(exp) {
+        const kind = exp.contentKind || 'text';
+        if (kind === 'image') return 'image';
+        if (kind === 'graphics') return 'graphic';
+        if (kind === 'colour') return 'color';
+        return 'text';
+    }
+
+    // Resolves an Experience to its real position in a Scene's own
+    // Stack — used both to sort the "This Scene" sidebar list by actual
+    // render order (not creation order) and to know which Layer a
+    // reorder button should move. Returns null for anything with no
+    // Stack entry of its own (a Place-hosted Experience projects onto
+    // its Place's frame slot, not a Layer; an unpopulated section mirrors
+    // nothing at all yet).
+    function _experienceSceneStackInfo(exp, scene) {
+        if (!scene) return null;
+        const slot = _experienceMirroredSlot(exp);
+        const layer = window.ProjectModel.findMirroredSceneLayer(currentProject, scene.id, exp.id, slot);
+        if (!layer) return null;
+        const stack = window.ProjectModel.sceneStack(currentProject, scene.id);
+        const index = stack.findIndex(function (e) { return e.type === 'layer' && e.id === layer.id; });
+        if (index === -1) return null;
+        return { layerId: layer.id, index: index };
     }
 
     // Preview-first: a miniature composition, not a database row (Part

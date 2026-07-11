@@ -1545,6 +1545,19 @@ html, body {
     box-shadow: 0 1px 3px var(--wb-shadow);
 }
 
+/* Wraps a .wb-exp-sidebar-card together with its ⬆/⬇ reorder controls
+   ("This Scene" scope only, Free-hosted Experiences with a real mirrored
+   Scene Layer — see _experienceSceneStackInfo) — the card itself stays a
+   native <button> (its own click still opens the Inspector), so the
+   reorder buttons live beside it rather than nested inside it. */
+.wb-exp-sidebar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 7px;
+}
+.wb-exp-sidebar-row .wb-exp-sidebar-card { margin-bottom: 0; }
+
 .wb-exp-sidebar-card {
     display: flex;
     align-items: center;
