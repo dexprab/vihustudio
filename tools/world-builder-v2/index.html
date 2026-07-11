@@ -98,6 +98,13 @@
                          of unavailable/pending/synced/error. See
                          js/services/projectSync.js. -->
                     <span id="wb-cloud-sync" class="wb-workspace-saved wb-hidden"><span id="wb-cloud-sync-dot" class="wb-save-dot-glyph">☁️</span> <span id="wb-cloud-sync-text" class="wb-save-text">Backed up</span></span>
+                    <!-- View Mode indicator — the top-bar mirror of
+                         #wb-view-mode-banner below, so "this is read-only"
+                         is visible right where a creator is already
+                         looking (beside Save/Backup status), not only in
+                         the full-width banner underneath the header. Same
+                         currentProjectReadOnly flag, same visibility rule. -->
+                    <span id="wb-view-only-chip" class="wb-workspace-saved wb-view-only-chip wb-hidden"><span class="wb-save-dot-glyph">👁</span> <span class="wb-save-text">View Only</span></span>
                 </div>
                 <div class="wb-workspace-header-right">
                     <div id="wb-status-pill" class="wb-status-pill wb-hidden">

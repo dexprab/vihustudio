@@ -518,6 +518,7 @@
     const sceneHeaderEl = $('wb-scene-header');
     const workspaceName = $('wb-workspace-name');
     const viewModeBanner = $('wb-view-mode-banner');
+    const viewOnlyChip = $('wb-view-only-chip');
     const workspaceHome = $('wb-workspace-home');
     const workingCanvas = $('wb-working-canvas');
     const workingOverlays = $('wb-working-overlays');
@@ -1462,6 +1463,7 @@
     function _renderWorkspaceHeader() {
         workspaceName.textContent = currentProject.name || 'Untitled World';
         viewModeBanner.classList.toggle('wb-hidden', !currentProjectReadOnly);
+        viewOnlyChip.classList.toggle('wb-hidden', !currentProjectReadOnly);
         // View Mode disables the two actions that would otherwise mutate
         // and persist state (Check & Build writes lastValidation/
         // lastBuild; Delete removes the Project outright) — Duplicate

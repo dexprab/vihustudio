@@ -538,6 +538,11 @@ html, body {
 .wb-workspace-saved.wb-save-saved .wb-save-text { color: var(--wb-text-secondary); }
 .wb-workspace-saved.wb-save-error .wb-save-text { color: #C0392B; font-weight: 700; }
 
+/* View Mode top-bar chip — same read-only red as .wb-view-mode-banner,
+   so the two indicators read as one signal, not two different colours
+   for the same state. */
+.wb-view-only-chip .wb-save-text { color: #A13A2E; font-weight: 700; }
+
 .wb-workspace-header-right {
     display: flex;
     align-items: center;
