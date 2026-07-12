@@ -1104,13 +1104,28 @@ const SlideRenderer=(()=>{
     }
   }
 
+  // A regular N-sided polygon inscribed in the same rx/ry ellipse
+  // 'circle' already uses, point-up (matching 'star''s own starting
+  // angle) — mirrors engineRuntime.js's own _regularPolygonPath.
+  function _regularPolygonPathFor(cx,cy,rx,ry,sides){
+    const start=-Math.PI/2;
+    const step=(Math.PI*2)/sides;
+    x.moveTo(cx+Math.cos(start)*rx,cy+Math.sin(start)*ry);
+    for(let i=1;i<sides;i++){
+      const a=start+step*i;
+      x.lineTo(cx+Math.cos(a)*rx,cy+Math.sin(a)*ry);
+    }
+    x.closePath();
+  }
+
   // A converged Shape decoration (Builder V3.1 Graphics section — real
   // vector fill+outline, not a fixed-colour glyph). Mirrors
   // tools/world-builder-v2/js/services/engineRuntime.js's own
-  // _drawShape path/geometry exactly (same 5 SHAPE_KINDS) so a Shape
-  // renders identically in Builder's own preview and here in the real
-  // Reader-facing Runtime — two files by necessity (this renderer has
-  // no dependency on Builder's own module), kept in lockstep by hand.
+  // _drawShape path/geometry and fill/strokeOpacity handling exactly
+  // (same SHAPE_KINDS) so a Shape renders identically in Builder's own
+  // preview and here in the real Reader-facing Runtime — two files by
+  // necessity (this renderer has no dependency on Builder's own
+  // module), kept in lockstep by hand.
   function _layerDrawShape(d,rect){
     const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
     const rx=rect.w/2, ry=rect.h/2;
@@ -1122,6 +1137,22 @@ const SlideRenderer=(()=>{
     const kind=d.shape;
     if(kind==='circle'){
       x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+    }else if(kind==='rectangle'){
+      x.rect(rect.x,rect.y,rect.w,rect.h);
+    }else if(kind==='triangle'){
+      _regularPolygonPathFor(cx,cy,rx,ry,3);
+    }else if(kind==='diamond'){
+      x.moveTo(cx,rect.y);
+      x.lineTo(rect.x+rect.w,cy);
+      x.lineTo(cx,rect.y+rect.h);
+      x.lineTo(rect.x,cy);
+      x.closePath();
+    }else if(kind==='pentagon'){
+      _regularPolygonPathFor(cx,cy,rx,ry,5);
+    }else if(kind==='hexagon'){
+      _regularPolygonPathFor(cx,cy,rx,ry,6);
+    }else if(kind==='octagon'){
+      _regularPolygonPathFor(cx,cy,rx,ry,8);
     }else if(kind==='star'){
       const spikes=5, outerRx=rx, outerRy=ry, innerRx=rx*0.42, innerRy=ry*0.42;
       let rot=-Math.PI/2;
@@ -1133,6 +1164,29 @@ const SlideRenderer=(()=>{
         rot+=step;
         x.lineTo(cx+Math.cos(rot)*outerRx,cy+Math.sin(rot)*outerRy);
       }
+      x.closePath();
+    }else if(kind==='cross'){
+      const tw=rect.w*0.34, th=rect.h*0.34;
+      const x0=rect.x, y0=rect.y, w=rect.w, h=rect.h;
+      const cx1=x0+(w-tw)/2, cx2=x0+(w+tw)/2;
+      const cy1=y0+(h-th)/2, cy2=y0+(h+th)/2;
+      x.moveTo(cx1,y0); x.lineTo(cx2,y0); x.lineTo(cx2,cy1);
+      x.lineTo(x0+w,cy1); x.lineTo(x0+w,cy2); x.lineTo(cx2,cy2);
+      x.lineTo(cx2,y0+h); x.lineTo(cx1,y0+h); x.lineTo(cx1,cy2);
+      x.lineTo(x0,cy2); x.lineTo(x0,cy1); x.lineTo(cx1,cy1);
+      x.closePath();
+    }else if(kind==='trapezoid'){
+      x.moveTo(rect.x+rect.w*0.2,rect.y);
+      x.lineTo(rect.x+rect.w*0.8,rect.y);
+      x.lineTo(rect.x+rect.w,rect.y+rect.h);
+      x.lineTo(rect.x,rect.y+rect.h);
+      x.closePath();
+    }else if(kind==='parallelogram'){
+      const skew=rect.w*0.2;
+      x.moveTo(rect.x+skew,rect.y);
+      x.lineTo(rect.x+rect.w,rect.y);
+      x.lineTo(rect.x+rect.w-skew,rect.y+rect.h);
+      x.lineTo(rect.x,rect.y+rect.h);
       x.closePath();
     }else if(kind==='arrow'){
       const shaftTop=cy-ry*0.28, shaftBottom=cy+ry*0.28, headX=rect.x+rect.w*0.62;
@@ -1172,11 +1226,20 @@ const SlideRenderer=(()=>{
     }else{
       x.rect(rect.x,rect.y,rect.w,rect.h);
     }
+    // Independent fill/outline transparency (fillOpacity/strokeOpacity,
+    // each 0..1 defaulting to 1) composed with — multiplied against,
+    // not replacing — the decoration's own overall alpha already set
+    // above, exactly mirroring engineRuntime.js's own composition rule.
+    const baseAlpha=x.globalAlpha;
+    const fillA=(typeof d.fillOpacity==='number')?Math.max(0,Math.min(1,d.fillOpacity)):1;
+    const strokeA=(typeof d.strokeOpacity==='number')?Math.max(0,Math.min(1,d.strokeOpacity)):1;
     x.fillStyle=d.fillColor||'#F0B429';
+    x.globalAlpha=baseAlpha*fillA;
     x.fill();
     if(d.strokeWidth>0){
       x.lineWidth=d.strokeWidth;
       x.strokeStyle=d.strokeColor||'#24406B';
+      x.globalAlpha=baseAlpha*strokeA;
       x.stroke();
     }
     x.restore();

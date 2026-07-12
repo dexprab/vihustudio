@@ -498,7 +498,7 @@ const EngineV2Runtime = (function () {
                 ctx.translate(-cx, -cy);
             }
             if (layer.shape) {
-                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth);
+                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth, layer.shapeFillOpacity, layer.shapeStrokeOpacity);
             } else {
                 const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
                 if (img) {
@@ -518,6 +518,22 @@ const EngineV2Runtime = (function () {
         }
     }
 
+    // A regular N-sided polygon inscribed in the same rx/ry ellipse
+    // `circle` already uses, point-up (matching `star`'s own starting
+    // angle) — shared by every basic straight-edged polygon
+    // (triangle/pentagon/hexagon/octagon) so each is one line of
+    // geometry, not four near-duplicate hand-plotted paths.
+    function _regularPolygonPath(ctx, cx, cy, rx, ry, sides) {
+        const start = -Math.PI / 2;
+        const step = (Math.PI * 2) / sides;
+        ctx.moveTo(cx + Math.cos(start) * rx, cy + Math.sin(start) * ry);
+        for (let i = 1; i < sides; i++) {
+            const a = start + step * i;
+            ctx.lineTo(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry);
+        }
+        ctx.closePath();
+    }
+
     // Draws one of ExperienceSchema.SHAPE_KINDS as a real vector path
     // filled with `fillColor` and, when `strokeWidth` is greater than
     // zero, outlined with `strokeColor` at that width — genuine
@@ -525,13 +541,35 @@ const EngineV2Runtime = (function () {
     // per the Builder authoring request this was built for. Every shape
     // is drawn inscribed in `rect`, so the same Transform (position/
     // size, Builder V3.1's Graphics X/Y/W/H) that already places an
-    // uploaded image places a Shape identically.
-    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth) {
+    // uploaded image places a Shape identically. `fillOpacity`/
+    // `strokeOpacity` (0..1, each defaulting to 1) let fill and outline
+    // carry independent transparency — composed with (multiplied
+    // against), not replacing, the Layer's own overall `opacity` that
+    // `_paintLayer` already set into `ctx.globalAlpha` before calling
+    // here, so a half-opacity Layer with a half-opacity Outline reads
+    // as one authoring decision layered on another, not two that fight.
+    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity) {
         const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
         const rx = rect.w / 2, ry = rect.h / 2;
         ctx.beginPath();
         if (kind === 'circle') {
             ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        } else if (kind === 'rectangle') {
+            ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        } else if (kind === 'triangle') {
+            _regularPolygonPath(ctx, cx, cy, rx, ry, 3);
+        } else if (kind === 'diamond') {
+            ctx.moveTo(cx, rect.y);
+            ctx.lineTo(rect.x + rect.w, cy);
+            ctx.lineTo(cx, rect.y + rect.h);
+            ctx.lineTo(rect.x, cy);
+            ctx.closePath();
+        } else if (kind === 'pentagon') {
+            _regularPolygonPath(ctx, cx, cy, rx, ry, 5);
+        } else if (kind === 'hexagon') {
+            _regularPolygonPath(ctx, cx, cy, rx, ry, 6);
+        } else if (kind === 'octagon') {
+            _regularPolygonPath(ctx, cx, cy, rx, ry, 8);
         } else if (kind === 'star') {
             const spikes = 5, outerRx = rx, outerRy = ry, innerRx = rx * 0.42, innerRy = ry * 0.42;
             let rot = -Math.PI / 2;
@@ -543,6 +581,29 @@ const EngineV2Runtime = (function () {
                 rot += step;
                 ctx.lineTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
             }
+            ctx.closePath();
+        } else if (kind === 'cross') {
+            const tw = rect.w * 0.34, th = rect.h * 0.34;
+            const x0 = rect.x, y0 = rect.y, w = rect.w, h = rect.h;
+            const cx1 = x0 + (w - tw) / 2, cx2 = x0 + (w + tw) / 2;
+            const cy1 = y0 + (h - th) / 2, cy2 = y0 + (h + th) / 2;
+            ctx.moveTo(cx1, y0); ctx.lineTo(cx2, y0); ctx.lineTo(cx2, cy1);
+            ctx.lineTo(x0 + w, cy1); ctx.lineTo(x0 + w, cy2); ctx.lineTo(cx2, cy2);
+            ctx.lineTo(cx2, y0 + h); ctx.lineTo(cx1, y0 + h); ctx.lineTo(cx1, cy2);
+            ctx.lineTo(x0, cy2); ctx.lineTo(x0, cy1); ctx.lineTo(cx1, cy1);
+            ctx.closePath();
+        } else if (kind === 'trapezoid') {
+            ctx.moveTo(rect.x + rect.w * 0.2, rect.y);
+            ctx.lineTo(rect.x + rect.w * 0.8, rect.y);
+            ctx.lineTo(rect.x + rect.w, rect.y + rect.h);
+            ctx.lineTo(rect.x, rect.y + rect.h);
+            ctx.closePath();
+        } else if (kind === 'parallelogram') {
+            const skew = rect.w * 0.2;
+            ctx.moveTo(rect.x + skew, rect.y);
+            ctx.lineTo(rect.x + rect.w, rect.y);
+            ctx.lineTo(rect.x + rect.w - skew, rect.y + rect.h);
+            ctx.lineTo(rect.x, rect.y + rect.h);
             ctx.closePath();
         } else if (kind === 'arrow') {
             const shaftTop = cy - ry * 0.28, shaftBottom = cy + ry * 0.28, headX = rect.x + rect.w * 0.62;
@@ -573,13 +634,19 @@ const EngineV2Runtime = (function () {
         } else {
             ctx.rect(rect.x, rect.y, rect.w, rect.h);
         }
+        const baseAlpha = ctx.globalAlpha;
+        const fillA = typeof fillOpacity === 'number' ? Math.max(0, Math.min(1, fillOpacity)) : 1;
+        const strokeA = typeof strokeOpacity === 'number' ? Math.max(0, Math.min(1, strokeOpacity)) : 1;
         ctx.fillStyle = fillColor || '#F0B429';
+        ctx.globalAlpha = baseAlpha * fillA;
         ctx.fill();
         if (strokeWidth > 0) {
             ctx.lineWidth = strokeWidth;
             ctx.strokeStyle = strokeColor || '#24406B';
+            ctx.globalAlpha = baseAlpha * strokeA;
             ctx.stroke();
         }
+        ctx.globalAlpha = baseAlpha;
     }
 
     return {

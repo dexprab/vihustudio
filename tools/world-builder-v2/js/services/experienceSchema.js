@@ -91,7 +91,9 @@ const ExperienceSchema = (function () {
             // image already has; only the styling is shape-specific.
             graphicShape: null,
             graphicFillColor: '#F0B429',
+            graphicFillOpacity: 1,
             graphicStrokeColor: '#24406B',
+            graphicStrokeOpacity: 1,
             graphicStrokeWidth: 0,
             graphicRotation: 0,
             // Colour — a fill behind whatever other content exists;
@@ -114,15 +116,31 @@ const ExperienceSchema = (function () {
         { value: 'free', label: 'Free — roams a Scene on its own' }
     ];
 
-    // A small, fixed set of author-drawable shapes for the Graphics
-    // section's "Pick a Shape" mode — real vector primitives (filled,
-    // outlined, resized, rotated per the Experience's own Transform),
-    // not a rasterized emoji glyph, since a glyph's own colours can
-    // never be recoloured. `engineRuntime.js`'s `_drawShape` is the one
-    // place that knows how to actually draw each kind.
+    // Author-drawable shapes for the Graphics section's "Pick a Shape"
+    // mode — real vector primitives (filled, outlined, resized, rotated
+    // per the Experience's own Transform), not a rasterized emoji
+    // glyph, since a glyph's own colours can never be recoloured.
+    // `engineRuntime.js`'s `_drawShape` is the one place that knows how
+    // to actually draw each kind (mirrored by hand in
+    // `renderer/slideRenderer.js`'s `_layerDrawShape` for the real
+    // Reader-facing Runtime — see that file's own header comment). The
+    // basic-geometry primitives (rectangle/triangle/diamond/pentagon/
+    // hexagon/octagon/cross/trapezoid/parallelogram) were added
+    // alongside the original five decorative shapes so a Theme Author
+    // has the standard drawing-tool shape set, not just a handful of
+    // ornamental ones.
     const SHAPE_KINDS = [
         { value: 'circle', label: 'Circle', icon: '●' },
+        { value: 'rectangle', label: 'Rectangle', icon: '▭' },
+        { value: 'triangle', label: 'Triangle', icon: '▲' },
+        { value: 'diamond', label: 'Diamond', icon: '◆' },
+        { value: 'pentagon', label: 'Pentagon', icon: '⬟' },
+        { value: 'hexagon', label: 'Hexagon', icon: '⬢' },
+        { value: 'octagon', label: 'Octagon', icon: '🛑' },
         { value: 'star', label: 'Star', icon: '★' },
+        { value: 'cross', label: 'Cross', icon: '➕' },
+        { value: 'trapezoid', label: 'Trapezoid', icon: '⏢' },
+        { value: 'parallelogram', label: 'Parallelogram', icon: '▱' },
         { value: 'arrow', label: 'Arrow', icon: '➜' },
         { value: 'speech-bubble', label: 'Speech Bubble', icon: '💬' },
         { value: 'banner', label: 'Banner', icon: '🎗️' }

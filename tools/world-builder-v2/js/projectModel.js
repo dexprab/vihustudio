@@ -1298,7 +1298,8 @@ const ProjectModel = (function () {
                 // image on an already-mirrored Layer.
                 const shapeFields = shapeKind ? {
                     shape: shapeKind, shapeFillColor: props.graphicFillColor,
-                    shapeStrokeColor: props.graphicStrokeColor, shapeStrokeWidth: props.graphicStrokeWidth,
+                    shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
+                    shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
                     rotation: props.graphicRotation
                 } : { shape: null, rotation: 0 };
                 if (layer) {

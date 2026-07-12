@@ -372,7 +372,8 @@ class BuildEngine {
                 anchor: 'top-left',
                 decoration: {
                     kind: 'shape', shape: layer.shape,
-                    fillColor: layer.shapeFillColor, strokeColor: layer.shapeStrokeColor,
+                    fillColor: layer.shapeFillColor, fillOpacity: layer.shapeFillOpacity,
+                    strokeColor: layer.shapeStrokeColor, strokeOpacity: layer.shapeStrokeOpacity,
                     strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha
                 }
             });

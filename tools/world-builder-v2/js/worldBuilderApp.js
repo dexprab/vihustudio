@@ -1810,7 +1810,8 @@
             const local = toLocal(_experienceAbsRect(exp, 'graphic'));
             const shapeFields = props.graphicShape ? {
                 shape: props.graphicShape, shapeFillColor: props.graphicFillColor,
-                shapeStrokeColor: props.graphicStrokeColor, shapeStrokeWidth: props.graphicStrokeWidth,
+                shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
+                shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
                 rotation: props.graphicRotation
             } : {};
             window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc || null, glyph: '🎭', opacity: props.graphicOpacity }, local, shapeFields), graph);
@@ -5565,7 +5566,11 @@
             if (props.graphicShape) {
                 _fieldRow(
                     _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
-                    _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor')))
+                    _buildFieldGroup('Fill Opacity', _range(0, 100, Math.round((props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity) * 100), function (v) { onProp('graphicFillOpacity')(v / 100); }), '0% makes the fill fully see-through.')
+                );
+                _fieldRow(
+                    _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor'))),
+                    _buildFieldGroup('Outline Opacity', _range(0, 100, Math.round((props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity) * 100), function (v) { onProp('graphicStrokeOpacity')(v / 100); }), '0% makes the outline fully see-through.')
                 );
                 contextPanel.appendChild(_buildFieldGroup('Outline Thickness', _range(0, 20, props.graphicStrokeWidth || 0, onProp('graphicStrokeWidth')), 'Leave at 0 for no outline.'));
             }
