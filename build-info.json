@@ -4,6 +4,6 @@
   "task": "New js/pageRuntime.js promotes Creator's existing center pane into a named Page Runtime -- the single owner of the active page, its rendered objects, and its selection -- as a thin dispatch layer wrapping existing js/app.js functions, not a rewrite. Fixes a confirmed real bug (showSlide() never cleared selection, so a stale selection from a different page could open a live-looking but id-blind editor) and consolidates two divergent notify sequences into one PageRuntime.notify() call. ObjectStrip/ContextPanel/CardDesigner/PageDesigner/StickerStudio now read the active page and rendered objects through PageRuntime instead of reconstructing them independently; PageOps.reorderPage/moveToEnd and creationFlow's Start Creating now go through one consistent pipeline instead of duplicated/redundant ones. Save and Publish were investigated and found to already satisfy the sprint's requirements -- left unchanged. See docs/CREATOR_PAGE_RUNTIME.md and CLAUDE.md's matching entry for the full account.",
   "build": "0088",
   "buildDate": "2026-07-12",
-  "commit": "PENDING",
+  "commit": "eebe76b",
   "environment": "Release"
 }
