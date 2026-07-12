@@ -277,6 +277,25 @@ if(leftThemeCardEl){
     if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
   });
 }
+// Creator V2 — the header World readout doubles as a second entry point
+// into the exact same World picker leftThemeCardEl already opens (no
+// new capability, no new picker); the chevron in _updateHeaderContext()
+// is the visual affordance for it.
+const headerContextEl=document.getElementById('headerContext');
+if(headerContextEl){
+  headerContextEl.style.cursor='pointer';
+  headerContextEl.style.pointerEvents='auto';
+  headerContextEl.addEventListener('click',function(){
+    if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
+  });
+}
+const addPageBtnEl=document.getElementById('addPageBtn');
+if(addPageBtnEl){
+  addPageBtnEl.addEventListener('click',function(){
+    if(typeof PageOps==='undefined' || typeof PageOps.addAfter!=='function') return;
+    PageOps.addAfter(AppState.currentSlide);
+  });
+}
 const homeBtnEl=document.getElementById('homeBtn');
 if(homeBtnEl){
   homeBtnEl.addEventListener('click',function(){
@@ -728,6 +747,7 @@ function _updateHeaderContext(){
     const rep=theme.representations.find(function(r){ return r.layout===layout; });
     if(rep && rep.name) html+='<span class="header-context-sep">·</span><span class="header-context-style">'+_escapeHtml(rep.name)+'</span>';
   }
+  html+='<span class="header-context-chevron">⌄</span>';
   el.innerHTML=html;
 }
 function _escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }

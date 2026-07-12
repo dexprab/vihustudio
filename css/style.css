@@ -107,11 +107,15 @@ body{
   overflow:hidden;
   text-overflow:ellipsis;
   max-width:100%;
-  pointer-events:none;
+  padding:6px 12px;
+  border-radius:16px;
+  transition:background .15s;
 }
+.header-context:hover{ background:rgba(255,255,255,0.10); }
 .header-context-world{ font-weight:700; color:#fff; }
 .header-context-sep{ opacity:0.5; }
 .header-context-style{ opacity:0.85; }
+.header-context-chevron{ opacity:.6; font-size:11px; margin-left:1px; }
 
 .project-title-input{
   padding:8px 12px;
@@ -335,6 +339,22 @@ button:active{
   transition:transform 0.15s, box-shadow 0.15s;
 }
 #uploadBtn:hover{ transform:translateY(-1px); box-shadow:0 5px 14px rgba(255,203,69,0.32); }
+
+/* Creator V2 — a plain, quiet "+ Add Page" pill (distinct from the
+   gold Upload Images CTA — adding a blank page is a lower-emphasis,
+   secondary action). */
+.add-page-btn{
+  font-size:13px;
+  font-weight:600;
+  background:var(--bg);
+  color:var(--navy);
+  border:1px dashed var(--cf-line, var(--line));
+  border-radius:16px;
+  height:36px;
+  margin-bottom:12px;
+  transition:border-color .15s, background .15s;
+}
+.add-page-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.08); }
 
 /* Preview area
  * Sprint 9.1.2 — WYSIWYE. The preview area is a flex column that
@@ -4434,11 +4454,37 @@ body.creation-flow-active .app-header{ display:none; }
 }
 .butterfly-1{ bottom:18%; left:20%; animation-delay:0s; }
 .butterfly-2{ bottom:26%; right:24%; font-size:16px; animation-delay:2.4s; }
+.butterfly-3{ bottom:34%; left:38%; font-size:14px; animation-delay:1.2s; }
 @keyframes creation-flutter{
   0%,100%{ transform:translate(0,0) rotate(0deg); }
   25%{ transform:translate(12px,-14px) rotate(-8deg); }
   50%{ transform:translate(0,-24px) rotate(0deg); }
   75%{ transform:translate(-12px,-14px) rotate(8deg); }
+}
+
+/* Creator V2 — the "kids reading under the tree" group. A quiet,
+   breathing idle motion (per the brief's "light breathing animations,
+   never distracting") rather than the more active sway/flutter/drift
+   used elsewhere — these are the scene's calm focal point, not
+   background texture. */
+.creation-scene-reading-circle{
+  position:absolute;
+  bottom:8px;
+  left:9%;
+  display:flex;
+  align-items:flex-end;
+  gap:2px;
+}
+.creation-scene-reader{
+  font-size:30px;
+  display:inline-block;
+  animation:creation-breathe 4.5s ease-in-out infinite;
+}
+.reader-2{ font-size:26px; animation-delay:.5s; }
+.reader-3{ font-size:20px; animation-delay:1s; transform-origin:50% 100%; }
+@keyframes creation-breathe{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.04); }
 }
 
 .creation-scene-castle{
@@ -4536,8 +4582,25 @@ body.creation-flow-active .app-header{ display:none; }
   text-transform:uppercase;
   color:var(--text-tertiary);
   white-space:nowrap;
-  margin-left:auto;
 }
+/* Creator V2 — a quiet "?" affordance, top-right of Screen 1, matching
+   the wireframe board. Purely a tooltip (title attr); no new flow or
+   architecture. */
+.creation-flow-help{
+  margin-left:auto;
+  width:30px !important;
+  height:30px;
+  padding:0 !important;
+  border-radius:50%;
+  border:1px solid var(--cf-line);
+  background:var(--cf-paper);
+  color:var(--text-secondary);
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.creation-flow-help:hover{ border-color:var(--gold); color:var(--navy); }
 .creation-flow-add-world-header-btn{
   width:auto !important;
   height:auto;
@@ -4567,23 +4630,26 @@ body.creation-flow-active .app-header{ display:none; }
   margin:0 0 32px;
 }
 
-/* ---------- Screen 1: fixed 4-up grid (4+2 wrap, per storyboard) ---------- */
+/* ---------- Creator V2 — Screen 1: 3-up grid (3+3 wrap), per the
+   wireframe board's own layout. Each card carries a soft accent tint
+   behind its icon circle (sand/amber/sky/rose/lilac) — a warm,
+   watercolour palette variation, never a saturated "dashboard" rainbow. */
 .creation-flow-type-grid{
   display:grid;
-  grid-template-columns:repeat(4,minmax(160px,1fr));
-  gap:26px;
-  max-width:1000px;
+  grid-template-columns:repeat(3,minmax(220px,1fr));
+  gap:28px;
+  max-width:980px;
   margin:0 auto;
 }
 .creation-flow-type-grid .creation-flow-card{
   background:var(--cf-paper);
   border-color:var(--cf-line);
-  padding:26px 22px;
+  padding:32px 24px;
   align-items:center;
   text-align:center;
-  gap:12px;
+  gap:14px;
 }
-.creation-flow-type-grid .creation-flow-card-title{ font-size:16px; }
+.creation-flow-type-grid .creation-flow-card-title{ font-size:17px; }
 .creation-flow-type-grid .creation-flow-card-desc{ text-align:center; }
 .creation-flow-type-grid .creation-flow-card::after{
   content:'🌸';
@@ -4593,6 +4659,11 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:13px;
   opacity:.5;
 }
+.creation-flow-type-grid .creation-flow-card-accent-sand .creation-flow-card-icon{ background:#f4ecd8; }
+.creation-flow-type-grid .creation-flow-card-accent-amber .creation-flow-card-icon{ background:#f7dfb0; }
+.creation-flow-type-grid .creation-flow-card-accent-sky .creation-flow-card-icon{ background:#dcecf5; }
+.creation-flow-type-grid .creation-flow-card-accent-rose .creation-flow-card-icon{ background:#f8dede; }
+.creation-flow-type-grid .creation-flow-card-accent-lilac .creation-flow-card-icon{ background:#e8e0f2; }
 @media (max-width:760px){
   .creation-flow-type-grid{ grid-template-columns:repeat(2,minmax(140px,1fr)); }
 }
@@ -4723,12 +4794,45 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:14px;
   color:var(--text-secondary);
 }
+/* Creator V2 — the World's own identity, constant regardless of which
+   Begin-With option is currently scrolled into view below. A big soft
+   icon badge (the world's own emoji/glyph) reads as the world's "hero
+   art" per the wireframe, without a binary illustration asset. */
+.creation-flow-preview-badge{
+  width:84px;
+  height:84px;
+  margin:4px auto 14px;
+  border-radius:50%;
+  background:var(--cf-paper-alt);
+  box-shadow:inset 0 0 0 1px var(--cf-line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:40px;
+}
 .creation-flow-preview-heading{
-  font-size:19px;
+  font-size:22px;
   font-weight:700;
   color:var(--navy);
   text-align:center;
-  margin:0 0 16px;
+  margin:0 0 6px;
+}
+.creation-flow-preview-desc{
+  font-size:13.5px;
+  color:var(--text-secondary);
+  text-align:center;
+  max-width:360px;
+  margin:0 auto 20px;
+  line-height:1.5;
+}
+.creation-flow-begin-with{
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.03em;
+  color:var(--navy);
+  text-align:center;
+  margin:0 0 10px;
+  opacity:.85;
 }
 
 /* ---------- Sprint 11.1 — the Preview carousel IS the layout selector.
@@ -4905,7 +5009,13 @@ body.creation-flow-active .app-header{ display:none; }
   background:var(--cf-paper-alt);
   box-shadow:inset 0 0 0 1px var(--cf-line);
 }
-.creation-flow-type-grid .creation-flow-card-icon{ margin-bottom:2px; }
+.creation-flow-type-grid .creation-flow-card-icon{
+  margin-bottom:2px;
+  width:72px;
+  height:72px;
+  font-size:36px;
+  box-shadow:none;
+}
 .creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--navy); }
 .creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); line-height:1.4; }
 .creation-flow-badge{

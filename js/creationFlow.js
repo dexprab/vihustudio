@@ -80,12 +80,12 @@ const CreationFlow=(function(){
   // themes simply renders an empty Vihu Worlds row and an Add New World
   // card with no special-casing needed for 'card'/'more'.
   const CREATION_TYPES=[
-    {id:'story',   title:'Tell a Story',           desc:'Build your own story page by page.',    icon:'📖'},
-    {id:'artwork', title:'Showcase My Artwork',     desc:'Display your art in beautiful layouts.', icon:'🖼️'},
-    {id:'quote',   title:'Create Quotes',           desc:'Design inspiring quotes.',               icon:'💬'},
-    {id:'poem',    title:'Write a Poem',            desc:'Bring your words to life.',              icon:'🖋️'},
-    {id:'card',    title:'Make a Greeting Card',    desc:'Create cards for special moments.',      icon:'❤️'},
-    {id:'more',    title:'More Ideas',              desc:'Explore more ways to create.',           icon:'✨'}
+    {id:'story',   title:'Tell a Story',           desc:'Build your own story page by page.',    icon:'📖', accent:'sand'},
+    {id:'artwork', title:'Showcase My Artwork',     desc:'Display your art in beautiful layouts.', icon:'🖼️', accent:'amber'},
+    {id:'quote',   title:'Create Quotes',           desc:'Design inspiring quotes.',               icon:'💬', accent:'sky'},
+    {id:'poem',    title:'Write a Poem',            desc:'Bring your words to life.',              icon:'🖋️', accent:'sand'},
+    {id:'card',    title:'Make a Greeting Card',    desc:'Create cards for special moments.',      icon:'❤️', accent:'rose'},
+    {id:'more',    title:'More Ideas',              desc:'Explore more ways to create.',           icon:'✨', accent:'lilac'}
   ];
 
   let overlay=null, content=null;
@@ -181,7 +181,8 @@ const CreationFlow=(function(){
     return {
       image:previewImage||null,
       icon:manifest.themeIcon||'🎨',
-      color:(theme.frame && theme.frame.color) || '#EFEFEF'
+      color:(theme.frame && theme.frame.color) || '#EFEFEF',
+      description:theme.description||manifest.description||manifest.purpose||''
     };
   }
 
@@ -308,12 +309,18 @@ const CreationFlow=(function(){
     _clear();
     _setAtmosphere(false);
     _brand();
-    _header('Step 1 of 2',null);
-    content.appendChild(_el('h1','creation-flow-question','What would you like to create today?'));
-    content.appendChild(_el('p','creation-flow-subtitle','Choose how your creative adventure begins.'));
+    const header=_el('div','creation-flow-header');
+    header.appendChild(_el('span','creation-flow-step','Step 1 of 2'));
+    const help=_el('button','creation-flow-help','?');
+    help.type='button';
+    help.title='Every idea has a world. Pick one to begin.';
+    header.appendChild(help);
+    content.appendChild(header);
+    content.appendChild(_el('h1','creation-flow-question','What shall we create today?'));
+    content.appendChild(_el('p','creation-flow-subtitle','Every idea has a world.'));
     const grid=_el('div','creation-flow-grid creation-flow-type-grid');
     CREATION_TYPES.forEach(function(t){
-      const card=_el('button','creation-flow-card');
+      const card=_el('button','creation-flow-card creation-flow-card-accent-'+(t.accent||'sand'));
       card.type='button';
       card.appendChild(_el('div','creation-flow-card-icon',t.icon));
       card.appendChild(_el('div','creation-flow-card-title',t.title));
@@ -498,7 +505,10 @@ const CreationFlow=(function(){
         return;
       }
       const pv=_themePreview(theme);
-      preview.appendChild(_el('div','creation-flow-preview-heading',pv.icon+' '+theme.name));
+      const heroBadge=_el('div','creation-flow-preview-badge',pv.icon);
+      preview.appendChild(heroBadge);
+      preview.appendChild(_el('div','creation-flow-preview-heading',theme.name));
+      if(pv.description) preview.appendChild(_el('p','creation-flow-preview-desc',pv.description));
 
       const reps=_representationsForTheme(theme.id,type.id);
 
@@ -514,6 +524,7 @@ const CreationFlow=(function(){
         return;
       }
 
+      if(reps.length>1) preview.appendChild(_el('div','creation-flow-begin-with','🌿 Begin With 🌿'));
       const carouselWrap=_el('div','creation-flow-carousel-wrap');
       const prevBtn=_el('button','creation-flow-carousel-arrow prev','‹');
       prevBtn.type='button';
