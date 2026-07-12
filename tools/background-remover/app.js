@@ -786,7 +786,12 @@ function applyManualCrop() {
   drawPixelBuffer(els.processedCanvas, state.workingBuffer);
   zoomProcessed.setContentSize(state.workingBuffer.width, state.workingBuffer.height);
   zoomProcessed.fitToViewport();
-  setActiveTool('pan');
+  // Deliberately stay in the Trim Picture tool (not setActiveTool('pan'))
+  // rather than switching tools on Apply — that used to hide cropPanel
+  // entirely, so "Undo Trim" (still enabled underneath) became
+  // unreachable the instant a crop was applied, reading as "doesn't
+  // work." Staying in Trim Picture keeps the panel, and Undo Trim,
+  // visible right where the child just used it.
   updateCropButtons();
   if (state.lastMeta) updateMeta(state.lastMeta);
   if (state.viewMode === 'overlay' || state.viewMode === 'difference') renderAnalysisView();
@@ -821,7 +826,9 @@ function applyTrimTrash() {
   els.cropSelectionBox.hidden = true;
 
   drawPixelBuffer(els.processedCanvas, state.workingBuffer);
-  setActiveTool('pan');
+  // Same reasoning as applyManualCrop() above — stay in the Trim
+  // Picture tool so cropPanel (Trash It/Keep This/Undo Trim/Oops!)
+  // stays visible right after the action that just used it.
   updateCropButtons();
   if (state.lastMeta) updateMeta(state.lastMeta);
   if (state.viewMode === 'overlay' || state.viewMode === 'difference') renderAnalysisView();
