@@ -208,17 +208,34 @@ const CreationFlow=(function(){
   // or an emoji. `themeId` lets this resolve that path through
   // ThemeRegistry.getAsset() before falling back to using it directly —
   // an emoji or an already-absolute URI is returned unchanged either way.
+  //
+  // A Representation with no `thumbnail` of its own used to fall back to
+  // a hardcoded generic 🎭 mask — the same glyph for every World's every
+  // Representation, regardless of what that World actually is. Real
+  // authoring surfaced this as "no real visual" — fixed by falling back
+  // to the World's own preview image/icon (_themePreview, the exact
+  // fields ThemeEngine's Theme Library card already reads) instead of an
+  // unrelated invented glyph. Only when the World itself has neither an
+  // image nor a themeIcon does this fall back to a plain, generic 🎨.
   function _repThumbnail(r,themeId){
     const t=r.thumbnail;
-    if(!t) return {text:'🎭'};
-    if(/^(data:|https?:)/i.test(t)) return {image:t};
-    if(/\.(png|jpe?g|svg|webp)$/i.test(t)){
-      const resolved=(themeId && typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
-        ? ThemeRegistry.resolveAssetRef(themeId,t)
-        : t;
-      return {image:resolved};
+    if(t){
+      if(/^(data:|https?:)/i.test(t)) return {image:t};
+      if(/\.(png|jpe?g|svg|webp)$/i.test(t)){
+        const resolved=(themeId && typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
+          ? ThemeRegistry.resolveAssetRef(themeId,t)
+          : t;
+        return {image:resolved};
+      }
+      return {text:t};
     }
-    return {text:t};
+    const theme=(themeId && typeof ThemeRegistry!=='undefined') ? ThemeRegistry.get(themeId) : null;
+    if(theme){
+      const pv=_themePreview(theme);
+      if(pv.image) return {image:pv.image};
+      return {text:pv.icon};
+    }
+    return {text:'🎨'};
   }
 
   // ---------- Shared card builders ----------

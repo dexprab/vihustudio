@@ -54,7 +54,7 @@ const SceneEngine=(function(){
       _imgHolder('image-holder','Image Holder',{x:imageRect.x,y:imageRect.y},{w:imageRect.w,h:imageRect.h}),
       _textHolder('title-holder','Title Holder','cover.title','Your Title',{x:C,y:200},88,'#FFFFFF',{fontWeight:'bold'}),
       _textHolder('subtitle-holder','Subtitle Holder','cover.subtitle','Subtitle',{x:C,y:300},44,'#FFFFFF'),
-      _textHolder('author-holder','Author Holder','cover.author','by Vihu',{x:C,y:1260},32,'#FFFFFF')
+      _textHolder('author-holder','Author Holder','cover.author','by You',{x:C,y:1260},32,'#FFFFFF')
     ];
   }
   const COVER={
@@ -117,7 +117,7 @@ const SceneEngine=(function(){
       _imgHolder('image-holder','Image Holder',{x:imageRect.x,y:imageRect.y},{w:imageRect.w,h:imageRect.h},{visible:false}),
       _textHolder('heading-holder','Heading Holder','hook.heading','Follow along',{x:C,y:380},78,'#FFCB45',{fontWeight:'bold'}),
       _textHolder('message-holder','Message Holder','hook.message','Tell readers what comes next.',{x:C,y:520},40,'#FFFFFF'),
-      _textHolder('handle-holder','Handle Holder','handle','@vihuplanet',{x:C,y:1280},32,'#FFFFFF')
+      _textHolder('handle-holder','Handle Holder','handle','',{x:C,y:1280},32,'#FFFFFF')
     ];
   }
   const HOOK={
@@ -176,7 +176,7 @@ const SceneEngine=(function(){
       _textHolder('story-title-holder','Story Title Holder','storyTitle','Your Story',{x:C,y:230},48,'#FFFFFF'),
       _textHolder('ending-title-holder','Ending Title Holder','end.endingTitle','The End',{x:C,y:340},96,'#FFCB45',{fontWeight:'bold'}),
       _textHolder('message-holder','Message Holder','end.message','Thanks for reading.',{x:C,y:470},40,'#FFFFFF'),
-      _textHolder('handle-holder','Handle Holder','handle','@vihuplanet',{x:C,y:1280},32,'#FFFFFF')
+      _textHolder('handle-holder','Handle Holder','handle','',{x:C,y:1280},32,'#FFFFFF')
     ];
   }
   const END={
@@ -495,8 +495,7 @@ const SceneEngine=(function(){
       return (slide.metadata && typeof slide.metadata.storyTitle==='string') ? slide.metadata.storyTitle : '';
     }
     if(source==='handle'){
-      return (slide.metadata && typeof slide.metadata.handle==='string' && slide.metadata.handle.length>0)
-        ? slide.metadata.handle : '@vihuplanet';
+      return (slide.metadata && typeof slide.metadata.handle==='string') ? slide.metadata.handle : '';
     }
     const dot=source.indexOf('.');
     if(dot===-1) return '';

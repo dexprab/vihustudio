@@ -2153,7 +2153,12 @@ const SlideRenderer=(()=>{
   // legible against a light gallery wall. Omitted, behaviour unchanged.
   function _drawHandle(theme,opts,overrides,handleText,positionOverride,colorOverride){
     if(opts.handleVisibility==='hide') return null;
-    const text=(typeof handleText==='string' && handleText.length>0) ? handleText : '@vihuplanet';
+    // A slide's Handle only ever shows text the theme or the creator
+    // actually put there (slide.metadata.handle, or a theme's own
+    // defaultHandle) -- it never fabricates placeholder branding when
+    // nothing was set.
+    if(typeof handleText!=='string' || handleText.length===0) return null;
+    const text=handleText;
     const ov=(overrides && overrides['handle'])||{};
     const pos=positionOverride||opts.handlePosition||'top-right';
     let hx, hy, defaultAlign;
@@ -2440,7 +2445,7 @@ const SlideRenderer=(()=>{
       : (opts.defaultBookTitle || '');
     const handle = (typeof m.handle === 'string' && m.handle.length > 0)
       ? m.handle
-      : (opts.defaultHandle || '@vihuplanet');
+      : (opts.defaultHandle || '');
     return {
       image: slide.image,
       storyBeat: slide.storyBeat || '',

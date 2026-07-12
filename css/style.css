@@ -4386,7 +4386,8 @@ body.dark-theme .publish-celebration-secondary-btn:hover{ background:rgba(255,25
   overflow-y:auto;
   display:flex;
   justify-content:center;
-  padding:48px 24px;
+  align-items:center;
+  padding:clamp(14px,3vh,48px) 24px;
   /* A fixed warm-paper palette per docs/STUDIO_DESIGN_CANON.md §3 —
      Warm Cream / Paper White — used regardless of the app's light/dark
      toggle, since this is a distinct illustrated world, not a themed
@@ -4676,18 +4677,18 @@ body.creation-flow-active .app-header{ display:none; }
 }
 .creation-flow-add-world-header-btn:hover{ background:var(--gold); }
 .creation-flow-question{
-  font-size:32px;
+  font-size:clamp(22px,3.4vh,32px);
   font-weight:700;
   color:var(--navy);
   text-align:center;
-  margin:8px 0 6px;
+  margin:clamp(2px,0.8vh,8px) 0 clamp(2px,0.6vh,6px);
   letter-spacing:-.01em;
 }
 .creation-flow-subtitle{
-  font-size:15px;
+  font-size:14px;
   color:var(--text-secondary);
   text-align:center;
-  margin:0 0 32px;
+  margin:0 0 clamp(10px,3vh,32px);
 }
 
 /* ---------- Creator V2 — Screen 1: 3-up grid (3+3 wrap), per the
@@ -4696,18 +4697,18 @@ body.creation-flow-active .app-header{ display:none; }
    watercolour palette variation, never a saturated "dashboard" rainbow. */
 .creation-flow-type-grid{
   display:grid;
-  grid-template-columns:repeat(3,minmax(220px,1fr));
-  gap:28px;
+  grid-template-columns:repeat(3,minmax(180px,1fr));
+  gap:clamp(12px,2.2vh,28px) clamp(14px,2vw,28px);
   max-width:980px;
   margin:0 auto;
 }
 .creation-flow-type-grid .creation-flow-card{
   background:var(--cf-paper);
   border-color:var(--cf-line);
-  padding:32px 24px;
+  padding:clamp(16px,2.6vh,32px) 20px;
   align-items:center;
   text-align:center;
-  gap:14px;
+  gap:clamp(6px,1.2vh,14px);
 }
 .creation-flow-type-grid .creation-flow-card-title{ font-size:17px; }
 .creation-flow-type-grid .creation-flow-card-desc{ text-align:center; }
@@ -4847,7 +4848,7 @@ body.creation-flow-active .app-header{ display:none; }
   border-radius:22px;
   background:var(--cf-paper);
   overflow:hidden;
-  padding:22px 26px 26px;
+  padding:clamp(12px,2vh,22px) 26px clamp(14px,2.4vh,26px);
   box-shadow:0 4px 18px rgba(120,90,40,.07);
 }
 .creation-flow-preview-empty{
@@ -4859,39 +4860,39 @@ body.creation-flow-active .app-header{ display:none; }
    icon badge (the world's own emoji/glyph) reads as the world's "hero
    art" per the wireframe, without a binary illustration asset. */
 .creation-flow-preview-badge{
-  width:84px;
-  height:84px;
-  margin:4px auto 14px;
+  width:clamp(52px,7vh,84px);
+  height:clamp(52px,7vh,84px);
+  margin:4px auto clamp(6px,1.4vh,14px);
   border-radius:50%;
   background:var(--cf-paper-alt);
   box-shadow:inset 0 0 0 1px var(--cf-line);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:40px;
+  font-size:clamp(24px,3.4vh,40px);
 }
 .creation-flow-preview-heading{
-  font-size:22px;
+  font-size:20px;
   font-weight:700;
   color:var(--navy);
   text-align:center;
-  margin:0 0 6px;
+  margin:0 0 4px;
 }
 .creation-flow-preview-desc{
-  font-size:13.5px;
+  font-size:13px;
   color:var(--text-secondary);
   text-align:center;
   max-width:360px;
-  margin:0 auto 20px;
-  line-height:1.5;
+  margin:0 auto clamp(8px,1.6vh,20px);
+  line-height:1.4;
 }
 .creation-flow-begin-with{
-  font-size:13px;
+  font-size:12.5px;
   font-weight:700;
   letter-spacing:.03em;
   color:var(--navy);
   text-align:center;
-  margin:0 0 10px;
+  margin:0 0 clamp(4px,1vh,10px);
   opacity:.85;
 }
 
@@ -4923,27 +4924,27 @@ body.creation-flow-active .app-header{ display:none; }
   align-items:center;
   justify-content:center;
   text-align:center;
-  gap:12px;
-  padding:32px 28px;
-  min-height:320px;
+  gap:clamp(6px,1.2vh,12px);
+  padding:clamp(14px,2.6vh,32px) 28px;
+  min-height:clamp(190px,26vh,320px);
 }
 .creation-flow-carousel-art{
   width:100%;
   max-width:250px;
-  height:200px;
+  height:clamp(110px,17vh,200px);
   border-radius:16px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:88px;
+  font-size:clamp(48px,9vh,88px);
   overflow:hidden;
   background:var(--cf-paper);
   border:1px solid var(--cf-line);
   box-shadow:0 10px 26px rgba(120,90,40,.14), 0 2px 8px rgba(120,90,40,.08);
 }
 .creation-flow-carousel-art img{ width:100%; height:100%; object-fit:cover; }
-.creation-flow-carousel-name{ font-size:20px; font-weight:700; color:var(--navy); letter-spacing:.1px; }
-.creation-flow-carousel-desc{ font-size:13.5px; color:var(--text-secondary); max-width:360px; line-height:1.5; }
+.creation-flow-carousel-name{ font-size:18px; font-weight:700; color:var(--navy); letter-spacing:.1px; }
+.creation-flow-carousel-desc{ font-size:13px; color:var(--text-secondary); max-width:360px; line-height:1.4; }
 .creation-flow-carousel-arrow{
   flex:0 0 auto;
   width:38px !important;
@@ -5071,13 +5072,13 @@ body.creation-flow-active .app-header{ display:none; }
 }
 .creation-flow-type-grid .creation-flow-card-icon{
   margin-bottom:2px;
-  width:72px;
-  height:72px;
-  font-size:36px;
+  width:clamp(48px,7vh,72px);
+  height:clamp(48px,7vh,72px);
+  font-size:clamp(24px,3.5vh,36px);
   box-shadow:none;
 }
-.creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--navy); }
-.creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); line-height:1.4; }
+.creation-flow-card-title{ font-size:15px; font-weight:700; color:var(--navy); }
+.creation-flow-card-desc{ font-size:12.5px; color:var(--text-secondary); line-height:1.35; }
 .creation-flow-badge{
   position:absolute;
   top:14px;
