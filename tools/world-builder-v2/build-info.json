@@ -5,6 +5,6 @@
   "slice": "Second direct follow-up on Decoration Shapes: one more preset (Rounded Rectangle, reusing the existing rounded-rect path helper) plus a genuinely new capability -- a creator-drawn outline. A new graphicCustomPath field holds an array of 0..1 fractional {x,y} points sketched on a small pointer-driven Draw pad (worldBuilderApp.js's _shapeDrawPad); the drawn outline plugs into the exact same resize/move/rotate Transform and Fill/Outline styling every other Shape already has, since it's stored in the same fractional-rect vocabulary. engineRuntime.js and renderer/slideRenderer.js both gained a kind==='custom' branch mapping the stored points onto the target rect (falling back to a circle placeholder before anything's drawn); builder.js's Scene-convergence pipeline carries customPath into the compiled decoration entry so a hand-drawn shape reaches a real published Theme. Verified end-to-end via Playwright driving real pointer events: Rounded Rectangle renders the correct fill colour; a real freehand stroke persists a real fractional path to the Experience and its mirrored Scene Layer; a real Build compiles a decoration:{kind:'shape', shape:'custom', customPath:[...]} entry. goldenBuild.js 30/30 unchanged.",
   "build": "0067",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "94f9e9e",
   "environment": "Release"
 }
