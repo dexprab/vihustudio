@@ -12,7 +12,10 @@
 // Reuses, never duplicates: SceneEngine.listElements() (Cover/Hook/End
 // role objects), SceneEngine.getStickers(), SlideRenderer.getTextElements()
 // (Story-role text objects, including the Story Text a child writes),
-// and the exact same window.setSelectedSceneElement/setSelectedTextElement
+// SlideRenderer.getSceneElements() (also picks up theme-authored Layer
+// Pack objects — Museum Caption, Wax Seal, etc. — so a Builder-authored
+// World's own content is visible and selectable here, not just drawn on
+// the canvas), and the exact same window.setSelectedSceneElement/setSelectedTextElement
 // entry points the canvas's own click handlers already use (js/app.js) —
 // tapping a card here is indistinguishable from tapping the object on
 // the canvas itself, so selection stays perfectly bidirectional with no
@@ -96,8 +99,13 @@ const ObjectStrip=(function(){
     const selText=cfg.getSelectedTextElement();
     const selScene=cfg.getSelectedSceneElement();
     const cards=[];
+    // Every scene-element id already represented by a card below, so the
+    // new Layer Pack loop (further down) never lists the same object
+    // twice — see that loop's own comment for why it needs this at all.
+    const shownSceneIds={};
 
     // Background — always present, every role.
+    shownSceneIds.background=true;
     cards.push(_card({
       icon:'🎨',
       name:'Background',
@@ -111,6 +119,7 @@ const ObjectStrip=(function(){
     // handler), so 'image-holder' here is the same synthetic id that
     // handler already uses purely for Context Panel routing.
     if(slide.pageType==='story' && slide.image){
+      shownSceneIds['image-holder']=true;
       cards.push(_card({
         imgSrc:slide.thumbnail||null,
         icon:'🖼️',
@@ -127,6 +136,7 @@ const ObjectStrip=(function(){
     if(typeof SceneEngine!=='undefined' && typeof SceneEngine.listElements==='function'){
       const elements=SceneEngine.listElements(slide)||[];
       elements.forEach(function(el){
+        shownSceneIds[el.id]=true;
         if(el.id==='background') return; // already shown above
         const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label};
         let name=el.label||friendly.name;
@@ -142,6 +152,43 @@ const ObjectStrip=(function(){
           icon:icon,
           name:name,
           editable:!el.locked,
+          selected:selScene===el.id,
+          onClick:function(){
+            if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(el.id,el.type);
+          }
+        }));
+      });
+    }
+
+    // User-placed stickers (Sticker Studio) — a separate SceneEngine list
+    // from the blueprint elements above; tracked here purely so the new
+    // Layer Pack loop below can't collide with one of their ids.
+    if(typeof SceneEngine!=='undefined' && typeof SceneEngine.getStickers==='function'){
+      (SceneEngine.getStickers(slide)||[]).forEach(function(st){ shownSceneIds[st.id]=true; });
+    }
+
+    // Layer Pack objects — theme-authored decorations/text declared in
+    // World Builder (Museum Caption, Wax Seal, Gallery Spotlight, and
+    // similar). These already render on the canvas via SlideRenderer's
+    // own Layer Pack pipeline, but until now had no Object Strip entry:
+    // there's no SceneEngine list for them, since they belong to the
+    // active World, not the page's own blueprint. SlideRenderer.getSceneElements()
+    // is the same bbox list canvas hit-testing/selection already reads
+    // (renderer/slideRenderer.js's _renderLayers), so this is the one
+    // real source of truth for "what did the theme actually draw" —
+    // showing them here is what makes a Builder-authored World's content
+    // visible and selectable in Creator, not just visually present.
+    // Always shown as 🔒 Part of the world: a Layer Pack object is
+    // theme-owned, not something a creator repositions or retypes.
+    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function'){
+      SlideRenderer.getSceneElements().forEach(function(el){
+        if(shownSceneIds[el.id]) return;
+        if(el.visible===false) return;
+        const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
+        cards.push(_card({
+          icon:friendly.icon,
+          name:el.label||friendly.name,
+          editable:false,
           selected:selScene===el.id,
           onClick:function(){
             if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(el.id,el.type);

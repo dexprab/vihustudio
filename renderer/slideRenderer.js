@@ -8,6 +8,12 @@ const SlideRenderer=(()=>{
   // Sprint 6.1 — scene element bboxes from the most recent render(), used
   // by the canvas drag handler to hit-test scene elements.
   let _lastSceneElements=[];
+  // Layer Pack (theme-authored decorations/text — Museum Caption, Wax
+  // Seal, etc.) bboxes accumulated across every _renderLayers() call in
+  // the current render() pass, then folded into _lastSceneElements once
+  // at the very end — see the comment at that concat site for why this
+  // can't just push into _lastSceneElements directly.
+  let _layerObjectBboxes=[];
 
   const FALLBACK_THEME={
     frame:{ color:'#1D3457' },
@@ -943,6 +949,17 @@ const SlideRenderer=(()=>{
   // `scope` (every layer authored before this) always passes — the
   // theme.layerPack global scheme every pre-existing theme relies on
   // is completely unaffected.
+  // Turns a Layer Pack entry's own id ('wax-seal', 'gallery-spotlight')
+  // into a readable label ('Wax Seal', 'Gallery Spotlight') for the
+  // Object Strip / hit-test bbox, when the theme hasn't declared its
+  // own `layer.label`. Purely cosmetic; never affects rendering.
+  function _humanizeLayerId(id){
+    if(!id) return 'Object';
+    return String(id).split(/[-_]/).map(function(w){
+      return w ? w.charAt(0).toUpperCase()+w.slice(1) : w;
+    }).join(' ');
+  }
+
   function _activeLayerPack(s){
     const theme=_layoutTheme(s);
     const pack=(theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
@@ -961,13 +978,17 @@ const SlideRenderer=(()=>{
     return (l && l.position) || null;
   }
 
+  // Returns a {bx,by,bw,bh} geometry box for whatever it drew (used by
+  // _renderLayers to register a real, selectable/clickable Object Strip
+  // + hit-test entry for Layer Pack content — see the id/type/label
+  // wrapping in _renderLayers itself), or null when nothing was drawn.
   function _layerDrawText(layer,anchor,rect,s){
     const t=layer.text||{};
     // Sprint 9.7 — Museum Gallery Fidelity: 'museumCaption' composes the
     // Design Board's two-line museum label (bold serif title, then a
     // muted "By {artist} ✍️  Age {age} 🎂 | {date} 📅" line) from real
     // per-slide fields instead of one flat string.
-    if(t.source==='museumCaption'){ _drawMuseumCaption(t,anchor,s); return; }
+    if(t.source==='museumCaption') return _drawMuseumCaption(t,anchor,s);
     let content=t.content||'';
     // 'slideCaption' — a plain per-slide caption string a child typed
     // (slide.metadata.caption), same convention as bookTitle / handle
@@ -975,14 +996,23 @@ const SlideRenderer=(()=>{
     // single-field option for future themes that don't need the full
     // Title/Artist/Age/Date breakdown.
     if(t.source==='slideCaption') content=(s && s.metadata && typeof s.metadata.caption==='string' && s.metadata.caption) || content;
-    if(!content) return;
+    if(!content) return null;
     x.save();
     x.font=(t.size||18)+'px '+(t.font||'Georgia, serif');
     x.fillStyle=t.color||'#333333';
-    x.textAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
-    x.textBaseline=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
+    const hAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
+    const vAlign=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
+    x.textAlign=hAlign;
+    x.textBaseline=vAlign;
     x.fillText(content,anchor.x,anchor.y);
+    const w=x.measureText(content).width;
     x.restore();
+    const size=t.size||18;
+    let bx=anchor.x-w/2;
+    if(hAlign==='left') bx=anchor.x; else if(hAlign==='right') bx=anchor.x-w;
+    let by=anchor.y-size/2;
+    if(vAlign==='top') by=anchor.y; else if(vAlign==='bottom') by=anchor.y-size;
+    return {bx:bx,by:by,bw:w,bh:size+8};
   }
 
   function _drawMuseumCaption(t,anchor,s){
@@ -991,7 +1021,7 @@ const SlideRenderer=(()=>{
     const artist=(typeof m.artist==='string') ? m.artist.trim() : '';
     const age=(typeof m.age==='string' || typeof m.age==='number') ? String(m.age).trim() : '';
     const date=(typeof m.date==='string') ? m.date.trim() : '';
-    if(!title && !artist && !age && !date) return;
+    if(!title && !artist && !age && !date) return null;
     const metaParts=[];
     if(artist) metaParts.push('By '+artist+' ✍️');
     if(age) metaParts.push('Age '+age+' 🎂');
@@ -1004,18 +1034,26 @@ const SlideRenderer=(()=>{
     x.textAlign=align;
     x.textBaseline='top';
     let cy=anchor.y;
+    let maxW=0;
     if(title){
       x.font=titleSize+'px '+(t.font||'Georgia, serif');
       x.fillStyle=t.color||'#3A3A3A';
       x.fillText(title,anchor.x,cy);
+      maxW=Math.max(maxW,x.measureText(title).width);
       cy+=Math.round(titleSize*1.2);
     }
     if(metaLine){
       x.font=Math.round(titleSize*0.65)+'px '+(t.font||'Georgia, serif');
       x.fillStyle='rgba(58,58,58,0.72)';
       x.fillText(metaLine,anchor.x,cy);
+      maxW=Math.max(maxW,x.measureText(metaLine).width);
+      cy+=Math.round(titleSize*0.65*1.2);
     }
     x.restore();
+    if(maxW===0) return null;
+    let bx=anchor.x-maxW/2;
+    if(align==='left') bx=anchor.x; else if(align==='right') bx=anchor.x-maxW;
+    return {bx:bx,by:anchor.y,bw:maxW,bh:cy-anchor.y};
   }
 
   // Wax Seal (Museum Gallery's one shipped Sticker Layer, Frame-
@@ -1039,25 +1077,27 @@ const SlideRenderer=(()=>{
   };
   function _layerDrawSticker(layer,anchor){
     const st=layer.sticker||{};
+    const size=st.size||36;
     const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
     if(glyph){
       x.save();
-      x.font=(st.size||36)+'px sans-serif';
+      x.font=size+'px sans-serif';
       x.textAlign='center';
       x.textBaseline='middle';
       x.fillText(glyph,anchor.x,anchor.y);
       x.restore();
-      return;
+      return {bx:anchor.x-size/2,by:anchor.y-size/2,bw:size,bh:size};
     }
     x.save();
     x.translate(anchor.x,anchor.y);
-    const r=(st.size||36)/2;
+    const r=size/2;
     x.fillStyle=st.color||'#7A1F2B';
     x.beginPath(); x.arc(0,0,r,0,Math.PI*2); x.fill();
     x.strokeStyle='rgba(255,255,255,0.35)';
     x.lineWidth=2;
     x.beginPath(); x.arc(0,0,r*0.6,0,Math.PI*2); x.stroke();
     x.restore();
+    return {bx:anchor.x-r,by:anchor.y-r,bw:r*2,bh:r*2};
   }
 
   // Gallery Spotlight (Museum Gallery's one shipped Decoration Layer,
@@ -1106,6 +1146,7 @@ const SlideRenderer=(()=>{
     }else if(kind==='shape'){
       _layerDrawShape(d,r);
     }
+    return {bx:r.x,by:r.y,bw:r.w,bh:r.h};
   }
 
   // A regular N-sided polygon inscribed in the same rx/ry ellipse
@@ -1312,12 +1353,25 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // Wraps a drawn Layer Pack entry's returned bbox into the same shape
+  // _sceneBbox()/_stickerBbox() already produce, so it flows through the
+  // existing Object Strip + canvas hit-test + selection-outline pipeline
+  // with no changes needed there beyond consuming _lastSceneElements.
+  function _pushLayerObject(layer,type,box){
+    if(!box) return;
+    _layerObjectBboxes.push({
+      id:layer.id, type:type, label:layer.label||_humanizeLayerId(layer.id),
+      bx:box.bx, by:box.by, bw:box.bw, bh:box.bh,
+      visible:layer.visible!==false, locked:true
+    });
+  }
+
   function _renderLayers(pack,target,rect,s){
     if(!pack || typeof LayerEngine==='undefined') return;
     LayerEngine.render(pack,target,rect,{
-      drawText:function(layer,anchor,r,layerRect){ _layerDrawText(layer,anchor,layerRect||rect,s); },
-      drawSticker:function(layer,anchor){ _layerDrawSticker(layer,anchor,rect); },
-      drawDecoration:function(layer,anchor,r,layerRect){ _layerDrawDecoration(layer,anchor,rect,s,layerRect); }
+      drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s)); },
+      drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,rect)); },
+      drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect)); }
     });
   }
 
@@ -1402,6 +1456,7 @@ const SlideRenderer=(()=>{
     const opts=_options(s);
     const overrides=(s && s.overrides && s.overrides.textElements) || {};
     _lastTextElements=[];
+    _layerObjectBboxes=[];
 
     // Sprint 6.5 — when the user has customised the Picture Border, draw
     // a styled frame in place of the legacy panel. Otherwise fall through
@@ -1554,6 +1609,17 @@ const SlideRenderer=(()=>{
     // this is purely additive — zero effect on any theme that doesn't
     // use it.
     _renderLayers(_layerPack,'overlay',{x:0,y:0,w:W,h:H},s);
+
+    // Fold every Layer Pack object drawn this pass (slide/frame/holder/
+    // element/overlay scopes alike) into _lastSceneElements exactly once,
+    // here — after every _renderLayers() call above and before anything
+    // below reads _lastSceneElements for hit-testing/selection. Doing this
+    // earlier (e.g. right after the 'slide'-scope call) would lose the
+    // data: _lastSceneElements is reset to [] again above (Sprint 6.1's
+    // own Scene Layer pass) after the four earlier-scope _renderLayers()
+    // calls but before this 'overlay' one, so a Layer Pack object is only
+    // ever safe to add after this point in the function.
+    if(_layerObjectBboxes.length) _lastSceneElements=_lastSceneElements.concat(_layerObjectBboxes);
 
     // Drag guides (Sprint 4.4) — drawn under the selection outline so the
     // outline stays on top of the canvas center crosshair.
