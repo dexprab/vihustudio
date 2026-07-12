@@ -5,6 +5,6 @@
   "slice": "Found live authoring: five actions in the Scene editor (creating a Decoration/Text/Frame Experience via the quick-pickers, \"Open in Experience Home ->\", the sidebar's \"New Experience ->\") switch currentNav to 'experiences', taking over the whole Context Inspector column. The only thing that ever reset currentNav back to 'scenes' was the old global nav bar's own \"Scenes\" button -- but that bar is now permanently hidden (Scenes+Experiences both became always-visible columns in the Continuous Builder rebuild), so any of those five actions silently stranded the author: Context Inspector stuck on Experience Home's Gallery/Nursery browsing screen, Place/Decorations/Text never reachable again -- exactly the reported \"overlay of place-decoration-text keeps hiding... not able to enter places properties.\" Fixed with the same \"<- Back to Scene\" pattern the Frames screen already established for this exact class of problem -- shown at the top of Experience Home whenever a Scene is open, resetting currentNav to 'scenes' and returning to exactly where the author left off. Verified via Playwright: creating a Decoration Experience via the glyph picker reproduces the dead end; the new button correctly escapes it; a Place activity click afterward renders the real Place properties panel. goldenBuild.js 30/30 unchanged.",
   "build": "0063",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "42b156b",
   "environment": "Release"
 }
