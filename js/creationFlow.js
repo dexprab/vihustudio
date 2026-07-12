@@ -635,10 +635,16 @@ const CreationFlow=(function(){
     }
     try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     _closeOverlay();
-    try{ if(typeof window.redrawPreview==='function') window.redrawPreview(); }catch(e){}
-    try{ if(typeof window.renderList==='function') window.renderList(); }catch(e){}
-    try{ if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide); }catch(e){}
-    try{ if(typeof ContextPanel!=='undefined') ContextPanel.refresh(); }catch(e){}
+    // Creator Runtime Pass Sprint — one dispatch instead of three
+    // independent re-render sequences. PageOps.addBefore's own pipeline
+    // and ThemeEngine.apply*'s own renderList/showSlide calls already
+    // cover most of this; routing the final refresh through Page
+    // Runtime (or its own showSlide fallback) guarantees the
+    // just-applied theme/layout is reflected everywhere exactly once.
+    try{
+      if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
+      else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+    }catch(e){}
   }
 
   // ---------- Change Representation (from the Context Panel) ----------

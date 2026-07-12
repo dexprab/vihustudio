@@ -122,20 +122,35 @@ const ContextPanel=(function(){
     const sceneType=host && typeof host.getSelectedSceneElementType==='function' ? host.getSelectedSceneElementType() : null;
 
     if(sceneId && sceneType && TYPE_TO_SECTIONS[sceneType]){
-      // Creator Reconciliation Sprint — ask the selected Scene Object
-      // itself who owns it before routing by type. 'image-holder'
-      // (Artwork) is the one synthetic selection with no render-tree
-      // bbox (js/objectStrip.js's own disclosed exception) and keeps its
-      // existing, unconditional behaviour below.
+      // 'image-holder' (Artwork) is the one synthetic selection with no
+      // render-tree bbox (js/objectStrip.js's own disclosed exception)
+      // and keeps its existing, unconditional behaviour.
+      if(sceneType==='image-holder'){
+        _setTabVisible('card-tab');
+        _setCardSections(TYPE_TO_SECTIONS[sceneType]);
+        _renderArtworkActions();
+        return;
+      }
+      // Creator Runtime Pass Sprint — ask Page Runtime whether the
+      // selection still resolves to something actually rendered on the
+      // active page BEFORE opening any section at all, not only before
+      // choosing disclosure wording. A selection left over from a
+      // different page (or a since-removed object) now falls through to
+      // the default view instead of opening a live-looking but
+      // id-blind editor.
       const sceneObj=_findSceneObject(sceneId,sceneType);
-      if(sceneObj && sceneObj.owner==='world'){
+      if(!sceneObj){
+        _hideAllTabs();
+        _renderDefault();
+        return;
+      }
+      if(sceneObj.owner==='world'){
         _renderWorldObjectDisclosure(sceneObj);
         return;
       }
       _setTabVisible('card-tab');
       _setCardSections(TYPE_TO_SECTIONS[sceneType]);
-      if(sceneType==='image-holder') _renderArtworkActions();
-      else _renderSelectionHeading(sceneType);
+      _renderSelectionHeading(sceneType);
       return;
     }
     if(textId){
@@ -168,8 +183,9 @@ const ContextPanel=(function(){
   // here on purpose (no render-tree bbox exists for it).
   function _findSceneObject(sceneId,sceneType){
     if(sceneType==='image-holder') return null;
-    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.getSceneElements!=='function') return null;
-    const list=SlideRenderer.getSceneElements();
+    const list=(typeof PageRuntime!=='undefined')
+      ? PageRuntime.getRenderedObjects().scene
+      : ((typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function') ? SlideRenderer.getSceneElements() : []);
     for(let i=0;i<list.length;i++){ if(list[i].id===sceneId) return list[i]; }
     return null;
   }

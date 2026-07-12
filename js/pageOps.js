@@ -136,11 +136,10 @@ const PageOps=(function(){
   function moveToEnd(index){
     if(index<0||index>=AppState.slides.length) return false;
     const lastIdx=AppState.slides.length-1;
-    if(index===lastIdx){
-      _refreshSelection(lastIdx);
-      return true;
-    }
-    _reorderPages(index,lastIdx);
+    if(index!==lastIdx) _reorderPages(index,lastIdx);
+    // Always through the same pipeline every other mutation uses, even
+    // when the page was already last and nothing actually moved — a
+    // no-op reorder is still cheap and correct through _afterMutation.
     _afterMutation(lastIdx);
     return true;
   }
@@ -259,29 +258,19 @@ const PageOps=(function(){
     // Clamp the drop position into the moveable range.
     const minIdx=_firstStoryIdx();
     const maxIdx=_lastStoryIdx();
-    let target=Math.max(minIdx,Math.min(toIdx,maxIdx));
-    // splice math: removing first shifts later indices by 1.
-    const adjusted=(target>fromIdx) ? target : target;
-    if(adjusted===fromIdx) return false;
-    const wasSelected=AppState.currentSlide===fromIdx;
+    const target=Math.max(minIdx,Math.min(toIdx,maxIdx));
+    if(target===fromIdx) return false;
+    // Whichever page is currently selected — the one being dragged, or
+    // some other page entirely — is what selection should follow once
+    // the splice below shifts everyone's index. Capturing the object
+    // reference (not the index) before the splice, then re-deriving its
+    // new index for _afterMutation, is the one uniform path every other
+    // mutation already uses — no separate inline pipeline needed here.
+    const prevSelectedSlide=AppState.slides[AppState.currentSlide];
     const moved=AppState.slides.splice(fromIdx,1)[0];
-    const insertAt=(adjusted>fromIdx) ? adjusted : adjusted;
-    AppState.slides.splice(insertAt,0,moved);
-    // Track where the moved page landed so selection can follow it.
-    const landed=AppState.slides.indexOf(moved);
-    if(wasSelected){
-      _afterMutation(landed);
-    }else{
-      // Preserve the previously-selected page when something else moved.
-      const prevSelectedSlide=AppState.slides[AppState.currentSlide];
-      _recalcPageNumbers();
-      _refreshNavigation();
-      // Re-anchor selection to whatever slide was previously selected
-      // (its index may have shifted).
-      const idx=AppState.slides.indexOf(prevSelectedSlide);
-      if(idx!==-1) _refreshSelection(idx);
-      _persist();
-    }
+    AppState.slides.splice(target,0,moved);
+    const idx=AppState.slides.indexOf(prevSelectedSlide);
+    _afterMutation(idx!==-1 ? idx : AppState.currentSlide);
     return true;
   }
   // Sprint 8.2 — child-friendly page rename. Persists at slide.name and

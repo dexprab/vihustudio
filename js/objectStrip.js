@@ -94,9 +94,22 @@ const ObjectStrip=(function(){
     return card;
   }
 
+  // Creator Runtime Pass Sprint — Object Strip mutates selection through
+  // Page Runtime's own named entry points rather than reaching into
+  // js/app.js's window globals directly. Falls back to the raw globals
+  // only if PageRuntime somehow isn't loaded.
   function _clearSelection(){
+    if(typeof PageRuntime!=='undefined'){ PageRuntime.clearSelection(); return; }
     if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(null,null);
     if(typeof window.setSelectedTextElement==='function') window.setSelectedTextElement(null);
+  }
+  function _selectScene(id,type){
+    if(typeof PageRuntime!=='undefined'){ PageRuntime.selectSceneObject(id,type); return; }
+    if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(id,type);
+  }
+  function _selectText(id){
+    if(typeof PageRuntime!=='undefined'){ PageRuntime.selectTextObject(id); return; }
+    if(typeof window.setSelectedTextElement==='function') window.setSelectedTextElement(id);
   }
 
   function refresh(){
@@ -135,64 +148,60 @@ const ObjectStrip=(function(){
         name:'Artwork',
         editable:true,
         selected:selScene==='image-holder',
-        onClick:function(){
-          if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement('image-holder','image-holder');
-        }
+        onClick:function(){ _selectScene('image-holder','image-holder'); }
       }));
     }
 
     // Every other object on the page — Cover/Hook/End blueprint elements,
     // Story-Author-placed stickers, and theme-authored Layer Pack objects
     // (Museum Caption, Wax Seal, Gallery Spotlight, …) — comes from
-    // exactly one place: the render tree SlideRenderer.render() already
-    // built this pass. No separate SceneEngine query, no de-dup
-    // bookkeeping: if it rendered, it's in this one list, exactly once,
-    // in render order.
-    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function'){
-      SlideRenderer.getSceneElements().forEach(function(el){
-        if(el.id==='background') return; // already shown above as the synthetic Background card
-        if(el.visible===false) return;
-        const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
-        let name=el.label||friendly.name;
-        let icon=friendly.icon;
-        // A Story-Author-placed sticker's own bbox (renderer's
-        // _stickerBbox) carries the real catalog id directly — no second
-        // lookup needed, and nothing to look up for a Layer Pack
-        // glyph-sticker or a blueprint element, which never set it.
-        if(el.type==='sticker' && el.stickerId && typeof StickerLibrary!=='undefined'){
-          const def=StickerLibrary.getById(el.stickerId);
-          if(def){ name=def.name; icon=def.glyph; }
-        }
-        cards.push(_card({
-          icon:icon,
-          name:name,
-          editable:!!el.editable,
-          owner:el.owner,
-          selected:selScene===el.id,
-          onClick:function(){
-            if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(el.id,el.type);
-          }
-        }));
-      });
-    }
+    // exactly one place: Page Runtime's render tree (the same
+    // SlideRenderer.render() output it already exposes). No separate
+    // SceneEngine query, no de-dup bookkeeping: if it rendered, it's in
+    // this one list, exactly once, in render order.
+    const rendered=(typeof PageRuntime!=='undefined')
+      ? PageRuntime.getRenderedObjects()
+      : {
+          scene:(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function') ? SlideRenderer.getSceneElements() : [],
+          text:(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getTextElements==='function') ? SlideRenderer.getTextElements() : []
+        };
+    rendered.scene.forEach(function(el){
+      if(el.id==='background') return; // already shown above as the synthetic Background card
+      if(el.visible===false) return;
+      const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
+      let name=el.label||friendly.name;
+      let icon=friendly.icon;
+      // A Story-Author-placed sticker's own bbox (renderer's
+      // _stickerBbox) carries the real catalog id directly — no second
+      // lookup needed, and nothing to look up for a Layer Pack
+      // glyph-sticker or a blueprint element, which never set it.
+      if(el.type==='sticker' && el.stickerId && typeof StickerLibrary!=='undefined'){
+        const def=StickerLibrary.getById(el.stickerId);
+        if(def){ name=def.name; icon=def.glyph; }
+      }
+      cards.push(_card({
+        icon:icon,
+        name:name,
+        editable:!!el.editable,
+        owner:el.owner,
+        selected:selScene===el.id,
+        onClick:function(){ _selectScene(el.id,el.type); }
+      }));
+    });
 
     // Story-role text objects (Story Text the child writes, plus the
     // Theme's own Handle/Footer/Page Number chrome).
-    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getTextElements==='function'){
-      SlideRenderer.getTextElements().forEach(function(t){
-        const friendly=FRIENDLY_TEXT_ID[t.id];
-        if(!friendly) return; // unknown ids are skipped, never shown raw
-        cards.push(_card({
-          icon:friendly.icon,
-          name:friendly.name,
-          editable:friendly.editable,
-          selected:selText===t.id,
-          onClick:function(){
-            if(typeof window.setSelectedTextElement==='function') window.setSelectedTextElement(t.id);
-          }
-        }));
-      });
-    }
+    rendered.text.forEach(function(t){
+      const friendly=FRIENDLY_TEXT_ID[t.id];
+      if(!friendly) return; // unknown ids are skipped, never shown raw
+      cards.push(_card({
+        icon:friendly.icon,
+        name:friendly.name,
+        editable:friendly.editable,
+        selected:selText===t.id,
+        onClick:function(){ _selectText(t.id); }
+      }));
+    });
 
     if(!cards.length){
       listRoot.appendChild(_el('div','object-strip-empty','Nothing on this page yet.'));

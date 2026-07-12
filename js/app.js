@@ -54,6 +54,28 @@ let _selectedSceneElementType=null;
 let _resizeDragState=null;
 const _TEXT_BASE_DEFAULTS={fontWeight:'normal',fontStyle:'normal',opacity:1,letterSpacing:0,lineHeight:1.2};
 
+// Creator Runtime Pass Sprint — Page Runtime becomes the single owner
+// of "what page is active / what's rendered / what's selected" that
+// every panel (Object Strip, Context Panel, page navigation) reads and
+// mutates through, instead of independently reconstructing the same
+// answers. This wraps the exact functions defined below — no new
+// rendering/selection logic, just a named, central place to reach them.
+if(typeof PageRuntime!=='undefined'){
+  try{
+    PageRuntime.configure({
+      getSlides:function(){ return AppState.slides; },
+      getCurrentIndex:function(){ return AppState.currentSlide; },
+      getSelectedTextElement:function(){ return _selectedTextElement; },
+      getSelectedSceneElement:function(){ return _selectedSceneElement; },
+      getSelectedSceneElementType:function(){ return _selectedSceneElementType; },
+      setSelectedTextElement:function(id){ _setSelectedTextElement(id); },
+      setSelectedSceneElement:function(id,type){ _setSelectedSceneElement(id,type); },
+      showSlide:function(i){ if(typeof window.showSlide==='function') window.showSlide(i); },
+      redrawPreview:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); }
+    });
+  }catch(e){}
+}
+
 function _getTextDefaults(elementId){
   const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
   const opts=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;
@@ -101,7 +123,7 @@ if(typeof CardDesigner!=='undefined'){
   try{ CardDesigner.mount(document.getElementById('cardDesignerRoot')); }catch(e){}
   try{
     CardDesigner.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
       getSelectedTextElement:function(){ return _selectedTextElement; },
@@ -123,7 +145,7 @@ if(typeof PageDesigner!=='undefined'){
   try{ PageDesigner.mount(document.getElementById('pageDesignerRoot')); }catch(e){}
   try{
     PageDesigner.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); }
     });
@@ -142,7 +164,7 @@ if(typeof StickerStudio!=='undefined'){
   try{ StickerStudio.mount(document.getElementById('stickerStudioRoot')); }catch(e){}
   try{
     StickerStudio.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
       setSelectedSticker:function(id,type){ _setSelectedSceneElement(id,type||'sticker'); },
@@ -166,12 +188,12 @@ if(typeof StickerStudio!=='undefined'){
 if(typeof ContextPanel!=='undefined'){
   try{
     ContextPanel.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
       redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
       markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
-      getSelectedTextElement:function(){ return _selectedTextElement; },
-      getSelectedSceneElement:function(){ return _selectedSceneElement; },
-      getSelectedSceneElementType:function(){ return _selectedSceneElementType; }
+      getSelectedTextElement:function(){ return PageRuntime.getSelection().textId; },
+      getSelectedSceneElement:function(){ return PageRuntime.getSelection().sceneId; },
+      getSelectedSceneElementType:function(){ return PageRuntime.getSelection().sceneType; }
     });
     ContextPanel.init();
   }catch(e){}
@@ -186,10 +208,10 @@ if(typeof ContextPanel!=='undefined'){
 if(typeof ObjectStrip!=='undefined'){
   try{
     ObjectStrip.configure({
-      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
-      getSelectedTextElement:function(){ return _selectedTextElement; },
-      getSelectedSceneElement:function(){ return _selectedSceneElement; },
-      getSelectedSceneElementType:function(){ return _selectedSceneElementType; }
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
+      getSelectedTextElement:function(){ return PageRuntime.getSelection().textId; },
+      getSelectedSceneElement:function(){ return PageRuntime.getSelection().sceneId; },
+      getSelectedSceneElementType:function(){ return PageRuntime.getSelection().sceneType; }
     });
     ObjectStrip.init();
   }catch(e){}
@@ -197,18 +219,25 @@ if(typeof ObjectStrip!=='undefined'){
 
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
-  if(typeof window.redrawPreview==='function') window.redrawPreview();
-  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
   if(id){
-    // Sprint 8.4.1 — Universal Object Selection. Switch to the Card
-    // Designer tab and focus the Text section (expand + smooth scroll).
+    // Sprint 8.4.1 — Universal Object Selection. Tab activation first —
+    // matching _setSelectedSceneElement's own documented ordering — so
+    // no subsequent refresh can accidentally race the selection back to
+    // another tab.
     _activateTab('card');
     if(typeof CardDesigner!=='undefined' && typeof CardDesigner.focusSection==='function'){
       try{ CardDesigner.focusSection('text'); }catch(e){}
     }
   }
-  if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
-  if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+  // Creator Runtime Pass Sprint — one dispatch, not a hand-assembled
+  // subset of "redraw + refresh every panel" per call site.
+  if(typeof PageRuntime!=='undefined'){ try{ PageRuntime.notify(); }catch(e){} }
+  else{
+    if(typeof window.redrawPreview==='function') window.redrawPreview();
+    if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+    if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+  }
 }
 // Creator UI Convergence Sprint — the Object Strip needs the exact same
 // selection entry points/state the canvas click handlers already use
@@ -267,10 +296,15 @@ function _setSelectedSceneElement(id, elementType){
       }
     }
   }
-  if(typeof window.redrawPreview==='function') window.redrawPreview();
-  if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
-  if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
-  if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+  // Creator Runtime Pass Sprint — one dispatch, not a hand-assembled
+  // subset of "redraw + refresh every panel" per call site.
+  if(typeof PageRuntime!=='undefined'){ try{ PageRuntime.notify(); }catch(e){} }
+  else{
+    if(typeof window.redrawPreview==='function') window.redrawPreview();
+    if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+    if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+  }
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
@@ -701,24 +735,36 @@ window.renderTimeline=function(){
 };
 
 window.showSlide=function(i){
+ // Creator Runtime Pass Sprint — showSlide is the one real choke point
+ // every page-change path already funnels through (thumbnail clicks,
+ // PageOps, session restore, CreationFlow, PublishStudio, ThemeEngine),
+ // so tearing down any stale selection here — instead of only where a
+ // caller happens to remember to — guarantees no panel can ever show
+ // controls left over from a different page's object.
+ _selectedTextElement=null;
+ _selectedSceneElement=null;
+ _selectedSceneElementType=null;
  AppState.currentSlide=i;
  const s=AppState.slides[i];
  if(!s) return;
  story.value=s.storyBeat;
  page.value=s.page;
  total.value=AppState.slides.length;
- draw();
  document.querySelectorAll('#slideList .thumb').forEach(el=>el.classList.remove('selected'));
  const sel=document.querySelector('#slideList [data-index="'+i+'"]'); if(sel) sel.classList.add('selected');
  document.querySelectorAll('#timelineList .timeline-thumb').forEach(el=>el.classList.remove('active'));
  const tsel=document.querySelector('#timelineList [data-index="'+i+'"]'); if(tsel) tsel.classList.add('active');
- // Re-sync the Card Designer's Image section with the newly-active slide.
- if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
- // Re-sync the Story Designer's content fields (Sprint 5.0).
- if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
- // Sprint 10.0 — keep the Context Panel in sync with the newly-active slide.
- if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
- if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+ // One dispatch — draw() + Card/Page Designer + Context Panel + Object
+ // Strip — instead of a bespoke tail that used to diverge from the
+ // selection setters' own sequence.
+ if(typeof PageRuntime!=='undefined'){ try{ PageRuntime.notify(); }catch(e){} }
+ else{
+   draw();
+   if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+   if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
+   if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+   if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+ }
  _updateHeaderContext();
  _updateCanvasCursor();
 };
