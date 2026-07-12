@@ -4,6 +4,6 @@
   "task": "The on-screen dev build-info badge (js/buildInfo.js, .dev-footer) was rendering as a 1388x60px, 3-line banner spanning almost the full viewport width -- root cause traced to the footer text builder concatenating the entire long-form sprint+task changelog prose (this project's own established multi-hundred-word commit-message style, see CLAUDE.md) directly into the on-screen string, producing 1000+ character footer text. Fixed at the source: js/buildInfo.js's summarize() now only ever renders version/build/commit/environment -- sprint/task are dropped from the visible badge entirely (still present in the fetched build-info.json for anyone opening the file directly). css/style.css's .dev-footer also shrunk (font-size 11px->9px, padding 6px 10px->3px 7px, right/bottom 12px->8px, opacity 0.85->0.7, plus white-space:nowrap) so it reads as the small, unobtrusive corner badge it was always meant to be -- confirmed via Playwright: 1388x60px -> 215x18px.",
   "build": "0080",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "7e862b7",
   "environment": "Release"
 }
