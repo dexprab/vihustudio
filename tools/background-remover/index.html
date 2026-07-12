@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Background Remover</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <header class="app-header">
+    <h1>Background Remover</h1>
+    <p class="app-subtitle">Turn scanned or photographed artwork into a clean, transparent PNG — right in your browser.</p>
+  </header>
+
+  <!-- ---- Upload stage (visible until an image is loaded) ---- -->
+  <section class="dropzone" id="dropzone" tabindex="0" aria-label="Upload an image">
+    <div class="dropzone-inner">
+      <svg class="dropzone-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 16V4M12 4L7 9M12 4L17 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="dropzone-title">Drag &amp; drop an image</p>
+      <p class="dropzone-or">or</p>
+      <button type="button" class="btn btn-primary" id="browseBtn">Browse</button>
+      <p class="dropzone-hint">You can also paste an image with <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+  </section>
+
+  <!-- ---- Workspace (visible once an image is loaded) ---- -->
+  <section class="workspace" id="workspace" hidden>
+
+    <div class="preview-panel">
+
+      <div class="preview-toolbar">
+        <div class="view-toggle" role="tablist" aria-label="Preview mode">
+          <button type="button" class="view-toggle-btn is-active" id="viewSideBySide" role="tab" aria-selected="true">Side by side</button>
+          <button type="button" class="view-toggle-btn" id="viewToggle" role="tab" aria-selected="false">Original / Processed</button>
+        </div>
+        <div class="zoom-controls">
+          <button type="button" class="btn-icon" id="zoomOutBtn" aria-label="Zoom out">−</button>
+          <button type="button" class="btn-icon" id="zoomResetBtn" aria-label="Reset zoom">100%</button>
+          <button type="button" class="btn-icon" id="zoomInBtn" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+
+      <div class="preview-grid" id="previewGrid">
+        <div class="preview-pane" id="originalPane">
+          <span class="preview-label">Original</span>
+          <div class="preview-viewport" id="originalViewport">
+            <div class="preview-zoom-target" id="originalZoomTarget">
+              <canvas id="originalCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="preview-pane" id="processedPane">
+          <span class="preview-label">Transparent</span>
+          <div class="preview-viewport checkerboard" id="processedViewport">
+            <div class="preview-zoom-target" id="processedZoomTarget">
+              <canvas id="processedCanvas"></canvas>
+            </div>
+          </div>
+          <div class="preview-loading" id="previewLoading" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Processing…</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="preview-meta" id="previewMeta"></p>
+    </div>
+
+    <aside class="controls-panel">
+
+      <div class="control-group">
+        <label class="control-label" for="toleranceSlider">
+          Tolerance
+          <span class="control-value" id="toleranceValue">—</span>
+        </label>
+        <input type="range" id="toleranceSlider" min="1" max="100" step="1">
+        <p class="control-hint">How different a pixel can be from the background colour and still be removed.</p>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="featherSlider">
+          Edge Smoothness
+          <span class="control-value" id="featherValue">2</span>
+        </label>
+        <input type="range" id="featherSlider" min="0" max="8" step="1" value="2">
+        <p class="control-hint">Softens the cutout edge. 0 is a hard edge.</p>
+      </div>
+
+      <div class="control-group control-group-row">
+        <label class="switch-label" for="autoCropToggle">
+          <input type="checkbox" id="autoCropToggle" checked>
+          <span class="switch"></span>
+          Auto Crop
+        </label>
+        <p class="control-hint">Trims empty transparent border after removal.</p>
+      </div>
+
+      <div class="control-actions">
+        <button type="button" class="btn btn-primary" id="downloadBtn">Download PNG</button>
+        <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="control-footer">
+        <p id="performanceNote" class="control-hint"></p>
+      </div>
+
+    </aside>
+
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
