@@ -731,12 +731,23 @@
             // unnoticed until the next reload silently reverted it.
             saveDot.textContent = '🔴';
             savedText.textContent = 'Save Failed — try a smaller image';
+            // The badge alone left real ambiguity: a Build+Publish/Promote
+            // that runs while this is showing still succeeds correctly
+            // (both read this Project directly from memory, never from
+            // localStorage), so a creator seeing "Save Failed" right next
+            // to "Published successfully" had no way to tell whether that
+            // was a contradiction or two separate, both-true facts. It's
+            // the latter — spelled out here since the badge itself has no
+            // room for it.
+            savedBadge.title = 'This edit hasn’t saved to this browser — reloading now could lose it. Anything you’ve already Published or Promoted is safe (that always uses what’s on screen, not this local save). Shrink the image and this should clear on its own.';
         } else if (state === 'dirty') {
             saveDot.textContent = '🟠';
             savedText.textContent = 'Unsaved Changes';
+            savedBadge.title = '';
         } else {
             saveDot.textContent = '🟢';
             savedText.textContent = 'All Changes Saved';
+            savedBadge.title = '';
         }
         savedBadge.classList.toggle('wb-save-dirty', state === 'dirty');
         savedBadge.classList.toggle('wb-save-saved', state === 'saved');
@@ -4521,6 +4532,22 @@
     // editable field.
     function _renderSceneConfigPanel(scene) {
         _heading('Nothing selected', 'Click a Place, Decoration, or Text on the Canvas to edit it.');
+        // Continuous Builder rebuild — the old Scene Library grid's own
+        // "Rename" button (still used by Duplicate/Delete's own screen)
+        // was the only way to rename a Scene; the bottom Scenes strip
+        // that replaced it as the primary way to browse Scenes has no
+        // rename control of its own, and this Scene Configuration state
+        // (reached by clicking empty Canvas, AV-002) never had a Name
+        // field either — leaving no way at all to rename a Scene from
+        // inside the Scene editor itself. Renders only the strip's own
+        // label live on every keystroke (_renderScenesStrip, not a full
+        // _renderWorkspace) so typing in this field never loses focus.
+        contextPanel.appendChild(_buildFieldGroup('Scene Name', _textInput(scene.name, function (v) {
+            if (!v.trim()) return;
+            window.ProjectModel.renameScene(currentProject, scene.id, v);
+            _persist();
+            _renderScenesStrip();
+        })));
         contextPanel.appendChild(_fieldHelp('This Scene is ' + window.EngineSchema.aspectInfo(scene.canvas.aspectRatio).label + ' with a ' + scene.canvas.safeArea + '. Change the shape any time from the dropdown at the top of the screen.'));
     }
 
