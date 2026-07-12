@@ -324,14 +324,19 @@
     // converges into this World's one default Representation (see
     // builder.js's convergeScenes()), so it is exactly the kind of
     // content the platform must not prescribe as if it were reserved.
-    // Artwork Gallery's starter Scene is renamed from "Showcase" (one of
-    // the three names this sprint explicitly calls out) to the neutral
-    // "Story" the sprint itself suggests; the other four templates'
-    // names (Cover/Quote/Sketch/Card) were never part of that flagged
-    // set and already read as ordinary, template-appropriate authorial
-    // choices, not platform-reserved vocabulary, so they are unchanged.
+    // Artwork Gallery's starter Scene was renamed away from "Showcase"
+    // (one of the three names that sprint explicitly flagged) — its
+    // first replacement, "Story," turned out to be its own mismatch: it
+    // reads (and, with the 🎭 default thumbnail glyph, visually looks)
+    // like the Tell a Story Creation Type, confusing on an Artwork
+    // Gallery Representation carousel. "Gallery" isn't part of the
+    // flagged Showcase/Portrait/Quote trio either, while actually
+    // describing what this template is; the other four templates' names
+    // (Cover/Quote/Sketch/Card) were never part of that flagged set and
+    // already read as ordinary, template-appropriate authorial choices,
+    // not platform-reserved vocabulary, so they are unchanged.
     const TEMPLATE_STARTER_SCENE = {
-        'artwork-gallery': { template: 'single-holder', name: 'Story', aspect: 'landscape' },
+        'artwork-gallery': { template: 'single-holder', name: 'Gallery', aspect: 'landscape' },
         storybook: { template: 'cover', name: 'Cover' },
         quotes: { template: 'quote', name: 'Quote' },
         sketchbook: { template: 'single-holder', name: 'Sketch' },
