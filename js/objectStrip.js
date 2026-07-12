@@ -73,7 +73,7 @@ const ObjectStrip=(function(){
     }
     card.appendChild(thumb);
     card.appendChild(_el('div','object-card-name',opts.name));
-    card.appendChild(_el('div','object-card-badge',opts.editable?'🟢 Editable':'🔒 Part of this World'));
+    card.appendChild(_el('div','object-card-badge',opts.editable?'🟢 You can edit':'🔒 Part of the world'));
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
     return card;
   }

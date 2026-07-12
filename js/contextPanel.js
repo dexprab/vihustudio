@@ -125,19 +125,43 @@ const ContextPanel=(function(){
       _setTabVisible('card-tab');
       _setCardSections(TYPE_TO_SECTIONS[sceneType]);
       if(sceneType==='image-holder') _renderArtworkActions();
-      else _renderEmpty();
+      else _renderSelectionHeading(sceneType);
       return;
     }
     if(textId){
       _setTabVisible('card-tab');
       _setCardSections(['text']);
-      _renderEmpty();
+      _renderSelectionHeading('text');
       return;
     }
     _hideAllTabs();
     _renderDefault();
   }
 
+  // Sprint 10.0 shipped this as a blank hand-off straight into the raw
+  // CardDesigner accordion section — fine when the panel sat inside a
+  // permanent tab bar, but the Creator V2 rebuild gives every selection
+  // its own small, friendly "what am I editing" banner (icon + name),
+  // matching the wireframe's per-object state cards. The controls
+  // underneath are still the exact same CardDesigner section — this only
+  // adds a heading above it.
+  const SELECTION_BANNERS={
+    'text-holder':{icon:'📝',label:'Your Text'},
+    'text':{icon:'📝',label:'Your Text'},
+    'sticker':{icon:'✨',label:'Your Sticker'},
+    'decoration':{icon:'🎀',label:'Your Decoration'}
+  };
+  function _renderSelectionHeading(type){
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    const info=SELECTION_BANNERS[type];
+    if(info){
+      const banner=_el('div','context-panel-heading context-selection-banner');
+      banner.appendChild(_el('span','context-selection-banner-icon',info.icon));
+      banner.appendChild(_el('span','context-selection-banner-label',info.label));
+      panelRoot.appendChild(banner);
+    }
+  }
   function _renderEmpty(){
     panelRoot.innerHTML='';
     panelRoot.classList.add('is-empty');
@@ -195,7 +219,10 @@ const ContextPanel=(function(){
   function _renderArtworkActions(){
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    panelRoot.appendChild(_el('div','context-panel-heading','Your Picture'));
+    const banner=_el('div','context-panel-heading context-selection-banner');
+    banner.appendChild(_el('span','context-selection-banner-icon','🖼️'));
+    banner.appendChild(_el('span','context-selection-banner-label','Your Picture'));
+    panelRoot.appendChild(banner);
     const row=_el('div','context-action-row');
     const replaceBtn=_el('button','context-btn context-btn-primary','🖼️ Replace Artwork');
     replaceBtn.type='button';
@@ -360,6 +387,8 @@ const ContextPanel=(function(){
     if(stickerStudioOpen) return;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
+    const hint=_el('div','context-nothing-selected-hint','👆 Tap anything on the page to edit it');
+    panelRoot.appendChild(hint);
     _appendRepresentationRow(panelRoot);
     _appendCaptionOrQuote(panelRoot);
     // Museum Gallery story-role pages have no per-page background scene

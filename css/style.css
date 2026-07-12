@@ -603,17 +603,30 @@ button:active{
   width:100%;
   background:transparent;
   border-top:1px solid var(--line);
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding:14px 4px 8px;
+  padding:12px 4px 8px;
   margin-top:6px;
-  min-height:98px;
+  min-height:110px;
 }
+/* Creator V2 — the legend line the wireframe shows above the strip.
+   Static, non-interactive; explains the strip once rather than per-card. */
+.object-strip-legend{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+  padding:0 6px 8px;
+  font-size:11.5px;
+  color:var(--text-tertiary);
+}
+.object-strip-legend-title{ font-weight:600; }
+.object-strip-legend-key{ display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.object-strip-legend-dot{ font-size:11px; }
 .object-strip-list{
   display:flex;
   gap:10px;
   padding:0 4px;
   margin:0 auto;
+  overflow-x:auto;
   width:max-content;
 }
 .object-card{
@@ -922,6 +935,7 @@ button:active{
   font-style:italic;
   line-height:1.5;
 }
+.text-empty.hidden{ display:none; }
 
 .text-editor{
   display:block;
@@ -3544,7 +3558,7 @@ body.dark-theme .picture-studio-btn{ background:var(--panel); }
   flex:1;
   display:flex;
   flex-direction:column;
-  background:linear-gradient(180deg, var(--bg) 0%, var(--panel) 100%);
+  background:linear-gradient(180deg, var(--bg) 0%, var(--panel) 70%, color-mix(in srgb, var(--panel) 88%, #ffcb45 12%) 100%);
   color:var(--text);
   overflow:hidden;
 }
@@ -3794,6 +3808,17 @@ body.dark-theme .publish-back-link:hover{ background:rgba(255,255,255,0.06); }
   max-width:680px;
   width:100%;
   align-self:center;
+}
+.publish-almost-badge{
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, rgba(255,214,104,0.9), rgba(255,203,69,0.35));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:32px;
+  box-shadow:0 8px 20px rgba(255,203,69,0.28);
 }
 .publish-almost-headline{
   font-size:24px;
@@ -5070,6 +5095,46 @@ body.creation-flow-active .app-header{ display:none; }
   margin:18px 0 8px;
 }
 .context-panel-heading:first-child{ margin-top:0; }
+/* Creator V2 — the small "what am I editing" identity banner shown at the
+   top of every selection state (Picture/Text/Sticker/Decoration), matching
+   the wireframe's per-object state cards. Purely presentational: the
+   controls beneath it are the same CardDesigner section as before. */
+.context-selection-banner{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:0;
+  text-transform:none;
+  color:var(--navy);
+  margin:0 0 16px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+body.dark-theme .context-selection-banner{ color:var(--text); }
+.context-selection-banner-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:var(--gold-soft,rgba(255,203,69,0.18));
+  font-size:19px;
+  flex-shrink:0;
+}
+.context-selection-banner-label{ line-height:1.2; }
+.context-nothing-selected-hint{
+  font-size:13px;
+  font-weight:600;
+  color:var(--text-tertiary);
+  background:var(--bg-alt,rgba(0,0,0,0.03));
+  border-radius:12px;
+  padding:12px 14px;
+  margin-bottom:6px;
+  text-align:center;
+}
 .context-rep-name{
   font-size:19px;
   font-weight:700;

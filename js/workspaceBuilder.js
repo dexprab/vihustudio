@@ -255,7 +255,7 @@ const WorkspaceBuilder=(function(){
         const options=(theme && Array.isArray(theme.frameVariations))
           ? theme.frameVariations.map(function(v){ return [v.id,v.name||v.id]; })
           : [];
-        return _buildSelectRow(c,'frameVariation','Frame Variation','frameVariation',options,ctx,meta);
+        return _buildSelectRow(c,'frameVariation','Frame Variations','frameVariation',options,ctx,meta);
       }
     },
     // Sprint 9.6 — Slide-scope Layout preset (see renderer/

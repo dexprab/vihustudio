@@ -279,6 +279,7 @@ const PublishStudio=(function(){
   // Validation runs every time the child enters this stage so the
   // nudges reflect the slide state as of right now.
   let _almostBackBtn=null;
+  let _almostBadge=null;
   let _almostHeadline=null;
   let _almostMessage=null;
   let _almostCoverHost=null;
@@ -301,6 +302,10 @@ const PublishStudio=(function(){
 
     const center=document.createElement('div');
     center.className='publish-almost-center';
+
+    _almostBadge=document.createElement('div');
+    _almostBadge.className='publish-almost-badge';
+    center.appendChild(_almostBadge);
 
     _almostHeadline=document.createElement('div');
     _almostHeadline.className='publish-almost-headline';
@@ -353,13 +358,15 @@ const PublishStudio=(function(){
       ? PublishValidator.run(slides, project) : [];
 
     if(nudges.length===0){
-      _almostHeadline.textContent='✨ Your book looks ready!';
+      if(_almostBadge) _almostBadge.textContent='🎉';
+      _almostHeadline.textContent='Your book looks ready!';
       _almostMessage.textContent='';
       _almostCoverHost.classList.remove('hidden');
       _almostNudgeList.classList.add('hidden');
       _renderAlmostCover();
     }else{
-      _almostHeadline.textContent='✨ A few helpful tips';
+      if(_almostBadge) _almostBadge.textContent='💡';
+      _almostHeadline.textContent='A few helpful tips';
       _almostMessage.textContent='Have a quick look — or publish your book anyway when you’re ready.';
       _almostCoverHost.classList.add('hidden');
       _almostNudgeList.classList.remove('hidden');
