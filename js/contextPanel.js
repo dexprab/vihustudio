@@ -122,6 +122,16 @@ const ContextPanel=(function(){
     const sceneType=host && typeof host.getSelectedSceneElementType==='function' ? host.getSelectedSceneElementType() : null;
 
     if(sceneId && sceneType && TYPE_TO_SECTIONS[sceneType]){
+      // Creator Reconciliation Sprint — ask the selected Scene Object
+      // itself who owns it before routing by type. 'image-holder'
+      // (Artwork) is the one synthetic selection with no render-tree
+      // bbox (js/objectStrip.js's own disclosed exception) and keeps its
+      // existing, unconditional behaviour below.
+      const sceneObj=_findSceneObject(sceneId,sceneType);
+      if(sceneObj && sceneObj.owner==='world'){
+        _renderWorldObjectDisclosure(sceneObj);
+        return;
+      }
       _setTabVisible('card-tab');
       _setCardSections(TYPE_TO_SECTIONS[sceneType]);
       if(sceneType==='image-holder') _renderArtworkActions();
@@ -151,6 +161,42 @@ const ContextPanel=(function(){
     'sticker':{icon:'✨',label:'Your Sticker'},
     'decoration':{icon:'🎀',label:'Your Decoration'}
   };
+  // Creator Reconciliation Sprint — the selected object itself, read
+  // straight off the render tree (the same SlideRenderer.getSceneElements()
+  // list js/objectStrip.js already builds its cards from), is the source
+  // of truth for what Context Panel shows. 'image-holder' never resolves
+  // here on purpose (no render-tree bbox exists for it).
+  function _findSceneObject(sceneId,sceneType){
+    if(sceneType==='image-holder') return null;
+    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.getSceneElements!=='function') return null;
+    const list=SlideRenderer.getSceneElements();
+    for(let i=0;i<list.length;i++){ if(list[i].id===sceneId) return list[i]; }
+    return null;
+  }
+
+  // A World-owned Scene Object (a theme-authored Layer Pack entry —
+  // Museum Caption, Wax Seal, Gallery Spotlight, …) never opens Card
+  // Designer's generic decoration/text/sticker section: that section
+  // reads slide.metadata.elementOverrides, which isn't keyed to this
+  // object's own id at all — opening it would show live-looking controls
+  // that silently don't target what was clicked. Builder's own editable
+  // capability (js/projectModel.js's layer.permissions) decides the
+  // wording; a real generic editor for Builder-owned content is a later
+  // phase, not faked here.
+  function _renderWorldObjectDisclosure(sceneObj){
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    const banner=_el('div','context-panel-heading context-selection-banner');
+    banner.appendChild(_el('span','context-selection-banner-icon','🌍'));
+    banner.appendChild(_el('span','context-selection-banner-label',sceneObj.label||'World Object'));
+    panelRoot.appendChild(banner);
+    panelRoot.appendChild(_el('div','context-nothing-selected-hint',
+      sceneObj.editable
+        ? 'This is part of the World, but you may adjust it. That kind of edit isn’t available in Creator yet.'
+        : 'This is part of the World.'
+    ));
+  }
+
   function _renderSelectionHeading(type){
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');

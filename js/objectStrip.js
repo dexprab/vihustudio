@@ -9,17 +9,25 @@
 // Selection never appear — see FRIENDLY_TYPE below for the one small,
 // closed vocabulary translation table.
 //
-// Reuses, never duplicates: SceneEngine.listElements() (Cover/Hook/End
-// role objects), SceneEngine.getStickers(), SlideRenderer.getTextElements()
-// (Story-role text objects, including the Story Text a child writes),
-// SlideRenderer.getSceneElements() (also picks up theme-authored Layer
-// Pack objects — Museum Caption, Wax Seal, etc. — so a Builder-authored
-// World's own content is visible and selectable here, not just drawn on
-// the canvas), and the exact same window.setSelectedSceneElement/setSelectedTextElement
-// entry points the canvas's own click handlers already use (js/app.js) —
-// tapping a card here is indistinguishable from tapping the object on
-// the canvas itself, so selection stays perfectly bidirectional with no
-// second selection model.
+// Creator Reconciliation Sprint — Object Strip is now a pure reader of
+// the render tree (renderer/slideRenderer.js's Scene Object list,
+// SlideRenderer.getSceneElements()), not a blend of directly-queried
+// SceneEngine data plus a separately-patched-in Layer Pack list. If an
+// object rendered, it appears here exactly once, in render order, with
+// no manually-maintained de-dup bookkeeping — because there is now only
+// one source. Every Scene Object already carries a uniform shape
+// (id/type/label/bounds/owner/moveable/editable) regardless of whether
+// it started life as a Cover/Hook/End blueprint element, a Story-Author-
+// placed sticker, or a theme-authored Layer Pack entry — Object Strip
+// never branches on origin, only on the object's own `owner`/`editable`
+// fields. Also reuses SlideRenderer.getTextElements() (Story-role text
+// furniture — Story Text/Handle/Footer/Page Number, a small fixed set,
+// unrelated to Builder-authored Scene Objects) and the exact same
+// window.setSelectedSceneElement/setSelectedTextElement entry points the
+// canvas's own click handlers already use (js/app.js) — tapping a card
+// here is indistinguishable from tapping the object on the canvas
+// itself, so selection stays perfectly bidirectional with no second
+// selection model.
 const ObjectStrip=(function(){
   let listRoot=null;
   let cfg={
@@ -63,7 +71,7 @@ const ObjectStrip=(function(){
   }
 
   function _card(opts){
-    // opts: {icon, imgSrc, name, editable, selected, onClick}
+    // opts: {icon, imgSrc, name, editable, owner, selected, onClick}
     const card=_el('button','object-card'+(opts.selected?' selected':''));
     card.type='button';
     const thumb=_el('div','object-card-thumb');
@@ -77,7 +85,11 @@ const ObjectStrip=(function(){
     if(opts.editable) thumb.appendChild(_el('span','object-card-edit-badge','✏️'));
     card.appendChild(thumb);
     card.appendChild(_el('div','object-card-name',opts.name));
-    card.appendChild(_el('div','object-card-badge',opts.editable?'🟢 You can edit':'🔒 Part of the world'));
+    // Ownership-aware badge: an object a child locked themselves reads
+    // differently from something that was never theirs to begin with —
+    // both used to share the same "Part of the world" text.
+    const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🔒 Part of the world' : '🔒 Locked');
+    card.appendChild(_el('div','object-card-badge',badgeText));
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
     return card;
   }
@@ -99,13 +111,9 @@ const ObjectStrip=(function(){
     const selText=cfg.getSelectedTextElement();
     const selScene=cfg.getSelectedSceneElement();
     const cards=[];
-    // Every scene-element id already represented by a card below, so the
-    // new Layer Pack loop (further down) never lists the same object
-    // twice — see that loop's own comment for why it needs this at all.
-    const shownSceneIds={};
 
-    // Background — always present, every role.
-    shownSceneIds.background=true;
+    // Background — always present, every role. Not a Scene Object: it's
+    // the page canvas itself, with no independent render-tree bbox.
     cards.push(_card({
       icon:'🎨',
       name:'Background',
@@ -117,9 +125,10 @@ const ObjectStrip=(function(){
     // Artwork — Story-role pages have no SceneEngine scene element for
     // the picture (see js/app.js's own comment at the image-pan click
     // handler), so 'image-holder' here is the same synthetic id that
-    // handler already uses purely for Context Panel routing.
+    // handler already uses purely for Context Panel routing. Like
+    // Background, this is a page-level concept with no render-tree bbox
+    // of its own today, so it stays a second disclosed synthetic entry.
     if(slide.pageType==='story' && slide.image){
-      shownSceneIds['image-holder']=true;
       cards.push(_card({
         imgSrc:slide.thumbnail||null,
         icon:'🖼️',
@@ -132,63 +141,33 @@ const ObjectStrip=(function(){
       }));
     }
 
-    // Cover/Hook/End role objects (Frame, Title, Stickers, Decorations…)
-    if(typeof SceneEngine!=='undefined' && typeof SceneEngine.listElements==='function'){
-      const elements=SceneEngine.listElements(slide)||[];
-      elements.forEach(function(el){
-        shownSceneIds[el.id]=true;
-        if(el.id==='background') return; // already shown above
-        const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label};
+    // Every other object on the page — Cover/Hook/End blueprint elements,
+    // Story-Author-placed stickers, and theme-authored Layer Pack objects
+    // (Museum Caption, Wax Seal, Gallery Spotlight, …) — comes from
+    // exactly one place: the render tree SlideRenderer.render() already
+    // built this pass. No separate SceneEngine query, no de-dup
+    // bookkeeping: if it rendered, it's in this one list, exactly once,
+    // in render order.
+    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function'){
+      SlideRenderer.getSceneElements().forEach(function(el){
+        if(el.id==='background') return; // already shown above as the synthetic Background card
+        if(el.visible===false) return;
+        const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
         let name=el.label||friendly.name;
         let icon=friendly.icon;
-        if(el.type==='sticker' && typeof SceneEngine.findSticker==='function'){
-          const st=SceneEngine.findSticker(slide,el.id);
-          if(st && typeof StickerLibrary!=='undefined'){
-            const def=StickerLibrary.getById(st.stickerId);
-            if(def){ name=def.name; icon=def.glyph; }
-          }
+        // A Story-Author-placed sticker's own bbox (renderer's
+        // _stickerBbox) carries the real catalog id directly — no second
+        // lookup needed, and nothing to look up for a Layer Pack
+        // glyph-sticker or a blueprint element, which never set it.
+        if(el.type==='sticker' && el.stickerId && typeof StickerLibrary!=='undefined'){
+          const def=StickerLibrary.getById(el.stickerId);
+          if(def){ name=def.name; icon=def.glyph; }
         }
         cards.push(_card({
           icon:icon,
           name:name,
-          editable:!el.locked,
-          selected:selScene===el.id,
-          onClick:function(){
-            if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(el.id,el.type);
-          }
-        }));
-      });
-    }
-
-    // User-placed stickers (Sticker Studio) — a separate SceneEngine list
-    // from the blueprint elements above; tracked here purely so the new
-    // Layer Pack loop below can't collide with one of their ids.
-    if(typeof SceneEngine!=='undefined' && typeof SceneEngine.getStickers==='function'){
-      (SceneEngine.getStickers(slide)||[]).forEach(function(st){ shownSceneIds[st.id]=true; });
-    }
-
-    // Layer Pack objects — theme-authored decorations/text declared in
-    // World Builder (Museum Caption, Wax Seal, Gallery Spotlight, and
-    // similar). These already render on the canvas via SlideRenderer's
-    // own Layer Pack pipeline, but until now had no Object Strip entry:
-    // there's no SceneEngine list for them, since they belong to the
-    // active World, not the page's own blueprint. SlideRenderer.getSceneElements()
-    // is the same bbox list canvas hit-testing/selection already reads
-    // (renderer/slideRenderer.js's _renderLayers), so this is the one
-    // real source of truth for "what did the theme actually draw" —
-    // showing them here is what makes a Builder-authored World's content
-    // visible and selectable in Creator, not just visually present.
-    // Always shown as 🔒 Part of the world: a Layer Pack object is
-    // theme-owned, not something a creator repositions or retypes.
-    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function'){
-      SlideRenderer.getSceneElements().forEach(function(el){
-        if(shownSceneIds[el.id]) return;
-        if(el.visible===false) return;
-        const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
-        cards.push(_card({
-          icon:friendly.icon,
-          name:el.label||friendly.name,
-          editable:false,
+          editable:!!el.editable,
+          owner:el.owner,
           selected:selScene===el.id,
           onClick:function(){
             if(typeof window.setSelectedSceneElement==='function') window.setSelectedSceneElement(el.id,el.type);

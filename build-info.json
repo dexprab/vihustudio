@@ -1,9 +1,9 @@
 {
-  "version": "2.2.4",
-  "sprint": "Object Strip / Selection Now Reads Builder-Authored Layer Pack Content",
-  "task": "Diagnosed and fixed a real gap: theme Layer Pack content (Museum Caption, Wax Seal, Gallery Spotlight, etc.) rendered correctly to canvas but was never recorded in the hit-test/enumeration arrays the Object Strip and click-selection both read from, so it was invisible to the Object Strip and unclickable on the canvas despite drawing correctly. renderer/slideRenderer.js's three Layer Pack draw functions now return the bbox they drew; a new accumulator folds into _lastSceneElements exactly once, after the ordering-hazard-safe point in render(). js/objectStrip.js gained a de-duplicated loop over SlideRenderer.getSceneElements() to surface these as locked 'Part of the world' cards. See CLAUDE.md's matching entry for the full account.",
-  "build": "0086",
+  "version": "2.3.0",
+  "sprint": "Creator Reconciliation Sprint — Phase 1: The Render Tree Becomes Creator's Object Model",
+  "task": "Builder's own existing layer.permissions {moveable,editable,visible} now flows through Scene convergence onto the compiled theme.layerPack, into a new uniform Scene Object shape every render-tree entry carries regardless of origin (owner + moveable/editable, via a shared _sceneObject() normalizer in renderer/slideRenderer.js), into Object Strip (now a pure render-tree reader, no more direct SceneEngine queries or de-dup hack) and Context Panel (asks the selected object's own capability before type-routing, closing a real misleading-UX bug where selecting a World-owned object opened a live-looking but id-blind generic editor). Additive and backward-compatible throughout -- every pre-sprint theme keeps its exact prior locked behaviour. See CLAUDE.md's matching entry for the full account.",
+  "build": "0087",
   "buildDate": "2026-07-12",
-  "commit": "69c1378",
+  "commit": "pending",
   "environment": "Release"
 }

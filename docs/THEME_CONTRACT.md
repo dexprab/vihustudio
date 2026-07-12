@@ -93,6 +93,14 @@ Layer's `target` may be: `slide`, `frame`, `holder`, `element`.
 | `element` | Yes — `validator.js`, `constants.js`'s `LAYER_TARGETS`, and World Builder's own Layer Pack editor all treat it as valid | **No, before this sprint** — `slideRenderer.js` never called `_renderLayers` for this scope at all | **Fixed this sprint** — see §8.2. |
 | `overlay` (added by the Builder Convergence Sprint) | Not authorable through World Builder's own Layer Pack editor or `validator.js`'s `LAYER_TARGETS` — it is only ever produced by `builder.js`'s Scene convergence (`convergeSceneLayer()`), never hand-authored | Yes — `renderer/slideRenderer.js` calls `_renderLayers(...)` for it, painted last, on top of everything | Aligned by construction (producer and consumer added together); see `docs/THEME_PROJECT_SPEC.md`'s "Builder Convergence Sprint — Scene Convergence" section for the full mapping (also documents the new `scope`/`rect` Layer fields and the `decoration.kind:"fill"`/`"image"` values). |
 
+### 6.1 — `moveable`/`editable` (Creator Reconciliation Sprint)
+
+| Field | Produced? | Consumed? | Status |
+|---|---|---|---|
+| `moveable`, `editable` | Yes, but **only** via `tools/world-builder-v2/js/services/builder.js`'s `convergeSceneLayer()` — mirrors the already-existing `visible` line, sourced from Builder's own `layer.permissions` (`js/projectModel.js`). Hand-authored `layer-packs/*.json` entries (World Builder's raw `collectFolder('layer-packs')` path, the other of the two `layerPack` sources) never set these keys — a Museum-Gallery-style legacy theme built before this sprint carries neither field. | Yes — `renderer/slideRenderer.js`'s `_pushLayerObject` reads them straight off the compiled entry (`!!layer.moveable`/`!!layer.editable`, correctly resolving `false` when absent) onto the render-tree Scene Object every downstream Creator surface reads. `js/objectStrip.js`'s badge and `js/contextPanel.js`'s selection-dispatch both act on the real value — an `editable:true` World object shows 🟢 in Object Strip and a differently-worded disclosure in Context Panel, an `editable:false` one shows 🔒/the locked wording. | Aligned (both sides added together this sprint) — `tools/world-builder/` (v1) is deliberately untouched, per the same precedent the Decoration Shapes sprint set. |
+
+`moveable` is exposed on the render tree but not yet acted on — no drag-persistence exists for a World-owned object (would need a new small override bag mirroring `slide.metadata.elementOverrides`); a disclosed, deliberately deferred Phase 2. `editable` is acted on only as a disclosure-vs-generic-section decision in Context Panel — an honest "you may edit this, but that kind of edit isn't built in Creator yet" state, not a fabricated editor.
+
 ## 7. Assets (`assets/*` → the compiled `assets` map)
 
 | Stage | Behaviour before this sprint | Status |

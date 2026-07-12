@@ -1353,17 +1353,48 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // Scene Object — the one uniform interface every rendered, discoverable
+  // object on the page exposes, regardless of whether it originated as a
+  // Cover/Hook/End blueprint element, a Story-Author-placed sticker, or a
+  // theme-authored Layer Pack entry (Creator Reconciliation Sprint).
+  // Object Strip / hit-testing / Context Panel all read this one shape —
+  // {id,type,label,bx,by,bw,bh,visible,owner,moveable,editable,locked} —
+  // and never branch on where an object came from. `owner` is 'world'
+  // (theme/Builder-authored — Layer Pack) or 'story' (blueprint elements,
+  // stickers — today's actual Sprint 8.3 Universal Object Consistency
+  // behaviour, now named explicitly instead of re-derived from `locked`
+  // at each call site). `moveable`/`editable` default to `!locked` when
+  // not supplied — i.e. exactly today's behaviour for every object type
+  // this function didn't get real Builder-authored values for.
+  function _sceneObject(raw,owner){
+    const locked=!!raw.locked;
+    return Object.assign({},raw,{
+      owner:owner||'story',
+      moveable:(typeof raw.moveable==='boolean')?raw.moveable:!locked,
+      editable:(typeof raw.editable==='boolean')?raw.editable:!locked
+    });
+  }
+
   // Wraps a drawn Layer Pack entry's returned bbox into the same shape
   // _sceneBbox()/_stickerBbox() already produce, so it flows through the
   // existing Object Strip + canvas hit-test + selection-outline pipeline
   // with no changes needed there beyond consuming _lastSceneElements.
   function _pushLayerObject(layer,type,box){
     if(!box) return;
-    _layerObjectBboxes.push({
+    // Creator Reconciliation Sprint — moveable/editable come straight off
+    // the compiled Layer Pack entry (tools/world-builder-v2's
+    // convergeSceneLayer mirrors these from Builder's own
+    // layer.permissions, the exact pattern `visible` already used). A
+    // hand-authored legacy Layer Pack entry (Museum Gallery, or anything
+    // authored before this sprint) simply has neither key, so
+    // `!!undefined` resolves to `false` — unchanged, still always-locked,
+    // exactly as before this sprint.
+    _layerObjectBboxes.push(_sceneObject({
       id:layer.id, type:type, label:layer.label||_humanizeLayerId(layer.id),
       bx:box.bx, by:box.by, bw:box.bw, bh:box.bh,
-      visible:layer.visible!==false, locked:true
-    });
+      visible:layer.visible!==false, locked:true,
+      moveable:!!layer.moveable, editable:!!layer.editable
+    },'world'));
   }
 
   function _renderLayers(pack,target,rect,s){
@@ -1576,7 +1607,7 @@ const SlideRenderer=(()=>{
           else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
           // Legacy fallback for projects authored against Sprint 6.1.
           else if(el.type==='text') _drawSceneText(s,el);
-          _lastSceneElements.push(_sceneBbox(el));
+          _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
         });
       }
     }
@@ -1590,7 +1621,7 @@ const SlideRenderer=(()=>{
       for(let i=0;i<stickers.length;i++){
         const st=stickers[i];
         _drawSceneSticker(st);
-        _lastSceneElements.push(_stickerBbox(st));
+        _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
       }
     }
 

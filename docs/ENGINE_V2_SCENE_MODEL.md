@@ -760,3 +760,21 @@ blocked pretending an answer exists when it doesn't.
   merge" position for the *published-artifact* question only — the
   canonical *authoring* Scene Model, and the native authoring-time
   Runtime that renders it inside the Builder, are completely unchanged.
+- v1.6 — Creator Reconciliation Sprint. A narrow, precise correction to
+  the Decoration/Text `permissions` rows' own "never a published render"
+  claim (§3, and the inline note the Runtime meaning row for Decoration
+  carries) — that claim remains exactly true for what it describes: the
+  native Engine V2 Runtime's own paint step (`engineRuntime.js`) is
+  completely unmodified by this sprint and still gates only on `visible`.
+  What changed is a *second*, separate consumer this document doesn't
+  itself describe: `moveable`/`editable` (the same `BaseObjectPermissions`
+  fields, unmodified in shape) now also flow through v1.5's Scene
+  convergence path (`convergeSceneLayer`, mirroring the `visible` line it
+  already carried) onto the compiled Engine V1 package, where Studio's
+  Creator app reads them to decide Object Strip ownership badges and
+  Context Panel routing — see `docs/THEME_CONTRACT.md` §6.1 for the full
+  account. This is not the "future editing surface" this document's own
+  Open Decisions once anticipated inside the Builder's own Working
+  View/Runtime Preview (that remains unbuilt) — it's a related but
+  architecturally distinct surface, Studio itself, consuming the same
+  authored data through the published-package path v1.5 already opened.

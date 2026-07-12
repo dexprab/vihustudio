@@ -306,6 +306,22 @@ class BuildEngine {
         const rect = { x: position.x || 0, y: position.y || 0, w: size.w || 0, h: size.h || 0 };
         const alpha = (typeof layer.opacity === 'number') ? layer.opacity : undefined;
         const visible = !(layer.permissions && layer.permissions.visible === false);
+        // Creator Reconciliation Sprint — moveable/editable mirror the
+        // visible line above exactly, the same "absent permissions object
+        // defaults open" reasoning: a Scene Layer that was positioned but
+        // never individually reopened for permission editing (Builder's
+        // own _ensureSceneLayerDefaults only runs on-demand via
+        // findSceneLayer, not at Build time) reaches here with
+        // `permissions` still undefined, and this resolves it to `true`
+        // for all three fields — identical to what that reconciler would
+        // have stamped, so no separate reconciliation call is needed.
+        // This is the one place Builder's own Scene Object permissions
+        // (js/projectModel.js's holder/layer `.permissions`) finally
+        // reach the compiled package Studio actually renders from —
+        // renderer/slideRenderer.js's _pushLayerObject reads these two
+        // fields straight off this compiled entry.
+        const moveable = !(layer.permissions && layer.permissions.moveable === false);
+        const editable = !(layer.permissions && layer.permissions.editable === false);
         // A true full-bleed fill (Scene Background, position 0,0 size
         // 1,1 — see js/projectModel.js's setSceneBackground) is wall-
         // level content that belongs BEHIND the Frame/Panel, exactly
@@ -328,7 +344,9 @@ class BuildEngine {
             scope: layoutId,
             rect: rect,
             zIndex: zIndex,
-            visible: visible
+            visible: visible,
+            moveable: moveable,
+            editable: editable
         };
 
         if (layer.kind === 'text') {
