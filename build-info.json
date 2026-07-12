@@ -1,9 +1,9 @@
 {
-  "version": "2.2.2",
-  "sprint": "Creator V2 — No-Scroll Screens, Real Visuals, Branding Removal",
-  "task": "Four user-reported fixes. Screen 1/Screen 2 no longer scroll on ordinary laptop viewports -- both were measured to overflow at common heights (720px/800px); converted the biggest vertical space-consumers to clamp()/vh-based sizing so content compresses instead of overflowing, verified fitting at 640-900px with zero scroll. Screen 2's Preview carousel no longer falls back to a hardcoded generic mask emoji for an under-authored Representation -- it now shows the World's own preview image/icon first. Removed a real, confirmed hardcoded-branding bug: the renderer drew the literal string \"@vihuplanet\" on every page whose Handle was empty (nearly all of them), including one spot whose own doc comment said it should return empty and didn't; also fixed two Scene Blueprint defaults baking the same fabricated text into fresh Hook/End/Cover pages. Book title and page number are untouched -- they show real project data, not fabricated content. See CLAUDE.md's matching entry for the full account.",
-  "build": "0084",
+  "version": "2.2.3",
+  "sprint": "Creator V2 — Book Title / Page Number Off By Default",
+  "task": "Direct follow-up to the @vihuplanet branding fix: the real project title and page number were still showing on every page by default, and product direction was to hide both reversibly. Traced to two hardcoded sources: js/themeEngine.js's _defaultOptionsFor()/renderer/slideRenderer.js's FALLBACK_OPTIONS (the computed base defaults), and the deeper real source, js/state.js's AppState.project.themeOptions, which pre-seeds every project with its own literal always-on values that getOptions() always lets win over the computed base -- fixing only the first source was silently shadowed. Flipped all three, each commented as an explicitly reversible default. handleVisibility stays 'show', unaffected. See CLAUDE.md's matching entry for the full account.",
+  "build": "0085",
   "buildDate": "2026-07-12",
-  "commit": "7da8c70",
+  "commit": "4dc1c4c",
   "environment": "Release"
 }
