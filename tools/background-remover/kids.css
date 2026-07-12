@@ -153,9 +153,17 @@ html, body {
 }
 
 .before-after-stage {
+  /* Width/height are set inline in px by app.js's sizeBeforeAfterStage()
+     — the actual fit-both-width-and-height-budget computation. This
+     is only the pre-JS fallback (and default width, before that
+     inline width overrides it) so nothing looks broken for an
+     instant; margin:auto keeps the stage centred even once its own
+     computed width ends up narrower than .before-after's, which
+     happens for a tall/portrait photo. */
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
+  margin: 0 auto;
   border-radius: var(--kid-radius);
   overflow: hidden;
   box-shadow: var(--shadow);

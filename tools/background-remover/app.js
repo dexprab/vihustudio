@@ -89,6 +89,7 @@ var els = {
   editView: document.getElementById('editView'),
   looksGreatBtn: document.getElementById('looksGreatBtn'),
   makeItBetterBtn: document.getElementById('makeItBetterBtn'),
+  beforeAfter: document.getElementById('beforeAfter'),
   beforeAfterStage: document.getElementById('beforeAfterStage'),
   baCanvasBefore: document.getElementById('baCanvasBefore'),
   baCanvasAfter: document.getElementById('baCanvasAfter'),
@@ -895,6 +896,16 @@ function initScreenFlow() {
   });
   els.makeItBetterBtn.addEventListener('click', showEditMode);
   els.baSlider.addEventListener('input', updateBeforeAfterClip);
+
+  // Re-fit the before/after stage if the window is resized (rotating
+  // a tablet, resizing a desktop window) — the fit-both-budgets
+  // computation depends on window.innerHeight/the container's own
+  // width, both of which can change after the initial render.
+  window.addEventListener('resize', debounce(function () {
+    if (state.workingBuffer) {
+      sizeBeforeAfterStage(state.workingBuffer.width, state.workingBuffer.height);
+    }
+  }, 150));
 }
 
 function showResultMode() {
@@ -936,8 +947,36 @@ function renderBeforeAfter() {
   });
   drawPixelBuffer(els.baCanvasBefore, beforeCrop);
   drawPixelBuffer(els.baCanvasAfter, state.workingBuffer);
-  els.beforeAfterStage.style.aspectRatio = state.workingBuffer.width + ' / ' + state.workingBuffer.height;
+  sizeBeforeAfterStage(state.workingBuffer.width, state.workingBuffer.height);
   updateBeforeAfterClip();
+}
+
+// Sizes the Result screen's stage to fit within BOTH an available
+// width and an available height, preserving the photo's own aspect
+// ratio — plain CSS `aspect-ratio` + `max-width` can't do this on its
+// own (it clamps height without also shrinking width to match), so a
+// tall/portrait photo (very common — a phone photo of a canvas
+// standing upright) could grow past the viewport height and force the
+// whole page to scroll, exactly as reported. Explicit pixel sizing
+// here guarantees the stage is always the largest size that fits with
+// zero page scroll, however the photo is shaped.
+//
+// A fixed fraction of the viewport (e.g. "half the window") was tried
+// first and measured wrong: everything else on the Result screen
+// (header, New Drawing link, headline, hint text, slider, action
+// buttons, page padding) doesn't shrink proportionally to viewport
+// height, so on a shorter window that fixed fraction still left the
+// page taller than the viewport. This measures that other content's
+// *real* height directly instead of guessing it.
+function sizeBeforeAfterStage(width, height) {
+  var maxWidth = Math.min(560, els.beforeAfter.clientWidth || 560);
+  var currentStageHeight = els.beforeAfterStage.getBoundingClientRect().height;
+  var otherContentHeight = document.documentElement.scrollHeight - currentStageHeight;
+  var availableHeight = window.innerHeight - otherContentHeight - 16; // small safety margin
+  var maxHeight = Math.max(160, availableHeight);
+  var scale = Math.min(maxWidth / width, maxHeight / height);
+  els.beforeAfterStage.style.width = Math.round(width * scale) + 'px';
+  els.beforeAfterStage.style.height = Math.round(height * scale) + 'px';
 }
 
 function updateBeforeAfterClip() {
