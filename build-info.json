@@ -4,6 +4,6 @@
   "task": "Fixed the one root cause behind Museum Gallery pages looking empty in Creator before a picture was uploaded: renderer/slideRenderer.js's _resolveBorder(s) resolved an Artwork Theme's Frame only if(hasImage), so the frame/mat/ornament/caption and every Frame/Holder-scoped Layer Pack entry (Wax Seal, Gallery Spotlight, Museum Caption) never rendered until an image existed, even though every function downstream of that gate was already image-independent. Lifting that one gate (scoped to Artwork Theme pages only) closed the whole visual gap. Added a wall-tone-aware artwork placeholder for Story-role pages (mirroring the existing Cover/Hook/End 'Add an image' pattern). Object Strip's Artwork card is no longer gated on slide.image, and a second real bug found while verifying this fix -- fresh Creation-Flow pages never get pageType promoted from 'blank' to 'story' -- is fixed by matching the renderer's own _hasScene criterion instead of a hardcoded pageType string. Context Panel's default view now greets the child by World name with an ownership legend. See docs/CREATOR_THEME_FIDELITY.md and CLAUDE.md's matching entry for the full account.",
   "build": "0089",
   "buildDate": "2026-07-12",
-  "commit": "PENDING",
+  "commit": "454186f",
   "environment": "Release"
 }
