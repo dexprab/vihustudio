@@ -5,6 +5,6 @@
   "slice": "The Builder & Studio Alignment Sprint's neutral default for the Artwork Gallery template's starter Scene, \"Story,\" turned out to be its own mismatch once actually seen in Studio's Screen 2 Representation carousel: it reads (and, with the default masks thumbnail glyph, visually looks) like the Tell a Story Creation Type, not an artwork showcase. Renamed to \"Gallery\" in TEMPLATE_STARTER_SCENE -- still not part of the flagged Showcase/Portrait/Quote trio, while actually describing the template. Only affects new Artwork Gallery projects going forward. Verified via Playwright: a freshly created Artwork Gallery project's starter Scene (and thus its default Representation) is named \"Gallery\"; goldenBuild.js 30/30 unchanged.",
   "build": "0047",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "3dd1650",
   "environment": "Release"
 }
