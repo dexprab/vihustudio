@@ -4,6 +4,6 @@
   "task": "Builder's own existing layer.permissions {moveable,editable,visible} now flows through Scene convergence onto the compiled theme.layerPack, into a new uniform Scene Object shape every render-tree entry carries regardless of origin (owner + moveable/editable, via a shared _sceneObject() normalizer in renderer/slideRenderer.js), into Object Strip (now a pure render-tree reader, no more direct SceneEngine queries or de-dup hack) and Context Panel (asks the selected object's own capability before type-routing, closing a real misleading-UX bug where selecting a World-owned object opened a live-looking but id-blind generic editor). Additive and backward-compatible throughout -- every pre-sprint theme keeps its exact prior locked behaviour. See CLAUDE.md's matching entry for the full account.",
   "build": "0087",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "6144d30",
   "environment": "Release"
 }
