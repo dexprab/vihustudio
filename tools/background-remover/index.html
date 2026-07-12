@@ -3,156 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Background Remover</title>
+<title>✨ Drawing Magic</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="kids.css">
 </head>
 <body>
 
 <div class="app" id="app">
 
-  <header class="app-header">
-    <h1>Background Remover</h1>
-    <p class="app-subtitle">Turn scanned or photographed artwork into a clean, transparent PNG — right in your browser.</p>
+  <header class="app-header" id="appHeader">
+    <h1>✨ Drawing Magic</h1>
+    <p class="app-subtitle">Let's make your drawing come alive!</p>
   </header>
 
-  <!-- ---- Upload stage (visible until an image is loaded) ---- -->
-  <section class="dropzone" id="dropzone" tabindex="0" aria-label="Upload an image">
+  <!-- ---- Welcome screen (visible until a picture is added) ---- -->
+  <section class="dropzone" id="dropzone" tabindex="0" aria-label="Add a picture of your drawing">
     <div class="dropzone-inner">
-      <svg class="dropzone-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg class="dropzone-icon" width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 16V4M12 4L7 9M12 4L17 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <p class="dropzone-title">Drag &amp; drop an image</p>
+      <p class="dropzone-title">Drop a Picture</p>
       <p class="dropzone-or">or</p>
-      <button type="button" class="btn btn-primary" id="browseBtn">Browse</button>
-      <p class="dropzone-hint">You can also paste an image with <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+      <button type="button" class="btn btn-primary btn-big" id="browseBtn">Choose a Picture</button>
+      <p class="dropzone-hint">You can also paste a picture with <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
   </section>
 
-  <!-- ---- Workspace (visible once an image is loaded) ---- -->
+  <!-- ---- Magic processing overlay (shown while the drawing comes alive) ---- -->
+  <div class="magic-overlay" id="magicOverlay" hidden>
+    <div class="magic-sparkle" aria-hidden="true">✨</div>
+    <p class="magic-message" id="magicMessage">✨ Looking at your drawing...</p>
+  </div>
+
+  <!-- ---- Workspace (visible once a picture has been added) ---- -->
   <section class="workspace" id="workspace" hidden>
 
-    <div class="preview-panel">
+    <button type="button" class="new-drawing-btn" id="resetBtn">🔄 New Drawing</button>
 
-      <div class="preview-toolbar">
-        <div class="view-toggle" role="tablist" aria-label="Preview mode">
-          <button type="button" class="view-toggle-btn is-active" id="viewSideBySide" role="tab" aria-selected="true">Side by side</button>
-          <button type="button" class="view-toggle-btn" id="viewToggle" role="tab" aria-selected="false">Original / Processed</button>
-          <button type="button" class="view-toggle-btn" id="viewOverlay" role="tab" aria-selected="false">Overlay</button>
-          <button type="button" class="view-toggle-btn" id="viewDifference" role="tab" aria-selected="false">Difference</button>
+    <!-- ---- Result screen: shown right after the magic finishes ---- -->
+    <div class="result-view" id="resultView">
+      <h2 class="result-headline">🎉 Your drawing came to life!</h2>
+
+      <div class="before-after" id="beforeAfter">
+        <div class="before-after-stage checkerboard" id="beforeAfterStage">
+          <canvas id="baCanvasBefore"></canvas>
+          <canvas id="baCanvasAfter"></canvas>
+          <span class="ba-label ba-label-before">My Drawing</span>
+          <span class="ba-label ba-label-after">My Magic Drawing</span>
         </div>
-        <div class="zoom-controls">
-          <button type="button" class="btn-icon" id="zoomOutBtn" aria-label="Zoom out">−</button>
-          <button type="button" class="btn-icon" id="zoomResetBtn" aria-label="Fit to view" title="Fit to view">100%</button>
-          <button type="button" class="btn-icon" id="zoomInBtn" aria-label="Zoom in">+</button>
-        </div>
+        <input type="range" id="baSlider" class="ba-slider" min="0" max="100" value="50" aria-label="Slide to compare">
+        <p class="ba-hint">👉 Slide to see the paper disappear!</p>
       </div>
 
-      <div class="preview-grid" id="previewGrid">
-        <div class="preview-pane" id="originalPane">
-          <span class="preview-label">Original</span>
-          <div class="preview-viewport" id="originalViewport">
-            <div class="preview-zoom-target" id="originalZoomTarget">
-              <canvas id="originalCanvas"></canvas>
-            </div>
-          </div>
-        </div>
-        <div class="preview-pane" id="processedPane">
-          <span class="preview-label">Transparent</span>
-          <div class="preview-viewport checkerboard" id="processedViewport">
-            <div class="preview-zoom-target" id="processedZoomTarget">
-              <canvas id="processedCanvas"></canvas>
-            </div>
-            <div class="crop-selection-box" id="cropSelectionBox" hidden></div>
-            <div class="brush-cursor" id="brushCursor" hidden></div>
-          </div>
-          <div class="preview-loading" id="previewLoading" hidden>
-            <span class="spinner" aria-hidden="true"></span>
-            <span>Processing…</span>
-          </div>
-        </div>
-        <div class="preview-pane" id="analysisPane" hidden>
-          <span class="preview-label" id="analysisLabel">Overlay</span>
-          <div class="preview-viewport" id="analysisViewport">
-            <div class="preview-zoom-target" id="analysisZoomTarget">
-              <canvas id="analysisCanvas"></canvas>
-            </div>
-          </div>
-        </div>
+      <div class="result-actions">
+        <button type="button" class="btn btn-primary btn-big" id="looksGreatBtn">😊 Looks Great</button>
+        <button type="button" class="btn btn-secondary btn-big" id="makeItBetterBtn">✨ Make It Better</button>
       </div>
-
-      <p class="preview-meta" id="previewMeta"></p>
     </div>
 
-    <aside class="controls-panel">
+    <!-- ---- Edit screen: "Make It Better" ---- -->
+    <div class="edit-view" id="editView" hidden>
+      <h2 class="edit-headline">✨ Make It Better</h2>
+      <p class="edit-subhint">Tap a tool, then touch your picture.</p>
 
-      <div class="control-group">
-        <label class="control-label" for="toleranceSlider">
-          Tolerance
-          <span class="control-value" id="toleranceValue">—</span>
-        </label>
-        <input type="range" id="toleranceSlider" min="1" max="100" step="1">
-        <p class="control-hint">How different a pixel can be from the background colour and still be removed.</p>
-      </div>
-
-      <div class="control-group">
-        <label class="control-label" for="featherSlider">
-          Edge Smoothness
-          <span class="control-value" id="featherValue">2</span>
-        </label>
-        <input type="range" id="featherSlider" min="0" max="8" step="1" value="2">
-        <p class="control-hint">Softens the cutout edge. 0 is a hard edge.</p>
-      </div>
-
-      <div class="control-group control-group-row">
-        <label class="switch-label" for="autoCropToggle">
-          <input type="checkbox" id="autoCropToggle" checked>
-          <span class="switch"></span>
-          Auto Crop
-        </label>
-        <p class="control-hint">Trims empty transparent border after removal.</p>
-      </div>
-
-      <div class="control-group cleanup-group">
-        <label class="control-label">Manual Cleanup</label>
-        <p class="control-hint">Brush away small paper fragments left behind. Erases only — it can't restore artwork.</p>
-        <label class="control-label" for="brushSizeSlider" style="margin-top:4px;">
-          Brush Size
-          <span class="control-value" id="brushSizeValue">40</span>
-        </label>
-        <input type="range" id="brushSizeSlider" min="6" max="400" step="2" value="40">
-        <div class="control-actions-row">
-          <button type="button" class="btn-icon" id="cleanupToggleBtn" aria-pressed="false">🖌 Brush</button>
-          <button type="button" class="btn-icon" id="cleanupUndoBtn" disabled title="Undo last stroke">↶ Undo</button>
-          <button type="button" class="btn-icon" id="cleanupRedoBtn" disabled title="Redo">↷ Redo</button>
+      <div class="preview-panel">
+        <div class="preview-toolbar">
+          <div class="view-toggle" role="tablist" aria-label="Preview mode">
+            <button type="button" class="view-toggle-btn is-active" id="viewSideBySide" role="tab" aria-selected="true">Side by side</button>
+            <button type="button" class="view-toggle-btn" id="viewToggle" role="tab" aria-selected="false">Original / Processed</button>
+            <button type="button" class="view-toggle-btn" id="viewOverlay" role="tab" aria-selected="false">Overlay</button>
+            <button type="button" class="view-toggle-btn" id="viewDifference" role="tab" aria-selected="false">Difference</button>
+          </div>
+          <div class="zoom-controls">
+            <button type="button" class="btn-icon" id="zoomOutBtn" aria-label="Zoom out">−</button>
+            <button type="button" class="btn-icon" id="zoomResetBtn" aria-label="Fit to view" title="Fit to view">100%</button>
+            <button type="button" class="btn-icon" id="zoomInBtn" aria-label="Zoom in">+</button>
+          </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-block" id="cleanupResetBtn">Reset Cleanup</button>
-      </div>
 
-      <div class="control-group crop-group">
-        <label class="control-label">Manual Crop</label>
-        <p class="control-hint">Drag a rectangle on the Transparent preview, then apply.</p>
-        <div class="control-actions-row">
-          <button type="button" class="btn-icon" id="cropToggleBtn" aria-pressed="false">✂ Draw Crop</button>
+        <div class="preview-grid" id="previewGrid">
+          <div class="preview-pane" id="originalPane">
+            <span class="preview-label">My Drawing</span>
+            <div class="preview-viewport" id="originalViewport">
+              <div class="preview-zoom-target" id="originalZoomTarget">
+                <canvas id="originalCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="preview-pane" id="processedPane">
+            <span class="preview-label">My Magic Drawing</span>
+            <div class="preview-viewport checkerboard" id="processedViewport">
+              <div class="preview-zoom-target" id="processedZoomTarget">
+                <canvas id="processedCanvas"></canvas>
+              </div>
+              <div class="crop-selection-box" id="cropSelectionBox" hidden></div>
+              <div class="brush-cursor" id="brushCursor" hidden></div>
+            </div>
+            <div class="preview-loading" id="previewLoading" hidden>
+              <span class="spinner" aria-hidden="true"></span>
+              <span>Processing…</span>
+            </div>
+          </div>
+          <div class="preview-pane" id="analysisPane" hidden>
+            <span class="preview-label" id="analysisLabel">Overlay</span>
+            <div class="preview-viewport" id="analysisViewport">
+              <div class="preview-zoom-target" id="analysisZoomTarget">
+                <canvas id="analysisCanvas"></canvas>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="control-actions-row">
-          <button type="button" class="btn btn-secondary" id="cropApplyBtn" disabled>Apply Crop</button>
-          <button type="button" class="btn btn-secondary" id="cropResetBtn" disabled>Reset Crop</button>
+
+        <p class="preview-meta" id="previewMeta"></p>
+      </div>
+
+      <aside class="controls-panel kids-controls">
+
+        <div class="tool-grid">
+          <button type="button" class="tool-btn" id="cleanupToggleBtn" aria-pressed="false">
+            <span class="tool-icon">✨</span><span class="tool-label">Remove More</span>
+          </button>
+          <button type="button" class="tool-btn" id="restoreToggleBtn" aria-pressed="false">
+            <span class="tool-icon">❤️</span><span class="tool-label">Bring It Back</span>
+          </button>
+          <button type="button" class="tool-btn" id="cropToggleBtn" aria-pressed="false">
+            <span class="tool-icon">✂️</span><span class="tool-label">Trim Picture</span>
+          </button>
+          <button type="button" class="tool-btn" id="cleanupUndoBtn" disabled>
+            <span class="tool-icon">↶</span><span class="tool-label">Oops!</span>
+          </button>
         </div>
-      </div>
 
-      <div class="control-actions">
-        <button type="button" class="btn btn-primary" id="downloadBtn">Download PNG</button>
-        <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
-      </div>
+        <button type="button" class="redo-link" id="cleanupRedoBtn" disabled>Redo that</button>
 
-      <div class="control-footer">
-        <p id="performanceNote" class="control-hint"></p>
-      </div>
+        <!-- Shown while Remove More or Bring It Back is active -->
+        <div class="sub-panel" id="brushSizePanel" hidden>
+          <p class="sub-panel-label">How big?</p>
+          <div class="brush-size-choices">
+            <button type="button" class="brush-choice" id="brushSmallBtn" data-size="small">
+              <span class="brush-dot brush-dot-small" aria-hidden="true"></span>Small
+            </button>
+            <button type="button" class="brush-choice is-active" id="brushMediumBtn" data-size="medium">
+              <span class="brush-dot brush-dot-medium" aria-hidden="true"></span>Medium
+            </button>
+            <button type="button" class="brush-choice" id="brushLargeBtn" data-size="large">
+              <span class="brush-dot brush-dot-large" aria-hidden="true"></span>Large
+            </button>
+          </div>
+          <button type="button" class="start-over-link" id="cleanupResetBtn">Start over on this picture</button>
+        </div>
 
-    </aside>
+        <!-- Shown while Trim Picture is active -->
+        <div class="sub-panel" id="cropPanel" hidden>
+          <p class="sub-panel-label">Drag a box around the part you want to keep.</p>
+          <div class="control-actions-row">
+            <button type="button" class="btn btn-primary" id="cropApplyBtn" disabled>✓ Trim It!</button>
+            <button type="button" class="btn btn-secondary" id="cropResetBtn" disabled>Undo Trim</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-big btn-save" id="downloadBtn">💾 Save My Drawing</button>
+
+        <!-- Kept in the DOM so the existing pipeline logic can still read
+             them, but never shown to the child — see kids.css. -->
+        <div class="technical-hidden" aria-hidden="true">
+          <label for="toleranceSlider">Tolerance <span id="toleranceValue">—</span></label>
+          <input type="range" id="toleranceSlider" min="1" max="100" step="1">
+          <label for="featherSlider">Edge Smoothness <span id="featherValue">2</span></label>
+          <input type="range" id="featherSlider" min="0" max="8" step="1" value="2">
+          <label for="autoCropToggle"><input type="checkbox" id="autoCropToggle" checked> Auto Crop</label>
+          <label for="brushSizeSlider">Brush Size <span id="brushSizeValue">90</span></label>
+          <input type="range" id="brushSizeSlider" min="6" max="400" step="2" value="90">
+          <p id="performanceNote"></p>
+        </div>
+
+      </aside>
+    </div>
 
   </section>
 
@@ -161,7 +190,7 @@
 </div>
 
 <!-- Build / release footer — populated at runtime by js/buildInfo.js. -->
-<footer id="buildInfoFooter" class="build-info-footer">Background Remover • Development</footer>
+<footer id="buildInfoFooter" class="build-info-footer">Drawing Magic • Development</footer>
 
 <script type="module" src="app.js"></script>
 <script src="js/buildInfo.js"></script>

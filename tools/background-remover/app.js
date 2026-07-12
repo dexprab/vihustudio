@@ -16,7 +16,7 @@
 import { drawPixelBuffer, createZoomController } from './js/preview.js';
 import { debounce, downloadBlob, formatBytes, formatDimensions, stripExtension } from './js/utils.js';
 import { encodePixelBufferToPNG } from './js/pngEncoder.js';
-import { eraseCircle } from './js/cleanupBrush.js';
+import { eraseCircle, restoreCircle } from './js/cleanupBrush.js';
 import { cropPixelBuffer } from './js/cropper.js';
 import { drawOverlay, drawDifference } from './js/analysisView.js';
 
@@ -59,15 +59,21 @@ var els = {
   brushSizeSlider: document.getElementById('brushSizeSlider'),
   brushSizeValue: document.getElementById('brushSizeValue'),
   cleanupToggleBtn: document.getElementById('cleanupToggleBtn'),
+  restoreToggleBtn: document.getElementById('restoreToggleBtn'),
   cleanupUndoBtn: document.getElementById('cleanupUndoBtn'),
   cleanupRedoBtn: document.getElementById('cleanupRedoBtn'),
   cleanupResetBtn: document.getElementById('cleanupResetBtn'),
   brushCursor: document.getElementById('brushCursor'),
+  brushSizePanel: document.getElementById('brushSizePanel'),
+  brushSmallBtn: document.getElementById('brushSmallBtn'),
+  brushMediumBtn: document.getElementById('brushMediumBtn'),
+  brushLargeBtn: document.getElementById('brushLargeBtn'),
 
   cropToggleBtn: document.getElementById('cropToggleBtn'),
   cropApplyBtn: document.getElementById('cropApplyBtn'),
   cropResetBtn: document.getElementById('cropResetBtn'),
   cropSelectionBox: document.getElementById('cropSelectionBox'),
+  cropPanel: document.getElementById('cropPanel'),
 
   downloadBtn: document.getElementById('downloadBtn'),
   resetBtn: document.getElementById('resetBtn'),
@@ -75,7 +81,18 @@ var els = {
   previewMeta: document.getElementById('previewMeta'),
   previewLoading: document.getElementById('previewLoading'),
   performanceNote: document.getElementById('performanceNote'),
-  toast: document.getElementById('toast')
+  toast: document.getElementById('toast'),
+
+  magicOverlay: document.getElementById('magicOverlay'),
+  magicMessage: document.getElementById('magicMessage'),
+  resultView: document.getElementById('resultView'),
+  editView: document.getElementById('editView'),
+  looksGreatBtn: document.getElementById('looksGreatBtn'),
+  makeItBetterBtn: document.getElementById('makeItBetterBtn'),
+  beforeAfterStage: document.getElementById('beforeAfterStage'),
+  baCanvasBefore: document.getElementById('baCanvasBefore'),
+  baCanvasAfter: document.getElementById('baCanvasAfter'),
+  baSlider: document.getElementById('baSlider')
 };
 
 var worker = new Worker(new URL('./js/worker.js', import.meta.url), { type: 'module' });
@@ -112,8 +129,9 @@ var state = {
   lastMeta: null,        // meta from the most recent automatic run (kept fresh every run)
   userTolerance: null,  // null until the user drags the slider
 
-  activeTool: 'pan',    // 'pan' | 'brush' | 'crop'
+  activeTool: 'pan',    // 'pan' | 'brush' (Remove More) | 'restore' (Bring It Back) | 'crop'
   viewMode: 'side-by-side',
+  screenMode: 'result', // 'result' | 'edit' — which of the two post-magic screens is showing
 
   cleanupHistory: [],   // undo stack: [{ changes: Map<pixelIndex, alphaBefore> }]
   cleanupRedoStack: [],
@@ -226,6 +244,8 @@ function init() {
 
   initCleanupBrush();
   initManualCrop();
+  initBrushSizeChoices();
+  initScreenFlow();
 
   els.downloadBtn.addEventListener('click', handleDownload);
   els.resetBtn.addEventListener('click', resetToUpload);
@@ -502,6 +522,11 @@ function updateMeta(meta) {
 function setProcessing(isProcessing) {
   els.previewLoading.hidden = !isProcessing;
   els.downloadBtn.disabled = isProcessing;
+  if (isProcessing) {
+    beginMagic();
+  } else {
+    endMagicProcessing();
+  }
 }
 
 function setZoomControlsEnabled(enabled) {
@@ -518,7 +543,7 @@ function clonePixelBuffer(pixelBuffer) {
   };
 }
 
-// ---- Manual Cleanup (erase brush) ------------------------------------
+// ---- Manual Cleanup (erase brush) + Bring It Back (restore brush) -----
 
 function initCleanupBrush() {
   els.brushSizeSlider.addEventListener('input', function () {
@@ -528,6 +553,9 @@ function initCleanupBrush() {
   els.cleanupToggleBtn.addEventListener('click', function () {
     setActiveTool(state.activeTool === 'brush' ? 'pan' : 'brush');
   });
+  els.restoreToggleBtn.addEventListener('click', function () {
+    setActiveTool(state.activeTool === 'restore' ? 'pan' : 'restore');
+  });
   els.cleanupUndoBtn.addEventListener('click', undoCleanup);
   els.cleanupRedoBtn.addEventListener('click', redoCleanup);
   els.cleanupResetBtn.addEventListener('click', function () { resetCleanup(); });
@@ -535,13 +563,14 @@ function initCleanupBrush() {
   var painting = false;
 
   els.processedViewport.addEventListener('mousedown', function (e) {
-    if (state.activeTool !== 'brush' || !state.workingBuffer) return;
+    var tool = state.activeTool;
+    if ((tool !== 'brush' && tool !== 'restore') || !state.workingBuffer) return;
     painting = true;
     state.strokeChanges = new Map();
     paintAt(e.clientX, e.clientY);
   });
   window.addEventListener('mousemove', function (e) {
-    if (state.activeTool === 'brush') {
+    if (state.activeTool === 'brush' || state.activeTool === 'restore') {
       updateBrushCursor(e.clientX, e.clientY);
     }
     if (!painting) return;
@@ -559,7 +588,11 @@ function initCleanupBrush() {
   function paintAt(clientX, clientY) {
     var pt = zoomProcessed.toContentCoords(clientX, clientY);
     var radius = Number(els.brushSizeSlider.value) / 2;
-    eraseCircle(state.workingBuffer, pt.x, pt.y, radius, function (pixelIndex, alphaBefore) {
+    // "Remove More" erases (targetAlpha 0), "Bring It Back" restores
+    // (targetAlpha 255) — both share the exact same soft-edge falloff
+    // and undo-recording, see cleanupBrush.js.
+    var paintFn = state.activeTool === 'restore' ? restoreCircle : eraseCircle;
+    paintFn(state.workingBuffer, pt.x, pt.y, radius, function (pixelIndex, alphaBefore) {
       if (!state.strokeChanges.has(pixelIndex)) {
         state.strokeChanges.set(pixelIndex, alphaBefore);
       }
@@ -766,15 +799,18 @@ function updateCropButtons() {
 
 function setActiveTool(tool) {
   state.activeTool = tool;
+  var isPaintTool = tool === 'brush' || tool === 'restore';
 
   els.cleanupToggleBtn.setAttribute('aria-pressed', String(tool === 'brush'));
+  els.restoreToggleBtn.setAttribute('aria-pressed', String(tool === 'restore'));
   els.cropToggleBtn.setAttribute('aria-pressed', String(tool === 'crop'));
-  els.processedViewport.classList.toggle('is-brush-active', tool === 'brush');
+  els.processedViewport.classList.toggle('is-brush-active', isPaintTool);
+  els.processedViewport.classList.toggle('is-restore-active', tool === 'restore');
   els.processedViewport.classList.toggle('is-crop-active', tool === 'crop');
 
   zoomProcessed.setPanEnabled(tool === 'pan');
 
-  if (tool !== 'brush') {
+  if (!isPaintTool) {
     els.brushCursor.hidden = true;
   }
   if (tool !== 'crop') {
@@ -782,6 +818,161 @@ function setActiveTool(tool) {
     els.cropSelectionBox.hidden = true;
     els.cropApplyBtn.disabled = true;
   }
+
+  // Reveal whichever tool's own sub-panel matches (brush size choices
+  // for Remove More/Bring It Back, the Trim controls for Trim
+  // Picture) — both elements are optional (only present once the
+  // child-facing kids UI's markup exists), so this is guarded rather
+  // than assumed.
+  if (els.brushSizePanel) els.brushSizePanel.hidden = !isPaintTool;
+  if (els.cropPanel) els.cropPanel.hidden = tool !== 'crop';
+}
+
+// ---- Screen flow: Welcome -> Magic -> Result -> Make It Better --------
+//
+// The underlying pipeline is unchanged — this section only decides
+// which of the DOM's already-existing pieces are visible and when.
+// Because the technical Tolerance/Edge Smoothness/Auto Crop controls
+// are permanently hidden from the child-facing UI (see kids.css) and
+// nothing else in this file ever changes their values, runPipeline()
+// only ever runs once per loaded picture now, which is what makes a
+// single "magic" moment (rather than a repeating one) correct.
+
+var MAGIC_MESSAGES = [
+  '✨ Looking at your drawing...',
+  '✨ Making the paper disappear...',
+  '✨ Almost ready...'
+];
+var MAGIC_MIN_VISIBLE_MS = 1400;
+var MAGIC_MESSAGE_INTERVAL_MS = 650;
+
+var magicMessageTimer = null;
+var magicMinTimeTimer = null;
+var magicMinTimeElapsed = false;
+var magicProcessingDone = false;
+
+function beginMagic() {
+  magicMinTimeElapsed = false;
+  magicProcessingDone = false;
+  els.magicOverlay.hidden = false;
+
+  var index = 0;
+  els.magicMessage.textContent = MAGIC_MESSAGES[0];
+  clearInterval(magicMessageTimer);
+  magicMessageTimer = setInterval(function () {
+    index = (index + 1) % MAGIC_MESSAGES.length;
+    els.magicMessage.textContent = MAGIC_MESSAGES[index];
+  }, MAGIC_MESSAGE_INTERVAL_MS);
+
+  clearTimeout(magicMinTimeTimer);
+  magicMinTimeTimer = setTimeout(function () {
+    magicMinTimeElapsed = true;
+    maybeFinishMagic();
+  }, MAGIC_MIN_VISIBLE_MS);
+}
+
+function endMagicProcessing() {
+  magicProcessingDone = true;
+  maybeFinishMagic();
+}
+
+// Only actually reveals the result once BOTH the real processing has
+// finished AND the overlay has been up for at least its minimum time —
+// so a fast image still gets a satisfying moment of "magic," and a
+// slow one never gets cut off mid-processing to hit a fake deadline.
+function maybeFinishMagic() {
+  if (!magicMinTimeElapsed || !magicProcessingDone) return;
+  clearInterval(magicMessageTimer);
+  clearTimeout(magicMinTimeTimer);
+  els.magicOverlay.hidden = true;
+  renderBeforeAfter();
+  showResultMode();
+}
+
+function initScreenFlow() {
+  els.looksGreatBtn.addEventListener('click', function () {
+    handleDownload();
+  });
+  els.makeItBetterBtn.addEventListener('click', showEditMode);
+  els.baSlider.addEventListener('input', updateBeforeAfterClip);
+}
+
+function showResultMode() {
+  state.screenMode = 'result';
+  els.resultView.hidden = false;
+  els.editView.hidden = true;
+}
+
+function showEditMode() {
+  state.screenMode = 'edit';
+  els.resultView.hidden = true;
+  els.editView.hidden = false;
+  // Show only "My Magic Drawing" (the existing "toggle" view mode
+  // already does exactly this, including a tap-to-peek-at-the-original
+  // interaction, for free) and re-fit it now that editView's layout
+  // actually has a real, non-zero size — any earlier fit attempt while
+  // this screen was hidden would have measured a 0x0 rect and silently
+  // no-op'd.
+  setViewMode('toggle');
+  zoomProcessed.fitToViewport();
+}
+
+// Draws the Result screen's simple, non-zoomable before/after
+// comparison. Deliberately its own pair of canvases rather than
+// reusing originalCanvas/processedCanvas — those stay dedicated to the
+// zoom/pan-capable editing surface in the Edit screen, so this
+// celebratory view can't accidentally interfere with (or be confused
+// by) that machinery. Crops the original to the working buffer's own
+// offset/size first (reusing cropPixelBuffer, already used for Manual
+// Crop) purely so the two layers are pixel-aligned and the same size —
+// no new pixel logic, just consistent framing for the reveal.
+function renderBeforeAfter() {
+  if (!state.originalPixelBuffer || !state.workingBuffer) return;
+  var beforeCrop = cropPixelBuffer(state.originalPixelBuffer, {
+    x: state.workingOffsetX,
+    y: state.workingOffsetY,
+    width: state.workingBuffer.width,
+    height: state.workingBuffer.height
+  });
+  drawPixelBuffer(els.baCanvasBefore, beforeCrop);
+  drawPixelBuffer(els.baCanvasAfter, state.workingBuffer);
+  els.beforeAfterStage.style.aspectRatio = state.workingBuffer.width + ' / ' + state.workingBuffer.height;
+  updateBeforeAfterClip();
+}
+
+function updateBeforeAfterClip() {
+  var revealPercent = Number(els.baSlider.value); // 0 (all "before") .. 100 (all "after")
+  els.baCanvasAfter.style.clipPath = 'inset(0 ' + (100 - revealPercent) + '% 0 0)';
+  els.baCanvasBefore.style.clipPath = 'inset(0 0 0 ' + revealPercent + '%)';
+}
+
+// ---- Brush size choices (Small / Medium / Large) -----------------------
+//
+// The underlying brush-size *value* is still just els.brushSizeSlider —
+// completely unchanged, still read by paintAt()/updateBrushCursor()
+// above. These three buttons only ever set that hidden slider's value
+// and dispatch the same 'input' event a real drag already would, so
+// nothing downstream needed to change to support them.
+var BRUSH_SIZE_CHOICES = { small: 30, medium: 90, large: 220 };
+
+function initBrushSizeChoices() {
+  var buttons = {
+    small: els.brushSmallBtn,
+    medium: els.brushMediumBtn,
+    large: els.brushLargeBtn
+  };
+
+  function selectSize(key) {
+    els.brushSizeSlider.value = BRUSH_SIZE_CHOICES[key];
+    els.brushSizeSlider.dispatchEvent(new Event('input', { bubbles: true }));
+    Object.keys(buttons).forEach(function (k) {
+      buttons[k].classList.toggle('is-active', k === key);
+    });
+  }
+
+  Object.keys(buttons).forEach(function (key) {
+    buttons[key].addEventListener('click', function () { selectSize(key); });
+  });
 }
 
 // ---- Export --------------------------------------------------------------
@@ -801,9 +992,9 @@ function handleDownload() {
   encodePixelBufferToPNG(state.workingBuffer).then(function (blob) {
     var baseName = state.sourceFile ? stripExtension(state.sourceFile.name) : 'artwork';
     downloadBlob(blob, baseName + '-transparent.png');
-    showToast('Downloaded ' + formatBytes(blob.size) + ' PNG');
-  }).catch(function (err) {
-    showToast('Could not export the PNG: ' + err.message, true);
+    showToast('💾 Saved! Great job!');
+  }).catch(function () {
+    showToast('Oops, that didn’t save. Try again?', true);
   });
 }
 
@@ -824,6 +1015,20 @@ function resetToUpload() {
   els.dropzone.hidden = false;
   els.previewMeta.textContent = '';
   els.performanceNote.textContent = '';
+
+  // Back to the very first screen state for the next picture — magic
+  // overlay off, Result screen the default once it's shown again, the
+  // before/after slider centred, brush size back to Medium.
+  clearInterval(magicMessageTimer);
+  clearTimeout(magicMinTimeTimer);
+  els.magicOverlay.hidden = true;
+  showResultMode();
+  els.baSlider.value = 50;
+  updateBeforeAfterClip();
+  els.brushSizeSlider.value = BRUSH_SIZE_CHOICES.medium;
+  [els.brushSmallBtn, els.brushMediumBtn, els.brushLargeBtn].forEach(function (btn) {
+    btn.classList.toggle('is-active', btn === els.brushMediumBtn);
+  });
 }
 
 function showToast(message, isError) {

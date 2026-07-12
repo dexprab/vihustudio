@@ -1,8 +1,12 @@
-# Background Remover
+# Drawing Magic (née Background Remover)
 
 A small, standalone browser utility that turns a photographed or
-scanned image into a production-quality transparent PNG — entirely
-client-side, with no backend, no accounts, and no AI APIs.
+scanned child's drawing into a production-quality transparent PNG —
+entirely client-side, with no backend, no accounts, and no AI APIs.
+Branded to the child using it as **✨ Drawing Magic**; this document
+keeps the original, more precise technical name for the underlying
+tool and its files, matching the code itself (nothing was renamed on
+disk — see [The child-facing UX layer](#the-child-facing-ux-layer)).
 
 This tool has **zero dependencies** on VihuStudio's Builder, Studio,
 Engine, Runtime, or Theme packages. It doesn't import from anywhere
@@ -19,7 +23,10 @@ background-removal workflow is actually achievable, fast, and
 *trustworthy* on that kind of image: it must never quietly degrade the
 one thing that matters, the artwork itself. See
 [Quality Contract](#quality-contract) below — that requirement sits
-above background-removal quality itself.
+above background-removal quality itself. Its presentation is aimed at
+the child actually using it — a creative "bring your drawing to life"
+moment, not an image-editing workflow — while every technical
+guarantee below still holds exactly as described.
 
 ## Running it
 
@@ -91,6 +98,58 @@ convenience: it's also what makes the Quality Contract enforceable at
 all (see below) — canvas has its own opinions about pixel data that
 this tool cannot allow near anything the user will actually receive.
 
+## The child-facing UX layer
+
+"Drawing Magic" wraps the pipeline above in a screen flow — Welcome →
+a short magic-messages moment while the automatic pass runs → a
+celebratory Result screen → an optional "Make It Better" editing
+screen — built entirely additively on top of the existing DOM and
+`app.js` functions, not a rewrite of either:
+
+- Every element `app.js`'s pipeline/tool code already reads by id
+  (Tolerance/Edge Smoothness/Auto Crop, the zoom buttons, the
+  Overlay/Difference tabs, `previewMeta`/`performanceNote`, ...) is
+  still present in `index.html`, completely functional — `kids.css`
+  only ever hides it from view (`.technical-hidden`, `display:none`)
+  or relabels its container. Deleting `kids.css` would turn the tool
+  back into the plain technical editor it was before this layer,
+  with zero JS changes needed either way.
+- The Result screen's "My Drawing"/"My Magic Drawing" before/after
+  slider is a deliberately separate, simple, non-zoomable pair of
+  canvases (`renderBeforeAfter()`/`updateBeforeAfterClip()` in
+  `app.js`) — reusing `cropPixelBuffer()` once, purely to align the
+  original to the working buffer's own crop offset, and `drawPixelBuffer()`
+  to paint both layers, never the zoom-capable `originalCanvas`/
+  `processedCanvas` pair the Edit screen's Trim/Remove More/Bring It
+  Back tools actually operate on. Keeping these separate means a
+  slider drag on the Result screen can never interfere with — or be
+  confused by — the Edit screen's own zoom/pan/tool state.
+  A CSS `clip-path` split at the slider's percentage is the entire
+  reveal mechanic; no new pixel logic.
+- The Edit screen reuses the pre-existing "toggle" view mode
+  (`setViewMode('toggle')`, originally the "Original / Processed"
+  tab) to show only the current result full-size — a child doesn't
+  need a technical side-by-side while editing. Because that screen is
+  `hidden` while the Welcome/magic/Result screens show, any zoom fit
+  computed before it's ever revealed measures a 0×0 layout rect and
+  silently no-ops (`fitToViewport()`'s own documented fallback); the
+  "Make It Better" button click explicitly re-fits
+  (`zoomProcessed.fitToViewport()`) at the moment `editView` actually
+  becomes visible, once its layout is real.
+- The "magic" screen (`beginMagic()`/`endMagicProcessing()` in
+  `app.js`, hooked into the existing `setProcessing()` — the same
+  function that already correctly fired at the start/end of every
+  pipeline run) cycles three messages and stays up for a minimum
+  ~1.4s even if processing finishes faster, so the moment always
+  reads as intentional rather than a flash — but it only actually
+  hides once BOTH that minimum time *and* the real processing are
+  done, so a slow, very large image is never cut off early to hit a
+  fake deadline. Since Tolerance/Edge Smoothness/Auto Crop are no
+  longer reachable in the child UI, `runPipeline()` now only ever
+  runs once per loaded picture, which is what makes one single magic
+  moment (rather than a repeating one on every slider tweak, as in
+  the pre-"Drawing Magic" UI) the correct behaviour.
+
 ## The algorithm (WhitePaperStrategy)
 
 1. **Sample the border.** Every pixel along the image's outer edge
@@ -137,34 +196,49 @@ this tool cannot allow near anything the user will actually receive.
 
 The automatic algorithm is always the primary workflow. Manual tools
 exist only to clean up what it leaves behind — this utility is not a
-general image editor, and deliberately doesn't grow into one:
+general image editor, and deliberately doesn't grow into one. Child-
+facing labels are in quotes; the underlying element/function names
+(unchanged since Sprint 2) are noted alongside for anyone reading code.
 
-- **Cleanup Brush** — a circular, soft-edged eraser
-  (`js/cleanupBrush.js`'s `eraseCircle`). It can only ever *reduce* a
-  pixel's alpha, never raise it — there is no restore brush, by
-  design, so Undo is the only way back. Brush Size is the only
-  control it needs. Undo/Redo track exactly the pixels a stroke
-  actually touched (a `Map` from pixel index to its alpha *before*
-  that stroke — not a whole-canvas snapshot), so the cost of an undo
-  step scales with how much you actually erased, not image size.
-  Reset Cleanup discards every stroke and returns to the pure
-  automatic result.
-- **Manual Crop** — drag a free rectangle directly on the Transparent
-  preview, then Apply. No rotation, no perspective correction, no
+- **"Remove More" (Cleanup Brush)** — a circular, soft-edged eraser
+  (`js/cleanupBrush.js`'s `eraseCircle`). Can only ever *reduce* a
+  pixel's alpha, never raise it.
+- **"Bring It Back" (Restore Brush)** — the opposite: restores alpha
+  toward fully opaque in a soft-edged circle (`restoreCircle`),
+  undoing whatever the automatic removal or an erase stroke took away.
+  Added in the "Drawing Magic" UX sprint specifically so a child can
+  never lose part of their drawing to an over-eager automatic pass —
+  previously Undo was the only way back. Both brushes share one
+  generic primitive, `paintAlphaCircle(pixelBuffer, cx, cy, radius,
+  targetAlpha, onBeforeChange)` — erase targets alpha 0, restore
+  targets 255 — so they can't drift into two subtly different
+  brushes, and both record undo history identically (a `Map` from
+  pixel index to its alpha *before* the stroke touched it — not a
+  whole-canvas snapshot, so an undo step's cost scales with how much
+  was actually painted, not image size). "Oops!"/"Redo that" undo/redo
+  either brush's strokes interchangeably, since the history doesn't
+  care which direction a stroke moved alpha in. Brush size is three
+  fixed choices (Small/Medium/Large) rather than a numeric slider —
+  the slider element itself (`brushSizeSlider`) still exists, hidden,
+  as the one thing both brushes and the size buttons actually read.
+- **"Trim Picture" (Manual Crop)** — drag a free rectangle directly on
+  the picture, then apply. No rotation, no perspective correction, no
   resizing — a plain rectangular crop, reusing the exact same
-  `cropPixelBuffer()` the automatic Auto Crop step already uses.
-  Reset Crop restores the pre-crop buffer (one level, matching the
-  "Reset Crop" — not "Undo Crop repeatedly" — mental model). Manual
+  `cropPixelBuffer()` the automatic Auto Crop step already uses. Manual
   Crop is explicitly downstream of Cleanup, matching how a person
-  actually works: clean up stray fragments first, then frame the
-  final result.
-- **Automatic settings still take priority.** If you change
-  Tolerance, Edge Smoothness, or Auto Crop *after* making manual
-  edits, the automatic pipeline reruns against the original image and
-  the manual edits are reset (with a toast explaining why) — there's
-  no sound way to replay a brush stroke or a crop rectangle onto a
-  differently-processed image, so the tool is honest about that
-  instead of trying to fake it.
+  actually works: clean up stray fragments (or bring some back) first,
+  then frame the final result.
+- **Tolerance / Edge Smoothness / Auto Crop** are no longer
+  child-editable controls — the child-facing UI hides them entirely
+  (Auto Crop stays fixed on) so a picture only ever needs one
+  automatic pass. The underlying elements and their `input`/`change`
+  listeners are all still present and functional (see
+  [The child-facing UX layer](#the-child-facing-ux-layer)); if
+  something ever did change one of them post-load, the automatic
+  pipeline would still correctly rerun and reset any manual edits with
+  an explanatory toast — there's no sound way to replay a brush stroke
+  or a crop rectangle onto a differently-processed image, so the tool
+  stays honest about that rather than trying to fake it.
 
 ## Quality Contract
 
@@ -294,13 +368,24 @@ one-time rectangular copy) not to need one.
   artwork photographed or scanned on a roughly uniform light
   background.
 - **V1.1 — Upload reliability, manual finishing tools, and quality
-  hardening** *(this version)*. Fixed a real double-file-chooser race
-  in the Browse button (a click bubbling from the button to its
-  parent dropzone fired `fileInput.click()` twice); found and fixed
-  the canvas premultiplied-alpha RGB corruption described above with
-  a dependency-free PNG encoder; added the Cleanup Brush, Manual Crop,
+  hardening.** Fixed a real double-file-chooser race in the Browse
+  button (a click bubbling from the button to its parent dropzone
+  fired `fileInput.click()` twice); found and fixed the canvas
+  premultiplied-alpha RGB corruption described above with a
+  dependency-free PNG encoder; added the Cleanup Brush, Manual Crop,
   and the Overlay/Difference preview views; live-updating, fit-to-view
   zoom with independently resizable preview panes.
+- **V1.2 — "Drawing Magic": the child-facing UX transformation**
+  *(this version)*. No pipeline/algorithm change — see
+  [The child-facing UX layer](#the-child-facing-ux-layer). Added the
+  Restore Brush ("Bring It Back," the one genuinely new capability —
+  V1.1's own roadmap entry below had flagged this as a possible V4
+  item; it turned out to be needed now, not later, once a child could
+  actually lose part of a drawing to an over-eager automatic pass with
+  no way back but Undo) alongside a full screen-flow/branding/copy
+  pass (Welcome → magic-processing moment → celebratory Result screen
+  with a before/after slider → optional "Make It Better" editing
+  screen with three fixed brush sizes instead of a numeric slider).
 - **V2 — Uniform colour removal.** Generalizes `WhitePaperStrategy`'s
   approach to any single dominant background colour (green screen,
   coloured construction paper, a solid-colour desk), not just white/
@@ -310,9 +395,7 @@ one-time rectangular copy) not to need one.
   photographed against a busy or non-uniform background where
   flood-fill alone can't separate subject from background.
 - **V4 — Further manual refinement**, as real usage surfaces concrete
-  gaps the Cleanup Brush and Manual Crop don't cover (e.g. a restore
-  brush layered *underneath* the erase-only brush, if a future sprint
-  decides that's actually needed).
+  gaps Remove More/Bring It Back/Trim Picture still don't cover.
 
 ## Becoming an Asset Normalizer step
 

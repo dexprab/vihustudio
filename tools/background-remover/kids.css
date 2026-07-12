@@ -1,0 +1,373 @@
+/* kids.css — the "Drawing Magic" presentation layer.
+ *
+ * Loaded after styles.css. styles.css still owns every structural /
+ * functional rule the pipeline actually depends on (canvas sizing,
+ * the zoom transform math, resize handles, checkerboard, etc.) — this
+ * file only ever changes how things LOOK and which technical controls
+ * are visible, never anything the JS measures (getBoundingClientRect,
+ * canvas backing-store size, etc.). Nothing here should be load-bearing
+ * for correctness; if a rule here were deleted, the tool would look
+ * like a plain technical editor again but keep working.
+ */
+
+:root {
+  --kid-bg-1: #fff6e9;
+  --kid-bg-2: #eaf6ff;
+  --kid-accent: #ff8b5e;
+  --kid-accent-hover: #ff7a45;
+  --kid-good: #59b287;
+  --kid-good-hover: #479c73;
+  --kid-love: #ef6f8e;
+  --kid-text: #4a3b2f;
+  --kid-radius: 22px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --kid-bg-1: #2a2116;
+    --kid-bg-2: #16232b;
+    --kid-text: #f3e9d9;
+  }
+}
+
+html, body {
+  background: linear-gradient(160deg, var(--kid-bg-1), var(--kid-bg-2));
+}
+
+.app-header h1 {
+  font-size: 2.4rem;
+}
+.app-subtitle {
+  font-size: 1.05rem;
+}
+
+/* ---- Welcome screen ---- */
+
+.dropzone {
+  border-radius: 32px;
+  border-width: 3px;
+  padding: 72px 24px;
+}
+.dropzone-title {
+  font-size: 1.5rem;
+}
+.dropzone-icon {
+  color: var(--kid-accent);
+}
+
+.btn-big {
+  font-size: 1.15rem;
+  padding: 16px 36px;
+  border-radius: 999px;
+}
+
+/* ---- Magic processing overlay ---- */
+
+.magic-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: linear-gradient(160deg, var(--kid-bg-1), var(--kid-bg-2));
+}
+.magic-overlay[hidden] { display: none; }
+
+.magic-sparkle {
+  font-size: 5rem;
+  animation: magic-spin 1.6s ease-in-out infinite;
+}
+@keyframes magic-spin {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.25) rotate(20deg); }
+}
+
+.magic-message {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--kid-text);
+}
+
+/* ---- Workspace shell ---- */
+
+/* .workspace's old two-column grid (styles.css) was built for exactly
+   two children, .preview-panel and .controls-panel — but this sprint
+   gave .workspace three new direct children instead (the New Drawing
+   link, Result screen, Edit screen), which the old grid was silently
+   auto-placing into its 1fr/300px columns (found via screenshot: the
+   Result screen's content was squeezed into the narrow 300px column).
+   .workspace goes back to plain block flow; the 1fr/300px split moves
+   down onto .edit-view itself, which really does have exactly
+   .preview-panel + .controls-panel as its own two grid-worthy children
+   (edit-headline/edit-subhint span both columns above them). */
+.workspace {
+  display: block;
+}
+.edit-view {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  align-items: start;
+}
+.edit-view[hidden] { display: none; }
+.edit-headline,
+.edit-subhint {
+  grid-column: 1 / -1;
+}
+@media (max-width: 860px) {
+  .edit-view { grid-template-columns: 1fr; }
+}
+
+.new-drawing-btn {
+  display: block;
+  margin: 0 auto 18px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.new-drawing-btn:hover { background: var(--border); color: var(--text); }
+
+/* ---- Result screen ---- */
+
+.result-view[hidden] { display: none; }
+
+.result-headline {
+  text-align: center;
+  font-size: 1.8rem;
+  margin: 0 0 24px;
+  color: var(--kid-text);
+}
+
+.before-after {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.before-after-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--kid-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.before-after-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ba-label {
+  position: absolute;
+  bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(20, 18, 14, 0.6);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 3;
+}
+.ba-label-before { left: 10px; }
+.ba-label-after { right: 10px; }
+
+.ba-slider {
+  width: 100%;
+  margin-top: 16px;
+  accent-color: var(--kid-accent);
+}
+
+.ba-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 8px 0 0;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.result-actions .btn-primary {
+  background: var(--kid-good);
+}
+.result-actions .btn-primary:hover { background: var(--kid-good-hover); }
+
+/* ---- Edit screen ---- */
+
+.edit-headline {
+  text-align: center;
+  font-size: 1.6rem;
+  margin: 0 0 4px;
+  color: var(--kid-text);
+}
+.edit-subhint {
+  text-align: center;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+/* Hide the technical tab bar / zoom buttons from the child-facing UI —
+   Difference/Overlay stay reachable internally (renderAnalysisView()
+   still works) but are not something a child needs to see or tap. */
+.edit-view .preview-toolbar { display: none; }
+/* Technical readout ("400 x 400 -> 285 x 285 (cropped) - background ≈
+   rgb(...)") — implementation detail, not something a child needs to
+   read. app.js still writes to it every run; it's just never shown. */
+.edit-view .preview-meta { display: none; }
+
+.kids-controls {
+  gap: 14px;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 700;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 18px;
+  padding: 16px 8px;
+  cursor: pointer;
+}
+.tool-btn:hover { background: var(--accent-soft); }
+.tool-btn[aria-pressed="true"] {
+  background: var(--kid-accent);
+  border-color: var(--kid-accent);
+  color: #fff;
+}
+.tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tool-icon { font-size: 1.6rem; }
+.tool-label { font-size: 0.82rem; }
+
+.redo-link {
+  display: block;
+  margin: -4px auto 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px;
+}
+.redo-link:disabled { color: var(--text-muted); opacity: 0.6; cursor: not-allowed; }
+
+.sub-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.sub-panel[hidden] { display: none; }
+.sub-panel-label {
+  font-weight: 700;
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+.brush-size-choices {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.brush-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  flex: 1;
+}
+.brush-choice.is-active {
+  background: var(--kid-accent);
+  border-color: var(--kid-accent);
+  color: #fff;
+}
+.brush-dot {
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+.brush-dot-small { width: 8px; height: 8px; }
+.brush-dot-medium { width: 16px; height: 16px; }
+.brush-dot-large { width: 24px; height: 24px; }
+
+.start-over-link {
+  display: block;
+  margin: 12px auto 0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+.start-over-link:hover { color: var(--text); }
+
+.btn-save {
+  background: var(--kid-good);
+  margin-top: 4px;
+}
+.btn-save:hover { background: var(--kid-good-hover); }
+
+/* Restore ("Bring It Back") gets its own warm colour for the brush
+   cursor so it visually reads as the opposite action from erase. */
+.preview-viewport.is-restore-active .brush-cursor {
+  border-color: var(--kid-love);
+  background: rgba(239, 111, 142, 0.14);
+}
+
+/* Technical controls the pipeline still reads (tolerance/feather/
+   auto-crop/brush size slider/performance note) — kept in the DOM,
+   never shown. */
+.technical-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
