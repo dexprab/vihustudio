@@ -84,6 +84,12 @@
           </div>
         </div>
 
+        <div class="kid-zoom-row">
+          <span aria-hidden="true">🔍</span>
+          <input type="range" id="kidZoomSlider" min="5" max="400" value="100" aria-label="Make the picture bigger or smaller">
+          <span aria-hidden="true">🔎</span>
+        </div>
+
         <div class="preview-grid" id="previewGrid">
           <div class="preview-pane" id="originalPane">
             <span class="preview-label">My Drawing</span>
@@ -158,11 +164,12 @@
 
         <!-- Shown while Trim Picture is active -->
         <div class="sub-panel" id="cropPanel" hidden>
-          <p class="sub-panel-label">Drag a box around the part you want to keep.</p>
+          <p class="sub-panel-label">Drag a box around a part of your picture.</p>
           <div class="control-actions-row">
-            <button type="button" class="btn btn-primary" id="cropApplyBtn" disabled>✓ Trim It!</button>
-            <button type="button" class="btn btn-secondary" id="cropResetBtn" disabled>Undo Trim</button>
+            <button type="button" class="btn btn-danger" id="cropTrashBtn" disabled>🗑️ Trash It</button>
+            <button type="button" class="btn btn-primary" id="cropApplyBtn" disabled>✓ Keep This</button>
           </div>
+          <button type="button" class="start-over-link" id="cropResetBtn" disabled>Undo Trim</button>
         </div>
 
         <button type="button" class="btn btn-primary btn-big btn-save" id="downloadBtn">💾 Save My Drawing</button>

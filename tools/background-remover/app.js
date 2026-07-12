@@ -16,7 +16,7 @@
 import { drawPixelBuffer, createZoomController } from './js/preview.js';
 import { debounce, downloadBlob, formatBytes, formatDimensions, stripExtension } from './js/utils.js';
 import { encodePixelBufferToPNG } from './js/pngEncoder.js';
-import { eraseCircle, restoreCircle } from './js/cleanupBrush.js';
+import { eraseCircle, restoreCircle, eraseRect } from './js/cleanupBrush.js';
 import { cropPixelBuffer } from './js/cropper.js';
 import { drawOverlay, drawDifference } from './js/analysisView.js';
 
@@ -49,6 +49,7 @@ var els = {
   zoomInBtn: document.getElementById('zoomInBtn'),
   zoomOutBtn: document.getElementById('zoomOutBtn'),
   zoomResetBtn: document.getElementById('zoomResetBtn'),
+  kidZoomSlider: document.getElementById('kidZoomSlider'),
 
   toleranceSlider: document.getElementById('toleranceSlider'),
   toleranceValue: document.getElementById('toleranceValue'),
@@ -71,6 +72,7 @@ var els = {
 
   cropToggleBtn: document.getElementById('cropToggleBtn'),
   cropApplyBtn: document.getElementById('cropApplyBtn'),
+  cropTrashBtn: document.getElementById('cropTrashBtn'),
   cropResetBtn: document.getElementById('cropResetBtn'),
   cropSelectionBox: document.getElementById('cropSelectionBox'),
   cropPanel: document.getElementById('cropPanel'),
@@ -148,8 +150,19 @@ var state = {
 function handleZoomChange(zoom) {
   els.zoomResetBtn.textContent = Math.round(zoom * 100) + '%';
 }
+// zoomProcessed also drives the child-facing zoom slider — kept as its
+// own callback (rather than folded into the shared handleZoomChange)
+// so a zoomOriginal/zoomAnalysis change never overwrites it with an
+// unrelated pane's zoom level; only the picture the child is actually
+// looking at (My Magic Drawing, in Edit mode) should move that slider.
+function handleProcessedZoomChange(zoom) {
+  handleZoomChange(zoom);
+  if (els.kidZoomSlider) {
+    els.kidZoomSlider.value = Math.round(zoom * 100);
+  }
+}
 var zoomOriginal = createZoomController(els.originalViewport, els.originalZoomTarget, { onChange: handleZoomChange });
-var zoomProcessed = createZoomController(els.processedViewport, els.processedZoomTarget, { onChange: handleZoomChange });
+var zoomProcessed = createZoomController(els.processedViewport, els.processedZoomTarget, { onChange: handleProcessedZoomChange });
 var zoomAnalysis = createZoomController(els.analysisViewport, els.analysisZoomTarget, { onChange: handleZoomChange });
 
 init();
@@ -247,6 +260,7 @@ function init() {
   initManualCrop();
   initBrushSizeChoices();
   initScreenFlow();
+  initKidZoomSlider();
 
   els.downloadBtn.addEventListener('click', handleDownload);
   els.resetBtn.addEventListener('click', resetToUpload);
@@ -696,6 +710,7 @@ function initManualCrop() {
     setActiveTool(state.activeTool === 'crop' ? 'pan' : 'crop');
   });
   els.cropApplyBtn.addEventListener('click', applyManualCrop);
+  els.cropTrashBtn.addEventListener('click', applyTrimTrash);
   els.cropResetBtn.addEventListener('click', resetManualCrop);
 
   var dragging = false;
@@ -745,11 +760,11 @@ function initManualCrop() {
     if (width < 2 || height < 2) {
       state.cropRect = null;
       els.cropSelectionBox.hidden = true;
-      els.cropApplyBtn.disabled = true;
+      updateCropButtons();
       return;
     }
     state.cropRect = { x: x, y: y, width: width, height: height };
-    els.cropApplyBtn.disabled = false;
+    updateCropButtons();
   }
 }
 
@@ -777,6 +792,41 @@ function applyManualCrop() {
   if (state.viewMode === 'overlay' || state.viewMode === 'difference') renderAnalysisView();
 }
 
+// "Trash It" — the other half of Trim Picture. Unlike "Keep This"
+// (applyManualCrop, above), the drawn box is the part that goes AWAY;
+// everything outside it stays exactly as it was. The canvas itself
+// never resizes (there's no "outside" to crop to), so this is really
+// a rectangular erase, not a crop — it goes through eraseRect and
+// records onto the same cleanupHistory/cleanupRedoStack stack
+// Remove More/Bring It Back already use (see cleanupBrush.js's own
+// doc comment on eraseRect), rather than the crop-specific
+// preCropSnapshot. That means "Oops!" undoes a Trash the same way it
+// undoes a brush stroke, while "Undo Trim" (resetManualCrop) stays
+// dedicated to undoing a "Keep This" resize, exactly as before.
+function applyTrimTrash() {
+  if (!state.cropRect || !state.workingBuffer) return;
+
+  var rect = state.cropRect;
+  var changes = new Map();
+  eraseRect(state.workingBuffer, rect, function (pixelIndex, alphaBefore) {
+    if (!changes.has(pixelIndex)) changes.set(pixelIndex, alphaBefore);
+  });
+  if (changes.size > 0) {
+    state.cleanupHistory.push({ changes: changes });
+    state.cleanupRedoStack = [];
+    updateCleanupButtons();
+  }
+
+  state.cropRect = null;
+  els.cropSelectionBox.hidden = true;
+
+  drawPixelBuffer(els.processedCanvas, state.workingBuffer);
+  setActiveTool('pan');
+  updateCropButtons();
+  if (state.lastMeta) updateMeta(state.lastMeta);
+  if (state.viewMode === 'overlay' || state.viewMode === 'difference') renderAnalysisView();
+}
+
 function resetManualCrop() {
   if (!state.preCropSnapshot) return;
   state.workingBuffer = state.preCropSnapshot.buffer;
@@ -793,6 +843,7 @@ function resetManualCrop() {
 
 function updateCropButtons() {
   els.cropApplyBtn.disabled = !state.cropRect;
+  els.cropTrashBtn.disabled = !state.cropRect;
   els.cropResetBtn.disabled = !state.preCropSnapshot;
 }
 
@@ -818,6 +869,7 @@ function setActiveTool(tool) {
     state.cropRect = null;
     els.cropSelectionBox.hidden = true;
     els.cropApplyBtn.disabled = true;
+    els.cropTrashBtn.disabled = true;
   }
 
   // Reveal whichever tool's own sub-panel matches (brush size choices
@@ -1002,6 +1054,15 @@ function initBrushSizeChoices() {
   };
 
   function selectSize(key) {
+    // Re-tapping the already-active size is how a child turns the
+    // brush off — there was previously no way to leave Remove
+    // More/Bring It Back once picked, other than tapping a *different*
+    // tool. This only fires when a size is actually active (isPaintTool),
+    // so it can never fire from, say, an initial no-tool state.
+    if (buttons[key].classList.contains('is-active') && state.activeTool !== 'pan') {
+      setActiveTool('pan');
+      return;
+    }
     els.brushSizeSlider.value = BRUSH_SIZE_CHOICES[key];
     els.brushSizeSlider.dispatchEvent(new Event('input', { bubbles: true }));
     Object.keys(buttons).forEach(function (k) {
@@ -1011,6 +1072,24 @@ function initBrushSizeChoices() {
 
   Object.keys(buttons).forEach(function (key) {
     buttons[key].addEventListener('click', function () { selectSize(key); });
+  });
+}
+
+// ---- Picture zoom slider (child-facing) --------------------------------
+//
+// A single plain slider, standing in for the hidden technical
+// +/-/Fit controls (.zoom-controls, see kids.css) — a child can drag
+// it directly rather than needing to hit small +/- buttons repeatedly.
+// Only ever drives zoomProcessed (the picture actually being edited in
+// Edit mode); its value is kept in sync the other direction too via
+// handleProcessedZoomChange, so wheel-zoom/fit-to-viewport/the shared
+// +/- buttons all keep this slider showing the truth.
+function initKidZoomSlider() {
+  if (!els.kidZoomSlider) return;
+  els.kidZoomSlider.addEventListener('input', function () {
+    var percent = Number(els.kidZoomSlider.value);
+    if (!percent || percent <= 0) return;
+    zoomProcessed.setZoom(percent / 100);
   });
 }
 

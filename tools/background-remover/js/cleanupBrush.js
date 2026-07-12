@@ -87,3 +87,42 @@ export function eraseCircle(pixelBuffer, cx, cy, radius, onBeforeChange) {
 export function restoreCircle(pixelBuffer, cx, cy, radius, onBeforeChange) {
   return paintAlphaCircle(pixelBuffer, cx, cy, radius, 255, onBeforeChange);
 }
+
+// "Trash It" — the destructive half of Trim Picture. Erases every
+// pixel inside a rectangle (hard-edged, not soft — the rectangle
+// itself, drawn by the child, is already the exact selection, so
+// there's no ambiguous boundary to feather the way a circular brush
+// has). Never resizes the buffer, unlike Trim Picture's other action,
+// "Keep This" (cropPixelBuffer) — this only ever clears alpha within
+// the given bounds, so it composes with Remove More/Bring It Back's
+// own undo history instead of the crop-specific one: an eraseRect
+// call and a paintAlphaCircle call already record undo the same way
+// (onBeforeChange per pixel, called once, before the very first time
+// that pixel changes), so callers can push either kind of change onto
+// one shared history without it needing to know which brush a given
+// entry came from.
+export function eraseRect(pixelBuffer, rect, onBeforeChange) {
+  var width = pixelBuffer.width;
+  var height = pixelBuffer.height;
+  var data = pixelBuffer.data;
+
+  var minX = Math.max(0, rect.x);
+  var minY = Math.max(0, rect.y);
+  var maxX = Math.min(width - 1, rect.x + rect.width - 1);
+  var maxY = Math.min(height - 1, rect.y + rect.height - 1);
+  if (minX > maxX || minY > maxY) return null;
+
+  for (var y = minY; y <= maxY; y++) {
+    for (var x = minX; x <= maxX; x++) {
+      var pixelIndex = y * width + x;
+      var alphaOffset = pixelIndex * 4 + 3;
+      var currentAlpha = data[alphaOffset];
+      if (currentAlpha !== 0) {
+        if (onBeforeChange) onBeforeChange(pixelIndex, currentAlpha);
+        data[alphaOffset] = 0;
+      }
+    }
+  }
+
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}

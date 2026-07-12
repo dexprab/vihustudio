@@ -361,11 +361,37 @@ html, body {
 }
 .btn-save:hover { background: var(--kid-good-hover); }
 
+/* "Trash It" — the destructive half of Trim Picture — gets its own
+   warm-red colour so it visually reads as different from "Keep This". */
+.btn-danger {
+  background: var(--kid-love);
+  color: #fff;
+}
+.btn-danger:hover { background: #e2536f; }
+.btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* Restore ("Bring It Back") gets its own warm colour for the brush
    cursor so it visually reads as the opposite action from erase. */
 .preview-viewport.is-restore-active .brush-cursor {
   border-color: var(--kid-love);
   background: rgba(239, 111, 142, 0.14);
+}
+
+/* A simple, always-visible way to make the picture bigger or smaller
+   while editing — the technical zoom buttons (.zoom-controls) stay
+   hidden with the rest of .preview-toolbar; this is a plain, single
+   slider a child can drag with no separate +/- buttons to hit
+   precisely. */
+.kid-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+.kid-zoom-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--kid-accent);
 }
 
 /* Technical controls the pipeline still reads (tolerance/feather/
