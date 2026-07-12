@@ -106,7 +106,7 @@ const ThemeEngine=(function(){
   // — no project format change for legacy projects (the keys simply
   // don't exist there).
   const FONT_CHOICES=[
-    {value:'',label:'Theme default'},
+    {value:'',label:'World default'},
     {value:'Georgia, serif',label:'Storybook (Georgia)'},
     {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
     {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
@@ -769,7 +769,7 @@ const ThemeEngine=(function(){
 
     const storyActiveId=getActiveThemeId();
     _fillThemeSection('themeLibraryStoryOfficial',catalog.story.official,storyActiveId,'story',null);
-    _fillThemeSection('themeLibraryStoryImported',catalog.story.imported,storyActiveId,'story','No imported themes yet.');
+    _fillThemeSection('themeLibraryStoryImported',catalog.story.imported,storyActiveId,'story','No worlds added yet.');
 
     const artworkActiveId=getActiveArtworkThemeId();
     const artworkOfficialEl=document.getElementById('themeLibraryArtworkOfficial');
@@ -778,7 +778,7 @@ const ThemeEngine=(function(){
       artworkOfficialEl.appendChild(_renderNoneArtworkCard(artworkActiveId));
       catalog.artwork.official.forEach(function(t){ artworkOfficialEl.appendChild(_renderThemeCard(t,artworkActiveId,'artwork')); });
     }
-    _fillThemeSection('themeLibraryArtworkImported',catalog.artwork.imported,artworkActiveId,'artwork','No imported themes yet.');
+    _fillThemeSection('themeLibraryArtworkImported',catalog.artwork.imported,artworkActiveId,'artwork','No worlds added yet.');
 
     _wireImportButton();
   }

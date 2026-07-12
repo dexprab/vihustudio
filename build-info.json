@@ -1,9 +1,9 @@
 {
-  "version": "2.0.10",
-  "sprint": "Dev Footer Size Fix",
-  "task": "The on-screen dev build-info badge (js/buildInfo.js, .dev-footer) was rendering as a 1388x60px, 3-line banner spanning almost the full viewport width -- root cause traced to the footer text builder concatenating the entire long-form sprint+task changelog prose (this project's own established multi-hundred-word commit-message style, see CLAUDE.md) directly into the on-screen string, producing 1000+ character footer text. Fixed at the source: js/buildInfo.js's summarize() now only ever renders version/build/commit/environment -- sprint/task are dropped from the visible badge entirely (still present in the fetched build-info.json for anyone opening the file directly). css/style.css's .dev-footer also shrunk (font-size 11px->9px, padding 6px 10px->3px 7px, right/bottom 12px->8px, opacity 0.85->0.7, plus white-space:nowrap) so it reads as the small, unobtrusive corner badge it was always meant to be -- confirmed via Playwright: 1388x60px -> 215x18px.",
-  "build": "0080",
+  "version": "2.1.0",
+  "sprint": "Creator UI Convergence Sprint",
+  "task": "A presentation/interaction polish sprint across the whole Studio Creator UI -- Screen 1, Screen 2, Workspace (the primary focus), a brand-new Object Strip, Publish, and a language pass -- explicitly not a capability, architecture, or Runtime change. Workspace gained a Home button + a read-only World/Page-Style header readout, a warmer header/sidebar/canvas/context-panel visual pass, and a real fix for a pre-existing latent duplicate-thumbnail race bug in renderList()/renderTimeline() plus an unrelated Publish Studio close-button CSS bug. The Page Strip stays vertical in the left sidebar (full functionality unchanged) per the brief's own explicit orientation instruction. The new Object Strip (js/objectStrip.js) is a horizontally-scrolling, child-friendly readout of every object on the current page -- Background/Artwork/Frame/Text/Stickers/Decorations -- each showing a thumbnail, friendly name, and Editable/Part-of-this-World status, fully bidirectionally synced with canvas and Context Panel selection via the exact same window.setSelectedSceneElement/setSelectedTextElement entry points the canvas's own click handlers use. A real language review replaced leaked technical vocabulary (Theme/Representation/Holder/Layer) with child-friendly words (World/Look/Frame/Order) across the sidebar, Theme Picker modal, World Designer tab, and Card Designer. See CLAUDE.md's Creator UI Convergence Sprint entry for the full account, including the Builder<->Creator mapping review's one disclosed, unfixed gap (Layer-Pack-declared decorative content has no Object Strip entry yet).",
+  "build": "0081",
   "buildDate": "2026-07-12",
-  "commit": "7e862b7",
+  "commit": "pending",
   "environment": "Release"
 }

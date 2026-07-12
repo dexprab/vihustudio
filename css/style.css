@@ -35,37 +35,83 @@ body{
   transition:background-color 0.3s, color 0.3s;
 }
 
-/* Header */
+/* Header — Creator UI Convergence Sprint: kept deliberately lightweight
+   per the sprint brief (Home / Current World / Current Page Style /
+   Project Name / Open / Save As / Publish, no editing toolbar). Same
+   navy brand bar, softened with more breathing room and a gentle
+   inset so it reads as one calm strip rather than a dense toolbar. */
 .app-header{
   height:64px;
   background:var(--navy);
   color:#fff;
   display:flex;
   align-items:center;
-  padding:0 20px;
+  padding:0 22px;
   gap:16px;
   justify-content:space-between;
-  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  box-shadow:0 2px 10px rgba(0,0,0,0.14);
+  position:relative;
+  z-index:5;
 }
 
 .header-left, .header-right{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:10px;
 }
 
 .header-center{
   flex:1;
   display:flex;
   justify-content:center;
+  align-items:center;
+  min-width:0;
 }
 
 .logo{
   font-size:18px;
   font-weight:bold;
   color:var(--gold);
-  margin-right:16px;
+  margin-right:6px;
 }
+
+.header-icon-btn{
+  width:var(--button-height) !important;
+  padding:0 !important;
+  border:none;
+  border-radius:50%;
+  background:rgba(255,255,255,0.14);
+  color:#fff;
+  cursor:pointer;
+  font-size:16px;
+  height:var(--button-height);
+  transition:background 0.2s, transform 0.15s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-right:2px;
+}
+.header-icon-btn:hover{ background:rgba(255,255,255,0.24); transform:scale(1.06); }
+
+/* Read-only orientation readout — "🏛️ Museum Gallery · Portrait" —
+   see js/app.js's _updateHeaderContext(). Never interactive; the real
+   controls for changing World / Page Style stay exactly where they
+   already lived (left sidebar Theme card, right Context Panel). */
+.header-context{
+  font-size:13px;
+  color:rgba(255,255,255,0.82);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+  pointer-events:none;
+}
+.header-context-world{ font-weight:700; color:#fff; }
+.header-context-sep{ opacity:0.5; }
+.header-context-style{ opacity:0.85; }
 
 .project-title-input{
   padding:8px 12px;
@@ -90,35 +136,36 @@ body{
 
 .autosave-status{
   font-size:12px;
-  color:#fff;
-  min-width:110px;
+  color:rgba(255,255,255,0.75);
+  min-width:0;
 }
 
 .theme-toggle, .export-btn, #openBtn, #saveBtn{
-  padding:8px 12px;
+  padding:8px 14px;
   border:none;
-  border-radius:var(--border-radius);
-  background:rgba(255,255,255,0.2);
+  border-radius:20px;
+  background:rgba(255,255,255,0.14);
   color:#fff;
   cursor:pointer;
   font-size:13px;
   height:var(--button-height);
-  transition:background 0.2s;
+  transition:background 0.2s, transform 0.15s;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
 .theme-toggle:hover, .export-btn:hover, #openBtn:hover, #saveBtn:hover{
-  background:rgba(255,255,255,0.3);
+  background:rgba(255,255,255,0.26);
 }
+.theme-toggle{ border-radius:50%; width:var(--button-height) !important; padding:0 !important; }
 
 /* Workspace layout — right Designer Palette widened in Sprint 4.2 so the
    Card Designer's controls (mode cards, scale slider) have breathing room
    and the auto-fill icon grid fits more cards per row. */
 .workspace{
   display:grid;
-  grid-template-columns:340px 1fr 400px;
+  grid-template-columns:300px 1fr 400px;
   height:calc(100vh - 64px);
   gap:0;
 }
@@ -127,7 +174,7 @@ body{
 .sidebar{
   background:var(--panel);
   overflow-y:auto;
-  padding:var(--section-padding);
+  padding:20px var(--section-padding);
   border-right:1px solid var(--line);
 }
 
@@ -281,9 +328,13 @@ button:active{
 
 #uploadBtn{
   font-size:13px;
-  background:rgba(255,203,69,0.7);
+  background:linear-gradient(135deg,#ffd668,var(--gold));
+  border-radius:20px;
+  box-shadow:0 3px 10px rgba(255,203,69,0.24);
   margin-bottom:var(--section-gap);
+  transition:transform 0.15s, box-shadow 0.15s;
 }
+#uploadBtn:hover{ transform:translateY(-1px); box-shadow:0 5px 14px rgba(255,203,69,0.32); }
 
 /* Preview area
  * Sprint 9.1.2 — WYSIWYE. The preview area is a flex column that
@@ -509,7 +560,102 @@ button:active{
   color:var(--gold);
 }
 
-/* Timeline/Filmstrip - Belongs to the center workspace, full column width */
+/* Creator UI Convergence Sprint — polish pass on the sidebar Page Strip
+   itself (position/functionality unchanged — see index.html). */
+.slide-list{ gap:10px; }
+.thumb{
+  border-radius:14px;
+  padding:8px;
+  border-color:transparent;
+  background:var(--bg);
+}
+.thumb:hover{ background:rgba(255,203,69,0.10); }
+.thumb.selected{ background:rgba(255,203,69,0.14); box-shadow:0 0 0 2px var(--gold); }
+
+/* Creator UI Convergence Sprint — the Object Strip (new). A calm,
+   horizontally scrolling readout of every object on the current page —
+   see js/objectStrip.js for the population logic and the child-facing
+   vocabulary rule (never "Layer"/"Holder"/"Decoration"/"Experience"/
+   "Representation"/"Selection"). Deliberately NOT a Layer Panel: no
+   drag handles, no reorder — objects render in the page's own render
+   order and that's the only order this strip ever shows. */
+.object-strip{
+  width:100%;
+  background:transparent;
+  border-top:1px solid var(--line);
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:14px 4px 8px;
+  margin-top:6px;
+  min-height:98px;
+}
+.object-strip-list{
+  display:flex;
+  gap:10px;
+  padding:0 4px;
+  margin:0 auto;
+  width:max-content;
+}
+.object-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:78px;
+  padding:8px 6px;
+  border-radius:14px;
+  border:1px solid transparent;
+  background:var(--bg);
+  cursor:pointer;
+  transition:border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.object-card:hover{ border-color:var(--gold); transform:translateY(-1px); }
+.object-card.selected{
+  background:rgba(255,203,69,0.14);
+  box-shadow:0 0 0 2px var(--gold);
+}
+.object-card-thumb{
+  width:44px;
+  height:44px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  overflow:hidden;
+  margin-bottom:5px;
+}
+.object-card-thumb img{ width:100%; height:100%; object-fit:cover; }
+.object-card-name{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--text);
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+.object-card-badge{
+  font-size:9px;
+  margin-top:2px;
+  color:var(--text-tertiary);
+  white-space:nowrap;
+}
+.object-strip-empty{
+  font-size:12px;
+  color:var(--text-tertiary);
+  padding:8px 4px;
+}
+
+/* Legacy read-only page-thumbnail mirror — superseded by the sidebar
+   Page Strip. Kept in the DOM (several call sites in
+   app.js/pageOps.js/themeEngine.js call window.renderTimeline()
+   unconditionally) but never shown; an
+   author-stylesheet rule is required since `[hidden]` alone loses to
+   the more specific `.timeline{display:flex}` rule that follows. */
+.timeline{ display:none !important; }
 .timeline{
   width:100%;
   height:auto;
@@ -3341,12 +3487,12 @@ body.dark-theme .picture-studio-btn{ background:var(--panel); }
  * stage bodies light up in subsequent milestones.
  * =========================== */
 .publish-btn{
-  background:var(--gold);
+  background:linear-gradient(135deg,#ffd668,var(--gold));
   color:var(--navy);
   font-weight:700;
   border:none;
   border-radius:24px;
-  padding:8px 18px;
+  padding:9px 20px;
   font-size:13px;
   cursor:pointer;
   height:auto !important;
@@ -3355,11 +3501,12 @@ body.dark-theme .picture-studio-btn{ background:var(--panel); }
   display:inline-flex;
   align-items:center;
   gap:4px;
+  box-shadow:0 4px 14px rgba(255,203,69,0.28);
   transition:background 0.15s, transform 0.05s, box-shadow 0.15s;
 }
-.publish-btn:hover{ background:#FFD466; transform:translateY(-1px); box-shadow:0 4px 12px rgba(255,203,69,0.30); }
-.publish-btn:active{ transform:translateY(0); box-shadow:none; }
-.publish-btn:focus-visible{ outline:2px solid var(--navy); outline-offset:2px; }
+.publish-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,203,69,0.38); }
+.publish-btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(255,203,69,0.28); }
+.publish-btn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
 
 .publish-studio-modal{
   position:fixed;
@@ -3387,17 +3534,19 @@ body.dark-theme .picture-studio-btn{ background:var(--panel); }
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  padding:14px 24px;
+  padding:16px 26px;
   border-bottom:1px solid var(--line);
 }
 .publish-studio-brand{
-  font-size:14px;
+  font-size:15px;
   font-weight:700;
-  letter-spacing:0.4px;
-  opacity:0.85;
+  letter-spacing:0.3px;
+  color:var(--navy);
+  opacity:0.9;
 }
+body.dark-theme .publish-studio-brand{ color:var(--gold); }
 .publish-studio-close{
-  width:38px;
+  width:38px !important;
   height:38px !important;
   padding:0 !important;
   margin:0 !important;
@@ -4338,24 +4487,26 @@ body.creation-flow-active .app-header{ display:none; }
 
 .creation-flow-brand{
   text-align:center;
-  margin-bottom:12px;
+  margin-bottom:20px;
 }
 .creation-flow-brand-name{
-  font-size:15px;
+  font-size:16px;
   font-weight:700;
-  letter-spacing:.04em;
+  letter-spacing:.05em;
   color:var(--navy);
 }
 .creation-flow-brand-tagline{
-  font-size:12px;
+  font-size:12.5px;
   color:var(--text-secondary);
-  margin-top:2px;
+  margin-top:3px;
+  letter-spacing:.01em;
 }
 .creation-flow-brand-divider{
   font-size:12px;
-  color:var(--text-tertiary);
-  letter-spacing:.08em;
-  margin-top:6px;
+  color:var(--gold);
+  opacity:.75;
+  letter-spacing:.1em;
+  margin-top:8px;
 }
 
 .creation-flow-header{
@@ -4402,38 +4553,45 @@ body.creation-flow-active .app-header{ display:none; }
 }
 .creation-flow-add-world-header-btn:hover{ background:var(--gold); }
 .creation-flow-question{
-  font-size:30px;
+  font-size:32px;
   font-weight:700;
-  color:var(--text);
+  color:var(--navy);
   text-align:center;
-  margin:4px 0 4px;
+  margin:8px 0 6px;
+  letter-spacing:-.01em;
 }
 .creation-flow-subtitle{
-  font-size:14px;
+  font-size:15px;
   color:var(--text-secondary);
   text-align:center;
-  margin:0 0 20px;
+  margin:0 0 32px;
 }
 
 /* ---------- Screen 1: fixed 4-up grid (4+2 wrap, per storyboard) ---------- */
 .creation-flow-type-grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(160px,1fr));
-  gap:20px;
-  max-width:960px;
+  gap:26px;
+  max-width:1000px;
   margin:0 auto;
 }
 .creation-flow-type-grid .creation-flow-card{
   background:var(--cf-paper);
   border-color:var(--cf-line);
+  padding:26px 22px;
+  align-items:center;
+  text-align:center;
+  gap:12px;
 }
+.creation-flow-type-grid .creation-flow-card-title{ font-size:16px; }
+.creation-flow-type-grid .creation-flow-card-desc{ text-align:center; }
 .creation-flow-type-grid .creation-flow-card::after{
   content:'🌸';
   position:absolute;
   bottom:10px;
   right:12px;
   font-size:13px;
-  opacity:.55;
+  opacity:.5;
 }
 @media (max-width:760px){
   .creation-flow-type-grid{ grid-template-columns:repeat(2,minmax(140px,1fr)); }
@@ -4454,21 +4612,22 @@ body.creation-flow-active .app-header{ display:none; }
   min-width:0;
   background:var(--cf-paper);
   border:1px solid var(--cf-line);
-  border-radius:var(--card-radius);
-  padding:20px;
+  border-radius:22px;
+  padding:22px;
+  box-shadow:0 2px 12px rgba(120,90,40,.05);
 }
-.creation-flow-source-group{ margin-bottom:22px; }
+.creation-flow-source-group{ margin-bottom:26px; }
 .creation-flow-source-group:last-child{ margin-bottom:0; }
 .creation-flow-source-heading{
   font-size:16px;
   font-weight:700;
-  color:var(--text);
+  color:var(--navy);
   margin:0 0 2px;
 }
 .creation-flow-source-sub{
-  font-size:12px;
+  font-size:12.5px;
   color:var(--text-secondary);
-  margin:0 0 12px;
+  margin:0 0 14px;
 }
 .creation-flow-world-row-wrap{
   display:flex;
@@ -4496,39 +4655,41 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:16px;
   font-weight:700;
   cursor:pointer;
+  transition:border-color .15s, transform .15s;
 }
-.creation-flow-scroll-btn:hover{ border-color:var(--gold); }
+.creation-flow-scroll-btn:hover{ border-color:var(--gold); transform:scale(1.06); }
 .creation-flow-world-card{
   flex:0 0 auto;
   scroll-snap-align:start;
-  width:140px !important;
+  width:144px !important;
   height:auto;
   display:flex;
   flex-direction:column;
   align-items:flex-start;
-  gap:8px;
+  gap:9px;
   padding:12px;
   border:1px solid var(--cf-line);
-  border-radius:var(--card-radius);
+  border-radius:18px;
   background:var(--cf-paper);
   color:var(--text);
   cursor:pointer;
   position:relative;
-  transition:border-color .15s, transform .15s, box-shadow .15s;
+  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 .creation-flow-world-card:hover{
   border-color:var(--gold);
-  transform:translateY(-2px);
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+  transform:translateY(-3px);
+  box-shadow:0 10px 22px rgba(120,90,40,.12);
 }
 .creation-flow-world-card.selected{
   border-color:var(--gold);
   border-width:2px;
+  box-shadow:0 0 0 3px rgba(255,203,69,.22);
 }
 .creation-flow-world-thumb{
   width:100%;
-  height:74px;
-  border-radius:10px;
+  height:78px;
+  border-radius:13px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -4552,19 +4713,20 @@ body.creation-flow-active .app-header{ display:none; }
   display:flex;
   flex-direction:column;
   border:1px solid var(--cf-line);
-  border-radius:var(--card-radius);
+  border-radius:22px;
   background:var(--cf-paper);
   overflow:hidden;
-  padding:20px 24px 24px;
+  padding:22px 26px 26px;
+  box-shadow:0 4px 18px rgba(120,90,40,.07);
 }
 .creation-flow-preview-empty{
   font-size:14px;
   color:var(--text-secondary);
 }
 .creation-flow-preview-heading{
-  font-size:18px;
+  font-size:19px;
   font-weight:700;
-  color:var(--text);
+  color:var(--navy);
   text-align:center;
   margin:0 0 16px;
 }
@@ -4576,7 +4738,7 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-carousel-wrap{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 }
 .creation-flow-carousel{
   flex:1 1 auto;
@@ -4584,9 +4746,11 @@ body.creation-flow-active .app-header{ display:none; }
   display:flex;
   overflow-x:auto;
   scroll-snap-type:x mandatory;
-  border-radius:14px;
+  border-radius:18px;
   background:var(--cf-paper-alt);
+  scrollbar-width:none;
 }
+.creation-flow-carousel::-webkit-scrollbar{ display:none; }
 .creation-flow-carousel-slide{
   flex:0 0 100%;
   scroll-snap-align:center;
@@ -4595,15 +4759,15 @@ body.creation-flow-active .app-header{ display:none; }
   align-items:center;
   justify-content:center;
   text-align:center;
-  gap:10px;
-  padding:28px 24px;
-  min-height:300px;
+  gap:12px;
+  padding:32px 28px;
+  min-height:320px;
 }
 .creation-flow-carousel-art{
   width:100%;
-  max-width:220px;
-  height:180px;
-  border-radius:12px;
+  max-width:250px;
+  height:200px;
+  border-radius:16px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -4611,38 +4775,42 @@ body.creation-flow-active .app-header{ display:none; }
   overflow:hidden;
   background:var(--cf-paper);
   border:1px solid var(--cf-line);
+  box-shadow:0 10px 26px rgba(120,90,40,.14), 0 2px 8px rgba(120,90,40,.08);
 }
 .creation-flow-carousel-art img{ width:100%; height:100%; object-fit:cover; }
-.creation-flow-carousel-name{ font-size:19px; font-weight:700; color:var(--text); }
-.creation-flow-carousel-desc{ font-size:13px; color:var(--text-secondary); max-width:360px; }
+.creation-flow-carousel-name{ font-size:20px; font-weight:700; color:var(--navy); letter-spacing:.1px; }
+.creation-flow-carousel-desc{ font-size:13.5px; color:var(--text-secondary); max-width:360px; line-height:1.5; }
 .creation-flow-carousel-arrow{
   flex:0 0 auto;
-  width:36px !important;
-  height:36px;
+  width:38px !important;
+  height:38px;
   padding:0;
   border-radius:50%;
   border:1px solid var(--cf-line);
   background:var(--cf-paper);
-  color:var(--text);
+  color:var(--navy);
   font-size:18px;
   font-weight:700;
   cursor:pointer;
+  box-shadow:0 2px 8px rgba(120,90,40,.08);
+  transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.creation-flow-carousel-arrow:hover{ border-color:var(--gold); }
+.creation-flow-carousel-arrow:hover:not(:disabled){ border-color:var(--gold); transform:scale(1.08); box-shadow:0 4px 12px rgba(255,203,69,.28); }
 .creation-flow-carousel-arrow:disabled{ opacity:.3; cursor:default; }
 .creation-flow-carousel-dots{
   display:flex;
   justify-content:center;
-  gap:6px;
-  margin-top:12px;
+  gap:7px;
+  margin-top:14px;
 }
 .creation-flow-carousel-dot{
   width:7px;
   height:7px;
   border-radius:50%;
   background:var(--cf-line);
+  transition:background .2s ease, transform .2s ease, width .2s ease;
 }
-.creation-flow-carousel-dot.active{ background:var(--gold); }
+.creation-flow-carousel-dot.active{ background:var(--gold); width:20px; border-radius:4px; }
 @media (max-width:640px){
   .creation-flow-carousel-slide{ min-height:220px; padding:20px; }
   .creation-flow-carousel-art{ height:120px; font-size:56px; }
@@ -4651,21 +4819,23 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-footer{
   display:flex;
   justify-content:center;
-  margin-top:24px;
+  margin-top:26px;
 }
 .creation-flow-start-btn{
   width:100%;
-  padding:14px 28px;
+  padding:16px 28px;
   border:none;
   border-radius:26px;
-  background:var(--gold);
+  background:linear-gradient(135deg,#ffd668,var(--gold));
   color:var(--navy);
-  font-size:15px;
-  font-weight:700;
+  font-size:16px;
+  font-weight:800;
+  letter-spacing:.2px;
   cursor:pointer;
-  box-shadow:0 6px 18px rgba(0,0,0,0.12);
+  box-shadow:0 10px 24px rgba(255,203,69,.35), 0 2px 6px rgba(0,0,0,.06);
+  transition:transform .15s ease, box-shadow .15s ease;
 }
-.creation-flow-start-btn:hover{ transform:translateY(-1px); }
+.creation-flow-start-btn:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 14px 30px rgba(255,203,69,.42), 0 4px 8px rgba(0,0,0,.08); }
 .creation-flow-start-btn:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
 
 .creation-flow-grid{
@@ -4681,24 +4851,26 @@ body.creation-flow-active .app-header{ display:none; }
   gap:8px;
   padding:20px;
   border:1px solid var(--cf-line);
-  border-radius:var(--card-radius);
+  border-radius:20px;
   background:var(--cf-paper);
   color:var(--text);
   cursor:pointer;
-  transition:border-color .15s, transform .15s, box-shadow .15s;
+  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
   position:relative;
   width:auto;
   height:auto;
+  box-shadow:0 2px 10px rgba(120,90,40,.05);
 }
 .creation-flow-card:hover{
   border-color:var(--gold);
-  transform:translateY(-2px);
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+  transform:translateY(-3px);
+  box-shadow:0 10px 24px rgba(120,90,40,.12);
 }
+.creation-flow-card:active{ transform:translateY(-1px); }
 .creation-flow-card.selected{
   border-color:var(--gold);
   border-width:2px;
-  box-shadow:0 6px 18px rgba(0,0,0,0.1);
+  box-shadow:0 10px 24px rgba(120,90,40,.14);
 }
 .creation-flow-card-check{
   position:absolute;
@@ -4715,9 +4887,27 @@ body.creation-flow-active .app-header{ display:none; }
   align-items:center;
   justify-content:center;
 }
-.creation-flow-card-icon{ font-size:40px; line-height:1; }
-.creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--text); }
-.creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); }
+/* A soft pastel badge behind every card icon (Screen 1 Creation Type
+   cards, Representation cards) — reads as "hand-placed illustration",
+   not a bare floating emoji. One warm, muted tone shared by every
+   card, per the Design Canon's "gold used sparingly, never
+   decoratively" rule — the badge itself stays a quiet cream/sand, not
+   a rainbow of per-card colours. */
+.creation-flow-card-icon{
+  font-size:30px;
+  line-height:1;
+  width:56px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:var(--cf-paper-alt);
+  box-shadow:inset 0 0 0 1px var(--cf-line);
+}
+.creation-flow-type-grid .creation-flow-card-icon{ margin-bottom:2px; }
+.creation-flow-card-title{ font-size:16px; font-weight:700; color:var(--navy); }
+.creation-flow-card-desc{ font-size:13px; color:var(--text-secondary); line-height:1.4; }
 .creation-flow-badge{
   position:absolute;
   top:14px;
@@ -4757,7 +4947,7 @@ body.creation-flow-active .app-header{ display:none; }
 .right-sidebar.context-panel-mode #cardDesignerRoot [data-control="museumCaption"]{ display:none !important; }
 
 .context-panel-root{
-  padding:16px var(--section-padding);
+  padding:18px 20px;
   border-bottom:1px solid var(--line);
 }
 .context-panel-root.is-empty{ display:none; padding:0; border:none; }
@@ -4767,20 +4957,21 @@ body.creation-flow-active .app-header{ display:none; }
   letter-spacing:.05em;
   text-transform:uppercase;
   color:var(--text-tertiary);
-  margin:16px 0 8px;
+  margin:18px 0 8px;
 }
 .context-panel-heading:first-child{ margin-top:0; }
 .context-rep-name{
-  font-size:18px;
+  font-size:19px;
   font-weight:700;
-  color:var(--text);
-  margin-bottom:8px;
+  color:var(--navy);
+  margin-bottom:10px;
 }
+body.dark-theme .context-rep-name{ color:var(--text); }
 .context-action-row{ display:flex; flex-wrap:wrap; gap:8px; }
 .context-btn{
-  padding:9px 14px;
+  padding:10px 16px;
   border:1px solid var(--line);
-  border-radius:var(--border-radius);
+  border-radius:20px;
   background:var(--bg);
   color:var(--text);
   font-size:13px;
@@ -4788,11 +4979,13 @@ body.creation-flow-active .app-header{ display:none; }
   cursor:pointer;
   width:auto;
   height:auto;
+  transition:border-color 0.15s, background 0.15s, transform 0.1s;
 }
-.context-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.08); }
+.context-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); transform:translateY(-1px); }
 .context-btn-primary{
-  background:var(--gold);
+  background:linear-gradient(135deg,#ffd668,var(--gold));
   color:var(--navy);
-  border-color:var(--gold);
+  border-color:transparent;
+  box-shadow:0 3px 10px rgba(255,203,69,0.26);
 }
 .context-row{ margin-bottom:12px; }

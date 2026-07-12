@@ -10,14 +10,27 @@
 <!-- Header -->
 <header class='app-header'>
 <div class='header-left'>
+<!-- Creator UI Convergence Sprint — a lightweight Home affordance was
+     missing entirely: once inside the Workspace there was no way back
+     to Screen 1 without a hard reload. Reuses CreationFlow.start() as-is
+     (the exact function App already calls at boot) — no new capability,
+     just a new entry point onto an existing one. -->
+<button id='homeBtn' class='header-icon-btn' title='Back to Start'>🏠</button>
 <div class='logo'>VihuStudio</div>
 <button id='openBtn' title='Open Project'>📂 Open</button>
 <button id='saveBtn' title='Save Project As'>💾 Save As</button>
 <input id='openProjectInput' type='file' accept='.vihu,application/json' hidden>
 </div>
 <div class='header-center'>
-<!-- Project Title metadata preserved in AppState.project.title; hidden from editor per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
+<!-- Project Title metadata preserved in AppState.project.title; the
+     editable input stays hidden from the editor per CLAUDE.md Locked
+     Decision #1 (Workspace Simplification). This read-only readout is
+     new: a calm, non-editable orientation strip (current World · Page
+     Style · Book Title) reusing data ContextPanel/ThemeEngine already
+     compute — see ContextPanel.currentWorldLabel()/currentStyleLabel()
+     and js/app.js's _updateHeaderContext(). -->
 <input id='projectTitle' type='text' placeholder='Project Title' class='project-title-input' hidden>
+<div id='headerContext' class='header-context'></div>
 </div>
 <div class='header-right'>
 <div id='autosaveStatus' class='autosave-status'>Saved locally</div>
@@ -87,10 +100,16 @@
 </section>
 
 <section class='sidebar-section'>
-<h3>THEME</h3>
-<button id='leftThemeCard' class='left-theme-card' type='button' title='Click to change theme'></button>
+<h3>WORLD</h3>
+<button id='leftThemeCard' class='left-theme-card' type='button' title='Change your world'></button>
 </section>
 
+<!-- Creator UI Convergence Sprint — the Page Strip stays exactly where
+     it always was (vertical, left sidebar — the brief's own "Page Strip
+     scrolls vertically" instruction) with full functionality unchanged
+     (drag reorder, ⋮ menu, Cover/End anchoring — js/app.js/js/pageOps.js
+     untouched); only its visual polish changed, see .thumb in
+     css/style.css. -->
 <section class='sidebar-section'>
 <h3>PAGES</h3>
 <div id='slideList' class='slide-list'></div>
@@ -102,8 +121,19 @@
 <div class='preview-wrapper'>
 <canvas id='previewCanvas'></canvas>
 </div>
-<!-- Timeline inside preview area -->
-<div class='timeline'>
+<!-- Creator UI Convergence Sprint — the NEW Object Strip: a horizontally
+     scrolling, child-friendly readout of every object on the current
+     page (Background / Artwork / Frame / Stickers / Text …), populated
+     by js/objectStrip.js. Never a Layer Panel — no reordering, just
+     "what's on my page" + tap-to-select, synced with canvas/Context
+     Panel selection. See docs in js/objectStrip.js. -->
+<div class='object-strip'>
+<div id='objectStripList' class='object-strip-list'></div>
+</div>
+<!-- Legacy read-only page-thumbnail mirror — superseded by the sidebar
+     Page Strip; kept in the DOM (renderTimeline() call sites are
+     unconditional in a few spots in app.js) but never shown. -->
+<div class='timeline' hidden>
 <div id='timelineList' class='timeline-list'></div>
 </div>
 </main>
@@ -114,7 +144,7 @@
 <button class='tab-btn active' data-tab='story'>Story</button>
 <button class='tab-btn' data-tab='card'>Card Designer</button>
 <button class='tab-btn' data-tab='stickers'>✨ Stickers</button>
-<button class='tab-btn' data-tab='style'>Theme Designer</button>
+<button class='tab-btn' data-tab='style'>World Designer</button>
 </div>
 
 <!-- Card Designer mount point (Sprint 4.1 foundation) — populated by CardDesigner.mount() -->
@@ -149,10 +179,10 @@
      story instantly — no page selection, no object selection, no
      Apply button. -->
 <p class='theme-designer-intro'>
-<strong>Theme</strong> is the story's global design system. Every change here updates <strong>every page</strong> instantly. No selection needed.
+Your <strong>World</strong> is the story's whole look and feel. Every change here updates <strong>every page</strong> instantly. No selection needed.
 </p>
 <section class='current-theme-banner'>
-<span class='current-theme-label'>Current Theme</span>
+<span class='current-theme-label'>Current World</span>
 <span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
 </section>
 
@@ -224,7 +254,7 @@
 </div>
 <div class='designer-row'>
 <div class='designer-row-label'>Reset</div>
-<button id='themeTypographyReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+<button id='themeTypographyReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
 </div>
 </div>
 </section>
@@ -247,7 +277,7 @@
 </div>
 <div class='designer-row'>
 <div class='designer-row-label'>Reset</div>
-<button id='themeColoursReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+<button id='themeColoursReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
 </div>
 </div>
 </section>
@@ -256,7 +286,7 @@
      Holder unless the card overrides it. -->
 <section class='designer-group' data-section='holder'>
 <button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Picture Holder Defaults</span>
+<span class='designer-group-title-text'>Picture Frame Defaults</span>
 <span class='designer-group-chevron' aria-hidden='true'>▾</span>
 </button>
 <div class='designer-group-body'>
@@ -274,7 +304,7 @@
 </div>
 <div class='designer-row'>
 <div class='designer-row-label'>Reset</div>
-<button id='themeHolderReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+<button id='themeHolderReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
 </div>
 </div>
 </section>
@@ -298,7 +328,7 @@
 </div>
 <div class='designer-row'>
 <div class='designer-row-label'>Reset</div>
-<button id='themeLayoutReset' type='button' class='theme-reset-btn'>↺ Reset to Theme</button>
+<button id='themeLayoutReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
 </div>
 </div>
 </section>
@@ -344,33 +374,33 @@
      Official/Imported split within each. See js/themeRegistry.js. -->
 <div id='themePickerModal' class='modal hidden' role='dialog' aria-modal='true'>
 <div class='modal-content modal-wide'>
-<h3>Theme Library</h3>
-<p>Pick a visual identity for your book, and how your artwork is presented. You can customize further in the Theme Designer.</p>
+<h3>Choose Your World</h3>
+<p>Pick a world for your story, and how your artwork is shown. You can fine-tune every detail in World Designer.</p>
 <div id='themePickerCards' class='theme-library'>
 <div class='theme-library-type'>
-<h3 class='theme-library-type-heading'>Story Themes</h3>
+<h3 class='theme-library-type-heading'>Story Worlds</h3>
 <div class='theme-library-section'>
-<h4 class='theme-library-heading'>Official Themes</h4>
+<h4 class='theme-library-heading'>Official Worlds</h4>
 <div id='themeLibraryStoryOfficial' class='theme-cards'></div>
 </div>
 <div class='theme-library-section'>
-<h4 class='theme-library-heading'>Imported Themes</h4>
+<h4 class='theme-library-heading'>My Worlds</h4>
 <div id='themeLibraryStoryImported' class='theme-cards'></div>
 </div>
 </div>
 <div class='theme-library-type'>
-<h3 class='theme-library-type-heading'>Artwork Themes</h3>
+<h3 class='theme-library-type-heading'>Artwork Worlds</h3>
 <div class='theme-library-section'>
-<h4 class='theme-library-heading'>Official Themes</h4>
+<h4 class='theme-library-heading'>Official Worlds</h4>
 <div id='themeLibraryArtworkOfficial' class='theme-cards'></div>
 </div>
 <div class='theme-library-section'>
-<h4 class='theme-library-heading'>Imported Themes</h4>
+<h4 class='theme-library-heading'>My Worlds</h4>
 <div id='themeLibraryArtworkImported' class='theme-cards'></div>
 </div>
 </div>
 <!-- WEP Scope Freeze — Import Deferred: hidden from the active WEP workflow (Builder -> Publish to Personal -> Promote to Official -> Studio), not deleted. _wireImportButton()/importThemeFile() in js/themeEngine.js are untouched and fully functional; only this entry point is hidden. -->
-<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn' style='display:none'>+ Import Theme</button>
+<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn' style='display:none'>+ Add a World</button>
 </div>
 <div class='modal-actions'>
 <button id='themePickerClose' class='modal-btn' type='button'>Cancel</button>
@@ -382,12 +412,12 @@
 <!-- Theme Import Conflict modal (Sprint 9.2) -->
 <div id='themeImportConflictModal' class='modal hidden' role='dialog' aria-modal='true'>
 <div class='modal-content'>
-<h3>A theme with this ID already exists</h3>
-<p id='themeImportConflictBody'>Choose what to do with the imported theme.</p>
+<h3>You already have this world</h3>
+<p id='themeImportConflictBody'>Choose what to do with the new world.</p>
 <div class='modal-actions'>
 <button id='themeImportConflictCancel' class='modal-btn' type='button'>Cancel</button>
 <button id='themeImportConflictCopy' class='modal-btn' type='button'>Keep Both</button>
-<button id='themeImportConflictReplace' class='modal-btn primary' type='button'>Replace Existing Theme</button>
+<button id='themeImportConflictReplace' class='modal-btn primary' type='button'>Replace Existing World</button>
 </div>
 </div>
 </div>
@@ -420,6 +450,6 @@
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/objectStrip.js'></script><script src='js/app.js'></script>
 </body>
 </html>

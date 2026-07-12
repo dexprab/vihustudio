@@ -177,6 +177,24 @@ if(typeof ContextPanel!=='undefined'){
   }catch(e){}
 }
 
+// Creator UI Convergence Sprint — the Object Strip: a child-friendly
+// readout of every object on the current page, beneath the canvas.
+// Reads the same selection state ContextPanel already reads; writes
+// through the same window.setSelectedSceneElement/setSelectedTextElement
+// entry points the canvas click handlers use, so tapping a card and
+// tapping the object on the canvas are the same action.
+if(typeof ObjectStrip!=='undefined'){
+  try{
+    ObjectStrip.configure({
+      getCurrentSlide:function(){ return AppState.slides[AppState.currentSlide]; },
+      getSelectedTextElement:function(){ return _selectedTextElement; },
+      getSelectedSceneElement:function(){ return _selectedSceneElement; },
+      getSelectedSceneElementType:function(){ return _selectedSceneElementType; }
+    });
+    ObjectStrip.init();
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(typeof window.redrawPreview==='function') window.redrawPreview();
@@ -190,7 +208,18 @@ function _setSelectedTextElement(id){
     }
   }
   if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+  if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
 }
+// Creator UI Convergence Sprint — the Object Strip needs the exact same
+// selection entry points/state the canvas click handlers already use
+// (window.setSelectedSceneElement existed since Sprint 6.5; text
+// selection had no window-level equivalent until now) so tapping an
+// Object Strip card is indistinguishable from tapping the object on
+// the canvas — same function, same downstream Context Panel routing.
+window.setSelectedTextElement=function(id){ _setSelectedTextElement(id); };
+window.getSelectedTextElement=function(){ return _selectedTextElement; };
+window.getSelectedSceneElement=function(){ return _selectedSceneElement; };
+window.getSelectedSceneElementType=function(){ return _selectedSceneElementType; };
 
 // Sprint 6.5 (Object Designer) — selecting a scene element auto-routes
 // to the right pane's correct designer. Sprint 6.6.1 — the Universal
@@ -241,10 +270,20 @@ function _setSelectedSceneElement(id, elementType){
   if(typeof window.redrawPreview==='function') window.redrawPreview();
   if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
   if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+  if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
 }
 if(leftThemeCardEl){
   leftThemeCardEl.addEventListener('click',function(){
     if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
+  });
+}
+const homeBtnEl=document.getElementById('homeBtn');
+if(homeBtnEl){
+  homeBtnEl.addEventListener('click',function(){
+    // Reuses the exact flow already shown at boot — no new capability,
+    // just a way back to it. Autosave already covers the current
+    // project, so there's nothing to lose by starting a new creation.
+    if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
   });
 }
 if(themePickerClose){
@@ -483,6 +522,13 @@ window.renderList=function(){
         if(container && src){
           const ph=container.querySelector('.placeholder'); if(ph) ph.remove();
           const im=new Image(); im.src=src; im.onload=()=>{
+            // A second renderList() can run before this promise settles
+            // (e.g. a theme-change refresh racing the initial page's own
+            // thumbnail generation), kicking off its own independent
+            // ThumbnailEngine.generate(s) call that resolves around the
+            // same time — checked here, right before insertion, so
+            // whichever image wins the race is the only one left.
+            const stale=container.querySelector('img'); if(stale) stale.remove();
             container.insertBefore(im, container.querySelector('.page-label'));
           };
         }
@@ -625,6 +671,9 @@ window.renderTimeline=function(){
         if(container && src){
           const ph=container.querySelector('.placeholder'); if(ph) ph.remove();
           const im=document.createElement('img'); im.src=src;
+          // See the matching fix in renderList() above for why a stale
+          // image can already be present here.
+          const stale=container.querySelector('img'); if(stale) stale.remove();
           container.appendChild(im);
         }
      }); }catch(e){}
@@ -650,8 +699,38 @@ window.showSlide=function(i){
  if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
  // Sprint 10.0 — keep the Context Panel in sync with the newly-active slide.
  if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
+ if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+ _updateHeaderContext();
  _updateCanvasCursor();
 };
+
+// Creator UI Convergence Sprint — a small, read-only header readout
+// ("🏛️ Museum Gallery · Portrait") so a child always has calm
+// orientation (which World, which Page Style) without hunting through
+// the sidebar. Reuses the exact lookups ContextPanel already makes for
+// its own "Page Style" row (ThemeEngine.getActiveArtworkThemeId /
+// getActiveThemeId + ThemeRegistry.get + the current slide's
+// metadata.layout) — no new theme/representation logic of any kind.
+function _updateHeaderContext(){
+  const el=document.getElementById('headerContext');
+  if(!el) return;
+  if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined'){ el.textContent=''; return; }
+  const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+  const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
+  const themeId=artworkId||storyId;
+  const theme=themeId && ThemeRegistry.get ? ThemeRegistry.get(themeId) : null;
+  if(!theme){ el.textContent=''; return; }
+  const icon=theme.themeIcon||'📖';
+  let html='<span class="header-context-world">'+icon+' '+_escapeHtml(theme.name||'')+'</span>';
+  const slide=AppState.slides[AppState.currentSlide];
+  const layout=slide && slide.metadata && slide.metadata.layout;
+  if(layout && Array.isArray(theme.representations)){
+    const rep=theme.representations.find(function(r){ return r.layout===layout; });
+    if(rep && rep.name) html+='<span class="header-context-sep">·</span><span class="header-context-style">'+_escapeHtml(rep.name)+'</span>';
+  }
+  el.innerHTML=html;
+}
+function _escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
 function draw(){
  if(!AppState.slides.length)return;

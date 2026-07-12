@@ -262,7 +262,7 @@ const ContextPanel=(function(){
       container.appendChild(_el('div','context-rep-name',info.name));
     }
     if(reps && reps.length){
-      const btn=_el('button','context-btn','🔄 Change Representation');
+      const btn=_el('button','context-btn','🔄 Change Look');
       btn.type='button';
       btn.addEventListener('click',function(){ CreationFlow.changeRepresentation(); });
       container.appendChild(btn);

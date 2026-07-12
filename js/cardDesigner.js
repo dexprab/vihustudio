@@ -25,7 +25,7 @@ const CardDesigner=(function(){
     },
     {
       id:'frame',
-      title:'Picture Holder',
+      title:'Picture Frame',
       summary:''
     },
     {
@@ -1065,7 +1065,7 @@ const CardDesigner=(function(){
     layerRow.className='designer-row';
     const layerLbl=document.createElement('div');
     layerLbl.className='designer-row-label';
-    layerLbl.textContent='Layer';
+    layerLbl.textContent='Order';
     layerRow.appendChild(layerLbl);
     const layerIcons=document.createElement('div');
     layerIcons.className='icon-row sticker-layer-row';
@@ -1262,7 +1262,7 @@ const CardDesigner=(function(){
     // Changing the holder never distorts the picture; the picture
     // keeps its own pan / zoom / replace controls under the Picture
     // section below.
-    empty.textContent='Pick the picture holder on the page to edit it.';
+    empty.textContent='Pick the picture frame on the page to edit it.';
     body.appendChild(empty);
 
     const editor=document.createElement('div');
@@ -1270,12 +1270,12 @@ const CardDesigner=(function(){
 
     const selectedLabel=document.createElement('div');
     selectedLabel.className='frame-selected-label';
-    selectedLabel.textContent='Picture Holder';
+    selectedLabel.textContent='Picture Frame';
     editor.appendChild(selectedLabel);
 
     const hint=document.createElement('p');
     hint.className='placeholder frame-hint';
-    hint.textContent='Drag the holder on the canvas to move it. Drag the gold handles to resize. The picture inside follows the holder but stays editable in the Picture section below.';
+    hint.textContent='Drag the frame on the canvas to move it. Drag the gold handles to resize. The picture inside follows the frame but stays editable in the Picture section below.';
     editor.appendChild(hint);
 
     // Sprint 8.4.4 — Picture Holder cross-reference. Border / Corner /
@@ -1322,7 +1322,7 @@ const CardDesigner=(function(){
     layerRow.className='designer-row';
     const layerLbl=document.createElement('div');
     layerLbl.className='designer-row-label';
-    layerLbl.textContent='Layer';
+    layerLbl.textContent='Order';
     layerRow.appendChild(layerLbl);
     const layerIcons=document.createElement('div');
     layerIcons.className='icon-row frame-layer-row';
@@ -1415,7 +1415,7 @@ const CardDesigner=(function(){
     const resetBtn=document.createElement('button');
     resetBtn.type='button';
     resetBtn.className='picture-reset-btn picture-reset-frame-btn';
-    resetBtn.textContent='↺ Reset Picture Holder';
+    resetBtn.textContent='↺ Reset Picture Frame';
     resetBtn.addEventListener('click',function(){
       if(typeof SceneEngine==='undefined') return;
       const slide=_currentSlide();
@@ -1481,7 +1481,7 @@ const CardDesigner=(function(){
     layerRow.className='designer-row';
     const layerLbl=document.createElement('div');
     layerLbl.className='designer-row-label';
-    layerLbl.textContent='Layer';
+    layerLbl.textContent='Order';
     layerRow.appendChild(layerLbl);
     const layerIcons=document.createElement('div');
     layerIcons.className='icon-row decoration-layer-row';
@@ -1644,7 +1644,7 @@ const CardDesigner=(function(){
   };
 
   const FONT_FAMILY_OPTIONS=[
-    {value:'',label:'Theme Default'},
+    {value:'',label:'World Default'},
     {value:'Georgia, serif',label:'Georgia'},
     {value:'"Times New Roman", Times, serif',label:'Times'},
     {value:'Arial, Helvetica, sans-serif',label:'Arial'},
@@ -1654,7 +1654,7 @@ const CardDesigner=(function(){
     {value:'"Courier New", Courier, monospace',label:'Courier'}
   ];
   const FONT_WEIGHT_OPTIONS=[
-    {value:'',label:'Theme Default'},
+    {value:'',label:'World Default'},
     {value:'300',label:'Light'},
     {value:'400',label:'Regular'},
     {value:'500',label:'Medium'},
