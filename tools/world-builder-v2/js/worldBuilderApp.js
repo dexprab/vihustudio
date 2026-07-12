@@ -5666,7 +5666,21 @@
             const ok = window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: selectedSceneId, placeId: placeId });
             if (!ok) { window.alert('Could not host here — check this Experience’s ownership scope.'); return; }
             _persist();
-            _redrawSceneCanvases(selectedSceneId);
+            // Real bug fixed here: this call site used to redraw only the
+            // scene canvases (a no-op unless selectedSceneId happened to
+            // already be the currently open Scene) and never re-rendered
+            // Working View's own Experience Studio hosting-status banner
+            // (_renderExperienceStudio/_experienceHostingStatus) — so
+            // right after successfully hosting, that banner kept showing
+            // its pre-hosting "Not yet hosted anywhere" text even though
+            // the Inspector's own "Used In" list (re-rendered fresh below)
+            // already correctly listed the new Scene. _redrawSceneCanvasesForExperience
+            // is the purpose-built helper for exactly this — it redraws
+            // every Scene this Experience is now attached to (a no-op for
+            // one that isn't currently open, same as before) and also
+            // re-renders the Experience Studio banner so it reflects the
+            // real, current Usage instead of a stale snapshot.
+            _redrawSceneCanvasesForExperience(exp);
             _renderContextPanel();
         });
         contextPanel.appendChild(attachBtn);
