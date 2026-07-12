@@ -1099,7 +1099,87 @@ const SlideRenderer=(()=>{
       x.restore();
     }else if(kind==='image'){
       _layerDrawDecorationImage(d,r,s);
+    }else if(kind==='shape'){
+      _layerDrawShape(d,r);
     }
+  }
+
+  // A converged Shape decoration (Builder V3.1 Graphics section — real
+  // vector fill+outline, not a fixed-colour glyph). Mirrors
+  // tools/world-builder-v2/js/services/engineRuntime.js's own
+  // _drawShape path/geometry exactly (same 5 SHAPE_KINDS) so a Shape
+  // renders identically in Builder's own preview and here in the real
+  // Reader-facing Runtime — two files by necessity (this renderer has
+  // no dependency on Builder's own module), kept in lockstep by hand.
+  function _layerDrawShape(d,rect){
+    const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+    const rx=rect.w/2, ry=rect.h/2;
+    x.save();
+    x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
+    const rotation=(typeof d.rotation==='number')?d.rotation:0;
+    if(rotation){ x.translate(cx,cy); x.rotate(rotation*Math.PI/180); x.translate(-cx,-cy); }
+    x.beginPath();
+    const kind=d.shape;
+    if(kind==='circle'){
+      x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+    }else if(kind==='star'){
+      const spikes=5, outerRx=rx, outerRy=ry, innerRx=rx*0.42, innerRy=ry*0.42;
+      let rot=-Math.PI/2;
+      const step=Math.PI/spikes;
+      x.moveTo(cx+Math.cos(rot)*outerRx,cy+Math.sin(rot)*outerRy);
+      for(let i=0;i<spikes;i++){
+        rot+=step;
+        x.lineTo(cx+Math.cos(rot)*innerRx,cy+Math.sin(rot)*innerRy);
+        rot+=step;
+        x.lineTo(cx+Math.cos(rot)*outerRx,cy+Math.sin(rot)*outerRy);
+      }
+      x.closePath();
+    }else if(kind==='arrow'){
+      const shaftTop=cy-ry*0.28, shaftBottom=cy+ry*0.28, headX=rect.x+rect.w*0.62;
+      x.moveTo(rect.x,shaftTop);
+      x.lineTo(headX,shaftTop);
+      x.lineTo(headX,cy-ry*0.62);
+      x.lineTo(rect.x+rect.w,cy);
+      x.lineTo(headX,cy+ry*0.62);
+      x.lineTo(headX,shaftBottom);
+      x.lineTo(rect.x,shaftBottom);
+      x.closePath();
+    }else if(kind==='speech-bubble'){
+      // Two subpaths in one fill()/stroke() — the rounded body (its own
+      // moveTo..closePath, exactly _roundedRect's own arcTo chain) plus
+      // the tail triangle, matching engineRuntime.js's own
+      // _roundedRectPath-then-tail construction exactly.
+      const r=Math.min(rect.w,rect.h)*0.18, bodyBottom=rect.y+rect.h*0.78, bh=bodyBottom-rect.y;
+      x.moveTo(rect.x+r,rect.y);
+      x.arcTo(rect.x+rect.w,rect.y,rect.x+rect.w,rect.y+bh,r);
+      x.arcTo(rect.x+rect.w,rect.y+bh,rect.x,rect.y+bh,r);
+      x.arcTo(rect.x,rect.y+bh,rect.x,rect.y,r);
+      x.arcTo(rect.x,rect.y,rect.x+rect.w,rect.y,r);
+      x.closePath();
+      x.moveTo(rect.x+rect.w*0.22,bodyBottom);
+      x.lineTo(rect.x+rect.w*0.12,rect.y+rect.h);
+      x.lineTo(rect.x+rect.w*0.38,bodyBottom);
+      x.closePath();
+    }else if(kind==='banner'){
+      const notch=rect.w*0.14;
+      x.moveTo(rect.x,rect.y);
+      x.lineTo(rect.x+rect.w,rect.y);
+      x.lineTo(rect.x+rect.w-notch,cy);
+      x.lineTo(rect.x+rect.w,rect.y+rect.h);
+      x.lineTo(rect.x,rect.y+rect.h);
+      x.lineTo(rect.x+notch,cy);
+      x.closePath();
+    }else{
+      x.rect(rect.x,rect.y,rect.w,rect.h);
+    }
+    x.fillStyle=d.fillColor||'#F0B429';
+    x.fill();
+    if(d.strokeWidth>0){
+      x.lineWidth=d.strokeWidth;
+      x.strokeStyle=d.strokeColor||'#24406B';
+      x.stroke();
+    }
+    x.restore();
   }
 
   // Same per-src Image cache + onload/redraw-nudge discipline

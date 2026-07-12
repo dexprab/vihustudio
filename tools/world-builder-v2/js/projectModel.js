@@ -895,7 +895,7 @@ const ProjectModel = (function () {
     // friendliest, lowest-friction thing to type into first.
     function _inferContentKind(props) {
         if (props.imageSrc) return 'image';
-        if (props.graphicSrc) return 'graphics';
+        if (props.graphicSrc || props.graphicShape) return 'graphics';
         if (props.textContent && props.textContent.trim()) return 'text';
         if (props.colorTransparent === false) return 'colour';
         return 'text';
@@ -1264,7 +1264,15 @@ const ProjectModel = (function () {
             { slot: 'graphic', kindMatch: 'graphics', srcKey: 'graphicSrc', xKey: 'graphicX', yKey: 'graphicY', wKey: 'graphicW', hKey: 'graphicH', opKey: 'graphicOpacity' }
         ].forEach(function (spec) {
             const src = (kind === spec.kindMatch) ? props[spec.srcKey] : null;
-            if (src) {
+            // A Graphics section may hold an author-drawn Shape instead
+            // of an uploaded image — same Layer/slot, mutually exclusive
+            // with graphicSrc by construction (the Inspector clears one
+            // when the other is picked). Folded into this loop rather
+            // than a parallel implementation, since a Shape needs the
+            // exact same Layer/position/size/opacity bookkeeping an
+            // Image already has — only the styling fields differ.
+            const shapeKind = (spec.slot === 'graphic' && kind === spec.kindMatch && !src) ? props.graphicShape : null;
+            if (src || shapeKind) {
                 let layer = _findMirroredLayer(project, sceneId, experience.id, spec.slot);
                 if (!layer) {
                     const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'decoration');
@@ -1284,8 +1292,17 @@ const ProjectModel = (function () {
                 // `engineRuntime.js`'s `_paintLayer` already defaults to
                 // 'fit' (contain).
                 const fit = spec.slot === 'image' ? (props.imageFit || 'fit') : undefined;
+                // `shape: null` in the non-shape branch is deliberate —
+                // it clears a stale shape when an author switches a
+                // Graphics section from a Shape back to an uploaded
+                // image on an already-mirrored Layer.
+                const shapeFields = shapeKind ? {
+                    shape: shapeKind, shapeFillColor: props.graphicFillColor,
+                    shapeStrokeColor: props.graphicStrokeColor, shapeStrokeWidth: props.graphicStrokeWidth,
+                    rotation: props.graphicRotation
+                } : { shape: null, rotation: 0 };
                 if (layer) {
-                    Object.assign(layer, { name: experience.name, image: src, opacity: props[spec.opKey], fit: fit, position: position, size: size });
+                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, position: position, size: size }, shapeFields);
                 } else {
                     // A real, pre-existing bug found while testing —
                     // addSceneLayer's own Object.assign only ever copies
@@ -1305,11 +1322,12 @@ const ProjectModel = (function () {
                     // same place those are already set rather than
                     // touching addSceneLayer's generic field list.
                     const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: experience.name, position: position, size: size });
-                    created.image = src;
+                    created.image = src || null;
                     created.opacity = props[spec.opKey];
                     created.fit = fit;
                     created.sourceExperienceId = experience.id;
                     created.contentSlot = spec.slot;
+                    Object.assign(created, shapeFields);
                 }
             } else {
                 _removeMirroredLayer(project, sceneId, experience.id, spec.slot);

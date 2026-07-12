@@ -361,6 +361,23 @@ class BuildEngine {
             });
         }
 
+        if (layer.kind === 'decoration' && layer.shape) {
+            // A Graphics section's author-drawn Shape (Builder V3.1 —
+            // real fill+outline+rotation, not a fixed-colour glyph) —
+            // converges onto its own decoration kind rather than
+            // falling into the glyph/sticker branch below, whose
+            // `layer.glyph` a Shape never sets.
+            return Object.assign({}, base, {
+                type: 'decoration',
+                anchor: 'top-left',
+                decoration: {
+                    kind: 'shape', shape: layer.shape,
+                    fillColor: layer.shapeFillColor, strokeColor: layer.shapeStrokeColor,
+                    strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha
+                }
+            });
+        }
+
         if (layer.kind === 'decoration') {
             // A glyph-only Decoration (no image uploaded) has no Layer
             // Pack decoration kind of its own — 'sticker' already IS

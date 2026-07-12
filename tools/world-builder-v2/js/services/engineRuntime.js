@@ -475,32 +475,110 @@ const EngineV2Runtime = (function () {
             _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
             ctx.restore();
         } else {
-            // Decoration — a Universal Experience's Image or Graphics
-            // section (Builder V3.1), or a legacy Glyph. Image and Glyph
-            // are both simply optional properties on the same Layer
-            // (Builder V3 MEP), never mutually exclusive in the model; a
-            // real, loaded Image (resolved by the host, never this
-            // module — see `load`'s `resolveLayerImage`) is preferred
-            // when available, falling back to the existing glyph
-            // rendering otherwise. `fit` (Universal Image's own Fit
-            // control) defaults to 'fit' (contain) — a Graphics asset
-            // has no Fit control of its own (Properties: Upload/
-            // Replace/Remove/Preview/Opacity only) and always contains.
-            const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
-            if (img) {
-                ctx.save();
-                ctx.globalAlpha = opacity;
-                _drawImageWithFit(ctx, img, rect, layer.fit || 'fit');
-                ctx.restore();
-            } else {
-                ctx.save();
-                ctx.globalAlpha = opacity;
-                ctx.font = Math.round(Math.min(rect.w, rect.h)) + 'px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(layer.glyph, rect.x + rect.w / 2, rect.y + rect.h / 2);
-                ctx.restore();
+            // Decoration — a Universal Experience's Shape, Image, or
+            // Graphics section (Builder V3.1), or a legacy Glyph. A
+            // Shape (an author-drawn circle/star/arrow/speech-bubble/
+            // banner, real fill+outline rather than a fixed-colour
+            // emoji) takes priority when present, since it's the most
+            // deliberately-authored of the three; otherwise a real,
+            // loaded Image (resolved by the host, never this module —
+            // see `load`'s `resolveLayerImage`) is preferred, falling
+            // back to the existing glyph rendering. `rotation` (degrees,
+            // clockwise) is generic to the whole Decoration branch, not
+            // Shape-only, so an uploaded Graphics image can be rotated
+            // too — applied around the Layer's own rect centre so
+            // rotating never changes where its bounding box sits.
+            const rotation = typeof layer.rotation === 'number' ? layer.rotation : 0;
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            if (rotation) {
+                const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+                ctx.translate(cx, cy);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.translate(-cx, -cy);
             }
+            if (layer.shape) {
+                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth);
+            } else {
+                const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
+                if (img) {
+                    // `fit` (Universal Image's own Fit control) defaults
+                    // to 'fit' (contain) — a Graphics asset has no Fit
+                    // control of its own (Properties: Upload/Replace/
+                    // Remove/Preview/Opacity only) and always contains.
+                    _drawImageWithFit(ctx, img, rect, layer.fit || 'fit');
+                } else {
+                    ctx.font = Math.round(Math.min(rect.w, rect.h)) + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(layer.glyph, rect.x + rect.w / 2, rect.y + rect.h / 2);
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    // Draws one of ExperienceSchema.SHAPE_KINDS as a real vector path
+    // filled with `fillColor` and, when `strokeWidth` is greater than
+    // zero, outlined with `strokeColor` at that width — genuine
+    // recolourable shapes rather than a fixed-colour rasterized emoji,
+    // per the Builder authoring request this was built for. Every shape
+    // is drawn inscribed in `rect`, so the same Transform (position/
+    // size, Builder V3.1's Graphics X/Y/W/H) that already places an
+    // uploaded image places a Shape identically.
+    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth) {
+        const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+        const rx = rect.w / 2, ry = rect.h / 2;
+        ctx.beginPath();
+        if (kind === 'circle') {
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        } else if (kind === 'star') {
+            const spikes = 5, outerRx = rx, outerRy = ry, innerRx = rx * 0.42, innerRy = ry * 0.42;
+            let rot = -Math.PI / 2;
+            const step = Math.PI / spikes;
+            ctx.moveTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+            for (let i = 0; i < spikes; i++) {
+                rot += step;
+                ctx.lineTo(cx + Math.cos(rot) * innerRx, cy + Math.sin(rot) * innerRy);
+                rot += step;
+                ctx.lineTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+            }
+            ctx.closePath();
+        } else if (kind === 'arrow') {
+            const shaftTop = cy - ry * 0.28, shaftBottom = cy + ry * 0.28, headX = rect.x + rect.w * 0.62;
+            ctx.moveTo(rect.x, shaftTop);
+            ctx.lineTo(headX, shaftTop);
+            ctx.lineTo(headX, cy - ry * 0.62);
+            ctx.lineTo(rect.x + rect.w, cy);
+            ctx.lineTo(headX, cy + ry * 0.62);
+            ctx.lineTo(headX, shaftBottom);
+            ctx.lineTo(rect.x, shaftBottom);
+            ctx.closePath();
+        } else if (kind === 'speech-bubble') {
+            const r = Math.min(rect.w, rect.h) * 0.18, bodyBottom = rect.y + rect.h * 0.78;
+            _roundedRectPath(ctx, rect.x, rect.y, rect.w, bodyBottom - rect.y, r);
+            ctx.moveTo(rect.x + rect.w * 0.22, bodyBottom);
+            ctx.lineTo(rect.x + rect.w * 0.12, rect.y + rect.h);
+            ctx.lineTo(rect.x + rect.w * 0.38, bodyBottom);
+            ctx.closePath();
+        } else if (kind === 'banner') {
+            const notch = rect.w * 0.14;
+            ctx.moveTo(rect.x, rect.y);
+            ctx.lineTo(rect.x + rect.w, rect.y);
+            ctx.lineTo(rect.x + rect.w - notch, cy);
+            ctx.lineTo(rect.x + rect.w, rect.y + rect.h);
+            ctx.lineTo(rect.x, rect.y + rect.h);
+            ctx.lineTo(rect.x + notch, cy);
+            ctx.closePath();
+        } else {
+            ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        }
+        ctx.fillStyle = fillColor || '#F0B429';
+        ctx.fill();
+        if (strokeWidth > 0) {
+            ctx.lineWidth = strokeWidth;
+            ctx.strokeStyle = strokeColor || '#24406B';
+            ctx.stroke();
         }
     }
 

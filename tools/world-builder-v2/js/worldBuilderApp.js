@@ -1806,9 +1806,14 @@
             window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity }, local), graph);
             sections.push({ slot: 'image', rect: window.EngineV2Runtime.rectFor(local, graph) });
         }
-        if (kind === 'graphics' && props.graphicSrc) {
+        if (kind === 'graphics' && (props.graphicSrc || props.graphicShape)) {
             const local = toLocal(_experienceAbsRect(exp, 'graphic'));
-            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc, glyph: '🎭', opacity: props.graphicOpacity }, local), graph);
+            const shapeFields = props.graphicShape ? {
+                shape: props.graphicShape, shapeFillColor: props.graphicFillColor,
+                shapeStrokeColor: props.graphicStrokeColor, shapeStrokeWidth: props.graphicStrokeWidth,
+                rotation: props.graphicRotation
+            } : {};
+            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc || null, glyph: '🎭', opacity: props.graphicOpacity }, local, shapeFields), graph);
             sections.push({ slot: 'graphic', rect: window.EngineV2Runtime.rectFor(local, graph) });
         }
         if (kind === 'text' && props.textContent && props.textContent.trim()) {
@@ -2109,6 +2114,17 @@
     }
 
     const DECORATION_GLYPHS = ['🎀', '🌸', '⭐', '🍃', '🦋', '💫', '🌿', '❤️', '✨', '🎈'];
+
+    // Small, shared thumbnail helper for a Graphics section holding a
+    // Shape rather than an uploaded image — used by every card/thumb
+    // preview site so a Shape gets its own recognizable swatch (its
+    // real Fill Colour, with the shape's own icon on top) instead of
+    // silently falling through to the generic ✨ fallback.
+    function _fillShapeThumb(el, shapeKind, fillColor) {
+        const s = (window.ExperienceSchema.SHAPE_KINDS || []).find(function (k) { return k.value === shapeKind; });
+        el.style.background = fillColor || '#F0B429';
+        el.textContent = s ? s.icon : '◆';
+    }
 
     // Authoring Convergence Sprint — the Universal Experience content
     // model (Builder V3.1) has no "glyph" concept of its own (Text/
@@ -3538,6 +3554,8 @@
                 img.src = props.imageSrc || props.graphicSrc;
                 img.alt = '';
                 thumb.appendChild(img);
+            } else if (props.graphicShape) {
+                _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
             } else if (!props.colorTransparent && props.colorValue) {
                 thumb.style.background = props.colorValue;
             } else {
@@ -3644,6 +3662,8 @@
                 img.src = props.imageSrc || props.graphicSrc;
                 img.alt = '';
                 thumb.appendChild(img);
+            } else if (props.graphicShape) {
+                _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
             } else if (exp.type === 'frame' && props.borderColor) {
                 thumb.style.background = props.borderColor;
             } else if (!props.colorTransparent && props.colorValue) {
@@ -4145,6 +4165,51 @@
         });
         addWrap.appendChild(grid);
         contextPanel.appendChild(addWrap);
+
+        // A Shape is a real vector primitive (fillable, outlinable,
+        // resizable, rotatable) rather than a fixed-colour rasterized
+        // glyph — see experienceSchema.js's SHAPE_KINDS. Creates the
+        // same Nurturing → Personal → hosted-here Experience the glyph
+        // picker above does, but sets graphicShape directly instead of
+        // rasterizing a PNG, since a shape's whole point is that its
+        // own colours stay editable afterward.
+        const shapeWrap = document.createElement('div');
+        shapeWrap.className = 'wb-field-group';
+        const shapeLabel = document.createElement('label');
+        shapeLabel.className = 'wb-field-label';
+        shapeLabel.textContent = 'Add a Shape';
+        shapeWrap.appendChild(shapeLabel);
+        shapeWrap.appendChild(_fieldHelp('Pick a shape you can colour, outline and rotate.'));
+
+        const shapeGrid = document.createElement('div');
+        shapeGrid.className = 'wb-scene-template-grid';
+        (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-scene-template-card';
+            card.style.fontSize = '22px';
+            card.style.textAlign = 'center';
+            card.textContent = s.icon;
+            card.title = s.label;
+            card.addEventListener('click', function () {
+                const exp = window.ProjectModel.addExperience(currentProject, {
+                    name: s.label, type: 'decoration', hostedBy: 'free'
+                });
+                window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+                window.ProjectModel.updateExperience(currentProject, exp.id, { contentKind: 'graphics' });
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicShape', s.value);
+                window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
+                currentNav = 'experiences';
+                experienceHomeZone = 'gallery';
+                experienceInspectorId = exp.id;
+                _persist();
+                _renderNav();
+                _renderWorkspace();
+            });
+            shapeGrid.appendChild(card);
+        });
+        shapeWrap.appendChild(shapeGrid);
+        contextPanel.appendChild(shapeWrap);
     }
 
     // ---------- Decorations — a decoration is selected: its full property panel ----------
@@ -5034,6 +5099,8 @@
             img.style.height = '100%';
             img.style.objectFit = 'contain';
             thumb.appendChild(img);
+        } else if (props.graphicShape) {
+            _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
         } else if (exp.type === 'frame' && props.borderColor) {
             thumb.style.background = props.borderColor;
         } else if (!props.colorTransparent && props.colorValue) {
@@ -5460,8 +5527,49 @@
         // ---- 🎭 Graphics ----
         if (kind === 'graphics') {
             const outer = _openContentCard('🎭', 'Graphics');
-            contextPanel.appendChild(_fieldHelp('A reusable visual asset — an SVG or PNG icon or sticker.'));
-            contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, onUploadProp('graphicSrc'), 'image/*,.svg,image/svg+xml')));
+            contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
+            contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, function (v) {
+                // Uploading a real image and picking a Shape are
+                // mutually exclusive within Graphics (there is only one
+                // mirrored Layer for this section) — uploading clears
+                // any Shape already chosen, matching the Shape picker's
+                // own symmetric clear-the-other-one below.
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicShape', null);
+                onUploadProp('graphicSrc')(v);
+            }, 'image/*,.svg,image/svg+xml')));
+
+            const shapeHeading = document.createElement('h4');
+            shapeHeading.className = 'wb-context-subheading';
+            shapeHeading.style.marginTop = '8px';
+            shapeHeading.textContent = 'Or Pick a Shape';
+            contextPanel.appendChild(shapeHeading);
+            const shapeGrid = document.createElement('div');
+            shapeGrid.className = 'wb-scene-template-grid';
+            (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card' + (props.graphicShape === s.value ? ' active' : '');
+                card.disabled = currentProjectReadOnly;
+                card.style.fontSize = '22px';
+                card.style.textAlign = 'center';
+                card.textContent = s.icon;
+                card.title = s.label;
+                card.addEventListener('click', function () {
+                    window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicSrc', null);
+                    onUploadProp('graphicShape')(s.value);
+                });
+                shapeGrid.appendChild(card);
+            });
+            contextPanel.appendChild(shapeGrid);
+
+            if (props.graphicShape) {
+                _fieldRow(
+                    _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
+                    _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor')))
+                );
+                contextPanel.appendChild(_buildFieldGroup('Outline Thickness', _range(0, 20, props.graphicStrokeWidth || 0, onProp('graphicStrokeWidth')), 'Leave at 0 for no outline.'));
+            }
+
             contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
             const graphicTransform = document.createElement('h4');
             graphicTransform.className = 'wb-context-subheading';
@@ -5469,6 +5577,7 @@
             graphicTransform.textContent = 'Transform';
             contextPanel.appendChild(graphicTransform);
             _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp);
+            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.graphicRotation || 0, onProp('graphicRotation'))));
             _contentCardFoot(exp);
             contextPanel = outer;
         }

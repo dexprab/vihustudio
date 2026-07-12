@@ -83,6 +83,17 @@ const ExperienceSchema = (function () {
             graphicSrc: null,
             graphicOpacity: 1,
             graphicX: 0.55, graphicY: 0.4, graphicW: 0.3, graphicH: 0.3,
+            // A Graphics section may alternatively hold an author-drawn
+            // Shape (SHAPE_KINDS below) instead of an uploaded image —
+            // mutually exclusive with graphicSrc by construction (the
+            // Inspector clears one when the other is picked). Shares the
+            // same graphicX/Y/W/H Transform and graphicOpacity a Graphics
+            // image already has; only the styling is shape-specific.
+            graphicShape: null,
+            graphicFillColor: '#F0B429',
+            graphicStrokeColor: '#24406B',
+            graphicStrokeWidth: 0,
+            graphicRotation: 0,
             // Colour — a fill behind whatever other content exists;
             // `colorTransparent` defaults true so a brand-new Experience
             // with only Text/Image/Graphics never paints an unwanted
@@ -101,6 +112,20 @@ const ExperienceSchema = (function () {
         { value: 'place', label: 'A Place — lives inside one Place' },
         { value: 'scene', label: 'A Scene — fills the whole Scene' },
         { value: 'free', label: 'Free — roams a Scene on its own' }
+    ];
+
+    // A small, fixed set of author-drawable shapes for the Graphics
+    // section's "Pick a Shape" mode — real vector primitives (filled,
+    // outlined, resized, rotated per the Experience's own Transform),
+    // not a rasterized emoji glyph, since a glyph's own colours can
+    // never be recoloured. `engineRuntime.js`'s `_drawShape` is the one
+    // place that knows how to actually draw each kind.
+    const SHAPE_KINDS = [
+        { value: 'circle', label: 'Circle', icon: '●' },
+        { value: 'star', label: 'Star', icon: '★' },
+        { value: 'arrow', label: 'Arrow', icon: '➜' },
+        { value: 'speech-bubble', label: 'Speech Bubble', icon: '💬' },
+        { value: 'banner', label: 'Banner', icon: '🎗️' }
     ];
 
     const LIFECYCLE_LABELS = {
@@ -161,6 +186,7 @@ const ExperienceSchema = (function () {
     return {
         EXPERIENCE_TYPES: EXPERIENCE_TYPES,
         EXPERIENCE_HOSTS: EXPERIENCE_HOSTS,
+        SHAPE_KINDS: SHAPE_KINDS,
         LIFECYCLE_LABELS: LIFECYCLE_LABELS,
         DEFAULT_EXPERIENCE_TYPE: DEFAULT_EXPERIENCE_TYPE,
         findType: findType,
