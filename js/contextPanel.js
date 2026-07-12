@@ -281,19 +281,28 @@ const ContextPanel=(function(){
   function _renderArtworkActions(){
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
+    const slide=_currentSlide();
+    const hasImage=!!(slide && slide.image);
     const banner=_el('div','context-panel-heading context-selection-banner');
     banner.appendChild(_el('span','context-selection-banner-icon','🖼️'));
     banner.appendChild(_el('span','context-selection-banner-label','Your Picture'));
     panelRoot.appendChild(banner);
     const row=_el('div','context-action-row');
-    const replaceBtn=_el('button','context-btn context-btn-primary','🖼️ Replace Artwork');
+    // Creator Acceptance Sprint — "Add Artwork" before anything's been
+    // uploaded, "Replace Artwork" once it has; Crop/Rotate only shows
+    // once there's something to crop (it already silently no-ops with
+    // nothing selected via _cropRotateArtwork's own guard — hiding it
+    // just removes a dead button, not new capability).
+    const replaceBtn=_el('button','context-btn context-btn-primary',hasImage?'🖼️ Replace Artwork':'🖼️ Add Artwork');
     replaceBtn.type='button';
     replaceBtn.addEventListener('click',_replaceArtwork);
     row.appendChild(replaceBtn);
-    const cropBtn=_el('button','context-btn','✂️ Crop / Rotate');
-    cropBtn.type='button';
-    cropBtn.addEventListener('click',_cropRotateArtwork);
-    row.appendChild(cropBtn);
+    if(hasImage){
+      const cropBtn=_el('button','context-btn','✂️ Crop / Rotate');
+      cropBtn.type='button';
+      cropBtn.addEventListener('click',_cropRotateArtwork);
+      row.appendChild(cropBtn);
+    }
     panelRoot.appendChild(row);
   }
 
@@ -302,6 +311,20 @@ const ContextPanel=(function(){
     if(typeof c!=='string') return '#1D3457';
     const m=c.match(/^#?[0-9a-f]{6}/i);
     return m ? ('#'+m[0].replace('#','').toLowerCase()) : '#1D3457';
+  }
+
+  // Creator Acceptance Sprint — same lookup js/app.js's own
+  // _updateHeaderContext() already makes (Artwork Theme first, Story
+  // Theme fallback), reused here so the default view can greet the
+  // child by the active World's own name/icon instead of a generic hint.
+  function _worldIdentity(){
+    if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined') return null;
+    const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+    const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
+    const themeId=artworkId||storyId;
+    const theme=themeId && ThemeRegistry.get ? ThemeRegistry.get(themeId) : null;
+    if(!theme) return null;
+    return {icon:theme.themeIcon||'📖', name:theme.name||''};
   }
 
   // Sprint 10.1 — Theme Driven Representations. The active theme's own
@@ -449,8 +472,21 @@ const ContextPanel=(function(){
     if(stickerStudioOpen) return;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    const hint=_el('div','context-nothing-selected-hint','👆 Tap anything on the page to edit it');
+    // Creator Acceptance Sprint — the default state is guidance, not a
+    // blank hint: greet the child by the active World's own name/icon,
+    // then explain the two ownership marks they'll see on the page
+    // (Object Strip's own ✏️ edit badge and 🌍 World badge) before they
+    // tap anything.
+    const world=_worldIdentity();
+    if(world){
+      panelRoot.appendChild(_el('div','context-welcome-heading','Welcome to '+world.icon+' '+world.name));
+    }
+    const hint=_el('div','context-nothing-selected-hint','👆 Tap anything on the page to personalise it.');
     panelRoot.appendChild(hint);
+    const legend=_el('div','context-ownership-legend');
+    legend.appendChild(_el('div','context-legend-row','✏️ Objects marked editable can be changed.'));
+    legend.appendChild(_el('div','context-legend-row','🌍 Objects marked World belong to the World.'));
+    panelRoot.appendChild(legend);
     _appendRepresentationRow(panelRoot);
     _appendCaptionOrQuote(panelRoot);
     // Museum Gallery story-role pages have no per-page background scene

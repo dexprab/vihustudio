@@ -88,7 +88,7 @@ const ObjectStrip=(function(){
     // Ownership-aware badge: an object a child locked themselves reads
     // differently from something that was never theirs to begin with —
     // both used to share the same "Part of the world" text.
-    const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🔒 Part of the world' : '🔒 Locked');
+    const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🌍 Part of the World' : '🔒 Locked');
     card.appendChild(_el('div','object-card-badge',badgeText));
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
     return card;
@@ -135,17 +135,32 @@ const ObjectStrip=(function(){
       onClick:_clearSelection
     }));
 
-    // Artwork — Story-role pages have no SceneEngine scene element for
-    // the picture (see js/app.js's own comment at the image-pan click
-    // handler), so 'image-holder' here is the same synthetic id that
-    // handler already uses purely for Context Panel routing. Like
+    // Artwork — a page with no SceneEngine scene blueprint (Story role,
+    // and — a real bug found while verifying this sprint — a freshly
+    // Creation-Flow-created page, whose pageType stays 'blank' forever
+    // since nothing ever promotes it to 'story') has no scene element
+    // for the picture (see js/app.js's own comment at the image-pan
+    // click handler), so 'image-holder' here is the same synthetic id
+    // that handler already uses purely for Context Panel routing. Like
     // Background, this is a page-level concept with no render-tree bbox
     // of its own today, so it stays a second disclosed synthetic entry.
-    if(slide.pageType==='story' && slide.image){
+    // Matching renderer/slideRenderer.js's own `_hasScene` gate (rather
+    // than a hardcoded pageType string) means this correctly covers
+    // 'story' AND 'blank' alike, and stays correct for any future
+    // non-scene pageType too.
+    // Creator Acceptance Sprint — always present when there's no scene
+    // blueprint, not gated on slide.image: the World already authored a
+    // Place for the child's artwork (the Frame/mat/wall chrome now
+    // renders before any picture exists, matching Builder's own Runtime
+    // Preview), so "Tap Artwork Place -> Replace Artwork" must be
+    // reachable before an image is uploaded, not only after.
+    const hasScene=(typeof SceneEngine!=='undefined' && typeof SceneEngine.getRenderData==='function')
+      && SceneEngine.getRenderData(slide)!==null;
+    if(!hasScene){
       cards.push(_card({
         imgSrc:slide.thumbnail||null,
         icon:'🖼️',
-        name:'Artwork',
+        name:slide.image?'Artwork':'Artwork Place',
         editable:true,
         selected:selScene==='image-holder',
         onClick:function(){ _selectScene('image-holder','image-holder'); }

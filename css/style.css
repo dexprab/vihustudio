@@ -5171,6 +5171,31 @@ body.dark-theme .context-selection-banner{ color:var(--text); }
   margin-bottom:6px;
   text-align:center;
 }
+/* Creator Acceptance Sprint — the default panel's "Welcome to <World>"
+   heading + ownership legend, shown before anything is selected. Reuses
+   the same warmth/weight .context-rep-name and .context-nothing-selected-hint
+   already established rather than introducing new tokens. */
+.context-welcome-heading{
+  font-size:19px;
+  font-weight:700;
+  color:var(--navy);
+  margin-bottom:10px;
+  text-align:center;
+}
+body.dark-theme .context-welcome-heading{ color:var(--text); }
+.context-ownership-legend{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-tertiary);
+  background:var(--bg-alt,rgba(0,0,0,0.03));
+  border-radius:12px;
+  padding:10px 14px;
+  margin-bottom:14px;
+}
+.context-legend-row{ line-height:1.4; }
 .context-rep-name{
   font-size:19px;
   font-weight:700;

@@ -1,9 +1,9 @@
 {
-  "version": "2.4.0",
-  "sprint": "Creator Runtime Pass Sprint — Promote the Center Pane into the Page Runtime",
-  "task": "New js/pageRuntime.js promotes Creator's existing center pane into a named Page Runtime -- the single owner of the active page, its rendered objects, and its selection -- as a thin dispatch layer wrapping existing js/app.js functions, not a rewrite. Fixes a confirmed real bug (showSlide() never cleared selection, so a stale selection from a different page could open a live-looking but id-blind editor) and consolidates two divergent notify sequences into one PageRuntime.notify() call. ObjectStrip/ContextPanel/CardDesigner/PageDesigner/StickerStudio now read the active page and rendered objects through PageRuntime instead of reconstructing them independently; PageOps.reorderPage/moveToEnd and creationFlow's Start Creating now go through one consistent pipeline instead of duplicated/redundant ones. Save and Publish were investigated and found to already satisfy the sprint's requirements -- left unchanged. See docs/CREATOR_PAGE_RUNTIME.md and CLAUDE.md's matching entry for the full account.",
-  "build": "0088",
+  "version": "2.5.0",
+  "sprint": "Creator Acceptance Sprint — Theme Fidelity Pass (Museum Gallery)",
+  "task": "Fixed the one root cause behind Museum Gallery pages looking empty in Creator before a picture was uploaded: renderer/slideRenderer.js's _resolveBorder(s) resolved an Artwork Theme's Frame only if(hasImage), so the frame/mat/ornament/caption and every Frame/Holder-scoped Layer Pack entry (Wax Seal, Gallery Spotlight, Museum Caption) never rendered until an image existed, even though every function downstream of that gate was already image-independent. Lifting that one gate (scoped to Artwork Theme pages only) closed the whole visual gap. Added a wall-tone-aware artwork placeholder for Story-role pages (mirroring the existing Cover/Hook/End 'Add an image' pattern). Object Strip's Artwork card is no longer gated on slide.image, and a second real bug found while verifying this fix -- fresh Creation-Flow pages never get pageType promoted from 'blank' to 'story' -- is fixed by matching the renderer's own _hasScene criterion instead of a hardcoded pageType string. Context Panel's default view now greets the child by World name with an ownership legend. See docs/CREATOR_THEME_FIDELITY.md and CLAUDE.md's matching entry for the full account.",
+  "build": "0089",
   "buildDate": "2026-07-12",
-  "commit": "eebe76b",
+  "commit": "PENDING",
   "environment": "Release"
 }

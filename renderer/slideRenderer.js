@@ -364,14 +364,19 @@ const SlideRenderer=(()=>{
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
     if(!b){
-      // Sprint 9.3 — an Artwork Theme is the next fallback layer,
-      // ABOVE the Story Theme's Holder Defaults (below) but only when
-      // the slide actually has a picture — "If a page contains no
-      // artwork, Artwork Theme has no effect" is enforced right here,
-      // not by every draw call site having to check separately.
-      const hasImage=!!(s && s.image && s.image.width);
-      if(hasImage){
-        const art=_resolveArtworkFields(_artworkTheme(s),s);
+      // Sprint 9.3 originally gated this behind hasImage ("If a page
+      // contains no artwork, Artwork Theme has no effect"). Creator
+      // Acceptance Sprint (Museum Gallery Theme Fidelity) reverses that
+      // specifically for the Frame/mat/wall chrome: Builder's own
+      // Runtime Preview always shows an empty Frame's chrome before a
+      // picture is added (engineRuntime.js's _paintHolder — an
+      // Engine-level rule, not a Theme choice), so a Story-role Artwork
+      // Theme page now resolves its Frame Variation regardless of
+      // image presence. Only the picture itself (_drawImage, gated
+      // separately in render()) still requires a real image.
+      const artTheme=_artworkTheme(s);
+      if(artTheme){
+        const art=_resolveArtworkFields(artTheme,s);
         const artworkBorder=_artworkBorder(art);
         if(artworkBorder) return artworkBorder;
       }
@@ -1546,6 +1551,15 @@ const SlideRenderer=(()=>{
       // all (see _drawQuoteText above), so this entire block is skipped.
       if(_composition!=='quote' && s.image && s.image.width){
         _drawImage(s,_border,_panelRect);
+      }else if(_composition!=='quote' && _border){
+        // Creator Acceptance Sprint — a Story-role page has no
+        // SceneEngine blueprint (see _hasScene above), so it never had
+        // an image-less placeholder the way Cover/Hook/End's
+        // _drawSceneImageHolder already does. Only reached once _border
+        // has resolved (an Artwork Theme's Frame is active), so the
+        // frame/mat/wall chrome above is already drawn — this just
+        // fills the empty content rect inside it.
+        _drawArtworkPlaceholder(_panelRect,_border,_chromeColor);
       }
       // Sprint 6.5 — Picture Border stroke sits above the image so it
       // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
@@ -1554,9 +1568,12 @@ const SlideRenderer=(()=>{
       if(_composition!=='quote' && _border){
         _drawPictureFrameOrnament(_panelRect,_border,t);
         _drawPictureFrameStroke(_panelRect,_border);
-        // Sprint 9.3 — _border._artwork is only ever set when the
-        // slide has an image (see _resolveBorder's gating), so this
-        // is already "no artwork on the page -> no caption" for free.
+        // Creator Acceptance Sprint — _border._artwork is now set
+        // whenever an Artwork Theme is active, image or not
+        // (_resolveBorder no longer gates on hasImage). Caption safety
+        // still holds: _drawArtworkCaption itself returns early unless
+        // slide.metadata.artwork.title is a real, non-empty string, so
+        // an image-less or caption-less page still draws no caption.
         if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_panelRect,t);
         // Sprint 9.6 — Frame-targeted layers (Wax Seal) draw on top of
         // the fully-assembled frame; Holder-targeted layers (Museum
@@ -1754,6 +1771,40 @@ const SlideRenderer=(()=>{
     x.textAlign=el.alignment||'center';
     x.textBaseline='alphabetic';
     x.fillText(text,pos.x,pos.y);
+    x.restore();
+  }
+
+  // Creator Acceptance Sprint — Museum Gallery Theme Fidelity. Mirrors
+  // _drawSceneImageHolder's own "Add an image" dashed-placeholder
+  // pattern (Sprint 6.2) for the one shape that never had it: a
+  // Story-role page's artwork content rect, which SceneEngine has no
+  // blueprint for (Story role's _hasScene is always false). Uses
+  // _holderRectFor so the placeholder sits exactly where the real
+  // picture will land, inside the frame's own mat/padding insets.
+  // Unlike _drawSceneImageHolder's hardcoded white, this takes an
+  // explicit chromeColor (the same wall-tone luminance check already
+  // used for Handle/Page Number text) — a light Frame Variation's wall
+  // (Museum Gallery's own "Classic White") would make a white dashed
+  // line invisible.
+  function _drawArtworkPlaceholder(panelRect,border,chromeColor){
+    const rect=_holderRectFor(panelRect,border);
+    const color=chromeColor||'#FFFFFF';
+    x.save();
+    x.globalAlpha=0.06;
+    x.fillStyle=color;
+    x.fillRect(rect.x,rect.y,rect.w,rect.h);
+    x.globalAlpha=0.40;
+    x.strokeStyle=color;
+    x.lineWidth=3;
+    x.setLineDash([12,8]);
+    x.strokeRect(rect.x,rect.y,rect.w,rect.h);
+    x.setLineDash([]);
+    x.globalAlpha=0.70;
+    x.fillStyle=color;
+    x.font='bold 26px sans-serif';
+    x.textAlign='center';
+    x.textBaseline='middle';
+    x.fillText('Tap to add your artwork',rect.x+rect.w/2,rect.y+rect.h/2);
     x.restore();
   }
 
