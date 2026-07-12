@@ -109,7 +109,7 @@ entry) — `WorkspaceBuilder`'s `_editorSectionFor` falls back to
 
 | Field | Consumed by | Shown in Creator | Editable? | Reflected in |
 |---|---|---|---|---|
-| Whole Frame Variation | `_artworkBorder`/`_resolveWallTone` in `renderer/slideRenderer.js` | Card Designer → Picture section → **Frame Variations** control (`CONTROL_CATALOG.frameVariation`, colour-swatch tiles built from `theme.frameVariations` — Creator V2 Wireframe Precision Pass) — reachable only if the theme's `editor.frame.sections` (or `editor.holder.image.sections`) includes `frameVariation` | Yes — **per-card**, stored in `slide.overrides.border` (an override *record*, not a preset id — picking a swatch copies that variation's resolved field values onto the card's own border override) | Canvas Picture Frame (mat/border/wall-tone/shadow bands), Publish, thumbnails |
+| Whole Frame Variation | `_artworkBorder`/`_resolveWallTone` in `renderer/slideRenderer.js`, via `_resolveArtworkFields` (see §8's correction — **not** the Sprint 6.5 Picture Border pipeline) | Card Designer → Picture section → **Frame Variations** control (`CONTROL_CATALOG.frameVariation`, colour-swatch tiles built from `theme.frameVariations` — Creator V2 Wireframe Precision Pass) — reachable only if the theme's `editor.frame.sections` (or `editor.holder.image.sections`) includes `frameVariation` | Yes — **per-card**, but only takes effect when the card has an image **and** an Artwork Theme is active (`_resolveBorder`'s `hasImage && _artworkTheme(s)` gate); stored as just the chosen variation's `id` at `slide.metadata.cardOverrides.artwork.frameVariation` (verified directly — corrects an earlier draft of this doc, which wrongly said `slide.overrides.border`, a completely different bag used by the Sprint 6.5 Picture Border controls). The full field values are resolved at render time by `_resolveArtworkFields` looking the id back up in `theme.frameVariations`, never copied onto the override itself. | Canvas Picture Frame (mat/border/wall-tone/shadow bands), Publish, thumbnails — **only for a Story/Cover/etc. page that both has a picture and has an Artwork Theme applied**; on a plain Story-only project this control has no visible effect even if shown. |
 | `fields.cornerRadius`/`inset`/`defaultMargin` | **Nothing** in the real renderer — Builder-preview-only (see `THEME_CONTRACT.md` §9, disclosed gap) | Not shown in Creator at all | No | Nowhere in a published Theme |
 
 ## 6. Layer Pack (`theme.layerPack[]` — theme-declared text/sticker/decoration at `slide`/`frame`/`holder`/`element`/`overlay` targets)
@@ -135,28 +135,52 @@ This is the field group with the richest Creator surface — it decides
 which controls Card/Page Designer show at all, in what order. Full
 `CONTROL_CATALOG` → storage mapping:
 
-| Control id | Panel | Storage on edit | Consumed by |
-|---|---|---|---|
-| `paper` | `frame` | `slide.overrides.border.paper` (via `_readArtwork`/artwork bag) | `_artworkBorder` (paper texture) |
-| `mat` | `frame` | `...composition` | `_artworkBorder` (mat layout) |
-| `presentation` | `holder.image` | `...presentation` | Holder image-fit preset (`ThemePresets`) |
-| `artworkFrame` | `holder.image` | `...frame` | Artwork frame preset (white-mat/tape/floating) |
-| `lighting` | `holder.image` | `...lighting` | Lighting overlay effect |
-| `caption` | `holder.image` | `...caption` | Caption style preset |
-| `stickerShadow` | `holder.sticker` | boolean, sticker override bag | Sticker shadow toggle |
-| `frameVariation` | `frame` | `slide.overrides.border` (full field copy — see §5) | `_artworkBorder` |
-| `layout` | `slide` | `slide.metadata.layout` | `_resolveLayout` |
-| `museumCaption` | `slide` | `slide.metadata.{artworkTitle,artist,age,date}` | `_drawMuseumCaption` (via Layer Pack, §6) |
-| `quoteText` | `slide` | `slide.metadata.{quoteText,quoteAttribution}` | `_drawQuoteText` |
-| `background`/`decorations`/`title` (core, DEFAULT_CONFIG) | `slide` | `slide.metadata`/page background | Page Designer's Story tab |
-| `frameStyle`/`fill`/`border`/`radius`/`shadow` (core) | `frame` | `slide.overrides.border` | `_artworkBorder`/`_drawPictureFrameStroke` |
-| `typography`/`alignment` (core) | `holder.text` | `slide.overrides.textElements[id]` | Text element draw |
+**Correction (verified against real code after an earlier draft of this
+table got the storage locations wrong):** `paper`/`mat`/`presentation`/
+`artworkFrame`/`lighting`/`caption` do **not** share the Sprint 6.5
+Picture Border bag (`slide.metadata.cardOverrides.border`) — they write
+into a separate, Sprint-9.4-introduced bag,
+`slide.metadata.cardOverrides.artwork` (`js/workspaceBuilder.js`'s
+`_readArtwork`/`_ensureArtwork`), read back at render time only inside
+`renderer/slideRenderer.js`'s `_resolveArtworkFields`/`_resolveBorder` —
+**gated on the card both having an image and an Artwork Theme being
+active** (`hasImage && _artworkTheme(s)`). On a Story-only project with
+no Artwork Theme, these controls (if a theme's `editor` block exposes
+them at all) are inert even though they render normally. `stickerShadow`
+was checked directly (`grep stickerShadow renderer/slideRenderer.js`) and
+is **never read anywhere** — it is a real, still-open "written but not
+consumed" gap, exactly the state `js/workspaceBuilder.js`'s own file
+header discloses as a Sprint 9.4 starting condition that a later sprint
+never actually closed for this one field (unlike `paper`/`presentation`/
+`artworkFrame`/`lighting`/`caption`/`mat`, which Sprint 9.6 did wire up).
 
-All of these are **per-card** overrides (`slide.overrides.*`) except
-`layout`/`museumCaption`/`quoteText`, which are **per-page content**
-(`slide.metadata.*`) — a real distinction: overrides are presentation
-choices a creator makes about *how* the theme presents things on this
-one card; metadata is the creator's own *content*.
+| Control id | Panel | Storage on edit | Consumed by | Verified effect |
+|---|---|---|---|---|
+| `paper` | `frame` | `slide.metadata.cardOverrides.artwork.paper` | `_resolveArtworkFields` → `_artworkBorder` | Yes — paper texture fill |
+| `mat` | `frame` | `...artwork.composition` | same | Yes — mat layout (center/margin/floating) |
+| `presentation` | `holder.image` | `...artwork.presentation` | `ThemePresets.resolveHolder('image',...)` (slideRenderer.js:271,334) | Yes |
+| `artworkFrame` | `holder.image` | `...artwork.frame` | `_resolveArtworkFields` → `_artworkBorder` | Yes — frame design (white-mat/tape/floating) |
+| `lighting` | `holder.image` | `...artwork.lighting` | `_drawArtworkLighting(rect, art.lighting)` (slideRenderer.js:729) | Yes |
+| `caption` | `holder.image` | `...artwork.caption` | switch on `art.caption` (slideRenderer.js:878-892) | Yes |
+| `stickerShadow` | `holder.sticker` | `slide.metadata.cardOverrides.artwork.stickerShadow` (boolean) | **nothing** — confirmed zero matches in `renderer/slideRenderer.js` | **No — genuinely inert.** Shown/toggleable, never rendered. |
+| `frameVariation` | `frame` | `slide.metadata.cardOverrides.artwork.frameVariation` (the variation's `id` only) | `_resolveArtworkFields` looks the id up in `theme.frameVariations` at render time | Yes, same gating as §5 |
+| `layout` | `slide` | `slide.metadata.layout` | `_resolveLayout` | Yes |
+| `museumCaption` | `slide` | `slide.metadata.{artworkTitle,artist,age,date}` | `_drawMuseumCaption` (via Layer Pack, §6) | Yes |
+| `quoteText` | `slide` | `slide.metadata.{quoteText,quoteAttribution}` | `_drawQuoteText` | Yes |
+| `background`/`decorations`/`title` (core, DEFAULT_CONFIG) | `slide` | `slide.metadata`/page background | Page Designer's Story tab | Yes |
+| `frameStyle`/`fill`/`border`/`radius`/`shadow` (core) | `frame` | `slide.metadata.cardOverrides.border` (Sprint 6.5 Picture Border bag — a *different* bag from the artwork one above; reaches the renderer as `payload.overrides.border`, see `_resolveBorder`) | `_artworkBorder`/`_drawPictureFrameStroke` | Yes |
+| `typography`/`alignment` (core) | `holder.text` | per-text-element override (`slide.overrides.textElements[id]` on the render payload) | Text element draw | Yes |
+
+Three distinct storage bags exist, easy to conflate and worth naming
+explicitly: `slide.metadata.cardOverrides.border` (Picture Border —
+frameStyle/fill/border/radius/shadow), `slide.metadata.cardOverrides.artwork`
+(Sprint 9.4/9.6 Holder presentation controls — paper/mat/presentation/
+artworkFrame/lighting/caption/stickerShadow/frameVariation), and
+`slide.metadata.{layout,artworkTitle,...}` directly on metadata for
+per-page **content** (layout/museumCaption/quoteText) rather than a
+per-card presentation override. Overrides are choices about *how* the
+theme presents things on this one card; metadata fields are the
+creator's own *content*.
 
 ## 9. Assets (`assets/*` → compiled `assets` map)
 
@@ -172,6 +196,7 @@ one card; metadata is the creator's own *content*.
 - `fields.cornerRadius`/`inset`/`defaultMargin` on a Frame Variation (§5) — Builder-preview-only, disclosed gap.
 - `supportedCreationTypes` (§1) — filters discoverability, never a visible/editable field.
 - Layer Pack entries themselves (§6) — visible (Object Strip) and selectable, never editable.
+- **`stickerShadow`** (§8) — shown as a real toggle in Card Designer's Sticker section when a theme's `editor.holder.sticker` exposes it, writes to a real field, and is **never read anywhere in `renderer/slideRenderer.js`** (confirmed by direct grep, zero matches) — a genuine "control exists, does nothing" gap, not yet closed the way Sprint 9.6 closed the same class of gap for `paper`/`presentation`/`artworkFrame`/`lighting`/`caption`/`mat`.
 - Any World Builder Scene/Experience/Place authoring concept — none of that vocabulary crosses into Creator; only the **compiled, converged output** (Layouts/Representations/Layer Pack/Frame Variations) ever does, per the Builder Convergence Sprint's own "one canonical pipeline" decision.
 
 ---
