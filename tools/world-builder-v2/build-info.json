@@ -1,10 +1,10 @@
 {
-  "version": "3.14.2",
+  "version": "3.14.3",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Artwork Gallery starter Scene renamed Story -> Gallery",
-  "slice": "The Builder & Studio Alignment Sprint's neutral default for the Artwork Gallery template's starter Scene, \"Story,\" turned out to be its own mismatch once actually seen in Studio's Screen 2 Representation carousel: it reads (and, with the default masks thumbnail glyph, visually looks) like the Tell a Story Creation Type, not an artwork showcase -- found live, from a user's already-published \"My Artwork Gallery\" World showing a masks icon and the word \"Story\" in its own preview carousel. Renamed TEMPLATE_STARTER_SCENE's artwork-gallery entry to \"Gallery\" -- still not part of the flagged Showcase/Portrait/Quote trio, while actually describing the template. Only affects new Artwork Gallery projects going forward; an already-published World keeps its own Scene's existing name until an author renames it via the Scenes screen and rebuilds/republishes. Verified via Playwright: a freshly created Artwork Gallery project's starter Scene (and thus its default Representation) is named \"Gallery\"; goldenBuild.js 30/30 unchanged.",
-  "build": "0061",
+  "milestone": "Host Here didn't refresh Working View's stale hosting banner",
+  "slice": "Found live authoring a Scene-hosted background-colour Experience: the Inspector's own 'Host Here' button (the multi-Scene picker) correctly wrote the new attachment -- Used In, the Scene's real background colour, everything underneath was already correct the instant the click handler ran -- but its own click handler only re-rendered the Context Panel, never Working View's Experience Studio banner (_renderExperienceStudio/_experienceHostingStatus), so that banner kept showing its pre-hosting \"Not yet hosted anywhere\" text right alongside an Inspector correctly reading \"Used In: <Scene>\" / \"Already hosted -- nothing more to host here\", a real, reproducible internal inconsistency. Switched to _redrawSceneCanvasesForExperience(exp), the helper already built for exactly this, matching the two sibling attach call sites (Create & Host, Reuse Existing) that already used the equivalent _renderWorkspace(). Verified via Playwright: the banner now correctly clears the instant the target Scene is the one currently open, and separately confirmed the underlying colour-sync mechanism (_syncUniversalContent -> setSceneBackground) was already correct all along -- the reported \"not showing in Runtime Preview\" was Runtime Preview showing a different, currently-open Scene than the one the Experience was hosted into, now clearly disclosed by the fixed banner's own wording (\"Hosted in <Scene> -- open that Scene to see it in Runtime Preview\") instead of the misleading \"Not yet hosted anywhere\". goldenBuild.js 30/30 unchanged.",
+  "build": "0062",
   "buildDate": "2026-07-12",
-  "commit": "3dd1650",
+  "commit": "pending",
   "environment": "Release"
 }
