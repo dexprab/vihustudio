@@ -1,9 +1,9 @@
 {
-  "version": "1.2.2",
-  "sprint": "Sprint 3 follow-up — Trim Trash/Keep split, brush deselect, zoom slider",
-  "task": "Direct feedback on the Edit screen's tool panel: (1) Trim Picture's drawn box previously only ever specified what to KEEP, contradicting the everyday meaning of 'trim' -- added a second action, Trash It (a new hard-edged eraseRect, recorded onto the shared Oops!/Redo brush history rather than the crop-specific Undo Trim), alongside the existing Keep This crop. (2) Once a brush tool (Remove More/Bring It Back) was active there was no way to turn it off -- re-clicking the already-active brush size now deselects the tool back to pan mode; picking a different size still just switches. (3) Added a plain picture zoom slider (kidZoomSlider) standing in for the hidden technical zoom buttons, wired to zoomProcessed via its own split onChange callback so it only ever reflects the picture actually being edited and stays in sync with wheel-zoom/fit in both directions. Verified via Playwright end to end, including re-confirming the Quality Contract holds for the new Trash It export path (0 RGB mismatches at every fully-opaque pixel, fully transparent inside the trashed rect) after an initial verification pass's false-positive mismatches were traced to a canvas-readback premultiplication artifact in the test's own method, not a real defect. Full existing regression suite unchanged.",
-  "build": "0005",
+  "version": "1.2.3",
+  "sprint": "Sprint 3 follow-up — Undo Trim visibility fix",
+  "task": "Reported: 'undo trim option does not work.' Root cause traced: applyManualCrop() (and the new applyTrimTrash()) called setActiveTool('pan') right after applying, which hides the entire Trim Picture sub-panel -- including Undo Trim -- since that panel only shows while the Trim Picture tool is active. The button was never actually broken, just invisible the instant a child would want to click it. Fixed by staying in the Trim Picture tool after Apply instead of switching to pan, so the panel (Trash It / Keep This / Undo Trim / Oops!) stays visible and usable right where it was just used. Verified via Playwright, reproducing the exact reported scenario before and after the fix, plus a real click-through of Undo Trim restoring the canvas. Full regression suite unchanged.",
+  "build": "0006",
   "buildDate": "2026-07-12",
-  "commit": "2af52aa",
+  "commit": "3fb8499",
   "environment": "Release"
 }
