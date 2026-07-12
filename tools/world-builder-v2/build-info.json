@@ -5,6 +5,6 @@
   "slice": "Two fixes found live authoring. (1) There was no way to rename a Scene anywhere in the redesigned Workspace -- the old Scene Library grid's own \"Rename\" button belonged to a screen the Continuous Builder rebuild replaced with a compact bottom Scenes strip that has no rename control of its own, and Scene Configuration (the \"nothing selected\" state, AV-002) never had a Name field either. Added a Scene Name field to Scene Configuration, wired to ProjectModel.renameScene; updates the strip's own label live on every keystroke via a targeted _renderScenesStrip() call rather than a full _renderWorkspace(), so typing never loses focus. (2) \"Save Failed -- try a smaller image\" had no room to explain the real, narrower risk: Build and Publish/Promote both read the Builder Project directly from memory, never from localStorage, so a Build+Publish that runs while this is showing still succeeds correctly -- the failure only means the local browser draft itself might not survive a reload. Added a tooltip spelling this out, since a creator seeing \"Save Failed\" right next to a successful Publish had no way to tell whether that was a contradiction. Verified via Playwright: the Scene Name field renders, edits persist to the model and the strip label immediately, focus is never lost mid-type; a simulated localStorage quota failure produces the correct badge text and tooltip. goldenBuild.js 30/30 unchanged.",
   "build": "0064",
   "buildDate": "2026-07-12",
-  "commit": "pending",
+  "commit": "3931287",
   "environment": "Release"
 }
