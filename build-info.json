@@ -1,9 +1,9 @@
 {
-  "version": "2.2.1",
-  "sprint": "Creator V2 — Wireframe Precision Pass",
-  "task": "A direct follow-up to the Creator V2 rebuild once the actual wireframe board became viewable in full detail. Frame Variations now render as colour swatch tiles (js/workspaceBuilder.js's new _buildSwatchRow, reusing Frame Look's own .icon-row/.icon-card classes) instead of a plain dropdown, matching the wireframe's FRAME SELECTED panel. Found and fixed a real, pre-existing Object Strip bug: every card was silently crushed to 40px tall by this codebase's own global button{height:40px} and button:not(...){width:100%} reset rules, since .object-card (a <button>) never overrode them -- the same class of bug the Creator UI Convergence Sprint already fixed once for the Publish Studio close button, fixed the same proven way (explicit !important overrides). Also added the pencil-icon overlay the wireframe shows on every editable object's thumbnail. See CLAUDE.md's Creator V2 — Wireframe Precision Pass entry for the full account.",
-  "build": "0083",
+  "version": "2.2.2",
+  "sprint": "Creator V2 — No-Scroll Screens, Real Visuals, Branding Removal",
+  "task": "Four user-reported fixes. Screen 1/Screen 2 no longer scroll on ordinary laptop viewports -- both were measured to overflow at common heights (720px/800px); converted the biggest vertical space-consumers to clamp()/vh-based sizing so content compresses instead of overflowing, verified fitting at 640-900px with zero scroll. Screen 2's Preview carousel no longer falls back to a hardcoded generic mask emoji for an under-authored Representation -- it now shows the World's own preview image/icon first. Removed a real, confirmed hardcoded-branding bug: the renderer drew the literal string \"@vihuplanet\" on every page whose Handle was empty (nearly all of them), including one spot whose own doc comment said it should return empty and didn't; also fixed two Scene Blueprint defaults baking the same fabricated text into fresh Hook/End/Cover pages. Book title and page number are untouched -- they show real project data, not fabricated content. See CLAUDE.md's matching entry for the full account.",
+  "build": "0084",
   "buildDate": "2026-07-12",
-  "commit": "278600e",
+  "commit": "7da8c70",
   "environment": "Release"
 }
