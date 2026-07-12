@@ -1,9 +1,9 @@
 {
-  "version": "1.2.0",
-  "sprint": "Sprint 3 — Drawing Magic (Utility UX Transformation)",
-  "task": "A UX transformation only -- the automatic pipeline, Strategy pattern, and every algorithm module are byte-for-byte unchanged. Wraps the existing implementation in a child-friendly screen flow: Welcome -> a short magic-processing moment -> a celebratory Result screen with a before/after slider -> an optional Make It Better editing screen -> Save. Every technical control (Tolerance/Edge Smoothness/Auto Crop, zoom buttons, Overlay/Difference tabs, meta/performance readouts) stays present and fully functional in the DOM, just hidden from the child-facing UI via kids.css. Added the one genuinely new capability, a Restore Brush (Bring It Back) generalized from the existing erase-only brush via a shared paintAlphaCircle primitive, verified bit-for-bit identical to the original erase formula and confirmed to preserve RGB exactly like every other pixel. Fixed a real layout bug found while screenshotting: .workspace's old two-column grid was silently misapplied to this sprint's new children, squeezing the Result screen into a narrow column -- moved onto .edit-view, which actually has the two children that grid was built for. Brush size is three fixed choices (Small/Medium/Large) proxying the existing hidden slider. Verified end-to-end via Playwright: full flow, zero RGB mismatches through an erase+restore sequence, pre-existing regressions unchanged, zoom/wheel/resize/dark-mode all functional, zero console errors.",
-  "build": "0003",
+  "version": "1.2.1",
+  "sprint": "Sprint 3 follow-up — Result screen overflow fix",
+  "task": "Reported with a tall/portrait photo of a physical canvas painting: the Result screen's before/after stage sized itself from CSS aspect-ratio + max-width alone, which clamps width but not height, so a portrait photo could grow the stage past the viewport and force the whole page to scroll. Replaced with an explicit JS sizing pass (sizeBeforeAfterStage) that fits the stage within both an available width and an available height computed from the page's actual measured content height (a first attempt using a fixed fraction of the viewport measured wrong on shorter windows). Caught and fixed a real bug in the same pass: the fix initially referenced els.beforeAfter, never added to the els lookup object, throwing and silently falling back to the old broken sizing -- found via a direct portrait-photo regression test. Verified via Playwright across several image shapes and viewport sizes, including an 8-run stress test on a case that first looked inconsistent (confirmed as transient test-environment noise, reproducibly correct afterward): the stage is always the largest size that fits with zero page scroll. Full existing regression suite unchanged.",
+  "build": "0004",
   "buildDate": "2026-07-12",
-  "commit": "41ede93",
+  "commit": "f0e77b0",
   "environment": "Release"
 }
