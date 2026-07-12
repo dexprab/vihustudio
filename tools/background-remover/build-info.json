@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
-  "sprint": "Sprint 2 — V1.1 Polish & Quality",
-  "task": "Fixed a P0 double-file-chooser race in Browse (a click bubbling from the button to its parent dropzone fired fileInput.click() twice). Found and fixed a real quality-contract violation: canvas.toBlob()/getImageData() read from the browser's internally premultiplied bitmap, corrupting RGB at any alpha < 255 in the actual exported PNG -- fixed with a dependency-free PNG encoder (js/pngEncoder.js) that exports straight from the authoritative pixel buffer, bypassing canvas entirely. Added the Cleanup Brush (erase-only, soft-edged, Undo/Redo/Reset) and Manual Crop, both operating on that same buffer. Added Overlay and Difference preview modes, the latter doubling as live proof the quality contract holds. Fixed a zoom-label race across the three preview panes' shared callback. Raised the Cleanup Brush's max size from 140px to 400px.",
-  "build": "0002",
+  "version": "1.2.0",
+  "sprint": "Sprint 3 — Drawing Magic (Utility UX Transformation)",
+  "task": "A UX transformation only -- the automatic pipeline, Strategy pattern, and every algorithm module are byte-for-byte unchanged. Wraps the existing implementation in a child-friendly screen flow: Welcome -> a short magic-processing moment -> a celebratory Result screen with a before/after slider -> an optional Make It Better editing screen -> Save. Every technical control (Tolerance/Edge Smoothness/Auto Crop, zoom buttons, Overlay/Difference tabs, meta/performance readouts) stays present and fully functional in the DOM, just hidden from the child-facing UI via kids.css. Added the one genuinely new capability, a Restore Brush (Bring It Back) generalized from the existing erase-only brush via a shared paintAlphaCircle primitive, verified bit-for-bit identical to the original erase formula and confirmed to preserve RGB exactly like every other pixel. Fixed a real layout bug found while screenshotting: .workspace's old two-column grid was silently misapplied to this sprint's new children, squeezing the Result screen into a narrow column -- moved onto .edit-view, which actually has the two children that grid was built for. Brush size is three fixed choices (Small/Medium/Large) proxying the existing hidden slider. Verified end-to-end via Playwright: full flow, zero RGB mismatches through an erase+restore sequence, pre-existing regressions unchanged, zoom/wheel/resize/dark-mode all functional, zero console errors.",
+  "build": "0003",
   "buildDate": "2026-07-12",
-  "commit": "8621116",
+  "commit": "38feaec",
   "environment": "Release"
 }
