@@ -1,10 +1,10 @@
 {
-  "version": "3.14.1",
+  "version": "3.14.2",
   "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Story Author permission block added to the Experience Inspector",
-  "slice": "The Move/Edit/Visible permission block existed for Place, Decoration, and Text panels but was never wired into the Experience Inspector at all -- a pre-existing gap the Continuous Builder sprint's new Scene Stack made far more visible, since Experience-backed rows now route there by default. Experience itself carries no .permissions field; the real permission object lives on whichever hosted object the Experience currently projects onto. Place-hosted (Frame) Experiences don't get a separate block -- already covered by the Holder's own \"Can a Story Author change this? (its Frame, once populated)\" checkbox. Scene/Free-hosted Experiences get the identical 3-checkbox block, reading and writing the one real mirrored Scene Layer this Experience currently has in the open Scene (\"Only-one-content-type-at-a-time\" guarantees at most one exists, so there's never an ambiguous instance to edit). Shown only once the Experience is actually hosted in the currently open Scene. Verified via Playwright: identical wording/behavior to the existing Place/Decoration/Text blocks; toggling a checkbox persists to the real mirrored Layer; a Place-hosted Frame Experience correctly shows no separate block of its own.",
-  "build": "0060",
-  "buildDate": "2026-07-11",
-  "commit": "e5a0454",
+  "milestone": "Artwork Gallery starter Scene renamed Story -> Gallery",
+  "slice": "The Builder & Studio Alignment Sprint's neutral default for the Artwork Gallery template's starter Scene, \"Story,\" turned out to be its own mismatch once actually seen in Studio's Screen 2 Representation carousel: it reads (and, with the default masks thumbnail glyph, visually looks) like the Tell a Story Creation Type, not an artwork showcase -- found live, from a user's already-published \"My Artwork Gallery\" World showing a masks icon and the word \"Story\" in its own preview carousel. Renamed TEMPLATE_STARTER_SCENE's artwork-gallery entry to \"Gallery\" -- still not part of the flagged Showcase/Portrait/Quote trio, while actually describing the template. Only affects new Artwork Gallery projects going forward; an already-published World keeps its own Scene's existing name until an author renames it via the Scenes screen and rebuilds/republishes. Verified via Playwright: a freshly created Artwork Gallery project's starter Scene (and thus its default Representation) is named \"Gallery\"; goldenBuild.js 30/30 unchanged.",
+  "build": "0061",
+  "buildDate": "2026-07-12",
+  "commit": "pending",
   "environment": "Release"
 }

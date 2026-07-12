@@ -1,10 +1,10 @@
 {
-  "version": "3.10.0",
+  "version": "3.10.1",
   "phase": "Repository Architecture Transition",
-  "milestone": "Builder & Studio Alignment Sprint",
-  "slice": "Locked the Platform Representation Contract: a Theme MUST have >=1 valid Representation (only structural requirement), SHOULD have more when it helps, CAN use any names -- the platform never reserves one. Found and fixed a real double-counting bug: every World Builder template still carried a static legacy representations/*.json array from before Scenes existed, ON TOP of the starter Scene that already converges into one Representation at Build -- every template compiled 2-4 Representations, never the intended baseline. Removed every template's static representations array; the starter Scene is now the sole default. Artwork Gallery's starter Scene renamed Showcase -> Story (the sprint's suggested neutral default); Cover/Quote/Sketch/Card left unchanged (never part of the flagged set). validator.js now requires >=1 Representation from either representations/ or scenes/, with no name/count-above-one requirement. Studio required zero changes (already fully data-driven). Museum Gallery's showcase/portrait/quote verified unchanged -- no migration. New 15-assertion Playwright suite plus goldenBuild.js 30/30, Happy Flow suite, and WEP scope suite all pass unchanged",
-  "build": "0046",
-  "buildDate": "2026-07-10",
-  "commit": "374d0dc",
+  "milestone": "Artwork Gallery starter Scene renamed Story -> Gallery",
+  "slice": "The Builder & Studio Alignment Sprint's neutral default for the Artwork Gallery template's starter Scene, \"Story,\" turned out to be its own mismatch once actually seen in Studio's Screen 2 Representation carousel: it reads (and, with the default masks thumbnail glyph, visually looks) like the Tell a Story Creation Type, not an artwork showcase. Renamed to \"Gallery\" in TEMPLATE_STARTER_SCENE -- still not part of the flagged Showcase/Portrait/Quote trio, while actually describing the template. Only affects new Artwork Gallery projects going forward. Verified via Playwright: a freshly created Artwork Gallery project's starter Scene (and thus its default Representation) is named \"Gallery\"; goldenBuild.js 30/30 unchanged.",
+  "build": "0047",
+  "buildDate": "2026-07-12",
+  "commit": "pending",
   "environment": "Release"
 }
