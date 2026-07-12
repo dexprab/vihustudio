@@ -1,9 +1,9 @@
 {
-  "version": "2.0.9",
-  "sprint": "Studio Reads Official Repository Only",
-  "task": "refreshFromRepository() (js/themeRegistry.js) discovered and registered themes from every repository indiscriminately -- Official and Personal alike -- so a Theme published to the Personal Repository (the author's own working/testing environment, per the WEP Repository Model) showed up in Studio's World Library indistinguishably from finished Official content. Fixed by filtering the discovered repository list to repo.kind === 'official' before listing/loading -- Studio now only ever discovers Official Repository themes, regardless of how many Personal themes exist or what they're named. World Builder and Platform Status are unaffected, since both call ThemeRepositoryClient directly and still see Personal -- authoring/status tooling is a different audience than the reader-facing app this function serves. Verified via Playwright with a stubbed repository client (one Official + two Personal themes registered only the Official one); both World Builder goldenBuild.js suites (30/30 each) pass unchanged.",
-  "build": "0079",
-  "buildDate": "2026-07-11",
-  "commit": "81d3e9d",
+  "version": "2.0.10",
+  "sprint": "Dev Footer Size Fix",
+  "task": "The on-screen dev build-info badge (js/buildInfo.js, .dev-footer) was rendering as a 1388x60px, 3-line banner spanning almost the full viewport width -- root cause traced to the footer text builder concatenating the entire long-form sprint+task changelog prose (this project's own established multi-hundred-word commit-message style, see CLAUDE.md) directly into the on-screen string, producing 1000+ character footer text. Fixed at the source: js/buildInfo.js's summarize() now only ever renders version/build/commit/environment -- sprint/task are dropped from the visible badge entirely (still present in the fetched build-info.json for anyone opening the file directly). css/style.css's .dev-footer also shrunk (font-size 11px->9px, padding 6px 10px->3px 7px, right/bottom 12px->8px, opacity 0.85->0.7, plus white-space:nowrap) so it reads as the small, unobtrusive corner badge it was always meant to be -- confirmed via Playwright: 1388x60px -> 215x18px.",
+  "build": "0080",
+  "buildDate": "2026-07-12",
+  "commit": "pending",
   "environment": "Release"
 }
