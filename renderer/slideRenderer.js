@@ -1139,6 +1139,28 @@ const SlideRenderer=(()=>{
       x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
     }else if(kind==='rectangle'){
       x.rect(rect.x,rect.y,rect.w,rect.h);
+    }else if(kind==='rounded-rectangle'){
+      const r=Math.min(rect.w,rect.h)*0.2;
+      x.moveTo(rect.x+r,rect.y);
+      x.arcTo(rect.x+rect.w,rect.y,rect.x+rect.w,rect.y+rect.h,r);
+      x.arcTo(rect.x+rect.w,rect.y+rect.h,rect.x,rect.y+rect.h,r);
+      x.arcTo(rect.x,rect.y+rect.h,rect.x,rect.y,r);
+      x.arcTo(rect.x,rect.y,rect.x+rect.w,rect.y,r);
+      x.closePath();
+    }else if(kind==='custom'){
+      // A creator-drawn shape (Builder V3.1's Draw pad) — d.customPath
+      // is an array of {x,y} points, each 0..1 fractional within the
+      // pad the creator sketched on, mapped onto rect exactly like the
+      // Transform already places every other Shape/Layer.
+      if(Array.isArray(d.customPath) && d.customPath.length>=2){
+        d.customPath.forEach(function(p,i){
+          const px=rect.x+p.x*rect.w, py=rect.y+p.y*rect.h;
+          if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
+        });
+        x.closePath();
+      }else{
+        x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      }
     }else if(kind==='triangle'){
       _regularPolygonPathFor(cx,cy,rx,ry,3);
     }else if(kind==='diamond'){

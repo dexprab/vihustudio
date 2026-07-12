@@ -498,7 +498,7 @@ const EngineV2Runtime = (function () {
                 ctx.translate(-cx, -cy);
             }
             if (layer.shape) {
-                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth, layer.shapeFillOpacity, layer.shapeStrokeOpacity);
+                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth, layer.shapeFillOpacity, layer.shapeStrokeOpacity, layer.customPath);
             } else {
                 const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
                 if (img) {
@@ -548,7 +548,13 @@ const EngineV2Runtime = (function () {
     // `_paintLayer` already set into `ctx.globalAlpha` before calling
     // here, so a half-opacity Layer with a half-opacity Outline reads
     // as one authoring decision layered on another, not two that fight.
-    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity) {
+    // `customPath` (only meaningful for kind === 'custom', the "Draw
+    // Your Own" shape) is an array of {x,y} points, each 0..1
+    // fractional within the Draw pad the creator sketched on —
+    // deliberately the same fractional-rect vocabulary every other
+    // Shape/Holder/Layer already uses, so mapping it onto `rect` here
+    // is the same placement math, not a new coordinate system.
+    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity, customPath) {
         const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
         const rx = rect.w / 2, ry = rect.h / 2;
         ctx.beginPath();
@@ -556,6 +562,21 @@ const EngineV2Runtime = (function () {
             ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
         } else if (kind === 'rectangle') {
             ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        } else if (kind === 'rounded-rectangle') {
+            _roundedRectPath(ctx, rect.x, rect.y, rect.w, rect.h, Math.min(rect.w, rect.h) * 0.2);
+        } else if (kind === 'custom') {
+            if (Array.isArray(customPath) && customPath.length >= 2) {
+                customPath.forEach(function (p, i) {
+                    const px = rect.x + p.x * rect.w, py = rect.y + p.y * rect.h;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                });
+                ctx.closePath();
+            } else {
+                // Nothing drawn yet — a plain circle placeholder so the
+                // Experience is never invisible the instant the tile is
+                // picked, exactly like every other shape's own default.
+                ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            }
         } else if (kind === 'triangle') {
             _regularPolygonPath(ctx, cx, cy, rx, ry, 3);
         } else if (kind === 'diamond') {

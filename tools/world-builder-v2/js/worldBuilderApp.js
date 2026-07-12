@@ -1812,7 +1812,7 @@
                 shape: props.graphicShape, shapeFillColor: props.graphicFillColor,
                 shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
                 shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                rotation: props.graphicRotation
+                rotation: props.graphicRotation, customPath: props.graphicCustomPath
             } : {};
             window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc || null, glyph: '🎭', opacity: props.graphicOpacity }, local, shapeFields), graph);
             sections.push({ slot: 'graphic', rect: window.EngineV2Runtime.rectFor(local, graph) });
@@ -2125,6 +2125,121 @@
         const s = (window.ExperienceSchema.SHAPE_KINDS || []).find(function (k) { return k.value === shapeKind; });
         el.style.background = fillColor || '#F0B429';
         el.textContent = s ? s.icon : '◆';
+    }
+
+    // A small freehand "Draw Your Own" pad for the Graphics section's
+    // 'custom' Shape (see experienceSchema.js's graphicCustomPath) —
+    // pointer-drawn outline captured as a plain array of 0..1
+    // fractional {x,y} points, the same fractional-rect vocabulary
+    // every other Shape/Layer already uses, so it just plugs into the
+    // existing resize/move/rotate Transform and Fill/Outline styling
+    // with zero new plumbing. `onFinish(pathOrNull)` is called once
+    // per completed stroke (not on every pointermove — that would be a
+    // model write per frame) or when Clear is pressed.
+    function _shapeDrawPad(props, onFinish) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        const label = document.createElement('label');
+        label.className = 'wb-field-label';
+        label.textContent = 'Draw';
+        wrap.appendChild(label);
+        wrap.appendChild(_fieldHelp('Draw your own outline with the mouse — it fills and outlines with the colours below.'));
+
+        const PAD = 220;
+        const canvas = document.createElement('canvas');
+        canvas.width = PAD; canvas.height = PAD;
+        canvas.style.width = PAD + 'px';
+        canvas.style.height = PAD + 'px';
+        canvas.style.border = '1px solid var(--wb-border)';
+        canvas.style.borderRadius = '8px';
+        canvas.style.background = '#fff';
+        canvas.style.cursor = currentProjectReadOnly ? 'default' : 'crosshair';
+        canvas.style.touchAction = 'none';
+        canvas.style.display = 'block';
+        wrap.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        let live = [];
+        let drawing = false;
+
+        function drawSaved() {
+            ctx.clearRect(0, 0, PAD, PAD);
+            const saved = props.graphicCustomPath;
+            if (Array.isArray(saved) && saved.length >= 2) {
+                ctx.beginPath();
+                saved.forEach(function (p, i) {
+                    const px = p.x * PAD, py = p.y * PAD;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                });
+                ctx.closePath();
+                ctx.fillStyle = props.graphicFillColor || '#F0B429';
+                ctx.globalAlpha = props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity;
+                ctx.fill();
+                if (props.graphicStrokeWidth > 0) {
+                    ctx.globalAlpha = props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity;
+                    ctx.lineWidth = props.graphicStrokeWidth;
+                    ctx.strokeStyle = props.graphicStrokeColor || '#24406B';
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+            } else {
+                ctx.fillStyle = '#9AA5B1';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Draw here', PAD / 2, PAD / 2);
+            }
+        }
+        drawSaved();
+
+        function drawLive() {
+            ctx.clearRect(0, 0, PAD, PAD);
+            ctx.beginPath();
+            live.forEach(function (p, i) { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.strokeStyle = props.graphicStrokeColor || '#24406B';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function ptFromEvent(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (PAD / r.width), y: (e.clientY - r.top) * (PAD / r.height) };
+        }
+
+        canvas.addEventListener('pointerdown', function (e) {
+            if (currentProjectReadOnly) return;
+            drawing = true;
+            live = [ptFromEvent(e)];
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+            drawLive();
+        });
+        canvas.addEventListener('pointermove', function (e) {
+            if (!drawing) return;
+            const p = ptFromEvent(e);
+            const last = live[live.length - 1];
+            if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 3) {
+                live.push(p);
+                drawLive();
+            }
+        });
+        canvas.addEventListener('pointerup', function () {
+            if (!drawing) return;
+            drawing = false;
+            if (live.length >= 3) {
+                const normalized = live.map(function (p) { return { x: p.x / PAD, y: p.y / PAD }; });
+                onFinish(normalized);
+            } else {
+                drawSaved();
+            }
+            live = [];
+        });
+
+        const clearBtn = _smallBtn('🗑 Clear', function () { onFinish(null); });
+        clearBtn.style.marginTop = '8px';
+        clearBtn.disabled = currentProjectReadOnly;
+        wrap.appendChild(clearBtn);
+
+        return wrap;
     }
 
     // Authoring Convergence Sprint — the Universal Experience content
@@ -5562,6 +5677,15 @@
                 shapeGrid.appendChild(card);
             });
             contextPanel.appendChild(shapeGrid);
+
+            if (props.graphicShape === 'custom') {
+                contextPanel.appendChild(_shapeDrawPad(props, function (pathOrNull) {
+                    window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicCustomPath', pathOrNull);
+                    _persist();
+                    _redrawSceneCanvasesForExperience(exp);
+                    _renderContextPanel();
+                }));
+            }
 
             if (props.graphicShape) {
                 _fieldRow(

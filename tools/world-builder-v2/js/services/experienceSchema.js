@@ -96,6 +96,14 @@ const ExperienceSchema = (function () {
             graphicStrokeOpacity: 1,
             graphicStrokeWidth: 0,
             graphicRotation: 0,
+            // Only populated when graphicShape === 'custom' (the "Draw
+            // Your Own" shape, SHAPE_KINDS below) — an array of
+            // {x,y} points, each 0..1 fractional within the shape's own
+            // Draw pad, later mapped onto whatever rect the Transform
+            // places it at (identical placement math every other
+            // shape/image already uses). Null until the creator has
+            // actually drawn something.
+            graphicCustomPath: null,
             // Colour — a fill behind whatever other content exists;
             // `colorTransparent` defaults true so a brand-new Experience
             // with only Text/Image/Graphics never paints an unwanted
@@ -132,6 +140,7 @@ const ExperienceSchema = (function () {
     const SHAPE_KINDS = [
         { value: 'circle', label: 'Circle', icon: '●' },
         { value: 'rectangle', label: 'Rectangle', icon: '▭' },
+        { value: 'rounded-rectangle', label: 'Rounded Rectangle', icon: '▢' },
         { value: 'triangle', label: 'Triangle', icon: '▲' },
         { value: 'diamond', label: 'Diamond', icon: '◆' },
         { value: 'pentagon', label: 'Pentagon', icon: '⬟' },
@@ -143,7 +152,10 @@ const ExperienceSchema = (function () {
         { value: 'parallelogram', label: 'Parallelogram', icon: '▱' },
         { value: 'arrow', label: 'Arrow', icon: '➜' },
         { value: 'speech-bubble', label: 'Speech Bubble', icon: '💬' },
-        { value: 'banner', label: 'Banner', icon: '🎗️' }
+        { value: 'banner', label: 'Banner', icon: '🎗️' },
+        // A blank canvas rather than a fixed geometry — see
+        // graphicCustomPath above and worldBuilderApp.js's Draw pad.
+        { value: 'custom', label: 'Draw Your Own', icon: '✏️' }
     ];
 
     const LIFECYCLE_LABELS = {

@@ -374,7 +374,8 @@ class BuildEngine {
                     kind: 'shape', shape: layer.shape,
                     fillColor: layer.shapeFillColor, fillOpacity: layer.shapeFillOpacity,
                     strokeColor: layer.shapeStrokeColor, strokeOpacity: layer.shapeStrokeOpacity,
-                    strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha
+                    strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha,
+                    customPath: layer.customPath || null
                 }
             });
         }

@@ -1300,8 +1300,8 @@ const ProjectModel = (function () {
                     shape: shapeKind, shapeFillColor: props.graphicFillColor,
                     shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
                     shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                    rotation: props.graphicRotation
-                } : { shape: null, rotation: 0 };
+                    rotation: props.graphicRotation, customPath: props.graphicCustomPath
+                } : { shape: null, rotation: 0, customPath: null };
                 if (layer) {
                     Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, position: position, size: size }, shapeFields);
                 } else {
