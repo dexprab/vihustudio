@@ -59,9 +59,14 @@ var state = {
   userTolerance: null        // null until the user drags the slider
 };
 
-var zoomOriginal = createZoomController(els.originalViewport, els.originalZoomTarget);
-var zoomProcessed = createZoomController(els.processedViewport, els.processedZoomTarget);
-var zoomLinked = true;
+// Both controllers report through the same callback, so the zoom
+// label reflects whichever pane's zoom last actually changed — the
+// wheel over either pane, or the shared +/- buttons below.
+function handleZoomChange(zoom) {
+  els.zoomResetBtn.textContent = Math.round(zoom * 100) + '%';
+}
+var zoomOriginal = createZoomController(els.originalViewport, els.originalZoomTarget, { onChange: handleZoomChange });
+var zoomProcessed = createZoomController(els.processedViewport, els.processedZoomTarget, { onChange: handleZoomChange });
 
 init();
 
@@ -108,9 +113,12 @@ function init() {
 
   els.zoomInBtn.addEventListener('click', function () { adjustZoom(1.25); });
   els.zoomOutBtn.addEventListener('click', function () { adjustZoom(1 / 1.25); });
+  // The label doubles as a "Fit" button — re-fit each pane to its own
+  // current content rather than jumping to a hardcoded 100%, so a
+  // large photo is viewable in one go again after manual zooming.
   els.zoomResetBtn.addEventListener('click', function () {
-    zoomOriginal.reset();
-    zoomProcessed.reset();
+    zoomOriginal.fitToViewport();
+    zoomProcessed.fitToViewport();
   });
 
   var reprocess = debounce(function () { runPipeline(); }, 180);
@@ -137,9 +145,13 @@ function init() {
 }
 
 function adjustZoom(factor) {
-  var current = zoomOriginal.getZoom();
-  zoomOriginal.setZoom(current * factor);
-  zoomProcessed.setZoom(current * factor);
+  // Multiply each pane's own current zoom rather than forcing both to
+  // one absolute value — original and processed can have different
+  // pixel dimensions (auto-crop shrinks the processed canvas) and
+  // therefore different fit baselines, so this keeps them moving
+  // together proportionally without fighting fitToViewport().
+  zoomOriginal.setZoom(zoomOriginal.getZoom() * factor);
+  zoomProcessed.setZoom(zoomProcessed.getZoom() * factor);
 }
 
 function setViewMode(mode) {
@@ -200,8 +212,18 @@ function loadFile(file) {
     els.dropzone.hidden = true;
     els.workspace.hidden = false;
     drawPixelBuffer(els.originalCanvas, state.originalPixelBuffer);
-    zoomOriginal.reset();
-    zoomProcessed.reset();
+    // A fresh image resets what "the user already zoomed" means —
+    // otherwise leftover manual zoom from a previously loaded image
+    // would suppress this image's very first auto-fit below.
+    zoomOriginal.resetUserTouched();
+    zoomProcessed.resetUserTouched();
+    // Fit the original to its viewport immediately so a large photo
+    // (e.g. a 4000x3000 scan) is visible in one go rather than
+    // opening at 100% and overflowing the pane. The processed pane
+    // gets the same treatment once its own (possibly cropped) size is
+    // known, in handleWorkerMessage.
+    zoomOriginal.setContentSize(state.originalPixelBuffer.width, state.originalPixelBuffer.height);
+    zoomOriginal.fitToViewport();
     setViewMode('side-by-side');
 
     runPipeline();
@@ -263,6 +285,19 @@ function handleWorkerMessage(event) {
     state.autoDetected = msg.meta;
     els.toleranceSlider.value = msg.meta.tolerance;
     els.toleranceValue.textContent = msg.meta.tolerance;
+
+    // Also fit the processed pane now that its (possibly cropped)
+    // size is known for the first time. Content size is recorded
+    // unconditionally (a later manual "Fit" click needs it either
+    // way), but the fit itself only auto-applies if the user hasn't
+    // already started zooming — large images can take over a second
+    // to process, and without this guard, zoom clicks made while
+    // still waiting for this very first result would get silently
+    // overwritten the instant it arrives.
+    zoomProcessed.setContentSize(msg.pixelBuffer.width, msg.pixelBuffer.height);
+    if (!zoomProcessed.wasUserTouched()) {
+      zoomProcessed.fitToViewport();
+    }
   }
 
   updateMeta(msg.meta);

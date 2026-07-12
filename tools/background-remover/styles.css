@@ -263,12 +263,20 @@ html, body {
 }
 
 .preview-viewport {
+  /* Centring is done in JS (preview.js's centerAt/fitToViewport) via
+     the translate/scale transform, not flex — that's what lets
+     fitToViewport() compute an exact centred position for content
+     far larger, or smaller, than the viewport. */
   height: 420px;
+  min-height: 200px;
+  max-height: 80vh;
   overflow: hidden;
   cursor: grab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  /* Native drag handle, bottom-right corner — lets "original" and
+     "processed" be resized independently to see more of a tall or
+     wide image at once. */
+  resize: vertical;
 }
 .preview-viewport.is-panning { cursor: grabbing; }
 
@@ -293,6 +301,13 @@ html, body {
 }
 
 .preview-zoom-target {
+  /* Absolutely positioned at the viewport's own top-left so the
+     translate()/scale() transform (preview.js) is the only thing
+     deciding where content ends up — no flex/box-flow contribution
+     to account for. */
+  position: absolute;
+  top: 0;
+  left: 0;
   transform-origin: 0 0;
   transition: transform 60ms linear;
   line-height: 0;

@@ -24,21 +24,47 @@ export function drawPixelBuffer(canvas, pixelBuffer) {
 
 // Wires mouse-wheel zoom + drag-to-pan onto a scrollable viewport
 // element wrapping a zoomable inner element (the canvas or an <img>).
-// Returns { setZoom, reset } so callers (app.js) can drive zoom from
-// UI buttons too, not only the wheel.
+// Returns { setZoom, reset, fitToViewport, setContentSize } so callers
+// (app.js) can drive zoom from UI buttons too, not only the wheel.
+//
+// Positioning is done entirely through the translate/scale transform
+// (originX/originY + zoom) rather than leaning on flex centering, so
+// `fitToViewport()` can compute an exact centred position for content
+// far larger — or smaller — than the viewport.
 export function createZoomController(viewportEl, zoomTargetEl, options) {
-  var minZoom = (options && options.min) || 0.1;
-  var maxZoom = (options && options.max) || 8;
+  var minZoom = (options && options.min) || 0.02;
+  var maxZoom = (options && options.max) || 12;
+  var onChange = (options && options.onChange) || function () {};
   var zoom = 1;
   var originX = 0;
   var originY = 0;
+  var contentWidth = 0;
+  var contentHeight = 0;
+  // Tracks whether the *user* has ever driven zoom on this pane
+  // (wheel, drag, or an explicit setZoom() call from a toolbar
+  // button) — as opposed to a programmatic fitToViewport()/reset().
+  // app.js uses this to avoid a real race: processing a large image
+  // can take over a second, and if the auto "fit the freshly-arrived
+  // processed result" call landed after the user had already started
+  // zooming, it would silently yank their zoom back to fit. Callers
+  // check wasUserTouched() before applying an automatic one-time fit.
+  var userTouched = false;
 
   function apply() {
     zoomTargetEl.style.transform =
       'translate(' + originX + 'px, ' + originY + 'px) scale(' + zoom + ')';
   }
 
+  // Centres a box of the current content size, scaled by `z`, within
+  // the viewport's current on-screen rect.
+  function centerAt(z) {
+    var rect = viewportEl.getBoundingClientRect();
+    originX = (rect.width - contentWidth * z) / 2;
+    originY = (rect.height - contentHeight * z) / 2;
+  }
+
   function setZoom(next, anchorClientX, anchorClientY) {
+    userTouched = true;
     var clamped = clamp(next, minZoom, maxZoom);
     if (anchorClientX != null) {
       var rect = viewportEl.getBoundingClientRect();
@@ -50,13 +76,43 @@ export function createZoomController(viewportEl, zoomTargetEl, options) {
     }
     zoom = clamped;
     apply();
+    onChange(zoom);
+  }
+
+  // Records the natural pixel size of whatever's currently drawn into
+  // zoomTargetEl, so fitToViewport()/reset() can centre it. Called by
+  // app.js right after each drawPixelBuffer().
+  function setContentSize(width, height) {
+    contentWidth = width || 0;
+    contentHeight = height || 0;
+  }
+
+  // Scales content to fit entirely within the viewport ("view it all
+  // at one go") and centres it. Falls back to reset() if content size
+  // or viewport layout isn't known yet.
+  function fitToViewport() {
+    var rect = viewportEl.getBoundingClientRect();
+    if (!contentWidth || !contentHeight || !rect.width || !rect.height) {
+      reset();
+      return;
+    }
+    var fit = Math.min(rect.width / contentWidth, rect.height / contentHeight);
+    zoom = clamp(fit, minZoom, maxZoom);
+    centerAt(zoom);
+    apply();
+    onChange(zoom);
   }
 
   function reset() {
     zoom = 1;
-    originX = 0;
-    originY = 0;
+    if (contentWidth && contentHeight) {
+      centerAt(zoom);
+    } else {
+      originX = 0;
+      originY = 0;
+    }
     apply();
+    onChange(zoom);
   }
 
   viewportEl.addEventListener('wheel', function (e) {
@@ -87,5 +143,15 @@ export function createZoomController(viewportEl, zoomTargetEl, options) {
   });
 
   apply();
-  return { setZoom: setZoom, reset: reset, getZoom: function () { return zoom; } };
+  return {
+    setZoom: setZoom,
+    reset: reset,
+    fitToViewport: fitToViewport,
+    setContentSize: setContentSize,
+    getZoom: function () { return zoom; },
+    wasUserTouched: function () { return userTouched; },
+    // Called when a new image is loaded, so the previous image's
+    // manual zooming doesn't suppress the new image's first auto-fit.
+    resetUserTouched: function () { userTouched = false; }
+  };
 }
