@@ -121,9 +121,17 @@ export function createZoomController(viewportEl, zoomTargetEl, options) {
     setZoom(zoom * delta, e.clientX, e.clientY);
   }, { passive: false });
 
+  // Manual tools (the Cleanup Brush, Manual Crop) need exclusive use
+  // of mouse drags on this same viewport — panEnabled lets app.js
+  // suspend the pan-on-drag behaviour while one of those is active,
+  // without touching wheel-zoom (still useful mid-tool, to get closer
+  // to an edge) or tearing down and rebuilding this controller.
+  var panEnabled = true;
+
   var dragging = false;
   var lastX = 0, lastY = 0;
   viewportEl.addEventListener('mousedown', function (e) {
+    if (!panEnabled) return;
     dragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
@@ -152,6 +160,19 @@ export function createZoomController(viewportEl, zoomTargetEl, options) {
     wasUserTouched: function () { return userTouched; },
     // Called when a new image is loaded, so the previous image's
     // manual zooming doesn't suppress the new image's first auto-fit.
-    resetUserTouched: function () { userTouched = false; }
+    resetUserTouched: function () { userTouched = false; },
+    setPanEnabled: function (enabled) { panEnabled = enabled; },
+    // Maps a mouse event's viewport-relative screen position back to
+    // the content's own untransformed pixel space — the inverse of
+    // the translate/scale `apply()` uses to place it on screen. The
+    // Cleanup Brush and Manual Crop tools both need this to know
+    // which image pixels the user is actually pointing at.
+    toContentCoords: function (clientX, clientY) {
+      var rect = viewportEl.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - originX) / zoom,
+        y: (clientY - rect.top - originY) / zoom
+      };
+    }
   };
 }

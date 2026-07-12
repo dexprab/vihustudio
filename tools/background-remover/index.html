@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Background Remover</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -39,6 +40,8 @@
         <div class="view-toggle" role="tablist" aria-label="Preview mode">
           <button type="button" class="view-toggle-btn is-active" id="viewSideBySide" role="tab" aria-selected="true">Side by side</button>
           <button type="button" class="view-toggle-btn" id="viewToggle" role="tab" aria-selected="false">Original / Processed</button>
+          <button type="button" class="view-toggle-btn" id="viewOverlay" role="tab" aria-selected="false">Overlay</button>
+          <button type="button" class="view-toggle-btn" id="viewDifference" role="tab" aria-selected="false">Difference</button>
         </div>
         <div class="zoom-controls">
           <button type="button" class="btn-icon" id="zoomOutBtn" aria-label="Zoom out">−</button>
@@ -62,10 +65,20 @@
             <div class="preview-zoom-target" id="processedZoomTarget">
               <canvas id="processedCanvas"></canvas>
             </div>
+            <div class="crop-selection-box" id="cropSelectionBox" hidden></div>
+            <div class="brush-cursor" id="brushCursor" hidden></div>
           </div>
           <div class="preview-loading" id="previewLoading" hidden>
             <span class="spinner" aria-hidden="true"></span>
             <span>Processing…</span>
+          </div>
+        </div>
+        <div class="preview-pane" id="analysisPane" hidden>
+          <span class="preview-label" id="analysisLabel">Overlay</span>
+          <div class="preview-viewport" id="analysisViewport">
+            <div class="preview-zoom-target" id="analysisZoomTarget">
+              <canvas id="analysisCanvas"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -100,6 +113,34 @@
           Auto Crop
         </label>
         <p class="control-hint">Trims empty transparent border after removal.</p>
+      </div>
+
+      <div class="control-group cleanup-group">
+        <label class="control-label">Manual Cleanup</label>
+        <p class="control-hint">Brush away small paper fragments left behind. Erases only — it can't restore artwork.</p>
+        <label class="control-label" for="brushSizeSlider" style="margin-top:4px;">
+          Brush Size
+          <span class="control-value" id="brushSizeValue">28</span>
+        </label>
+        <input type="range" id="brushSizeSlider" min="6" max="140" step="2" value="28">
+        <div class="control-actions-row">
+          <button type="button" class="btn-icon" id="cleanupToggleBtn" aria-pressed="false">🖌 Brush</button>
+          <button type="button" class="btn-icon" id="cleanupUndoBtn" disabled title="Undo last stroke">↶ Undo</button>
+          <button type="button" class="btn-icon" id="cleanupRedoBtn" disabled title="Redo">↷ Redo</button>
+        </div>
+        <button type="button" class="btn btn-secondary btn-block" id="cleanupResetBtn">Reset Cleanup</button>
+      </div>
+
+      <div class="control-group crop-group">
+        <label class="control-label">Manual Crop</label>
+        <p class="control-hint">Drag a rectangle on the Transparent preview, then apply.</p>
+        <div class="control-actions-row">
+          <button type="button" class="btn-icon" id="cropToggleBtn" aria-pressed="false">✂ Draw Crop</button>
+        </div>
+        <div class="control-actions-row">
+          <button type="button" class="btn btn-secondary" id="cropApplyBtn" disabled>Apply Crop</button>
+          <button type="button" class="btn btn-secondary" id="cropResetBtn" disabled>Reset Crop</button>
+        </div>
       </div>
 
       <div class="control-actions">
