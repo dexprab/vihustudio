@@ -71,6 +71,7 @@ const ObjectStrip=(function(){
     }else{
       thumb.textContent=opts.icon||'❔';
     }
+    if(opts.editable) thumb.appendChild(_el('span','object-card-edit-badge','✏️'));
     card.appendChild(thumb);
     card.appendChild(_el('div','object-card-name',opts.name));
     card.appendChild(_el('div','object-card-badge',opts.editable?'🟢 You can edit':'🔒 Part of the world'));

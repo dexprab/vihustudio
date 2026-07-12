@@ -169,6 +169,68 @@ const WorkspaceBuilder=(function(){
     return wrap;
   }
 
+  // Frame Variations render as a row of colour swatch tiles (matching the
+  // wireframe's "FRAME SELECTED" panel), reusing the exact .icon-row/
+  // .icon-card/.icon-preview/.icon-label classes Frame Look's preset row
+  // already established — same visual language, no new CSS. Each tile
+  // shows the variation's own borderColor as a small circle swatch; a
+  // theme with no frameVariations still renders one "Default" tile so the
+  // section is never empty.
+  function _buildSwatchRow(container,id,label,key,swatches,ctx,meta,store){
+    const wrap=document.createElement('div');
+    wrap.className='designer-row';
+    wrap.setAttribute('data-control',id);
+    const lbl=document.createElement('div');
+    lbl.className='designer-row-label';
+    lbl.textContent=label;
+    wrap.appendChild(lbl);
+    const row=document.createElement('div');
+    row.className='icon-row';
+    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide)[key]; };
+    const _set=(store&&store.set) || function(slide,value){
+      const art=_ensureArtwork(slide);
+      if(!art) return;
+      if(value===undefined) delete art[key]; else art[key]=value;
+    };
+    const allTiles=[{id:'',label:'Default',color:null}].concat(swatches);
+    const btns=allTiles.map(function(sw){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card swatch-card';
+      const pv=document.createElement('span');
+      pv.className='icon-preview swatch-preview';
+      if(sw.color){
+        const dot=document.createElement('span');
+        dot.className='swatch-dot';
+        dot.style.background=sw.color;
+        pv.appendChild(dot);
+      }else{
+        pv.textContent='↺';
+      }
+      btn.appendChild(pv);
+      const txt=document.createElement('span');
+      txt.className='icon-label';
+      txt.textContent=sw.label;
+      btn.appendChild(txt);
+      btn.addEventListener('click',function(){
+        const slide=ctx.getSlide && ctx.getSlide();
+        if(!slide) return;
+        _set(slide, sw.id===''?undefined:sw.id);
+        if(ctx.onChange) ctx.onChange();
+      });
+      row.appendChild(btn);
+      return {id:sw.id,el:btn};
+    });
+    wrap.appendChild(row);
+    container.appendChild(wrap);
+    wrap.__sync=function(){
+      const slide=ctx.getSlide && ctx.getSlide();
+      const value=_get(slide)||'';
+      btns.forEach(function(b){ b.el.classList.toggle('active', b.id===value); });
+    };
+    return wrap;
+  }
+
   function _buildToggleRow(container,id,label,key,ctx){
     const wrap=document.createElement('div');
     wrap.className='designer-row';
@@ -252,10 +314,12 @@ const WorkspaceBuilder=(function(){
     frameVariation:{
       build:function(c,ctx,meta){
         const theme=getActiveWorkspaceTheme();
-        const options=(theme && Array.isArray(theme.frameVariations))
-          ? theme.frameVariations.map(function(v){ return [v.id,v.name||v.id]; })
+        const swatches=(theme && Array.isArray(theme.frameVariations))
+          ? theme.frameVariations.map(function(v){
+              return {id:v.id,label:v.name||v.id,color:(v.fields&&v.fields.borderColor)||null};
+            })
           : [];
-        return _buildSelectRow(c,'frameVariation','Frame Variations','frameVariation',options,ctx,meta);
+        return _buildSwatchRow(c,'frameVariation','Frame Variations','frameVariation',swatches,ctx,meta);
       }
     },
     // Sprint 9.6 — Slide-scope Layout preset (see renderer/
