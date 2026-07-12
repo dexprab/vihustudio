@@ -4809,6 +4809,30 @@
             experienceInspectorId = null; // stale reference (e.g. deleted elsewhere)
         }
 
+        // Continuous Builder rebuild — the old global nav bar's own
+        // "Scenes" button used to be the only way currentNav ever
+        // returned to 'scenes' from here; that bar is now permanently
+        // hidden (Scenes+Experiences are both always-visible columns),
+        // so every path into Experience Home (creating a Decoration/
+        // Text/Frame Experience, "Open in Experience Home →", "New
+        // Experience →") became a one-way trip with no way back to
+        // editing Places/Decorations/Text. Fixed with the exact same
+        // "← Back to Scene" pattern the Frames screen already uses.
+        if (currentSceneId) {
+            const back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'wb-workspace-btn';
+            back.style.marginBottom = '12px';
+            back.textContent = '← Back to Scene';
+            back.addEventListener('click', function () {
+                currentNav = 'scenes';
+                experienceInspectorId = null;
+                _renderNav();
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(back);
+        }
+
         _heading('Experiences', 'What enriches this World — frames, decorations, atmosphere, and more.');
         _stateIntro('experiences');
 
