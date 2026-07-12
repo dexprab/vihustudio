@@ -1,9 +1,9 @@
 {
-  "version": "2.2.0",
-  "sprint": "Creator V2 — Ground-Up UI Rebuild",
-  "task": "A full visual rebuild of Creator per an approved wireframe board, explicitly not incremental polish on top of the Creator UI Convergence Sprint -- that sprint's own presentation was itself treated as disposable, modeled on how Builder V3 replaced its dashboard UI while keeping every engine underneath untouched. Runtime/Theme Engine/Theme Contract/Repository/Workspace behaviour/Selection model/Autosave/Project model/file format are all completely unchanged. Screen 1: 3-column 6-card grid with per-card accent-tinted icon badges, a help affordance, and a new reading-circle illustration group. Screen 2: World identity (icon/name/description) split from the Begin-With Representation carousel below it -- the carousel's own scroll-is-selection mechanic is unchanged. Workspace header's World/Page-Style readout is now a second clickable entry into the World picker; a new + Add Page button reuses PageOps.addAfter() verbatim. Context Panel: every selection state now opens with a small identity banner (icon-circle + friendly label); found and fixed a real pre-existing CSS bug where the text-selection hint never actually hid once a text element was selected. Object Strip gained a legend row matching its per-card badge wording. Publish stages' background gradient gained a warm gold stop (via color-mix, after a first rgba-based attempt let the modal backdrop bleed through as a dark artifact); Almost Ready gained an icon badge above its headline. See CLAUDE.md's Creator V2 entry for the full account, including the deliberate decision NOT to add an editable project name in the header (conflicts with Locked Product Decision #1).",
-  "build": "0082",
+  "version": "2.2.1",
+  "sprint": "Creator V2 — Wireframe Precision Pass",
+  "task": "A direct follow-up to the Creator V2 rebuild once the actual wireframe board became viewable in full detail. Frame Variations now render as colour swatch tiles (js/workspaceBuilder.js's new _buildSwatchRow, reusing Frame Look's own .icon-row/.icon-card classes) instead of a plain dropdown, matching the wireframe's FRAME SELECTED panel. Found and fixed a real, pre-existing Object Strip bug: every card was silently crushed to 40px tall by this codebase's own global button{height:40px} and button:not(...){width:100%} reset rules, since .object-card (a <button>) never overrode them -- the same class of bug the Creator UI Convergence Sprint already fixed once for the Publish Studio close button, fixed the same proven way (explicit !important overrides). Also added the pencil-icon overlay the wireframe shows on every editable object's thumbnail. See CLAUDE.md's Creator V2 — Wireframe Precision Pass entry for the full account.",
+  "build": "0083",
   "buildDate": "2026-07-12",
-  "commit": "e29b560",
+  "commit": "278600e",
   "environment": "Release"
 }
