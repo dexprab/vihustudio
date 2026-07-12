@@ -16,13 +16,17 @@ const SlideRenderer=(()=>{
     footerText:{ font:'Arial', size:24, color:'#FFFFFF' },
     watermark:{ font:'Arial', size:24, color:'#FFFFFF' }
   };
+  // Turned off by default per explicit product direction -- see the
+  // matching comment on js/themeEngine.js's _defaultOptionsFor(), the
+  // real source of truth whenever ThemeEngine is available. Easily
+  // reversible: flip these two back to 'bottom-right' / 'show'.
   const FALLBACK_OPTIONS={
     variant:'classic',
     panelStyle:'classic',
     footerStyle:'classic',
     decorations:[],
-    pageNumber:'bottom-right',
-    bookTitleVisibility:'show',
+    pageNumber:'hidden',
+    bookTitleVisibility:'hide',
     bookTitlePosition:'bottom-left',
     handleVisibility:'show',
     handlePosition:'top-right'

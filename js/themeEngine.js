@@ -139,8 +139,14 @@ const ThemeEngine=(function(){
       panelStyle:'classic',
       footerStyle:'classic',
       decorations:[],
-      pageNumber:'bottom-right',
-      bookTitleVisibility:'show',
+      // Turned off by default per explicit product direction -- a page
+      // should only show a book title / page number when the theme's
+      // own `slide` preset requests it, or the creator turns Page Style
+      // visibility back on in the Workspace. Easily reversible: flip
+      // these two back to 'bottom-right' / 'show' to restore the old
+      // always-on default.
+      pageNumber:'hidden',
+      bookTitleVisibility:'hide',
       bookTitlePosition:'bottom-left',
       handleVisibility:'show',
       handlePosition:'top-right',

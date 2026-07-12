@@ -9,8 +9,11 @@ const AppState={
      panelStyle:'classic',
      footerStyle:'classic',
      decorations:[],
-     pageNumber:'bottom-right',
-     bookTitleVisibility:'show',
+     // Off by default per explicit product direction -- see the matching
+     // comment on js/themeEngine.js's _defaultOptionsFor(). Reversible:
+     // flip back to 'bottom-right' / 'show' to restore the old default.
+     pageNumber:'hidden',
+     bookTitleVisibility:'hide',
      bookTitlePosition:'bottom-left',
      handleVisibility:'show',
      handlePosition:'top-right'
