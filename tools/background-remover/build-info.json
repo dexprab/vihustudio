@@ -1,9 +1,9 @@
 {
-  "version": "1.2.1",
-  "sprint": "Sprint 3 follow-up — Result screen overflow fix",
-  "task": "Reported with a tall/portrait photo of a physical canvas painting: the Result screen's before/after stage sized itself from CSS aspect-ratio + max-width alone, which clamps width but not height, so a portrait photo could grow the stage past the viewport and force the whole page to scroll. Replaced with an explicit JS sizing pass (sizeBeforeAfterStage) that fits the stage within both an available width and an available height computed from the page's actual measured content height (a first attempt using a fixed fraction of the viewport measured wrong on shorter windows). Caught and fixed a real bug in the same pass: the fix initially referenced els.beforeAfter, never added to the els lookup object, throwing and silently falling back to the old broken sizing -- found via a direct portrait-photo regression test. Verified via Playwright across several image shapes and viewport sizes, including an 8-run stress test on a case that first looked inconsistent (confirmed as transient test-environment noise, reproducibly correct afterward): the stage is always the largest size that fits with zero page scroll. Full existing regression suite unchanged.",
-  "build": "0004",
+  "version": "1.2.2",
+  "sprint": "Sprint 3 follow-up — Trim Trash/Keep split, brush deselect, zoom slider",
+  "task": "Direct feedback on the Edit screen's tool panel: (1) Trim Picture's drawn box previously only ever specified what to KEEP, contradicting the everyday meaning of 'trim' -- added a second action, Trash It (a new hard-edged eraseRect, recorded onto the shared Oops!/Redo brush history rather than the crop-specific Undo Trim), alongside the existing Keep This crop. (2) Once a brush tool (Remove More/Bring It Back) was active there was no way to turn it off -- re-clicking the already-active brush size now deselects the tool back to pan mode; picking a different size still just switches. (3) Added a plain picture zoom slider (kidZoomSlider) standing in for the hidden technical zoom buttons, wired to zoomProcessed via its own split onChange callback so it only ever reflects the picture actually being edited and stays in sync with wheel-zoom/fit in both directions. Verified via Playwright end to end, including re-confirming the Quality Contract holds for the new Trash It export path (0 RGB mismatches at every fully-opaque pixel, fully transparent inside the trashed rect) after an initial verification pass's false-positive mismatches were traced to a canvas-readback premultiplication artifact in the test's own method, not a real defect. Full existing regression suite unchanged.",
+  "build": "0005",
   "buildDate": "2026-07-12",
-  "commit": "e97a755",
+  "commit": "2af52aa",
   "environment": "Release"
 }
