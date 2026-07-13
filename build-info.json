@@ -1,9 +1,9 @@
 {
-  "version": "2.5.0",
-  "sprint": "Creator Acceptance Sprint — Theme Fidelity Pass (Museum Gallery)",
-  "task": "Fixed the one root cause behind Museum Gallery pages looking empty in Creator before a picture was uploaded: renderer/slideRenderer.js's _resolveBorder(s) resolved an Artwork Theme's Frame only if(hasImage), so the frame/mat/ornament/caption and every Frame/Holder-scoped Layer Pack entry (Wax Seal, Gallery Spotlight, Museum Caption) never rendered until an image existed, even though every function downstream of that gate was already image-independent. Lifting that one gate (scoped to Artwork Theme pages only) closed the whole visual gap. Added a wall-tone-aware artwork placeholder for Story-role pages (mirroring the existing Cover/Hook/End 'Add an image' pattern). Object Strip's Artwork card is no longer gated on slide.image, and a second real bug found while verifying this fix -- fresh Creation-Flow pages never get pageType promoted from 'blank' to 'story' -- is fixed by matching the renderer's own _hasScene criterion instead of a hardcoded pageType string. Context Panel's default view now greets the child by World name with an ownership legend. See docs/CREATOR_THEME_FIDELITY.md and CLAUDE.md's matching entry for the full account.",
-  "build": "0089",
+  "version": "2.5.1",
+  "sprint": "Museum Gallery Fidelity Trace — real .vtheme surfaces two silent crashes",
+  "task": "Re-traced the Theme Fidelity Pass acceptance journey using the REAL themes/MuseumGallery.vtheme loaded through the real ThemeEngine.importThemeFile import path, not a synthetic fixture. Found and fixed two real, previously-invisible bugs: (1) a genuine crash -- 'Cannot read properties of null (reading variants)' in js/themeEngine.js's _defaultOptionsFor, reached whenever no Story Theme is active (a real, disclosed state: Studio ships zero built-in themes today, and a pure Artwork-only World like Museum Gallery never applies one) -- silently swallowed by defensive try/catch blocks everywhere, leaving the canvas blank and Object Strip showing 'Nothing on this page yet' with zero console errors. Fixed by normalizing a null theme in _defaultOptionsFor/resolveTheme and adding the same try/catch+fallback pattern renderer/slideRenderer.js's buildPayload was missing. (2) The 'handle' Layer Pack entry (no decoration payload, a position field) fell through to a default spotlight glow and a nonsensical 'Handle' Object Strip card, violating docs/THEME_PROJECT_SPEC.md's own documented 'declarative-only' contract for position-carrier entries; fixed in _layerDrawDecoration without affecting gallery-spotlight's real, intentional glow. See docs/CREATOR_THEME_FIDELITY.md's new Addendum and CLAUDE.md's matching entry for the full account.",
+  "build": "0090",
   "buildDate": "2026-07-12",
-  "commit": "454186f",
+  "commit": "PENDING",
   "environment": "Release"
 }

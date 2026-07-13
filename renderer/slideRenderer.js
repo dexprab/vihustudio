@@ -1123,6 +1123,22 @@ const SlideRenderer=(()=>{
   // position) when present, else the target rect — same fallback
   // discipline as everywhere else in this convergence.
   function _layerDrawDecoration(layer,anchor,rect,s,layerRect){
+    // Creator Acceptance Sprint (Museum Gallery trace) — docs/THEME_PROJECT_SPEC.md
+    // §7's own contract: "position [is] only meaningful on the
+    // declarative handle / page-number ids" — an entry with no
+    // `decoration` payload AND a `position` field exists purely to carry
+    // that position override for a pre-existing engine feature
+    // (_drawHandle/_drawPageNumber, fed via _layerPosition elsewhere in
+    // render()), never a second, competing renderer for the same
+    // content. Without this guard, Museum Gallery's own `handle` entry
+    // (type:'decoration', no `decoration` payload, `position` set)
+    // silently fell through to the kind==='spotlight' default below,
+    // painting an unintended glow AND appearing as a nonsensical
+    // "Handle" card in the Object Strip. `gallery-spotlight` (no
+    // `decoration` payload either, but no `position` field) is
+    // unaffected — its default-to-spotlight glow is real, intentional
+    // content, exactly as authored.
+    if(!layer.decoration && layer.position) return null;
     const d=layer.decoration||{};
     const kind=d.kind||'spotlight';
     const r=layerRect||rect;
@@ -2570,12 +2586,23 @@ const SlideRenderer=(()=>{
     // and never through the payload's `theme` field — so typography
     // changes silently didn't propagate to thumbnails or the read
     // canvas.
-    const theme = (typeof ThemeEngine !== 'undefined')
-      ? ((typeof ThemeEngine.resolveTheme === 'function')
-          ? ThemeEngine.resolveTheme()
-          : ThemeEngine.getActiveTheme())
-      : null;
-    const themeOptions = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getOptions() : null;
+    // Creator Acceptance Sprint (Museum Gallery trace) — this duplicated
+    // _theme(s)/_options(s)'s own ThemeEngine calls without their
+    // try/catch safety net, so a real, reachable ThemeEngine exception
+    // (found tracing a project with no Story Theme active at all) went
+    // uncaught here even though _theme(s)/_options(s) already handle it
+    // gracefully elsewhere in this file. Same fallback pattern now.
+    let theme;
+    try{
+      theme = (typeof ThemeEngine !== 'undefined')
+        ? ((typeof ThemeEngine.resolveTheme === 'function')
+            ? ThemeEngine.resolveTheme()
+            : ThemeEngine.getActiveTheme())
+        : FALLBACK_THEME;
+    }catch(e){ theme = FALLBACK_THEME; }
+    let themeOptions;
+    try{ themeOptions = (typeof ThemeEngine !== 'undefined') ? ThemeEngine.getOptions() : FALLBACK_OPTIONS; }
+    catch(e){ themeOptions = FALLBACK_OPTIONS; }
     // Sprint 9.3 — same "stamp the resolved value into the payload"
     // discipline as `theme` above, so every render surface (editor,
     // thumbnails, publish) reflects an Artwork Theme change

@@ -166,3 +166,150 @@ Full regression across the existing Creator suite (`regression.js`,
 `scene_object_test.js`, `sticker_owner_check.js`,
 `diag_layerpack3.js`, `runtime_pass_test.js`) passes unchanged, zero
 console errors throughout.
+
+## Addendum — tracing the REAL `themes/MuseumGallery.vtheme`, not a synthetic fixture
+
+Every test above (and the sprint's own original verification) used a
+hand-written, Museum-Gallery-*shaped* fixture registered directly via
+`ThemeRegistry.registerOfficial(...)`. A follow-up request asked for
+the trace to be repeated through Theme Load → Scene Creation → Object
+Registry → Runtime → Object Strip using the **real, compiled**
+`themes/MuseumGallery.vtheme` file, loaded through the real production
+import path (`ThemeEngine.importThemeFile` → `ThemeRegistry.importPackage`).
+This surfaced two real, previously-invisible bugs that every synthetic
+fixture had unknowingly been masking.
+
+### Bug 1 — a real crash, silently swallowed everywhere
+
+Tracing the real file end to end: the canvas rendered fully blank
+(`getImageData` returned `[0,0,0,0]`, i.e. never painted), `SlideRenderer.
+getSceneElements()`/`getTextElements()` both returned empty arrays, and
+Object Strip showed "Nothing on this page yet." Manually re-invoking
+`window.showSlide()`/`SlideRenderer.render()` outside the app's own
+defensive `try{...}catch(e){}` wrappers surfaced the real exception:
+
+```
+TypeError: Cannot read properties of null (reading 'variants')
+    at _defaultOptionsFor (js/themeEngine.js:138)
+    at getOptions (js/themeEngine.js:175)
+    at resolveTheme (js/themeEngine.js:195)
+    at SlideRenderer.buildPayload (renderer/slideRenderer.js:2575)
+```
+
+**Root cause**: Museum Gallery's `supportedCreationTypes` is
+`["artwork","artwork-collection"]` — it has no `'story'` entry, so
+`js/creationFlow.js`'s `_finish()` only ever calls
+`ThemeEngine.applyArtworkTheme()` for it, never `applyTheme()`. On a
+genuinely fresh project whose *only* chosen World is a pure Artwork
+Theme, the Story Theme (`ThemeEngine.getActiveTheme()`) never gets
+set. This is not a hypothetical edge case — `js/themeRegistry.js`
+documents, in its own comments, that Studio today ships with **zero
+built-in themes** (`OFFICIAL_THEMES` is deliberately commented out,
+"Studio now relies entirely on imported/published themes... `storybook-
+classic` remains the hardcoded default project theme id... deliberately
+left unresolved rather than rewired, since [it] now exists only until
+reintroduced by import/publish") — a null active Story Theme is an
+accepted, disclosed, *normal* state in this architecture, not a bug to
+paper over by inventing a fallback registration. The bug was that nothing
+downstream actually *handled* that accepted null state:
+
+- `js/themeEngine.js`'s `_defaultOptionsFor(theme)` dereferenced
+  `theme.variants`/`theme.slide`/`theme.holder` assuming `theme` was
+  always a real object.
+- `resolveTheme()` dereferenced `base.id`/`base.frame.color`/etc. the
+  same way.
+- `renderer/slideRenderer.js`'s `buildPayload()` called
+  `ThemeEngine.resolveTheme()`/`getOptions()` **directly, with no
+  try/catch** — bypassing the exact safety net `_theme(s)`/`_options(s)`
+  already established elsewhere in the same file (both already fall
+  back to `FALLBACK_THEME`/`FALLBACK_OPTIONS` on any thrown exception).
+
+Because `js/creationFlow.js`'s `_finish()` and `js/app.js`'s
+`showSlide()` both wrap their own calls in `try{...}catch(e){}` (by
+design, so one bad refresh doesn't wedge the whole UI), the exception
+above was caught and silently discarded at every call site — it never
+surfaced as a console error, `render()` simply never completed, and the
+page looked "empty" for a reason with no error trail to follow.
+
+**Fix**: `_defaultOptionsFor` now normalizes `theme=theme||{}` at its
+top so every subsequent `theme.X` access resolves to `undefined`
+(falsy) instead of throwing — the exact same "no theme = System
+Defaults" behaviour every other untouched-theme code path already has.
+`resolveTheme()` now falls back to a new `_NO_THEME_FALLBACK` constant
+(deliberately identical values to `renderer/slideRenderer.js`'s own
+`FALLBACK_THEME` — same colours, same fonts) when `getActiveTheme()`
+returns null. `buildPayload()`'s two direct `ThemeEngine` calls gained
+the same try/catch + fallback pattern `_theme(s)`/`_options(s)` already
+use, for defense-in-depth. This fixes the crash for every caller of
+`getOptions()`/`resolveTheme()` at once — several other call sites
+(`js/cardDesigner.js`, `js/contextPanel.js`) call these same functions
+with no try/catch of their own and were equally exposed.
+
+### Bug 2 — the `handle` Layer Pack entry drew an unintended glow and a nonsensical Object Strip card
+
+With the crash fixed, the real Object Strip showed a fourth World card
+literally labelled "Handle" — meaningless to a child, and not
+something Museum Gallery's author ever intended as an independent,
+selectable object. `docs/THEME_PROJECT_SPEC.md` §7 already documents
+the intended contract precisely: an entry naming `page-number` or
+`handle` with no real content payload is **declarative-only** — "it
+documents that this Layer exists in the theme's inventory, but the
+actual pixels are still drawn by the pre-existing, unrelated engine
+feature it names ... never a second, competing renderer for the same
+content," and `position` is "only meaningful on the declarative
+`handle` / `page-number` ids." `_layerDrawText` already honours this
+correctly for `page-number` (`type:"text"`, no `text.content`/`.source`
+→ returns null, nothing drawn or pushed). `_layerDrawDecoration` did
+not have the equivalent guard for `type:"decoration"` entries: with no
+`decoration` payload, `kind` defaulted to `'spotlight'`, so `handle`
+(which the real compiled package authors as `type:"decoration"`, no
+`decoration` field, `position:"bottom-right"`) silently painted an
+unintended lighting glow across the whole slide *and* got pushed onto
+the render tree as its own selectable Scene Object.
+
+**Fix**: `_layerDrawDecoration` now returns `null` (draws nothing, no
+bbox pushed) when `!layer.decoration && layer.position` — the exact,
+spec-sanctioned signature of a declarative-only entry. `gallery-
+spotlight` (Museum Gallery's other, genuinely content-less decoration
+entry) is unaffected: it has no `decoration` payload either, but it
+also has no `position` field, so it still resolves through the
+existing `kind==='spotlight'` default and keeps its real, intentional
+glow — confirmed unchanged in every regression fixture.
+
+### A separate, disclosed, NOT-fixed finding — theme icon
+
+The Context Panel's "Welcome to `<icon>` Museum Gallery" heading shows
+the generic 📖 fallback instead of Museum Gallery's own 🏛️ for the real
+imported package (confirmed via direct inspection:
+`ThemeRegistry.get('museum-gallery')` has no `themeIcon` key at all —
+only the compiled package's `manifest.themeIcon` carries it, and
+`ThemeRegistry.get()` returns only the `theme` sub-object, discarding
+`manifest`). This is a pre-existing gap in the exact same lookup
+pattern `js/app.js`'s own header readout (`_updateHeaderContext()`)
+already uses — `_worldIdentity()` faithfully reused that established
+pattern rather than introducing a new one. Not part of the acceptance
+checklist's named criteria (which concern the ownership legend/badges
+functioning, not which glyph appears), and fixing it would mean
+deciding whether `ThemeRegistry.get()` should start returning manifest
+fields merged onto the theme object — a real design question, out of
+this trace's scope. Disclosed here rather than silently fixed or
+silently ignored.
+
+### Verification
+
+A new Playwright test (`real_museum_trace.js`, scratch-only) loaded
+the real `themes/MuseumGallery.vtheme` via `ThemeEngine.importThemeFile`
+and drove the full acceptance journey against it: Theme Load
+(`registered:true`, correct name/representations/layerPack ids) → Scene
+Creation (Creation Flow discovers and applies it) → Object Registry/
+Runtime (non-blank canvas pixels, populated `getSceneElements()`) →
+Thumbnail (a real, non-trivial generated thumbnail image) → Object
+Strip (Background/Artwork Place/Gallery Spotlight/Wax Seal, no
+"Nothing on this page yet") → Context Panel (Welcome heading + legend,
+and selecting Wax Seal shows the correct 🌍 "This is part of the World"
+disclosure). Full regression across every existing suite
+(`regression.js`, `final_qa.js`, `frame_variation_test3.js`,
+`ws_check.js`, `publish_stages.js`, `lang_check.js`, `baseline3.js`,
+`scene_object_test.js`, `sticker_owner_check.js`, `diag_layerpack3.js`,
+`runtime_pass_test.js`, `museum_fidelity_test.js`) passes unchanged,
+zero console errors.

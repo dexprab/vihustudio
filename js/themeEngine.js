@@ -134,6 +134,17 @@ const ThemeEngine=(function(){
   // that has never touched Theme Designer — never sees a pixel of
   // difference from this change.
   function _defaultOptionsFor(theme){
+    // Creator Acceptance Sprint (Museum Gallery trace) — a real, reachable
+    // crash found tracing a fresh project whose only chosen World is a
+    // pure Artwork Theme (Museum Gallery: supportedCreationTypes has no
+    // 'story'): Creation Flow never calls applyTheme() for it, and
+    // Studio's own "zero built-in themes, Repository-only" architecture
+    // (see js/themeRegistry.js's disabled OFFICIAL_THEMES) means
+    // getActiveTheme() can legitimately return null/undefined forever.
+    // Every `theme.X` access below assumed a real theme object; normalize
+    // to {} so a missing Story Theme falls through to the same System
+    // Defaults every field already had, instead of throwing.
+    theme=theme||{};
     const base={
       variant:(theme.variants&&theme.variants[0])?theme.variants[0].id:'classic',
       panelStyle:'classic',
@@ -190,8 +201,21 @@ const ThemeEngine=(function(){
   // typography / colours on top of the active theme. The renderer reads
   // this so an override at the Theme Designer level applies everywhere
   // the active theme would be read, without changing the theme record.
+  // Creator Acceptance Sprint (Museum Gallery trace) — matches
+  // renderer/slideRenderer.js's own FALLBACK_THEME exactly (same colours,
+  // same fonts), used only when no Story Theme is active at all (see the
+  // _defaultOptionsFor comment above for why that's a real, reachable
+  // state, not hypothetical).
+  const _NO_THEME_FALLBACK={
+    id:null,name:'',description:'',suitableFor:'',
+    frame:{color:'#1D3457'}, panel:{color:'#FFFFFF'},
+    storyText:{font:'Georgia, serif',size:56,color:'#FFFFFF'},
+    footerText:{font:'Georgia, serif',size:24,color:'#FFFFFF'},
+    watermark:{font:'Georgia, serif',size:24,color:'#FFFFFF'},
+    variants:[], decorations:[]
+  };
   function resolveTheme(){
-    const base=getActiveTheme();
+    const base=getActiveTheme()||_NO_THEME_FALLBACK;
     const opts=getOptions();
     const ty=opts.typography||{};
     const co=opts.colours||{};
