@@ -248,6 +248,9 @@ class BuildEngine {
         const layoutId = 'scene-' + scene.id;
         const aspect = (scene.canvas && scene.canvas.aspectRatio) || 'portrait';
 
+        const holders = Array.isArray(scene.holders) ? scene.holders : [];
+        const firstHolder = holders[0] || null;
+
         package_.layouts.push({
             id: layoutId,
             name: scene.name || 'Scene',
@@ -256,11 +259,18 @@ class BuildEngine {
             captionPosition: 'below',
             padding: 24,
             spacing: 16,
-            alignment: 'center'
+            alignment: 'center',
+            // Studio has no other way to tell "this Scene genuinely has
+            // zero Places" apart from "it has one Place but no Frame
+            // chosen yet" (both produce defaultFrame:null below) — a
+            // real Layout field Sprint 9.6 already reserved for this
+            // exact purpose ("holders: Reserved... in V1") but no
+            // producer ever populated. Recording the real count here is
+            // what lets renderer/slideRenderer.js's _resolveBorder and
+            // js/objectStrip.js's Artwork Place card skip fabricating a
+            // picture area for a Scene that never authored one.
+            holders: holders.length
         });
-
-        const holders = Array.isArray(scene.holders) ? scene.holders : [];
-        const firstHolder = holders[0] || null;
 
         const representation = {
             id: layoutId,
@@ -340,6 +350,17 @@ class BuildEngine {
         const target = (layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay';
         const base = {
             id: 'scene-' + scene.id + '-' + layer.id,
+            // Studio's own _humanizeLayerId fallback only ever had the
+            // compiled id to guess from (e.g. "scene-single-holder-abc-
+            // bg1"), which — since every Layer on one Scene shares that
+            // same Scene-id prefix — reads as visually-identical,
+            // truncated Object Strip cards no matter how many distinct
+            // Layers a Scene actually has. Builder already has the real,
+            // author-facing name right here (layer.name, e.g.
+            // "Background", or an Experience's own name) — carrying it
+            // through as label is what lets each converged Layer show
+            // its own real name instead.
+            label: layer.name || undefined,
             target: target,
             scope: layoutId,
             rect: rect,

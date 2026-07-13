@@ -1,9 +1,9 @@
 {
-  "version": "2.5.2",
-  "sprint": "Screen 2 World Library Card — Thumbnail vs. Hero Image",
-  "task": "Fixed a real, user-reported bug: the World Library/Vihu Worlds row card on Screen 2 was rendering a World's Hero Image (manifest.previewImage) instead of its Thumbnail (manifest.thumbnail) -- two separate assets Builder's own Overview screen authors distinctly. js/creationFlow.js's _themePreview() silently conflated both into one generic `image` field that always preferred previewImage. Fixed by resolving thumbnail/heroImage separately; _worldRowCard() (the reported card) now reads pv.thumbnail; _repThumbnail()'s own World-level fallback now prefers pv.heroImage for its bigger carousel-slide context, falling back to pv.thumbnail then the icon glyph. Verified against the real MuseumGallery.vtheme via full-string comparison that the World Library card's rendered image now exactly matches manifest.thumbnail, not previewImage. Full regression suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
-  "build": "0091",
+  "version": "2.5.3",
+  "sprint": "Object Strip Label + Zero-Holder Layout fixes",
+  "task": "Fixed two real, user-reported Builder->Creator gaps found authoring a real World: (1) an Object Strip labeling bug -- tools/world-builder-v2's convergeSceneLayer() never carried a Scene Layer's own author-given name into the compiled Layer Pack entry's label field, so every Layer on one Scene fell back to humanizing the shared scene-<id>-<layerId> compiled id, reading as visually-identical truncated 'Scene Sin...' cards; fixed by carrying layer.name through as label. (2) a real 'no Holder' gap -- a Scene converged with zero Places had no way to signal that to Creator (both it and 'one Place, no Frame chosen' produced defaultFrame:null), because the compiled Layout never populated the holders field Sprint 9.6 had reserved for exactly this; convergeScene() now emits the real holders count, and renderer/slideRenderer.js's _resolveBorder / js/objectStrip.js's Artwork Place card both skip fabricating a picture area when holders===0, while staying null-safe (absent field = unchanged behaviour) for every existing theme including Museum Gallery's own hand-authored layouts. Investigation also confirmed the actual pixel z-order was already correct -- a Scene's Background fill already paints first, behind the Frame/Panel/every Place. Verified via a synthetic two-Layout Playwright test plus builder.js's real convergeScene/convergeSceneLayer driven directly against hand-built Scenes. Full existing regression suite and goldenBuild.js (30/30) pass unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0092",
   "buildDate": "2026-07-13",
-  "commit": "60829ba",
+  "commit": "PENDING",
   "environment": "Release"
 }

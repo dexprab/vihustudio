@@ -147,6 +147,23 @@ const SlideRenderer=(()=>{
     return (resolved && resolved.rect) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
   }
 
+  // The active Layout preset's own `holders` count (Sprint 9.6 reserved
+  // this field, "always 1 in V1," but nothing ever populated it until
+  // the Builder Convergence Sprint's Scene->Layout conversion started
+  // recording a Scene's real Place count). Returns null when the field
+  // is absent — every hand-authored Layout today, and any Layout a
+  // Theme Author hasn't rebuilt since this field started being
+  // produced — so callers must treat null as "unknown, assume one,"
+  // never as zero, to stay backward compatible.
+  function _activeLayoutHolders(s){
+    const theme=_layoutTheme(s);
+    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
+    if(!layouts || !layouts.length) return null;
+    const chosenId=(s && s.metadata && s.metadata.layout) || null;
+    const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
+    return (preset && typeof preset.holders==='number') ? preset.holders : null;
+  }
+
   function _layoutCompositionFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.composition) || 'below';
@@ -375,7 +392,14 @@ const SlideRenderer=(()=>{
       // image presence. Only the picture itself (_drawImage, gated
       // separately in render()) still requires a real image.
       const artTheme=_artworkTheme(s);
-      if(artTheme){
+      // A Scene converged with zero Places (docs/THEME_PROJECT_SPEC.md
+      // §5's "holders" field, finally populated by the Builder
+      // Convergence Sprint's Scene->Layout conversion) never authored a
+      // picture area at all — resolving Frame/mat/wall chrome for it
+      // would fabricate a Place Builder itself never built. Absent the
+      // field (every Layout that predates this), holderCount is null
+      // and this always resolves exactly as before.
+      if(artTheme && _activeLayoutHolders(s)!==0){
         const art=_resolveArtworkFields(artTheme,s);
         const artworkBorder=_artworkBorder(art);
         if(artworkBorder) return artworkBorder;
@@ -2690,7 +2714,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch};
+  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,activeLayoutHolderCount:_activeLayoutHolders};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

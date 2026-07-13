@@ -156,7 +156,15 @@ const ObjectStrip=(function(){
     // reachable before an image is uploaded, not only after.
     const hasScene=(typeof SceneEngine!=='undefined' && typeof SceneEngine.getRenderData==='function')
       && SceneEngine.getRenderData(slide)!==null;
-    if(!hasScene){
+    // A Builder-authored Layout can explicitly declare zero Places
+    // (Sprint 9.6's reserved `holders` field, finally populated by the
+    // Builder Convergence Sprint's Scene->Layout conversion) — if the
+    // World never built a Place here, Creator must not fabricate one.
+    // Absent the field (every Layout that predates this), the count is
+    // null/undefined and this stays exactly as it was.
+    const noHolderAuthored=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.activeLayoutHolderCount==='function')
+      && SlideRenderer.activeLayoutHolderCount(slide)===0;
+    if(!hasScene && !noHolderAuthored){
       cards.push(_card({
         imgSrc:slide.thumbnail||null,
         icon:'🖼️',
