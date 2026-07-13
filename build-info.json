@@ -4,6 +4,6 @@
   "task": "Fixed a real, user-reported bug: the World Library/Vihu Worlds row card on Screen 2 was rendering a World's Hero Image (manifest.previewImage) instead of its Thumbnail (manifest.thumbnail) -- two separate assets Builder's own Overview screen authors distinctly. js/creationFlow.js's _themePreview() silently conflated both into one generic `image` field that always preferred previewImage. Fixed by resolving thumbnail/heroImage separately; _worldRowCard() (the reported card) now reads pv.thumbnail; _repThumbnail()'s own World-level fallback now prefers pv.heroImage for its bigger carousel-slide context, falling back to pv.thumbnail then the icon glyph. Verified against the real MuseumGallery.vtheme via full-string comparison that the World Library card's rendered image now exactly matches manifest.thumbnail, not previewImage. Full regression suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0091",
   "buildDate": "2026-07-13",
-  "commit": "PENDING",
+  "commit": "60829ba",
   "environment": "Release"
 }
