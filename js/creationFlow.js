@@ -166,20 +166,32 @@ const CreationFlow=(function(){
   // ThemeEngine's own Theme Library card (_renderThemeCard) already reads
   // for this exact purpose, so a new theme picks up a sensible preview
   // automatically, with no Creation-Flow-specific authoring step.
+  //
+  // Builder's Overview screen authors Thumbnail and Hero Image as two
+  // distinct uploads (manifest.thumbnail / manifest.previewImage) —
+  // Thumbnail for small card/list contexts, Hero Image as the larger
+  // representative source. This function resolves both separately so a
+  // caller picks the one that matches its own visual size, instead of
+  // one generic `image` field that silently let a World-card-sized
+  // thumbnail show the Hero Image instead.
   function _themePreview(theme){
     const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(theme.id) : null;
     const manifest=(rec && rec.manifest) || {};
-    // Asset Repository Transition — manifest.previewImage may be a bare
-    // relative-path reference (builder.js/_buildPackageFromZipFiles no
-    // longer embed it directly) rather than a ready data:/http(s) src;
-    // resolveAssetRef resolves it through this theme's own assets map
-    // either way (local-import data URI or a repository's signed URL),
-    // unchanged for the legacy already-embedded case.
-    const previewImage=(typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
-      ? ThemeRegistry.resolveAssetRef(theme.id,manifest.previewImage)
-      : manifest.previewImage;
+    // Asset Repository Transition — manifest.thumbnail/.previewImage may
+    // be bare relative-path references (builder.js/
+    // _buildPackageFromZipFiles no longer embed them directly) rather
+    // than a ready data:/http(s) src; resolveAssetRef resolves either
+    // through this theme's own assets map (local-import data URI or a
+    // repository's signed URL), unchanged for the legacy already-
+    // embedded case.
+    function resolve(v){
+      return (v && typeof ThemeRegistry!=='undefined' && ThemeRegistry.resolveAssetRef)
+        ? ThemeRegistry.resolveAssetRef(theme.id,v)
+        : (v||null);
+    }
     return {
-      image:previewImage||null,
+      thumbnail:resolve(manifest.thumbnail),
+      heroImage:resolve(manifest.previewImage),
       icon:manifest.themeIcon||'🎨',
       color:(theme.frame && theme.frame.color) || '#EFEFEF',
       description:theme.description||manifest.description||manifest.purpose||''
@@ -232,7 +244,11 @@ const CreationFlow=(function(){
     const theme=(themeId && typeof ThemeRegistry!=='undefined') ? ThemeRegistry.get(themeId) : null;
     if(theme){
       const pv=_themePreview(theme);
-      if(pv.image) return {image:pv.image};
+      // This is a large carousel-slide visual, not a small list card —
+      // prefer the World's Hero Image (its higher-resolution source),
+      // falling back to Thumbnail, then the plain icon glyph.
+      if(pv.heroImage) return {image:pv.heroImage};
+      if(pv.thumbnail) return {image:pv.thumbnail};
       return {text:pv.icon};
     }
     return {text:'🎨'};
@@ -250,9 +266,12 @@ const CreationFlow=(function(){
     if(selected) card.appendChild(_checkBadge());
     const preview=_el('div','creation-flow-world-thumb');
     const pv=_themePreview(theme);
-    if(pv.image){
+    // A small List row card — this is exactly the Thumbnail Builder's
+    // own Overview screen authors for this purpose, never the larger
+    // Hero Image (a different, separately-uploaded asset).
+    if(pv.thumbnail){
       const img=document.createElement('img');
-      img.src=pv.image; img.alt='';
+      img.src=pv.thumbnail; img.alt='';
       preview.appendChild(img);
     }else{
       preview.style.background=pv.color;

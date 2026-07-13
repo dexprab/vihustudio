@@ -1,9 +1,9 @@
 {
-  "version": "2.5.1",
-  "sprint": "Museum Gallery Fidelity Trace — real .vtheme surfaces two silent crashes",
-  "task": "Re-traced the Theme Fidelity Pass acceptance journey using the REAL themes/MuseumGallery.vtheme loaded through the real ThemeEngine.importThemeFile import path, not a synthetic fixture. Found and fixed two real, previously-invisible bugs: (1) a genuine crash -- 'Cannot read properties of null (reading variants)' in js/themeEngine.js's _defaultOptionsFor, reached whenever no Story Theme is active (a real, disclosed state: Studio ships zero built-in themes today, and a pure Artwork-only World like Museum Gallery never applies one) -- silently swallowed by defensive try/catch blocks everywhere, leaving the canvas blank and Object Strip showing 'Nothing on this page yet' with zero console errors. Fixed by normalizing a null theme in _defaultOptionsFor/resolveTheme and adding the same try/catch+fallback pattern renderer/slideRenderer.js's buildPayload was missing. (2) The 'handle' Layer Pack entry (no decoration payload, a position field) fell through to a default spotlight glow and a nonsensical 'Handle' Object Strip card, violating docs/THEME_PROJECT_SPEC.md's own documented 'declarative-only' contract for position-carrier entries; fixed in _layerDrawDecoration without affecting gallery-spotlight's real, intentional glow. See docs/CREATOR_THEME_FIDELITY.md's new Addendum and CLAUDE.md's matching entry for the full account.",
-  "build": "0090",
-  "buildDate": "2026-07-12",
-  "commit": "a67f62c",
+  "version": "2.5.2",
+  "sprint": "Screen 2 World Library Card — Thumbnail vs. Hero Image",
+  "task": "Fixed a real, user-reported bug: the World Library/Vihu Worlds row card on Screen 2 was rendering a World's Hero Image (manifest.previewImage) instead of its Thumbnail (manifest.thumbnail) -- two separate assets Builder's own Overview screen authors distinctly. js/creationFlow.js's _themePreview() silently conflated both into one generic `image` field that always preferred previewImage. Fixed by resolving thumbnail/heroImage separately; _worldRowCard() (the reported card) now reads pv.thumbnail; _repThumbnail()'s own World-level fallback now prefers pv.heroImage for its bigger carousel-slide context, falling back to pv.thumbnail then the icon glyph. Verified against the real MuseumGallery.vtheme via full-string comparison that the World Library card's rendered image now exactly matches manifest.thumbnail, not previewImage. Full regression suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0091",
+  "buildDate": "2026-07-13",
+  "commit": "PENDING",
   "environment": "Release"
 }
