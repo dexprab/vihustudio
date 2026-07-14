@@ -5,6 +5,6 @@
   "slice": "Follow-up bug found after the overflow-menu Duplicate fix: duplicating a World roughly doubles its storage footprint, and js/projectStore.js's duplicate() discarded a localStorage write failure silently -- the exact AV-009 class of bug, never applied to this code path. Now returns {ok,error} like save() does, and the Welcome-card/overflow-menu Duplicate actions show a real alert on failure instead of doing nothing. Verified via Playwright against a real, reproducible browser-level quota failure. goldenBuild.js 30/30 unchanged.",
   "build": "0069",
   "buildDate": "2026-07-13",
-  "commit": "PENDING",
+  "commit": "b9831ac",
   "environment": "Release"
 }
