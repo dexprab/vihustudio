@@ -4,6 +4,6 @@
   "task": "First step toward real, persistent user accounts for World Builder, replacing the anonymous-per-browser identity model every earlier Repository sprint has disclosed as a limitation. Scoped via AskUserQuestion: an account meant to eventually become the identity Builder sessions sign in as, but explicitly not a single-user ceiling -- more real builder accounts can be created the identical way later. New supabase/create_base_builder_user.sql is a disclosed, unexecuted script (this sandbox cannot reach Supabase) that creates one real email+password Supabase Auth user by inserting directly into auth.users/auth.identities -- a well-known community pattern, with the officially documented Admin API named as the fallback if it ever errors against a real project's exact schema. No schema change needed: every RLS policy in supabase/schema.sql already keys off auth.uid() generically, real or anonymous alike -- confirmed by reading the policies, not assumed. Explicitly disclosed as NOT done: no sign-in UI exists yet anywhere in World Builder; js/themeRepositoryClient.js's _ensureAuth() still unconditionally calls signInAnonymously() for every session -- this step only creates the account in Supabase. See CLAUDE.md's matching entry for the full account.",
   "build": "0097",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "2e16c70",
   "environment": "Release"
 }
