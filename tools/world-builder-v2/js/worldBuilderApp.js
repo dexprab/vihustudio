@@ -295,20 +295,6 @@
         return close;
     }
 
-    function _repositoryThemeInfoBody(entry) {
-        const man = entry.manifest || {};
-        const wrap = document.createElement('div');
-        const p = document.createElement('p');
-        p.style.marginTop = '0';
-        p.textContent = man.description || man.purpose || 'No description was authored for this World.';
-        wrap.appendChild(p);
-        const meta = document.createElement('p');
-        meta.className = 'wb-field-help';
-        meta.textContent = 'Version ' + (man.version || '1.0') + (man.mood ? ' · ' + man.mood : '');
-        wrap.appendChild(meta);
-        return wrap;
-    }
-
     // A card for a Personal/Official Theme this author owns in the
     // Repository but that has no matching local Builder Project on this
     // browser right now — "My World Projects should list all my
@@ -360,6 +346,154 @@
         });
     }
 
+    // "they are clonable" / "you can still open them in read only mode" —
+    // turns a real, LOADED compiled package ({manifest,theme,assets}
+    // from ThemeRepositoryClient.load()) into a valid, in-memory World
+    // Project file map — the same shape ProjectStore/ProjectModel
+    // already expect, built once here and shared by both the read-only
+    // View flow and the clone-as-a-new-World flow below.
+    //
+    // What this can and can't do, disclosed rather than glossed over:
+    // Layouts/Frame Variations/Representations/Layer Pack are un-
+    // flattened straight back into their own real, editable per-item
+    // files (layouts/<id>.json, frames/<id>.json, representations/
+    // all.json, layer-packs/from-repository.json) — genuinely lossless
+    // for these, since the compiled arrays already carry every field
+    // those files would. Scenes/Places/Experiences are NOT
+    // reconstructed — that direction is a confirmed one-way compile
+    // (docs/ENGINE_V2_PROMOTION_STRATEGY.md's own "no reverse path
+    // exists" finding: convergeSceneLayer() keeps only the rendering-
+    // relevant subset of a Scene Layer and discards the Experience/
+    // Place/Holder authoring data that produced it). A World with no
+    // Scenes still validates, Builds, and Publishes correctly — the
+    // Scenes Library will just start empty, exactly like a fresh Blank
+    // World, since world-builder-v2's own Workspace is Scene-first and
+    // has no Nav entry left for the legacy Layouts/Frames/
+    // Representations screens to browse this reconstructed content
+    // directly (Builder V2 Slice 1 retired that Nav on purpose) — the
+    // data is real and reachable through Frames' "Manage Theme Assets"
+    // bridge and through Validate/Build/Publish, just not independently
+    // browsable the way it was in the original authoring Project.
+    //
+    // opts.newId — false (View): keeps the real manifest/theme id so
+    // View Mode's own id-match check (openWorkspace()) still applies.
+    // true (Duplicate/Clone): regenerates a fresh World Id + Project id
+    // and appends "(Copy)" to the name, mirroring _duplicateProject's
+    // own existing convention for a real local Duplicate.
+    function _materializeProjectFromPackage(pkg, opts) {
+        opts = opts || {};
+        const manifest = Object.assign({}, pkg.manifest);
+        const theme = Object.assign({}, pkg.theme);
+        const now = new Date().toISOString();
+
+        if (opts.newId) {
+            manifest.id = (manifest.id || 'world') + '-clone-' + Math.random().toString(36).slice(2, 8);
+            manifest.name = (manifest.name || 'Untitled World') + ' (Copy)';
+            theme.id = manifest.id;
+            theme.name = manifest.name;
+        }
+
+        const metadataFile = {
+            displayName: manifest.name,
+            description: manifest.description || '',
+            category: manifest.category || 'Community',
+            purpose: manifest.purpose || '',
+            mood: manifest.mood || '',
+            bestFor: manifest.bestFor || [],
+            notRecommendedFor: manifest.notRecommendedFor || [],
+            themeIcon: manifest.themeIcon || '🎨',
+            previewImage: manifest.previewImage || null
+        };
+
+        const layouts = theme.layouts || [];
+        const frameVariations = theme.frameVariations || [];
+        const representations = theme.representations || [];
+        const layerPack = theme.layerPack || [];
+        delete theme.layouts;
+        delete theme.frameVariations;
+        delete theme.representations;
+        delete theme.layerPack;
+
+        const files = {
+            'manifest.json': manifest,
+            'metadata.json': metadataFile,
+            'theme.json': theme
+        };
+        layouts.forEach(function (l) { files['layouts/' + l.id + '.json'] = l; });
+        frameVariations.forEach(function (f) { files['frames/' + f.id + '.json'] = f; });
+        if (representations.length) files['representations/all.json'] = representations;
+        if (layerPack.length) files['layer-packs/from-repository.json'] = layerPack;
+
+        // Real asset bytes/signed URLs carry over verbatim — every
+        // reference on manifest/theme (thumbnail.png, preview.png, any
+        // Frame/Layer image field) already points at exactly the key
+        // pkg.assets resolved, so no path translation is needed.
+        Object.keys(pkg.assets || {}).forEach(function (relPath) {
+            files[relPath] = pkg.assets[relPath];
+        });
+
+        return {
+            id: opts.newId
+                ? ('wp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8))
+                : ('wp_view_' + manifest.id),
+            templateId: null,
+            name: manifest.name,
+            tagline: manifest.description || '',
+            description: metadataFile.description,
+            icon: metadataFile.themeIcon,
+            status: 'growing',
+            createdAt: now,
+            updatedAt: now,
+            files: files
+        };
+    }
+
+    // Opens a real, read-only Workspace view of an Official Theme that
+    // has no local draft in this browser — never persisted to
+    // ProjectStore (View Mode's own _persist() backstop already refuses
+    // to save whenever currentProjectReadOnly is true, so even an
+    // in-memory-only Project passed straight to openWorkspace() can
+    // never leak into localStorage). Registering the real World Id into
+    // _lastKnownOfficialIds before opening is what makes openWorkspace()
+    // correctly compute currentProjectReadOnly=true for it — identical
+    // to what _annotateProjectBadges already does opportunistically for
+    // a locally-badged Official card.
+    function _openRepositoryThemeReadOnly(entry, displayName) {
+        if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.load) {
+            window.alert('Couldn\'t open "' + displayName + '" — the Repository connection isn\'t available.');
+            return;
+        }
+        window.ThemeRepositoryClient.load('official', entry.theme_id).then(function (pkg) {
+            const materialized = _materializeProjectFromPackage(pkg, { newId: false });
+            _lastKnownOfficialIds.add(entry.theme_id);
+            openWorkspace(materialized);
+        }).catch(function (e) {
+            window.alert('Couldn\'t open "' + displayName + '" — ' + ((e && e.message) || 'see the browser console for details.'));
+        });
+    }
+
+    // Clones a published Theme (Official or a Personal one with no
+    // Cloud Backup to restore) into a brand-new, real, fully editable
+    // local Project — "they are clonable." Real World Id, saved via
+    // ProjectStore, opened editable immediately.
+    function _cloneRepositoryThemeAsNewWorld(repositoryId, entry, displayName) {
+        if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.load) {
+            window.alert('Couldn\'t duplicate "' + displayName + '" — the Repository connection isn\'t available.');
+            return;
+        }
+        window.ThemeRepositoryClient.load(repositoryId, entry.theme_id).then(function (pkg) {
+            const materialized = _materializeProjectFromPackage(pkg, { newId: true });
+            const saveResult = window.ProjectStore.save(materialized);
+            if (!saveResult.ok) {
+                window.alert('Couldn\'t duplicate "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                return;
+            }
+            openWorkspace(materialized);
+        }).catch(function (e) {
+            window.alert('Couldn\'t duplicate "' + displayName + '" — ' + ((e && e.message) || 'see the browser console for details.'));
+        });
+    }
+
     function _repoOnlyCard(entry, kind, backupProject) {
         const man = entry.manifest || {};
         const displayName = entry.name || man.name || entry.theme_id;
@@ -398,13 +532,13 @@
         const note = document.createElement('span');
         if (kind === 'official') {
             note.className = 'wb-project-badge muted';
-            note.textContent = 'Published · view only';
+            note.textContent = 'Published · view or duplicate';
         } else if (backupProject) {
             note.className = 'wb-project-badge available';
             note.textContent = 'Published · editable copy available';
         } else {
             note.className = 'wb-project-badge muted';
-            note.textContent = 'Published · no local backup';
+            note.textContent = 'Published · click to duplicate';
         }
         metaLine.appendChild(note);
 
@@ -415,16 +549,11 @@
 
         function activate() {
             if (kind === 'official') {
-                _showInfoModal('🌍 ' + displayName, _repositoryThemeInfoBody(entry));
+                _openRepositoryThemeReadOnly(entry, displayName);
                 return;
             }
             if (!backupProject) {
-                const wrap = document.createElement('div');
-                const p = document.createElement('p');
-                p.style.marginTop = '0';
-                p.textContent = 'This Theme is published to your Personal Repository, but no editable backup was found for it in this browser — it may have been published before Cloud Backup existed, or from a different browser session. It can\'t be restored as an editable draft here.';
-                wrap.appendChild(p);
-                _showInfoModal('👤 ' + displayName, wrap);
+                _cloneRepositoryThemeAsNewWorld('personal', entry, displayName);
                 return;
             }
             const restored = JSON.parse(JSON.stringify(backupProject));
