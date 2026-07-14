@@ -272,6 +272,20 @@ html, body {
     cursor: help;
 }
 
+/* "My World Projects" also lists Personal/Official Themes that only
+   exist in the Repository — no local editable draft on this browser
+   yet. Same card shape as a real World Project, minus the Rename/
+   Duplicate/Delete row (there's nothing local to act on), plus this
+   one status pill telling the author what clicking the card will do. */
+.wb-project-badge.available {
+    color: #3E5C36;
+    background: var(--wb-sage);
+}
+.wb-project-card-repo-only {
+    cursor: pointer;
+    padding-right: 18px;
+}
+
 /* Sprint B2.0.5 — Draft Management controls on each project card.
    Same visual language as the Workspace's own .wb-row-controls/.wb-row-btn
    (Frame/Layout list rows), sized for the wider card row. stopPropagation()

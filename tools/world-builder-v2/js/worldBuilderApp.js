@@ -231,15 +231,180 @@
         const projects = window.ProjectStore ? window.ProjectStore.list() : [];
         myWorldsList.innerHTML = '';
         _renderStorageMeter();
-        if (!projects.length) {
-            myWorldsEmpty.classList.remove('wb-hidden');
-            return;
-        }
-        myWorldsEmpty.classList.add('wb-hidden');
+        // Left "wb-hidden" toggling here rather than an early return —
+        // even with zero local Growing projects (a fresh browser, an
+        // incognito window, storage that was cleared), this author's
+        // own Personal/Official Themes may still exist in the
+        // Repository; _annotateProjectBadges below decides the real
+        // final empty/non-empty state once that async check resolves.
+        myWorldsEmpty.classList.toggle('wb-hidden', projects.length > 0);
         projects.forEach(function (p) {
             myWorldsList.appendChild(_projectCard(p));
         });
         _annotateProjectBadges(projects);
+    }
+
+    // A small, self-contained modal for read-only Repository-Theme info
+    // — deliberately NOT the shared #wb-modal/_closeModal machinery,
+    // which assumes an open Workspace `currentProject` (its close
+    // handler resets `currentNav` and calls `_renderWorkspace()`) and
+    // would be the wrong thing to touch from the Welcome screen, where
+    // no Project is open at all. Reuses the same .wb-modal* CSS classes
+    // for a visually consistent look with zero shared JS state.
+    function _showInfoModal(title, bodyNode) {
+        const overlay = document.createElement('div');
+        // A distinct second class ("wb-repo-info-modal") — not just
+        // "wb-modal" — since index.html's own pre-existing #wb-modal
+        // (the Workspace's Overview/Check&Build/Publish dispatcher,
+        // always present in the DOM, only ever hidden via a "wb-hidden"
+        // class) already carries "wb-modal" too; a bare ".wb-modal"
+        // query would otherwise match that hidden element first.
+        overlay.className = 'wb-modal wb-repo-info-modal';
+        const backdrop = document.createElement('div');
+        backdrop.className = 'wb-modal-backdrop';
+        const panel = document.createElement('div');
+        panel.className = 'wb-modal-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        const header = document.createElement('div');
+        header.className = 'wb-modal-header';
+        const titleEl = document.createElement('span');
+        titleEl.className = 'wb-modal-title';
+        titleEl.textContent = title;
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'wb-collapse-btn';
+        closeBtn.title = 'Close';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.textContent = '✕';
+        header.appendChild(titleEl);
+        header.appendChild(closeBtn);
+        const body = document.createElement('div');
+        body.className = 'wb-modal-body';
+        body.appendChild(bodyNode);
+        panel.appendChild(header);
+        panel.appendChild(body);
+        overlay.appendChild(backdrop);
+        overlay.appendChild(panel);
+        function close() { overlay.remove(); }
+        backdrop.addEventListener('click', close);
+        closeBtn.addEventListener('click', close);
+        document.body.appendChild(overlay);
+        return close;
+    }
+
+    function _repositoryThemeInfoBody(entry) {
+        const man = entry.manifest || {};
+        const wrap = document.createElement('div');
+        const p = document.createElement('p');
+        p.style.marginTop = '0';
+        p.textContent = man.description || man.purpose || 'No description was authored for this World.';
+        wrap.appendChild(p);
+        const meta = document.createElement('p');
+        meta.className = 'wb-field-help';
+        meta.textContent = 'Version ' + (man.version || '1.0') + (man.mood ? ' · ' + man.mood : '');
+        wrap.appendChild(meta);
+        return wrap;
+    }
+
+    // A card for a Personal/Official Theme this author owns in the
+    // Repository but that has no matching local Builder Project on this
+    // browser right now — "My World Projects should list all my
+    // Personal, Official and Growing projects," including the ones a
+    // fresh/incognito/cleared browser has no local draft for. Same card
+    // shape as _projectCard, minus Rename/Duplicate/Delete (there's no
+    // local record to act on) and minus a real thumbnail (the compiled
+    // Theme isn't registered in ThemeRegistry here, so there's no asset
+    // reference to resolve — the manifest's own icon glyph is enough).
+    //
+    // Official always stays read-only here, matching View Mode's own
+    // "the only way to get an editable copy of an Official World is
+    // Duplicate, never edit-in-place" rule — clicking shows a plain info
+    // panel, never opens a Workspace. Personal restores a REAL editable
+    // draft when one is found: `backupProject`, when non-null, is the
+    // literal Project JSON ProjectSync already backed up for this exact
+    // Theme (matched by World Id, not a reconstruction from the
+    // one-way-compiled Theme, which has no Scene/Place/Experience data
+    // to reverse) — restoring it is exactly as if the local draft had
+    // never been deleted. With no backup found (published before Cloud
+    // Backup existed, or from a different anonymous session — Personal
+    // Repository access itself is scoped to this browser's own
+    // anonymous identity, a disclosed, pre-existing limitation), this
+    // says so plainly instead of fabricating an empty draft.
+    function _repoOnlyCard(entry, kind, backupProject) {
+        const man = entry.manifest || {};
+        const displayName = entry.name || man.name || entry.theme_id;
+        const card = document.createElement('div');
+        card.className = 'wb-project-card wb-project-card-repo-only';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+
+        const thumb = document.createElement('span');
+        thumb.className = 'wb-project-thumb';
+        thumb.textContent = man.themeIcon || '🎨';
+
+        const info = document.createElement('div');
+        info.className = 'wb-project-info';
+
+        const name = document.createElement('span');
+        name.className = 'wb-project-name';
+        name.textContent = displayName;
+
+        const metaLine = document.createElement('span');
+        metaLine.className = 'wb-project-meta-line';
+
+        const status = document.createElement('span');
+        status.className = kind === 'official' ? 'wb-project-status wb-project-status-official' : 'wb-project-status wb-project-status-personal';
+        status.textContent = kind === 'official' ? '🌍 Official' : '👤 Personal';
+        metaLine.appendChild(status);
+
+        const note = document.createElement('span');
+        if (kind === 'official') {
+            note.className = 'wb-project-badge muted';
+            note.textContent = 'Published · view only';
+        } else if (backupProject) {
+            note.className = 'wb-project-badge available';
+            note.textContent = 'Published · editable copy available';
+        } else {
+            note.className = 'wb-project-badge muted';
+            note.textContent = 'Published · no local backup';
+        }
+        metaLine.appendChild(note);
+
+        info.appendChild(name);
+        info.appendChild(metaLine);
+        card.appendChild(thumb);
+        card.appendChild(info);
+
+        function activate() {
+            if (kind === 'official') {
+                _showInfoModal('🌍 ' + displayName, _repositoryThemeInfoBody(entry));
+                return;
+            }
+            if (!backupProject) {
+                const wrap = document.createElement('div');
+                const p = document.createElement('p');
+                p.style.marginTop = '0';
+                p.textContent = 'This Theme is published to your Personal Repository, but no editable backup was found for it in this browser — it may have been published before Cloud Backup existed, or from a different browser session. It can\'t be restored as an editable draft here.';
+                wrap.appendChild(p);
+                _showInfoModal('👤 ' + displayName, wrap);
+                return;
+            }
+            const restored = JSON.parse(JSON.stringify(backupProject));
+            const saveResult = window.ProjectStore.save(restored);
+            if (!saveResult.ok) {
+                window.alert('Couldn\'t restore "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                return;
+            }
+            openWorkspace(restored);
+        }
+
+        card.addEventListener('click', activate);
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+        });
+
+        return card;
     }
 
     // A real, measured browser-storage readout — added directly in
@@ -391,6 +556,49 @@
                 badge.className = 'wb-project-badge wb-hidden';
             }
         });
+
+        // "My World Projects should list all my Personal/Official/
+        // Growing projects" — a Repository row with no matching local
+        // Project (by World Id) is a real Theme this author owns that
+        // simply has no local draft on THIS browser right now (never
+        // published from here, the local draft was deleted, or the
+        // browser/profile is fresh — the exact "incognito shows nothing"
+        // gap this was built to close). Shown as its own card rather
+        // than only ever badging whatever already happens to exist
+        // locally.
+        const localWorldIds = new Set(projects.map(function (project) {
+            return window.ProjectModel.manifest(project).id;
+        }).filter(Boolean));
+        const officialOnly = (officialRows || []).filter(function (r) { return !localWorldIds.has(r.theme_id); });
+        const personalOnly = (personalRows || []).filter(function (r) { return !localWorldIds.has(r.theme_id); });
+        if (officialOnly.length || personalOnly.length) {
+            myWorldsEmpty.classList.add('wb-hidden');
+        }
+        officialOnly.forEach(function (entry) {
+            myWorldsList.appendChild(_repoOnlyCard(entry, 'official', null));
+        });
+        if (personalOnly.length) {
+            // Cross-referenced against this session's own Builder
+            // Project cloud backups (js/services/projectSync.js) to find
+            // a REAL editable copy to restore — never a reconstruction
+            // from the compiled Theme itself, which is a one-way compile
+            // with no Scene/Place/Experience data to reverse (see
+            // docs/ENGINE_V2_PROMOTION_STRATEGY.md's own confirmed
+            // "no reverse path exists" finding).
+            let backupRows = [];
+            try {
+                backupRows = (window.ProjectSync && window.ProjectSync.list) ? await window.ProjectSync.list() : [];
+            } catch (e) {
+                backupRows = [];
+            }
+            personalOnly.forEach(function (entry) {
+                const match = backupRows.find(function (row) {
+                    const rowManifest = row.data && row.data.files && row.data.files['manifest.json'];
+                    return rowManifest && rowManifest.id === entry.theme_id;
+                });
+                myWorldsList.appendChild(_repoOnlyCard(entry, 'personal', match ? match.data : null));
+            });
+        }
     }
 
     // ---------------------------------------------------------------

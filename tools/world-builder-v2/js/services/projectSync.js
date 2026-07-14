@@ -55,7 +55,34 @@ const ProjectSync = (function () {
     });
   }
 
-  const api = { isAvailable: isAvailable, push: push };
+  // Lists every backup row this browser's own anonymous session owns —
+  // "My World Projects should list all my Personal/Official/Growing
+  // projects, without any local storage" needs this to reconstruct a
+  // fully editable Project when a Personal Theme's own local draft was
+  // deleted, cleared, or never existed on this device but was pushed
+  // from one where the same anonymous identity was already signed in
+  // (a fresh incognito/anonymous session gets its own new auth.uid()
+  // and — correctly, since RLS scopes every row by owner_id — will not
+  // see another session's rows; this only restores what the *current*
+  // session's own identity already backed up). Never throws — the same
+  // "missing/unconfigured is a normal, handled state" discipline push()
+  // already established; an empty array reads identically to "nothing
+  // backed up yet."
+  function list() {
+    if (!window.ThemeRepositoryClient) return Promise.resolve([]);
+    return window.ThemeRepositoryClient.getClient().then(function (client) {
+      return window.ThemeRepositoryClient.getSession().then(function (session) {
+        return client.from(TABLE).select('id,data,updated_at').eq('owner_id', session.user.id).then(function (res) {
+          if (res.error) throw res.error;
+          return res.data || [];
+        });
+      });
+    }).catch(function () {
+      return [];
+    });
+  }
+
+  const api = { isAvailable: isAvailable, push: push, list: list };
   try { window.ProjectSync = api; } catch (e) {}
   return api;
 })();
