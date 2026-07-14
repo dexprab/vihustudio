@@ -64,6 +64,30 @@
     // without illegal nested buttons — same pattern already used for
     // Frame/Layout rows in the Workspace (each row's own controls call
     // e.stopPropagation() so a control click never also opens the row).
+    // Shared by both places a Project can be duplicated from (the
+    // Welcome-screen card's own control and the in-Workspace overflow
+    // menu, reachable while an Official World is open in read-only View
+    // Mode — the ONLY way out of View Mode). A plain deep copy
+    // (ProjectStore.duplicate) keeps the exact same manifest.json id as
+    // the source, which is what View Mode's own read-only check (and
+    // the Personal/Official badge match) is keyed on — left as-is, the
+    // "duplicate" would carry the source's own id and silently open in
+    // View Mode too, so nothing would actually have changed from the
+    // author's perspective. Regenerating the id here, once, is what
+    // both call sites need — a real bug this session found: the
+    // Welcome-card path already did this, but the overflow-menu path
+    // (added afterwards) called ProjectStore.duplicate() directly and
+    // never got the same fix, so duplicating an Official World from
+    // inside its own read-only Workspace silently produced another
+    // read-only copy.
+    function _duplicateProject(project) {
+        const copy = window.ProjectStore.duplicate(project);
+        const man = window.ProjectModel.manifest(copy);
+        man.id = man.id + '-copy-' + Math.random().toString(36).slice(2, 8);
+        window.ProjectStore.save(copy);
+        return copy;
+    }
+
     function _projectCard(project) {
         const card = document.createElement('div');
         card.className = 'wb-project-card';
@@ -135,26 +159,12 @@
             }],
             // Restored — the only way to get an editable copy of an
             // Official World (which opens read-only, see View Mode)
-            // without touching the Official original itself. Duplicate
-            // is a plain deep copy with a fresh id/timestamps (see
-            // ProjectStore.duplicate) — it never carries the source's
-            // own Personal/Official publish status, since the copy has
-            // never been published anywhere itself.
+            // without touching the Official original itself. See
+            // _duplicateProject above for why the id must be
+            // regenerated.
             ['⧉', 'Duplicate', function (e) {
                 e.stopPropagation();
-                const copy = window.ProjectStore.duplicate(project);
-                // A duplicate must be a genuinely distinct World — a
-                // plain deep copy (ProjectStore.duplicate) keeps the
-                // exact same manifest.json id as the source, which is
-                // what openWorkspace's View Mode check (and the
-                // Personal/Official badge match) is keyed on. Left
-                // unfixed, duplicating an Official World would silently
-                // open the copy in View Mode too, defeating the whole
-                // point of duplicating it. Regenerate the id so the
-                // copy has never itself been published anywhere.
-                const man = window.ProjectModel.manifest(copy);
-                man.id = man.id + '-copy-' + Math.random().toString(36).slice(2, 8);
-                window.ProjectStore.save(copy);
+                _duplicateProject(project);
                 renderMyWorlds();
             }],
             ['🗑', 'Delete', function (e) {
@@ -824,7 +834,16 @@
     menuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
 
     menuDuplicate.addEventListener('click', function () {
-        window.ProjectStore.duplicate(currentProject);
+        // Real bug fix: this used to call ProjectStore.duplicate()
+        // directly, keeping the source's own manifest id — for an
+        // Official World (open here in read-only View Mode, where
+        // Duplicate is deliberately the one enabled action) that meant
+        // the "duplicate" carried the exact same id, so it silently
+        // opened in View Mode too the moment you clicked it from the
+        // Welcome screen. Nothing had actually changed, which is what
+        // "duplicate doesn't work for an Official Theme" looked like
+        // from the outside. See the shared _duplicateProject helper.
+        _duplicateProject(currentProject);
         menuDropdown.classList.add('wb-hidden');
         showWelcome();
     });
