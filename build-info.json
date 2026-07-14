@@ -1,9 +1,9 @@
 {
-  "version": "2.5.9",
-  "sprint": "Real Identity Foundation — Sign In",
-  "task": "Direct follow-up: 'sql executed now lets build the signin.' js/themeRepositoryClient.js gained signIn(email,password)/signOut()/getIdentity() alongside the existing, unchanged anonymous _ensureAuth() -- signing in is an upgrade, never a requirement, so every session still authors normally with zero action. Signing in REPLACES the active session (RLS-scoped by auth.uid()), a disclosed consequence, not a bug -- content owned by the prior anonymous identity becomes invisible, since this is a real sign-in, not Supabase's separate anonymous-session-conversion mechanism. World Builder's Welcome screen gained a small #wb-identity-bar (four honest states matching _annotateProjectBadges's own diagnostic pattern) and a Sign In modal reusing the existing standalone modal shell and field CSS. A real boot-wiring bug was caught and fixed during Playwright verification: boot never called showWelcome(), only renderMyWorlds() directly, so the identity bar rendered blank until wired into that same boot call. Verified via a stateful mock Repository client (anonymous to open-modal to wrong-password-shows-inline-error to correct-password-closes-and-updates-bar to sign-out-reverts), zero console errors; full regression across every prior World Builder script and goldenBuild.js's 30-assertion suite passes unchanged. No RLS/schema change needed. See CLAUDE.md's matching entry for the full account.",
-  "build": "0098",
+  "version": "2.5.10",
+  "sprint": "Repository-Only Card Thumbnails — real image, not just the icon glyph",
+  "task": "Real, user-reported bug found comparing two browser windows: 'in non incognito the thumbnail is visible but in incognito its just a frame.' Traced to the Repository-only card work: ThemeRepositoryClient.list() deliberately returns only manifest data, never resolved assets, so a Repository-only card always fell back to the manifest's plain themeIcon glyph -- for an Artwork World that glyph is a picture-frame emoji, reading as a broken/empty thumbnail rather than the intended placeholder. Fixed with a new _resolveRepoThumbnailURL() calling the real ThemeRepositoryClient.load(repositoryId,themeId) -- the same call Studio's own refreshFromRepository() already makes -- whose assets map carries a real signed Storage URL for the thumbnail reference; the card swaps its glyph for a real <img> once that resolves, silently keeping the glyph on any failure rather than surfacing an error. Verified via Playwright with a mocked load() returning a real embedded thumbnail; full regression across every prior World Builder script and goldenBuild.js's 30-assertion suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0099",
   "buildDate": "2026-07-14",
-  "commit": "bc527ea",
+  "commit": "PENDING",
   "environment": "Release"
 }

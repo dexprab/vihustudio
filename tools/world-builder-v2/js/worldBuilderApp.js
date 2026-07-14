@@ -333,6 +333,33 @@
     // Repository access itself is scoped to this browser's own
     // anonymous identity, a disclosed, pre-existing limitation), this
     // says so plainly instead of fabricating an empty draft.
+    // A Repository-only card's `list()` row only ever carries the
+    // manifest (list() deliberately stops short of resolving assets,
+    // per its own "keeps this a listing, not a load" comment in
+    // js/themeRepositoryClient.js) — so the real published thumbnail
+    // was never fetched, and every card fell back to the manifest's
+    // plain themeIcon glyph (🖼️ for an Artwork World, which reads as
+    // an empty picture frame, not a broken feature, but is genuinely
+    // misleading next to a local card's own real photo). Resolved the
+    // same way Studio's own refreshFromRepository() already resolves
+    // every repository theme's assets: one real load(repositoryId,
+    // themeId) call, whose `assets` map already carries a signed
+    // Storage URL for every relative-path reference (Asset Repository
+    // Transition sprint) — swapping the glyph for a real <img> only
+    // once that resolves, so the card never blocks or looks broken
+    // while it's in flight.
+    function _resolveRepoThumbnailURL(repositoryId, themeId, manifest) {
+        const ref = manifest && manifest.thumbnail;
+        if (!ref) return Promise.resolve(null);
+        if (/^(data:|https?:|blob:)/.test(ref)) return Promise.resolve(ref);
+        if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.load) return Promise.resolve(null);
+        return window.ThemeRepositoryClient.load(repositoryId, themeId).then(function (pkg) {
+            return (pkg && pkg.assets && pkg.assets[ref]) || null;
+        }).catch(function () {
+            return null;
+        });
+    }
+
     function _repoOnlyCard(entry, kind, backupProject) {
         const man = entry.manifest || {};
         const displayName = entry.name || man.name || entry.theme_id;
@@ -344,6 +371,14 @@
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
         thumb.textContent = man.themeIcon || '🎨';
+        _resolveRepoThumbnailURL(kind, entry.theme_id, man).then(function (url) {
+            if (!url) return;
+            thumb.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            thumb.appendChild(img);
+        });
 
         const info = document.createElement('div');
         info.className = 'wb-project-info';
