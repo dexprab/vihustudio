@@ -1,10 +1,10 @@
 {
-  "version": "3.21.0",
+  "version": "3.22.0",
   "phase": "Platform Hardening",
-  "milestone": "My World Projects lists Personal/Official/Growing, not just local",
-  "slice": "Closes the incognito gap: an Official-only Repository row shows a read-only info modal; a Personal-only row restores the real editable Project via a Builder Project Cloud Backup match (projectSync.js gained list()), never a lossy reconstruction from the compiled Theme. _annotateProjectBadges now also renders a card for every Repository row with no matching local Project, and renderMyWorlds() no longer early-returns on an empty local list. Disclosed limit: a different browser/incognito profile has its own anonymous auth.uid() and correctly cannot see another session's Personal rows -- this restores what the CURRENT session's own identity already owns. Verified via Playwright using a real Create-New-World-generated fixture for the restore path. goldenBuild.js 30/30 unchanged.",
-  "build": "0071",
+  "milestone": "Real Identity Foundation — Sign In",
+  "slice": "Adds an optional sign-in flow to the Welcome screen so a session can adopt a real, persistent Repository identity (starting with the base \"Vihu Planet\" builder account created via supabase/create_base_builder_user.sql) instead of a disposable per-browser anonymous one. New #wb-identity-bar shows anonymous/signed-in/not-configured states; a Sign In modal (email+password, reusing the existing standalone modal shell and field CSS) calls the new ThemeRepositoryClient.signIn()/signOut()/getIdentity(). Signing in replaces the active session -- content owned by the prior anonymous identity becomes invisible, a disclosed RLS consequence, not a bug. A real boot-wiring bug was caught and fixed: boot never called showWelcome(), only renderMyWorlds() directly, so the identity bar rendered blank until wired into that same boot call. Verified via a stateful mock Repository client covering anonymous/wrong-password/correct-password/sign-out. goldenBuild.js 30/30 unchanged.",
+  "build": "0072",
   "buildDate": "2026-07-14",
-  "commit": "0fd983c",
+  "commit": "PENDING",
   "environment": "Release"
 }
