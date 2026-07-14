@@ -5,6 +5,6 @@
   "slice": "Fixes 'in non incognito the thumbnail is visible but in incognito its just a frame': a Repository-only card (no local draft in this browser) always fell back to the manifest's plain themeIcon glyph, since ThemeRepositoryClient.list() never resolves assets. New _resolveRepoThumbnailURL() calls the real load(repositoryId,themeId) -- the same call Studio's refreshFromRepository() already makes -- and swaps the glyph for a real <img> once the signed Storage URL resolves, silently keeping the glyph on any failure. Verified via Playwright with a mocked load() returning a real thumbnail; full regression + goldenBuild.js 30/30 unchanged.",
   "build": "0073",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "04f27aa",
   "environment": "Release"
 }
