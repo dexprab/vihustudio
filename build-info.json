@@ -4,6 +4,6 @@
   "task": "Direct follow-up: 'why should we not push this as personal theme... nothing gets seen by creator till its official correct?' -- confirmed via direct code read that ThemeRegistry.refreshFromRepository() only ever discovers Official Repository themes, never Personal, so auto-publishing a clone to Personal has zero premature-exposure risk. Cloning a Repository-only card (or leaving an Official View via the overflow menu's Duplicate World) now runs a real headless Validate+Build+Publish-to-Personal instead of creating a local Growing draft, with a real, tested fallback to a local draft on any failure (Build/Validation error, publish unavailable, publish call fails). Real Validation gaps found via live testing were fixed in _materializeProjectFromPackage() (missing layer-packs/ folder, several required manifest fields, non-semantic version, missing manifest.type). A missing .catch() on the innermost Build->Publish promise chain (silent hang on failure) was found and fixed. Deep clone fidelity was proven rigorously per explicit instruction ('it has to be a deep clone') via a new field-by-field round-trip test against a fully realistic fixture: zero manifest diffs besides id/name/updatedDate, zero theme-content diffs -- Layouts/Frame Variations/Representations/Layer Pack byte-identical. Full regression + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0101",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "ecfb65d",
   "environment": "Release"
 }
