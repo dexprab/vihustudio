@@ -250,6 +250,8 @@ html, body {
     color: var(--wb-text-secondary);
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    row-gap: 4px;
     gap: 6px;
 }
 
