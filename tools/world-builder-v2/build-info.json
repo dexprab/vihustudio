@@ -1,10 +1,10 @@
 {
-  "version": "3.17.0",
-  "phase": "Builder V2 Workspace Redesign",
-  "milestone": "Decoration Shapes -- Rounded Rectangle + a real freehand \"Draw Your Own\" shape",
-  "slice": "Second direct follow-up on Decoration Shapes: one more preset (Rounded Rectangle, reusing the existing rounded-rect path helper) plus a genuinely new capability -- a creator-drawn outline. A new graphicCustomPath field holds an array of 0..1 fractional {x,y} points sketched on a small pointer-driven Draw pad (worldBuilderApp.js's _shapeDrawPad); the drawn outline plugs into the exact same resize/move/rotate Transform and Fill/Outline styling every other Shape already has, since it's stored in the same fractional-rect vocabulary. engineRuntime.js and renderer/slideRenderer.js both gained a kind==='custom' branch mapping the stored points onto the target rect (falling back to a circle placeholder before anything's drawn); builder.js's Scene-convergence pipeline carries customPath into the compiled decoration entry so a hand-drawn shape reaches a real published Theme. Verified end-to-end via Playwright driving real pointer events: Rounded Rectangle renders the correct fill colour; a real freehand stroke persists a real fractional path to the Experience and its mirrored Scene Layer; a real Build compiles a decoration:{kind:'shape', shape:'custom', customPath:[...]} entry. goldenBuild.js 30/30 unchanged.",
-  "build": "0067",
-  "buildDate": "2026-07-12",
-  "commit": "94f9e9e",
+  "version": "3.18.0",
+  "phase": "Platform Hardening",
+  "milestone": "Duplicate fix for Official Worlds",
+  "slice": "Fixed the in-Workspace overflow menu's 'Duplicate World' action, reachable from inside an already-open Official World (read-only View Mode) -- it called ProjectStore.duplicate() directly and never regenerated the copy's manifest id the way the Welcome-screen card's own Duplicate button already did, so the resulting copy silently reopened in View Mode too, reading as \"Duplicate doesn't work.\" Fixed by extracting the id-regeneration logic into one shared _duplicateProject() helper used by both call sites. Verified via Playwright: both the Welcome-card button and the in-Workspace overflow-menu action now produce a Project with a fresh, distinct manifest id. goldenBuild.js's full 30-assertion suite passes unchanged.",
+  "build": "0068",
+  "buildDate": "2026-07-13",
+  "commit": "PENDING",
   "environment": "Release"
 }
