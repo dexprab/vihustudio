@@ -5,6 +5,6 @@
   "slice": "A real, user-reported layout bug: 'the badge is not wrapping. view or duplicate status is spilling over.' Root cause: .wb-project-meta-line (the flex row holding the Official/Personal status pill + the Published/... note badge) had no flex-wrap, so on a narrower card the longer badge text pushed past the card's right edge instead of dropping to its own line. Fixed with one CSS addition -- flex-wrap:wrap plus a row-gap on .wb-project-meta-line. Verified via Playwright at a 400px viewport matching the reported layout: the badge box now stays fully within the card's bounds. Full regression across the existing scratch suite + goldenBuild.js 36/36 unchanged.",
   "build": "0078",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "8c942c0",
   "environment": "Release"
 }
