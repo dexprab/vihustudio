@@ -5,6 +5,6 @@
   "slice": "Closes the incognito gap: an Official-only Repository row shows a read-only info modal; a Personal-only row restores the real editable Project via a Builder Project Cloud Backup match (projectSync.js gained list()), never a lossy reconstruction from the compiled Theme. _annotateProjectBadges now also renders a card for every Repository row with no matching local Project, and renderMyWorlds() no longer early-returns on an empty local list. Disclosed limit: a different browser/incognito profile has its own anonymous auth.uid() and correctly cannot see another session's Personal rows -- this restores what the CURRENT session's own identity already owns. Verified via Playwright using a real Create-New-World-generated fixture for the restore path. goldenBuild.js 30/30 unchanged.",
   "build": "0071",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "0fd983c",
   "environment": "Release"
 }
