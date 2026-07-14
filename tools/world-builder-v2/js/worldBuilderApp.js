@@ -393,6 +393,36 @@
             theme.name = manifest.name;
         }
 
+        // "no difference in official and clone theme in no respect" —
+        // a real compiled package's manifest already carries every one
+        // of these (templates.js's _buildCommon() sets them on every
+        // World Project from the moment it's created, and Build only
+        // ever copies manifest.json through unchanged — builder.js's
+        // own buildManifest() comment), so this should be a no-op for
+        // a genuine published Theme; it exists as a defensive backstop
+        // — verified directly via a real headless
+        // ProjectCompiler.runValidation() call against a deliberately
+        // minimal fixture missing every one of these, confirming a
+        // materialized clone can never fail Validation on an identity
+        // field alone, only on what truly cannot be reconstructed
+        // (Scenes/Places/Experiences).
+        if (!manifest.builderVersion) manifest.builderVersion = '1.0.0';
+        if (!manifest.minStudioVersion) manifest.minStudioVersion = '9.5.0';
+        if (!manifest.author) manifest.author = 'You';
+        if (!manifest.category) manifest.category = 'Community';
+        if (!manifest.tags) manifest.tags = [];
+        if (!manifest.createdDate) manifest.createdDate = now.slice(0, 10);
+        manifest.updatedDate = now.slice(0, 10);
+        if (!/^\d+\.\d+\.\d+$/.test(manifest.version || '')) manifest.version = '1.0.0';
+        // theme.json's own required field set depends on manifest.type
+        // (Story needs frame/panel/storyText/footerText/watermark;
+        // Artwork needs none of those) — a real compiled package always
+        // has this set already; 'artwork' is the correct last-resort
+        // default for this feature's own real reference case (Museum
+        // Gallery), never overriding a genuinely-present type.
+        if (!manifest.type) manifest.type = 'artwork';
+        theme.type = theme.type || manifest.type;
+
         const metadataFile = {
             displayName: manifest.name,
             description: manifest.description || '',
@@ -422,7 +452,11 @@
         layouts.forEach(function (l) { files['layouts/' + l.id + '.json'] = l; });
         frameVariations.forEach(function (f) { files['frames/' + f.id + '.json'] = f; });
         if (representations.length) files['representations/all.json'] = representations;
-        if (layerPack.length) files['layer-packs/from-repository.json'] = layerPack;
+        // Always written, even an empty array — validator.js requires
+        // the layer-packs/ FOLDER to exist regardless of whether any
+        // theme actually authored layer content (found directly via a
+        // real runValidation() call against a Layer-Pack-less fixture).
+        files['layer-packs/from-repository.json'] = layerPack;
 
         // Real asset bytes/signed URLs carry over verbatim — every
         // reference on manifest/theme (thumbnail.png, preview.png, any
@@ -476,19 +510,76 @@
     // Cloud Backup to restore) into a brand-new, real, fully editable
     // local Project — "they are clonable." Real World Id, saved via
     // ProjectStore, opened editable immediately.
-    function _cloneRepositoryThemeAsNewWorld(repositoryId, entry, displayName) {
+    // "why should we not push this as personal theme. this will help in
+    // saving local storage and nothing gets seen by creator till its
+    // official correct?" — confirmed directly against js/themeRegistry.js's
+    // refreshFromRepository(), which only ever discovers the 'official'
+    // repository, so a Personal Theme is never visible to Studio/Creator
+    // regardless of who's signed in. Given that, a clone runs the exact
+    // same Validate/Build the Check & Build screen's own button does
+    // (window.ProjectCompiler.runBuild — never a second build
+    // implementation), then Publishes the result straight to the
+    // Personal Repository via the exact same call
+    // _renderPublishPanel's own Publish button makes, plus a Builder
+    // Project Cloud Backup push so the pre-existing "My World Projects"
+    // Personal-with-backup restore flow (no new machinery) can bring it
+    // back as a real editable draft whenever the author is ready to
+    // keep working on it — the clone never has to sit in this browser's
+    // localStorage as inert bytes in the meantime. If headless Build or
+    // Publish can't succeed (a real Validation issue, the Repository
+    // being unreachable, etc.), the clone falls back to a genuine local
+    // editable draft instead of silently vanishing — never a false
+    // "published" claim.
+    function _cloneRepositoryThemeAsNewWorld(repositoryId, themeId, displayName) {
         if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.load) {
             window.alert('Couldn\'t duplicate "' + displayName + '" — the Repository connection isn\'t available.');
             return;
         }
-        window.ThemeRepositoryClient.load(repositoryId, entry.theme_id).then(function (pkg) {
-            const materialized = _materializeProjectFromPackage(pkg, { newId: true });
+        function keepAsLocalDraft(materialized, reasonSuffix) {
             const saveResult = window.ProjectStore.save(materialized);
             if (!saveResult.ok) {
                 window.alert('Couldn\'t duplicate "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
                 return;
             }
+            window.alert('"' + displayName + '" was duplicated as a local draft' + reasonSuffix);
             openWorkspace(materialized);
+        }
+        window.ThemeRepositoryClient.load(repositoryId, themeId).then(function (pkg) {
+            const materialized = _materializeProjectFromPackage(pkg, { newId: true });
+            if (!window.ProjectCompiler || !window.ProjectCompiler.runBuild) {
+                keepAsLocalDraft(materialized, '.');
+                return;
+            }
+            window.ProjectCompiler.runBuild(materialized).then(function (buildResult) {
+                if (!buildResult.success) {
+                    keepAsLocalDraft(materialized, ' — it couldn\'t Publish automatically because Validation found an issue. Check "Check & Build" to see what needs fixing, then Publish when ready.');
+                    return;
+                }
+                buildResult.packageFile.blob.text().then(function (text) {
+                    if (!window.ThemeRepositoryClient.publish) {
+                        keepAsLocalDraft(materialized, ' — Publishing to your Personal Repository isn\'t available, so it was kept locally instead.');
+                        return;
+                    }
+                    const compiledPkg = JSON.parse(text);
+                    window.ThemeRepositoryClient.publish('personal', {
+                        manifest: compiledPkg.manifest, theme: compiledPkg.theme, assetsRaw: compiledPkg.assets
+                    }).then(function (publishResult) {
+                        if (!publishResult || !publishResult.ok) {
+                            keepAsLocalDraft(materialized, ' — Publishing to your Personal Repository failed, so it was kept locally instead.');
+                            return;
+                        }
+                        if (window.ProjectSync && window.ProjectSync.push) window.ProjectSync.push(materialized);
+                        window.alert('"' + displayName + '" was duplicated and published to your Personal Repository. Open it from "My World Projects" whenever you\'re ready to keep editing.');
+                        showWelcome();
+                    }).catch(function () {
+                        keepAsLocalDraft(materialized, ' — Publishing to your Personal Repository failed, so it was kept locally instead.');
+                    });
+                }).catch(function () {
+                    keepAsLocalDraft(materialized, ' — Building it for Publish failed, so it was kept locally instead.');
+                });
+            }).catch(function () {
+                keepAsLocalDraft(materialized, ' — Building it for Publish failed, so it was kept locally instead.');
+            });
         }).catch(function (e) {
             window.alert('Couldn\'t duplicate "' + displayName + '" — ' + ((e && e.message) || 'see the browser console for details.'));
         });
@@ -553,7 +644,7 @@
                 return;
             }
             if (!backupProject) {
-                _cloneRepositoryThemeAsNewWorld('personal', entry, displayName);
+                _cloneRepositoryThemeAsNewWorld('personal', entry.theme_id, displayName);
                 return;
             }
             const restored = JSON.parse(JSON.stringify(backupProject));
@@ -1429,6 +1520,25 @@
     menuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
 
     menuDuplicate.addEventListener('click', function () {
+        menuDropdown.classList.add('wb-hidden');
+        // "why should we not push this as personal theme... this will
+        // help in saving local storage" — a View opened from a
+        // Repository-only Official card (_openRepositoryThemeReadOnly)
+        // is ephemeral: it was never saved to ProjectStore, tagged by
+        // its own distinctive 'wp_view_' id prefix. Duplicating THAT
+        // routes through the auto-Build-and-Publish-to-Personal flow
+        // instead of a plain local copy, so leaving View Mode never
+        // grows local storage for content this browser had no local
+        // footprint for a moment ago. A REAL local Official-badged
+        // Project (already sitting in this browser's own storage) is a
+        // completely different situation — "get an editable copy of
+        // what's already local" — and keeps today's exact plain local
+        // Duplicate behaviour unchanged.
+        if (typeof currentProject.id === 'string' && currentProject.id.indexOf('wp_view_') === 0) {
+            const worldId = window.ProjectModel.manifest(currentProject).id;
+            _cloneRepositoryThemeAsNewWorld('official', worldId, currentProject.name);
+            return;
+        }
         // Real bug fix: this used to call ProjectStore.duplicate()
         // directly, keeping the source's own manifest id — for an
         // Official World (open here in read-only View Mode, where
@@ -1441,7 +1551,6 @@
         // it also now surfaces a real storage-quota failure instead of
         // silently discarding it.
         const result = _duplicateProject(currentProject);
-        menuDropdown.classList.add('wb-hidden');
         if (!result.ok) { _reportDuplicateFailure(currentProject.name); return; }
         showWelcome();
     });
