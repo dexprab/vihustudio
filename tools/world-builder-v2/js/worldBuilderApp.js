@@ -464,8 +464,28 @@
         // Real asset bytes/signed URLs carry over verbatim — every
         // reference on manifest/theme (thumbnail.png, preview.png, any
         // Frame/Layer image field) already points at exactly the key
-        // pkg.assets resolved, so no path translation is needed.
+        // pkg.assets resolved, so no path translation is needed. The
+        // one exception: builder.js's externalizeSceneImage() names a
+        // Scene-image asset 'scenes/<sceneId>/<layerId>.png' — copying
+        // that relPath verbatim into `files` collides with
+        // ProjectModel.scenes()'s bare `indexOf('scenes/')===0` prefix
+        // match, so the very next scenes() call returns a base64 image
+        // STRING as if it were a Scene object, and any code reading
+        // `.canvas.aspectRatio` off it throws "Cannot read properties
+        // of undefined (reading 'aspectRatio')" — a real production
+        // crash, reproduced directly, opening any published Theme that
+        // had at least one Scene with an uploaded image. Safe to skip:
+        // Scenes/Places/Experiences are already a confirmed one-way
+        // compile with no reverse path (this feature's own disclosed
+        // limit), so a materialized clone was never going to
+        // reconstruct the live Scene Layer this byte data belonged to
+        // — the compiled Layer Pack entry that still references this
+        // relPath is legacy, Engine-V1-only data World Builder's own
+        // Working View doesn't render (Slice 1's "retained... but
+        // deliberately unreachable" layer-pack render path), so
+        // dropping the backing bytes has no visible effect here.
         Object.keys(pkg.assets || {}).forEach(function (relPath) {
+            if (relPath.indexOf('scenes/') === 0) return;
             files[relPath] = pkg.assets[relPath];
         });
 

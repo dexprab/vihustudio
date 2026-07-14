@@ -1,10 +1,10 @@
 {
-  "version": "3.25.1",
+  "version": "3.25.2",
   "phase": "Platform Hardening",
-  "milestone": "Deep Clone Fidelity verified against the real production .vtheme",
-  "slice": "Direct, immediate follow-up on the repeated instruction 'it has to be a deep clone' -- re-ran the fidelity proof against the actual on-disk themes/MuseumGallery.vtheme (not a hand-written fixture), diffing every key on the real manifest/theme objects plus byte-level asset content for the first time. Found one genuine discrepancy: _materializeProjectFromPackage() was adding a theme.type field the real package never carries; confirmed via grep that nothing anywhere reads theme.type (only manifest.type matters, per validator.js's _effectiveType()), removed the unnecessary line. Re-verified: zero manifest diffs across all 19 real keys, zero theme diffs across all 9 real keys including presentation/caption/enhancement/supportedCreationTypes, zero byte-level asset diffs. Full regression across 11 scripts + goldenBuild.js 36/36 unchanged.",
-  "build": "0076",
+  "milestone": "Fix real production crash opening a Repository-only card with Scene images",
+  "slice": "A real, user-reported crash on the live deployed site: opening a Repository-only card threw 'Cannot read properties of undefined (reading aspectRatio)'. Reproduced exactly before fixing. Root cause: builder.js's externalizeSceneImage() names a Scene-image asset 'scenes/<sceneId>/<layerId>.png'; _materializeProjectFromPackage()'s asset-copy loop wrote that relPath verbatim into project.files, colliding with ProjectModel.scenes()'s bare 'scenes/' prefix match -- the next scenes() call returned a base64 image string as if it were a Scene object, and _renderSceneHeader's unconditional .canvas.aspectRatio read threw on it. Fixed by skipping any asset relPath starting with 'scenes/' during materialization -- safe since Scenes/Places/Experiences are already a disclosed one-way compile with no reverse path, and the legacy Layer Pack entry still referencing it isn't rendered by World Builder's own Working View anyway. Full regression across 12 scripts (including a new reproduction test) + goldenBuild.js 36/36 unchanged.",
+  "build": "0077",
   "buildDate": "2026-07-14",
-  "commit": "f0a7332",
+  "commit": "PENDING",
   "environment": "Release"
 }
