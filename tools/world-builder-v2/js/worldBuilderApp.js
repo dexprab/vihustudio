@@ -454,12 +454,74 @@
         };
         layouts.forEach(function (l) { files['layouts/' + l.id + '.json'] = l; });
         frameVariations.forEach(function (f) { files['frames/' + f.id + '.json'] = f; });
-        if (representations.length) files['representations/all.json'] = representations;
+        // representations/all.json is deliberately NOT written here —
+        // every entry in `representations` gets an equivalent synthesized
+        // Scene below (see the Scene-synthesis block), and validator.js's
+        // own rule already treats scenes/ as a full alternative source
+        // ("errors when both representations/ and scenes/ are empty" —
+        // requiredFolders only hard-requires layouts/frames/layer-packs,
+        // never representations/). Keeping both would make a real Build
+        // converge a duplicate Representation per entry (one from this
+        // flat file, one from its Scene) — Creation Flow's carousel would
+        // show every Representation twice. layouts/*.json above is left
+        // untouched even though its ids overlap with what Scene
+        // convergence separately produces ('scene-<repId>') — layouts/
+        // IS hard-required to stay non-empty, and an unreferenced extra
+        // Layout entry is harmless clutter, unlike a doubled, user-facing
+        // Representation list.
         // Always written, even an empty array — validator.js requires
         // the layer-packs/ FOLDER to exist regardless of whether any
         // theme actually authored layer content (found directly via a
         // real runValidation() call against a Layer-Pack-less fixture).
         files['layer-packs/from-repository.json'] = layerPack;
+
+        // "I want users to be able to clone official theme... help them
+        // understand how the theme was built... build their own themes
+        // but not from scratch." A compiled package never carries the
+        // original authoring Scenes (a confirmed, disclosed one-way
+        // compile — nothing about that changes here), so a cloned
+        // Official/Personal-no-backup World has always opened to an
+        // honest but unhelpful "No Scenes yet." This synthesizes one
+        // real, editable Scene per Representation from what the
+        // compiled package genuinely does carry — a Layout's Aspect
+        // Ratio and a Representation's Frame reference — the two pieces
+        // of real, unambiguous structure. Deliberately conservative:
+        // Layer Pack decorative content (captions, seals, page
+        // furniture) is NOT reconstructed as editable Scene Layers —
+        // Engine V1's anchor/offset placement vocabulary has no
+        // reliable 1:1 translation into the Scene Model's fractional
+        // position/size, so guessing would be worse than leaving it as
+        // a disclosed gap; that content still renders correctly for a
+        // real reader through the untouched legacy Layer Pack pipeline,
+        // it just isn't an editable object inside a synthesized Scene.
+        representations.forEach(function (rep) {
+            if (!rep || !rep.id) return;
+            const layout = layouts.find(function (l) { return l.id === rep.layout; });
+            const aspect = (layout && window.EngineSchema.ASPECT_RATIOS[layout.aspect]) ? layout.aspect : 'portrait';
+            const holderLayoutId = (layout && layout.composition === 'quote') ? 'none' : 'single';
+            const frameExists = rep.defaultFrame && frameVariations.some(function (f) { return f.id === rep.defaultFrame; });
+            const holders = (window.EngineSchema.HOLDER_LAYOUTS[holderLayoutId] || []).map(function (r, i) {
+                return {
+                    id: 'holder-' + (i + 1),
+                    name: 'Place',
+                    position: { x: r.x, y: r.y },
+                    size: { w: r.w, h: r.h },
+                    shape: 'rectangle',
+                    padding: 0,
+                    fit: 'fit',
+                    frame: frameExists ? rep.defaultFrame : null,
+                    permissions: { moveable: true, editable: true, visible: true }
+                };
+            });
+            files['scenes/' + rep.id + '.json'] = {
+                id: rep.id,
+                name: rep.name || rep.id,
+                startedFrom: null,
+                canvas: { aspectRatio: aspect, safeArea: window.EngineSchema.aspectInfo(aspect).safeArea },
+                holders: holders,
+                layers: []
+            };
+        });
 
         // Real asset bytes/signed URLs carry over verbatim — every
         // reference on manifest/theme (thumbnail.png, preview.png, any
