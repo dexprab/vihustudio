@@ -13,4 +13,15 @@ const THEME_TYPES = ['story', 'artwork'];
 const DEFAULT_THEME_TYPE = 'story';
 const LAYOUT_ASPECTS = ['portrait', 'landscape', 'square', 'wide', 'quote', 'full-bleed'];
 const LAYER_TYPES = ['text', 'sticker', 'decoration'];
-const LAYER_TARGETS = ['slide', 'frame', 'holder', 'element'];
+// 'overlay' is the Builder Convergence Sprint's 5th containership
+// scope (docs/THEME_PROJECT_SPEC.md §7, docs/THEME_CONTRACT.md §6) --
+// renderer/slideRenderer.js already paints it and no hand-authored
+// theme is meant to pick it in the Layer Pack editor (LAYER_TARGETS_OPTS
+// in worldBuilderApp.js deliberately still offers only the original
+// four), but it must still be a VALID target here: a real compiled
+// Theme's layerPack can legitimately contain 'overlay' entries (every
+// Scene-converged Text/Image Decoration uses it), and any code path
+// that re-validates that compiled output as ordinary layer-pack JSON
+// -- e.g. the Clone Official Theme feature's Scene-synthesis
+// materializer -- must not reject its own platform's real output.
+const LAYER_TARGETS = ['slide', 'frame', 'holder', 'element', 'overlay'];

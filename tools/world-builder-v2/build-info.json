@@ -1,10 +1,10 @@
 {
-  "version": "3.26.0",
+  "version": "3.26.1",
   "phase": "Platform Hardening",
-  "milestone": "Clone Official Theme -- Scene Synthesis From Compiled Package Data",
-  "slice": "Cloning an Official theme (View Mode -> overflow menu -> Duplicate World) now synthesizes one real, editable Scene per compiled Representation, instead of opening to an empty 'No Scenes yet'. A Layout's Aspect Ratio becomes the synthesized Scene's canvas; a Representation's defaultFrame becomes its single Holder's frame; Quote composition synthesizes zero Holders. Layer Pack decorative content (captions, seals) is deliberately not reconstructed -- a disclosed gap, since Engine V1's anchor/offset vocabulary has no reliable translation into the Scene Model. representations/all.json is no longer written for a materialized project, preventing a real duplicate-Representation bug at Build time (validator.js's own folder rules confirmed scenes/ alone is sufficient). Verified via direct Validation against the real on-disk Museum Gallery package, a real headless Build+Publish (exactly 3 non-duplicate Representations), and the real Workspace UI showing 3 correctly-named Scenes. Full regression across 14 scripts + goldenBuild.js unchanged.",
-  "build": "0079",
+  "milestone": "Fix real user-reported clone failure -- 'overlay' missing from LAYER_TARGETS",
+  "slice": "A real clone of 'My Artwork Gallery' failed Validation and fell back to a local draft. Reproduced with the real production template: a real Artwork Gallery project (Thumbnail, Frame-assigned Place, hosted Text Experience) failed the clone flow with Layer target 'overlay' rejected as invalid. Root cause: the Builder Convergence Sprint's target:'overlay' scope (emitted by builder.js's own convergeSceneLayer(), painted correctly by the renderer) was never added to constants.js's LAYER_TARGETS allow-list -- invisible until the Scene Synthesis clone feature became the first path to round-trip compiled output back through real Validation. Fixed in this file's own services/constants.js (and its tools/world-builder v1 twin, which carries the identical logic). The Layer Pack editor's UI dropdown is untouched -- overlay stays a Scene-converger-only value, never hand-authorable. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 14 scripts + a new reproduction test + goldenBuild.js unchanged.",
+  "build": "0080",
   "buildDate": "2026-07-14",
-  "commit": "3e3d23d",
+  "commit": "PENDING",
   "environment": "Release"
 }

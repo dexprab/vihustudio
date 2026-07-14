@@ -13,4 +13,12 @@ const THEME_TYPES = ['story', 'artwork'];
 const DEFAULT_THEME_TYPE = 'story';
 const LAYOUT_ASPECTS = ['portrait', 'landscape', 'square', 'wide', 'quote', 'full-bleed'];
 const LAYER_TYPES = ['text', 'sticker', 'decoration'];
-const LAYER_TARGETS = ['slide', 'frame', 'holder', 'element'];
+// 'overlay' is the Builder Convergence Sprint's 5th containership
+// scope (docs/THEME_PROJECT_SPEC.md §7, docs/THEME_CONTRACT.md §6) --
+// this builder.js's own convergeScenes() already emits it for every
+// Scene-converged Text/Image Decoration (see convergeSceneLayer's
+// target selection a few lines below in builder.js), so the validator
+// must accept it too; found and fixed as the same latent gap that
+// blocked cloning an Official Theme in world-builder-v2 (its own
+// constants.js carries the identical fix, same reasoning).
+const LAYER_TARGETS = ['slide', 'frame', 'holder', 'element', 'overlay'];
