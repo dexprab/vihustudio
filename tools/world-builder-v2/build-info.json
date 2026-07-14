@@ -1,10 +1,10 @@
 {
-  "version": "3.25.3",
+  "version": "3.26.0",
   "phase": "Platform Hardening",
-  "milestone": "Fix Repository-only card badge spilling past card edge",
-  "slice": "A real, user-reported layout bug: 'the badge is not wrapping. view or duplicate status is spilling over.' Root cause: .wb-project-meta-line (the flex row holding the Official/Personal status pill + the Published/... note badge) had no flex-wrap, so on a narrower card the longer badge text pushed past the card's right edge instead of dropping to its own line. Fixed with one CSS addition -- flex-wrap:wrap plus a row-gap on .wb-project-meta-line. Verified via Playwright at a 400px viewport matching the reported layout: the badge box now stays fully within the card's bounds. Full regression across the existing scratch suite + goldenBuild.js 36/36 unchanged.",
-  "build": "0078",
+  "milestone": "View Mode becomes a full, honest browse of the compiled Theme",
+  "slice": "Direct clarification: 'when i say readonly view. that means loading the theme where i can see it like a theme with everything in front of me... just like normal theme, the only difference is i cant edit anything.' Chosen direction: 'just load the theme as a normal theme. disable edits. it should be simple.' Found the Global Nav bar had been permanently hidden since an earlier rebuild, and three of its screens (Representations/Layouts/Layer Packs) had zero click handler anywhere reaching them, even though every panel's fields were already correctly readonly-gated via shared field builders. Added VIEW_MODE_NAV_ITEMS (World/Scenes/Experiences/Representations/Layouts/Frames/Layer Packs/Assets) shown only when currentProjectReadOnly; normal editing is completely unaffected. Found and fixed one real gap: the Assets screen's hidden file-upload input wasn't itself disabled in read-only mode. Verified against the real, on-disk themes/MuseumGallery.vtheme: all 8 screens reachable, real content shown, zero editable fields anywhere. Full regression across 14 scripts + goldenBuild.js 36/36 unchanged.",
+  "build": "0079",
   "buildDate": "2026-07-14",
-  "commit": "8c942c0",
+  "commit": "PENDING",
   "environment": "Release"
 }

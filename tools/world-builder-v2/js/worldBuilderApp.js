@@ -1150,6 +1150,34 @@
         { id: 'publish', icon: '📤', label: 'Publish' }
     ];
 
+    // View Mode — "load the theme as a normal theme, disable edits, it
+    // should be simple." Since world-builder-v2's own editing UX moved
+    // Check & Build/Publish into header buttons and dropped Scene-first
+    // navigation's own competing chrome, this bar's normal-editing role
+    // is fully superseded and it stays hidden then (see the
+    // currentProjectReadOnly toggle in _renderWorkspaceHeader). But a
+    // compiled/Official Theme with real Representations/Layouts/Frame
+    // Variations/Layer Pack content and zero authored Scenes (the
+    // ordinary case for anything published before Scenes existed, or
+    // whose Scene data didn't survive the one-way compile) has real
+    // content behind those screens with no other way to reach it —
+    // _renderContextPanel already dispatches all five ids correctly and
+    // every field in each panel already goes through the shared
+    // _textInput/_textarea/_select/_range/_colorInput builders, which
+    // already disable themselves whenever currentProjectReadOnly is
+    // true, so this is purely restoring reachability, not building new
+    // read-only plumbing.
+    const VIEW_MODE_NAV_ITEMS = [
+        { id: 'overview', icon: '🌍', label: 'World' },
+        { id: 'scenes', icon: '🎬', label: 'Scenes' },
+        { id: 'experiences', icon: '🌟', label: 'Experiences' },
+        { id: 'representations', icon: '📖', label: 'Representations' },
+        { id: 'layouts', icon: '📐', label: 'Layouts' },
+        { id: 'frames', icon: '🖼️', label: 'Frames' },
+        { id: 'layerpacks', icon: '🗂️', label: 'Layer Packs' },
+        { id: 'assets', icon: '📦', label: 'Assets' }
+    ];
+
     // Builder V2 — the three Creative Activities (Vision §3). Scene
     // Configuration is deliberately not a fourth entry (Vision §2) — it
     // is selected via the Scene Header's glance, not this switcher.
@@ -2253,6 +2281,14 @@
         workspaceName.textContent = currentProject.name || 'Untitled World';
         viewModeBanner.classList.toggle('wb-hidden', !currentProjectReadOnly);
         viewOnlyChip.classList.toggle('wb-hidden', !currentProjectReadOnly);
+        // "Load the theme as a normal theme, disable edits" — the old
+        // Global Nav bar (superseded during normal editing by the
+        // header's own Check & Build/Publish buttons and Scene-first
+        // navigation, so it stays hidden then) reappears only in View
+        // Mode, where it's the one honest way to browse a compiled
+        // Theme's full real content — Representations/Layouts/Frame
+        // Variations/Layer Pack included — not just its Scenes.
+        workspaceNav.classList.toggle('wb-hidden', !currentProjectReadOnly);
         // View Mode disables every action in the overflow menu except
         // Duplicate — Delete removes the Project outright, and Reset
         // Workspace Layout still writes to this browser's stored
@@ -2268,7 +2304,8 @@
 
     function _renderNav() {
         workspaceNav.innerHTML = '';
-        NAV_ITEMS.forEach(function (item) {
+        const items = currentProjectReadOnly ? VIEW_MODE_NAV_ITEMS : NAV_ITEMS;
+        items.forEach(function (item) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'wb-nav-item' + (item.id === currentNav ? ' active' : '');
@@ -5684,6 +5721,13 @@
         input.type = 'file';
         input.accept = accept || 'image/*';
         input.style.display = 'none';
+        // Belt-and-braces alongside the visible trigger button's own
+        // .disabled = currentProjectReadOnly (View Mode's real backstop
+        // is _persist()'s own no-op, so this can't cause a real write
+        // either way, but a raw <input type="file"> left enabled while
+        // its own trigger button is disabled is exactly the kind of
+        // loose end worth closing rather than leaving lying around).
+        input.disabled = currentProjectReadOnly;
         input.addEventListener('change', function () {
             const file = input.files[0];
             if (!file) return;
