@@ -536,20 +536,52 @@
         // `.canvas.aspectRatio` off it throws "Cannot read properties
         // of undefined (reading 'aspectRatio')" — a real production
         // crash, reproduced directly, opening any published Theme that
-        // had at least one Scene with an uploaded image. Safe to skip:
-        // Scenes/Places/Experiences are already a confirmed one-way
-        // compile with no reverse path (this feature's own disclosed
-        // limit), so a materialized clone was never going to
-        // reconstruct the live Scene Layer this byte data belonged to
-        // — the compiled Layer Pack entry that still references this
-        // relPath is legacy, Engine-V1-only data World Builder's own
-        // Working View doesn't render (Slice 1's "retained... but
-        // deliberately unreachable" layer-pack render path), so
-        // dropping the backing bytes has no visible effect here.
+        // had at least one Scene with an uploaded image.
+        //
+        // The original fix here just dropped these assets outright,
+        // reasoning that a materialized clone was never going to
+        // reconstruct the live Scene Layer they came from anyway. A
+        // real clone of "My Artwork Gallery" showed that reasoning was
+        // incomplete: the compiled Layer Pack entry that references the
+        // path (legacy Engine-V1-only data, never rendered by World
+        // Builder's own Working View, but still real, still-published
+        // content a real reader sees) kept its literal
+        // "scenes/<sceneId>/<layerId>.png" string reference even after
+        // the bytes were dropped — so real Validation's own asset-
+        // reference check correctly reported it as a genuinely missing
+        // asset ("Layer ... references missing asset ..."), blocking
+        // the very Publish this feature exists to automate. Fixed
+        // properly: the bytes are kept, just re-homed under
+        // 'assets/legacy-scene-assets/' (flattening the path so it
+        // can never collide with ProjectModel.scenes()'s prefix match
+        // again), and every string field in the copied Layer
+        // Pack/Layouts/Frame Variations that still points at the old
+        // 'scenes/...' path is rewritten to the new one — so the real
+        // artwork this Theme's reader actually sees keeps rendering
+        // exactly as before, and Validation has a real asset to find.
+        const sceneAssetRemap = {};
         Object.keys(pkg.assets || {}).forEach(function (relPath) {
-            if (relPath.indexOf('scenes/') === 0) return;
+            if (relPath.indexOf('scenes/') === 0) {
+                const newPath = 'assets/legacy-scene-assets/' + relPath.slice('scenes/'.length).replace(/\//g, '-');
+                sceneAssetRemap[relPath] = newPath;
+                files[newPath] = pkg.assets[relPath];
+                return;
+            }
             files[relPath] = pkg.assets[relPath];
         });
+        if (Object.keys(sceneAssetRemap).length) {
+            const _remapSceneAssetRefs = function (obj) {
+                if (!obj || typeof obj !== 'object') return;
+                Object.keys(obj).forEach(function (key) {
+                    const v = obj[key];
+                    if (typeof v === 'string' && sceneAssetRemap[v]) obj[key] = sceneAssetRemap[v];
+                    else if (v && typeof v === 'object') _remapSceneAssetRefs(v);
+                });
+            };
+            layerPack.forEach(_remapSceneAssetRefs);
+            layouts.forEach(_remapSceneAssetRefs);
+            frameVariations.forEach(_remapSceneAssetRefs);
+        }
 
         return {
             id: opts.newId

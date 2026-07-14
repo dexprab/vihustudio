@@ -1,10 +1,10 @@
 {
-  "version": "3.26.1",
+  "version": "3.26.2",
   "phase": "Platform Hardening",
-  "milestone": "Fix real user-reported clone failure -- 'overlay' missing from LAYER_TARGETS",
-  "slice": "A real clone of 'My Artwork Gallery' failed Validation and fell back to a local draft. Reproduced with the real production template: a real Artwork Gallery project (Thumbnail, Frame-assigned Place, hosted Text Experience) failed the clone flow with Layer target 'overlay' rejected as invalid. Root cause: the Builder Convergence Sprint's target:'overlay' scope (emitted by builder.js's own convergeSceneLayer(), painted correctly by the renderer) was never added to constants.js's LAYER_TARGETS allow-list -- invisible until the Scene Synthesis clone feature became the first path to round-trip compiled output back through real Validation. Fixed in this file's own services/constants.js (and its tools/world-builder v1 twin, which carries the identical logic). The Layer Pack editor's UI dropdown is untouched -- overlay stays a Scene-converger-only value, never hand-authorable. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 14 scripts + a new reproduction test + goldenBuild.js unchanged.",
-  "build": "0080",
+  "milestone": "Fix real user-reported clone failure -- dangling scene-image asset reference",
+  "slice": "A second real clone failure on 'My Artwork Gallery', hit even with the overlay fix live: Check & Build showed a Layer referencing a missing asset 'scenes/single-holder/decoration.png'. Reproduced exactly with a real Free-hosted Image Experience. Root cause: the earlier Repository-Only-Card-Open-Crash fix skips copying any compiled asset whose path starts with 'scenes/' (to avoid colliding with ProjectModel.scenes()'s prefix match), but left the Layer Pack's own reference to that path unrewritten -- a dangling reference Validation correctly flags. Fixed properly in this file's own worldBuilderApp.js: scene-image asset bytes are now kept, re-homed under assets/legacy-scene-assets/<flattened-path>.png, and every Layer Pack/Layouts/Frame Variations reference to the old path is rewritten to the new one. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 15 scripts + goldenBuild.js unchanged.",
+  "build": "0081",
   "buildDate": "2026-07-14",
-  "commit": "d46853f",
+  "commit": "PENDING",
   "environment": "Release"
 }
