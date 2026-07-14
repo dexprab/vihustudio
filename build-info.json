@@ -4,6 +4,6 @@
   "task": "Real, user-reported bug found comparing two browser windows: 'in non incognito the thumbnail is visible but in incognito its just a frame.' Traced to the Repository-only card work: ThemeRepositoryClient.list() deliberately returns only manifest data, never resolved assets, so a Repository-only card always fell back to the manifest's plain themeIcon glyph -- for an Artwork World that glyph is a picture-frame emoji, reading as a broken/empty thumbnail rather than the intended placeholder. Fixed with a new _resolveRepoThumbnailURL() calling the real ThemeRepositoryClient.load(repositoryId,themeId) -- the same call Studio's own refreshFromRepository() already makes -- whose assets map carries a real signed Storage URL for the thumbnail reference; the card swaps its glyph for a real <img> once that resolves, silently keeping the glyph on any failure rather than surfacing an error. Verified via Playwright with a mocked load() returning a real embedded thumbnail; full regression across every prior World Builder script and goldenBuild.js's 30-assertion suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0099",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "fdaaf7b",
   "environment": "Release"
 }
