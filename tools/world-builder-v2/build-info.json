@@ -5,6 +5,6 @@
   "slice": "A real, user-reported crash on the live deployed site: opening a Repository-only card threw 'Cannot read properties of undefined (reading aspectRatio)'. Reproduced exactly before fixing. Root cause: builder.js's externalizeSceneImage() names a Scene-image asset 'scenes/<sceneId>/<layerId>.png'; _materializeProjectFromPackage()'s asset-copy loop wrote that relPath verbatim into project.files, colliding with ProjectModel.scenes()'s bare 'scenes/' prefix match -- the next scenes() call returned a base64 image string as if it were a Scene object, and _renderSceneHeader's unconditional .canvas.aspectRatio read threw on it. Fixed by skipping any asset relPath starting with 'scenes/' during materialization -- safe since Scenes/Places/Experiences are already a disclosed one-way compile with no reverse path, and the legacy Layer Pack entry still referencing it isn't rendered by World Builder's own Working View anyway. Full regression across 12 scripts (including a new reproduction test) + goldenBuild.js 36/36 unchanged.",
   "build": "0077",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "6bf8d08",
   "environment": "Release"
 }
