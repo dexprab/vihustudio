@@ -1,9 +1,9 @@
 {
-  "version": "2.5.15",
-  "sprint": "View Mode becomes a full, honest browse of the compiled Theme",
-  "task": "Direct clarification: 'when i say readonly view. that means loading the theme where i can see it like a theme with everything in front of me... just like normal theme, the only difference is i cant edit anything.' Chosen direction: 'just load the theme as a normal theme. disable edits. it should be simple.' Found the Global Nav bar had been permanently hidden since an earlier rebuild, and three of its screens (Representations/Layouts/Layer Packs) had zero click handler anywhere reaching them -- genuinely unreachable, even though every panel's fields were already correctly readonly-gated via shared field builders. Added a VIEW_MODE_NAV_ITEMS array (World/Scenes/Experiences/Representations/Layouts/Frames/Layer Packs/Assets) shown only when currentProjectReadOnly, leaving normal editing completely unaffected. Found and fixed one real gap during verification: the Assets screen's hidden file-upload input wasn't itself disabled in read-only mode (harmless in practice, but a real loose end). Verified against the real, on-disk themes/MuseumGallery.vtheme: all 8 screens reachable, real content shown, zero editable fields anywhere. Full regression across 14 scripts + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
-  "build": "0104",
+  "version": "2.5.14",
+  "sprint": "Fix real production crash opening a Repository-only card with Scene images",
+  "task": "A real, user-reported crash on the live deployed site: opening a Repository-only card threw 'Cannot read properties of undefined (reading aspectRatio)'. Reproduced exactly before fixing. Root cause: builder.js's externalizeSceneImage() names a Scene-image asset 'scenes/<sceneId>/<layerId>.png'; _materializeProjectFromPackage()'s asset-copy loop wrote that relPath verbatim into project.files, colliding with ProjectModel.scenes()'s bare 'scenes/' prefix match -- the next scenes() call returned a base64 image string as if it were a Scene object, and _renderSceneHeader's unconditional .canvas.aspectRatio read threw on it. Fixed by skipping any asset relPath starting with 'scenes/' during materialization -- safe since Scenes/Places/Experiences are already a disclosed one-way compile with no reverse path, and the legacy Layer Pack entry still referencing it isn't rendered by World Builder's own Working View anyway. Full regression across 12 scripts (including a new reproduction test) + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0103",
   "buildDate": "2026-07-14",
-  "commit": "2b48f34",
+  "commit": "6bf8d08",
   "environment": "Release"
 }

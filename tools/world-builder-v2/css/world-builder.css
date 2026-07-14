@@ -1052,11 +1052,6 @@ html, body {
     background: var(--wb-paper);
     border-bottom: 1px solid var(--wb-border);
     flex-shrink: 0;
-    /* View Mode's own item set (World/Scenes/Experiences/Representations/
-       Layouts/Frames/Layer Packs/Assets) is wider than the normal-editing
-       set this bar originally shipped for — scrolls rather than wraps or
-       overflows the header on a narrower viewport. */
-    overflow-x: auto;
 }
 
 .wb-nav-item {
