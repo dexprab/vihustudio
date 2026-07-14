@@ -5,6 +5,6 @@
   "slice": "A real clone of 'My Artwork Gallery' failed Validation and fell back to a local draft. Reproduced with the real production template: a real Artwork Gallery project (Thumbnail, Frame-assigned Place, hosted Text Experience) failed the clone flow with Layer target 'overlay' rejected as invalid. Root cause: the Builder Convergence Sprint's target:'overlay' scope (emitted by builder.js's own convergeSceneLayer(), painted correctly by the renderer) was never added to constants.js's LAYER_TARGETS allow-list -- invisible until the Scene Synthesis clone feature became the first path to round-trip compiled output back through real Validation. Fixed in this file's own services/constants.js (and its tools/world-builder v1 twin, which carries the identical logic). The Layer Pack editor's UI dropdown is untouched -- overlay stays a Scene-converger-only value, never hand-authorable. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 14 scripts + a new reproduction test + goldenBuild.js unchanged.",
   "build": "0080",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "d46853f",
   "environment": "Release"
 }
