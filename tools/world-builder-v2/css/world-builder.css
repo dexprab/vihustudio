@@ -320,6 +320,54 @@ html, body {
     border-radius: 16px;
 }
 
+/* ---------- Browser Storage meter (Welcome screen) ---------- */
+
+.wb-storage-meter-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 16px;
+}
+
+.wb-storage-meter-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+}
+
+.wb-storage-meter-stats strong {
+    color: var(--wb-navy);
+    font-weight: 700;
+}
+
+.wb-storage-meter-bar-track {
+    height: 10px;
+    border-radius: 6px;
+    background: var(--wb-sand);
+    overflow: hidden;
+}
+
+.wb-storage-meter-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: var(--wb-sage);
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+.wb-storage-meter-bar-fill.wb-storage-warn { background: var(--wb-gold); }
+.wb-storage-meter-bar-fill.wb-storage-full { background: #C4634A; }
+
+.wb-storage-meter-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--wb-text-secondary);
+}
+
 .wb-explore-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

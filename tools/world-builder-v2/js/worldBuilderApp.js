@@ -14,6 +14,7 @@
     const screenWorkspace = $('wb-screen-workspace');
     const myWorldsList = $('wb-my-worlds-list');
     const myWorldsEmpty = $('wb-my-worlds-empty');
+    const storageMeterBody = $('wb-storage-meter-body');
     const templateGrid = $('wb-template-grid');
 
     function _hideAllScreens() {
@@ -229,6 +230,7 @@
     function renderMyWorlds() {
         const projects = window.ProjectStore ? window.ProjectStore.list() : [];
         myWorldsList.innerHTML = '';
+        _renderStorageMeter();
         if (!projects.length) {
             myWorldsEmpty.classList.remove('wb-hidden');
             return;
@@ -238,6 +240,63 @@
             myWorldsList.appendChild(_projectCard(p));
         });
         _annotateProjectBadges(projects);
+    }
+
+    // A real, measured browser-storage readout — added directly in
+    // response to a Duplicate silently failing on a large World with no
+    // visible cause. Only Builder Projects (the editable Scenes/Places/
+    // Experiences/Frames a Theme Author is actively working on) live in
+    // this browser's own localStorage; a *published* Theme (via Publish/
+    // Promote) lives in the Personal/Official Repository on Supabase
+    // instead, completely outside this quota — the two are easy to
+    // conflate but are not the same storage. There is no browser API
+    // that reports an exact localStorage quota, so this shows what's
+    // actually measurable (real bytes used, via getStorageStats()) next
+    // to a disclosed, conservative reference floor (5 MB — the lowest
+    // limit any mainstream browser is known to enforce) rather than
+    // inventing a precise "Available" number no browser actually
+    // promises. Called every time the Welcome screen re-renders — after
+    // every Create/Rename/Duplicate/Delete — so it stays live without a
+    // separate refresh mechanism.
+    const STORAGE_FLOOR_BYTES = 5 * 1024 * 1024;
+
+    function _formatMB(bytes) {
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function _renderStorageMeter() {
+        if (!storageMeterBody || !window.ProjectStore || !window.ProjectStore.getStorageStats) return;
+        const stats = window.ProjectStore.getStorageStats();
+        const pct = Math.min(100, Math.round((stats.totalBytes / STORAGE_FLOOR_BYTES) * 100));
+        const fillClass = pct >= 100 ? 'wb-storage-full' : (pct >= 75 ? 'wb-storage-warn' : '');
+
+        storageMeterBody.innerHTML = '';
+        const body = document.createElement('div');
+        body.className = 'wb-storage-meter-body';
+
+        const stat = document.createElement('div');
+        stat.className = 'wb-storage-meter-stats';
+        stat.innerHTML =
+            '<span><strong>' + _formatMB(stats.totalBytes) + '</strong> used by your World Projects</span>' +
+            '<span>' + pct + '% of a typical browser\'s minimum limit</span>';
+        body.appendChild(stat);
+
+        const track = document.createElement('div');
+        track.className = 'wb-storage-meter-bar-track';
+        const fill = document.createElement('div');
+        fill.className = 'wb-storage-meter-bar-fill' + (fillClass ? ' ' + fillClass : '');
+        fill.style.width = pct + '%';
+        track.appendChild(fill);
+        body.appendChild(track);
+
+        const note = document.createElement('p');
+        note.className = 'wb-storage-meter-note';
+        note.textContent = pct >= 100
+            ? '⚠️ You\'re at or past most browsers\' storage limit — Duplicate/Save may fail silently on large Worlds. Publishing a World (Publish → Personal Repository) moves its built Theme to Supabase, but the editable Project itself stays here; there\'s no way to free this up except removing a World Project you no longer need.'
+            : 'This is only your editable World Projects, stored in this browser — a published Theme lives in your Personal/Official Repository on Supabase instead, and doesn\'t count against this. No browser publishes an exact limit; 5 MB is the lowest ceiling any mainstream browser is known to enforce, used here as a conservative reference.';
+        body.appendChild(note);
+
+        storageMeterBody.appendChild(body);
     }
 
     // Stamps every project card's badge with the same text/class/tooltip

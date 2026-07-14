@@ -1,9 +1,9 @@
 {
-  "version": "2.5.5",
-  "sprint": "World Builder — Duplicate Silently Failing on Large Worlds",
-  "task": "Follow-up bug found after the overflow-menu Duplicate fix: a user report 'nothing happens, no error, no new card, the page just flickers' described a symptom the id-regeneration fix couldn't explain. Reproduced directly with a real oversized test Project: js/projectStore.js's duplicate() deep-copies a Project's entire files map (every uploaded Thumbnail/Hero Image/asset) but -- unlike save(), which AV-009 already hardened -- discarded _writeAll()'s result and always returned the in-memory copy regardless of whether the write actually reached localStorage. Duplicating roughly doubles a World's own storage footprint, which is exactly the realistic case that pushes an image-heavy World over this browser's per-origin quota. Fixed by making duplicate() mirror save()'s {project, ok, error} shape; the shared _duplicateProject() helper now propagates that result and shows a real, honest alert on failure instead of silently doing nothing. Verified via Playwright against a real, reproducible browser-level quota failure: before, silent failure with zero signal; after, the alert fires and no phantom project is created. Normal-size Worlds unaffected. goldenBuild.js's full 30-assertion suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
-  "build": "0094",
+  "version": "2.5.6",
+  "sprint": "World Builder — Browser Storage Meter (Welcome screen)",
+  "task": "Direct follow-up requested after the Duplicate quota-failure fix: the user's own Worlds already sat close to the limit, Delete wasn't a real option, and there was no way to see this coming ahead of time. No browser API reports an exact localStorage quota, so rather than fabricate a precise Total/Available pair no browser actually promises, the new meter shows what's genuinely measurable (js/projectStore.js's getStorageStats(), a real Blob-based byte measurement of every key World Builder actually writes) next to one disclosed, conservative reference floor (5 MB). New .wb-storage-meter section on the Welcome screen: used-MB readout, a percentage bar (green/gold/red), and a note that becomes a real actionable warning once at or past the floor -- also correcting the user's stated belief that 'everything is on Supabase': only a built, published Theme moves there; the editable Project itself always stays local. Wired into the existing renderMyWorlds() so it updates live after every Create/Rename/Duplicate/Delete with no separate refresh mechanism. Verified via Playwright: baseline 0%, live growth after a real save and a real duplicate, and the full/red warning state. goldenBuild.js's full 30-assertion suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0095",
   "buildDate": "2026-07-13",
-  "commit": "2d41b87",
+  "commit": "PENDING",
   "environment": "Release"
 }

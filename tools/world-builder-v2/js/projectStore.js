@@ -132,6 +132,40 @@ const ProjectStore = (function () {
     _writeAll(projects);
   }
 
-  return { list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove };
+  // A real, measured readout of exactly what this module (and its two
+  // small sibling keys — the editing-context resume-position and the
+  // Workspace layout preference) actually store in this browser, found
+  // necessary while diagnosing a real silent Duplicate-quota failure —
+  // there was no way for an author to see how close to full they were
+  // until the write already failed. `bytes` is a real
+  // `new Blob([raw]).size` measurement (UTF-16-accurate, not
+  // `.length`, which undercounts any non-ASCII character a data: URI's
+  // own base64 alphabet never contains but a World's name/description
+  // very well might). Every key this module or its siblings write to
+  // localStorage is included by name — nothing is guessed or globbed.
+  function getStorageStats() {
+    const KEYS = {
+      projects: STORAGE_KEY,
+      editingContext: 'vihu-world-builder-editing-context',
+      workspaceLayout: 'vihustudio.worldBuilder.workspaceLayout'
+    };
+    const byKey = {};
+    let totalBytes = 0;
+    Object.keys(KEYS).forEach(function (label) {
+      let bytes = 0;
+      try {
+        const raw = localStorage.getItem(KEYS[label]);
+        bytes = raw ? new Blob([raw]).size : 0;
+      } catch (e) {}
+      byKey[label] = bytes;
+      totalBytes += bytes;
+    });
+    return { totalBytes: totalBytes, byKey: byKey };
+  }
+
+  return {
+    list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove,
+    getStorageStats: getStorageStats
+  };
 })();
 try { window.ProjectStore = ProjectStore; } catch (e) {}

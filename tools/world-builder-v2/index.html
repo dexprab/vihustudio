@@ -35,6 +35,16 @@
                     <p id="wb-my-worlds-empty" class="wb-empty-note">✨ Your worlds will appear here.<br>Create your first world to begin your journey.</p>
                 </section>
 
+                <!-- Real, measured browser-storage readout (worldBuilderApp.js's
+                     _renderStorageMeter) -- Duplicate/Save/Upload all write to
+                     this browser's own localStorage, and that write can fail
+                     once it's full; this shows exactly how much room is used,
+                     refreshed every time the Welcome screen re-renders. -->
+                <section class="wb-section wb-storage-meter">
+                    <h2 class="wb-section-title">Browser Storage</h2>
+                    <div id="wb-storage-meter-body"><!-- rendered by worldBuilderApp.js --></div>
+                </section>
+
                 <section class="wb-section wb-explore">
                     <h2 class="wb-section-title">Explore Worlds</h2>
                     <div class="wb-explore-row">
