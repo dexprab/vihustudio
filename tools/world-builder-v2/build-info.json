@@ -5,6 +5,6 @@
   "slice": "A second real clone failure on 'My Artwork Gallery', hit even with the overlay fix live: Check & Build showed a Layer referencing a missing asset 'scenes/single-holder/decoration.png'. Reproduced exactly with a real Free-hosted Image Experience. Root cause: the earlier Repository-Only-Card-Open-Crash fix skips copying any compiled asset whose path starts with 'scenes/' (to avoid colliding with ProjectModel.scenes()'s prefix match), but left the Layer Pack's own reference to that path unrewritten -- a dangling reference Validation correctly flags. Fixed properly in this file's own worldBuilderApp.js: scene-image asset bytes are now kept, re-homed under assets/legacy-scene-assets/<flattened-path>.png, and every Layer Pack/Layouts/Frame Variations reference to the old path is rewritten to the new one. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 15 scripts + goldenBuild.js unchanged.",
   "build": "0081",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "dbb04bb",
   "environment": "Release"
 }
