@@ -80,12 +80,32 @@
     // never got the same fix, so duplicating an Official World from
     // inside its own read-only Workspace silently produced another
     // read-only copy.
+    //
+    // A second, real bug found by a follow-up user report ("nothing
+    // happens, no error, no new card") — the AV-009 class of failure,
+    // reproduced and confirmed via a bloated-project Playwright test:
+    // duplicating roughly doubles a World's own storage footprint
+    // (original + copy both now exist), which is exactly the realistic
+    // case that can push an image-heavy World over this browser's
+    // localStorage quota; ProjectStore.duplicate()/save() both used to
+    // discard that failure silently. Both now return {ok,...}, and this
+    // function propagates that so a caller can tell the difference
+    // instead of silently doing nothing.
     function _duplicateProject(project) {
-        const copy = window.ProjectStore.duplicate(project);
+        const dupResult = window.ProjectStore.duplicate(project);
+        if (!dupResult.ok) return dupResult;
+        const copy = dupResult.project;
         const man = window.ProjectModel.manifest(copy);
         man.id = man.id + '-copy-' + Math.random().toString(36).slice(2, 8);
-        window.ProjectStore.save(copy);
-        return copy;
+        const saveResult = window.ProjectStore.save(copy);
+        return { project: copy, ok: saveResult.ok, error: saveResult.error };
+    }
+
+    function _reportDuplicateFailure(name) {
+        window.alert(
+            'Couldn\'t duplicate "' + name + '" — this browser\'s storage is full. ' +
+            'Try deleting an old World you no longer need, then try again.'
+        );
     }
 
     function _projectCard(project) {
@@ -164,7 +184,8 @@
             // regenerated.
             ['⧉', 'Duplicate', function (e) {
                 e.stopPropagation();
-                _duplicateProject(project);
+                const result = _duplicateProject(project);
+                if (!result.ok) { _reportDuplicateFailure(project.name); return; }
                 renderMyWorlds();
             }],
             ['🗑', 'Delete', function (e) {
@@ -842,9 +863,12 @@
         // opened in View Mode too the moment you clicked it from the
         // Welcome screen. Nothing had actually changed, which is what
         // "duplicate doesn't work for an Official Theme" looked like
-        // from the outside. See the shared _duplicateProject helper.
-        _duplicateProject(currentProject);
+        // from the outside. See the shared _duplicateProject helper —
+        // it also now surfaces a real storage-quota failure instead of
+        // silently discarding it.
+        const result = _duplicateProject(currentProject);
         menuDropdown.classList.add('wb-hidden');
+        if (!result.ok) { _reportDuplicateFailure(currentProject.name); return; }
         showWelcome();
     });
 

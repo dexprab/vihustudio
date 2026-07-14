@@ -99,6 +99,19 @@ const ProjectStore = (function () {
   // real actions. A duplicate is a deep copy with its own new id/
   // timestamps, "(Copy)" appended to its name so it's never confused
   // with the original in "My World Projects".
+  //
+  // Real bug found by a user report ("nothing happens, no error, no
+  // new card") — the exact AV-009 class of failure (a silent
+  // QuotaExceededError from _writeAll, discarded with no signal
+  // anywhere), applied to a code path AV-009 itself never touched.
+  // Duplicating a World roughly doubles that World's own storage
+  // footprint (original + copy both now exist), which is exactly the
+  // realistic case that pushes a large, image-heavy World over this
+  // browser's per-origin localStorage quota — and this function used
+  // to always return the in-memory `copy` object regardless of whether
+  // _writeAll actually reached storage, so the caller had no way to
+  // know it silently failed. Now mirrors save()'s own {project, ok,
+  // error} shape so a caller can tell the difference and say so.
   function duplicate(project) {
     const now = new Date().toISOString();
     const copy = JSON.parse(JSON.stringify(project));
@@ -110,8 +123,8 @@ const ProjectStore = (function () {
     delete copy.lastBuild;
     const projects = _readAll();
     projects.push(copy);
-    _writeAll(projects);
-    return copy;
+    const result = _writeAll(projects);
+    return { project: copy, ok: result.ok, error: result.error };
   }
 
   function remove(id) {
