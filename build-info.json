@@ -4,6 +4,6 @@
   "task": "Direct, immediate follow-up on the repeated instruction 'it has to be a deep clone' -- re-ran the fidelity proof against the actual on-disk themes/MuseumGallery.vtheme (not a hand-written fixture), diffing every key on the real manifest/theme objects plus byte-level asset content for the first time. Found one genuine discrepancy the synthetic fixture never exercised: _materializeProjectFromPackage() was adding a theme.type field the real package never carries, confirmed via grep that nothing anywhere reads theme.type (only manifest.type matters, per validator.js's _effectiveType()). Removed the unnecessary line. Re-verified: zero manifest diffs across all 19 real keys, zero theme diffs across all 9 real keys including presentation/caption/enhancement/supportedCreationTypes, zero byte-level asset diffs (exact base64 content, not just key names). Full regression across 11 scripts + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0102",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "f0a7332",
   "environment": "Release"
 }
