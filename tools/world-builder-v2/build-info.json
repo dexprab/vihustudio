@@ -1,10 +1,10 @@
 {
-  "version": "3.19.0",
+  "version": "3.20.0",
   "phase": "Platform Hardening",
-  "milestone": "Duplicate silently failing on large Worlds",
-  "slice": "Follow-up bug found after the overflow-menu Duplicate fix: duplicating a World roughly doubles its storage footprint, and js/projectStore.js's duplicate() discarded a localStorage write failure silently -- the exact AV-009 class of bug, never applied to this code path. Now returns {ok,error} like save() does, and the Welcome-card/overflow-menu Duplicate actions show a real alert on failure instead of doing nothing. Verified via Playwright against a real, reproducible browser-level quota failure. goldenBuild.js 30/30 unchanged.",
-  "build": "0069",
+  "milestone": "Browser Storage meter (Welcome screen)",
+  "slice": "Direct follow-up after the Duplicate quota-failure fix: a real-time total/consumed readout on the Welcome screen. No browser reports an exact localStorage quota, so this shows what's genuinely measurable (getStorageStats(), a real Blob-based byte count of every key World Builder writes) against a disclosed conservative 5 MB reference floor, with a live bar and a real warning once at or past it -- also clarifying that only a published Theme moves to Supabase, not the editable Project itself. Updates live via the existing renderMyWorlds(). Verified via Playwright at 0%/40%/80%/full states. goldenBuild.js 30/30 unchanged.",
+  "build": "0070",
   "buildDate": "2026-07-13",
-  "commit": "b9831ac",
+  "commit": "PENDING",
   "environment": "Release"
 }

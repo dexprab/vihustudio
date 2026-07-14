@@ -4,6 +4,6 @@
   "task": "Direct follow-up requested after the Duplicate quota-failure fix: the user's own Worlds already sat close to the limit, Delete wasn't a real option, and there was no way to see this coming ahead of time. No browser API reports an exact localStorage quota, so rather than fabricate a precise Total/Available pair no browser actually promises, the new meter shows what's genuinely measurable (js/projectStore.js's getStorageStats(), a real Blob-based byte measurement of every key World Builder actually writes) next to one disclosed, conservative reference floor (5 MB). New .wb-storage-meter section on the Welcome screen: used-MB readout, a percentage bar (green/gold/red), and a note that becomes a real actionable warning once at or past the floor -- also correcting the user's stated belief that 'everything is on Supabase': only a built, published Theme moves there; the editable Project itself always stays local. Wired into the existing renderMyWorlds() so it updates live after every Create/Rename/Duplicate/Delete with no separate refresh mechanism. Verified via Playwright: baseline 0%, live growth after a real save and a real duplicate, and the full/red warning state. goldenBuild.js's full 30-assertion suite passes unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0095",
   "buildDate": "2026-07-13",
-  "commit": "PENDING",
+  "commit": "404081f",
   "environment": "Release"
 }
