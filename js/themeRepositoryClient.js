@@ -82,6 +82,11 @@ const ThemeRepositoryClient = (function () {
   // password, no UI — so Postgres Row Level Security can enforce
   // ownership against a server-verified auth.uid() instead of trusting
   // a client-supplied id (docs/THEME_REPOSITORY_ARCHITECTURE.md §4).
+  // This stays the default fallback for every session that never
+  // explicitly signs in — signIn()/signOut() below are what let a
+  // session upgrade to (or return from) a real, persistent identity;
+  // neither one is required for Builder to keep working exactly as it
+  // always has.
   function _ensureAuth() {
     if (_authPromise) return _authPromise;
     _authPromise = _getClient().then(function (client) {
@@ -94,6 +99,81 @@ const ThemeRepositoryClient = (function () {
       });
     });
     return _authPromise;
+  }
+
+  // A real user object's own `is_anonymous` flag is the authoritative
+  // signal (added to supabase-js alongside signInAnonymously() itself);
+  // falling back to "has an email at all" only if some older/unusual
+  // client build ever omits that field, so this never mis-reads a real
+  // signed-in user as anonymous just because a flag wasn't present.
+  function _isAnonymousUser(user) {
+    if (!user) return true;
+    if (typeof user.is_anonymous === 'boolean') return user.is_anonymous;
+    return !user.email;
+  }
+
+  // Real Identity Foundation — Real Sign-In. Authenticates as a real,
+  // persistent Supabase Auth user (see supabase/create_base_builder_user.sql
+  // for how such an account gets created) instead of the disposable
+  // per-browser anonymous session _ensureAuth() falls back to. This
+  // REPLACES the current session, real or anonymous — Personal Themes
+  // and Builder Project backups owned by whatever session was active
+  // before this call become invisible afterward (a different
+  // auth.uid()), by RLS design, not a bug; this is a genuine sign-IN,
+  // not a "convert my anonymous session in place" migration, which
+  // Supabase supports separately and this does not attempt. Never
+  // throws — every failure (bad credentials, not configured, network)
+  // comes back as {ok:false, error}.
+  function signIn(email, password) {
+    return _getClient().then(function (client) {
+      return client.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+        if (res.error) throw res.error;
+        // Replace the cached auth promise so every subsequent
+        // list()/load()/publish()/getStats()/reset() call (all of which
+        // call _authIfPersonal -> _ensureAuth) immediately sees the new
+        // session instead of the stale cached one.
+        _authPromise = Promise.resolve(res.data.session);
+        return { ok: true, session: res.data.session };
+      });
+    }).catch(function (error) {
+      return { ok: false, error: error };
+    });
+  }
+
+  // Signs out of whatever session is active. Deliberately does NOT
+  // immediately re-establish a fresh anonymous session here — clearing
+  // the cache and letting the next _ensureAuth() call do that lazily
+  // (exactly like a first-ever page load) keeps this function's own
+  // job to just "end the current session," not "and also start a new
+  // one," matching _ensureAuth()'s own single responsibility.
+  function signOut() {
+    return _getClient().then(function (client) {
+      return client.auth.signOut().then(function (res) {
+        if (res.error) throw res.error;
+        _authPromise = null;
+        return { ok: true };
+      });
+    }).catch(function (error) {
+      return { ok: false, error: error };
+    });
+  }
+
+  // Read-only identity snapshot for UI — "is this session signed in as
+  // a real, persistent account right now, and as whom." Never throws;
+  // an unreachable Repository or no active session both resolve to the
+  // same honest "not signed in" shape rather than an error a caller has
+  // to separately handle.
+  function getIdentity() {
+    return isConfigured().then(function (ok) {
+      if (!ok) return { configured: false, signedIn: false, email: null };
+      return _ensureAuth().then(function (session) {
+        const user = session && session.user;
+        const anon = _isAnonymousUser(user);
+        return { configured: true, signedIn: !anon, email: (user && user.email) || null };
+      }).catch(function () {
+        return { configured: true, signedIn: false, email: null, error: true };
+      });
+    });
   }
 
   function _ownerSegmentFor(repositoryId, session) {
@@ -404,6 +484,9 @@ const ThemeRepositoryClient = (function () {
     promote: promote,
     getStats: getStats,
     reset: reset,
+    signIn: signIn,
+    signOut: signOut,
+    getIdentity: getIdentity,
     // Exposed so a second, unrelated Supabase-backed feature (Builder
     // Project cloud backup — js/services/projectSync.js) can reuse the
     // exact same client/anonymous-session — never a second sign-in, a

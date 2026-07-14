@@ -15,6 +15,7 @@
     const myWorldsList = $('wb-my-worlds-list');
     const myWorldsEmpty = $('wb-my-worlds-empty');
     const storageMeterBody = $('wb-storage-meter-body');
+    const identityBar = $('wb-identity-bar');
     const templateGrid = $('wb-template-grid');
 
     function _hideAllScreens() {
@@ -26,6 +27,7 @@
     function showWelcome() {
         _hideAllScreens();
         screenWelcome.classList.remove('wb-hidden');
+        _renderIdentityBar();
         renderMyWorlds();
     }
 
@@ -405,6 +407,147 @@
         });
 
         return card;
+    }
+
+    // ---------------------------------------------------------------
+    // Real Identity Foundation — Sign In
+    // ---------------------------------------------------------------
+    // Every session still gets a working, anonymous per-browser
+    // identity with zero action required (js/themeRepositoryClient.js's
+    // _ensureAuth() is unchanged) — signing in here is an *upgrade*, not
+    // a requirement, so a session that never touches this bar keeps
+    // authoring exactly as it always has. What changes once someone
+    // does sign in: Personal Repository access and Builder Project
+    // Cloud Backup ownership both move to the new, real, persistent
+    // auth.uid() — Themes/backups owned by whatever anonymous session
+    // was active a moment ago become invisible (RLS, by design, not a
+    // bug); see supabase/create_base_builder_user.sql for how such a
+    // real account gets created in the first place.
+
+    function _identityStatusLine(text, cls) {
+        identityBar.innerHTML = '';
+        const span = document.createElement('span');
+        span.className = 'wb-identity-status' + (cls ? ' ' + cls : '');
+        span.textContent = text;
+        identityBar.appendChild(span);
+    }
+
+    function _renderIdentityBar() {
+        if (!identityBar) return;
+        if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.getIdentity) {
+            _identityStatusLine('⚪ Repository unavailable', 'wb-identity-muted');
+            return;
+        }
+        window.ThemeRepositoryClient.getIdentity().then(function (identity) {
+            identityBar.innerHTML = '';
+            if (!identity.configured) {
+                const span = document.createElement('span');
+                span.className = 'wb-identity-status wb-identity-muted';
+                span.textContent = '⚪ Repository not configured';
+                identityBar.appendChild(span);
+                return;
+            }
+            if (identity.error) {
+                _identityStatusLine('⚠️ Couldn’t check sign-in status', 'wb-identity-muted');
+                return;
+            }
+            const span = document.createElement('span');
+            span.className = 'wb-identity-status';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-identity-btn';
+            if (identity.signedIn) {
+                span.textContent = '✓ Signed in as ' + identity.email;
+                btn.textContent = 'Sign Out';
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+                    window.ThemeRepositoryClient.signOut().then(function () {
+                        _renderIdentityBar();
+                        renderMyWorlds();
+                    });
+                });
+            } else {
+                span.textContent = '👤 Browsing anonymously';
+                btn.textContent = 'Sign In';
+                btn.addEventListener('click', _showSignInModal);
+            }
+            identityBar.appendChild(span);
+            identityBar.appendChild(btn);
+        }).catch(function () {
+            _identityStatusLine('⚠️ Couldn’t check sign-in status', 'wb-identity-muted');
+        });
+    }
+
+    function _showSignInModal() {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-signin-form';
+
+        const emailGroup = document.createElement('div');
+        emailGroup.className = 'wb-field-group';
+        const emailLabel = document.createElement('label');
+        emailLabel.className = 'wb-field-label';
+        emailLabel.textContent = 'Email';
+        const emailInput = document.createElement('input');
+        emailInput.type = 'email';
+        emailInput.className = 'wb-field-input';
+        emailInput.autocomplete = 'username';
+        emailGroup.appendChild(emailLabel);
+        emailGroup.appendChild(emailInput);
+
+        const passGroup = document.createElement('div');
+        passGroup.className = 'wb-field-group';
+        const passLabel = document.createElement('label');
+        passLabel.className = 'wb-field-label';
+        passLabel.textContent = 'Password';
+        const passInput = document.createElement('input');
+        passInput.type = 'password';
+        passInput.className = 'wb-field-input';
+        passInput.autocomplete = 'current-password';
+        passGroup.appendChild(passLabel);
+        passGroup.appendChild(passInput);
+
+        const errorMsg = document.createElement('p');
+        errorMsg.className = 'wb-signin-error wb-hidden';
+
+        const submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'wb-signin-submit';
+        submitBtn.textContent = 'Sign In';
+
+        wrap.appendChild(emailGroup);
+        wrap.appendChild(passGroup);
+        wrap.appendChild(errorMsg);
+        wrap.appendChild(submitBtn);
+
+        const close = _showInfoModal('🔑 Sign In', wrap);
+
+        function submit() {
+            const email = emailInput.value.trim();
+            const password = passInput.value;
+            if (!email || !password) {
+                errorMsg.textContent = 'Enter both an email and a password.';
+                errorMsg.classList.remove('wb-hidden');
+                return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in…';
+            errorMsg.classList.add('wb-hidden');
+            window.ThemeRepositoryClient.signIn(email, password).then(function (result) {
+                if (!result.ok) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Sign In';
+                    errorMsg.textContent = (result.error && result.error.message) || 'Sign in failed — check your email and password.';
+                    errorMsg.classList.remove('wb-hidden');
+                    return;
+                }
+                close();
+                _renderIdentityBar();
+                renderMyWorlds();
+            });
+        }
+        submitBtn.addEventListener('click', submit);
+        passInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+        emailInput.focus();
     }
 
     // A real, measured browser-storage readout — added directly in
@@ -8166,5 +8309,6 @@
     }
 
     renderTemplateGrid();
+    _renderIdentityBar();
     renderMyWorlds();
 })();

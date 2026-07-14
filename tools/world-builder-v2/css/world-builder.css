@@ -80,6 +80,42 @@ html, body {
     font-size: 16px;
 }
 
+/* Real Identity Foundation — a small, optional sign-in affordance.
+   Deliberately understated (no card/border) since signing in is an
+   upgrade, not a requirement — most sessions will never touch it. */
+.wb-identity-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 12px;
+}
+
+.wb-identity-status {
+    color: var(--wb-text-secondary);
+}
+
+.wb-identity-status.wb-identity-muted {
+    color: var(--wb-text-secondary);
+    opacity: .7;
+}
+
+.wb-identity-btn {
+    width: auto;
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 999px;
+    border: 1px solid var(--wb-border);
+    background: var(--wb-paper);
+    color: var(--wb-navy);
+    cursor: pointer;
+}
+
+.wb-identity-btn:hover {
+    border-color: var(--wb-gold);
+}
+
 .wb-welcome-main {
     display: flex;
     flex-direction: column;
@@ -284,6 +320,40 @@ html, body {
 .wb-project-card-repo-only {
     cursor: pointer;
     padding-right: 18px;
+}
+
+/* Real Identity Foundation — the Sign In modal's form, mounted into the
+   same standalone .wb-repo-info-modal used by the read-only Repository-
+   Theme info panel; reuses the existing .wb-field-group/-label/-input
+   classes (Overview/Frames/etc.'s own field styling) for zero new field
+   chrome. */
+.wb-signin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.wb-signin-error {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #FBE4E0;
+    color: #A13A2E;
+    font-size: 13px;
+}
+.wb-signin-submit {
+    width: auto;
+    align-self: flex-start;
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    background: var(--wb-gold);
+    color: var(--wb-navy);
+    font-weight: 700;
+    cursor: pointer;
+}
+.wb-signin-submit:disabled {
+    opacity: .6;
+    cursor: default;
 }
 
 /* Sprint B2.0.5 — Draft Management controls on each project card.
