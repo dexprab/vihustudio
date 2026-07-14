@@ -1,10 +1,10 @@
 {
-  "version": "3.18.0",
+  "version": "3.19.0",
   "phase": "Platform Hardening",
-  "milestone": "Duplicate fix for Official Worlds",
-  "slice": "Fixed the in-Workspace overflow menu's 'Duplicate World' action, reachable from inside an already-open Official World (read-only View Mode) -- it called ProjectStore.duplicate() directly and never regenerated the copy's manifest id the way the Welcome-screen card's own Duplicate button already did, so the resulting copy silently reopened in View Mode too, reading as \"Duplicate doesn't work.\" Fixed by extracting the id-regeneration logic into one shared _duplicateProject() helper used by both call sites. Verified via Playwright: both the Welcome-card button and the in-Workspace overflow-menu action now produce a Project with a fresh, distinct manifest id. goldenBuild.js's full 30-assertion suite passes unchanged.",
-  "build": "0068",
+  "milestone": "Duplicate silently failing on large Worlds",
+  "slice": "Follow-up bug found after the overflow-menu Duplicate fix: duplicating a World roughly doubles its storage footprint, and js/projectStore.js's duplicate() discarded a localStorage write failure silently -- the exact AV-009 class of bug, never applied to this code path. Now returns {ok,error} like save() does, and the Welcome-card/overflow-menu Duplicate actions show a real alert on failure instead of doing nothing. Verified via Playwright against a real, reproducible browser-level quota failure. goldenBuild.js 30/30 unchanged.",
+  "build": "0069",
   "buildDate": "2026-07-13",
-  "commit": "e1ea9a2",
+  "commit": "PENDING",
   "environment": "Release"
 }
