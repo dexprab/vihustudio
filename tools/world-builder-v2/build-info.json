@@ -5,6 +5,6 @@
   "slice": "Direct follow-up: 'why can't it be a deep clone?' / 'view only means you can still open them in read only mode.' New shared _materializeProjectFromPackage() turns a real load() result into a valid in-memory World Project -- Layouts/Frame Variations/Representations/Layer Pack un-flattened back into real editable files (lossless), Scenes/Places/Experiences NOT reconstructed since that's a confirmed one-way compile with no reverse path (disclosed honestly, not faked). Official opens via a real read-only Workspace (never persisted, relying on the existing View Mode _persist() backstop); the pre-existing overflow-menu Duplicate World already deep-copies whatever Project is open with no assumption it was ever saved, so leaving View Mode needed zero new UI. Personal-with-no-backup clones directly into an editable local draft. Verified via Playwright (zero ProjectStore writes in View before any action, a real distinctly-id'd editable clone carrying real content over, Personal clone opens editable immediately). Full regression + goldenBuild.js 30/30 unchanged.",
   "build": "0074",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "577efe4",
   "environment": "Release"
 }
