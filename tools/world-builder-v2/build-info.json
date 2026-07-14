@@ -5,6 +5,6 @@
   "slice": "Cloning an Official theme (View Mode -> overflow menu -> Duplicate World) now synthesizes one real, editable Scene per compiled Representation, instead of opening to an empty 'No Scenes yet'. A Layout's Aspect Ratio becomes the synthesized Scene's canvas; a Representation's defaultFrame becomes its single Holder's frame; Quote composition synthesizes zero Holders. Layer Pack decorative content (captions, seals) is deliberately not reconstructed -- a disclosed gap, since Engine V1's anchor/offset vocabulary has no reliable translation into the Scene Model. representations/all.json is no longer written for a materialized project, preventing a real duplicate-Representation bug at Build time (validator.js's own folder rules confirmed scenes/ alone is sufficient). Verified via direct Validation against the real on-disk Museum Gallery package, a real headless Build+Publish (exactly 3 non-duplicate Representations), and the real Workspace UI showing 3 correctly-named Scenes. Full regression across 14 scripts + goldenBuild.js unchanged.",
   "build": "0079",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "3e3d23d",
   "environment": "Release"
 }
