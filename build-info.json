@@ -4,6 +4,6 @@
   "task": "Direct clarification: 'when i say readonly view. that means loading the theme where i can see it like a theme with everything in front of me... just like normal theme, the only difference is i cant edit anything.' Chosen direction: 'just load the theme as a normal theme. disable edits. it should be simple.' Found the Global Nav bar had been permanently hidden since an earlier rebuild, and three of its screens (Representations/Layouts/Layer Packs) had zero click handler anywhere reaching them -- genuinely unreachable, even though every panel's fields were already correctly readonly-gated via shared field builders. Added a VIEW_MODE_NAV_ITEMS array (World/Scenes/Experiences/Representations/Layouts/Frames/Layer Packs/Assets) shown only when currentProjectReadOnly, leaving normal editing completely unaffected. Found and fixed one real gap during verification: the Assets screen's hidden file-upload input wasn't itself disabled in read-only mode (harmless in practice, but a real loose end). Verified against the real, on-disk themes/MuseumGallery.vtheme: all 8 screens reachable, real content shown, zero editable fields anywhere. Full regression across 14 scripts + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0104",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "2b48f34",
   "environment": "Release"
 }
