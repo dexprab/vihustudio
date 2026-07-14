@@ -1,10 +1,10 @@
 {
-  "version": "3.22.0",
+  "version": "3.23.0",
   "phase": "Platform Hardening",
-  "milestone": "Real Identity Foundation — Sign In",
-  "slice": "Adds an optional sign-in flow to the Welcome screen so a session can adopt a real, persistent Repository identity (starting with the base \"Vihu Planet\" builder account created via supabase/create_base_builder_user.sql) instead of a disposable per-browser anonymous one. New #wb-identity-bar shows anonymous/signed-in/not-configured states; a Sign In modal (email+password, reusing the existing standalone modal shell and field CSS) calls the new ThemeRepositoryClient.signIn()/signOut()/getIdentity(). Signing in replaces the active session -- content owned by the prior anonymous identity becomes invisible, a disclosed RLS consequence, not a bug. A real boot-wiring bug was caught and fixed: boot never called showWelcome(), only renderMyWorlds() directly, so the identity bar rendered blank until wired into that same boot call. Verified via a stateful mock Repository client covering anonymous/wrong-password/correct-password/sign-out. goldenBuild.js 30/30 unchanged.",
-  "build": "0072",
+  "milestone": "Repository-only cards resolve their real thumbnail",
+  "slice": "Fixes 'in non incognito the thumbnail is visible but in incognito its just a frame': a Repository-only card (no local draft in this browser) always fell back to the manifest's plain themeIcon glyph, since ThemeRepositoryClient.list() never resolves assets. New _resolveRepoThumbnailURL() calls the real load(repositoryId,themeId) -- the same call Studio's refreshFromRepository() already makes -- and swaps the glyph for a real <img> once the signed Storage URL resolves, silently keeping the glyph on any failure. Verified via Playwright with a mocked load() returning a real thumbnail; full regression + goldenBuild.js 30/30 unchanged.",
+  "build": "0073",
   "buildDate": "2026-07-14",
-  "commit": "82fea5d",
+  "commit": "PENDING",
   "environment": "Release"
 }
