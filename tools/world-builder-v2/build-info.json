@@ -5,6 +5,6 @@
   "slice": "Direct follow-up: 'why should we not push this as personal theme... nothing gets seen by creator till its official correct?' -- confirmed via code read that Studio's ThemeRegistry.refreshFromRepository() only ever discovers Official themes, never Personal, so auto-publishing a clone has zero premature-exposure risk. _cloneRepositoryThemeAsNewWorld() now runs a real headless ProjectCompiler.runBuild() then ThemeRepositoryClient.publish('personal',...) then ProjectSync.push() instead of creating a local draft, with a real, tested fallback (keepAsLocalDraft) on any failure. The overflow-menu Duplicate World now detects an ephemeral View project (wp_view_ id prefix) and routes it through the same auto-publish flow; a real local project's own Duplicate is unchanged. Real Validation gaps in the materializer (missing layer-packs/ folder, missing manifest fields, non-semantic version, missing manifest.type) were found via live testing and fixed. A missing .catch() causing a silent hang on Build->Publish failure was found and fixed. Deep clone fidelity proven field-by-field per explicit instruction ('it has to be a deep clone') -- zero manifest diffs besides id/name/updatedDate, zero theme-content diffs, Layouts/Frame Variations/Representations/Layer Pack byte-identical. Full regression + goldenBuild.js 36/36 unchanged.",
   "build": "0075",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "ecfb65d",
   "environment": "Release"
 }
