@@ -414,14 +414,17 @@
         if (!manifest.createdDate) manifest.createdDate = now.slice(0, 10);
         manifest.updatedDate = now.slice(0, 10);
         if (!/^\d+\.\d+\.\d+$/.test(manifest.version || '')) manifest.version = '1.0.0';
-        // theme.json's own required field set depends on manifest.type
-        // (Story needs frame/panel/storyText/footerText/watermark;
-        // Artwork needs none of those) — a real compiled package always
-        // has this set already; 'artwork' is the correct last-resort
-        // default for this feature's own real reference case (Museum
-        // Gallery), never overriding a genuinely-present type.
+        // validator.js's own required-field-set check (_effectiveType)
+        // reads manifest.type only, never theme.type — confirmed via a
+        // real-file diff run that caught this: a forced theme.type
+        // assignment here silently added a field the real, on-disk
+        // Museum Gallery package never carries, which is exactly the
+        // kind of unrequested difference "no difference in no respect"
+        // rules out. 'artwork' is the correct last-resort default for
+        // this feature's own real reference case, never overriding a
+        // genuinely-present type; theme.json itself is left exactly as
+        // Object.assign copied it, no invented field.
         if (!manifest.type) manifest.type = 'artwork';
-        theme.type = theme.type || manifest.type;
 
         const metadataFile = {
             displayName: manifest.name,

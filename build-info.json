@@ -1,9 +1,9 @@
 {
-  "version": "2.5.12",
-  "sprint": "Repository-Only Clone — auto-publish to Personal Repository",
-  "task": "Direct follow-up: 'why should we not push this as personal theme... nothing gets seen by creator till its official correct?' -- confirmed via direct code read that ThemeRegistry.refreshFromRepository() only ever discovers Official Repository themes, never Personal, so auto-publishing a clone to Personal has zero premature-exposure risk. Cloning a Repository-only card (or leaving an Official View via the overflow menu's Duplicate World) now runs a real headless Validate+Build+Publish-to-Personal instead of creating a local Growing draft, with a real, tested fallback to a local draft on any failure (Build/Validation error, publish unavailable, publish call fails). Real Validation gaps found via live testing were fixed in _materializeProjectFromPackage() (missing layer-packs/ folder, several required manifest fields, non-semantic version, missing manifest.type). A missing .catch() on the innermost Build->Publish promise chain (silent hang on failure) was found and fixed. Deep clone fidelity was proven rigorously per explicit instruction ('it has to be a deep clone') via a new field-by-field round-trip test against a fully realistic fixture: zero manifest diffs besides id/name/updatedDate, zero theme-content diffs -- Layouts/Frame Variations/Representations/Layer Pack byte-identical. Full regression + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
-  "build": "0101",
+  "version": "2.5.13",
+  "sprint": "Deep Clone Fidelity — verified against the real production .vtheme",
+  "task": "Direct, immediate follow-up on the repeated instruction 'it has to be a deep clone' -- re-ran the fidelity proof against the actual on-disk themes/MuseumGallery.vtheme (not a hand-written fixture), diffing every key on the real manifest/theme objects plus byte-level asset content for the first time. Found one genuine discrepancy the synthetic fixture never exercised: _materializeProjectFromPackage() was adding a theme.type field the real package never carries, confirmed via grep that nothing anywhere reads theme.type (only manifest.type matters, per validator.js's _effectiveType()). Removed the unnecessary line. Re-verified: zero manifest diffs across all 19 real keys, zero theme diffs across all 9 real keys including presentation/caption/enhancement/supportedCreationTypes, zero byte-level asset diffs (exact base64 content, not just key names). Full regression across 11 scripts + goldenBuild.js 36/36 unchanged. See CLAUDE.md's matching entry for the full account.",
+  "build": "0102",
   "buildDate": "2026-07-14",
-  "commit": "ecfb65d",
+  "commit": "PENDING",
   "environment": "Release"
 }

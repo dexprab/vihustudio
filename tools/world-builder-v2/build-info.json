@@ -1,10 +1,10 @@
 {
-  "version": "3.25.0",
+  "version": "3.25.1",
   "phase": "Platform Hardening",
-  "milestone": "Repository-only Clone auto-publishes to Personal Repository",
-  "slice": "Direct follow-up: 'why should we not push this as personal theme... nothing gets seen by creator till its official correct?' -- confirmed via code read that Studio's ThemeRegistry.refreshFromRepository() only ever discovers Official themes, never Personal, so auto-publishing a clone has zero premature-exposure risk. _cloneRepositoryThemeAsNewWorld() now runs a real headless ProjectCompiler.runBuild() then ThemeRepositoryClient.publish('personal',...) then ProjectSync.push() instead of creating a local draft, with a real, tested fallback (keepAsLocalDraft) on any failure. The overflow-menu Duplicate World now detects an ephemeral View project (wp_view_ id prefix) and routes it through the same auto-publish flow; a real local project's own Duplicate is unchanged. Real Validation gaps in the materializer (missing layer-packs/ folder, missing manifest fields, non-semantic version, missing manifest.type) were found via live testing and fixed. A missing .catch() causing a silent hang on Build->Publish failure was found and fixed. Deep clone fidelity proven field-by-field per explicit instruction ('it has to be a deep clone') -- zero manifest diffs besides id/name/updatedDate, zero theme-content diffs, Layouts/Frame Variations/Representations/Layer Pack byte-identical. Full regression + goldenBuild.js 36/36 unchanged.",
-  "build": "0075",
+  "milestone": "Deep Clone Fidelity verified against the real production .vtheme",
+  "slice": "Direct, immediate follow-up on the repeated instruction 'it has to be a deep clone' -- re-ran the fidelity proof against the actual on-disk themes/MuseumGallery.vtheme (not a hand-written fixture), diffing every key on the real manifest/theme objects plus byte-level asset content for the first time. Found one genuine discrepancy: _materializeProjectFromPackage() was adding a theme.type field the real package never carries; confirmed via grep that nothing anywhere reads theme.type (only manifest.type matters, per validator.js's _effectiveType()), removed the unnecessary line. Re-verified: zero manifest diffs across all 19 real keys, zero theme diffs across all 9 real keys including presentation/caption/enhancement/supportedCreationTypes, zero byte-level asset diffs. Full regression across 11 scripts + goldenBuild.js 36/36 unchanged.",
+  "build": "0076",
   "buildDate": "2026-07-14",
-  "commit": "ecfb65d",
+  "commit": "PENDING",
   "environment": "Release"
 }
