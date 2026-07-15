@@ -1241,7 +1241,8 @@ const ProjectModel = (function () {
                 Object.assign(layer, {
                     name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize,
                     align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
-                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH }
+                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
+                    hostedByScene: fillMode === 'scene'
                 });
             } else {
                 const created = addSceneLayer(project, sceneId, {
@@ -1252,6 +1253,7 @@ const ProjectModel = (function () {
                 created.opacity = props.textOpacity;
                 created.sourceExperienceId = experience.id;
                 created.contentSlot = 'text';
+                created.hostedByScene = fillMode === 'scene';
             }
         } else {
             _removeMirroredLayer(project, sceneId, experience.id, 'text');
@@ -1303,7 +1305,7 @@ const ProjectModel = (function () {
                     rotation: props.graphicRotation, customPath: props.graphicCustomPath
                 } : { shape: null, rotation: 0, customPath: null };
                 if (layer) {
-                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, position: position, size: size }, shapeFields);
+                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
                 } else {
                     // A real, pre-existing bug found while testing —
                     // addSceneLayer's own Object.assign only ever copies
@@ -1328,6 +1330,7 @@ const ProjectModel = (function () {
                     created.fit = fit;
                     created.sourceExperienceId = experience.id;
                     created.contentSlot = spec.slot;
+                    created.hostedByScene = fillMode === 'scene';
                     Object.assign(created, shapeFields);
                 }
             } else {

@@ -1029,6 +1029,15 @@ const CreationFlow=(function(){
     _ensureDom();
     _mode='change-representation';
     overlay.classList.remove('hidden');
+    // A real, user-reported bug: this reused the exact same full-viewport
+    // onboarding overlay (illustrated Story Meadow scene included) that
+    // Screens 1/2 use for a brand-new project — appropriate for a first
+    // arrival, wildly oversized for "pick a different Page Style" while
+    // mid-edit. `mode-change-look` gives this specific reuse its own,
+    // much smaller, dimmed-backdrop modal treatment (css/style.css)
+    // instead, without touching the Screen 1/2 styling this class never
+    // applies to.
+    overlay.classList.add('mode-change-look');
     _renderChangeRepresentationScreen(reps,_currentRepresentationsThemeId());
     return true;
   }
@@ -1053,6 +1062,7 @@ const CreationFlow=(function(){
   function _closeChangeRepresentation(){
     _mode='new';
     overlay.classList.add('hidden');
+    overlay.classList.remove('mode-change-look');
   }
 
   function _closeOverlay(){

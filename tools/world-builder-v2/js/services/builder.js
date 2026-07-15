@@ -346,8 +346,21 @@ class BuildEngine {
         // converge onto the new `target:'overlay'` scope instead
         // (renderer/slideRenderer.js's render(s), a 5th target painted
         // unconditionally on top of everything).
+        //
+        // A real, user-reported bug: a Theme Author's own "Hosted by
+        // Scene" choice (js/projectModel.js's _syncUniversalContent)
+        // only ever completed this "wall-level content" treatment for a
+        // Colour fill (`kind:'fill'`) — an Image/Graphics/Text Layer the
+        // author explicitly hosted on the Scene (intending it as a
+        // photographic background, not foreground decoration) still fell
+        // through to 'overlay' and painted on top of literally
+        // everything, including the Place's own Frame/placeholder. The
+        // `hostedByScene` marker _syncUniversalContent now stamps onto
+        // every kind of mirrored Layer (not just 'fill') closes that gap
+        // — "Hosted by Scene" now uniformly means wall-level/behind,
+        // regardless of what content the author put there.
         const isFullBleed = rect.w >= 0.98 && rect.h >= 0.98;
-        const target = (layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay';
+        const target = ((layer.kind === 'fill' || layer.hostedByScene === true) && isFullBleed) ? 'slide' : 'overlay';
         const base = {
             id: 'scene-' + scene.id + '-' + layer.id,
             // Studio's own _humanizeLayerId fallback only ever had the

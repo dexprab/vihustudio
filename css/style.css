@@ -4398,6 +4398,30 @@ body.dark-theme .publish-celebration-secondary-btn:hover{ background:rgba(255,25
   --cf-line:#eadfc4;
 }
 .creation-flow-overlay.hidden{ display:none; }
+/* "Change Look" — the Context Panel's mid-edit Page Style shortcut
+   (js/creationFlow.js's changeRepresentation()) reuses this same overlay
+   element, but was inheriting the full-viewport onboarding treatment
+   (illustrated Story Meadow scene, edge-to-edge panel) meant for a
+   brand-new project's first arrival — a real, reported bug: a quick
+   "pick a different look" action was taking over the entire screen.
+   This variant keeps the same element/JS, just gives it a small, dimmed-
+   backdrop modal appearance instead; body.creation-flow-active (which
+   hides #app/.app-header) is never added for this mode, so the editor
+   stays visible, dimmed, behind it. */
+.creation-flow-overlay.mode-change-look{
+  background:rgba(20,14,8,.55);
+  padding:24px;
+}
+.creation-flow-overlay.mode-change-look .creation-scene{ display:none; }
+.creation-flow-overlay.mode-change-look .creation-flow-panel{
+  max-width:560px;
+  max-height:85vh;
+  overflow-y:auto;
+  background:var(--cf-paper);
+  border-radius:24px;
+  padding:28px 32px;
+  box-shadow:0 24px 64px rgba(0,0,0,.4);
+}
 body.creation-flow-active #app{ display:none; }
 /* Sprint 11.0 — the overlay's own background is no longer opaque (the
    Story Meadow scene shows through it instead), so the app header
