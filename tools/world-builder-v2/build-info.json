@@ -1,9 +1,9 @@
 {
-  "version": "3.28.1",
+  "version": "3.28.2",
   "phase": "Platform Hardening",
-  "milestone": "Vihu Card Platform v1 -- Card Art (front/back visual, download, print)",
-  "slice": "A real product gap, not a bug: the minted-card list showed only a text row, never an actual card artifact. A new View Card button opens a preview drawing a real front and back onto two <canvas> elements at print-resolution (700x980, poker-card ratio) using only real data -- card.pattern/constellation/code/rarity/label/createdAt plus the World's own name/icon/Hero-Image -- never fabricated illustration art or a fictional Creator credit. Front: full-bleed Hero-Image background (or a rarity-tinted gradient with the World icon when none exists), a Builder-Card type pill, rarity glyph, the World's own name and the Card's label, a bottom bar pairing a rarity-coloured pill with the real code. Back: a dark starfield showing the Card's own actual pattern coordinates connected star-to-star (pixel-sampled at a real seeded coordinate to confirm it isn't a placeholder), the constellation name, the human-readable code, and a tagline. Download reuses the existing _downloadDataURL() helper against each canvas's own toDataURL PNG. Print builds a temporary off-screen sheet with both images, sized to real 2.5in x 3.5in via a new @media print block, torn down after printing. Verified via a new 12-assertion Playwright suite plus the full existing 47-assertion Card Platform suite and both goldenBuild.js suites, all passing unchanged. No schema/RPC/cardPlatform.js change -- purely additive World Builder UI. See docs/VIHU_CARD_PLATFORM.md and CLAUDE.md's matching entry.",
-  "build": "0085",
+  "milestone": "Card Art -- faint coordinate grid on the back",
+  "slice": "Direct user feedback on the Card Art back face: kids had no frame of reference for where to place the first star during redemption. Added a faint 10x10 grid (rgba alpha 0.16) spanning the exact same coordinate field the star matrix already plots into -- the identical field a redeemer taps on Creator's Screen 2 -- drawn low-opacity so it reads as texture, not a spreadsheet. No data/schema change; purely a rendering addition to _drawCardBack(). Verified via the existing 12-assertion Card Art Playwright suite, all passing unchanged.",
+  "build": "0086",
   "buildDate": "2026-07-15",
   "commit": "03a4557",
   "environment": "Release"

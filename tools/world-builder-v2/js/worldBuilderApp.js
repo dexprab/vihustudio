@@ -600,6 +600,24 @@
             return { x: gridLeft + (p[1] + 0.5) * cell, y: gridTop + (p[0] + 0.5) * cell };
         });
 
+        // A faint 10x10 grid — the same coordinate field a redeemer taps
+        // on Creator's Screen 2 — so a child has a real sense of "where
+        // does the first star go" instead of stars floating with no
+        // frame of reference. Deliberately quiet (low alpha) so it reads
+        // as texture, not a spreadsheet.
+        ctx.strokeStyle = 'rgba(232,199,102,0.16)';
+        ctx.lineWidth = 1;
+        for (let gi = 0; gi <= 10; gi++) {
+            ctx.beginPath();
+            ctx.moveTo(gridLeft + gi * cell, gridTop);
+            ctx.lineTo(gridLeft + gi * cell, gridTop + gridSize);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(gridLeft, gridTop + gi * cell);
+            ctx.lineTo(gridLeft + gridSize, gridTop + gi * cell);
+            ctx.stroke();
+        }
+
         if (pts.length > 1) {
             ctx.strokeStyle = 'rgba(232,199,102,0.35)';
             ctx.lineWidth = 2;
