@@ -931,6 +931,30 @@ const CreationFlow=(function(){
     content.appendChild(grid);
   }
 
+  // A Representation authored in World Builder can name a `defaultFrame`
+  // (the Frame Variation the Theme Author picked for that Place) — but
+  // Frame Variation has always been a per-card, Story-Author-driven
+  // control (renderer/slideRenderer.js's `_resolveArtworkFields` only
+  // ever reads `slide.metadata.cardOverrides.artwork.frameVariation`,
+  // never `representation.defaultFrame`), so a Theme Author's own chosen
+  // Frame silently never appeared until the Story Author manually opened
+  // Card Designer and picked one themselves. Seeding the override here —
+  // once, only when the slide has no per-card choice of its own yet —
+  // closes that gap without inventing a second resolution mechanism:
+  // it's the exact same override bag every hand-picked Frame Variation
+  // already writes to, just pre-filled with the Theme's own intent.
+  function _seedDefaultFrameVariation(slide,representation,theme){
+    if(!slide || !representation || !representation.defaultFrame || !theme) return;
+    if(!Array.isArray(theme.frameVariations)) return;
+    const exists=theme.frameVariations.some(function(v){ return v && v.id===representation.defaultFrame; });
+    if(!exists) return;
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    if(!slide.metadata.cardOverrides.artwork) slide.metadata.cardOverrides.artwork={};
+    if(slide.metadata.cardOverrides.artwork.frameVariation) return; // never clobber a Story Author's own choice
+    slide.metadata.cardOverrides.artwork.frameVariation=representation.defaultFrame;
+  }
+
   // ---------- Enter editor (first time only) ----------
   function _finish(type,theme,representation){
     if(typeof PageOps!=='undefined' && AppState.slides.length===0){
@@ -942,6 +966,7 @@ const CreationFlow=(function(){
     if(slide){
       if(!slide.metadata) slide.metadata={};
       if(representation && representation.layout) slide.metadata.layout=representation.layout;
+      _seedDefaultFrameVariation(slide,representation,theme);
     }
     if(typeof ThemeEngine!=='undefined'){
       try{
@@ -1014,6 +1039,9 @@ const CreationFlow=(function(){
       if(!slide.metadata) slide.metadata={};
       if(r.layout) slide.metadata.layout=r.layout;
       AppState.project.representationId=r.id;
+      const themeId=_currentRepresentationsThemeId();
+      const theme=(themeId && typeof ThemeRegistry!=='undefined')?ThemeRegistry.get(themeId):null;
+      _seedDefaultFrameVariation(slide,r,theme);
       try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     }
     _closeChangeRepresentation();

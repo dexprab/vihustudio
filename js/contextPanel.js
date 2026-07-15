@@ -145,6 +145,13 @@ const ContextPanel=(function(){
         return;
       }
       if(sceneObj.owner==='world'){
+        // A World-owned selection replaces the whole panel with its own
+        // disclosure banner — it must hide whatever CardDesigner tab/
+        // section a PRIOR selection left visible, or a stale, seemingly-
+        // live editor (e.g. "Your Picture"'s Fit/Frame controls) stays
+        // rendered underneath the "This is part of the World" message,
+        // contradicting it.
+        _hideAllTabs();
         _renderWorldObjectDisclosure(sceneObj);
         return;
       }
