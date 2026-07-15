@@ -378,6 +378,21 @@ const SlideRenderer=(()=>{
   // Sprint 6.5.1 — also carries the design id so per-design ornament
   // drawing dispatches consistently.
   function _resolveBorder(s){
+    // A Scene converged with zero Places has no picture area at all --
+    // Builder's own Runtime Preview draws nothing for it (no Frame, no
+    // mat, no wall chrome, no placeholder). The check below at the top
+    // of the artTheme branch only ever skipped THAT branch's own
+    // Frame/mat/wall resolution; it never stopped this function from
+    // falling through to the generic, artwork-independent Sprint 8.4.2
+    // "Picture Holder defaults" (opts.holder) a few lines down, which
+    // can still resolve a non-null border on its own (any theme-level
+    // cornerRadius/padding/shadow/fill default) -- and once _border is
+    // non-null, render() still draws the artwork placeholder box and
+    // Frame/Holder-scoped Layer Pack content for a page that Builder
+    // itself never authored a Holder for. Gating here, before either
+    // branch runs, makes zero-Holder mean "no border, period" -- the
+    // one behaviour both branches were always supposed to share.
+    if(_activeLayoutHolders(s)===0) return null;
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
     if(!b){
@@ -391,15 +406,12 @@ const SlideRenderer=(()=>{
       // Theme page now resolves its Frame Variation regardless of
       // image presence. Only the picture itself (_drawImage, gated
       // separately in render()) still requires a real image.
+      // The zero-Holder case (docs/THEME_PROJECT_SPEC.md §5's "holders"
+      // field) is already handled by the early return at the top of
+      // this function, which covers this branch and the legacy
+      // Picture-Holder-defaults fallback below uniformly.
       const artTheme=_artworkTheme(s);
-      // A Scene converged with zero Places (docs/THEME_PROJECT_SPEC.md
-      // §5's "holders" field, finally populated by the Builder
-      // Convergence Sprint's Scene->Layout conversion) never authored a
-      // picture area at all — resolving Frame/mat/wall chrome for it
-      // would fabricate a Place Builder itself never built. Absent the
-      // field (every Layout that predates this), holderCount is null
-      // and this always resolves exactly as before.
-      if(artTheme && _activeLayoutHolders(s)!==0){
+      if(artTheme){
         const art=_resolveArtworkFields(artTheme,s);
         const artworkBorder=_artworkBorder(art);
         if(artworkBorder) return artworkBorder;
