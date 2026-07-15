@@ -1,10 +1,10 @@
 {
-  "version": "3.26.2",
+  "version": "3.26.3",
   "phase": "Platform Hardening",
-  "milestone": "Fix real user-reported clone failure -- dangling scene-image asset reference",
-  "slice": "A second real clone failure on 'My Artwork Gallery', hit even with the overlay fix live: Check & Build showed a Layer referencing a missing asset 'scenes/single-holder/decoration.png'. Reproduced exactly with a real Free-hosted Image Experience. Root cause: the earlier Repository-Only-Card-Open-Crash fix skips copying any compiled asset whose path starts with 'scenes/' (to avoid colliding with ProjectModel.scenes()'s prefix match), but left the Layer Pack's own reference to that path unrewritten -- a dangling reference Validation correctly flags. Fixed properly in this file's own worldBuilderApp.js: scene-image asset bytes are now kept, re-homed under assets/legacy-scene-assets/<flattened-path>.png, and every Layer Pack/Layouts/Frame Variations reference to the old path is rewritten to the new one. Verified: the exact real reproduction now clones, Builds, Validates clean, and Publishes successfully end to end. Full regression across 15 scripts + goldenBuild.js unchanged.",
-  "build": "0081",
+  "milestone": "Fix real user-reported clone failure -- thumbnail signed URL never converted to a real data URI",
+  "slice": "A third real clone bug: 'duplicated but thumbnail did not resolve' -- the Welcome-screen card for a fresh clone showed a broken-image icon. Root cause: ThemeRepositoryClient.load()'s assets map holds Supabase Storage signed URLs (expiring after 1 hour), and the materializer stored those URL strings directly instead of converting them to a real data: URI the way every other Project asset is stored. A more serious latent bug found in the same investigation: ProjectCompiler.js's _toBlob only converts a data:-prefixed string via fetch, so a future re-Build of an affected clone would have silently corrupted every signed-URL asset it carried. Fixed at the root: _materializeProjectFromPackage now returns a Promise, downloading and converting every signed-URL asset to a real data: URI before the Project is ever opened or saved; a conversion failure is disclosed, not swallowed. Added onerror fallbacks on the Welcome-screen card thumbnails as defense in depth. Verified via a new test serving a real HTTP endpoint standing in for a signed URL. Full regression across 15 scripts + a new test + goldenBuild.js unchanged.",
+  "build": "0082",
   "buildDate": "2026-07-14",
-  "commit": "dbb04bb",
+  "commit": "PENDING",
   "environment": "Release"
 }

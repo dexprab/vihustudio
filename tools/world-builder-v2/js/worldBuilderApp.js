@@ -134,6 +134,13 @@
         const thumbURL = window.ProjectModel.getAsset(project, 'thumbnail.png');
         if (thumbURL) {
             const img = document.createElement('img');
+            // Defense in depth alongside the real data:-URI fix above --
+            // a legacy Project saved before that fix (or any other
+            // future asset value this codebase can't fully control) can
+            // still be a broken/unfetchable URL; degrade to the glyph
+            // instead of a broken-image icon rather than leaving a
+            // visibly wrong card on screen.
+            img.onerror = function () { thumb.innerHTML = ''; thumb.textContent = project.icon || '🌎'; };
             img.src = thumbURL;
             img.alt = '';
             thumb.appendChild(img);
@@ -380,6 +387,13 @@
     // true (Duplicate/Clone): regenerates a fresh World Id + Project id
     // and appends "(Copy)" to the name, mirroring _duplicateProject's
     // own existing convention for a real local Duplicate.
+    //
+    // Returns a Promise<Project> — not a plain Project — because any
+    // signed-URL asset it copied (see the fetch/data:-URI conversion at
+    // the end of this function) needs a real network round trip before
+    // the Project is safe to open or save; every caller already sits
+    // inside a `.then()` off ThemeRepositoryClient.load(), so chaining
+    // one more `.then()` is the natural fit.
     function _materializeProjectFromPackage(pkg, opts) {
         opts = opts || {};
         const manifest = Object.assign({}, pkg.manifest);
@@ -583,7 +597,7 @@
             frameVariations.forEach(_remapSceneAssetRefs);
         }
 
-        return {
+        const project = {
             id: opts.newId
                 ? ('wp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8))
                 : ('wp_view_' + manifest.id),
@@ -597,6 +611,54 @@
             updatedAt: now,
             files: files
         };
+
+        // "duplicated but thumbnail did not resolve" -- a real,
+        // user-reported bug. ThemeRepositoryClient.load()'s own assets
+        // map holds Supabase Storage SIGNED URLs (js/themeRepositoryClient.js's
+        // _resolveAssets, createSignedUrl(...,3600) -- a 1-hour-expiring
+        // URL by design), and the asset-copy loop above stores those
+        // URL strings directly into files[relPath] verbatim. Every other
+        // Project asset in this codebase is a real data: URI
+        // (js/projectModel.js's setAsset/setIdentityAsset docs this
+        // explicitly) -- an image Welcome-card <img src> pointed at a
+        // signed URL happens to work until the URL expires (1 hour, or
+        // sooner if Storage state changes), at which point the card
+        // silently shows a broken-image icon with no code error
+        // anywhere to catch. Worse, undiscovered until traced here: a
+        // FUTURE re-Build of this same clone would silently corrupt
+        // every one of these assets -- ProjectCompiler.js's _toBlob only
+        // converts a `data:`-prefixed string via fetch; any other
+        // string (a bare signed URL) falls through to
+        // `new Blob([String(value)])`, byte-encoding the URL TEXT
+        // itself as if it were the image's own pixels. Fixed at the
+        // real root: every signed-URL asset this materializer wrote is
+        // now actually downloaded and converted to a real data: URI
+        // before the Project is ever opened or saved -- matching the
+        // convention every other asset in this file already follows,
+        // and permanently correct (no expiry, no future corruption)
+        // rather than merely resolving faster. A fetch failure (an
+        // already-expired URL, a transient network error) is disclosed,
+        // not swallowed silently -- the asset is left as its original
+        // signed-URL string (today's exact behaviour), so one broken
+        // asset can never block the rest of a real clone from
+        // succeeding.
+        const urlAssetPaths = Object.keys(files).filter(function (p) {
+            return typeof files[p] === 'string' && /^https?:\/\//i.test(files[p]);
+        });
+        if (!urlAssetPaths.length) return Promise.resolve(project);
+        return Promise.all(urlAssetPaths.map(function (p) {
+            return fetch(files[p]).then(function (res) {
+                if (!res.ok) throw new Error('fetch failed: ' + res.status);
+                return res.blob();
+            }).then(function (blob) {
+                return new Promise(function (resolve, reject) {
+                    const reader = new FileReader();
+                    reader.onload = function () { resolve(reader.result); };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }).then(function (dataURL) { files[p] = dataURL; }).catch(function () { /* leave as the original signed URL -- disclosed, non-blocking degrade */ });
+        })).then(function () { return project; });
     }
 
     // Opens a real, read-only Workspace view of an Official Theme that
@@ -615,7 +677,8 @@
             return;
         }
         window.ThemeRepositoryClient.load('official', entry.theme_id).then(function (pkg) {
-            const materialized = _materializeProjectFromPackage(pkg, { newId: false });
+            return _materializeProjectFromPackage(pkg, { newId: false });
+        }).then(function (materialized) {
             _lastKnownOfficialIds.add(entry.theme_id);
             openWorkspace(materialized);
         }).catch(function (e) {
@@ -662,7 +725,8 @@
             openWorkspace(materialized);
         }
         window.ThemeRepositoryClient.load(repositoryId, themeId).then(function (pkg) {
-            const materialized = _materializeProjectFromPackage(pkg, { newId: true });
+            return _materializeProjectFromPackage(pkg, { newId: true });
+        }).then(function (materialized) {
             if (!window.ProjectCompiler || !window.ProjectCompiler.runBuild) {
                 keepAsLocalDraft(materialized, '.');
                 return;
@@ -717,6 +781,12 @@
             if (!url) return;
             thumb.innerHTML = '';
             const img = document.createElement('img');
+            // This card's thumbnail is a real Storage-signed URL
+            // resolved live on every mount (not baked into a saved
+            // Project the way _projectCard's clone-time copy used to
+            // be) -- a broken/expired URL here degrades back to the
+            // icon glyph instead of a broken-image icon.
+            img.onerror = function () { thumb.innerHTML = ''; thumb.textContent = man.themeIcon || '🎨'; };
             img.src = url;
             img.alt = '';
             thumb.appendChild(img);
