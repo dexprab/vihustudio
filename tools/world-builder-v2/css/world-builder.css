@@ -484,6 +484,72 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
+/* Vihu Card Platform v1 — Card Art preview (front/back, download,
+   print). Canvas elements carry their own real print-resolution pixels
+   (CARD_ART_W/H in worldBuilderApp.js); CSS here only scales them down
+   for on-screen display. */
+.wb-card-art-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.wb-card-art-row {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.wb-card-art-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.wb-card-art-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--wb-text-secondary);
+}
+.wb-card-art-canvas {
+    width: 230px;
+    height: 322px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px var(--wb-shadow);
+}
+.wb-card-art-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Off-screen until the moment window.print() is called — @media print
+   below both reveals it at real card dimensions and hides everything
+   else on the page for the duration of the print. */
+.wb-card-print-sheet {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+}
+@media print {
+    body > *:not(.wb-card-print-sheet) { display: none !important; }
+    .wb-card-print-sheet {
+        position: static;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+    }
+    .wb-card-print-sheet img {
+        width: 2.5in;
+        height: 3.5in;
+        object-fit: contain;
+        page-break-inside: avoid;
+    }
+}
+
 .wb-empty-note {
     color: var(--wb-text-secondary);
     font-size: 14px;

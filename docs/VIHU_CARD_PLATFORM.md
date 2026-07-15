@@ -295,12 +295,32 @@ genuinely different call shape, reusing the same private
 
 ---
 
+## 6.1 Card Art — front/back visual, download, print
+
+Turning a minted Card's `constellation`/`pattern`/`code`/`rarity`/
+`label`/`createdAt` — plus the World's own `name`/`icon`/Hero-Image —
+into a real, downloadable, printable card artifact. A 🎴 **View Card**
+button on each minted-card row (`tools/world-builder-v2/js/worldBuilderApp.js`)
+draws a front and a back onto two `<canvas>` elements at print-usable
+resolution (700×980, poker-card ratio) using only Canvas 2D primitives
+— no illustration-generation dependency, no fabricated "Creator"
+credit, since neither exists as real data anywhere in this codebase.
+Front: the World's own Hero Image (or a rarity-tinted gradient +
+its icon glyph when none exists), a Builder-Card type pill, the
+World's name and the Card's label, a bottom bar pairing a rarity-
+coloured pill with the real code. Back: the Card's own actual
+`pattern` plotted as connected glowing stars (not a generic
+placeholder — verified via a real pixel sample at one of the card's
+own seeded coordinates), the constellation name, the human-readable
+code, and a tagline. Download reuses the existing `_downloadDataURL()`
+helper against each canvas's `toDataURL('image/png')`; Print builds a
+temporary off-screen sheet sized to the card's real physical
+dimensions (2.5in × 3.5in) via a `@media print` block, torn down after
+printing. No schema/RPC/`js/cardPlatform.js` change — purely additive
+World Builder UI reading data the platform already had.
+
 ## 7. What's intentionally deferred
 
-- **Print & Play card-back rendering** (turning a minted Card's
-  `constellation`/`pattern`/`code` into an actual printable/shareable
-  image). No schema change is needed later — `pattern` is already
-  stored in full — this is purely a future rendering feature.
 - **The other five card types** (Creator/Unlock/Event/Achievement/
   Classroom) — reserved vocabulary in the schema's CHECK constraints
   only; `generate()`/`redeem()` both stay inert for them until a future

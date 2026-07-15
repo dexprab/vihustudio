@@ -386,7 +386,358 @@
         return card.constellation + '-' + serial;
     }
 
-    function _mintedCardRow(card, onChanged) {
+    // ---------------------------------------------------------------
+    // Vihu Card Platform v1 — Card Art (front/back visual + download +
+    // print). "The card is distributable — downloadable, printable, and
+    // I should be able to see it front and back in Builder." Drawn
+    // entirely from data this session already has (card.pattern/
+    // constellation/code/rarity/label/createdAt, plus the World's own
+    // real name/icon/Hero-Image) — never a fabricated illustration or a
+    // fictional "Creator" credit, since neither exists as real data in
+    // this codebase. Front layout (type pill, title over full-bleed art,
+    // bottom rarity+code bar) and back layout (dark starfield, the
+    // card's own real constellation pattern connected star-to-star, the
+    // code, "Map the stars. Unlock the magic.") both follow the
+    // approved VihuCard design reference directly; a hand-drawn
+    // ornamental corner flourish stands in for the reference's fuller
+    // gold filigree, since Canvas 2D primitives are this codebase's own
+    // established convention for generative/decorative graphics
+    // (artifact-design guidance: "reach for Canvas or WebGL rather than
+    // hand-authoring long SVG path data").
+    const CARD_RARITY_META = {
+        common: { color: '#8B93A0', label: 'Common' },
+        uncommon: { color: '#4C8C63', label: 'Uncommon' },
+        rare: { color: '#3E6FA8', label: 'Rare' },
+        epic: { color: '#7A5CB0', label: 'Epic' },
+        legendary: { color: '#B8901F', label: 'Legendary' }
+    };
+    function _cardRarityGlyph(rarity) {
+        const glyphs = { common: '⚪', uncommon: '🟢', rare: '🔵', epic: '🟣', legendary: '🟡' };
+        return glyphs[rarity] || '⚪';
+    }
+    // A poker-card-ish 5:7 ratio at print-usable resolution (2.5in x
+    // 3.5in @ 280dpi) — the same intrinsic canvas pixels are what both
+    // the on-screen preview (scaled down via CSS) and the downloaded/
+    // printed PNG use, so "what you see is what prints."
+    const CARD_ART_W = 700, CARD_ART_H = 980;
+
+    function _cardRoundRectPath(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    // Shrinks the font size until a single line fits maxWidth, then
+    // draws it — simpler and more robust than full multi-line wrapping
+    // for a World name, which is short in every real project.
+    function _cardFitText(ctx, text, x, y, maxWidth, startPx, minPx, weightAndFamily) {
+        let px = startPx;
+        while (px > minPx) {
+            ctx.font = weightAndFamily.replace('__PX__', px);
+            if (ctx.measureText(text).width <= maxWidth) break;
+            px -= 2;
+        }
+        ctx.font = weightAndFamily.replace('__PX__', px);
+        ctx.fillText(text, x, y);
+    }
+
+    function _drawCardFront(canvas, card, worldMeta) {
+        canvas.width = CARD_ART_W; canvas.height = CARD_ART_H;
+        const ctx = canvas.getContext('2d');
+        const meta = CARD_RARITY_META[card.rarity] || CARD_RARITY_META.common;
+
+        function paint(bgImage) {
+            ctx.clearRect(0, 0, CARD_ART_W, CARD_ART_H);
+            _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+            ctx.save();
+            ctx.clip();
+
+            if (bgImage) {
+                const scale = Math.max(CARD_ART_W / bgImage.width, CARD_ART_H / bgImage.height);
+                const dw = bgImage.width * scale, dh = bgImage.height * scale;
+                ctx.drawImage(bgImage, (CARD_ART_W - dw) / 2, (CARD_ART_H - dh) / 2, dw, dh);
+            } else {
+                const grad = ctx.createLinearGradient(0, 0, CARD_ART_W, CARD_ART_H);
+                grad.addColorStop(0, '#FFFDF7');
+                grad.addColorStop(1, meta.color);
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CARD_ART_W, CARD_ART_H);
+                ctx.font = '260px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.globalAlpha = 0.9;
+                ctx.fillText(worldMeta.icon || '🌎', CARD_ART_W / 2, CARD_ART_H / 2 - 40);
+                ctx.globalAlpha = 1;
+            }
+
+            // Bottom scrim so title/meta text stays legible over any art.
+            const scrim = ctx.createLinearGradient(0, CARD_ART_H * 0.52, 0, CARD_ART_H);
+            scrim.addColorStop(0, 'rgba(18,14,10,0)');
+            scrim.addColorStop(1, 'rgba(18,14,10,0.82)');
+            ctx.fillStyle = scrim;
+            ctx.fillRect(0, CARD_ART_H * 0.5, CARD_ART_W, CARD_ART_H * 0.5);
+
+            // Top-left type pill (Builder is the only card type in v1).
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 20px -apple-system, Helvetica, Arial, sans-serif';
+            const pillText = '🏠 BUILDER CARD';
+            const pillW = ctx.measureText(pillText).width + 36;
+            ctx.fillStyle = 'rgba(20,14,8,0.55)';
+            _cardRoundRectPath(ctx, 28, 28, pillW, 44, 22);
+            ctx.fill();
+            ctx.fillStyle = '#FFFDF7';
+            ctx.textAlign = 'left';
+            ctx.fillText(pillText, 28 + 18, 28 + 22);
+
+            // Top-right rarity glyph.
+            ctx.font = '32px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(_cardRarityGlyph(card.rarity), CARD_ART_W - 28, 28 + 24);
+
+            // Title (World name) + optional label subtitle.
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#FFFDF7';
+            ctx.shadowColor = 'rgba(0,0,0,0.55)';
+            ctx.shadowBlur = 12;
+            _cardFitText(ctx, worldMeta.name || 'Untitled World', 34, CARD_ART_H - 200, CARD_ART_W - 68, 48, 26, '700 __PX__px Georgia, serif');
+            ctx.shadowBlur = 0;
+            if (card.label) {
+                ctx.font = '400 22px -apple-system, Helvetica, Arial, sans-serif';
+                ctx.fillStyle = 'rgba(255,253,247,0.85)';
+                ctx.fillText(card.label, 34, CARD_ART_H - 156);
+            }
+
+            // Minted-time meta — real data (createdAt), never a
+            // fabricated "Creator" credit, since no such identity
+            // exists anywhere in this codebase.
+            ctx.font = '18px -apple-system, Helvetica, Arial, sans-serif';
+            ctx.fillStyle = 'rgba(255,253,247,0.72)';
+            ctx.fillText('Minted ' + _timeAgo(card.createdAt), 34, CARD_ART_H - 116);
+
+            // Bottom bar: rarity pill + code, mirroring the approved
+            // design reference's own front-card footer.
+            ctx.font = '700 20px -apple-system, Helvetica, Arial, sans-serif';
+            const rarityText = meta.label.toUpperCase();
+            const rw = ctx.measureText(rarityText).width + 32;
+            ctx.fillStyle = meta.color;
+            _cardRoundRectPath(ctx, 34, CARD_ART_H - 68, rw, 40, 20);
+            ctx.fill();
+            ctx.fillStyle = '#FFFDF7';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(rarityText, 34 + 16, CARD_ART_H - 48);
+
+            ctx.font = '600 20px "SF Mono", Consolas, monospace';
+            ctx.fillStyle = 'rgba(255,253,247,0.85)';
+            ctx.textAlign = 'right';
+            ctx.fillText(card.code || '', CARD_ART_W - 34, CARD_ART_H - 48);
+
+            ctx.restore();
+
+            // Card border, coloured per rarity.
+            _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, 34);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = meta.color;
+            ctx.stroke();
+        }
+
+        paint(null);
+        if (worldMeta.heroImage) {
+            const img = new Image();
+            img.onload = function () { paint(img); };
+            img.src = worldMeta.heroImage;
+        }
+    }
+
+    function _drawCardBack(canvas, card) {
+        canvas.width = CARD_ART_W; canvas.height = CARD_ART_H;
+        const ctx = canvas.getContext('2d');
+
+        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+        const grad = ctx.createRadialGradient(CARD_ART_W * 0.35, CARD_ART_H * 0.22, 30, CARD_ART_W * 0.5, CARD_ART_H * 0.5, CARD_ART_H * 0.9);
+        grad.addColorStop(0, '#2A2140');
+        grad.addColorStop(1, '#120E1E');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.save();
+        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+        ctx.clip();
+
+        // Simple gold corner flourishes — a Canvas-primitive stand-in
+        // for the reference design's fuller filigree border.
+        [[0, 0, 1, 1], [CARD_ART_W, 0, -1, 1], [0, CARD_ART_H, 1, -1], [CARD_ART_W, CARD_ART_H, -1, -1]].forEach(function (c) {
+            ctx.strokeStyle = 'rgba(232,199,102,0.55)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(c[0] + c[2] * 72, c[1] + 20 * c[3] * 0);
+            ctx.lineTo(c[0], c[1]);
+            ctx.lineTo(c[0], c[1] + c[3] * 72);
+            ctx.stroke();
+        });
+
+        // Header: star + wordmark.
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#E8C766';
+        ctx.fillText('⭐', CARD_ART_W / 2, 92);
+        ctx.font = '700 30px Georgia, serif';
+        ctx.fillStyle = '#F3E6CB';
+        ctx.fillText('VihuCard', CARD_ART_W / 2, 140);
+
+        // Star matrix — this Card's own real, randomly-placed pattern,
+        // not a decorative stand-in.
+        const gridTop = 200, gridSize = CARD_ART_W - 160, cell = gridSize / 10;
+        const gridLeft = (CARD_ART_W - gridSize) / 2;
+        const pts = (card.pattern || []).map(function (p) {
+            return { x: gridLeft + (p[1] + 0.5) * cell, y: gridTop + (p[0] + 0.5) * cell };
+        });
+
+        if (pts.length > 1) {
+            ctx.strokeStyle = 'rgba(232,199,102,0.35)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            pts.forEach(function (p, i) { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.stroke();
+        }
+        pts.forEach(function (p) {
+            ctx.shadowColor = '#E8C766';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = '#F3E6CB';
+            ctx.font = '30px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('★', p.x, p.y);
+        });
+        ctx.shadowBlur = 0;
+
+        // Constellation label + the real redemption code, exactly what
+        // a redeemer would type into the fallback field.
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = 'italic 700 24px Georgia, serif';
+        ctx.fillStyle = '#E8C766';
+        ctx.fillText('✦ ' + (card.constellation || '') + ' ✦', CARD_ART_W / 2, gridTop + gridSize + 50);
+
+        ctx.font = '700 26px "SF Mono", Consolas, monospace';
+        ctx.fillStyle = '#F3E6CB';
+        ctx.fillText(_cardDisplayCode(card), CARD_ART_W / 2, gridTop + gridSize + 92);
+
+        ctx.font = 'italic 18px Georgia, serif';
+        ctx.fillStyle = 'rgba(203,192,230,0.8)';
+        ctx.fillText('Map the stars. Unlock the magic.', CARD_ART_W / 2, CARD_ART_H - 50);
+
+        ctx.restore();
+
+        _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, 34);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#E8C766';
+        ctx.stroke();
+    }
+
+    // A temporary, off-screen (until printing) print sheet — both sides
+    // stacked, sized to the card's own real physical dimensions
+    // (2.5in x 3.5in) via @media print CSS, everything else on the page
+    // hidden for the duration of the print. Removed automatically once
+    // printing finishes (or after a fallback timeout, since `afterprint`
+    // support/timing varies across browsers).
+    function _printCardArt(frontDataURL, backDataURL) {
+        const sheet = document.createElement('div');
+        sheet.className = 'wb-card-print-sheet';
+        const imgFront = document.createElement('img');
+        imgFront.src = frontDataURL;
+        const imgBack = document.createElement('img');
+        imgBack.src = backDataURL;
+        sheet.appendChild(imgFront);
+        sheet.appendChild(imgBack);
+        document.body.appendChild(sheet);
+        function cleanup() {
+            sheet.remove();
+            window.removeEventListener('afterprint', cleanup);
+        }
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+        setTimeout(cleanup, 5000);
+    }
+
+    function _showCardArtPreview(card, project) {
+        const manifest = window.ProjectModel.manifest(project);
+        const worldMeta = {
+            name: manifest.name,
+            icon: project.icon || '🌎',
+            heroImage: window.ProjectModel.getAsset(project, 'preview.png') || window.ProjectModel.getAsset(project, 'thumbnail.png')
+        };
+
+        const body = document.createElement('div');
+        body.className = 'wb-card-art-preview';
+
+        const row = document.createElement('div');
+        row.className = 'wb-card-art-row';
+
+        function side(labelText) {
+            const col = document.createElement('div');
+            col.className = 'wb-card-art-col';
+            const lbl = document.createElement('div');
+            lbl.className = 'wb-card-art-label';
+            lbl.textContent = labelText;
+            const canvas = document.createElement('canvas');
+            canvas.className = 'wb-card-art-canvas';
+            col.appendChild(lbl);
+            col.appendChild(canvas);
+            return { col: col, canvas: canvas };
+        }
+
+        const front = side('Front');
+        const back = side('Back');
+        row.appendChild(front.col);
+        row.appendChild(back.col);
+        body.appendChild(row);
+
+        _drawCardFront(front.canvas, card, worldMeta);
+        _drawCardBack(back.canvas, card);
+
+        const actions = document.createElement('div');
+        actions.className = 'wb-card-art-actions';
+
+        const dlFront = document.createElement('button');
+        dlFront.type = 'button';
+        dlFront.className = 'wb-signin-submit';
+        dlFront.textContent = 'Download Front (PNG)';
+        dlFront.addEventListener('click', function () {
+            _downloadDataURL(front.canvas.toDataURL('image/png'), _cardDisplayCode(card) + '-front.png');
+        });
+
+        const dlBack = document.createElement('button');
+        dlBack.type = 'button';
+        dlBack.className = 'wb-signin-submit';
+        dlBack.textContent = 'Download Back (PNG)';
+        dlBack.addEventListener('click', function () {
+            _downloadDataURL(back.canvas.toDataURL('image/png'), _cardDisplayCode(card) + '-back.png');
+        });
+
+        const printBtn = document.createElement('button');
+        printBtn.type = 'button';
+        printBtn.className = 'wb-signin-submit';
+        printBtn.textContent = '🖨 Print';
+        printBtn.addEventListener('click', function () {
+            _printCardArt(front.canvas.toDataURL('image/png'), back.canvas.toDataURL('image/png'));
+        });
+
+        actions.appendChild(dlFront);
+        actions.appendChild(dlBack);
+        actions.appendChild(printBtn);
+        body.appendChild(actions);
+
+        _showInfoModal('Card — ' + (worldMeta.name || 'World'), body);
+    }
+
+    function _mintedCardRow(card, onChanged, project) {
         const row = document.createElement('div');
         row.className = 'wb-card-minted-row';
         if (card.revokedAt) row.classList.add('wb-card-minted-revoked');
@@ -409,6 +760,15 @@
         info.appendChild(codeLine);
         info.appendChild(metaLine);
         row.appendChild(info);
+
+        const viewBtn = document.createElement('button');
+        viewBtn.type = 'button';
+        viewBtn.className = 'wb-project-card-btn';
+        viewBtn.title = 'View Card (front & back, download, print)';
+        viewBtn.setAttribute('aria-label', 'View Card front and back');
+        viewBtn.textContent = '🎴';
+        viewBtn.addEventListener('click', function () { _showCardArtPreview(card, project); });
+        row.appendChild(viewBtn);
 
         if (!card.revokedAt) {
             const revokeBtn = document.createElement('button');
@@ -573,7 +933,7 @@
                     return;
                 }
                 cards.forEach(function (card) {
-                    listBody.appendChild(_mintedCardRow(card, refreshMintedList));
+                    listBody.appendChild(_mintedCardRow(card, refreshMintedList, project));
                 });
             });
         }
