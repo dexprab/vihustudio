@@ -4839,6 +4839,156 @@ body.creation-flow-active .app-header{ display:none; }
   font-weight:700;
 }
 
+/* Vihu Card Platform v1 — the Redeem widget, collapsed by default
+   beside the World Library row. Same paper/line/gold vocabulary as the
+   rest of the sources panel above, so it reads as one more part of that
+   panel rather than a bolted-on feature. */
+.creation-flow-card-redeem{
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px dashed var(--cf-line);
+}
+.creation-flow-card-toggle{
+  width:100%;
+  text-align:left;
+  padding:10px 14px;
+  border:1px solid var(--cf-line);
+  border-radius:14px;
+  background:var(--cf-paper-alt);
+  color:var(--text);
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+.creation-flow-card-toggle:hover{ border-color:var(--gold); }
+.creation-flow-card-redeem-panel{
+  margin-top:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.creation-flow-card-redeem-panel.hidden{ display:none; }
+.creation-flow-card-redeem-intro{
+  margin:0;
+  font-size:12.5px;
+  color:var(--text-secondary);
+  line-height:1.5;
+}
+.creation-flow-card-board{
+  position:relative;
+  display:grid;
+  grid-template-columns:20px repeat(10,1fr);
+  grid-template-rows:20px repeat(10,1fr);
+  gap:2px;
+  max-width:340px;
+  aspect-ratio:1;
+  margin:0 auto;
+  padding:6px;
+  border:1px solid var(--cf-line);
+  border-radius:14px;
+  background:var(--cf-paper-alt);
+}
+.creation-flow-card-gridlabel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:9px;
+  color:var(--text-tertiary);
+}
+.creation-flow-card-cell{
+  width:100%;
+  height:100%;
+  padding:0;
+  margin:0;
+  min-width:0;
+  border:1px solid var(--cf-line);
+  border-radius:4px;
+  background:var(--cf-paper);
+  color:var(--gold);
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.creation-flow-card-cell:hover{ border-color:var(--gold); }
+.creation-flow-card-cell.selected{
+  background:var(--navy);
+  border-color:var(--gold);
+  color:var(--gold);
+}
+.creation-flow-card-lines{
+  position:absolute;
+  inset:6px;
+  pointer-events:none;
+  overflow:visible;
+}
+.creation-flow-card-line{
+  stroke:var(--gold);
+  stroke-width:2;
+  stroke-linecap:round;
+}
+.creation-flow-card-counter{
+  text-align:center;
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.creation-flow-card-status{
+  min-height:16px;
+  margin:0;
+  text-align:center;
+  font-size:12.5px;
+  color:var(--text-secondary);
+}
+.creation-flow-card-status.ok{ color:#2E7D4F; font-weight:700; }
+.creation-flow-card-status.err{ color:#C1503F; font-weight:700; }
+.creation-flow-card-redeem-btn{
+  align-self:center;
+  padding:8px 22px;
+  border-radius:999px;
+  border:none;
+  background:var(--gold);
+  color:var(--navy);
+  font-weight:700;
+  cursor:pointer;
+}
+.creation-flow-card-code-toggle{
+  width:100%;
+  text-align:left;
+  padding:6px 4px;
+  border:none;
+  background:transparent;
+  color:var(--text-secondary);
+  font-size:12px;
+  cursor:pointer;
+}
+.creation-flow-card-code-fallback{
+  display:flex;
+  gap:8px;
+}
+.creation-flow-card-code-fallback.hidden{ display:none; }
+.creation-flow-card-code-input{
+  flex:1;
+  padding:8px 10px;
+  border:1px solid var(--cf-line);
+  border-radius:10px;
+  background:var(--cf-paper);
+  color:var(--text);
+  font-size:13px;
+}
+.creation-flow-card-code-submit{
+  flex:0 0 auto;
+  padding:8px 14px;
+  border-radius:10px;
+  border:1px solid var(--cf-line);
+  background:var(--cf-paper-alt);
+  color:var(--text);
+  font-weight:700;
+  cursor:pointer;
+}
+.creation-flow-card-code-submit:hover{ border-color:var(--gold); }
+
 .creation-flow-preview{
   flex:1 1 520px;
   min-width:0;

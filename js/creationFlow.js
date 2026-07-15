@@ -92,6 +92,11 @@ const CreationFlow=(function(){
   let _mode='new'; // 'new' (full flow) | 'change-representation' (Page Style only, no new page)
   let _selectedThemeId=null;
   let _importInputEl=null;
+  // Vihu Card Platform v1 — hoisted from _renderWorldScreen(type)'s own
+  // closure-local `type` param so a successful Card redemption can
+  // re-invoke the same screen without the caller needing to remember
+  // which Creation Type was active (see refreshWorldScreen() below).
+  let _currentScreenType=null;
 
   function _el(tag,className,text){
     const e=document.createElement(tag);
@@ -434,6 +439,7 @@ const CreationFlow=(function(){
   // time; selecting a different card repaints the Preview only, never
   // spawns a second picker.
   function _renderWorldScreen(type){
+    _currentScreenType=type;
     _clear();
     _setAtmosphere(true);
 
@@ -473,6 +479,14 @@ const CreationFlow=(function(){
     }
     const importedRow=_el('div','creation-flow-world-row');
     sourcesPanel.appendChild(_sourceGroup('📚 World Library','All kinds of worlds from anywhere',importedRow));
+    // Vihu Card Platform v1 — redemption lives here, right beside World
+    // Library, not a separate app/screen. A redeemed World is added to
+    // ThemeRegistry as a time-boxed 'imported' theme (see
+    // ThemeRegistry.registerRedeemedTheme), so it shows up in the very
+    // row above the moment refreshWorldScreen() repaints.
+    if(typeof window.CardPlatform!=='undefined'){
+      sourcesPanel.appendChild(_buildCardRedeemWidget());
+    }
 
     const preview=_el('div','creation-flow-preview');
     layout.appendChild(preview);
@@ -615,6 +629,241 @@ const CreationFlow=(function(){
     paintPreview();
   }
 
+  // Vihu Card Platform v1 — re-invokes Screen 2 for whichever Creation
+  // Type is currently showing, so a successful Card redemption (which
+  // happens on this same screen) can make the newly-unlocked World
+  // appear in the World Library row with no reload and no caller-side
+  // bookkeeping. A no-op if Screen 2 isn't the active screen (e.g. this
+  // is called after the overlay has already closed) — mirrors
+  // onImported()'s own existing "just call _renderWorldScreen(type)
+  // again" pattern, generalized into a stable exported name.
+  function refreshWorldScreen(){
+    if(!_currentScreenType || !overlay || overlay.classList.contains('hidden')) return;
+    _renderWorldScreen(_currentScreenType);
+  }
+
+  // ---------- Vihu Card Platform v1 — Redeem widget ----------
+  // A thin UI hook into js/cardPlatform.js: this file owns none of the
+  // pattern-matching/rarity/RPC logic, only the grid/line-drawing DOM
+  // mechanics (ported near-verbatim from the validated wireframe) and
+  // calling CardPlatform.redeem()/rendering its result. Collapsed by
+  // default — a 10x10 board is a lot of real estate to show
+  // unconditionally beside the World Library — expanding into the same
+  // tap-to-place, tap-again-to-undo, live-line-per-tap mechanics the
+  // wireframe proved. The wireframe's own demo-only "reference" card-
+  // back column is deliberately dropped here: in production there is no
+  // local copy of a card's pattern to show a reference for — the
+  // physical/shared card itself (a screenshot, a print, a spoken word)
+  // is the real-world reference, external to this app.
+  const CARD_GRID_SIZE=10;
+
+  function _cardBoardKey(r,c){ return r+','+c; }
+
+  function _cardCenterOfCell(boardEl,r,c){
+    const el=boardEl.querySelector('[data-row="'+r+'"][data-col="'+c+'"]');
+    if(!el) return {x:0,y:0};
+    return {x:el.offsetLeft+el.offsetWidth/2, y:el.offsetTop+el.offsetHeight/2};
+  }
+
+  // Builds a real numbered coordinate grid (corner + column headers +
+  // row headers + size*size tappable cells, every element explicitly
+  // grid-placed) plus one <svg> line-overlay sibling used to draw the
+  // live connecting line as stars are tapped. Returns the svg so the
+  // caller can redraw into it.
+  function _cardBuildGrid(boardEl,size,onClick){
+    boardEl.innerHTML='';
+    const corner=_el('div','creation-flow-card-gridlabel');
+    corner.style.gridRow='1'; corner.style.gridColumn='1';
+    boardEl.appendChild(corner);
+    for(let c=0;c<size;c++){
+      const colHead=_el('div','creation-flow-card-gridlabel',String(c+1));
+      colHead.style.gridRow='1'; colHead.style.gridColumn=String(c+2);
+      boardEl.appendChild(colHead);
+    }
+    for(let r=0;r<size;r++){
+      const rowHead=_el('div','creation-flow-card-gridlabel',String(r+1));
+      rowHead.style.gridRow=String(r+2); rowHead.style.gridColumn='1';
+      boardEl.appendChild(rowHead);
+    }
+    for(let rr=0;rr<size;rr++){
+      for(let cc=0;cc<size;cc++){
+        const cell=document.createElement('button');
+        cell.type='button';
+        cell.className='creation-flow-card-cell';
+        cell.dataset.row=rr; cell.dataset.col=cc;
+        cell.style.gridRow=String(rr+2); cell.style.gridColumn=String(cc+2);
+        cell.setAttribute('aria-label','Row '+(rr+1)+', Column '+(cc+1));
+        cell.addEventListener('click',function(){ onClick(rr,cc,cell); });
+        boardEl.appendChild(cell);
+      }
+    }
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','creation-flow-card-lines');
+    boardEl.appendChild(svg);
+    return svg;
+  }
+
+  function _cardRedrawLiveLines(board,svg,selected){
+    svg.innerHTML='';
+    if(selected.length<2) return;
+    const centers=selected.map(function(k){
+      const parts=k.split(',');
+      return _cardCenterOfCell(board,parseInt(parts[0],10),parseInt(parts[1],10));
+    });
+    for(let i=0;i<centers.length-1;i++){
+      const a=centers[i], b=centers[i+1];
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+      line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+      line.setAttribute('class','creation-flow-card-line');
+      svg.appendChild(line);
+    }
+  }
+
+  // The redeem_card RPC's own response never includes a card's real
+  // pattern/constellation (see supabase/schema.sql) — there is nothing
+  // here to sweep-animate against beyond what the redeemer themselves
+  // just tapped, so success simply confirms the match rather than
+  // replaying a server-known pattern back, unlike the wireframe's own
+  // demo (which had the whole pattern hardcoded client-side to animate).
+  function _handleCardRedeemResult(result,status,clearBoard){
+    if(!result || !result.ok){
+      const reason=result && result.reason;
+      if(reason==='exhausted'){ status.textContent='✗ This card has no tries left.'; }
+      else if(reason==='not_authenticated'){ status.textContent='✗ Couldn\'t verify your session — please try again.'; }
+      else{ status.textContent='✗ Not quite — check the card and try again.'; }
+      status.className='creation-flow-card-status err';
+      clearBoard();
+      return;
+    }
+    status.textContent='✨ '+(result.label||'World')+' unlocked'+
+      (result.triesRemaining!=null?' — '+result.triesRemaining+' tries left':'')+
+      '. Added to your World Library below.';
+    status.className='creation-flow-card-status ok';
+    clearBoard();
+    refreshWorldScreen();
+  }
+
+  function _buildCardRedeemPanel(panel){
+    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your card, in order — a line connects them as you go. Tap a star again to undo it.'));
+
+    const board=_el('div','creation-flow-card-board');
+    panel.appendChild(board);
+
+    const counter=_el('div','creation-flow-card-counter','0 stars selected');
+    panel.appendChild(counter);
+
+    const status=_el('p','creation-flow-card-status');
+    panel.appendChild(status);
+
+    const redeemBtn=_el('button','creation-flow-card-redeem-btn','Redeem');
+    redeemBtn.type='button';
+    panel.appendChild(redeemBtn);
+
+    let selected=[];
+    const svg=_cardBuildGrid(board,CARD_GRID_SIZE,function(r,c,cell){
+      const k=_cardBoardKey(r,c);
+      const idx=selected.indexOf(k);
+      if(idx===-1){
+        selected.push(k);
+        cell.classList.add('selected');
+        cell.textContent='★';
+      }else{
+        selected.splice(idx,1);
+        cell.classList.remove('selected');
+        cell.textContent='';
+      }
+      counter.textContent=selected.length+' star'+(selected.length===1?'':'s')+' selected';
+      _cardRedrawLiveLines(board,svg,selected);
+    });
+
+    function clearBoard(){
+      board.querySelectorAll('.creation-flow-card-cell').forEach(function(el){
+        el.classList.remove('selected');
+        el.textContent='';
+      });
+      svg.innerHTML='';
+      selected=[];
+      counter.textContent='0 stars selected';
+    }
+
+    redeemBtn.addEventListener('click',function(){
+      if(selected.length<2){
+        status.textContent='Tap at least two stars first.';
+        status.className='creation-flow-card-status err';
+        return;
+      }
+      redeemBtn.disabled=true;
+      status.textContent='Checking…';
+      status.className='creation-flow-card-status';
+      const pattern=selected.map(function(k){
+        const parts=k.split(',');
+        return [parseInt(parts[0],10),parseInt(parts[1],10)];
+      });
+      window.CardPlatform.redeem({pattern:pattern}).then(function(result){
+        redeemBtn.disabled=false;
+        _handleCardRedeemResult(result,status,clearBoard);
+      });
+    });
+
+    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type the magic word instead? ⌄');
+    codeToggle.type='button';
+    const codeFallback=_el('div','creation-flow-card-code-fallback hidden');
+    const codeInput=document.createElement('input');
+    codeInput.type='text';
+    codeInput.className='creation-flow-card-code-input';
+    codeInput.placeholder='e.g. ORION-00125';
+    const codeSubmit=_el('button','creation-flow-card-code-submit','Redeem with code');
+    codeSubmit.type='button';
+    codeFallback.appendChild(codeInput);
+    codeFallback.appendChild(codeSubmit);
+    panel.appendChild(codeToggle);
+    panel.appendChild(codeFallback);
+
+    codeToggle.addEventListener('click',function(){
+      const opening=codeFallback.classList.contains('hidden');
+      codeFallback.classList.toggle('hidden',!opening);
+      codeToggle.textContent='Prefer to type the magic word instead? '+(opening?'⌃':'⌄');
+    });
+
+    function submitCode(){
+      const val=codeInput.value.trim();
+      if(!val){
+        status.textContent='Enter the magic word and card number first.';
+        status.className='creation-flow-card-status err';
+        return;
+      }
+      codeSubmit.disabled=true;
+      status.textContent='Checking…';
+      status.className='creation-flow-card-status';
+      window.CardPlatform.redeem({typed:val}).then(function(result){
+        codeSubmit.disabled=false;
+        _handleCardRedeemResult(result,status,clearBoard);
+      });
+    }
+    codeSubmit.addEventListener('click',submitCode);
+    codeInput.addEventListener('keydown',function(e){ if(e.key==='Enter') submitCode(); });
+  }
+
+  function _buildCardRedeemWidget(){
+    const wrap=_el('div','creation-flow-card-redeem');
+    const toggle=_el('button','creation-flow-card-toggle','🔮 Have a Card? Redeem it here ⌄');
+    toggle.type='button';
+    const panel=_el('div','creation-flow-card-redeem-panel hidden');
+    wrap.appendChild(toggle);
+    wrap.appendChild(panel);
+
+    let built=false;
+    toggle.addEventListener('click',function(){
+      const opening=panel.classList.contains('hidden');
+      panel.classList.toggle('hidden',!opening);
+      toggle.textContent='🔮 Have a Card? Redeem it here '+(opening?'⌃':'⌄');
+      if(opening && !built){ built=true; _buildCardRedeemPanel(panel); }
+    });
+
+    return wrap;
+  }
+
   // ---------- Change Representation screen (Context Panel shortcut) ----------
   // Deliberately NOT the master/detail Screen 2 above: the active World
   // is already fixed (set from the editor), so only the Page Style
@@ -748,7 +997,8 @@ const CreationFlow=(function(){
   return {
     start:start,
     changeRepresentation:changeRepresentation,
-    currentRepresentations:currentRepresentations
+    currentRepresentations:currentRepresentations,
+    refreshWorldScreen:refreshWorldScreen
   };
 })();
 try{ window.CreationFlow=CreationFlow; }catch(e){}

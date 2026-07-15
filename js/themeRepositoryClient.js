@@ -290,6 +290,33 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // Vihu Card Platform v1. `load()` above always scopes a Personal read
+  // to the CALLING session's own uid (`.eq('owner_id', session.user.id)`)
+  // — correct for its own callers (an author loading their own Theme),
+  // but wrong for a card redeemer, who needs a specific OTHER owner's
+  // Personal Theme, by explicit id, after redeem_card() has already
+  // proven (server-side, via the RPC + the cross-owner RLS grant in
+  // supabase/schema.sql) that this session is allowed to read it. A
+  // separate function rather than a parameter added to `load()` itself,
+  // since overloading `load()`'s existing owner-is-always-me assumption
+  // risks a real, silent regression for every one of its current
+  // callers. Reuses the same private _resolveAssets() as-is — the
+  // owner segment it needs is exactly the explicit ownerId passed in,
+  // not the caller's own session.
+  function loadPersonalByOwner(ownerId, themeId) {
+    return _getClient().then(function (client) {
+      return _ensureAuth().then(function () {
+        return client.from('themes').select('manifest,theme').eq('repository', 'personal').eq('owner_id', ownerId).eq('theme_id', themeId).single().then(function (res) {
+          if (res.error) throw res.error;
+          const row = res.data;
+          return _resolveAssets(client, 'personal', ownerId, themeId).then(function (assets) {
+            return { manifest: row.manifest, theme: row.theme, assets: assets };
+          });
+        });
+      });
+    });
+  }
+
   function _toBlob(value) {
     if (typeof Blob !== 'undefined' && value instanceof Blob) return value;
     const str = String(value);
@@ -519,6 +546,7 @@ const ThemeRepositoryClient = (function () {
     discover: discover,
     list: list,
     load: load,
+    loadPersonalByOwner: loadPersonalByOwner,
     publish: publish,
     promote: promote,
     getStats: getStats,

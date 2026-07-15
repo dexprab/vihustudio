@@ -144,6 +144,14 @@ const ThemeRegistry=(function(){
   const THEME_SYSTEM_VERSION='9.5.0';
 
   const IMPORTED_STORAGE_KEY='vihu.themeRegistry.imported.v1';
+  // Vihu Card Platform v1 — a redeemed Card grants time-boxed access to
+  // someone else's Personal-repository Theme. Only identifiers + expiry
+  // persist here, never theme content (same "Supabase/the owner's own
+  // Personal Repository is the source of truth" discipline
+  // refreshFromRepository() already documents) — a redeemed theme is
+  // re-fetched fresh via ThemeRepositoryClient.loadPersonalByOwner() on
+  // every boot, not shadow-cached.
+  const REDEEMED_STORAGE_KEY='vihu.themeRegistry.redeemedGrants.v1';
 
   const REQUIRED_MANIFEST_FIELDS=[
     'id','name','version','author','description','category',
@@ -444,13 +452,33 @@ const ThemeRegistry=(function(){
     return _cmpVersions(minStudioVersion, THEME_SYSTEM_VERSION)<=0;
   }
 
-  function hasTheme(id){ return !!(id && _registry[id]); }
-  function getRecord(id){ return (id && _registry[id]) || null; }
+  // Vihu Card Platform v1 — evicts any redeemed-via-Card theme whose
+  // grant has expired. Scans only entries marked redeemed:true, so this
+  // stays O(redeemed-count) against the module's existing
+  // always-recompute-on-read convention (no caching to invalidate, no
+  // timer/interval needed). Called at the top of every function that
+  // reads _registry directly.
+  function _pruneExpiredRedeemed(){
+    const now=Date.now();
+    Object.keys(_registry).forEach(function(id){
+      const rec=_registry[id];
+      if(rec && rec.redeemed && rec.redeemedExpiresAt && rec.redeemedExpiresAt<=now){
+        delete _registry[id];
+        const idx=_importedOrder.indexOf(id);
+        if(idx!==-1) _importedOrder.splice(idx,1);
+        _persistRedeemedGrants();
+      }
+    });
+  }
+
+  function hasTheme(id){ _pruneExpiredRedeemed(); return !!(id && _registry[id]); }
+  function getRecord(id){ _pruneExpiredRedeemed(); return (id && _registry[id]) || null; }
   function get(id){
     const rec=getRecord(id);
     return rec ? rec.theme : null;
   }
   function list(){
+    _pruneExpiredRedeemed();
     return _officialOrder.concat(_importedOrder)
       .map(function(id){ return _registry[id]; })
       .filter(function(rec){ return !!rec; })
@@ -471,6 +499,7 @@ const ThemeRegistry=(function(){
     return (rec && rec.manifest && rec.manifest.type) || DEFAULT_THEME_TYPE;
   }
   function getCatalog(){
+    _pruneExpiredRedeemed();
     function _section(order,source,type){
       return order.filter(function(id){
         return _registry[id] && _registry[id].source===source && _typeOf(id)===type;
@@ -669,6 +698,73 @@ const ThemeRegistry=(function(){
     return {ok:true,theme:theme,manifest:manifest};
   }
 
+  // ---------- Vihu Card Platform v1 — redeemed-theme registration ----------
+  // Registers a Theme obtained by redeeming a Card. Reuses the exact
+  // same validation + registration choke point (_setImported) every
+  // other registration path already goes through — a redeemed theme is
+  // indistinguishable to list()/getCatalog()/get() from a locally
+  // imported one, except it's also marked redeemed:true so
+  // _pruneExpiredRedeemed() can find and evict it once opts.expiresAt
+  // passes. Deliberately does NOT call _persistImported() (that would
+  // shadow-cache the theme's own content into the imported-themes key,
+  // outliving its grant) — only identifiers + expiry persist, via
+  // _persistRedeemedGrants() below.
+  function registerRedeemedTheme(pkg,opts){
+    opts=opts||{};
+    const problems=validatePackage(pkg);
+    if(problems.length>0) return {ok:false,problems:problems};
+    const manifest=_normalizeManifest(pkg.manifest);
+    const theme=Object.assign({},pkg.theme);
+    theme.id=manifest.id;
+    _setImported(manifest,theme,pkg.assets);
+    const rec=_registry[manifest.id];
+    rec.redeemed=true;
+    rec.redeemedOwnerId=opts.ownerId||null;
+    rec.redeemedExpiresAt=opts.expiresAt ? new Date(opts.expiresAt).getTime() : null;
+    _persistRedeemedGrants();
+    return {ok:true,theme:theme,manifest:manifest};
+  }
+
+  function _persistRedeemedGrants(){
+    try{
+      const grants=Object.keys(_registry)
+        .filter(function(id){ return _registry[id] && _registry[id].redeemed; })
+        .map(function(id){
+          const rec=_registry[id];
+          return {themeId:id,ownerId:rec.redeemedOwnerId,expiresAt:rec.redeemedExpiresAt};
+        });
+      localStorage.setItem(REDEEMED_STORAGE_KEY,JSON.stringify(grants));
+    }catch(e){}
+  }
+
+  // Boot-time rehydration, mirroring _loadImported()'s own tolerant
+  // pattern: read the small grant-list (identifiers + expiry only),
+  // drop anything already expired, re-fetch survivors fresh from their
+  // owner's Personal Repository and re-register them. Swallows any
+  // single theme's failure (unreachable repository, revoked card,
+  // owner deleted the theme) — matching the tolerance
+  // js/app.js's own _refreshRepositoryWithTimeout() already has for a
+  // slow/unreachable repository. A no-op with zero grants or with
+  // ThemeRepositoryClient unavailable, same as refreshFromRepository().
+  function _rehydrateRedeemed(){
+    let grants=[];
+    try{
+      const raw=localStorage.getItem(REDEEMED_STORAGE_KEY);
+      if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed)) grants=parsed; }
+    }catch(e){ grants=[]; }
+    const now=Date.now();
+    const survivors=grants.filter(function(g){
+      return g && g.themeId && g.ownerId && (!g.expiresAt || g.expiresAt>now);
+    });
+    if(survivors.length===0) return;
+    if(typeof window.ThemeRepositoryClient==='undefined' || !window.ThemeRepositoryClient.loadPersonalByOwner) return;
+    survivors.forEach(function(g){
+      window.ThemeRepositoryClient.loadPersonalByOwner(g.ownerId,g.themeId).then(function(pkg){
+        registerRedeemedTheme(pkg,{ownerId:g.ownerId,expiresAt:g.expiresAt});
+      }).catch(function(){});
+    });
+  }
+
   // ---------- persistence (imported themes only — official themes
   // ship with the app and are never written to storage) ----------
   function _persistImported(){
@@ -744,6 +840,7 @@ const ThemeRegistry=(function(){
   // registerOfficial(OFFICIAL_THEMES,'story');
   // registerOfficial(OFFICIAL_ARTWORK_THEMES,'artwork');
   _loadImported();
+  _rehydrateRedeemed();
 
   const api={
     THEME_SYSTEM_VERSION:THEME_SYSTEM_VERSION,
@@ -759,7 +856,8 @@ const ThemeRegistry=(function(){
     validatePackage:validatePackage,
     registerOfficial:registerOfficial,
     importPackage:importPackage,
-    refreshFromRepository:refreshFromRepository
+    refreshFromRepository:refreshFromRepository,
+    registerRedeemedTheme:registerRedeemedTheme
   };
   try{ window.ThemeRegistry=api; }catch(e){}
   return api;

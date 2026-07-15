@@ -235,6 +235,19 @@
                 e.stopPropagation();
                 if (!window.confirm('Delete "' + project.name + '"? If it\'s published to your Personal Repository, that copy and its online backup are removed too. This cannot be undone.')) return;
                 _deleteProjectEverywhere(project);
+            }],
+            // Vihu Card Platform v1 — card generation lives on THIS
+            // screen, not the Publish screen (the approved design's own
+            // placement: a Card is a shareable object built from an
+            // already-published World, not a step in publishing it).
+            // Disabled by default — there's no synchronous "is this
+            // Personal-published" flag available at render time (the
+            // Repository check below is async); _annotateProjectBadges
+            // enables it once it confirms personalIds.has(worldId).
+            ['🎴', 'Generate a Card', function (e) {
+                e.stopPropagation();
+                if (btnCard.disabled) return;
+                _showCardPanel(project);
             }]
         ].forEach(function (t) {
             const btn = document.createElement('button');
@@ -245,7 +258,13 @@
             btn.textContent = t[0];
             btn.addEventListener('click', t[2]);
             ctrls.appendChild(btn);
+            if (t[1] === 'Generate a Card') {
+                btn.disabled = true;
+                btn.title = 'Publish this World to your Personal Repository first';
+                btn.classList.add('wb-project-card-btn-card');
+            }
         });
+        const btnCard = ctrls.querySelector('.wb-project-card-btn-card');
 
         card.appendChild(thumb);
         card.appendChild(info);
@@ -328,6 +347,239 @@
         closeBtn.addEventListener('click', close);
         document.body.appendChild(overlay);
         return close;
+    }
+
+    // ---------------------------------------------------------------
+    // Vihu Card Platform v1 — "Generate a Card" panel
+    // ---------------------------------------------------------------
+    // Card generation is a thin UI hook into js/cardPlatform.js — this
+    // file never touches Supabase/pattern placement/rarity math
+    // directly, it only calls CardPlatform.generate()/.listMine()/
+    // .revoke() and renders their results, per the architecture
+    // boundary the design settled on. Reuses the standalone
+    // _showInfoModal shell above (already proven to host a real, live
+    // form by the Sign In modal, not only read-only content) rather
+    // than a second modal mechanism.
+    function _cardRarityLabel(rarity) {
+        const labels = { common: '⚪ Common', uncommon: '🟢 Uncommon', rare: '🔵 Rare', epic: '🟣 Epic', legendary: '🟡 Legendary' };
+        return labels[rarity] || rarity;
+    }
+    function _formatCardDuration(seconds) {
+        if (seconds === null || seconds === undefined) return 'Forever';
+        const hours = seconds / 3600;
+        if (hours < 24) return (Math.round(hours * 10) / 10) + (hours === 1 ? ' hour' : ' hours');
+        const days = Math.round(hours / 24);
+        return days + (days === 1 ? ' day' : ' days');
+    }
+    function _formatCardTries(maxTries, triesUsed) {
+        if (maxTries === null || maxTries === undefined) return 'Unlimited tries';
+        return Math.max(0, maxTries - (triesUsed || 0)) + ' of ' + maxTries + ' tries left';
+    }
+    // The RPC's typed-fallback path matches constellation+serial with
+    // no separator, case/space/dash-insensitive (schema.sql's
+    // redeem_card()) — shown here as the human-friendly "ORION-00125"
+    // form, derived from the generated `code` column ("BC-00125")
+    // rather than a second serial field, since that's all _mapCardRow
+    // exposes.
+    function _cardDisplayCode(card) {
+        const serial = String(card.code || '').replace(/^BC-/, '');
+        return card.constellation + '-' + serial;
+    }
+
+    function _mintedCardRow(card, onChanged) {
+        const row = document.createElement('div');
+        row.className = 'wb-card-minted-row';
+        if (card.revokedAt) row.classList.add('wb-card-minted-revoked');
+
+        const info = document.createElement('div');
+        info.className = 'wb-card-minted-info';
+
+        const codeLine = document.createElement('span');
+        codeLine.className = 'wb-card-minted-code';
+        codeLine.textContent = _cardDisplayCode(card);
+
+        const metaLine = document.createElement('span');
+        metaLine.className = 'wb-card-minted-meta';
+        metaLine.textContent = _cardRarityLabel(card.rarity) + ' · ' +
+            _formatCardTries(card.maxTries, card.triesUsed) + ' · ' +
+            _formatCardDuration(card.durationSeconds) +
+            (card.label ? ' · “' + card.label + '”' : '') +
+            (card.revokedAt ? ' · Revoked' : '');
+
+        info.appendChild(codeLine);
+        info.appendChild(metaLine);
+        row.appendChild(info);
+
+        if (!card.revokedAt) {
+            const revokeBtn = document.createElement('button');
+            revokeBtn.type = 'button';
+            revokeBtn.className = 'wb-project-card-btn';
+            revokeBtn.title = 'Revoke';
+            revokeBtn.setAttribute('aria-label', 'Revoke this Card');
+            revokeBtn.textContent = '🚫';
+            revokeBtn.addEventListener('click', function () {
+                if (!window.confirm('Revoke this Card? It can no longer be redeemed — access already granted from a past redemption is unaffected.')) return;
+                revokeBtn.disabled = true;
+                window.CardPlatform.revoke(card.id).then(function (result) {
+                    if (!result.ok) { revokeBtn.disabled = false; window.alert('Couldn\'t revoke this Card — please try again.'); return; }
+                    onChanged();
+                });
+            });
+            row.appendChild(revokeBtn);
+        }
+
+        return row;
+    }
+
+    function _showCardPanel(project) {
+        if (!window.CardPlatform) {
+            window.alert('The Card Platform module did not load in this deployment.');
+            return;
+        }
+        const worldId = window.ProjectModel.manifest(project).id;
+        const body = document.createElement('div');
+        body.className = 'wb-card-panel';
+
+        const intro = document.createElement('p');
+        intro.className = 'wb-card-panel-intro';
+        intro.textContent = 'A Card is a shareable pattern-match puzzle. Whoever redeems it gets this World in Creator for the tries/duration you set below — never a permanent copy.';
+        body.appendChild(intro);
+
+        function fieldGroup(labelText, inputEl) {
+            const wrap = document.createElement('div');
+            wrap.className = 'wb-field-group';
+            const label = document.createElement('label');
+            label.className = 'wb-field-label';
+            label.textContent = labelText;
+            wrap.appendChild(label);
+            wrap.appendChild(inputEl);
+            return wrap;
+        }
+        function checkboxLabel(text, onChange) {
+            const wrap = document.createElement('label');
+            wrap.className = 'wb-card-checkbox-label';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.addEventListener('change', function () { onChange(box.checked); });
+            wrap.appendChild(box);
+            wrap.appendChild(document.createTextNode(' ' + text));
+            wrap.box = box;
+            return wrap;
+        }
+
+        const form = document.createElement('div');
+        form.className = 'wb-card-form';
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.className = 'wb-field-input';
+        labelInput.placeholder = 'e.g. “For Grandma”';
+        form.appendChild(fieldGroup('Label (optional)', labelInput));
+
+        const triesInput = document.createElement('input');
+        triesInput.type = 'number';
+        triesInput.min = '1';
+        triesInput.value = '3';
+        triesInput.className = 'wb-field-input';
+        const triesUnlimited = checkboxLabel('Unlimited', function (checked) {
+            triesInput.disabled = checked;
+            updateRarityPreview();
+        });
+        const triesGroup = fieldGroup('Max tries', triesInput);
+        triesGroup.appendChild(triesUnlimited);
+
+        const durationInput = document.createElement('input');
+        durationInput.type = 'number';
+        durationInput.min = '1';
+        durationInput.value = '24';
+        durationInput.className = 'wb-field-input';
+        const durationForever = checkboxLabel('Forever', function (checked) {
+            durationInput.disabled = checked;
+            updateRarityPreview();
+        });
+        const durationGroup = fieldGroup('Duration (hours)', durationInput);
+        durationGroup.appendChild(durationForever);
+
+        const row = document.createElement('div');
+        row.className = 'wb-field-row';
+        row.appendChild(triesGroup);
+        row.appendChild(durationGroup);
+        form.appendChild(row);
+
+        triesInput.addEventListener('input', updateRarityPreview);
+        durationInput.addEventListener('input', updateRarityPreview);
+
+        const rarityPreview = document.createElement('div');
+        rarityPreview.className = 'wb-card-rarity-preview';
+        function updateRarityPreview() {
+            const tries = triesUnlimited.box.checked ? Infinity : (parseInt(triesInput.value, 10) || 1);
+            const hours = durationForever.box.checked ? Infinity : (parseFloat(durationInput.value) || 1);
+            const rarity = window.CardPlatform.computeRarity(tries, hours);
+            rarityPreview.textContent = 'This Card will be: ' + _cardRarityLabel(rarity);
+        }
+        updateRarityPreview();
+        form.appendChild(rarityPreview);
+
+        const genBtn = document.createElement('button');
+        genBtn.type = 'button';
+        genBtn.className = 'wb-signin-submit';
+        genBtn.textContent = '🎴 Generate Card';
+        genBtn.addEventListener('click', function () {
+            genBtn.disabled = true;
+            genBtn.textContent = 'Generating…';
+            const opts = {
+                label: labelInput.value.trim(),
+                maxTries: triesUnlimited.box.checked ? Infinity : (parseInt(triesInput.value, 10) || 1),
+                durationHours: durationForever.box.checked ? Infinity : (parseFloat(durationInput.value) || 1)
+            };
+            window.CardPlatform.generate('builder', { repositoryId: 'personal', themeId: worldId }, opts).then(function (result) {
+                genBtn.disabled = false;
+                genBtn.textContent = '🎴 Generate Card';
+                if (!result.ok) {
+                    window.alert('Couldn\'t generate a Card — please try again.');
+                    return;
+                }
+                labelInput.value = '';
+                refreshMintedList();
+            });
+        });
+        form.appendChild(genBtn);
+        body.appendChild(form);
+
+        const listWrap = document.createElement('div');
+        listWrap.className = 'wb-card-minted-list';
+        const listTitle = document.createElement('h4');
+        listTitle.className = 'wb-card-minted-title';
+        listTitle.textContent = 'Cards for this World';
+        listWrap.appendChild(listTitle);
+        const listBody = document.createElement('div');
+        listBody.className = 'wb-card-minted-body';
+        listWrap.appendChild(listBody);
+        body.appendChild(listWrap);
+
+        function refreshMintedList() {
+            listBody.innerHTML = '';
+            const loading = document.createElement('p');
+            loading.className = 'wb-card-minted-empty';
+            loading.textContent = 'Loading…';
+            listBody.appendChild(loading);
+            window.CardPlatform.listMine({ themeId: worldId }).then(function (cards) {
+                listBody.innerHTML = '';
+                if (!cards.length) {
+                    const empty = document.createElement('p');
+                    empty.className = 'wb-card-minted-empty';
+                    empty.textContent = 'No Cards minted yet for this World.';
+                    listBody.appendChild(empty);
+                    return;
+                }
+                cards.forEach(function (card) {
+                    listBody.appendChild(_mintedCardRow(card, refreshMintedList));
+                });
+            });
+        }
+        refreshMintedList();
+
+        _showInfoModal('Generate a Card — ' + project.name, body);
     }
 
     // A card for a Personal/Official Theme this author owns in the
@@ -1200,6 +1452,18 @@
             } else if (personalIds.has(worldId)) {
                 if (statusEl) { statusEl.textContent = '👤 Personal'; statusEl.className = 'wb-project-status wb-project-status-personal'; }
                 badge.className = 'wb-project-badge wb-hidden';
+            }
+            // Vihu Card Platform v1 — "Generate a Card" only makes sense
+            // once this World is a real, Personal-published Theme (a
+            // Card mints against target_theme_id/target_repository:
+            // 'personal', and the redeem_card RPC's own cross-owner
+            // grant only extends to a live Personal row) — reuses the
+            // same personalIds Set this function already built, no new
+            // async call.
+            const cardBtn = card && card.querySelector('.wb-project-card-btn-card');
+            if (cardBtn && personalIds.has(worldId)) {
+                cardBtn.disabled = false;
+                cardBtn.title = 'Generate a Card for this World';
             }
         });
 

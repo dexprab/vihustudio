@@ -394,6 +394,96 @@ html, body {
 
 .wb-project-card-btn:hover { border-color: var(--wb-gold); }
 
+/* Vihu Card Platform v1 — "Generate a Card" panel (a small, disabled-
+   by-default 🎴 icon action on a Personal-published project card,
+   see .wb-project-card-btn-card below; opens inside the same standalone
+   .wb-repo-info-modal shell the Sign In form already proved can host a
+   real, live form, not only read-only content). */
+.wb-project-card-btn-card:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+.wb-card-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.wb-card-panel-intro {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--wb-text-secondary);
+}
+.wb-card-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.wb-card-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+    margin-top: 6px;
+    cursor: pointer;
+}
+.wb-card-checkbox-label input { width: auto; margin: 0; }
+.wb-card-rarity-preview {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    background: var(--wb-sand);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+.wb-card-minted-list {
+    border-top: 1px solid var(--wb-border);
+    padding-top: 14px;
+}
+.wb-card-minted-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+.wb-card-minted-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.wb-card-minted-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--wb-text-secondary);
+}
+.wb-card-minted-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--wb-cream);
+    border-radius: 8px;
+}
+.wb-card-minted-row.wb-card-minted-revoked { opacity: .55; }
+.wb-card-minted-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.wb-card-minted-code {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    letter-spacing: .02em;
+}
+.wb-card-minted-meta {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+
 .wb-empty-note {
     color: var(--wb-text-secondary);
     font-size: 14px;
