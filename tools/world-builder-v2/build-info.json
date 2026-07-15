@@ -5,6 +5,6 @@
   "slice": "Direct user feedback on the Card Art back face: kids had no frame of reference for where to place the first star during redemption. Added a faint 10x10 grid (rgba alpha 0.16) spanning the exact same coordinate field the star matrix already plots into -- the identical field a redeemer taps on Creator's Screen 2 -- drawn low-opacity so it reads as texture, not a spreadsheet. No data/schema change; purely a rendering addition to _drawCardBack(). Verified via the existing 12-assertion Card Art Playwright suite, all passing unchanged.",
   "build": "0086",
   "buildDate": "2026-07-15",
-  "commit": "03a4557",
+  "commit": "e1c5217",
   "environment": "Release"
 }
