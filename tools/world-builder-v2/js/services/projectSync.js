@@ -82,7 +82,31 @@ const ProjectSync = (function () {
     });
   }
 
-  const api = { isAvailable: isAvailable, push: push, list: list };
+  // Deletes exactly one backup row by its own Builder Project id
+  // (matches the primary key push() writes: `id: project.id`) —
+  // owner-scoped so a delete can never touch another session's row
+  // even if it somehow guessed the id. Part of the real fix for "I
+  // deleted it twice but it keeps coming back": deleting a Personal
+  // Theme's local draft alone left this backup row and the Personal
+  // Repository row both still real, so the very next "My World
+  // Projects" render restored the identical card.
+  function remove(projectId) {
+    if (!window.ThemeRepositoryClient) {
+      return Promise.resolve({ ok: false, error: new Error('ThemeRepositoryClient did not load') });
+    }
+    return window.ThemeRepositoryClient.getClient().then(function (client) {
+      return window.ThemeRepositoryClient.getSession().then(function (session) {
+        return client.from(TABLE).delete().eq('id', projectId).eq('owner_id', session.user.id).then(function (res) {
+          if (res.error) throw res.error;
+          return { ok: true };
+        });
+      });
+    }).catch(function (error) {
+      return { ok: false, error: error };
+    });
+  }
+
+  const api = { isAvailable: isAvailable, push: push, list: list, remove: remove };
   try { window.ProjectSync = api; } catch (e) {}
   return api;
 })();

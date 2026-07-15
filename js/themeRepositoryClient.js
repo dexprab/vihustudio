@@ -475,6 +475,45 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // Deletes exactly one published Theme — its Storage assets and its
+  // one `themes` row — never anything else in the repository. Added
+  // for a real, reported UX bug: World Builder's "My World Projects"
+  // Delete only ever removed a Theme's LOCAL draft (`ProjectStore`),
+  // deliberately never the Repository row itself (protecting Official
+  // themes from an accidental nuke) — but the same local-only rule
+  // applied to a Theme the author actually owns in their OWN Personal
+  // Repository meant Delete could never truly remove it: the very next
+  // "My World Projects" render re-discovers the still-published
+  // Personal row (js/worldBuilderApp.js's own `_annotateProjectBadges`)
+  // and redraws the identical card, reading as "deleting it does
+  // nothing." Reuses `reset()`'s exact real-delete-confirmation
+  // discipline (`.select()` after `.delete()`, Storage removed before
+  // the row so a partial failure never orphans a row pointing at
+  // already-gone assets) scoped to one `theme_id` instead of every row
+  // in the repository/owner scope.
+  function deleteTheme(repositoryId, themeId) {
+    return _getClient().then(function (client) {
+      return _authIfPersonal(repositoryId).then(function (session) {
+        const ownerId = _ownerIdFor(repositoryId, session);
+        const ownerSegment = _ownerSegmentFor(repositoryId, session);
+        const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
+        return _listAllObjectPaths(client, prefix).then(function (paths) {
+          if (!paths.length) return null;
+          return client.storage.from(ASSET_BUCKET).remove(paths).then(function (removeRes) {
+            if (removeRes.error) throw removeRes.error;
+          });
+        }).then(function () {
+          return client.from('themes').delete()
+            .eq('repository', repositoryId).eq('owner_id', ownerId).eq('theme_id', themeId)
+            .select('theme_id').then(function (res) {
+              if (res.error) throw res.error;
+              return { ok: true, deleted: (res.data || []).length > 0 };
+            });
+        });
+      });
+    });
+  }
+
   const api = {
     isConfigured: isConfigured,
     discover: discover,
@@ -484,6 +523,7 @@ const ThemeRepositoryClient = (function () {
     promote: promote,
     getStats: getStats,
     reset: reset,
+    deleteTheme: deleteTheme,
     signIn: signIn,
     signOut: signOut,
     getIdentity: getIdentity,

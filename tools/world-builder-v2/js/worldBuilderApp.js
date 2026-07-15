@@ -111,6 +111,39 @@
         );
     }
 
+    // "i deleted it twice but it keeps coming back" — a real, confirmed
+    // bug: Delete used to remove only this Project's local draft
+    // (ProjectStore), deliberately never the Repository row itself, so
+    // an Official theme could never be nuked by accident. That same
+    // local-only rule applied just as much to a Theme the author owns
+    // in their OWN Personal Repository — but there, it meant Delete
+    // could never actually finish: the very next "My World Projects"
+    // render (_annotateProjectBadges) re-discovers the still-published
+    // Personal row + Cloud Backup and redraws the identical card. Fixed
+    // by extending Delete, for a Personal-owned Theme, to also remove
+    // the Personal Repository row/assets and the Cloud Backup — never
+    // 'official', by construction (deleteTheme always targets the
+    // 'personal' repository only, so an Official-badged local draft's
+    // Delete still only ever removes its local copy, unchanged). The
+    // local draft disappears immediately either way; the remote cleanup
+    // is best-effort and silently ignored on failure (no Repository
+    // configured, network error, nothing was ever published there) —
+    // one more renderMyWorlds() once it settles reflects the final,
+    // real state rather than leaving a stale card on screen.
+    function _deleteProjectEverywhere(project) {
+        const worldId = window.ProjectModel.manifest(project).id;
+        window.ProjectStore.remove(project.id);
+        renderMyWorlds();
+        const cleanups = [];
+        if (window.ThemeRepositoryClient && window.ThemeRepositoryClient.deleteTheme && worldId) {
+            cleanups.push(window.ThemeRepositoryClient.deleteTheme('personal', worldId).catch(function () {}));
+        }
+        if (window.ProjectSync && window.ProjectSync.remove) {
+            cleanups.push(window.ProjectSync.remove(project.id).catch(function () {}));
+        }
+        if (cleanups.length) Promise.all(cleanups).then(function () { renderMyWorlds(); });
+    }
+
     function _projectCard(project) {
         const card = document.createElement('div');
         card.className = 'wb-project-card';
@@ -200,13 +233,8 @@
             }],
             ['🗑', 'Delete', function (e) {
                 e.stopPropagation();
-                // Deletes only this Builder Project record (the
-                // localStorage draft) — never a published Official
-                // Theme or an exported .vtheme package, which live
-                // outside ProjectStore entirely and are never touched.
-                if (!window.confirm('Delete "' + project.name + '"? This cannot be undone.')) return;
-                window.ProjectStore.remove(project.id);
-                renderMyWorlds();
+                if (!window.confirm('Delete "' + project.name + '"? If it\'s published to your Personal Repository, that copy and its online backup are removed too. This cannot be undone.')) return;
+                _deleteProjectEverywhere(project);
             }]
         ].forEach(function (t) {
             const btn = document.createElement('button');
@@ -824,6 +852,39 @@
         info.appendChild(metaLine);
         card.appendChild(thumb);
         card.appendChild(info);
+
+        // Delete, Personal only — never Official (the platform catalog
+        // must never be nukeable from this card, a deliberate, permanent
+        // rule). This is the literal card the "keeps coming back" report
+        // was about: it previously had no delete affordance at all, so
+        // even after _projectCard's own Delete was extended to clean up
+        // the Repository, a Personal Theme with no local draft (the
+        // exact state this card represents) still had no way to be
+        // removed at all.
+        if (kind === 'personal') {
+            const ctrls = document.createElement('span');
+            ctrls.className = 'wb-project-card-controls';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-project-card-btn';
+            btn.title = 'Delete';
+            btn.setAttribute('aria-label', 'Delete');
+            btn.textContent = '🗑';
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!window.confirm('Delete "' + displayName + '" from your Personal Repository? This cannot be undone.')) return;
+                const cleanups = [];
+                if (window.ThemeRepositoryClient && window.ThemeRepositoryClient.deleteTheme) {
+                    cleanups.push(window.ThemeRepositoryClient.deleteTheme('personal', entry.theme_id).catch(function () {}));
+                }
+                if (backupProject && window.ProjectSync && window.ProjectSync.remove) {
+                    cleanups.push(window.ProjectSync.remove(backupProject.id).catch(function () {}));
+                }
+                Promise.all(cleanups).then(function () { renderMyWorlds(); });
+            });
+            ctrls.appendChild(btn);
+            card.appendChild(ctrls);
+        }
 
         function activate() {
             if (kind === 'official') {
