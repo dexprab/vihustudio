@@ -6994,7 +6994,38 @@
     // convention every other Position/Size control in this Builder
     // already uses (Place, Decorations, the pre-V3.1 Free Bounds
     // editor this supersedes).
-    function _contentTransformFields(props, xKey, yKey, wKey, hKey, onProp) {
+    //
+    // Host-aware Bounds, actually enforced: `_renderExperienceBounds`'s
+    // own copy has always claimed "Hosted by Scene/Place — this
+    // Experience fills the whole Scene/Place (read-only)," but this
+    // function rendered fully free, editable X/Y/Width/Height sliders
+    // regardless of Hosted By — a real gap found via live authoring
+    // (reported as "Background renders on top of the Holder," traced
+    // to a Scene-hosted image that had been resized to a 99%x40% band
+    // instead of the full bleed its own Bounds panel claimed). Before
+    // Scene-hosted Image/Graphics/Text existed as a real capability,
+    // this mismatch was silent — only a Colour fill could be Scene-
+    // hosted, and that path never went through here at all. Now that
+    // it's a real, reachable state, the sliders must actually honour
+    // what the Bounds panel already promises: Scene/Place hosting shows
+    // a plain read-only note instead, and self-heals any value that
+    // already drifted away from full bounds (the same read-time-
+    // reconciliation discipline `_ensureHolderDefaults`/`_ordered`
+    // already use elsewhere in this codebase) so an Experience authored
+    // before this fix corrects itself the next time its Inspector opens
+    // — no separate migration step, no silently-wrong stored data left
+    // behind for a future Build to trip over again.
+    function _contentTransformFields(props, xKey, yKey, wKey, hKey, onProp, hostedBy) {
+        if (hostedBy === 'scene' || hostedBy === 'place') {
+            if (props[xKey] !== 0 || props[yKey] !== 0 || props[wKey] !== 1 || props[hKey] !== 1) {
+                onProp(xKey)(0);
+                onProp(yKey)(0);
+                onProp(wKey)(1);
+                onProp(hKey)(1);
+            }
+            contextPanel.appendChild(_fieldHelp('Position and size are inherited from ' + (hostedBy === 'scene' ? 'the Scene' : 'the Place') + ' — this content fills it completely.'));
+            return;
+        }
         const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round((props[xKey] || 0) * 100), function (v) { onProp(xKey)(v / 100); }));
         const yGroup = _buildFieldGroup('Y %', _range(0, 100, Math.round((props[yKey] || 0) * 100), function (v) { onProp(yKey)(v / 100); }));
         _fieldRow(xGroup, yGroup);
@@ -7233,7 +7264,7 @@
             textTransform.style.marginTop = '8px';
             textTransform.textContent = 'Transform';
             contextPanel.appendChild(textTransform);
-            _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp);
+            _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp, exp.hostedBy);
             _contentCardFoot(exp);
             contextPanel = outer;
         }
@@ -7251,7 +7282,7 @@
             imageTransform.style.marginTop = '8px';
             imageTransform.textContent = 'Transform';
             contextPanel.appendChild(imageTransform);
-            _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp);
+            _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp, exp.hostedBy);
             _contentCardFoot(exp);
             contextPanel = outer;
         }
@@ -7321,7 +7352,7 @@
             graphicTransform.style.marginTop = '8px';
             graphicTransform.textContent = 'Transform';
             contextPanel.appendChild(graphicTransform);
-            _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp);
+            _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp, exp.hostedBy);
             contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.graphicRotation || 0, onProp('graphicRotation'))));
             _contentCardFoot(exp);
             contextPanel = outer;
