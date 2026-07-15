@@ -746,6 +746,18 @@ const ThemeRegistry=(function(){
   // js/app.js's own _refreshRepositoryWithTimeout() already has for a
   // slow/unreachable repository. A no-op with zero grants or with
   // ThemeRepositoryClient unavailable, same as refreshFromRepository().
+  //
+  // NOT called from this module's own self-init block (unlike
+  // _loadImported(), which has no external dependency) — a real bug
+  // found via live testing ("the theme added through vihucard why does
+  // it goes away on every hard refresh"): index.html loads
+  // js/themeRegistry.js BEFORE js/themeRepositoryClient.js, so calling
+  // this here at parse time always found window.ThemeRepositoryClient
+  // undefined and silently no-oped on every single boot, regardless of
+  // script order elsewhere or network reachability. Exported instead
+  // (see the `rehydrateRedeemed` key on the returned api below) and
+  // triggered from js/app.js's own boot sequence — the same place, and
+  // for the identical reason, refreshFromRepository() already is.
   function _rehydrateRedeemed(){
     let grants=[];
     try{
@@ -840,7 +852,6 @@ const ThemeRegistry=(function(){
   // registerOfficial(OFFICIAL_THEMES,'story');
   // registerOfficial(OFFICIAL_ARTWORK_THEMES,'artwork');
   _loadImported();
-  _rehydrateRedeemed();
 
   const api={
     THEME_SYSTEM_VERSION:THEME_SYSTEM_VERSION,
@@ -857,7 +868,8 @@ const ThemeRegistry=(function(){
     registerOfficial:registerOfficial,
     importPackage:importPackage,
     refreshFromRepository:refreshFromRepository,
-    registerRedeemedTheme:registerRedeemedTheme
+    registerRedeemedTheme:registerRedeemedTheme,
+    rehydrateRedeemed:_rehydrateRedeemed
   };
   try{ window.ThemeRegistry=api; }catch(e){}
   return api;

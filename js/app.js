@@ -1464,10 +1464,18 @@ function _refreshRepositoryWithTimeout(){
   if(typeof ThemeRegistry==='undefined' || typeof ThemeRegistry.refreshFromRepository!=='function'){
     return Promise.resolve();
   }
-  return Promise.race([
-    ThemeRegistry.refreshFromRepository().catch(function(){}),
-    new Promise(function(resolve){ setTimeout(resolve,4000); })
-  ]);
+  // Wrapped in try/catch, not just a trailing .catch() — a call that
+  // throws synchronously (e.g. ThemeRepositoryClient present but
+  // missing a method refreshFromRepository() calls directly) would
+  // otherwise escape before any Promise even exists to attach .catch()
+  // to, aborting the rest of _startCreationFlow()'s own function body —
+  // including the rehydrateRedeemed() call right after this one below.
+  try{
+    return Promise.race([
+      ThemeRegistry.refreshFromRepository().catch(function(){}),
+      new Promise(function(resolve){ setTimeout(resolve,4000); })
+    ]);
+  }catch(e){ return Promise.resolve(); }
 }
 function _startCreationFlow(){
   // Show Creation Flow immediately — CreationFlow.start() is what hides
@@ -1481,6 +1489,14 @@ function _startCreationFlow(){
   // where the user takes any time at all to get there.
   if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
   _refreshRepositoryWithTimeout();
+  // A Card-redeemed Theme's own content is deliberately never cached
+  // to localStorage (only its identifiers + expiry are) — this is the
+  // one call that re-fetches it from its owner's Personal Repository on
+  // every boot, exactly like refreshFromRepository() above. Called from
+  // here rather than from within js/themeRegistry.js's own self-init
+  // block because ThemeRepositoryClient's script tag loads AFTER
+  // themeRegistry.js's — by the time app.js runs, both are ready.
+  try{ if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.rehydrateRedeemed==='function') ThemeRegistry.rehydrateRedeemed(); }catch(e){}
 }
 (function bootstrapSession(){
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
