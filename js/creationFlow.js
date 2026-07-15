@@ -92,11 +92,6 @@ const CreationFlow=(function(){
   let _mode='new'; // 'new' (full flow) | 'change-representation' (Page Style only, no new page)
   let _selectedThemeId=null;
   let _importInputEl=null;
-  // Vihu Card Platform v1 — hoisted from _renderWorldScreen(type)'s own
-  // closure-local `type` param so a successful Card redemption can
-  // re-invoke the same screen without the caller needing to remember
-  // which Creation Type was active (see refreshWorldScreen() below).
-  let _currentScreenType=null;
 
   function _el(tag,className,text){
     const e=document.createElement(tag);
@@ -165,6 +160,26 @@ const CreationFlow=(function(){
   function _themeSource(themeId){
     const rec=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.getRecord(themeId) : null;
     return (rec && rec.source) || 'official';
+  }
+
+  // Vihu Card Platform v1 — "card imported themes should have some
+  // distinct marking." ThemeRegistry.getRecord() already stamps
+  // redeemed:true/redeemedExpiresAt on a Card-unlocked theme's own
+  // record (registerRedeemedTheme) — no new registry concept needed,
+  // just reading a field this file hadn't looked at yet.
+  function _redeemedInfo(themeId){
+    if(typeof ThemeRegistry==='undefined' || !ThemeRegistry.getRecord) return null;
+    const rec=ThemeRegistry.getRecord(themeId);
+    return (rec && rec.redeemed) ? {expiresAt:rec.redeemedExpiresAt||null} : null;
+  }
+  function _redeemedTimeLeft(expiresAt){
+    if(!expiresAt) return null;
+    const ms=expiresAt-Date.now();
+    if(ms<=0) return null; // _pruneExpiredRedeemed() will have already dropped this theme
+    const hours=ms/3600000;
+    if(hours<1) return Math.max(1,Math.round(ms/60000))+'m left';
+    if(hours<24) return Math.round(hours)+'h left';
+    return Math.round(hours/24)+'d left';
   }
 
   // A Theme card's preview swatch/icon — the same manifest fields
@@ -282,8 +297,18 @@ const CreationFlow=(function(){
       preview.style.background=pv.color;
       preview.textContent=pv.icon;
     }
+    // "card imported themes should have some distinct marking" — a
+    // Card-unlocked World is time-boxed and not a permanent addition
+    // to this World Library, so it reads visibly differently from an
+    // ordinary imported/published World, not just via a hidden field.
+    const redeemed=_redeemedInfo(theme.id);
+    if(redeemed) preview.appendChild(_el('div','creation-flow-world-card-badge','🎴'));
     card.appendChild(preview);
     card.appendChild(_el('div','creation-flow-world-name',theme.name));
+    if(redeemed){
+      const timeLeft=_redeemedTimeLeft(redeemed.expiresAt);
+      card.appendChild(_el('div','creation-flow-world-card-timeleft',timeLeft||'Card'));
+    }
     card.addEventListener('click',onClick);
     return card;
   }
@@ -373,6 +398,19 @@ const CreationFlow=(function(){
       grid.appendChild(card);
     });
     content.appendChild(grid);
+
+    // Vihu Card Platform v1 — redemption lives HERE, before any
+    // Creation Type is chosen, not on Screen 2. Screen 2's own World
+    // Library is already filtered to whichever single type is active
+    // (_themesForType) — redeeming there risked unlocking a World for
+    // the wrong category (an Artwork World redeemed while on "Tell a
+    // Story" simply vanished from that filtered view, reading as
+    // "nothing happened"). Redeeming here has no category to get wrong;
+    // _handleCardRedeemResult below routes to the matching Creation
+    // Type screen once the theme's own supportedCreationTypes is known.
+    if(typeof window.CardPlatform!=='undefined'){
+      content.appendChild(_buildCardRedeemWidget());
+    }
   }
 
   // ---------- Import Theme (Sprint 11.0 — moved onto Screen 2) ----------
@@ -439,7 +477,6 @@ const CreationFlow=(function(){
   // time; selecting a different card repaints the Preview only, never
   // spawns a second picker.
   function _renderWorldScreen(type){
-    _currentScreenType=type;
     _clear();
     _setAtmosphere(true);
 
@@ -479,14 +516,6 @@ const CreationFlow=(function(){
     }
     const importedRow=_el('div','creation-flow-world-row');
     sourcesPanel.appendChild(_sourceGroup('📚 World Library','All kinds of worlds from anywhere',importedRow));
-    // Vihu Card Platform v1 — redemption lives here, right beside World
-    // Library, not a separate app/screen. A redeemed World is added to
-    // ThemeRegistry as a time-boxed 'imported' theme (see
-    // ThemeRegistry.registerRedeemedTheme), so it shows up in the very
-    // row above the moment refreshWorldScreen() repaints.
-    if(typeof window.CardPlatform!=='undefined'){
-      sourcesPanel.appendChild(_buildCardRedeemWidget());
-    }
 
     const preview=_el('div','creation-flow-preview');
     layout.appendChild(preview);
@@ -558,6 +587,11 @@ const CreationFlow=(function(){
       const heroBadge=_el('div','creation-flow-preview-badge',pv.icon);
       preview.appendChild(heroBadge);
       preview.appendChild(_el('div','creation-flow-preview-heading',theme.name));
+      const redeemed=_redeemedInfo(theme.id);
+      if(redeemed){
+        const timeLeft=_redeemedTimeLeft(redeemed.expiresAt);
+        preview.appendChild(_el('div','creation-flow-preview-redeemed-note','🎴 Unlocked with a Card'+(timeLeft?' — '+timeLeft:'')));
+      }
       if(pv.description) preview.appendChild(_el('p','creation-flow-preview-desc',pv.description));
 
       const reps=_representationsForTheme(theme.id,type.id);
@@ -627,19 +661,6 @@ const CreationFlow=(function(){
 
     paintRows();
     paintPreview();
-  }
-
-  // Vihu Card Platform v1 — re-invokes Screen 2 for whichever Creation
-  // Type is currently showing, so a successful Card redemption (which
-  // happens on this same screen) can make the newly-unlocked World
-  // appear in the World Library row with no reload and no caller-side
-  // bookkeeping. A no-op if Screen 2 isn't the active screen (e.g. this
-  // is called after the overlay has already closed) — mirrors
-  // onImported()'s own existing "just call _renderWorldScreen(type)
-  // again" pattern, generalized into a stable exported name.
-  function refreshWorldScreen(){
-    if(!_currentScreenType || !overlay || overlay.classList.contains('hidden')) return;
-    _renderWorldScreen(_currentScreenType);
   }
 
   // ---------- Vihu Card Platform v1 — Redeem widget ----------
@@ -736,12 +757,39 @@ const CreationFlow=(function(){
       clearBoard();
       return;
     }
+    clearBoard();
+    _routeAfterRedeem(result, status);
+  }
+
+  // Redeeming happens before any Creation Type is chosen (Screen 1),
+  // so there is no "current screen" to simply repaint — this decides
+  // where the newly-unlocked World actually belongs. A theme
+  // registered via ThemeRegistry.registerRedeemedTheme() carries its
+  // own real supportedCreationTypes (the compiled package's own field,
+  // unchanged by redemption); matching it against CREATION_TYPES is
+  // the same check _themesForType() already makes for Screen 2's own
+  // filtering, just run once here to decide navigation instead of
+  // filtering a list.
+  function _routeAfterRedeem(result,status){
+    const theme=(typeof ThemeRegistry!=='undefined') ? ThemeRegistry.get(result.themeId) : null;
+    const supported=(theme && Array.isArray(theme.supportedCreationTypes)) ? theme.supportedCreationTypes : [];
+    const matches=CREATION_TYPES.filter(function(t){ return supported.indexOf(t.id)!==-1; });
+    if(matches.length===1){
+      // The obvious case: jump straight to the one screen this World
+      // belongs on, with it already selected — landing there IS the
+      // confirmation, no separate message needed.
+      _selectedThemeId=result.themeId;
+      _renderWorldScreen(matches[0]);
+      return;
+    }
+    // Zero or several matching types — stay on Screen 1 (nothing to
+    // auto-pick) and say so in place, since the widget/status line
+    // survives here (Screen 1 isn't being re-rendered).
+    const typeNames=matches.map(function(t){ return t.title; });
     status.textContent='✨ '+(result.label||'World')+' unlocked'+
       (result.triesRemaining!=null?' — '+result.triesRemaining+' tries left':'')+
-      '. Added to your World Library below.';
+      (typeNames.length ? '. Choose "'+typeNames.join('" or "')+'" above to find it.' : '. Choose a creation type above to find it.');
     status.className='creation-flow-card-status ok';
-    clearBoard();
-    refreshWorldScreen();
   }
 
   function _buildCardRedeemPanel(panel){
@@ -756,7 +804,7 @@ const CreationFlow=(function(){
     const status=_el('p','creation-flow-card-status');
     panel.appendChild(status);
 
-    const redeemBtn=_el('button','creation-flow-card-redeem-btn','Redeem');
+    const redeemBtn=_el('button','creation-flow-card-redeem-btn','✨ Redeem');
     redeemBtn.type='button';
     panel.appendChild(redeemBtn);
 
@@ -997,8 +1045,7 @@ const CreationFlow=(function(){
   return {
     start:start,
     changeRepresentation:changeRepresentation,
-    currentRepresentations:currentRepresentations,
-    refreshWorldScreen:refreshWorldScreen
+    currentRepresentations:currentRepresentations
   };
 })();
 try{ window.CreationFlow=CreationFlow; }catch(e){}

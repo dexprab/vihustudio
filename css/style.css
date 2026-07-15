@@ -4828,9 +4828,36 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:26px;
   border:1px solid var(--cf-line);
   overflow:hidden;
+  position:relative;
 }
 .creation-flow-world-thumb img{ width:100%; height:100%; object-fit:cover; }
 .creation-flow-world-name{ font-size:13px; font-weight:700; color:var(--text); }
+/* Vihu Card Platform v1 — "card imported themes should have some
+   distinct marking": a Card-unlocked World is time-boxed, not a
+   permanent World Library addition, so it reads visibly differently
+   at a glance — a small corner ribbon on the thumbnail (opposite
+   corner from the selected-state checkmark, which is card-level, not
+   thumb-level) plus a time-left caption under the name. */
+.creation-flow-world-card-badge{
+  position:absolute;
+  top:6px;
+  left:6px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:rgba(20,14,8,0.62);
+  color:#fff;
+  font-size:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.creation-flow-world-card-timeleft{
+  font-size:10.5px;
+  font-weight:700;
+  color:var(--gold);
+  letter-spacing:.02em;
+}
 .creation-flow-add-world-card{ border-style:dashed; }
 .creation-flow-add-world-thumb{
   background:var(--cf-paper-alt);
@@ -4839,12 +4866,17 @@ body.creation-flow-active .app-header{ display:none; }
   font-weight:700;
 }
 
-/* Vihu Card Platform v1 — the Redeem widget, collapsed by default
-   beside the World Library row. Same paper/line/gold vocabulary as the
-   rest of the sources panel above, so it reads as one more part of that
-   panel rather than a bolted-on feature. */
+/* Vihu Card Platform v1 — the Redeem widget. Lives on Screen 1 (below
+   the Creation Type grid), not Screen 2's World Library — redeeming
+   before any Creation Type is chosen means there is no category the
+   unlocked World can be "wrong" for; _routeAfterRedeem() sends it to
+   the right Screen 2 once its own supportedCreationTypes is known.
+   Constrained to the same column width as the type grid above it, so
+   it reads as one more section of Screen 1 rather than a full-bleed
+   bar. */
 .creation-flow-card-redeem{
-  margin-top:22px;
+  max-width:520px;
+  margin:22px auto 0;
   padding-top:18px;
   border-top:1px dashed var(--cf-line);
 }
@@ -4874,26 +4906,35 @@ body.creation-flow-active .app-header{ display:none; }
   color:var(--text-secondary);
   line-height:1.5;
 }
+/* Vihu Card Platform v1 — the tap board matches the validated wireframe
+   artifact's own "Star Matrix" look, and deliberately reuses the exact
+   same dark-navy/gold palette worldBuilderApp.js's _drawCardBack()
+   already draws onto a real Card's back face (#2A2140/#120E1E/#E8C766)
+   — the redeem experience and the printed card back read as the same
+   object, not two different visual languages for one mechanic. */
 .creation-flow-card-board{
   position:relative;
   display:grid;
-  grid-template-columns:20px repeat(10,1fr);
-  grid-template-rows:20px repeat(10,1fr);
+  grid-template-columns:22px repeat(10,1fr);
+  grid-template-rows:22px repeat(10,1fr);
   gap:2px;
-  max-width:340px;
+  max-width:360px;
   aspect-ratio:1;
   margin:0 auto;
-  padding:6px;
-  border:1px solid var(--cf-line);
-  border-radius:14px;
-  background:var(--cf-paper-alt);
+  padding:10px;
+  border:2px solid #E8C766;
+  border-radius:18px;
+  background:radial-gradient(circle at 30% 20%, #2A2140, #120E1E);
+  box-shadow:0 8px 20px rgba(0,0,0,.35);
 }
 .creation-flow-card-gridlabel{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:9px;
-  color:var(--text-tertiary);
+  font-family:'SF Mono','Cascadia Code',Consolas,monospace;
+  font-size:10px;
+  color:#8177A3;
+  user-select:none;
 }
 .creation-flow-card-cell{
   width:100%;
@@ -4901,58 +4942,66 @@ body.creation-flow-active .app-header{ display:none; }
   padding:0;
   margin:0;
   min-width:0;
-  border:1px solid var(--cf-line);
+  border:1px solid rgba(255,255,255,.08);
   border-radius:4px;
-  background:var(--cf-paper);
-  color:var(--gold);
-  font-size:12px;
+  background:rgba(255,255,255,.05);
+  color:transparent;
+  font-size:13px;
   line-height:1;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
+  transition:background .15s ease, border-color .15s ease;
 }
-.creation-flow-card-cell:hover{ border-color:var(--gold); }
+.creation-flow-card-cell:hover{ border-color:rgba(255,255,255,.3); }
 .creation-flow-card-cell.selected{
-  background:var(--navy);
-  border-color:var(--gold);
-  color:var(--gold);
+  background:rgba(232,199,102,.5);
+  border-color:#E8C766;
+  color:#E8C766;
+  text-shadow:0 0 6px rgba(232,199,102,.7);
 }
 .creation-flow-card-lines{
   position:absolute;
-  inset:6px;
+  inset:10px;
   pointer-events:none;
   overflow:visible;
 }
 .creation-flow-card-line{
-  stroke:var(--gold);
+  stroke:#E8C766;
   stroke-width:2;
   stroke-linecap:round;
+  filter:drop-shadow(0 0 4px rgba(232,199,102,.7));
 }
 .creation-flow-card-counter{
   text-align:center;
-  font-size:12px;
-  color:var(--text-secondary);
+  font-size:11.5px;
+  color:var(--text-tertiary);
+  margin-top:2px;
 }
 .creation-flow-card-status{
   min-height:16px;
   margin:0;
   text-align:center;
-  font-size:12.5px;
-  color:var(--text-secondary);
+  font-family:'SF Mono','Cascadia Code',Consolas,monospace;
+  font-size:12px;
+  letter-spacing:.02em;
+  color:#8177A3;
 }
-.creation-flow-card-status.ok{ color:#2E7D4F; font-weight:700; }
-.creation-flow-card-status.err{ color:#C1503F; font-weight:700; }
+.creation-flow-card-status.ok{ color:var(--gold); font-weight:700; }
+.creation-flow-card-status.err{ color:#C4573F; font-weight:700; }
 .creation-flow-card-redeem-btn{
   align-self:center;
-  padding:8px 22px;
+  padding:9px 26px;
   border-radius:999px;
   border:none;
   background:var(--gold);
   color:var(--navy);
   font-weight:700;
   cursor:pointer;
+  box-shadow:0 4px 12px rgba(184,144,31,.3);
 }
+.creation-flow-card-redeem-btn:hover{ filter:brightness(1.05); }
 .creation-flow-card-code-toggle{
   width:100%;
   text-align:left;
@@ -5027,6 +5076,13 @@ body.creation-flow-active .app-header{ display:none; }
   color:var(--navy);
   text-align:center;
   margin:0 0 4px;
+}
+.creation-flow-preview-redeemed-note{
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--gold);
+  text-align:center;
+  margin:0 0 8px;
 }
 .creation-flow-preview-desc{
   font-size:13px;
