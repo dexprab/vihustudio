@@ -4,6 +4,6 @@
   "task": "'i deleted it twice but it keeps coming back' -- a real, confirmed bug. My World Projects re-checks Supabase on every render and shows a card for any Personal/Official Theme this session owns even with no local draft; Delete only ever removed the LOCAL draft, deliberately, to make an Official theme un-nukeable. Applied to a Personal theme the author owns, that same rule meant Delete could never finish -- the Personal Repository row and Cloud Backup both stayed real, so the next render redrew the identical card. The exact card this produces (a Personal theme with no local draft) also had no delete control at all. Fixed: js/themeRepositoryClient.js gained deleteTheme(repositoryId, themeId) (mirrors reset()'s real-delete-confirmation discipline, scoped to one theme); projectSync.js gained remove(projectId) (deletes one Cloud Backup row). Local-card Delete now also cleans up both, best-effort, with a disclosed confirm dialog; the repo-only Personal card gained a real Delete button -- never for Official, by construction. Verified via a new 2-scenario Playwright test. Full regression across 16 scripts + 2 new scenarios + both goldenBuild.js suites unchanged. See CLAUDE.md's matching entry for the full account.",
   "build": "0108",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "1dc82e5",
   "environment": "Release"
 }
