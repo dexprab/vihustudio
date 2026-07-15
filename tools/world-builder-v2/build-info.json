@@ -5,6 +5,6 @@
   "slice": "A third real clone bug: 'duplicated but thumbnail did not resolve' -- the Welcome-screen card for a fresh clone showed a broken-image icon. Root cause: ThemeRepositoryClient.load()'s assets map holds Supabase Storage signed URLs (expiring after 1 hour), and the materializer stored those URL strings directly instead of converting them to a real data: URI the way every other Project asset is stored. A more serious latent bug found in the same investigation: ProjectCompiler.js's _toBlob only converts a data:-prefixed string via fetch, so a future re-Build of an affected clone would have silently corrupted every signed-URL asset it carried. Fixed at the root: _materializeProjectFromPackage now returns a Promise, downloading and converting every signed-URL asset to a real data: URI before the Project is ever opened or saved; a conversion failure is disclosed, not swallowed. Added onerror fallbacks on the Welcome-screen card thumbnails as defense in depth. Verified via a new test serving a real HTTP endpoint standing in for a signed URL. Full regression across 15 scripts + a new test + goldenBuild.js unchanged.",
   "build": "0082",
   "buildDate": "2026-07-14",
-  "commit": "PENDING",
+  "commit": "d162504",
   "environment": "Release"
 }
