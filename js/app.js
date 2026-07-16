@@ -30,7 +30,33 @@ const restoreSecondary=document.getElementById('restoreModalSecondary');
 let contextMenuTarget=null;
 let contextMenuPos={x:0,y:0};
 
-SlideRenderer.init(previewCanvas);
+// Scene Viewport sprint — the live editor canvas is the one canvas that
+// should genuinely resize per-Slide (a Landscape Scene shows a wide
+// page, not just a wide inner rect on a portrait page). Every other
+// canvas in the app (Publish Studio's own throwaway export canvases,
+// exportPage()'s dead temp canvas) never passes this option, so they
+// keep drawing at the fixed 1080x1350 default they always have.
+SlideRenderer.init(previewCanvas,{adaptiveViewport:true});
+
+// Scene Viewport sprint — Publish Studio renders every page through its
+// own throwaway export canvases at their own fixed destination sizes,
+// then "restores" the live editor canvas via its own init(editorCanvas)
+// call -- but that restore never triggers an actual redraw. Left alone,
+// a live editor canvas that had resized to a non-portrait Scene could
+// show a stretched/cropped page the instant Publish Studio closes,
+// until the next interaction. Resync once, exactly when that happens,
+// without any change to js/publishStudio.js itself.
+try{
+  const _publishStudioResync=new MutationObserver(function(mutations){
+    for(const m of mutations){
+      const el=m.target;
+      if(el && el.classList && el.classList.contains('publish-studio-modal') && el.classList.contains('hidden')){
+        try{ window.redrawPreview(); }catch(e){}
+      }
+    }
+  });
+  _publishStudioResync.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
+}catch(e){}
 if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
   try{ ThumbnailEngine.init(previewCanvas); }catch(e){}
 }

@@ -1,6 +1,13 @@
 const SlideRenderer=(()=>{
   let c,x;
-  const W=1080,H=1350;
+  // Scene Viewport — the resolved on-screen area a Slide's own content
+  // actually occupies. Mutable module state, re-resolved at the top of
+  // every render() for a canvas opted into adaptive sizing (see
+  // __vihuAdaptiveViewport below); every existing canvas (Publish's own
+  // throwaway exports, any caller that never opts in) keeps reading the
+  // canonical 1080x1350 default it always has.
+  let _viewportW=1080,_viewportH=1350;
+  let _dpr=1;
   const PANEL_X=70, PANEL_Y=185, PANEL_W=940, PANEL_H=930;
   // Cached after each render() so canvas hit-testing can match clicks to
   // the actual rendered bboxes — including override-driven size shifts.
@@ -93,7 +100,7 @@ const SlideRenderer=(()=>{
   // instead of drawing one, not a parallel layout system.
   //
   // `portrait` is deliberately identical to the pre-9.6 fixed panel
-  // rect (PANEL_X/Y/W/H below), so a theme with no `layouts` array
+  // rect (PANEL_X/Y/PANEL_W/PANEL_H below), so a theme with no `layouts` array
   // (every theme before this sprint) and a Museum Gallery slide that
   // hasn't picked a layout yet both resolve to the exact same
   // geometry — zero regression either way.
@@ -102,13 +109,38 @@ const SlideRenderer=(()=>{
   // Design Board's Wide composition puts the picture on the left ~55%
   // of the slide with a real text column on the right (see
   // _captionRectFor), not just a wider centered rect.
+  // Scene Viewport sprint — every entry below now sits inside a Scene
+  // Viewport actually shaped to match (see SCENE_VIEWPORT_BY_ASPECT):
+  // `landscape`/`full-bleed` were re-authored (previously placement
+  // rects inside an always-portrait canvas); `portrait`/`quote` are
+  // unchanged (their Viewport stays 1080x1350); `square`/`wide` are
+  // re-centered within their own now-correct Viewport dimensions as a
+  // consistency pass (no live theme reaches either today).
   const LAYOUT_RECT={
     portrait:    {x:PANEL_X, y:PANEL_Y, w:PANEL_W, h:PANEL_H},
-    landscape:   {x:70,  y:340, w:940,  h:610},
-    square:      {x:190, y:250, w:700,  h:700},
-    wide:        {x:40,  y:400, w:560,  h:500},
+    landscape:   {x:70,  y:130, w:1210, h:820},
+    square:      {x:190, y:190, w:700,  h:700},
+    wide:        {x:70,  y:200, w:880,  h:600},
     quote:       {x:140, y:460, w:800,  h:380},
-    'full-bleed':{x:0,   y:0,   w:1080, h:1350}
+    'full-bleed':{x:0,   y:0,   w:1080, h:1920}
+  };
+
+  // Scene Viewport — the resolved {w,h} a Slide's own content should
+  // occupy, keyed by the same aspect vocabulary LAYOUT_RECT already
+  // uses (World Builder v2's own real ASPECT_RATIOS table,
+  // tools/world-builder-v2/js/services/engineSchema.js). `portrait`/
+  // `quote` match the canonical default exactly (zero pixel change for
+  // any existing theme); the others give a Scene's own Aspect Ratio a
+  // genuinely differently-shaped Viewport instead of just a placement
+  // rect inside an always-portrait canvas.
+  const DEFAULT_VIEWPORT={w:1080, h:1350};
+  const SCENE_VIEWPORT_BY_ASPECT={
+    portrait:    {w:1080, h:1350},
+    landscape:   {w:1350, h:1080},
+    square:      {w:1080, h:1080},
+    wide:        {w:1600, h:900},
+    quote:       {w:1080, h:1350},
+    'full-bleed':{w:1080, h:1920}
   };
 
   // Layouts belong to the theme (the spec's words) — same single
@@ -136,13 +168,25 @@ const SlideRenderer=(()=>{
   // quote text). Returns {rect, composition} instead of a bare rect so
   // render() can branch on it; _panelRectFor below still hands back
   // just the rect for every caller that only ever needed geometry.
+  // Shared by _resolveLayout (LAYOUT_RECT lookup) and _sceneViewportFor
+  // (SCENE_VIEWPORT_BY_ASPECT lookup) so the two tables can never
+  // resolve a different aspect for the same slide.
+  function _resolvedAspectKey(s){
+    const theme=_layoutTheme(s);
+    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
+    if(!layouts || !layouts.length) return null;
+    const chosenId=(s && s.metadata && s.metadata.layout) || null;
+    const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
+    return preset && (preset.aspect||preset.id);
+  }
+
   function _resolveLayout(s){
     const theme=_layoutTheme(s);
     const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
     if(!layouts || !layouts.length) return null;
     const chosenId=(s && s.metadata && s.metadata.layout) || null;
     const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
-    const key=preset && (preset.aspect||preset.id);
+    const key=_resolvedAspectKey(s);
     const rect=(key && LAYOUT_RECT[key]) || null;
     if(!rect) return null;
     return {rect:rect, composition:(preset&&preset.composition)||'below'};
@@ -151,6 +195,19 @@ const SlideRenderer=(()=>{
   function _panelRectFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.rect) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
+  }
+
+  // Scene Viewport — the resolved {w,h} a Slide's own content should
+  // occupy. Omitted `s` (or a Cover/Hook/End Scene-blueprint page,
+  // which has no Aspect Ratio concept of its own) returns the canonical
+  // default; a Story-role page resolves through the same aspect key
+  // _resolveLayout already uses.
+  function _sceneViewportFor(s){
+    if(!s) return DEFAULT_VIEWPORT;
+    const hasScene=(typeof SceneEngine!=='undefined') && (SceneEngine.getRenderData(s)!==null);
+    if(hasScene) return DEFAULT_VIEWPORT;
+    const key=_resolvedAspectKey(s);
+    return (key && SCENE_VIEWPORT_BY_ASPECT[key]) || DEFAULT_VIEWPORT;
   }
 
   // The active Layout preset's own `holders` count (Sprint 9.6 reserved
@@ -245,18 +302,32 @@ const SlideRenderer=(()=>{
   // to draw in the fixed 1080 × 1350 coordinate space regardless of
   // dpr thanks to the setTransform below, so no downstream renderer
   // code needs to change.
+  // Scene Viewport — `opts.adaptiveViewport` stamps a sticky, per-canvas-
+  // element flag (`cv.__vihuAdaptiveViewport`) rather than mutating any
+  // shared module state: only a canvas that explicitly opts in ever has
+  // render() resize it to a Slide's own resolved Viewport (see render()
+  // below). Every existing caller (Publish's own throwaway export
+  // canvases, any caller that never passes this option) keeps getting
+  // exactly the canonical 1080x1350 default it always has, on this
+  // element and on every future `init()` call against it, since the
+  // flag lives on the DOM element itself, not on the module.
   function init(cv, opts){
     c=cv;
-    const dpr=(opts && typeof opts.dpr==='number' && opts.dpr>0)
+    _dpr=(opts && typeof opts.dpr==='number' && opts.dpr>0)
       ? opts.dpr
       : ((typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1);
-    c.width=Math.round(W*dpr);
-    c.height=Math.round(H*dpr);
+    if(opts && typeof opts.adaptiveViewport==='boolean'){ cv.__vihuAdaptiveViewport=opts.adaptiveViewport; }
+    // Every init() call resets to the canonical default -- render()'s
+    // own Viewport-resolution step (for an adaptive canvas) re-derives
+    // the real size on the very next render() call.
+    _viewportW=DEFAULT_VIEWPORT.w; _viewportH=DEFAULT_VIEWPORT.h;
+    c.width=Math.round(_viewportW*_dpr);
+    c.height=Math.round(_viewportH*_dpr);
     x=c.getContext('2d');
-    // Draw in canonical 1080 × 1350 coordinates; DPR scaling is baked
-    // into the transform once, so `x.fillRect(0,0,W,H)` still covers
-    // the full page regardless of backing store size.
-    try{ x.setTransform(dpr,0,0,dpr,0,0); }catch(e){}
+    // DPR scaling is baked into the transform once, so
+    // `x.fillRect(0,0,_viewportW,_viewportH)` still covers the full
+    // Viewport regardless of backing store size.
+    try{ x.setTransform(_dpr,0,0,_dpr,0,0); }catch(e){}
     // Sprint 6.3 — Chromium defaults imageSmoothingQuality to 'low' which
     // smudges fine pencil strokes when the renderer downscales scans
     // into the image-holder. Set to 'high' so the single resampling step
@@ -1752,7 +1823,7 @@ const SlideRenderer=(()=>{
     if(composition!=='right') return null;
     const gap=40;
     const x0=panelRect.x+panelRect.w+gap;
-    const w0=Math.max(80,(W-40)-x0);
+    const w0=Math.max(80,(_viewportW-40)-x0);
     return {x:x0, y:panelRect.y+panelRect.h*0.32, w:w0, h:panelRect.h*0.36};
   }
 
@@ -1958,6 +2029,23 @@ const SlideRenderer=(()=>{
 
   function render(s){
     if(!x) return;
+    // Scene Viewport sprint — only a canvas explicitly opted into
+    // adaptive sizing (init(cv,{adaptiveViewport:true}), stamped on the
+    // DOM element itself) ever resizes here; every other canvas
+    // (Publish's own throwaway export canvases, any caller that never
+    // opts in) keeps drawing at whatever fixed size its own init() call
+    // already set, completely unaffected.
+    if(c && c.__vihuAdaptiveViewport){
+      const target=_sceneViewportFor(s);
+      if(target.w!==_viewportW || target.h!==_viewportH){
+        _viewportW=target.w; _viewportH=target.h;
+        c.width=Math.round(_viewportW*_dpr);
+        c.height=Math.round(_viewportH*_dpr);
+        try{ x.setTransform(_dpr,0,0,_dpr,0,0); }catch(e){}
+        try{ x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; }catch(e){}
+        try{ c.style.aspectRatio=_viewportW+' / '+_viewportH; }catch(e){}
+      }
+    }
     const t=_theme(s);
     const opts=_options(s);
     const overrides=(s && s.overrides && s.overrides.textElements) || {};
@@ -2010,7 +2098,7 @@ const SlideRenderer=(()=>{
     const _wallTone=_resolveWallTone(s);
     const _chromeColor=_chromeTextColor(_wallTone);
     x.fillStyle=_wallTone||_frameColor(t,opts);
-    x.fillRect(0,0,W,H);
+    x.fillRect(0,0,_viewportW,_viewportH);
 
     // Sprint 9.6 — Slide-targeted layers (Gallery Spotlight) sit right
     // on the background wall, before the picture panel/border draws on
@@ -2021,7 +2109,7 @@ const SlideRenderer=(()=>{
     // deferred into the merged interleaved pass below instead of being
     // bulk-drawn here — see that pass's own comment.
     if(!_noFramePipeline){
-      _renderLayers(_layerPack,'slide',{x:0,y:0,w:W,h:H},s);
+      _renderLayers(_layerPack,'slide',{x:0,y:0,w:_viewportW,h:_viewportH},s);
     }
 
     if(_composition==='quote'){
@@ -2213,7 +2301,7 @@ const SlideRenderer=(()=>{
           // _layerObjectBboxes for this page (frame/holder/element never
           // ran) and is correctly a no-op.
           const beforeLen=_layerObjectBboxes.length;
-          _renderOneLayer(o.ref,{x:0,y:0,w:W,h:H},s,o.target);
+          _renderOneLayer(o.ref,{x:0,y:0,w:_viewportW,h:_viewportH},s,o.target);
           if(_layerObjectBboxes.length>beforeLen) _lastSceneElements.push(_layerObjectBboxes.pop());
         }else if(o.kind==='scene'){
           const el=o.ref;
@@ -2267,7 +2355,7 @@ const SlideRenderer=(()=>{
     // When there's no Frame/Holder pipeline, 'overlay' was already
     // drawn as part of the merged pass above.
     if(!_noFramePipeline){
-      _renderLayers(_layerPack,'overlay',{x:0,y:0,w:W,h:H},s);
+      _renderLayers(_layerPack,'overlay',{x:0,y:0,w:_viewportW,h:_viewportH},s);
     }
 
     // Fold every Layer Pack object drawn this pass (slide/frame/holder/
@@ -2340,12 +2428,12 @@ const SlideRenderer=(()=>{
     // children can keep important content inside the safe zone.
     if(s && s.showSafeArea){
       const m=(typeof s.pageMargin==='number') ? s.pageMargin : 60;
-      if(m>0 && m<W/2 && m<H/2){
+      if(m>0 && m<_viewportW/2 && m<_viewportH/2){
         x.save();
         x.strokeStyle='rgba(255,203,69,0.7)';
         x.lineWidth=2;
         x.setLineDash([12,8]);
-        x.strokeRect(m,m,W-m*2,H-m*2);
+        x.strokeRect(m,m,_viewportW-m*2,_viewportH-m*2);
         x.restore();
       }
     }
@@ -2356,11 +2444,11 @@ const SlideRenderer=(()=>{
     x.save();
     if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
     x.fillStyle=el.color||'#000000';
-    x.fillRect(0,0,W,H);
+    x.fillRect(0,0,_viewportW,_viewportH);
     x.restore();
   }
   function _drawSceneDecoration(el){
-    const pos=el.position||{x:W/2,y:H/2};
+    const pos=el.position||{x:_viewportW/2,y:_viewportH/2};
     const size=el.size||{w:64,h:64};
     if(!el.glyph) return;
     x.save();
@@ -2379,7 +2467,7 @@ const SlideRenderer=(()=>{
   function _drawSceneText(s,el){
     const text=SceneEngine.resolveTextSource(s,el.source) || el.placeholder || '';
     if(!text) return;
-    const pos=el.position||{x:W/2,y:H/2};
+    const pos=el.position||{x:_viewportW/2,y:_viewportH/2};
     x.save();
     if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
     const stylePart=el.fontStyle && el.fontStyle!=='normal' ? el.fontStyle+' ' : '';
@@ -2400,7 +2488,7 @@ const SlideRenderer=(()=>{
     const isPlaceholder=!text;
     if(isPlaceholder) text=el.placeholder||'';
     if(!text) return;
-    const pos=el.position||{x:W/2,y:H/2};
+    const pos=el.position||{x:_viewportW/2,y:_viewportH/2};
     x.save();
     if(typeof el.opacity==='number') x.globalAlpha=el.opacity;
     if(isPlaceholder) x.globalAlpha=(x.globalAlpha||1)*0.5;
@@ -2454,7 +2542,7 @@ const SlideRenderer=(()=>{
   // the user sees the slot. The blueprint's `fit` ('cover' / 'contain')
   // seeds the default view mode but the user's `s.imageView.mode` wins.
   function _drawSceneImageHolder(s,el){
-    const pos=el.position||{x:W/2,y:H/2};
+    const pos=el.position||{x:_viewportW/2,y:_viewportH/2};
     const size=el.size||{w:600,h:600};
     const rx=pos.x-size.w/2, ry=pos.y-size.h/2;
     const img=s.image;
@@ -2570,8 +2658,8 @@ const SlideRenderer=(()=>{
   }
   function _drawSceneSticker(st){
     if(!st) return;
-    const cx=typeof st.x==='number'?st.x:W/2;
-    const cy=typeof st.y==='number'?st.y:H/2;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
     const h=typeof st.h==='number'?st.h:260;
     x.save();
@@ -2595,8 +2683,8 @@ const SlideRenderer=(()=>{
     x.restore();
   }
   function _stickerBbox(st){
-    const cx=typeof st.x==='number'?st.x:W/2;
-    const cy=typeof st.y==='number'?st.y:H/2;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
     const h=typeof st.h==='number'?st.h:260;
     // Hit-test uses the AXIS-ALIGNED bbox; rotation tightens later if
@@ -2613,10 +2701,10 @@ const SlideRenderer=(()=>{
   }
 
   function _sceneBbox(el){
-    const pos=el.position||{x:W/2,y:H/2};
+    const pos=el.position||{x:_viewportW/2,y:_viewportH/2};
     const locked=!!el.locked;
     if(el.type==='background'){
-      return {id:el.id,type:el.type,label:el.label||el.id,bx:0,by:0,bw:W,bh:H,visible:el.visible!==false,locked:locked};
+      return {id:el.id,type:el.type,label:el.label||el.id,bx:0,by:0,bw:_viewportW,bh:_viewportH,visible:el.visible!==false,locked:locked};
     }
     if(el.type==='decoration'){
       const size=el.size||{w:64,h:64};
@@ -2716,10 +2804,10 @@ const SlideRenderer=(()=>{
     x.strokeStyle='#7B9AC8';
     x.lineWidth=1.5;
     x.setLineDash([8,6]);
-    x.globalAlpha=Math.abs(cx-W/2)<SNAP_DIST?1:0.35;
-    x.beginPath(); x.moveTo(W/2,0); x.lineTo(W/2,H); x.stroke();
-    x.globalAlpha=Math.abs(cy-H/2)<SNAP_DIST?1:0.35;
-    x.beginPath(); x.moveTo(0,H/2); x.lineTo(W,H/2); x.stroke();
+    x.globalAlpha=Math.abs(cx-_viewportW/2)<SNAP_DIST?1:0.35;
+    x.beginPath(); x.moveTo(_viewportW/2,0); x.lineTo(_viewportW/2,_viewportH); x.stroke();
+    x.globalAlpha=Math.abs(cy-_viewportH/2)<SNAP_DIST?1:0.35;
+    x.beginPath(); x.moveTo(0,_viewportH/2); x.lineTo(_viewportW,_viewportH/2); x.stroke();
     x.restore();
   }
 
@@ -2760,21 +2848,22 @@ const SlideRenderer=(()=>{
     x.globalAlpha=st.opacity;
   }
 
-  // Sprint 5.1 — exposed to Story Designer as the source of truth for
-  // overflow detection. Width budget = canvas minus left/right margins
-  // (60 each side). Multi-line input also flags overflow because the
-  // current renderer draws only the first line.
-  const STORY_MAX_WIDTH=W-120;
-
   function _drawStoryText(s,theme,overrides){
     if(!s.storyBeat) return null;
+    // Sprint 5.1 — exposed to Story Designer as the source of truth for
+    // overflow detection. Width budget = viewport minus left/right
+    // margins (60 each side). Multi-line input also flags overflow
+    // because the current renderer draws only the first line.
+    // Scene Viewport sprint — computed fresh per call (not a module-
+    // parse-time constant) since _viewportW can now vary per Slide.
+    const storyMaxWidth=_viewportW-120;
     const ov=overrides['story-text']||{};
     const st=_resolveTextStyle(ov,theme.storyText.size,theme.storyText.font,theme.storyText.color,'left');
     x.save();
     _applyTextStyle(st);
     let drawX=60;
-    if(st.alignment==='center') drawX=W/2;
-    else if(st.alignment==='right') drawX=W-60;
+    if(st.alignment==='center') drawX=_viewportW/2;
+    else if(st.alignment==='right') drawX=_viewportW-60;
     drawX+=st.offsetX;
     const drawY=100+st.offsetY;
     x.fillText(s.storyBeat,drawX,drawY);
@@ -2783,8 +2872,8 @@ const SlideRenderer=(()=>{
     let bx=drawX;
     if(st.alignment==='center') bx=drawX-w/2;
     else if(st.alignment==='right') bx=drawX-w;
-    const overflow=(w>STORY_MAX_WIDTH) || (s.storyBeat.indexOf('\n')!==-1);
-    return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8,overflow:overflow,maxWidth:STORY_MAX_WIDTH};
+    const overflow=(w>storyMaxWidth) || (s.storyBeat.indexOf('\n')!==-1);
+    return {id:'story-text',label:'Story Text',bx:bx,by:drawY-st.fontSize,bw:w,bh:st.fontSize+8,overflow:overflow,maxWidth:storyMaxWidth};
   }
 
   // Inner image area inside the panel. Sprint 6.5 — padding is normally
@@ -2974,8 +3063,13 @@ const SlideRenderer=(()=>{
   // (the coordinate space every downstream renderer / hit-tester uses,
   // regardless of DPR-scaled backing store). Hit-testing on the editor
   // canvas divides mouse events by this rather than by `canvas.width`,
-  // which is now `W * dpr` on HiDPI displays.
-  function getCanvasSize(){ return {w:W, h:H}; }
+  // which is now `_viewportW * dpr` on HiDPI displays.
+  //
+  // Scene Viewport sprint — an optional `s` (slide) argument resolves
+  // the slide's own Scene Viewport (see _sceneViewportFor); omitted, this
+  // is the exact byte-identical `{w:1080,h:1350}` every pre-existing
+  // caller already gets.
+  function getCanvasSize(s){ return s!==undefined ? _sceneViewportFor(s) : DEFAULT_VIEWPORT; }
 
   // Sprint 9.7 — `positionOverride` lets a theme's Layer Pack pin
   // Handle to a specific corner (the Design Board puts it bottom-right
@@ -2998,9 +3092,9 @@ const SlideRenderer=(()=>{
     const pos=positionOverride||opts.handlePosition||'top-right';
     let hx, hy, defaultAlign;
     if(pos==='top-left'){ hx=60; hy=60; defaultAlign='left'; }
-    else if(pos==='bottom-left'){ hx=60; hy=H-30; defaultAlign='left'; }
-    else if(pos==='bottom-right'){ hx=W-60; hy=H-30; defaultAlign='right'; }
-    else { hx=W-60; hy=60; defaultAlign='right'; }
+    else if(pos==='bottom-left'){ hx=60; hy=_viewportH-30; defaultAlign='left'; }
+    else if(pos==='bottom-right'){ hx=_viewportW-60; hy=_viewportH-30; defaultAlign='right'; }
+    else { hx=_viewportW-60; hy=60; defaultAlign='right'; }
     const st=_resolveTextStyle(ov,theme.watermark.size,theme.watermark.font,colorOverride||theme.watermark.color,defaultAlign);
     x.save();
     _applyTextStyle(st);
@@ -3070,14 +3164,14 @@ const SlideRenderer=(()=>{
     else if(opts.footerStyle==='minimal') defaultSize=Math.round(defaultSize*0.75);
     const pos=opts.bookTitlePosition||'bottom-left';
     let anchorX, defaultAlign;
-    if(pos==='bottom-center'){ anchorX=W/2; defaultAlign='center'; }
-    else if(pos==='bottom-right'){ anchorX=W-60; defaultAlign='right'; }
+    if(pos==='bottom-center'){ anchorX=_viewportW/2; defaultAlign='center'; }
+    else if(pos==='bottom-right'){ anchorX=_viewportW-60; defaultAlign='right'; }
     else { anchorX=320; defaultAlign='left'; }
     const st=_resolveTextStyle(ov,defaultSize,theme.footerText.font,theme.footerText.color,defaultAlign);
     x.save();
     _applyTextStyle(st);
     anchorX+=st.offsetX;
-    const anchorY=1285+st.offsetY;
+    const anchorY=(_viewportH-65)+st.offsetY;
     x.fillText(bookTitle,anchorX,anchorY);
     const w=x.measureText(bookTitle).width;
     x.restore();
@@ -3098,11 +3192,11 @@ const SlideRenderer=(()=>{
     const pos=positionOverride||opts.pageNumber;
     let anchorX, anchorY, defaultAlign;
     if(pos==='bottom-center'){
-      anchorX=W/2; anchorY=opts.footerStyle==='hidden'?1285:1325; defaultAlign='center';
+      anchorX=_viewportW/2; anchorY=opts.footerStyle==='hidden'?(_viewportH-65):(_viewportH-25); defaultAlign='center';
     }else if(pos==='bottom-left'){
-      anchorX=60; anchorY=1285; defaultAlign='left';
+      anchorX=60; anchorY=_viewportH-65; defaultAlign='left';
     }else{
-      anchorX=900; anchorY=1285; defaultAlign='left';
+      anchorX=_viewportW-180; anchorY=_viewportH-65; defaultAlign='left';
     }
     const st=_resolveTextStyle(ov,theme.footerText.size,theme.footerText.font,colorOverride||theme.footerText.color,defaultAlign);
     x.save();

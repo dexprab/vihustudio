@@ -23,16 +23,20 @@ const ThumbnailEngine=(function(){
 
     queue = queue.then(()=> new Promise((resolve)=>{
       try{
-        // Sprint 9.0.2 — WYSIWYE. Read the canonical logical size from
-        // the renderer (1080 × 1350) instead of the DPR-scaled backing
-        // store on `previewCanvas`, and render at dpr:1 so the temp
-        // bitmap stays predictably 1080 × 1350 for the thumb downscale.
-        const canon=(typeof SlideRenderer.getCanvasSize==='function')
-          ? SlideRenderer.getCanvasSize() : {w:1080,h:1350};
-        const w=canon.w, h=canon.h;
-        const temp=document.createElement('canvas'); temp.width=w; temp.height=h;
-
-        SlideRenderer.init(temp,{dpr:1});
+        // Sprint 9.0.2 — WYSIWYE. Render at dpr:1 so the temp bitmap
+        // stays predictably sized for the thumb downscale.
+        // Scene Viewport sprint — a manual presize here (reading
+        // getCanvasSize(slide) up front) would be immediately clobbered
+        // by init()'s own unconditional reset to the canonical default,
+        // exactly the same as it always was pre-adaptiveViewport (init()
+        // has always forced its own size regardless of what a caller
+        // presized beforehand — confirmed by reading the original code).
+        // Opting this temp canvas into adaptiveViewport instead lets
+        // render()'s own resolution step size it correctly to this
+        // slide's real Scene Viewport, the same mechanism the live
+        // editor canvas already uses.
+        const temp=document.createElement('canvas');
+        SlideRenderer.init(temp,{dpr:1,adaptiveViewport:true});
 
         // Sprint 6.4 — WYSIWYE. Resolve via the shared helper so the
         // thumbnail is a faithful miniature of the preview / export.
