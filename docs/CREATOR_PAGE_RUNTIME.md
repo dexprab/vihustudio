@@ -232,6 +232,44 @@ behaviour already established) — a minor, disclosed nuance, not a
 functional regression, since a locked object was never independently
 reorderable to begin with.
 
+**Second follow-up — full merge when there's genuinely no Frame/Holder
+pipeline**: the per-bucket fix above still left a real page broken,
+because the bucket a World object lands in (`slide` vs. `overlay`) is
+decided by an unrelated heuristic (`isFullBleed`, meant for Hosted-by-
+Scene wall-vs-foreground placement) — a Shape authored with even a small
+margin lands in a *different* bucket from a true full-bleed background,
+so two Shapes that read as siblings to a Theme Author could never be
+dragged onto each other, and a lone Sticker could never move relative to
+either. A page whose active Layout has zero Places
+(`_activeLayoutHolders(s)===0`) or a Quote composition never runs the
+Frame/Panel drawing branch at all — the `frame`/`holder`/`element` Layer
+Pack targets are simply never touched there — so for exactly this shape
+of page, `slide` and `overlay` Layer Pack objects and every Scene
+element/Sticker are the ONLY things drawn, with nothing else whose order
+depends on Frame/Panel geometry. `renderer/slideRenderer.js`'s `render()`
+computes this as `_noFramePipeline` once, early; when true, the
+previously-unconditional bulk `_renderLayers(...,'slide',...)` and
+`_renderLayers(...,'overlay',...)` calls are both skipped, and every
+`slide`/`overlay` Layer Pack entry joins the Scene-element/Sticker
+natural order as ONE combined list, resolved via the same
+`_applyOrderOverride` and drawn via a new `LayerEngine.renderOne(layer,
+rect, helpers)` (`js/layerEngine.js`, extracted from `render()`'s
+existing per-layer body — `render()` itself now just calls it in a loop,
+never a second drawing implementation) exposed as
+`_renderOneLayer(layer,rect,s,target)`. A page with a real Frame/Holder
+(Museum Gallery, and every other existing theme) is completely
+unaffected — `_noFramePipeline` is false there, so the previously-shipped
+3-bucket behaviour runs unchanged. `getReorderableIds(s)`/
+`getReorderBucket(s,id)` gained a `_lastRenderWasMerged` check: a
+merged-pass page has exactly one reorderable group (bucket name
+`'merged'`), read directly off `_lastSceneElements`'s own already-
+resolved order rather than the per-target `_layerObjectBboxes` scan
+(which finds nothing for a merged page, since every entry is popped out
+of that accumulator into `_lastSceneElements` immediately as it's drawn).
+Crossing into a page that DOES have a real Frame/Holder remains the one
+still-deferred piece — that would need the Frame/Panel drawing branch
+itself restructured, a materially bigger change intentionally left out.
+
 ---
 
 ## 5. Selection lifecycle

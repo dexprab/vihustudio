@@ -14,6 +14,12 @@ const SlideRenderer=(()=>{
   // at the very end — see the comment at that concat site for why this
   // can't just push into _lastSceneElements directly.
   let _layerObjectBboxes=[];
+  // Unified Layer Ordering follow-up — true for whichever render() pass
+  // most recently used the merged, fully-interleaved slide+story+overlay
+  // draw order (no Frame/Holder pipeline running for this page). Read by
+  // getReorderableIds()/getReorderBucket() so they know the whole page
+  // is ONE reorderable group rather than three separate buckets.
+  let _lastRenderWasMerged=false;
 
   const FALLBACK_THEME={
     frame:{ color:'#1D3457' },
@@ -1584,13 +1590,33 @@ const SlideRenderer=(()=>{
     },'world'));
   }
 
-  function _renderLayers(pack,target,rect,s){
-    if(!pack || typeof LayerEngine==='undefined') return;
-    LayerEngine.render(pack,target,rect,{
+  function _layerHelpers(rect,s,target){
+    return {
       drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s),s,target); },
       drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,s),s,target); },
       drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect),s,target); }
-    });
+    };
+  }
+  function _renderLayers(pack,target,rect,s){
+    if(!pack || typeof LayerEngine==='undefined') return;
+    LayerEngine.render(pack,target,rect,_layerHelpers(rect,s,target));
+  }
+  // Unified Layer Ordering follow-up — a real World built almost
+  // entirely from moveable World-owned Decoration Shapes reported that
+  // NOTHING was truly reorderable: two Shapes landed in two different
+  // bucket ('slide' vs 'overlay', decided by the unrelated Hosted-by-
+  // Scene/full-bleed heuristic, not by anything the Theme Author would
+  // recognize as a meaningful boundary), and neither could move relative
+  // to the Sticker either — every complaint (Card Designer's Order
+  // buttons doing nothing, Object Strip drag doing nothing, one Shape
+  // moving on canvas but not the other) traced to this one root cause.
+  // Draws ONE Layer Pack entry (reused by the merged, fully-interleaved
+  // no-Frame-pipeline path in render() below) via the exact same helpers
+  // `_renderLayers` uses for its bulk pass — never a second draw
+  // implementation.
+  function _renderOneLayer(layer,rect,s,target){
+    if(typeof LayerEngine==='undefined' || typeof LayerEngine.renderOne!=='function') return;
+    LayerEngine.renderOne(layer,rect,_layerHelpers(rect,s,target));
   }
 
   // Holder rect — same insets/padding math _drawImage already applies
@@ -1768,6 +1794,19 @@ const SlideRenderer=(()=>{
     const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
     return _applyOrderOverride(natural,order);
   }
+  // Unified Layer Ordering follow-up — when the most recent render() used
+  // the merged, no-Frame-pipeline pass, every drawn object (Scene
+  // element/Sticker AND slide-/overlay-scoped World layer alike) already
+  // lives in `_lastSceneElements` in ONE final resolved order; a locked
+  // World-owned layer is excluded here exactly as it always was (never
+  // draggable), while every story-owned object (Scene element/Sticker)
+  // stays included unconditionally, matching the pre-existing story
+  // bucket's own behaviour.
+  function _mergedReorderableIds(){
+    return _lastSceneElements.filter(function(o){
+      return o.owner==='story' || (o.owner==='world' && !!o.moveable);
+    }).map(function(o){ return o.id; });
+  }
   // Exported so Card Designer's Order buttons and the Object Strip's
   // drag-to-reorder both read the SAME current effective order rather
   // than recomputing it themselves — the one place this is decided. The
@@ -1778,8 +1817,11 @@ const SlideRenderer=(()=>{
   // foreign id from a different bucket sitting anywhere in this flat list
   // (or in the persisted layerOrder it gets spliced into) can never shift
   // an object across a bucket boundary — see the comment above
-  // `_naturalStoryOrder`.
+  // `_naturalStoryOrder`. When the page has no Frame/Holder pipeline
+  // (`_lastRenderWasMerged`), there's only ONE group — read directly off
+  // `_lastSceneElements`'s already-resolved merged order instead.
   function getReorderableIds(s){
+    if(_lastRenderWasMerged) return _mergedReorderableIds();
     return _resolveStoryOrder(s).map(function(o){ return o.id; })
       .concat(_worldBucketOrder(s,false).map(function(o){ return o.id; }))
       .concat(_worldBucketOrder(s,true).map(function(o){ return o.id; }));
@@ -1793,8 +1835,11 @@ const SlideRenderer=(()=>{
   // dropped against another card in the SAME bucket — crossing buckets
   // would silently do nothing to the actual draw order (see above), so
   // this keeps the drop target from ever suggesting a move that
-  // wouldn't really happen.
+  // wouldn't really happen. When `_lastRenderWasMerged`, every reorderable
+  // id shares one bucket (named 'merged') since the whole page draws as
+  // one interleaved pass — no boundary to enforce.
   function getReorderBucket(s,id){
+    if(_lastRenderWasMerged) return _mergedReorderableIds().indexOf(id)!==-1 ? 'merged' : null;
     if(_layerObjectBboxes.some(function(o){ return o.id===id && !!o.moveable && o.target!=='overlay'; })) return 'earlier';
     if(_layerObjectBboxes.some(function(o){ return o.id===id && !!o.moveable && o.target==='overlay'; })) return 'overlay';
     if(_naturalStoryOrder(s).some(function(o){ return o.id===id; })) return 'story';
@@ -1822,6 +1867,18 @@ const SlideRenderer=(()=>{
     // gallery wall with just a quote on it); 'right' keeps everything
     // but moves the Museum Caption beside the Frame instead of below.
     const _composition=_layoutCompositionFor(s);
+    // Unified Layer Ordering follow-up — whenever there's genuinely no
+    // Frame/Holder pipeline running for this page (a Quote composition,
+    // or a Scene explicitly converged with zero Places), the 'frame'/
+    // 'holder'/'element' Layer Pack targets are never drawn at all (their
+    // own `_renderLayers` calls live inside the border-drawing branch
+    // below, which these two compositions skip outright) -- so 'slide'
+    // and 'overlay' Layer Pack objects, plus every Scene element/Sticker,
+    // are the ONLY things this page ever draws, with nothing else whose
+    // own draw-order depends on Frame/Panel geometry. That's exactly the
+    // condition under which merging all three into one fully-interleaved,
+    // freely-reorderable pass is safe — see the merged branch below.
+    const _noFramePipeline=(_composition==='quote')||(_activeLayoutHolders(s)===0);
 
     // Frame
     const _wallTone=_resolveWallTone(s);
@@ -1834,7 +1891,12 @@ const SlideRenderer=(()=>{
     // top of it. A theme with no layerPack (every theme before this
     // sprint) has _layerPack===null, so _renderLayers is a no-op.
     const _layerPack=_activeLayerPack(s);
-    _renderLayers(_layerPack,'slide',{x:0,y:0,w:W,h:H},s);
+    // When there's no Frame/Holder pipeline, 'slide'-target layers are
+    // deferred into the merged interleaved pass below instead of being
+    // bulk-drawn here — see that pass's own comment.
+    if(!_noFramePipeline){
+      _renderLayers(_layerPack,'slide',{x:0,y:0,w:W,h:H},s);
+    }
 
     if(_composition==='quote'){
       _drawQuoteText(s,t,_panelRect);
@@ -1949,7 +2011,54 @@ const SlideRenderer=(()=>{
     // zIndex, then every Sticker in array order — so this is byte-
     // identical until a Story Author actually reorders something.
     _lastSceneElements=[];
-    if(typeof SceneEngine!=='undefined'){
+    _lastRenderWasMerged=_noFramePipeline;
+    if(_noFramePipeline){
+      // Unified Layer Ordering follow-up ("reordering in object strip
+      // not happening" on a real World built almost entirely from
+      // moveable World-owned Decoration Shapes) — with no Frame/Holder
+      // pipeline running, 'slide' and 'overlay' Layer Pack objects are
+      // drawn nowhere else in this function, so they can safely join the
+      // Scene-element/Sticker interleaved pass above as ONE fully
+      // resolvable, freely-reorderable group instead of two separate
+      // fixed-position bulk draws. This is what actually lets a Shape
+      // move in front of/behind a Sticker (or another Shape it doesn't
+      // happen to share a scope with), not just within its own bucket.
+      const slideLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'slide'):[];
+      const overlayLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'overlay'):[];
+      const combinedNatural=
+        slideLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'slide'}; })
+        .concat(_naturalStoryOrder(s))
+        .concat(overlayLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'overlay'}; }));
+      const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+      const resolvedCombined=_applyOrderOverride(combinedNatural,order);
+      resolvedCombined.forEach(function(o){
+        if(o.kind==='layer'){
+          // _renderOneLayer -> _pushLayerObject pushes onto the shared
+          // _layerObjectBboxes accumulator, same as the bulk path; pull
+          // that one entry straight into _lastSceneElements here instead,
+          // so it lands in the exact position this merged pass decided,
+          // not wherever the old fixed bulk concatenation would have put
+          // it. The final fold-step below sees an empty
+          // _layerObjectBboxes for this page (frame/holder/element never
+          // ran) and is correctly a no-op.
+          const beforeLen=_layerObjectBboxes.length;
+          _renderOneLayer(o.ref,{x:0,y:0,w:W,h:H},s,o.target);
+          if(_layerObjectBboxes.length>beforeLen) _lastSceneElements.push(_layerObjectBboxes.pop());
+        }else if(o.kind==='scene'){
+          const el=o.ref;
+          if(el.type==='background') _drawSceneBackground(el);
+          else if(el.type==='decoration') _drawSceneDecoration(el);
+          else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
+          else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
+          else if(el.type==='text') _drawSceneText(s,el);
+          _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
+        }else if(o.kind==='sticker'){
+          const st=o.ref;
+          _drawSceneSticker(st);
+          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+        }
+      });
+    }else if(typeof SceneEngine!=='undefined'){
       const resolved=_resolveStoryOrder(s);
       resolved.forEach(function(o){
         if(o.kind==='scene'){
@@ -1983,7 +2092,12 @@ const SlideRenderer=(()=>{
     // pre-existing theme ever sets `target:'overlay'` on a layer, so
     // this is purely additive — zero effect on any theme that doesn't
     // use it.
-    _renderLayers(_layerPack,'overlay',{x:0,y:0,w:W,h:H},s);
+    //
+    // When there's no Frame/Holder pipeline, 'overlay' was already
+    // drawn as part of the merged pass above.
+    if(!_noFramePipeline){
+      _renderLayers(_layerPack,'overlay',{x:0,y:0,w:W,h:H},s);
+    }
 
     // Fold every Layer Pack object drawn this pass (slide/frame/holder/
     // element/overlay scopes alike) into _lastSceneElements exactly once,

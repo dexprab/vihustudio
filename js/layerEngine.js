@@ -78,6 +78,25 @@ const LayerEngine=(function(){
     };
   }
 
+  // Renders ONE already-resolved layer object against `rect`. Factored
+  // out of `render()` below so a caller that needs to interleave
+  // individual layers with other kinds of objects (SlideRenderer's
+  // Unified Layer Ordering merge, when no Frame/Holder pipeline is
+  // running for the page) can draw one layer at a time in a caller-
+  // decided order, reusing the exact same anchor/offset resolution and
+  // draw dispatch `render()`'s bulk loop already used — never a second
+  // drawing implementation.
+  function renderOne(layer,rect,helpers){
+    if(!layer || !rect || !helpers) return;
+    const layerRect=_resolveLayerRect(layer,rect);
+    const anchor=resolveAnchor(layer.anchor,layerRect||rect);
+    anchor.x+=(typeof layer.offsetX==='number')?layer.offsetX:0;
+    anchor.y+=(typeof layer.offsetY==='number')?layer.offsetY:0;
+    if(layer.type==='text' && typeof helpers.drawText==='function') helpers.drawText(layer,anchor,rect,layerRect);
+    else if(layer.type==='sticker' && typeof helpers.drawSticker==='function') helpers.drawSticker(layer,anchor,rect,layerRect);
+    else if(layer.type==='decoration' && typeof helpers.drawDecoration==='function') helpers.drawDecoration(layer,anchor,rect,layerRect);
+  }
+
   // Renders every layer targeting `target` against `rect`, dispatching
   // to whichever `helpers.draw<Type>` the caller supplied. A helper the
   // caller omits simply means that layer type is skipped at this call
@@ -86,15 +105,7 @@ const LayerEngine=(function(){
   // this sprint ships, not because the engine can't do more.
   function render(pack,target,rect,helpers){
     if(!rect || !helpers) return;
-    forTarget(pack,target).forEach(function(layer){
-      const layerRect=_resolveLayerRect(layer,rect);
-      const anchor=resolveAnchor(layer.anchor,layerRect||rect);
-      anchor.x+=(typeof layer.offsetX==='number')?layer.offsetX:0;
-      anchor.y+=(typeof layer.offsetY==='number')?layer.offsetY:0;
-      if(layer.type==='text' && typeof helpers.drawText==='function') helpers.drawText(layer,anchor,rect,layerRect);
-      else if(layer.type==='sticker' && typeof helpers.drawSticker==='function') helpers.drawSticker(layer,anchor,rect,layerRect);
-      else if(layer.type==='decoration' && typeof helpers.drawDecoration==='function') helpers.drawDecoration(layer,anchor,rect,layerRect);
-    });
+    forTarget(pack,target).forEach(function(layer){ renderOne(layer,rect,helpers); });
   }
 
   function hasLayer(pack,id){
@@ -105,6 +116,7 @@ const LayerEngine=(function(){
     forTarget:forTarget,
     resolveAnchor:resolveAnchor,
     render:render,
+    renderOne:renderOne,
     hasLayer:hasLayer
   };
   try{ window.LayerEngine=api; }catch(e){}
