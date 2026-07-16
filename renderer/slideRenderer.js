@@ -1695,6 +1695,46 @@ const SlideRenderer=(()=>{
   // setLayerOrder) written only once a Story Author actually drags a card
   // in the Object Strip or clicks an Order button — absent for every page
   // today, so this whole mechanism is purely additive.
+  //
+  // Follow-up (a real project reported to have nothing reorderable at
+  // all — a page built almost entirely from moveable World-owned
+  // Decoration Shapes plus one Sticker): a `moveable:true` World-owned
+  // Layer Pack object now ALSO joins a reorderable group — but strictly
+  // WITHIN its own draw bucket, never crossing into another one. There
+  // are three such buckets, always drawn in this fixed relative order:
+  // "earlier" (non-overlay World objects — slide/frame/holder/element
+  // scopes, drawn first), "story" (the Scene-element/Sticker interleaved
+  // pass above, drawn second), and "overlay" (overlay-scoped World
+  // objects, drawn last). Two objects that share a bucket (e.g. two
+  // Scene-hosted background Shapes, both 'slide'-scoped) can be freely
+  // reordered relative to each other — this is exactly as safe as the
+  // Scene/Sticker merge above, since nothing about their own relative
+  // draw-call order needs to move, only which one draws first within the
+  // single shared call. Crossing a bucket boundary (e.g. a 'slide'-scoped
+  // Shape moving in front of a Sticker) is NOT done here — that still
+  // needs the same deferred/two-pass drawing named above as a follow-up.
+  // `_applyOrderOverride` is the one shared resolution step every bucket
+  // (Story, Earlier, Overlay) independently runs against the SAME global
+  // `layerOrder` array — ids are unique across buckets, so a foreign id
+  // appearing in the override is simply invisible to a bucket that
+  // doesn't contain it; this is what keeps the three buckets from ever
+  // being able to interfere with each other even though they share one
+  // override list.
+  function _applyOrderOverride(natural,order){
+    if(!order || !order.length) return natural;
+    const indexOf={};
+    order.forEach(function(id,i){ indexOf[id]=i; });
+    const listed=[], unlisted=[];
+    natural.forEach(function(o){
+      if(Object.prototype.hasOwnProperty.call(indexOf,o.id)) listed.push(o); else unlisted.push(o);
+    });
+    listed.sort(function(a,b){ return indexOf[a.id]-indexOf[b.id]; });
+    // Anything never listed (e.g. a Sticker added after the last drag, or
+    // a locked World object that was never draggable to begin with) is
+    // appended after every listed object — matches the pre-existing
+    // "the last sticker added sits on top" convention.
+    return listed.concat(unlisted);
+  }
   function _naturalStoryOrder(s){
     const out=[];
     if(typeof SceneEngine==='undefined') return out;
@@ -1708,26 +1748,57 @@ const SlideRenderer=(()=>{
     return out;
   }
   function _resolveStoryOrder(s){
-    const natural=_naturalStoryOrder(s);
     const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
-    if(!order || !order.length) return natural;
-    const indexOf={};
-    order.forEach(function(id,i){ indexOf[id]=i; });
-    const listed=[], unlisted=[];
-    natural.forEach(function(o){
-      if(Object.prototype.hasOwnProperty.call(indexOf,o.id)) listed.push(o); else unlisted.push(o);
+    return _applyOrderOverride(_naturalStoryOrder(s),order);
+  }
+  // World-object bucket helpers — read straight off `_layerObjectBboxes`,
+  // the cache render() just populated for whichever slide it last drew
+  // (the same "read the last render's cache" convention getSceneElements/
+  // getTextElements already use). Only `moveable:true` entries ever join
+  // a bucket; a locked object is simply never present in either list, so
+  // it can never be dragged and never has anything dropped onto it.
+  // Resolved against the SAME `layerOrder` override render()'s own
+  // bucket-splitting step applies, so a caller asking "what's this
+  // bucket's current order" after a reorder sees the real, already-
+  // reordered result rather than the natural push order every time.
+  function _worldBucketOrder(s,wantOverlay){
+    const natural=_layerObjectBboxes.filter(function(o){
+      return !!o.moveable && (wantOverlay?o.target==='overlay':o.target!=='overlay');
     });
-    listed.sort(function(a,b){ return indexOf[a.id]-indexOf[b.id]; });
-    // Anything never listed (e.g. a Sticker added after the last drag)
-    // is appended after every listed object — matches the pre-existing
-    // "the last sticker added sits on top" convention.
-    return listed.concat(unlisted);
+    const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+    return _applyOrderOverride(natural,order);
   }
   // Exported so Card Designer's Order buttons and the Object Strip's
   // drag-to-reorder both read the SAME current effective order rather
-  // than recomputing it themselves — the one place this is decided.
+  // than recomputing it themselves — the one place this is decided. The
+  // three buckets (story/earlier/overlay) are concatenated into one flat
+  // list here purely so callers have a single "is this id reorderable at
+  // all, and what's its current position" answer; render()'s own
+  // `_applyOrderOverride` calls resolve each bucket independently, so a
+  // foreign id from a different bucket sitting anywhere in this flat list
+  // (or in the persisted layerOrder it gets spliced into) can never shift
+  // an object across a bucket boundary — see the comment above
+  // `_naturalStoryOrder`.
   function getReorderableIds(s){
-    return _resolveStoryOrder(s).map(function(o){ return o.id; });
+    return _resolveStoryOrder(s).map(function(o){ return o.id; })
+      .concat(_worldBucketOrder(s,false).map(function(o){ return o.id; }))
+      .concat(_worldBucketOrder(s,true).map(function(o){ return o.id; }));
+  }
+  // Which independent reorder bucket an id currently belongs to —
+  // 'story' (Scene elements + Stickers), 'earlier' (non-overlay
+  // World-owned objects), 'overlay' (overlay-scoped World-owned
+  // objects), or null if it isn't reorderable at all right now (a locked
+  // World object, or an id that no longer exists on the page). The
+  // Object Strip's drag handler uses this so a drag can only ever be
+  // dropped against another card in the SAME bucket — crossing buckets
+  // would silently do nothing to the actual draw order (see above), so
+  // this keeps the drop target from ever suggesting a move that
+  // wouldn't really happen.
+  function getReorderBucket(s,id){
+    if(_layerObjectBboxes.some(function(o){ return o.id===id && !!o.moveable && o.target!=='overlay'; })) return 'earlier';
+    if(_layerObjectBboxes.some(function(o){ return o.id===id && !!o.moveable && o.target==='overlay'; })) return 'overlay';
+    if(_naturalStoryOrder(s).some(function(o){ return o.id===id; })) return 'story';
+    return null;
   }
 
   function render(s){
@@ -1938,8 +2009,18 @@ const SlideRenderer=(()=>{
     // the Scene elements/Stickers that visually sit above them, and only
     // 'overlay'-scoped ones are appended after, exactly as before.
     if(_layerObjectBboxes.length){
-      const _earlierLayerObjs=_layerObjectBboxes.filter(function(o){ return o.target!=='overlay'; });
-      const _overlayLayerObjs=_layerObjectBboxes.filter(function(o){ return o.target==='overlay'; });
+      // Unified Layer Ordering follow-up — a real project reported
+      // nothing reorderable at all because its page was built almost
+      // entirely from moveable World-owned Decoration Shapes. Each of
+      // these two buckets can now be reordered WITHIN itself (a
+      // page-wide `layerOrder` override, the exact same one the Story
+      // bucket above already resolves against) — two Shapes sharing one
+      // bucket can swap which one draws first; nothing crosses the
+      // earlier/story/overlay boundary here, since that still needs the
+      // deferred/two-pass drawing named above as a follow-up.
+      const _worldOrder=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+      const _earlierLayerObjs=_applyOrderOverride(_layerObjectBboxes.filter(function(o){ return o.target!=='overlay'; }),_worldOrder);
+      const _overlayLayerObjs=_applyOrderOverride(_layerObjectBboxes.filter(function(o){ return o.target==='overlay'; }),_worldOrder);
       _lastSceneElements=_earlierLayerObjs.concat(_lastSceneElements).concat(_overlayLayerObjs);
     }
 
@@ -2975,7 +3056,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,activeLayoutHolderCount:_activeLayoutHolders};
+  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

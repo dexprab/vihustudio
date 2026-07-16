@@ -194,17 +194,43 @@ order first:
   a card changes the object's actual paint/hit-test order, not just its
   own display position in the strip.
 
-**Scope, deliberately bounded**: World-owned Layer Pack objects (moveable
-or not) are NOT part of this reorderable group. Their rect for
-`frame`/`holder`/`element` scopes is only resolved at specific points
-inside Frame/Panel drawing, and their `slide`/`overlay` scopes are drawn
-at fixed points (before Frame/Panel, and after everything else,
-respectively) that existing themes already depend on — unifying those
-safely would need deferred/two-pass drawing, a materially bigger change
-than this fix, so it's disclosed as a follow-up rather than forced in. A
-locked/non-moveable object of any kind is shown in the Object Strip
-(it's still a real object on the page) but never gets a drag handle and
-can never have anything dropped past its fixed boundary position.
+**Follow-up — moveable World-owned objects join a reorderable group of
+their own**: a real project reported nothing reorderable at all, because
+its page was built almost entirely from moveable World-owned Decoration
+Shapes plus one Sticker — with only the Sticker in the reorderable group,
+there was nothing else wired for drag/drop to combine it with. A
+`moveable:true` Layer Pack object now also joins a reorderable group, but
+strictly WITHIN its own draw bucket: there are three such buckets, always
+drawn in this fixed relative order — "earlier" (non-overlay World objects
+— slide/frame/holder/element scopes), "story" (the Scene-element/Sticker
+interleaved pass above), and "overlay" (overlay-scoped World objects).
+Two objects sharing a bucket (e.g. two Scene-hosted background Shapes,
+both `slide`-scoped) can be freely reordered relative to each other —
+exactly as safe as the Scene/Sticker merge above, since only which one
+draws first within the same shared call changes. Crossing a bucket
+boundary (e.g. a `slide`-scoped Shape moving in front of a Sticker) is
+still NOT done — that still needs the same deferred/two-pass drawing
+named above as a follow-up.
+
+`SlideRenderer.getReorderableIds(s)` now returns the union of all three
+buckets' current ids (so Object Strip's "is this draggable" check covers
+World objects too), and a new `SlideRenderer.getReorderBucket(s, id)`
+tells which bucket an id currently belongs to — `'story'` / `'earlier'`
+/ `'overlay'` / `null`. The Object Strip's drag handler
+(`_sameReorderBucket` in `js/objectStrip.js`) uses this to refuse a
+cross-bucket drop outright (no drop-indicator line, no reorder) rather
+than silently accepting a drag that wouldn't actually move anything on
+the canvas. A locked/non-moveable object of any kind is shown in the
+Object Strip (it's still a real object on the page) but never gets a
+drag handle and can never have anything dropped past its fixed boundary
+position — and since it's simply never listed in the shared
+`layerOrder` override, its own relative position can shift slightly
+alongside a freshly-reordered moveable sibling in the same bucket (it's
+always appended after every explicitly-reordered id, the same "last
+listed sits on top" convention the Story bucket's Sticker-append-on-top
+behaviour already established) — a minor, disclosed nuance, not a
+functional regression, since a locked object was never independently
+reorderable to begin with.
 
 ---
 

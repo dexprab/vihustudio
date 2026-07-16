@@ -168,6 +168,7 @@ const ObjectStrip=(function(){
     });
     card.addEventListener('dragover',function(e){
       if(!_dragId || _dragId===id) return;
+      if(!_sameReorderBucket(_dragId,id)) return; // different bucket -- see _sameReorderBucket
       e.preventDefault();
       try{ e.dataTransfer.dropEffect='move'; }catch(err){}
       const rect=card.getBoundingClientRect();
@@ -181,10 +182,27 @@ const ObjectStrip=(function(){
       _dragId=null;
       _clearDropIndicators();
       if(!draggedId || draggedId===id) return;
+      if(!_sameReorderBucket(draggedId,id)) return;
       const rect=card.getBoundingClientRect();
       const before=(e.clientX-rect.left)<rect.width/2;
       _performReorder(draggedId,id,before);
     });
+  }
+  // Unified Layer Ordering follow-up — moveable World-owned objects now
+  // also join a reorderable group (see renderer/slideRenderer.js's
+  // getReorderBucket), but strictly WITHIN their own draw bucket (Scene
+  // elements + Stickers together; non-overlay World objects together;
+  // overlay-scoped World objects together) — crossing a bucket boundary
+  // still needs deferred/two-pass drawing this pass didn't attempt. This
+  // check keeps a drag from ever suggesting a cross-bucket move that
+  // wouldn't actually change anything on the canvas: no drop-indicator
+  // line, no drop, when the dragged card and the hovered card aren't in
+  // the same bucket.
+  function _sameReorderBucket(idA,idB){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getReorderBucket!=='function') return true;
+    const a=SlideRenderer.getReorderBucket(slide,idA), b=SlideRenderer.getReorderBucket(slide,idB);
+    return !!a && a===b;
   }
   function _performReorder(draggedId,targetId,before){
     const slide=cfg.getCurrentSlide();
