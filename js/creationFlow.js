@@ -943,6 +943,20 @@ const CreationFlow=(function(){
   // closes that gap without inventing a second resolution mechanism:
   // it's the exact same override bag every hand-picked Frame Variation
   // already writes to, just pre-filled with the Theme's own intent.
+  //
+  // A real, user-reported bug: this function's own "never clobber"
+  // guard couldn't tell an auto-seeded value apart from a genuine
+  // Story-Author pick — both are just a plain string — so switching
+  // Representations (Start Creating landing on one Representation, or
+  // "Change Look" switching to a different one) after the FIRST
+  // Representation had already seeded its own Frame left every LATER
+  // Representation's own distinct Frame permanently unreachable: the
+  // border stayed stuck on whichever Frame was seen first, forever.
+  // Fixed by tracking provenance in a companion `_seededFrameVariation`
+  // field alongside `frameVariation` — re-seeding is only refused when
+  // the current value has DRIFTED from what this function itself last
+  // wrote, meaning a Story Author genuinely picked something different
+  // in Card Designer in between.
   function _seedDefaultFrameVariation(slide,representation,theme){
     if(!slide || !representation || !representation.defaultFrame || !theme) return;
     if(!Array.isArray(theme.frameVariations)) return;
@@ -951,8 +965,10 @@ const CreationFlow=(function(){
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     if(!slide.metadata.cardOverrides.artwork) slide.metadata.cardOverrides.artwork={};
-    if(slide.metadata.cardOverrides.artwork.frameVariation) return; // never clobber a Story Author's own choice
-    slide.metadata.cardOverrides.artwork.frameVariation=representation.defaultFrame;
+    const art=slide.metadata.cardOverrides.artwork;
+    if(art.frameVariation!==undefined && art.frameVariation!==art._seededFrameVariation) return; // a real Story Author pick — never clobber
+    art.frameVariation=representation.defaultFrame;
+    art._seededFrameVariation=representation.defaultFrame;
   }
 
   // ---------- Enter editor (first time only) ----------
