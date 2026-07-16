@@ -1545,7 +1545,7 @@ const SlideRenderer=(()=>{
   // _sceneBbox()/_stickerBbox() already produce, so it flows through the
   // existing Object Strip + canvas hit-test + selection-outline pipeline
   // with no changes needed there beyond consuming _lastSceneElements.
-  function _pushLayerObject(layer,type,box,s){
+  function _pushLayerObject(layer,type,box,s,target){
     if(!box) return;
     // Creator Reconciliation Sprint — moveable/editable come straight off
     // the compiled Layer Pack entry (tools/world-builder-v2's
@@ -1568,16 +1568,28 @@ const SlideRenderer=(()=>{
       visible:layer.visible!==false, locked:!layer.moveable,
       moveable:!!layer.moveable, editable:!!layer.editable,
       decorationSlot:!!layer.decorationSlot,
-      visual:_layerVisual(layer,type,s,ov)
+      visual:_layerVisual(layer,type,s,ov),
+      // A real, user-reported bug: every Layer Pack object, regardless of
+      // which of the 5 containership scopes it targets, used to be
+      // concatenated onto the very END of _lastSceneElements (see the
+      // single `.concat()` below) -- app.js's _hitTestSceneElement reads
+      // that array topmost-first (last element wins), so a 'slide'-scoped
+      // World object (drawn FIRST, visually BEHIND every Scene element and
+      // Story-Author sticker) was nonetheless always hit-tested as if it
+      // sat on TOP of them, silently stealing clicks/drags meant for a
+      // sticker the Story Author placed and can plainly see is on top.
+      // Recording which scope this entry actually targeted lets the
+      // concatenation step below restore the real visual order instead.
+      target:target
     },'world'));
   }
 
   function _renderLayers(pack,target,rect,s){
     if(!pack || typeof LayerEngine==='undefined') return;
     LayerEngine.render(pack,target,rect,{
-      drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s),s); },
-      drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,s),s); },
-      drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect),s); }
+      drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s),s,target); },
+      drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,s),s,target); },
+      drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect),s,target); }
     });
   }
 
@@ -1850,7 +1862,25 @@ const SlideRenderer=(()=>{
     // own Scene Layer pass) after the four earlier-scope _renderLayers()
     // calls but before this 'overlay' one, so a Layer Pack object is only
     // ever safe to add after this point in the function.
-    if(_layerObjectBboxes.length) _lastSceneElements=_lastSceneElements.concat(_layerObjectBboxes);
+    //
+    // A real, user-reported bug ("added a sticker, I can't drag it; the
+    // layer order buttons don't work"): every Layer Pack object used to be
+    // concatenated onto the END of _lastSceneElements as one lump,
+    // regardless of which scope drew it — but 'slide'/'frame'/'holder'/
+    // 'element'-scoped objects were all drawn EARLIER in this render pass
+    // (before Scene elements/Stickers below), while only 'overlay' is
+    // genuinely drawn LAST (Builder Convergence Sprint's own "on top of
+    // literally everything" design). Splitting on the `target` tag
+    // _pushLayerObject now records restores real visual z-order for
+    // hit-testing (app.js's _hitTestSceneElement reads this array
+    // topmost-first): earlier-scoped World objects are spliced in BEFORE
+    // the Scene elements/Stickers that visually sit above them, and only
+    // 'overlay'-scoped ones are appended after, exactly as before.
+    if(_layerObjectBboxes.length){
+      const _earlierLayerObjs=_layerObjectBboxes.filter(function(o){ return o.target!=='overlay'; });
+      const _overlayLayerObjs=_layerObjectBboxes.filter(function(o){ return o.target==='overlay'; });
+      _lastSceneElements=_earlierLayerObjs.concat(_lastSceneElements).concat(_overlayLayerObjs);
+    }
 
     // Drag guides (Sprint 4.4) — drawn under the selection outline so the
     // outline stays on top of the canvas center crosshair.
