@@ -714,6 +714,26 @@ button:active{
   font-size:8px;
   line-height:1;
 }
+/* Object Strip drag-reorder polish — a real object (has its own id) that
+   isn't in the current reorderable set gets a small lock badge on the
+   opposite corner from the edit-pencil, so "why can't I drag this"
+   always has a visible answer instead of a silent no-op. Never shown on
+   the two synthetic Background/Artwork cards, which have no id at all. */
+.object-card-lock-badge{
+  position:absolute;
+  bottom:1px;
+  left:1px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--panel);
+  border:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:8px;
+  line-height:1;
+}
 .object-card-name{
   font-size:10.5px;
   font-weight:600;
@@ -3085,15 +3105,13 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   margin-bottom:8px;
 }
 
-.sticker-flip-row,
-.sticker-layer-row{
+.sticker-flip-row{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
   gap:6px;
 }
 
-.sticker-flip-btn,
-.sticker-layer-btn{
+.sticker-flip-btn{
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -3108,8 +3126,7 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   margin:0 !important;
   transition:background 0.15s, border-color 0.15s;
 }
-.sticker-flip-btn:hover,
-.sticker-layer-btn:hover{
+.sticker-flip-btn:hover{
   background:rgba(255,203,69,0.10);
   border-color:rgba(255,203,69,0.45);
 }
@@ -3118,8 +3135,7 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   border-color:var(--gold);
   color:var(--navy);
 }
-.sticker-flip-glyph,
-.sticker-layer-glyph{
+.sticker-flip-glyph{
   font-size:18px;
   line-height:1;
 }
@@ -3157,7 +3173,6 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 .sticker-del-btn:hover{ background:rgba(192,57,43,0.08); border-color:rgba(192,57,43,0.45); }
 
 body.dark-theme .sticker-flip-btn,
-body.dark-theme .sticker-layer-btn,
 body.dark-theme .sticker-action-btn{ background:var(--panel); }
 
 /* ===========================
@@ -3185,37 +3200,6 @@ body.dark-theme .sticker-action-btn{ background:var(--panel); }
   margin-bottom:8px;
 }
 
-.frame-layer-row{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
-  gap:6px;
-}
-.frame-layer-btn{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-  padding:6px 4px;
-  background:var(--bg);
-  border:1px solid var(--line);
-  border-radius:8px;
-  cursor:pointer;
-  height:auto !important;
-  width:auto !important;
-  margin:0 !important;
-  transition:background 0.15s, border-color 0.15s;
-}
-.frame-layer-btn:hover{
-  background:rgba(255,203,69,0.10);
-  border-color:rgba(255,203,69,0.45);
-}
-.frame-layer-glyph{
-  font-size:18px;
-  line-height:1;
-}
-
-body.dark-theme .frame-layer-btn{ background:var(--panel); }
-
 /* ---------------------------
  * Sprint 8.4.1 — Decoration section (Universal Object Selection).
  * Reuses the Frame section's typography + grid so every object type
@@ -3239,36 +3223,6 @@ body.dark-theme .frame-layer-btn{ background:var(--panel); }
   opacity:0.85;
   margin-bottom:8px;
 }
-
-.decoration-layer-row{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
-  gap:6px;
-}
-.decoration-layer-btn{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-  padding:6px 4px;
-  background:var(--bg);
-  border:1px solid var(--line);
-  border-radius:8px;
-  cursor:pointer;
-  height:auto !important;
-  width:auto !important;
-  margin:0 !important;
-  transition:background 0.15s, border-color 0.15s;
-}
-.decoration-layer-btn:hover{
-  background:rgba(255,203,69,0.10);
-  border-color:rgba(255,203,69,0.45);
-}
-.decoration-layer-glyph{
-  font-size:18px;
-  line-height:1;
-}
-body.dark-theme .decoration-layer-btn{ background:var(--panel); }
 
 /* ---------------------------
  * Sprint 8.4.3 — Card Designer Inheritance.

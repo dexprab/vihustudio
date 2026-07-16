@@ -124,6 +124,16 @@ const ObjectStrip=(function(){
     const thumb=_el('div','object-card-thumb');
     _renderThumb(thumb,opts);
     if(opts.editable) thumb.appendChild(_el('span','object-card-edit-badge','✏️'));
+    // A real object (has its own id) that isn't in the current
+    // reorderable set gets a lock badge — direct product feedback:
+    // "for an object which cannot be reordered, put a lock or some kind
+    // of information show" — so a card that silently ignores a drag
+    // always has a visible reason why, distinct from the edit-pencil
+    // badge above (an object can be editable but still not reorderable,
+    // or vice versa). Never shown on the two synthetic Background/
+    // Artwork cards, which have no id and aren't real reorderable
+    // objects to begin with.
+    if(opts.id && !opts.draggable) thumb.appendChild(_el('span','object-card-lock-badge','🔒'));
     card.appendChild(thumb);
     card.appendChild(_el('div','object-card-name',opts.name));
     // Ownership-aware badge: an object a child locked themselves reads
@@ -131,6 +141,7 @@ const ObjectStrip=(function(){
     // both used to share the same "Part of the world" text.
     const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🌍 Part of the World' : '🔒 Locked');
     card.appendChild(_el('div','object-card-badge',badgeText));
+    if(opts.id && !opts.draggable) card.title="Can't be reordered";
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
     // Unified Layer Ordering — a card whose object is in the current
     // reorderable set gets real drag-to-reorder; a locked/non-moveable

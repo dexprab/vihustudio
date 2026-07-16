@@ -184,15 +184,23 @@ is byte-identical until a Story Author actually reorders something.
 An optional, page-wide override, `slide.metadata.layerOrder` (an array
 of object ids, back-most first — `SceneEngine.getLayerOrder`/
 `setLayerOrder`), lets a Story Author explicitly reorder the combined
-group. Two entry points write it, both converging on the same exported
-`SlideRenderer.getReorderableIds(slide)` to read the current effective
-order first:
+group, read via the same exported `SlideRenderer.getReorderableIds(slide)`.
 
-- Card Designer's Sticker/Frame/Decoration "Order" rows (`js/
-  cardDesigner.js`'s shared `_reorderSelected(edge, commitFn)`).
-- The Object Strip's real drag-and-drop (`js/objectStrip.js`) — dragging
-  a card changes the object's actual paint/hit-test order, not just its
-  own display position in the strip.
+**The Object Strip's own drag-and-drop (`js/objectStrip.js`) is the one
+and only reorder control** — dragging a card changes the object's actual
+paint/hit-test order, not just its own display position in the strip.
+Card Designer's Sticker/Frame/Decoration sections originally carried a
+matching "Order" button row each (a shared `_reorderSelected(edge,
+commitFn)` helper), but per direct product feedback once the Object
+Strip's drag actually shipped — "remove any reordering function from the
+right panel" — all three were removed outright, along with the now-dead
+`_reorderSelected` helper and its CSS; a card whose object isn't in the
+current reorderable set (a locked World-owned object) additionally gets a
+small 🔒 lock badge on its thumbnail (`.object-card-lock-badge`, opposite
+corner from the ✏️ edit badge, gated on the object having a real id — the
+two synthetic Background/Artwork cards never get one) — "for an object
+which cannot be reordered, put a lock or some kind of information show,"
+so a drag that would silently do nothing always has a visible reason why.
 
 **Follow-up — moveable World-owned objects join a reorderable group of
 their own**: a real project reported nothing reorderable at all, because
