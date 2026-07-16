@@ -62,6 +62,30 @@ const ProjectCompiler = (function () {
             }
         });
 
+        // A real, user-reported bug (found and fixed first in the v2
+        // twin of this file): `folders['scenes']` above is built from
+        // raw `Object.keys(project.files)` insertion order — the order
+        // Scenes were CREATED in, not the order "Reorder Scenes"
+        // (drag-and-drop, backed by `project.sceneOrder`) actually shows
+        // in the Scenes Library. `builder.js`'s `convergeScenes()` walks
+        // this array directly and has no other way to know the authored
+        // display order. `ProjectModel.scenes(project)` already
+        // correctly resolves `sceneOrder` (used everywhere else in the
+        // Builder UI) — this is the one adapter boundary that can still
+        // see the full, live `project` object, so re-sorting here is the
+        // correct, minimal fix rather than teaching the frozen
+        // `builder.js` service about `ProjectModel` at all.
+        if (folders.scenes && typeof ProjectModel !== 'undefined' && ProjectModel.scenes) {
+            const orderedIds = ProjectModel.scenes(project).map(function (s) { return s.id; });
+            folders.scenes.sort(function (a, b) {
+                const idA = a.replace(/^scenes\//, '').replace(/\.json$/, '');
+                const idB = b.replace(/^scenes\//, '').replace(/\.json$/, '');
+                const ia = orderedIds.indexOf(idA);
+                const ib = orderedIds.indexOf(idB);
+                return (ia === -1 ? orderedIds.length : ia) - (ib === -1 ? orderedIds.length : ib);
+            });
+        }
+
         const hasFolder = function (name) { return paths.some(function (p) { return p.indexOf(name + '/') === 0; }); };
         const hasFile = function (name) { return paths.indexOf(name) !== -1; };
 
