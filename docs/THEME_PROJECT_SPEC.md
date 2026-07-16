@@ -283,9 +283,10 @@ is arranged — a **composition**, not just a rectangle.
 | `description` | Optional | One line shown alongside the name. |
 | `aspect` | **Required** | Which geometry preset this layout resolves to. **Must be one of the six values the engine already understands: `portrait`, `landscape`, `square`, `wide`, `quote`, `full-bleed`** (`renderer/slideRenderer.js`'s `LAYOUT_RECT`). An unrecognized `aspect` silently falls back to the legacy fixed panel — not an error, but not what the author intended either. |
 | `composition` | Optional, default `"below"` | `"below"` — caption sits under the Frame (the default look). `"right"` — Frame on the left, caption in a column to the right (Wide). `"quote"` — no Frame/Holder at all; a centered quote replaces the picture entirely. Composition is deliberately a small closed enum today, not a free-form layout language — see §13's Responsive Layouts. |
-| `holders` | Reserved; `1` on every hand-authored Layout | How many Holders this layout's Frame contains. Multi-Holder layouts (Diptych/Triptych) remain a deliberately deferred future sprint — a hand-authored `layouts/*.json` file should still only ever write `1`. **A Scene converged via `tools/world-builder-v2`'s Builder Convergence Sprint pipeline is the one real producer of a value other than `1`**: `holders: 0` means the Scene genuinely has zero Places (e.g. a text-only or decorative-only Scene) — `renderer/slideRenderer.js`'s `_resolveBorder`/`js/objectStrip.js`'s Artwork Place card both read this to correctly skip fabricating a picture area for such a Layout, rather than always assuming one exists. The field is absent (not `0`) on every Layout that predates this — consumers must treat "absent" as "unknown, assume one," never as zero, to stay backward compatible. |
+| `holders` | Reserved; `1` on every hand-authored Layout | How many Holders (Places) this layout's Frame contains. A hand-authored `layouts/*.json` file should still only ever write `1`. **A Scene converged via `tools/world-builder-v2`'s Builder Convergence Sprint pipeline is the one real producer of a value other than `1`**: `holders: 0` means the Scene genuinely has zero Places (e.g. a text-only or decorative-only Scene) — `renderer/slideRenderer.js`'s `_resolveBorder`/`js/objectStrip.js`'s Artwork Place card both read this to correctly skip fabricating a picture area for such a Layout, rather than always assuming one exists. The field is absent (not `0`) on every Layout that predates this — consumers must treat "absent" as "unknown, assume one," never as zero, to stay backward compatible. |
+| `placeRects` | Optional, additive — new alongside `holders` (Multiple Artwork Places Per Page) | An array carrying every Place's own authored geometry/presentation, in the same array order the Theme Author built them in: `{id, name, position:{x,y}, size:{w,h}, shape, padding, fit, frame}` (fractional `position`/`size`, resolved by Studio onto whichever pixel rect this Layout's own `aspect` already produces — a Place's fractional rect subdivides that rect the same way it subdivides Builder's own Scene canvas). `tools/world-builder-v2`'s Builder Convergence Sprint pipeline is the one real producer today (one entry per `scene.holders[]`, same order); a hand-authored `layouts/*.json` file has no reason to write this. Absent or empty — every Layout that predates this feature, and any hand-authored Layout — means "exactly one implicit Place," resolved from `holders`/the legacy fixed rect exactly as before; only a Layout carrying a real, populated `placeRects` of length > 1 lifts the previous "Diptych/Triptych remain a deferred future sprint" ceiling and shows more than one independent artwork upload area in Creator. Only the first entry's `frame` reference is also mirrored onto the Representation's own `defaultFrame` (below), for full backward compatibility with every existing reader of that field; every entry's own `frame` reference is otherwise resolved independently, per-Place. |
 | `supportedFrames` | Optional | Authoring guidance only: which Frame Variation ids this layout was designed to look good with. Not enforced — every Frame Variation remains selectable with every Layout. |
-| `defaultHolderMode` | Optional | Authoring guidance only: `"fit"` \| `"fill"` \| `"original"`. Documents the layout's intended Holder mode; does not currently auto-apply it (Holder mode is chosen independently per picture). |
+| `defaultHolderMode` | Optional | Authoring guidance only: `"fit"` \| `"fill"` \| `"original"`. Documents the layout's intended Holder mode; does not currently auto-apply it (Holder mode is chosen independently per picture) — a Place's own `fit` field inside `placeRects`, when present, is its real per-Place default. |
 
 **Responsibilities.** A Layout owns geometry and composition. It never
 owns colour, texture, or border — that's the Frame's job (§6). It never
@@ -900,6 +901,75 @@ values (`"fill"`/`"image"`); Museum Gallery (a theme with no Scenes)
 still imports/renders/applies with zero behavior change; the golden-
 theme fixture's full 30-assertion regression suite
 (`tools/world-builder/verify/goldenBuild.js`) still passes unchanged.
+
+---
+
+### Multiple Artwork Places Per Page (`tools/world-builder-v2` only)
+
+Answers a direct product request: "support as many holders as many
+authored by builder." Lifts the "only the first Place converges onto
+`defaultFrame` — Engine V1 has exactly one Holder per page" ceiling the
+section above documents for `tools/world-builder/` (v1) — but *only* for
+`tools/world-builder-v2`, per its own established precedent as the
+Builder new capability work lands in going forward; v1's `convergeScene()`
+is completely untouched, so a v1-authored theme keeps its pre-existing
+one-Holder behaviour exactly as before.
+
+**Compile-time** (`tools/world-builder-v2/js/services/builder.js`'s
+`convergeScene()`): every Place now converges, in full, onto the new
+`placeRects` array (§5) — not just the first — alongside the unchanged
+`holders` count and `defaultFrame` (still the first Place's Frame, for
+full backward compatibility with every existing reader of that field,
+e.g. `js/creationFlow.js`'s `_seedDefaultFrameVariation`).
+
+**Runtime** (`renderer/slideRenderer.js`): a Place's fractional
+`position`/`size` is resolved onto whichever single pixel rect this
+page's Layout `aspect` already produces (`_placePixelRectFor`) — the
+same rect a single-Place theme has always used, now treated as the
+"stage" every Place subdivides, exactly mirroring how Builder's own
+Scene canvas is subdivided by its own Places. Place 1 is completely
+unchanged — still `slide.image`/`slide.metadata.cardOverrides.image`/
+`.border`/`.artwork`, still the literal selection id `'image-holder'`.
+Every additional Place (index ≥ 1) is purely additive: its own picture
+lives in a sibling runtime cache (`slide._placeImages[placeId]`, never
+persisted directly) plus a persisted counterpart
+(`slide.metadata.placeContent[placeId] = {dataURL, imageView,
+cardOverrides:{artwork, border}}`, the identical shape `cardOverrides.
+image`/`.border`/`.artwork` already use, just relocated per-Place — no
+new field shapes invented), and its own resolved Frame (its own explicit
+override if a Story Author set one, else the Theme Author's own
+authored `frame` reference for that Place, read live off the compiled
+Layout rather than a separately-seeded snapshot). Caption text and any
+hand-authored `'frame'`/`'holder'`/`'element'`-scoped Layer Pack entries
+(Museum Gallery's Wax Seal/Museum Caption) deliberately stay anchored to
+Place 1 only — a page-level Museum Caption has no obvious per-Place
+analog, and `tools/world-builder-v2`'s own compiled Scene Layers never
+target those three containership scopes anyway (always `'slide'`/
+`'overlay'`, per `convergeSceneLayer`) — so this is a real, disclosed,
+narrow limitation, not an oversight.
+
+**Creator UI**: Object Strip (`js/objectStrip.js`) shows one card per
+Place (Place 1's own card wording unchanged; extra Places use the
+Theme Author's own Place name when present); the canvas's own picture-
+pan/select gesture (`js/app.js`) generalizes to whichever Place rect was
+actually clicked, using the new ids `'image-place-2'`/`'image-place-3'`/
+etc. for anything beyond Place 1; Context Panel's Replace/Add Artwork
+and Crop/Rotate actions route to the correct Place's own storage;
+Card Designer's Fit/Fill/Original toggle and Bigger↔Smaller/Move
+sliders are Place-aware too. Frame Look/Frame Style/Artwork Presentation
+fine-tuning (the theme-driven `WorkspaceBuilder`-backed controls) stay
+Place-1-only for now — a disclosed, bounded follow-up opportunity, not a
+silent gap: every extra Place still renders with its own Theme-Author-
+authored default Frame, just not yet further customizable per-Place via
+Card Designer.
+
+`js/projectManager.js`'s `serialize()` needed no change at all — it
+already wholesale-copies `slide.metadata` (which is where
+`placeContent` lives); `deserialize()` gained one new async rehydration
+loop, parallel to its existing `loadImageFromDataURL(p.image)` call, to
+rebuild `slide._placeImages` on project load. `js/pageOps.js`'s
+`duplicatePage()` carries `_placeImages` across the copy the same way it
+already carries `image`/`_imageDataURL`.
 
 ---
 

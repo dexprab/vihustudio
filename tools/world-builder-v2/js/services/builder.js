@@ -236,13 +236,22 @@ class BuildEngine {
      * Pack entry's `scope` — see below — matches slide.metadata.layout
      * at render time, per renderer/slideRenderer.js's _activeLayerPack).
      *
-     * Only the Scene's first Place's Frame reference converges onto the
-     * Representation's defaultFrame — Engine V1 has exactly one Holder
-     * per page (docs/THEME_PROJECT_SPEC.md §5's "holders: Reserved,
-     * always 1 in V1"), a pre-existing, disclosed ceiling this sprint
-     * does not lift. Every Scene Layer (Background fill / Decoration /
-     * Text — Holders themselves aside) converges via convergeSceneLayer
-     * below, in Scene Stack order so z-ordering survives the trip.
+     * Multiple Artwork Places Per Page — the Scene's first Place's Frame
+     * reference still converges onto the Representation's defaultFrame
+     * alone (a pre-existing, backward-compatible default every reader of
+     * `defaultFrame` — e.g. _seedDefaultFrameVariation — already expects),
+     * but every Place now ALSO converges, in full, onto the new additive
+     * `placeRects` array below — position/size/shape/padding/fit/frame
+     * for each one, in scene.holders' own array order (Place 1, Place
+     * 2, ...). This is what lets renderer/slideRenderer.js render and
+     * independently edit as many artwork areas as a Theme Author
+     * actually authored, instead of only ever the first. Absent on any
+     * Layout compiled before this change (and on anything compiled by
+     * tools/world-builder/, v1, which is untouched) — Studio must treat
+     * a missing/empty placeRects as "exactly one implicit Place."
+     * Every Scene Layer (Background fill / Decoration / Text — Places
+     * themselves aside) converges via convergeSceneLayer below, in
+     * Scene Stack order so z-ordering survives the trip.
      */
     async convergeScene(scene, package_) {
         const layoutId = 'scene-' + scene.id;
@@ -269,7 +278,25 @@ class BuildEngine {
             // what lets renderer/slideRenderer.js's _resolveBorder and
             // js/objectStrip.js's Artwork Place card skip fabricating a
             // picture area for a Scene that never authored one.
-            holders: holders.length
+            holders: holders.length,
+            // Multiple Artwork Places Per Page — every Place's own
+            // fractional rect/shape/fit/Frame, additive alongside the
+            // bare count above. Each entry's `position`/`size` are
+            // fractions of the SAME "stage" as Builder's own Scene
+            // canvas — Studio's renderer maps them onto whichever single
+            // panel rect the page's Layout aspect already resolves to.
+            placeRects: holders.map(function (h) {
+                return {
+                    id: h.id,
+                    name: h.name || null,
+                    position: { x: (h.position && h.position.x) || 0, y: (h.position && h.position.y) || 0 },
+                    size: { w: (h.size && h.size.w) || 0, h: (h.size && h.size.h) || 0 },
+                    shape: h.shape || 'rectangle',
+                    padding: (typeof h.padding === 'number') ? h.padding : 0,
+                    fit: h.fit || 'fit',
+                    frame: h.frame || null
+                };
+            })
         });
 
         const representation = {

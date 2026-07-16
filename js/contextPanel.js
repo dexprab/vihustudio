@@ -346,13 +346,40 @@ const ContextPanel=(function(){
   // today always adds a NEW slide. Fit / Fill / Original / Frame
   // Variations are the existing CardDesigner 'image' + 'frame' sections,
   // shown right below this row by _setCardSections.
+  //
+  // Multiple Artwork Places Per Page — the current selection's own scene
+  // id IS the Place id ('image-holder' for Place 1, unchanged; an extra
+  // Place's own 'image-place-N' id otherwise); every function below reads
+  // it once and routes to the correct storage, Place 1's own path
+  // completely unchanged.
+  function _currentPlaceId(){
+    const id=host && typeof host.getSelectedSceneElement==='function' ? host.getSelectedSceneElement() : null;
+    return (id && id!=='image-holder') ? id : undefined;
+  }
+  function _hasPlaceImage(slide,placeId){
+    if(!slide) return false;
+    if(!placeId) return !!slide.image;
+    return !!(slide._placeImages && slide._placeImages[placeId] && slide._placeImages[placeId].width);
+  }
   function _applyImageResult(result){
     const slide=_currentSlide();
     if(!slide || !result) return;
+    const placeId=_currentPlaceId();
     const img=new Image();
     img.onload=function(){
-      slide.image=img;
-      slide._imageDataURL=result.dataURL;
+      if(!placeId){
+        slide.image=img;
+        slide._imageDataURL=result.dataURL;
+      }else{
+        if(!slide.metadata) slide.metadata={};
+        if(!slide.metadata.placeContent) slide.metadata.placeContent={};
+        if(!slide.metadata.placeContent[placeId]) slide.metadata.placeContent[placeId]={};
+        slide.metadata.placeContent[placeId].dataURL=result.dataURL;
+        if(!slide._placeImages) slide._placeImages={};
+        slide._placeImages[placeId]=img;
+      }
+      // The page thumbnail represents every Place combined, so any
+      // Place's picture changing invalidates it, not only Place 1's.
       delete slide.thumbnail;
       if(typeof ThumbnailEngine!=='undefined'){
         try{ ThumbnailEngine.generate(slide).then(function(){
@@ -364,6 +391,7 @@ const ContextPanel=(function(){
         if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
         if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
       }
+      if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
       if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
     };
     img.src=result.dataURL;
@@ -376,7 +404,13 @@ const ContextPanel=(function(){
     input.addEventListener('change',function(){
       const file=input.files && input.files[0];
       if(!file || typeof PictureStudio==='undefined') return;
-      PictureStudio.open(file,{defaultMode:'fit',onApply:_applyImageResult});
+      const placeId=_currentPlaceId();
+      const places=(placeId && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRects==='function')
+        ? SlideRenderer.getPlaceRects(_currentSlide())
+        : null;
+      const place=places && places.find(function(p){ return p.id===placeId; });
+      const defaultMode=(place && place.place && place.place.fit) || 'fit';
+      PictureStudio.open(file,{defaultMode:defaultMode,onApply:_applyImageResult});
     });
     input.click();
   }
@@ -384,7 +418,10 @@ const ContextPanel=(function(){
   function _cropRotateArtwork(){
     const slide=_currentSlide();
     if(!slide || typeof PictureStudio==='undefined') return;
-    const source=slide.image||slide._imageDataURL;
+    const placeId=_currentPlaceId();
+    const source=placeId
+      ? ((slide._placeImages && slide._placeImages[placeId]) || (slide.metadata && slide.metadata.placeContent && slide.metadata.placeContent[placeId] && slide.metadata.placeContent[placeId].dataURL))
+      : (slide.image||slide._imageDataURL);
     if(!source) return;
     PictureStudio.open(source,{defaultMode:'fit',onApply:_applyImageResult});
   }
@@ -393,7 +430,8 @@ const ContextPanel=(function(){
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
     const slide=_currentSlide();
-    const hasImage=!!(slide && slide.image);
+    const placeId=_currentPlaceId();
+    const hasImage=_hasPlaceImage(slide,placeId);
     const banner=_el('div','context-panel-heading context-selection-banner');
     banner.appendChild(_el('span','context-selection-banner-icon','🖼️'));
     banner.appendChild(_el('span','context-selection-banner-label','Your Picture'));

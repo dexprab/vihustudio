@@ -150,12 +150,39 @@ const CardDesigner=(function(){
     return section;
   }
 
+  // Multiple Artwork Places Per Page — the current selection's own scene
+  // id IS the Place id ('image-holder' for Place 1, unchanged; an extra
+  // Place's own 'image-place-N' id otherwise). undefined preserves every
+  // function below's exact pre-existing Place-1 behaviour.
+  function _currentPlaceId(){
+    if(!host||typeof host.getSelectedSceneElement!=='function') return undefined;
+    let id=null;
+    try{ id=host.getSelectedSceneElement(); }catch(e){}
+    return (id && id!=='image-holder') ? id : undefined;
+  }
+
+  // Multiple Artwork Places Per Page — `placeId` omitted preserves the
+  // exact Place-1 (slide.metadata.cardOverrides.image) path below,
+  // unchanged; a real id reads/creates that Place's own view bag under
+  // slide.metadata.placeContent[placeId].imageView instead.
+  function _placeViewBag(slide,placeId){
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.placeContent) slide.metadata.placeContent={};
+    if(!slide.metadata.placeContent[placeId]) slide.metadata.placeContent[placeId]={};
+    return slide.metadata.placeContent[placeId];
+  }
+
   // Sprint 4.5: image overrides live at slide.metadata.cardOverrides.image.
   // Legacy data from Sprint 4.2 lived at slide.metadata.imageView and is
   // migrated on first access; this single getter ensures all later writes go
   // to the new path so saved projects converge without a schema bump.
-  function _ensureView(slide){
+  function _ensureView(slide,placeId){
     if(!slide) return null;
+    if(placeId){
+      const bag=_placeViewBag(slide,placeId);
+      if(!bag.imageView) bag.imageView={scale:DEFAULT_VIEW.scale,offsetX:DEFAULT_VIEW.offsetX,offsetY:DEFAULT_VIEW.offsetY,fit:DEFAULT_VIEW.fit};
+      return bag.imageView;
+    }
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     if(!slide.metadata.cardOverrides.image){
@@ -169,8 +196,11 @@ const CardDesigner=(function(){
     return slide.metadata.cardOverrides.image;
   }
 
-  function _readView(slide){
+  function _readView(slide,placeId){
     if(!slide||!slide.metadata) return null;
+    if(placeId){
+      return (slide.metadata.placeContent && slide.metadata.placeContent[placeId] && slide.metadata.placeContent[placeId].imageView) || null;
+    }
     if(slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) return slide.metadata.cardOverrides.image;
     if(slide.metadata.imageView) return slide.metadata.imageView;
     return null;
@@ -198,7 +228,7 @@ const CardDesigner=(function(){
   // any older code path still reading it directly; 'original' writes
   // 'fit' as an inert placeholder since `mode` always wins once set.
   function _setMode(mode){
-    const v=_ensureView(_currentSlide());
+    const v=_ensureView(_currentSlide(),_currentPlaceId());
     if(!v) return;
     v.mode=(mode==='original')?'original':(mode==='fill')?'fill':'fit';
     v.fit=(mode==='fill')?'fill':'fit';
@@ -206,7 +236,7 @@ const CardDesigner=(function(){
   }
 
   function _setScale(value){
-    const v=_ensureView(_currentSlide());
+    const v=_ensureView(_currentSlide(),_currentPlaceId());
     if(!v) return;
     let n=parseFloat(value);
     if(!isFinite(n)) n=1;
@@ -217,7 +247,7 @@ const CardDesigner=(function(){
   }
 
   function _setImageProp(key,value){
-    const v=_ensureView(_currentSlide());
+    const v=_ensureView(_currentSlide(),_currentPlaceId());
     if(!v) return;
     if(typeof value==='number' && !isFinite(value)) return;
     v[key]=value;
@@ -225,31 +255,49 @@ const CardDesigner=(function(){
   }
 
   // Sprint 4.5 reset actions (composition-only, adjustments-only, full).
-  function _pruneImage(slide){
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+  // Multiple Artwork Places Per Page — `placeId` omitted preserves each
+  // reset's exact Place-1 behaviour below, unchanged.
+  function _pruneImage(slide,placeId){
+    if(!slide||!slide.metadata) return;
+    if(placeId){
+      const bag=slide.metadata.placeContent && slide.metadata.placeContent[placeId];
+      if(bag && bag.imageView && Object.keys(bag.imageView).length===0) delete bag.imageView;
+      return;
+    }
+    if(!slide.metadata.cardOverrides) return;
     const img=slide.metadata.cardOverrides.image;
     if(img && Object.keys(img).length===0) delete slide.metadata.cardOverrides.image;
   }
   function _resetImageComposition(){
     const slide=_currentSlide();
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
-    const img=slide.metadata.cardOverrides.image;
+    const placeId=_currentPlaceId();
+    if(!slide) return;
+    const img=_readView(slide,placeId);
     if(!img) return;
     COMPOSITION_KEYS.forEach(function(k){ delete img[k]; });
-    _pruneImage(slide);
+    _pruneImage(slide,placeId);
     _commit();
   }
   function _resetImageAdjustments(){
     const slide=_currentSlide();
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
-    const img=slide.metadata.cardOverrides.image;
+    const placeId=_currentPlaceId();
+    if(!slide) return;
+    const img=_readView(slide,placeId);
     if(!img) return;
     ADJUSTMENT_KEYS.forEach(function(k){ delete img[k]; });
-    _pruneImage(slide);
+    _pruneImage(slide,placeId);
     _commit();
   }
   function _resetImage(){
     const slide=_currentSlide();
+    const _resetPlaceId=_currentPlaceId();
+    if(_resetPlaceId){
+      if(slide && slide.metadata && slide.metadata.placeContent && slide.metadata.placeContent[_resetPlaceId]){
+        delete slide.metadata.placeContent[_resetPlaceId].imageView;
+      }
+      _commit();
+      return;
+    }
     if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
     delete slide.metadata.cardOverrides.image;
     _commit();
@@ -368,7 +416,7 @@ const CardDesigner=(function(){
       labelText:'Move Left ↔ Right',valueClass:'image-offsetx-value',sliderClass:'image-offsetx-slider',
       min:MOVE_MIN,max:MOVE_MAX,step:1,
       onInput:function(v){
-        const view=_ensureView(_currentSlide());
+        const view=_ensureView(_currentSlide(),_currentPlaceId());
         if(!view) return;
         if(Math.abs(v)<0.5) delete view.offsetX; else view.offsetX=Math.round(v);
         _commit();
@@ -380,7 +428,7 @@ const CardDesigner=(function(){
       labelText:'Move Up ↔ Down',valueClass:'image-offsety-value',sliderClass:'image-offsety-slider',
       min:MOVE_MIN,max:MOVE_MAX,step:1,
       onInput:function(v){
-        const view=_ensureView(_currentSlide());
+        const view=_ensureView(_currentSlide(),_currentPlaceId());
         if(!view) return;
         if(Math.abs(v)<0.5) delete view.offsetY; else view.offsetY=Math.round(v);
         _commit();
@@ -782,9 +830,10 @@ const CardDesigner=(function(){
 
   // Sprint 6.5 — Picture-section effective values. Legacy power-user keys
   // (crop / focal / straighten / brightness / etc.) still render from
-  // saved projects but aren't exposed in the UI any more.
-  function _effectiveImageView(slide){
-    const v=(slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.image) || (slide && slide.metadata && slide.metadata.imageView) || {};
+  // saved projects but aren't exposed in the UI any more. `placeId`
+  // omitted preserves the exact Place-1 lookup below, unchanged.
+  function _effectiveImageView(slide,placeId){
+    const v=_readView(slide,placeId) || {};
     return {
       fit:v.fit||'fit',
       // Sprint 9.6 — `mode` is authoritative when set (see
@@ -800,8 +849,13 @@ const CardDesigner=(function(){
   function _refreshImage(){
     if(!mountedRoot) return;
     const s=_currentSlide();
-    const eff=_effectiveImageView(s);
-    const hasImage=!!(s && s.image);
+    const placeId=_currentPlaceId();
+    const eff=_effectiveImageView(s,placeId);
+    // Multiple Artwork Places Per Page — whether the SELECTED Place has
+    // a picture yet, not always Place 1's.
+    const hasImage=placeId
+      ? !!(s && s._placeImages && s._placeImages[placeId] && s._placeImages[placeId].width)
+      : !!(s && s.image);
     mountedRoot.querySelectorAll('.image-mode-btn').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-mode')===eff.mode);
       b.disabled=!hasImage;
@@ -2165,9 +2219,11 @@ const CardDesigner=(function(){
 
   // Read the active slide's imageView, defaulting if absent. Exposed so
   // canvas pan handlers in the host can read+write without poking metadata
-  // directly. Returns the live object, not a copy.
-  function getActiveImageView(){
-    const v=_ensureView(_currentSlide());
+  // directly. Returns the live object, not a copy. Multiple Artwork
+  // Places Per Page — `placeId` omitted (Place 1) preserves the exact
+  // pre-existing lookup; a real id returns that Place's own live view.
+  function getActiveImageView(placeId){
+    const v=_ensureView(_currentSlide(),placeId);
     return v||null;
   }
 

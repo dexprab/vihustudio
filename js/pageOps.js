@@ -86,6 +86,14 @@ const PageOps=(function(){
       _lastStory:original._lastStory,
       _imageDataURL:original._imageDataURL
     };
+    // Multiple Artwork Places Per Page — extra Places' loaded pictures
+    // (slide._placeImages, a sibling runtime cache to `image` above) need
+    // their own explicit copy here; `metadata` above already carries
+    // their persisted half (`metadata.placeContent`) since it's a plain
+    // object property. Shared Image object references between original
+    // and duplicate, exactly matching how `image` above already shares
+    // one Image object between the two.
+    if(original._placeImages) dup._placeImages=Object.assign({},original._placeImages);
     AppState.slides.splice(index+1,0,dup);
     _afterMutation(index+1);
     if(!dup.thumbnail){ try{ ThumbnailEngine.generate(dup); }catch(e){} }

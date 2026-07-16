@@ -157,6 +157,27 @@ const ProjectManager=(function(){
           totalPages:total
         };
         if(p.image) slide._imageDataURL=p.image;
+        // Multiple Artwork Places Per Page — Place 1's picture is
+        // rehydrated above via the exact pre-existing loadImageFromDataURL
+        // call; every extra Place's own dataURL (slide.metadata.
+        // placeContent[id].dataURL, already carried through wholesale by
+        // `metadata` above, needing no serialize() change) gets the same
+        // async rehydration into a sibling runtime cache, slide._placeImages,
+        // never persisted directly.
+        const placeContent=slide.metadata && slide.metadata.placeContent;
+        if(placeContent){
+          const placeIds=Object.keys(placeContent);
+          for(let pi=0;pi<placeIds.length;pi++){
+            const pid=placeIds[pi];
+            const dataURL=placeContent[pid] && placeContent[pid].dataURL;
+            if(!dataURL) continue;
+            const placeImg=await loadImageFromDataURL(dataURL);
+            if(placeImg){
+              if(!slide._placeImages) slide._placeImages={};
+              slide._placeImages[pid]=placeImg;
+            }
+          }
+        }
         slides.push(slide);
       }
       AppState.slides=slides;

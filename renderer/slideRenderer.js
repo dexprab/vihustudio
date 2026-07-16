@@ -170,6 +170,59 @@ const SlideRenderer=(()=>{
     return (preset && typeof preset.holders==='number') ? preset.holders : null;
   }
 
+  // Multiple Artwork Places Per Page — the active Layout preset's real,
+  // per-Place rects (position/size/shape/padding/fit/frame), additive
+  // alongside the bare count above. Returns null when the preset carries
+  // no `placeRects` array (every Layout compiled before this feature,
+  // and anything compiled by tools/world-builder/ v1) — callers must
+  // treat null the same as "exactly one implicit Place," never crash.
+  function _activeLayoutPlaces(s){
+    const theme=_layoutTheme(s);
+    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
+    if(!layouts || !layouts.length) return null;
+    const chosenId=(s && s.metadata && s.metadata.layout) || null;
+    const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
+    return (preset && Array.isArray(preset.placeRects) && preset.placeRects.length) ? preset.placeRects : null;
+  }
+
+  // Maps one Place's fractional rect onto the already-resolved single
+  // Layout/panel rect -- that rect is the "stage" a Place's own
+  // position/size subdivides, the same way Builder's own Scene canvas is
+  // subdivided by its Places.
+  function _placePixelRectFor(panelRect,place){
+    const pos=(place && place.position) || {x:0,y:0};
+    const size=(place && place.size) || {w:1,h:1};
+    return {
+      x: panelRect.x + (pos.x||0)*panelRect.w,
+      y: panelRect.y + (pos.y||0)*panelRect.h,
+      w: Math.max(1,(size.w||0)*panelRect.w),
+      h: Math.max(1,(size.h||0)*panelRect.h)
+    };
+  }
+
+  // Multiple Artwork Places Per Page — every place selection/storage id
+  // used elsewhere in this file (Object Strip cards, app.js's hit-test,
+  // slide.metadata.placeContent/slide.placeImages keys) is index-based
+  // ('image-holder' for index 0, 'image-place-N' for index N-1>=1) —
+  // deliberately DIFFERENT from a compiled Place's own Builder-authored
+  // `id` field (e.g. 'holder-2'), since two Places sharing one compiled
+  // theme could coincidentally reuse an id another theme already uses
+  // for something else entirely. This one small pair of helpers is the
+  // single place that translates between the two id spaces, so every
+  // other function in this file only ever has to deal with one of them
+  // at a time.
+  function _placeIndexForId(placeId){
+    if(!placeId || placeId==='image-holder') return 0;
+    const m=/^image-place-(\d+)$/.exec(placeId);
+    return m ? (parseInt(m[1],10)-1) : -1;
+  }
+  function _placeByExternalId(s,placeId){
+    const idx=_placeIndexForId(placeId);
+    if(idx<0) return null;
+    const places=_activeLayoutPlaces(s);
+    return (places && places[idx]) || null;
+  }
+
   function _layoutCompositionFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.composition) || 'below';
@@ -326,15 +379,36 @@ const SlideRenderer=(()=>{
   // touched any of these controls has an empty cardOverrides bag, so
   // this is a no-op and rendering is exactly what _artworkBorder
   // already produced pre-9.6.
-  function _cardArtworkOverride(s){
+  // Multiple Artwork Places Per Page — `placeId` omitted/undefined
+  // preserves the exact page-level (Place 1) lookup below unchanged;
+  // a real id reads that Place's own override bag instead
+  // (slide.metadata.placeContent[placeId].cardOverrides.artwork).
+  function _cardArtworkOverride(s,placeId){
+    if(placeId){
+      return (s && s.metadata && s.metadata.placeContent && s.metadata.placeContent[placeId]
+        && s.metadata.placeContent[placeId].cardOverrides && s.metadata.placeContent[placeId].cardOverrides.artwork) || {};
+    }
     return (s && s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.artwork) || {};
   }
-  function _resolveArtworkFields(theme,s){
+  function _resolveArtworkFields(theme,s,placeId){
     if(!theme) return null;
-    const cardOv=_cardArtworkOverride(s);
+    const cardOv=_cardArtworkOverride(s,placeId);
     let merged=Object.assign({},theme);
-    if(cardOv.frameVariation && Array.isArray(theme.frameVariations)){
-      const variation=theme.frameVariations.find(function(v){ return v && v.id===cardOv.frameVariation; });
+    // Multiple Artwork Places Per Page — an extra Place has no
+    // page-level `representation.defaultFrame` seeding step the way
+    // Place 1 does (js/creationFlow.js's _seedDefaultFrameVariation);
+    // instead, absent a Story Author's own per-Place override, its
+    // compiled `frame` reference (the Theme Author's own authored
+    // default for THIS Place) is read live off the active Layout —
+    // simpler than a second seeding mechanism, and always reflects the
+    // current compiled Place rather than a stale seeded snapshot.
+    let frameVariationId=cardOv.frameVariation;
+    if(!frameVariationId && placeId){
+      const place=_placeByExternalId(s,placeId);
+      if(place && place.frame) frameVariationId=place.frame;
+    }
+    if(frameVariationId && Array.isArray(theme.frameVariations)){
+      const variation=theme.frameVariations.find(function(v){ return v && v.id===frameVariationId; });
       if(variation && variation.fields) merged=Object.assign(merged,variation.fields);
     }
     ['presentation','frame','paper','lighting','caption','composition'].forEach(function(k){
@@ -383,7 +457,17 @@ const SlideRenderer=(()=>{
   // stays byte-identical for projects that haven't touched the border.
   // Sprint 6.5.1 — also carries the design id so per-design ornament
   // drawing dispatches consistently.
-  function _resolveBorder(s){
+  // Multiple Artwork Places Per Page — `placeId` omitted/undefined
+  // preserves every existing line below byte-for-byte (Place 1's own
+  // page-level `s.overrides.border`/Sprint-8.4.2-fallback resolution,
+  // unchanged); a real id resolves an extra Place's own border instead —
+  // its own explicit override if a Story Author set one, else the
+  // active Artwork Theme resolved through that Place's own default Frame
+  // (_resolveArtworkFields' own placeId branch), with no fallback to the
+  // page-level Sprint 8.4.2 Picture-Holder-defaults (a Story-Theme-level
+  // concept with no per-Place analog — an extra Place only ever exists
+  // under an active Artwork Theme in the first place).
+  function _resolveBorder(s,placeId){
     // A Scene converged with zero Places has no picture area at all --
     // Builder's own Runtime Preview draws nothing for it (no Frame, no
     // mat, no wall chrome, no placeholder). The check below at the top
@@ -399,6 +483,32 @@ const SlideRenderer=(()=>{
     // branch runs, makes zero-Holder mean "no border, period" -- the
     // one behaviour both branches were always supposed to share.
     if(_activeLayoutHolders(s)===0) return null;
+    if(placeId){
+      const placeOv=(s && s.metadata && s.metadata.placeContent && s.metadata.placeContent[placeId]) || null;
+      const pb=placeOv && placeOv.cardOverrides && placeOv.cardOverrides.border;
+      if(pb){
+        const pLine=pb.line||{};
+        const pShadow=pb.shadow||{};
+        return {
+          design:pb.design||null,
+          padding:(typeof pb.padding==='number')?pb.padding:20,
+          fill:pb.fill||'page',
+          cornerRadius:(typeof pb.cornerRadius==='number')?pb.cornerRadius:0,
+          lineEnabled:!!pLine.enabled,
+          lineWidth:(typeof pLine.width==='number')?pLine.width:2,
+          lineColor:pLine.color||'#000000',
+          shadowEnabled:!!pShadow.enabled,
+          shadowIntensity:(typeof pShadow.intensity==='number')?pShadow.intensity:0.4
+        };
+      }
+      const artTheme=_artworkTheme(s);
+      if(artTheme){
+        const art=_resolveArtworkFields(artTheme,s,placeId);
+        const artworkBorder=_artworkBorder(art);
+        if(artworkBorder) return artworkBorder;
+      }
+      return null;
+    }
     const ov=(s && s.overrides) || null;
     const b=ov && ov.border;
     if(!b){
@@ -1862,6 +1972,22 @@ const SlideRenderer=(()=>{
     // concept distinct from the mat) can override it.
     const _border=_resolveBorder(s);
     const _panelRect=_panelRectFor(s);
+    // Multiple Artwork Places Per Page — Place 1's OWN rendered rect.
+    // When a Layout authors 2+ Places, Place 1 must be subdivided by its
+    // own fractional position/size exactly like every other Place —
+    // otherwise it would draw across the FULL panel, visibly overlapping
+    // whatever extra Places sit beside it (the entire point of a Dual
+    // Holder layout is two side-by-side, non-overlapping areas). When a
+    // Layout authors 0 or 1 Place (every existing single/zero-Place
+    // theme, including one rebuilt post-feature with exactly one
+    // compiled Place), Place 1 keeps the full, unmodified panel rect —
+    // byte-identical to this feature's own backward-compatibility
+    // guarantee, since a lone authored Place's own fraction (which
+    // Builder computes to leave room for ITS OWN caption inside Builder's
+    // different canvas model) has no reliable 1:1 correspondence to
+    // Engine V1's already-caption-aware panelRect.
+    const _places=_activeLayoutPlaces(s);
+    const _place1Rect=(_places && _places.length>1) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect;
     // Sprint 9.7 — "Each layout must define its own composition."
     // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
     // gallery wall with just a quote on it); 'right' keeps everything
@@ -1914,10 +2040,10 @@ const SlideRenderer=(()=>{
       // scoped Layer Pack entries above (background fill/decorations)
       // are the only content a zero-Holder Scene ever declares.
     }else if(_border){
-      _drawPictureFrameFill(_panelRect,_border,t);
-      _drawArtworkPresentation(_panelRect,_border);
+      _drawPictureFrameFill(_place1Rect,_border,t);
+      _drawArtworkPresentation(_place1Rect,_border);
     }else{
-      _drawPanel(t.panel.color,opts.panelStyle,_panelRect);
+      _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
     }
 
     // Sprint 6.2 — when a scene is active, the scene blueprint owns the
@@ -1940,7 +2066,7 @@ const SlideRenderer=(()=>{
       // Sprint 9.7 — 'quote' composition has no Frame/Holder/image at
       // all (see _drawQuoteText above), so this entire block is skipped.
       if(_composition!=='quote' && s.image && s.image.width){
-        _drawImage(s,_border,_panelRect);
+        _drawImage(s,_border,_place1Rect);
       }else if(_composition!=='quote' && _border){
         // Creator Acceptance Sprint — a Story-role page has no
         // SceneEngine blueprint (see _hasScene above), so it never had
@@ -1949,31 +2075,33 @@ const SlideRenderer=(()=>{
         // has resolved (an Artwork Theme's Frame is active), so the
         // frame/mat/wall chrome above is already drawn — this just
         // fills the empty content rect inside it.
-        _drawArtworkPlaceholder(_panelRect,_border,_chromeColor);
+        _drawArtworkPlaceholder(_place1Rect,_border,_chromeColor);
       }
       // Sprint 6.5 — Picture Border stroke sits above the image so it
       // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
       // (sparkles, grain, ribbon corners, …) sits between image and
       // stroke so the stroke can still cap it visually.
       if(_composition!=='quote' && _border){
-        _drawPictureFrameOrnament(_panelRect,_border,t);
-        _drawPictureFrameStroke(_panelRect,_border);
+        _drawPictureFrameOrnament(_place1Rect,_border,t);
+        _drawPictureFrameStroke(_place1Rect,_border);
         // Creator Acceptance Sprint — _border._artwork is now set
         // whenever an Artwork Theme is active, image or not
         // (_resolveBorder no longer gates on hasImage). Caption safety
         // still holds: _drawArtworkCaption itself returns early unless
         // slide.metadata.artwork.title is a real, non-empty string, so
         // an image-less or caption-less page still draws no caption.
-        if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_panelRect,t);
+        if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_place1Rect,t);
         // Sprint 9.6 — Frame-targeted layers (Wax Seal) draw on top of
         // the fully-assembled frame; Holder-targeted layers (Museum
         // Caption) anchor to the picture content rect, not the outer
         // frame, so a wide mat doesn't push the caption far from the
         // picture it labels. Sprint 9.7 — the 'right' composition
         // (Wide layout) moves that caption rect beside the Frame
-        // instead, via _captionRectFor.
-        _renderLayers(_layerPack,'frame',_panelRect,s);
-        const _captionRect=_captionRectFor(_panelRect,_composition)||_holderRectFor(_panelRect,_border);
+        // instead, via _captionRectFor. Multiple Artwork Places Per
+        // Page — all keyed off Place 1's own rect (_place1Rect), unions
+        // with _panelRect for the single-Place case exactly as before.
+        _renderLayers(_layerPack,'frame',_place1Rect,s);
+        const _captionRect=_captionRectFor(_place1Rect,_composition)||_holderRectFor(_place1Rect,_border);
         _renderLayers(_layerPack,'holder',_captionRect,s);
         // docs/THEME_PROJECT_SPEC.md §7/§11 — Element is a fourth, real
         // containership scope a Layer can target ("the child's actual
@@ -1985,6 +2113,49 @@ const SlideRenderer=(()=>{
         // geometry) is what closes target:"element" going from
         // validating/compiling silently to actually rendering.
         _renderLayers(_layerPack,'element',_captionRect,s);
+      }
+
+      // Multiple Artwork Places Per Page — Place 1's own frame content
+      // above is completely unchanged; every additional Place authored
+      // in World Builder gets its own independent Frame chrome + picture
+      // (or placeholder), reusing the exact same low-level draw
+      // functions Place 1 already calls, just against that Place's own
+      // resolved rect/border/image. Caption and 'frame'/'holder'/
+      // 'element' Layer Pack rendering deliberately stay Place-1-only —
+      // a page-level Museum Caption has no obvious per-Place analog, and
+      // Builder V2's own compiled Scene Layers never target those three
+      // containership scopes anyway (always 'slide'/'overlay').
+      if(_composition!=='quote'){
+        if(_places && _places.length>1){
+          for(let _pi=1;_pi<_places.length;_pi++){
+            const _place=_places[_pi];
+            // The storage/selection id for this Place is index-based
+            // ('image-place-N'), deliberately distinct from the Place's
+            // own compiled Builder id (_place.id) — see _placeByExternalId's
+            // own comment for why the two id spaces are kept separate.
+            const _placeSelId='image-place-'+(_pi+1);
+            const _placeRect=_placePixelRectFor(_panelRect,_place);
+            const _placeBorder=_resolveBorder(s,_placeSelId);
+            const _placeContent=(s.metadata && s.metadata.placeContent && s.metadata.placeContent[_placeSelId])||null;
+            const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
+            const _placeView=(_placeContent && _placeContent.imageView)||null;
+            if(_placeBorder){
+              _drawPictureFrameFill(_placeRect,_placeBorder,t);
+              _drawArtworkPresentation(_placeRect,_placeBorder);
+            }else{
+              _drawPanel(t.panel.color,opts.panelStyle,_placeRect);
+            }
+            if(_placeImg && _placeImg.width){
+              _drawImage(s,_placeBorder,_placeRect,_placeImg,_placeView);
+            }else if(_placeBorder){
+              _drawArtworkPlaceholder(_placeRect,_placeBorder,_chromeColor);
+            }
+            if(_placeBorder){
+              _drawPictureFrameOrnament(_placeRect,_placeBorder,t);
+              _drawPictureFrameStroke(_placeRect,_placeBorder);
+            }
+          }
+        }
       }
 
       // Decorations on the frame
@@ -2624,13 +2795,20 @@ const SlideRenderer=(()=>{
   // identity of the design reads in the layout.
   const DEFAULT_IMG_PAD=20;
 
-  function _drawImage(s,border,panelRect){
+  // Multiple Artwork Places Per Page — `imgOverride`/`viewOverride`
+  // omitted preserves the exact page-level (Place 1) behaviour below,
+  // reading `s.image`/`s.imageView`; when provided (an extra Place's own
+  // loaded Image + its own view bag), every line below reads those
+  // instead, with no other change to this function's geometry/filter
+  // logic.
+  function _drawImage(s,border,panelRect,imgOverride,viewOverride){
     const rect=panelRect||{x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
     const insets=border ? _getDesignInsets(border) : {top:DEFAULT_IMG_PAD,right:DEFAULT_IMG_PAD,bottom:DEFAULT_IMG_PAD,left:DEFAULT_IMG_PAD};
     const pad=border ? border.padding : DEFAULT_IMG_PAD;
     const IMG_X=rect.x+insets.left, IMG_Y=rect.y+insets.top;
     const IMG_W=Math.max(1,rect.w-insets.left-insets.right), IMG_H=Math.max(1,rect.h-insets.top-insets.bottom);
-    const v=s.imageView||{};
+    const img=imgOverride||s.image;
+    const v=viewOverride||s.imageView||{};
     // Sprint 4.5 — crop / straighten / focal point / image adjustments.
     const focalX=typeof v.focalX==='number' && isFinite(v.focalX) ? Math.max(0,Math.min(1,v.focalX)) : 0.5;
     const focalY=typeof v.focalY==='number' && isFinite(v.focalY) ? Math.max(0,Math.min(1,v.focalY)) : 0.5;
@@ -2647,7 +2825,7 @@ const SlideRenderer=(()=>{
     const sharpness=typeof v.sharpness==='number'?v.sharpness:0;
     const vignette=typeof v.vignette==='number'?v.vignette:0;
 
-    const iw=s.image.width, ih=s.image.height;
+    const iw=img.width, ih=img.height;
     // Cropped source rect (in original image coords) — never modifies the
     // Image; just narrows the slice that gets drawn.
     const srcX=cLeft*iw, srcY=cTop*ih;
@@ -2715,7 +2893,7 @@ const SlideRenderer=(()=>{
       x.translate(-cx0,-cy0);
     }
     if(filterParts.length>0) x.filter=filterParts.join(' ');
-    x.drawImage(s.image, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
+    x.drawImage(img, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
     if(filterParts.length>0) x.filter='none';
     // Sprint 6.3.1 — runtime tripwire. The source we just drew is the
     // cropped slice (srcW × srcH); the rendered slice is (dw × dh). If
@@ -2743,6 +2921,42 @@ const SlideRenderer=(()=>{
   // layout's Frame rect (see _panelRectFor); omitted, it's the legacy
   // fixed rect exactly as before, for any caller not yet slide-aware.
   function getPanelRect(s){ return s!==undefined ? _panelRectFor(s) : {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H}; }
+
+  // Multiple Artwork Places Per Page — pixel rects for every Place on
+  // this page (id + rect), in the same array order as the compiled
+  // Layout's own placeRects (Place 1 first). Every existing single/zero-
+  // Place theme resolves to exactly one entry (id:'image-holder', the
+  // legacy panel rect) so every caller can loop uniformly instead of
+  // special-casing "one implicit Place." `id` for extra Places
+  // (index>=1) is `'image-place-'+(index+1)` — a NEW id, distinct from
+  // the legacy `'image-holder'` string every existing caller already
+  // hardcodes for Place 1.
+  //
+  // Place 1's rect matches render()'s own _place1Rect exactly: the FULL
+  // panelRect when 0 or 1 Places are authored (every existing single/
+  // zero-Place theme, byte-identical to this feature's own backward-
+  // compatibility guarantee — a lone authored Place's own fraction has
+  // no reliable 1:1 correspondence to Engine V1's already-caption-aware
+  // panelRect, so it's deliberately not applied in that case); subdivided
+  // by its own compiled position/size, exactly like every other Place,
+  // once 2+ Places are authored (a real Dual-Holder-style layout, where
+  // Place 1 must not draw across the full panel and overlap the Places
+  // beside it). This function must report exactly what render() actually
+  // draws, or callers (Object Strip, hit-testing, pixel verification)
+  // would select/sample the wrong on-screen area for Place 1.
+  function getPlaceRects(s){
+    const panelRect=_panelRectFor(s);
+    const places=_activeLayoutPlaces(s);
+    if(!places || !places.length) return [{id:'image-holder',place:null,rect:panelRect}];
+    const multi=places.length>1;
+    return places.map(function(p,i){
+      return {
+        id: i===0 ? 'image-holder' : ('image-place-'+(i+1)),
+        place: p,
+        rect: (i===0 && !multi) ? panelRect : _placePixelRectFor(panelRect,p)
+      };
+    });
+  }
 
   // Sprint B2.0.3 — World Builder Working View guides. Read-only query,
   // no new rendering behaviour: mirrors render()'s own caption-rect
@@ -3080,6 +3294,12 @@ const SlideRenderer=(()=>{
       : (opts.defaultHandle || '');
     return {
       image: slide.image,
+      // Multiple Artwork Places Per Page — the loaded Image objects for
+      // every Place beyond the first (Place 1 keeps using the `image`
+      // field above, unchanged); a sibling runtime cache to slide.image,
+      // never persisted directly (see slide.metadata.placeContent for
+      // the persisted dataURL/view/overrides half of each entry).
+      placeImages: slide._placeImages || null,
       storyBeat: slide.storyBeat || '',
       bookTitle: bookTitle,
       handle: handle,
@@ -3170,7 +3390,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -975,10 +975,43 @@ function _isInsidePanel(canvasX,canvasY,s){
   return canvasX>=r.x && canvasX<=r.x+r.w && canvasY>=r.y && canvasY<=r.y+r.h;
 }
 
+// Multiple Artwork Places Per Page — hit-tests every Place rect the
+// active Layout declares (SlideRenderer.getPlaceRects), last-first so an
+// overlapping later Place wins (mirrors _hitTestSceneElement's own
+// top-down convention). Every existing single/zero-Place theme resolves
+// to exactly one entry (id:'image-holder', the legacy panel rect), so
+// this is a strict generalization of _isInsidePanel, not a second,
+// parallel hit-test.
+function _hitTestPlace(canvasX,canvasY,s){
+  if(typeof SlideRenderer.getPlaceRects!=='function') return null;
+  const places=SlideRenderer.getPlaceRects(s);
+  for(let i=places.length-1;i>=0;i--){
+    const p=places[i];
+    const r=p.rect;
+    if(canvasX>=r.x && canvasX<=r.x+r.w && canvasY>=r.y && canvasY<=r.y+r.h) return p;
+  }
+  return null;
+}
+
+// Multiple Artwork Places Per Page — the loaded Image object behind a
+// given Place selection id: 'image-holder' (Place 1) reads the existing
+// slide.image, unchanged; any other id reads slide._placeImages[id].
+function _placeImageFor(s,placeId){
+  if(!s) return null;
+  if(!placeId || placeId==='image-holder') return s.image||null;
+  return (s._placeImages && s._placeImages[placeId]) || null;
+}
+
 function _updateCanvasCursor(){
   if(!previewCanvas) return;
   const s=AppState.slides[AppState.currentSlide];
-  if(s && s.image){
+  // Multiple Artwork Places Per Page — pannable cursor shows whenever
+  // ANY Place on the page already has a picture, not just Place 1.
+  let hasAny=!!(s && s.image);
+  if(!hasAny && s && s._placeImages){
+    hasAny=Object.keys(s._placeImages).some(function(id){ const img=s._placeImages[id]; return img && img.width; });
+  }
+  if(hasAny){
     previewCanvas.classList.add('canvas-pannable');
   }else{
     previewCanvas.classList.remove('canvas-pannable');
@@ -1065,12 +1098,15 @@ previewCanvas.addEventListener('mousedown',function(e){
 
   // Sprint 4.5 — Shift+click inside the panel sets the focal point at the
   // clicked location (relative to the cropped image source). Pre-empts both
-  // text selection and image pan.
-  if(e.shiftKey && s.image && _isInsidePanel(c.x,c.y,s) && typeof CardDesigner!=='undefined'){
-    const view=CardDesigner.getActiveImageView();
+  // text selection and image pan. Multiple Artwork Places Per Page —
+  // generalized to whichever Place was actually clicked; every existing
+  // single-Place theme still only ever resolves the one 'image-holder'
+  // entry, so this stays byte-identical there.
+  const _focalHit=e.shiftKey ? _hitTestPlace(c.x,c.y,s) : null;
+  if(_focalHit && _placeImageFor(s,_focalHit.id) && typeof CardDesigner!=='undefined'){
+    const view=CardDesigner.getActiveImageView(_focalHit.id);
     if(view){
-      const SR=SlideRenderer;
-      const r=(typeof SR.getPanelRect==='function')?SR.getPanelRect(s):{x:70,y:185,w:940,h:930};
+      const r=_focalHit.rect;
       const innerX=r.x+20, innerY=r.y+20, innerW=r.w-40, innerH=r.h-40;
       const fx=Math.max(0,Math.min(1,(c.x-innerX)/innerW));
       const fy=Math.max(0,Math.min(1,(c.y-innerY)/innerH));
@@ -1144,9 +1180,17 @@ previewCanvas.addEventListener('mousedown',function(e){
     return;
   }
 
-  // Image pan inside the panel rect (Sprint 4.2 behavior).
-  if(s.image && _isInsidePanel(c.x,c.y,s) && typeof CardDesigner!=='undefined'){
-    const v=CardDesigner.getActiveImageView();
+  // Image pan inside the panel rect (Sprint 4.2 behavior). Multiple
+  // Artwork Places Per Page — generalized to whichever Place rect was
+  // actually clicked; requires that Place to already have a picture,
+  // exactly matching Place 1's own pre-existing rule (an empty Place is
+  // selected via its Object Strip card instead, where "Add Artwork" is
+  // reachable). Every existing single/zero-Place theme still only ever
+  // resolves the one 'image-holder' rect, so this stays byte-identical
+  // there.
+  const _placeHit=_hitTestPlace(c.x,c.y,s);
+  if(_placeHit && _placeImageFor(s,_placeHit.id) && typeof CardDesigner!=='undefined'){
+    const v=CardDesigner.getActiveImageView(_placeHit.id);
     if(v){
       // Sprint 10.0 — Story-role pages have no SceneEngine scene element
       // for the picture (SceneEngine.getRenderData returns null for
@@ -1154,8 +1198,8 @@ previewCanvas.addEventListener('mousedown',function(e){
       // click target the Context Panel can key off for "Artwork
       // selected" on those pages. Selecting doesn't change the pan
       // gesture below at all — it just notifies the Context Panel.
-      _setSelectedSceneElement('image-holder','image-holder');
-      _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0};
+      _setSelectedSceneElement(_placeHit.id,'image-holder');
+      _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0,placeId:_placeHit.id};
       previewCanvas.classList.add('canvas-panning');
       e.preventDefault();
       return;
@@ -1306,11 +1350,13 @@ document.addEventListener('mousemove',function(e){
     return;
   }
 
-  // Image pan (Sprint 4.2, migrated path in Sprint 4.5)
+  // Image pan (Sprint 4.2, migrated path in Sprint 4.5). Multiple Artwork
+  // Places Per Page — _panState.placeId (undefined for Place 1, unchanged)
+  // routes the live view object read/written here to the right Place.
   if(!_panState) return;
   const s2=AppState.slides[AppState.currentSlide];
   if(!s2) return;
-  const view=(typeof CardDesigner!=='undefined') ? CardDesigner.getActiveImageView() : null;
+  const view=(typeof CardDesigner!=='undefined') ? CardDesigner.getActiveImageView(_panState.placeId) : null;
   if(!view) return;
   const dx2=(e.clientX-_panState.startX)*_panState.sx;
   const dy2=(e.clientY-_panState.startY)*_panState.sy;

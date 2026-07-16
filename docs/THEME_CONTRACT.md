@@ -80,7 +80,8 @@ See §9, Disclosed Gaps — deliberately not fixed this sprint.
 | Field | Produced? | Consumed? | Status |
 |---|---|---|---|
 | `id`, `name`, `aspect`, `composition`, `supportedFrames` | Yes | Yes | Aligned |
-| `holders` | Always `1` (§5's own "Reserved, always 1 in V1") | N/A — no multi-Holder layout exists yet | Aligned (both sides agree it's inert) |
+| `holders` | Always `1` for `tools/world-builder/` (v1, §5's own "Reserved, always 1 in V1"); real counts >1 from `tools/world-builder-v2`'s Scene→Layout convergence | Yes — `_resolveBorder`/`js/objectStrip.js` read the count to gate whether an Artwork Place shows at all | Aligned |
+| `placeRects` (`tools/world-builder-v2` only, Multiple Artwork Places Per Page) | Every Place's own `{id,name,position,size,shape,padding,fit,frame}`, in authored order | Yes — `renderer/slideRenderer.js`'s `_activeLayoutPlaces`/`_placePixelRectFor` resolve each Place's own pixel rect/Frame/picture independently; `js/objectStrip.js`/`js/app.js`/`js/contextPanel.js`/`js/cardDesigner.js` all render/select/edit each Place independently | Aligned (producer and consumer added together); `tools/world-builder/` (v1) never produces this field, so a v1-authored theme is unaffected, per the same v1/v2-parity precedent this table already used for `moveable`/`editable` below |
 
 ## 6. Layer Pack (`target`)
 

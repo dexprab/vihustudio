@@ -311,15 +311,33 @@ const ObjectStrip=(function(){
     // null/undefined and this stays exactly as it was.
     const noHolderAuthored=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.activeLayoutHolderCount==='function')
       && SlideRenderer.activeLayoutHolderCount(slide)===0;
+    // Multiple Artwork Places Per Page — one card per Place the active
+    // Layout declares (SlideRenderer.getPlaceRects), Place 1 first. Every
+    // existing single/zero-Place theme resolves to exactly the one
+    // 'image-holder' entry above, so Place 1's own card is byte-identical
+    // to before this feature; extra Places get their own card, labelled
+    // from the Theme Author's own Place name when present.
     if(!hasScene && !noHolderAuthored){
-      cards.push(_card({
-        imgSrc:slide.thumbnail||null,
-        icon:'🖼️',
-        name:slide.image?'Artwork':'Artwork Place',
-        editable:true,
-        selected:selScene==='image-holder',
-        onClick:function(){ _selectScene('image-holder','image-holder'); }
-      }));
+      const places=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRects==='function')
+        ? SlideRenderer.getPlaceRects(slide)
+        : [{id:'image-holder',place:null}];
+      places.forEach(function(p,i){
+        const isFirst=(i===0);
+        // Place 1 keeps its exact existing wording, unchanged; an extra
+        // Place uses its own Builder-authored name when present, else a
+        // numbered fallback.
+        const name=isFirst
+          ? (slide.image?'Artwork':'Artwork Place')
+          : ((p.place && p.place.name) || ('Artwork Place '+(i+1)));
+        cards.push(_card({
+          imgSrc:isFirst?(slide.thumbnail||null):null,
+          icon:'🖼️',
+          name:name,
+          editable:true,
+          selected:selScene===p.id,
+          onClick:function(){ _selectScene(p.id,'image-holder'); }
+        }));
+      });
     }
 
     // Every other object on the page — Cover/Hook/End blueprint elements,

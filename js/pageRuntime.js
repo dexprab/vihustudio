@@ -63,7 +63,12 @@ const PageRuntime=(function(){
   // page or a since-removed object.
   function selectionIsValid(){
     const sel=getSelection();
-    if(sel.sceneId==='image-holder') return true; // synthetic Artwork entry, no render-tree bbox
+    // Multiple Artwork Places Per Page — every Place selection (Place 1's
+    // exact legacy id 'image-holder', or an extra Place's own
+    // 'image-place-N' id) shares this one synthetic type with no
+    // render-tree bbox; checking sceneType instead of the exact id
+    // generalizes this correctly without a second id-pattern check.
+    if(sel.sceneType==='image-holder') return true;
     if(sel.sceneId){
       return getRenderedObjects().scene.some(function(o){ return o.id===sel.sceneId; });
     }
