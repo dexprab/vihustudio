@@ -1668,6 +1668,68 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // ---------- Unified Layer Ordering (Scene elements + Stickers) ----------
+  // A real, user-reported gap: Scene blueprint elements (Frame/Decoration/
+  // Text-holder on Cover/Hook/End pages) order themselves via a numeric
+  // `zIndex`, while Stickers order via plain array position — two
+  // completely separate mechanisms that were always drawn as two
+  // back-to-back loops (Scene elements, then every Sticker unconditionally
+  // after), so a Sticker could never be sent behind, or a Scene element
+  // brought in front of, the other kind, regardless of either's own
+  // ordering value. These two are the one pair safely mergeable into one
+  // interleaved draw pass with no risk to any existing theme: neither
+  // depends on Frame/Panel/Border-specific geometry (unlike World-owned
+  // Layer Pack objects, whose rect for 'frame'/'holder'/'element' scopes
+  // is only resolved at specific points inside Frame/Panel drawing, and
+  // whose 'slide'/'overlay' scopes are drawn at fixed points — before
+  // Frame/Panel, and after everything else, respectively — that existing
+  // themes already depend on; unifying those safely needs deferred/
+  // two-pass drawing, a materially bigger change disclosed as a follow-up
+  // rather than forced into this pass).
+  //
+  // `_naturalStoryOrder` is exactly today's existing order (Scene elements
+  // sorted by zIndex, then every Sticker in array order) — calling this
+  // alone and never applying an override reproduces the pre-existing
+  // behaviour byte-for-byte. `_resolveStoryOrder` applies an optional,
+  // page-wide `layerOrder` override (SceneEngine.getLayerOrder/
+  // setLayerOrder) written only once a Story Author actually drags a card
+  // in the Object Strip or clicks an Order button — absent for every page
+  // today, so this whole mechanism is purely additive.
+  function _naturalStoryOrder(s){
+    const out=[];
+    if(typeof SceneEngine==='undefined') return out;
+    const data=SceneEngine.getRenderData(s);
+    if(data && data.elements && data.elements.length){
+      const sorted=data.elements.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
+      sorted.forEach(function(el){ if(el.visible!==false) out.push({id:el.id,kind:'scene',ref:el}); });
+    }
+    const stickers=SceneEngine.getStickers(s);
+    for(let i=0;i<stickers.length;i++) out.push({id:stickers[i].id,kind:'sticker',ref:stickers[i]});
+    return out;
+  }
+  function _resolveStoryOrder(s){
+    const natural=_naturalStoryOrder(s);
+    const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+    if(!order || !order.length) return natural;
+    const indexOf={};
+    order.forEach(function(id,i){ indexOf[id]=i; });
+    const listed=[], unlisted=[];
+    natural.forEach(function(o){
+      if(Object.prototype.hasOwnProperty.call(indexOf,o.id)) listed.push(o); else unlisted.push(o);
+    });
+    listed.sort(function(a,b){ return indexOf[a.id]-indexOf[b.id]; });
+    // Anything never listed (e.g. a Sticker added after the last drag)
+    // is appended after every listed object — matches the pre-existing
+    // "the last sticker added sits on top" convention.
+    return listed.concat(unlisted);
+  }
+  // Exported so Card Designer's Order buttons and the Object Strip's
+  // drag-to-reorder both read the SAME current effective order rather
+  // than recomputing it themselves — the one place this is decided.
+  function getReorderableIds(s){
+    return _resolveStoryOrder(s).map(function(o){ return o.id; });
+  }
+
   function render(s){
     if(!x) return;
     const t=_theme(s);
@@ -1806,13 +1868,21 @@ const SlideRenderer=(()=>{
 
     // Sprint 6.1 — Scene Layer. Story role pages return null from
     // SceneEngine, so this pass is a no-op for them.
+    //
+    // Unified Layer Ordering — Scene blueprint elements (Frame/Decoration/
+    // Text-holder) and Stickers now draw as ONE resolved, interleaved
+    // pass (_resolveStoryOrder) instead of two fixed back-to-back loops,
+    // so a Sticker can be sent behind/brought in front of a Scene element
+    // and vice versa. Natural order (no layerOrder override, every page
+    // today) is exactly the old fixed sequence — Scene elements sorted by
+    // zIndex, then every Sticker in array order — so this is byte-
+    // identical until a Story Author actually reorders something.
     _lastSceneElements=[];
     if(typeof SceneEngine!=='undefined'){
-      const data=SceneEngine.getRenderData(s);
-      if(data && data.elements && data.elements.length){
-        const sorted=data.elements.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
-        sorted.forEach(function(el){
-          if(el.visible===false) return;
+      const resolved=_resolveStoryOrder(s);
+      resolved.forEach(function(o){
+        if(o.kind==='scene'){
+          const el=o.ref;
           if(el.type==='background') _drawSceneBackground(el);
           else if(el.type==='decoration') _drawSceneDecoration(el);
           else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
@@ -1820,21 +1890,12 @@ const SlideRenderer=(()=>{
           // Legacy fallback for projects authored against Sprint 6.1.
           else if(el.type==='text') _drawSceneText(s,el);
           _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
-        });
-      }
-    }
-
-    // Sprint 6.6 — Stickers. Story objects that ride on top of every
-    // role's composition. Drawn back-to-front in array order so the last
-    // sticker added sits on top. Bboxes are appended to the scene-element
-    // list so the existing canvas hit-test path covers them for free.
-    if(typeof SceneEngine!=='undefined'){
-      const stickers=SceneEngine.getStickers(s);
-      for(let i=0;i<stickers.length;i++){
-        const st=stickers[i];
-        _drawSceneSticker(st);
-        _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
-      }
+        }else if(o.kind==='sticker'){
+          const st=o.ref;
+          _drawSceneSticker(st);
+          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+        }
+      });
     }
 
     // Builder Convergence Sprint — a 5th Layer Pack target, 'overlay',
@@ -2914,7 +2975,7 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,activeLayoutHolderCount:_activeLayoutHolders};
+  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,activeLayoutHolderCount:_activeLayoutHolders};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -118,7 +118,7 @@ const ObjectStrip=(function(){
   }
 
   function _card(opts){
-    // opts: {icon, imgSrc, name, editable, owner, selected, onClick, visual}
+    // opts: {icon, imgSrc, name, editable, owner, selected, onClick, visual, id, draggable}
     const card=_el('button','object-card'+(opts.selected?' selected':''));
     card.type='button';
     const thumb=_el('div','object-card-thumb');
@@ -132,7 +132,76 @@ const ObjectStrip=(function(){
     const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🌍 Part of the World' : '🔒 Locked');
     card.appendChild(_el('div','object-card-badge',badgeText));
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
+    // Unified Layer Ordering — a card whose object is in the current
+    // reorderable set gets real drag-to-reorder; a locked/non-moveable
+    // object (or a synthetic Background/Artwork card, neither of which
+    // is a real render-tree object) has no drag handle at all, matching
+    // that it's shown here but can't be reordered.
+    if(opts.draggable && opts.id) _wireReorderDrag(card,opts.id);
     return card;
+  }
+
+  // ---------- Unified Layer Ordering — drag-to-reorder ----------
+  // Dragging a card changes the object's real paint/hit-test order
+  // (SlideRenderer.getReorderableIds()/SceneEngine.setLayerOrder() — the
+  // same mechanism Card Designer's Sticker/Frame/Decoration "Order"
+  // buttons now use), not just the card's own display position — this
+  // IS the answer to "can the Object Strip be the layering control."
+  let _dragId=null;
+  function _clearDropIndicators(){
+    if(!listRoot) return;
+    const marked=listRoot.querySelectorAll('.object-card-drop-before,.object-card-drop-after');
+    for(let i=0;i<marked.length;i++) marked[i].classList.remove('object-card-drop-before','object-card-drop-after');
+  }
+  function _wireReorderDrag(card,id){
+    card.draggable=true;
+    card.classList.add('object-card-draggable');
+    card.addEventListener('dragstart',function(e){
+      _dragId=id;
+      try{ e.dataTransfer.setData('text/plain',id); e.dataTransfer.effectAllowed='move'; }catch(err){}
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend',function(){
+      card.classList.remove('dragging');
+      _dragId=null;
+      _clearDropIndicators();
+    });
+    card.addEventListener('dragover',function(e){
+      if(!_dragId || _dragId===id) return;
+      e.preventDefault();
+      try{ e.dataTransfer.dropEffect='move'; }catch(err){}
+      const rect=card.getBoundingClientRect();
+      const before=(e.clientX-rect.left)<rect.width/2;
+      _clearDropIndicators();
+      card.classList.add(before?'object-card-drop-before':'object-card-drop-after');
+    });
+    card.addEventListener('drop',function(e){
+      e.preventDefault();
+      const draggedId=_dragId;
+      _dragId=null;
+      _clearDropIndicators();
+      if(!draggedId || draggedId===id) return;
+      const rect=card.getBoundingClientRect();
+      const before=(e.clientX-rect.left)<rect.width/2;
+      _performReorder(draggedId,id,before);
+    });
+  }
+  function _performReorder(draggedId,targetId,before){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SceneEngine==='undefined') return;
+    const ids=SlideRenderer.getReorderableIds(slide);
+    const from=ids.indexOf(draggedId);
+    if(from===-1 || ids.indexOf(targetId)===-1) return;
+    ids.splice(from,1);
+    let to=ids.indexOf(targetId);
+    if(to===-1) return;
+    if(!before) to+=1;
+    ids.splice(to,0,draggedId);
+    SceneEngine.setLayerOrder(slide,ids);
+    delete slide.thumbnail;
+    try{ if(typeof window.redrawPreview==='function') window.redrawPreview(); }catch(e){}
+    try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    refresh();
   }
 
   // Creator Runtime Pass Sprint — Object Strip mutates selection through
@@ -165,6 +234,14 @@ const ObjectStrip=(function(){
     const selText=cfg.getSelectedTextElement();
     const selScene=cfg.getSelectedSceneElement();
     const cards=[];
+
+    // Unified Layer Ordering — the set of ids a card can actually be
+    // dragged for. Computed once per refresh (not per-card) since it's
+    // the same current-order snapshot every card in this pass checks
+    // against.
+    const reorderableIds=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getReorderableIds==='function')
+      ? SlideRenderer.getReorderableIds(slide)
+      : [];
 
     // Background — always present, every role. Not a Scene Object: it's
     // the page canvas itself, with no independent render-tree bbox.
@@ -250,7 +327,9 @@ const ObjectStrip=(function(){
         owner:el.owner,
         visual:el.visual,
         selected:selScene===el.id,
-        onClick:function(){ _selectScene(el.id,el.type); }
+        onClick:function(){ _selectScene(el.id,el.type); },
+        id:el.id,
+        draggable:reorderableIds.indexOf(el.id)!==-1
       }));
     });
 

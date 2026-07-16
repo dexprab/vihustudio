@@ -164,6 +164,48 @@ image) — remain page-level concepts with no independent render-tree
 bbox, exactly as the Creator Reconciliation Sprint disclosed; Page
 Runtime doesn't invent bboxes for them.
 
+### Unified Layer Ordering
+
+A real, user-reported gap, found once the render-tree unification above
+made it possible to even ask the question: Scene blueprint elements
+(Frame/Decoration/Text-holder on Cover/Hook/End pages) order themselves
+via a numeric `zIndex`, while Stickers order via plain array position —
+two disjoint mechanisms, always drawn as two fixed back-to-back passes,
+so a Sticker could never be sent behind (or a Scene element brought in
+front of) the other kind, regardless of either's own ordering value.
+
+`renderer/slideRenderer.js`'s `render()` now draws Scene elements and
+Stickers as ONE interleaved pass (`_naturalStoryOrder`/
+`_resolveStoryOrder`) instead of two separate loops. Natural order (no
+override, every page today) is exactly the old fixed sequence — Scene
+elements sorted by `zIndex`, then every Sticker in array order — so this
+is byte-identical until a Story Author actually reorders something.
+
+An optional, page-wide override, `slide.metadata.layerOrder` (an array
+of object ids, back-most first — `SceneEngine.getLayerOrder`/
+`setLayerOrder`), lets a Story Author explicitly reorder the combined
+group. Two entry points write it, both converging on the same exported
+`SlideRenderer.getReorderableIds(slide)` to read the current effective
+order first:
+
+- Card Designer's Sticker/Frame/Decoration "Order" rows (`js/
+  cardDesigner.js`'s shared `_reorderSelected(edge, commitFn)`).
+- The Object Strip's real drag-and-drop (`js/objectStrip.js`) — dragging
+  a card changes the object's actual paint/hit-test order, not just its
+  own display position in the strip.
+
+**Scope, deliberately bounded**: World-owned Layer Pack objects (moveable
+or not) are NOT part of this reorderable group. Their rect for
+`frame`/`holder`/`element` scopes is only resolved at specific points
+inside Frame/Panel drawing, and their `slide`/`overlay` scopes are drawn
+at fixed points (before Frame/Panel, and after everything else,
+respectively) that existing themes already depend on — unifying those
+safely would need deferred/two-pass drawing, a materially bigger change
+than this fix, so it's disclosed as a follow-up rather than forced in. A
+locked/non-moveable object of any kind is shown in the Object Strip
+(it's still a real object on the page) but never gets a drag handle and
+can never have anything dropped past its fixed boundary position.
+
 ---
 
 ## 5. Selection lifecycle

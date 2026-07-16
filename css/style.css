@@ -657,6 +657,18 @@ button:active{
   background:rgba(255,203,69,0.14);
   box-shadow:0 0 0 2px var(--gold);
 }
+/* Unified Layer Ordering — a draggable card (its object is in the
+   current reorderable set: Scene elements + Stickers) gets a grab
+   cursor and lifts/dims while actively dragged; a drop-target card
+   shows a thin gold line on whichever side the drop will land, so the
+   strip reads as a real reorder control rather than a static readout.
+   A locked/non-draggable card (including the two synthetic Background/
+   Artwork cards) keeps its plain pointer cursor — no affordance implies
+   no capability, matching that nothing can be dropped past it. */
+.object-card-draggable{ cursor:grab; }
+.object-card-draggable.dragging{ opacity:0.4; transform:scale(0.96); }
+.object-card-drop-before{ box-shadow:inset 3px 0 0 0 var(--gold); }
+.object-card-drop-after{ box-shadow:inset -3px 0 0 0 var(--gold); }
 .object-card-thumb{
   width:44px;
   height:44px;

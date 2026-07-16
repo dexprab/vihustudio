@@ -380,6 +380,30 @@ const SceneEngine=(function(){
     _maybePrune(slide,id);
   }
 
+  // Unified Layer Ordering — a page-wide, explicit override of the
+  // reorderable object group's relative order (back-most id first,
+  // front-most id last, matching the existing "last wins" convention
+  // renderer/slideRenderer.js's hit-testing/paint array already uses).
+  // Absent for every page until a Story Author actually reorders
+  // something via the Object Strip or an Order button — renderer/
+  // slideRenderer.js falls back to today's exact natural ordering in
+  // that case, so this is purely additive. Lives at `slide.metadata.
+  // layerOrder` directly (not inside elementOverrides, which is keyed
+  // per-object-id) since this is one page-wide array, the same shape
+  // `slide.metadata.stickers` already uses for a different concern.
+  function getLayerOrder(slide){
+    return (slide && slide.metadata && Array.isArray(slide.metadata.layerOrder)) ? slide.metadata.layerOrder : null;
+  }
+  function setLayerOrder(slide,orderedIds){
+    if(!slide) return;
+    if(!orderedIds || !orderedIds.length){
+      if(slide.metadata) delete slide.metadata.layerOrder;
+      return;
+    }
+    if(!slide.metadata) slide.metadata={};
+    slide.metadata.layerOrder=orderedIds.slice();
+  }
+
   // ---------- Stickers (Sprint 6.6) ----------
   //
   // Stickers are story objects, not scene blueprint elements. They live
@@ -537,6 +561,8 @@ const SceneEngine=(function(){
     adjustZIndex:adjustZIndex,
     clearOverride:clearOverride,
     setContentOverride:setContentOverride,
+    getLayerOrder:getLayerOrder,
+    setLayerOrder:setLayerOrder,
     resolveTextSource:resolveTextSource,
     // Stickers
     getStickers:getStickers,

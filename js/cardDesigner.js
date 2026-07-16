@@ -911,6 +911,38 @@ const CardDesigner=(function(){
     }
     return null;
   }
+
+  // Unified Layer Ordering — the one place Sticker/Frame/Decoration
+  // "Order" buttons all reorder from now on, instead of three separate
+  // mechanisms (sticker array splice, Scene-element zIndex adjust) that
+  // could never reorder relative to each other. `edge` is one of
+  // 'back'/'backward'/'forward'/'front'. Reads/writes the same
+  // SlideRenderer.getReorderableIds()/SceneEngine.setLayerOrder() pair
+  // the Object Strip's own drag-to-reorder uses, so the buttons and the
+  // strip can never disagree. A silently no-op for an id SlideRenderer
+  // doesn't consider reorderable (e.g. a locked World-owned object) —
+  // exactly matching that such objects have no drag handle in the strip
+  // either.
+  function _reorderSelected(edge,commitFn){
+    if(typeof SlideRenderer==='undefined' || typeof SceneEngine==='undefined') return;
+    const slide=_currentSlide();
+    const id=_selectedStickerHostId();
+    if(!slide||!id) return;
+    const ids=SlideRenderer.getReorderableIds(slide);
+    const i=ids.indexOf(id);
+    if(i===-1) return;
+    let target;
+    if(edge==='back') target=0;
+    else if(edge==='backward') target=Math.max(0,i-1);
+    else if(edge==='forward') target=Math.min(ids.length-1,i+1);
+    else target=ids.length-1; // 'front'
+    if(target===i) return;
+    ids.splice(i,1);
+    ids.splice(target,0,id);
+    SceneEngine.setLayerOrder(slide,ids);
+    if(typeof commitFn==='function') commitFn();
+  }
+
   function _activeSticker(){
     if(typeof SceneEngine==='undefined') return null;
     const slide=_currentSlide();
@@ -1070,10 +1102,10 @@ const CardDesigner=(function(){
     const layerIcons=document.createElement('div');
     layerIcons.className='icon-row sticker-layer-row';
     const LAYER_ACTIONS=[
-      {id:'back',label:'Back',glyph:'⤓',fn:'sendStickerToBack'},
-      {id:'backward',label:'Backward',glyph:'⬇',fn:'sendStickerBackward'},
-      {id:'forward',label:'Forward',glyph:'⬆',fn:'bringStickerForward'},
-      {id:'front',label:'Front',glyph:'⤒',fn:'bringStickerToFront'}
+      {id:'back',label:'Back',glyph:'⤓'},
+      {id:'backward',label:'Backward',glyph:'⬇'},
+      {id:'forward',label:'Forward',glyph:'⬆'},
+      {id:'front',label:'Front',glyph:'⤒'}
     ];
     LAYER_ACTIONS.forEach(function(L){
       const btn=document.createElement('button');
@@ -1084,16 +1116,12 @@ const CardDesigner=(function(){
       const g=document.createElement('span'); g.className='sticker-layer-glyph'; g.textContent=L.glyph; pv.appendChild(g);
       btn.appendChild(pv);
       const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=L.label; btn.appendChild(lbl);
-      btn.addEventListener('click',function(){
-        if(typeof SceneEngine==='undefined') return;
-        const slide=_currentSlide();
-        const id=_selectedStickerHostId();
-        if(!slide||!id) return;
-        if(typeof SceneEngine[L.fn]==='function'){
-          SceneEngine[L.fn](slide,id);
-          _commitSticker();
-        }
-      });
+      // Unified Layer Ordering — routes through the shared
+      // _reorderSelected helper (same mechanism the Frame/Decoration
+      // Order rows and the Object Strip's drag-to-reorder all use) so a
+      // lone sticker's "Front" button can now genuinely move it in front
+      // of a Scene blueprint element too, not just other stickers.
+      btn.addEventListener('click',function(){ _reorderSelected(L.id,_commitSticker); });
       layerIcons.appendChild(btn);
     });
     layerRow.appendChild(layerIcons);
@@ -1246,12 +1274,11 @@ const CardDesigner=(function(){
     _refreshFrame();
   }
   function _frameAdjustZ(delta){
-    if(typeof SceneEngine==='undefined') return;
-    const slide=_currentSlide();
-    const id=_selectedStickerHostId();
-    if(!slide||!id) return;
-    SceneEngine.adjustZIndex(slide,id,delta);
-    _commitFrame();
+    // Unified Layer Ordering — routes through the shared
+    // _reorderSelected helper (delta -1/+1 map onto 'backward'/'forward'
+    // exactly, the only two directions this section's own Order row
+    // ever offered).
+    _reorderSelected(delta<0?'backward':'forward',_commitFrame);
   }
 
   function _buildFrameControls(body){
@@ -1497,14 +1524,10 @@ const CardDesigner=(function(){
       const g=document.createElement('span'); g.className='decoration-layer-glyph'; g.textContent=L.glyph; pv.appendChild(g);
       btn.appendChild(pv);
       const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=L.label; btn.appendChild(lbl);
-      btn.addEventListener('click',function(){
-        if(typeof SceneEngine==='undefined') return;
-        const slide=_currentSlide();
-        const id=_selectedStickerHostId();
-        if(!slide||!id) return;
-        SceneEngine.adjustZIndex(slide,id,L.delta);
-        _commitDecoration();
-      });
+      // Unified Layer Ordering — same shared _reorderSelected mechanism
+      // the Sticker/Frame Order rows and the Object Strip's drag-to-
+      // reorder all use now.
+      btn.addEventListener('click',function(){ _reorderSelected(L.id,_commitDecoration); });
       layerIcons.appendChild(btn);
     });
     layerRow.appendChild(layerIcons);
