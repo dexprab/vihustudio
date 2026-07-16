@@ -206,6 +206,104 @@ const ContextPanel=(function(){
   // capability (js/projectModel.js's layer.permissions) decides the
   // wording; a real generic editor for Builder-owned content is a later
   // phase, not faked here.
+  // Honour World-Owned Object Commitments sprint — a Story-Author edit
+  // to a World-owned object's own content, live and re-drawing. Never
+  // calls refresh() (which would rebuild this very panel — including
+  // the input the child is actively using — mid-edit); redraws the
+  // canvas + Object Strip only, exactly like every other in-place edit
+  // control elsewhere in Creator already does.
+  function _afterWorldObjectEdit(){
+    if(host){
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+  }
+
+  // Kind-specific in-place edit control, built from the exact same
+  // `visual` descriptor (renderer/slideRenderer.js's `_layerVisual`)
+  // Object Strip's own thumbnail already reads — editing here and the
+  // thumbnail agreeing about what a field means is automatic, not
+  // separately maintained. Writes through SceneEngine.setContentOverride
+  // (js/sceneEngine.js), the exact elementOverrides bag every other
+  // per-object override already lives in.
+  function _appendWorldObjectEditControl(sceneObj,v){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+    if(v.kind==='color' || v.kind==='shape'){
+      const row=_el('div','designer-row context-row');
+      row.appendChild(_el('div','designer-row-label','Colour'));
+      const input=document.createElement('input');
+      input.type='color';
+      input.className='theme-color-input';
+      input.value=_safeColor(v.color||v.fillColor);
+      input.addEventListener('input',function(){
+        SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',input.value);
+        _afterWorldObjectEdit();
+      });
+      row.appendChild(input);
+      panelRoot.appendChild(row);
+    }else if(v.kind==='image'){
+      const btn=_el('button','context-btn','🖼️ Replace Image');
+      btn.type='button';
+      btn.addEventListener('click',function(){
+        const fileInput=document.createElement('input');
+        fileInput.type='file';
+        fileInput.accept='image/*';
+        fileInput.addEventListener('change',function(){
+          const file=fileInput.files && fileInput.files[0];
+          if(!file) return;
+          const reader=new FileReader();
+          reader.onload=function(){
+            SceneEngine.setContentOverride(slide,sceneObj.id,'image',reader.result);
+            _afterWorldObjectEdit();
+          };
+          reader.readAsDataURL(file);
+        });
+        fileInput.click();
+      });
+      panelRoot.appendChild(btn);
+    }else if(v.kind==='text'){
+      panelRoot.appendChild(_el('div','designer-row-label','Words'));
+      const textarea=document.createElement('textarea');
+      textarea.className='context-textarea';
+      textarea.value=v.content||'';
+      textarea.addEventListener('input',function(){
+        SceneEngine.setContentOverride(slide,sceneObj.id,'content',textarea.value);
+        _afterWorldObjectEdit();
+      });
+      panelRoot.appendChild(textarea);
+    }
+  }
+
+  // Decoration Slot — "Let the Story Author add their own decorations
+  // here too." Reuses Sticker Studio end to end (pick-from-library ->
+  // place-on-canvas -> slide.metadata.stickers[]), the existing
+  // mechanism for a Story Author adding their own decorative content,
+  // rather than inventing a second one; the only new piece is seeding
+  // the very next placement near this object's own position instead of
+  // Sticker Studio's ordinary centered default.
+  function _appendDecorationSlotButton(sceneObj){
+    const btn=_el('button','context-btn','✨ Add your own decoration here');
+    btn.type='button';
+    btn.addEventListener('click',function(){
+      if(typeof StickerStudio!=='undefined' && typeof StickerStudio.setNextPlacementSeed==='function'){
+        try{ StickerStudio.setNextPlacementSeed(sceneObj.bx+sceneObj.bw/2, sceneObj.by+sceneObj.bh/2); }catch(e){}
+      }
+      _showStickerStudio();
+    });
+    panelRoot.appendChild(btn);
+  }
+
+  // A World-owned Scene Object (a theme-authored Layer Pack entry —
+  // Museum Caption, Wax Seal, Gallery Spotlight, …) never opens Card
+  // Designer's generic decoration/text/sticker section: that section
+  // reads slide.metadata.elementOverrides directly by section, not by
+  // this object's own id — opening it would show live-looking controls
+  // that silently don't target what was clicked. Builder's own editable
+  // capability (js/projectModel.js's layer.permissions) decides whether
+  // a real, kind-specific edit control (Part C of the Honour World-
+  // Owned Object Commitments sprint) is offered here instead.
   function _renderWorldObjectDisclosure(sceneObj){
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
@@ -213,11 +311,17 @@ const ContextPanel=(function(){
     banner.appendChild(_el('span','context-selection-banner-icon','🌍'));
     banner.appendChild(_el('span','context-selection-banner-label',sceneObj.label||'World Object'));
     panelRoot.appendChild(banner);
+    const v=sceneObj.visual;
+    const hasRealControl=sceneObj.editable && v && (v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text');
     panelRoot.appendChild(_el('div','context-nothing-selected-hint',
-      sceneObj.editable
-        ? 'This is part of the World, but you may adjust it. That kind of edit isn’t available in Creator yet.'
-        : 'This is part of the World.'
+      hasRealControl
+        ? 'This is part of the World — you can adjust it below.'
+        : sceneObj.editable
+          ? 'This is part of the World, but you may adjust it. That kind of edit isn’t available in Creator yet.'
+          : 'This is part of the World.'
     ));
+    if(hasRealControl) _appendWorldObjectEditControl(sceneObj,v);
+    if(sceneObj.decorationSlot) _appendDecorationSlotButton(sceneObj);
   }
 
   function _renderSelectionHeading(type){

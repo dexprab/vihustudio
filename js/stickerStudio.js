@@ -281,14 +281,28 @@ const StickerStudio=(function(){
   // tab-switch + refresh are the last DOM mutations of this user
   // gesture. Nothing that fires later can race the right pane back to
   // a different tab.
+  // Honour World-Owned Object Commitments sprint — Decoration Slot's
+  // "+ Add your own decoration here" opens this exact Studio, but the
+  // very next sticker placed should land near the reserved slot's own
+  // position instead of dead-center. A one-shot seed (consumed and
+  // cleared by the very next insert) rather than a persistent mode,
+  // since only that one placement should be affected — every other
+  // Add-a-Sticker flow keeps its ordinary centered default untouched.
+  let _nextPlacementSeed=null;
+  function setNextPlacementSeed(centerX,centerY){
+    _nextPlacementSeed=(typeof centerX==='number' && typeof centerY==='number') ? {x:centerX,y:centerY} : null;
+  }
+
   function _insertSticker(st){
     if(!host || typeof host.getCurrentSlide!=='function') return;
     const slide=host.getCurrentSlide();
     if(!slide) return;
     if(typeof SceneEngine==='undefined') return;
+    const seed=_nextPlacementSeed;
+    _nextPlacementSeed=null;
     const inst=SceneEngine.addSticker(slide,{
       stickerId:st.id,
-      x:INSERT_X, y:INSERT_Y,
+      x:seed?seed.x:INSERT_X, y:seed?seed.y:INSERT_Y,
       w:INSERT_W, h:INSERT_H
     });
     if(!inst) return;
@@ -327,7 +341,8 @@ const StickerStudio=(function(){
     mount:mount,
     unmount:unmount,
     configure:configure,
-    refresh:refresh
+    refresh:refresh,
+    setNextPlacementSeed:setNextPlacementSeed
   };
   try{ window.StickerStudio=api; }catch(e){}
   return api;

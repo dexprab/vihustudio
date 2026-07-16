@@ -332,6 +332,14 @@ class BuildEngine {
         // fields straight off this compiled entry.
         const moveable = !(layer.permissions && layer.permissions.moveable === false);
         const editable = !(layer.permissions && layer.permissions.editable === false);
+        // Honour World-Owned Object Commitments sprint — "Let the Story
+        // Author add their own decorations here too" (the 4th
+        // permission-block checkbox, stored as `layer.decorationSlot`,
+        // a boolean sibling of `.permissions`, not inside it) was never
+        // copied into the compiled package at all — dead data on both
+        // sides until now. Absent (every Layer authored before this),
+        // `!!undefined` resolves to `false`, unchanged.
+        const decorationSlot = !!layer.decorationSlot;
         // A true full-bleed fill (Scene Background, position 0,0 size
         // 1,1 — see js/projectModel.js's setSceneBackground) is wall-
         // level content that belongs BEHIND the Frame/Panel, exactly
@@ -380,7 +388,8 @@ class BuildEngine {
             zIndex: zIndex,
             visible: visible,
             moveable: moveable,
-            editable: editable
+            editable: editable,
+            decorationSlot: decorationSlot
         };
 
         if (layer.kind === 'text') {

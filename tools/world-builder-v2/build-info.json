@@ -1,10 +1,10 @@
 {
-  "version": "3.32.0",
+  "version": "3.33.0",
   "phase": "Platform Hardening",
-  "milestone": "Zero-Holder Scenes -- the real white-box source found and fixed (renderer/slideRenderer.js)",
-  "slice": "A direct, confirmed follow-up found by reproducing the user's actual live World shape: a zero-Place Scene with a Scene-hosted dark Colour-fill background and a Free-hosted gold octagon Decoration Shape still showed a white box in Creator after the previous _resolveBorder fix. Root cause: render()'s own composition-selection code falls to an 'else' branch that unconditionally paints the classic pre-Artwork-Theme 'story picture panel' rectangle whenever the resolved border is null -- correct for a plain Story Theme, wrong for a zero-Holder Artwork Theme Scene which has no picture area at all. Fixed with a new branch that draws nothing when the active Layout's holders count is explicitly 0. Verified via a real git stash A/B test on the user's exact World shape confirming the panel-rect center pixel goes from pure white to the theme's own page colour, with zero regression across the full Creator/Builder suite and both goldenBuild.js suites (Museum Gallery's real Holder still renders its Frame/mat/Wax Seal unchanged).",
-  "build": "0090",
-  "buildDate": "2026-07-15",
-  "commit": "3260deb",
+  "milestone": "Honour World-Owned Object Commitments -- Decoration Slot compiled through, real Creator editing capabilities",
+  "slice": "This World Builder v2 slice is the compile-side half of a larger Creator sprint (see the root build-info.json / CLAUDE.md for the full account, which spans renderer/slideRenderer.js, js/objectStrip.js, js/sceneEngine.js, js/contextPanel.js, and js/stickerStudio.js). tools/world-builder-v2/js/services/builder.js's convergeSceneLayer previously never copied a Scene Layer's own decorationSlot flag (World Builder's 4th per-object permission-block checkbox, 'Let the Story Author add their own decorations here too') into the compiled package at all -- dead data on both the authoring and Creator sides until now -- fixed with one additive field on the compiled entry. Also confirmed and exercised (unchanged, no code needed): the existing moveable/editable fields convergeSceneLayer already mirrors from Builder's own layer.permissions now reach a Creator that actually honours them, closing the loop the Creator Reconciliation Sprint's own compiled-field plumbing was built for. Verified via a new Playwright fixture authoring a Scene with a Colour fill, a Shape (with decorationSlot set via the newly-exposed findMirroredSceneLayer/updateSceneLayer combination), an Image, and a Text layer, each with distinct permission combinations, through the real ProjectCompiler -- confirming the compiled layerPack now carries decorationSlot correctly alongside the pre-existing moveable/editable fields. goldenBuild.js's full 30-assertion suite passes unchanged.",
+  "build": "0091",
+  "buildDate": "2026-07-16",
+  "commit": "pending",
   "environment": "Release"
 }

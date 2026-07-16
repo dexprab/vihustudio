@@ -361,6 +361,25 @@ const SceneEngine=(function(){
     if(Object.keys(slide.metadata.elementOverrides).length===0) delete slide.metadata.elementOverrides;
   }
 
+  // Honour World-Owned Object Commitments sprint — a Story Author's
+  // in-place edit (editable:true) to a World-owned Layer Pack object's
+  // own content: `field` is one of 'fillColor'/'content'/'image'/'color'
+  // (mutually exclusive per the object's own kind, never all set at
+  // once). Rides on the exact same elementOverrides bag every other
+  // override already uses — renderer/slideRenderer.js's draw functions
+  // read these fields back directly (see _layerOverride there), the
+  // same "check override, else fall back to authored default" shape
+  // setPosition/setRotation/etc. already establish for blueprint
+  // elements. A blank/empty value clears the override rather than
+  // storing an empty string, matching setPosition's own null-clears
+  // convention.
+  function setContentOverride(slide,id,field,value){
+    const entry=_ensureEntry(slide,id);
+    if(value===null || value===undefined || value==='') delete entry[field];
+    else entry[field]=value;
+    _maybePrune(slide,id);
+  }
+
   // ---------- Stickers (Sprint 6.6) ----------
   //
   // Stickers are story objects, not scene blueprint elements. They live
@@ -517,6 +536,7 @@ const SceneEngine=(function(){
     setLocked:setLocked,
     adjustZIndex:adjustZIndex,
     clearOverride:clearOverride,
+    setContentOverride:setContentOverride,
     resolveTextSource:resolveTextSource,
     // Stickers
     getStickers:getStickers,

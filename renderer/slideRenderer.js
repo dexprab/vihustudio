@@ -1030,6 +1030,7 @@ const SlideRenderer=(()=>{
     // muted "By {artist} ✍️  Age {age} 🎂 | {date} 📅" line) from real
     // per-slide fields instead of one flat string.
     if(t.source==='museumCaption') return _drawMuseumCaption(t,anchor,s);
+    const ov=_layerOverride(s,layer.id);
     let content=t.content||'';
     // 'slideCaption' — a plain per-slide caption string a child typed
     // (slide.metadata.caption), same convention as bookTitle / handle
@@ -1037,22 +1038,37 @@ const SlideRenderer=(()=>{
     // single-field option for future themes that don't need the full
     // Title/Artist/Age/Date breakdown.
     if(t.source==='slideCaption') content=(s && s.metadata && typeof s.metadata.caption==='string' && s.metadata.caption) || content;
+    if(ov && typeof ov.content==='string') content=ov.content;
     if(!content) return null;
-    x.save();
-    x.font=(t.size||18)+'px '+(t.font||'Georgia, serif');
-    x.fillStyle=t.color||'#333333';
+    const size=t.size||18;
     const hAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
     const vAlign=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
+    x.save();
+    x.font=size+'px '+(t.font||'Georgia, serif');
+    const w=x.measureText(content).width;
+    // Honour World-Owned Object Commitments sprint — a moveable:true
+    // text layer's Story-Author position override is a translation
+    // applied to whatever this layer would have drawn at naturally,
+    // computed from the natural (un-dragged) bbox center so the shift
+    // is correct regardless of text alignment (left/center/right).
+    // Absent an override, drawX/drawY equal anchor.x/anchor.y exactly —
+    // byte-identical to before this sprint for every existing theme.
+    let natBx=anchor.x-w/2; if(hAlign==='left') natBx=anchor.x; else if(hAlign==='right') natBx=anchor.x-w;
+    let natBy=anchor.y-size/2; if(vAlign==='top') natBy=anchor.y; else if(vAlign==='bottom') natBy=anchor.y-size;
+    let drawX=anchor.x, drawY=anchor.y;
+    if(ov && ov.position){
+      drawX+=ov.position.x-(natBx+w/2);
+      drawY+=ov.position.y-(natBy+size/2);
+    }
+    x.fillStyle=(ov && ov.color)||t.color||'#333333';
     x.textAlign=hAlign;
     x.textBaseline=vAlign;
-    x.fillText(content,anchor.x,anchor.y);
-    const w=x.measureText(content).width;
+    x.fillText(content,drawX,drawY);
     x.restore();
-    const size=t.size||18;
-    let bx=anchor.x-w/2;
-    if(hAlign==='left') bx=anchor.x; else if(hAlign==='right') bx=anchor.x-w;
-    let by=anchor.y-size/2;
-    if(vAlign==='top') by=anchor.y; else if(vAlign==='bottom') by=anchor.y-size;
+    let bx=drawX-w/2;
+    if(hAlign==='left') bx=drawX; else if(hAlign==='right') bx=drawX-w;
+    let by=drawY-size/2;
+    if(vAlign==='top') by=drawY; else if(vAlign==='bottom') by=drawY-size;
     return {bx:bx,by:by,bw:w,bh:size+8};
   }
 
@@ -1116,21 +1132,30 @@ const SlideRenderer=(()=>{
     'curator-pick':'⭐',
     'museum-stamp':'🔖'
   };
-  function _layerDrawSticker(layer,anchor){
+  function _layerDrawSticker(layer,anchor,s){
     const st=layer.sticker||{};
     const size=st.size||36;
     const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
+    // Honour World-Owned Object Commitments sprint — a Sticker Layer's
+    // bbox is always centered on its anchor for both the glyph and the
+    // drawn-circle fallback, so a position override can simply replace
+    // the anchor point outright (no alignment-dependent shift needed,
+    // unlike text). Absent an override, ax/ay equal anchor.x/anchor.y
+    // exactly — unchanged for every existing theme.
+    const ov=_layerOverride(s,layer.id);
+    let ax=anchor.x, ay=anchor.y;
+    if(ov && ov.position){ ax=ov.position.x; ay=ov.position.y; }
     if(glyph){
       x.save();
       x.font=size+'px sans-serif';
       x.textAlign='center';
       x.textBaseline='middle';
-      x.fillText(glyph,anchor.x,anchor.y);
+      x.fillText(glyph,ax,ay);
       x.restore();
-      return {bx:anchor.x-size/2,by:anchor.y-size/2,bw:size,bh:size};
+      return {bx:ax-size/2,by:ay-size/2,bw:size,bh:size};
     }
     x.save();
-    x.translate(anchor.x,anchor.y);
+    x.translate(ax,ay);
     const r=size/2;
     x.fillStyle=st.color||'#7A1F2B';
     x.beginPath(); x.arc(0,0,r,0,Math.PI*2); x.fill();
@@ -1138,7 +1163,7 @@ const SlideRenderer=(()=>{
     x.lineWidth=2;
     x.beginPath(); x.arc(0,0,r*0.6,0,Math.PI*2); x.stroke();
     x.restore();
-    return {bx:anchor.x-r,by:anchor.y-r,bw:r*2,bh:r*2};
+    return {bx:ax-r,by:ay-r,bw:r*2,bh:r*2};
   }
 
   // Gallery Spotlight (Museum Gallery's one shipped Decoration Layer,
@@ -1177,7 +1202,20 @@ const SlideRenderer=(()=>{
     if(!layer.decoration && layer.position) return null;
     const d=layer.decoration||{};
     const kind=d.kind||'spotlight';
-    const r=layerRect||rect;
+    const ov=_layerOverride(s,layer.id);
+    let r=layerRect||rect;
+    // Honour World-Owned Object Commitments sprint — fill/image/shape
+    // all position themselves purely from `r` (never anchor.x/y), so a
+    // moveable:true override is a straightforward translation of `r`
+    // itself, correct regardless of the decoration's own kind. Absent
+    // an override, `r` is unchanged — byte-identical to before this
+    // sprint for every existing theme. (spotlight/paperTexture/
+    // shadowWash draw against the full `rect` directly and have no
+    // realistic "move" concept — not specially handled here.)
+    if(ov && ov.position){
+      const cx=r.x+r.w/2, cy=r.y+r.h/2;
+      r={x:r.x+(ov.position.x-cx),y:r.y+(ov.position.y-cy),w:r.w,h:r.h};
+    }
     if(kind==='spotlight'){
       const radius=(typeof d.radius==='number')?d.radius:Math.max(rect.w,rect.h)*0.6;
       const alpha=(typeof d.alpha==='number')?d.alpha:0.12;
@@ -1195,13 +1233,13 @@ const SlideRenderer=(()=>{
     }else if(kind==='fill'){
       x.save();
       x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
-      x.fillStyle=d.color||'rgba(0,0,0,0.08)';
+      x.fillStyle=(ov && ov.fillColor)||d.color||'rgba(0,0,0,0.08)';
       x.fillRect(r.x,r.y,r.w,r.h);
       x.restore();
     }else if(kind==='image'){
-      _layerDrawDecorationImage(d,r,s);
+      _layerDrawDecorationImage(d,r,s,ov);
     }else if(kind==='shape'){
-      _layerDrawShape(d,r);
+      _layerDrawShape((ov && ov.fillColor)?Object.assign({},d,{fillColor:ov.fillColor}):d,r);
     }
     return {bx:r.x,by:r.y,bw:r.w,bh:r.h};
   }
@@ -1388,13 +1426,19 @@ const SlideRenderer=(()=>{
     _decorationImgCache[src]=img;
     return img;
   }
-  function _layerDrawDecorationImage(d,rect,s){
-    if(!d.image) return;
-    let src=d.image;
-    const theme=_layoutTheme(s);
-    const themeId=theme && theme.id;
-    if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
-      try{ src=ThemeRegistry.resolveAssetRef(themeId,d.image)||d.image; }catch(e){}
+  function _layerDrawDecorationImage(d,rect,s,ov){
+    // Honour World-Owned Object Commitments sprint — a Story-Author-
+    // replaced image (editable:true) is already a full data URI, so it
+    // needs no asset-reference resolution, unlike the theme-authored
+    // relative path below. Absent an override, behaviour is unchanged.
+    let src=(ov && ov.image) || d.image;
+    if(!src) return;
+    if(!(ov && ov.image)){
+      const theme=_layoutTheme(s);
+      const themeId=theme && theme.id;
+      if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+        try{ src=ThemeRegistry.resolveAssetRef(themeId,d.image)||d.image; }catch(e){}
+      }
     }
     const img=_ensureDecorationImage(src);
     if(!img || !img.__ready || !img.width || !img.height) return;
@@ -1432,11 +1476,76 @@ const SlideRenderer=(()=>{
     });
   }
 
+  // Honour World-Owned Object Commitments sprint — a Story Author's
+  // in-place edit (position/fillColor/content/image) on a World-owned
+  // Layer Pack object. Reuses the exact same per-id override bag
+  // js/sceneEngine.js's elementOverrides already is (setPosition et al.
+  // already write/read it generically, keyed by any string id) rather
+  // than inventing a second bag: a Layer Pack id (Builder-generated,
+  // e.g. 'scene-single-holder-decoration') never collides with a
+  // SceneEngine blueprint's own fixed element ids, and
+  // SceneEngine.getRenderData() only ever reads keys present in the
+  // current page's own blueprint, so it simply never looks at a Layer
+  // Pack id's entry even though it lives in the same object. Absent an
+  // override (every page today), this always resolves null — zero
+  // behaviour change for any existing theme.
+  function _layerOverride(s,layerId){
+    return (s && s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[layerId]) || null;
+  }
+
+  // A normalized, kind-specific description of what a World-owned
+  // object actually IS, for the Object Strip to render an accurate
+  // thumbnail from (colour swatch / real image / real shape / real
+  // glyph / real text snippet) instead of one generic icon per type.
+  // Reflects any live Story-Author override so an edited object's
+  // thumbnail stays in sync with what's actually drawn. Returns null
+  // for kinds with no meaningful single-object preview (Theme-effect
+  // layers like spotlight/paperTexture/shadowWash, or a composed
+  // multi-field museumCaption).
+  function _layerVisual(layer,type,s,ov){
+    if(type==='decoration'){
+      const d=layer.decoration||{};
+      const kind=d.kind;
+      if(kind==='fill') return {kind:'color',color:(ov&&ov.fillColor)||d.color||'rgba(0,0,0,0.08)'};
+      if(kind==='image'){
+        if(ov&&ov.image) return {kind:'image',src:ov.image};
+        let src=d.image;
+        const theme=_layoutTheme(s);
+        const themeId=theme&&theme.id;
+        if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+          try{ src=ThemeRegistry.resolveAssetRef(themeId,d.image)||d.image; }catch(e){}
+        }
+        return {kind:'image',src:src};
+      }
+      if(kind==='shape') return {kind:'shape',shape:d.shape,fillColor:(ov&&ov.fillColor)||d.fillColor,strokeColor:d.strokeColor,strokeWidth:d.strokeWidth,rotation:d.rotation,customPath:d.customPath};
+      return null;
+    }
+    if(type==='sticker'){
+      const st=layer.sticker||{};
+      const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
+      if(glyph) return {kind:'glyph',glyph:glyph};
+      return {kind:'color',color:st.color||'#7A1F2B'};
+    }
+    if(type==='text'){
+      const t=layer.text||{};
+      if(t.source==='museumCaption') return null;
+      let content=t.content||'';
+      if(t.source==='slideCaption') content=(s&&s.metadata&&typeof s.metadata.caption==='string'&&s.metadata.caption)||content;
+      if(ov&&typeof ov.content==='string') content=ov.content;
+      if(!content) return null;
+      // `content` is the full, untruncated string (an editable-object
+      // control needs the real value to edit); `snippet` is the
+      // truncated display form the Object Strip card actually shows.
+      return {kind:'text',content:content,snippet:content.length>40?content.slice(0,40)+'…':content};
+    }
+    return null;
+  }
+
   // Wraps a drawn Layer Pack entry's returned bbox into the same shape
   // _sceneBbox()/_stickerBbox() already produce, so it flows through the
   // existing Object Strip + canvas hit-test + selection-outline pipeline
   // with no changes needed there beyond consuming _lastSceneElements.
-  function _pushLayerObject(layer,type,box){
+  function _pushLayerObject(layer,type,box,s){
     if(!box) return;
     // Creator Reconciliation Sprint — moveable/editable come straight off
     // the compiled Layer Pack entry (tools/world-builder-v2's
@@ -1444,22 +1553,31 @@ const SlideRenderer=(()=>{
     // layer.permissions, the exact pattern `visible` already used). A
     // hand-authored legacy Layer Pack entry (Museum Gallery, or anything
     // authored before this sprint) simply has neither key, so
-    // `!!undefined` resolves to `false` — unchanged, still always-locked,
-    // exactly as before this sprint.
+    // `!!undefined` resolves to `false` for moveable/editable.
+    // Honour World-Owned Object Commitments sprint — `locked` (the one
+    // field js/app.js's existing drag machinery actually checks) now
+    // follows the real authored `moveable` value instead of being
+    // hardcoded true, so a moveable:true object engages the exact same
+    // mousedown/mousemove/mouseup chain Cover/Hook/End elements already
+    // use. Absent `moveable` (every legacy Layer Pack entry), this stays
+    // locked exactly as before.
+    const ov=_layerOverride(s,layer.id);
     _layerObjectBboxes.push(_sceneObject({
       id:layer.id, type:type, label:layer.label||_humanizeLayerId(layer.id),
       bx:box.bx, by:box.by, bw:box.bw, bh:box.bh,
-      visible:layer.visible!==false, locked:true,
-      moveable:!!layer.moveable, editable:!!layer.editable
+      visible:layer.visible!==false, locked:!layer.moveable,
+      moveable:!!layer.moveable, editable:!!layer.editable,
+      decorationSlot:!!layer.decorationSlot,
+      visual:_layerVisual(layer,type,s,ov)
     },'world'));
   }
 
   function _renderLayers(pack,target,rect,s){
     if(!pack || typeof LayerEngine==='undefined') return;
     LayerEngine.render(pack,target,rect,{
-      drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s)); },
-      drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,rect)); },
-      drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect)); }
+      drawText:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'text',_layerDrawText(layer,anchor,layerRect||rect,s),s); },
+      drawSticker:function(layer,anchor){ _pushLayerObject(layer,'sticker',_layerDrawSticker(layer,anchor,s),s); },
+      drawDecoration:function(layer,anchor,r,layerRect){ _pushLayerObject(layer,'decoration',_layerDrawDecoration(layer,anchor,rect,s,layerRect),s); }
     });
   }
 
@@ -2739,7 +2857,34 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,activeLayoutHolderCount:_activeLayoutHolders};
+  // Honour World-Owned Object Commitments sprint — the Object Strip's
+  // `visual`-aware thumbnail for a shape-kind World object. Mirrors
+  // drawFrameSwatch's own context-swap technique exactly (swap the
+  // module-private canvas context to an external one, call the
+  // existing draw routine, restore) so a Shape thumbnail reuses
+  // _layerDrawShape's real geometry rather than a second implementation.
+  // Only `kind:'shape'` needs a canvas at all — color/image/glyph/text
+  // thumbnails are plain DOM (swatch div / img / text), built directly
+  // in js/objectStrip.js from the same `visual` descriptor.
+  function drawObjectThumbnail(targetCtx,visual,size){
+    if(!targetCtx||!visual||visual.kind!=='shape') return;
+    const saved=x;
+    x=targetCtx;
+    try{
+      _layerDrawShape({
+        shape:visual.shape,
+        fillColor:visual.fillColor,
+        strokeColor:visual.strokeColor,
+        strokeWidth:visual.strokeWidth,
+        rotation:visual.rotation,
+        customPath:visual.customPath
+      },{x:0,y:0,w:size,h:size});
+    } finally {
+      x=saved;
+    }
+  }
+
+  const api={init,render,buildPayload,getPanelRect,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,activeLayoutHolderCount:_activeLayoutHolders};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

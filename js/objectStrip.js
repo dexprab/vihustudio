@@ -70,18 +70,59 @@ const ObjectStrip=(function(){
     return e;
   }
 
-  function _card(opts){
-    // opts: {icon, imgSrc, name, editable, owner, selected, onClick}
-    const card=_el('button','object-card'+(opts.selected?' selected':''));
-    card.type='button';
-    const thumb=_el('div','object-card-thumb');
+  // Honour World-Owned Object Commitments sprint — renders whatever a
+  // World object's own `visual` descriptor (renderer/slideRenderer.js's
+  // `_layerVisual`) actually is, instead of one generic icon per type:
+  // a colour swatch for a fill, the real uploaded image for an image,
+  // the real drawn shape for a shape, the real glyph for a glyph-
+  // decoration/sticker, or a short content snippet for text. Falls
+  // through to the existing icon/imgSrc path when there's no `visual`
+  // (every non-World-owned card, and any theme predating this sprint).
+  function _renderThumb(thumb,opts){
+    const v=opts.visual;
+    if(v && v.kind==='color'){
+      thumb.style.background=v.color;
+      return;
+    }
+    if(v && v.kind==='image' && v.src){
+      const img=document.createElement('img');
+      img.src=v.src;
+      thumb.appendChild(img);
+      return;
+    }
+    if(v && v.kind==='shape' && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.drawObjectThumbnail==='function'){
+      const size=44;
+      const canvas=document.createElement('canvas');
+      canvas.width=size; canvas.height=size;
+      canvas.className='object-card-thumb-canvas';
+      SlideRenderer.drawObjectThumbnail(canvas.getContext('2d'),v,size);
+      thumb.appendChild(canvas);
+      return;
+    }
+    if(v && v.kind==='glyph'){
+      thumb.textContent=v.glyph;
+      return;
+    }
+    if(v && v.kind==='text'){
+      thumb.classList.add('object-card-thumb-text');
+      thumb.textContent=v.snippet;
+      return;
+    }
     if(opts.imgSrc){
       const img=document.createElement('img');
       img.src=opts.imgSrc;
       thumb.appendChild(img);
-    }else{
-      thumb.textContent=opts.icon||'❔';
+      return;
     }
+    thumb.textContent=opts.icon||'❔';
+  }
+
+  function _card(opts){
+    // opts: {icon, imgSrc, name, editable, owner, selected, onClick, visual}
+    const card=_el('button','object-card'+(opts.selected?' selected':''));
+    card.type='button';
+    const thumb=_el('div','object-card-thumb');
+    _renderThumb(thumb,opts);
     if(opts.editable) thumb.appendChild(_el('span','object-card-edit-badge','✏️'));
     card.appendChild(thumb);
     card.appendChild(_el('div','object-card-name',opts.name));
@@ -207,6 +248,7 @@ const ObjectStrip=(function(){
         name:name,
         editable:!!el.editable,
         owner:el.owner,
+        visual:el.visual,
         selected:selScene===el.id,
         onClick:function(){ _selectScene(el.id,el.type); }
       }));
