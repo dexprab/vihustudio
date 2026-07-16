@@ -1575,6 +1575,19 @@ const SlideRenderer=(()=>{
 
     if(_composition==='quote'){
       _drawQuoteText(s,t,_panelRect);
+    }else if(_activeLayoutHolders(s)===0){
+      // A Scene explicitly converged with zero Places has no picture
+      // area at all -- unlike the plain "_border is null" case just
+      // below (a legacy Story Theme with no Artwork Theme, where
+      // _drawPanel's page-colour rectangle IS the intended background
+      // for where the story picture goes), a zero-Holder Artwork Theme
+      // Scene isn't missing styling, it's declaring there's no picture
+      // area here at all. That fallback panel was never holder-count
+      // aware, so it kept painting regardless -- the real source of
+      // the reported "white box" once _resolveBorder started correctly
+      // returning null for this case. Draw nothing here; the 'slide'-
+      // scoped Layer Pack entries above (background fill/decorations)
+      // are the only content a zero-Holder Scene ever declares.
     }else if(_border){
       _drawPictureFrameFill(_panelRect,_border,t);
       _drawArtworkPresentation(_panelRect,_border);

@@ -1,10 +1,10 @@
 {
-  "version": "3.31.0",
+  "version": "3.32.0",
   "phase": "Platform Hardening",
-  "milestone": "Zero-Holder Scenes -- close the legacy fallback gap in renderer/slideRenderer.js's _resolveBorder",
-  "slice": "A follow-up triggered by a live user report: a real World Builder Scene with zero Places still showed a Holder placeholder box in Creator. Traced to renderer/slideRenderer.js (a Studio file, not a Builder file, but recorded here too since it's the render path every Builder-authored Theme flows through): the earlier zero-Holder gating only ever blocked _resolveBorder's Artwork-Theme-specific branch, leaving the function free to fall through to the older, artwork-independent Sprint 8.4.2 'Picture Holder defaults' fallback, which can still resolve a non-null border from a theme's generic styling defaults with no relationship to Places at all -- and once non-null, the artwork placeholder box still drew regardless of the Scene's real Holder count. Fixed by gating _resolveBorder at its very top instead of inside one branch, so zero-Holder now uniformly means no border resolves, matching what Working View/Runtime Preview already show for a Scene with no Places. Verified via a real Playwright A/B test (git stash-toggling the fix, comparing full-panel-rect pixel diffs on a synthetic zero-Holder Scene compiled through the real ProjectCompiler.runBuild pipeline) confirming the fix is a real, disclosed gap-closure; it did not reproduce the user's own exact symptom against this synthetic fixture, so that report is still being triaged separately. Full regression across all 18 existing Creator/Builder Playwright scripts and both goldenBuild.js suites passes unchanged.",
-  "build": "0089",
+  "milestone": "Zero-Holder Scenes -- the real white-box source found and fixed (renderer/slideRenderer.js)",
+  "slice": "A direct, confirmed follow-up found by reproducing the user's actual live World shape: a zero-Place Scene with a Scene-hosted dark Colour-fill background and a Free-hosted gold octagon Decoration Shape still showed a white box in Creator after the previous _resolveBorder fix. Root cause: render()'s own composition-selection code falls to an 'else' branch that unconditionally paints the classic pre-Artwork-Theme 'story picture panel' rectangle whenever the resolved border is null -- correct for a plain Story Theme, wrong for a zero-Holder Artwork Theme Scene which has no picture area at all. Fixed with a new branch that draws nothing when the active Layout's holders count is explicitly 0. Verified via a real git stash A/B test on the user's exact World shape confirming the panel-rect center pixel goes from pure white to the theme's own page colour, with zero regression across the full Creator/Builder suite and both goldenBuild.js suites (Museum Gallery's real Holder still renders its Frame/mat/Wax Seal unchanged).",
+  "build": "0090",
   "buildDate": "2026-07-15",
-  "commit": "f462fb1",
+  "commit": "pending",
   "environment": "Release"
 }
