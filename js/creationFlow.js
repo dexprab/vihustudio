@@ -1054,9 +1054,28 @@ const CreationFlow=(function(){
       try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     }
     _closeChangeRepresentation();
-    try{ if(typeof window.redrawPreview==='function') window.redrawPreview(); }catch(e){}
+    // Real, user-reported bug: switching Representation via "Change Look"
+    // only ever called redrawPreview/renderList/ContextPanel.refresh
+    // directly here, predating the Runtime Pass Sprint's PageRuntime.
+    // notify() dispatch — it never told Object Strip to refresh, so a
+    // page switched to a new Layout kept showing whatever Layer Pack
+    // objects (e.g. a Decoration Shape) the PREVIOUS Representation's
+    // Scene had converged, stale, even though the canvas geometry
+    // (panel rect / holder count) was already correctly recomputed.
+    // PageRuntime.notify() is the one dispatch every other selection/
+    // page-change path already routes through; falling back to the
+    // pre-Runtime-Pass calls (now including ObjectStrip) if PageRuntime
+    // isn't loaded for some reason.
+    try{
+      if(typeof PageRuntime!=='undefined') PageRuntime.notify();
+      else{
+        if(typeof window.redrawPreview==='function') window.redrawPreview();
+        if(typeof window.renderList==='function') window.renderList();
+        if(typeof ContextPanel!=='undefined') ContextPanel.refresh();
+        if(typeof ObjectStrip!=='undefined') ObjectStrip.refresh();
+      }
+    }catch(e){}
     try{ if(typeof window.renderList==='function') window.renderList(); }catch(e){}
-    try{ if(typeof ContextPanel!=='undefined') ContextPanel.refresh(); }catch(e){}
   }
 
   function _closeChangeRepresentation(){
