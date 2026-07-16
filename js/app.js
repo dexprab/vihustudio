@@ -6,6 +6,7 @@ const title=document.getElementById('bookTitle');
 const page=document.getElementById('pageNumber');
 const total=document.getElementById('totalPages');
 const previewCanvas=document.getElementById('previewCanvas');
+const previewArea=document.querySelector('.preview-area');
 const contextMenu=document.getElementById('contextMenu');
 // Sprint 9.1.4 — Export button removed. Children publish stories;
 // software generates files. Publish is the editor's only publishing
@@ -1170,6 +1171,27 @@ previewCanvas.addEventListener('mousedown',function(e){
     _setSelectedSceneElement(null,null);
   }
 });
+
+// Direct product feedback: "any click in empty space anywhere in
+// Creator should get us out from any selected state... this will ensure
+// natural usage tendencies are respected." The canvas's own mousedown
+// handler above already deselects when a click lands on empty CANVAS
+// pixels (via hit-testing), but `.preview-area` (the center pane) also
+// has real empty DOM space around the canvas — the flex gutter in
+// `.preview-wrapper` and the Object Strip's own background — that never
+// had a listener at all, so clicking there silently did nothing. This
+// is a genuinely separate gap, not a duplicate of the canvas's own
+// logic: `closest('#previewCanvas, .object-card')` excludes both the
+// canvas (handles its own hit-testing) and Object Strip cards (their own
+// click already selects/deselects via _clearSelection), so this only
+// ever fires for the actual empty background of the pane.
+if(previewArea){
+  previewArea.addEventListener('mousedown',function(e){
+    if(e.target.closest('#previewCanvas, .object-card')) return;
+    if(_selectedTextElement) _setSelectedTextElement(null);
+    if(_selectedSceneElement) _setSelectedSceneElement(null,null);
+  });
+}
 
 // Sprint 6.5 (Object Designer) — hover cursor over resize handles.
 previewCanvas.addEventListener('mousemove',function(e){

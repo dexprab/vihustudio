@@ -327,6 +327,34 @@ gap. A selection left over from a different page, or a since-removed
 object, now falls through to the default "nothing selected" view instead
 of opening a live-looking but id-blind editor.
 
+### Deselect on empty-space click
+
+Direct product feedback: "any click in empty space anywhere in Creator
+should get us out from any selected state... this will ensure natural
+usage tendencies are respected." Two genuinely separate empty-space
+regions existed, only one of which had ever been wired to clear a
+selection:
+
+- **Empty canvas pixels** — `js/app.js`'s `previewCanvas` `mousedown`
+  handler already hit-tests every click and, when nothing is hit and the
+  click isn't eligible for image-pan, calls
+  `_setSelectedTextElement(null)`/`_setSelectedSceneElement(null,null)`.
+  This has existed since before this sprint and needed no change.
+- **Empty pane background** — `.preview-area` (the center pane) has real
+  clickable DOM space around the canvas itself: the flex gutter
+  `.preview-wrapper` uses to center a fluid-sized canvas, and the Object
+  Strip's own background beneath it. Neither had a listener at all, so a
+  click landing there did nothing.
+
+Fixed with one new `mousedown` listener on `.preview-area` itself,
+guarded by `e.target.closest('#previewCanvas, .object-card')` so it never
+fires for a click the canvas's own hit-testing already handles, or for an
+Object Strip card click (which already selects/deselects via its own
+`onClick` routing into `PageRuntime.selectSceneObject`/`selectTextObject`/
+`clearSelection`). Only a genuine empty-background click reaches it,
+where it clears both selection channels the same way the canvas's own
+fallback does.
+
 ---
 
 ## 6. The Runtime Pass
