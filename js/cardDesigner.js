@@ -469,7 +469,7 @@ const CardDesigner=(function(){
     const artworkBody=_makeImageSubgroup(body,'artwork-presentation','Artwork Presentation');
     const artworkSub=artworkBody.parentNode;
     if(typeof WorkspaceBuilder!=='undefined'){
-      WorkspaceBuilder.layout(artworkBody,'holder.image',{getSlide:_currentSlide,onChange:_commit},artworkSub);
+      WorkspaceBuilder.layout(artworkBody,'holder.image',{getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId},artworkSub);
     }
   }
 
@@ -506,15 +506,25 @@ const CardDesigner=(function(){
   function _applyFrameDesign(preset){
     const slide=_currentSlide();
     if(!slide) return;
-    if(!slide.metadata) slide.metadata={};
-    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     // Deep-clone the preset's border config so future mutations don't
     // leak across presets. Sprint 6.5.1 — embed the design id inside the
     // border object so the renderer can dispatch per-design ornament.
     const cfg=JSON.parse(JSON.stringify(preset.border));
     cfg.design=preset.id;
-    slide.metadata.cardOverrides.border=cfg;
-    slide.metadata.cardOverrides.frameDesign=preset.id;
+    // Multiple Artwork Places Per Page — a real Place must write to its
+    // own storage; omitted (Place 1) keeps the exact pre-existing path.
+    const placeId=_currentPlaceId();
+    if(placeId){
+      const bag=_placeViewBag(slide,placeId);
+      if(!bag.cardOverrides) bag.cardOverrides={};
+      bag.cardOverrides.border=cfg;
+      bag.cardOverrides.frameDesign=preset.id;
+    }else{
+      if(!slide.metadata) slide.metadata={};
+      if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+      slide.metadata.cardOverrides.border=cfg;
+      slide.metadata.cardOverrides.frameDesign=preset.id;
+    }
     _commit();
   }
 
@@ -615,7 +625,7 @@ const CardDesigner=(function(){
       labelText:'Border Size',valueClass:'border-padding-value',sliderClass:'border-padding-slider',
       min:0,max:60,step:1,
       onInput:function(v){
-        const b=_ensureBorder(_currentSlide());
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
         if(!b) return;
         if(Math.round(v)===BORDER_DEFAULTS.padding) delete b.padding; else b.padding=Math.round(v);
         _commitBorder();
@@ -644,7 +654,7 @@ const CardDesigner=(function(){
       lbl.textContent=p.label;
       btn.appendChild(lbl);
       btn.addEventListener('click',function(){
-        const b=_ensureBorder(_currentSlide());
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
         if(!b) return;
         if(p.id==='page') delete b.fill; else b.fill=p.id;
         _commitBorder();
@@ -664,7 +674,7 @@ const CardDesigner=(function(){
     customColor.className='border-fill-custom-input';
     customColor.value='#FFFFFF';
     customColor.addEventListener('input',function(){
-      const b=_ensureBorder(_currentSlide());
+      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
       if(!b) return;
       b.fill=customColor.value;
       _commitBorder();
@@ -687,7 +697,7 @@ const CardDesigner=(function(){
       labelText:'Round Corners',valueClass:'border-radius-value',sliderClass:'border-radius-slider',
       min:0,max:80,step:1,
       onInput:function(v){
-        const b=_ensureBorder(_currentSlide());
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
         if(!b) return;
         if(Math.round(v)===0) delete b.cornerRadius; else b.cornerRadius=Math.round(v);
         _commitBorder();
@@ -696,7 +706,7 @@ const CardDesigner=(function(){
 
     // Border Line (on/off + width + color)
     _buildToggleRow(borderGroup,'Border Line','border-line-toggle',function(checked){
-      const b=_ensureBorder(_currentSlide());
+      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
       if(!b) return;
       b.line=b.line||{};
       if(checked) b.line.enabled=true; else delete b.line.enabled;
@@ -706,7 +716,7 @@ const CardDesigner=(function(){
       labelText:'Line Width',valueClass:'border-line-width-value',sliderClass:'border-line-width-slider',
       min:1,max:12,step:1,
       onInput:function(v){
-        const b=_ensureBorder(_currentSlide());
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
         if(!b) return;
         b.line=b.line||{};
         if(Math.round(v)===BORDER_DEFAULTS.lineWidth) delete b.line.width; else b.line.width=Math.round(v);
@@ -724,7 +734,7 @@ const CardDesigner=(function(){
     lineColorInput.className='border-line-color-input';
     lineColorInput.value=BORDER_DEFAULTS.lineColor;
     lineColorInput.addEventListener('input',function(){
-      const b=_ensureBorder(_currentSlide());
+      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
       if(!b) return;
       b.line=b.line||{};
       b.line.color=lineColorInput.value;
@@ -735,7 +745,7 @@ const CardDesigner=(function(){
 
     // Shadow (on/off + intensity)
     _buildToggleRow(shadowGroup,'Shadow','border-shadow-toggle',function(checked){
-      const b=_ensureBorder(_currentSlide());
+      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
       if(!b) return;
       b.shadow=b.shadow||{};
       if(checked) b.shadow.enabled=true; else delete b.shadow.enabled;
@@ -745,7 +755,7 @@ const CardDesigner=(function(){
       labelText:'Light ↔ Dark',valueClass:'border-shadow-value',sliderClass:'border-shadow-slider',
       min:0,max:1,step:0.01,
       onInput:function(v){
-        const b=_ensureBorder(_currentSlide());
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
         if(!b) return;
         b.shadow=b.shadow||{};
         const n=Math.round(v*100)/100;
@@ -758,7 +768,7 @@ const CardDesigner=(function(){
     // active workspace theme, and build Paper/Mat (new, inert this
     // sprint — see workspaceBuilder.js header) if the theme lists them.
     if(typeof WorkspaceBuilder!=='undefined'){
-      WorkspaceBuilder.layout(bg,'frame',{getSlide:_currentSlide,onChange:_commitBorder});
+      WorkspaceBuilder.layout(bg,'frame',{getSlide:_currentSlide,onChange:_commitBorder,getPlaceId:_currentPlaceId});
     }
 
     // Reset Border — a trailer action, always last regardless of the
@@ -798,19 +808,44 @@ const CardDesigner=(function(){
   }
 
   // Sprint 6.5 — border data lives under slide.metadata.cardOverrides.border.
-  function _ensureBorder(slide){
+  // Multiple Artwork Places Per Page — `placeId` omitted preserves the
+  // exact Place-1 path below, unchanged; a real id reads/creates that
+  // Place's own bag under slide.metadata.placeContent[placeId].cardOverrides.border
+  // instead, mirroring _ensureView/_readView's own placeId convention.
+  function _ensureBorder(slide,placeId){
     if(!slide) return null;
+    if(placeId){
+      const bag=_placeViewBag(slide,placeId);
+      if(!bag.cardOverrides) bag.cardOverrides={};
+      if(!bag.cardOverrides.border) bag.cardOverrides.border={};
+      return bag.cardOverrides.border;
+    }
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     if(!slide.metadata.cardOverrides.border) slide.metadata.cardOverrides.border={};
     return slide.metadata.cardOverrides.border;
   }
-  function _readBorder(slide){
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return null;
+  function _readBorder(slide,placeId){
+    if(!slide||!slide.metadata) return null;
+    if(placeId){
+      const bag=slide.metadata.placeContent && slide.metadata.placeContent[placeId];
+      return (bag && bag.cardOverrides && bag.cardOverrides.border) || null;
+    }
+    if(!slide.metadata.cardOverrides) return null;
     return slide.metadata.cardOverrides.border||null;
   }
-  function _pruneBorder(slide){
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+  function _pruneBorder(slide,placeId){
+    if(!slide||!slide.metadata) return;
+    if(placeId){
+      const bag=slide.metadata.placeContent && slide.metadata.placeContent[placeId];
+      const b=bag && bag.cardOverrides && bag.cardOverrides.border;
+      if(!b) return;
+      if(b.line && Object.keys(b.line).length===0) delete b.line;
+      if(b.shadow && Object.keys(b.shadow).length===0) delete b.shadow;
+      if(Object.keys(b).length===0) delete bag.cardOverrides.border;
+      return;
+    }
+    if(!slide.metadata.cardOverrides) return;
     const b=slide.metadata.cardOverrides.border;
     if(!b) return;
     if(b.line && Object.keys(b.line).length===0) delete b.line;
@@ -818,12 +853,20 @@ const CardDesigner=(function(){
     if(Object.keys(b).length===0) delete slide.metadata.cardOverrides.border;
   }
   function _commitBorder(){
-    _pruneBorder(_currentSlide());
+    _pruneBorder(_currentSlide(),_currentPlaceId());
     _commit();
   }
   function _resetBorder(){
     const slide=_currentSlide();
-    if(!slide||!slide.metadata||!slide.metadata.cardOverrides) return;
+    const placeId=_currentPlaceId();
+    if(!slide||!slide.metadata) return;
+    if(placeId){
+      const bag=slide.metadata.placeContent && slide.metadata.placeContent[placeId];
+      if(bag && bag.cardOverrides) delete bag.cardOverrides.border;
+      _commit();
+      return;
+    }
+    if(!slide.metadata.cardOverrides) return;
     delete slide.metadata.cardOverrides.border;
     _commit();
   }
@@ -884,8 +927,8 @@ const CardDesigner=(function(){
     if(!mountedRoot || typeof WorkspaceBuilder==='undefined') return;
     const imageBody=mountedRoot.querySelector('[data-card-section-body="image"]');
     if(!imageBody) return;
-    const ctx={getSlide:_currentSlide,onChange:_commit};
-    const borderCtx={getSlide:_currentSlide,onChange:_commitBorder};
+    const ctx={getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId};
+    const borderCtx={getSlide:_currentSlide,onChange:_commitBorder,getPlaceId:_currentPlaceId};
     WorkspaceBuilder.applyLayout(imageBody,WorkspaceBuilder.getControlIds('frame'));
     const frameStyleBody=imageBody.querySelector('[data-image-group="border"] .image-subgroup-body');
     if(frameStyleBody) WorkspaceBuilder.layout(frameStyleBody,'frame',borderCtx);
@@ -897,7 +940,8 @@ const CardDesigner=(function(){
   function _refreshBorder(){
     if(!mountedRoot) return;
     const s=_currentSlide();
-    const b=_readBorder(s)||{};
+    const placeId=_currentPlaceId();
+    const b=_readBorder(s,placeId)||{};
     const line=b.line||{};
     const shadow=b.shadow||{};
     const padding=(typeof b.padding==='number')?b.padding:BORDER_DEFAULTS.padding;
@@ -908,7 +952,12 @@ const CardDesigner=(function(){
     const shadowEnabled=!!shadow.enabled;
     const shadowIntensity=(typeof shadow.intensity==='number')?shadow.intensity:BORDER_DEFAULTS.shadowIntensity;
     const fillSetting=b.fill||'page';
-    const hasImage=!!(s && s.image);
+    // Multiple Artwork Places Per Page — whether the SELECTED Place has
+    // a picture yet, not always Place 1's (mirrors _refreshImage's own
+    // hasImage computation).
+    const hasImage=placeId
+      ? !!(s && s._placeImages && s._placeImages[placeId] && s._placeImages[placeId].width)
+      : !!(s && s.image);
 
     function setSlider(sel,valueSel,value,fmt,disabled){
       const sl=mountedRoot.querySelector(sel);

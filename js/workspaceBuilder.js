@@ -117,14 +117,33 @@ const WorkspaceBuilder=(function(){
   function getControlMeta(panelId,id){ return _resolve(panelId).metaById[id]||{}; }
 
   // ---------- New-control state (inert this sprint — see file header) ----------
-  function _ensureArtwork(slide){
+  // Multiple Artwork Places Per Page — `placeId` omitted preserves the
+  // exact page-level (Place 1) bag below, unchanged; a real id reads/
+  // creates that Place's own bag under
+  // slide.metadata.placeContent[placeId].cardOverrides.artwork instead —
+  // the same shape renderer/slideRenderer.js's _cardArtworkOverride
+  // already reads for a Place's Frame Variation / Presentation / Frame /
+  // Lighting / Caption / Paper / Mat.
+  function _ensureArtwork(slide,placeId){
     if(!slide) return null;
+    if(placeId){
+      if(!slide.metadata) slide.metadata={};
+      if(!slide.metadata.placeContent) slide.metadata.placeContent={};
+      if(!slide.metadata.placeContent[placeId]) slide.metadata.placeContent[placeId]={};
+      if(!slide.metadata.placeContent[placeId].cardOverrides) slide.metadata.placeContent[placeId].cardOverrides={};
+      if(!slide.metadata.placeContent[placeId].cardOverrides.artwork) slide.metadata.placeContent[placeId].cardOverrides.artwork={};
+      return slide.metadata.placeContent[placeId].cardOverrides.artwork;
+    }
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     if(!slide.metadata.cardOverrides.artwork) slide.metadata.cardOverrides.artwork={};
     return slide.metadata.cardOverrides.artwork;
   }
-  function _readArtwork(slide){
+  function _readArtwork(slide,placeId){
+    if(placeId){
+      return (slide && slide.metadata && slide.metadata.placeContent && slide.metadata.placeContent[placeId]
+        && slide.metadata.placeContent[placeId].cardOverrides && slide.metadata.placeContent[placeId].cardOverrides.artwork) || {};
+    }
     return (slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.artwork) || {};
   }
 
@@ -147,9 +166,13 @@ const WorkspaceBuilder=(function(){
     const defaultLabel='Theme default'+((meta&&meta.default)?(' ('+meta.default+')'):'');
     sel.appendChild(new Option(defaultLabel,''));
     optionList.forEach(function(o){ sel.appendChild(new Option(o[1],o[0])); });
-    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide)[key]; };
+    // Multiple Artwork Places Per Page — ctx.getPlaceId (when the caller
+    // provides one) reads/writes the CURRENTLY SELECTED Place's own
+    // artwork bag instead of always Place 1's; omitted (every pre-
+    // existing caller) keeps the exact page-level behaviour unchanged.
+    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide,ctx.getPlaceId&&ctx.getPlaceId())[key]; };
     const _set=(store&&store.set) || function(slide,value){
-      const art=_ensureArtwork(slide);
+      const art=_ensureArtwork(slide,ctx.getPlaceId&&ctx.getPlaceId());
       if(!art) return;
       if(value===undefined) delete art[key]; else art[key]=value;
     };
@@ -186,9 +209,12 @@ const WorkspaceBuilder=(function(){
     wrap.appendChild(lbl);
     const row=document.createElement('div');
     row.className='icon-row';
-    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide)[key]; };
+    // Multiple Artwork Places Per Page — same ctx.getPlaceId convention
+    // as _buildSelectRow, so Frame Variation picks target the currently
+    // selected Place, not always Place 1.
+    const _get=(store&&store.get) || function(slide){ return _readArtwork(slide,ctx.getPlaceId&&ctx.getPlaceId())[key]; };
     const _set=(store&&store.set) || function(slide,value){
-      const art=_ensureArtwork(slide);
+      const art=_ensureArtwork(slide,ctx.getPlaceId&&ctx.getPlaceId());
       if(!art) return;
       if(value===undefined) delete art[key]; else art[key]=value;
     };
