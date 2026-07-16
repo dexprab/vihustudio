@@ -5319,6 +5319,24 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:clamp(24px,3.5vh,36px);
   box-shadow:none;
 }
+/* A real, reported bug: _repCard's <img class="creation-flow-card-icon-image">
+   (the "Change Look" Page Style cards' own thumbnail, when a Representation
+   has a real preview image) had no CSS of its own at all — it rendered at
+   its full intrinsic photo resolution with nothing constraining its size,
+   blowing out its card, the whole grid, and the mode-change-look modal
+   itself (visible scrollbars, the panel growing past its own max-height).
+   Matches the same width:100%/fixed-height/object-fit:cover shape every
+   other Creation Flow image thumbnail already uses (.creation-flow-world-thumb
+   img, .creation-flow-carousel-art img) instead of the plain emoji badge's
+   56x56 circle, since this is a real photo preview, not an icon glyph. */
+.creation-flow-card-icon-image{
+  width:100%;
+  height:110px;
+  object-fit:cover;
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px var(--cf-line);
+  flex-shrink:0;
+}
 .creation-flow-card-title{ font-size:15px; font-weight:700; color:var(--navy); }
 .creation-flow-card-desc{ font-size:12.5px; color:var(--text-secondary); line-height:1.35; }
 .creation-flow-badge{
