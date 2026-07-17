@@ -1208,28 +1208,35 @@ previewCanvas.addEventListener('mousedown',function(e){
 
   // Image pan inside the panel rect (Sprint 4.2 behavior). Multiple
   // Artwork Places Per Page — generalized to whichever Place rect was
-  // actually clicked; requires that Place to already have a picture,
-  // exactly matching Place 1's own pre-existing rule (an empty Place is
-  // selected via its Object Strip card instead, where "Add Artwork" is
-  // reachable). Every existing single/zero-Place theme still only ever
-  // resolves the one 'image-holder' rect, so this stays byte-identical
-  // there.
+  // actually clicked.
+  //
+  // A real, user-reported bug: clicking directly on an EMPTY Place's
+  // placeholder box did nothing at all — selection itself was gated on
+  // `_placeImageFor(...)` already resolving a picture, so a click there
+  // fell through to the "clicked empty space" branch below and actively
+  // DESELECTED whatever was selected, rather than selecting the empty
+  // Place. Pre-existing legacy behaviour for Place 1 too (an unfilled
+  // Place 1 was equally unclickable before Multiple Places existed),
+  // just far more noticeable once a page has several visually-identical
+  // empty boxes side by side. Fixed by splitting "select the Place" from
+  // "start a pan gesture": selection now happens for ANY real Place hit,
+  // regardless of whether it has a picture yet (Story-role pages have no
+  // SceneEngine element for the picture, so this click is the only real
+  // target Context Panel can key off "Artwork selected"/"Add Artwork"
+  // from); the pan gesture itself still only starts once that Place
+  // actually has an image to pan.
   const _placeHit=_hitTestPlace(c.x,c.y,s);
-  if(_placeHit && _placeImageFor(s,_placeHit.id) && typeof CardDesigner!=='undefined'){
-    const v=CardDesigner.getActiveImageView(_placeHit.id);
-    if(v){
-      // Sprint 10.0 — Story-role pages have no SceneEngine scene element
-      // for the picture (SceneEngine.getRenderData returns null for
-      // Story role — see js/sceneEngine.js), so this is the only real
-      // click target the Context Panel can key off for "Artwork
-      // selected" on those pages. Selecting doesn't change the pan
-      // gesture below at all — it just notifies the Context Panel.
-      _setSelectedSceneElement(_placeHit.id,'image-holder');
-      _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0,placeId:_placeHit.id};
-      previewCanvas.classList.add('canvas-panning');
-      e.preventDefault();
-      return;
+  if(_placeHit){
+    _setSelectedSceneElement(_placeHit.id,'image-holder');
+    if(_placeImageFor(s,_placeHit.id) && typeof CardDesigner!=='undefined'){
+      const v=CardDesigner.getActiveImageView(_placeHit.id);
+      if(v){
+        _panState={startX:e.clientX,startY:e.clientY,sx:c.sx,sy:c.sy,offX:v.offsetX||0,offY:v.offsetY||0,placeId:_placeHit.id};
+        previewCanvas.classList.add('canvas-panning');
+      }
     }
+    e.preventDefault();
+    return;
   }
 
   // Clicked empty space — clear any text/scene selection so the canvas
