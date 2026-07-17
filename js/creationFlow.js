@@ -382,6 +382,15 @@ const CreationFlow=(function(){
       const payload=SlideRenderer.buildPayload(slide,{defaultBookTitle:''});
       if(slide.theme!==undefined) payload.theme=slide.theme;
       if(slide.artworkTheme!==undefined) payload.artworkTheme=slide.artworkTheme;
+      // Layout/Holder/Place/Layer-Pack resolution (_resolveLayout,
+      // _activeLayoutHolders, _activeLayoutPlaces, _activeLayerPack) all
+      // read _layoutTheme(s), a SEPARATE resolution chain from
+      // theme/artworkTheme above -- it only ever checks s.artworkTheme or
+      // the global active theme, never s.theme, so a story-type World's
+      // own Layouts/Layer Pack would silently never resolve here without
+      // this. Setting the raw theme object directly is safe: real slides
+      // never set payload.layoutTheme, so this is a no-op everywhere else.
+      payload.layoutTheme=theme;
       SlideRenderer.render(payload);
       const size=SlideRenderer.getCanvasSize(slide);
       canvas.style.aspectRatio=size.w+' / '+size.h;

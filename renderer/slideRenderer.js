@@ -148,6 +148,12 @@ const SlideRenderer=(()=>{
   // established in Sprint 9.4: an active Artwork Theme governs Frame
   // geometry if present, otherwise the Story Theme does.
   function _layoutTheme(s){
+    // A synthetic preview slide (Screen 2's carousel) may stamp its own raw
+    // theme object here directly -- distinct from s.theme/s.artworkTheme,
+    // which _theme()/_artworkTheme() already interpret for other purposes
+    // and can't safely be reused for this. Real slides never set this
+    // field, so this branch is a no-op for every existing render path.
+    if(s && s.layoutTheme) return s.layoutTheme;
     const art=_artworkTheme(s);
     if(art) return art;
     if(typeof ThemeEngine!=='undefined'){ try{ return ThemeEngine.getActiveTheme(); }catch(e){} }
