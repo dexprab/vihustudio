@@ -3190,6 +3190,16 @@ body.dark-theme .sticker-action-btn{ background:var(--panel); }
 }
 .frame-empty.hidden{ display:none; }
 .frame-editor.hidden{ display:none; }
+.frame-editable-lock-note.hidden{ display:none; }
+.frame-editable-lock-note{
+  font-size:12px;
+  color:var(--text-secondary);
+  text-align:center;
+  padding:6px 10px;
+  margin:0 0 8px;
+  background:var(--panel-alt,rgba(0,0,0,0.04));
+  border-radius:8px;
+}
 
 .frame-selected-label{
   font-size:12px;

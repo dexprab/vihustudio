@@ -286,22 +286,30 @@ const SlideRenderer=(()=>{
   }
 
   // Guardrails — Studio's own render-time default for an already-
-  // compiled placeRects entry is deliberately the OPPOSITE of Builder's
-  // own compile-time default (tools/world-builder-v2/js/services/
-  // builder.js's convergeScene, which defaults an absent `permissions`
-  // object to `true` for all three fields, matching what
-  // _ensureHolderDefaults stamps onto a live Holder): here, an absent
-  // moveable/editable field must resolve to `false` (locked/non-
-  // editable), never silently become moveable/editable, so every theme
-  // published before this fix keeps rendering exactly as before — a
-  // never-moveable, always-visible Place. Absent `visible` resolves to
-  // `true` (a Place always showed before this fix).
+  // compiled placeRects entry is NOT uniformly the opposite of Builder's
+  // own compile-time default; the two fields it governs have different
+  // histories and need different absent-field defaults:
+  //  - `moveable` is a BRAND NEW capability this feature introduced —
+  //    absent (every theme published before this fix) must resolve to
+  //    `false` (locked/non-moveable), so nothing that could never be
+  //    dragged before suddenly can be.
+  //  - `editable` (Frame-editing via Card Designer's Frame Look/Frame
+  //    Style controls) is a PRE-EXISTING capability that has always been
+  //    unrestricted for every Place in every theme published before this
+  //    fix — absent must resolve to `true`, or this fix would newly LOCK
+  //    Frame-editing for every already-shipped theme, a real regression
+  //    the "Creator can further refine objects through the right panel"
+  //    rule forbids. Only a Place whose Builder author explicitly
+  //    unchecked "Can a Story Author change this?" (editable:false) gets
+  //    locked.
+  //  - Absent `visible` resolves to `true` (a Place always showed before
+  //    this fix).
   function _resolvePlacePermissions(place){
     const p=place||{};
     return {
       visible: p.visible!==false,
       moveable: p.moveable===true,
-      editable: p.editable===true
+      editable: p.editable!==false
     };
   }
   // Exported so app.js's grab-handle hit-test and js/objectStrip.js's
@@ -2252,21 +2260,18 @@ const SlideRenderer=(()=>{
     const _border=_resolveBorder(s);
     const _panelRect=_panelRectFor(s);
     // Multiple Artwork Places Per Page — Place 1's OWN rendered rect.
-    // When a Layout authors 2+ Places, Place 1 must be subdivided by its
-    // own fractional position/size exactly like every other Place —
-    // otherwise it would draw across the FULL panel, visibly overlapping
-    // whatever extra Places sit beside it (the entire point of a Dual
-    // Holder layout is two side-by-side, non-overlapping areas). When a
-    // Layout authors 0 or 1 Place (every existing single/zero-Place
-    // theme, including one rebuilt post-feature with exactly one
-    // compiled Place), Place 1 keeps the full, unmodified panel rect —
-    // byte-identical to this feature's own backward-compatibility
-    // guarantee, since a lone authored Place's own fraction (which
-    // Builder computes to leave room for ITS OWN caption inside Builder's
-    // different canvas model) has no reliable 1:1 correspondence to
-    // Engine V1's already-caption-aware panelRect.
+    // Governing rule — "when Scene shows up in Creator it is exactly as
+    // it was in Builder": whenever a Layout authors ANY real Place (its
+    // own placeRects array exists, length>=1), Place 1 is subdivided by
+    // its own authored fractional position/size exactly like every other
+    // Place, honouring Builder's own geometry rather than silently
+    // discarding it for a "full panel" substitute. Only when a Layout
+    // authors NO Places at all (no placeRects array — every legacy theme
+    // with no Scene/Place concept, e.g. Museum Gallery) does Place 1 fall
+    // back to the full, unmodified panel rect — the true implicit-Place
+    // case, unchanged.
     const _places=_activeLayoutPlaces(s);
-    const _place1Rect=_applyPlaceMoveOverride((_places && _places.length>1) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder');
+    const _place1Rect=_applyPlaceMoveOverride((_places && _places.length) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder');
     // Sprint 9.7 — "Each layout must define its own composition."
     // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
     // gallery wall with just a quote on it); 'right' keeps everything
@@ -3254,25 +3259,22 @@ const SlideRenderer=(()=>{
   // hardcodes for Place 1.
   //
   // Place 1's rect matches render()'s own _place1Rect exactly: the FULL
-  // panelRect when 0 or 1 Places are authored (every existing single/
-  // zero-Place theme, byte-identical to this feature's own backward-
-  // compatibility guarantee — a lone authored Place's own fraction has
-  // no reliable 1:1 correspondence to Engine V1's already-caption-aware
-  // panelRect, so it's deliberately not applied in that case); subdivided
-  // by its own compiled position/size, exactly like every other Place,
-  // once 2+ Places are authored (a real Dual-Holder-style layout, where
-  // Place 1 must not draw across the full panel and overlap the Places
-  // beside it). This function must report exactly what render() actually
-  // draws, or callers (Object Strip, hit-testing, pixel verification)
-  // would select/sample the wrong on-screen area for Place 1.
+  // panelRect only when NO Places are authored at all (no placeRects
+  // array — the true implicit-Place legacy case, e.g. Museum Gallery);
+  // subdivided by its own compiled position/size, exactly like every
+  // other Place, whenever a Layout authors any real Place — honouring
+  // Builder's own authored geometry for a single Place too, per the
+  // "Creator shows the Scene exactly as it was in Builder" rule. This
+  // function must report exactly what render() actually draws, or
+  // callers (Object Strip, hit-testing, pixel verification) would
+  // select/sample the wrong on-screen area for Place 1.
   function getPlaceRects(s){
     const panelRect=_panelRectFor(s);
     const places=_activeLayoutPlaces(s);
     if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(panelRect,s,'image-holder')}];
-    const multi=places.length>1;
     return places.map(function(p,i){
       const id=i===0 ? 'image-holder' : ('image-place-'+(i+1));
-      const rect=(i===0 && !multi) ? panelRect : _placePixelRectFor(panelRect,p);
+      const rect=_placePixelRectFor(panelRect,p);
       return { id:id, place:p, rect:_applyPlaceMoveOverride(rect,s,id) };
     });
   }

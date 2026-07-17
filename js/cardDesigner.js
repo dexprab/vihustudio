@@ -161,6 +161,23 @@ const CardDesigner=(function(){
     return (id && id!=='image-holder') ? id : undefined;
   }
 
+  // Guardrails — "Can a Story Author change this? (its Frame, once
+  // populated)". Reads the SAME resolved permissions Object Strip/hit-
+  // testing already read (SlideRenderer.getPlacePermissions), so Frame
+  // Look/Frame Style can never disagree with what the rest of Creator
+  // already enforces for this Place. `_currentPlaceId()` returns
+  // undefined for Place 1 by its own established convention — translated
+  // to the real 'image-holder' id here before resolving permissions.
+  // Absent SlideRenderer.getPlacePermissions (a legacy build) defaults to
+  // true — never newly locks a control that was always unrestricted.
+  function _currentPlaceEditable(){
+    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlacePermissions!=='function') return true;
+    const s=_currentSlide();
+    if(!s) return true;
+    const placeId=_currentPlaceId()||'image-holder';
+    try{ return SlideRenderer.getPlacePermissions(s,placeId).editable!==false; }catch(e){ return true; }
+  }
+
   // Multiple Artwork Places Per Page — `placeId` omitted preserves the
   // exact Place-1 (slide.metadata.cardOverrides.image) path below,
   // unchanged; a real id reads/creates that Place's own view bag under
@@ -483,6 +500,12 @@ const CardDesigner=(function(){
     // built and already appended to `body`; tag it there rather than
     // changing _makeImageSubgroup's return shape).
     fl.parentNode.setAttribute('data-control','frameStyle');
+    // Guardrails — shown only when the selected Place's Frame is locked
+    // by its Builder author; toggled in _refreshFrameWorkspace().
+    const lockNote=document.createElement('p');
+    lockNote.className='placeholder frame-editable-lock-note hidden';
+    lockNote.textContent='This Place’s Frame was set by the World and can’t be changed here.';
+    fl.appendChild(lockNote);
     const grid=document.createElement('div');
     grid.className='icon-row frame-design-row';
     FRAME_DESIGNS.forEach(function(p){
@@ -506,6 +529,11 @@ const CardDesigner=(function(){
   function _applyFrameDesign(preset){
     const slide=_currentSlide();
     if(!slide) return;
+    // Guardrails — defensive: the button itself is disabled when the
+    // selected Place's Frame isn't editable (see _refreshFrameWorkspace),
+    // but refuse the write here too in case something else calls this
+    // directly.
+    if(!_currentPlaceEditable()) return;
     // Deep-clone the preset's border config so future mutations don't
     // leak across presets. Sprint 6.5.1 — embed the design id inside the
     // border object so the renderer can dispatch per-design ornament.
@@ -935,6 +963,15 @@ const CardDesigner=(function(){
     const artworkSub=imageBody.querySelector('[data-image-group="artwork-presentation"]');
     const artworkBody=imageBody.querySelector('[data-image-group="artwork-presentation"] .image-subgroup-body');
     if(artworkBody) WorkspaceBuilder.layout(artworkBody,'holder.image',ctx,artworkSub);
+
+    // Guardrails — "Can a Story Author change this? (its Frame, once
+    // populated)". Frame Look's preset swatches are theme-authored data
+    // presented as plain buttons (not a WorkspaceBuilder control), so
+    // they're gated here directly rather than through applyLayout.
+    const editable=_currentPlaceEditable();
+    mountedRoot.querySelectorAll('.frame-design-btn').forEach(function(btn){ btn.disabled=!editable; });
+    const lockNote=mountedRoot.querySelector('.frame-editable-lock-note');
+    if(lockNote) lockNote.classList.toggle('hidden', editable);
   }
 
   function _refreshBorder(){
@@ -958,6 +995,12 @@ const CardDesigner=(function(){
     const hasImage=placeId
       ? !!(s && s._placeImages && s._placeImages[placeId] && s._placeImages[placeId].width)
       : !!(s && s.image);
+    // Guardrails — "Can a Story Author change this? (its Frame, once
+    // populated)". Every Frame Style control below folds this in
+    // alongside hasImage, exactly the same disables-controls pattern
+    // already used for "no picture yet."
+    const editable=_currentPlaceEditable();
+    const locked=!hasImage||!editable;
 
     function setSlider(sel,valueSel,value,fmt,disabled){
       const sl=mountedRoot.querySelector(sel);
@@ -965,30 +1008,30 @@ const CardDesigner=(function(){
       if(sl){ sl.value=String(value); sl.disabled=!!disabled; }
       if(vl) vl.textContent=fmt(value);
     }
-    setSlider('.border-padding-slider','.border-padding-value',padding,function(v){ return Math.round(v)+'px'; },!hasImage);
-    setSlider('.border-radius-slider','.border-radius-value',cornerRadius,function(v){ return Math.round(v)+'px'; },!hasImage);
-    setSlider('.border-line-width-slider','.border-line-width-value',lineWidth,function(v){ return Math.round(v)+'px'; },!hasImage||!lineEnabled);
-    setSlider('.border-shadow-slider','.border-shadow-value',shadowIntensity,function(v){ return Math.round(v*100)+'%'; },!hasImage||!shadowEnabled);
+    setSlider('.border-padding-slider','.border-padding-value',padding,function(v){ return Math.round(v)+'px'; },locked);
+    setSlider('.border-radius-slider','.border-radius-value',cornerRadius,function(v){ return Math.round(v)+'px'; },locked);
+    setSlider('.border-line-width-slider','.border-line-width-value',lineWidth,function(v){ return Math.round(v)+'px'; },locked||!lineEnabled);
+    setSlider('.border-shadow-slider','.border-shadow-value',shadowIntensity,function(v){ return Math.round(v*100)+'%'; },locked||!shadowEnabled);
 
     // Active fill chip
     const isCustom=typeof fillSetting==='string' && fillSetting.charAt(0)==='#';
     const activeFill=isCustom?'custom':fillSetting;
     mountedRoot.querySelectorAll('.border-fill-btn').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-fill')===activeFill);
-      btn.disabled=!hasImage;
+      btn.disabled=locked;
     });
 
     const lineToggle=mountedRoot.querySelector('.border-line-toggle');
-    if(lineToggle){ lineToggle.checked=lineEnabled; lineToggle.disabled=!hasImage; }
+    if(lineToggle){ lineToggle.checked=lineEnabled; lineToggle.disabled=locked; }
     const shadowToggle=mountedRoot.querySelector('.border-shadow-toggle');
-    if(shadowToggle){ shadowToggle.checked=shadowEnabled; shadowToggle.disabled=!hasImage; }
+    if(shadowToggle){ shadowToggle.checked=shadowEnabled; shadowToggle.disabled=locked; }
 
     const lineColorInput=mountedRoot.querySelector('.border-line-color-input');
-    if(lineColorInput){ lineColorInput.value=_normalizeColor(lineColor); lineColorInput.disabled=!hasImage||!lineEnabled; }
+    if(lineColorInput){ lineColorInput.value=_normalizeColor(lineColor); lineColorInput.disabled=locked||!lineEnabled; }
     const customColorInput=mountedRoot.querySelector('.border-fill-custom-input');
     if(customColorInput){
       if(isCustom) customColorInput.value=_normalizeColor(fillSetting);
-      customColorInput.disabled=!hasImage;
+      customColorInput.disabled=locked;
     }
   }
 
