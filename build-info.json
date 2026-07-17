@@ -4,6 +4,6 @@
   "task": "A real, user-reported bug flagged earlier this session and now fixed: 'in creator clicks between place 1 and 2 are not being managed properly.' Root cause: js/app.js's canvas mousedown handler only called _setSelectedSceneElement inside the same guard that also starts the image-pan gesture -- so selecting a Place was accidentally coupled to that Place already having a picture. Clicking an empty Place's placeholder box fell through to the 'clicked empty space' branch, which actively deselected everything instead of selecting the empty Place -- pre-existing legacy behaviour for Place 1 too, just far more noticeable with several empty boxes side by side. Fixed by splitting 'select the Place' from 'start a pan gesture': selection now fires for ANY real Place hit-test result regardless of whether it has a picture yet; the pan gesture itself still only starts once that Place actually has an image to pan. Verified via a new Playwright test against a real Dual Holder Scene with no pictures uploaded: clicking either empty Place's placeholder now correctly selects it and Context Panel shows Add Artwork; clicking genuine empty canvas background still correctly deselects. Full regression across the entire existing Creator/Builder/Card-Platform Playwright suite (26 scripts) and both goldenBuild.js suites passes unchanged, zero console errors. See CLAUDE.md's matching entry for the full account.",
   "build": "0131",
   "buildDate": "2026-07-16",
-  "commit": "pending",
+  "commit": "5d1631a",
   "environment": "Release"
 }
