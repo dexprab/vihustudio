@@ -492,9 +492,15 @@ const SlideRenderer=(()=>{
       const place=_placeByExternalId(s,placeId);
       if(place && place.frame) frameVariationId=place.frame;
     }
+    // A dangling reference — a `frameVariation` id that doesn't (or no
+    // longer) resolves to a real entry in `theme.frameVariations` (e.g.
+    // a stale seed from a Frame the Theme Author since renamed/removed
+    // in Builder) — must NOT count as "a Frame Variation was chosen."
+    // Only a reference that actually resolves counts.
+    let frameVariationResolved=false;
     if(frameVariationId && Array.isArray(theme.frameVariations)){
       const variation=theme.frameVariations.find(function(v){ return v && v.id===frameVariationId; });
-      if(variation && variation.fields) merged=Object.assign(merged,variation.fields);
+      if(variation && variation.fields){ merged=Object.assign(merged,variation.fields); frameVariationResolved=true; }
     }
     // A real, explicit product decision: a Place with no Frame Variation
     // chosen (by the Theme Author, in Builder) and no per-card
@@ -514,7 +520,7 @@ const SlideRenderer=(()=>{
     ['presentation','frame','paper','lighting','caption','composition'].forEach(function(k){
       if(cardOv[k]!==undefined) merged[k]=cardOv[k];
     });
-    merged._hasExplicitChrome=!!frameVariationId||hasCardChromeOverride;
+    merged._hasExplicitChrome=frameVariationResolved||hasCardChromeOverride;
     return merged;
   }
 
