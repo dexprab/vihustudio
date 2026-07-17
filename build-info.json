@@ -4,6 +4,6 @@
   "task": "Two related requests in one conversation. (1) 'can we increase the size of slide in right panel?' -- Screen 2's own Selected World Preview carousel box was capped well below its panel's real available width; widened its clamp() bounds and trimmed the overlay's own padding slightly to free enough headroom, verified still zero-scroll at every height the earlier No-Scroll Screens fix targeted. (2) A follow-up screenshot showed a DIFFERENT screen -- the Context Panel's 'Change Look' quick-switch ('Choose a Page Style') -- with its own small, scrollbar-forcing thumbnails; the user then clarified further: 'not just the size change but other change also where we plugged the center pane in screen 2 - preview' -- apply the SAME live-SlideRenderer-render treatment here too, not just bigger static thumbnails. Widened that modal and its thumbnail height, and rewired _repCard to resolve the real theme object and paint a real live canvas (reusing Screen 2's own _renderCarouselCanvas helper) with a graceful fallback to the old static thumbnail when the theme can't be resolved. Verified via a new Playwright test with a synthetic two-Representation theme confirming both cards render distinct, correct live content with zero overflow. Full regression across the existing 34-script suite and both goldenBuild.js suites passes unchanged, zero console errors.",
   "build": "0141",
   "buildDate": "2026-07-17",
-  "commit": "pending",
+  "commit": "0831833",
   "environment": "Release"
 }
