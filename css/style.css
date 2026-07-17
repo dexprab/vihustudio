@@ -5160,9 +5160,18 @@ body.creation-flow-active .app-header{ display:none; }
   min-height:clamp(190px,26vh,320px);
 }
 .creation-flow-carousel-art{
-  width:100%;
+  /* width:auto -- height + aspect-ratio decide it (see below); a fixed
+     width:100% left no room for aspect-ratio to act at all, since the
+     box's own shape was already fully determined -- every
+     Representation shared one landscape-ish box regardless of its real
+     Layout orientation. aspect-ratio:4/5 is the before-JS-paint default
+     (matches the editor's own default page shape); js/creationFlow.js's
+     _carouselSlide overrides it per Representation once the live
+     SlideRenderer canvas resolves that Scene's own real aspect. */
+  width:auto;
   max-width:250px;
   height:clamp(110px,17vh,200px);
+  aspect-ratio:4 / 5;
   border-radius:16px;
   display:flex;
   align-items:center;

@@ -366,7 +366,7 @@ const CreationFlow=(function(){
   // never breaks Screen 2 — the caller falls back to the plain
   // thumbnail image/glyph it already had.
   function _renderCarouselCanvas(canvas,theme,representation){
-    if(typeof SlideRenderer==='undefined') return false;
+    if(typeof SlideRenderer==='undefined') return null;
     try{
       const slide=_buildPreviewSlide(theme,representation);
       SlideRenderer.init(canvas,{dpr:1,adaptiveViewport:true});
@@ -392,10 +392,16 @@ const CreationFlow=(function(){
       // never set payload.layoutTheme, so this is a no-op everywhere else.
       payload.layoutTheme=theme;
       SlideRenderer.render(payload);
-      const size=SlideRenderer.getCanvasSize(slide);
+      // Resolve via `payload`, not the bare `slide` -- payload.layoutTheme
+      // (set just above) is what carries the theme override for a
+      // story-type World; the plain slide object never gets that field,
+      // so calling getCanvasSize(slide) here always silently fell back
+      // to the same default size/orientation for every Representation
+      // regardless of its own real Layout aspect.
+      const size=SlideRenderer.getCanvasSize(payload);
       canvas.style.aspectRatio=size.w+' / '+size.h;
-      return true;
-    }catch(e){ return false; }
+      return size;
+    }catch(e){ return null; }
   }
 
   // Once every carousel canvas for this Preview has been painted,
@@ -430,8 +436,20 @@ const CreationFlow=(function(){
     if(theme){
       const canvas=document.createElement('canvas');
       canvas.className='creation-flow-carousel-canvas';
-      painted=_renderCarouselCanvas(canvas,theme,r);
-      if(painted) art.appendChild(canvas);
+      const size=_renderCarouselCanvas(canvas,theme,r);
+      if(size){
+        painted=true;
+        // The canvas itself fills its box at width/height:100%, so its
+        // own aspect-ratio has no visible effect -- only the CONTAINER's
+        // aspect-ratio actually controls the shape a Story Author sees.
+        // Every Representation shared one fixed, landscape-ish box
+        // before this (built for a cropped static thumbnail), so a
+        // Portrait/Quote Scene rendered correctly internally but always
+        // displayed squeezed into that same shape -- reading as "every
+        // Scene shows up as landscape" regardless of its real orientation.
+        art.style.aspectRatio=size.w+' / '+size.h;
+        art.appendChild(canvas);
+      }
     }
     if(!painted){
       const thumb=_repThumbnail(r,theme&&theme.id);
