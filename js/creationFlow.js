@@ -423,12 +423,13 @@ const CreationFlow=(function(){
   }
 
   // A large carousel slide for the Screen 2 Preview (Sprint 11.1) — one
-  // per layout the selected World offers. Deliberately a separate
-  // builder from _repCard: _repCard stays exactly as it was for the
-  // Context Panel's "Change Representation" shortcut (out of this
-  // sprint's scope), while the carousel slide has no click handler and
-  // no selected/checkmark state of its own — the Preview's scroll
-  // position is the only selection mechanism (see paintPreview).
+  // per layout the selected World offers. The carousel slide has no
+  // click handler and no selected/checkmark state of its own — the
+  // Preview's scroll position is the only selection mechanism (see
+  // paintPreview). _repCard (below) shares this same live-render
+  // helper (_renderCarouselCanvas) for the Context Panel's "Change
+  // Representation"/"Change Look" shortcut, so a Story Author sees the
+  // real page there too, not just a static thumbnail crop.
   function _carouselSlide(r,theme){
     const slide=_el('div','creation-flow-carousel-slide');
     const art=_el('div','creation-flow-carousel-art');
@@ -471,14 +472,37 @@ const CreationFlow=(function(){
     const card=_el('button','creation-flow-card creation-flow-representation-card'+(selected?' selected':''));
     card.type='button';
     if(selected) card.appendChild(_checkBadge());
-    const thumb=_repThumbnail(r,themeId);
-    if(thumb.image){
-      const img=document.createElement('img');
-      img.className='creation-flow-card-icon-image';
-      img.src=thumb.image; img.alt='';
-      card.appendChild(img);
-    }else{
-      card.appendChild(_el('div','creation-flow-card-icon',thumb.text));
+    // "Run the same center pane which is inside Studio here" (Screen 2's
+    // own live-render carousel) applies here too -- a Story Author
+    // switching Page Style should see the real Frame/Layout/Layer Pack
+    // render, not a cropped static thumbnail. Resolves the full theme
+    // object the same way _applyRepresentationToCurrentSlide already
+    // does (ThemeRegistry.get(themeId)), since _repCard is only ever
+    // handed a bare theme id, never the full record _carouselSlide gets.
+    const theme=(themeId && typeof ThemeRegistry!=='undefined') ? ThemeRegistry.get(themeId) : null;
+    let painted=false;
+    if(theme){
+      const canvas=document.createElement('canvas');
+      // Reuses .creation-flow-card-icon-image's own fixed-box sizing
+      // (width:100%, a real height, object-fit:cover) -- both width and
+      // height are already explicit there, so _renderCarouselCanvas's
+      // own inline aspect-ratio style (needed for Screen 2's free-
+      // floating carousel box) has no effect here, and the live render
+      // crops to fill the card exactly like the old static image did.
+      canvas.className='creation-flow-card-icon-image';
+      const size=_renderCarouselCanvas(canvas,theme,r);
+      if(size){ painted=true; card.appendChild(canvas); }
+    }
+    if(!painted){
+      const thumb=_repThumbnail(r,themeId);
+      if(thumb.image){
+        const img=document.createElement('img');
+        img.className='creation-flow-card-icon-image';
+        img.src=thumb.image; img.alt='';
+        card.appendChild(img);
+      }else{
+        card.appendChild(_el('div','creation-flow-card-icon',thumb.text));
+      }
     }
     card.appendChild(_el('div','creation-flow-card-title',r.name));
     card.appendChild(_el('div','creation-flow-card-desc',r.description||''));
