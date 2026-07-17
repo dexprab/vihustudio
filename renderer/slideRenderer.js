@@ -3520,7 +3520,17 @@ const SlideRenderer=(()=>{
     }
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders};
+  // Temporary diagnostic export — NOT part of the permanent API surface.
+  // Lets a caller inspect exactly what _resolveBorder computes for a
+  // given raw slide + placeId, using the same buildPayload() step
+  // render() itself uses, so this is faithful to the real render path
+  // rather than a re-derivation.
+  function debugResolveBorder(slide,placeId){
+    const payload=buildPayload(slide);
+    return _resolveBorder(payload,placeId);
+  }
+
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();
