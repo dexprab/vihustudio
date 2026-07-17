@@ -2496,6 +2496,19 @@ button:active{
   box-shadow:0 0 0 1px rgba(255,203,69,0.45);
 }
 
+.icon-card:disabled{
+  opacity:0.45;
+  cursor:not-allowed;
+}
+.icon-card:disabled:hover{
+  border-color:var(--line);
+  background:var(--bg);
+}
+.workspace-select:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
+
 .icon-preview{
   position:relative;
   width:32px;

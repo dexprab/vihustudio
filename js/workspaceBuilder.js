@@ -147,6 +147,19 @@ const WorkspaceBuilder=(function(){
     return (slide && slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.artwork) || {};
   }
 
+  // Guardrails — "Can a Story Author change this? (its Frame, once
+  // populated)". `ctx.getPlaceEditable`, when the caller provides one
+  // (only cardDesigner.js's 'frame'/'holder.image' panel calls do —
+  // Layout/Text/Sticker controls never pass it, so they're never
+  // affected), resolves LIVE at every __sync — a plain function
+  // reference captured once at build time, not a value snapshotted at
+  // that moment, so it always reflects whichever Place is currently
+  // selected. Omitted (every existing caller before this fix), this
+  // resolves false — no control anywhere is newly locked by default.
+  function _isCtxLocked(ctx){
+    return !!(ctx && typeof ctx.getPlaceEditable==='function' && ctx.getPlaceEditable()===false);
+  }
+
   // Sprint 9.6 — `store` optionally overrides where this control reads/
   // writes, for a control whose data doesn't belong in the artwork bag
   // (Layout is a Slide-scope choice, stored at slide.metadata.layout,
@@ -188,6 +201,7 @@ const WorkspaceBuilder=(function(){
       const slide=ctx.getSlide && ctx.getSlide();
       const value=_get(slide);
       sel.value=(value!==undefined)?value:'';
+      sel.disabled=_isCtxLocked(ctx);
     };
     return wrap;
   }
@@ -252,7 +266,8 @@ const WorkspaceBuilder=(function(){
     wrap.__sync=function(){
       const slide=ctx.getSlide && ctx.getSlide();
       const value=_get(slide)||'';
-      btns.forEach(function(b){ b.el.classList.toggle('active', b.id===value); });
+      const locked=_isCtxLocked(ctx);
+      btns.forEach(function(b){ b.el.classList.toggle('active', b.id===value); b.el.disabled=locked; });
     };
     return wrap;
   }
@@ -287,6 +302,7 @@ const WorkspaceBuilder=(function(){
       const slide=ctx.getSlide && ctx.getSlide();
       const art=_readArtwork(slide);
       input.checked=art[key]===true;
+      input.disabled=_isCtxLocked(ctx);
     };
     return wrap;
   }

@@ -485,8 +485,14 @@ const CardDesigner=(function(){
     // empty section visible.
     const artworkBody=_makeImageSubgroup(body,'artwork-presentation','Artwork Presentation');
     const artworkSub=artworkBody.parentNode;
+    // Retro Guardrails Audit — shares the same lock note wording/toggle
+    // as Frame Look; both live under one "its Frame" guardrail.
+    const artworkLockNote=document.createElement('p');
+    artworkLockNote.className='placeholder frame-editable-lock-note artwork-presentation-lock-note hidden';
+    artworkLockNote.textContent='This Place’s look was set by the World and can’t be changed here.';
+    artworkBody.insertBefore(artworkLockNote,artworkBody.firstChild);
     if(typeof WorkspaceBuilder!=='undefined'){
-      WorkspaceBuilder.layout(artworkBody,'holder.image',{getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId},artworkSub);
+      WorkspaceBuilder.layout(artworkBody,'holder.image',{getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId,getPlaceEditable:_currentPlaceEditable},artworkSub);
     }
   }
 
@@ -955,8 +961,14 @@ const CardDesigner=(function(){
     if(!mountedRoot || typeof WorkspaceBuilder==='undefined') return;
     const imageBody=mountedRoot.querySelector('[data-card-section-body="image"]');
     if(!imageBody) return;
-    const ctx={getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId};
-    const borderCtx={getSlide:_currentSlide,onChange:_commitBorder,getPlaceId:_currentPlaceId};
+    // Retro Guardrails Audit — "its Frame" covers the whole look-and-
+    // feel group, not just Frame Look/Style: paper/mat (also part of
+    // the 'frame' panel, via WorkspaceBuilder) and every Artwork
+    // Presentation control (Frame Variation/Presentation/Lighting/
+    // Caption, the 'holder.image' panel) lock together with it when a
+    // Place's editable guardrail is false — one checkbox, one meaning.
+    const ctx={getSlide:_currentSlide,onChange:_commit,getPlaceId:_currentPlaceId,getPlaceEditable:_currentPlaceEditable};
+    const borderCtx={getSlide:_currentSlide,onChange:_commitBorder,getPlaceId:_currentPlaceId,getPlaceEditable:_currentPlaceEditable};
     WorkspaceBuilder.applyLayout(imageBody,WorkspaceBuilder.getControlIds('frame'));
     const frameStyleBody=imageBody.querySelector('[data-image-group="border"] .image-subgroup-body');
     if(frameStyleBody) WorkspaceBuilder.layout(frameStyleBody,'frame',borderCtx);
@@ -970,8 +982,10 @@ const CardDesigner=(function(){
     // they're gated here directly rather than through applyLayout.
     const editable=_currentPlaceEditable();
     mountedRoot.querySelectorAll('.frame-design-btn').forEach(function(btn){ btn.disabled=!editable; });
-    const lockNote=mountedRoot.querySelector('.frame-editable-lock-note');
-    if(lockNote) lockNote.classList.toggle('hidden', editable);
+    // Retro Guardrails Audit — toggles BOTH lock notes (Frame Look's own
+    // and the new Artwork Presentation one) with the same querySelectorAll,
+    // since both now share the .frame-editable-lock-note class.
+    mountedRoot.querySelectorAll('.frame-editable-lock-note').forEach(function(note){ note.classList.toggle('hidden', editable); });
   }
 
   function _refreshBorder(){
