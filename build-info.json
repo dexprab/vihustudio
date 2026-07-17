@@ -4,6 +4,6 @@
   "task": "Direct follow-up: 'all good but can we fix the orientation. each slide orientation as per the builder authored.' A screenshot showed every Page Style card sharing one identical box shape regardless of its own real Layout -- the exact class of bug already fixed for Screen 2's own carousel, just not yet applied to the Change Look quick-switch grid. Root cause: .creation-flow-card-icon-image was still a fixed height:190px + object-fit:cover, so a genuinely portrait or landscape live render got cropped to fill the same shared shape every card used. Fixed with one CSS change -- height:auto + a default aspect-ratio:4/5 fallback -- letting the live render's own inline aspect-ratio style (already set by _renderCarouselCanvas, the same mechanism Screen 2's carousel uses) finally take over instead of being overridden by a fixed height. No JS logic change beyond an updated comment. Verified via a git-stash A/B test with a real landscape + portrait Representation pair: before the fix both cards measured one identical shared ratio; after, each card's box genuinely matches its own real orientation. Full regression across the existing 35-script suite and both goldenBuild.js suites passes unchanged, zero console errors.",
   "build": "0142",
   "buildDate": "2026-07-17",
-  "commit": "pending",
+  "commit": "65e5a32",
   "environment": "Release"
 }
