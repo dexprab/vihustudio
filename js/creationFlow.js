@@ -325,6 +325,88 @@ const CreationFlow=(function(){
     return card;
   }
 
+  // "Run the same center pane which is inside Studio here" — a synthetic
+  // slide built the same way _finish() builds the real one (matching
+  // _themeType's branch exactly: an artwork-type World stamps
+  // slide.artworkTheme, a story-type World stamps slide.theme), so the
+  // carousel shows a genuine SlideRenderer render of this Representation
+  // — Frame/Layout/Layer Pack and all — instead of a static thumbnail
+  // image. `slide.theme`/`slide.artworkTheme`, when set, are read by
+  // renderer/slideRenderer.js's _theme(s)/_artworkTheme(s) BEFORE any
+  // global ThemeEngine state — this never touches AppState or the real
+  // active theme, so it's safe to call before any project exists (and
+  // harmless even if one already does, e.g. reached via the Workspace's
+  // Home button). The other slot (Story Theme for an artwork preview)
+  // is deliberately left unset so it falls through to whatever the
+  // renderer's own fallback resolves — exactly what a freshly created
+  // real page would show too, since _finish() never touches that slot
+  // for an artwork-type World either.
+  function _buildPreviewSlide(theme,representation){
+    const slide={id:'cf-preview',pageType:'story',metadata:{}};
+    if(_themeType(theme.id)==='artwork'){
+      slide.artworkTheme=theme;
+    }else{
+      slide.theme=theme;
+      slide.artworkTheme=null;
+    }
+    if(representation && representation.layout) slide.metadata.layout=representation.layout;
+    _seedDefaultFrameVariation(slide,representation,theme);
+    return slide;
+  }
+
+  // Paints one carousel slide's real render into `canvas`, reusing the
+  // exact SlideRenderer module every other render surface (editor,
+  // thumbnails, Publish) already shares — never a second rendering
+  // implementation. Explicitly re-derives the aspect ratio from
+  // getCanvasSize() rather than relying on render()'s own opportunistic
+  // resize-branch style-set, which only fires when the resolved
+  // viewport differs from init()'s own default (a portrait Layout
+  // otherwise leaves canvas.style.aspectRatio unset). Wrapped so a
+  // rendering failure (a malformed synthetic theme, a missing asset)
+  // never breaks Screen 2 — the caller falls back to the plain
+  // thumbnail image/glyph it already had.
+  function _renderCarouselCanvas(canvas,theme,representation){
+    if(typeof SlideRenderer==='undefined') return false;
+    try{
+      const slide=_buildPreviewSlide(theme,representation);
+      SlideRenderer.init(canvas,{dpr:1,adaptiveViewport:true});
+      // buildPayload() always resolves theme/artworkTheme off the GLOBAL
+      // ThemeEngine state (by design — that's correct for the real
+      // editor's own live slide, which has no per-slide override of its
+      // own) — it never looks at slide.theme/.artworkTheme at all. This
+      // preview's whole point is showing a World the Story Author hasn't
+      // applied yet, so the two fields are overridden here with the
+      // synthetic slide's own values right before render(), the one
+      // surgical point where this render can diverge from the global
+      // active theme without ever touching AppState/ThemeEngine itself.
+      const payload=SlideRenderer.buildPayload(slide,{defaultBookTitle:''});
+      if(slide.theme!==undefined) payload.theme=slide.theme;
+      if(slide.artworkTheme!==undefined) payload.artworkTheme=slide.artworkTheme;
+      SlideRenderer.render(payload);
+      const size=SlideRenderer.getCanvasSize(slide);
+      canvas.style.aspectRatio=size.w+' / '+size.h;
+      return true;
+    }catch(e){ return false; }
+  }
+
+  // Once every carousel canvas for this Preview has been painted,
+  // SlideRenderer's own shared module state is left pointed at the last
+  // one — the exact same hazard js/thumbnails.js's temp-canvas render
+  // and js/pageOps.js's/js/storyDestinations.js's export renders already
+  // handle, since Screen 2 can be reached from an already-open Workspace
+  // (the header's Home button reuses CreationFlow.start()). Restores the
+  // live editor canvas and redraws whatever real page is actually open,
+  // exactly mirroring that established pattern — a no-op when no
+  // project/editor exists yet (the ordinary fresh-boot case).
+  function _restoreEditorCanvas(){
+    try{
+      const editorCanvas=document.getElementById('previewCanvas');
+      if(!editorCanvas || typeof SlideRenderer==='undefined') return;
+      SlideRenderer.init(editorCanvas,{adaptiveViewport:true});
+      if(typeof window.redrawPreview==='function') window.redrawPreview();
+    }catch(e){}
+  }
+
   // A large carousel slide for the Screen 2 Preview (Sprint 11.1) — one
   // per layout the selected World offers. Deliberately a separate
   // builder from _repCard: _repCard stays exactly as it was for the
@@ -332,16 +414,25 @@ const CreationFlow=(function(){
   // sprint's scope), while the carousel slide has no click handler and
   // no selected/checkmark state of its own — the Preview's scroll
   // position is the only selection mechanism (see paintPreview).
-  function _carouselSlide(r,themeId){
+  function _carouselSlide(r,theme){
     const slide=_el('div','creation-flow-carousel-slide');
     const art=_el('div','creation-flow-carousel-art');
-    const thumb=_repThumbnail(r,themeId);
-    if(thumb.image){
-      const img=document.createElement('img');
-      img.src=thumb.image; img.alt='';
-      art.appendChild(img);
-    }else{
-      art.textContent=thumb.text;
+    let painted=false;
+    if(theme){
+      const canvas=document.createElement('canvas');
+      canvas.className='creation-flow-carousel-canvas';
+      painted=_renderCarouselCanvas(canvas,theme,r);
+      if(painted) art.appendChild(canvas);
+    }
+    if(!painted){
+      const thumb=_repThumbnail(r,theme&&theme.id);
+      if(thumb.image){
+        const img=document.createElement('img');
+        img.src=thumb.image; img.alt='';
+        art.appendChild(img);
+      }else{
+        art.textContent=thumb.text;
+      }
     }
     slide.appendChild(art);
     slide.appendChild(_el('div','creation-flow-carousel-name',r.name));
@@ -618,8 +709,12 @@ const CreationFlow=(function(){
       carouselWrap.appendChild(prevBtn);
       carouselWrap.appendChild(carousel);
       carouselWrap.appendChild(nextBtn);
-      reps.forEach(function(r){ carousel.appendChild(_carouselSlide(r,theme.id)); });
+      reps.forEach(function(r){ carousel.appendChild(_carouselSlide(r,theme)); });
       preview.appendChild(carouselWrap);
+      // Each _carouselSlide call above repoints SlideRenderer's own
+      // shared module state at that slide's temp canvas — restore it to
+      // the real editor canvas (a no-op before any project exists).
+      _restoreEditorCanvas();
 
       const dots=_el('div','creation-flow-carousel-dots');
       const dotEls=reps.map(function(){
