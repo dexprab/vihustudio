@@ -4,6 +4,6 @@
   "task": "Direct, same-day follow-up: 'its better but not fixed. the orientation for each scene is different in builder but in creator they all are showing up as landscape.' Confirmed the internal canvas pixel buffer was already correct per Representation, but the VISIBLE box every carousel slide sits in (.creation-flow-carousel-art) was a fixed-shape container built for a cropped static thumbnail, so every Scene's correctly-sized canvas got squeezed into the same landscape-ish box regardless of its own real orientation. A second, compounding bug: canvas.style.aspectRatio was resolved from the bare synthetic slide object instead of the payload that actually carries the layoutTheme override, so even that inline style was wrong for story-type Worlds. Fixed by resolving size from payload, having _carouselSlide set the CONTAINER's own aspect-ratio (the element that actually controls visible shape), and changing the container's CSS from a fixed width to width:auto + a fallback aspect-ratio so its width genuinely derives per Representation. Verified via a git-stash A/B test with three distinct Representations (Portrait/Landscape/Quote): before the fix every visible box measured identically wide-shaped; after, each box's own aspect genuinely differs and matches its Scene's real orientation. Full regression across the existing 32-script suite and both goldenBuild.js suites passes unchanged, zero console errors.",
   "build": "0140",
   "buildDate": "2026-07-17",
-  "commit": "pending",
+  "commit": "f458ff4",
   "environment": "Release"
 }
