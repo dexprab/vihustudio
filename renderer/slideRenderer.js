@@ -531,7 +531,11 @@ const SlideRenderer=(()=>{
   // sits on the same gallery wall). Deliberately independent of
   // _resolveBorder, which stays image-gated for the Frame/mat itself.
   function _resolveWallTone(s){
-    const artTheme=_artworkTheme(s);
+    // _layoutTheme(s), not _artworkTheme(s) directly -- see _resolveBorder's
+    // matching comment: whichever theme actually supplies Layout/Holder/
+    // Frame Variation data (Artwork Theme slot preferred, Story Theme
+    // slot as fallback) is also the one whose wall tone applies.
+    const artTheme=_layoutTheme(s);
     if(!artTheme) return null;
     const merged=_resolveArtworkFields(artTheme,s);
     const resolved=(typeof ThemePresets!=='undefined')
@@ -608,7 +612,23 @@ const SlideRenderer=(()=>{
           shadowIntensity:(typeof pShadow.intensity==='number')?pShadow.intensity:0.4
         };
       }
-      const artTheme=_artworkTheme(s);
+      // A real, user-reported bug found live: the Layout/Holder/Place
+      // geometry above already resolves via _layoutTheme(s) — which
+      // tries _artworkTheme(s) first, then falls back to the active
+      // Story Theme — because that's the one place a theme carrying
+      // Layouts/Holders/Frame Variations can actually be found. If that
+      // same theme ended up applied as the Story Theme rather than the
+      // Artwork Theme (AppState.project.artworkTheme left null), the
+      // chrome resolution below used to require _artworkTheme(s)
+      // specifically, found nothing, and fell through to the legacy
+      // _drawPanel(t.panel.color,...) fallback below — painting a
+      // plain white/cream panel over geometry that otherwise rendered
+      // correctly. Using the same _layoutTheme(s) fallback here keeps
+      // both resolutions consistent — whichever theme supplies the
+      // Layout data also supplies its own Frame chrome, exactly as
+      // before for the normal case (_layoutTheme prefers a real
+      // Artwork Theme when one is active, identical to _artworkTheme).
+      const artTheme=_layoutTheme(s);
       if(artTheme){
         const art=_resolveArtworkFields(artTheme,s,placeId);
         const artworkBorder=_artworkBorder(art);
@@ -633,7 +653,9 @@ const SlideRenderer=(()=>{
       // field) is already handled by the early return at the top of
       // this function, which covers this branch and the legacy
       // Picture-Holder-defaults fallback below uniformly.
-      const artTheme=_artworkTheme(s);
+      // Uses _layoutTheme(s), not _artworkTheme(s) directly — see the
+      // matching comment on the placeId branch above for why.
+      const artTheme=_layoutTheme(s);
       if(artTheme){
         const art=_resolveArtworkFields(artTheme,s);
         const artworkBorder=_artworkBorder(art);
