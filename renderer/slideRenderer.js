@@ -613,6 +613,26 @@ const SlideRenderer=(()=>{
     return merged;
   }
 
+  // A real, user-reported bug: Context Panel's "Page Background ->
+  // Background Colour" swatch wrote to the STORY Theme's global
+  // colours.frame sub-option (js/contextPanel.js's _appendBackground)
+  // -- but _resolveWallTone(s) below almost always resolves a real,
+  // non-null value the instant any World/Artwork Theme is active
+  // (which is the common case for a real project), and the background
+  // fill line further down unconditionally preferred wall tone over
+  // the Story Theme's frame colour -- so the swatch had ZERO visible
+  // effect for any World-based page, exactly the reported symptom.
+  // Fixed with a genuine PER-PAGE override (matching the "PAGE
+  // BACKGROUND" heading the control has always shown, and the same
+  // per-card override pattern every other Story-Author control in
+  // this file already uses) that wins over both wall tone and the
+  // Story Theme default -- a Story Author's own explicit choice for
+  // THIS page, not a second global setting.
+  function _slideBackgroundOverride(s){
+    const bg=s && s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.background;
+    return (typeof bg==='string' && bg) ? bg : null;
+  }
+
   // Sprint 9.7 — Museum Gallery Fidelity: wall tone is the gallery
   // room's paint colour, not the picture's mat — it applies whenever
   // an Artwork Theme is active, regardless of whether THIS particular
@@ -2317,8 +2337,17 @@ const SlideRenderer=(()=>{
 
     // Frame
     const _wallTone=_resolveWallTone(s);
-    const _chromeColor=_chromeTextColor(_wallTone);
-    x.fillStyle=_wallTone||_frameColor(t,opts);
+    const _bgOverride=_slideBackgroundOverride(s);
+    // Whichever colour actually paints the wall/background (a Story
+    // Author's own override, when set, else the World's wall tone)
+    // decides chrome-text legibility too -- a dark override still needs
+    // light Handle/Page Number text, exactly like a dark wall tone does.
+    const _chromeColor=_chromeTextColor(_bgOverride||_wallTone);
+    // A Story Author's own per-page Background Colour override (Context
+    // Panel's "Page Background" control) wins over both the World's own
+    // wall tone and the Story Theme's default frame colour -- see
+    // _slideBackgroundOverride's own comment for why this needed fixing.
+    x.fillStyle=_bgOverride||_wallTone||_frameColor(t,opts);
     x.fillRect(0,0,_viewportW,_viewportH);
 
     // Sprint 9.6 — Slide-targeted layers (Gallery Spotlight) sit right

@@ -579,21 +579,42 @@ const ContextPanel=(function(){
     container.appendChild(row);
   }
 
+  // A real, user-reported bug: this wrote to the STORY Theme's global
+  // colours.frame sub-option (ThemeEngine.setSubOption), which
+  // renderer/slideRenderer.js's background-fill line always preferred
+  // the active World's own wall tone over -- so for any World-based
+  // page (the common case), changing this swatch had zero visible
+  // effect on the canvas. Fixed to write a genuine PER-PAGE override
+  // (slide.metadata.cardOverrides.background) that the renderer now
+  // checks first, ahead of both wall tone and the Story Theme default
+  // -- matching the "PAGE BACKGROUND" heading this control has always
+  // shown, and the same per-card override pattern every other Story-
+  // Author control in this file already uses.
   function _appendBackground(container){
-    if(typeof ThemeEngine==='undefined') return;
+    const slide=_currentSlide();
+    if(!slide) return;
     container.appendChild(_el('div','context-panel-heading','Page Background'));
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label','Background Colour'));
     const input=document.createElement('input');
     input.type='color';
     input.className='theme-color-input';
+    const existing=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.background;
+    let fallback='#1D3461';
     try{
-      const opts=ThemeEngine.getOptions();
-      const theme=ThemeEngine.getActiveTheme();
-      input.value=_safeColor((opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||'#1D3457');
+      if(typeof ThemeEngine!=='undefined'){
+        const opts=ThemeEngine.getOptions();
+        const theme=ThemeEngine.getActiveTheme();
+        fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
+      }
     }catch(e){}
+    input.value=_safeColor(existing||fallback);
     input.addEventListener('input',function(){
-      try{ ThemeEngine.setSubOption('colours','frame',input.value); }catch(e){}
+      if(!slide.metadata) slide.metadata={};
+      if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+      slide.metadata.cardOverrides.background=input.value;
+      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
     });
     row.appendChild(input);
     container.appendChild(row);
