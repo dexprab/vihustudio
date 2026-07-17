@@ -414,6 +414,20 @@ const SlideRenderer=(()=>{
   // variations) is unaffected.
   function _artworkBorder(art){
     if(!art) return null;
+    if(!art._hasExplicitChrome){
+      // No Frame Variation chosen, no per-card override — render this
+      // Place with zero chrome (no mat fill, no border stroke, no
+      // shadow, no paper/lighting texture, no caption) instead of
+      // falling back to the Theme's own Presentation Preset System
+      // Defaults. `_artwork:{}` (not the raw merged fields) so
+      // _drawArtworkPresentation/_drawArtworkCaption's own paper/
+      // lighting/caption checks all correctly no-op too.
+      return {
+        design:null, padding:0, fill:'none', cornerRadius:0,
+        lineEnabled:false, lineWidth:2, lineColor:'#000000',
+        shadowEnabled:false, shadowIntensity:0, _artwork:{}
+      };
+    }
     const resolved=(typeof ThemePresets!=='undefined')
       ? ThemePresets.resolveHolder('image',art.presentation,art)
       : art;
@@ -482,9 +496,25 @@ const SlideRenderer=(()=>{
       const variation=theme.frameVariations.find(function(v){ return v && v.id===frameVariationId; });
       if(variation && variation.fields) merged=Object.assign(merged,variation.fields);
     }
+    // A real, explicit product decision: a Place with no Frame Variation
+    // chosen (by the Theme Author, in Builder) and no per-card
+    // Presentation override (by the Story Author, in Card Designer)
+    // should render with ZERO chrome — matching Builder's own Working
+    // View, which never fabricates a themed look for an un-Framed
+    // Place — rather than silently inheriting the Theme's own
+    // top-level presentation/background/frame/paper/shadow/lighting
+    // fields (which exist to give an *explicitly Framed* Place its
+    // System Default look when a Frame Variation's own fields don't
+    // cover something, not to invent chrome for a Place with no Frame
+    // at all). Wall tone (_resolveWallTone, below) is deliberately a
+    // separate resolution and stays unaffected — the gallery wall
+    // colour is a Slide-level concept independent of any one Place's
+    // own Frame choice.
+    const hasCardChromeOverride=['presentation','frame','paper','lighting','composition'].some(function(k){ return cardOv[k]!==undefined; });
     ['presentation','frame','paper','lighting','caption','composition'].forEach(function(k){
       if(cardOv[k]!==undefined) merged[k]=cardOv[k];
     });
+    merged._hasExplicitChrome=!!frameVariationId||hasCardChromeOverride;
     return merged;
   }
 
