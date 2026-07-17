@@ -286,6 +286,25 @@ class BuildEngine {
             // canvas — Studio's renderer maps them onto whichever single
             // panel rect the page's Layout aspect already resolves to.
             placeRects: holders.map(function (h) {
+                // Guardrails — mirrors convergeSceneLayer's own permissions
+                // derivation exactly (moveable/editable/visible, all
+                // defaulting open when `permissions` is absent, matching
+                // what _ensureHolderDefaults/_defaultHolderPermissions()
+                // already stamp onto every real, live Holder). Until now
+                // this fell straight through the floor: World Builder's own
+                // Place permission block ("Can a Story Author move this?" /
+                // "...change this?" / "...see this at all?") wrote to
+                // h.permissions correctly, but convergeScene never read it
+                // at all — a Theme Author's guardrails had zero effect in
+                // Creator. Studio's own render-time defaulting for an
+                // ALREADY-compiled placeRects entry deliberately differs
+                // (absent moveable/editable resolves to false/locked there,
+                // not true) to keep every theme published before this fix
+                // byte-identical — see renderer/slideRenderer.js's
+                // _resolvePlacePermissions.
+                const visible = !(h.permissions && h.permissions.visible === false);
+                const moveable = !(h.permissions && h.permissions.moveable === false);
+                const editable = !(h.permissions && h.permissions.editable === false);
                 return {
                     id: h.id,
                     name: h.name || null,
@@ -294,7 +313,10 @@ class BuildEngine {
                     shape: h.shape || 'rectangle',
                     padding: (typeof h.padding === 'number') ? h.padding : 0,
                     fit: h.fit || 'fit',
-                    frame: h.frame || null
+                    frame: h.frame || null,
+                    visible: visible,
+                    moveable: moveable,
+                    editable: editable
                 };
             })
         });

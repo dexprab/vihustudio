@@ -983,8 +983,18 @@ function _canvasCoords(e){
   // logical canvas width. Hit-testing must run in the renderer's
   // canonical 1080 × 1350 coordinate space instead, otherwise a click
   // on a HiDPI display would be scaled 2× and land in the wrong place.
+  //
+  // Guardrails — a real bug found verifying the grab-handle on a
+  // landscape Scene: SlideRenderer.getCanvasSize() with NO argument
+  // always resolves to the portrait DEFAULT_VIEWPORT (Scene Viewport's
+  // own documented behaviour for an omitted slide), so every mouse
+  // hit-test on a non-portrait page was silently computed against the
+  // wrong logical size. Passing the current slide resolves its own real
+  // viewport instead — byte-identical for every portrait/quote/Cover/
+  // Hook/End page, since those all resolve to the same default anyway.
+  const _hitTestSlide=AppState.slides[AppState.currentSlide];
   const canonical=(typeof SlideRenderer.getCanvasSize==='function')
-    ? SlideRenderer.getCanvasSize()
+    ? SlideRenderer.getCanvasSize(_hitTestSlide)
     : {w:previewCanvas.width, h:previewCanvas.height};
   const sx=canonical.w/rect.width;
   const sy=canonical.h/rect.height;
@@ -1069,11 +1079,34 @@ function _hitTestSceneElement(canvasX,canvasY){
     if(!el || el.visible===false) continue;
     // Skip background — full-canvas hit is unhelpful for dragging.
     if(el.id==='background') continue;
+    // Guardrails — Places (`isPlace`) are excluded from this generic
+    // hit-test on purpose: they're now present in getSceneElements() for
+    // reorder-bucket purposes, but their own click-to-select/content-pan
+    // gesture stays on the existing, dedicated _hitTestPlace path below
+    // — a click on a Place's content area must keep panning/zooming the
+    // picture, never trigger this generic drag-to-reposition instead
+    // (that's what the new grab-handle is for, hit-tested separately and
+    // with higher priority, before this function ever runs).
+    if(el.isPlace) continue;
     if(canvasX>=el.bx && canvasX<=el.bx+el.bw && canvasY>=el.by && canvasY<=el.by+el.bh){
       return el;
     }
   }
   return null;
+}
+
+// Guardrails — hit-tests the small Move grab-handle shown on a selected,
+// moveable Artwork Place (SlideRenderer.getPlaceGrabHandleHitbox). Takes
+// priority over the content-pan gesture so grabbing the handle always
+// repositions the Place rather than panning its picture.
+function _hitTestPlaceGrabHandle(canvasX,canvasY){
+  if(!_selectedSceneElement || _selectedSceneElementType!=='image-holder') return null;
+  if(typeof SlideRenderer.getPlaceGrabHandleHitbox!=='function') return null;
+  const h=SlideRenderer.getPlaceGrabHandleHitbox(_selectedSceneElement);
+  if(!h) return null;
+  const slop=h.r*1.4;
+  const dx=canvasX-h.x, dy=canvasY-h.y;
+  return (dx*dx+dy*dy<=slop*slop) ? h : null;
 }
 
 // Sprint 6.5 (Object Designer) — hit-test the 8 resize handles around the
@@ -1120,6 +1153,30 @@ previewCanvas.addEventListener('mousedown',function(e){
       e.preventDefault();
       return;
     }
+  }
+
+  // Guardrails — the Move grab-handle takes priority over everything
+  // below it (matching the resize-handle check just above), so grabbing
+  // it always repositions the Place rather than being intercepted by
+  // the content-pan gesture that follows.
+  const _placeHandleHit=_hitTestPlaceGrabHandle(c.x,c.y);
+  if(_placeHandleHit){
+    const pos=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[_selectedSceneElement] && s.metadata.elementOverrides[_selectedSceneElement].position) || {};
+    const els=SlideRenderer.getSceneElements();
+    const bbox=els.find(function(el){ return el.id===_selectedSceneElement; });
+    const baseX=(typeof pos.x==='number') ? pos.x : (bbox ? bbox.bx+bbox.bw/2 : 0);
+    const baseY=(typeof pos.y==='number') ? pos.y : (bbox ? bbox.by+bbox.bh/2 : 0);
+    _sceneDragState={
+      elementId:_selectedSceneElement,
+      elementType:'image-holder',
+      startClientX:e.clientX,startClientY:e.clientY,
+      sx:c.sx,sy:c.sy,
+      baseX:baseX,baseY:baseY,
+      locked:false,
+      moved:false
+    };
+    e.preventDefault();
+    return;
   }
 
   // Sprint 4.5 — Shift+click inside the panel sets the focal point at the

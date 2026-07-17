@@ -285,6 +285,81 @@ const SlideRenderer=(()=>{
     return (resolved && resolved.composition) || 'below';
   }
 
+  // Guardrails — Studio's own render-time default for an already-
+  // compiled placeRects entry is deliberately the OPPOSITE of Builder's
+  // own compile-time default (tools/world-builder-v2/js/services/
+  // builder.js's convergeScene, which defaults an absent `permissions`
+  // object to `true` for all three fields, matching what
+  // _ensureHolderDefaults stamps onto a live Holder): here, an absent
+  // moveable/editable field must resolve to `false` (locked/non-
+  // editable), never silently become moveable/editable, so every theme
+  // published before this fix keeps rendering exactly as before — a
+  // never-moveable, always-visible Place. Absent `visible` resolves to
+  // `true` (a Place always showed before this fix).
+  function _resolvePlacePermissions(place){
+    const p=place||{};
+    return {
+      visible: p.visible!==false,
+      moveable: p.moveable===true,
+      editable: p.editable===true
+    };
+  }
+  // Exported so app.js's grab-handle hit-test and js/objectStrip.js's
+  // lock-badge/draggable gating both read the SAME resolved permissions,
+  // rather than re-deriving the absent-field-defaults-to-false rule in
+  // two places.
+  function getPlacePermissions(s,placeId){
+    return _resolvePlacePermissions(_placeByExternalId(s,placeId));
+  }
+
+  // Guardrails / full cross-object reorder — Place 1's own atomic paint
+  // step (image/placeholder, ornament/stroke, caption, and the Place-1-
+  // only 'frame'/'holder'/'element' Layer Pack draws), extracted
+  // verbatim from render()'s old fixed-position code so it can be
+  // invoked from wherever the interleaved reorder pass decides Place 1's
+  // turn comes up, instead of it always drawing first regardless of any
+  // reorder. The caller is expected to have already checked
+  // `_composition!=='quote'` before invoking this (Quote has no Frame/
+  // Holder/image pipeline at all — see _drawQuoteText).
+  function _drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition){
+    if(s.image && s.image.width){
+      _drawImage(s,_border,_place1Rect);
+    }else if(_border){
+      _drawArtworkPlaceholder(_place1Rect,_border,_chromeColor);
+    }
+    if(_border){
+      _drawPictureFrameOrnament(_place1Rect,_border,t);
+      _drawPictureFrameStroke(_place1Rect,_border);
+      if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_place1Rect,t);
+      _renderLayers(_layerPack,'frame',_place1Rect,s);
+      const _captionRect=_captionRectFor(_place1Rect,_composition)||_holderRectFor(_place1Rect,_border);
+      _renderLayers(_layerPack,'holder',_captionRect,s);
+      _renderLayers(_layerPack,'element',_captionRect,s);
+    }
+    return {bx:_place1Rect.x,by:_place1Rect.y,bw:_place1Rect.w,bh:_place1Rect.h};
+  }
+
+  // An additional Place's own atomic paint step, extracted verbatim from
+  // render()'s old fixed Place-N loop body.
+  function _drawPlaceExtra(s,t,opts,placeRect,placeBorder,placeImg,placeView,_chromeColor){
+    if(placeBorder){
+      _drawPictureFrameFill(placeRect,placeBorder,t);
+      _drawArtworkPresentation(placeRect,placeBorder);
+    }else{
+      _drawPanel(t.panel.color,opts.panelStyle,placeRect);
+    }
+    if(placeImg && placeImg.width){
+      _drawImage(s,placeBorder,placeRect,placeImg,placeView);
+    }else if(placeBorder){
+      _drawArtworkPlaceholder(placeRect,placeBorder,_chromeColor);
+    }
+    if(placeBorder){
+      _drawPictureFrameOrnament(placeRect,placeBorder,t);
+      _drawPictureFrameStroke(placeRect,placeBorder);
+    }
+    return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
+  }
+
   function _frameColor(theme,opts){
     if(typeof ThemeEngine!=='undefined' && theme && theme.variants){
       try{ return ThemeEngine.resolveFrameColor(theme,opts.variant); }catch(e){}
@@ -1738,6 +1813,25 @@ const SlideRenderer=(()=>{
     return (s && s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[layerId]) || null;
   }
 
+  // Guardrails — a moveable Artwork Place's grab-handle drag writes a
+  // new absolute canvas-pixel center position into the exact same
+  // generic override bag every other draggable object already uses
+  // (js/sceneEngine.js's setPosition/elementOverrides), keyed by the
+  // Place's own selection id. This reads it back and shifts the
+  // Theme-Author-authored rect so its own center matches — a pure,
+  // additive translation on top of whatever Builder authored, exactly
+  // mirroring how a World-owned Layer Pack object's own moveable support
+  // already works (_layerOverride). Absent an override (every Place
+  // today, and any non-moveable Place forever), this is a no-op —
+  // byte-identical to before this feature.
+  function _applyPlaceMoveOverride(rect,s,placeId){
+    const ov=_layerOverride(s,placeId);
+    if(!ov || !ov.position || typeof ov.position.x!=='number' || typeof ov.position.y!=='number') return rect;
+    const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+    const dx=ov.position.x-cx, dy=ov.position.y-cy;
+    return {x:rect.x+dx, y:rect.y+dy, w:rect.w, h:rect.h};
+  }
+
   // A normalized, kind-specific description of what a World-owned
   // object actually IS, for the Object Strip to render an accurate
   // thumbnail from (colour swatch / real image / real shape / real
@@ -2007,6 +2101,36 @@ const SlideRenderer=(()=>{
     if(data && data.elements && data.elements.length){
       const sorted=data.elements.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
       sorted.forEach(function(el){ if(el.visible!==false) out.push({id:el.id,kind:'scene',ref:el}); });
+    }else{
+      // Guardrails / full cross-object reorder — a Story-role page (no
+      // Scene blueprint) places its Artwork Place(s) here, ahead of
+      // Stickers, matching today's exact visual order when nothing has
+      // been reordered. A Quote composition or a Scene explicitly
+      // converged with zero Places draws no Places at all — the same
+      // gating _resolveBorder/_activeLayoutHolders already use. A
+      // `visible:false` Place (Builder's own "Should a Story Author see
+      // this at all?" guardrail) is skipped entirely here — never drawn,
+      // never in Object Strip, never reorderable — mirroring how a
+      // hidden World-owned Layer Pack object is already skipped above.
+      //
+      // A real regression, found via full regression testing: every
+      // theme compiled before Multiple Artwork Places Per Page (every
+      // theme today except a freshly-authored multi-Place one —
+      // including Museum Gallery) has no `placeRects` array at all, so
+      // `_activeLayoutPlaces(s)` returns null — that must still mean
+      // "exactly one implicit Place" (the convention `getPlaceRects`'s
+      // own fallback already establishes), NEVER "zero Places," or Place
+      // 1 (and its Frame-scoped Layer Pack content — Museum Gallery's
+      // own Wax Seal/Museum Caption) would silently stop drawing/
+      // appearing in Object Strip entirely for every legacy theme.
+      const places=_activeLayoutPlaces(s);
+      if(_layoutCompositionFor(s)!=='quote' && _activeLayoutHolders(s)!==0){
+        const effectivePlaces=(places && places.length) ? places : [null];
+        effectivePlaces.forEach(function(p,i){
+          if(_resolvePlacePermissions(p).visible===false) return;
+          out.push({id:(i===0?'image-holder':'image-place-'+(i+1)),kind:'place',ref:{place:p,index:i}});
+        });
+      }
     }
     const stickers=SceneEngine.getStickers(s);
     for(let i=0;i<stickers.length;i++) out.push({id:stickers[i].id,kind:'sticker',ref:stickers[i]});
@@ -2043,6 +2167,15 @@ const SlideRenderer=(()=>{
   // bucket's own behaviour.
   function _mergedReorderableIds(){
     return _lastSceneElements.filter(function(o){
+      // Guardrails — unlike a plain "locked" Scene element/Sticker
+      // (which stays reorderable even while its own position is frozen —
+      // an existing, pre-Places precedent), a Place's own "Can a Story
+      // Author move this?" guardrail is the ONE checkbox this feature is
+      // actually about: unchecking it means "keep this fixed," full
+      // stop — position AND stacking order both, matching the real bug
+      // report that named both symptoms together. So a non-moveable
+      // Place is excluded here entirely, not just from the grab-handle.
+      if(o.isPlace) return !!o.moveable;
       return o.owner==='story' || (o.owner==='world' && !!o.moveable);
     }).map(function(o){ return o.id; });
   }
@@ -2133,7 +2266,7 @@ const SlideRenderer=(()=>{
     // different canvas model) has no reliable 1:1 correspondence to
     // Engine V1's already-caption-aware panelRect.
     const _places=_activeLayoutPlaces(s);
-    const _place1Rect=(_places && _places.length>1) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect;
+    const _place1Rect=_applyPlaceMoveOverride((_places && _places.length>1) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder');
     // Sprint 9.7 — "Each layout must define its own composition."
     // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
     // gallery wall with just a quote on it); 'right' keeps everything
@@ -2151,6 +2284,25 @@ const SlideRenderer=(()=>{
     // condition under which merging all three into one fully-interleaved,
     // freely-reorderable pass is safe — see the merged branch below.
     const _noFramePipeline=(_composition==='quote')||(_activeLayoutHolders(s)===0);
+    // Sprint 6.2 — when a scene is active, the scene blueprint owns the
+    // page composition. Skip the legacy Story-style pipeline so text /
+    // image / decorations don't double-render. Story-role pages stay
+    // byte-identical because SceneEngine.getRenderData returns null for
+    // them. Hoisted earlier than its original position (right before the
+    // `if(!_hasScene)` block below) so it can gate the bulk 'slide'-layer
+    // draw immediately below too — see _useMergedPass's own comment.
+    const _hasScene=(typeof SceneEngine!=='undefined') && (SceneEngine.getRenderData(s)!==null);
+    // Guardrails / full cross-object reorder — a Story-role page (no
+    // Scene blueprint) ALWAYS uses the fully-interleaved merged pass now,
+    // not just when `_noFramePipeline` (Quote/zero-Holder), so that real
+    // Artwork Places can be freely reordered against Stickers and World-
+    // owned 'slide'/'overlay' Layer Pack objects — closing the guardrails
+    // gap (Builder's own "Can a Story Author move/reorder this?" per-
+    // Place permission had no effect in Creator until now). A Cover/Hook/
+    // End page (`_hasScene` true, no Places ever apply) is completely
+    // unaffected — it keeps using the merged pass ONLY when
+    // `_noFramePipeline`, exactly as before this change.
+    const _useMergedPass=_noFramePipeline||!_hasScene;
 
     // Frame
     const _wallTone=_resolveWallTone(s);
@@ -2163,10 +2315,10 @@ const SlideRenderer=(()=>{
     // top of it. A theme with no layerPack (every theme before this
     // sprint) has _layerPack===null, so _renderLayers is a no-op.
     const _layerPack=_activeLayerPack(s);
-    // When there's no Frame/Holder pipeline, 'slide'-target layers are
-    // deferred into the merged interleaved pass below instead of being
-    // bulk-drawn here — see that pass's own comment.
-    if(!_noFramePipeline){
+    // When this page uses the merged pass, 'slide'-target layers are
+    // deferred into it instead of being bulk-drawn here — see that
+    // pass's own comment.
+    if(!_useMergedPass){
       _renderLayers(_layerPack,'slide',{x:0,y:0,w:_viewportW,h:_viewportH},s);
     }
 
@@ -2192,12 +2344,8 @@ const SlideRenderer=(()=>{
       _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
     }
 
-    // Sprint 6.2 — when a scene is active, the scene blueprint owns the
-    // page composition. Skip the legacy Story-style pipeline so text /
-    // image / decorations don't double-render. Story-role pages stay
-    // byte-identical because SceneEngine.getRenderData returns null for
-    // them.
-    const _hasScene=(typeof SceneEngine!=='undefined') && (SceneEngine.getRenderData(s)!==null);
+    // _hasScene is now computed earlier (before the bulk 'slide'-layer
+    // draw above) — see its own comment there.
     if(!_hasScene){
       // Top story text
       const storyBbox=_drawStoryText(s,t,overrides);
@@ -2207,102 +2355,72 @@ const SlideRenderer=(()=>{
       const handleBbox=_drawHandle(t,opts,overrides,s.handle,_layerPosition(_layerPack,'handle'),_chromeColor);
       if(handleBbox) _lastTextElements.push(handleBbox);
 
-      // Image inside panel — presentation-only transforms; original image untouched.
-      // s.imageView (optional): { scale, offsetX, offsetY, fit:'fit'|'fill' }
-      // Sprint 9.7 — 'quote' composition has no Frame/Holder/image at
-      // all (see _drawQuoteText above), so this entire block is skipped.
-      if(_composition!=='quote' && s.image && s.image.width){
-        _drawImage(s,_border,_place1Rect);
-      }else if(_composition!=='quote' && _border){
-        // Creator Acceptance Sprint — a Story-role page has no
-        // SceneEngine blueprint (see _hasScene above), so it never had
-        // an image-less placeholder the way Cover/Hook/End's
-        // _drawSceneImageHolder already does. Only reached once _border
-        // has resolved (an Artwork Theme's Frame is active), so the
-        // frame/mat/wall chrome above is already drawn — this just
-        // fills the empty content rect inside it.
-        _drawArtworkPlaceholder(_place1Rect,_border,_chromeColor);
-      }
-      // Sprint 6.5 — Picture Border stroke sits above the image so it
-      // always reads as a crisp frame edge. Sprint 6.5.1 — ornament
-      // (sparkles, grain, ribbon corners, …) sits between image and
-      // stroke so the stroke can still cap it visually.
-      if(_composition!=='quote' && _border){
-        _drawPictureFrameOrnament(_place1Rect,_border,t);
-        _drawPictureFrameStroke(_place1Rect,_border);
-        // Creator Acceptance Sprint — _border._artwork is now set
-        // whenever an Artwork Theme is active, image or not
-        // (_resolveBorder no longer gates on hasImage). Caption safety
-        // still holds: _drawArtworkCaption itself returns early unless
-        // slide.metadata.artwork.title is a real, non-empty string, so
-        // an image-less or caption-less page still draws no caption.
-        if(_border._artwork) _drawArtworkCaption(_border._artwork,s.metadata,_place1Rect,t);
-        // Sprint 9.6 — Frame-targeted layers (Wax Seal) draw on top of
-        // the fully-assembled frame; Holder-targeted layers (Museum
-        // Caption) anchor to the picture content rect, not the outer
-        // frame, so a wide mat doesn't push the caption far from the
-        // picture it labels. Sprint 9.7 — the 'right' composition
-        // (Wide layout) moves that caption rect beside the Frame
-        // instead, via _captionRectFor. Multiple Artwork Places Per
-        // Page — all keyed off Place 1's own rect (_place1Rect), unions
-        // with _panelRect for the single-Place case exactly as before.
-        _renderLayers(_layerPack,'frame',_place1Rect,s);
-        const _captionRect=_captionRectFor(_place1Rect,_composition)||_holderRectFor(_place1Rect,_border);
-        _renderLayers(_layerPack,'holder',_captionRect,s);
-        // docs/THEME_PROJECT_SPEC.md §7/§11 — Element is a fourth, real
-        // containership scope a Layer can target ("the child's actual
-        // content"), but this renderer has never had a Diptych/Triptych
-        // multi-Holder layout (§5's "holders: Reserved, always 1 in V1")
-        // — with exactly one Holder per page, the Holder's own content
-        // rect (_captionRect, computed above) already IS the Element's
-        // rect. Reusing it here (rather than inventing separate Element
-        // geometry) is what closes target:"element" going from
-        // validating/compiling silently to actually rendering.
-        _renderLayers(_layerPack,'element',_captionRect,s);
-      }
-
-      // Multiple Artwork Places Per Page — Place 1's own frame content
-      // above is completely unchanged; every additional Place authored
-      // in World Builder gets its own independent Frame chrome + picture
-      // (or placeholder), reusing the exact same low-level draw
-      // functions Place 1 already calls, just against that Place's own
-      // resolved rect/border/image. Caption and 'frame'/'holder'/
-      // 'element' Layer Pack rendering deliberately stay Place-1-only —
-      // a page-level Museum Caption has no obvious per-Place analog, and
-      // Builder V2's own compiled Scene Layers never target those three
-      // containership scopes anyway (always 'slide'/'overlay').
-      if(_composition!=='quote'){
-        if(_places && _places.length>1){
-          for(let _pi=1;_pi<_places.length;_pi++){
-            const _place=_places[_pi];
+      // Guardrails / full cross-object reorder — Places (Frame/Holder/
+      // Element content + caption, Place-1-only exactly as before) now
+      // draw as part of the SAME fully-interleaved, freely-reorderable
+      // pass Stickers and World-owned 'slide'/'overlay' Layer Pack
+      // objects already use, instead of fixed code that always ran
+      // before Stickers regardless of any reorder — this is what lets a
+      // Story Author drag a Place in front of/behind a Sticker or a
+      // World-owned Decoration in the Object Strip. A Story-role page
+      // (this branch) ALWAYS uses this merged pass now — previously only
+      // when `_noFramePipeline` (Quote/zero-Holder) did. Cover/Hook/End
+      // pages (the `_hasScene` branch below, outside this `if`) are
+      // completely unaffected: they still use the merged pass only when
+      // `_noFramePipeline`, via the untouched code further down, exactly
+      // as before this change.
+      _lastSceneElements=[];
+      _lastRenderWasMerged=true;
+      const slideLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'slide'):[];
+      const overlayLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'overlay'):[];
+      const combinedNatural=
+        slideLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'slide'}; })
+        .concat(_naturalStoryOrder(s))
+        .concat(overlayLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'overlay'}; }));
+      const _storyOrder=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+      const resolvedStoryCombined=_applyOrderOverride(combinedNatural,_storyOrder);
+      resolvedStoryCombined.forEach(function(o){
+        if(o.kind==='layer'){
+          const beforeLen=_layerObjectBboxes.length;
+          _renderOneLayer(o.ref,{x:0,y:0,w:_viewportW,h:_viewportH},s,o.target);
+          if(_layerObjectBboxes.length>beforeLen) _lastSceneElements.push(_layerObjectBboxes.pop());
+        }else if(o.kind==='place'){
+          const _place=o.ref.place;
+          const _placeIndex=o.ref.index;
+          const _placeSelId=o.id;
+          const _perm=_resolvePlacePermissions(_place);
+          let bbox;
+          if(_placeIndex===0){
+            bbox=_drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition);
+          }else{
             // The storage/selection id for this Place is index-based
             // ('image-place-N'), deliberately distinct from the Place's
-            // own compiled Builder id (_place.id) — see _placeByExternalId's
-            // own comment for why the two id spaces are kept separate.
-            const _placeSelId='image-place-'+(_pi+1);
-            const _placeRect=_placePixelRectFor(_panelRect,_place);
+            // own compiled Builder id — see _placeByExternalId's own
+            // comment for why the two id spaces are kept separate.
+            const _placeRect=_applyPlaceMoveOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId);
             const _placeBorder=_resolveBorder(s,_placeSelId);
             const _placeContent=(s.metadata && s.metadata.placeContent && s.metadata.placeContent[_placeSelId])||null;
             const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
             const _placeView=(_placeContent && _placeContent.imageView)||null;
-            if(_placeBorder){
-              _drawPictureFrameFill(_placeRect,_placeBorder,t);
-              _drawArtworkPresentation(_placeRect,_placeBorder);
-            }else{
-              _drawPanel(t.panel.color,opts.panelStyle,_placeRect);
-            }
-            if(_placeImg && _placeImg.width){
-              _drawImage(s,_placeBorder,_placeRect,_placeImg,_placeView);
-            }else if(_placeBorder){
-              _drawArtworkPlaceholder(_placeRect,_placeBorder,_chromeColor);
-            }
-            if(_placeBorder){
-              _drawPictureFrameOrnament(_placeRect,_placeBorder,t);
-              _drawPictureFrameStroke(_placeRect,_placeBorder);
-            }
+            bbox=_drawPlaceExtra(s,t,opts,_placeRect,_placeBorder,_placeImg,_placeView,_chromeColor);
           }
+          if(bbox){
+            bbox.id=_placeSelId;
+            bbox.type='image-holder';
+            bbox.isPlace=true;
+            bbox.label=(_place && _place.name) || (_placeIndex===0 ? (s.image?'Artwork':'Artwork Place') : ('Artwork Place '+(_placeIndex+1)));
+            bbox.visible=true;
+            bbox.locked=!_perm.moveable;
+            bbox.moveable=_perm.moveable;
+            bbox.editable=_perm.editable;
+            _lastSceneElements.push(_sceneObject(bbox,'story'));
+          }
+        }else if(o.kind==='sticker'){
+          const st=o.ref;
+          _drawSceneSticker(st);
+          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
         }
-      }
+      });
 
       // Decorations on the frame
       _drawDecorations(opts.decorations,t,opts);
@@ -2317,7 +2435,14 @@ const SlideRenderer=(()=>{
     }
 
     // Sprint 6.1 — Scene Layer. Story role pages return null from
-    // SceneEngine, so this pass is a no-op for them.
+    // SceneEngine, so this pass is a no-op for them — and, since the
+    // Guardrails / full cross-object reorder generalization above, a
+    // Story-role page (`!_hasScene`) already ran its OWN merged pass
+    // in-place (including Places) and populated `_lastSceneElements`
+    // there; re-running this whole block for such a page would reset
+    // `_lastSceneElements=[]` and silently discard that work. Gated on
+    // `_hasScene` so this entire section — completely unchanged from
+    // before this feature — only ever runs for Cover/Hook/End pages.
     //
     // Unified Layer Ordering — Scene blueprint elements (Frame/Decoration/
     // Text-holder) and Stickers now draw as ONE resolved, interleaved
@@ -2327,72 +2452,74 @@ const SlideRenderer=(()=>{
     // today) is exactly the old fixed sequence — Scene elements sorted by
     // zIndex, then every Sticker in array order — so this is byte-
     // identical until a Story Author actually reorders something.
-    _lastSceneElements=[];
-    _lastRenderWasMerged=_noFramePipeline;
-    if(_noFramePipeline){
-      // Unified Layer Ordering follow-up ("reordering in object strip
-      // not happening" on a real World built almost entirely from
-      // moveable World-owned Decoration Shapes) — with no Frame/Holder
-      // pipeline running, 'slide' and 'overlay' Layer Pack objects are
-      // drawn nowhere else in this function, so they can safely join the
-      // Scene-element/Sticker interleaved pass above as ONE fully
-      // resolvable, freely-reorderable group instead of two separate
-      // fixed-position bulk draws. This is what actually lets a Shape
-      // move in front of/behind a Sticker (or another Shape it doesn't
-      // happen to share a scope with), not just within its own bucket.
-      const slideLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'slide'):[];
-      const overlayLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'overlay'):[];
-      const combinedNatural=
-        slideLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'slide'}; })
-        .concat(_naturalStoryOrder(s))
-        .concat(overlayLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'overlay'}; }));
-      const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
-      const resolvedCombined=_applyOrderOverride(combinedNatural,order);
-      resolvedCombined.forEach(function(o){
-        if(o.kind==='layer'){
-          // _renderOneLayer -> _pushLayerObject pushes onto the shared
-          // _layerObjectBboxes accumulator, same as the bulk path; pull
-          // that one entry straight into _lastSceneElements here instead,
-          // so it lands in the exact position this merged pass decided,
-          // not wherever the old fixed bulk concatenation would have put
-          // it. The final fold-step below sees an empty
-          // _layerObjectBboxes for this page (frame/holder/element never
-          // ran) and is correctly a no-op.
-          const beforeLen=_layerObjectBboxes.length;
-          _renderOneLayer(o.ref,{x:0,y:0,w:_viewportW,h:_viewportH},s,o.target);
-          if(_layerObjectBboxes.length>beforeLen) _lastSceneElements.push(_layerObjectBboxes.pop());
-        }else if(o.kind==='scene'){
-          const el=o.ref;
-          if(el.type==='background') _drawSceneBackground(el);
-          else if(el.type==='decoration') _drawSceneDecoration(el);
-          else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
-          else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
-          else if(el.type==='text') _drawSceneText(s,el);
-          _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
-        }else if(o.kind==='sticker'){
-          const st=o.ref;
-          _drawSceneSticker(st);
-          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
-        }
-      });
-    }else if(typeof SceneEngine!=='undefined'){
-      const resolved=_resolveStoryOrder(s);
-      resolved.forEach(function(o){
-        if(o.kind==='scene'){
-          const el=o.ref;
-          if(el.type==='background') _drawSceneBackground(el);
-          else if(el.type==='decoration') _drawSceneDecoration(el);
-          else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
-          else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
-          // Legacy fallback for projects authored against Sprint 6.1.
-          else if(el.type==='text') _drawSceneText(s,el);
-          _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
-        }else if(o.kind==='sticker'){
-          const st=o.ref;
-          _drawSceneSticker(st);
-          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
-        }
-      });
+    if(_hasScene){
+      _lastSceneElements=[];
+      _lastRenderWasMerged=_noFramePipeline;
+      if(_noFramePipeline){
+        // Unified Layer Ordering follow-up ("reordering in object strip
+        // not happening" on a real World built almost entirely from
+        // moveable World-owned Decoration Shapes) — with no Frame/Holder
+        // pipeline running, 'slide' and 'overlay' Layer Pack objects are
+        // drawn nowhere else in this function, so they can safely join the
+        // Scene-element/Sticker interleaved pass above as ONE fully
+        // resolvable, freely-reorderable group instead of two separate
+        // fixed-position bulk draws. This is what actually lets a Shape
+        // move in front of/behind a Sticker (or another Shape it doesn't
+        // happen to share a scope with), not just within its own bucket.
+        const slideLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'slide'):[];
+        const overlayLayers=(_layerPack && typeof LayerEngine!=='undefined')?LayerEngine.forTarget(_layerPack,'overlay'):[];
+        const combinedNatural=
+          slideLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'slide'}; })
+          .concat(_naturalStoryOrder(s))
+          .concat(overlayLayers.map(function(l){ return {id:l.id,kind:'layer',ref:l,target:'overlay'}; }));
+        const order=(typeof SceneEngine!=='undefined')?SceneEngine.getLayerOrder(s):null;
+        const resolvedCombined=_applyOrderOverride(combinedNatural,order);
+        resolvedCombined.forEach(function(o){
+          if(o.kind==='layer'){
+            // _renderOneLayer -> _pushLayerObject pushes onto the shared
+            // _layerObjectBboxes accumulator, same as the bulk path; pull
+            // that one entry straight into _lastSceneElements here instead,
+            // so it lands in the exact position this merged pass decided,
+            // not wherever the old fixed bulk concatenation would have put
+            // it. The final fold-step below sees an empty
+            // _layerObjectBboxes for this page (frame/holder/element never
+            // ran) and is correctly a no-op.
+            const beforeLen=_layerObjectBboxes.length;
+            _renderOneLayer(o.ref,{x:0,y:0,w:_viewportW,h:_viewportH},s,o.target);
+            if(_layerObjectBboxes.length>beforeLen) _lastSceneElements.push(_layerObjectBboxes.pop());
+          }else if(o.kind==='scene'){
+            const el=o.ref;
+            if(el.type==='background') _drawSceneBackground(el);
+            else if(el.type==='decoration') _drawSceneDecoration(el);
+            else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
+            else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
+            else if(el.type==='text') _drawSceneText(s,el);
+            _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
+          }else if(o.kind==='sticker'){
+            const st=o.ref;
+            _drawSceneSticker(st);
+            _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+          }
+        });
+      }else if(typeof SceneEngine!=='undefined'){
+        const resolved=_resolveStoryOrder(s);
+        resolved.forEach(function(o){
+          if(o.kind==='scene'){
+            const el=o.ref;
+            if(el.type==='background') _drawSceneBackground(el);
+            else if(el.type==='decoration') _drawSceneDecoration(el);
+            else if(el.type==='image-holder') _drawSceneImageHolder(s,el);
+            else if(el.type==='text-holder') _drawSceneTextHolder(s,el);
+            // Legacy fallback for projects authored against Sprint 6.1.
+            else if(el.type==='text') _drawSceneText(s,el);
+            _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
+          }else if(o.kind==='sticker'){
+            const st=o.ref;
+            _drawSceneSticker(st);
+            _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+          }
+        });
+      }
     }
 
     // Builder Convergence Sprint — a 5th Layer Pack target, 'overlay',
@@ -2410,9 +2537,10 @@ const SlideRenderer=(()=>{
     // this is purely additive — zero effect on any theme that doesn't
     // use it.
     //
-    // When there's no Frame/Holder pipeline, 'overlay' was already
-    // drawn as part of the merged pass above.
-    if(!_noFramePipeline){
+    // When this page used the merged pass (Story-role always; Cover/
+    // Hook/End only when `_noFramePipeline`), 'overlay' was already
+    // drawn as part of it.
+    if(!_useMergedPass){
       _renderLayers(_layerPack,'overlay',{x:0,y:0,w:_viewportW,h:_viewportH},s);
     }
 
@@ -2470,6 +2598,13 @@ const SlideRenderer=(()=>{
       if(sel){
         _drawSelectionOutline(sel);
         if(_supportsResize(sel)) _drawResizeHandles(sel);
+        // Guardrails — a small grab-handle appears once a moveable
+        // Artwork Place is selected; dragging it repositions the Place
+        // (js/app.js), completely independent of the existing content-
+        // pan gesture (which still pans/zooms the picture itself when
+        // the Place's own content area is clicked). A non-moveable Place
+        // shows no handle at all — nothing to grab.
+        if(sel.isPlace && sel.moveable && !sel.locked) _drawPlaceGrabHandle(sel);
       }
     }
 
@@ -2811,6 +2946,13 @@ const SlideRenderer=(()=>{
     // (and drag) for ANY scene element type. Resize otherwise applies
     // to the Frame (image-holder), decorations, and stickers.
     if(el.locked) return false;
+    // Guardrails — an Artwork Place (marked `isPlace`, distinguishing it
+    // from a real Cover/Hook/End Scene blueprint image-holder element,
+    // which keeps working exactly as before) gets its own dedicated Move
+    // grab-handle instead of the generic 8-corner resize handles — no
+    // size-override read exists anywhere in _placePixelRectFor today, so
+    // showing resize handles here would silently do nothing useful.
+    if(el.isPlace) return false;
     return el.type==='image-holder' || el.type==='decoration' || el.type==='sticker';
   }
   function _drawResizeHandles(el){
@@ -2832,6 +2974,38 @@ const SlideRenderer=(()=>{
       x.stroke();
     });
     x.restore();
+  }
+  // Guardrails — a selected, moveable Artwork Place's own Move grab-
+  // handle: a small circle inset from the Place's top-left corner (kept
+  // clear of the picture-pan gesture's own hit area, which is the whole
+  // content rect). `PLACE_GRAB_RADIUS`/`PLACE_GRAB_INSET` are shared
+  // between the draw call and the exported hit-test query below so they
+  // can never drift apart.
+  const PLACE_GRAB_RADIUS=14;
+  const PLACE_GRAB_INSET=20;
+  function _drawPlaceGrabHandle(el){
+    const cx=el.bx+PLACE_GRAB_INSET, cy=el.by+PLACE_GRAB_INSET;
+    x.save();
+    x.fillStyle='#4C8BF5';
+    x.strokeStyle='#FFFFFF';
+    x.lineWidth=2;
+    x.beginPath();
+    x.arc(cx,cy,PLACE_GRAB_RADIUS,0,Math.PI*2);
+    x.fill();
+    x.stroke();
+    x.beginPath();
+    x.moveTo(cx-7,cy); x.lineTo(cx+7,cy);
+    x.moveTo(cx,cy-7); x.lineTo(cx,cy+7);
+    x.stroke();
+    x.restore();
+  }
+  // Exposed for canvas hit-testing (js/app.js) — returns the grab-
+  // handle's hit-circle for the currently-selected Place, or null when
+  // nothing is selected / the selection isn't a moveable Place.
+  function getPlaceGrabHandleHitbox(elementId){
+    const el=_lastSceneElements.find(function(e){ return e.id===elementId; });
+    if(!el || !el.isPlace || !el.moveable || el.locked) return null;
+    return {x:el.bx+PLACE_GRAB_INSET, y:el.by+PLACE_GRAB_INSET, r:PLACE_GRAB_RADIUS};
   }
   // Exposed for canvas hit-testing — returns the 8 handle positions for
   // the currently-selected scene element, or [] when nothing is selected.
@@ -3094,14 +3268,12 @@ const SlideRenderer=(()=>{
   function getPlaceRects(s){
     const panelRect=_panelRectFor(s);
     const places=_activeLayoutPlaces(s);
-    if(!places || !places.length) return [{id:'image-holder',place:null,rect:panelRect}];
+    if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(panelRect,s,'image-holder')}];
     const multi=places.length>1;
     return places.map(function(p,i){
-      return {
-        id: i===0 ? 'image-holder' : ('image-place-'+(i+1)),
-        place: p,
-        rect: (i===0 && !multi) ? panelRect : _placePixelRectFor(panelRect,p)
-      };
+      const id=i===0 ? 'image-holder' : ('image-place-'+(i+1));
+      const rect=(i===0 && !multi) ? panelRect : _placePixelRectFor(panelRect,p);
+      return { id:id, place:p, rect:_applyPlaceMoveOverride(rect,s,id) };
     });
   }
 
@@ -3552,7 +3724,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

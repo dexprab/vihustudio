@@ -323,18 +323,39 @@ const ObjectStrip=(function(){
         : [{id:'image-holder',place:null}];
       places.forEach(function(p,i){
         const isFirst=(i===0);
+        // Guardrails — Builder's own "Should a Story Author see this at
+        // all?" permission: a Place the Theme Author hid entirely gets no
+        // card here (matching how a hidden World-owned Layer Pack object
+        // already has none) — absent SlideRenderer.getPlacePermissions
+        // (shouldn't happen once this ships, kept only as a defensive
+        // fallback), every Place stays visible exactly as before.
+        const perm=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlacePermissions==='function')
+          ? SlideRenderer.getPlacePermissions(slide,p.id)
+          : {visible:true,moveable:false};
+        if(perm.visible===false) return;
         // Place 1 keeps its exact existing wording, unchanged; an extra
         // Place uses its own Builder-authored name when present, else a
         // numbered fallback.
         const name=isFirst
           ? (slide.image?'Artwork':'Artwork Place')
           : ((p.place && p.place.name) || ('Artwork Place '+(i+1)));
+        // Guardrails — "Can a Story Author move this?": a moveable Place
+        // joins the same drag-to-reorder machinery every other object
+        // already uses (reorderableIds, computed once above); a non-
+        // moveable one still shows (Replace Artwork/Crop stay fully
+        // functional either way — this guardrail governs position and
+        // reorder, not artwork editing) but gets the same 🔒 lock badge
+        // a locked Scene element or non-moveable World object already
+        // shows, via _card()'s own existing id-present-but-not-draggable
+        // check.
         cards.push(_card({
           imgSrc:isFirst?(slide.thumbnail||null):null,
           icon:'🖼️',
           name:name,
           editable:true,
           selected:selScene===p.id,
+          id:p.id,
+          draggable:reorderableIds.indexOf(p.id)!==-1,
           onClick:function(){ _selectScene(p.id,'image-holder'); }
         }));
       });
@@ -355,6 +376,12 @@ const ObjectStrip=(function(){
         };
     rendered.scene.forEach(function(el){
       if(el.id==='background') return; // already shown above as the synthetic Background card
+      // Guardrails — Places are already given their own dedicated cards
+      // above (with the right imgSrc/Add-vs-Replace wording); they're
+      // also present in the render tree now for reorder-bucket purposes,
+      // so this generic loop must skip them or they'd get a second,
+      // duplicate card here.
+      if(el.isPlace) return;
       if(el.visible===false) return;
       const friendly=FRIENDLY_TYPE[el.type]||{icon:'❔',name:el.label||'Object'};
       let name=el.label||friendly.name;
