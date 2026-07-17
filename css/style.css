@@ -5344,16 +5344,23 @@ body.creation-flow-active .app-header{ display:none; }
    img, .creation-flow-carousel-art img) instead of the plain emoji badge's
    56x56 circle, since this is a real photo preview, not an icon glyph. */
 .creation-flow-card-icon-image{
+  /* "Fix the orientation, each slide orientation as per the builder
+     authored" -- a fixed height + object-fit:cover forced every Page
+     Style card's box into the SAME shape regardless of its own real
+     Layout orientation, cropping a portrait/landscape live render to
+     fit -- exactly the class of bug already fixed for Screen 2's own
+     carousel (.creation-flow-carousel-art). height:auto + a default
+     aspect-ratio (this modal's own before-JS-paint fallback, matching
+     the editor's default page shape) lets each card's real shape show
+     through once js/creationFlow.js's _repCard sets a real inline
+     aspect-ratio from the live render's own resolved size -- when box
+     and content share the same ratio, object-fit:cover crops nothing.
+     The static-thumbnail fallback path (an arbitrary real photo, when
+     no theme resolves) simply keeps this same default 4:5 box shape,
+     unchanged from before. */
   width:100%;
-  /* "Increase the size of the slide" -- this modal (js/creationFlow.js's
-     _renderChangeRepresentationScreen, the "Choose a Page Style"
-     quick-switch reached via Context Panel's Change Look) already
-     scrolls its own panel when content overflows
-     (.creation-flow-overlay.mode-change-look .creation-flow-panel's
-     overflow-y:auto below), so there's no No-Scroll-Screens constraint
-     here the way there is on Screen 2 -- a generous, real height was
-     the safe, correct call instead of a small clamp. */
-  height:190px;
+  height:auto;
+  aspect-ratio:4 / 5;
   object-fit:cover;
   border-radius:14px;
   box-shadow:inset 0 0 0 1px var(--cf-line);

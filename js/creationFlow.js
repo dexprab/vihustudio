@@ -483,12 +483,13 @@ const CreationFlow=(function(){
     let painted=false;
     if(theme){
       const canvas=document.createElement('canvas');
-      // Reuses .creation-flow-card-icon-image's own fixed-box sizing
-      // (width:100%, a real height, object-fit:cover) -- both width and
-      // height are already explicit there, so _renderCarouselCanvas's
-      // own inline aspect-ratio style (needed for Screen 2's free-
-      // floating carousel box) has no effect here, and the live render
-      // crops to fill the card exactly like the old static image did.
+      // .creation-flow-card-icon-image's own CSS is height:auto plus a
+      // default aspect-ratio:4/5 fallback -- _renderCarouselCanvas
+      // already sets a real inline aspect-ratio from the live render's
+      // own resolved size (the same mechanism Screen 2's carousel uses),
+      // which overrides that CSS default, so each Page Style card's own
+      // box genuinely takes on its real Layout orientation instead of
+      // every card sharing one fixed, cropped shape.
       canvas.className='creation-flow-card-icon-image';
       const size=_renderCarouselCanvas(canvas,theme,r);
       if(size){ painted=true; card.appendChild(canvas); }
