@@ -710,21 +710,56 @@ const ContextPanel=(function(){
     container.appendChild(row);
   }
 
-  // A real, user-reported bug: this wrote to the STORY Theme's global
-  // colours.frame sub-option (ThemeEngine.setSubOption), which
-  // renderer/slideRenderer.js's background-fill line always preferred
-  // the active World's own wall tone over -- so for any World-based
-  // page (the common case), changing this swatch had zero visible
-  // effect on the canvas. Fixed to write a genuine PER-PAGE override
-  // (slide.metadata.cardOverrides.background) that the renderer now
-  // checks first, ahead of both wall tone and the Story Theme default
-  // -- matching the "PAGE BACKGROUND" heading this control has always
-  // shown, and the same per-card override pattern every other Story-
-  // Author control in this file already uses.
+  // A real, user-reported bug: "i changed BG color it did not worked."
+  // This control's own per-page override (slide.metadata.cardOverrides.
+  // background) DOES win over the World's wall tone in the base canvas
+  // fill -- but a World-authored, Scene-hosted "Background" object
+  // (Builder's "Hosted by Scene" Colour Experience, converged onto the
+  // theme's 'slide'-scoped Layer Pack) paints AFTER that base fill, as
+  // part of the merged Scene Stack render -- so on any page with a real
+  // Scene-hosted Background object (increasingly the normal case), this
+  // swatch visibly did nothing: the World's own full-bleed fill always
+  // painted right over it. When one exists, edit IT instead -- the same
+  // World-object colour-edit mechanism Object Strip's own "Background"
+  // card already uses (SceneEngine.setContentOverride) -- so this
+  // control always changes what a Story Author actually sees change.
+  function _sceneHostedBackgroundObject(){
+    if(typeof PageRuntime==='undefined') return null;
+    const list=(PageRuntime.getRenderedObjects().scene)||[];
+    for(let i=0;i<list.length;i++){
+      const o=list[i];
+      if(o.owner==='world' && o.target==='slide' && o.visual && o.visual.kind==='color') return o;
+    }
+    return null;
+  }
   function _appendBackground(container){
     const slide=_currentSlide();
     if(!slide) return;
     container.appendChild(_el('div','context-panel-heading','Page Background'));
+
+    const hostedBg=_sceneHostedBackgroundObject();
+    if(hostedBg){
+      if(!hostedBg.editable || typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function'){
+        container.appendChild(_el('div','context-nothing-selected-hint',"This page's background comes from the World and can't be changed here."));
+        return;
+      }
+      const row=_el('div','designer-row context-row');
+      row.appendChild(_el('div','designer-row-label','Background Colour'));
+      const input=document.createElement('input');
+      input.type='color';
+      input.className='theme-color-input';
+      input.value=_safeColor(hostedBg.visual.color);
+      input.addEventListener('input',function(){
+        SceneEngine.setContentOverride(slide,hostedBg.id,'fillColor',input.value);
+        if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+        if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+        if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+      });
+      row.appendChild(input);
+      container.appendChild(row);
+      return;
+    }
+
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label','Background Colour'));
     const input=document.createElement('input');
