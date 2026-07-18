@@ -181,7 +181,12 @@ const PublishStudio=(function(){
     // the studio closes.
     const editorCanvas=document.getElementById('previewCanvas');
     try{
-      SlideRenderer.init(_readCanvas);
+      // Rule 5 (Publish Fidelity) — adaptiveViewport:true so a Scene
+      // authored at a non-portrait Aspect Ratio (Landscape/Wide/Square/
+      // etc.) renders at its own real size here too, matching the
+      // editor exactly, instead of silently staying stuck at the fixed
+      // portrait default and having its content clipped/mispositioned.
+      SlideRenderer.init(_readCanvas,{adaptiveViewport:true});
       const titleEl=document.getElementById('bookTitle');
       const payload=SlideRenderer.buildPayload(slide,{
         page: idx+1,
@@ -189,6 +194,17 @@ const PublishStudio=(function(){
         defaultBookTitle: titleEl ? titleEl.value : ''
       });
       SlideRenderer.render(payload);
+      // The canvas fills its wrapper at width:100%/height:100%, so the
+      // canvas's own inline aspect-ratio (set by render()'s adaptive
+      // branch) has no effect once both dimensions are already
+      // explicit — the wrapper itself needs the real shape too, or a
+      // correctly-rendered landscape canvas would just get squished
+      // back into the wrapper's fixed 4:5 box on screen.
+      const book=_readCanvas.parentElement;
+      if(book){
+        const size=SlideRenderer.getCanvasSize(slide);
+        book.style.aspectRatio=size.w+' / '+size.h;
+      }
     }catch(e){}
     try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
 
@@ -548,7 +564,12 @@ const PublishStudio=(function(){
     if(!cover) cover=slides[0];
     const editorCanvas=document.getElementById('previewCanvas');
     try{
-      SlideRenderer.init(_almostCoverCanvas);
+      // Rule 5 — see _renderReadPage's own comment. This canvas's own
+      // CSS (width:200px; aspect-ratio:4/5; height:auto) already
+      // respects an inline aspect-ratio override (height stays auto),
+      // so no separate wrapper fix is needed here — adaptiveViewport
+      // alone is enough for both the content and the on-screen shape.
+      SlideRenderer.init(_almostCoverCanvas,{adaptiveViewport:true});
       const titleEl=document.getElementById('bookTitle');
       const payload=SlideRenderer.buildPayload(cover,{
         page:1,
@@ -972,7 +993,10 @@ const PublishStudio=(function(){
       if(!cover) cover=slides[0];
       const editorCanvas=document.getElementById('previewCanvas');
       try{
-        SlideRenderer.init(_celebCoverCanvas);
+        // Rule 5 — same fix as the Read screen. This canvas fills its
+        // wrapper (.publish-celebration-book) at width:100%/height:100%
+        // too, so the wrapper's own aspect-ratio needs updating as well.
+        SlideRenderer.init(_celebCoverCanvas,{adaptiveViewport:true});
         const titleEl=document.getElementById('bookTitle');
         const payload=SlideRenderer.buildPayload(cover,{
           page:1,
@@ -980,6 +1004,11 @@ const PublishStudio=(function(){
           defaultBookTitle:titleEl?titleEl.value:''
         });
         SlideRenderer.render(payload);
+        const stand=_celebCoverCanvas.parentElement;
+        if(stand){
+          const size=SlideRenderer.getCanvasSize(cover);
+          stand.style.aspectRatio=size.w+' / '+size.h;
+        }
       }catch(e){}
       try{ if(editorCanvas) SlideRenderer.init(editorCanvas); }catch(e){}
     }
@@ -1056,6 +1085,22 @@ const PublishStudio=(function(){
       try{ alert('Add a page to your story before you publish.'); }catch(e){}
       return;
     }
+    // Rule 5 (Publish Fidelity) — a freeform Text object's custom font
+    // (Handwriting/Kid Friendly) can be genuinely un-loaded in this
+    // browser session the first time Publish opens; document.fonts.load()
+    // is async and a synchronous render() call never waits for it, so a
+    // one-shot export could silently draw the wrong (fallback) font.
+    // Kicking every real font family off here, the instant Publish
+    // opens — well before the Almost Ready/Celebration/actual-export
+    // renders that matter — closes that race for any realistic usage
+    // without needing every render call site to become async (which
+    // would risk its own out-of-order-page bugs on rapid page flips).
+    try{
+      if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.preloadFonts==='function'){
+        _slides().forEach(function(s){ SlideRenderer.preloadFonts(s); });
+      }
+    }catch(e){}
+
     _state={ stage:STAGES.READ };
     _setStage(STAGES.READ);
     _modal.classList.remove('hidden');

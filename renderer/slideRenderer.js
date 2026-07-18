@@ -3133,20 +3133,71 @@ const SlideRenderer=(()=>{
   // anywhere actually creates a type:'text' element (only 'text-holder'
   // is real) — but the collision itself was still a real bug, fixed here.
   const _canvasFontsRequested={};
-  function _ensureCanvasFont(fontFamily){
+  // A font family can be requested at more than one weight (a normal
+  // freeform Text object vs. one explicitly set Bold) — check()/load()
+  // both key off the CSS <font> shorthand's own weight, and Chrome
+  // treats each declared @font-face weight as its own, separately
+  // loadable face. Checking at one weight (e.g. the shorthand's
+  // implicit "normal"/400) never reports "ready" for a face that was
+  // only ever *loaded* at a different weight (e.g. a hardcoded 700) —
+  // found and fixed while wiring up preloadFonts() below, since the
+  // original bold-only load call silently never satisfied a normal-
+  // weight Text object's own check, in the editor as much as Publish.
+  function _ensureCanvasFont(fontFamily, weight){
     if(!fontFamily || typeof document==='undefined' || !document.fonts) return;
-    if(_canvasFontsRequested[fontFamily]) return;
+    const w=weight||'400';
+    const key=fontFamily+'|'+w;
+    if(_canvasFontsRequested[key]) return;
     let ready=true;
-    try{ ready=document.fonts.check('16px '+fontFamily); }catch(e){ ready=true; }
+    try{ ready=document.fonts.check(w+' 16px '+fontFamily); }catch(e){ ready=true; }
     if(ready) return;
-    _canvasFontsRequested[fontFamily]=true;
+    _canvasFontsRequested[key]=true;
     try{
-      document.fonts.load('700 16px '+fontFamily).then(function(){
+      document.fonts.load(w+' 16px '+fontFamily).then(function(){
         if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
           try{ window.redrawPreview(); }catch(_){}
         }
       }).catch(function(){});
     }catch(e){}
+  }
+  // Rule 5 (Publish Fidelity) — _ensureCanvasFont's own "not ready yet,
+  // redraw once it is" callback only ever redraws the LIVE editor canvas
+  // (window.redrawPreview) — exactly right for the editor, but useless
+  // for a one-shot Publish export, since document.fonts.load() is async
+  // and a synchronous render() call never waits for it: a freeform Text
+  // object using a custom font (Handwriting/Kid Friendly) can silently
+  // render in the browser's fallback font in an export that's never
+  // redrawn again. preloadFonts(s) lets a caller genuinely await every
+  // custom font family a Slide's own freeform Text stickers reference
+  // before calling render() — Publish's own render call sites use this;
+  // the live editor canvas still relies on _ensureCanvasFont's existing
+  // request-once/redraw-later path, unchanged.
+  function _fontFacesFor(s){
+    const faces=[];
+    const seen={};
+    const stickers=(s && s.metadata && s.metadata.stickers) || [];
+    stickers.forEach(function(st){
+      if(st && st.kind==='text' && st.fontFamily){
+        const weight=st.fontWeight||'400';
+        const key=st.fontFamily+'|'+weight;
+        if(!seen[key]){ seen[key]=true; faces.push({family:st.fontFamily, weight:weight}); }
+      }
+    });
+    return faces;
+  }
+  function preloadFonts(s){
+    if(typeof document==='undefined' || !document.fonts) return Promise.resolve();
+    const faces=_fontFacesFor(s);
+    if(!faces.length) return Promise.resolve();
+    const jobs=faces.map(function(face){
+      let ready=true;
+      try{ ready=document.fonts.check(face.weight+' 16px '+face.family); }catch(e){ ready=true; }
+      if(ready) return Promise.resolve();
+      let p;
+      try{ p=document.fonts.load(face.weight+' 16px '+face.family); }catch(e){ p=null; }
+      return p ? p.catch(function(){}) : Promise.resolve();
+    });
+    return Promise.all(jobs);
   }
   function _textFontString(st,size){
     const style=(st.fontStyle==='italic')?'italic ':'';
@@ -3161,7 +3212,7 @@ const SlideRenderer=(()=>{
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const align=(st.align==='left'||st.align==='right')?st.align:'center';
-    _ensureCanvasFont(st.fontFamily);
+    _ensureCanvasFont(st.fontFamily, st.fontWeight);
     x.save();
     x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
     x.translate(cx,cy);
@@ -4185,7 +4236,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

@@ -81,13 +81,51 @@ const StoryDestinations=(function(){
   function _sanitise(name){
     return String(name).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'') || 'my-story';
   }
+  // Rule 5 (Publish Fidelity) — a natural background-colour proxy for
+  // the letterbox bars a non-portrait Scene needs when fit into this
+  // destination's own fixed render coordinate space: the Slide's own
+  // top-left corner pixel, which is reliably background (wall tone /
+  // page fill), never content, since every real panel/Frame carries
+  // its own margin.
+  function _fitCompositeInto(destCanvas, srcCanvas){
+    const dctx=destCanvas.getContext('2d');
+    const dw=destCanvas.width, dh=destCanvas.height;
+    const sw=srcCanvas.width, sh=srcCanvas.height;
+    let bg='#ffffff';
+    try{
+      const sctx=srcCanvas.getContext('2d');
+      const px=sctx.getImageData(2,2,1,1).data;
+      bg='rgb('+px[0]+','+px[1]+','+px[2]+')';
+    }catch(e){}
+    dctx.fillStyle=bg;
+    dctx.fillRect(0,0,dw,dh);
+    const scale=Math.min(dw/sw, dh/sh);
+    const rw=sw*scale, rh=sh*scale;
+    const rx=(dw-rw)/2, ry=(dh-rh)/2;
+    try{ dctx.imageSmoothingEnabled=true; dctx.imageSmoothingQuality='high'; }catch(e){}
+    dctx.drawImage(srcCanvas,0,0,sw,sh,rx,ry,rw,rh);
+  }
+
   function _renderSlideInto(canvas, slide, idx, total){
     const editorCanvas=(typeof document!=='undefined') ? document.getElementById('previewCanvas') : null;
     try{
+      // Rule 5 — render the Slide at its OWN real Aspect Ratio first
+      // (adaptiveViewport:true, matching the editor exactly) on a
+      // throwaway intermediate canvas, then fit/composite that
+      // correctly-shaped render into this destination's own fixed
+      // render coordinate space (1080×1350, unchanged since Sprint
+      // 9.0) — never resize `canvas` itself, since every downstream
+      // encodePage/finish step still assumes that fixed space; a PDF
+      // page size or "Instagram Portrait/Square" is a separate,
+      // deliberate destination-format decision this doesn't override.
+      // The overwhelming common case (a portrait Scene, or any Scene
+      // authored before the Scene Viewport feature existed) hits the
+      // fast, byte-identical path below with zero extra compositing.
+      const mid=document.createElement('canvas');
       // Force dpr:1 for every destination — the output is a flat
       // bitmap (PNG / JPEG). DPR scaling would just balloon file
       // sizes without adding usable resolution beyond 1080×1350.
-      SlideRenderer.init(canvas,{dpr:1});
+      SlideRenderer.init(mid,{dpr:1,adaptiveViewport:true});
       const titleEl=(typeof document!=='undefined') ? document.getElementById('bookTitle') : null;
       const payload=SlideRenderer.buildPayload(slide,{
         page: idx+1,
@@ -95,6 +133,11 @@ const StoryDestinations=(function(){
         defaultBookTitle: titleEl ? titleEl.value : ''
       });
       SlideRenderer.render(payload);
+      if(mid.width===canvas.width && mid.height===canvas.height){
+        canvas.getContext('2d').drawImage(mid,0,0);
+      }else{
+        _fitCompositeInto(canvas, mid);
+      }
     }catch(e){}
     // Immediately hand the editor canvas back so the editor stays
     // live if the user cancels partway through.
