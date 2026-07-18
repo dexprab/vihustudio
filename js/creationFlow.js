@@ -132,6 +132,84 @@ const CreationFlow=(function(){
     content.appendChild(brand);
   }
 
+  // ---------- My Projects (Item 1 — reach an existing project without
+  // going through "what shall we create today") ----------
+  function _timeAgo(iso){
+    const then=new Date(iso).getTime();
+    if(isNaN(then)) return '';
+    const mins=Math.round((Date.now()-then)/60000);
+    if(mins<1) return 'just now';
+    if(mins<60) return mins+(mins===1?' minute ago':' minutes ago');
+    const hours=Math.round(mins/60);
+    if(hours<24) return hours+(hours===1?' hour ago':' hours ago');
+    const days=Math.round(hours/24);
+    return days+(days===1?' day ago':' days ago');
+  }
+
+  function _myProjects(){
+    if(typeof CreatorProjectStore==='undefined') return [];
+    try{ return CreatorProjectStore.list(); }catch(e){ return []; }
+  }
+
+  // Only rendered on Screen 1 when at least one real project exists —
+  // never a dead-end empty state, since Screen 1 already covers "I have
+  // nothing yet."
+  function _myProjectsEntry(){
+    const projects=_myProjects();
+    if(!projects.length) return null;
+    const row=_el('div','creation-flow-myprojects-entry');
+    const btn=_el('button','creation-flow-myprojects-btn');
+    btn.type='button';
+    btn.appendChild(_el('span','creation-flow-myprojects-icon','📂'));
+    btn.appendChild(_el('span','creation-flow-myprojects-label','My Projects'));
+    btn.appendChild(_el('span','creation-flow-myprojects-count',String(projects.length)));
+    btn.addEventListener('click',_renderMyProjectsScreen);
+    row.appendChild(btn);
+    content.appendChild(row);
+    return row;
+  }
+
+  function _openProjectRecord(record){
+    if(typeof ProjectManager==='undefined' || typeof ProjectManager.openProjectRecord!=='function') return;
+    ProjectManager.openProjectRecord(record).then(function(){
+      _closeOverlay();
+      try{
+        if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
+        else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+      }catch(e){}
+    });
+  }
+
+  function _projectCard(record){
+    const card=_el('button','creation-flow-project-card');
+    card.type='button';
+    const thumb=_el('div','creation-flow-project-thumb');
+    if(record.thumbnail){
+      const img=document.createElement('img');
+      img.src=record.thumbnail;
+      thumb.appendChild(img);
+    }else{
+      thumb.appendChild(_el('span','creation-flow-project-thumb-glyph','📖'));
+    }
+    card.appendChild(thumb);
+    card.appendChild(_el('div','creation-flow-project-name',record.name||'Untitled'));
+    card.appendChild(_el('div','creation-flow-project-meta','Edited '+_timeAgo(record.updatedAt)));
+    card.addEventListener('click',function(){ _openProjectRecord(record); });
+    return card;
+  }
+
+  function _renderMyProjectsScreen(){
+    _clear();
+    _setAtmosphere(false);
+    _brand();
+    _header('Your Projects',_renderTypeScreen);
+    content.appendChild(_el('h1','creation-flow-question','Continue a Project'));
+    content.appendChild(_el('p','creation-flow-subtitle','Pick up right where you left off.'));
+    const grid=_el('div','creation-flow-grid creation-flow-project-grid');
+    _myProjects().forEach(function(record){ grid.appendChild(_projectCard(record)); });
+    content.appendChild(grid);
+  }
+
   // ---------- Theme discovery (data-driven — Sprint 10.1) ----------
   function _allThemes(){
     if(typeof ThemeRegistry==='undefined') return [];
@@ -527,6 +605,7 @@ const CreationFlow=(function(){
     content.appendChild(header);
     content.appendChild(_el('h1','creation-flow-question','What shall we create today?'));
     content.appendChild(_el('p','creation-flow-subtitle','Every idea has a world.'));
+    _myProjectsEntry();
     const grid=_el('div','creation-flow-grid creation-flow-type-grid');
     CREATION_TYPES.forEach(function(t){
       const card=_el('button','creation-flow-card creation-flow-card-accent-'+(t.accent||'sand'));

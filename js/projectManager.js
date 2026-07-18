@@ -78,6 +78,7 @@ const ProjectManager=(function(){
     return {
       version:PROJECT_VERSION,
       project:{
+        id:AppState.project.id||null,
         title:readDomString('projectTitle')||AppState.project.title||'',
         author:readDomString('projectAuthorName')||AppState.project.author||'',
         bookTitle:readDomString('bookTitle')||AppState.project.bookTitle||'',
@@ -126,6 +127,7 @@ const ProjectManager=(function(){
       const session=payload.session||{};
 
       AppState.project={
+        id:project.id||null,
         title:project.title||'',
         author:project.author||'',
         bookTitle:project.bookTitle||'',
@@ -198,11 +200,42 @@ const ProjectManager=(function(){
     }
   }
 
+  // Item 1 — "show running projects without going through Screen 1."
+  // Every real project gets a stable id the first time it's ever saved
+  // (a brand-new project from Creation Flow, or a legacy session from
+  // before this feature existed) so it can be found again later via
+  // CreatorProjectStore.list() — this never replaces the single-session
+  // restore slot above (STORAGE_KEY), it rides alongside it.
+  function _ensureProjectId(){
+    if(!AppState.project) AppState.project={};
+    if(!AppState.project.id && typeof CreatorProjectStore!=='undefined'){
+      AppState.project.id=CreatorProjectStore.newId();
+    }
+    return AppState.project.id||null;
+  }
+
+  function _syncProjectStore(data){
+    if(typeof CreatorProjectStore==='undefined') return;
+    const id=_ensureProjectId();
+    if(!id) return;
+    // data was already serialized with the (pre-id-assignment) project
+    // fields above — patch the id in rather than re-serializing.
+    if(data && data.project) data.project.id=id;
+    const firstThumb=(AppState.slides&&AppState.slides[0]&&AppState.slides[0].thumbnail)||null;
+    try{
+      CreatorProjectStore.upsert(id,{
+        name:(data&&data.project&&(data.project.bookTitle||data.project.title))||'Untitled',
+        thumbnail:firstThumb
+      },data);
+    }catch(e){}
+  }
+
   function _writeStorage(){
     setStatus('saving');
     try{
       const data=serialize();
       localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+      _syncProjectStore(data);
       setStatus('saved');
       return true;
     }catch(e){
@@ -293,6 +326,16 @@ const ProjectManager=(function(){
     });
   }
 
+  // Item 1 — opens a record from CreatorProjectStore.list() directly
+  // (no file, no dialog) — the "My Projects" entry point on Creation
+  // Flow Screen 1 calls this to jump straight into the editor.
+  async function openProjectRecord(record){
+    if(!record||!record.data) return false;
+    await deserialize(record.data);
+    _writeStorage();
+    return true;
+  }
+
   const api={
     PROJECT_VERSION:PROJECT_VERSION,
     AUTOSAVE_DEBOUNCE_MS:AUTOSAVE_DEBOUNCE_MS,
@@ -303,6 +346,7 @@ const ProjectManager=(function(){
     deserialize:deserialize,
     saveProjectAs:saveProjectAs,
     openProject:openProject,
+    openProjectRecord:openProjectRecord,
     getSessionStatus:getSessionStatus,
     restoreSession:restoreSession,
     discardSession:discardSession
