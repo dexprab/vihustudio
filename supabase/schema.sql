@@ -548,3 +548,250 @@ create policy theme_assets_personal_read
       )
     )
   );
+
+-- ---------------------------------------------------------------
+-- Magic Card Identity Evolution, Phase 2 — Cloud Identity + Recall
+-- ---------------------------------------------------------------
+-- A Magic Card (js/magicCard.js) is a genuinely different concept from
+-- a Vihu Card (`cards` table above): a Vihu Card is a *shareable*
+-- token that unlocks a World for whoever redeems it; a Magic Card is a
+-- *personal* identity — "this is the same Creator, recognized on any
+-- device." It deliberately does NOT reuse `cards`/`card_type='creator'`
+-- (a reserved-but-unused enum value in that table's own CHECK
+-- constraint, confirmed by direct investigation to have never been
+-- scoped for this) — a personal identity and a shareable redemption
+-- token are different enough concepts to warrant their own tables
+-- rather than overloading one enum value to mean two different things.
+--
+-- Same safeguarding discipline as `cards`/`redeem_card()` throughout:
+-- a Magic Card's own `pattern` is the actual credential now that this
+-- identity is meant to function as a signinless sign-in, so it is
+-- never directly SELECT-able by anyone but the claiming session — the
+-- only way to compare a tapped/typed pattern against a stored one is
+-- the `recall_magic_card()` SECURITY DEFINER RPC below, whose response
+-- never echoes the pattern back on any branch, mirroring `redeem_card`'s
+-- own verified-leak-proof shape exactly.
+-- id is client-supplied text (the local js/magicCard.js record's own
+-- 'mc_...' id), not a server-generated uuid — matching
+-- builder_projects/creator_projects' own primary-key convention rather
+-- than cards' server-generated one, specifically because the client
+-- already has a stable local id at claim time and needs to round-trip
+-- it for every later update (touch/rename); a server-generated id
+-- would require capturing and persisting it back into the local record
+-- on every fresh claim for no real benefit.
+create table if not exists public.magic_card_identities (
+  id             text primary key,
+  serial_no      bigserial not null,
+  -- A short, human-typeable fallback identifier (e.g. "MC-00125"),
+  -- exactly the kind of thing docs/VIHU_CARD_PLATFORM-adjacent design
+  -- work already named as needed for "the rare case a child can't
+  -- recall the exact tap order" — mirrors cards.code's own generated
+  -- column exactly, just a different prefix.
+  code           text generated always as ('MC-' || lpad(serial_no::text, 5, '0')) stored,
+  owner_id       text not null,
+  nickname       text not null default '',
+  constellation  text not null
+                   check (constellation in ('ORION','CASSIOPEIA','URSA_MAJOR','CYGNUS','LYRA')),
+  -- Same jsonb [[row,col],...] shape as cards.pattern, matched as a SET
+  -- via the same _card_platform_sort_pattern() helper below — reused,
+  -- not reimplemented.
+  pattern        jsonb not null,
+  claimed_at     timestamptz not null default now(),
+  last_active_at timestamptz not null default now(),
+  unique (serial_no)
+);
+
+alter table public.magic_card_identities enable row level security;
+
+-- Owner-only CRUD — a magic card's own pattern/code/constellation must
+-- never be readable by anyone but the anonymous session that claimed
+-- it via a direct SELECT; recall goes exclusively through
+-- recall_magic_card() below. Deliberately no unique(owner_id): one
+-- browser's shared anonymous session can legitimately own several
+-- identities (the disclosed shared-device v1 boundary — see the Magic
+-- Card Identity Evolution design document's own Section 15), matching
+-- today's local model where MagicCard.list() can already return more
+-- than one claimed card.
+drop policy if exists magic_card_identities_owner_select on public.magic_card_identities;
+create policy magic_card_identities_owner_select
+  on public.magic_card_identities for select
+  using (owner_id = auth.uid()::text);
+
+drop policy if exists magic_card_identities_owner_insert on public.magic_card_identities;
+create policy magic_card_identities_owner_insert
+  on public.magic_card_identities for insert
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists magic_card_identities_owner_update on public.magic_card_identities;
+create policy magic_card_identities_owner_update
+  on public.magic_card_identities for update
+  using (owner_id = auth.uid()::text)
+  with check (owner_id = auth.uid()::text);
+
+-- An adult-mediated "start fresh" action (Magic Card Home only, worded
+-- around the child per the design document's own Section 15) needs a
+-- real delete path — unlike cards, which only ever soft-revokes.
+drop policy if exists magic_card_identities_owner_delete on public.magic_card_identities;
+create policy magic_card_identities_owner_delete
+  on public.magic_card_identities for delete
+  using (owner_id = auth.uid()::text);
+
+-- One row per successful recall — both an audit log and the live grant
+-- record the cross-owner creator_projects policy below keys off.
+-- Mirrors card_redemptions exactly, with one deliberate difference:
+-- no expires_at. A Magic Card recall is permanent recognition
+-- ("coming home"), not a time-boxed unlock like a Vihu Card.
+create table if not exists public.magic_card_recalls (
+  id            uuid primary key default gen_random_uuid(),
+  identity_id   text not null references public.magic_card_identities(id) on delete cascade,
+  recaller_id   text not null default '',
+  recalled_at   timestamptz not null default now()
+);
+
+alter table public.magic_card_recalls enable row level security;
+
+-- Visible to whoever recalled it, or to the identity's own claiming
+-- owner. No insert/update/delete policy for any client role — RLS
+-- enabled with zero write policies means the ONLY way a row can ever
+-- be created is recall_magic_card()'s SECURITY DEFINER body below,
+-- which executes as the function owner and bypasses RLS by Postgres's
+-- own semantics — the intended single writer, not an oversight, same
+-- discipline as card_redemptions.
+drop policy if exists magic_card_recalls_visible on public.magic_card_recalls;
+create policy magic_card_recalls_visible
+  on public.magic_card_recalls for select
+  using (
+    recaller_id = auth.uid()::text
+    or exists (
+      select 1 from public.magic_card_identities i
+      where i.id = identity_id and i.owner_id = auth.uid()::text
+    )
+  );
+
+-- ---------------------------------------------------------------
+-- Function: recall_magic_card
+-- ---------------------------------------------------------------
+-- Structurally a near-mirror of redeem_card() above, applied to a
+-- personal identity instead of a shareable World-unlock card. Reuses
+-- _card_platform_sort_pattern() verbatim for canonical set-comparison
+-- — no new canonicalization logic. SECURITY DEFINER is required for
+-- the same reason redeem_card() needs it: no RLS SELECT policy can
+-- express "let a client compare an input against pattern without ever
+-- reading the stored value" — any policy permissive enough to compare
+-- is permissive enough to leak every identity's pattern via a direct
+-- SELECT.
+--
+-- The response is deliberately minimal: on success, only what a
+-- recalling device needs to recognize the Creator and go fetch their
+-- projects (identity_id/owner_id/nickname/constellation/claimed_at) —
+-- never pattern, code, or serial_no. On failure, only a `reason` code.
+create or replace function public.recall_magic_card(p_pattern jsonb default null, p_typed_code text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_recaller text := auth.uid()::text;
+  v_identity public.magic_card_identities;
+  v_normalized text;
+begin
+  if v_recaller is null or v_recaller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  if p_pattern is not null then
+    select * into v_identity from public.magic_card_identities
+      where public._card_platform_sort_pattern(pattern) = public._card_platform_sort_pattern(p_pattern)
+      limit 1;
+  elsif p_typed_code is not null and length(trim(p_typed_code)) > 0 then
+    -- Dash/space-insensitive, same normalization as redeem_card's own
+    -- typed-fallback path: "ORION-00125"/"orion 00125"/"ORION00125"
+    -- all resolve identically. Deliberately the CONSTELLATION+serial
+    -- compound, not the "MC-00125" `code` column, matching
+    -- redeem_card's own reasoning for the exact same distinction.
+    v_normalized := upper(regexp_replace(p_typed_code, '[\s-]+', '', 'g'));
+    select * into v_identity from public.magic_card_identities
+      where upper(constellation || lpad(serial_no::text, 5, '0')) = v_normalized
+      limit 1;
+  else
+    return jsonb_build_object('ok', false, 'reason', 'no_input');
+  end if;
+
+  if v_identity.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_match');
+  end if;
+
+  update public.magic_card_identities set last_active_at = now() where id = v_identity.id;
+
+  insert into public.magic_card_recalls(identity_id, recaller_id) values (v_identity.id, v_recaller);
+
+  return jsonb_build_object(
+    'ok', true,
+    'identity_id', v_identity.id,
+    'owner_id', v_identity.owner_id,
+    'nickname', v_identity.nickname,
+    'constellation', v_identity.constellation,
+    'claimed_at', v_identity.claimed_at
+  );
+end;
+$$;
+
+grant execute on function public.recall_magic_card(jsonb, text) to anon, authenticated;
+
+-- ---------------------------------------------------------------
+-- creator_projects — Creator's first-ever cloud project backup
+-- ---------------------------------------------------------------
+-- Mirrors builder_projects exactly for the owner-scoped CRUD (see
+-- js/creatorProjectSync.js / tools/world-builder-v2/js/services/
+-- projectSync.js's own "local-primary, cloud backup, never a second
+-- source of truth" discipline) — this table only ever fires once a
+-- Magic Card is claimed; a Visitor's projects never reach Supabase at
+-- all, enforced client-side (js/projectManager.js's _syncProjectStore).
+create table if not exists public.creator_projects (
+  id          text primary key,
+  owner_id    text not null,
+  data        jsonb not null,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.creator_projects enable row level security;
+
+drop policy if exists creator_projects_insert on public.creator_projects;
+create policy creator_projects_insert
+  on public.creator_projects for insert
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists creator_projects_update on public.creator_projects;
+create policy creator_projects_update
+  on public.creator_projects for update
+  using (owner_id = auth.uid()::text)
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists creator_projects_delete on public.creator_projects;
+create policy creator_projects_delete
+  on public.creator_projects for delete
+  using (owner_id = auth.uid()::text);
+
+-- SELECT is the one policy that isn't purely owner-scoped: a
+-- recalling session (proven via magic_card_recalls above) also gets
+-- read access to the original device's own projects, so "recall" can
+-- actually mean something beyond restoring the sky. Deliberately
+-- SELECT-only — a recalled project is always adopted as a brand-new
+-- local copy with a fresh id on the recalling device (see
+-- js/magicCard.js's adopt()), never written back to the original row.
+-- RLS would silently block a cross-owner UPDATE anyway; this also
+-- keeps two devices genuinely independent working copies, matching
+-- the design document's own explicit non-goal of live shared editing.
+drop policy if exists creator_projects_select on public.creator_projects;
+create policy creator_projects_select
+  on public.creator_projects for select
+  using (
+    owner_id = auth.uid()::text
+    or exists (
+      select 1 from public.magic_card_recalls r
+      join public.magic_card_identities i on i.id = r.identity_id
+      where i.owner_id = creator_projects.owner_id
+        and r.recaller_id = auth.uid()::text
+    )
+  );

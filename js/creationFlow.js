@@ -633,6 +633,26 @@ const CreationFlow=(function(){
     if(typeof window.CardPlatform!=='undefined'){
       content.appendChild(_buildCardRedeemWidget());
     }
+    // Magic Card Identity Evolution, Phase 2 — the "come home on a new
+    // device" recall widget lives here too, for the same reason the
+    // Vihu Card redeem widget does: this is the natural landing point
+    // on a fresh device with zero local Magic Cards, before any
+    // Creation Type has been chosen.
+    if(typeof window.MagicCard!=='undefined'){
+      const recallWidget=_buildMagicCardRecallWidget();
+      content.appendChild(recallWidget);
+      // The Shared Device picker's own "Recall a different card" tile
+      // (js/magicCardUI.js's _renderPicker) sets this one-shot flag
+      // right before closing back into normal boot, since it has no
+      // direct path of its own to open the recall panel from a
+      // different module — consumed at most once, so a later,
+      // unrelated visit to Screen 1 never auto-opens anything.
+      if(window.__magicCardAutoOpenRecall){
+        window.__magicCardAutoOpenRecall=false;
+        const toggle=recallWidget.querySelector('.creation-flow-card-toggle');
+        if(toggle) toggle.click();
+      }
+    }
   }
 
   // ---------- Import Theme (Sprint 11.0 — moved onto Screen 2) ----------
@@ -1133,6 +1153,160 @@ const CreationFlow=(function(){
       panel.classList.toggle('hidden',!opening);
       toggle.textContent='🔮 Have a Card? Redeem it here '+(opening?'⌃':'⌄');
       if(opening && !built){ built=true; _buildCardRedeemPanel(panel); }
+    });
+
+    return wrap;
+  }
+
+  // ---------- Magic Card Identity Evolution, Phase 2 — Recall widget ----------
+  // Structurally parallel to the Vihu Card redeem widget directly
+  // above, reusing its exact grid/line-drawing DOM mechanics
+  // (_cardBuildGrid/_cardRedrawLiveLines/_cardBoardKey/_cardCenterOfCell
+  // — already fully generic, zero World/card-type coupling in any of
+  // them) for a second, different purpose: recognizing a Creator on a
+  // new device, not unlocking a World. This file owns none of the
+  // pattern-matching/RPC logic here either — only the DOM mechanics and
+  // calling MagicCard.recall()/rendering its result.
+  function _handleMagicCardRecallResult(result,status,clearBoard){
+    if(!result || !result.ok){
+      const reason=result && result.reason;
+      if(reason==='no_match'){ status.textContent='✗ Not quite — check the card and try again.'; }
+      else if(reason==='not_authenticated'){ status.textContent='✗ Couldn\'t verify your session — please try again.'; }
+      else{ status.textContent='✗ Something went wrong — please try again.'; }
+      status.className='creation-flow-card-status err';
+      clearBoard();
+      return;
+    }
+    clearBoard();
+    status.textContent='✨ Welcome back, '+((result.card&&result.card.nickname)||'Star Traveler')+'!';
+    status.className='creation-flow-card-status ok';
+    if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge();
+    // Recall isn't about picking a World — it's about recognizing a
+    // Creator, and My Projects (populated by the identity's own just-
+    // pulled projects, js/magicCard.js's adopt()) is the natural next
+    // stop, mirroring how a real returning session already lands.
+    setTimeout(function(){
+      if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.list().length>0){
+        _renderMyProjectsScreen();
+      }
+    },900);
+  }
+
+  function _buildMagicCardRecallPanel(panel){
+    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your card, in order — a line connects them as you go. Tap a star again to undo it.'));
+
+    const board=_el('div','creation-flow-card-board');
+    panel.appendChild(board);
+
+    const counter=_el('div','creation-flow-card-counter','0 stars selected');
+    panel.appendChild(counter);
+
+    const status=_el('p','creation-flow-card-status');
+    panel.appendChild(status);
+
+    const recallBtn=_el('button','creation-flow-card-redeem-btn','✨ Come Home');
+    recallBtn.type='button';
+    panel.appendChild(recallBtn);
+
+    let selected=[];
+    const svg=_cardBuildGrid(board,CARD_GRID_SIZE,function(r,c,cell){
+      const k=_cardBoardKey(r,c);
+      const idx=selected.indexOf(k);
+      if(idx===-1){
+        selected.push(k);
+        cell.classList.add('selected');
+        cell.textContent='★';
+      }else{
+        selected.splice(idx,1);
+        cell.classList.remove('selected');
+        cell.textContent='';
+      }
+      counter.textContent=selected.length+' star'+(selected.length===1?'':'s')+' selected';
+      _cardRedrawLiveLines(board,svg,selected);
+    });
+
+    function clearBoard(){
+      board.querySelectorAll('.creation-flow-card-cell').forEach(function(el){
+        el.classList.remove('selected');
+        el.textContent='';
+      });
+      svg.innerHTML='';
+      selected=[];
+      counter.textContent='0 stars selected';
+    }
+
+    recallBtn.addEventListener('click',function(){
+      if(selected.length<2){
+        status.textContent='Tap at least two stars first.';
+        status.className='creation-flow-card-status err';
+        return;
+      }
+      recallBtn.disabled=true;
+      status.textContent='Checking…';
+      status.className='creation-flow-card-status';
+      const pattern=selected.map(function(k){
+        const parts=k.split(',');
+        return [parseInt(parts[0],10),parseInt(parts[1],10)];
+      });
+      window.MagicCard.recall({pattern:pattern}).then(function(result){
+        recallBtn.disabled=false;
+        _handleMagicCardRecallResult(result,status,clearBoard);
+      });
+    });
+
+    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type the magic word instead? ⌄');
+    codeToggle.type='button';
+    const codeFallback=_el('div','creation-flow-card-code-fallback hidden');
+    const codeInput=document.createElement('input');
+    codeInput.type='text';
+    codeInput.className='creation-flow-card-code-input';
+    codeInput.placeholder='e.g. ORION-00125';
+    const codeSubmit=_el('button','creation-flow-card-code-submit','Come home with code');
+    codeSubmit.type='button';
+    codeFallback.appendChild(codeInput);
+    codeFallback.appendChild(codeSubmit);
+    panel.appendChild(codeToggle);
+    panel.appendChild(codeFallback);
+
+    codeToggle.addEventListener('click',function(){
+      const opening=codeFallback.classList.contains('hidden');
+      codeFallback.classList.toggle('hidden',!opening);
+      codeToggle.textContent='Prefer to type the magic word instead? '+(opening?'⌃':'⌄');
+    });
+
+    function submitCode(){
+      const val=codeInput.value.trim();
+      if(!val){
+        status.textContent='Enter the magic word and card number first.';
+        status.className='creation-flow-card-status err';
+        return;
+      }
+      codeSubmit.disabled=true;
+      status.textContent='Checking…';
+      status.className='creation-flow-card-status';
+      window.MagicCard.recall({typed:val}).then(function(result){
+        codeSubmit.disabled=false;
+        _handleMagicCardRecallResult(result,status,clearBoard);
+      });
+    }
+    codeSubmit.addEventListener('click',submitCode);
+    codeInput.addEventListener('keydown',function(e){ if(e.key==='Enter') submitCode(); });
+  }
+
+  function _buildMagicCardRecallWidget(){
+    const wrap=_el('div','creation-flow-card-redeem');
+    const toggle=_el('button','creation-flow-card-toggle','✨ Already have a Magic Card? Tap to come home ⌄');
+    toggle.type='button';
+    const panel=_el('div','creation-flow-card-redeem-panel hidden');
+    wrap.appendChild(toggle);
+    wrap.appendChild(panel);
+
+    let built=false;
+    toggle.addEventListener('click',function(){
+      const opening=panel.classList.contains('hidden');
+      panel.classList.toggle('hidden',!opening);
+      toggle.textContent='✨ Already have a Magic Card? Tap to come home '+(opening?'⌃':'⌄');
+      if(opening && !built){ built=true; _buildMagicCardRecallPanel(panel); }
     });
 
     return wrap;

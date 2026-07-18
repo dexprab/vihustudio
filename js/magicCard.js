@@ -1,40 +1,56 @@
-// magicCard.js — Magic Card Identity Evolution, Phase 1 (local-only).
+// magicCard.js — Magic Card Identity Evolution.
 //
 // Implements the data/state layer behind docs/artifact "VihuStudio —
 // Magic Card Identity Evolution" (Product Architecture & UX Design).
-// This is Phase 1 exactly as that document's own Product Recommendations
-// section scoped it: "the awakening moment on first Publish, with
-// claiming initially just meaning 'this device recognizes you' — no
-// cross-device recall yet." Everything here is 100% local (localStorage
-// only) — no Supabase, no schema change, no card_type='creator' RPC
-// mechanism. Cross-device recall (Phase 2) can be layered on top of
-// this exact local shape later without a redesign.
+// Phase 1 (shipped first) was exactly that document's own Product
+// Recommendations §1 scope: "the awakening moment on first Publish,
+// with claiming initially just meaning 'this device recognizes you' —
+// no cross-device recall yet," 100% local (localStorage only).
 //
-// The central design decision from that document: a claimed Magic
-// Card's constellation pattern is minted ONCE, at claim time, and never
-// changes — it is both the "sky" a child sees as their identity AND
-// (in a future phase) the tap gesture that recalls their card
-// elsewhere. Everything described as "the sky growing" is presentation
-// layered on top of this fixed pattern, computed live from real usage
-// signals (see growthSignals()) — never a second stored, mutable copy
-// of the pattern itself.
+// This file now also implements Phase 2 — Cloud Identity + Recall:
+// once a card is claimed, its identity is mirrored to Supabase
+// (magic_card_identities, supabase/schema.sql) continuously in the
+// background, and a NEW device can recall it by tapping the same
+// pattern (recall_magic_card RPC). Local stays authoritative for
+// everything the child actually interacts with — every cloud call
+// below is fire-and-forget, never on the hot path of claim/rename/
+// touch, and a Visitor (no claimed card) never triggers a single
+// network call, unchanged from Phase 1.
+//
+// The central design decision from the design document: a claimed
+// Magic Card's constellation pattern is minted ONCE, at claim time,
+// and never changes — it is both the "sky" a child sees as their
+// identity AND the tap gesture that recalls their card elsewhere.
+// Everything described as "the sky growing" is presentation layered on
+// top of this fixed pattern, computed live from real usage signals
+// (see growthSignals()) — never a second stored, mutable copy of the
+// pattern itself.
 //
 // A genuinely new claimed Magic Card is NOT the same concept as a Vihu
 // Card (js/cardPlatform.js) — that module mints a *shareable* card
 // pointing at a World, redeemed by someone else. This module mints a
 // *personal* card representing "this device recognizes you" — no
-// sharing, no redemption by a third party. The constellation placement
-// math (_placeConstellation) is intentionally duplicated rather than
-// reused directly from cardPlatform.js: it's a handful of small, pure,
-// stable functions with zero Supabase dependency, and cardPlatform.js's
-// own version is entangled with the Vihu Card `pattern`/`code`
-// generate() flow this module has no reason to depend on.
+// sharing, no redemption by a third party; that is also why it has its
+// own Supabase tables (magic_card_identities/magic_card_recalls) rather
+// than reusing the reserved-but-unused card_type='creator' enum value
+// in `cards` — investigation confirmed that value was never actually
+// scoped to mean this. The constellation placement math
+// (_placeConstellation) is intentionally duplicated rather than reused
+// directly from cardPlatform.js: it's a handful of small, pure, stable
+// functions with zero Supabase dependency of their own, and
+// cardPlatform.js's own version is entangled with the Vihu Card
+// `pattern`/`code` generate() flow this module has no reason to depend
+// on. The cloud calls below instead reuse
+// ThemeRepositoryClient.getClient()/.getSession() directly — the same
+// reuse convention cardPlatform.js already established for its own
+// Supabase access.
 const MagicCard=(function(){
   'use strict';
 
   const CARDS_KEY='vihu-magic-cards';
   const ACTIVE_KEY='vihu-magic-card-active-id';
   const FLAGS_KEY='vihu-magic-card-flags';
+  const CLOUD_SYNC_DEBOUNCE_MS=2000;
 
   // Same curated shapes/grid as js/cardPlatform.js's own CONSTELLATIONS
   // — not astronomically precise, recognizable and pleasant to trace.
@@ -154,6 +170,60 @@ const MagicCard=(function(){
     if(idx===-1) return;
     cards[idx].lastActiveAt=new Date().toISOString();
     _writeCards(cards);
+    _scheduleIdentitySync(id);
+  }
+
+  // ---------- Phase 2: Cloud Identity + Recall ----------
+  // Every function below is fire-and-forget from its caller's own
+  // perspective -- local mutation (above) has already completed and
+  // returned before any of this runs, and every promise here resolves
+  // rather than rejects on failure, matching cardPlatform.js's own
+  // "never block, never throw" convention throughout. A Visitor (no
+  // claimed card, so none of the local functions above ever call these)
+  // never triggers a single network call -- unchanged from Phase 1.
+  const _cloudSyncTimers={};
+
+  // Upserts the FULL current local card as one Supabase row, keyed by
+  // the card's own local id (magic_card_identities.id is client-
+  // supplied text for exactly this reason -- see supabase/schema.sql's
+  // own comment on that column) -- one shared function serves claim()
+  // (immediate), touch()/rename() (debounced), so there is only ever
+  // one write shape to reason about.
+  function _pushIdentitySnapshot(card){
+    if(!card || typeof ThemeRepositoryClient==='undefined') return;
+    ThemeRepositoryClient.isConfigured().then(function(ok){
+      if(!ok) return;
+      return ThemeRepositoryClient.getClient().then(function(client){
+        return ThemeRepositoryClient.getSession().then(function(session){
+          return client.from('magic_card_identities').upsert({
+            id:card.id,
+            owner_id:session.user.id,
+            nickname:card.nickname,
+            constellation:card.constellation,
+            pattern:card.pattern,
+            claimed_at:card.claimedAt,
+            last_active_at:card.lastActiveAt
+          },{onConflict:'id'});
+        });
+      });
+    }).catch(function(){});
+  }
+
+  // Debounced (2s, its own timer per card id) background push --
+  // touch() fires on every setActive() call, so this needs coalescing
+  // to avoid spamming Supabase on rapid navigation, mirroring
+  // worldBuilderApp.js's own _scheduleCloudSync timing exactly. Always
+  // re-reads the card fresh at fire time rather than closing over a
+  // possibly-stale snapshot, the same "don't push data another edit
+  // has already superseded" discipline _scheduleCloudSync's own
+  // staleness guard exists for.
+  function _scheduleIdentitySync(id){
+    if(!id) return;
+    if(_cloudSyncTimers[id]) clearTimeout(_cloudSyncTimers[id]);
+    _cloudSyncTimers[id]=setTimeout(function(){
+      delete _cloudSyncTimers[id];
+      _pushIdentitySnapshot(get(id));
+    },CLOUD_SYNC_DEBOUNCE_MS);
   }
 
   // Generates a pattern WITHOUT persisting anything — used by the
@@ -188,6 +258,9 @@ const MagicCard=(function(){
     cards.push(card);
     _writeCards(cards);
     setActive(card.id);
+    // A one-time event, not a rapid-succession edit stream -- pushed
+    // immediately rather than debounced, unlike touch()/rename() below.
+    _pushIdentitySnapshot(card);
     return card;
   }
 
@@ -196,7 +269,99 @@ const MagicCard=(function(){
     const idx=cards.findIndex(function(c){ return c.id===id; });
     if(idx===-1) return false;
     cards[idx].nickname=(nickname||'').trim();
-    return _writeCards(cards);
+    const result=_writeCards(cards);
+    _scheduleIdentitySync(id);
+    return result;
+  }
+
+  // Redeems a tapped `{pattern:[[row,col],...]}` or typed
+  // `{typed:'ORION-00125'}` against the cloud via the recall_magic_card
+  // RPC (supabase/schema.sql) -- structurally a mirror of
+  // cardPlatform.js's own redeem(), reusing the exact same
+  // ThemeRepositoryClient reuse convention. On success, adopts the
+  // recalled identity as a real local card (see adopt() below) and
+  // kicks off pulling its projects onto this device.
+  function recall(input){
+    input=input||{};
+    if(typeof ThemeRepositoryClient==='undefined'){
+      return Promise.resolve({ok:false,reason:'repository_client_unavailable'});
+    }
+    return ThemeRepositoryClient.getClient().then(function(client){
+      return ThemeRepositoryClient.getSession().then(function(){
+        return client.rpc('recall_magic_card',{
+          p_pattern:input.pattern||null,
+          p_typed_code:input.typed||null
+        }).then(function(res){
+          if(res.error) throw res.error;
+          const result=res.data;
+          if(!result||!result.ok){
+            return {ok:false,reason:(result&&result.reason)||'unknown'};
+          }
+          const card=adopt(result,input.pattern||null);
+          return {ok:true,card:card};
+        });
+      });
+    }).catch(function(error){
+      return {ok:false,error:error};
+    });
+  }
+
+  // Parallel to claim(), but for a RECALLED identity rather than a
+  // freshly minted one -- never mints a new pattern (a real one
+  // already exists, from the recall itself). The RPC never returns the
+  // pattern on any branch (see recall_magic_card in
+  // supabase/schema.sql, same discipline as redeem_card) -- the
+  // recalling client already has it whenever the tap path was used
+  // (it's exactly what was just submitted to recall() above), so it's
+  // threaded back in here rather than re-derived. A typed-code recall
+  // has no such pattern to fold back in -- `pattern` stays null in
+  // that honest, disclosed case, and MagicCardArt's drawBack() shows a
+  // "no sky to show yet on this device" state rather than fabricating
+  // one; still fully usable (nickname/code/Home all work), just
+  // without a printable back until the constellation is known some
+  // other way (e.g. seeing the original device's own printed card).
+  function adopt(remoteResult,pattern){
+    const now=new Date().toISOString();
+    const card={
+      id:remoteResult.identity_id,
+      nickname:remoteResult.nickname||'',
+      constellation:remoteResult.constellation,
+      pattern:pattern||null,
+      claimedAt:remoteResult.claimed_at||now,
+      lastActiveAt:now
+    };
+    const cards=_readCards();
+    const idx=cards.findIndex(function(c){ return c.id===card.id; });
+    if(idx===-1) cards.push(card); else cards[idx]=card;
+    _writeCards(cards);
+    setActive(card.id);
+    _pullRecalledProjects(remoteResult.owner_id);
+    return card;
+  }
+
+  // Fire-and-forget -- pulls every project the ORIGINAL device backed
+  // up under the recalled identity's own owner_id (creator_projects'
+  // own cross-owner SELECT policy, supabase/schema.sql, is what
+  // actually makes this legal) and materializes each as a brand-new
+  // local CreatorProjectStore record with a FRESH id, never the
+  // original -- the same "adopt as a new copy" reasoning already
+  // established for World Builder's own Repository-Only Card cloning
+  // work: RLS would silently block a cross-owner write back to the
+  // original row anyway, and two devices staying genuinely independent
+  // working copies is the explicit, disclosed design (never live/
+  // simultaneous multi-device editing of the same project).
+  function _pullRecalledProjects(ownerId){
+    if(typeof CreatorProjectSync==='undefined' || typeof CreatorProjectStore==='undefined' || !ownerId) return;
+    CreatorProjectSync.listByOwner(ownerId).then(function(rows){
+      rows.forEach(function(row){
+        const record=row.data;
+        if(!record) return;
+        const newId=CreatorProjectStore.newId();
+        const data=record.data;
+        if(data && data.project) data.project.id=newId;
+        CreatorProjectStore.upsert(newId,{name:record.name,thumbnail:record.thumbnail},data);
+      });
+    }).catch(function(){});
   }
 
   // Real, already-available signals a "growing sky" presentation layer
@@ -248,6 +413,8 @@ const MagicCard=(function(){
     generatePattern:generatePattern,
     claim:claim,
     rename:rename,
+    recall:recall,
+    adopt:adopt,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

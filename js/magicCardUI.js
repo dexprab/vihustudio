@@ -92,6 +92,57 @@ const MagicCardUI=(function(){
     return svg;
   }
 
+  // ---------- Shared: two-sided card art view (front/back canvases +
+  // Download/Print) — used both in the Awakening ceremony's First
+  // Claimed Moment and from Magic Card Home's "View My Card" action, so
+  // the two surfaces can never visually disagree. ----------
+  function _buildCardArtView(card){
+    const wrap=_el('div','magic-card-art-view');
+    if(typeof MagicCardArt==='undefined') return wrap;
+
+    const row=_el('div','magic-card-art-row');
+    const frontWrap=_el('div','magic-card-art-col');
+    frontWrap.appendChild(_el('div','magic-card-art-label','Front'));
+    const frontCanvas=document.createElement('canvas');
+    frontCanvas.className='magic-card-art-canvas';
+    frontWrap.appendChild(frontCanvas);
+    row.appendChild(frontWrap);
+
+    const backWrap=_el('div','magic-card-art-col');
+    backWrap.appendChild(_el('div','magic-card-art-label','Back'));
+    const backCanvas=document.createElement('canvas');
+    backCanvas.className='magic-card-art-canvas';
+    backWrap.appendChild(backCanvas);
+    row.appendChild(backWrap);
+    wrap.appendChild(row);
+
+    MagicCardArt.drawFront(frontCanvas,card);
+    MagicCardArt.drawBack(backCanvas,card);
+
+    const actions=_el('div','magic-card-art-actions');
+    const dlFront=_el('button','magic-card-art-btn','⬇ Front');
+    dlFront.type='button';
+    dlFront.addEventListener('click',function(){
+      MagicCardArt.downloadDataURL(frontCanvas.toDataURL('image/png'),(card.id||'magic-card')+'-front.png');
+    });
+    const dlBack=_el('button','magic-card-art-btn','⬇ Back');
+    dlBack.type='button';
+    dlBack.addEventListener('click',function(){
+      MagicCardArt.downloadDataURL(backCanvas.toDataURL('image/png'),(card.id||'magic-card')+'-back.png');
+    });
+    const printBtn=_el('button','magic-card-art-btn','🖨 Print');
+    printBtn.type='button';
+    printBtn.addEventListener('click',function(){
+      MagicCardArt.printCard(frontCanvas.toDataURL('image/png'),backCanvas.toDataURL('image/png'));
+    });
+    actions.appendChild(dlFront);
+    actions.appendChild(dlBack);
+    actions.appendChild(printBtn);
+    wrap.appendChild(actions);
+
+    return wrap;
+  }
+
   // ---------- Header glyph ----------
   function refreshHeaderBadge(){
     if(!_headerBadge) _headerBadge=document.getElementById('magicCardBadge');
@@ -132,6 +183,22 @@ const MagicCardUI=(function(){
     const since=new Date(active.claimedAt);
     const sinceText='Creator since '+since.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
     panel.appendChild(_el('div','magic-card-home-since',sinceText));
+
+    // Access to the same two-sided card view any time after the
+    // ceremony — same underlying render as _showFirstClaimedMoment's,
+    // so this can never visually drift from what the child already saw.
+    const viewCardBtn=_el('button','magic-card-back magic-card-home-viewcard-btn','🎴 View My Card');
+    viewCardBtn.type='button';
+    const cardArtHost=_el('div','magic-card-home-art-host hidden');
+    viewCardBtn.addEventListener('click',function(){
+      const opening=cardArtHost.classList.contains('hidden');
+      cardArtHost.classList.toggle('hidden',!opening);
+      if(opening && !cardArtHost.childNodes.length){
+        cardArtHost.appendChild(_buildCardArtView(active));
+      }
+    });
+    panel.appendChild(viewCardBtn);
+    panel.appendChild(cardArtHost);
 
     const storiesLabel=_el('div','magic-card-home-stories-label','A few of your stories live in this sky:');
     panel.appendChild(storiesLabel);
@@ -223,6 +290,19 @@ const MagicCardUI=(function(){
     explore.type='button';
     explore.addEventListener('click',function(){ proceed(null); });
     grid.appendChild(explore);
+
+    // A quiet second option for the "some cards already local on this
+    // device, but I want to pull a DIFFERENT one too" case — sets a
+    // one-shot flag js/creationFlow.js's Screen 1 checks for and
+    // consumes on its very next render (this module has no direct path
+    // of its own into that other module's DOM).
+    const recall=_el('button','magic-card-gate-explore','✨ Recall a different card');
+    recall.type='button';
+    recall.addEventListener('click',function(){
+      try{ window.__magicCardAutoOpenRecall=true; }catch(e){}
+      proceed(null);
+    });
+    grid.appendChild(recall);
     panel.appendChild(grid);
   }
 
@@ -316,10 +396,12 @@ const MagicCardUI=(function(){
 
   function _showFirstClaimedMoment(stage,card,onNext){
     stage.innerHTML='';
-    const skyWrap=_el('div','magic-card-awaken-sky magic-card-claimed-glow');
-    skyWrap.appendChild(_renderConstellation(card.pattern,{size:220}));
-    stage.appendChild(skyWrap);
     stage.appendChild(_el('div','magic-card-claimed-title',(card.nickname||'Star Traveler')+', your sky is alive.'));
+    // The card shown here has two real sides, not just a bare
+    // constellation — downloadable and printable right now, matching
+    // the moment it's actually made, not deferred to a separate later
+    // screen.
+    stage.appendChild(_buildCardArtView(card));
     const cont=_el('button','magic-card-claim-btn','Continue');
     cont.type='button';
     cont.addEventListener('click',onNext);

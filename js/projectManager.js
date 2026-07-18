@@ -214,6 +214,26 @@ const ProjectManager=(function(){
     return AppState.project.id||null;
   }
 
+  // Magic Card Identity Evolution, Phase 2 — the "continuous cloud
+  // mirror once claimed" architecture: local stays authoritative and
+  // this is fire-and-forget, debounced on its own separate timer from
+  // the local write above (mirrors worldBuilderApp.js's own
+  // _scheduleCloudSync exactly). A Visitor (no claimed Magic Card)
+  // never reaches CreatorProjectSync.push at all — this is the one
+  // guard that keeps a Visitor's own projects 100% local forever.
+  const CLOUD_PROJECT_SYNC_DEBOUNCE_MS=2000;
+  let _cloudProjectSyncTimer=null;
+  function _scheduleCloudProjectSync(id){
+    if(typeof CreatorProjectSync==='undefined' || typeof MagicCard==='undefined' || !MagicCard.getActive()) return;
+    if(_cloudProjectSyncTimer) clearTimeout(_cloudProjectSyncTimer);
+    _cloudProjectSyncTimer=setTimeout(function(){
+      _cloudProjectSyncTimer=null;
+      if(typeof CreatorProjectStore==='undefined') return;
+      const record=CreatorProjectStore.get(id);
+      if(record) CreatorProjectSync.push(record);
+    },CLOUD_PROJECT_SYNC_DEBOUNCE_MS);
+  }
+
   function _syncProjectStore(data){
     if(typeof CreatorProjectStore==='undefined') return;
     const id=_ensureProjectId();
@@ -227,6 +247,7 @@ const ProjectManager=(function(){
         name:(data&&data.project&&(data.project.bookTitle||data.project.title))||'Untitled',
         thumbnail:firstThumb
       },data);
+      _scheduleCloudProjectSync(id);
     }catch(e){}
   }
 

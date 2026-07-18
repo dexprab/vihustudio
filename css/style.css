@@ -6452,3 +6452,93 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .magic-card-gate-grid{ grid-template-columns:repeat(2,1fr); }
   .magic-card-home-stories-grid{ grid-template-columns:repeat(3,1fr); }
 }
+
+/* ===========================
+   Magic Card Identity Evolution, Phase 2 — two-sided card art view
+   (shown in the Awakening ceremony's First Claimed Moment and from
+   Magic Card Home's "View My Card") + its print sheet. Mirrors
+   tools/world-builder-v2/css/world-builder.css's own
+   .wb-card-print-sheet convention exactly, since Creator's CSS is a
+   separate file with no shared stylesheet to reuse it from directly.
+   =========================== */
+.magic-card-art-view{
+  width:100%;
+  margin:8px 0 0;
+}
+.magic-card-art-row{
+  display:flex;
+  gap:14px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.magic-card-art-col{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.magic-card-art-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--mc-ink-soft);
+}
+.magic-card-art-canvas{
+  width:150px;
+  height:auto;
+  aspect-ratio:700/980;
+  border-radius:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,0.4);
+}
+.magic-card-art-actions{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:14px 0 4px;
+}
+.magic-card-art-btn{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:8px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid var(--mc-line);
+  color:var(--mc-ink);
+  font:700 12.5px/1 inherit;
+}
+.magic-card-art-btn:hover{ background:rgba(255,255,255,0.16); }
+
+.magic-card-home-viewcard-btn{
+  align-self:center;
+  margin:4px 0 0 0 !important;
+}
+.magic-card-home-art-host{
+  width:100%;
+  margin:14px 0 4px;
+}
+.magic-card-home-art-host.hidden{ display:none; }
+
+.magic-card-print-sheet{
+  position:absolute;
+  left:-9999px;
+  top:0;
+}
+@media print{
+  body > *:not(.magic-card-print-sheet){ display:none !important; }
+  .magic-card-print-sheet{
+    position:static;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:24px;
+  }
+  .magic-card-print-sheet img{
+    width:2.5in;
+    height:3.5in;
+    object-fit:contain;
+    page-break-inside:avoid;
+  }
+}

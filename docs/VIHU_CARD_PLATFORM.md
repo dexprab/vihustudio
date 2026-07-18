@@ -319,6 +319,45 @@ dimensions (2.5in × 3.5in) via a `@media print` block, torn down after
 printing. No schema/RPC/`js/cardPlatform.js` change — purely additive
 World Builder UI reading data the platform already had.
 
+---
+
+## 6.2 Not a Vihu Card — Magic Card identities are a separate system
+
+A Magic Card (`js/magicCard.js`/`js/magicCardUI.js`, root Creator, see
+CLAUDE.md's own "Magic Card Identity Evolution" sprint entries) is
+**not** an instance of `card_type='creator'` — the reserved-but-unused
+enum slot §1.1 names above. It is a deliberately different, parallel
+system with its own tables (`magic_card_identities`,
+`magic_card_recalls`) and its own RPC (`recall_magic_card`), not a
+seventh redemption context bolted onto `cards`/`redeem_card()`.
+
+The two share a *technique* (constellation-pattern placement, tap-to-
+match redemption UI, a `SECURITY DEFINER` RPC that never echoes the
+secret back) but solve genuinely different problems:
+
+- A **Vihu Card** is *shareable and disposable* — many people can hold
+  a copy of the same physical/printed card, it has tries and an
+  expiry, and redeeming it grants time-boxed access to *someone else's*
+  published Theme. The Card itself has no owner-facing identity beyond
+  the Theme it unlocks.
+- A **Magic Card identity** is *personal and permanent* — it belongs to
+  exactly one child, is minted once (at their first Publish, via the
+  Magic Card Identity Evolution "Awakening" ceremony), and *is* that
+  child's own recognition mechanism across devices — a signinless
+  sign-in, not an unlock. Redeeming ("recalling") it doesn't grant
+  access to someone else's content; it re-establishes "this device
+  recognizes you" and pulls *the recaller's own* previously-claimed
+  projects (`creator_projects`, mirroring `builder_projects`) onto the
+  new device as fresh, independent local copies.
+
+Practical consequence: `magic_card_identities`/`magic_card_recalls`/
+`recall_magic_card()` are their own tables/RPC in
+`supabase/schema.sql`, not rows inside `cards`/`card_redemptions`
+carrying `card_type='creator'`. If a future sprint ever does build out
+the real Creator card type, it would be a *third*, still-separate
+thing — "share a temporary invite into your world" — not a rename of
+either of the two systems above.
+
 ## 7. What's intentionally deferred
 
 - **The other five card types** (Creator/Unlock/Event/Achievement/
