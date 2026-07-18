@@ -708,71 +708,25 @@ const ContextPanel=(function(){
 
   // ---------- Right Panel Redesign — Personalize zone ----------
 
-  // "+ Add Something"'s 7 rows. Stickers/Decorations/Shape are all,
-  // today, the exact same underlying capability — SceneEngine.addSticker
-  // via Sticker Studio, filtered to a different StickerLibrary category —
-  // confirmed by investigation before this sprint began; there is no
-  // separate "decoration object"/"shape object" type. Photo reuses the
-  // existing Add/Replace Artwork flow. Note/Doodle/Voice have no
-  // supporting SceneEngine/renderer capability today (confirmed: no
-  // freeform text-object array, no freehand drawing, no audio
-  // attachment) — stubbed honestly as Coming Soon rather than faked.
+  // "+ Add Something"'s rows. Stickers/Decorations/Shape are all, today,
+  // the exact same underlying capability — SceneEngine.addSticker via
+  // Sticker Studio — and Sticker Studio's own category tab strip already
+  // gives full reach across every category (Characters/Decorations/
+  // Shapes/etc.) once it's open, so one combined entry point is enough —
+  // no pre-filtering into a specific category. Photo was removed: it
+  // duplicates the existing per-Place "Add Artwork" flow already reachable
+  // by selecting a Place directly, which is where artwork replacement
+  // belongs. Note/Doodle/Voice have no supporting SceneEngine/renderer
+  // capability today (confirmed: no freeform text-object array, no
+  // freehand drawing, no audio attachment) — stubbed honestly as Coming
+  // Soon rather than faked.
   function _addSomethingItems(){
     return [
-      {id:'stickers',icon:'😀',label:'Stickers',onClick:function(){ _showStickerStudio(); }},
-      {id:'decorations',icon:'⭐',label:'Decorations',onClick:function(){
-        if(typeof StickerStudio!=='undefined' && typeof StickerStudio.setActiveCategory==='function'){
-          try{ StickerStudio.setActiveCategory('decorations'); }catch(e){}
-        }
-        _showStickerStudio();
-      }},
-      {id:'shape',icon:'🔷',label:'Shape',onClick:function(){
-        if(typeof StickerStudio!=='undefined' && typeof StickerStudio.setActiveCategory==='function'){
-          try{ StickerStudio.setActiveCategory('shapes'); }catch(e){}
-        }
-        _showStickerStudio();
-      }},
-      {id:'photo',icon:'📸',label:'Photo',onClick:_addPhoto},
+      {id:'stickers',icon:'😀',label:'Stickers, Decorations & Shapes',onClick:function(){ _showStickerStudio(); }},
       {id:'note',icon:'🗒️',label:'Note',comingSoon:true},
       {id:'doodle',icon:'✏️',label:'Doodle',comingSoon:true},
       {id:'voice',icon:'🎤',label:'Voice',comingSoon:true}
     ];
-  }
-
-  // Photo — no existing "fill the next empty Place" helper anywhere in
-  // the codebase (confirmed by investigation); _replaceArtwork()/
-  // _applyImageResult() are entirely selection-driven. This selects the
-  // first Place with no picture yet (or falls back to Place 1 / the
-  // Cover-Hook-End single-holder case once every Place is filled or the
-  // theme has none) before handing off to the existing, unmodified
-  // upload flow — one tap from "Photo" to a real file picker.
-  function _firstOpenPlaceSelection(slide){
-    if(!slide) return {id:'image-holder'};
-    let places=null;
-    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRects==='function'){
-      try{ places=SlideRenderer.getPlaceRects(slide); }catch(e){ places=null; }
-    }
-    if(places && places.length){
-      for(let i=0;i<places.length;i++){
-        const p=places[i];
-        const placeId=(p.id && p.id!=='image-holder') ? p.id : undefined;
-        if(!_hasPlaceImage(slide,placeId)) return {id:p.id||'image-holder'};
-      }
-    }
-    return {id:'image-holder'};
-  }
-
-  function _addPhoto(){
-    const slide=_currentSlide();
-    const target=_firstOpenPlaceSelection(slide);
-    // PageRuntime.selectSceneObject -> host.setSelectedSceneElement
-    // already ends in PageRuntime.notify() (js/app.js's own
-    // _setSelectedSceneElement), which rebuilds this very panel into
-    // the Artwork-selected state — no separate notify() call needed.
-    if(typeof PageRuntime!=='undefined' && typeof PageRuntime.selectSceneObject==='function'){
-      try{ PageRuntime.selectSceneObject(target.id,'image-holder'); }catch(e){}
-    }
-    _replaceArtwork();
   }
 
   function _buildAddSomethingAccordion(){
