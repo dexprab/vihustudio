@@ -4,6 +4,6 @@
   "task": "A direct follow-up to the Personalize <-> Refine sprint's own '+ Add Something' menu: removed the Photo row (duplicated the existing per-Place Add Artwork flow already reachable on canvas) and combined the separate Stickers/Decorations/Shape rows into one entry point, since Sticker Studio's own category tab strip already gives full reach across every category the instant it opens -- pre-filtering to one shelf added no real capability. Deleted the now-orphaned _addPhoto/_firstOpenPlaceSelection helpers outright. Verified via a new Playwright test (4 rows remain, no Photo/separate rows, the combined row opens Sticker Studio with all 18 category tabs visible) plus full regression across the existing Creator/Builder suite and both goldenBuild.js suites, zero console errors. Confined to js/contextPanel.js.",
   "build": "0145",
   "buildDate": "2026-07-18",
-  "commit": "pending",
+  "commit": "1cea491",
   "environment": "Release"
 }
