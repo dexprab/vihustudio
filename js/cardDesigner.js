@@ -1368,21 +1368,16 @@ const CardDesigner=(function(){
     const shapeGroup=document.createElement('div');
     shapeGroup.className='sticker-shape-group hidden';
 
-    // "give option for just outline shape of colored shape" — a
-    // universal Fill Shape toggle (any Shape kind, not just custom).
-    // Off means _layerDrawShape/_drawCustomStrokeShape skip fill()
-    // entirely (renderer/slideRenderer.js's fillEnabled!==false gate) —
-    // genuinely outline-only, not merely a 0% fill-opacity trick. The
-    // Fill Colour/Opacity fields only matter while it's on, so they're
-    // wrapped in their own hideable group; Outline Colour/Opacity/
-    // Thickness stay always visible since the outline itself is never
-    // gated by this toggle.
-    const fillToggleRow=document.createElement('div');
-    shapeGroup.appendChild(fillToggleRow);
-    _buildToggleRow(fillToggleRow,'🎨 Fill Shape','sticker-shape-fill-toggle',function(checked){
-      _stickerUpdate({fillEnabled:checked});
-    });
-
+    // "for all shapes give option of transparent fill color" — a
+    // Transparent checkbox sits right beside the Fill Colour swatch,
+    // mirroring the exact Colour-section pattern Universal Experience
+    // Authoring already established (Colour Picker / Opacity /
+    // Transparent checkbox) instead of a separate on/off toggle row
+    // above the fields. Checked -> fillEnabled:false (renderer/
+    // slideRenderer.js's fillEnabled!==false gate skips fill()
+    // entirely — genuinely transparent, not a 0%-opacity trick);
+    // Colour/Opacity stay visible (just dimmed) so a child can still
+    // see and tweak what they'll get back the moment they un-check it.
     const fillFieldsWrap=document.createElement('div');
     fillFieldsWrap.className='sticker-shape-fill-fields';
     (function(){
@@ -1392,11 +1387,25 @@ const CardDesigner=(function(){
       lbl.className='designer-row-label';
       lbl.textContent='Fill Colour';
       row.appendChild(lbl);
+      const controls=document.createElement('div');
+      controls.className='sticker-shape-fill-color-controls';
       const input=document.createElement('input');
       input.type='color';
       input.className='sticker-shape-fill-color-input';
       input.addEventListener('input',function(){ _stickerUpdate({fillColor:input.value}); });
-      row.appendChild(input);
+      controls.appendChild(input);
+      const transparentLabel=document.createElement('label');
+      transparentLabel.className='sticker-shape-transparent-label';
+      const transparentCheckbox=document.createElement('input');
+      transparentCheckbox.type='checkbox';
+      transparentCheckbox.className='sticker-shape-transparent-checkbox';
+      transparentCheckbox.addEventListener('change',function(){
+        _stickerUpdate({fillEnabled:!transparentCheckbox.checked});
+      });
+      transparentLabel.appendChild(transparentCheckbox);
+      transparentLabel.appendChild(document.createTextNode('Transparent'));
+      controls.appendChild(transparentLabel);
+      row.appendChild(controls);
       fillFieldsWrap.appendChild(row);
       _makeSliderRow(fillFieldsWrap,{
         labelText:'Fill Opacity',valueClass:'sticker-shape-fill-opacity-value',sliderClass:'sticker-shape-fill-opacity-slider',
@@ -1932,10 +1941,10 @@ const CardDesigner=(function(){
 
     if(isShapeKind){
       const fillEnabled=st.fillEnabled!==false;
-      const fillToggleInput=section.querySelector('.sticker-shape-fill-toggle');
-      if(fillToggleInput) fillToggleInput.checked=fillEnabled;
+      const transparentCheckboxEl=section.querySelector('.sticker-shape-transparent-checkbox');
+      if(transparentCheckboxEl) transparentCheckboxEl.checked=!fillEnabled;
       const fillFieldsWrapEl=section.querySelector('.sticker-shape-fill-fields');
-      if(fillFieldsWrapEl) fillFieldsWrapEl.classList.toggle('hidden',!fillEnabled);
+      if(fillFieldsWrapEl) fillFieldsWrapEl.classList.toggle('is-transparent',!fillEnabled);
       const fillColorInput=section.querySelector('.sticker-shape-fill-color-input');
       if(fillColorInput) fillColorInput.value=st.fillColor||'#F0B429';
       const fillOpSlider=section.querySelector('.sticker-shape-fill-opacity-slider');

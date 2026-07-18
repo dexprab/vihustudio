@@ -76,6 +76,18 @@ const ContextPanel=(function(){
   let personalizeOpenSection=null;
   let _lastSelectionKey=null;
 
+  // "need back button to go to previous selection else every time have
+  // to reset it by clicking outside" — a small, real selection history
+  // (browser-back-button semantics), independent of Personalize's own
+  // expand/collapse state. _selectionHistory holds the snapshots being
+  // LEFT each time the selection genuinely changes; _navigatingBack
+  // suppresses re-pushing the very transition Back itself causes, so
+  // Back/Forward can never ping-pong two entries against each other.
+  let _selectionHistory=[];
+  let _lastSelectionSnapshot={sceneId:null,sceneType:null,textId:null};
+  let _navigatingBack=false;
+  const SELECTION_HISTORY_MAX=20;
+
   function configure(cfg){ host=cfg||null; }
 
   function _el(tag,className,text){
@@ -153,10 +165,22 @@ const ContextPanel=(function(){
     // trigger (both simply call refresh() again after mutating one of
     // these two variables).
     const key=(sceneId||'')+'|'+(sceneType||'')+'|'+(textId||'');
+    const wasNavigatingBack=_navigatingBack;
+    _navigatingBack=false;
     if(key!==_lastSelectionKey){
+      // Only push the state being LEFT onto history when this change
+      // was a genuine new selection — not when it's the very refresh()
+      // caused by clicking Back itself (that would just re-push the
+      // state Back is trying to leave, producing an infinite ping-pong
+      // between two entries instead of real history).
+      if(!wasNavigatingBack && _lastSelectionKey!==null){
+        _selectionHistory.push(_lastSelectionSnapshot);
+        if(_selectionHistory.length>SELECTION_HISTORY_MAX) _selectionHistory.shift();
+      }
       personalizeExpanded=false;
       personalizeOpenSection=null;
     }
+    _lastSelectionSnapshot={sceneId:sceneId,sceneType:sceneType,textId:textId};
     _lastSelectionKey=key;
 
     if(sceneId && sceneType && TYPE_TO_SECTIONS[sceneType]){
@@ -233,6 +257,35 @@ const ContextPanel=(function(){
       : ((typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function') ? SlideRenderer.getSceneElements() : []);
     for(let i=0;i<list.length;i++){ if(list[i].id===sceneId) return list[i]; }
     return null;
+  }
+
+  // "need back button to go to previous selection else every time have
+  // to reset it by clicking outside" — pops the last entry off
+  // _selectionHistory and re-applies it via PageRuntime, exactly the
+  // same selection channels every other control in this file already
+  // uses. A "nothing selected" history entry (both ids null) goes back
+  // to clearing selection, matching what clicking empty canvas already
+  // does today — Back just makes that one keystroke instead of a hunt
+  // for empty space.
+  function _goBack(){
+    if(!_selectionHistory.length) return;
+    const prev=_selectionHistory.pop();
+    _navigatingBack=true;
+    if(typeof PageRuntime==='undefined'){ _navigatingBack=false; return; }
+    if(prev.sceneId && prev.sceneType){
+      PageRuntime.selectSceneObject(prev.sceneId,prev.sceneType);
+    }else if(prev.textId){
+      PageRuntime.selectTextObject(prev.textId);
+    }else{
+      PageRuntime.clearSelection();
+    }
+  }
+  function _appendBackControl(container){
+    if(!_selectionHistory.length) return;
+    const btn=_el('button','context-back-btn','← Back');
+    btn.type='button';
+    btn.addEventListener('click',_goBack);
+    container.appendChild(btn);
   }
 
   // Right Panel Redesign — Rule 2's own small status pill, shown at the
@@ -362,6 +415,7 @@ const ContextPanel=(function(){
     banner.appendChild(_el('span','context-selection-banner-icon','🌍'));
     banner.appendChild(_el('span','context-selection-banner-label',sceneObj.label||'World Object'));
     panelRoot.appendChild(banner);
+    _appendBackControl(panelRoot);
     _appendStatusPill(panelRoot,'🌍',sceneObj.editable?'Part of the World — you can adjust it':'Part of the World','world');
     const v=sceneObj.visual;
     const hasRealControl=sceneObj.editable && v && (v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text');
@@ -387,6 +441,7 @@ const ContextPanel=(function(){
       banner.appendChild(_el('span','context-selection-banner-label',info.label));
       panelRoot.appendChild(banner);
     }
+    _appendBackControl(panelRoot);
     // Every object reachable through this branch is an ordinary,
     // Story-owned object (World-owned selections are routed to
     // _renderWorldObjectDisclosure instead, above) — always editable.
@@ -508,6 +563,7 @@ const ContextPanel=(function(){
     banner.appendChild(_el('span','context-selection-banner-icon','🖼️'));
     banner.appendChild(_el('span','context-selection-banner-label','Your Picture'));
     panelRoot.appendChild(banner);
+    _appendBackControl(panelRoot);
     const editable=_placeEditable(slide,placeId);
     _appendStatusPill(panelRoot, editable?'✏️':'🔒', editable?'You can edit this':'Locked', editable?'editable':'locked');
     const row=_el('div','context-action-row');
@@ -821,7 +877,7 @@ const ContextPanel=(function(){
   // stubbed honestly as Coming Soon rather than faked.
   function _addSomethingItems(){
     return [
-      {id:'stickers',icon:'😀',label:'Stickers, Decorations & Shapes',onClick:function(){ _showStickerStudio(); }},
+      {id:'stickers',icon:'😀',label:'Stickers & Decor',onClick:function(){ _showStickerStudio(); }},
       {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
       {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
       {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
@@ -841,14 +897,22 @@ const ContextPanel=(function(){
     });
     wrap.appendChild(trigger);
     if(personalizeOpenSection==='add'){
-      const list=_el('div','context-add-list');
+      // "organise this better" — a stacked list of full-width rows read
+      // cluttered and gave every item (including the disabled Voice row)
+      // equal visual weight. Reorganized into a compact icon-card grid,
+      // mirroring the same .icon-card language the Shape picker/Draw
+      // Tool row already use elsewhere in this panel, so a real
+      // capability (Stickers/Shapes/Text/Doodle) reads as a tappable
+      // card and "Soon" reads as a clearly separate, muted state.
+      const list=_el('div','context-add-grid');
       _addSomethingItems().forEach(function(item){
-        const row=_el('button','context-add-item'+(item.comingSoon?' is-coming-soon':''));
+        const row=_el('button','context-add-card'+(item.comingSoon?' is-coming-soon':''));
         row.type='button';
-        row.appendChild(_el('span','context-add-item-icon',item.icon));
-        row.appendChild(_el('span','context-add-item-label',item.label));
+        const iconWrap=_el('span','context-add-card-icon',item.icon);
+        row.appendChild(iconWrap);
+        row.appendChild(_el('span','context-add-card-label',item.label));
         if(item.comingSoon){
-          row.appendChild(_el('span','context-add-item-soon','Soon'));
+          row.appendChild(_el('span','context-add-card-soon','Soon'));
           row.disabled=true;
         }else{
           row.addEventListener('click',item.onClick);
@@ -975,6 +1039,7 @@ const ContextPanel=(function(){
     if(world){
       panelRoot.appendChild(_el('div','context-welcome-heading','Welcome to '+world.icon+' '+world.name));
     }
+    _appendBackControl(panelRoot);
     _renderPersonalizeZone(panelRoot,{full:true});
   }
 

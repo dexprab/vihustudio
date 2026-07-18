@@ -3180,6 +3180,36 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 .sticker-shape-fill-fields.hidden,
 .shape-draw-pad-wrap.hidden{ display:none; }
 .sticker-shape-fill-fields{ margin-bottom:2px; }
+/* "for all shapes give option of transparent fill color" — Colour +
+   Opacity stay visible (not display:none) while Transparent is
+   checked, just dimmed and inert, so a child can still see and pick
+   the colour they'll get back the instant they un-check it. */
+.sticker-shape-fill-fields.is-transparent .sticker-shape-fill-color-input,
+.sticker-shape-fill-fields.is-transparent .sticker-shape-fill-opacity-slider{
+  opacity:0.4;
+  pointer-events:none;
+}
+.sticker-shape-fill-color-controls{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.sticker-shape-transparent-label{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-tertiary);
+  cursor:pointer;
+  width:auto;
+}
+.sticker-shape-transparent-checkbox{
+  width:16px !important;
+  height:16px !important;
+  margin:0 !important;
+  flex-shrink:0;
+}
 .shape-draw-pad-wrap{ margin-top:10px; text-align:center; }
 .shape-draw-pad-hint{ margin:0 0 8px; }
 .shape-draw-tool-row{ justify-content:center; margin-bottom:8px; }
@@ -3246,33 +3276,50 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   justify-content:center;
   gap:6px;
 }
+/* Doodle pen swatches/thickness buttons are real <button> elements, so
+   they're caught by the global `button{height:var(--button-height)}` +
+   `button:not(...){width:100%;margin-bottom:12px}` reset rules (the
+   same class of bug already fixed for .object-card/the Publish Studio
+   close button) -- without !important + flex-shrink:0 each swatch was
+   silently stretched to the sidebar's full width and 40px tall,
+   rendering as a stack of ovals instead of small pen-tip dots. "change
+   these into sketch pens... try circular" -- true fixed-size circles,
+   with a soft inner highlight so each dot reads as a little marker tip
+   rather than a flat colour chip. */
 .doodle-pen-swatch{
-  width:20px;
-  height:20px;
+  width:22px !important;
+  height:22px !important;
+  min-width:22px;
+  margin:0 !important;
   border-radius:50%;
-  border:2px solid var(--line);
+  border:2px solid rgba(0,0,0,0.18);
+  box-shadow:inset 0 -3px 4px rgba(0,0,0,0.22), inset 0 2px 3px rgba(255,255,255,0.35);
   cursor:pointer;
-  padding:0;
+  padding:0 !important;
+  flex-shrink:0;
 }
 .doodle-pen-swatch.active{
   border-color:var(--gold, #C9A24A);
-  box-shadow:0 0 0 2px var(--panel), 0 0 0 3px var(--gold, #C9A24A);
+  box-shadow:inset 0 -3px 4px rgba(0,0,0,0.22), inset 0 2px 3px rgba(255,255,255,0.35), 0 0 0 2px var(--panel), 0 0 0 4px var(--gold, #C9A24A);
 }
 .doodle-pen-thickness-row{
   display:flex;
   gap:6px;
 }
 .doodle-pen-thickness-btn{
-  width:28px;
-  height:28px;
+  width:28px !important;
+  height:28px !important;
+  min-width:28px;
+  margin:0 !important;
   border:1px solid var(--line);
-  border-radius:8px;
+  border-radius:50%;
   background:var(--panel);
   display:flex;
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  padding:0;
+  padding:0 !important;
+  flex-shrink:0;
 }
 .doodle-pen-thickness-btn.active{
   border-color:var(--gold, #C9A24A);
@@ -5657,6 +5704,28 @@ body.dark-theme .context-rep-name{ color:var(--text); }
    #card-tab markup below these — no new zone class wraps it, it just
    visually continues the same stack since panelRoot is #card-tab's own
    immediate previous sibling. */
+/* "need back button to go to previous selection else every time have
+   to reset it by clicking outside" — a small, quiet link-style control
+   above the Status pill, shown only once real selection history exists. */
+.context-back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  width:auto;
+  height:auto;
+  margin:0 0 10px;
+  padding:5px 11px 5px 9px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:transparent;
+  color:var(--text-tertiary);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.context-back-btn:hover{ border-color:var(--gold); color:var(--navy); background:rgba(255,203,69,0.10); }
+body.dark-theme .context-back-btn:hover{ color:var(--gold); }
+
 .context-zone-status{ margin:0 0 16px; }
 .context-status-pill{
   display:inline-flex;
@@ -5729,47 +5798,71 @@ body.dark-theme .context-personalize-collapsed{ color:var(--gold); background:rg
   cursor:pointer;
   box-shadow:0 3px 10px rgba(255,203,69,0.24);
 }
-.context-add-list{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
+/* "organise this better" — a compact icon-card grid (same visual
+   language as .context-shape-tile below) replaces the old stacked
+   full-width list: real capabilities read as tappable cards, a
+   disabled "Soon" card reads as clearly, distinctly muted rather than
+   just another row in the same list. */
+.context-add-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
   margin-top:8px;
-  padding:8px;
-  border-radius:12px;
+  padding:10px;
+  border-radius:14px;
   background:var(--panel,var(--bg));
   border:1px solid var(--line);
 }
-.context-add-item{
+.context-add-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  padding:12px 4px 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:11px;
+  font-weight:700;
+  text-align:center;
+  line-height:1.2;
+  cursor:pointer;
+  width:100%;
+  height:auto;
+  margin:0;
+  position:relative;
+}
+.context-add-card:hover:not(.is-coming-soon){ border-color:var(--gold); background:rgba(255,203,69,0.12); transform:translateY(-1px); }
+.context-add-card-icon{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:9px 10px;
-  border:none;
+  justify-content:center;
+  width:34px;
+  height:34px;
   border-radius:10px;
-  background:transparent;
-  color:var(--text);
-  font-size:13px;
-  font-weight:600;
-  text-align:left;
-  width:100%;
-  cursor:pointer;
-}
-.context-add-item:hover:not(.is-coming-soon){ background:rgba(255,203,69,0.12); }
-.context-add-item-icon{ font-size:16px; width:20px; text-align:center; flex-shrink:0; }
-.context-add-item-label{ flex:1; }
-.context-add-item.is-coming-soon{ opacity:0.55; cursor:default; }
-.context-add-item-soon{
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-  color:var(--text-tertiary);
-  background:rgba(0,0,0,0.06);
-  padding:2px 7px;
-  border-radius:10px;
+  background:var(--gold-soft,rgba(255,203,69,0.16));
+  font-size:18px;
   flex-shrink:0;
 }
-body.dark-theme .context-add-item-soon{ background:rgba(255,255,255,0.08); }
+.context-add-card-label{ flex:1; }
+.context-add-card.is-coming-soon{ opacity:0.5; cursor:default; }
+.context-add-card.is-coming-soon .context-add-card-icon{ background:rgba(0,0,0,0.06); }
+body.dark-theme .context-add-card.is-coming-soon .context-add-card-icon{ background:rgba(255,255,255,0.08); }
+.context-add-card-soon{
+  position:absolute;
+  top:6px;
+  right:6px;
+  font-size:8.5px;
+  font-weight:800;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  background:rgba(0,0,0,0.08);
+  padding:1px 5px;
+  border-radius:8px;
+}
+body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 .context-set-tiles{ display:flex; flex-direction:column; gap:8px; }
 .context-set-tile{
