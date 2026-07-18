@@ -4,8 +4,17 @@
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>VihuStudio 1.0.4</title>
-<link rel='stylesheet' href='css/style.css'>
-<link rel='stylesheet' href='assets/fonts/fonts.css'>
+<!-- "its still there" -- a real CSS fix (hiding .buddy-placeholder by
+     default) had already shipped, but GitHub Pages/the browser can
+     keep serving a stale cached copy of a same-URL stylesheet even
+     after the HTML document itself reloads fresh (confirmed by the
+     dev footer showing the new build while the old CSS still applied).
+     A version query param on the stylesheet URL forces a real re-fetch
+     whenever this file changes -- bump ?v= here alongside any future
+     CSS-affecting ship, the same manual ritual build-info.json's own
+     version bump already uses. -->
+<link rel='stylesheet' href='css/style.css?v=0153'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0153'>
 </head>
 <body class='light-theme'>
 <!-- Header -->
