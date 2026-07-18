@@ -3153,6 +3153,12 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   line-height:1;
 }
 
+.sticker-color-group{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+
 .sticker-actions-row{
   display:grid;
   grid-template-columns:repeat(3,1fr);

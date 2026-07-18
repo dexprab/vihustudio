@@ -1,9 +1,9 @@
 {
-  "version": "2.31.1",
-  "sprint": "Add Something -- Combine Sticker/Decoration/Shape, Remove Photo",
-  "task": "A direct follow-up to the Personalize <-> Refine sprint's own '+ Add Something' menu: removed the Photo row (duplicated the existing per-Place Add Artwork flow already reachable on canvas) and combined the separate Stickers/Decorations/Shape rows into one entry point, since Sticker Studio's own category tab strip already gives full reach across every category the instant it opens -- pre-filtering to one shelf added no real capability. Deleted the now-orphaned _addPhoto/_firstOpenPlaceSelection helpers outright. Verified via a new Playwright test (4 rows remain, no Photo/separate rows, the combined row opens Sticker Studio with all 18 category tabs visible) plus full regression across the existing Creator/Builder suite and both goldenBuild.js suites, zero console errors. Confined to js/contextPanel.js.",
-  "build": "0145",
+  "version": "2.32.0",
+  "sprint": "Recolorable Stickers/Decorations/Shapes -- Auto Duotone",
+  "task": "Color emoji glyphs render via the browser's own built-in colour-font tables and ignore CSS/canvas fillStyle entirely, so a literal per-region recolor of the library's 500+ existing glyph-based stickers isn't possible -- this ships the Auto Duotone technique instead, approved as an interim solution while a real vector-asset-based library stays an open question. renderer/slideRenderer.js's _buildRecoloredStickerCanvas reads the glyph's own light/dark pixels via getImageData and splits them into a Body tone + a Shade tone by luminance, plus a dilated Outline ring stamped from the same alpha shape -- preserving some of the glyph's own shape detail rather than flattening to one flat silhouette colour. _drawSceneSticker branches on a new recolorEnabled instance field; _stickerBbox gained a matching visual:{kind:'image',src} field so Object Strip shows the real recolored sticker. js/cardDesigner.js's sticker Refine panel gained a 'Colour This' toggle plus Inside/Shade/Outline colour inputs, seeding sensible defaults only on first enable so a later disable/re-enable remembers whatever was picked. Works automatically on all 500+ existing catalog entries, uniformly across Stickers/Decorations/Shapes since they're all the same instance shape, with zero new artwork. Verified via a new Playwright test (pixel-sampled canvas repaints, Object Strip thumbnail) plus full regression across the existing Creator/Builder suite and both goldenBuild.js suites, zero console errors. Confined to renderer/slideRenderer.js, js/cardDesigner.js, one CSS addition.",
+  "build": "0146",
   "buildDate": "2026-07-18",
-  "commit": "1cea491",
+  "commit": "pending",
   "environment": "Release"
 }

@@ -2889,6 +2889,99 @@ const SlideRenderer=(()=>{
     _stickerImgCache[stickerId]=img;
     return img;
   }
+  // Recolorable stickers ("Colour This") — color emoji glyphs render via
+  // the browser's own built-in COLR/CBDT colour-font tables, which ignore
+  // CSS/canvas fillStyle entirely, so a literal per-region recolor isn't
+  // possible for the library's existing 500+ glyph-based stickers. This
+  // is the "Auto Duotone" technique instead: read the glyph's own
+  // light/dark pixels (via getImageData) and split them into a Body tone
+  // + a Shade tone by luminance, plus a dilated Outline ring stamped from
+  // the same alpha shape — preserving some of the glyph's own shape
+  // detail rather than flattening it to one flat silhouette colour.
+  // Works automatically on every existing sticker/decoration/shape with
+  // zero new artwork, since they're all the same catalog entry shape.
+  const _stickerRecolorCache={};
+  const _stickerRecolorDataURLCache={};
+  const RECOLOR_SIZE=256;
+  const RECOLOR_OUTLINE_WIDTH=Math.round(RECOLOR_SIZE*0.035);
+  function _hexToRgb(hex){
+    if(!hex) return null;
+    const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if(!m) return null;
+    return {r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)};
+  }
+  function _buildRecoloredStickerCanvas(stickerId,bodyColor,shadeColor,outlineColor){
+    if(!stickerId) return null;
+    const srcImg=_ensureStickerImage(stickerId);
+    if(!srcImg || !srcImg.__ready) return null;
+    const size=RECOLOR_SIZE;
+    const glyph=document.createElement('canvas');
+    glyph.width=size; glyph.height=size;
+    glyph.getContext('2d').drawImage(srcImg,0,0,size,size);
+
+    // Outline layer — stamp the glyph's own alpha shape in a ring of
+    // offsets (radius = outline width), then flatten the union to
+    // outlineColor via source-atop compositing.
+    const outline=document.createElement('canvas');
+    outline.width=size; outline.height=size;
+    const o=outline.getContext('2d');
+    const steps=16;
+    for(let i=0;i<steps;i++){
+      const ang=(i/steps)*Math.PI*2;
+      o.drawImage(glyph,Math.cos(ang)*RECOLOR_OUTLINE_WIDTH,Math.sin(ang)*RECOLOR_OUTLINE_WIDTH);
+    }
+    o.globalCompositeOperation='source-atop';
+    o.fillStyle=outlineColor||'#1D3457';
+    o.fillRect(0,0,size,size);
+
+    // Fill layer — Auto Duotone: recolor each opaque pixel into the Body
+    // tone or the Shade tone based on its own original luminance.
+    const fill=document.createElement('canvas');
+    fill.width=size; fill.height=size;
+    const f=fill.getContext('2d');
+    f.drawImage(glyph,0,0);
+    const bodyRgb=_hexToRgb(bodyColor)||{r:224,g:67,b:43};
+    const shadeRgb=_hexToRgb(shadeColor)||{r:138,g:31,b:16};
+    const imgData=f.getImageData(0,0,size,size);
+    const d=imgData.data;
+    for(let i=0;i<d.length;i+=4){
+      if(d[i+3]===0) continue;
+      const lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      const t=lum>150 ? bodyRgb : shadeRgb;
+      d[i]=t.r; d[i+1]=t.g; d[i+2]=t.b;
+    }
+    f.putImageData(imgData,0,0);
+
+    const out=document.createElement('canvas');
+    out.width=size; out.height=size;
+    const c=out.getContext('2d');
+    c.drawImage(outline,0,0);
+    c.drawImage(fill,0,0);
+    return out;
+  }
+  function _recolorKey(st){
+    return st.stickerId+'|'+(st.bodyColor||'')+'|'+(st.shadeColor||'')+'|'+(st.outlineColor||'');
+  }
+  function _recoloredStickerCanvas(st){
+    if(!st || !st.stickerId) return null;
+    const key=_recolorKey(st);
+    if(_stickerRecolorCache[key]) return _stickerRecolorCache[key];
+    const canvas=_buildRecoloredStickerCanvas(st.stickerId,st.bodyColor,st.shadeColor,st.outlineColor);
+    // Only cache a real result — the source glyph image may still be
+    // decoding, and _ensureStickerImage's own onload already triggers a
+    // repaint once it's ready, so the next render() naturally retries.
+    if(canvas) _stickerRecolorCache[key]=canvas;
+    return canvas;
+  }
+  function _recoloredStickerDataURL(st){
+    const key=_recolorKey(st);
+    if(_stickerRecolorDataURLCache[key]) return _stickerRecolorDataURLCache[key];
+    const canvas=_recoloredStickerCanvas(st);
+    if(!canvas) return null;
+    const url=canvas.toDataURL('image/png');
+    _stickerRecolorDataURLCache[key]=url;
+    return url;
+  }
   function _drawSceneSticker(st){
     if(!st) return;
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
@@ -2901,17 +2994,22 @@ const SlideRenderer=(()=>{
     if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
     const sx=st.flipX?-1:1, sy=st.flipY?-1:1;
     if(sx!==1 || sy!==1) x.scale(sx,sy);
-    const img=_ensureStickerImage(st.stickerId);
-    if(img && img.__ready){
-      x.drawImage(img,-w/2,-h/2,w,h);
+    const recolored=st.recolorEnabled ? _recoloredStickerCanvas(st) : null;
+    if(recolored){
+      x.drawImage(recolored,-w/2,-h/2,w,h);
     }else{
-      // Fallback while the SVG decodes — emoji glyph at the right size.
-      const cat=(typeof StickerLibrary!=='undefined') ? StickerLibrary.getById(st.stickerId) : null;
-      const glyph=cat?cat.glyph:'?';
-      x.font=Math.round(h*0.7)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-      x.textAlign='center';
-      x.textBaseline='middle';
-      x.fillText(glyph,0,0);
+      const img=_ensureStickerImage(st.stickerId);
+      if(img && img.__ready){
+        x.drawImage(img,-w/2,-h/2,w,h);
+      }else{
+        // Fallback while the SVG decodes — emoji glyph at the right size.
+        const cat=(typeof StickerLibrary!=='undefined') ? StickerLibrary.getById(st.stickerId) : null;
+        const glyph=cat?cat.glyph:'?';
+        x.font=Math.round(h*0.7)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+        x.textAlign='center';
+        x.textBaseline='middle';
+        x.fillText(glyph,0,0);
+      }
     }
     x.restore();
   }
@@ -2922,7 +3020,7 @@ const SlideRenderer=(()=>{
     const h=typeof st.h==='number'?st.h:260;
     // Hit-test uses the AXIS-ALIGNED bbox; rotation tightens later if
     // needed. For a child interaction this is generous, never confusing.
-    return {
+    const bbox={
       id:st.id,
       type:'sticker',
       stickerId:st.stickerId,
@@ -2931,6 +3029,11 @@ const SlideRenderer=(()=>{
       visible:true,
       locked:!!st.locked
     };
+    if(st.recolorEnabled){
+      const url=_recoloredStickerDataURL(st);
+      if(url) bbox.visual={kind:'image',src:url};
+    }
+    return bbox;
   }
 
   function _sceneBbox(el){

@@ -1221,6 +1221,54 @@ const CardDesigner=(function(){
     flipRow.appendChild(flipIcons);
     editor.appendChild(flipRow);
 
+    // "Colour This" — Auto Duotone recolor, per direct product decision
+    // ("for every sticker/decoration/shape kid select i want a full
+    // control on colors, outline... why cant a dog be of any color").
+    // Color emoji glyphs render via the browser's own built-in colour-
+    // font tables and ignore CSS/canvas fillStyle entirely, so this reads
+    // the glyph's own light/dark pixels and recolors them into a Body
+    // tone + a Shade tone plus a dilated Outline ring
+    // (renderer/slideRenderer.js's _buildRecoloredStickerCanvas) — works
+    // automatically on every sticker/decoration/shape in the library
+    // (they're all the same catalog entry shape today), no new artwork
+    // needed.
+    const colorGroup=document.createElement('div');
+    colorGroup.className='sticker-color-group';
+    _buildToggleRow(colorGroup,'🎨 Colour This','sticker-recolor-toggle',function(checked){
+      const st=_activeSticker();
+      if(!st) return;
+      if(checked){
+        const changes={recolorEnabled:true};
+        if(!st.bodyColor) changes.bodyColor='#E0432B';
+        if(!st.shadeColor) changes.shadeColor='#8A1F10';
+        if(!st.outlineColor) changes.outlineColor='#1D3457';
+        _stickerUpdate(changes);
+      }else{
+        _stickerUpdate({recolorEnabled:false});
+      }
+    });
+    [['Inside Colour','bodyColor','sticker-body-color-input'],
+     ['Shade Colour','shadeColor','sticker-shade-color-input'],
+     ['Outline Colour','outlineColor','sticker-outline-color-input']].forEach(function(t){
+      const row=document.createElement('div');
+      row.className='designer-row';
+      const lbl=document.createElement('div');
+      lbl.className='designer-row-label';
+      lbl.textContent=t[0];
+      row.appendChild(lbl);
+      const input=document.createElement('input');
+      input.type='color';
+      input.className=t[2];
+      input.addEventListener('input',function(){
+        const upd={};
+        upd[t[1]]=input.value;
+        _stickerUpdate(upd);
+      });
+      row.appendChild(input);
+      colorGroup.appendChild(row);
+    });
+    editor.appendChild(colorGroup);
+
     // Layer ordering moved to the Object Strip's own drag-to-reorder
     // (per direct product feedback: "remove any reordering function from
     // the right panel") — the Order row that used to live here is gone;
@@ -1339,6 +1387,15 @@ const CardDesigner=(function(){
       const k=b.getAttribute('data-flip');
       b.classList.toggle('active',!!st[k]);
     });
+
+    const recolorToggle=section.querySelector('.sticker-recolor-toggle');
+    if(recolorToggle) recolorToggle.checked=!!st.recolorEnabled;
+    const bodyInput=section.querySelector('.sticker-body-color-input');
+    if(bodyInput) bodyInput.value=st.bodyColor||'#E0432B';
+    const shadeInput=section.querySelector('.sticker-shade-color-input');
+    if(shadeInput) shadeInput.value=st.shadeColor||'#8A1F10';
+    const outlineInput=section.querySelector('.sticker-outline-color-input');
+    if(outlineInput) outlineInput.value=st.outlineColor||'#1D3457';
 
     const lockBtn=section.querySelector('.sticker-lock-btn');
     if(lockBtn){
