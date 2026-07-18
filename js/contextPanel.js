@@ -706,24 +706,101 @@ const ContextPanel=(function(){
     panelRoot.appendChild(btn);
   }
 
+  // Real Vector Shapes — "outline shapes, geometry shapes, free style
+  // shapes." A real geometry picker, deliberately separate from the
+  // combined emoji-glyph "Stickers, Decorations & Shapes" row above —
+  // real vector geometry (fill/outline/opacity, resolved through
+  // renderer/slideRenderer.js's _layerDrawShape) is a different
+  // capability from an emoji glyph, mirroring World Builder's own
+  // established UX precedent of two parallel grids: an emoji-glyph
+  // picker and a separate "Add a Shape" tile grid. Picking a preset
+  // creates the shape instance immediately and selects it — window.
+  // setSelectedSceneElement already ends in PageRuntime.notify() (js/
+  // app.js's own _setSelectedSceneElement), which rebuilds this panel
+  // into the new Shape's own Refine panel — no separate refresh() call
+  // needed.
+  function _showShapePicker(){
+    stickerStudioOpen=true;
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-shape-picker-heading','🔺 Pick a Shape'));
+    const grid=_el('div','context-shape-picker-grid');
+    const kinds=(typeof StickerLibrary!=='undefined' && StickerLibrary.SHAPE_KINDS) ? StickerLibrary.SHAPE_KINDS : [];
+    kinds.forEach(function(k){
+      const tile=_el('button','context-shape-tile');
+      tile.type='button';
+      tile.appendChild(_el('span','context-shape-tile-icon',k.icon));
+      tile.appendChild(_el('span','context-shape-tile-label',k.label));
+      tile.addEventListener('click',function(){ _addShapeObject(k.value); });
+      grid.appendChild(tile);
+    });
+    panelRoot.appendChild(grid);
+    const btn=_el('button','context-btn','← Done Adding Shapes');
+    btn.type='button';
+    btn.addEventListener('click',function(){ refresh(); });
+    panelRoot.appendChild(btn);
+  }
+  function _addShapeObject(shapeId){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    // addSticker's own guard requires a truthy stickerId (a catalog
+    // reference) — never touched by SlideRenderer's kind:'shape' draw
+    // path, but needed here to satisfy that pre-existing check without
+    // any SceneEngine change.
+    const st=SceneEngine.addSticker(slide,{
+      kind:'shape', shape:shapeId, stickerId:'shape.'+shapeId,
+      fillColor:'#F0B429', strokeColor:'#24406B', strokeWidth:0,
+      fillOpacity:1, strokeOpacity:1,
+      w:240, h:240
+    });
+    if(!st) return;
+    if(typeof window.setSelectedSceneElement==='function'){
+      try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
+  }
+
+  // Freeform Text — "text should support all text related options. nice
+  // kid friendly font... something which resemble handwriting fonts."
+  // The exact capability the old "Note" row's own code comment disclosed
+  // as not-yet-buildable ("no freeform text-object array... stubbed
+  // honestly as Coming Soon"); now real. Same immediate-create-and-
+  // select flow as Shapes above, landing on the new Text object's own
+  // Refine panel (Words/Font/Size/Weight/Style/Colour/Alignment/Width)
+  // ready for a child to type into.
+  function _addTextObject(){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    // Same synthetic-stickerId reasoning as _addShapeObject above.
+    const st=SceneEngine.addSticker(slide,{
+      kind:'text', stickerId:'text.freeform', text:'New text',
+      fontFamily:'', fontSize:44, fontWeight:'', fontStyle:'normal',
+      color:'#1D3457', align:'center', w:420
+    });
+    if(!st) return;
+    if(typeof window.setSelectedSceneElement==='function'){
+      try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
+  }
+
   // ---------- Right Panel Redesign — Personalize zone ----------
 
-  // "+ Add Something"'s rows. Stickers/Decorations/Shape are all, today,
-  // the exact same underlying capability — SceneEngine.addSticker via
-  // Sticker Studio — and Sticker Studio's own category tab strip already
-  // gives full reach across every category (Characters/Decorations/
-  // Shapes/etc.) once it's open, so one combined entry point is enough —
-  // no pre-filtering into a specific category. Photo was removed: it
-  // duplicates the existing per-Place "Add Artwork" flow already reachable
-  // by selecting a Place directly, which is where artwork replacement
-  // belongs. Note/Doodle/Voice have no supporting SceneEngine/renderer
-  // capability today (confirmed: no freeform text-object array, no
-  // freehand drawing, no audio attachment) — stubbed honestly as Coming
-  // Soon rather than faked.
+  // "+ Add Something"'s rows. Stickers/Decorations are, today, the exact
+  // same underlying capability — SceneEngine.addSticker via Sticker
+  // Studio — and Sticker Studio's own category tab strip already gives
+  // full reach across every category (Characters/Decorations/etc.) once
+  // it's open, so one combined entry point is enough — no pre-filtering
+  // into a specific category. Shapes and Text are real, separate
+  // capabilities (see _showShapePicker/_addTextObject above). Photo was
+  // removed: it duplicates the existing per-Place "Add Artwork" flow
+  // already reachable by selecting a Place directly, which is where
+  // artwork replacement belongs. Doodle/Voice have no supporting
+  // SceneEngine/renderer capability today (no freehand drawing, no audio
+  // attachment) — stubbed honestly as Coming Soon rather than faked.
   function _addSomethingItems(){
     return [
       {id:'stickers',icon:'😀',label:'Stickers, Decorations & Shapes',onClick:function(){ _showStickerStudio(); }},
-      {id:'note',icon:'🗒️',label:'Note',comingSoon:true},
+      {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
+      {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
       {id:'doodle',icon:'✏️',label:'Doodle',comingSoon:true},
       {id:'voice',icon:'🎤',label:'Voice',comingSoon:true}
     ];

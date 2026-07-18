@@ -2982,8 +2982,147 @@ const SlideRenderer=(()=>{
     _stickerRecolorDataURLCache[key]=url;
     return url;
   }
+  // Real vector Shapes (kind:'shape' sticker instances) — a Story
+  // Author's own Personalize capability ("outline shapes, geometry
+  // shapes, free style shapes"). Reuses _layerDrawShape (built for
+  // World-owned Layer Pack decorations) verbatim rather than
+  // reimplementing geometry — a Shape instance's own fields (shape/
+  // fillColor/strokeColor/strokeWidth/fillOpacity/strokeOpacity/
+  // customPath) already match _layerDrawShape's own `d` parameter names.
+  function _drawSceneShape(st){
+    if(!st) return;
+    const w=typeof st.w==='number'?st.w:240;
+    const h=typeof st.h==='number'?st.h:240;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    _layerDrawShape({
+      shape:st.shape||'circle',
+      fillColor:st.fillColor,
+      strokeColor:st.strokeColor,
+      strokeWidth:st.strokeWidth,
+      fillOpacity:st.fillOpacity,
+      strokeOpacity:st.strokeOpacity,
+      rotation:typeof st.rotation==='number'?st.rotation:0,
+      alpha:typeof st.opacity==='number'?Math.max(0,Math.min(1,st.opacity)):1,
+      customPath:st.customPath
+    },{x:cx-w/2,y:cy-h/2,w:w,h:h});
+  }
+  function _shapeBbox(st){
+    const w=typeof st.w==='number'?st.w:240;
+    const h=typeof st.h==='number'?st.h:240;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const kindInfo=(typeof StickerLibrary!=='undefined' && typeof StickerLibrary.getShapeKind==='function') ? StickerLibrary.getShapeKind(st.shape) : null;
+    return {
+      id:st.id,
+      type:'sticker',
+      label:kindInfo?kindInfo.label:'Shape',
+      bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
+      visible:true,
+      locked:!!st.locked,
+      visual:{
+        kind:'shape', shape:st.shape,
+        fillColor:st.fillColor, strokeColor:st.strokeColor, strokeWidth:st.strokeWidth,
+        fillOpacity:st.fillOpacity, strokeOpacity:st.strokeOpacity,
+        rotation:typeof st.rotation==='number'?st.rotation:0,
+        customPath:st.customPath
+      }
+    };
+  }
+
+  // Freeform Text (kind:'text' sticker instances) — a Story Author's own
+  // Personalize capability. No existing per-instance draggable text
+  // drawer to reuse (confirmed by investigation) — built new here,
+  // pattern-matching _drawSceneSticker's own transform handling and
+  // reusing the existing _wrapText word-wrap utility (already measures
+  // against whatever font is currently set on the canvas context).
+  // Canvas ctx.font= draws are synchronous with no font-loading
+  // awareness anywhere else in this file — _ensureCanvasFont closes that
+  // gap for a newly-added webfont the same way _ensureStickerImage
+  // already does for a still-decoding sticker image: request once,
+  // redraw once ready, never block the current paint.
+  const _canvasFontsRequested={};
+  function _ensureCanvasFont(fontFamily){
+    if(!fontFamily || typeof document==='undefined' || !document.fonts) return;
+    if(_canvasFontsRequested[fontFamily]) return;
+    let ready=true;
+    try{ ready=document.fonts.check('16px '+fontFamily); }catch(e){ ready=true; }
+    if(ready) return;
+    _canvasFontsRequested[fontFamily]=true;
+    try{
+      document.fonts.load('700 16px '+fontFamily).then(function(){
+        if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
+          try{ window.redrawPreview(); }catch(_){}
+        }
+      }).catch(function(){});
+    }catch(e){}
+  }
+  function _textFontString(st,size){
+    const style=(st.fontStyle==='italic')?'italic ':'';
+    const weight=st.fontWeight?st.fontWeight+' ':'';
+    return style+weight+size+'px '+(st.fontFamily||'Georgia, serif');
+  }
+  function _drawSceneText(st){
+    if(!st) return;
+    const text=typeof st.text==='string'?st.text:'';
+    const size=typeof st.fontSize==='number'?st.fontSize:44;
+    const w=typeof st.w==='number'?st.w:420;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const align=(st.align==='left'||st.align==='right')?st.align:'center';
+    _ensureCanvasFont(st.fontFamily);
+    x.save();
+    x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
+    x.translate(cx,cy);
+    if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
+    x.font=_textFontString(st,size);
+    x.fillStyle=st.color||'#1D3457';
+    x.textAlign=align;
+    x.textBaseline='middle';
+    const lines=text?_wrapText(text,w):[];
+    const lineHeight=Math.round(size*1.25);
+    const totalH=lines.length*lineHeight;
+    let ty=-totalH/2+lineHeight/2;
+    const tx=(align==='left')?-w/2:(align==='right')?w/2:0;
+    lines.forEach(function(line){
+      x.fillText(line,tx,ty);
+      ty+=lineHeight;
+    });
+    x.restore();
+  }
+  function _textLineMetrics(st){
+    const text=typeof st.text==='string'?st.text:'';
+    const size=typeof st.fontSize==='number'?st.fontSize:44;
+    const w=typeof st.w==='number'?st.w:420;
+    x.save();
+    x.font=_textFontString(st,size);
+    const lines=text?_wrapText(text,w):[];
+    x.restore();
+    return {count:Math.max(1,lines.length), lineHeight:Math.round(size*1.25)};
+  }
+  function _textObjBbox(st){
+    const w=typeof st.w==='number'?st.w:420;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const m=_textLineMetrics(st);
+    const h=m.count*m.lineHeight;
+    const text=typeof st.text==='string'?st.text:'';
+    const snippet=text.length>18?text.slice(0,18)+'…':text;
+    return {
+      id:st.id,
+      type:'sticker',
+      label:'Text',
+      bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
+      visible:true,
+      locked:!!st.locked,
+      visual:{kind:'text',content:text,snippet:snippet||'Text'}
+    };
+  }
+
   function _drawSceneSticker(st){
     if(!st) return;
+    if(st.kind==='shape'){ _drawSceneShape(st); return; }
+    if(st.kind==='text'){ _drawSceneText(st); return; }
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
@@ -3014,6 +3153,8 @@ const SlideRenderer=(()=>{
     x.restore();
   }
   function _stickerBbox(st){
+    if(st.kind==='shape') return _shapeBbox(st);
+    if(st.kind==='text') return _textObjBbox(st);
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;

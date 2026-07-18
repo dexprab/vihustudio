@@ -3159,6 +3159,48 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   border-top:1px solid var(--line);
 }
 
+/* Real Vector Shapes + Freeform Text — the Refine-panel control groups
+   for a kind:'shape'/kind:'text' sticker instance, reusing the same
+   .sticker-color-group divider language above. Each conditionally-shown
+   group needs its own explicit .hidden{display:none} rule — there is no
+   shared global .hidden utility class in this stylesheet (every other
+   .hidden usage here is scoped the same way, e.g. .sticker-editor.hidden). */
+.sticker-shape-group,
+.sticker-text-group{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+.sticker-shape-group.hidden,
+.sticker-text-group.hidden,
+.sticker-glyph-only.hidden,
+.sticker-hide-for-text.hidden,
+.shape-draw-pad-wrap.hidden{ display:none; }
+.shape-draw-pad-wrap{ margin-top:10px; text-align:center; }
+.shape-draw-pad-hint{ margin:0 0 8px; }
+.shape-draw-pad-canvas{
+  width:100%;
+  max-width:180px;
+  aspect-ratio:1;
+  border:1px dashed var(--line);
+  border-radius:12px;
+  cursor:crosshair;
+  touch-action:none;
+}
+.shape-draw-pad-clear-btn{ margin-top:8px; }
+.sticker-text-words-input{
+  width:100%;
+  min-height:60px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-family:inherit;
+  resize:vertical;
+}
+
 .sticker-actions-row{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -5680,3 +5722,35 @@ body.dark-theme .context-add-item-soon{ background:rgba(255,255,255,0.08); }
   font-family:inherit;
   resize:vertical;
 }
+
+/* Real Vector Shapes — "outline shapes, geometry shapes, free style
+   shapes" — the "+ Add Something -> Shapes" inline picker. Mirrors
+   .context-add-list's own card language (panel background, rounded
+   corners) rather than inventing a second visual system. */
+.context-shape-picker-heading{
+  font-size:13.5px;
+  font-weight:800;
+  color:var(--text);
+  margin:0 0 10px;
+}
+.context-shape-picker-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+.context-shape-tile{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:10px 4px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel,var(--bg));
+  color:var(--text);
+  cursor:pointer;
+}
+.context-shape-tile:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
+.context-shape-tile-icon{ font-size:20px; line-height:1; }
+.context-shape-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }

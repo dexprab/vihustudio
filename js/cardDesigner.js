@@ -1098,6 +1098,35 @@ const CardDesigner=(function(){
     _commitSticker();
   }
 
+  // Real Vector Shapes — the "Draw Your Own" pad's own drawing routine,
+  // module-level (not a _buildStickerControls closure) so both the live
+  // pointermove preview and _refreshSticker's on-select sync can call it
+  // without duplicating the fill/stroke logic.
+  const SHAPE_PAD_SIZE=180;
+  function _drawShapePad(canvas,points,style){
+    const g=canvas.getContext('2d');
+    g.clearRect(0,0,SHAPE_PAD_SIZE,SHAPE_PAD_SIZE);
+    g.fillStyle='#F4F1EC';
+    g.fillRect(0,0,SHAPE_PAD_SIZE,SHAPE_PAD_SIZE);
+    if(!points || points.length<2) return;
+    g.beginPath();
+    points.forEach(function(p,i){
+      const px=p.x*SHAPE_PAD_SIZE, py=p.y*SHAPE_PAD_SIZE;
+      if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
+    });
+    g.closePath();
+    style=style||{};
+    g.globalAlpha=(typeof style.fillOpacity==='number')?style.fillOpacity:1;
+    g.fillStyle=style.fillColor||'#F0B429';
+    g.fill();
+    g.globalAlpha=1;
+    if(style.strokeWidth>0){
+      g.lineWidth=Math.max(1,style.strokeWidth*(SHAPE_PAD_SIZE/240));
+      g.strokeStyle=style.strokeColor||'#24406B';
+      g.stroke();
+    }
+  }
+
   function _buildStickerControls(body){
     const empty=document.createElement('p');
     empty.className='placeholder sticker-empty';
@@ -1113,8 +1142,11 @@ const CardDesigner=(function(){
     editor.appendChild(selectedLabel);
 
     // Size — Bigger ↔ Smaller (uniform scale, preserves aspect ratio).
+    // Real Vector Shapes + Freeform Text — hidden for kind:'text' (Text
+    // has its own Font Size + Width controls instead); shown for
+    // kind:'shape' and the default glyph sticker unchanged.
     const sizeRow=document.createElement('div');
-    sizeRow.className='designer-row';
+    sizeRow.className='designer-row sticker-hide-for-text';
     const sizeLbl=document.createElement('div');
     sizeLbl.className='designer-row-label text-slider-label';
     const sizeTitle=document.createElement('span');
@@ -1191,9 +1223,12 @@ const CardDesigner=(function(){
     opRow.appendChild(opSlider);
     editor.appendChild(opRow);
 
-    // Flip row — Flip Left/Right + Flip Up/Down.
+    // Flip row — Flip Left/Right + Flip Up/Down. Glyph stickers only —
+    // Real Vector Shapes + Freeform Text: Shapes have no flip field in
+    // renderer/slideRenderer.js's _layerDrawShape, and flipping has no
+    // meaning for Text.
     const flipRow=document.createElement('div');
-    flipRow.className='designer-row';
+    flipRow.className='designer-row sticker-glyph-only';
     const flipLbl=document.createElement('div');
     flipLbl.className='designer-row-label';
     flipLbl.textContent='Flip';
@@ -1233,7 +1268,7 @@ const CardDesigner=(function(){
     // (they're all the same catalog entry shape today), no new artwork
     // needed.
     const colorGroup=document.createElement('div');
-    colorGroup.className='sticker-color-group';
+    colorGroup.className='sticker-color-group sticker-glyph-only';
     _buildToggleRow(colorGroup,'🎨 Colour This','sticker-recolor-toggle',function(checked){
       const st=_activeSticker();
       if(!st) return;
@@ -1268,6 +1303,241 @@ const CardDesigner=(function(){
       colorGroup.appendChild(row);
     });
     editor.appendChild(colorGroup);
+
+    // Real Vector Shapes — "outline shapes, geometry shapes, free style
+    // shapes." Fill/Outline colour+opacity+thickness, mirroring World
+    // Builder's own Graphics/Shape section field set, plus a freehand
+    // Draw pad for the 'custom' kind. Renders through
+    // renderer/slideRenderer.js's existing _layerDrawShape via
+    // _drawSceneShape — no new geometry here, only the authoring UI.
+    const shapeGroup=document.createElement('div');
+    shapeGroup.className='sticker-shape-group hidden';
+
+    [['Fill Colour','fillColor','sticker-shape-fill-color-input','Fill Opacity','sticker-shape-fill-opacity-value','sticker-shape-fill-opacity-slider','fillOpacity'],
+     ['Outline Colour','strokeColor','sticker-shape-stroke-color-input','Outline Opacity','sticker-shape-stroke-opacity-value','sticker-shape-stroke-opacity-slider','strokeOpacity']
+    ].forEach(function(t){
+      const row=document.createElement('div');
+      row.className='designer-row';
+      const lbl=document.createElement('div');
+      lbl.className='designer-row-label';
+      lbl.textContent=t[0];
+      row.appendChild(lbl);
+      const input=document.createElement('input');
+      input.type='color';
+      input.className=t[2];
+      input.addEventListener('input',function(){
+        const upd={}; upd[t[1]]=input.value; _stickerUpdate(upd);
+      });
+      row.appendChild(input);
+      shapeGroup.appendChild(row);
+      _makeSliderRow(shapeGroup,{
+        labelText:t[3],valueClass:t[4],sliderClass:t[5],
+        min:0,max:1,step:0.01,
+        onInput:function(v){
+          const upd={}; upd[t[6]]=Math.round(v*100)/100; _stickerUpdate(upd);
+        }
+      });
+    });
+
+    _makeSliderRow(shapeGroup,{
+      labelText:'Outline Thickness',valueClass:'sticker-shape-stroke-width-value',sliderClass:'sticker-shape-stroke-width-slider',
+      min:0,max:20,step:1,
+      onInput:function(v){ _stickerUpdate({strokeWidth:Math.round(v)}); }
+    });
+
+    // Draw pad — only for shape:'custom' ("Draw Your Own"). Adapted from
+    // World Builder's own _shapeDrawPad (tools/world-builder-v2/js/
+    // worldBuilderApp.js) into this file's vanilla-DOM idiom: normalize
+    // each accepted point to a 0..1 fraction of the pad on release,
+    // write via the same generic _stickerUpdate({customPath}) every
+    // other Shape field already uses.
+    const padWrap=document.createElement('div');
+    padWrap.className='sticker-shape-custom-only hidden shape-draw-pad-wrap';
+    const padHint=document.createElement('p');
+    padHint.className='placeholder shape-draw-pad-hint';
+    padHint.textContent='Draw your own shape below.';
+    padWrap.appendChild(padHint);
+    const padCanvas=document.createElement('canvas');
+    padCanvas.width=SHAPE_PAD_SIZE; padCanvas.height=SHAPE_PAD_SIZE;
+    padCanvas.className='shape-draw-pad-canvas';
+    padWrap.appendChild(padCanvas);
+    const padClearBtn=document.createElement('button');
+    padClearBtn.type='button';
+    padClearBtn.className='text-small-btn shape-draw-pad-clear-btn';
+    padClearBtn.textContent='↺ Clear';
+    padClearBtn.addEventListener('click',function(){
+      _stickerUpdate({customPath:null});
+      _drawShapePad(padCanvas,null,null);
+    });
+    padWrap.appendChild(padClearBtn);
+    shapeGroup.appendChild(padWrap);
+
+    let padDrawing=false, padLive=[];
+    function _padStyleFromActive(){
+      const st=_activeSticker();
+      return st?{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth}:null;
+    }
+    function _padPointFromEvent(e){
+      const r=padCanvas.getBoundingClientRect();
+      return {x:(e.clientX-r.left)*(SHAPE_PAD_SIZE/r.width), y:(e.clientY-r.top)*(SHAPE_PAD_SIZE/r.height)};
+    }
+    padCanvas.addEventListener('pointerdown',function(e){
+      padDrawing=true;
+      padLive=[_padPointFromEvent(e)];
+      try{ padCanvas.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    padCanvas.addEventListener('pointermove',function(e){
+      if(!padDrawing) return;
+      const p=_padPointFromEvent(e);
+      const last=padLive[padLive.length-1];
+      if(!last || Math.hypot(p.x-last.x,p.y-last.y)>3){
+        padLive.push(p);
+        const norm=padLive.map(function(pt){ return {x:pt.x/SHAPE_PAD_SIZE,y:pt.y/SHAPE_PAD_SIZE}; });
+        _drawShapePad(padCanvas,norm,_padStyleFromActive());
+      }
+    });
+    padCanvas.addEventListener('pointerup',function(){
+      if(!padDrawing) return;
+      padDrawing=false;
+      if(padLive.length>=3){
+        const norm=padLive.map(function(pt){ return {x:pt.x/SHAPE_PAD_SIZE,y:pt.y/SHAPE_PAD_SIZE}; });
+        _stickerUpdate({customPath:norm});
+      }
+      padLive=[];
+    });
+
+    editor.appendChild(shapeGroup);
+
+    // Freeform Text — "text should support all text related options.
+    // nice kid friendly font... something which resemble handwriting
+    // fonts." Reuses the fixed-Text section's own FONT_FAMILY_OPTIONS/
+    // FONT_WEIGHT_OPTIONS/_makeSliderRow and Style/Alignment icon-row
+    // pattern (this Text object's storage is per-instance, not the
+    // override bag those reuse from — only the option lists/DOM
+    // patterns are shared). Renders through
+    // renderer/slideRenderer.js's _drawSceneText/_wrapText.
+    const textGroup=document.createElement('div');
+    textGroup.className='sticker-text-group hidden';
+
+    const wordsRow=document.createElement('div');
+    wordsRow.className='designer-row';
+    const wordsLbl=document.createElement('div');
+    wordsLbl.className='designer-row-label';
+    wordsLbl.textContent='Words';
+    wordsRow.appendChild(wordsLbl);
+    const wordsArea=document.createElement('textarea');
+    wordsArea.className='sticker-text-words-input';
+    wordsArea.rows=3;
+    wordsArea.addEventListener('input',function(){ _stickerUpdate({text:wordsArea.value}); });
+    // EmojiPicker.wrap(el) moves `el` into a new wrapper box and returns
+    // that box — the wrapper (not the raw element separately) is what
+    // must be inserted, matching js/pageDesigner.js's own established
+    // convention (_makeTextInput / the Story Text field).
+    wordsRow.appendChild((typeof EmojiPicker!=='undefined' && typeof EmojiPicker.wrap==='function') ? EmojiPicker.wrap(wordsArea) : wordsArea);
+    textGroup.appendChild(wordsRow);
+
+    const fontRow=document.createElement('div');
+    fontRow.className='designer-row';
+    const fontLbl=document.createElement('div');
+    fontLbl.className='designer-row-label';
+    fontLbl.textContent='Font';
+    fontRow.appendChild(fontLbl);
+    const fontSel=document.createElement('select');
+    fontSel.className='sticker-text-font-select';
+    FONT_FAMILY_OPTIONS.forEach(function(o){
+      const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; fontSel.appendChild(opt);
+    });
+    fontSel.addEventListener('change',function(){ _stickerUpdate({fontFamily:fontSel.value}); });
+    fontRow.appendChild(fontSel);
+    textGroup.appendChild(fontRow);
+
+    _makeSliderRow(textGroup,{
+      labelText:'Size',valueClass:'sticker-text-size-value',sliderClass:'sticker-text-size-slider',
+      min:16,max:140,step:1,
+      onInput:function(v){ _stickerUpdate({fontSize:Math.round(v)}); }
+    });
+
+    const weightRow=document.createElement('div');
+    weightRow.className='designer-row';
+    const weightLbl=document.createElement('div');
+    weightLbl.className='designer-row-label';
+    weightLbl.textContent='Weight';
+    weightRow.appendChild(weightLbl);
+    const weightSel=document.createElement('select');
+    weightSel.className='sticker-text-weight-select';
+    FONT_WEIGHT_OPTIONS.forEach(function(o){
+      const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; weightSel.appendChild(opt);
+    });
+    weightSel.addEventListener('change',function(){ _stickerUpdate({fontWeight:weightSel.value}); });
+    weightRow.appendChild(weightSel);
+    textGroup.appendChild(weightRow);
+
+    const textStyleRow=document.createElement('div');
+    textStyleRow.className='designer-row';
+    const textStyleLbl=document.createElement('div');
+    textStyleLbl.className='designer-row-label';
+    textStyleLbl.textContent='Style';
+    textStyleRow.appendChild(textStyleLbl);
+    const textStyleIcons=document.createElement('div');
+    textStyleIcons.className='icon-row sticker-text-style-row';
+    [['normal','Normal','R'],['italic','Italic','I']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-text-style-btn';
+      btn.setAttribute('data-style',t[0]);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='text-style-glyph text-style-glyph-'+t[0]; g.textContent=t[2]; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[1]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _stickerUpdate({fontStyle:t[0]}); });
+      textStyleIcons.appendChild(btn);
+    });
+    textStyleRow.appendChild(textStyleIcons);
+    textGroup.appendChild(textStyleRow);
+
+    const textColorRow=document.createElement('div');
+    textColorRow.className='designer-row';
+    const textColorLbl=document.createElement('div');
+    textColorLbl.className='designer-row-label';
+    textColorLbl.textContent='Colour';
+    textColorRow.appendChild(textColorLbl);
+    const textColorInput=document.createElement('input');
+    textColorInput.type='color';
+    textColorInput.className='sticker-text-color-input';
+    textColorInput.addEventListener('input',function(){ _stickerUpdate({color:textColorInput.value}); });
+    textColorRow.appendChild(textColorInput);
+    textGroup.appendChild(textColorRow);
+
+    const textAlignRow=document.createElement('div');
+    textAlignRow.className='designer-row';
+    const textAlignLbl=document.createElement('div');
+    textAlignLbl.className='designer-row-label';
+    textAlignLbl.textContent='Alignment';
+    textAlignRow.appendChild(textAlignLbl);
+    const textAlignIcons=document.createElement('div');
+    textAlignIcons.className='icon-row sticker-text-align-row';
+    ['left','center','right'].forEach(function(a){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-text-align-btn';
+      btn.setAttribute('data-align',a);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const glyph=document.createElement('span'); glyph.className='text-align-glyph text-align-glyph-'+a; pv.appendChild(glyph);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=a.charAt(0).toUpperCase()+a.slice(1); btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _stickerUpdate({align:a}); });
+      textAlignIcons.appendChild(btn);
+    });
+    textAlignRow.appendChild(textAlignIcons);
+    textGroup.appendChild(textAlignRow);
+
+    _makeSliderRow(textGroup,{
+      labelText:'Width',valueClass:'sticker-text-width-value',sliderClass:'sticker-text-width-slider',
+      min:120,max:1000,step:1,
+      onInput:function(v){ _stickerUpdate({w:Math.round(v)}); }
+    });
+
+    editor.appendChild(textGroup);
 
     // Layer ordering moved to the Object Strip's own drag-to-reorder
     // (per direct product feedback: "remove any reordering function from
@@ -1361,9 +1631,89 @@ const CardDesigner=(function(){
     editor.classList.remove('hidden');
     section.classList.add('sticker-active');
 
-    const cat=(typeof StickerLibrary!=='undefined') ? StickerLibrary.getById(st.stickerId) : null;
+    // Real Vector Shapes + Freeform Text — a sticker instance's own
+    // `kind` field (absent/'glyph' = today's emoji sticker, 'shape', or
+    // 'text') decides which control groups show; every other mechanism
+    // (hit-test/drag/resize/lock/duplicate/delete/Object Strip) already
+    // works identically for all three since they share type:'sticker'.
+    const kind=st.kind||'glyph';
+    const isGlyphKind=kind==='glyph';
+    const isShapeKind=kind==='shape';
+    const isTextKind=kind==='text';
+    section.querySelectorAll('.sticker-glyph-only').forEach(function(el){ el.classList.toggle('hidden',!isGlyphKind); });
+    section.querySelectorAll('.sticker-hide-for-text').forEach(function(el){ el.classList.toggle('hidden',isTextKind); });
+    const shapeGroupEl=section.querySelector('.sticker-shape-group');
+    if(shapeGroupEl) shapeGroupEl.classList.toggle('hidden',!isShapeKind);
+    const textGroupEl=section.querySelector('.sticker-text-group');
+    if(textGroupEl) textGroupEl.classList.toggle('hidden',!isTextKind);
+
+    const cat=(typeof StickerLibrary!=='undefined' && isGlyphKind) ? StickerLibrary.getById(st.stickerId) : null;
+    const shapeKindInfo=(typeof StickerLibrary!=='undefined' && isShapeKind && typeof StickerLibrary.getShapeKind==='function') ? StickerLibrary.getShapeKind(st.shape) : null;
     const labelEl=section.querySelector('.sticker-selected-label');
-    if(labelEl) labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
+    if(labelEl){
+      if(isShapeKind) labelEl.textContent='Shape: '+(shapeKindInfo?shapeKindInfo.label:'Shape');
+      else if(isTextKind) labelEl.textContent='Text';
+      else labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
+    }
+
+    if(isShapeKind){
+      const fillColorInput=section.querySelector('.sticker-shape-fill-color-input');
+      if(fillColorInput) fillColorInput.value=st.fillColor||'#F0B429';
+      const fillOpSlider=section.querySelector('.sticker-shape-fill-opacity-slider');
+      const fillOpVal=section.querySelector('.sticker-shape-fill-opacity-value');
+      const fillOp=typeof st.fillOpacity==='number'?st.fillOpacity:1;
+      if(fillOpSlider) fillOpSlider.value=String(fillOp);
+      if(fillOpVal) fillOpVal.textContent=Math.round(fillOp*100)+'%';
+      const strokeColorInput=section.querySelector('.sticker-shape-stroke-color-input');
+      if(strokeColorInput) strokeColorInput.value=st.strokeColor||'#24406B';
+      const strokeOpSlider=section.querySelector('.sticker-shape-stroke-opacity-slider');
+      const strokeOpVal=section.querySelector('.sticker-shape-stroke-opacity-value');
+      const strokeOp=typeof st.strokeOpacity==='number'?st.strokeOpacity:1;
+      if(strokeOpSlider) strokeOpSlider.value=String(strokeOp);
+      if(strokeOpVal) strokeOpVal.textContent=Math.round(strokeOp*100)+'%';
+      const strokeWidthSlider=section.querySelector('.sticker-shape-stroke-width-slider');
+      const strokeWidthVal=section.querySelector('.sticker-shape-stroke-width-value');
+      const strokeWidth=typeof st.strokeWidth==='number'?st.strokeWidth:0;
+      if(strokeWidthSlider) strokeWidthSlider.value=String(strokeWidth);
+      if(strokeWidthVal) strokeWidthVal.textContent=Math.round(strokeWidth)+'px';
+
+      const padWrapEl=section.querySelector('.shape-draw-pad-wrap');
+      const isCustom=st.shape==='custom';
+      if(padWrapEl) padWrapEl.classList.toggle('hidden',!isCustom);
+      if(isCustom){
+        const padCanvasEl=section.querySelector('.shape-draw-pad-canvas');
+        if(padCanvasEl){
+          _drawShapePad(padCanvasEl,st.customPath,{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth});
+        }
+      }
+    }
+
+    if(isTextKind){
+      const wordsInput=section.querySelector('.sticker-text-words-input');
+      if(wordsInput && document.activeElement!==wordsInput) wordsInput.value=typeof st.text==='string'?st.text:'';
+      const fontSelEl=section.querySelector('.sticker-text-font-select');
+      if(fontSelEl) fontSelEl.value=st.fontFamily||'';
+      const textSizeSlider=section.querySelector('.sticker-text-size-slider');
+      const textSizeVal=section.querySelector('.sticker-text-size-value');
+      const textSize=typeof st.fontSize==='number'?st.fontSize:44;
+      if(textSizeSlider) textSizeSlider.value=String(textSize);
+      if(textSizeVal) textSizeVal.textContent=Math.round(textSize)+'px';
+      const weightSelEl=section.querySelector('.sticker-text-weight-select');
+      if(weightSelEl) weightSelEl.value=st.fontWeight||'';
+      section.querySelectorAll('.sticker-text-style-btn').forEach(function(b){
+        b.classList.toggle('active',b.getAttribute('data-style')===(st.fontStyle||'normal'));
+      });
+      const textColorInputEl=section.querySelector('.sticker-text-color-input');
+      if(textColorInputEl) textColorInputEl.value=st.color||'#1D3457';
+      section.querySelectorAll('.sticker-text-align-btn').forEach(function(b){
+        b.classList.toggle('active',b.getAttribute('data-align')===(st.align||'center'));
+      });
+      const textWidthSlider=section.querySelector('.sticker-text-width-slider');
+      const textWidthVal=section.querySelector('.sticker-text-width-value');
+      const textWidth=typeof st.w==='number'?st.w:420;
+      if(textWidthSlider) textWidthSlider.value=String(textWidth);
+      if(textWidthVal) textWidthVal.textContent=Math.round(textWidth)+'px';
+    }
 
     const sizeSlider=section.querySelector('.sticker-size-slider');
     const sizeVal=section.querySelector('.sticker-size-value');
@@ -1764,6 +2114,13 @@ const CardDesigner=(function(){
     'handle':'Handle'
   };
 
+  // Real Vector Shapes + Freeform Text sprint — "nice kid friendly
+  // font... something which resemble handwriting fonts." Kalam/Nunito
+  // are real, self-hosted webfonts (assets/fonts/fonts.css, copied from
+  // the sibling vihuplanet product's own already-licensed set) — Comic
+  // Sans was the closest existing option before this, a system font
+  // only. Web-safe fallbacks stay in the stack in case the webfont
+  // hasn't finished loading yet.
   const FONT_FAMILY_OPTIONS=[
     {value:'',label:'World Default'},
     {value:'Georgia, serif',label:'Georgia'},
@@ -1772,7 +2129,9 @@ const CardDesigner=(function(){
     {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
     {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
     {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
-    {value:'"Courier New", Courier, monospace',label:'Courier'}
+    {value:'"Courier New", Courier, monospace',label:'Courier'},
+    {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
   ];
   const FONT_WEIGHT_OPTIONS=[
     {value:'',label:'World Default'},

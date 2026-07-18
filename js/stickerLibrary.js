@@ -407,6 +407,38 @@ const StickerLibrary=(function(){
     return url;
   }
 
+  // Real vector Shapes ("outline shapes, geometry shapes, free style
+  // shapes" — a Story Author's own Personalize capability, distinct from
+  // the emoji-glyph 'shapes' category above). Mirrors
+  // tools/world-builder-v2/js/services/experienceSchema.js's SHAPE_KINDS
+  // verbatim (same 15 values/order + 'custom') — kept in lockstep by
+  // hand with Builder's own copy, matching this codebase's established
+  // Decoration Shapes precedent. Placed shapes render through
+  // renderer/slideRenderer.js's existing _layerDrawShape (built for
+  // World-owned Layer Pack decorations, reused as-is here).
+  const SHAPE_KINDS=[
+    {value:'circle',label:'Circle',icon:'●'},
+    {value:'rectangle',label:'Rectangle',icon:'▭'},
+    {value:'rounded-rectangle',label:'Rounded Rectangle',icon:'▢'},
+    {value:'triangle',label:'Triangle',icon:'▲'},
+    {value:'diamond',label:'Diamond',icon:'◆'},
+    {value:'pentagon',label:'Pentagon',icon:'⬟'},
+    {value:'hexagon',label:'Hexagon',icon:'⬢'},
+    {value:'octagon',label:'Octagon',icon:'🛑'},
+    {value:'star',label:'Star',icon:'★'},
+    {value:'cross',label:'Cross',icon:'➕'},
+    {value:'trapezoid',label:'Trapezoid',icon:'⏢'},
+    {value:'parallelogram',label:'Parallelogram',icon:'▱'},
+    {value:'arrow',label:'Arrow',icon:'➜'},
+    {value:'speech-bubble',label:'Speech Bubble',icon:'💬'},
+    {value:'banner',label:'Banner',icon:'🎗️'},
+    {value:'custom',label:'Draw Your Own',icon:'✏️'}
+  ];
+  function getShapeKind(id){
+    for(let i=0;i<SHAPE_KINDS.length;i++){ if(SHAPE_KINDS[i].value===id) return SHAPE_KINDS[i]; }
+    return null;
+  }
+
   const api={
     CATEGORIES:CATEGORIES,
     getCategories:getCategories,
@@ -415,7 +447,9 @@ const StickerLibrary=(function(){
     getByCategory:getByCategory,
     getById:getById,
     search:search,
-    getDataURL:getDataURL
+    getDataURL:getDataURL,
+    SHAPE_KINDS:SHAPE_KINDS,
+    getShapeKind:getShapeKind
   };
   try{ window.StickerLibrary=api; }catch(e){}
   return api;

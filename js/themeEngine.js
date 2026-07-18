@@ -105,6 +105,10 @@ const ThemeEngine=(function(){
   // sub-objects. Empty sub-objects mean "use the active theme defaults"
   // — no project format change for legacy projects (the keys simply
   // don't exist there).
+  // Real Vector Shapes + Freeform Text sprint — the same two new
+  // self-hosted webfonts (assets/fonts/fonts.css) added to js/
+  // cardDesigner.js's FONT_FAMILY_OPTIONS, kept in sync here so the
+  // Theme-wide Story Font default offers the same two choices.
   const FONT_CHOICES=[
     {value:'',label:'World default'},
     {value:'Georgia, serif',label:'Storybook (Georgia)'},
@@ -113,7 +117,9 @@ const ThemeEngine=(function(){
     {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
     {value:'"Times New Roman", Times, serif',label:'Times'},
     {value:'Arial, Helvetica, sans-serif',label:'Arial'},
-    {value:'"Courier New", Courier, monospace',label:'Courier'}
+    {value:'"Courier New", Courier, monospace',label:'Courier'},
+    {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
   ];
 
   // Sprint 9.5 — Theme Language v2. A Story Theme may now carry an
