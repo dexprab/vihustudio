@@ -81,24 +81,36 @@ const StoryDestinations=(function(){
   function _sanitise(name){
     return String(name).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'') || 'my-story';
   }
-  // Rule 5 (Publish Fidelity) — a natural background-colour proxy for
-  // the letterbox bars a non-portrait Scene needs when fit into this
-  // destination's own fixed render coordinate space: the Slide's own
-  // top-left corner pixel, which is reliably background (wall tone /
-  // page fill), never content, since every real panel/Frame carries
-  // its own margin.
-  function _fitCompositeInto(destCanvas, srcCanvas){
+  // Rule 5 (Publish Fidelity) follow-up — "the visible scene needs to
+  // be Creator-honoured; we can add a transparent piece around the
+  // image to honour the publishing platform guidelines." A destination
+  // that supports real alpha (PNG — Story Carousel) pads a non-matching
+  // Scene with genuine transparency instead of a filled letterbox bar,
+  // so the platform's own required file shape (Instagram Portrait/
+  // Square) is still satisfied while the visible content stays exactly
+  // the Scene's own true proportions with nothing added around it. A
+  // destination with no alpha channel (JPEG — Story Book) still needs
+  // an opaque backing (a transparent canvas pixel composites to BLACK
+  // in a JPEG encode, not white) — `opts.transparent` lets each
+  // destination choose which is correct for its own output format.
+  function _fitCompositeInto(destCanvas, srcCanvas, opts){
     const dctx=destCanvas.getContext('2d');
     const dw=destCanvas.width, dh=destCanvas.height;
     const sw=srcCanvas.width, sh=srcCanvas.height;
-    let bg='#ffffff';
-    try{
-      const sctx=srcCanvas.getContext('2d');
-      const px=sctx.getImageData(2,2,1,1).data;
-      bg='rgb('+px[0]+','+px[1]+','+px[2]+')';
-    }catch(e){}
-    dctx.fillStyle=bg;
-    dctx.fillRect(0,0,dw,dh);
+    if(!(opts && opts.transparent)){
+      // The Slide's own top-left corner pixel is a natural background-
+      // colour proxy — reliably background (wall tone / page fill),
+      // never content, since every real panel/Frame carries its own
+      // margin.
+      let bg='#ffffff';
+      try{
+        const sctx=srcCanvas.getContext('2d');
+        const px=sctx.getImageData(2,2,1,1).data;
+        bg='rgb('+px[0]+','+px[1]+','+px[2]+')';
+      }catch(e){}
+      dctx.fillStyle=bg;
+      dctx.fillRect(0,0,dw,dh);
+    }
     const scale=Math.min(dw/sw, dh/sh);
     const rw=sw*scale, rh=sh*scale;
     const rx=(dw-rw)/2, ry=(dh-rh)/2;
@@ -106,7 +118,37 @@ const StoryDestinations=(function(){
     dctx.drawImage(srcCanvas,0,0,sw,sh,rx,ry,rw,rh);
   }
 
-  function _renderSlideInto(canvas, slide, idx, total){
+  // Bakes real rounded-corner transparency into an exported bitmap's
+  // own pixels, matching what the editor's canvas element already
+  // shows cosmetically via CSS `border-radius:var(--card-radius)`
+  // (16px) — a CSS effect that, unlike a downloaded PNG file, was
+  // never going to appear in the exported bytes on its own. Radius is
+  // scaled from that same 16px, but against the editor's own
+  // documented ~720 CSS px on-screen display width (see #previewCanvas
+  // in css/style.css) rather than applied as a flat 16px against the
+  // export's much higher 1080px backing resolution, so the exported
+  // image's corners read at the same visual proportion the editor
+  // shows, not a barely-visible sliver.
+  const EXPORT_CORNER_RADIUS_RATIO=16/720;
+  function _applyRoundedCorners(canvas){
+    const w=canvas.width, h=canvas.height;
+    const r=Math.min(Math.round(w*EXPORT_CORNER_RADIUS_RATIO), w/2, h/2);
+    if(r<=0) return;
+    const ctx=canvas.getContext('2d');
+    ctx.save();
+    ctx.globalCompositeOperation='destination-in';
+    ctx.beginPath();
+    ctx.moveTo(r,0);
+    ctx.arcTo(w,0,w,h,r);
+    ctx.arcTo(w,h,0,h,r);
+    ctx.arcTo(0,h,0,0,r);
+    ctx.arcTo(0,0,w,0,r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function _renderSlideInto(canvas, slide, idx, total, opts){
     const editorCanvas=(typeof document!=='undefined') ? document.getElementById('previewCanvas') : null;
     try{
       // Rule 5 — render the Slide at its OWN real Aspect Ratio first
@@ -136,7 +178,7 @@ const StoryDestinations=(function(){
       if(mid.width===canvas.width && mid.height===canvas.height){
         canvas.getContext('2d').drawImage(mid,0,0);
       }else{
-        _fitCompositeInto(canvas, mid);
+        _fitCompositeInto(canvas, mid, opts);
       }
     }catch(e){}
     // Immediately hand the editor canvas back so the editor stays
@@ -223,7 +265,11 @@ const StoryDestinations=(function(){
       return c;
     },
     renderPage:function(canvas, slide, ctx){
-      _renderSlideInto(canvas, slide, ctx.index, ctx.total);
+      // Real transparency, not a filled bar — PNG is the one output
+      // format here that can actually carry alpha, so a non-matching
+      // Scene's padding stays honestly empty instead of a fabricated
+      // background colour (see _fitCompositeInto's own comment).
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {transparent:true});
     },
     encodePage:function(canvas, format, ctx){
       // Compose the shipped bitmap at format.outW × format.outH.
@@ -243,6 +289,10 @@ const StoryDestinations=(function(){
         // Portrait — same size, straight copy.
         octx.drawImage(canvas, 0, 0, format.outW, format.outH);
       }
+      // Bake the editor's own rounded-corner look into the exported
+      // pixels themselves — a real PNG file has no CSS to do this for
+      // it the way the in-app preview canvases do.
+      _applyRoundedCorners(out);
       let url=null;
       try{ url=out.toDataURL('image/png'); }catch(e){}
       if(!url) return null;
