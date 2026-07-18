@@ -293,6 +293,18 @@ const StickerStudio=(function(){
     _nextPlacementSeed=(typeof centerX==='number' && typeof centerY==='number') ? {x:centerX,y:centerY} : null;
   }
 
+  // Right Panel Redesign — "+ Add Something"'s Decorations/Shape rows open
+  // Sticker Studio jumped straight to the matching shelf instead of the
+  // default Characters tab. Reuses the exact same activeCategoryId +
+  // _refreshCategoryActive() + _renderGrid() path a real category-chip
+  // click already runs — no second category-switch implementation.
+  function setActiveCategory(categoryId){
+    if(!categoryId) return;
+    activeCategoryId=categoryId;
+    _refreshCategoryActive();
+    _renderGrid();
+  }
+
   function _insertSticker(st){
     if(!host || typeof host.getCurrentSlide!=='function') return;
     const slide=host.getCurrentSlide();
@@ -342,7 +354,8 @@ const StickerStudio=(function(){
     unmount:unmount,
     configure:configure,
     refresh:refresh,
-    setNextPlacementSeed:setNextPlacementSeed
+    setNextPlacementSeed:setNextPlacementSeed,
+    setActiveCategory:setActiveCategory
   };
   try{ window.StickerStudio=api; }catch(e){}
   return api;

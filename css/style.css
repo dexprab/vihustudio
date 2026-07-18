@@ -5514,6 +5514,152 @@ body.dark-theme .context-rep-name{ color:var(--text); }
   box-shadow:0 3px 10px rgba(255,203,69,0.26);
 }
 .context-row{ margin-bottom:12px; }
+
+/* Right Panel Redesign — Personalize ⇄ Refine. Rule 2's Status pill, Rule
+   4's Personalize zone (full + collapsed strip + Add Something accordion
+   + Set tiles). Refine (Rule 3) stays exactly the existing CardDesigner
+   #card-tab markup below these — no new zone class wraps it, it just
+   visually continues the same stack since panelRoot is #card-tab's own
+   immediate previous sibling. */
+.context-zone-status{ margin:0 0 16px; }
+.context-status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:12.5px;
+  font-weight:700;
+  padding:5px 12px;
+  border-radius:20px;
+  background:rgba(29,52,87,0.08);
+  color:var(--navy);
+}
+body.dark-theme .context-status-pill{ background:rgba(255,255,255,0.08); color:var(--text); }
+.context-status-pill-editable{ background:rgba(255,203,69,0.16); color:var(--navy); }
+body.dark-theme .context-status-pill-editable{ background:rgba(255,203,69,0.18); color:var(--gold); }
+.context-status-pill-world{ background:rgba(58,84,112,0.12); }
+.context-status-pill-locked{ background:rgba(0,0,0,0.06); }
+body.dark-theme .context-status-pill-locked{ background:rgba(255,255,255,0.06); }
+.context-status-pill-icon{ font-size:13px; line-height:1; }
+
+.context-zone-personalize{
+  margin-top:6px;
+  padding:16px;
+  border-radius:16px;
+  background:rgba(255,203,69,0.07);
+  border:1px solid rgba(255,203,69,0.20);
+}
+body.dark-theme .context-zone-personalize{ background:rgba(255,203,69,0.06); border-color:rgba(255,203,69,0.18); }
+.context-panel-root>.context-zone-personalize:first-child{ margin-top:0; }
+.context-zone-label{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--gold-ink,#8a6410);
+  margin-bottom:10px;
+}
+body.dark-theme .context-zone-label{ color:var(--gold); }
+
+.context-personalize-collapsed{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:700;
+  color:var(--navy);
+  background:rgba(255,203,69,0.10);
+  border:1px solid rgba(255,203,69,0.22);
+  border-radius:14px;
+  padding:11px 14px;
+  margin-top:10px;
+}
+body.dark-theme .context-personalize-collapsed{ color:var(--gold); background:rgba(255,203,69,0.08); border-color:rgba(255,203,69,0.18); }
+.context-accordion-chevron{ font-size:10px; opacity:.7; flex-shrink:0; }
+
+.context-add-accordion{ margin-bottom:10px; }
+.context-add-trigger{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  padding:11px 14px;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(135deg,#ffd668,var(--gold));
+  color:var(--navy);
+  font-size:13.5px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(255,203,69,0.24);
+}
+.context-add-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+  padding:8px;
+  border-radius:12px;
+  background:var(--panel,var(--bg));
+  border:1px solid var(--line);
+}
+.context-add-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border:none;
+  border-radius:10px;
+  background:transparent;
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  text-align:left;
+  width:100%;
+  cursor:pointer;
+}
+.context-add-item:hover:not(.is-coming-soon){ background:rgba(255,203,69,0.12); }
+.context-add-item-icon{ font-size:16px; width:20px; text-align:center; flex-shrink:0; }
+.context-add-item-label{ flex:1; }
+.context-add-item.is-coming-soon{ opacity:0.55; cursor:default; }
+.context-add-item-soon{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  background:rgba(0,0,0,0.06);
+  padding:2px 7px;
+  border-radius:10px;
+  flex-shrink:0;
+}
+body.dark-theme .context-add-item-soon{ background:rgba(255,255,255,0.08); }
+
+.context-set-tiles{ display:flex; flex-direction:column; gap:8px; }
+.context-set-tile{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel,var(--bg));
+  overflow:hidden;
+}
+.context-set-trigger{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  padding:10px 14px;
+  border:none;
+  background:transparent;
+  color:var(--text);
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+.context-set-tile-static{ padding:12px 14px; }
+.context-set-tile-static .context-panel-heading{ margin-top:0; }
+.context-set-body{ padding:0 14px 14px; }
+.context-set-body .context-panel-heading:first-child{ margin-top:0; }
+
 /* Honour World-Owned Object Commitments sprint — the in-place "Words"
    edit control for an editable World-owned text object. */
 .context-textarea{

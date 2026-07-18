@@ -23,6 +23,19 @@
 // add new hit-testing (out of this sprint's Studio-UX-only scope), this
 // module shows Picture + Frame controls together on that one click, and
 // Title/Artist/Age/Date as one grouped Caption editor in the default view.
+//
+// Right Panel Redesign — Personalize ⇄ Refine. Rules 2/3/4 each get their
+// own real estate instead of competing for it: Status (Rule 2 — the small
+// guardrail pill at the top of a selection), Refine (Rule 3 — still 100%
+// CardDesigner's own #card-tab markup, completely untouched by this file),
+// and Personalize (Rule 4 — adding a new personal layer to the page). When
+// nothing is selected, Personalize takes the whole panel; the instant
+// something IS selected, Personalize collapses to one quiet strip and
+// Refine expands into the room it gave up. Anything Personalize's own
+// "+ Add Something" menu creates (a sticker, a decoration, a shape) is a
+// completely ordinary SceneEngine.addSticker object — it lands in the
+// render tree / Object Strip exactly like anything else, with zero new
+// plumbing, which is what actually closes the Rule 4 → Rule 3 loop.
 const ContextPanel=(function(){
   'use strict';
 
@@ -49,6 +62,19 @@ const ContextPanel=(function(){
   let panelRoot=null;
   let initialized=false;
   let stickerStudioOpen=false;
+
+  // Right Panel Redesign — state for the Personalize ⇄ Refine swap.
+  // personalizeExpanded: only meaningful once something is selected —
+  // false shows the collapsed one-line strip, true re-expands the full
+  // Personalize zone in place. personalizeOpenSection: which single
+  // inline-accordion body (inside the full Personalize zone) is open —
+  // 'add' | 'background' | 'caption' | null; opening one closes any
+  // other. Both reset only when the selection itself actually changes
+  // (tracked via _lastSelectionKey), never on a same-selection refresh()
+  // triggered by toggling one of these very controls.
+  let personalizeExpanded=false;
+  let personalizeOpenSection=null;
+  let _lastSelectionKey=null;
 
   function configure(cfg){ host=cfg||null; }
 
@@ -120,6 +146,18 @@ const ContextPanel=(function(){
     const textId=host && typeof host.getSelectedTextElement==='function' ? host.getSelectedTextElement() : null;
     const sceneId=host && typeof host.getSelectedSceneElement==='function' ? host.getSelectedSceneElement() : null;
     const sceneType=host && typeof host.getSelectedSceneElementType==='function' ? host.getSelectedSceneElementType() : null;
+
+    // Right Panel Redesign — Personalize's own expand/collapse state only
+    // resets when the SELECTION itself changed, not on a same-selection
+    // refresh() triggered by tapping the collapsed strip or an accordion
+    // trigger (both simply call refresh() again after mutating one of
+    // these two variables).
+    const key=(sceneId||'')+'|'+(sceneType||'')+'|'+(textId||'');
+    if(key!==_lastSelectionKey){
+      personalizeExpanded=false;
+      personalizeOpenSection=null;
+    }
+    _lastSelectionKey=key;
 
     if(sceneId && sceneType && TYPE_TO_SECTIONS[sceneType]){
       // 'image-holder' (Artwork) is the one synthetic selection with no
@@ -195,6 +233,19 @@ const ContextPanel=(function(){
       : ((typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function') ? SlideRenderer.getSceneElements() : []);
     for(let i=0;i<list.length;i++){ if(list[i].id===sceneId) return list[i]; }
     return null;
+  }
+
+  // Right Panel Redesign — Rule 2's own small status pill, shown at the
+  // top of every real selection state (World-owned, a Place, or an
+  // ordinary Story-owned object) so the guardrail is legible at a glance
+  // without reading a paragraph of disclosure text.
+  function _appendStatusPill(container,icon,label,kind){
+    const zone=_el('div','context-zone-status');
+    const pill=_el('span','context-status-pill'+(kind?(' context-status-pill-'+kind):''));
+    pill.appendChild(_el('span','context-status-pill-icon',icon));
+    pill.appendChild(_el('span','context-status-pill-label',label));
+    zone.appendChild(pill);
+    container.appendChild(zone);
   }
 
   // A World-owned Scene Object (a theme-authored Layer Pack entry —
@@ -311,6 +362,7 @@ const ContextPanel=(function(){
     banner.appendChild(_el('span','context-selection-banner-icon','🌍'));
     banner.appendChild(_el('span','context-selection-banner-label',sceneObj.label||'World Object'));
     panelRoot.appendChild(banner);
+    _appendStatusPill(panelRoot,'🌍',sceneObj.editable?'Part of the World — you can adjust it':'Part of the World','world');
     const v=sceneObj.visual;
     const hasRealControl=sceneObj.editable && v && (v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text');
     panelRoot.appendChild(_el('div','context-nothing-selected-hint',
@@ -322,6 +374,7 @@ const ContextPanel=(function(){
     ));
     if(hasRealControl) _appendWorldObjectEditControl(sceneObj,v);
     if(sceneObj.decorationSlot) _appendDecorationSlotButton(sceneObj);
+    _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
 
   function _renderSelectionHeading(type){
@@ -334,6 +387,11 @@ const ContextPanel=(function(){
       banner.appendChild(_el('span','context-selection-banner-label',info.label));
       panelRoot.appendChild(banner);
     }
+    // Every object reachable through this branch is an ordinary,
+    // Story-owned object (World-owned selections are routed to
+    // _renderWorldObjectDisclosure instead, above) — always editable.
+    _appendStatusPill(panelRoot,'✏️','You can edit this','editable');
+    _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
   function _renderEmpty(){
     panelRoot.innerHTML='';
@@ -360,6 +418,20 @@ const ContextPanel=(function(){
     if(!slide) return false;
     if(!placeId) return !!slide.image;
     return !!(slide._placeImages && slide._placeImages[placeId] && slide._placeImages[placeId].width);
+  }
+  // Right Panel Redesign — whether the currently-selected Place's own
+  // look was locked by the Theme Author (Builder's per-Place "Can a
+  // Story Author change this?" guardrail, already compiled onto
+  // placeRects and already enforced by Card Designer's Frame controls —
+  // see SlideRenderer.getPlacePermissions). Used only for the Status
+  // pill's own wording here; the actual enforcement lives in
+  // js/cardDesigner.js, untouched by this file.
+  function _placeEditable(slide,placeId){
+    if(typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlacePermissions!=='function') return true;
+    try{
+      const perm=SlideRenderer.getPlacePermissions(slide,placeId||'image-holder');
+      return !perm || perm.editable!==false;
+    }catch(e){ return true; }
   }
   function _applyImageResult(result){
     const slide=_currentSlide();
@@ -436,6 +508,8 @@ const ContextPanel=(function(){
     banner.appendChild(_el('span','context-selection-banner-icon','🖼️'));
     banner.appendChild(_el('span','context-selection-banner-label','Your Picture'));
     panelRoot.appendChild(banner);
+    const editable=_placeEditable(slide,placeId);
+    _appendStatusPill(panelRoot, editable?'✏️':'🔒', editable?'You can edit this':'Locked', editable?'editable':'locked');
     const row=_el('div','context-action-row');
     // Creator Acceptance Sprint — "Add Artwork" before anything's been
     // uploaded, "Replace Artwork" once it has; Crop/Rotate only shows
@@ -453,6 +527,7 @@ const ContextPanel=(function(){
       row.appendChild(cropBtn);
     }
     panelRoot.appendChild(row);
+    _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
 
   // ---------- "Nothing Selected" default view ----------
@@ -620,13 +695,6 @@ const ContextPanel=(function(){
     container.appendChild(row);
   }
 
-  function _appendAddSticker(container){
-    const btn=_el('button','context-btn','✨ Add a Sticker');
-    btn.type='button';
-    btn.addEventListener('click',_showStickerStudio);
-    container.appendChild(btn);
-  }
-
   function _showStickerStudio(){
     stickerStudioOpen=true;
     _setTabVisible('stickers-tab');
@@ -638,33 +706,222 @@ const ContextPanel=(function(){
     panelRoot.appendChild(btn);
   }
 
+  // ---------- Right Panel Redesign — Personalize zone ----------
+
+  // "+ Add Something"'s 7 rows. Stickers/Decorations/Shape are all,
+  // today, the exact same underlying capability — SceneEngine.addSticker
+  // via Sticker Studio, filtered to a different StickerLibrary category —
+  // confirmed by investigation before this sprint began; there is no
+  // separate "decoration object"/"shape object" type. Photo reuses the
+  // existing Add/Replace Artwork flow. Note/Doodle/Voice have no
+  // supporting SceneEngine/renderer capability today (confirmed: no
+  // freeform text-object array, no freehand drawing, no audio
+  // attachment) — stubbed honestly as Coming Soon rather than faked.
+  function _addSomethingItems(){
+    return [
+      {id:'stickers',icon:'😀',label:'Stickers',onClick:function(){ _showStickerStudio(); }},
+      {id:'decorations',icon:'⭐',label:'Decorations',onClick:function(){
+        if(typeof StickerStudio!=='undefined' && typeof StickerStudio.setActiveCategory==='function'){
+          try{ StickerStudio.setActiveCategory('decorations'); }catch(e){}
+        }
+        _showStickerStudio();
+      }},
+      {id:'shape',icon:'🔷',label:'Shape',onClick:function(){
+        if(typeof StickerStudio!=='undefined' && typeof StickerStudio.setActiveCategory==='function'){
+          try{ StickerStudio.setActiveCategory('shapes'); }catch(e){}
+        }
+        _showStickerStudio();
+      }},
+      {id:'photo',icon:'📸',label:'Photo',onClick:_addPhoto},
+      {id:'note',icon:'🗒️',label:'Note',comingSoon:true},
+      {id:'doodle',icon:'✏️',label:'Doodle',comingSoon:true},
+      {id:'voice',icon:'🎤',label:'Voice',comingSoon:true}
+    ];
+  }
+
+  // Photo — no existing "fill the next empty Place" helper anywhere in
+  // the codebase (confirmed by investigation); _replaceArtwork()/
+  // _applyImageResult() are entirely selection-driven. This selects the
+  // first Place with no picture yet (or falls back to Place 1 / the
+  // Cover-Hook-End single-holder case once every Place is filled or the
+  // theme has none) before handing off to the existing, unmodified
+  // upload flow — one tap from "Photo" to a real file picker.
+  function _firstOpenPlaceSelection(slide){
+    if(!slide) return {id:'image-holder'};
+    let places=null;
+    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRects==='function'){
+      try{ places=SlideRenderer.getPlaceRects(slide); }catch(e){ places=null; }
+    }
+    if(places && places.length){
+      for(let i=0;i<places.length;i++){
+        const p=places[i];
+        const placeId=(p.id && p.id!=='image-holder') ? p.id : undefined;
+        if(!_hasPlaceImage(slide,placeId)) return {id:p.id||'image-holder'};
+      }
+    }
+    return {id:'image-holder'};
+  }
+
+  function _addPhoto(){
+    const slide=_currentSlide();
+    const target=_firstOpenPlaceSelection(slide);
+    // PageRuntime.selectSceneObject -> host.setSelectedSceneElement
+    // already ends in PageRuntime.notify() (js/app.js's own
+    // _setSelectedSceneElement), which rebuilds this very panel into
+    // the Artwork-selected state — no separate notify() call needed.
+    if(typeof PageRuntime!=='undefined' && typeof PageRuntime.selectSceneObject==='function'){
+      try{ PageRuntime.selectSceneObject(target.id,'image-holder'); }catch(e){}
+    }
+    _replaceArtwork();
+  }
+
+  function _buildAddSomethingAccordion(){
+    const wrap=_el('div','context-add-accordion');
+    const trigger=_el('button','context-add-trigger');
+    trigger.type='button';
+    trigger.appendChild(_el('span','context-add-trigger-label','➕ Add Something'));
+    trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='add'?'▴':'▾'));
+    trigger.addEventListener('click',function(){
+      personalizeOpenSection=(personalizeOpenSection==='add')?null:'add';
+      refresh();
+    });
+    wrap.appendChild(trigger);
+    if(personalizeOpenSection==='add'){
+      const list=_el('div','context-add-list');
+      _addSomethingItems().forEach(function(item){
+        const row=_el('button','context-add-item'+(item.comingSoon?' is-coming-soon':''));
+        row.type='button';
+        row.appendChild(_el('span','context-add-item-icon',item.icon));
+        row.appendChild(_el('span','context-add-item-label',item.label));
+        if(item.comingSoon){
+          row.appendChild(_el('span','context-add-item-soon','Soon'));
+          row.disabled=true;
+        }else{
+          row.addEventListener('click',item.onClick);
+        }
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
+    return wrap;
+  }
+
+  // Background Colour — reuses _appendBackground's own field-building
+  // body verbatim (unchanged internals, same per-page override), now
+  // only rendered while its own accordion body is open instead of
+  // always-rendered.
+  function _buildBackgroundTile(){
+    const wrap=_el('div','context-set-tile');
+    const trigger=_el('button','context-set-trigger');
+    trigger.type='button';
+    trigger.appendChild(_el('span','context-set-trigger-label','🎨 Background Colour'));
+    trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='background'?'▴':'▾'));
+    trigger.addEventListener('click',function(){
+      personalizeOpenSection=(personalizeOpenSection==='background')?null:'background';
+      refresh();
+    });
+    wrap.appendChild(trigger);
+    if(personalizeOpenSection==='background'){
+      const body=_el('div','context-set-body');
+      _appendBackground(body);
+      wrap.appendChild(body);
+    }
+    return wrap;
+  }
+
+  // Change Look — reuses _appendRepresentationRow verbatim (same gate,
+  // same button, same CreationFlow.changeRepresentation() call); it
+  // fires immediately and navigates to the existing full-screen
+  // Representation picker, so it has no inline accordion body of its
+  // own. Returns null (renders nothing) when the active theme has no
+  // Representations to switch between — matching the dead-button-
+  // avoidance convention already used elsewhere in this file.
+  function _buildChangeLookTile(){
+    const info=_repInfo();
+    const reps=(typeof CreationFlow!=='undefined') ? CreationFlow.currentRepresentations() : null;
+    if(!info && !(reps&&reps.length)) return null;
+    const wrap=_el('div','context-set-tile context-set-tile-static');
+    _appendRepresentationRow(wrap);
+    return wrap;
+  }
+
+  // Caption / Quote — reuses _appendCaptionOrQuote's own field-building
+  // body verbatim; the tile itself is hidden entirely (not merely
+  // disabled) when the active Representation supports neither
+  // editCaption nor editQuote, matching the existing no-op the reused
+  // function already has.
+  function _buildCaptionTile(){
+    const rep=_currentRepresentation();
+    if(!rep || !Array.isArray(rep.actions)) return null;
+    const isQuote=rep.actions.indexOf('editQuote')!==-1;
+    const isCaption=!isQuote && rep.actions.indexOf('editCaption')!==-1;
+    if(!isQuote && !isCaption) return null;
+    const wrap=_el('div','context-set-tile');
+    const trigger=_el('button','context-set-trigger');
+    trigger.type='button';
+    trigger.appendChild(_el('span','context-set-trigger-label',isQuote?'📝 Your Quote':'📝 Caption'));
+    trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='caption'?'▴':'▾'));
+    trigger.addEventListener('click',function(){
+      personalizeOpenSection=(personalizeOpenSection==='caption')?null:'caption';
+      refresh();
+    });
+    wrap.appendChild(trigger);
+    if(personalizeOpenSection==='caption'){
+      const body=_el('div','context-set-body');
+      _appendCaptionOrQuote(body);
+      wrap.appendChild(body);
+    }
+    return wrap;
+  }
+
+  // The one shared Personalize zone builder — full (nothing selected,
+  // or the collapsed strip just got re-tapped open) vs. collapsed (a
+  // real object is selected and Refine has taken the room). Every
+  // selected-state renderer in this file appends this at the very end
+  // of panelRoot, so Personalize is reachable from any selection, not
+  // only the default view.
+  function _renderPersonalizeZone(container,opts){
+    const full=!!(opts && opts.full);
+    const zone=_el('div','context-zone-personalize');
+    if(!full){
+      const strip=_el('div','context-personalize-collapsed');
+      strip.appendChild(_el('span','context-personalize-collapsed-label','✨ Personalize this page'));
+      strip.appendChild(_el('span','context-accordion-chevron','▾'));
+      strip.addEventListener('click',function(){
+        personalizeExpanded=true;
+        refresh();
+      });
+      zone.appendChild(strip);
+      container.appendChild(zone);
+      return;
+    }
+    zone.appendChild(_el('div','context-zone-label','✨ Personalize this page'));
+    zone.appendChild(_buildAddSomethingAccordion());
+    const tiles=_el('div','context-set-tiles');
+    tiles.appendChild(_buildBackgroundTile());
+    const changeLookTile=_buildChangeLookTile();
+    if(changeLookTile) tiles.appendChild(changeLookTile);
+    const captionTile=_buildCaptionTile();
+    if(captionTile) tiles.appendChild(captionTile);
+    zone.appendChild(tiles);
+    container.appendChild(zone);
+  }
+
   function _renderDefault(){
     if(stickerStudioOpen) return;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    // Creator Acceptance Sprint — the default state is guidance, not a
-    // blank hint: greet the child by the active World's own name/icon,
-    // then explain the two ownership marks they'll see on the page
-    // (Object Strip's own ✏️ edit badge and 🌍 World badge) before they
-    // tap anything.
+    // Creator Acceptance Sprint / Right Panel Redesign — greet the child
+    // by the active World's own name/icon; Personalize itself (below)
+    // now teaches what's addable/settable, so the standalone ownership
+    // legend and "tap anything" hint are dropped in favour of each
+    // object's own Status pill doing that teaching contextually, once
+    // something is actually selected.
     const world=_worldIdentity();
     if(world){
       panelRoot.appendChild(_el('div','context-welcome-heading','Welcome to '+world.icon+' '+world.name));
     }
-    const hint=_el('div','context-nothing-selected-hint','👆 Tap anything on the page to personalise it.');
-    panelRoot.appendChild(hint);
-    const legend=_el('div','context-ownership-legend');
-    legend.appendChild(_el('div','context-legend-row','✏️ Objects marked editable can be changed.'));
-    legend.appendChild(_el('div','context-legend-row','🌍 Objects marked World belong to the World.'));
-    panelRoot.appendChild(legend);
-    _appendRepresentationRow(panelRoot);
-    _appendCaptionOrQuote(panelRoot);
-    // Museum Gallery story-role pages have no per-page background scene
-    // control today (only Cover/Hook/End roles do) — this reuses the
-    // existing global Theme Designer background colour instead of
-    // inventing new per-page background behaviour.
-    _appendBackground(panelRoot);
-    _appendAddSticker(panelRoot);
+    _renderPersonalizeZone(panelRoot,{full:true});
   }
 
   return {
