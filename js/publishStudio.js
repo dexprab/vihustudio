@@ -811,6 +811,20 @@ const PublishStudio=(function(){
     }catch(e){ out=null; }
     _publishOutputMeta=out;
     _publishOutputBlob=out ? out.blob : null;
+    try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
+    // Magic Card Identity Evolution, Phase 1 — "Instead of immediately
+    // downloading the creation, something unexpected happens" (design
+    // document, Screen 5). Fires at most once ever per browser
+    // (MagicCard.shouldOfferAwakening's own gate) — every other publish,
+    // and every publish once a card is already claimed or the ceremony
+    // was ever offered before, goes straight to Celebration exactly as
+    // it always has.
+    try{
+      if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.shouldOfferAwakening()){
+        MagicCardUI.showAwakening(function(){ _setStage(STAGES.CELEBRATION); });
+        return;
+      }
+    }catch(e){}
     _setStage(STAGES.CELEBRATION);
   }
 

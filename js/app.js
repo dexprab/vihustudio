@@ -1656,7 +1656,14 @@ function _startCreationFlow(){
   // themeRegistry.js's — by the time app.js runs, both are ready.
   try{ if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.rehydrateRedeemed==='function') ThemeRegistry.rehydrateRedeemed(); }catch(e){}
 }
-(function bootstrapSession(){
+// Magic Card Identity Evolution, Phase 1 — a boot-time Identity Gate
+// (Screen 2 Returning Creator / Screen 9 Shared Device) shown ONLY when
+// at least one Magic Card has ever been claimed on this device. Zero
+// claimed cards (the common case until a family's first claim) skips
+// this entirely and boot proceeds exactly as it always has — see
+// js/magicCardUI.js's own header comment for why Screen 1/3 aren't
+// built as separate code here.
+function _beginBoot(){
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
@@ -1688,5 +1695,15 @@ function _startCreationFlow(){
     setAutosaveStatus('saved');
     _startCreationFlow();
   }
+}
+(function bootstrapSession(){
+  try{
+    if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.list().length>0){
+      MagicCardUI.checkIdentityGate(_beginBoot);
+      return;
+    }
+  }catch(e){}
+  _beginBoot();
 })();
+try{ if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge(); }catch(e){}
 });

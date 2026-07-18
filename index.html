@@ -13,8 +13,8 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0158'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0158'>
+<link rel='stylesheet' href='css/style.css?v=0159'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0159'>
 </head>
 <body class='light-theme'>
 <!-- Header -->
@@ -44,6 +44,11 @@
 </div>
 <div class='header-right'>
 <div id='autosaveStatus' class='autosave-status'>Saved locally</div>
+<!-- Magic Card Identity Evolution, Phase 1 — a small, quiet
+     constellation glyph shown only once a Magic Card has been claimed
+     on this device (js/magicCardUI.js's refreshHeaderBadge). Hidden by
+     default; never a name, never a settings menu. -->
+<button id='magicCardBadge' class='magic-card-badge hidden' title='Your Magic Card' type='button'></button>
 <button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
 <!-- Sprint 9.1.4 — Children publish stories. Software generates
      files. The Export button that lingered hidden since Sprint 8.1
@@ -97,6 +102,16 @@
 <div class='creation-scene-signpost'>Your adventure<br>starts here ♥</div>
 </div>
 <div id='creationFlowContent' class='creation-flow-panel'></div>
+</div>
+
+<!-- Magic Card Identity Evolution, Phase 1 (local-only) — see
+     js/magicCard.js / js/magicCardUI.js. Three real screens share this
+     one overlay: the boot-time Identity Gate (Returning Creator / Shared
+     Device), the first-Publish Awakening ceremony, and Magic Card Home.
+     Mirrors #creationFlowOverlay's own container pattern; populated
+     entirely at runtime, nothing static inside. -->
+<div id='magicCardOverlay' class='magic-card-overlay hidden'>
+<div id='magicCardContent' class='magic-card-panel'></div>
 </div>
 
 <!-- Main workspace -->
@@ -489,6 +504,6 @@ Your <strong>World</strong> is the story's whole look and feel. Every change her
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/cardPlatform.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/creatorProjectStore.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/objectStrip.js'></script><script src='js/pageRuntime.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/cardPlatform.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/creatorProjectStore.js'></script><script src='js/magicCard.js'></script><script src='js/magicCardUI.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/objectStrip.js'></script><script src='js/pageRuntime.js'></script><script src='js/app.js'></script>
 </body>
 </html>

@@ -6072,3 +6072,383 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .context-shape-tile:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
 .context-shape-tile-icon{ font-size:20px; line-height:1; }
 .context-shape-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }
+
+/* ===========================
+   Magic Card Identity Evolution, Phase 1 (local-only) — see
+   js/magicCard.js / js/magicCardUI.js. A deliberately distinct visual
+   world from the warm daytime Story Meadow (.creation-flow-overlay) —
+   this is a living night sky, not a themed panel, so it reads its own
+   fixed dark/indigo/gold palette regardless of the app's own light/dark
+   toggle, matching the exact reasoning .creation-flow-overlay's own
+   --cf-paper tokens already established for a different, unrelated
+   "distinct illustrated world."
+   =========================== */
+
+/* ---------- Header glyph ---------- */
+#magicCardBadge{
+  width:34px !important;
+  height:34px !important;
+  padding:2px !important;
+  margin:0 !important;
+  border:1px solid rgba(255,255,255,0.22);
+  border-radius:50%;
+  background:rgba(255,255,255,0.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:background .2s, transform .15s;
+}
+#magicCardBadge:hover{ background:rgba(255,255,255,0.20); transform:scale(1.06); }
+#magicCardBadge.hidden{ display:none; }
+#magicCardBadge svg{ display:block; }
+
+/* ---------- Overlay shell ---------- */
+.magic-card-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1400;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow-y:auto;
+  padding:clamp(16px,3vh,48px) 24px;
+  background:radial-gradient(ellipse at 28% 18%,#232d5c 0%,#141a38 46%,#080a16 100%);
+  --mc-gold:#FFCB45;
+  --mc-ink:#eef1ff;
+  --mc-ink-soft:rgba(238,241,255,0.68);
+  --mc-panel:rgba(17,21,45,0.72);
+  --mc-line:rgba(255,255,255,0.14);
+}
+.magic-card-overlay.hidden{ display:none; }
+.magic-card-panel{
+  width:100%;
+  max-width:520px;
+  display:flex;
+  justify-content:center;
+}
+/* Screen 11 (Magic Card Home) is reached mid-edit, from the header
+   badge, over an already-open editor — a slightly less "takeover the
+   whole world" backdrop than the Awakening ceremony's own full-immersion
+   moment, mirroring .creation-flow-overlay.mode-change-look's own
+   "dimmed, not opaque-onboarding" distinction for the identical reason. */
+.magic-card-overlay.magic-card-mode-home{
+  background:rgba(8,10,20,0.82);
+}
+
+/* ---------- Shared: constellation SVG ---------- */
+.magic-card-constellation-svg{ display:block; overflow:visible; }
+.magic-card-star{ fill:var(--mc-gold); }
+.magic-card-star-core{
+  filter:drop-shadow(0 0 3px rgba(255,203,69,0.85));
+}
+.magic-card-star-companion{
+  fill:#c9d4ff;
+  opacity:.55;
+  filter:drop-shadow(0 0 1.5px rgba(201,212,255,0.6));
+}
+.magic-card-star-line{
+  stroke:rgba(255,203,69,0.55);
+  stroke-width:0.035;
+  fill:none;
+}
+/* Awakening reveal — stars and connecting lines fade/scale in one at a
+   time via each element's own staggered animation-delay (set inline by
+   js/magicCardUI.js's _renderConstellation, opts.animate). */
+.magic-card-awaken-sky .magic-card-star,
+.magic-card-awaken-sky .magic-card-star-line{
+  animation:magicCardTwinkleIn .5s ease-out both;
+}
+@keyframes magicCardTwinkleIn{
+  from{ opacity:0; transform:scale(0.2); transform-origin:center; }
+  to{ opacity:1; transform:scale(1); }
+}
+.magic-card-star-line{ animation-name:magicCardLineIn; }
+@keyframes magicCardLineIn{
+  from{ opacity:0; }
+  to{ opacity:1; }
+}
+@media (prefers-reduced-motion:reduce){
+  .magic-card-awaken-sky .magic-card-star,
+  .magic-card-awaken-sky .magic-card-star-line{ animation:none; opacity:1; transform:none; }
+}
+.magic-card-claimed-glow .magic-card-star-core{
+  filter:drop-shadow(0 0 7px rgba(255,203,69,1));
+}
+
+/* ---------- Back / ghost controls (shared shape) ---------- */
+.magic-card-back{
+  width:auto !important;
+  height:auto !important;
+  align-self:flex-start;
+  margin:0 0 18px 0 !important;
+  padding:6px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid var(--mc-line);
+  color:var(--mc-ink-soft);
+  font:700 12.5px/1 inherit;
+}
+.magic-card-back:hover{ background:rgba(255,255,255,0.16); }
+
+/* ---------- Screen 2/9 — Identity Gate ---------- */
+.magic-card-gate-panel{
+  width:100%;
+  max-width:420px;
+  background:var(--mc-panel);
+  border:1px solid var(--mc-line);
+  border-radius:24px;
+  padding:clamp(24px,4vh,40px) clamp(20px,4vw,32px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:6px;
+  box-shadow:0 24px 64px rgba(0,0,0,0.45);
+  backdrop-filter:blur(6px);
+}
+.magic-card-gate-welcome{
+  font-size:19px;
+  font-weight:800;
+  color:var(--mc-ink);
+  margin:16px 0 18px;
+}
+.magic-card-gate-title{
+  font-size:19px;
+  font-weight:800;
+  color:var(--mc-ink);
+  margin:0 0 18px;
+}
+.magic-card-gate-continue{
+  width:100% !important;
+  height:auto !important;
+  padding:13px 20px;
+  border-radius:14px;
+  background:var(--mc-gold);
+  color:var(--navy);
+  font:800 15px/1 inherit;
+  margin-bottom:10px !important;
+}
+.magic-card-gate-notyou{
+  width:auto !important;
+  height:auto !important;
+  background:transparent;
+  color:var(--mc-ink-soft);
+  font:700 12.5px/1 inherit;
+  padding:6px 10px;
+  margin:2px 0 0 !important;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.magic-card-gate-notyou:hover{ opacity:1; color:var(--mc-ink); }
+.magic-card-gate-grid{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:6px;
+}
+.magic-card-gate-tile{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  padding:14px 8px 10px;
+  border-radius:16px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--mc-line);
+  color:var(--mc-ink);
+}
+.magic-card-gate-tile:hover{ background:rgba(255,255,255,0.12); border-color:rgba(255,203,69,0.5); }
+.magic-card-gate-tile-name{
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--mc-ink-soft);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
+.magic-card-gate-explore{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:14px 8px;
+  border-radius:16px;
+  background:transparent;
+  border:1px dashed var(--mc-line);
+  color:var(--mc-ink-soft);
+  font:700 12px/1.3 inherit;
+  text-align:center;
+}
+.magic-card-gate-explore:hover{ border-color:rgba(255,203,69,0.5); color:var(--mc-ink); }
+
+/* ---------- Screens 5-7 — The Awakening ceremony ---------- */
+.magic-card-awaken-stage{
+  width:100%;
+  max-width:460px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:8px;
+}
+.magic-card-awaken-msg{
+  font-size:20px;
+  font-weight:800;
+  color:var(--mc-ink);
+  margin:0 0 18px;
+  transition:opacity .3s;
+}
+.magic-card-awaken-msg-settled{ color:var(--mc-gold); }
+.magic-card-awaken-sky{ margin-bottom:18px; }
+.magic-card-awaken-tap{
+  width:auto !important;
+  height:auto !important;
+  margin:22px 0 0 !important;
+  padding:12px 26px;
+  border-radius:999px;
+  background:var(--mc-gold);
+  color:var(--navy);
+  font:800 14px/1 inherit;
+  animation:magicCardPulse 1.8s ease-in-out infinite;
+}
+@keyframes magicCardPulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,203,69,0.5); }
+  50%{ box-shadow:0 0 0 10px rgba(255,203,69,0); }
+}
+@media (prefers-reduced-motion:reduce){ .magic-card-awaken-tap{ animation:none; } }
+
+.magic-card-claim-prompt{
+  font-size:19px;
+  font-weight:800;
+  color:var(--mc-ink);
+  margin:4px 0 22px;
+}
+.magic-card-claim-btn{
+  width:100% !important;
+  max-width:280px;
+  height:auto !important;
+  padding:14px 22px;
+  border-radius:14px;
+  background:var(--mc-gold);
+  color:var(--navy);
+  font:800 16px/1 inherit;
+  margin-bottom:14px !important;
+  box-shadow:0 8px 24px rgba(255,203,69,0.25);
+}
+.magic-card-claim-secondary{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.magic-card-claim-later{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  background:transparent;
+  color:var(--mc-ink-soft);
+  font:700 12.5px/1 inherit;
+  padding:6px 8px;
+}
+.magic-card-claim-later:hover{ opacity:1; color:var(--mc-ink); }
+
+.magic-card-claimed-title{
+  font-size:19px;
+  font-weight:800;
+  color:var(--mc-ink);
+  margin:6px 0 8px;
+}
+.magic-card-claimed-hint{
+  font-size:13px;
+  color:var(--mc-ink-soft);
+  max-width:340px;
+  line-height:1.5;
+  margin:0 0 22px;
+}
+.magic-card-nickname-input{
+  width:100%;
+  max-width:280px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid var(--mc-line);
+  background:rgba(255,255,255,0.08);
+  color:var(--mc-ink);
+  font:700 15px/1 inherit;
+  text-align:center;
+  margin:8px 0 18px;
+}
+.magic-card-nickname-input::placeholder{ color:rgba(238,241,255,0.4); }
+.magic-card-nickname-input:focus{ outline:none; border-color:var(--mc-gold); background:rgba(255,255,255,0.12); }
+
+/* ---------- Screen 11 — Magic Card Home ---------- */
+.magic-card-home-panel{
+  width:100%;
+  max-width:460px;
+  background:var(--mc-panel);
+  border:1px solid var(--mc-line);
+  border-radius:24px;
+  padding:clamp(20px,3.5vh,32px) clamp(20px,4vw,32px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,0.45);
+  backdrop-filter:blur(6px);
+}
+.magic-card-home-sky{ margin:4px 0 12px; }
+.magic-card-home-name{
+  font-size:20px;
+  font-weight:800;
+  color:var(--mc-ink);
+}
+.magic-card-home-since{
+  font-size:12.5px;
+  color:var(--mc-ink-soft);
+  margin:2px 0 22px;
+}
+.magic-card-home-stories-label{
+  align-self:flex-start;
+  font-size:12px;
+  font-weight:700;
+  color:var(--mc-ink-soft);
+  margin:0 0 10px;
+}
+.magic-card-home-stories-grid{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+.magic-card-home-story-thumb{
+  aspect-ratio:4/5;
+  border-radius:10px;
+  overflow:hidden;
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--mc-line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.magic-card-home-story-thumb img{ width:100%; height:100%; object-fit:cover; }
+.magic-card-home-story-glyph{ font-size:24px; opacity:.6; }
+.magic-card-home-stories-empty{
+  grid-column:1 / -1;
+  font-size:12.5px;
+  color:var(--mc-ink-soft);
+  padding:18px 8px;
+}
+@media (max-width:520px){
+  .magic-card-gate-grid{ grid-template-columns:repeat(2,1fr); }
+  .magic-card-home-stories-grid{ grid-template-columns:repeat(3,1fr); }
+}
