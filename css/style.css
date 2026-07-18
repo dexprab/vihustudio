@@ -411,9 +411,17 @@ button:active{
   image-rendering:high-quality;
 }
 
-/* Tabs */
+/* Tabs — Sprint 10.0's Context Panel has replaced this tab bar for
+   every real Studio session (ContextPanel.init() always adds
+   .context-panel-mode, which already hides it). Left visible by
+   default (base CSS), the raw pre-Context-Panel tab bar + the dead
+   "Vihu Buddy Coming Soon" placeholder inside #story-tab briefly
+   flashed on every page load/refresh, before app.js's DOMContentLoaded
+   handler finishes running (a real, user-reported "the page loads for
+   a few seconds" symptom) — hidden by default now, since it provides
+   zero value before JS runs and is always hidden after. */
 .tabs{
-  display:flex;
+  display:none;
   gap:0;
   margin-bottom:16px;
   border-bottom:1px solid var(--line);
@@ -867,8 +875,10 @@ button:active{
   border-radius:0 0 var(--border-radius) var(--border-radius);
 }
 
-/* Buddy placeholder */
+/* Buddy placeholder — dead pre-Context-Panel UI (see the .tabs comment
+   above); hidden by default so it can never flash on load/refresh. */
 .buddy-placeholder{
+  display:none;
   width:100%;
   height:120px;
   background:var(--bg);

@@ -877,7 +877,7 @@ const ContextPanel=(function(){
   // stubbed honestly as Coming Soon rather than faked.
   function _addSomethingItems(){
     return [
-      {id:'stickers',icon:'😀',label:'Stickers & Decor',onClick:function(){ _showStickerStudio(); }},
+      {id:'stickers',icon:'😀',label:'Emojis',onClick:function(){ _showStickerStudio(); }},
       {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
       {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
       {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
