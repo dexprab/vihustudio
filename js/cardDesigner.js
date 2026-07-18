@@ -1127,6 +1127,38 @@ const CardDesigner=(function(){
     }
   }
 
+  // Doodle — "draw your own is just filling shape... this has potential
+  // to become doodle." A real multi-stroke freehand pad, module-level
+  // for the same reason SHAPE_PAD_SIZE/_drawShapePad already are (both
+  // the live pointermove preview and _refreshSticker's on-select sync
+  // call it). Unlike the Shape pad, strokes are never closed/filled —
+  // each is an independent open line, drawn with its own colour/width,
+  // so several strokes in one drawing can look completely different
+  // from one another (a red head, a blue body, a green line for grass).
+  const DOODLE_PAD_SIZE=260;
+  const DOODLE_DEFAULT_SIZE=320;
+  const DOODLE_PALETTE=['#E63946','#F4A300','#FFD23F','#2A9D8F','#3A86FF','#8338EC','#1D3457','#FFFFFF'];
+  function _drawDoodlePad(canvas,strokes,liveStroke){
+    const g=canvas.getContext('2d');
+    g.clearRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
+    g.fillStyle='#FFFFFF';
+    g.fillRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
+    g.lineCap='round';
+    g.lineJoin='round';
+    const all=(strokes||[]).concat(liveStroke?[liveStroke]:[]);
+    all.forEach(function(s){
+      if(!s || !Array.isArray(s.points) || s.points.length<2) return;
+      g.beginPath();
+      s.points.forEach(function(p,i){
+        const px=p.x*DOODLE_PAD_SIZE, py=p.y*DOODLE_PAD_SIZE;
+        if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
+      });
+      g.lineWidth=Math.max(1,(typeof s.width==='number'?s.width:6)*(DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE));
+      g.strokeStyle=s.color||'#24406B';
+      g.stroke();
+    });
+  }
+
   function _buildStickerControls(body){
     const empty=document.createElement('p');
     empty.className='placeholder sticker-empty';
@@ -1539,6 +1571,149 @@ const CardDesigner=(function(){
 
     editor.appendChild(textGroup);
 
+    // Doodle — a genuine multi-stroke freehand drawing capability
+    // ("draw your own is just filling shape... this has potential to
+    // become doodle"), reachable from its own Add Something row. Pen
+    // Colour/Thickness are transient "what will the NEXT stroke look
+    // like" tool settings, not persisted sticker fields — they live as
+    // plain closure locals here, seeded to sensible defaults, and only
+    // ever get written into st.strokes (via _stickerUpdate) once a
+    // stroke actually completes (pointerup), matching the Shape pad's
+    // own "only persist on release" discipline.
+    const doodleGroup=document.createElement('div');
+    doodleGroup.className='sticker-doodle-group hidden';
+
+    const doodleHint=document.createElement('p');
+    doodleHint.className='placeholder doodle-pad-hint';
+    doodleHint.textContent='Draw with your mouse or finger. Lift to start a new line — draw as many as you like, in as many colours as you like.';
+    doodleGroup.appendChild(doodleHint);
+
+    let doodlePenColor=DOODLE_PALETTE[0];
+    let doodlePenWidth=6;
+
+    const penColorRow=document.createElement('div');
+    penColorRow.className='designer-row';
+    const penColorLbl=document.createElement('div');
+    penColorLbl.className='designer-row-label';
+    penColorLbl.textContent='Pen Colour';
+    penColorRow.appendChild(penColorLbl);
+    const penSwatchRow=document.createElement('div');
+    penSwatchRow.className='doodle-pen-swatch-row';
+    DOODLE_PALETTE.forEach(function(c){
+      const sw=document.createElement('button');
+      sw.type='button';
+      sw.className='doodle-pen-swatch';
+      sw.style.background=c;
+      sw.addEventListener('click',function(){ doodlePenColor=c; _syncDoodlePenUI(); });
+      penSwatchRow.appendChild(sw);
+    });
+    penColorRow.appendChild(penSwatchRow);
+    const penColorInput=document.createElement('input');
+    penColorInput.type='color';
+    penColorInput.className='doodle-pen-color-input';
+    penColorInput.addEventListener('input',function(){ doodlePenColor=penColorInput.value; _syncDoodlePenUI(); });
+    penColorRow.appendChild(penColorInput);
+    doodleGroup.appendChild(penColorRow);
+
+    const penThicknessRow=document.createElement('div');
+    penThicknessRow.className='designer-row';
+    const penThicknessLbl=document.createElement('div');
+    penThicknessLbl.className='designer-row-label';
+    penThicknessLbl.textContent='Pen Thickness';
+    penThicknessRow.appendChild(penThicknessLbl);
+    const penThicknessIcons=document.createElement('div');
+    penThicknessIcons.className='icon-row doodle-pen-thickness-row';
+    [['thin',3,'Thin'],['medium',6,'Medium'],['thick',12,'Thick']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card doodle-pen-thickness-btn';
+      btn.setAttribute('data-thickness',t[0]);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const dot=document.createElement('span'); dot.className='doodle-pen-thickness-dot'; dot.style.width=(t[1]*1.6)+'px'; dot.style.height=(t[1]*1.6)+'px'; pv.appendChild(dot);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[2]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ doodlePenWidth=t[1]; _syncDoodlePenUI(); });
+      penThicknessIcons.appendChild(btn);
+    });
+    penThicknessRow.appendChild(penThicknessIcons);
+    doodleGroup.appendChild(penThicknessRow);
+
+    function _syncDoodlePenUI(){
+      penColorInput.value=doodlePenColor;
+      Array.prototype.forEach.call(penSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el,i){
+        el.classList.toggle('active',DOODLE_PALETTE[i]===doodlePenColor);
+      });
+      Array.prototype.forEach.call(penThicknessIcons.querySelectorAll('.doodle-pen-thickness-btn'),function(btn){
+        const w=({thin:3,medium:6,thick:12})[btn.getAttribute('data-thickness')];
+        btn.classList.toggle('active',w===doodlePenWidth);
+      });
+    }
+    _syncDoodlePenUI();
+
+    const doodlePadWrap=document.createElement('div');
+    doodlePadWrap.className='doodle-pad-wrap';
+    const doodleCanvas=document.createElement('canvas');
+    doodleCanvas.width=DOODLE_PAD_SIZE; doodleCanvas.height=DOODLE_PAD_SIZE;
+    doodleCanvas.className='doodle-pad-canvas';
+    doodlePadWrap.appendChild(doodleCanvas);
+    doodleGroup.appendChild(doodlePadWrap);
+
+    const doodleActionsRow=document.createElement('div');
+    doodleActionsRow.className='doodle-pad-actions-row';
+    const doodleUndoBtn=document.createElement('button');
+    doodleUndoBtn.type='button';
+    doodleUndoBtn.className='text-small-btn doodle-undo-btn';
+    doodleUndoBtn.textContent='↩ Undo Last Line';
+    doodleUndoBtn.addEventListener('click',function(){
+      const st=_activeSticker();
+      if(!st) return;
+      const strokes=(st.strokes||[]).slice(0,-1);
+      _stickerUpdate({strokes:strokes});
+    });
+    doodleActionsRow.appendChild(doodleUndoBtn);
+    const doodleClearBtn=document.createElement('button');
+    doodleClearBtn.type='button';
+    doodleClearBtn.className='text-small-btn doodle-clear-btn';
+    doodleClearBtn.textContent='↺ Clear All';
+    doodleClearBtn.addEventListener('click',function(){ _stickerUpdate({strokes:[]}); });
+    doodleActionsRow.appendChild(doodleClearBtn);
+    doodleGroup.appendChild(doodleActionsRow);
+
+    let doodleDrawing=false, doodleLivePoints=[];
+    function _doodlePointFromEvent(e){
+      const r=doodleCanvas.getBoundingClientRect();
+      return {x:(e.clientX-r.left)*(DOODLE_PAD_SIZE/r.width), y:(e.clientY-r.top)*(DOODLE_PAD_SIZE/r.height)};
+    }
+    doodleCanvas.addEventListener('pointerdown',function(e){
+      doodleDrawing=true;
+      doodleLivePoints=[_doodlePointFromEvent(e)];
+      try{ doodleCanvas.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    doodleCanvas.addEventListener('pointermove',function(e){
+      if(!doodleDrawing) return;
+      const p=_doodlePointFromEvent(e);
+      const last=doodleLivePoints[doodleLivePoints.length-1];
+      if(!last || Math.hypot(p.x-last.x,p.y-last.y)>2){
+        doodleLivePoints.push(p);
+        const st=_activeSticker();
+        const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
+        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth});
+      }
+    });
+    doodleCanvas.addEventListener('pointerup',function(){
+      if(!doodleDrawing) return;
+      doodleDrawing=false;
+      if(doodleLivePoints.length>=2){
+        const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
+        const st=_activeSticker();
+        const strokes=((st&&st.strokes)||[]).concat([{points:norm,color:doodlePenColor,width:doodlePenWidth}]);
+        _stickerUpdate({strokes:strokes});
+      }
+      doodleLivePoints=[];
+    });
+
+    editor.appendChild(doodleGroup);
+
     // Layer ordering moved to the Object Strip's own drag-to-reorder
     // (per direct product feedback: "remove any reordering function from
     // the right panel") — the Order row that used to live here is gone;
@@ -1631,21 +1806,25 @@ const CardDesigner=(function(){
     editor.classList.remove('hidden');
     section.classList.add('sticker-active');
 
-    // Real Vector Shapes + Freeform Text — a sticker instance's own
-    // `kind` field (absent/'glyph' = today's emoji sticker, 'shape', or
-    // 'text') decides which control groups show; every other mechanism
-    // (hit-test/drag/resize/lock/duplicate/delete/Object Strip) already
-    // works identically for all three since they share type:'sticker'.
+    // Real Vector Shapes + Freeform Text + Doodle — a sticker instance's
+    // own `kind` field (absent/'glyph' = today's emoji sticker, 'shape',
+    // 'text', or 'doodle') decides which control groups show; every
+    // other mechanism (hit-test/drag/resize/lock/duplicate/delete/
+    // Object Strip) already works identically for all four since they
+    // share type:'sticker'.
     const kind=st.kind||'glyph';
     const isGlyphKind=kind==='glyph';
     const isShapeKind=kind==='shape';
     const isTextKind=kind==='text';
+    const isDoodleKind=kind==='doodle';
     section.querySelectorAll('.sticker-glyph-only').forEach(function(el){ el.classList.toggle('hidden',!isGlyphKind); });
     section.querySelectorAll('.sticker-hide-for-text').forEach(function(el){ el.classList.toggle('hidden',isTextKind); });
     const shapeGroupEl=section.querySelector('.sticker-shape-group');
     if(shapeGroupEl) shapeGroupEl.classList.toggle('hidden',!isShapeKind);
     const textGroupEl=section.querySelector('.sticker-text-group');
     if(textGroupEl) textGroupEl.classList.toggle('hidden',!isTextKind);
+    const doodleGroupEl=section.querySelector('.sticker-doodle-group');
+    if(doodleGroupEl) doodleGroupEl.classList.toggle('hidden',!isDoodleKind);
 
     const cat=(typeof StickerLibrary!=='undefined' && isGlyphKind) ? StickerLibrary.getById(st.stickerId) : null;
     const shapeKindInfo=(typeof StickerLibrary!=='undefined' && isShapeKind && typeof StickerLibrary.getShapeKind==='function') ? StickerLibrary.getShapeKind(st.shape) : null;
@@ -1653,7 +1832,15 @@ const CardDesigner=(function(){
     if(labelEl){
       if(isShapeKind) labelEl.textContent='Shape: '+(shapeKindInfo?shapeKindInfo.label:'Shape');
       else if(isTextKind) labelEl.textContent='Text';
+      else if(isDoodleKind) labelEl.textContent='Doodle';
       else labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
+    }
+
+    if(isDoodleKind){
+      const doodleCanvasEl=section.querySelector('.doodle-pad-canvas');
+      if(doodleCanvasEl){
+        _drawDoodlePad(doodleCanvasEl, st.strokes||[], null);
+      }
     }
 
     if(isShapeKind){

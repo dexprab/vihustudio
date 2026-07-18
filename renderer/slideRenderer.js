@@ -3041,6 +3041,16 @@ const SlideRenderer=(()=>{
   // gap for a newly-added webfont the same way _ensureStickerImage
   // already does for a still-decoding sticker image: request once,
   // redraw once ready, never block the current paint.
+  //
+  // Named _drawFreeformText (not _drawSceneText) deliberately — a real,
+  // separate _drawSceneText(s,el) already exists above (~line 2700) for
+  // a Scene-blueprint text element; the two were shipped as an accidental
+  // same-name pair (JS's last-declaration-wins let the newer one silently
+  // shadow the older one), caught during the Doodle follow-up work below
+  // rather than at ship time since the older function's own call site
+  // (el.type==='text') is presently unreachable dead code — no blueprint
+  // anywhere actually creates a type:'text' element (only 'text-holder'
+  // is real) — but the collision itself was still a real bug, fixed here.
   const _canvasFontsRequested={};
   function _ensureCanvasFont(fontFamily){
     if(!fontFamily || typeof document==='undefined' || !document.fonts) return;
@@ -3062,7 +3072,7 @@ const SlideRenderer=(()=>{
     const weight=st.fontWeight?st.fontWeight+' ':'';
     return style+weight+size+'px '+(st.fontFamily||'Georgia, serif');
   }
-  function _drawSceneText(st){
+  function _drawFreeformText(st){
     if(!st) return;
     const text=typeof st.text==='string'?st.text:'';
     const size=typeof st.fontSize==='number'?st.fontSize:44;
@@ -3119,10 +3129,80 @@ const SlideRenderer=(()=>{
     };
   }
 
+  // Doodle (kind:'doodle' sticker instances) — a genuine multi-stroke
+  // freehand drawing capability. Direct product feedback: the Shape
+  // system's "Draw Your Own" custom-path pad ("this is just filling
+  // shape, it does not allow you to draw irregular shape... this has
+  // potential to become doodle") captured exactly one stroke and always
+  // force-closed + filled it into a blob — real line art (a stick
+  // figure, a squiggle) needs several separate, unclosed strokes drawn
+  // one after another. Doodle is that: st.strokes is an array of
+  // {points:[{x,y}...],color,width}, each point 0..1 fractional within
+  // the doodle's own w/h box, one entry per pen-down..pen-up gesture on
+  // the Refine panel's Draw pad — a doodle can freely mix several
+  // strokes and several pen colours/widths in one drawing. Deliberately
+  // a distinct object kind from Shape rather than an in-place upgrade of
+  // "Draw Your Own" (a direct product decision) — Shape's own custom
+  // path stays a single closed, fillable silhouette; Doodle is unclosed,
+  // stroke-only, multi-stroke line art with its own Add Something entry.
+  function _drawDoodleStrokes(strokes,rect,alpha){
+    if(!Array.isArray(strokes) || !strokes.length) return;
+    x.save();
+    x.globalAlpha=(typeof alpha==='number')?Math.max(0,Math.min(1,alpha)):1;
+    x.lineCap='round';
+    x.lineJoin='round';
+    strokes.forEach(function(s){
+      if(!s || !Array.isArray(s.points) || s.points.length<2) return;
+      x.beginPath();
+      s.points.forEach(function(p,i){
+        const px=rect.x+p.x*rect.w, py=rect.y+p.y*rect.h;
+        if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
+      });
+      x.lineWidth=typeof s.width==='number'?s.width:6;
+      x.strokeStyle=s.color||'#24406B';
+      x.stroke();
+    });
+    x.restore();
+  }
+  function _drawSceneDoodle(st){
+    if(!st) return;
+    const w=typeof st.w==='number'?st.w:320;
+    const h=typeof st.h==='number'?st.h:320;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const rect={x:cx-w/2,y:cy-h/2,w:w,h:h};
+    const rotation=(typeof st.rotation==='number')?st.rotation:0;
+    const alpha=typeof st.opacity==='number'?Math.max(0,Math.min(1,st.opacity)):1;
+    if(rotation){
+      x.save();
+      x.translate(cx,cy); x.rotate(rotation*Math.PI/180); x.translate(-cx,-cy);
+      _drawDoodleStrokes(st.strokes,rect,alpha);
+      x.restore();
+    }else{
+      _drawDoodleStrokes(st.strokes,rect,alpha);
+    }
+  }
+  function _doodleBbox(st){
+    const w=typeof st.w==='number'?st.w:320;
+    const h=typeof st.h==='number'?st.h:320;
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    return {
+      id:st.id,
+      type:'sticker',
+      label:'Doodle',
+      bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
+      visible:true,
+      locked:!!st.locked,
+      visual:{kind:'doodle', strokes:st.strokes, rotation:typeof st.rotation==='number'?st.rotation:0}
+    };
+  }
+
   function _drawSceneSticker(st){
     if(!st) return;
     if(st.kind==='shape'){ _drawSceneShape(st); return; }
-    if(st.kind==='text'){ _drawSceneText(st); return; }
+    if(st.kind==='text'){ _drawFreeformText(st); return; }
+    if(st.kind==='doodle'){ _drawSceneDoodle(st); return; }
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
@@ -3155,6 +3235,7 @@ const SlideRenderer=(()=>{
   function _stickerBbox(st){
     if(st.kind==='shape') return _shapeBbox(st);
     if(st.kind==='text') return _textObjBbox(st);
+    if(st.kind==='doodle') return _doodleBbox(st);
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
@@ -3978,18 +4059,27 @@ const SlideRenderer=(()=>{
   // thumbnails are plain DOM (swatch div / img / text), built directly
   // in js/objectStrip.js from the same `visual` descriptor.
   function drawObjectThumbnail(targetCtx,visual,size){
-    if(!targetCtx||!visual||visual.kind!=='shape') return;
+    if(!targetCtx||!visual) return;
+    if(visual.kind!=='shape' && visual.kind!=='doodle') return;
     const saved=x;
     x=targetCtx;
     try{
-      _layerDrawShape({
-        shape:visual.shape,
-        fillColor:visual.fillColor,
-        strokeColor:visual.strokeColor,
-        strokeWidth:visual.strokeWidth,
-        rotation:visual.rotation,
-        customPath:visual.customPath
-      },{x:0,y:0,w:size,h:size});
+      if(visual.kind==='shape'){
+        _layerDrawShape({
+          shape:visual.shape,
+          fillColor:visual.fillColor,
+          strokeColor:visual.strokeColor,
+          strokeWidth:visual.strokeWidth,
+          rotation:visual.rotation,
+          customPath:visual.customPath
+        },{x:0,y:0,w:size,h:size});
+      }else{
+        // Doodle — reuse the exact same stroke renderer the live canvas
+        // paints with, so an Object Strip thumbnail is never a second
+        // implementation (Honour World-Owned Object Commitments sprint's
+        // own established drawObjectThumbnail precedent).
+        _drawDoodleStrokes(visual.strokes,{x:0,y:0,w:size,h:size},1);
+      }
     } finally {
       x=saved;
     }

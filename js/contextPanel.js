@@ -782,6 +782,29 @@ const ContextPanel=(function(){
     }
   }
 
+  // Doodle — "draw your own is just filling shape, it does not allow you
+  // to draw irregular shape... this has potential to become doodle. the
+  // doodle implementation should live in doodle." A genuinely separate
+  // capability from Shapes' own "Draw Your Own" custom path (which stays
+  // a single closed, fillable silhouette) — Doodle is a real multi-
+  // stroke freehand drawing object, reachable from its own Add Something
+  // row, closing the gap that row's old Coming Soon stub disclosed. Same
+  // immediate-create-and-select flow as Shapes/Text above, landing on
+  // the new Doodle's own Refine panel (a blank pad, ready to draw on).
+  function _addDoodleObject(){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    // Same synthetic-stickerId reasoning as _addShapeObject/_addTextObject.
+    const st=SceneEngine.addSticker(slide,{
+      kind:'doodle', stickerId:'doodle.freeform', strokes:[],
+      w:320, h:320
+    });
+    if(!st) return;
+    if(typeof window.setSelectedSceneElement==='function'){
+      try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
+  }
+
   // ---------- Right Panel Redesign — Personalize zone ----------
 
   // "+ Add Something"'s rows. Stickers/Decorations are, today, the exact
@@ -789,19 +812,19 @@ const ContextPanel=(function(){
   // Studio — and Sticker Studio's own category tab strip already gives
   // full reach across every category (Characters/Decorations/etc.) once
   // it's open, so one combined entry point is enough — no pre-filtering
-  // into a specific category. Shapes and Text are real, separate
-  // capabilities (see _showShapePicker/_addTextObject above). Photo was
-  // removed: it duplicates the existing per-Place "Add Artwork" flow
-  // already reachable by selecting a Place directly, which is where
-  // artwork replacement belongs. Doodle/Voice have no supporting
-  // SceneEngine/renderer capability today (no freehand drawing, no audio
-  // attachment) — stubbed honestly as Coming Soon rather than faked.
+  // into a specific category. Shapes, Text, and Doodle are real, separate
+  // capabilities (see _showShapePicker/_addTextObject/_addDoodleObject
+  // above). Photo was removed: it duplicates the existing per-Place "Add
+  // Artwork" flow already reachable by selecting a Place directly, which
+  // is where artwork replacement belongs. Voice has no supporting
+  // SceneEngine/renderer capability today (no audio attachment) —
+  // stubbed honestly as Coming Soon rather than faked.
   function _addSomethingItems(){
     return [
       {id:'stickers',icon:'😀',label:'Stickers, Decorations & Shapes',onClick:function(){ _showStickerStudio(); }},
       {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
       {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
-      {id:'doodle',icon:'✏️',label:'Doodle',comingSoon:true},
+      {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
       {id:'voice',icon:'🎤',label:'Voice',comingSoon:true}
     ];
   }

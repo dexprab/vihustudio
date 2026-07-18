@@ -90,7 +90,7 @@ const ObjectStrip=(function(){
       thumb.appendChild(img);
       return;
     }
-    if(v && v.kind==='shape' && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.drawObjectThumbnail==='function'){
+    if(v && (v.kind==='shape'||v.kind==='doodle') && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.drawObjectThumbnail==='function'){
       const size=44;
       const canvas=document.createElement('canvas');
       canvas.width=size; canvas.height=size;

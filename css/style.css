@@ -3166,13 +3166,15 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
    shared global .hidden utility class in this stylesheet (every other
    .hidden usage here is scoped the same way, e.g. .sticker-editor.hidden). */
 .sticker-shape-group,
-.sticker-text-group{
+.sticker-text-group,
+.sticker-doodle-group{
   margin-top:14px;
   padding-top:14px;
   border-top:1px solid var(--line);
 }
 .sticker-shape-group.hidden,
 .sticker-text-group.hidden,
+.sticker-doodle-group.hidden,
 .sticker-glyph-only.hidden,
 .sticker-hide-for-text.hidden,
 .shape-draw-pad-wrap.hidden{ display:none; }
@@ -3199,6 +3201,60 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   font-size:14px;
   font-family:inherit;
   resize:vertical;
+}
+
+/* Doodle — a real multi-stroke freehand pad, evolved directly out of
+   the Shape system's own "Draw Your Own" custom-path pad after direct
+   product feedback that a single forced-closed, forced-filled path
+   can't draw an irregular line drawing. */
+.doodle-pad-hint{ margin:0 0 10px; }
+.doodle-pen-swatch-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  flex:1;
+}
+.doodle-pen-swatch{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  border:2px solid var(--line);
+  cursor:pointer;
+  padding:0;
+}
+.doodle-pen-swatch.active{
+  border-color:var(--gold, #C9A24A);
+  box-shadow:0 0 0 2px var(--panel), 0 0 0 3px var(--gold, #C9A24A);
+}
+.doodle-pen-color-input{
+  width:32px;
+  height:32px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:0;
+  background:none;
+  cursor:pointer;
+}
+.doodle-pen-thickness-dot{
+  border-radius:50%;
+  background:#24406B;
+}
+.doodle-pad-wrap{ margin-top:12px; text-align:center; }
+.doodle-pad-canvas{
+  width:100%;
+  max-width:260px;
+  aspect-ratio:1;
+  border:1px solid var(--line);
+  border-radius:14px;
+  cursor:crosshair;
+  touch-action:none;
+  background:#FFFFFF;
+}
+.doodle-pad-actions-row{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  margin-top:10px;
 }
 
 .sticker-actions-row{
