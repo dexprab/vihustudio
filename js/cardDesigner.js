@@ -1101,24 +1101,46 @@ const CardDesigner=(function(){
   // Real Vector Shapes — the "Draw Your Own" pad's own drawing routine,
   // module-level (not a _buildStickerControls closure) so both the live
   // pointermove preview and _refreshSticker's on-select sync can call it
-  // without duplicating the fill/stroke logic.
+  // without duplicating the fill/stroke logic. Upgraded from a single
+  // forced-closed freehand path into a real multi-stroke Line/Circle
+  // tool ("multi stroke. shapes stroke should be regular line or
+  // circular") — a small, standalone reimplementation of renderer/
+  // slideRenderer.js's _buildCustomStrokePath, matching this pad's own
+  // established precedent (a Refine-panel preview never calls into the
+  // real renderer module, only mirrors its geometry by hand).
   const SHAPE_PAD_SIZE=180;
-  function _drawShapePad(canvas,points,style){
+  function _drawCustomShapePad(canvas,strokes,liveStroke,style){
     const g=canvas.getContext('2d');
     g.clearRect(0,0,SHAPE_PAD_SIZE,SHAPE_PAD_SIZE);
     g.fillStyle='#F4F1EC';
     g.fillRect(0,0,SHAPE_PAD_SIZE,SHAPE_PAD_SIZE);
-    if(!points || points.length<2) return;
-    g.beginPath();
-    points.forEach(function(p,i){
-      const px=p.x*SHAPE_PAD_SIZE, py=p.y*SHAPE_PAD_SIZE;
-      if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
-    });
-    g.closePath();
     style=style||{};
+    const all=(strokes||[]).concat(liveStroke?[liveStroke]:[]);
+    if(!all.length) return;
+    g.beginPath();
+    let lastEnd=null;
+    all.forEach(function(s){
+      if(!s||!s.p0||!s.p1) return;
+      const x0=s.p0.x*SHAPE_PAD_SIZE, y0=s.p0.y*SHAPE_PAD_SIZE;
+      const x1=s.p1.x*SHAPE_PAD_SIZE, y1=s.p1.y*SHAPE_PAD_SIZE;
+      if(s.type==='circle'){
+        const ccx=(x0+x1)/2, ccy=(y0+y1)/2;
+        const crx=Math.max(Math.abs(x1-x0)/2,0.5), cry=Math.max(Math.abs(y1-y0)/2,0.5);
+        g.moveTo(ccx+crx,ccy);
+        g.ellipse(ccx,ccy,crx,cry,0,0,Math.PI*2);
+        lastEnd=null;
+      }else{
+        const connects=lastEnd && Math.hypot(x0-lastEnd.x,y0-lastEnd.y)<6;
+        if(!connects) g.moveTo(x0,y0);
+        g.lineTo(x1,y1);
+        lastEnd={x:x1,y:y1};
+      }
+    });
     g.globalAlpha=(typeof style.fillOpacity==='number')?style.fillOpacity:1;
-    g.fillStyle=style.fillColor||'#F0B429';
-    g.fill();
+    if(style.fillEnabled!==false){
+      g.fillStyle=style.fillColor||'#F0B429';
+      g.fill();
+    }
     g.globalAlpha=1;
     if(style.strokeWidth>0){
       g.lineWidth=Math.max(1,style.strokeWidth*(SHAPE_PAD_SIZE/240));
@@ -1338,38 +1360,71 @@ const CardDesigner=(function(){
 
     // Real Vector Shapes — "outline shapes, geometry shapes, free style
     // shapes." Fill/Outline colour+opacity+thickness, mirroring World
-    // Builder's own Graphics/Shape section field set, plus a freehand
-    // Draw pad for the 'custom' kind. Renders through
-    // renderer/slideRenderer.js's existing _layerDrawShape via
-    // _drawSceneShape — no new geometry here, only the authoring UI.
+    // Builder's own Graphics/Shape section field set, plus a multi-
+    // stroke Line/Circle Draw pad for the 'custom' kind. Renders through
+    // renderer/slideRenderer.js's existing _layerDrawShape/
+    // _drawCustomStrokeShape via _drawSceneShape — no new geometry here,
+    // only the authoring UI.
     const shapeGroup=document.createElement('div');
     shapeGroup.className='sticker-shape-group hidden';
 
-    [['Fill Colour','fillColor','sticker-shape-fill-color-input','Fill Opacity','sticker-shape-fill-opacity-value','sticker-shape-fill-opacity-slider','fillOpacity'],
-     ['Outline Colour','strokeColor','sticker-shape-stroke-color-input','Outline Opacity','sticker-shape-stroke-opacity-value','sticker-shape-stroke-opacity-slider','strokeOpacity']
-    ].forEach(function(t){
+    // "give option for just outline shape of colored shape" — a
+    // universal Fill Shape toggle (any Shape kind, not just custom).
+    // Off means _layerDrawShape/_drawCustomStrokeShape skip fill()
+    // entirely (renderer/slideRenderer.js's fillEnabled!==false gate) —
+    // genuinely outline-only, not merely a 0% fill-opacity trick. The
+    // Fill Colour/Opacity fields only matter while it's on, so they're
+    // wrapped in their own hideable group; Outline Colour/Opacity/
+    // Thickness stay always visible since the outline itself is never
+    // gated by this toggle.
+    const fillToggleRow=document.createElement('div');
+    shapeGroup.appendChild(fillToggleRow);
+    _buildToggleRow(fillToggleRow,'🎨 Fill Shape','sticker-shape-fill-toggle',function(checked){
+      _stickerUpdate({fillEnabled:checked});
+    });
+
+    const fillFieldsWrap=document.createElement('div');
+    fillFieldsWrap.className='sticker-shape-fill-fields';
+    (function(){
       const row=document.createElement('div');
       row.className='designer-row';
       const lbl=document.createElement('div');
       lbl.className='designer-row-label';
-      lbl.textContent=t[0];
+      lbl.textContent='Fill Colour';
       row.appendChild(lbl);
       const input=document.createElement('input');
       input.type='color';
-      input.className=t[2];
-      input.addEventListener('input',function(){
-        const upd={}; upd[t[1]]=input.value; _stickerUpdate(upd);
+      input.className='sticker-shape-fill-color-input';
+      input.addEventListener('input',function(){ _stickerUpdate({fillColor:input.value}); });
+      row.appendChild(input);
+      fillFieldsWrap.appendChild(row);
+      _makeSliderRow(fillFieldsWrap,{
+        labelText:'Fill Opacity',valueClass:'sticker-shape-fill-opacity-value',sliderClass:'sticker-shape-fill-opacity-slider',
+        min:0,max:1,step:0.01,
+        onInput:function(v){ _stickerUpdate({fillOpacity:Math.round(v*100)/100}); }
       });
+    })();
+    shapeGroup.appendChild(fillFieldsWrap);
+
+    (function(){
+      const row=document.createElement('div');
+      row.className='designer-row';
+      const lbl=document.createElement('div');
+      lbl.className='designer-row-label';
+      lbl.textContent='Outline Colour';
+      row.appendChild(lbl);
+      const input=document.createElement('input');
+      input.type='color';
+      input.className='sticker-shape-stroke-color-input';
+      input.addEventListener('input',function(){ _stickerUpdate({strokeColor:input.value}); });
       row.appendChild(input);
       shapeGroup.appendChild(row);
       _makeSliderRow(shapeGroup,{
-        labelText:t[3],valueClass:t[4],sliderClass:t[5],
+        labelText:'Outline Opacity',valueClass:'sticker-shape-stroke-opacity-value',sliderClass:'sticker-shape-stroke-opacity-slider',
         min:0,max:1,step:0.01,
-        onInput:function(v){
-          const upd={}; upd[t[6]]=Math.round(v*100)/100; _stickerUpdate(upd);
-        }
+        onInput:function(v){ _stickerUpdate({strokeOpacity:Math.round(v*100)/100}); }
       });
-    });
+    })();
 
     _makeSliderRow(shapeGroup,{
       labelText:'Outline Thickness',valueClass:'sticker-shape-stroke-width-value',sliderClass:'sticker-shape-stroke-width-slider',
@@ -1377,65 +1432,107 @@ const CardDesigner=(function(){
       onInput:function(v){ _stickerUpdate({strokeWidth:Math.round(v)}); }
     });
 
-    // Draw pad — only for shape:'custom' ("Draw Your Own"). Adapted from
-    // World Builder's own _shapeDrawPad (tools/world-builder-v2/js/
-    // worldBuilderApp.js) into this file's vanilla-DOM idiom: normalize
-    // each accepted point to a 0..1 fraction of the pad on release,
-    // write via the same generic _stickerUpdate({customPath}) every
-    // other Shape field already uses.
+    // Draw pad — only for shape:'custom' ("Draw Your Own"), upgraded
+    // from a single forced-closed freehand path into a real multi-
+    // stroke tool: "multi stroke. shapes stroke should be regular line
+    // or circular." A Tool picker (Line/Circle) decides what the NEXT
+    // drag commits; each completed drag appends one entry to
+    // customStrokes (never replaces it), so a shape can freely combine
+    // several straight edges and circles — draw a few connected Lines
+    // to trace a polygon, or a Circle for a round part, then keep going.
+    // Consecutive connected Line strokes chain into one real subpath
+    // (renderer/slideRenderer.js's _buildCustomStrokePath), so a closed
+    // loop of Lines fills correctly, not just strokes.
     const padWrap=document.createElement('div');
     padWrap.className='sticker-shape-custom-only hidden shape-draw-pad-wrap';
     const padHint=document.createElement('p');
     padHint.className='placeholder shape-draw-pad-hint';
-    padHint.textContent='Draw your own shape below.';
+    padHint.textContent='Pick a tool, then drag on the pad below. Draw as many lines or circles as you like.';
     padWrap.appendChild(padHint);
+
+    const toolRow=document.createElement('div');
+    toolRow.className='icon-row shape-draw-tool-row';
+    let drawTool='line';
+    const toolBtns={};
+    [['line','📏','Line'],['circle','⭕','Circle']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card shape-draw-tool-btn';
+      btn.setAttribute('data-tool',t[0]);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='shape-draw-tool-glyph'; g.textContent=t[1]; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[2]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        drawTool=t[0];
+        Object.keys(toolBtns).forEach(function(k){ toolBtns[k].classList.toggle('active',k===drawTool); });
+      });
+      toolBtns[t[0]]=btn;
+      toolRow.appendChild(btn);
+    });
+    toolBtns.line.classList.add('active');
+    padWrap.appendChild(toolRow);
+
     const padCanvas=document.createElement('canvas');
     padCanvas.width=SHAPE_PAD_SIZE; padCanvas.height=SHAPE_PAD_SIZE;
     padCanvas.className='shape-draw-pad-canvas';
     padWrap.appendChild(padCanvas);
+
+    const padActionsRow=document.createElement('div');
+    padActionsRow.className='shape-draw-pad-actions-row';
+    const padUndoBtn=document.createElement('button');
+    padUndoBtn.type='button';
+    padUndoBtn.className='text-small-btn shape-draw-pad-undo-btn';
+    padUndoBtn.textContent='↩ Undo Last';
+    padUndoBtn.addEventListener('click',function(){
+      const st=_activeSticker();
+      if(!st) return;
+      _stickerUpdate({customStrokes:(st.customStrokes||[]).slice(0,-1)});
+    });
+    padActionsRow.appendChild(padUndoBtn);
     const padClearBtn=document.createElement('button');
     padClearBtn.type='button';
     padClearBtn.className='text-small-btn shape-draw-pad-clear-btn';
     padClearBtn.textContent='↺ Clear';
     padClearBtn.addEventListener('click',function(){
-      _stickerUpdate({customPath:null});
-      _drawShapePad(padCanvas,null,null);
+      _stickerUpdate({customPath:null,customStrokes:[]});
     });
-    padWrap.appendChild(padClearBtn);
+    padActionsRow.appendChild(padClearBtn);
+    padWrap.appendChild(padActionsRow);
     shapeGroup.appendChild(padWrap);
 
-    let padDrawing=false, padLive=[];
+    let padDrawing=false, padLiveStroke=null;
     function _padStyleFromActive(){
       const st=_activeSticker();
-      return st?{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth}:null;
+      return st?{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth,fillEnabled:st.fillEnabled}:null;
     }
     function _padPointFromEvent(e){
       const r=padCanvas.getBoundingClientRect();
-      return {x:(e.clientX-r.left)*(SHAPE_PAD_SIZE/r.width), y:(e.clientY-r.top)*(SHAPE_PAD_SIZE/r.height)};
+      const x=(e.clientX-r.left)*(SHAPE_PAD_SIZE/r.width), y=(e.clientY-r.top)*(SHAPE_PAD_SIZE/r.height);
+      return {x:x/SHAPE_PAD_SIZE, y:y/SHAPE_PAD_SIZE};
     }
     padCanvas.addEventListener('pointerdown',function(e){
       padDrawing=true;
-      padLive=[_padPointFromEvent(e)];
+      const p=_padPointFromEvent(e);
+      padLiveStroke={type:drawTool,p0:p,p1:p};
       try{ padCanvas.setPointerCapture(e.pointerId); }catch(err){}
     });
     padCanvas.addEventListener('pointermove',function(e){
-      if(!padDrawing) return;
-      const p=_padPointFromEvent(e);
-      const last=padLive[padLive.length-1];
-      if(!last || Math.hypot(p.x-last.x,p.y-last.y)>3){
-        padLive.push(p);
-        const norm=padLive.map(function(pt){ return {x:pt.x/SHAPE_PAD_SIZE,y:pt.y/SHAPE_PAD_SIZE}; });
-        _drawShapePad(padCanvas,norm,_padStyleFromActive());
-      }
+      if(!padDrawing||!padLiveStroke) return;
+      padLiveStroke.p1=_padPointFromEvent(e);
+      const st=_activeSticker();
+      _drawCustomShapePad(padCanvas,(st&&st.customStrokes)||[],padLiveStroke,_padStyleFromActive());
     });
     padCanvas.addEventListener('pointerup',function(){
-      if(!padDrawing) return;
+      if(!padDrawing||!padLiveStroke) return;
       padDrawing=false;
-      if(padLive.length>=3){
-        const norm=padLive.map(function(pt){ return {x:pt.x/SHAPE_PAD_SIZE,y:pt.y/SHAPE_PAD_SIZE}; });
-        _stickerUpdate({customPath:norm});
+      const dx=padLiveStroke.p1.x-padLiveStroke.p0.x, dy=padLiveStroke.p1.y-padLiveStroke.p0.y;
+      if(Math.hypot(dx,dy)>0.01){
+        const st=_activeSticker();
+        const strokes=((st&&st.customStrokes)||[]).concat([padLiveStroke]);
+        _stickerUpdate({customStrokes:strokes});
       }
-      padLive=[];
+      padLiveStroke=null;
     });
 
     editor.appendChild(shapeGroup);
@@ -1583,20 +1680,32 @@ const CardDesigner=(function(){
     const doodleGroup=document.createElement('div');
     doodleGroup.className='sticker-doodle-group hidden';
 
+    // Reorganised per direct product feedback: "the drawing area can be
+    // the first thing. the color selector can be just [swatches]." The
+    // pad is now the panel's own first element — the primary, largest
+    // control — with a short hint above it; the pen tools (swatches
+    // only, no separate custom colour picker — a compact "sketch"
+    // palette, not a full colour-input control; thickness tiles) sit
+    // together right underneath it as secondary, compact controls;
+    // Undo/Clear stay last, closest to the actions row below them.
     const doodleHint=document.createElement('p');
     doodleHint.className='placeholder doodle-pad-hint';
-    doodleHint.textContent='Draw with your mouse or finger. Lift to start a new line — draw as many as you like, in as many colours as you like.';
+    doodleHint.textContent='Draw below with your mouse or finger. Lift to start a new line.';
     doodleGroup.appendChild(doodleHint);
 
     let doodlePenColor=DOODLE_PALETTE[0];
     let doodlePenWidth=6;
 
-    const penColorRow=document.createElement('div');
-    penColorRow.className='designer-row';
-    const penColorLbl=document.createElement('div');
-    penColorLbl.className='designer-row-label';
-    penColorLbl.textContent='Pen Colour';
-    penColorRow.appendChild(penColorLbl);
+    const doodlePadWrap=document.createElement('div');
+    doodlePadWrap.className='doodle-pad-wrap';
+    const doodleCanvas=document.createElement('canvas');
+    doodleCanvas.width=DOODLE_PAD_SIZE; doodleCanvas.height=DOODLE_PAD_SIZE;
+    doodleCanvas.className='doodle-pad-canvas';
+    doodlePadWrap.appendChild(doodleCanvas);
+    doodleGroup.appendChild(doodlePadWrap);
+
+    const penToolsRow=document.createElement('div');
+    penToolsRow.className='doodle-pen-tools-row';
     const penSwatchRow=document.createElement('div');
     penSwatchRow.className='doodle-pen-swatch-row';
     DOODLE_PALETTE.forEach(function(c){
@@ -1607,39 +1716,25 @@ const CardDesigner=(function(){
       sw.addEventListener('click',function(){ doodlePenColor=c; _syncDoodlePenUI(); });
       penSwatchRow.appendChild(sw);
     });
-    penColorRow.appendChild(penSwatchRow);
-    const penColorInput=document.createElement('input');
-    penColorInput.type='color';
-    penColorInput.className='doodle-pen-color-input';
-    penColorInput.addEventListener('input',function(){ doodlePenColor=penColorInput.value; _syncDoodlePenUI(); });
-    penColorRow.appendChild(penColorInput);
-    doodleGroup.appendChild(penColorRow);
+    penToolsRow.appendChild(penSwatchRow);
 
-    const penThicknessRow=document.createElement('div');
-    penThicknessRow.className='designer-row';
-    const penThicknessLbl=document.createElement('div');
-    penThicknessLbl.className='designer-row-label';
-    penThicknessLbl.textContent='Pen Thickness';
-    penThicknessRow.appendChild(penThicknessLbl);
     const penThicknessIcons=document.createElement('div');
-    penThicknessIcons.className='icon-row doodle-pen-thickness-row';
-    [['thin',3,'Thin'],['medium',6,'Medium'],['thick',12,'Thick']].forEach(function(t){
+    penThicknessIcons.className='doodle-pen-thickness-row';
+    [['thin',3,'Thin'],['medium',6,'Med'],['thick',12,'Thick']].forEach(function(t){
       const btn=document.createElement('button');
       btn.type='button';
-      btn.className='icon-card doodle-pen-thickness-btn';
+      btn.className='doodle-pen-thickness-btn';
       btn.setAttribute('data-thickness',t[0]);
-      const pv=document.createElement('span'); pv.className='icon-preview';
-      const dot=document.createElement('span'); dot.className='doodle-pen-thickness-dot'; dot.style.width=(t[1]*1.6)+'px'; dot.style.height=(t[1]*1.6)+'px'; pv.appendChild(dot);
-      btn.appendChild(pv);
-      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[2]; btn.appendChild(lbl);
+      btn.title=t[2];
+      const dot=document.createElement('span'); dot.className='doodle-pen-thickness-dot'; dot.style.width=(t[1]*1.6)+'px'; dot.style.height=(t[1]*1.6)+'px';
+      btn.appendChild(dot);
       btn.addEventListener('click',function(){ doodlePenWidth=t[1]; _syncDoodlePenUI(); });
       penThicknessIcons.appendChild(btn);
     });
-    penThicknessRow.appendChild(penThicknessIcons);
-    doodleGroup.appendChild(penThicknessRow);
+    penToolsRow.appendChild(penThicknessIcons);
+    doodleGroup.appendChild(penToolsRow);
 
     function _syncDoodlePenUI(){
-      penColorInput.value=doodlePenColor;
       Array.prototype.forEach.call(penSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el,i){
         el.classList.toggle('active',DOODLE_PALETTE[i]===doodlePenColor);
       });
@@ -1649,14 +1744,6 @@ const CardDesigner=(function(){
       });
     }
     _syncDoodlePenUI();
-
-    const doodlePadWrap=document.createElement('div');
-    doodlePadWrap.className='doodle-pad-wrap';
-    const doodleCanvas=document.createElement('canvas');
-    doodleCanvas.width=DOODLE_PAD_SIZE; doodleCanvas.height=DOODLE_PAD_SIZE;
-    doodleCanvas.className='doodle-pad-canvas';
-    doodlePadWrap.appendChild(doodleCanvas);
-    doodleGroup.appendChild(doodlePadWrap);
 
     const doodleActionsRow=document.createElement('div');
     doodleActionsRow.className='doodle-pad-actions-row';
@@ -1844,6 +1931,11 @@ const CardDesigner=(function(){
     }
 
     if(isShapeKind){
+      const fillEnabled=st.fillEnabled!==false;
+      const fillToggleInput=section.querySelector('.sticker-shape-fill-toggle');
+      if(fillToggleInput) fillToggleInput.checked=fillEnabled;
+      const fillFieldsWrapEl=section.querySelector('.sticker-shape-fill-fields');
+      if(fillFieldsWrapEl) fillFieldsWrapEl.classList.toggle('hidden',!fillEnabled);
       const fillColorInput=section.querySelector('.sticker-shape-fill-color-input');
       if(fillColorInput) fillColorInput.value=st.fillColor||'#F0B429';
       const fillOpSlider=section.querySelector('.sticker-shape-fill-opacity-slider');
@@ -1870,7 +1962,7 @@ const CardDesigner=(function(){
       if(isCustom){
         const padCanvasEl=section.querySelector('.shape-draw-pad-canvas');
         if(padCanvasEl){
-          _drawShapePad(padCanvasEl,st.customPath,{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth});
+          _drawCustomShapePad(padCanvasEl,st.customStrokes||[],null,{fillColor:st.fillColor,fillOpacity:st.fillOpacity,strokeColor:st.strokeColor,strokeWidth:st.strokeWidth,fillEnabled:st.fillEnabled});
         }
       }
     }

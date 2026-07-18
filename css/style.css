@@ -3177,9 +3177,13 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 .sticker-doodle-group.hidden,
 .sticker-glyph-only.hidden,
 .sticker-hide-for-text.hidden,
+.sticker-shape-fill-fields.hidden,
 .shape-draw-pad-wrap.hidden{ display:none; }
+.sticker-shape-fill-fields{ margin-bottom:2px; }
 .shape-draw-pad-wrap{ margin-top:10px; text-align:center; }
 .shape-draw-pad-hint{ margin:0 0 8px; }
+.shape-draw-tool-row{ justify-content:center; margin-bottom:8px; }
+.shape-draw-tool-glyph{ font-size:16px; line-height:1; }
 .shape-draw-pad-canvas{
   width:100%;
   max-width:180px;
@@ -3189,7 +3193,12 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   cursor:crosshair;
   touch-action:none;
 }
-.shape-draw-pad-clear-btn{ margin-top:8px; }
+.shape-draw-pad-actions-row{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  margin-top:8px;
+}
 .sticker-text-words-input{
   width:100%;
   min-height:60px;
@@ -3206,40 +3215,13 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
 /* Doodle — a real multi-stroke freehand pad, evolved directly out of
    the Shape system's own "Draw Your Own" custom-path pad after direct
    product feedback that a single forced-closed, forced-filled path
-   can't draw an irregular line drawing. */
-.doodle-pad-hint{ margin:0 0 10px; }
-.doodle-pen-swatch-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-  flex:1;
-}
-.doodle-pen-swatch{
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  border:2px solid var(--line);
-  cursor:pointer;
-  padding:0;
-}
-.doodle-pen-swatch.active{
-  border-color:var(--gold, #C9A24A);
-  box-shadow:0 0 0 2px var(--panel), 0 0 0 3px var(--gold, #C9A24A);
-}
-.doodle-pen-color-input{
-  width:32px;
-  height:32px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  padding:0;
-  background:none;
-  cursor:pointer;
-}
-.doodle-pen-thickness-dot{
-  border-radius:50%;
-  background:#24406B;
-}
-.doodle-pad-wrap{ margin-top:12px; text-align:center; }
+   can't draw an irregular line drawing. Reorganised per direct product
+   feedback: "the drawing area can be the first thing. the color
+   selector can be just [swatches]" — the pad is the group's own first,
+   largest element; pen tools are a single compact row of small swatch
+   dots + thickness dots beneath it, no separate custom colour picker. */
+.doodle-pad-hint{ margin:0 0 8px; }
+.doodle-pad-wrap{ text-align:center; }
 .doodle-pad-canvas{
   width:100%;
   max-width:260px;
@@ -3249,6 +3231,56 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   cursor:crosshair;
   touch-action:none;
   background:#FFFFFF;
+}
+.doodle-pen-tools-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-top:10px;
+}
+.doodle-pen-swatch-row{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:6px;
+}
+.doodle-pen-swatch{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  border:2px solid var(--line);
+  cursor:pointer;
+  padding:0;
+}
+.doodle-pen-swatch.active{
+  border-color:var(--gold, #C9A24A);
+  box-shadow:0 0 0 2px var(--panel), 0 0 0 3px var(--gold, #C9A24A);
+}
+.doodle-pen-thickness-row{
+  display:flex;
+  gap:6px;
+}
+.doodle-pen-thickness-btn{
+  width:28px;
+  height:28px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+}
+.doodle-pen-thickness-btn.active{
+  border-color:var(--gold, #C9A24A);
+  background:color-mix(in srgb, var(--gold, #C9A24A) 18%, var(--panel));
+}
+.doodle-pen-thickness-dot{
+  border-radius:50%;
+  background:#24406B;
 }
 .doodle-pad-actions-row{
   display:flex;

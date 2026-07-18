@@ -1749,12 +1749,81 @@ const SlideRenderer=(()=>{
     const baseAlpha=x.globalAlpha;
     const fillA=(typeof d.fillOpacity==='number')?Math.max(0,Math.min(1,d.fillOpacity)):1;
     const strokeA=(typeof d.strokeOpacity==='number')?Math.max(0,Math.min(1,d.strokeOpacity)):1;
-    x.fillStyle=d.fillColor||'#F0B429';
-    x.globalAlpha=baseAlpha*fillA;
-    x.fill();
+    // fillEnabled — "give option for just outline shape of colored
+    // shape." Optional, defaults to true (undefined!==false) so every
+    // caller that predates this stays byte-identical — only a Story
+    // Author's explicit "Outline Only" toggle ever sets it false.
+    if(d.fillEnabled!==false){
+      x.fillStyle=d.fillColor||'#F0B429';
+      x.globalAlpha=baseAlpha*fillA;
+      x.fill();
+    }
     if(d.strokeWidth>0){
       x.lineWidth=d.strokeWidth;
       x.strokeStyle=d.strokeColor||'#24406B';
+      x.globalAlpha=baseAlpha*strokeA;
+      x.stroke();
+    }
+    x.restore();
+  }
+
+  // Multi-stroke "Draw Your Own" — direct product feedback that the
+  // old single-freehand-path version ("just filling shape") should
+  // become a genuine drawing tool: several independent strokes, each
+  // either a straight Line or a Circle (not raw freehand tracing, which
+  // Doodle already covers), composed into one shape that can render as
+  // Outline Only or a filled Colour Shape. st.customStrokes is an array
+  // of {type:'line'|'circle', p0:{x,y}, p1:{x,y}} — p0/p1 are 0..1
+  // fractional within the shape's own w/h box. Consecutive Line strokes
+  // whose endpoints touch chain into one continuous subpath (so drawing
+  // 3-4 connected lines produces a real closed, fillable polygon);
+  // a Circle stroke is always its own separate closed subpath (an
+  // ellipse inscribed in the p0/p1 drag rectangle). Deliberately a
+  // separate function from _layerDrawShape (kept untouched, still the
+  // single-freehand-path path for any legacy customPath and for every
+  // World-owned Layer Pack decoration) — reused identically by
+  // _drawSceneShape and drawObjectThumbnail so Working canvas and
+  // Object Strip can never disagree.
+  function _buildCustomStrokePath(strokes,rect){
+    let lastEnd=null;
+    (strokes||[]).forEach(function(s){
+      if(!s||!s.p0||!s.p1) return;
+      const x0=rect.x+s.p0.x*rect.w, y0=rect.y+s.p0.y*rect.h;
+      const x1=rect.x+s.p1.x*rect.w, y1=rect.y+s.p1.y*rect.h;
+      if(s.type==='circle'){
+        const ccx=(x0+x1)/2, ccy=(y0+y1)/2;
+        const crx=Math.max(Math.abs(x1-x0)/2,0.5), cry=Math.max(Math.abs(y1-y0)/2,0.5);
+        x.moveTo(ccx+crx,ccy);
+        x.ellipse(ccx,ccy,crx,cry,0,0,Math.PI*2);
+        lastEnd=null;
+      }else{
+        const connects=lastEnd && Math.hypot(x0-lastEnd.x,y0-lastEnd.y)<6;
+        if(!connects) x.moveTo(x0,y0);
+        x.lineTo(x1,y1);
+        lastEnd={x:x1,y:y1};
+      }
+    });
+  }
+  function _drawCustomStrokeShape(rect,strokes,style){
+    style=style||{};
+    const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+    x.save();
+    x.globalAlpha=(typeof style.alpha==='number')?Math.max(0,Math.min(1,style.alpha)):1;
+    const rotation=(typeof style.rotation==='number')?style.rotation:0;
+    if(rotation){ x.translate(cx,cy); x.rotate(rotation*Math.PI/180); x.translate(-cx,-cy); }
+    x.beginPath();
+    _buildCustomStrokePath(strokes,rect);
+    const baseAlpha=x.globalAlpha;
+    const fillA=(typeof style.fillOpacity==='number')?Math.max(0,Math.min(1,style.fillOpacity)):1;
+    const strokeA=(typeof style.strokeOpacity==='number')?Math.max(0,Math.min(1,style.strokeOpacity)):1;
+    if(style.fillEnabled!==false){
+      x.fillStyle=style.fillColor||'#F0B429';
+      x.globalAlpha=baseAlpha*fillA;
+      x.fill();
+    }
+    if(style.strokeWidth>0){
+      x.lineWidth=style.strokeWidth;
+      x.strokeStyle=style.strokeColor||'#24406B';
       x.globalAlpha=baseAlpha*strokeA;
       x.stroke();
     }
@@ -2995,6 +3064,17 @@ const SlideRenderer=(()=>{
     const h=typeof st.h==='number'?st.h:240;
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const rect={x:cx-w/2,y:cy-h/2,w:w,h:h};
+    if(st.shape==='custom' && Array.isArray(st.customStrokes) && st.customStrokes.length){
+      _drawCustomStrokeShape(rect,st.customStrokes,{
+        fillColor:st.fillColor, fillOpacity:st.fillOpacity,
+        strokeColor:st.strokeColor, strokeOpacity:st.strokeOpacity, strokeWidth:st.strokeWidth,
+        fillEnabled:st.fillEnabled,
+        rotation:typeof st.rotation==='number'?st.rotation:0,
+        alpha:typeof st.opacity==='number'?Math.max(0,Math.min(1,st.opacity)):1
+      });
+      return;
+    }
     _layerDrawShape({
       shape:st.shape||'circle',
       fillColor:st.fillColor,
@@ -3002,10 +3082,11 @@ const SlideRenderer=(()=>{
       strokeWidth:st.strokeWidth,
       fillOpacity:st.fillOpacity,
       strokeOpacity:st.strokeOpacity,
+      fillEnabled:st.fillEnabled,
       rotation:typeof st.rotation==='number'?st.rotation:0,
       alpha:typeof st.opacity==='number'?Math.max(0,Math.min(1,st.opacity)):1,
       customPath:st.customPath
-    },{x:cx-w/2,y:cy-h/2,w:w,h:h});
+    },rect);
   }
   function _shapeBbox(st){
     const w=typeof st.w==='number'?st.w:240;
@@ -3023,9 +3104,9 @@ const SlideRenderer=(()=>{
       visual:{
         kind:'shape', shape:st.shape,
         fillColor:st.fillColor, strokeColor:st.strokeColor, strokeWidth:st.strokeWidth,
-        fillOpacity:st.fillOpacity, strokeOpacity:st.strokeOpacity,
+        fillOpacity:st.fillOpacity, strokeOpacity:st.strokeOpacity, fillEnabled:st.fillEnabled,
         rotation:typeof st.rotation==='number'?st.rotation:0,
-        customPath:st.customPath
+        customPath:st.customPath, customStrokes:st.customStrokes
       }
     };
   }
@@ -4065,14 +4146,23 @@ const SlideRenderer=(()=>{
     x=targetCtx;
     try{
       if(visual.kind==='shape'){
-        _layerDrawShape({
-          shape:visual.shape,
-          fillColor:visual.fillColor,
-          strokeColor:visual.strokeColor,
-          strokeWidth:visual.strokeWidth,
-          rotation:visual.rotation,
-          customPath:visual.customPath
-        },{x:0,y:0,w:size,h:size});
+        if(visual.shape==='custom' && Array.isArray(visual.customStrokes) && visual.customStrokes.length){
+          _drawCustomStrokeShape({x:0,y:0,w:size,h:size},visual.customStrokes,{
+            fillColor:visual.fillColor, fillOpacity:visual.fillOpacity,
+            strokeColor:visual.strokeColor, strokeOpacity:visual.strokeOpacity, strokeWidth:visual.strokeWidth,
+            fillEnabled:visual.fillEnabled, rotation:visual.rotation, alpha:1
+          });
+        }else{
+          _layerDrawShape({
+            shape:visual.shape,
+            fillColor:visual.fillColor,
+            strokeColor:visual.strokeColor,
+            strokeWidth:visual.strokeWidth,
+            fillEnabled:visual.fillEnabled,
+            rotation:visual.rotation,
+            customPath:visual.customPath
+          },{x:0,y:0,w:size,h:size});
+        }
       }else{
         // Doodle — reuse the exact same stroke renderer the live canvas
         // paints with, so an Object Strip thumbnail is never a second
