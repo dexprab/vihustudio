@@ -630,17 +630,58 @@ button:active{
 .object-strip-legend-title{ font-weight:600; }
 .object-strip-legend-key{ display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
 .object-strip-legend-dot{ font-size:11px; }
+/* "this scroll can be better" — replaces the plain native overflow
+   scrollbar (a boxy, arrow-capped OS scrollbar on some platforms,
+   nothing like the rest of this app's rounded warm design language)
+   with round arrow buttons + a soft edge fade; the scroll itself is
+   still real native touch/trackpad/click-drag scrolling underneath,
+   just without its own default chrome showing. */
+.object-strip-scroll-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.object-strip-scroll-wrap{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  -webkit-mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+  mask-image:linear-gradient(to right, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+}
+.object-strip-arrow{
+  flex-shrink:0;
+  width:28px !important;
+  height:28px !important;
+  min-width:28px;
+  margin:0 !important;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--panel,var(--bg));
+  color:var(--text);
+  font-size:17px;
+  line-height:1;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0 !important;
+}
+.object-strip-arrow:hover:not(:disabled){ border-color:var(--gold); background:rgba(255,203,69,0.14); }
+.object-strip-arrow:disabled{ opacity:0.28; cursor:default; }
 .object-strip-list{
   display:flex;
   align-items:flex-start;
   gap:10px;
   padding:0 4px 4px;
-  margin:0 auto;
   overflow-x:auto;
   overflow-y:visible;
-  width:max-content;
-  max-width:100%;
+  scroll-behavior:smooth;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
 }
+.object-strip-list::-webkit-scrollbar{ display:none; height:0; width:0; }
 /* width/margin-bottom/height need !important: .object-card is a <button>,
    and the global button:not(...){width:100%;margin-bottom:12px} reset
    (css/style.css ~line 320) out-specifies a plain class selector — the
@@ -658,6 +699,7 @@ button:active{
   border:1px solid transparent;
   background:var(--bg);
   cursor:pointer;
+  scroll-snap-align:start;
   transition:border-color 0.15s, background 0.15s, transform 0.1s;
 }
 .object-card:hover{ border-color:var(--gold); transform:translateY(-1px); }

@@ -148,7 +148,17 @@
 <span class='object-strip-legend-key'><span class='object-strip-legend-dot'>🟢</span> You can edit</span>
 <span class='object-strip-legend-key'><span class='object-strip-legend-dot'>🔒</span> Part of the world</span>
 </div>
+<!-- "this scroll can be better" — the native OS scrollbar this row
+     used to rely on is hidden now (css/style.css); arrow buttons +
+     an edge fade replace it, matching the app's own rounded-button
+     visual language instead of the browser default. -->
+<div class='object-strip-scroll-row'>
+<button type='button' id='objectStripPrev' class='object-strip-arrow object-strip-arrow-prev' aria-label='Scroll left'>‹</button>
+<div class='object-strip-scroll-wrap'>
 <div id='objectStripList' class='object-strip-list'></div>
+</div>
+<button type='button' id='objectStripNext' class='object-strip-arrow object-strip-arrow-next' aria-label='Scroll right'>›</button>
+</div>
 </div>
 <!-- Legacy read-only page-thumbnail mirror — superseded by the sidebar
      Page Strip; kept in the DOM (renderTimeline() call sites are

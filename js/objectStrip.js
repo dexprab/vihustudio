@@ -42,7 +42,41 @@ const ObjectStrip=(function(){
   function init(){
     listRoot=document.getElementById('objectStripList');
     if(!listRoot) return;
+    _wireScrollArrows();
     refresh();
+  }
+
+  // "this scroll can be better" — round arrow buttons flanking the
+  // strip (css/style.css's .object-strip-arrow) replace the plain
+  // native scrollbar the row used to show; the scroll itself is still
+  // real native overflow scrolling underneath (touch/trackpad/click-
+  // drag all still work), the buttons just give click-to-page
+  // navigation and disable themselves at each end, mirroring the
+  // Screen 2 carousel's own arrow-disabled-state convention.
+  let _updateScrollArrows=null;
+  function _wireScrollArrows(){
+    const prevBtn=document.getElementById('objectStripPrev');
+    const nextBtn=document.getElementById('objectStripNext');
+    if(!prevBtn || !nextBtn || !listRoot) return;
+    function scrollByPage(dir){
+      const amount=Math.max(160,listRoot.clientWidth*0.8)*dir;
+      listRoot.scrollBy({left:amount,behavior:'smooth'});
+    }
+    prevBtn.addEventListener('click',function(){ scrollByPage(-1); });
+    nextBtn.addEventListener('click',function(){ scrollByPage(1); });
+    function update(){
+      // A small tolerance (not <=1) absorbs sub-pixel rounding from
+      // scroll-snap-type:x proximity settling near, but not exactly on,
+      // the true start/end — without it, "already at the start" could
+      // read as a few px off and leave Prev wrongly enabled.
+      const TOL=8;
+      const maxScroll=listRoot.scrollWidth-listRoot.clientWidth;
+      prevBtn.disabled=listRoot.scrollLeft<=TOL;
+      nextBtn.disabled=maxScroll<=TOL || listRoot.scrollLeft>=maxScroll-TOL;
+    }
+    listRoot.addEventListener('scroll',update);
+    _updateScrollArrows=update;
+    update();
   }
 
   // ---------- Friendly vocabulary — the one closed translation table.
@@ -423,9 +457,11 @@ const ObjectStrip=(function(){
 
     if(!cards.length){
       listRoot.appendChild(_el('div','object-strip-empty','Nothing on this page yet.'));
+      if(_updateScrollArrows) _updateScrollArrows();
       return;
     }
     cards.forEach(function(c){ listRoot.appendChild(c); });
+    if(_updateScrollArrows) _updateScrollArrows();
   }
 
   return { configure:configure, init:init, refresh:refresh };
