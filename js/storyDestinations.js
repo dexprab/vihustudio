@@ -113,7 +113,7 @@ const StoryDestinations=(function(){
   ];
   const BOOK={
     id:'book',
-    label:'Story Book',
+    label:'Story Adventure',
     glyph:'📖',
     tagline:'Read, save or print your story.',
     formats:BOOK_FORMATS,
@@ -146,7 +146,7 @@ const StoryDestinations=(function(){
         blob: blob,
         mime: 'application/pdf',
         filename: _sanitise(_bookTitle())+suffix+'.pdf',
-        celebrateLabel: 'Get My Book',
+        celebrateLabel: 'Get My Adventure',
         celebrateGlyph: '📥'
       };
     }

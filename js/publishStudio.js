@@ -145,7 +145,7 @@ const PublishStudio=(function(){
     _readPublishBtn=document.createElement('button');
     _readPublishBtn.type='button';
     _readPublishBtn.className='publish-read-publish';
-    _readPublishBtn.innerHTML='<span class="publish-read-publish-glyph">📖</span><span class="publish-read-publish-label">Publish My Book</span>';
+    _readPublishBtn.innerHTML='<span class="publish-read-publish-glyph">📖</span><span class="publish-read-publish-label">Publish My Adventure</span>';
     _readPublishBtn.addEventListener('click',function(){ _setStage(STAGES.ALMOST_READY); });
     center.appendChild(_readPublishBtn);
 
@@ -359,7 +359,7 @@ const PublishStudio=(function(){
 
     if(nudges.length===0){
       if(_almostBadge) _almostBadge.textContent='🎉';
-      _almostHeadline.textContent='Your book looks ready!';
+      _almostHeadline.textContent='Your adventure looks ready!';
       _almostMessage.textContent='';
       _almostCoverHost.classList.remove('hidden');
       _almostNudgeList.classList.add('hidden');
@@ -367,7 +367,7 @@ const PublishStudio=(function(){
     }else{
       if(_almostBadge) _almostBadge.textContent='💡';
       _almostHeadline.textContent='A few helpful tips';
-      _almostMessage.textContent='Have a quick look — or publish your book anyway when you’re ready.';
+      _almostMessage.textContent='Have a quick look — or publish your adventure anyway when you’re ready.';
       _almostCoverHost.classList.add('hidden');
       _almostNudgeList.classList.remove('hidden');
       _renderAlmostNudges(nudges);
@@ -848,7 +848,7 @@ const PublishStudio=(function(){
     // line resolved in _enterCelebration().
     const message=document.createElement('div');
     message.className='publish-celebration-message publish-celebration-message-generic';
-    message.textContent='Your story is now a real book!';
+    message.textContent='Your story is now a real adventure!';
     center.appendChild(message);
 
     // 3D-tilted cover.
@@ -876,7 +876,7 @@ const PublishStudio=(function(){
     _celebDownloadBtn=document.createElement('button');
     _celebDownloadBtn.type='button';
     _celebDownloadBtn.className='publish-celebration-download';
-    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">📥</span><span>Get My Book</span>';
+    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">📥</span><span>Get My Adventure</span>';
     _celebDownloadBtn.addEventListener('click',function(){
       const ok=_downloadPublished();
       if(ok){
@@ -888,7 +888,7 @@ const PublishStudio=(function(){
 
     _celebReadyMsg=document.createElement('div');
     _celebReadyMsg.className='publish-celebration-ready hidden';
-    _celebReadyMsg.innerHTML='<span>✓</span> Your book is ready. Download again any time.';
+    _celebReadyMsg.innerHTML='<span>✓</span> Your adventure is ready. Download again any time.';
     center.appendChild(_celebReadyMsg);
 
     // Secondary actions.
@@ -919,7 +919,7 @@ const PublishStudio=(function(){
     _celebDownloadBtn.classList.remove('is-given');
 
     // Sprint 9.0.3 — destination-aware Celebration copy. Story Book →
-    // "Get My Book". Story Carousel → "Download Images" (or
+    // "Get My Adventure". Story Carousel → "Download Images" (or
     // "Download Image" for single-page). The blob + filename came
     // through _publishOutputMeta; the label + glyph are the same
     // metadata the destination emitted from `finish()`.
@@ -937,7 +937,7 @@ const PublishStudio=(function(){
       if(dest && dest.id==='carousel'){
         msgEl.textContent='Your story is now a shareable carousel!';
       }else if(dest && dest.id==='book'){
-        msgEl.textContent='Your story is now a real book!';
+        msgEl.textContent='Your story is now a real adventure!';
       }else{
         msgEl.textContent='Your story is ready!';
       }
@@ -946,7 +946,7 @@ const PublishStudio=(function(){
     const readyGlyph='<span>✓</span> ';
     const readyMsg=(dest && dest.id==='carousel')
       ? readyGlyph+'Your images are ready. Download again any time.'
-      : readyGlyph+'Your book is ready. Download again any time.';
+      : readyGlyph+'Your adventure is ready. Download again any time.';
     _celebReadyMsg.innerHTML=readyMsg;
 
     // Spawn confetti — DOM nodes with CSS keyframes. ~60 particles is
@@ -993,7 +993,7 @@ const PublishStudio=(function(){
 
   function _makeAnotherStory(){
     // Confirmation — never lose progress without a clear yes.
-    const ok=window.confirm('Start a brand-new story? Your current book is already published — this will give you a fresh page to begin.');
+    const ok=window.confirm('Start a brand-new story? Your current adventure is already published — this will give you a fresh page to begin.');
     if(!ok) return;
     // Reset the project to a clean slate.
     try{
