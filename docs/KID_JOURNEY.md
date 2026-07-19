@@ -61,7 +61,7 @@ is a real, tap-to-open popover (not a hover-only tooltip, which never fires
 on a touch device) with a one-line orientation. Two option cards — grouped
 under one "Already have something?" heading, each with its own icon circle
 and accent tint — sit at the bottom for a **returning** Visitor or Creator on
-a **new device** with nothing local yet: "Have a Card? Redeem it here" (a
+a **new device** with nothing local yet: "Have a Vihu Card? Redeem it here" (a
 Vihu Card — someone shared a World with them) and "My Magic Card? Tap to
 come home" (their own identity/projects, recalled from the cloud). Both are
 covered in §9.
@@ -312,7 +312,7 @@ Two quiet, collapsed entry points on Screen 1 (visible in the Stage 1
 screenshot above) exist specifically for a **fresh device with nothing local
 yet** — the actual "second device" case neither role's screens above cover:
 
-- **"🔮 Have a Card? Redeem it here"** — a Vihu Card someone shared: tap the
+- **"🔮 Have a Vihu Card? Redeem it here"** — a Vihu Card someone shared: tap the
   same star pattern printed on that physical/shared card to unlock its World
   in this device's World Library. Nothing to do with identity.
 - **"✨ My Magic Card? Tap to come home"** — a Creator's *own*

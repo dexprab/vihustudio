@@ -155,7 +155,7 @@ the existing World Library row (`js/creationFlow.js`'s
 `_buildCardRedeemWidget()`, inserted right after the World Library
 `_sourceGroup()` call).
 
-- `🔮 Have a Card? Redeem it here` toggles open a real, numbered 10×10
+- `🔮 Have a Vihu Card? Redeem it here` toggles open a real, numbered 10×10
   tap grid (ported near-verbatim from the validated wireframe's own
   `buildLabeledGrid`/`centerOfCell` mechanics): tap a star to place it,
   tap it again to undo, a live connecting line redraws after every

@@ -1072,7 +1072,7 @@ const CreationFlow=(function(){
   }
 
   function _buildCardRedeemPanel(panel){
-    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your card, in order — a line connects them as you go. Tap a star again to undo it.'));
+    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your Vihu Card, in order — a line connects them as you go. Tap a star again to undo it.'));
 
     const board=_el('div','creation-flow-card-board');
     panel.appendChild(board);
@@ -1133,7 +1133,7 @@ const CreationFlow=(function(){
       });
     });
 
-    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type the magic word instead? ⌄');
+    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type the card code instead? ⌄');
     codeToggle.type='button';
     const codeFallback=_el('div','creation-flow-card-code-fallback hidden');
     const codeInput=document.createElement('input');
@@ -1150,13 +1150,13 @@ const CreationFlow=(function(){
     codeToggle.addEventListener('click',function(){
       const opening=codeFallback.classList.contains('hidden');
       codeFallback.classList.toggle('hidden',!opening);
-      codeToggle.textContent='Prefer to type the magic word instead? '+(opening?'⌃':'⌄');
+      codeToggle.textContent='Prefer to type the card code instead? '+(opening?'⌃':'⌄');
     });
 
     function submitCode(){
       const val=codeInput.value.trim();
       if(!val){
-        status.textContent='Enter the magic word and card number first.';
+        status.textContent='Enter your Vihu Card code first.';
         status.className='creation-flow-card-status err';
         return;
       }
@@ -1191,7 +1191,7 @@ const CreationFlow=(function(){
 
   function _buildCardRedeemWidget(){
     const wrap=_el('div','creation-flow-option-card');
-    const built_=_buildOptionToggle('creation-flow-option-accent-violet','🔮','Have a Card? Redeem it here');
+    const built_=_buildOptionToggle('creation-flow-option-accent-violet','🔮','Have a Vihu Card? Redeem it here');
     const toggle=built_.toggle, chevron=built_.chevron;
     const panel=_el('div','creation-flow-card-redeem-panel hidden');
     wrap.appendChild(toggle);
@@ -1243,7 +1243,7 @@ const CreationFlow=(function(){
   }
 
   function _buildMagicCardRecallPanel(panel){
-    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your card, in order — a line connects them as you go. Tap a star again to undo it.'));
+    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your Magic Card, in order — a line connects them as you go. Tap a star again to undo it.'));
 
     const board=_el('div','creation-flow-card-board');
     panel.appendChild(board);
@@ -1304,13 +1304,13 @@ const CreationFlow=(function(){
       });
     });
 
-    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type the magic word instead? ⌄');
+    const codeToggle=_el('button','creation-flow-card-code-toggle','Prefer to type your Magic Card code instead? ⌄');
     codeToggle.type='button';
     const codeFallback=_el('div','creation-flow-card-code-fallback hidden');
     const codeInput=document.createElement('input');
     codeInput.type='text';
     codeInput.className='creation-flow-card-code-input';
-    codeInput.placeholder='e.g. ORION-00125';
+    codeInput.placeholder='e.g. CYGNUS00042';
     const codeSubmit=_el('button','creation-flow-card-code-submit','Come home with code');
     codeSubmit.type='button';
     codeFallback.appendChild(codeInput);
@@ -1321,13 +1321,13 @@ const CreationFlow=(function(){
     codeToggle.addEventListener('click',function(){
       const opening=codeFallback.classList.contains('hidden');
       codeFallback.classList.toggle('hidden',!opening);
-      codeToggle.textContent='Prefer to type the magic word instead? '+(opening?'⌃':'⌄');
+      codeToggle.textContent='Prefer to type your Magic Card code instead? '+(opening?'⌃':'⌄');
     });
 
     function submitCode(){
       const val=codeInput.value.trim();
       if(!val){
-        status.textContent='Enter the magic word and card number first.';
+        status.textContent='Enter your Magic Card code first.';
         status.className='creation-flow-card-status err';
         return;
       }

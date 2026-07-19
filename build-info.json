@@ -1,9 +1,9 @@
 {
-  "version": "2.46.6",
-  "sprint": "Kid's Journey Review -- Screen 1 Polish Pass",
-  "task": "Real, screen-by-screen product feedback: 'the screen needs to be more lively. why do we have ? on top right. the bottom 2 options are not visualize properly.' The '?' was genuinely dead for the primary audience -- a plain HTML title tooltip that never fires on a touch device -- fixed into a real tap-to-open popover with the same friendly orientation line. The bottom two options each rendered as an independent, identically-styled flat grey bar with its own divider -- fixed with a shared icon-circle+title+chevron toggle builder, grouped under one 'Already have something?' section with two distinctly-accented peer cards (violet for Vihu Card redeem, gold for Magic Card recall) laid out side by side. 'More lively' addressed with a staggered rise-and-fade entrance for the six Creation Type cards plus a genuine icon-level hover reaction, both respecting prefers-reduced-motion. Verified via a new 11-assertion Playwright suite plus full regression across the entire Magic Card/Vihu Card/Creator Playwright suite and both goldenBuild.js suites, all passing unchanged. docs/KID_JOURNEY.md's Screen 1 screenshot and description were regenerated/updated to match, since it's meant to stay in sync with real product changes.",
-  "build": "0166",
+  "version": "2.46.7",
+  "sprint": "Screen 1 -- Option Cards Now Name Their Own Card Type",
+  "task": "Direct, screenshot-driven follow-up: 'these options are not clear. what names are we using for the cards?' Confirmed the platform has exactly two, deliberately separate card systems -- Vihu Card (a shareable World unlock) and Magic Card (a Creator's own signinless identity) -- and found the two Screen 1 option-card labels were asymmetric: 'My Magic Card? Tap to come home' already named its type, but the other read only 'Have a Card? Redeem it here.' Fixed both toggle titles, both panels' own intro copy ('on your card' -> 'on your Vihu Card'/'on your Magic Card'), and a real naming collision found while fixing this -- both code-entry fallbacks said 'the magic word,' the Vihu Card panel accidentally borrowing the Magic Card system's own name. Verified via a new 8-assertion Playwright suite plus full regression across the Magic Card/Vihu Card/Creator suite and both goldenBuild.js suites, all passing unchanged. docs/KID_JOURNEY.md and docs/VIHU_CARD_PLATFORM.md updated to match; all 25 journey screenshots regenerated.",
+  "build": "0167",
   "buildDate": "2026-07-19",
-  "commit": "7b477ad",
+  "commit": "pending",
   "environment": "Release"
 }
