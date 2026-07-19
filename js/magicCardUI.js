@@ -284,6 +284,36 @@ const MagicCardUI=(function(){
     content.appendChild(panel);
   }
 
+  // ---------- Identity glyph (never the constellation pattern) ----------
+  // The Identity Gate ("Welcome back") and the multi-card picker are
+  // both boot-time, unprompted surfaces shown to anyone who opens the
+  // app on this device. An earlier fix already swapped the REAL recall
+  // pattern for decorativeSkyFor()'s safe stand-in here — but a
+  // connect-the-dots constellation graphic looks identical either way,
+  // real or decorative, and reads as "my secret code is on screen"
+  // regardless of which one is actually drawn. This screen shows no
+  // constellation of any kind, full stop — the Creator's own bonded
+  // Story Companion portrait instead (a face, not a code), falling
+  // back to a plain glyph while the portrait loads or when none is
+  // available yet (Nimbus/Quill's disclosed pending-art gap, or a
+  // legacy card that hasn't been retroactively bonded yet).
+  function _buildGateIdentityGlyph(card,size){
+    const wrap=_el('div','magic-card-gate-glyph');
+    wrap.style.width=size+'px';
+    wrap.style.height=size+'px';
+    wrap.appendChild(_el('span','magic-card-gate-glyph-fallback','✨'));
+    if(card.companionId && typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
+      MagicCardArt.resolveCompanionPortrait(card.companionId).then(function(portrait){
+        if(!portrait) return;
+        wrap.innerHTML='';
+        const img=document.createElement('img');
+        img.src=portrait.src;
+        wrap.appendChild(img);
+      });
+    }
+    return wrap;
+  }
+
   // ---------- Screen 2 / 9 — Identity Gate (boot time) ----------
   // Shown only when at least one claimed Magic Card is known on this
   // device — otherwise this function is never even called (see
@@ -317,10 +347,9 @@ const MagicCardUI=(function(){
     const panel=_el('div','magic-card-gate-panel');
     if(cards.length===1){
       const card=cards[0];
-      // Boot-time, unprompted, shown to anyone who opens the app on
-      // this device — the worst possible surface to show the real
-      // recall pattern on, so this is ambient decoration, never it.
-      panel.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(card).pattern,{size:180}));
+      // Never the constellation, real or decorative — see
+      // _buildGateIdentityGlyph's own comment above.
+      panel.appendChild(_buildGateIdentityGlyph(card,140));
       panel.appendChild(_el('div','magic-card-gate-welcome','Welcome back, '+(card.nickname||'Star Traveler')));
       const btn=_el('button','magic-card-gate-continue','Continue My Journey');
       btn.type='button';
@@ -359,8 +388,12 @@ const MagicCardUI=(function(){
     if(existingWelcome) existingWelcome.remove();
     const existingContinue=panel.querySelector('.magic-card-gate-continue');
     if(existingContinue) existingContinue.remove();
-    const existingSvg=panel.querySelector('svg.magic-card-constellation-svg');
-    if(existingSvg) existingSvg.remove();
+    // The single-card "Welcome back" view's own standalone identity
+    // glyph (a direct child of panel, not inside .magic-card-gate-grid
+    // — the grid's own per-tile glyphs are removed for free along with
+    // existingGrid above) has no place in the picker's own grid layout.
+    const existingGlyph=panel.querySelector('.magic-card-gate-glyph');
+    if(existingGlyph) existingGlyph.remove();
     // The single-card "Welcome back" view's own "Not you?" link has no
     // remaining purpose once the picker is showing every option — left
     // in place it reads as a stray, unstyled heading floating above the
@@ -375,7 +408,7 @@ const MagicCardUI=(function(){
     cards.forEach(function(card){
       const tile=_el('button','magic-card-gate-tile');
       tile.type='button';
-      tile.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(card).pattern,{size:70}));
+      tile.appendChild(_buildGateIdentityGlyph(card,56));
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
       tile.addEventListener('click',function(){ proceed(card.id); });
       grid.appendChild(tile);

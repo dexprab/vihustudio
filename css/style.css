@@ -6326,6 +6326,33 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .magic-card-back:hover{ background:rgba(255,255,255,0.16); }
 
+/* Identity glyph — the bonded companion's portrait, never the
+   constellation pattern (real or decorative). Sized inline per call
+   site (140px on the "Welcome back" gate, 56px per picker tile). */
+.magic-card-gate-glyph{
+  border-radius:50%;
+  background:rgba(255,255,255,0.08);
+  border:1px solid var(--mc-line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex-shrink:0;
+  margin:0 auto 14px;
+}
+.magic-card-gate-glyph img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.magic-card-gate-glyph-fallback{
+  font-size:38px;
+  line-height:1;
+}
+.magic-card-gate-tile .magic-card-gate-glyph{ margin:0 0 6px; }
+.magic-card-gate-tile .magic-card-gate-glyph-fallback{ font-size:22px; }
+
 /* ---------- Screen 2/9 — Identity Gate ---------- */
 .magic-card-gate-panel{
   width:100%;
