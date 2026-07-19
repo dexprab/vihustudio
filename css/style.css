@@ -4926,6 +4926,41 @@ body.creation-flow-active .app-header{ display:none; }
   transition:border-color .15s, color .15s;
 }
 .creation-flow-help:hover{ border-color:var(--gold); color:var(--navy); }
+.creation-flow-help-wrap{ position:relative; margin-left:auto; }
+.creation-flow-help-wrap .creation-flow-help{ margin-left:0; }
+/* A real, tap-to-open popover — the "?" used to only ever show a plain
+   HTML title tooltip, invisible on any touch device (no hover state to
+   reveal it), reading as a dead, purely decorative icon to the actual
+   primary audience. */
+.creation-flow-help-popover{
+  position:absolute;
+  top:38px;
+  right:0;
+  z-index:5;
+  width:220px;
+  padding:14px 16px;
+  border-radius:16px;
+  background:var(--cf-paper);
+  border:1px solid var(--cf-line);
+  box-shadow:0 12px 28px rgba(0,0,0,.12);
+  text-align:center;
+  animation:creation-help-pop .18s ease both;
+}
+.creation-flow-help-popover.hidden{ display:none; }
+.creation-flow-help-popover-glyph{ display:block; font-size:20px; margin-bottom:6px; }
+.creation-flow-help-popover-text{
+  margin:0;
+  font-size:12.5px;
+  line-height:1.5;
+  color:var(--text-secondary);
+}
+@keyframes creation-help-pop{
+  from{ opacity:0; transform:translateY(-4px) scale(.96); }
+  to{ opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion:reduce){
+  .creation-flow-help-popover{ animation:none; }
+}
 .creation-flow-add-world-header-btn{
   width:auto !important;
   height:auto;
@@ -4973,6 +5008,35 @@ body.creation-flow-active .app-header{ display:none; }
   align-items:center;
   text-align:center;
   gap:clamp(6px,1.2vh,14px);
+  /* A liveliness pass: the six cards used to appear all at once, static
+     until the pointer actually reached one — the whole screen read as a
+     flat grid rather than a place that feels awake. Each card now rises
+     and fades in on arrival, staggered by its own grid position via the
+     nth-child delays below, so the screen greets the child with a small
+     ripple of motion instead of a static wall of cards. */
+  animation:creation-card-rise .5s cubic-bezier(.22,.9,.35,1) both;
+}
+.creation-flow-type-grid .creation-flow-card:nth-child(1){ animation-delay:.05s; }
+.creation-flow-type-grid .creation-flow-card:nth-child(2){ animation-delay:.12s; }
+.creation-flow-type-grid .creation-flow-card:nth-child(3){ animation-delay:.19s; }
+.creation-flow-type-grid .creation-flow-card:nth-child(4){ animation-delay:.26s; }
+.creation-flow-type-grid .creation-flow-card:nth-child(5){ animation-delay:.33s; }
+.creation-flow-type-grid .creation-flow-card:nth-child(6){ animation-delay:.40s; }
+@keyframes creation-card-rise{
+  from{ opacity:0; transform:translateY(14px) scale(.97); }
+  to{ opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion:reduce){
+  .creation-flow-type-grid .creation-flow-card{ animation:none; }
+}
+/* The icon circle gets its own small, playful reaction on hover —
+   independent of the card's own lift — so a card feels touchable, not
+   just clickable. */
+.creation-flow-type-grid .creation-flow-card-icon{
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.creation-flow-type-grid .creation-flow-card:hover .creation-flow-card-icon{
+  transform:scale(1.12) rotate(-4deg);
 }
 .creation-flow-type-grid .creation-flow-card-title{ font-size:17px; }
 .creation-flow-type-grid .creation-flow-card-desc{ text-align:center; }
@@ -5215,33 +5279,87 @@ body.creation-flow-active .app-header{ display:none; }
   font-weight:700;
 }
 
-/* Vihu Card Platform v1 — the Redeem widget. Lives on Screen 1 (below
-   the Creation Type grid), not Screen 2's World Library — redeeming
-   before any Creation Type is chosen means there is no category the
-   unlocked World can be "wrong" for; _routeAfterRedeem() sends it to
-   the right Screen 2 once its own supportedCreationTypes is known.
-   Constrained to the same column width as the type grid above it, so
-   it reads as one more section of Screen 1 rather than a full-bleed
-   bar. */
-.creation-flow-card-redeem{
-  max-width:520px;
-  margin:22px auto 0;
-  padding-top:18px;
+/* Vihu Card Platform v1 / Magic Card recall — Screen 1's "Already have
+   something?" section. Both option cards used to render as two
+   independent, identically-styled flat bars, each with its own dashed
+   divider — no shared grouping, no visual hierarchy, easy to miss
+   against the meadow background (a real, reported UX gap). Now grouped
+   under one label + divider, laid out as two peer cards side by side,
+   each carrying its own icon circle and accent tint so the two reads
+   as genuinely different options, not one bar repeated twice. */
+.creation-flow-secondary-options{
+  max-width:640px;
+  margin:26px auto 0;
+  padding-top:20px;
   border-top:1px dashed var(--cf-line);
 }
-.creation-flow-card-toggle{
-  width:100%;
+.creation-flow-secondary-label{
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  margin:0 0 12px;
+}
+.creation-flow-secondary-row{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.creation-flow-option-card{
+  flex:1 1 260px;
+  max-width:300px;
+}
+.creation-flow-option-toggle{
+  width:100% !important;
+  height:auto !important;
+  display:flex;
+  align-items:center;
+  gap:10px;
   text-align:left;
-  padding:10px 14px;
+  padding:12px 14px;
   border:1px solid var(--cf-line);
-  border-radius:14px;
-  background:var(--cf-paper-alt);
+  border-radius:18px;
+  background:var(--cf-paper);
   color:var(--text);
+  cursor:pointer;
+  box-shadow:0 2px 10px rgba(120,90,40,.05);
+  transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.creation-flow-option-toggle:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 18px rgba(120,90,40,.1);
+}
+.creation-flow-option-icon{
+  flex:0 0 auto;
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+}
+.creation-flow-option-title{
+  flex:1 1 auto;
   font-size:13px;
   font-weight:700;
-  cursor:pointer;
+  line-height:1.3;
 }
-.creation-flow-card-toggle:hover{ border-color:var(--gold); }
+.creation-flow-option-chevron{
+  flex:0 0 auto;
+  color:var(--text-tertiary);
+  font-size:13px;
+}
+.creation-flow-option-accent-violet .creation-flow-option-icon{ background:#e8e0f2; }
+.creation-flow-option-accent-violet:hover{ border-color:#b9a0d6; }
+.creation-flow-option-accent-gold .creation-flow-option-icon{ background:#f7e9b8; }
+.creation-flow-option-accent-gold:hover{ border-color:var(--gold); }
+@media (max-width:560px){
+  .creation-flow-option-card{ flex-basis:100%; max-width:none; }
+}
 .creation-flow-card-redeem-panel{
   margin-top:14px;
   padding:20px 18px;

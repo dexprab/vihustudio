@@ -55,11 +55,16 @@ with nothing in progress.
 
 Six Creation Type cards (Tell a Story / Showcase My Artwork / Create Quotes /
 Write a Poem / Make a Greeting Card / More Ideas) over the illustrated Story
-Meadow scene. Two quiet, collapsed widgets sit at the bottom for a **returning**
-Visitor or Creator on a **new device** with nothing local yet: "Have a Card?
-Redeem it here" (a Vihu Card — someone shared a World with them) and
-"Already have a Magic Card? Tap to come home" (their own identity/projects,
-recalled from the cloud). Both are covered in §9.
+Meadow scene, each rising into place with its own small stagger on arrival
+and reacting to a tap or hover rather than sitting static. The "?" top-right
+is a real, tap-to-open popover (not a hover-only tooltip, which never fires
+on a touch device) with a one-line orientation. Two option cards — grouped
+under one "Already have something?" heading, each with its own icon circle
+and accent tint — sit at the bottom for a **returning** Visitor or Creator on
+a **new device** with nothing local yet: "Have a Card? Redeem it here" (a
+Vihu Card — someone shared a World with them) and "My Magic Card? Tap to
+come home" (their own identity/projects, recalled from the cloud). Both are
+covered in §9.
 
 A child with existing local projects also sees a "📂 My Projects `<count>`"
 pill here — covered in §8, since it only appears once a project actually
@@ -310,7 +315,7 @@ yet** — the actual "second device" case neither role's screens above cover:
 - **"🔮 Have a Card? Redeem it here"** — a Vihu Card someone shared: tap the
   same star pattern printed on that physical/shared card to unlock its World
   in this device's World Library. Nothing to do with identity.
-- **"✨ Already have a Magic Card? Tap to come home"** — a Creator's *own*
+- **"✨ My Magic Card? Tap to come home"** — a Creator's *own*
   identity, recalled: tap their own card's real pattern (or type its
   human-readable code) and `recall_magic_card()` adopts their identity plus a
   fresh, independent copy of every cloud-backed project onto this device —

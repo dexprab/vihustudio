@@ -598,10 +598,25 @@ const CreationFlow=(function(){
     _brand();
     const header=_el('div','creation-flow-header');
     header.appendChild(_el('span','creation-flow-step','Step 1 of 2'));
+    // The "?" used to be tooltip-only (a bare HTML `title` attribute) —
+    // real on desktop hover, but silently inert for the actual primary
+    // audience (a child on a touch device never sees it at all, since a
+    // tap has no hover state to reveal). Now a real, tap-to-open popover
+    // with the same friendly message, closed by tapping the glyph again.
+    const helpWrap=_el('div','creation-flow-help-wrap');
     const help=_el('button','creation-flow-help','?');
     help.type='button';
-    help.title='Every idea has a world. Pick one to begin.';
-    header.appendChild(help);
+    help.setAttribute('aria-label','What is this screen?');
+    const helpPopover=_el('div','creation-flow-help-popover hidden');
+    helpPopover.appendChild(_el('span','creation-flow-help-popover-glyph','🌟'));
+    helpPopover.appendChild(_el('p','creation-flow-help-popover-text',
+      'Every idea has a world of its own. Pick a card below to begin your adventure!'));
+    help.addEventListener('click',function(){
+      helpPopover.classList.toggle('hidden');
+    });
+    helpWrap.appendChild(help);
+    helpWrap.appendChild(helpPopover);
+    header.appendChild(helpWrap);
     content.appendChild(header);
     content.appendChild(_el('h1','creation-flow-question','What shall we create today?'));
     content.appendChild(_el('p','creation-flow-subtitle','Every idea has a world.'));
@@ -630,17 +645,35 @@ const CreationFlow=(function(){
     // "nothing happened"). Redeeming here has no category to get wrong;
     // _handleCardRedeemResult below routes to the matching Creation
     // Type screen once the theme's own supportedCreationTypes is known.
+    // Both option cards now share ONE grouped section — a single label
+    // + divider, the two cards laid out side by side — instead of each
+    // rendering its own independent, identically-styled bar with its own
+    // divider. That grouping (not just per-card styling) is what used to
+    // read as "not visualized properly": two flat, ungrouped sections
+    // that blended into each other and into the meadow background.
+    const secondaryCards=[];
     if(typeof window.CardPlatform!=='undefined'){
-      content.appendChild(_buildCardRedeemWidget());
+      secondaryCards.push(_buildCardRedeemWidget());
     }
     // Magic Card Identity Evolution, Phase 2 — the "come home on a new
     // device" recall widget lives here too, for the same reason the
     // Vihu Card redeem widget does: this is the natural landing point
     // on a fresh device with zero local Magic Cards, before any
     // Creation Type has been chosen.
+    let recallWidget=null;
     if(typeof window.MagicCard!=='undefined'){
-      const recallWidget=_buildMagicCardRecallWidget();
-      content.appendChild(recallWidget);
+      recallWidget=_buildMagicCardRecallWidget();
+      secondaryCards.push(recallWidget);
+    }
+    if(secondaryCards.length){
+      const section=_el('div','creation-flow-secondary-options');
+      section.appendChild(_el('div','creation-flow-secondary-label','Already have something?'));
+      const row=_el('div','creation-flow-secondary-row');
+      secondaryCards.forEach(function(card){ row.appendChild(card); });
+      section.appendChild(row);
+      content.appendChild(section);
+    }
+    if(recallWidget){
       // The Shared Device picker's own "Recall a different card" tile
       // (js/magicCardUI.js's _renderPicker) sets this one-shot flag
       // right before closing back into normal boot, since it has no
@@ -649,7 +682,7 @@ const CreationFlow=(function(){
       // unrelated visit to Screen 1 never auto-opens anything.
       if(window.__magicCardAutoOpenRecall){
         window.__magicCardAutoOpenRecall=false;
-        const toggle=recallWidget.querySelector('.creation-flow-card-toggle');
+        const toggle=recallWidget.querySelector('.creation-flow-option-toggle');
         if(toggle) toggle.click();
       }
     }
@@ -1139,10 +1172,27 @@ const CreationFlow=(function(){
     codeInput.addEventListener('keydown',function(e){ if(e.key==='Enter') submitCode(); });
   }
 
-  function _buildCardRedeemWidget(){
-    const wrap=_el('div','creation-flow-card-redeem');
-    const toggle=_el('button','creation-flow-card-toggle','🔮 Have a Card? Redeem it here ⌄');
+  // Shared toggle markup for Screen 1's two "Already have something?"
+  // option cards (Vihu Card redeem, Magic Card recall) — an icon circle
+  // + title + chevron, matching the same card language the six Creation
+  // Type cards already use, instead of one plain-text button label that
+  // read as a flat, indistinguishable bar (a real, reported UX gap: the
+  // two used to be visually identical grey pills stacked on top of each
+  // other with no shared grouping or hierarchy).
+  function _buildOptionToggle(accentClass,icon,title){
+    const toggle=_el('button','creation-flow-option-toggle '+accentClass);
     toggle.type='button';
+    toggle.appendChild(_el('span','creation-flow-option-icon',icon));
+    toggle.appendChild(_el('span','creation-flow-option-title',title));
+    const chevron=_el('span','creation-flow-option-chevron','⌄');
+    toggle.appendChild(chevron);
+    return {toggle:toggle,chevron:chevron};
+  }
+
+  function _buildCardRedeemWidget(){
+    const wrap=_el('div','creation-flow-option-card');
+    const built_=_buildOptionToggle('creation-flow-option-accent-violet','🔮','Have a Card? Redeem it here');
+    const toggle=built_.toggle, chevron=built_.chevron;
     const panel=_el('div','creation-flow-card-redeem-panel hidden');
     wrap.appendChild(toggle);
     wrap.appendChild(panel);
@@ -1151,7 +1201,7 @@ const CreationFlow=(function(){
     toggle.addEventListener('click',function(){
       const opening=panel.classList.contains('hidden');
       panel.classList.toggle('hidden',!opening);
-      toggle.textContent='🔮 Have a Card? Redeem it here '+(opening?'⌃':'⌄');
+      chevron.textContent=opening?'⌃':'⌄';
       if(opening && !built){ built=true; _buildCardRedeemPanel(panel); }
     });
 
@@ -1294,9 +1344,9 @@ const CreationFlow=(function(){
   }
 
   function _buildMagicCardRecallWidget(){
-    const wrap=_el('div','creation-flow-card-redeem');
-    const toggle=_el('button','creation-flow-card-toggle','✨ Already have a Magic Card? Tap to come home ⌄');
-    toggle.type='button';
+    const wrap=_el('div','creation-flow-option-card');
+    const built_=_buildOptionToggle('creation-flow-option-accent-gold','✨','My Magic Card? Tap to come home');
+    const toggle=built_.toggle, chevron=built_.chevron;
     const panel=_el('div','creation-flow-card-redeem-panel hidden');
     wrap.appendChild(toggle);
     wrap.appendChild(panel);
@@ -1305,7 +1355,7 @@ const CreationFlow=(function(){
     toggle.addEventListener('click',function(){
       const opening=panel.classList.contains('hidden');
       panel.classList.toggle('hidden',!opening);
-      toggle.textContent='✨ Already have a Magic Card? Tap to come home '+(opening?'⌃':'⌄');
+      chevron.textContent=opening?'⌃':'⌄';
       if(opening && !built){ built=true; _buildMagicCardRecallPanel(panel); }
     });
 
