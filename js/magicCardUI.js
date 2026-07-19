@@ -95,8 +95,19 @@ const MagicCardUI=(function(){
   // ---------- Shared: two-sided card art view (front/back canvases +
   // Download/Print) — used both in the Awakening ceremony's First
   // Claimed Moment and from Magic Card Home's "View My Card" action, so
-  // the two surfaces can never visually disagree. ----------
-  function _buildCardArtView(card){
+  // the two surfaces can never visually disagree.
+  //
+  // opts.gateBack (Home only — the ceremony call site never sets this,
+  // since that's the one legitimate "save it now" moment, same as a
+  // 2FA app showing backup codes once at generation time): the Back
+  // face — the real recall pattern — renders blurred behind a "Tap to
+  // Reveal" overlay, with Download Back/Print disabled until revealed.
+  // A device left unlocked on Magic Card Home can no longer silently
+  // hand over another child's recall credential with a single glance
+  // or one accidental tap. ----------
+  function _buildCardArtView(card,opts){
+    opts=opts||{};
+    const gateBack=!!opts.gateBack;
     const wrap=_el('div','magic-card-art-view');
     if(typeof MagicCardArt==='undefined') return wrap;
 
@@ -110,14 +121,30 @@ const MagicCardUI=(function(){
 
     const backWrap=_el('div','magic-card-art-col');
     backWrap.appendChild(_el('div','magic-card-art-label','Back'));
+    const backStage=_el('div','magic-card-art-back-stage');
     const backCanvas=document.createElement('canvas');
     backCanvas.className='magic-card-art-canvas';
-    backWrap.appendChild(backCanvas);
+    backStage.appendChild(backCanvas);
+    let revealBtn=null;
+    if(gateBack){
+      backCanvas.classList.add('magic-card-art-canvas-secret');
+      revealBtn=_el('button','magic-card-art-reveal-btn');
+      revealBtn.type='button';
+      revealBtn.appendChild(_el('span','magic-card-art-reveal-glyph','🔒'));
+      revealBtn.appendChild(_el('span','magic-card-art-reveal-label','Tap to Reveal'));
+      backStage.appendChild(revealBtn);
+    }
+    backWrap.appendChild(backStage);
     row.appendChild(backWrap);
     wrap.appendChild(row);
 
     MagicCardArt.drawFront(frontCanvas,card);
     MagicCardArt.drawBack(backCanvas,card);
+
+    if(gateBack){
+      wrap.appendChild(_el('p','magic-card-art-reveal-note',
+        '🔒 The back is your secret key — anyone who sees it can become you on another device. Tap Reveal before saving or printing it.'));
+    }
 
     const actions=_el('div','magic-card-art-actions');
     const dlFront=_el('button','magic-card-art-btn','⬇ Front');
@@ -128,13 +155,27 @@ const MagicCardUI=(function(){
     const dlBack=_el('button','magic-card-art-btn','⬇ Back');
     dlBack.type='button';
     dlBack.addEventListener('click',function(){
+      if(dlBack.disabled) return;
       MagicCardArt.downloadDataURL(backCanvas.toDataURL('image/png'),(card.id||'magic-card')+'-back.png');
     });
     const printBtn=_el('button','magic-card-art-btn','🖨 Print');
     printBtn.type='button';
     printBtn.addEventListener('click',function(){
+      if(printBtn.disabled) return;
       MagicCardArt.printCard(frontCanvas.toDataURL('image/png'),backCanvas.toDataURL('image/png'));
     });
+
+    if(gateBack){
+      dlBack.disabled=true;
+      printBtn.disabled=true;
+      revealBtn.addEventListener('click',function(){
+        backCanvas.classList.remove('magic-card-art-canvas-secret');
+        revealBtn.remove();
+        dlBack.disabled=false;
+        printBtn.disabled=false;
+      });
+    }
+
     actions.appendChild(dlFront);
     actions.appendChild(dlBack);
     actions.appendChild(printBtn);
@@ -151,7 +192,11 @@ const MagicCardUI=(function(){
     if(!active){ _headerBadge.classList.add('hidden'); return; }
     _headerBadge.classList.remove('hidden');
     _headerBadge.innerHTML='';
-    _headerBadge.appendChild(_renderConstellation(active.pattern,{size:26}));
+    // Ambient/passive display — never the real recall pattern (see
+    // MagicCard.decorativeSkyFor's own comment). The header badge is
+    // permanently on-screen the whole time a card is active, the
+    // single worst possible surface to leak a tappable credential from.
+    _headerBadge.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(active).pattern,{size:26}));
     _headerBadge.onclick=function(){ openHome(); };
   }
 
@@ -176,7 +221,10 @@ const MagicCardUI=(function(){
     // Growth is derived, presented, never counted onscreen — a soft cap
     // so a very active child's sky still reads as "rich," not cluttered.
     const companionCount=Math.min(6,Math.floor(signals.projectCount/2)+Math.floor(signals.daysSinceClaim/14));
-    skyWrap.appendChild(_renderConstellation(active.pattern,{size:260,companionCount:companionCount}));
+    // Ambient identity, not the real recall credential — the reveal-
+    // gated "View My Card" flow further down this same screen is the
+    // one deliberate place the real pattern is shown.
+    skyWrap.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(active).pattern,{size:260,companionCount:companionCount}));
     panel.appendChild(skyWrap);
 
     panel.appendChild(_el('div','magic-card-home-name',(active.nickname||'Star Traveler')));
@@ -194,7 +242,7 @@ const MagicCardUI=(function(){
       const opening=cardArtHost.classList.contains('hidden');
       cardArtHost.classList.toggle('hidden',!opening);
       if(opening && !cardArtHost.childNodes.length){
-        cardArtHost.appendChild(_buildCardArtView(active));
+        cardArtHost.appendChild(_buildCardArtView(active,{gateBack:true}));
       }
     });
     panel.appendChild(viewCardBtn);
@@ -250,7 +298,10 @@ const MagicCardUI=(function(){
     const panel=_el('div','magic-card-gate-panel');
     if(cards.length===1){
       const card=cards[0];
-      panel.appendChild(_renderConstellation(card.pattern,{size:180}));
+      // Boot-time, unprompted, shown to anyone who opens the app on
+      // this device — the worst possible surface to show the real
+      // recall pattern on, so this is ambient decoration, never it.
+      panel.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(card).pattern,{size:180}));
       panel.appendChild(_el('div','magic-card-gate-welcome','Welcome back, '+(card.nickname||'Star Traveler')));
       const btn=_el('button','magic-card-gate-continue','Continue My Journey');
       btn.type='button';
@@ -305,7 +356,7 @@ const MagicCardUI=(function(){
     cards.forEach(function(card){
       const tile=_el('button','magic-card-gate-tile');
       tile.type='button';
-      tile.appendChild(_renderConstellation(card.pattern,{size:70}));
+      tile.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(card).pattern,{size:70}));
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
       tile.addEventListener('click',function(){ proceed(card.id); });
       grid.appendChild(tile);

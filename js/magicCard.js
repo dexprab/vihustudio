@@ -81,25 +81,69 @@ const MagicCard=(function(){
     const maxC=_maxOf(points,1);
     return points.map(function(p){ return [p[0],maxC-p[1]]; });
   }
-  function _placeConstellation(name){
+  // `rand` defaults to Math.random (every existing caller — generatePattern()/
+  // claim()'s own fallback — is unaffected) but accepts any 0..1 generator,
+  // which is what makes decorativeSkyFor() below possible without a second
+  // copy of this placement algorithm.
+  function _placeConstellation(name,rand){
+    rand=rand||Math.random;
     const base=CONSTELLATIONS[name];
     if(!base) return null;
     for(let attempt=0;attempt<20;attempt++){
       let pts=_shiftToOrigin(base);
-      pts=_rotate(pts,Math.floor(Math.random()*4));
-      if(Math.random()<0.5) pts=_mirrorHorizontal(pts);
+      pts=_rotate(pts,Math.floor(rand()*4));
+      if(rand()<0.5) pts=_mirrorHorizontal(pts);
       pts=_shiftToOrigin(pts);
       const maxR=_maxOf(pts,0), maxC=_maxOf(pts,1);
       if(maxR>=GRID_SIZE||maxC>=GRID_SIZE) continue;
-      const offR=Math.floor(Math.random()*(GRID_SIZE-maxR));
-      const offC=Math.floor(Math.random()*(GRID_SIZE-maxC));
+      const offR=Math.floor(rand()*(GRID_SIZE-maxR));
+      const offC=Math.floor(rand()*(GRID_SIZE-maxC));
       return {constellation:name,pattern:pts.map(function(p){ return [p[0]+offR,p[1]+offC]; })};
     }
     return {constellation:name,pattern:_shiftToOrigin(base)};
   }
-  function _pickConstellationName(){
+  function _pickConstellationName(rand){
+    rand=rand||Math.random;
     const names=Object.keys(CONSTELLATIONS);
-    return names[Math.floor(Math.random()*names.length)];
+    return names[Math.floor(rand()*names.length)];
+  }
+
+  // A small, deterministic string-seeded generator (splitmix32-style) —
+  // NOT for anything security-sensitive, only for decorativeSkyFor()
+  // below, where "the same input always produces the same output" is
+  // exactly the point (a card's ambient sky should look the same every
+  // time it's shown), not a defect.
+  function _seededRand(seedStr){
+    let h=1779033703^seedStr.length;
+    for(let i=0;i<seedStr.length;i++){
+      h=Math.imul(h^seedStr.charCodeAt(i),3432918353);
+      h=(h<<13)|(h>>>19);
+    }
+    return function(){
+      h=Math.imul(h^(h>>>16),2246822507);
+      h=Math.imul(h^(h>>>13),3266489909);
+      h^=h>>>16;
+      return (h>>>0)/4294967296;
+    };
+  }
+
+  // The whole point of this function: a card's REAL `pattern` is its
+  // recall credential — the exact tap sequence recall_magic_card()
+  // checks. It must never be displayed passively/ambiently (a header
+  // badge, a boot-time greeting, a picker tile) since any one of those
+  // moments would hand a bystander everything they need to become that
+  // child on another device. decorativeSkyFor() derives a SEPARATE,
+  // visually distinct constellation from the card's own already-public
+  // id (printed on the card anyway) — every ambient "this is your sky"
+  // surface uses this instead, so it still looks personal and
+  // consistent for a given card without ever leaking the real secret.
+  // Deterministic and unpersisted by design: recomputed fresh on every
+  // call from `card.id` alone, needing no storage/migration for cards
+  // claimed before this existed.
+  function decorativeSkyFor(card){
+    if(!card||!card.id) return {constellation:'CYGNUS',pattern:[]};
+    const rand=_seededRand('decorative-sky:'+card.id);
+    return _placeConstellation(_pickConstellationName(rand),rand);
   }
 
   function _newId(){
@@ -411,6 +455,7 @@ const MagicCard=(function(){
     setActive:setActive,
     touch:touch,
     generatePattern:generatePattern,
+    decorativeSkyFor:decorativeSkyFor,
     claim:claim,
     rename:rename,
     recall:recall,
