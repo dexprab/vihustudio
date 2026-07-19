@@ -6443,8 +6443,8 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   box-shadow:0 24px 64px rgba(0,0,0,0.45);
   backdrop-filter:blur(6px);
 }
-.magic-card-home-sky{ margin:4px 0 10px; }
 .magic-card-home-name{
+  margin-top:14px;
   font-size:20px;
   font-weight:800;
   color:var(--mc-ink);
@@ -6492,8 +6492,9 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 /* ===========================
    Magic Card Identity Evolution, Phase 2 — two-sided card art view
-   (shown in the Awakening ceremony's First Claimed Moment and from
-   Magic Card Home's "View My Card") + its print sheet. Mirrors
+   (shown in the Awakening ceremony's First Claimed Moment, and as
+   Magic Card Home's own primary/leading content) + its print sheet.
+   Mirrors
    tools/world-builder-v2/css/world-builder.css's own
    .wb-card-print-sheet convention exactly, since Creator's CSS is a
    separate file with no shared stylesheet to reuse it from directly.
@@ -6587,16 +6588,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-art-btn:hover{ background:rgba(255,255,255,0.16); }
 .magic-card-art-btn:disabled{ opacity:.4; cursor:not-allowed; }
 .magic-card-art-btn:disabled:hover{ background:rgba(255,255,255,0.08); }
-
-.magic-card-home-viewcard-btn{
-  align-self:center;
-  margin:4px 0 0 0 !important;
-}
-.magic-card-home-art-host{
-  width:100%;
-  margin:14px 0 4px;
-}
-.magic-card-home-art-host.hidden{ display:none; }
 
 .magic-card-print-sheet{
   position:absolute;

@@ -94,7 +94,7 @@ const MagicCardUI=(function(){
 
   // ---------- Shared: two-sided card art view (front/back canvases +
   // Download/Print) — used both in the Awakening ceremony's First
-  // Claimed Moment and from Magic Card Home's "View My Card" action, so
+  // Claimed Moment and as Magic Card Home's own primary content, so
   // the two surfaces can never visually disagree.
   //
   // opts.gateBack (Home only — the ceremony call site never sets this,
@@ -216,37 +216,21 @@ const MagicCardUI=(function(){
     back.addEventListener('click',function(){ overlay.classList.remove('magic-card-mode-home'); _hide(); });
     panel.appendChild(back);
 
-    const skyWrap=_el('div','magic-card-home-sky');
-    const signals=MagicCard.growthSignals();
-    // Growth is derived, presented, never counted onscreen — a soft cap
-    // so a very active child's sky still reads as "rich," not cluttered.
-    const companionCount=Math.min(6,Math.floor(signals.projectCount/2)+Math.floor(signals.daysSinceClaim/14));
-    // Ambient identity, not the real recall credential — the reveal-
-    // gated "View My Card" flow further down this same screen is the
-    // one deliberate place the real pattern is shown.
-    skyWrap.appendChild(_renderConstellation(MagicCard.decorativeSkyFor(active).pattern,{size:260,companionCount:companionCount}));
-    panel.appendChild(skyWrap);
+    // The two-sided identity card itself leads Home, rather than a
+    // separate ambient "sky" rendered above it. Those used to be two
+    // different-looking constellations shown on one screen at once —
+    // decorativeSkyFor()'s safe stand-in up top, the real pattern down
+    // below on the reveal-gated card — which read as a genuine bug
+    // ("my card is showing 2 constellations"), not a feature. Leading
+    // with the real card (Back still reveal-gated, so nothing secret is
+    // exposed by default) means there is only ever one thing on this
+    // screen that looks like "the constellation."
+    panel.appendChild(_buildCardArtView(active,{gateBack:true}));
 
     panel.appendChild(_el('div','magic-card-home-name',(active.nickname||'Star Traveler')));
     const since=new Date(active.claimedAt);
     const sinceText='Creator since '+since.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
     panel.appendChild(_el('div','magic-card-home-since',sinceText));
-
-    // Access to the same two-sided card view any time after the
-    // ceremony — same underlying render as _showFirstClaimedMoment's,
-    // so this can never visually drift from what the child already saw.
-    const viewCardBtn=_el('button','magic-card-back magic-card-home-viewcard-btn','🎴 View My Card');
-    viewCardBtn.type='button';
-    const cardArtHost=_el('div','magic-card-home-art-host hidden');
-    viewCardBtn.addEventListener('click',function(){
-      const opening=cardArtHost.classList.contains('hidden');
-      cardArtHost.classList.toggle('hidden',!opening);
-      if(opening && !cardArtHost.childNodes.length){
-        cardArtHost.appendChild(_buildCardArtView(active,{gateBack:true}));
-      }
-    });
-    panel.appendChild(viewCardBtn);
-    panel.appendChild(cardArtHost);
 
     const storiesLabel=_el('div','magic-card-home-stories-label','A few of your stories live in this sky:');
     panel.appendChild(storiesLabel);
