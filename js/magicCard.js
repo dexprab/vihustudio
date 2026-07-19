@@ -26,7 +26,7 @@
 // (see growthSignals()) — never a second stored, mutable copy of the
 // pattern itself.
 //
-// A genuinely new claimed Magic Card is NOT the same concept as a Vihu
+// A genuinely new claimed Magic Card is NOT the same concept as a World
 // Card (js/cardPlatform.js) — that module mints a *shareable* card
 // pointing at a World, redeemed by someone else. This module mints a
 // *personal* card representing "this device recognizes you" — no
@@ -44,6 +44,18 @@
 // ThemeRepositoryClient.getClient()/.getSession() directly — the same
 // reuse convention cardPlatform.js already established for its own
 // Supabase access.
+//
+// Companion Canon V2 (docs/COMPANION_CANON.md) makes this module also
+// own the Creator-Companion Bond: assignBondedCompanion()/
+// ensureBondedCompanion() below implement "the Companion chooses the
+// Creator" — a real, deliberately isolated random pick from every
+// registry entry with role:'companion' (js/companionEngine.js's
+// loadRegistry, unchanged), never a role match (that's how Lumo, the
+// never-bonding Guardian, and the Story Egg, the never-bonded Visitor
+// entity, both already resolve — see js/companionDirector.js). A card's
+// bonded companion is set exactly once, at claim() (or inherited
+// verbatim from the identity's own row on a cross-device adopt()), and
+// is never re-rolled afterward.
 const MagicCard=(function(){
   'use strict';
 
@@ -256,7 +268,17 @@ const MagicCard=(function(){
             constellation:card.constellation,
             pattern:card.pattern,
             claimed_at:card.claimedAt,
-            last_active_at:card.lastActiveAt
+            last_active_at:card.lastActiveAt,
+            // Companion Canon V2 — the Creator-Companion Bond, mirrored
+            // to the cloud alongside the rest of the identity so a
+            // cross-device recall (adopt(), below) inherits the SAME
+            // bonded companion rather than being assigned a second,
+            // different one. Nullable columns (supabase/schema.sql) —
+            // a card claimed before this sprint simply has none until
+            // ensureBondedCompanion() retroactively bonds it.
+            companion_id:card.companionId||null,
+            companion_name:card.companionName||null,
+            companion_species:card.companionSpecies||null
           },{onConflict:'id'}).select('serial_no,constellation').then(function(res){
             const row=res&&!res.error&&res.data&&res.data[0];
             if(row&&row.serial_no!=null){
@@ -314,6 +336,56 @@ const MagicCard=(function(){
     return _placeConstellation(_pickConstellationName());
   }
 
+  // ---------- Companion Canon V2: the Creator-Companion Bond ----------
+  // "The Story Companion chooses the Creator. The Creator never
+  // manually selects a companion." A real, isolated random pick from
+  // the registry's own role:'companion' entries -- isolated in one
+  // small function so a future smarter policy (avoid repeats across
+  // siblings, seasonal weighting, generations) can replace the picking
+  // logic without touching either caller below. Resolves null (never
+  // rejects) if the Companion Runtime isn't loaded or the registry has
+  // no companion-role entries yet -- a claim/adopt with no companion
+  // bonded is a real, honest degrade state, not a crash.
+  function assignBondedCompanion(){
+    if(typeof CompanionEngine==='undefined' || !CompanionEngine.loadRegistry){
+      return Promise.resolve(null);
+    }
+    return CompanionEngine.loadRegistry('assets/').then(function(list){
+      const pool=(list||[]).filter(function(e){ return e.role==='companion'; });
+      if(!pool.length) return null;
+      const picked=pool[Math.floor(Math.random()*pool.length)];
+      return {companionId:picked.id,companionName:picked.name||picked.id,companionSpecies:picked.species||''};
+    }).catch(function(){ return null; });
+  }
+
+  // Retroactively bonds a companion onto an ALREADY-claimed card that
+  // has none (a legacy card claimed before this sprint) -- the one
+  // real migration path Companion Canon V2 needs, called by
+  // js/companionDirector.js the first time such a card's own creator-
+  // mode entity is resolved. A card that already has a real
+  // companionId resolves instantly with no re-roll -- the bond is
+  // permanent once assigned, whether at claim() time or here.
+  function ensureBondedCompanion(cardId){
+    const card=get(cardId);
+    if(!card) return Promise.resolve(null);
+    if(card.companionId){
+      return Promise.resolve({companionId:card.companionId,companionName:card.companionName,companionSpecies:card.companionSpecies});
+    }
+    return assignBondedCompanion().then(function(fields){
+      if(!fields) return null;
+      const cards=_readCards();
+      const idx=cards.findIndex(function(c){ return c.id===cardId; });
+      if(idx!==-1){
+        cards[idx].companionId=fields.companionId;
+        cards[idx].companionName=fields.companionName;
+        cards[idx].companionSpecies=fields.companionSpecies;
+        _writeCards(cards);
+        _scheduleIdentitySync(cardId);
+      }
+      return fields;
+    });
+  }
+
   // Mints a brand-new claimed Magic Card. `precomputed`, when supplied
   // (the Awakening ceremony's own generatePattern() result), is used
   // verbatim rather than generating a second, different pattern — this
@@ -321,8 +393,13 @@ const MagicCard=(function(){
   // ceremony is the SAME sky their claimed card actually has
   // afterward (Constellation Philosophy — "one constellation, two
   // faces"). Never regenerated for a given card afterward; the pattern
-  // is permanent for the card's whole life.
-  function claim(nickname,precomputed){
+  // is permanent for the card's whole life. `companionFields` (when
+  // supplied — the Creator Ceremony's own assignBondedCompanion()
+  // result, already resolved by the time claim() is called) bonds the
+  // Creator-Companion pair permanently onto the card at the same
+  // moment; a companion-less claim (companionFields omitted/null) is a
+  // real, honest degrade state, not an error.
+  function claim(nickname,precomputed,companionFields){
     const placed=precomputed||_placeConstellation(_pickConstellationName());
     const now=new Date().toISOString();
     const card={
@@ -331,7 +408,10 @@ const MagicCard=(function(){
       constellation:placed.constellation,
       pattern:placed.pattern,
       claimedAt:now,
-      lastActiveAt:now
+      lastActiveAt:now,
+      companionId:(companionFields&&companionFields.companionId)||null,
+      companionName:(companionFields&&companionFields.companionName)||'',
+      companionSpecies:(companionFields&&companionFields.companionSpecies)||''
     };
     const cards=_readCards();
     cards.push(card);
@@ -340,10 +420,11 @@ const MagicCard=(function(){
     // A one-time event, not a rapid-succession edit stream -- pushed
     // immediately rather than debounced, unlike touch()/rename() below.
     _pushIdentitySnapshot(card);
-    // Companion Canon Freeze -- this is the literal "Visitor becomes
-    // Creator" moment (Canon 3: Magic Card -> Lumo Ceremony -> Creator).
-    // Single defensive hook, matching every other module's own
-    // integration with CompanionDirector throughout this codebase.
+    // Companion Canon V2 -- this is the literal "Story Egg hatches -> A
+    // Story Companion is born -> Magic Card is permanently bonded ->
+    // Creator Journey begins" moment. Single defensive hook, matching
+    // every other module's own integration with CompanionDirector
+    // throughout this codebase.
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('creator-born'); }catch(e){}
     return card;
   }
@@ -412,7 +493,15 @@ const MagicCard=(function(){
       constellation:remoteResult.constellation,
       pattern:pattern||null,
       claimedAt:remoteResult.claimed_at||now,
-      lastActiveAt:now
+      lastActiveAt:now,
+      // Companion Canon V2 -- the bond travels with the identity, not
+      // the device: recall_magic_card() (supabase/schema.sql) returns
+      // the SAME companion this identity was originally bonded to,
+      // never a fresh re-roll (assignBondedCompanion() is only ever
+      // called by claim()/ensureBondedCompanion(), never here).
+      companionId:remoteResult.companion_id||null,
+      companionName:remoteResult.companion_name||'',
+      companionSpecies:remoteResult.companion_species||''
     };
     const cards=_readCards();
     const idx=cards.findIndex(function(c){ return c.id===card.id; });
@@ -461,12 +550,34 @@ const MagicCard=(function(){
   // never to be shown to the child as a number.
   function growthSignals(){
     let projectCount=0;
+    let worldCount=0;
     try{
-      if(typeof CreatorProjectStore!=='undefined') projectCount=CreatorProjectStore.list().length;
+      if(typeof CreatorProjectStore!=='undefined'){
+        const projects=CreatorProjectStore.list();
+        projectCount=projects.length;
+        // Magic Card Canon's "Worlds Created" -- derived from the
+        // distinct Worlds/Themes actually used across a Creator's own
+        // stories (js/projectManager.js's serialize()'s own
+        // project.theme field), never a second stored counter, per
+        // this same design's "no counters, no levels" discipline.
+        // Falls back to the story count itself if a project's own
+        // theme field can't be read for any reason -- never throws,
+        // never blocks the card from rendering.
+        const themeIds={};
+        projects.forEach(function(p){
+          try{
+            const t=p.data && p.data.project && p.data.project.theme;
+            if(t) themeIds[t]=true;
+          }catch(e){}
+        });
+        const distinct=Object.keys(themeIds).length;
+        worldCount=distinct||projectCount;
+      }
     }catch(e){}
     const flags=_readFlags();
     return {
       projectCount:projectCount,
+      worldCount:worldCount,
       daysSinceClaim:(function(){
         const active=getActive();
         if(!active) return 0;
@@ -500,6 +611,8 @@ const MagicCard=(function(){
     touch:touch,
     generatePattern:generatePattern,
     decorativeSkyFor:decorativeSkyFor,
+    assignBondedCompanion:assignBondedCompanion,
+    ensureBondedCompanion:ensureBondedCompanion,
     claim:claim,
     rename:rename,
     recall:recall,

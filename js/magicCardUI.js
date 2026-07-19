@@ -138,8 +138,35 @@ const MagicCardUI=(function(){
     row.appendChild(backWrap);
     wrap.appendChild(row);
 
-    MagicCardArt.drawFront(frontCanvas,card);
+    // Companion Canon V2 — "Stories Created"/"Worlds Created," derived
+    // live from MagicCard.growthSignals() (never a second stored
+    // counter — see that function's own comment) and handed to
+    // drawFront() as plain data; this module never reads
+    // CreatorProjectStore itself.
+    const counts={stories:0,worlds:0};
+    try{
+      if(typeof MagicCard!=='undefined' && MagicCard.growthSignals){
+        const g=MagicCard.growthSignals();
+        counts.stories=g.projectCount||0;
+        counts.worlds=g.worldCount||0;
+      }
+    }catch(e){}
+
+    MagicCardArt.drawFront(frontCanvas,card,{counts:counts});
     MagicCardArt.drawBack(backCanvas,card);
+
+    // The bonded companion's own portrait is a real, async image fetch
+    // — draw the Front immediately without it (progressive, never
+    // blocking), then redraw once it resolves. A companion whose art
+    // hasn't been uploaded yet (Nimbus/Quill's own disclosed gap)
+    // simply never resolves — the Front keeps its placeholder glyph,
+    // exactly the same graceful degradation CompanionEngine itself
+    // already relies on for a missing state image.
+    if(card.companionId && typeof MagicCardArt.resolveCompanionPortrait==='function'){
+      MagicCardArt.resolveCompanionPortrait(card.companionId).then(function(portrait){
+        if(portrait) MagicCardArt.drawFront(frontCanvas,card,{counts:counts,companionPortrait:portrait});
+      });
+    }
 
     if(gateBack){
       wrap.appendChild(_el('p','magic-card-art-reveal-note',
@@ -446,13 +473,150 @@ const MagicCardUI=(function(){
     const cont=_el('button','magic-card-claim-btn','Continue');
     cont.type='button';
     cont.addEventListener('click',function(){
-      const card=MagicCard.claim(input.value,placed);
-      MagicCard.markAwakeningOffered();
-      refreshHeaderBadge();
-      _showFirstClaimedMoment(stage,card,function(){ _finishAwakening(onDone); });
+      const nickname=input.value;
+      cont.disabled=true; // the ceremony plays out over several seconds -- one claim, not several
+      // Companion Canon V2: the nickname is captured first (so the
+      // final claimed card already knows what to call the Creator),
+      // then the big centered Creator Ceremony plays -- Story Egg ->
+      // Glow -> Cracks -> Lumo arrives -> Blessing -> the randomly-
+      // bonded Story Companion's own Hatching -> Hero pose -- and only
+      // AT ITS END is the Magic Card actually claimed, with whichever
+      // companion the ceremony just showed bonded onto it. "Maybe
+      // Later"/"Just Exploring" never reach this function at all (see
+      // _runClaimPanel), so nothing here needs to handle a decline.
+      _runCreatorCeremony(stage,placed,function(companionFields){
+        const card=MagicCard.claim(nickname,placed,companionFields);
+        MagicCard.markAwakeningOffered();
+        refreshHeaderBadge();
+        _showFirstClaimedMoment(stage,card,function(){ _finishAwakening(onDone); });
+      });
     });
     stage.appendChild(cont);
     setTimeout(function(){ try{ input.focus(); }catch(e){} },50);
+  }
+
+  // ---------- Companion Canon V2 — the Creator Ceremony ----------
+  // "New big centered stage visual" (product decision, this sprint) —
+  // a dedicated, larger-than-the-corner-widget presentation, entirely
+  // separate from js/companionEngine.js's own small widget instance
+  // (never touched by this sprint — verified via a plain `git diff`).
+  // Resolves each beat's asset path independently, exactly the way
+  // js/magicCardArt.js already resolves a companion portrait for the
+  // card itself — reusing CompanionEngine.loadRegistry() (the one
+  // static, generic lookup every module in this codebase already
+  // shares) but never depending on any *loaded* CompanionEngine
+  // instance's own private package cache.
+  const CEREMONY_ASSETS_BASE='assets/';
+
+  function _ceremonyFetchJSON(url){
+    return fetch(url).then(function(res){ return res.ok?res.json():null; }).catch(function(){ return null; });
+  }
+
+  // Resolves {id, name, basePath, pkg} for either a registry ROLE
+  // ('visitor' -> the Story Egg, 'guardian' -> Lumo) or an explicit id
+  // (the Creator's own randomly-bonded Story Companion) — a beat names
+  // exactly one of the two (see _entityLookupFor below), never both.
+  function _ceremonyResolveEntity(regList,lookup){
+    let entry=null;
+    if(lookup.role) entry=(regList||[]).find(function(e){ return e.role===lookup.role; });
+    else entry=(regList||[]).find(function(e){ return e.id===lookup.id; });
+    if(!entry) return Promise.resolve(null);
+    const basePath=CEREMONY_ASSETS_BASE+entry.path;
+    return _ceremonyFetchJSON(basePath+'companion.json').then(function(pkg){
+      return pkg ? {id:entry.id,name:entry.name,basePath:basePath,pkg:pkg} : null;
+    });
+  }
+
+  function _entityLookupFor(beatEntity,companionId){
+    if(beatEntity==='egg') return {role:'visitor'};
+    if(beatEntity==='guardian') return {role:'guardian'};
+    return {id:companionId};
+  }
+
+  // A small, real reuse of companionEngine.js's own sparkle vocabulary
+  // (the identical .companion-sparkle/.companion-sparkle-burst classes
+  // + companion-sparkle-burst keyframe css/style.css already declares
+  // for the corner widget's own click reaction) rather than a second,
+  // parallel particle system — just spawned at the ceremony's own
+  // larger scale instead of the widget's small portrait.
+  function _ceremonySparkleBurst(container,count){
+    for(let i=0;i<count;i++){
+      const span=document.createElement('span');
+      span.className='companion-sparkle companion-sparkle-burst';
+      span.style.setProperty('--sx',((Math.random()*2-1)*70).toFixed(1)+'px');
+      span.style.setProperty('--sy',((Math.random()*2-1)*40).toFixed(1)+'px');
+      span.style.setProperty('--srot',((Math.random()*2-1)*40).toFixed(0)+'deg');
+      container.appendChild(span);
+      span.addEventListener('animationend',function(){ if(span.parentNode) span.parentNode.removeChild(span); });
+      setTimeout(function(){ if(span.parentNode) span.parentNode.removeChild(span); },1600);
+    }
+  }
+
+  function _playCeremonyBeats(els,regList,beats,index,companionId){
+    if(index>=beats.length) return Promise.resolve();
+    const beat=beats[index];
+    return _ceremonyResolveEntity(regList,_entityLookupFor(beat.entity,companionId)).then(function(info){
+      els.stage.className='magic-card-ceremony-stage'+(beat.effect?(' magic-card-ceremony-effect-'+beat.effect):'');
+      if(info && info.pkg){
+        const file=info.pkg.states[beat.pose]||info.pkg.states[info.pkg.defaultState];
+        if(file){
+          els.img.src=info.basePath+file;
+          els.img.alt=(info.name||info.id)+' — '+beat.pose;
+        }
+      }
+      if(beat.effect==='blessing') _ceremonySparkleBurst(els.particles,3);
+      els.msg.textContent=beat.speech||'';
+      els.msg.classList.toggle('magic-card-ceremony-msg-hidden',!beat.speech);
+      return new Promise(function(resolve){ setTimeout(resolve,beat.durationMs||1500); });
+    }).then(function(){
+      return _playCeremonyBeats(els,regList,beats,index+1,companionId);
+    });
+  }
+
+  // Plays the whole Creator Ceremony (Story Egg -> Glow -> Cracks ->
+  // Lumo -> Blessing -> Companion Hatching -> Companion Hero) inside
+  // `stage`, then calls onComplete(companionFields) with whichever
+  // Story Companion was just randomly bonded — companionFields may be
+  // null (Companion Runtime unavailable, or a registry with no
+  // role:'companion' entries yet), a real, honest degrade state
+  // MagicCard.claim() already handles gracefully.
+  function _runCreatorCeremony(stage,placed,onComplete){
+    stage.innerHTML='';
+    const ceremonyStage=_el('div','magic-card-ceremony-stage');
+    const imgWrap=_el('div','magic-card-ceremony-img-wrap');
+    const particles=_el('div','magic-card-ceremony-particles');
+    particles.setAttribute('aria-hidden','true');
+    imgWrap.appendChild(particles);
+    const img=document.createElement('img');
+    img.className='magic-card-ceremony-img';
+    img.alt='';
+    imgWrap.appendChild(img);
+    ceremonyStage.appendChild(imgWrap);
+    const msg=_el('div','magic-card-ceremony-msg magic-card-ceremony-msg-hidden');
+    ceremonyStage.appendChild(msg);
+    stage.appendChild(ceremonyStage);
+
+    if(typeof window.CompanionEngine==='undefined' || typeof CompanionDirector==='undefined' || typeof MagicCard==='undefined'){
+      // No Companion Runtime available at all -- skip straight to a
+      // companion-less claim rather than leaving the ceremony (and the
+      // child) waiting on nothing.
+      onComplete(null);
+      return;
+    }
+
+    const els={stage:ceremonyStage,img:img,msg:msg,particles:particles};
+    window.CompanionEngine.loadRegistry(CEREMONY_ASSETS_BASE).then(function(regList){
+      return MagicCard.assignBondedCompanion().then(function(companionFields){
+        const beats=CompanionDirector.getCeremonySequence
+          ? CompanionDirector.getCeremonySequence(
+              companionFields&&companionFields.companionId,
+              companionFields&&companionFields.companionName,
+              companionFields&&companionFields.companionSpecies)
+          : [];
+        return _playCeremonyBeats(els,regList,beats,0,companionFields&&companionFields.companionId)
+          .then(function(){ onComplete(companionFields); });
+      });
+    }).catch(function(){ onComplete(null); });
   }
 
   function _showFirstClaimedMoment(stage,card,onNext){

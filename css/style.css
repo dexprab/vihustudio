@@ -6544,6 +6544,91 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-nickname-input::placeholder{ color:rgba(238,241,255,0.4); }
 .magic-card-nickname-input:focus{ outline:none; border-color:var(--mc-gold); background:rgba(255,255,255,0.12); }
 
+/* ---------- Companion Canon V2 — the Creator Ceremony ----------
+   The "new big centered stage visual" (product decision) — a real,
+   larger presentation of whichever entity the current beat names
+   (Story Egg / Lumo / the Creator's own randomly-bonded Story
+   Companion), swapped by js/magicCardUI.js's own _playCeremonyBeats()
+   via a plain <img src=...> change, styled per-beat entirely through
+   the .magic-card-ceremony-effect-* modifier classes below — the
+   ceremony's own JS has zero opinion about what "glow"/"cracks"/
+   "blessing" should look like, matching this file's own established
+   [data-companion-state] discipline for the small corner widget. */
+.magic-card-ceremony-stage{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+  width:100%;
+}
+.magic-card-ceremony-img-wrap{
+  position:relative;
+  width:240px;
+  height:240px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.magic-card-ceremony-img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  filter:drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+  transition:opacity .35s ease, filter .35s ease;
+}
+.magic-card-ceremony-particles{
+  position:absolute;
+  left:50%; top:50%;
+  width:0; height:0;
+  pointer-events:none;
+  z-index:2;
+}
+.magic-card-ceremony-msg{
+  font-size:17px;
+  font-weight:700;
+  color:var(--mc-ink);
+  text-align:center;
+  max-width:380px;
+  min-height:24px;
+  transition:opacity .3s ease;
+}
+.magic-card-ceremony-msg-hidden{ opacity:0; }
+
+/* "Glow" — reuses companion-glow-breathe verbatim (the same keyframe
+   the corner widget's own glow ring already animates with), just at a
+   faster, more insistent tempo befitting a one-time ceremony beat
+   rather than ambient idle presence. */
+.magic-card-ceremony-effect-glow .magic-card-ceremony-img-wrap{
+  animation:companion-glow-breathe 1.6s ease-in-out infinite;
+}
+.magic-card-ceremony-effect-glow .magic-card-ceremony-img{
+  filter:drop-shadow(0 0 30px rgba(255,203,69,0.6));
+}
+/* "Cracks" — a small, new shake keyframe; no existing keyframe in this
+   file carries this specific "something is breaking open" meaning. */
+.magic-card-ceremony-effect-cracks .magic-card-ceremony-img{
+  animation:magicCardCeremonyCrack .5s ease-in-out 2;
+}
+@keyframes magicCardCeremonyCrack{
+  0%,100%{ transform:translateX(0) rotate(0deg); }
+  25%{ transform:translateX(-5px) rotate(-1.5deg); }
+  75%{ transform:translateX(5px) rotate(1.5deg); }
+}
+/* "Blessing" — the image gets a warm glow; the actual sparkle burst
+   itself is real DOM (js/magicCardUI.js's _ceremonySparkleBurst),
+   reusing .companion-sparkle/.companion-sparkle-burst and the
+   companion-sparkle-burst keyframe verbatim rather than a second
+   particle system. */
+.magic-card-ceremony-effect-blessing .magic-card-ceremony-img{
+  filter:drop-shadow(0 0 26px rgba(255,203,69,0.75));
+}
+@media (prefers-reduced-motion:reduce){
+  .magic-card-ceremony-effect-glow .magic-card-ceremony-img-wrap,
+  .magic-card-ceremony-effect-cracks .magic-card-ceremony-img{ animation:none; }
+}
+
 /* ---------- Screen 11 — Magic Card Home ---------- */
 .magic-card-home-panel{
   width:100%;

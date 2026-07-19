@@ -56,8 +56,47 @@ const MagicCardArt=(function(){
     }catch(e){ return ''; }
   }
 
+  // Companion Canon V2 — "the Magic Card becomes the permanent record
+  // of the Creator Bond." Resolves the bonded companion's own hero.png
+  // (independently of any *loaded* CompanionEngine widget instance,
+  // exactly the way this module already resolves everything else about
+  // a card — a fresh, small fetch, not a shared cache) so drawFront()
+  // below can draw a real portrait circle. Resolves null — never
+  // rejects — for a companion-less card, a companion whose art hasn't
+  // been uploaded yet (Nimbus/Quill's own disclosed gap; the <img>
+  // simply never loads), or a companionId that no longer resolves in
+  // the registry — drawFront()'s own fallback glyph covers every one
+  // of those the same, honest way.
+  function resolveCompanionPortrait(companionId){
+    if(!companionId) return Promise.resolve(null);
+    const base='assets/'+companionId+'/';
+    return fetch(base+'companion.json').then(function(res){
+      return res.ok ? res.json() : null;
+    }).then(function(pkg){
+      if(!pkg || !pkg.states) return null;
+      const file=pkg.states.hero||pkg.states[pkg.defaultState];
+      if(!file) return null;
+      return new Promise(function(resolve){
+        const img=new Image();
+        img.onload=function(){ resolve(img); };
+        img.onerror=function(){ resolve(null); };
+        img.src=base+file;
+      });
+    }).catch(function(){ return null; });
+  }
+
   // ---------- Front: identity, not a redemption token ----------
-  function drawFront(canvas,card){
+  // `opts.companionPortrait` (an already-loaded Image, or null/omitted
+  // — see resolveCompanionPortrait above) and `opts.counts`
+  // ({stories, worlds}, matching MagicCard.growthSignals()'s own
+  // {projectCount, worldCount} shape) are both optional so every
+  // existing caller/test that draws a companion-less or count-less card
+  // keeps working unchanged — Lumo is never a valid companionPortrait
+  // source here, since nothing anywhere ever resolves card.companionId
+  // to a guardian-role registry entry (see js/companionDirector.js's
+  // own _resolveCreatorCompanionId).
+  function drawFront(canvas,card,opts){
+    opts=opts||{};
     canvas.width=CARD_ART_W; canvas.height=CARD_ART_H;
     const ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,CARD_ART_W,CARD_ART_H);
@@ -126,6 +165,40 @@ const MagicCardArt=(function(){
     ctx.textAlign='left';
     ctx.fillText(pillText,28+18,28+22);
 
+    // Companion Canon V2 — "the Magic Card becomes the permanent
+    // record of the Creator Bond... Every Magic Card must contain the
+    // bonded Story Companion." A small portrait circle, opposite the
+    // kicker pill — the real companion image when resolveCompanionPortrait()
+    // has one loaded, a quiet placeholder glyph otherwise (companion-
+    // less card, or a companion whose art hasn't been uploaded yet).
+    // Never Lumo — see this function's own header comment.
+    const hasCompanion=!!(card.companionName||opts.companionPortrait);
+    if(hasCompanion){
+      const cx=CARD_ART_W-28-30, cy=28+30, r=30;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.closePath();
+      ctx.fillStyle='rgba(255,255,255,0.10)';
+      ctx.fill();
+      ctx.clip();
+      if(opts.companionPortrait){
+        ctx.drawImage(opts.companionPortrait,cx-r,cy-r,r*2,r*2);
+      }else{
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.font='26px sans-serif';
+        ctx.fillStyle='#FFCB45';
+        ctx.fillText('✨',cx,cy+1);
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,203,69,0.55)';
+      ctx.lineWidth=2;
+      ctx.stroke();
+    }
+
     // Nickname as the title — set closer to vertical middle so the
     // card's own generous height reads as intentional atmosphere above
     // and below it, rather than crowding everything into the bottom
@@ -143,17 +216,39 @@ const MagicCardArt=(function(){
     ctx.fillStyle='rgba(238,241,255,0.68)';
     ctx.fillText('Creator since '+_formatDate(card.claimedAt),34,titleY+44);
 
+    // Companion Name + Species, and the derived Stories/Worlds counts
+    // (MagicCard.growthSignals()'s own {projectCount,worldCount},
+    // passed in by the caller as opts.counts — this module never reads
+    // CreatorProjectStore itself) — both additive rows, so a
+    // companion-less/count-less card (an older card, or a test fixture)
+    // keeps its original, unchanged spacing below.
+    let nextY=titleY+44;
+    if(card.companionName){
+      nextY+=30;
+      ctx.font='700 16px -apple-system, Helvetica, Arial, sans-serif';
+      ctx.fillStyle='#FFCB45';
+      ctx.fillText('with '+card.companionName+(card.companionSpecies?(', your '+card.companionSpecies):''),34,nextY);
+    }
+    if(opts.counts){
+      nextY+=28;
+      ctx.font='600 15px -apple-system, Helvetica, Arial, sans-serif';
+      ctx.fillStyle='rgba(238,241,255,0.6)';
+      const stories=opts.counts.stories||0, worlds=opts.counts.worlds||0;
+      ctx.fillText('📖 '+stories+' '+(stories===1?'Story':'Stories')+'  ·  🌍 '+worlds+' '+(worlds===1?'World':'Worlds'),34,nextY);
+    }
+
     // A quiet divider + tagline beneath, giving the lower third its own
     // real content instead of a long empty run down to the code.
+    const dividerY=Math.max(titleY+84,nextY+26);
     ctx.strokeStyle='rgba(255,255,255,0.18)';
     ctx.lineWidth=1;
     ctx.beginPath();
-    ctx.moveTo(34,titleY+84);
-    ctx.lineTo(CARD_ART_W-34,titleY+84);
+    ctx.moveTo(34,dividerY);
+    ctx.lineTo(CARD_ART_W-34,dividerY);
     ctx.stroke();
     ctx.font='italic 17px Georgia, serif';
     ctx.fillStyle='rgba(238,241,255,0.55)';
-    ctx.fillText('Every story adds a star to this sky.',34,titleY+116);
+    ctx.fillText('Every story adds a star to this sky.',34,dividerY+32);
 
     // Quiet human-typeable fallback code, bottom-right — never the
     // headline of the card, just a small anchor beneath the nickname.
@@ -328,6 +423,7 @@ const MagicCardArt=(function(){
   const api={
     CARD_ART_W:CARD_ART_W,
     CARD_ART_H:CARD_ART_H,
+    resolveCompanionPortrait:resolveCompanionPortrait,
     drawFront:drawFront,
     drawBack:drawBack,
     downloadDataURL:downloadDataURL,

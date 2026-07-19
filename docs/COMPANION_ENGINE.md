@@ -9,22 +9,35 @@
 > `docs/COMPANION_CANON.md` — this document is the "how," that one is
 > the "why."
 >
-> **Story Egg Interaction & Presence sprint** — this file's most recent
-> update — is a widget-feel polish pass, explicitly scoped as "not a
-> redesign... purely about polishing the Story Egg experience": the
-> Companion Runtime's own architecture, the Companion Registry
-> mechanism, and the Visitor/Creator lifecycle's pre-existing pose
-> mappings are all unchanged; `js/companionEngine.js` *was* extended
-> this sprint (drag physics, ambient/hover/drag/click particles, a
-> breathing glow ring + "home" environment, crossfading pose swaps, and
-> two new additive methods, `setRichness`/`boostGlow`) — additively,
-> generically, with zero id branches and zero change to any existing
-> method's signature or behaviour. See "Story Egg Interaction &
-> Presence" below for the full account. The prior **Companion Canon
-> Freeze & Asset Integration sprint** genuinely touched zero lines of
-> `js/companionEngine.js` — that was a real, disclosed property of
-> *that* sprint's own narrower canon-alignment scope, not a permanent
-> rule that the engine file can never change again.
+> **Companion Canon V2 (Guardian & Creator Bond) sprint** — this file's
+> most recent update — is, like the earlier Companion Canon Freeze
+> sprint, a canon-alignment pass with zero change to
+> `js/companionEngine.js` (verified via `git diff`). It adds a third
+> Companion Registry role (`companion`, alongside `visitor`/`guardian`),
+> random Creator-Companion bonding (`js/magicCard.js`'s
+> `assignBondedCompanion()`/`ensureBondedCompanion()`), a data-driven
+> Creator Ceremony beat sequence (`CompanionDirector.getCeremonySequence()`,
+> rendered by a new big centered ceremony stage in `js/magicCardUI.js`),
+> and the Companion Pose Contract v2 (12 poses, Story Companions only).
+> See "Visitor vs. Creator mode" and "Companion Canon V2 changes" below
+> for the full account.
+>
+> **Story Egg Interaction & Presence sprint** — a widget-feel polish
+> pass, explicitly scoped as "not a redesign... purely about polishing
+> the Story Egg experience": the Companion Runtime's own architecture,
+> the Companion Registry mechanism, and the Visitor/Creator lifecycle's
+> pre-existing pose mappings are all unchanged; `js/companionEngine.js`
+> *was* extended this sprint (drag physics, ambient/hover/drag/click
+> particles, a breathing glow ring + "home" environment, crossfading
+> pose swaps, and two new additive methods, `setRichness`/`boostGlow`)
+> — additively, generically, with zero id branches and zero change to
+> any existing method's signature or behaviour. See "Story Egg
+> Interaction & Presence" below for the full account. The
+> **Companion Canon Freeze & Asset Integration sprint** genuinely
+> touched zero lines of `js/companionEngine.js` — that was a real,
+> disclosed property of *that* sprint's own narrower canon-alignment
+> scope, not a permanent rule that the engine file can never change
+> again.
 
 ## Product Philosophy
 
@@ -104,10 +117,15 @@ assets/story-egg/      │        (generic runtime)         (Studio-specific:
   required; `load()` rejects a package missing any of them, or whose
   `defaultState` has no matching entry in `states`.
 - `states` may name any state vocabulary the package wants — each
-  entity's own 7-pose canon (Canon 1/Canon 2 in `docs/COMPANION_CANON.md`)
-  is product data, not a hardcoded requirement enforced anywhere in the
-  engine. A package may also declare a `"blink"` state (see "Micro
-  polish" below) — inert unless present.
+  entity's own pose canon (Canon 1 Story Egg / Canon 2 Lumo / Canon 3
+  Story Companion, `docs/COMPANION_CANON.md`) is product data, not a
+  hardcoded requirement enforced anywhere in the engine. A Story
+  Companion (Companion Canon V2) declares the full 12-pose Companion
+  Pose Contract (`hero`/`idle`/`wave`/`curious`/`think`/`happy`/
+  `celebrate`/`sleep`/`sad`/`surprised`/`magic`/`hatching`) — still
+  nothing the engine validates or requires, purely authored data. A
+  package may also declare a `"blink"` state (see "Micro polish"
+  below) — inert unless present.
 - `hero` is now a real, addressable pose in `states` (both Lumo's and
   Story Egg's canon lists name it) rather than the pre-canon
   convention of a decorative, off-cycle portrait file — no Studio
@@ -204,8 +222,8 @@ Evolution state — unchanged, un-redesigned): a truthy result means
 default. This is the *only* place this file reads Studio-specific
 state to make that call.
 
-The whole Canon is then expressed as one small data table,
-`MODES` — never as literal id branches:
+The whole Canon is expressed as one small data table, `MODES` — never
+as literal id branches:
 
 ```js
 const MODES = {
@@ -214,26 +232,43 @@ const MODES = {
     poses: { typing: 'curious', creating: 'thinking', artwork: 'excited', publish: 'hatching' }
   },
   creator: {
-    role: 'guardian', speaks: true, bootPose: 'wave', wakePose: 'wave',
+    speaks: true, bootPose: 'wave', wakePose: 'wave',
     poses: { typing: 'curious', creating: 'think', artwork: 'celebrate', publish: 'celebrate' }
   }
 };
 ```
 
-`role` is matched against each `registry.json` entry's own `role`
-field to resolve which entity id actually loads for the current mode
-— `js/companionEngine.js`'s `loadRegistry()` itself is unmodified; only
-the two registry entries gained this one new, optional field. A third,
-future mode/role (e.g. a personal-companion `role: 'personal'`, Canon
-3's own final lifecycle stage) needs only a new `MODES` entry and a new
-registry entry — no engine change, no change to how existing modes
-resolve.
+`visitor.role` is matched against each `registry.json` entry's own
+`role` field — unchanged. **`creator` deliberately has no `role`**
+(Companion Canon V2) — since Companion Canon V2, which entity boots for
+Creator mode is no longer "whichever registry entry has
+`role:'guardian'`" (that was the earlier Companion Canon Freeze
+sprint's own now-superseded model, where Creator mode == Lumo
+permanently). It is the *specific* Story Companion recorded on the
+active Magic Card's own `companionId` field —
+`_resolveCreatorCompanionId(list)` reads `MagicCard.getActive()`, and:
+
+- if `companionId` is set and still resolves to a real
+  `role:'companion'` registry entry, that id loads directly (the
+  common, fast path — no extra async work);
+- otherwise (a **legacy card** claimed before this sprint, with no
+  `companionId` at all) it calls `MagicCard.ensureBondedCompanion(id)`
+  — a real, one-time retroactive bond using the exact same random-pick
+  mechanism the Creator Ceremony itself uses (`assignBondedCompanion()`,
+  below) — persists the result onto the card, pushes it to the cloud,
+  and resolves that id.
+
+Lumo (`role:'guardian'`) is resolved only inside the Creator Ceremony
+itself (`getCeremonySequence()`, below) — never by the ambient
+`MODES`/boot/notify choreography anymore. A third, future registry
+role needs only a new registry entry and, if it needs its own ambient
+choreography, a new `MODES` entry — no engine change.
 
 **The complete choreography, per mode:**
 
-| Studio moment | Trigger | Visitor (Story Egg) | Creator (Lumo, the Guardian) |
+| Studio moment | Trigger | Visitor (Story Egg) | Creator (the bonded Story Companion) |
 |---|---|---|---|
-| Studio opens | `CompanionDirector.init()`, called from `js/app.js`'s `_beginBoot()` — deliberately *after* the Magic Card Identity Gate resolves (see "A real, disclosed timing fix" below) | `idle`, no speech | `wave` + a random `personality.json` greeting → `idle` after 3s |
+| Studio opens | `CompanionDirector.init()`, called from `js/app.js`'s `_beginBoot()` — deliberately *after* the Magic Card Identity Gate resolves (see "A real, disclosed timing fix" below) | `idle`, no speech | `wave` + a random greeting (its own `personality.json` if it has one, else the generic default) → `idle` after 3s |
 | User starts creating | `notify('story-started')` (`js/creationFlow.js`'s `_finish()`) | `thinking`, no speech | `think` + "I can't wait to see your story!" |
 | User types | a document-level delegated `input` listener, 4s cooldown | `curious`, no speech | `curious` + no speech (typing has never spoken, in either mode) |
 | Artwork inserted | `notify('artwork-added')` (`js/contextPanel.js`'s `_applyImageResult`) | `excited` → `idle` after 2s, no speech | `celebrate` + "That looks magical!" → `idle` after 2s |
@@ -241,21 +276,64 @@ resolve.
 | No interaction for 2 minutes | a global activity listener's own idle timer (Studio policy, `IDLE_SLEEP_MS`, identical for both modes) | `sleep()`, no speech | `sleep()`, no speech |
 | User interacts again | the same activity listener, from `sleep` | `idle` (no "just woke" flourish pose exists for a limbless Egg), no speech | `wave` + "Welcome back!" → `idle` after 3s |
 | A Magic Card is claimed or recalled | `notify('creator-born')` (`js/magicCard.js`'s `claim()`/`adopt()`) | *(mode transition — see below)* | — |
-| The Awakening ceremony closes (any outcome) | `notify('ceremony-closed')` (`js/magicCardUI.js`'s `_finishAwakening()`) | settles a lingering `hatching` back to `idle` if still Visitor | no-op (already handled by `creator-born`) |
+| The Creator Ceremony closes (any outcome) | `notify('ceremony-closed')` (`js/magicCardUI.js`'s `_finishAwakening()`) | settles a lingering `hatching` back to `idle` if still Visitor | no-op (already handled by `creator-born`) |
 | A Studio dialog opens (restore/theme-picker/Publish/Magic Card) | a `MutationObserver` watching a small, disclosed set of overlay containers | `hide()` (both modes — restored via `show()` once the dialog closes, only if it was visible before) | |
 
-**`notify('creator-born')`** is Canon 3's literal "Magic Card → Lumo
-Ceremony → Creator" step, made real: it swaps the *active entity*
-itself, via the exact `unload()` + `load()` pair
-`docs/COMPANION_ENGINE.md`'s own prior-sprint text already named as
-ready for "a future switch companion UI with zero flicker" — the Story
-Egg is unloaded, Lumo is loaded in its place on the *same* engine
-instance/DOM widget, and Lumo's own boot choreography (`wave` + a
-greeting) runs immediately. Because this always fires from inside the
-Magic Card overlay's own claim/recall flow, the overlay is already open
-— the dialog-occlusion watcher (unchanged) already keeps the whole
-swap invisible until that overlay itself closes, so no new "reveal"
+**`notify('creator-born')`** is Canon 4's literal "Story Egg hatches →
+A Story Companion is born" step, made real: it swaps the *active
+entity* itself, via the exact `unload()` + `load()` pair this document
+already named as ready for "a future switch companion UI with zero
+flicker" — the Story Egg is unloaded, the Creator's own bonded Story
+Companion (resolved via `_resolveCreatorCompanionId`, above) is loaded
+in its place on the *same* engine instance/DOM widget, and that
+companion's own boot choreography (`wave` + a greeting) runs
+immediately. Because this always fires from inside the Magic Card
+overlay's own claim/recall flow, the overlay is already open — the
+dialog-occlusion watcher (unchanged) already keeps the whole swap
+invisible until that overlay itself closes, so no new "reveal"
 choreography was needed.
+
+## The Creator Ceremony (Companion Canon V2)
+
+`CompanionDirector.getCeremonySequence(companionId, companionName,
+companionSpecies)` returns the whole Canon 4 birth sequence as pure
+data — an ordered array of beats (`{entity, pose, effect, speech,
+durationMs}`, `entity` one of `'egg'`/`'guardian'`/`'companion'`) — no
+DOM, no timers of its own:
+
+```
+egg/idle → egg/magic (glow) → egg/hatching (cracks) →
+guardian/wave (speech) → guardian/celebrate (blessing) →
+companion/hatching (cracks) → companion/hero (speech)
+```
+
+`js/magicCardUI.js`'s ceremony stage is the one thing that actually
+renders it: a new, bigger-than-the-corner-widget presentation
+(`.magic-card-ceremony-*`, `css/style.css`) that steps through the
+beat array, resolving each beat's `entity` against the registry itself
+(a fresh `fetch()` per beat's `companion.json`, mirroring how
+`js/magicCardArt.js` independently resolves a companion portrait —
+never depending on any *loaded* `CompanionEngine` instance's own
+private package cache) and swapping one `<img>`'s `src`. `effect`
+(`glow`/`cracks`/`blessing`) is a CSS modifier class only — the
+"blessing" beat additionally spawns a real sparkle burst reusing
+`.companion-sparkle`/`.companion-sparkle-burst` and the
+`companion-sparkle-burst` keyframe verbatim (`js/companionEngine.js`
+itself is not involved). The ceremony calls
+`MagicCard.assignBondedCompanion()` once, at the very start (right
+after the nickname is captured, before any beat plays), so the exact
+same companion shown throughout the ceremony is what
+`MagicCard.claim()` bonds onto the card at the end — "one Companion,
+two faces": the ceremony reveal and the permanent bond can never
+disagree.
+
+`MagicCard.assignBondedCompanion()` (`js/magicCard.js`) is "the
+Companion chooses the Creator" made real — a genuine random pick
+(`Math.random()`) from every `role:'companion'` registry entry,
+isolated in one small function so a future smarter policy (avoid
+repeats across siblings, seasonal weighting, generations) can replace
+the picking logic with zero change to either caller
+(`claim()`/`ensureBondedCompanion()`).
 
 **A real, disclosed timing fix, found doing this sprint's own
 work**: `CompanionDirector.init()` previously ran unconditionally, at
@@ -477,7 +555,23 @@ gracefully for a missing state image (a 404, no crash) exactly as it
 already does for any package missing one of its own declared files.
 **The moment `hero.png` is uploaded, nothing else needs to change** —
 the registry entry, `companion.json`, Director's `MODES.visitor`
-choreography, and every test are already wired against it.
+choreography, and every test are already wired against it. Companion
+Canon V2 added one more still-pending Story Egg file, `magic.png`
+(used during the Creator Ceremony's own Glow beat) — same disclosed
+shape, same graceful-degradation guarantee.
+
+**Nimbus** (`assets/nimbus/`, Dream Sprite) and **Quill**
+(`assets/quill/`, Ink Spirit) — Companion Canon V2's two seeded
+`role:'companion'` registry entries, needed so the Creator Ceremony's
+random Companion-chooses-the-Creator assignment has a real pool of
+more than one entry to prove genuine randomness from (both names are
+literal examples from the Companion Canon V2 spec itself, nothing
+invented). `companion.json`/`animations.json` declare the full 12-pose
+Companion Pose Contract — but, unlike Lumo's own original Sprint C1
+bootstrap (which drew placeholder Canvas art before real art existed),
+**no placeholder art was generated for either** this time; every one
+of their 12 pose images 404s gracefully. Real production art for both
+remains disclosed future work, the user's own.
 
 ## Future Ready
 
@@ -501,33 +595,32 @@ capability without widening the public API:
   no engine change, and `MODES` in `js/companionDirector.js` would gain
   one more small entry, still no `if (id === ...)` branch anywhere.
 
-## Adding a Second (or Third) Companion
+## Adding a Second (Third, Fourth, ...) Companion
 
-Reachable today with zero engine changes. Story Egg itself is now the
-real, non-hypothetical proof (registered, resolved by role, real art
-for 6 of its 7 poses) — but genericity was also re-verified this
-sprint with
-the same hand-authored throwaway `nimbus` test package the prior
-sprint used (never mentioned anywhere in `js/companionEngine.js`/
-`js/companionDirector.js`):
+Reachable today with zero engine changes — and no longer hypothetical:
+Companion Canon V2 registered **two** real `role:'companion'` entries,
+Nimbus (Dream Sprite) and Quill (Ink Spirit), specifically so
+`MagicCard.assignBondedCompanion()`'s random pick has more than one
+option to genuinely choose between (verified via a Playwright test
+drawing 20 random picks and confirming both ids appear). Adding a
+companion is exactly:
 
 ```
-assets/nimbus/
-  companion.json   -- {id:"nimbus", name:"Nimbus", species:"Cloud Spirit", ...}
-  idle.png
-  happy.png         -- a state neither Lumo nor Story Egg even have
+assets/<id>/
+  companion.json   -- {id, name, species, defaultState, states:{...}}
+  animations.json  -- optional
+  personality.json -- optional
+  <pose>.png        -- one per declared state
 ```
 
-```js
-const nimbus = new CompanionEngine({assetsBase:'assets/'});
-await nimbus.load('nimbus');
-nimbus.setState('happy');   // works — the engine only reads companion.json's own states map
-```
-
-Making a companion serve a given mode is a `registry.json` edit
-(`role: 'visitor' | 'guardian' | ...`) plus, for a genuinely new mode,
-one small `MODES` entry in `js/companionDirector.js` — never a change
-inside `js/companionEngine.js`.
+plus one more `registry.json` entry with `role:'companion'`. No
+`js/companionEngine.js` change, no `js/companionDirector.js` change —
+`_resolveCreatorCompanionId`/`assignBondedCompanion` already iterate
+every `role:'companion'` entry generically. Making a companion serve a
+different mode entirely (a hypothetical fourth role) is a
+`registry.json` edit plus, only if that mode needs its own ambient
+choreography, one small `MODES` entry in `js/companionDirector.js` —
+still never a change inside `js/companionEngine.js`.
 
 ## Canon Alignment changes (this sprint), summarized
 
@@ -580,38 +673,83 @@ genuine 8-pose superset of Canon 2's 7-pose list (`talk` included) —
 kept, not trimmed, since it's real canonical art, not a placeholder to
 be pared down to spec.
 
+## Companion Canon V2 changes, summarized
+
+- `assets/registry.json` — gained a third role value, `companion`, and
+  two new entries (`nimbus`, `quill`).
+- `assets/nimbus/`, `assets/quill/` — new packages: `companion.json` +
+  `animations.json` declaring the full 12-pose Companion Pose Contract;
+  no art generated (disclosed above).
+- `assets/story-egg/companion.json` — gained the new `magic` pose
+  (`version` bumped `1.0`→`1.1`).
+- `js/companionDirector.js` — `MODES.creator` lost its `role` field;
+  `_resolveCreatorCompanionId()` (new) resolves the specific bonded
+  companion instead, with a legacy-card retroactive-bond fallback;
+  `getCeremonySequence()` (new) is the Creator Ceremony's own data.
+  Zero change to `js/companionEngine.js`.
+- `js/magicCard.js` — `assignBondedCompanion()`/`ensureBondedCompanion()`
+  (new); `claim()`/`adopt()` gained `companionId`/`companionName`/
+  `companionSpecies` fields, set once and never re-rolled;
+  `growthSignals()` gained a derived `worldCount`.
+- `js/magicCardUI.js` — the big centered Creator Ceremony stage (new);
+  `_runNicknamePrompt` now plays the full ceremony before calling
+  `claim()`, instead of claiming the instant "Continue" is clicked.
+- `js/magicCardArt.js` — `drawFront()` gained a companion portrait
+  circle, Companion Name/Species, and a derived Stories/Worlds line
+  (all additive/optional — a companion-less card renders exactly as
+  before).
+- `css/style.css` — new `.magic-card-ceremony-*` rules for the
+  ceremony stage, reusing existing `companion-glow-breathe`/
+  `companion-sparkle-burst` keyframes.
+- `supabase/schema.sql` — disclosed, unexecuted: `magic_card_identities`
+  gained `companion_id`/`companion_name`/`companion_species` columns;
+  `recall_magic_card()`'s success return gained the same three fields
+  (never the pattern, on any branch).
+
 ## Critical Files
 
 - `assets/registry.json` — the installed-companions
-  listing, with a `role` field per entry.
+  listing, with a `role` field per entry (`visitor`/`guardian`/`companion`).
 - `assets/lumo/` — `companion.json` + `personality.json` +
   `animations.json` + 8 real PNGs.
 - `assets/story-egg/` — `companion.json` +
-  `animations.json`; 6 of 7 real PNGs uploaded, `hero.png` pending
+  `animations.json`; 6 of 8 real PNGs uploaded, `hero.png`/`magic.png`
+  pending (disclosed above).
+- `assets/nimbus/`, `assets/quill/` — `companion.json` +
+  `animations.json` declaring the full 12-pose contract; art pending
   (disclosed above).
-- `assets/lumo/README.md`, `assets/story-egg/README.md` — each
-  package folder's own asset-folder README, matching this repo's
-  established convention.
+- `assets/lumo/README.md`, `assets/story-egg/README.md`,
+  `assets/nimbus/README.md`, `assets/quill/README.md` — each package
+  folder's own asset-folder README, matching this repo's established
+  convention.
 - `js/companionEngine.js` — the generic runtime; frozen public method
-  *signatures*, extended this sprint (Story Egg Interaction & Presence)
-  with drag physics, particles, the glow ring/environment, crossfade,
-  and the two new additive methods `setRichness`/`boostGlow` — see
-  that section above for the full account.
+  *signatures*, extended by Story Egg Interaction & Presence with drag
+  physics, particles, the glow ring/environment, crossfade, and the
+  two additive methods `setRichness`/`boostGlow`. **Not touched** by
+  Companion Canon V2.
 - `js/companionDirector.js` — Studio's own choreography/integration
-  layer: the `MODES` table (gained `visitor.poses.newPage` this
-  sprint), mode detection, entity-swap on `creator-born`, the dialog-
-  occlusion watcher, and (new this sprint) `currentRichness()` +
-  `firstArtworkSeen` for the emotional-presence hooks.
-- `css/style.css`'s `.companion-*` rules — the widget's visual shell,
-  substantially extended this sprint (drag rotation/settle/wander-home,
-  the glow ring, the environment layer, sparkle particle keyframes,
-  hover/click reactions).
+  layer: the `MODES` table, mode detection, entity-swap on
+  `creator-born`, the dialog-occlusion watcher, `currentRichness()` +
+  `firstArtworkSeen`, and (Companion Canon V2)
+  `_resolveCreatorCompanionId()`/`getCeremonySequence()`.
+- `js/magicCard.js` — the Magic Card data layer; Companion Canon V2
+  added the Creator-Companion Bond (`assignBondedCompanion()`/
+  `ensureBondedCompanion()`, `claim()`/`adopt()` extensions).
+- `js/magicCardUI.js` — the Creator Ceremony UI, including (Companion
+  Canon V2) the new big centered ceremony stage.
+- `js/magicCardArt.js` — the Magic Card's two-sided canvas art,
+  including (Companion Canon V2) the companion portrait/name/species/
+  counts.
+- `css/style.css`'s `.companion-*` and `.magic-card-*` rules — the
+  widget's visual shell and the Magic Card overlay/ceremony's own
+  styling.
+- `supabase/schema.sql` — disclosed, unexecuted Supabase schema,
+  including the companion-bond columns/RPC fields (Companion Canon V2).
 - Hook sites: `js/app.js`'s `_beginBoot()`, `js/creationFlow.js`'s
   `_finish()`, `js/contextPanel.js`'s `_applyImageResult()`,
   `js/publishStudio.js`'s `_finalizePublish()`, `js/magicCard.js`'s
   `claim()`/`adopt()`, `js/magicCardUI.js`'s `_finishAwakening()`, and
-  (new this sprint) `js/pageOps.js`'s `insertBlankPage()`/
-  `addBefore()`/`addAfter()`/`duplicatePage()` via a shared
-  `_notifyPageAdded()` helper.
+  `js/pageOps.js`'s `insertBlankPage()`/`addBefore()`/`addAfter()`/
+  `duplicatePage()` via a shared `_notifyPageAdded()` helper.
 - `docs/COMPANION_CANON.md` — the frozen product canon this file
   implements.

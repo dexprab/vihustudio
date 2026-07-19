@@ -598,8 +598,31 @@ create table if not exists public.magic_card_identities (
   pattern        jsonb not null,
   claimed_at     timestamptz not null default now(),
   last_active_at timestamptz not null default now(),
+  -- Companion Canon V2 (docs/COMPANION_CANON.md) — the Creator-
+  -- Companion Bond, "the Magic Card becomes the permanent record of
+  -- the Creator Bond." Set once, at claim (or inherited verbatim by a
+  -- cross-device recall_magic_card() below), never re-rolled — "the
+  -- Companion chooses the Creator," once. Nullable: a card claimed
+  -- before this sprint has none until js/magicCard.js's
+  -- ensureBondedCompanion() retroactively bonds it on next use.
+  -- companion_id is deliberately plain text, not a foreign key into
+  -- any companions table — the Companion Package Contract
+  -- (js/companionEngine.js) lives entirely in static asset files
+  -- (assets/registry.json), not in this database.
+  companion_id      text,
+  companion_name    text,
+  companion_species text,
   unique (serial_no)
 );
+
+-- Idempotent for a project that already ran an earlier version of this
+-- schema (before Companion Canon V2) — `create table if not exists`
+-- above only takes effect on a genuinely fresh install; a table that
+-- already exists needs these columns added explicitly. Safe to re-run
+-- any number of times.
+alter table public.magic_card_identities add column if not exists companion_id text;
+alter table public.magic_card_identities add column if not exists companion_name text;
+alter table public.magic_card_identities add column if not exists companion_species text;
 
 alter table public.magic_card_identities enable row level security;
 
@@ -732,7 +755,17 @@ begin
     'owner_id', v_identity.owner_id,
     'nickname', v_identity.nickname,
     'constellation', v_identity.constellation,
-    'claimed_at', v_identity.claimed_at
+    'claimed_at', v_identity.claimed_at,
+    -- Companion Canon V2 — the bond travels with the identity, not the
+    -- device: a recalling device must inherit the SAME Story Companion
+    -- this identity was originally bonded to (js/magicCard.js's
+    -- adopt(), which never re-rolls). May be null for a legacy
+    -- identity claimed before this sprint — the recalling client's own
+    -- js/companionDirector.js retroactively bonds one the same way a
+    -- same-device legacy card already does.
+    'companion_id', v_identity.companion_id,
+    'companion_name', v_identity.companion_name,
+    'companion_species', v_identity.companion_species
   );
 end;
 $$;

@@ -22,10 +22,13 @@ placeholder) — do not regenerate or alter without explicit direction.
 - `companion.json` — `{id, name, species, version, defaultState, states}`.
 - `animations.json` — `{transitions:{state:state}, durations:{state:ms}}`.
 - One PNG per entry in `companion.json`'s `states` map — Canon 1's frozen
-  pose list is `hero`/`idle`/`curious`/`thinking`/`excited`/`sleep`/
-  `hatching`; `hero.png` is the one file from that list not yet uploaded
-  (disclosed in `docs/COMPANION_ENGINE.md`'s Asset Status section) — the
-  engine degrades gracefully for a missing state image.
+  pose list (Companion Canon V2) is `hero`/`idle`/`curious`/`thinking`/
+  `excited`/`sleep`/`magic`/`hatching`; `hero.png` and `magic.png` are the
+  two files from that list not yet uploaded (disclosed in
+  `docs/COMPANION_ENGINE.md`'s Asset Status section) — the engine degrades
+  gracefully for a missing state image. The Story Egg still never gets
+  emotional poses (`happy`/`sad`) — it communicates only through movement,
+  glow, and magical effects.
 
 ## Naming Convention
 

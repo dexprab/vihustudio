@@ -13,6 +13,20 @@
       "species": "Creative Potential",
       "path": "story-egg/",
       "role": "visitor"
+    },
+    {
+      "id": "nimbus",
+      "name": "Nimbus",
+      "species": "Dream Sprite",
+      "path": "nimbus/",
+      "role": "companion"
+    },
+    {
+      "id": "quill",
+      "name": "Quill",
+      "species": "Ink Spirit",
+      "path": "quill/",
+      "role": "companion"
     }
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "id": "quill",
+  "name": "Quill",
+  "species": "Ink Spirit",
+  "version": "1.0",
+  "defaultState": "idle",
+  "states": {
+    "hero": "hero.png",
+    "idle": "idle.png",
+    "wave": "wave.png",
+    "curious": "curious.png",
+    "think": "think.png",
+    "happy": "happy.png",
+    "celebrate": "celebrate.png",
+    "sleep": "sleep.png",
+    "sad": "sad.png",
+    "surprised": "surprised.png",
+    "magic": "magic.png",
+    "hatching": "hatching.png"
+  }
+}

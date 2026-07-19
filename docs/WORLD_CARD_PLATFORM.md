@@ -358,6 +358,15 @@ the real Creator card type, it would be a *third*, still-separate
 thing — "share a temporary invite into your world" — not a rename of
 either of the two systems above.
 
+**Companion Canon V2** (`docs/COMPANION_CANON.md`) extends the Magic
+Card identity with a third dimension beyond nickname/pattern: the
+**Creator-Companion Bond** — `companion_id`/`companion_name`/
+`companion_species`, set once at claim (or inherited verbatim by a
+cross-device recall, never re-rolled) and returned by
+`recall_magic_card()`'s own success response. This is a Magic-Card-only
+concept with no World Card equivalent — a World Card unlocks a Theme,
+it has no notion of a bonded companion at all.
+
 ## 7. What's intentionally deferred
 
 - **The other five card types** (Creator/Unlock/Event/Achievement/
