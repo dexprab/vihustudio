@@ -85,7 +85,13 @@
       speaks:false,
       bootPose:'idle',
       wakePose:'idle', // no "just returned" flourish pose exists for a limbless Egg
-      poses:{ typing:'curious', creating:'thinking', artwork:'excited', publish:'hatching' }
+      // 'newPage' is the Story Egg Interaction & Presence sprint's own
+      // addition to the Canon's event table ("New Page -> excited") —
+      // deliberately added only here, not to creator's own poses below,
+      // since this sprint's scope is the Story Egg specifically; an
+      // unmapped event key is already a safe no-op in notify() (see
+      // the 'page-added' branch), so Lumo's choreography is untouched.
+      poses:{ typing:'curious', creating:'thinking', artwork:'excited', publish:'hatching', newPage:'excited' }
     },
     creator:{
       role:'guardian',
@@ -108,9 +114,26 @@
     let occlusionPending=false;
     let occludedForBusyUI=false;
     let wasVisibleBeforeOcclusion=true;
+    let firstArtworkSeen=false;
 
     function safe(fn){
       try{ fn(); }catch(e){ /* a companion hiccup must never break Studio */ }
+    }
+
+    // Emotional Behaviour — "several pages created -> glow gradually
+    // becomes richer" / "story progresses -> particles increase
+    // slightly." A plain page-count threshold, translated into the
+    // engine's own generic numeric richness level (setRichness has no
+    // idea what page count is — this is the one place that meaning
+    // lives). AppState is the same bare global every other Studio
+    // module (js/pageOps.js included) already reads directly.
+    function currentRichness(){
+      try{
+        const n=(typeof AppState!=='undefined' && AppState.slides) ? AppState.slides.length : 0;
+        if(n>=6) return 2;
+        if(n>=3) return 1;
+        return 0;
+      }catch(e){ return 0; }
     }
 
     function modeCfg(){ return MODES[currentMode]||MODES.visitor; }
@@ -308,7 +331,7 @@
      * Translates a named Studio moment into a state change + optional
      * speech bubble, per the current mode's own MODES entry.
      * @param {string} event one of: 'story-started' | 'artwork-added' |
-     *   'published' | 'creator-born' | 'ceremony-closed'
+     *   'published' | 'creator-born' | 'ceremony-closed' | 'page-added'
      */
     function notify(event){
       if(!ready || !engine) return;
@@ -324,7 +347,7 @@
         // the swap invisible until that overlay itself closes.
         if(event==='creator-born'){
           if(currentMode==='creator') return;
-          window.CompanionEngine.loadRegistry().then(function(list){
+          window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(list){
             const id=_resolveEntityId(list,'creator');
             engine.unload();
             return engine.load(id);
@@ -353,12 +376,24 @@
         if(event==='story-started'){
           engine.setState(cfg.poses.creating);
           if(cfg.speaks) engine.speak(MESSAGES.storyStarted);
+          if(engine.setRichness) engine.setRichness(currentRichness());
         }else if(event==='artwork-added'){
           engine.setState(cfg.poses.artwork);
           if(cfg.speaks) engine.speak(MESSAGES.artworkAdded);
+          // Emotional Behaviour — "user creates first artwork -> brighter
+          // glow," a one-shot flourish distinct from the persistent
+          // richness level below (which only ever grows with page count).
+          if(!firstArtworkSeen && engine.boostGlow){ firstArtworkSeen=true; engine.boostGlow(); }
         }else if(event==='published'){
           engine.setState(cfg.poses.publish);
           if(cfg.speaks) engine.speak(MESSAGES.published);
+        }else if(event==='page-added'){
+          // "New Page -> excited," Story Egg only (see MODES.visitor's
+          // own 'newPage' key above) — an event with no mapped pose in
+          // the current mode (Creator today) is a safe, silent no-op.
+          const pose=cfg.poses.newPage;
+          if(pose) engine.setState(pose);
+          if(engine.setRichness) engine.setRichness(currentRichness());
         }
       });
     }

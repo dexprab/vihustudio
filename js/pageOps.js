@@ -97,6 +97,7 @@ const PageOps=(function(){
     AppState.slides.splice(index+1,0,dup);
     _afterMutation(index+1);
     if(!dup.thumbnail){ try{ ThumbnailEngine.generate(dup); }catch(e){} }
+    _notifyPageAdded();
     return true;
   }
 
@@ -110,10 +111,21 @@ const PageOps=(function(){
     return true;
   }
 
+  // Thin, defensive hook shared by every real "a new page just
+  // appeared" call site below — Story Egg Interaction & Presence
+  // sprint's "New Page -> excited" Canon entry. Matches this
+  // codebase's own established pattern (js/magicCard.js,
+  // js/contextPanel.js, js/publishStudio.js all call CompanionDirector
+  // the same defensive way) rather than a new dedicated notification.
+  function _notifyPageAdded(){
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('page-added'); }catch(e){}
+  }
+
   function insertBlankPage(index){
     const insertAt=index+1;
     AppState.slides.splice(insertAt,0,_createBlankSlide());
     _afterMutation(insertAt);
+    _notifyPageAdded();
     return true;
   }
 
@@ -121,11 +133,13 @@ const PageOps=(function(){
     if(AppState.slides.length===0){
       AppState.slides.push(_createBlankSlide());
       _afterMutation(0);
+      _notifyPageAdded();
       return true;
     }
     const insertAt=Math.max(0,index);
     AppState.slides.splice(insertAt,0,_createBlankSlide());
     _afterMutation(insertAt);
+    _notifyPageAdded();
     return true;
   }
 
@@ -133,11 +147,13 @@ const PageOps=(function(){
     if(AppState.slides.length===0){
       AppState.slides.push(_createBlankSlide());
       _afterMutation(0);
+      _notifyPageAdded();
       return true;
     }
     const insertAt=Math.min(index+1,AppState.slides.length);
     AppState.slides.splice(insertAt,0,_createBlankSlide());
     _afterMutation(insertAt);
+    _notifyPageAdded();
     return true;
   }
 

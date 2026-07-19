@@ -32,6 +32,20 @@
 // could add motion (they already do, via CSS). None of that requires
 // widening this class's public API, which is frozen as of this sprint:
 // load/unload/show/hide/setState/getState/speak/wake/sleep/destroy.
+//
+// Story Egg Interaction & Presence sprint: adds "feels alive" polish
+// (soft-eased/rotating drag with a sparkle trail and a settle bounce,
+// idle bobbing + ambient sparkles + a breathing glow ring, hover glow/
+// particles/cursor-tilt, a click wiggle+pulse+burst, crossfading pose
+// swaps, a generic setRichness()/boostGlow() pair for "the egg feels
+// aware of the child's creativity," and a probabilistic "wanders home"
+// settle after being left dragged-away for a while) — every bit of it
+// generic widget behaviour with zero knowledge of what's currently
+// loaded; two new public methods (setRichness/boostGlow) are additive,
+// nothing existing changed shape. All CSS transform/opacity, no
+// continuous rendering loop — drag rotation/trail piggyback on the
+// native pointermove stream already driving _wireDrag, never a
+// separate requestAnimationFrame ticker.
 (function(){
   'use strict';
 
@@ -40,6 +54,21 @@
   const BLINK_MIN_MS = 3000;
   const BLINK_MAX_MS = 7000;
   const BLINK_HOLD_MS = 140;
+
+  // ---------- Story Egg Interaction & Presence: tuning constants ----------
+  const IDLE_SPARKLE_MIN_MS = 4000;
+  const IDLE_SPARKLE_MAX_MS = 8000;
+  const IDLE_SPARKLE_MIN_MS_RICH = 2600;   // richer mood -> particles "increase slightly"
+  const IDLE_SPARKLE_MAX_MS_RICH = 5200;
+  const DRAG_TRAIL_THROTTLE_MS = 90;
+  const DRAG_ROTATION_MAX_DEG = 9;
+  const SETTLE_CLASS_MS = 420;
+  const CLICK_CLASS_MS = 620;
+  const GLOW_BOOST_MS = 900;
+  const WANDER_HOME_MIN_MS = 30000;
+  const WANDER_HOME_MAX_MS = 60000;
+  const WANDER_HOME_PROBABILITY = 0.7;   // "not every time"
+  const WANDER_HOME_TRANSITION_MS = 1400;
 
   class CompanionEngine{
     /**
@@ -69,6 +98,16 @@
       this._blinkTimer=null;
       this._dragCleanup=null;
       this._resizeHandler=null;
+      // Story Egg Interaction & Presence
+      this._particlesEl=null;
+      this._environmentEl=null;
+      this._idleSparkleTimer=null;
+      this._wanderTimer=null;
+      this._hasCustomPosition=false;
+      this._dragging=false;
+      this._reducedMotion=false;
+      this._crossfadeRaf=null;
+      this._richness=0;
     }
 
     // ---------- Loading ----------
@@ -178,9 +217,14 @@
       if(this._autoTransitionTimer){ clearTimeout(this._autoTransitionTimer); this._autoTransitionTimer=null; }
       if(this._speakTimer){ clearTimeout(this._speakTimer); this._speakTimer=null; }
       if(this._blinkTimer){ clearTimeout(this._blinkTimer); this._blinkTimer=null; }
+      if(this._idleSparkleTimer){ clearTimeout(this._idleSparkleTimer); this._idleSparkleTimer=null; }
+      if(this._wanderTimer){ clearTimeout(this._wanderTimer); this._wanderTimer=null; }
       if(this._bubbleEl) this._bubbleEl.classList.add('companion-bubble-hidden');
       this.hide();
-      if(this._root) this._root.removeAttribute('data-companion-state');
+      if(this._root){
+        this._root.removeAttribute('data-companion-state');
+        this._root.removeAttribute('data-companion-richness');
+      }
       this._package=null;
       this._basePath=null;
       this._personality=null;
@@ -249,9 +293,48 @@
       if(!this._package) return;
       const file=this._package.states[state];
       if(!file) return;
+      // "Transitions should crossfade smoothly. Avoid abrupt pose
+      // changes." — a brief opacity dip-and-recover around the src
+      // swap, reusing the .companion-portrait-img{transition:opacity}
+      // rule already in place; the src attribute itself still updates
+      // synchronously (nothing here delays it), only the pixels fade.
+      if(this._crossfadeRaf){ cancelAnimationFrame(this._crossfadeRaf); this._crossfadeRaf=null; }
+      if(!this._reducedMotion) this._imgEl.classList.add('companion-portrait-img-fading');
       this._imgEl.src=this._basePath+file;
       this._imgEl.alt=(this._package.name||this._package.id)+' — '+state;
       this._root.setAttribute('data-companion-state',state);
+      if(!this._reducedMotion){
+        this._crossfadeRaf=requestAnimationFrame(()=>{
+          this._crossfadeRaf=null;
+          if(this._imgEl) this._imgEl.classList.remove('companion-portrait-img-fading');
+        });
+      }
+    }
+
+    // ---------- Story Egg Interaction & Presence: emotional presence ----------
+
+    /**
+     * Generic "how rich/aware does the presence feel right now" level
+     * (0, 1, 2, ...) — purely a CSS hook (data-companion-richness),
+     * same discipline as data-companion-state: this class has zero idea
+     * what "richness" represents to a caller (page count, story
+     * progress, anything else a future Director could derive), it only
+     * names the current level so idle-sparkle frequency and glow can
+     * react. Also usable by any future companion, not Egg-specific.
+     * @param {number} level
+     */
+    setRichness(level){
+      this._richness=Math.max(0,Math.floor(level)||0);
+      if(this._root) this._root.setAttribute('data-companion-richness',String(this._richness));
+    }
+
+    /** One-shot brighter-glow pulse — "brighter glow" on a meaningful moment. */
+    boostGlow(){
+      if(!this._root || this._reducedMotion) return;
+      this._root.classList.remove('companion-glow-boost');
+      void this._root.offsetWidth; // restart the animation if called again mid-pulse
+      this._root.classList.add('companion-glow-boost');
+      setTimeout(()=>{ if(this._root) this._root.classList.remove('companion-glow-boost'); },GLOW_BOOST_MS);
     }
 
     _scheduleAutoTransition(state){
@@ -354,19 +437,26 @@
     destroy(){
       this.unload();
       this._teardownDrag();
+      if(this._crossfadeRaf){ cancelAnimationFrame(this._crossfadeRaf); this._crossfadeRaf=null; }
       if(this._resizeHandler){ window.removeEventListener('resize',this._resizeHandler); this._resizeHandler=null; }
       if(this._root && this._root.parentNode) this._root.parentNode.removeChild(this._root);
       this._root=null;
       this._imgEl=null;
       this._bubbleEl=null;
       this._portraitWrapEl=null;
+      this._particlesEl=null;
+      this._environmentEl=null;
+      this._glowRingEl=null;
       this._visible=false;
+      this._hasCustomPosition=false;
     }
 
     // ---------- DOM ----------
 
     _ensureDom(){
       if(this._root) return;
+      try{ this._reducedMotion=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ this._reducedMotion=false; }
+
       const root=document.createElement('div');
       root.className='companion-widget companion-hidden';
 
@@ -377,6 +467,29 @@
       const portraitWrap=document.createElement('div');
       portraitWrap.className='companion-portrait-wrap';
 
+      // A quiet "home" for the companion to belong to — a soft ground
+      // light plus tiny grass/flowers, purely decorative, entirely CSS
+      // driven (Visual Presence: "the egg should feel like it has a
+      // home"). Sits behind the portrait in paint order.
+      const environment=document.createElement('div');
+      environment.className='companion-environment';
+      environment.setAttribute('aria-hidden','true');
+      environment.innerHTML=
+        '<span class="companion-env-glow"></span>'+
+        '<span class="companion-env-grass"></span>'+
+        '<span class="companion-env-flower companion-env-flower-a">✿</span>'+
+        '<span class="companion-env-flower companion-env-flower-b">✿</span>';
+      portraitWrap.appendChild(environment);
+
+      // The breathing/idle glow ring lives as its own layer (opacity +
+      // scale only — never an animated box-shadow) so richness/hover/
+      // drag/boost can all brighten it independently of the portrait's
+      // own transform, which is reserved for tilt/rotation/bounce.
+      const glowRing=document.createElement('span');
+      glowRing.className='companion-glow-ring';
+      glowRing.setAttribute('aria-hidden','true');
+      portraitWrap.appendChild(glowRing);
+
       const portrait=document.createElement('div');
       portrait.className='companion-portrait';
       const img=document.createElement('img');
@@ -384,6 +497,11 @@
       img.alt='';
       portrait.appendChild(img);
       portraitWrap.appendChild(portrait);
+
+      const particles=document.createElement('div');
+      particles.className='companion-particles';
+      particles.setAttribute('aria-hidden','true');
+      portraitWrap.appendChild(particles);
 
       const zzz=document.createElement('span');
       zzz.className='companion-zzz';
@@ -399,19 +517,118 @@
       this._bubbleEl=bubble;
       this._imgEl=img;
       this._portraitWrapEl=portraitWrap;
+      this._environmentEl=environment;
+      this._particlesEl=particles;
+      this._glowRingEl=glowRing;
 
       this._restorePosition();
       this._wireDrag(portraitWrap);
+      this._wireHover(portrait);
       this._resizeHandler=()=>this._clampToViewport();
       window.addEventListener('resize',this._resizeHandler);
+      this._scheduleIdleSparkles();
 
       if(this._package) this._applyState(this._state);
+    }
+
+    // ---------- Story Egg Interaction & Presence: ambient particles ----------
+
+    // A small, generic sparkle system — every particle is one absolutely-
+    // positioned <span>, animated purely via a CSS transform+opacity
+    // keyframe (never a JS animation loop), removed on its own
+    // 'animationend' (with a timeout fallback in case that never fires,
+    // e.g. under reduced motion where the keyframe is suppressed by
+    // CSS but the element itself must still not leak). `kind` is just a
+    // modifier class — idle/hover/drag/burst each get their own CSS
+    // timing/size, this method knows nothing about what any of them mean.
+    _spawnParticle(kind){
+      if(!this._particlesEl || this._reducedMotion) return;
+      const span=document.createElement('span');
+      span.className='companion-sparkle companion-sparkle-'+kind;
+      // Small randomized start offset/rotation so a burst of several
+      // particles never looks like one glyph copy-pasted in place.
+      span.style.setProperty('--sx',((Math.random()*2-1)*26).toFixed(1)+'px');
+      span.style.setProperty('--sy',((Math.random()*2-1)*14).toFixed(1)+'px');
+      span.style.setProperty('--srot',((Math.random()*2-1)*40).toFixed(0)+'deg');
+      this._particlesEl.appendChild(span);
+      let done=false;
+      const remove=()=>{
+        if(done) return;
+        done=true;
+        if(span.parentNode) span.parentNode.removeChild(span);
+      };
+      span.addEventListener('animationend',remove);
+      setTimeout(remove,2400); // safety net — never a leaked node
+    }
+
+    // "Never remain completely static" — a slow, randomized loop
+    // spawning one ambient sparkle at a time while idle and visible.
+    // Speeds up slightly at a higher richness level ("story progresses
+    // -> magical particles increase slightly"), still just re-reading
+    // its own already-set richness, never told what richness "means."
+    _scheduleIdleSparkles(){
+      if(this._idleSparkleTimer){ clearTimeout(this._idleSparkleTimer); this._idleSparkleTimer=null; }
+      if(this._reducedMotion) return;
+      const rich=this._richness>0;
+      const min=rich?IDLE_SPARKLE_MIN_MS_RICH:IDLE_SPARKLE_MIN_MS;
+      const max=rich?IDLE_SPARKLE_MAX_MS_RICH:IDLE_SPARKLE_MAX_MS;
+      const delay=min+Math.random()*(max-min);
+      this._idleSparkleTimer=setTimeout(()=>{
+        if(this._visible && !this._dragging) this._spawnParticle('idle');
+        this._scheduleIdleSparkles();
+      },delay);
+    }
+
+    // ---------- Hover: brighter glow, soft particles, optional tilt ----------
+
+    _wireHover(portrait){
+      let hovering=false, hoverParticleTimer=null;
+      const onEnter=()=>{
+        hovering=true;
+        if(this._root) this._root.classList.add('companion-hovering');
+        this._spawnParticle('hover');
+        hoverParticleTimer=setTimeout(function tick(){
+          if(!hovering) return;
+          this._spawnParticle('hover');
+          hoverParticleTimer=setTimeout(tick.bind(this),900+Math.random()*600);
+        }.bind(this),900+Math.random()*600);
+      };
+      const onLeave=()=>{
+        hovering=false;
+        if(hoverParticleTimer){ clearTimeout(hoverParticleTimer); hoverParticleTimer=null; }
+        if(this._root) this._root.classList.remove('companion-hovering');
+        if(this._portraitWrapEl) this._portraitWrapEl.style.removeProperty('--companion-tilt');
+      };
+      const onMove=(e)=>{
+        if(!hovering || this._dragging || !this._portraitWrapEl) return;
+        const rect=portrait.getBoundingClientRect();
+        const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+        const dx=(e.clientX-cx)/(rect.width/2);
+        const deg=Math.max(-6,Math.min(6,dx*6));
+        this._portraitWrapEl.style.setProperty('--companion-tilt',deg.toFixed(1)+'deg');
+      };
+      portrait.addEventListener('mouseenter',onEnter);
+      portrait.addEventListener('mouseleave',onLeave);
+      portrait.addEventListener('mousemove',onMove);
+    }
+
+    // ---------- Click: happy wiggle + pulse + sparkle burst ----------
+
+    _playClickReaction(){
+      if(!this._root) return;
+      this._spawnParticle('burst'); this._spawnParticle('burst'); this._spawnParticle('burst');
+      if(this._reducedMotion) return;
+      this._root.classList.remove('companion-clicked');
+      void this._root.offsetWidth;
+      this._root.classList.add('companion-clicked');
+      setTimeout(()=>{ if(this._root) this._root.classList.remove('companion-clicked'); },CLICK_CLASS_MS);
     }
 
     // ---------- Draggable position, remembered per browser session ----------
 
     _wireDrag(handle){
       let dragging=false, moved=false, startX=0, startY=0, startLeft=0, startTop=0;
+      let lastX=0, lastTrailTs=0;
       const onMove=(e)=>{
         if(!dragging || !this._root) return;
         const point=e.touches?e.touches[0]:e;
@@ -426,17 +643,46 @@
         this._root.style.top=top+'px';
         this._root.style.right='auto';
         this._root.style.bottom='auto';
+        // "Slight rotation while being dragged" — a small, clamped tilt
+        // following horizontal velocity since the last frame, smoothed
+        // by the CSS transition already on .companion-portrait (never
+        // a JS animation loop, just a CSS custom property per event).
+        if(this._portraitWrapEl){
+          const vx=point.clientX-lastX;
+          const rot=Math.max(-DRAG_ROTATION_MAX_DEG,Math.min(DRAG_ROTATION_MAX_DEG,vx*1.4));
+          this._portraitWrapEl.style.setProperty('--companion-drag-rot',rot.toFixed(1)+'deg');
+        }
+        lastX=point.clientX;
+        // Sparkle trail — throttled, never one per pointermove tick.
+        const now=Date.now();
+        if(now-lastTrailTs>DRAG_TRAIL_THROTTLE_MS){ lastTrailTs=now; this._spawnParticle('drag'); }
         if(e.cancelable) e.preventDefault();
       };
       const onUp=()=>{
         if(!dragging) return;
         dragging=false;
+        this._dragging=false;
         if(this._root) this._root.classList.remove('companion-dragging');
+        if(this._portraitWrapEl) this._portraitWrapEl.style.setProperty('--companion-drag-rot','0deg');
         document.removeEventListener('mousemove',onMove);
         document.removeEventListener('mouseup',onUp);
         document.removeEventListener('touchmove',onMove);
         document.removeEventListener('touchend',onUp);
-        if(moved) this._savePosition();
+        if(moved){
+          // "Gently settle into position with a soft bounce."
+          if(this._root && !this._reducedMotion){
+            this._root.classList.remove('companion-settling');
+            void this._root.offsetWidth;
+            this._root.classList.add('companion-settling');
+            setTimeout(()=>{ if(this._root) this._root.classList.remove('companion-settling'); },SETTLE_CLASS_MS);
+          }
+          this._savePosition();
+          this._hasCustomPosition=true;
+          this._armWanderHome();
+        }else{
+          // Never exceeded the drag-movement threshold — a tap/click.
+          this._playClickReaction();
+        }
       };
       const onDown=(e)=>{
         if(!this._root) return;
@@ -444,8 +690,11 @@
         const rect=this._root.getBoundingClientRect();
         const point=e.touches?e.touches[0]:e;
         startX=point.clientX; startY=point.clientY;
+        lastX=startX; lastTrailTs=0;
         startLeft=rect.left; startTop=rect.top;
         this._root.classList.add('companion-dragging');
+        this._dragging=true;
+        this._cancelWanderHome();
         document.addEventListener('mousemove',onMove);
         document.addEventListener('mouseup',onUp);
         document.addEventListener('touchmove',onMove,{passive:false});
@@ -466,6 +715,71 @@
 
     _teardownDrag(){
       if(this._dragCleanup){ this._dragCleanup(); this._dragCleanup=null; }
+      this._cancelWanderHome();
+    }
+
+    // ---------- "Wanders home": a delightful, probabilistic settle
+    // back to the default resting spot after being left dragged-away
+    // and untouched for a while. Never on every drag, never instant —
+    // "a magical living presence with a place it likes to be," not a
+    // scripted auto-reset. ----------
+
+    _armWanderHome(){
+      this._cancelWanderHome();
+      if(!this._hasCustomPosition || this._reducedMotion) return;
+      const delay=WANDER_HOME_MIN_MS+Math.random()*(WANDER_HOME_MAX_MS-WANDER_HOME_MIN_MS);
+      this._wanderTimer=setTimeout(()=>{
+        this._wanderTimer=null;
+        if(!this._hasCustomPosition || this._dragging) return;
+        if(Math.random()<WANDER_HOME_PROBABILITY) this._wanderHome();
+      },delay);
+    }
+
+    _cancelWanderHome(){
+      if(this._wanderTimer){ clearTimeout(this._wanderTimer); this._wanderTimer=null; }
+    }
+
+    // Measures where the widget WOULD sit under its own default CSS
+    // positioning (right/bottom) without hardcoding those pixel values
+    // here — reads them straight from the stylesheet via a real
+    // reflow, so this can never drift out of sync with css/style.css.
+    _measureHomeRect(){
+      const root=this._root;
+      const prevLeft=root.style.left, prevTop=root.style.top;
+      const prevRight=root.style.right, prevBottom=root.style.bottom;
+      const prevTransition=root.style.transition;
+      root.style.transition='none';
+      root.style.removeProperty('left'); root.style.removeProperty('top');
+      root.style.removeProperty('right'); root.style.removeProperty('bottom');
+      const rect=root.getBoundingClientRect();
+      const home={left:rect.left,top:rect.top};
+      root.style.left=prevLeft; root.style.top=prevTop;
+      root.style.right=prevRight; root.style.bottom=prevBottom;
+      void root.offsetWidth;
+      root.style.transition=prevTransition;
+      return home;
+    }
+
+    _wanderHome(){
+      if(!this._root) return;
+      const home=this._measureHomeRect();
+      this._root.classList.add('companion-wandering');
+      this._root.style.left=home.left+'px';
+      this._root.style.top=home.top+'px';
+      this._root.style.right='auto';
+      this._root.style.bottom='auto';
+      const cleanup=()=>{
+        if(!this._root) return;
+        this._root.classList.remove('companion-wandering');
+        this._root.style.removeProperty('left');
+        this._root.style.removeProperty('top');
+        this._root.style.removeProperty('right');
+        this._root.style.removeProperty('bottom');
+        this._hasCustomPosition=false;
+        try{ sessionStorage.removeItem(POSITION_STORAGE_KEY); }catch(e){}
+      };
+      this._root.addEventListener('transitionend',cleanup,{once:true});
+      setTimeout(cleanup,WANDER_HOME_TRANSITION_MS+300); // safety net
     }
 
     _savePosition(){

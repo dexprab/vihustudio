@@ -1,21 +1,30 @@
 # Companion Platform (technical reference)
 
 > Frozen foundation: the Companion Package Contract and the
-> CompanionEngine public API. Extending real capability later (sprite
-> animation, sound, AI conversation, ...) must happen *behind* this
-> contract and this API, never by widening either — see "Future Ready."
-> For the product-level canon (what a Story Egg / Lumo *are*, and the
-> Creator Lifecycle) see `docs/COMPANION_CANON.md` — this document is
-> the "how," that one is the "why."
+> CompanionEngine public *method signatures*. Extending real capability
+> later (sprite animation, sound, AI conversation, ...) must happen
+> *behind* this contract and this API, never by widening either in a
+> breaking way — see "Future Ready." For the product-level canon (what
+> a Story Egg / Lumo *are*, and the Creator Lifecycle) see
+> `docs/COMPANION_CANON.md` — this document is the "how," that one is
+> the "why."
 >
-> **Companion Canon Freeze & Asset Integration sprint** — this file's
-> most recent update — is explicitly a canon-alignment sprint, not a
-> runtime sprint: `js/companionEngine.js` was **not touched, not one
-> line**. Every change below is either data (a `companion.json`/
-> `registry.json` edit, a new Story Egg package) or Studio-integration
-> logic in `js/companionDirector.js` (a small, data-driven Visitor/
-> Creator `MODES` table — see "CompanionDirector — Studio integration"
-> below).
+> **Story Egg Interaction & Presence sprint** — this file's most recent
+> update — is a widget-feel polish pass, explicitly scoped as "not a
+> redesign... purely about polishing the Story Egg experience": the
+> Companion Runtime's own architecture, the Companion Registry
+> mechanism, and the Visitor/Creator lifecycle's pre-existing pose
+> mappings are all unchanged; `js/companionEngine.js` *was* extended
+> this sprint (drag physics, ambient/hover/drag/click particles, a
+> breathing glow ring + "home" environment, crossfading pose swaps, and
+> two new additive methods, `setRichness`/`boostGlow`) — additively,
+> generically, with zero id branches and zero change to any existing
+> method's signature or behaviour. See "Story Egg Interaction &
+> Presence" below for the full account. The prior **Companion Canon
+> Freeze & Asset Integration sprint** genuinely touched zero lines of
+> `js/companionEngine.js` — that was a real, disclosed property of
+> *that* sprint's own narrower canon-alignment scope, not a permanent
+> rule that the engine file can never change again.
 
 ## Product Philosophy
 
@@ -270,13 +279,19 @@ to unconditionally call `MagicCard.setActive(cardId||null)`, which
 already correctly clears the active pointer when passed `null` (that
 capability already existed; only the call was missing).
 
-## CompanionEngine — public API (frozen, unchanged this sprint)
+## CompanionEngine — public API (frozen shape, additive since Story Egg Interaction & Presence)
+
+Every method below existed before the Story Egg Interaction & Presence
+sprint and keeps its exact pre-existing signature and behaviour;
+`setRichness`/`boostGlow` are the only two genuinely new methods, both
+additive (see "Story Egg Interaction & Presence" below) — nothing was
+removed, renamed, or had its meaning changed.
 
 ```js
 const lumo = new CompanionEngine();       // opts: {assetsBase, speakDurationMs}
 await lumo.load('lumo');                  // fetches + validates + preloads companion.json/personality.json/animations.json
 lumo.show();                              // mounts (once) and reveals the widget, fading in
-lumo.setState('wave');                    // swaps the displayed image; auto-reverts per animations.json if declared
+lumo.setState('wave');                    // swaps the displayed image (now with a brief crossfade); auto-reverts per animations.json if declared
 lumo.getState();                          // 'wave'
 lumo.speak("Let's imagine!");             // shows a speech bubble, auto-dismisses
 lumo.wake();                              // semantic setState('wave') — "the user came back" (Lumo only — see below)
@@ -284,6 +299,8 @@ lumo.sleep();                             // semantic setState('sleep') — univ
 lumo.hide();                              // hides (fades out) without discarding state
 lumo.unload();                            // discards the loaded package + hides; DOM widget stays mounted for reuse
 lumo.destroy();                           // full teardown, DOM removed
+lumo.setRichness(1);                      // NEW — a generic 0/1/2 "how rich does the presence feel" level; pure CSS hook
+lumo.boostGlow();                         // NEW — a one-shot brighter-glow pulse for a meaningful moment
 ```
 
 `setState()` on an unknown state name never throws — it falls back to
@@ -308,26 +325,125 @@ common to both entities' canon.
 unchanged) reads `assets/registry.json` and resolves the
 `companions` array (`[]` on any failure, never rejects).
 
-## Companion UI (unchanged this sprint)
+## Companion UI
 
 - **Floats above Studio UI, never blocks controls**: the whole widget
   is `pointer-events:none` except the small portrait circle itself
   (the one draggable/hoverable surface).
 - **Draggable, remembers position per session**: `sessionStorage`
-  (`vihu-companion-widget-position`), restored within the same tab.
+  (`vihu-companion-widget-position`), restored within the same tab —
+  now with soft easing/rotation while dragging, a settle bounce on
+  release, and a "wanders home" glide (see below).
 - **Automatically avoids overlapping dialogs or menus**: unchanged;
-  the same `BUSY_SELECTORS` list now also implicitly covers every
-  Magic Card mode (Gate/Awakening/Home all share `#magicCardOverlay`).
+  the same `BUSY_SELECTORS` list also implicitly covers every Magic
+  Card mode (Gate/Awakening/Home all share `#magicCardOverlay`).
 - **show()/hide()**: a real CSS opacity/transform/visibility fade.
 
-## Micro polish (unchanged this sprint)
+## Micro polish
 
 Fade in/out, idle breathing, a hover reaction, a talk pulse, a
 celebrate bounce, a sleep "Zzz" indicator, and a future-ready
 (currently inert for both Lumo and Story Egg) random blink loop gated
 on a package declaring a `"blink"` state. All CSS/Canvas, all respect
-`prefers-reduced-motion`. See the prior sprint's own full write-up,
-unchanged by this one.
+`prefers-reduced-motion`. Extended substantially by the Story Egg
+Interaction & Presence sprint below — see that section for everything
+added since.
+
+## Story Egg Interaction & Presence (sprint)
+
+Per its own explicit brief — "not a redesign... purely about polishing
+the Story Egg experience" — every addition below is generic widget
+behaviour, driven only by plain CSS classes/custom properties/a numeric
+richness attribute the engine has zero opinion about, same discipline
+as `data-companion-state` from day one. Nothing here checks a
+companion's id; Lumo automatically inherits all of it too, since it's
+the same generic `.companion-*` markup either entity renders through.
+
+- **Draggable, "living object" physics** (`js/companionEngine.js`'s
+  `_wireDrag`): a small clamped rotation follows drag velocity via a
+  `--companion-drag-rot` CSS custom property (never a JS animation
+  loop — just one property write per native `mousemove`/`touchmove`
+  event); a throttled sparkle trail (`_spawnParticle('drag')`, at most
+  one every ~90ms); the glow ring brightens while dragging; on release,
+  a brief `.companion-settling` class plays a soft overshoot bounce
+  (`companion-settle-bounce`); the resize-triggered viewport clamp and
+  the drag itself both stay fully inside the viewport, unchanged from
+  before this sprint. A genuine click (movement never exceeded the
+  existing 3px drag threshold) is now distinguished from a drag and
+  triggers the separate click reaction below instead — it never opens
+  a menu or shows dialogue.
+- **Idle presence, "never remain completely static"**: a slow,
+  randomized ambient sparkle loop (`_scheduleIdleSparkles`, 4-8s
+  between sparkles at the base richness level, 2.6-5.2s once richer);
+  a breathing glow ring (`.companion-glow-ring`, opacity+scale only,
+  never an animated `box-shadow`); a small "home" environment layer
+  (`.companion-environment` — a soft ground light, a patch of grass,
+  two tiny flowers) rendered behind the portrait, purely decorative
+  CSS/emoji, no images.
+- **Hover**: `.companion-hovering` brightens the glow ring and spawns
+  occasional particles; a small `--companion-tilt` custom property
+  follows the cursor's horizontal position (clamped ±6°), feeding the
+  same `transform:rotate()` the pre-existing static hover tilt already
+  used.
+- **Click**: a happy wiggle (`companion-click-wiggle`, a finite,
+  non-looping keyframe) plus an immediate 3-particle sparkle burst.
+  Never opens a menu, never shows a dialog/tooltip.
+- **Crossfading pose transitions**: `_applyState()` now briefly dips
+  `.companion-portrait-img`'s opacity to 0 around a `src` swap (via the
+  pre-existing `transition:opacity` rule, cleared on the very next
+  animation frame) instead of an instant, abrupt cut — the `src`
+  attribute itself still updates synchronously, so nothing that reads
+  it (tests included) needed to change.
+- **Emotional presence** — `setRichness(level)`/`boostGlow()` (both new
+  public methods, purely additive): `js/companionDirector.js`'s
+  `currentRichness()` derives a 0/1/2 level from `AppState.slides.length`
+  (0-2 pages / 3-5 / 6+) and calls `setRichness()` after every
+  page-count-changing event; the engine only ever reacts via
+  `data-companion-richness`, brightening the glow ring and shortening
+  the idle-sparkle delay range slightly — never told what "richness"
+  represents. The very first `'artwork-added'` notification in a
+  session additionally calls the new one-shot `boostGlow()` ("user
+  creates first artwork → brighter glow"); later artwork additions
+  don't repeat it.
+- **Studio event: "New Page" → `excited`** — added only to
+  `MODES.visitor.poses.newPage` (Canon's own event table gains this
+  entry; Creator/Lumo's own poses are untouched, so this stays scoped
+  to the Story Egg as the brief specifies). `js/pageOps.js`'s
+  `insertBlankPage`/`addBefore`/`addAfter`/`duplicatePage` — the real
+  page-creation call sites reachable from the "+ Add Page" button and
+  the page ⋮ menu — each call a new, thin `_notifyPageAdded()` helper
+  (`CompanionDirector.notify('page-added')`), the same defensive-hook
+  pattern already used throughout this codebase.
+- **"Wanders home"**: after a real drag, `_armWanderHome()` arms a
+  randomized 30-60s timer; if nothing else happens before it fires, a
+  70% probability check ("not every time") triggers `_wanderHome()` —
+  a slow (1.4s), CSS-eased glide back to wherever the widget's own
+  default `right`/`bottom`-anchored position would be, measured via a
+  real (invisible, single-frame) reflow rather than any pixel value
+  hardcoded in JS, so it can never drift out of sync with
+  `css/style.css`'s own `right`/`bottom` values. Once settled, the
+  remembered `sessionStorage` position is cleared and the widget
+  returns to ordinary CSS-anchored positioning. Never armed before a
+  real drag has happened; skipped entirely under
+  `prefers-reduced-motion`.
+- **Real, disclosed bug fixed in the same pass**: `notify('creator-born')`
+  called `window.CompanionEngine.loadRegistry()` with no argument,
+  silently falling back to the engine's own generic
+  `'assets/companions/'` default (which no longer exists on disk since
+  the prior sprint's asset-path correction) instead of the real
+  `ASSETS_BASE` (`'assets/'`) every other registry lookup in this file
+  already uses — harmless in practice only because `_resolveEntityId`'s
+  own empty-list fallback still resolves to `'lumo'`, but a real defect
+  in the registry-driven resolution path this sprint happened to be
+  touching anyway; fixed to pass `ASSETS_BASE` like every other call
+  site.
+
+All of the above is transform/opacity only (per the sprint's own
+Performance section) — no animated `box-shadow`/`filter`, no
+`requestAnimationFrame` ticker of its own (drag rotation/trail
+piggyback on the native pointermove stream `_wireDrag` already
+listens to), and every spawn/animate path is skipped outright under
+`prefers-reduced-motion` rather than merely suppressed by CSS.
 
 ## Asset Status, disclosed
 
@@ -476,17 +592,26 @@ be pared down to spec.
 - `assets/lumo/README.md`, `assets/story-egg/README.md` — each
   package folder's own asset-folder README, matching this repo's
   established convention.
-- `js/companionEngine.js` — the generic runtime (frozen public API,
-  **untouched this sprint**).
+- `js/companionEngine.js` — the generic runtime; frozen public method
+  *signatures*, extended this sprint (Story Egg Interaction & Presence)
+  with drag physics, particles, the glow ring/environment, crossfade,
+  and the two new additive methods `setRichness`/`boostGlow` — see
+  that section above for the full account.
 - `js/companionDirector.js` — Studio's own choreography/integration
-  layer: the `MODES` table, mode detection, entity-swap on
-  `creator-born`, and the dialog-occlusion watcher.
-- `css/style.css`'s `.companion-*` rules — the widget's visual shell
-  (unchanged this sprint).
-- Hook sites: `js/app.js`'s `_beginBoot()` (boot, moved this sprint),
-  `js/creationFlow.js`'s `_finish()`, `js/contextPanel.js`'s
-  `_applyImageResult()`, `js/publishStudio.js`'s `_finalizePublish()`,
-  `js/magicCard.js`'s `claim()`/`adopt()` (new this sprint),
-  `js/magicCardUI.js`'s `_finishAwakening()` (new this sprint).
+  layer: the `MODES` table (gained `visitor.poses.newPage` this
+  sprint), mode detection, entity-swap on `creator-born`, the dialog-
+  occlusion watcher, and (new this sprint) `currentRichness()` +
+  `firstArtworkSeen` for the emotional-presence hooks.
+- `css/style.css`'s `.companion-*` rules — the widget's visual shell,
+  substantially extended this sprint (drag rotation/settle/wander-home,
+  the glow ring, the environment layer, sparkle particle keyframes,
+  hover/click reactions).
+- Hook sites: `js/app.js`'s `_beginBoot()`, `js/creationFlow.js`'s
+  `_finish()`, `js/contextPanel.js`'s `_applyImageResult()`,
+  `js/publishStudio.js`'s `_finalizePublish()`, `js/magicCard.js`'s
+  `claim()`/`adopt()`, `js/magicCardUI.js`'s `_finishAwakening()`, and
+  (new this sprint) `js/pageOps.js`'s `insertBlankPage()`/
+  `addBefore()`/`addAfter()`/`duplicatePage()` via a shared
+  `_notifyPageAdded()` helper.
 - `docs/COMPANION_CANON.md` — the frozen product canon this file
   implements.
