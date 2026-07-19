@@ -1,0 +1,10 @@
+{
+  "transitions": {
+    "excited": "idle",
+    "hatching": "idle"
+  },
+  "durations": {
+    "excited": 2000,
+    "hatching": 3000
+  }
+}

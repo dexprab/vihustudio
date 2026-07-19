@@ -1,55 +1,48 @@
 // js/companionDirector.js — Studio integration for the Companion
-// Platform (Sprint C1, Companion Platform v1).
+// Platform, aligned to the VihuPlanet Companion Canon (Companion Canon
+// Freeze & Asset Integration sprint).
 //
-// This file is deliberately NOT part of the Companion Engine
-// (js/companionEngine.js) — it is the one place in the codebase
-// allowed to know when "Studio opened," "the user started creating,"
-// "the user is typing," "artwork was inserted," "nothing has happened
-// for a while," "the story was published," or "a Studio dialog is
-// open right now" occur, and to translate each of those Creator-
-// specific moments into a generic CompanionEngine call. The engine
-// itself stays 100% companion-agnostic; this director stays 100%
-// state-machine-agnostic about *which* companion is on screen — the
-// default companion to boot is read from assets/companions/registry.json
-// (the first entry) when no explicit id is given, with 'lumo' as the
-// one, final, disclosed fallback if the registry can't be reached at
-// all — a single literal, not a branch. Swapping in a future companion
-// needs a one-line registry.json edit (or an explicit opts.companionId),
-// nothing inside companionEngine.js and nothing else in this file.
+// js/companionEngine.js (the generic runtime) is UNCHANGED by this
+// sprint — not one line. Everything below is Studio-specific
+// orchestration: which REGISTERED entity to show, and which of its own
+// canonical poses a given Studio moment maps to. The engine still has
+// zero idea whether it's rendering a Story Egg or a Companion — it
+// only ever receives a plain id (resolved from the registry) and a
+// plain pose name (resolved from the small MODES table below).
 //
-// Timing that belongs to the *companion itself* (how long a wave or a
-// celebration lasts before settling back to idle) deliberately lives
-// nowhere in this file — js/companionEngine.js's own setState() reads
-// that straight from the loaded package's animations.json and handles
-// it internally. What stays here is genuinely Studio's own policy, not
-// the companion's: how long Studio waits before considering itself
-// idle (IDLE_SLEEP_MS), and how often typing is allowed to re-trigger
-// "curious" (TYPING_COOLDOWN_MS) — neither is a property of Lumo, both
-// would apply identically to any future companion.
+// ---------- The Canon, in code terms ----------
+// A Visitor is not yet a Creator, and does not have a companion.
+// Every Visitor is instead represented by a Story Egg (registry role
+// "visitor") — no face, no limbs, never speaks, expressed only through
+// pose. Only after a Magic Card is claimed (or recalled) does a
+// Creator's journey officially begin: the Story Egg disappears
+// permanently for that device, and Lumo — the Guardian of Story
+// Companions, owned by VihuPlanet, never claimable, not the user's own
+// future personal companion — becomes the ongoing presence, greeting
+// with the exact same pose animations Sprint C1/C1v2 already built.
 //
-// Every hook site elsewhere in the app is a single, defensive,
-// try/catch-guarded line calling CompanionDirector.notify(event) —
-// the same "thin hook into a dedicated module" pattern already
-// established for PageRuntime/ObjectStrip/ContextPanel/MagicCard
-// throughout this codebase.
+// This file expresses that as ONE small, data-driven MODES table
+// (visitor / creator), never as literal `if (id === 'story-egg')` /
+// `if (id === 'lumo')` branches — see MODES below. Which entity id
+// actually gets loaded for a given mode is resolved generically too,
+// by matching the current mode's own `role` against
+// assets/companions/registry.json's own `role` field — adding a
+// third registry entry for a future "personal companion" role needs
+// no change here at all.
 (function(){
   'use strict';
 
-  const IDLE_SLEEP_MS=120000;      // "No interaction for 2 minutes -> sleep."
-  const TYPING_COOLDOWN_MS=4000;   // Don't re-fire "curious" on every keystroke.
+  const IDLE_SLEEP_MS=120000;      // "No interaction for 2 minutes -> sleep." Studio policy, not a companion property.
+  const TYPING_COOLDOWN_MS=4000;   // Don't re-fire the typing pose on every keystroke.
 
   // "Avoid overlapping dialogs or menus" — the small, closed set of
   // Studio-owned overlays this file (and only this file) is allowed to
   // know about. Every one of these follows the same convention already
   // established across this codebase: a container that gains/loses a
-  // plain ".hidden" class. When any of them is open, the companion is
-  // simply hidden (engine.hide(), the exact same fade every other
-  // hide() call already uses) rather than repositioned — the lowest-
-  // risk way to guarantee it never sits on top of a dialog's own
-  // controls, since this file has no reliable way to know a future
-  // dialog's own geometry in advance. Creation Flow's own overlay is
-  // deliberately NOT in this list — the companion is meant to be
-  // visible there (that's where the boot "wave" greeting happens).
+  // plain ".hidden" class. #magicCardOverlay covers the Identity Gate,
+  // the Awakening ceremony, AND Home — all three modes of the same
+  // element. Creation Flow's own overlay is deliberately NOT in this
+  // list — a companion (Egg or Lumo) is meant to be visible there.
   const BUSY_SELECTORS=[
     '#restoreModal:not(.hidden)',
     '#themePickerModal:not(.hidden)',
@@ -65,10 +58,39 @@
     idleWake:"Welcome back!"
   };
 
+  // The whole Canon, as data. `role` is what's matched against a
+  // registry entry's own `role` field (see _resolveEntityId below);
+  // `speaks` is Canon 1's "never speaks" for the Egg, made structural
+  // rather than accidental (nothing here relies on the Egg simply
+  // having no personality.json to speak from); `bootPose`/`wakePose`
+  // and the four Studio-event -> pose mappings are each entity's own
+  // canonical pose vocabulary, exactly as the Canon names them —
+  // Visitor and Creator intentionally use DIFFERENT pose names for the
+  // same Studio moment (e.g. "creating content" is "think" for Lumo,
+  // "thinking" for the Egg) because that's what the two frozen pose
+  // lists actually are, not a special case for either entity.
+  const MODES={
+    visitor:{
+      role:'visitor',
+      speaks:false,
+      bootPose:'idle',
+      wakePose:'idle', // no "just returned" flourish pose exists for a limbless Egg
+      poses:{ typing:'curious', creating:'thinking', artwork:'excited', publish:'hatching' }
+    },
+    creator:{
+      role:'guardian',
+      speaks:true,
+      bootPose:'wave',
+      wakePose:'wave',
+      poses:{ typing:'curious', creating:'think', artwork:'celebrate', publish:'celebrate' }
+    }
+  };
+
   const CompanionDirector=(function(){
     let engine=null;
     let ready=false;
     let asleep=false;
+    let currentMode=null;
     let idleTimer=null;
     let typingCooldownUntil=0;
     let typingListenerBound=false;
@@ -81,11 +103,16 @@
       try{ fn(); }catch(e){ /* a companion hiccup must never break Studio */ }
     }
 
+    function modeCfg(){ return MODES[currentMode]||MODES.visitor; }
+
     function resetIdleTimer(){
       if(idleTimer) clearTimeout(idleTimer);
       idleTimer=setTimeout(function(){
         if(!ready || asleep) return;
         asleep=true;
+        // 'sleep' is declared in BOTH mode vocabularies (Canon 1 and
+        // Canon 2 both list it), so the frozen sleep() convenience
+        // method is always safe to call directly here.
         safe(function(){ engine.sleep(); });
       },IDLE_SLEEP_MS);
     }
@@ -93,11 +120,15 @@
     function onActivity(){
       if(ready && asleep){
         asleep=false;
-        // "User interacts again -> wave -> idle." wake() sets state to
-        // 'wave'; the loaded package's own animations.json (Lumo's
-        // own wave duration) is what actually settles it back to idle
-        // afterward — no timer of any kind lives in this file.
-        safe(function(){ engine.wake(); engine.speak(MESSAGES.idleWake); });
+        safe(function(){
+          const cfg=modeCfg();
+          // Not engine.wake() — that convenience method is hardcoded
+          // to 'wave', a pose the Egg doesn't declare. setState() with
+          // the current mode's own wake pose is the generic
+          // equivalent, still calling nothing but the frozen public API.
+          engine.setState(cfg.wakePose);
+          if(cfg.speaks) engine.speak(MESSAGES.idleWake);
+        });
       }
       resetIdleTimer();
     }
@@ -123,7 +154,7 @@
       const now=Date.now();
       if(now<typingCooldownUntil) return;
       typingCooldownUntil=now+TYPING_COOLDOWN_MS;
-      safe(function(){ engine.setState('curious'); });
+      safe(function(){ engine.setState(modeCfg().poses.typing); });
     }
 
     function bindGlobalListeners(){
@@ -160,10 +191,6 @@
     function bindOcclusionWatcher(){
       if(occlusionObserver) return;
       occlusionObserver=new MutationObserver(function(){
-        // A single dialog opening/closing can trigger several class/
-        // childList mutations in one go — coalesce them into one
-        // occlusion check per animation frame rather than one per
-        // mutation record.
         if(occlusionPending) return;
         occlusionPending=true;
         requestAnimationFrame(function(){
@@ -176,9 +203,12 @@
     }
 
     // Prefers the loaded package's own personality.json greetings
-    // (Lumo's own three), picking one at random each boot for a
-    // little authored variety; falls back to the one hardcoded default
-    // message only for a package with no personality.json at all.
+    // (Lumo's own three), picking one at random each boot; falls back
+    // to the one hardcoded default message only for a package with no
+    // personality.json at all (the Egg never reaches this — Canon 1's
+    // "never speaks" is enforced structurally by MODES.visitor.speaks,
+    // this fallback is only ever exercised for a future speaking
+    // companion authored without its own greetings).
     function pickGreeting(){
       const p=engine.getPersonality();
       if(p && Array.isArray(p.greetings) && p.greetings.length){
@@ -187,20 +217,44 @@
       return MESSAGES.open;
     }
 
-    function bootWithId(id){
-      const companionId=id||'lumo'; // the one, final, disclosed fallback — see this file's own header comment
-      engine=new window.CompanionEngine();
-      engine.load(companionId).then(function(){
+    // Whether this browser currently has a Creator identity active —
+    // the ONE place this file reads Studio's own Magic Card state to
+    // decide Visitor vs Creator. A missing/unavailable MagicCard module
+    // defaults to Visitor, the safe, canon-correct default.
+    function detectMode(){
+      try{
+        if(typeof MagicCard!=='undefined' && MagicCard.getActive()) return 'creator';
+      }catch(e){}
+      return 'visitor';
+    }
+
+    // Resolves which registry entity id serves a given mode, by
+    // matching MODES[mode].role against each registry entry's own
+    // `role` field — no id is ever hardcoded here. 'lumo' is the one,
+    // final, disclosed fallback literal if the registry can't be
+    // reached or has no matching entry at all (a genuinely rare,
+    // already-disclosed degrade path carried over from the prior
+    // sprint's own precedent), so Studio always shows SOME companion
+    // rather than silently none.
+    function _resolveEntityId(list,mode){
+      const cfg=MODES[mode];
+      const entry=(list||[]).find(function(e){ return e.role===cfg.role; });
+      if(entry) return entry.id;
+      return (list && list[0] && list[0].id) || 'lumo';
+    }
+
+    function _mountEntity(id,mode,onReady){
+      engine.load(id).then(function(){
+        currentMode=mode;
         ready=true;
         engine.show();
-        engine.setState('wave'); // auto-reverts to idle per the package's own animations.json, no timer here
-        engine.speak(pickGreeting());
-        bindGlobalListeners();
-        bindOcclusionWatcher();
+        const cfg=modeCfg();
+        engine.setState(cfg.bootPose);
+        if(cfg.speaks) engine.speak(pickGreeting());
+        if(onReady) onReady();
       }).catch(function(){
-        // No companion.json / broken package — Studio boots exactly
-        // as it always has, just without a companion this session.
         engine=null;
+        ready=false;
       });
     }
 
@@ -210,46 +264,91 @@
      * loaded, so multiple defensive init() call sites never double-
      * mount the widget.
      * @param {object} [opts]
-     * @param {string} [opts.companionId] Explicit override. When
-     *   omitted, the default companion is read from the first entry of
-     *   assets/companions/registry.json — 'lumo' only if that registry
-     *   can't be reached or is empty.
+     * @param {string} [opts.companionId] Explicit override, bypassing
+     *   mode/registry resolution entirely (used by tests).
      */
     function init(opts){
       if(engine) return;
       if(typeof window.CompanionEngine==='undefined') return;
       opts=opts||{};
+      engine=new window.CompanionEngine();
       if(opts.companionId){
-        bootWithId(opts.companionId);
-      }else if(typeof window.CompanionEngine.loadRegistry==='function'){
-        window.CompanionEngine.loadRegistry().then(function(list){
-          bootWithId(list && list.length ? list[0].id : null);
-        }).catch(function(){ bootWithId(null); });
-      }else{
-        bootWithId(null);
+        _mountEntity(opts.companionId,detectMode(),bindReady);
+        return;
       }
+      const mode=detectMode();
+      window.CompanionEngine.loadRegistry().then(function(list){
+        _mountEntity(_resolveEntityId(list,mode),mode,bindReady);
+      }).catch(function(){
+        // Registry fetch itself failed (not just "no matching role") —
+        // _resolveEntityId's own fallback (an empty list has no [0])
+        // already resolves to the one, final 'lumo' literal, so this
+        // reuses the exact same resolution function/fallback rather
+        // than duplicating a second literal.
+        _mountEntity(_resolveEntityId([],mode),mode,bindReady);
+      });
+    }
+
+    function bindReady(){
+      bindGlobalListeners();
+      bindOcclusionWatcher();
     }
 
     /**
      * Translates a named Studio moment into a state change + optional
-     * speech bubble. Silently ignored before the companion has
-     * finished loading or if it failed to load at all.
-     * @param {string} event one of: 'story-started' | 'artwork-added' | 'published'
+     * speech bubble, per the current mode's own MODES entry.
+     * @param {string} event one of: 'story-started' | 'artwork-added' |
+     *   'published' | 'creator-born' | 'ceremony-closed'
      */
     function notify(event){
       if(!ready || !engine) return;
       safe(function(){
+        // Canon 3 — "Magic Card -> Lumo Ceremony -> Creator": fired
+        // once, at the exact moment a Visitor claims or recalls a
+        // Magic Card (js/magicCard.js's claim()/adopt()). Swaps the
+        // active entity from the Story Egg to Lumo via the frozen
+        // unload()+load() pair — the same mechanism the engine's own
+        // docs named as ready for "a future switch companion UI." The
+        // Magic Card overlay is always open at this exact moment (it's
+        // what's calling this), so the occlusion watcher already keeps
+        // the swap invisible until that overlay itself closes.
+        if(event==='creator-born'){
+          if(currentMode==='creator') return;
+          window.CompanionEngine.loadRegistry().then(function(list){
+            const id=_resolveEntityId(list,'creator');
+            engine.unload();
+            return engine.load(id);
+          }).then(function(){
+            currentMode='creator';
+            const cfg=modeCfg();
+            engine.show();
+            engine.setState(cfg.bootPose);
+            if(cfg.speaks) engine.speak(pickGreeting());
+          }).catch(function(){});
+          return;
+        }
+        // The Awakening ceremony always closes through exactly one
+        // function (js/magicCardUI.js's _finishAwakening), regardless
+        // of outcome. If a Creator was just born, 'creator-born'
+        // already handled everything above. If the child is still a
+        // Visitor (declined/deferred), the Egg may be sitting in
+        // 'hatching' from the Publish moment that opened the ceremony
+        // — settle it back to a quiet idle rather than leaving it
+        // mid-hatch indefinitely.
+        if(event==='ceremony-closed'){
+          if(currentMode==='visitor') engine.setState('idle');
+          return;
+        }
+        const cfg=modeCfg();
         if(event==='story-started'){
-          engine.setState('think');
-          engine.speak(MESSAGES.storyStarted);
+          engine.setState(cfg.poses.creating);
+          if(cfg.speaks) engine.speak(MESSAGES.storyStarted);
         }else if(event==='artwork-added'){
-          // celebrate auto-reverts to idle per the package's own
-          // animations.json duration/transition — no timer here.
-          engine.setState('celebrate');
-          engine.speak(MESSAGES.artworkAdded);
+          engine.setState(cfg.poses.artwork);
+          if(cfg.speaks) engine.speak(MESSAGES.artworkAdded);
         }else if(event==='published'){
-          engine.setState('celebrate');
-          engine.speak(MESSAGES.published);
+          engine.setState(cfg.poses.publish);
+          if(cfg.speaks) engine.speak(MESSAGES.published);
         }
       });
     }

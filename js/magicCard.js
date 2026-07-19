@@ -340,6 +340,11 @@ const MagicCard=(function(){
     // A one-time event, not a rapid-succession edit stream -- pushed
     // immediately rather than debounced, unlike touch()/rename() below.
     _pushIdentitySnapshot(card);
+    // Companion Canon Freeze -- this is the literal "Visitor becomes
+    // Creator" moment (Canon 3: Magic Card -> Lumo Ceremony -> Creator).
+    // Single defensive hook, matching every other module's own
+    // integration with CompanionDirector throughout this codebase.
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('creator-born'); }catch(e){}
     return card;
   }
 
@@ -415,6 +420,10 @@ const MagicCard=(function(){
     _writeCards(cards);
     setActive(card.id);
     _pullRecalledProjects(remoteResult.owner_id);
+    // Companion Canon Freeze -- recalling an identity on a new device
+    // is the other real "Visitor becomes Creator" path (alongside
+    // claim() above) -- this device now recognizes a Creator too.
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('creator-born'); }catch(e){}
     return card;
   }
 

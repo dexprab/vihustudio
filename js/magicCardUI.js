@@ -272,7 +272,15 @@ const MagicCardUI=(function(){
     _show();
 
     function proceed(cardId){
-      if(cardId) MagicCard.setActive(cardId);
+      // Companion Canon Freeze fix: previously only ever CALLED
+      // setActive() when a real id was picked, so "Begin Exploring" on
+      // a shared device left the PREVIOUS card's id sitting in
+      // ACTIVE_KEY untouched -- MagicCard.getActive() would keep
+      // reporting a Creator even though the person explicitly chose to
+      // continue as a Visitor this time. setActive(null) already
+      // correctly clears the pointer (see js/magicCard.js); this was
+      // only ever a missing call, not a missing capability.
+      MagicCard.setActive(cardId||null);
       overlay.classList.remove('magic-card-mode-gate');
       _hide();
       refreshHeaderBadge();
@@ -466,6 +474,12 @@ const MagicCardUI=(function(){
     overlay.classList.remove('magic-card-mode-awaken');
     _hide();
     refreshHeaderBadge();
+    // Companion Canon Freeze -- the ceremony's one true exit point,
+    // regardless of outcome (Claimed / Maybe Later / Just Exploring).
+    // A Creator born during this ceremony was already handled by
+    // MagicCard.claim()'s own 'creator-born' hook; this covers the
+    // still-Visitor case (settling a Story Egg left mid-"hatching").
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('ceremony-closed'); }catch(e){}
     try{ onDone(); }catch(e){}
   }
 

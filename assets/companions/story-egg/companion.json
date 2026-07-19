@@ -1,0 +1,16 @@
+{
+  "id": "story-egg",
+  "name": "Story Egg",
+  "species": "Creative Potential",
+  "version": "1.0",
+  "defaultState": "idle",
+  "states": {
+    "hero": "hero.png",
+    "idle": "idle.png",
+    "curious": "curious.png",
+    "thinking": "thinking.png",
+    "excited": "excited.png",
+    "sleep": "sleep.png",
+    "hatching": "hatching.png"
+  }
+}

@@ -4,7 +4,15 @@
       "id": "lumo",
       "name": "Lumo",
       "species": "Story Dragon",
-      "path": "lumo/"
+      "path": "lumo/",
+      "role": "guardian"
+    },
+    {
+      "id": "story-egg",
+      "name": "Story Egg",
+      "species": "Creative Potential",
+      "path": "story-egg/",
+      "role": "visitor"
     }
   ]
 }

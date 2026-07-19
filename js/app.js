@@ -1664,6 +1664,17 @@ function _startCreationFlow(){
 // js/magicCardUI.js's own header comment for why Screen 1/3 aren't
 // built as separate code here.
 function _beginBoot(){
+  // Companion Canon Freeze — this is where CompanionDirector.init()
+  // now lives, not the outer bootstrapSession() IIFE below. A Visitor
+  // vs. Creator decision (Story Egg vs. Lumo) depends on
+  // MagicCard.getActive(), which the Identity Gate above (when shown)
+  // can still change — via a specific card pick, or "Begin Exploring"
+  // now correctly clearing it (see js/magicCardUI.js's own proceed()
+  // fix) — before ever calling _beginBoot(). Booting the companion
+  // here, after that gate has fully resolved, is what makes the
+  // Visitor/Creator decision correct rather than a stale snapshot from
+  // the moment the page merely loaded.
+  try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
@@ -1706,11 +1717,4 @@ function _beginBoot(){
   _beginBoot();
 })();
 try{ if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge(); }catch(e){}
-// Companion Engine Foundation (Sprint C1) — "Studio opens" is this
-// call itself; CompanionDirector.init() loads Lumo's Companion
-// Package, shows it, and runs the wave->idle boot choreography on its
-// own. Fully optional/defensive: an older cached index.html missing
-// these two script tags, or a companion.json fetch failure, leaves
-// Studio's boot sequence completely unaffected.
-try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
 });
