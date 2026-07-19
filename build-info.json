@@ -4,6 +4,6 @@
   "task": "Direct product naming decision: 'rename vihu card to world card. magic card stays same.' Renamed the shareable, time-boxed World-unlock card system from 'Vihu Card' to 'World Card' everywhere it's a live, current-facing name -- the Screen 1 option toggle, both panels' intro/code-toggle/status copy, the printed card-back wordmark in World Builder's Card Art, code comments across 11 files, and the canonical reference doc (docs/VIHU_CARD_PLATFORM.md renamed to docs/WORLD_CARD_PLATFORM.md via git mv, content rewritten, all cross-references updated) -- while Magic Card (the separate, unrelated Creator-identity system) stays completely untouched. Internal code identifiers (js/cardPlatform.js, the cards/card_redemptions Supabase tables, redeem_card() RPC) were already generic and needed no change. Historical CLAUDE.md sprint-log prose describing what was built while it was still called Vihu Card is left as a point-in-time record, matching this codebase's own established precedent. Verified via a full grep sweep for stray references, node -c syntax checks, the updated card-naming Playwright suite, the full Magic Card/Vihu Card/Creator regression suite, a new World Builder v2 boot-check, and both goldenBuild.js suites -- all passing unchanged.",
   "build": "0168",
   "buildDate": "2026-07-19",
-  "commit": "pending",
+  "commit": "f654f51",
   "environment": "Release"
 }
