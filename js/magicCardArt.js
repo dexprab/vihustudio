@@ -73,14 +73,43 @@ const MagicCardArt=(function(){
     ctx.fillStyle=grad;
     ctx.fillRect(0,0,CARD_ART_W,CARD_ART_H);
 
-    // Small decorative scattered stars — quiet texture, not the real
-    // tappable pattern (that lives on the back only).
-    ctx.fillStyle='rgba(238,241,255,0.55)';
-    const deco=[[0.12,0.08],[0.85,0.14],[0.22,0.28],[0.72,0.32],[0.35,0.62],[0.9,0.68],[0.15,0.85],[0.62,0.9]];
-    deco.forEach(function(p){
+    // A soft, purely atmospheric glow — the front carries no real
+    // pattern (that stays exclusive to the back), so this is what
+    // fills the card's own generous middle third instead of leaving it
+    // a visually empty void.
+    const glow=ctx.createRadialGradient(CARD_ART_W*0.66,CARD_ART_H*0.38,10,CARD_ART_W*0.66,CARD_ART_H*0.38,280);
+    glow.addColorStop(0,'rgba(255,203,69,0.16)');
+    glow.addColorStop(0.5,'rgba(120,140,255,0.08)');
+    glow.addColorStop(1,'rgba(120,140,255,0)');
+    ctx.fillStyle=glow;
+    ctx.fillRect(0,0,CARD_ART_W,CARD_ART_H);
+
+    // A dense, varied decorative starfield — quiet texture, not the
+    // real tappable pattern (that lives on the back only). Deterministic
+    // (a fixed seed sequence, not Math.random()) so a re-download of
+    // the same card always looks the same.
+    let seed=17;
+    function nextRand(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+    for(let i=0;i<46;i++){
+      const sx=nextRand()*CARD_ART_W, sy=nextRand()*CARD_ART_H*0.86;
+      const r=0.6+nextRand()*1.6;
       ctx.beginPath();
-      ctx.arc(p[0]*CARD_ART_W,p[1]*CARD_ART_H,2,0,Math.PI*2);
+      ctx.arc(sx,sy,r,0,Math.PI*2);
+      ctx.fillStyle='rgba(238,241,255,'+(0.25+nextRand()*0.4).toFixed(2)+')';
       ctx.fill();
+    }
+    // A handful of larger, gently glowing twinkle stars for real focal
+    // points among the fine texture above.
+    const bigStars=[[0.14,0.42],[0.78,0.2],[0.58,0.5],[0.28,0.66],[0.86,0.58]];
+    bigStars.forEach(function(p,i){
+      ctx.save();
+      ctx.shadowColor='rgba(255,203,69,0.85)';
+      ctx.shadowBlur=10;
+      ctx.fillStyle=i%2===0?'#FFCB45':'#eef1ff';
+      ctx.beginPath();
+      ctx.arc(p[0]*CARD_ART_W,p[1]*CARD_ART_H,2.6,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
     });
 
     // Kicker pill — no rarity concept here, this simply names what the
@@ -97,18 +126,34 @@ const MagicCardArt=(function(){
     ctx.textAlign='left';
     ctx.fillText(pillText,28+18,28+22);
 
-    // Nickname as the title.
+    // Nickname as the title — set closer to vertical middle so the
+    // card's own generous height reads as intentional atmosphere above
+    // and below it, rather than crowding everything into the bottom
+    // fifth of the canvas.
+    const titleY=Math.round(CARD_ART_H*0.60);
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
     ctx.fillStyle='#eef1ff';
     ctx.shadowColor='rgba(0,0,0,0.55)';
     ctx.shadowBlur=12;
-    _fitText(ctx,(card.nickname||'Star Traveler'),34,CARD_ART_H-200,CARD_ART_W-68,52,28,'700 __PX__px Georgia, serif');
+    _fitText(ctx,(card.nickname||'Star Traveler'),34,titleY,CARD_ART_W-68,52,28,'700 __PX__px Georgia, serif');
     ctx.shadowBlur=0;
 
     ctx.font='400 20px -apple-system, Helvetica, Arial, sans-serif';
     ctx.fillStyle='rgba(238,241,255,0.68)';
-    ctx.fillText('Creator since '+_formatDate(card.claimedAt),34,CARD_ART_H-156);
+    ctx.fillText('Creator since '+_formatDate(card.claimedAt),34,titleY+44);
+
+    // A quiet divider + tagline beneath, giving the lower third its own
+    // real content instead of a long empty run down to the code.
+    ctx.strokeStyle='rgba(255,255,255,0.18)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(34,titleY+84);
+    ctx.lineTo(CARD_ART_W-34,titleY+84);
+    ctx.stroke();
+    ctx.font='italic 17px Georgia, serif';
+    ctx.fillStyle='rgba(238,241,255,0.55)';
+    ctx.fillText('Every story adds a star to this sky.',34,titleY+116);
 
     // Quiet human-typeable fallback code, bottom-right — never the
     // headline of the card, just a small anchor beneath the nickname.
@@ -116,7 +161,7 @@ const MagicCardArt=(function(){
       ctx.font='600 16px "SF Mono", Consolas, monospace';
       ctx.fillStyle='rgba(238,241,255,0.5)';
       ctx.textAlign='right';
-      ctx.fillText(card.id,CARD_ART_W-34,CARD_ART_H-48);
+      ctx.fillText(card.id,CARD_ART_W-34,CARD_ART_H-34);
     }
 
     ctx.restore();

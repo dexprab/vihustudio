@@ -267,6 +267,21 @@ const MagicCardUI=(function(){
     content.appendChild(panel);
   }
 
+  // Small shared builder so the two "action" tiles (Begin Exploring,
+  // Recall a different card) carry the same visual weight as a real
+  // card tile — an icon circle roughly matching the constellation
+  // tile's own footprint, plus a stacked label — rather than a bare
+  // emoji+text line that reads as a lesser, half-finished sibling next
+  // to the richer card tiles.
+  function _buildGateActionTile(icon,label,onClick){
+    const btn=_el('button','magic-card-gate-explore');
+    btn.type='button';
+    btn.appendChild(_el('span','magic-card-gate-explore-icon',icon));
+    btn.appendChild(_el('span','magic-card-gate-explore-label',label));
+    btn.addEventListener('click',onClick);
+    return btn;
+  }
+
   function _renderPicker(panel,cards,proceed){
     const existingGrid=panel.querySelector('.magic-card-gate-grid');
     if(existingGrid) existingGrid.remove();
@@ -276,6 +291,15 @@ const MagicCardUI=(function(){
     if(existingContinue) existingContinue.remove();
     const existingSvg=panel.querySelector('svg.magic-card-constellation-svg');
     if(existingSvg) existingSvg.remove();
+    // The single-card "Welcome back" view's own "Not you?" link has no
+    // remaining purpose once the picker is showing every option — left
+    // in place it reads as a stray, unstyled heading floating above the
+    // grid (the exact artifact a real screenshot surfaced).
+    const existingNotYou=panel.querySelector('.magic-card-gate-notyou');
+    if(existingNotYou) existingNotYou.remove();
+    if(!panel.querySelector('.magic-card-gate-title')){
+      panel.insertBefore(_el('div','magic-card-gate-title','Whose adventure is this?'),panel.firstChild);
+    }
 
     const grid=_el('div','magic-card-gate-grid');
     cards.forEach(function(card){
@@ -286,23 +310,17 @@ const MagicCardUI=(function(){
       tile.addEventListener('click',function(){ proceed(card.id); });
       grid.appendChild(tile);
     });
-    const explore=_el('button','magic-card-gate-explore','🌱 Begin Exploring');
-    explore.type='button';
-    explore.addEventListener('click',function(){ proceed(null); });
-    grid.appendChild(explore);
+    grid.appendChild(_buildGateActionTile('🌱','Begin Exploring',function(){ proceed(null); }));
 
     // A quiet second option for the "some cards already local on this
     // device, but I want to pull a DIFFERENT one too" case — sets a
     // one-shot flag js/creationFlow.js's Screen 1 checks for and
     // consumes on its very next render (this module has no direct path
     // of its own into that other module's DOM).
-    const recall=_el('button','magic-card-gate-explore','✨ Recall a different card');
-    recall.type='button';
-    recall.addEventListener('click',function(){
+    grid.appendChild(_buildGateActionTile('✨','Recall a different card',function(){
       try{ window.__magicCardAutoOpenRecall=true; }catch(e){}
       proceed(null);
-    });
-    grid.appendChild(recall);
+    }));
     panel.appendChild(grid);
   }
 

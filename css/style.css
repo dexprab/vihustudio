@@ -5244,9 +5244,15 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-card-toggle:hover{ border-color:var(--gold); }
 .creation-flow-card-redeem-panel{
   margin-top:14px;
+  padding:20px 18px;
+  border-radius:20px;
+  background:var(--cf-paper-alt);
+  border:1px solid var(--cf-line);
+  box-shadow:0 6px 18px rgba(0,0,0,0.06);
   display:flex;
   flex-direction:column;
-  gap:10px;
+  align-items:stretch;
+  gap:12px;
 }
 .creation-flow-card-redeem-panel.hidden{ display:none; }
 .creation-flow-card-redeem-intro{
@@ -5254,6 +5260,7 @@ body.creation-flow-active .app-header{ display:none; }
   font-size:12.5px;
   color:var(--text-secondary);
   line-height:1.5;
+  text-align:center;
 }
 /* Vihu Card Platform v1 — the tap board matches the validated wireframe
    artifact's own "Star Matrix" look, and deliberately reuses the exact
@@ -5267,7 +5274,7 @@ body.creation-flow-active .app-header{ display:none; }
   grid-template-columns:22px repeat(10,1fr);
   grid-template-rows:22px repeat(10,1fr);
   gap:2px;
-  max-width:360px;
+  max-width:420px;
   aspect-ratio:1;
   margin:0 auto;
   padding:10px;
@@ -6109,7 +6116,17 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   inset:0;
   z-index:1400;
   display:flex;
-  align-items:center;
+  /* A plain align-items:center on a scrollable flex container clips
+     the TOP of any content taller than the viewport permanently —
+     scrollTop starts at 0, which shows the vertically-centered middle,
+     so the content above it becomes unreachable (scrolling up further
+     isn't possible). align-items:flex-start is the safe baseline;
+     "safe center" (supported in modern Chromium/Firefox) upgrades to
+     true centering only when the content actually fits, falling back
+     to flex-start automatically otherwise — an unsupporting browser
+     simply ignores the second declaration and keeps flex-start. */
+  align-items:flex-start;
+  align-items:safe center;
   justify-content:center;
   overflow-y:auto;
   padding:clamp(16px,3vh,48px) 24px;
@@ -6195,6 +6212,8 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-gate-panel{
   width:100%;
   max-width:420px;
+  max-height:calc(100vh - 64px);
+  overflow-y:auto;
   background:var(--mc-panel);
   border:1px solid var(--mc-line);
   border-radius:24px;
@@ -6279,17 +6298,33 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:4px;
-  padding:14px 8px;
+  justify-content:flex-start;
+  gap:6px;
+  padding:14px 8px 10px;
   border-radius:16px;
-  background:transparent;
-  border:1px dashed var(--mc-line);
+  background:rgba(255,255,255,0.03);
+  border:1px dashed rgba(255,255,255,0.24);
   color:var(--mc-ink-soft);
-  font:700 12px/1.3 inherit;
   text-align:center;
 }
-.magic-card-gate-explore:hover{ border-color:rgba(255,203,69,0.5); color:var(--mc-ink); }
+.magic-card-gate-explore:hover{ background:rgba(255,255,255,0.08); border-color:rgba(255,203,69,0.6); color:var(--mc-ink); }
+/* An icon circle roughly matching a real card tile's own constellation
+   footprint, so "Begin Exploring"/"Recall a different card" read as
+   full peers of a claimed-card tile, not a smaller, lesser afterthought
+   sitting beside it. */
+.magic-card-gate-explore-icon{
+  width:44px;
+  height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:rgba(255,255,255,0.08);
+  font-size:19px;
+}
+.magic-card-gate-explore-label{
+  font:700 12px/1.3 inherit;
+}
 
 /* ---------- Screens 5-7 — The Awakening ceremony ---------- */
 .magic-card-awaken-stage{
@@ -6395,6 +6430,8 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-home-panel{
   width:100%;
   max-width:460px;
+  max-height:calc(100vh - 64px);
+  overflow-y:auto;
   background:var(--mc-panel);
   border:1px solid var(--mc-line);
   border-radius:24px;
@@ -6406,7 +6443,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   box-shadow:0 24px 64px rgba(0,0,0,0.45);
   backdrop-filter:blur(6px);
 }
-.magic-card-home-sky{ margin:4px 0 12px; }
+.magic-card-home-sky{ margin:4px 0 10px; }
 .magic-card-home-name{
   font-size:20px;
   font-weight:800;
@@ -6415,7 +6452,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-home-since{
   font-size:12.5px;
   color:var(--mc-ink-soft);
-  margin:2px 0 22px;
+  margin:2px 0 16px;
 }
 .magic-card-home-stories-label{
   align-self:flex-start;
