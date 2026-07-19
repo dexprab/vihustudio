@@ -50,6 +50,7 @@ Studio. None of it ever travels inside a World's `.vtheme` package.
 | Icons | `assets/icons/{navigation,actions,status}/` |
 | UI Decorations | `assets/ui/shadows/` and the environment folders above |
 | Stickers | `assets/stickers/` |
+| Story Companions | `assets/lumo/`, `assets/story-egg/` (see `docs/COMPANION_ENGINE.md`, `docs/COMPANION_CANON.md`) |
 
 Product Assets reach every screen the same way — a Creation Type
 illustration, a button texture, or a navigation icon is referenced by

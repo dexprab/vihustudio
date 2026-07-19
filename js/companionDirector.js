@@ -26,14 +26,24 @@
 // `if (id === 'lumo')` branches — see MODES below. Which entity id
 // actually gets loaded for a given mode is resolved generically too,
 // by matching the current mode's own `role` against
-// assets/companions/registry.json's own `role` field — adding a
-// third registry entry for a future "personal companion" role needs
-// no change here at all.
+// assets/registry.json's own `role` field — adding a third registry
+// entry for a future "personal companion" role needs no change here
+// at all.
 (function(){
   'use strict';
 
   const IDLE_SLEEP_MS=120000;      // "No interaction for 2 minutes -> sleep." Studio policy, not a companion property.
   const TYPING_COOLDOWN_MS=4000;   // Don't re-fire the typing pose on every keystroke.
+
+  // Real, canonical Companion Packages live at the repo-root assets/
+  // folder (assets/lumo/, assets/story-egg/, assets/registry.json) —
+  // NOT assets/companions/, which was this file's own original,
+  // mistaken assumption during the Companion Canon Freeze sprint,
+  // corrected once the real uploaded asset folders landed. This is the
+  // one place that base path is named; CompanionEngine's own default
+  // ('assets/companions/') is untouched since the engine itself stays
+  // fully generic about where a caller's packages happen to live.
+  const ASSETS_BASE='assets/';
 
   // "Avoid overlapping dialogs or menus" — the small, closed set of
   // Studio-owned overlays this file (and only this file) is allowed to
@@ -271,13 +281,13 @@
       if(engine) return;
       if(typeof window.CompanionEngine==='undefined') return;
       opts=opts||{};
-      engine=new window.CompanionEngine();
+      engine=new window.CompanionEngine({assetsBase:ASSETS_BASE});
       if(opts.companionId){
         _mountEntity(opts.companionId,detectMode(),bindReady);
         return;
       }
       const mode=detectMode();
-      window.CompanionEngine.loadRegistry().then(function(list){
+      window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(list){
         _mountEntity(_resolveEntityId(list,mode),mode,bindReady);
       }).catch(function(){
         // Registry fetch itself failed (not just "no matching role") —

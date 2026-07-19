@@ -35,7 +35,7 @@ Lifecycle account this section only summarizes technically.
 
 ## Architecture — three layers, each knowing only what it needs to
 
-1. **Companion Package** (`assets/companions/<id>/`) — pure data. A
+1. **Companion Package** (`assets/<id>/`) — pure data. A
    `companion.json` manifest (required), an optional `personality.json`
    (traits/role/greetings/neverSays), an optional `animations.json`
    (state-transition/duration table), plus one PNG per declared state.
@@ -53,15 +53,15 @@ Lifecycle account this section only summarizes technically.
    Magic Card being claimed, a Studio dialog being open) and translate
    each into a generic `CompanionEngine` call. Which registered entity
    id to actually load is resolved by matching a small `MODES` table's
-   own `role` value against `assets/companions/registry.json`'s own
+   own `role` value against `assets/registry.json`'s own
    `role` field — see "Visitor vs. Creator mode" below — never a
    hardcoded id, except for the one, final, disclosed `'lumo'` literal
    used only if the registry is entirely unreachable.
 
 ```
-assets/companions/registry.json  ─┐
-assets/companions/lumo/           ├─►  js/companionEngine.js  ─►  js/companionDirector.js  ─►  Studio
-assets/companions/story-egg/      │        (generic runtime)         (Studio-specific:
+assets/registry.json  ─┐
+assets/lumo/           ├─►  js/companionEngine.js  ─►  js/companionDirector.js  ─►  Studio
+assets/story-egg/      │        (generic runtime)         (Studio-specific:
   companion.json (required)       │                                   Visitor/Creator MODES,
   personality.json (optional)     │                                   registry role lookup)
   animations.json (optional)      │
@@ -106,7 +106,7 @@ assets/companions/story-egg/      │        (generic runtime)         (Studio-s
   surface (e.g. a "Meet Lumo"/"Meet your Story Egg" moment) that isn't
   built yet.
 - Every file `companion.json` names must exist as a real PNG at
-  `assets/companions/<id>/<file>` — the engine preloads every declared
+  `assets/<id>/<file>` — the engine preloads every declared
   state's image before `load()` resolves; one broken/missing image
   degrades gracefully (falls back to a broken-image glyph for that one
   state) rather than failing the whole package.
@@ -141,7 +141,7 @@ flag — never by the accident of a missing file (see "CompanionDirector
 
 ```json
 {
-  "transitions": { "wave": "idle", "celebrate": "idle", "sleep": "idle" },
+  "transitions": { "wave": "idle", "talk": "idle", "celebrate": "idle", "sleep": "idle" },
   "durations": { "wave": 3000, "celebrate": 2000 }
 }
 ```
@@ -151,14 +151,18 @@ hardcoded**: `setState(state)` checks `durations[state]`; if present,
 it schedules an automatic `setState(transitions[state])` after that
 many milliseconds (cancelled/rescheduled by any later `setState()`
 call). A state with a `transitions` entry but no `durations` entry
-(`sleep`) never times out on its own — it ends only via an explicit
-next state change. A package with no `animations.json` at all behaves
-exactly as a bare `companion.json` package always has — every state
-just persists until the next explicit `setState()` call.
+(`sleep`, `talk`) never times out on its own via `setState()`'s own
+timer — `talk` instead settles via `speak()`'s own bubble-dismiss
+timer, per that method's own doc comment, and `sleep` ends only via an
+explicit next state change. A package with no `animations.json` at all
+behaves exactly as a bare `companion.json` package always has — every
+state just persists until the next explicit `setState()` call.
 `js/companionDirector.js` has **zero** hardcoded companion-animation-
 timing constants — all of that timing lives in this file, read at
-runtime. (Lumo's `talk`/`talk`-linked entries were retired this sprint
-— see "Canon Alignment changes" below.)
+runtime. (`talk` is real, canonical Lumo art — kept, not retired, once
+the real asset upload arrived as a superset of Canon 2's own 7-pose
+list; Director's own choreography still never sets it directly — see
+"Canon Alignment changes" below.)
 
 Story Egg's own `animations.json`:
 
@@ -301,7 +305,7 @@ sometimes speech) than that one convenience wrapper alone provides.
 common to both entities' canon.
 
 `CompanionEngine.loadRegistry(assetsBase?)` (a **static** method,
-unchanged) reads `assets/companions/registry.json` and resolves the
+unchanged) reads `assets/registry.json` and resolves the
 `companions` array (`[]` on any failure, never rejects).
 
 ## Companion UI (unchanged this sprint)
@@ -327,30 +331,37 @@ unchanged by this one.
 
 ## Asset Status, disclosed
 
-**Lumo** (`assets/companions/lumo/`) — 7 PNGs (`hero`/`idle`/`wave`/
-`curious`/`think`/`celebrate`/`sleep`), unchanged Canvas-drawn
-placeholder production art from the prior sprint; only `talk.png` was
-removed (the pose it backed is retired by Canon 2). Swapping in final
-production art for any of these 7 requires **zero engine or
-integration code changes**.
+Real canonical art for both entities has been uploaded to the repo
+root's `assets/` folder — the location named in the sprint's own
+literal "Expected structure" — not nested under `assets/companions/`.
+An earlier draft of this integration mistakenly assumed the nested
+path (a misreading of the same sprint's own prose describing the
+package *shape*, not its *location*); this was corrected the moment
+the real upload landed and made the mismatch impossible to miss (see
+"Canon Alignment changes" below for the full correction).
 
-**Story Egg** (`assets/companions/story-egg/`) — `companion.json` and
-`animations.json` are real and registered (satisfying this sprint's
-own "Story Egg registered as a canonical platform entity" deliverable
-on its own terms), but **no PNG files exist yet** — the sprint's own
-instruction was explicit: "Do not rename assets unless absolutely
-necessary... treat those assets as the immutable canonical versions...
-rather than generating replacements," so no placeholder art was
-fabricated for the Egg the way it was for Lumo in the prior sprint.
-Loading `'story-egg'` today succeeds (its `companion.json` is real),
-but every pose image 404s and degrades gracefully to a broken-image
-glyph per the engine's own existing, unmodified behaviour — a Visitor
-would see this until the real 7 PNGs (`hero`/`idle`/`curious`/
-`thinking`/`excited`/`sleep`/`hatching`) are dropped into
-`assets/companions/story-egg/`. **The moment they are, nothing else
-needs to change** — the registry entry, `companion.json`, Director's
-`MODES.visitor` choreography, and every test are already wired against
-exactly those 7 filenames.
+**Lumo** (`assets/lumo/`) — 8 real, uploaded PNGs: `hero`/`idle`/
+`wave`/`curious`/`think`/`talk`/`celebrate`/`sleep` — a genuine
+superset of Canon 2's own 7-pose list (`talk` included). Since this is
+real, immutable canonical art, not a placeholder standing in for
+something better, `talk` was kept rather than trimmed to match the
+Canon list exactly — no engine or Director code sets `talk` directly
+today, but the file isn't orphaned either: `companion.json` declares
+it, and `speak()`'s own pre-existing settle-after-bubble mechanism
+already understands it. The prior sprint's own Canvas-drawn
+*placeholder* Lumo art (7 PNGs, no `talk`) has been deleted outright,
+fully superseded.
+
+**Story Egg** (`assets/story-egg/`) — 6 of Canon 1's 7 real, uploaded
+PNGs: `idle`/`curious`/`thinking`/`excited`/`sleep`/`hatching`.
+`hero.png` is the one file from that list not yet uploaded —
+`companion.json` still declares it (matching Canon 1's own frozen list
+exactly), and the engine's own existing, unmodified behaviour degrades
+gracefully for a missing state image (a 404, no crash) exactly as it
+already does for any package missing one of its own declared files.
+**The moment `hero.png` is uploaded, nothing else needs to change** —
+the registry entry, `companion.json`, Director's `MODES.visitor`
+choreography, and every test are already wired against it.
 
 ## Future Ready
 
@@ -377,21 +388,22 @@ capability without widening the public API:
 ## Adding a Second (or Third) Companion
 
 Reachable today with zero engine changes. Story Egg itself is now the
-real, non-hypothetical proof (registered, resolved by role, missing
-only its art) — but genericity was also re-verified this sprint with
+real, non-hypothetical proof (registered, resolved by role, real art
+for 6 of its 7 poses) — but genericity was also re-verified this
+sprint with
 the same hand-authored throwaway `nimbus` test package the prior
 sprint used (never mentioned anywhere in `js/companionEngine.js`/
 `js/companionDirector.js`):
 
 ```
-assets/companions/nimbus/
+assets/nimbus/
   companion.json   -- {id:"nimbus", name:"Nimbus", species:"Cloud Spirit", ...}
   idle.png
   happy.png         -- a state neither Lumo nor Story Egg even have
 ```
 
 ```js
-const nimbus = new CompanionEngine();
+const nimbus = new CompanionEngine({assetsBase:'assets/'});
 await nimbus.load('nimbus');
 nimbus.setState('happy');   // works — the engine only reads companion.json's own states map
 ```
@@ -403,17 +415,18 @@ inside `js/companionEngine.js`.
 
 ## Canon Alignment changes (this sprint), summarized
 
-- `assets/companions/lumo/companion.json` — `states` updated to Canon
-  2's exact 7 poses (`hero` added as a real state, `talk` retired);
-  `version` bumped `1.0`→`1.1`. `talk.png` deleted (orphaned, the pose
-  it backed no longer exists).
-- `assets/companions/lumo/animations.json` — the now-meaningless
-  `transitions.talk` entry removed.
-- `assets/companions/lumo/personality.json` — `role` updated to
+- `assets/lumo/companion.json` — `states` updated to add `hero` as a
+  real state (matching Canon 2), keeping `talk` (real, uploaded art —
+  see "Asset Alignment correction" below); `version` bumped `1.0`→
+  `1.1`.
+- `assets/lumo/animations.json` — `transitions.talk` kept, settling to
+  `idle` (unchanged from before this sprint).
+- `assets/lumo/personality.json` — `role` updated to
   "Guardian of Story Companions."
-- `assets/companions/story-egg/` — new package: `companion.json` +
-  `animations.json` (real, registered); no PNGs yet (disclosed above).
-- `assets/companions/registry.json` — both entries gained a `role`
+- `assets/story-egg/` — new package: `companion.json` +
+  `animations.json` (real, registered); 6 of its 7 pose PNGs are also
+  real and uploaded (disclosed above).
+- `assets/registry.json` — both entries gained a `role`
   field (`guardian`/`visitor`); Story Egg added as a second entry.
 - `js/companionDirector.js` — rewritten around the `MODES` table
   above; zero change to `js/companionEngine.js`.
@@ -426,16 +439,43 @@ inside `js/companionEngine.js`.
   `_beginBoot()` (the timing fix above); zero other boot-sequence
   change.
 
+### Asset Alignment correction (same sprint, immediately following)
+
+The sprint's own instruction described the expected upload as flat,
+repo-root folders — `assets/lumo/` and `assets/story-egg/` — but an
+earlier draft of this integration read that as shorthand for the
+package *shape* used elsewhere in this document and placed everything
+under `assets/companions/<id>/` instead, generating placeholder Canvas
+art for Lumo in the process (7 poses, `talk` excluded, matching a
+first, too-narrow reading of Canon 2's own pose list). Once the real
+asset folders were uploaded to their real location (`assets/lumo/`,
+`assets/story-egg/`), the mismatch was corrected in the same sprint,
+before shipping: `js/companionDirector.js` now constructs
+`CompanionEngine` with `{assetsBase:'assets/'}` (the one, disclosed
+override point — `js/companionEngine.js` itself keeps its own
+`'assets/companions/'` default, untouched, since the engine stays
+generic about where any caller's packages happen to live) and calls
+`loadRegistry('assets/')` to match; every JSON data file
+(`companion.json`/`personality.json`/`animations.json`/`registry.json`)
+was moved to sit beside the real uploaded PNGs; the placeholder Lumo
+art and the now-empty `assets/companions/` folder were deleted
+outright, fully superseded. Lumo's real upload turned out to be a
+genuine 8-pose superset of Canon 2's 7-pose list (`talk` included) —
+kept, not trimmed, since it's real canonical art, not a placeholder to
+be pared down to spec.
+
 ## Critical Files
 
-- `assets/companions/registry.json` — the installed-companions
-  listing, now with a `role` field per entry.
-- `assets/companions/lumo/` — `companion.json` + `personality.json` +
-  `animations.json` + 7 PNGs.
-- `assets/companions/story-egg/` — `companion.json` +
-  `animations.json`; 7 PNGs pending upload (disclosed above).
-- `assets/companions/README.md` — the package folder's own asset-folder
-  README, matching this repo's established convention.
+- `assets/registry.json` — the installed-companions
+  listing, with a `role` field per entry.
+- `assets/lumo/` — `companion.json` + `personality.json` +
+  `animations.json` + 8 real PNGs.
+- `assets/story-egg/` — `companion.json` +
+  `animations.json`; 6 of 7 real PNGs uploaded, `hero.png` pending
+  (disclosed above).
+- `assets/lumo/README.md`, `assets/story-egg/README.md` — each
+  package folder's own asset-folder README, matching this repo's
+  established convention.
 - `js/companionEngine.js` — the generic runtime (frozen public API,
   **untouched this sprint**).
 - `js/companionDirector.js` — Studio's own choreography/integration

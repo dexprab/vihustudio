@@ -1,6 +1,7 @@
 {
   "transitions": {
     "wave": "idle",
+    "talk": "idle",
     "celebrate": "idle",
     "sleep": "idle"
   },
