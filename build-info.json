@@ -4,6 +4,6 @@
   "task": "Direct, screenshot-driven follow-up: 'these options are not clear. what names are we using for the cards?' Confirmed the platform has exactly two, deliberately separate card systems -- Vihu Card (a shareable World unlock) and Magic Card (a Creator's own signinless identity) -- and found the two Screen 1 option-card labels were asymmetric: 'My Magic Card? Tap to come home' already named its type, but the other read only 'Have a Card? Redeem it here.' Fixed both toggle titles, both panels' own intro copy ('on your card' -> 'on your Vihu Card'/'on your Magic Card'), and a real naming collision found while fixing this -- both code-entry fallbacks said 'the magic word,' the Vihu Card panel accidentally borrowing the Magic Card system's own name. Verified via a new 8-assertion Playwright suite plus full regression across the Magic Card/Vihu Card/Creator suite and both goldenBuild.js suites, all passing unchanged. docs/KID_JOURNEY.md and docs/VIHU_CARD_PLATFORM.md updated to match; all 25 journey screenshots regenerated.",
   "build": "0167",
   "buildDate": "2026-07-19",
-  "commit": "pending",
+  "commit": "e1ac6f2",
   "environment": "Release"
 }
