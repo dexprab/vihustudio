@@ -157,11 +157,18 @@ const MagicCardArt=(function(){
 
     // Quiet human-typeable fallback code, bottom-right — never the
     // headline of the card, just a small anchor beneath the nickname.
-    if(card.id){
+    // recallCode (constellation+serial, e.g. "CYGNUS00042") is the ONLY
+    // thing recall_magic_card()'s own typed-code branch actually
+    // checks against — card.id (an internal random string) would
+    // silently fail if typed back in, so it's never shown here.
+    // recallCode is captured asynchronously after the card's first
+    // successful cloud sync (js/magicCard.js's _captureRecallCode) —
+    // omitted entirely, rather than shown wrong, until then.
+    if(card.recallCode){
       ctx.font='600 16px "SF Mono", Consolas, monospace';
       ctx.fillStyle='rgba(238,241,255,0.5)';
       ctx.textAlign='right';
-      ctx.fillText(card.id,CARD_ART_W-34,CARD_ART_H-34);
+      ctx.fillText(card.recallCode,CARD_ART_W-34,CARD_ART_H-34);
     }
 
     ctx.restore();
@@ -262,10 +269,19 @@ const MagicCardArt=(function(){
       ctx.fillText('No sky to show yet on this device.',CARD_ART_W/2,gridTop+gridSize/2);
     }
 
-    if(card.id){
+    // Same real recallCode as the Front — never card.id (see the
+    // matching comment there); an honest, non-alarming pending state
+    // when the card's first cloud sync hasn't landed yet rather than
+    // printing a code that would fail if typed back in on another
+    // device.
+    if(card.recallCode){
       ctx.font='700 26px "SF Mono", Consolas, monospace';
       ctx.fillStyle='#fff6dd';
-      ctx.fillText(card.id,CARD_ART_W/2,gridTop+gridSize+92);
+      ctx.fillText(card.recallCode,CARD_ART_W/2,gridTop+gridSize+92);
+    }else{
+      ctx.font='italic 16px Georgia, serif';
+      ctx.fillStyle='rgba(238,241,255,0.55)';
+      ctx.fillText('Code syncing…',CARD_ART_W/2,gridTop+gridSize+92);
     }
 
     ctx.font='italic 18px Georgia, serif';

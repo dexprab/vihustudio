@@ -233,6 +233,16 @@ const MagicCard=(function(){
   // own comment on that column) -- one shared function serves claim()
   // (immediate), touch()/rename() (debounced), so there is only ever
   // one write shape to reason about.
+  //
+  // Also captures the server's own serial_no back onto the local
+  // record (see _captureRecallCode below) -- the ONE piece of this
+  // whole mechanism that can never be produced client-side, since it
+  // exists purely to disambiguate two people who both happened to get
+  // "CYGNUS" as their constellation. Because every one of claim()/
+  // touch()/rename() funnels through this same function, a card
+  // claimed offline (or whose very first push simply failed) still
+  // self-heals the moment any later push succeeds -- no migration,
+  // no separate backfill job.
   function _pushIdentitySnapshot(card){
     if(!card || typeof ThemeRepositoryClient==='undefined') return;
     ThemeRepositoryClient.isConfigured().then(function(ok){
@@ -247,10 +257,35 @@ const MagicCard=(function(){
             pattern:card.pattern,
             claimed_at:card.claimedAt,
             last_active_at:card.lastActiveAt
-          },{onConflict:'id'});
+          },{onConflict:'id'}).select('serial_no,constellation').then(function(res){
+            const row=res&&!res.error&&res.data&&res.data[0];
+            if(row&&row.serial_no!=null){
+              _captureRecallCode(card.id,row.constellation||card.constellation,row.serial_no);
+            }
+          });
         });
       });
     }).catch(function(){});
+  }
+
+  // The human-typeable fallback code (e.g. "CYGNUS00042") must match
+  // EXACTLY what recall_magic_card()'s own typed-code branch checks
+  // against (supabase/schema.sql: upper(constellation ||
+  // lpad(serial_no::text,5,'0'))) -- constellation+serial, nothing
+  // else, since the RPC's own normalization already strips any
+  // dashes/spaces/case the display adds for readability. Persisted
+  // onto the local card record (a new, additive `recallCode` field)
+  // so magicCardArt.js has something real to print; a card whose
+  // first push hasn't landed yet simply has no recallCode until one
+  // does -- js/magicCardArt.js discloses that honestly rather than
+  // printing something that would fail if typed back in.
+  function _captureRecallCode(id,constellation,serialNo){
+    const code=(constellation||'').toUpperCase()+String(serialNo).padStart(5,'0');
+    const cards=_readCards();
+    const idx=cards.findIndex(function(c){ return c.id===id; });
+    if(idx===-1||cards[idx].recallCode===code) return;
+    cards[idx].recallCode=code;
+    _writeCards(cards);
   }
 
   // Debounced (2s, its own timer per card id) background push --
