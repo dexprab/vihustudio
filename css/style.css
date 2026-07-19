@@ -6741,16 +6741,28 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    without ever intercepting a click meant for something beneath it),
    except its portrait circle, which is the one deliberately draggable
    surface (Companion UI: "be draggable, remember position per
-   session"). z-index:1200 sits above the Creation Flow overlay (1000)
-   and the Publish Studio modal (300) — so the companion stays visible
-   across Screen 1/2 and Publish by default — but js/companionDirector.js
-   additionally hides it outright (engine.hide(), the same opacity/
-   visibility fade every other hide() uses) whenever a real Studio
-   dialog (restore-session/theme-picker/Publish Studio/Magic Card) is
-   open, satisfying "automatically avoid overlapping dialogs or menus"
-   without this stylesheet needing to know anything about geometry. It
-   sits below the Magic Card ceremony's own separate visual world
-   (1400) and the restore-session modal (2000) for the same reason.
+   session"). z-index:1450 sits above the Creation Flow overlay (1000),
+   the Publish Studio modal (300), AND the Magic Card overlay (1400) —
+   so the companion stays visible across Screen 1/2, Publish, and the
+   whole Magic Card overlay lifetime by default — but
+   js/companionDirector.js still hides it outright (engine.hide(), the
+   same opacity/visibility fade every other hide() uses) whenever the
+   restore-session or theme-picker modal is open, or whenever Publish
+   Studio is open WITHOUT the Magic Card overlay also open on top of
+   it, satisfying "automatically avoid overlapping dialogs or menus"
+   for those. It stays below only the restore-session modal (2000).
+   Companion Canon Freeze correction: an earlier version of this
+   comment (and the matching JS logic) put the widget BELOW the Magic
+   Card overlay and hid it there too — written before the Awakening
+   ceremony existed, it meant the Story Egg's own canonical "hatching"
+   pose and the live Egg-to-Lumo swap (Canon 3's "Lumo Ceremony") were
+   always invisible, since Publish Studio (a BUSY_SELECTOR) stays open
+   underneath the Magic Card overlay for the ceremony's whole duration.
+   Fixed by making the Magic Card overlay an explicit override in
+   js/companionDirector.js's isStudioBusy() (visible whenever it's
+   open, regardless of what else is open behind it) plus this z-index
+   bump so it can actually paint through the overlay's own full-bleed,
+   fully-opaque background rather than being hidden underneath it.
 
    Story Egg Interaction & Presence sprint (below): the "feels alive"
    layer — a ground-glow "home" environment, a breathing glow ring,
@@ -6779,7 +6791,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
      again, since no saved position exists until a real drag happens. */
   right:16px;
   bottom:40px;
-  z-index:1200;
+  z-index:1450;
   display:flex;
   flex-direction:column;
   align-items:flex-end;

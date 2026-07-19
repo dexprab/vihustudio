@@ -49,16 +49,33 @@
   // Studio-owned overlays this file (and only this file) is allowed to
   // know about. Every one of these follows the same convention already
   // established across this codebase: a container that gains/loses a
-  // plain ".hidden" class. #magicCardOverlay covers the Identity Gate,
-  // the Awakening ceremony, AND Home — all three modes of the same
-  // element. Creation Flow's own overlay is deliberately NOT in this
-  // list — a companion (Egg or Lumo) is meant to be visible there.
+  // plain ".hidden" class. Creation Flow's own overlay is deliberately
+  // NOT in this list — a companion (Egg or Lumo) is meant to be
+  // visible there.
   const BUSY_SELECTORS=[
     '#restoreModal:not(.hidden)',
     '#themePickerModal:not(.hidden)',
-    '.publish-studio-modal:not(.hidden)',
-    '#magicCardOverlay:not(.hidden)'
+    '.publish-studio-modal:not(.hidden)'
   ];
+  // #magicCardOverlay is deliberately NOT one of the plain
+  // BUSY_SELECTORS above — it's an override, checked first. It covers
+  // the Identity Gate, the Awakening ceremony, AND Home. An earlier
+  // version of this file treated it as just another busy dialog to
+  // hide behind, written before the Awakening ceremony (Canon 3's
+  // "Lumo Ceremony") existed — but the ceremony always opens ON TOP OF
+  // an already-open Publish Studio modal (itself a BUSY_SELECTOR), so
+  // that older rule meant the Story Egg's own canonical "hatching"
+  // pose (set by notify('published') right before the ceremony opens)
+  // and the live Egg-to-Lumo swap (notify('creator-born'), fired
+  // *during* the ceremony) were always invisible — the whole
+  // "hatching / Lumo assisting" moment the Canon's own pose vocabulary
+  // exists for. Fixed: whenever the Magic Card overlay is open, the
+  // companion is forced visible regardless of what else in
+  // BUSY_SELECTORS is open behind it (css/style.css's own z-index for
+  // .companion-widget was raised to sit above the overlay's 1400 for
+  // the same reason — being "not hidden" alone isn't enough if the
+  // overlay's own full-bleed background would just paint over it).
+  const CEREMONY_SELECTOR='#magicCardOverlay:not(.hidden)';
 
   const MESSAGES={
     open:"Let's imagine!",
@@ -202,6 +219,7 @@
     }
 
     function isStudioBusy(){
+      if(document.querySelector(CEREMONY_SELECTOR)) return false;
       for(let i=0;i<BUSY_SELECTORS.length;i++){
         if(document.querySelector(BUSY_SELECTORS[i])) return true;
       }
