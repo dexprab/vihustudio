@@ -62,7 +62,7 @@
   const IDLE_SPARKLE_MAX_MS_RICH = 5200;
   const DRAG_TRAIL_THROTTLE_MS = 90;
   const DRAG_ROTATION_MAX_DEG = 9;
-  const SETTLE_CLASS_MS = 420;
+  const SETTLE_CLASS_MS = 520; // matches css/style.css's companion-settle-bounce duration (.5s) + a small margin
   const CLICK_CLASS_MS = 620;
   const GLOW_BOOST_MS = 900;
   const WANDER_HOME_MIN_MS = 30000;

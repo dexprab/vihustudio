@@ -6850,12 +6850,18 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* A soft overshoot bounce the instant a drag ends — "gently settle
    into position," never a hard stop. */
 .companion-widget.companion-settling .companion-portrait{
-  animation:companion-settle-bounce .42s cubic-bezier(.34,1.56,.64,1) 1;
+  animation:companion-settle-bounce .5s cubic-bezier(.34,1.56,.64,1) 1;
 }
+/* Amplitude widened (was ±3px/±2px, scale .93-1.05) after the same
+   follow-up fix that boosted the sparkle glyphs — a ~92px portrait
+   wobbling by a few px at low scale delta read as barely-there;
+   ±7px/±5px at a wider scale swing is a genuinely noticeable "boing"
+   without becoming cartoonish. */
 @keyframes companion-settle-bounce{
   0%{ transform:scale(1) translateY(0); }
-  35%{ transform:scale(.93) translateY(3px); }
-  65%{ transform:scale(1.05) translateY(-2px); }
+  30%{ transform:scale(.87) translateY(7px); }
+  60%{ transform:scale(1.1) translateY(-5px); }
+  82%{ transform:scale(.97) translateY(2px); }
   100%{ transform:scale(1) translateY(0); }
 }
 
@@ -7001,31 +7007,44 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   transform:translate(var(--sx,0),var(--sy,0)) rotate(var(--srot,0deg)) scale(.4);
   opacity:0;
   color:#FFCB45;
-  text-shadow:0 0 4px rgba(255,203,69,.7);
+  /* A pale-gold glyph at partial opacity read as functionally invisible
+     against this app's own light cream/white palette — confirmed via a
+     real Playwright pixel/computed-style check during the Story Egg
+     Interaction & Presence follow-up fix: every sparkle WAS painting
+     with correct non-zero opacity/transform, just too small and too
+     low-contrast to actually see (12px glyph, further shrunk by the
+     keyframes' own scale(.2-.9), gold-on-cream having little luminance
+     difference). A white halo layered under the original gold glow
+     gives the glyph a real edge against any background it lands on
+     (the light meadow, a white panel, even the dark ceremony overlay),
+     and the base size/keyframe peak scales below were all raised so
+     the effective rendered size is genuinely eye-catching rather than
+     a few pale pixels. */
+  text-shadow:0 0 2px #fff, 0 0 5px rgba(255,255,255,.9), 0 0 8px rgba(255,203,69,.85);
   pointer-events:none;
 }
-.companion-sparkle::before{ content:'✨'; font-size:12px; }
+.companion-sparkle::before{ content:'✨'; font-size:20px; }
 .companion-sparkle-idle{ animation:companion-sparkle-idle 2.1s ease-out 1; }
 .companion-sparkle-hover{ animation:companion-sparkle-hover 1.1s ease-out 1; }
 .companion-sparkle-drag{ animation:companion-sparkle-drag .8s ease-out 1; }
 .companion-sparkle-burst{ animation:companion-sparkle-burst .75s cubic-bezier(.16,.84,.44,1) 1; }
 @keyframes companion-sparkle-idle{
-  0%{ opacity:0; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.3); }
-  25%{ opacity:1; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.9); }
-  100%{ opacity:0; transform:translate(calc(var(--sx) * 1.4),calc(var(--sy) * 1.4 - 20px)) rotate(var(--srot)) scale(.5); }
+  0%{ opacity:0; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.4); }
+  25%{ opacity:1; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(1.15); }
+  100%{ opacity:0; transform:translate(calc(var(--sx) * 1.4),calc(var(--sy) * 1.4 - 20px)) rotate(var(--srot)) scale(.6); }
 }
 @keyframes companion-sparkle-hover{
-  0%{ opacity:0; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.25); }
-  30%{ opacity:1; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.8); }
-  100%{ opacity:0; transform:translate(calc(var(--sx) * 1.2),calc(var(--sy) * 1.2 - 12px)) rotate(var(--srot)) scale(.4); }
+  0%{ opacity:0; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.35); }
+  30%{ opacity:1; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(1.05); }
+  100%{ opacity:0; transform:translate(calc(var(--sx) * 1.2),calc(var(--sy) * 1.2 - 12px)) rotate(var(--srot)) scale(.5); }
 }
 @keyframes companion-sparkle-drag{
-  0%{ opacity:.9; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(.55); }
-  100%{ opacity:0; transform:translate(calc(var(--sx) * .5),calc(var(--sy) * .5 + 10px)) rotate(var(--srot)) scale(.2); }
+  0%{ opacity:1; transform:translate(var(--sx),var(--sy)) rotate(var(--srot)) scale(1); }
+  100%{ opacity:0; transform:translate(calc(var(--sx) * .5),calc(var(--sy) * .5 + 10px)) rotate(var(--srot)) scale(.35); }
 }
 @keyframes companion-sparkle-burst{
-  0%{ opacity:1; transform:translate(0,0) rotate(var(--srot)) scale(.3); }
-  100%{ opacity:0; transform:translate(calc(var(--sx) * 2.2),calc(var(--sy) * 2.2 - 8px)) rotate(var(--srot)) scale(1); }
+  0%{ opacity:1; transform:translate(0,0) rotate(var(--srot)) scale(.4); }
+  100%{ opacity:0; transform:translate(calc(var(--sx) * 2.2),calc(var(--sy) * 2.2 - 8px)) rotate(var(--srot)) scale(1.3); }
 }
 
 /* ---------- Micro polish: per-state reactions, driven only by the
