@@ -336,6 +336,17 @@ const MagicCardUI=(function(){
   // device — otherwise this function is never even called (see
   // js/app.js's bootstrapSession) and today's existing boot sequence is
   // completely unmodified.
+  //
+  // "on first screen when i select recall a different card or continue
+  // i should give my constellation pattern to gain access" — and,
+  // critically, "it should be shown on same screen without entering
+  // into the home screen." Continuing as a known card (either the
+  // single-card "Continue My Journey" or a picker tile tap) and
+  // recalling an unknown one both now route through an inline
+  // pattern-tap challenge rendered directly inside this SAME panel —
+  // proceed(cardId) is only ever called after a real match, never on a
+  // bare tap/click. "Begin Exploring" is deliberately left ungated —
+  // it grants no identity at all, so there is nothing to prove.
   function checkIdentityGate(onContinue){
     _ensureDom();
     const cards=MagicCard.list();
@@ -353,7 +364,9 @@ const MagicCardUI=(function(){
       // reporting a Creator even though the person explicitly chose to
       // continue as a Visitor this time. setActive(null) already
       // correctly clears the pointer (see js/magicCard.js); this was
-      // only ever a missing call, not a missing capability.
+      // only ever a missing call, not a missing capability. (Recall's
+      // own MagicCard.recall() already calls setActive() internally via
+      // adopt() — calling it again here with the same id is harmless.)
       MagicCard.setActive(cardId||null);
       overlay.classList.remove('magic-card-mode-gate');
       _hide();
@@ -362,25 +375,37 @@ const MagicCardUI=(function(){
     }
 
     const panel=_el('div','magic-card-gate-panel');
-    if(cards.length===1){
-      const card=cards[0];
-      // Never the constellation, real or decorative — see
-      // _buildGateIdentityGlyph's own comment above.
-      panel.appendChild(_buildGateIdentityGlyph(card,140));
-      panel.appendChild(_el('div','magic-card-gate-welcome','Welcome back, '+(card.nickname||'Star Traveler')));
-      const btn=_el('button','magic-card-gate-continue','Continue My Journey');
-      btn.type='button';
-      btn.addEventListener('click',function(){ proceed(card.id); });
-      panel.appendChild(btn);
-      const notYou=_el('button','magic-card-gate-notyou','Not you?');
-      notYou.type='button';
-      notYou.addEventListener('click',function(){ _renderPicker(panel,cards,proceed); });
-      panel.appendChild(notYou);
-    }else{
-      panel.appendChild(_el('div','magic-card-gate-title','Continue Your Journey'));
-      _renderPicker(panel,cards,proceed);
-    }
     content.appendChild(panel);
+
+    function toWelcome(){ _renderGateWelcome(panel,cards,proceed,toPicker); }
+    function toPicker(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
+
+    if(cards.length===1) toWelcome(); else toPicker();
+  }
+
+  function _renderGateWelcome(panel,cards,proceed,toPicker){
+    panel.innerHTML='';
+    const card=cards[0];
+    // Never the constellation, real or decorative — see
+    // _buildGateIdentityGlyph's own comment above.
+    panel.appendChild(_buildGateIdentityGlyph(card,140));
+    panel.appendChild(_el('div','magic-card-gate-welcome','Welcome back, '+(card.nickname||'Star Traveler')));
+    const btn=_el('button','magic-card-gate-continue','Continue My Journey');
+    btn.type='button';
+    btn.addEventListener('click',function(){
+      _renderPatternChallenge(panel,{
+        title:'Prove it\'s you, '+(card.nickname||'Star Traveler')+'!',
+        subtitle:'Tap your stars, in order, to continue.',
+        verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+        onSuccess:function(){ proceed(card.id); },
+        onBack:function(){ _renderGateWelcome(panel,cards,proceed,toPicker); }
+      });
+    });
+    panel.appendChild(btn);
+    const notYou=_el('button','magic-card-gate-notyou','Not you?');
+    notYou.type='button';
+    notYou.addEventListener('click',toPicker);
+    panel.appendChild(notYou);
   }
 
   // Small shared builder so the two "action" tiles (Begin Exploring,
@@ -398,28 +423,9 @@ const MagicCardUI=(function(){
     return btn;
   }
 
-  function _renderPicker(panel,cards,proceed){
-    const existingGrid=panel.querySelector('.magic-card-gate-grid');
-    if(existingGrid) existingGrid.remove();
-    const existingWelcome=panel.querySelector('.magic-card-gate-welcome');
-    if(existingWelcome) existingWelcome.remove();
-    const existingContinue=panel.querySelector('.magic-card-gate-continue');
-    if(existingContinue) existingContinue.remove();
-    // The single-card "Welcome back" view's own standalone identity
-    // glyph (a direct child of panel, not inside .magic-card-gate-grid
-    // — the grid's own per-tile glyphs are removed for free along with
-    // existingGrid above) has no place in the picker's own grid layout.
-    const existingGlyph=panel.querySelector('.magic-card-gate-glyph');
-    if(existingGlyph) existingGlyph.remove();
-    // The single-card "Welcome back" view's own "Not you?" link has no
-    // remaining purpose once the picker is showing every option — left
-    // in place it reads as a stray, unstyled heading floating above the
-    // grid (the exact artifact a real screenshot surfaced).
-    const existingNotYou=panel.querySelector('.magic-card-gate-notyou');
-    if(existingNotYou) existingNotYou.remove();
-    if(!panel.querySelector('.magic-card-gate-title')){
-      panel.insertBefore(_el('div','magic-card-gate-title','Whose adventure is this?'),panel.firstChild);
-    }
+  function _renderGatePicker(panel,cards,proceed,toWelcome){
+    panel.innerHTML='';
+    panel.appendChild(_el('div','magic-card-gate-title','Whose adventure is this?'));
 
     const grid=_el('div','magic-card-gate-grid');
     cards.forEach(function(card){
@@ -427,21 +433,246 @@ const MagicCardUI=(function(){
       tile.type='button';
       tile.appendChild(_buildGateIdentityGlyph(card,56));
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
-      tile.addEventListener('click',function(){ proceed(card.id); });
+      tile.addEventListener('click',function(){
+        _renderPatternChallenge(panel,{
+          title:'Prove it\'s you, '+(card.nickname||'Star Traveler')+'!',
+          subtitle:'Tap your stars, in order, to continue.',
+          verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+          onSuccess:function(){ proceed(card.id); },
+          onBack:function(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
+        });
+      });
       grid.appendChild(tile);
     });
     grid.appendChild(_buildGateActionTile('🌱','Begin Exploring',function(){ proceed(null); }));
 
-    // A quiet second option for the "some cards already local on this
-    // device, but I want to pull a DIFFERENT one too" case — sets a
-    // one-shot flag js/creationFlow.js's Screen 1 checks for and
-    // consumes on its very next render (this module has no direct path
-    // of its own into that other module's DOM).
+    // "Recall a different card" — a card NOT already known on this
+    // device. This used to set a one-shot flag and bounce all the way
+    // to Creator's own Screen 1 to show its tap grid there; it now
+    // renders the identical challenge inline, right here, backed by the
+    // real cross-device MagicCard.recall() RPC instead of a local
+    // pattern comparison (see _renderPatternChallenge's verify/
+    // verifyTyped split below).
     grid.appendChild(_buildGateActionTile('✨','Recall a different card',function(){
-      try{ window.__magicCardAutoOpenRecall=true; }catch(e){}
-      proceed(null);
+      _renderPatternChallenge(panel,{
+        title:'Recall a different card',
+        subtitle:'Tap the stars shown on your Magic Card, in order.',
+        allowTyped:true,
+        verify:function(pattern){ return MagicCard.recall({pattern:pattern}); },
+        verifyTyped:function(val){ return MagicCard.recall({typed:val}); },
+        onSuccess:function(result){ proceed(result&&result.card?result.card.id:null); },
+        onBack:function(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
+      });
     }));
     panel.appendChild(grid);
+  }
+
+  // ---------- Inline pattern-verification challenge ----------
+  // Order-independent set comparison for a LOCAL (already-known-on-this-
+  // -device) card's own pattern — mirrors the exact canonicalization
+  // supabase/schema.sql's _card_platform_sort_pattern() already
+  // establishes server-side for the cross-device recall RPC, so a tap
+  // order that doesn't match the original claim order still verifies
+  // correctly here too.
+  function _patternsMatch(a,b){
+    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+    function norm(arr){ return arr.map(function(p){ return p[0]+','+p[1]; }).sort(); }
+    const na=norm(a), nb=norm(b);
+    for(let i=0;i<na.length;i++){ if(na[i]!==nb[i]) return false; }
+    return true;
+  }
+
+  const GATE_TAPGRID_SIZE=10;
+  function _gateBoardKey(r,c){ return r+','+c; }
+  function _gateCenterOfCell(boardEl,r,c){
+    const el=boardEl.querySelector('[data-row="'+r+'"][data-col="'+c+'"]');
+    if(!el) return {x:0,y:0};
+    return {x:el.offsetLeft+el.offsetWidth/2, y:el.offsetTop+el.offsetHeight/2};
+  }
+  // A self-contained equivalent of js/creationFlow.js's own
+  // _cardBuildGrid — that module's tap-grid helpers are module-private
+  // and cannot be reused directly from here, so this is a deliberate,
+  // structurally-similar-but-separate implementation in this file's own
+  // --mc-* visual language (.magic-card-tapgrid-* in css/style.css),
+  // matching this codebase's established "kept in lockstep by hand"
+  // precedent for this exact situation.
+  function _gateBuildGrid(boardEl,size,onClick){
+    boardEl.innerHTML='';
+    const corner=_el('div','magic-card-tapgrid-gridlabel');
+    corner.style.gridRow='1'; corner.style.gridColumn='1';
+    boardEl.appendChild(corner);
+    for(let c=0;c<size;c++){
+      const colHead=_el('div','magic-card-tapgrid-gridlabel',String(c+1));
+      colHead.style.gridRow='1'; colHead.style.gridColumn=String(c+2);
+      boardEl.appendChild(colHead);
+    }
+    for(let r=0;r<size;r++){
+      const rowHead=_el('div','magic-card-tapgrid-gridlabel',String(r+1));
+      rowHead.style.gridRow=String(r+2); rowHead.style.gridColumn='1';
+      boardEl.appendChild(rowHead);
+    }
+    for(let rr=0;rr<size;rr++){
+      for(let cc=0;cc<size;cc++){
+        const cell=document.createElement('button');
+        cell.type='button';
+        cell.className='magic-card-tapgrid-cell';
+        cell.dataset.row=rr; cell.dataset.col=cc;
+        cell.style.gridRow=String(rr+2); cell.style.gridColumn=String(cc+2);
+        cell.setAttribute('aria-label','Row '+(rr+1)+', Column '+(cc+1));
+        cell.addEventListener('click',function(){ onClick(rr,cc,cell); });
+        boardEl.appendChild(cell);
+      }
+    }
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','magic-card-tapgrid-lines');
+    boardEl.appendChild(svg);
+    return svg;
+  }
+  function _gateRedrawLiveLines(board,svg,selected){
+    svg.innerHTML='';
+    if(selected.length<2) return;
+    const centers=selected.map(function(k){
+      const parts=k.split(',');
+      return _gateCenterOfCell(board,parseInt(parts[0],10),parseInt(parts[1],10));
+    });
+    for(let i=0;i<centers.length-1;i++){
+      const a=centers[i], b=centers[i+1];
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+      line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+      line.setAttribute('class','magic-card-tapgrid-line');
+      svg.appendChild(line);
+    }
+  }
+
+  // Renders the tap-grid challenge directly into `panel` (replacing
+  // whatever was there — Welcome or Picker), never opening a second
+  // screen/modal/overlay. `opts.verify(pattern)` and the optional
+  // `opts.verifyTyped(code)` each return a Promise<{ok,...}> — a plain
+  // local match for the "continue as a known card" case, or the real
+  // MagicCard.recall() RPC for the "recall an unknown card" case — so
+  // this one function serves both without knowing which kind of check
+  // it's running. `opts.onSuccess(result)` receives whatever `verify`/
+  // `verifyTyped` resolved with; `opts.onBack()` returns to whichever
+  // screen (Welcome or Picker) opened this challenge.
+  function _renderPatternChallenge(panel,opts){
+    panel.innerHTML='';
+    panel.appendChild(_el('div','magic-card-gate-title',opts.title||'Prove it\'s you'));
+    if(opts.subtitle) panel.appendChild(_el('div','magic-card-tapgrid-subtitle',opts.subtitle));
+
+    const board=_el('div','magic-card-tapgrid-board');
+    panel.appendChild(board);
+    const counter=_el('div','magic-card-tapgrid-counter','0 stars selected');
+    panel.appendChild(counter);
+    const status=_el('p','magic-card-tapgrid-status');
+    panel.appendChild(status);
+
+    let selected=[];
+    const svg=_gateBuildGrid(board,GATE_TAPGRID_SIZE,function(r,c,cell){
+      const k=_gateBoardKey(r,c);
+      const idx=selected.indexOf(k);
+      if(idx===-1){
+        selected.push(k);
+        cell.classList.add('selected');
+        cell.textContent='★';
+      }else{
+        selected.splice(idx,1);
+        cell.classList.remove('selected');
+        cell.textContent='';
+      }
+      counter.textContent=selected.length+' star'+(selected.length===1?'':'s')+' selected';
+      _gateRedrawLiveLines(board,svg,selected);
+    });
+
+    function clearBoard(){
+      board.querySelectorAll('.magic-card-tapgrid-cell').forEach(function(el){
+        el.classList.remove('selected');
+        el.textContent='';
+      });
+      svg.innerHTML='';
+      selected=[];
+      counter.textContent='0 stars selected';
+    }
+
+    const confirmBtn=_el('button','magic-card-tapgrid-confirm','✨ Confirm');
+    confirmBtn.type='button';
+    confirmBtn.addEventListener('click',function(){
+      if(selected.length<2){
+        status.textContent='Tap at least two stars first.';
+        status.className='magic-card-tapgrid-status err';
+        return;
+      }
+      confirmBtn.disabled=true;
+      status.textContent='Checking…';
+      status.className='magic-card-tapgrid-status';
+      const pattern=selected.map(function(k){
+        const parts=k.split(',');
+        return [parseInt(parts[0],10),parseInt(parts[1],10)];
+      });
+      opts.verify(pattern).then(function(result){
+        confirmBtn.disabled=false;
+        if(result&&result.ok){
+          status.textContent='✓ Welcome back!';
+          status.className='magic-card-tapgrid-status ok';
+          setTimeout(function(){ opts.onSuccess(result); },350);
+        }else{
+          status.textContent='✗ Not quite — try again.';
+          status.className='magic-card-tapgrid-status err';
+          clearBoard();
+        }
+      });
+    });
+    panel.appendChild(confirmBtn);
+
+    if(opts.allowTyped){
+      const codeToggle=_el('button','magic-card-tapgrid-code-toggle','Prefer to type your code instead? ⌄');
+      codeToggle.type='button';
+      const codeFallback=_el('div','magic-card-tapgrid-code-fallback hidden');
+      const codeInput=document.createElement('input');
+      codeInput.type='text';
+      codeInput.className='magic-card-tapgrid-code-input';
+      codeInput.placeholder='e.g. CYGNUS00042';
+      const codeSubmit=_el('button','magic-card-tapgrid-code-submit','Come home with code');
+      codeSubmit.type='button';
+      codeFallback.appendChild(codeInput);
+      codeFallback.appendChild(codeSubmit);
+      panel.appendChild(codeToggle);
+      panel.appendChild(codeFallback);
+      codeToggle.addEventListener('click',function(){
+        const opening=codeFallback.classList.contains('hidden');
+        codeFallback.classList.toggle('hidden',!opening);
+        codeToggle.textContent='Prefer to type your code instead? '+(opening?'⌃':'⌄');
+      });
+      function submitCode(){
+        const val=codeInput.value.trim();
+        if(!val){
+          status.textContent='Enter your code first.';
+          status.className='magic-card-tapgrid-status err';
+          return;
+        }
+        codeSubmit.disabled=true;
+        status.textContent='Checking…';
+        status.className='magic-card-tapgrid-status';
+        opts.verifyTyped(val).then(function(result){
+          codeSubmit.disabled=false;
+          if(result&&result.ok){
+            status.textContent='✓ Welcome back!';
+            status.className='magic-card-tapgrid-status ok';
+            setTimeout(function(){ opts.onSuccess(result); },350);
+          }else{
+            status.textContent='✗ Not quite — check the code and try again.';
+            status.className='magic-card-tapgrid-status err';
+          }
+        });
+      }
+      codeSubmit.addEventListener('click',submitCode);
+      codeInput.addEventListener('keydown',function(e){ if(e.key==='Enter') submitCode(); });
+    }
+
+    const back=_el('button','magic-card-gate-notyou','← Back');
+    back.type='button';
+    back.addEventListener('click',opts.onBack);
+    panel.appendChild(back);
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------

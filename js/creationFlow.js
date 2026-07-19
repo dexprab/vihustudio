@@ -673,19 +673,6 @@ const CreationFlow=(function(){
       section.appendChild(row);
       content.appendChild(section);
     }
-    if(recallWidget){
-      // The Shared Device picker's own "Recall a different card" tile
-      // (js/magicCardUI.js's _renderPicker) sets this one-shot flag
-      // right before closing back into normal boot, since it has no
-      // direct path of its own to open the recall panel from a
-      // different module — consumed at most once, so a later,
-      // unrelated visit to Screen 1 never auto-opens anything.
-      if(window.__magicCardAutoOpenRecall){
-        window.__magicCardAutoOpenRecall=false;
-        const toggle=recallWidget.querySelector('.creation-flow-option-toggle');
-        if(toggle) toggle.click();
-      }
-    }
   }
 
   // ---------- Import Theme (Sprint 11.0 — moved onto Screen 2) ----------
