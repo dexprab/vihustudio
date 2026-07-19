@@ -162,9 +162,26 @@ const MagicCardUI=(function(){
     // simply never resolves — the Front keeps its placeholder glyph,
     // exactly the same graceful degradation CompanionEngine itself
     // already relies on for a missing state image.
+    let companionPortrait=null, guardianPortrait=null;
+    function _redrawWithPortraits(){
+      MagicCardArt.drawFront(frontCanvas,card,{counts:counts,companionPortrait:companionPortrait,guardianPortrait:guardianPortrait});
+      MagicCardArt.drawBack(backCanvas,card,{guardianPortrait:guardianPortrait});
+    }
     if(card.companionId && typeof MagicCardArt.resolveCompanionPortrait==='function'){
       MagicCardArt.resolveCompanionPortrait(card.companionId).then(function(portrait){
-        if(portrait) MagicCardArt.drawFront(frontCanvas,card,{counts:counts,companionPortrait:portrait});
+        if(!portrait) return;
+        companionPortrait=portrait;
+        _redrawWithPortraits();
+      });
+    }
+    // Lumo's Guardian panel appears on both faces regardless of
+    // hasCompanion — resolved the identical way, with the fixed id
+    // 'lumo' (real, already-uploaded art), never card.companionId.
+    if(typeof MagicCardArt.resolveCompanionPortrait==='function'){
+      MagicCardArt.resolveCompanionPortrait('lumo').then(function(portrait){
+        if(!portrait) return;
+        guardianPortrait=portrait;
+        _redrawWithPortraits();
       });
     }
 
