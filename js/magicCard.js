@@ -38,7 +38,7 @@
 // (_placeConstellation) is intentionally duplicated rather than reused
 // directly from cardPlatform.js: it's a handful of small, pure, stable
 // functions with zero Supabase dependency of their own, and
-// cardPlatform.js's own version is entangled with the Vihu Card
+// cardPlatform.js's own version is entangled with the World Card
 // `pattern`/`code` generate() flow this module has no reason to depend
 // on. The cloud calls below instead reuse
 // ThemeRepositoryClient.getClient()/.getSession() directly — the same

@@ -22,12 +22,12 @@
 -- so ThemeRepositoryClient.reset() can actually remove published Themes
 -- and their assets, restoring a clean post-install state on demand.
 --
--- Vihu Card Platform v1 sprint added `cards`/`card_redemptions` plus
+-- World Card Platform v1 sprint added `cards`/`card_redemptions` plus
 -- this file's first RPC (`redeem_card`, SECURITY DEFINER) and extended
 -- the two Personal-Theme read policies (`themes_personal_select`,
 -- `theme_assets_personal_read`) with an additive cross-owner grant for
--- a live redeemer — see the "Vihu Card Platform v1" section below and
--- docs/VIHU_CARD_PLATFORM.md for the full design.
+-- a live redeemer — see the "World Card Platform v1" section below and
+-- docs/WORLD_CARD_PLATFORM.md for the full design.
 --
 -- Idempotency note: PostgreSQL's CREATE POLICY has no IF NOT EXISTS
 -- clause (unlike CREATE TABLE/INDEX/SCHEMA) — an earlier draft of this
@@ -261,13 +261,13 @@ create policy builder_projects_delete
   using (owner_id = auth.uid()::text);
 
 -- ---------------------------------------------------------------
--- Vihu Card Platform v1 — Tables: cards, card_redemptions
+-- World Card Platform v1 — Tables: cards, card_redemptions
 -- ---------------------------------------------------------------
 -- A "magic card" unlocks one Personal Theme in Creator for a limited
 -- number of tries/duration, redeemed by matching a real constellation's
 -- shape on a 10x10 grid. This is the platform's first genuinely new
 -- Supabase capability since the Theme Repository itself — see
--- docs/VIHU_CARD_PLATFORM.md for the full design.
+-- docs/WORLD_CARD_PLATFORM.md for the full design.
 --
 -- Uniqueness model, deliberate and load-bearing for the schema below:
 -- `constellation` (e.g. 'ORION') is a REUSABLE flavor label, not a
@@ -406,7 +406,7 @@ create policy card_redemptions_visible
 -- target_owner_id/expires_at/etc) — never pattern, code, serial_no,
 -- or constellation. On failure, only a `reason` code, never any of
 -- the tables' real contents. This is the exact contract
--- docs/VIHU_CARD_PLATFORM.md documents and the verification suite
+-- docs/WORLD_CARD_PLATFORM.md documents and the verification suite
 -- asserts against at the network level.
 create or replace function public._card_platform_sort_pattern(p_pattern jsonb)
 returns jsonb
@@ -553,7 +553,7 @@ create policy theme_assets_personal_read
 -- Magic Card Identity Evolution, Phase 2 — Cloud Identity + Recall
 -- ---------------------------------------------------------------
 -- A Magic Card (js/magicCard.js) is a genuinely different concept from
--- a Vihu Card (`cards` table above): a Vihu Card is a *shareable*
+-- a World Card (`cards` table above): a World Card is a *shareable*
 -- token that unlocks a World for whoever redeems it; a Magic Card is a
 -- *personal* identity — "this is the same Creator, recognized on any
 -- device." It deliberately does NOT reuse `cards`/`card_type='creator'`
@@ -583,7 +583,7 @@ create table if not exists public.magic_card_identities (
   id             text primary key,
   serial_no      bigserial not null,
   -- A short, human-typeable fallback identifier (e.g. "MC-00125"),
-  -- exactly the kind of thing docs/VIHU_CARD_PLATFORM-adjacent design
+  -- exactly the kind of thing docs/WORLD_CARD_PLATFORM-adjacent design
   -- work already named as needed for "the rare case a child can't
   -- recall the exact tap order" — mirrors cards.code's own generated
   -- column exactly, just a different prefix.
@@ -640,7 +640,7 @@ create policy magic_card_identities_owner_delete
 -- record the cross-owner creator_projects policy below keys off.
 -- Mirrors card_redemptions exactly, with one deliberate difference:
 -- no expires_at. A Magic Card recall is permanent recognition
--- ("coming home"), not a time-boxed unlock like a Vihu Card.
+-- ("coming home"), not a time-boxed unlock like a World Card.
 create table if not exists public.magic_card_recalls (
   id            uuid primary key default gen_random_uuid(),
   identity_id   text not null references public.magic_card_identities(id) on delete cascade,

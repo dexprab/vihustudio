@@ -2,11 +2,11 @@
 // canvas render, Download, Print).
 //
 // Magic Card Identity Evolution, Phase 2. Gives the Magic Card the
-// same real "card-ness" the platform's other card system (Vihu Cards,
+// same real "card-ness" the platform's other card system (World Cards,
 // tools/world-builder-v2/js/worldBuilderApp.js's own
 // _drawCardFront/_drawCardBack/_printCardArt/_downloadDataURL) already
 // has — but with new, identity-appropriate content, not literal reuse
-// of Vihu Card's fields: a Magic Card has no rarity/tries/duration/
+// of World Card's fields: a Magic Card has no rarity/tries/duration/
 // target-World, so there is no rarity bar, no "unlock" language, no
 // World hero-image background. Reuses the SAME print-DPI canvas
 // dimensions and the same generic helpers (rounded-rect path, shrink-
@@ -196,7 +196,7 @@ const MagicCardArt=(function(){
     ctx.clip();
 
     // Gold corner flourishes — same Canvas-primitive technique already
-    // established for Vihu Card's own back.
+    // established for World Card's own back.
     [[0,0,1,1],[CARD_ART_W,0,-1,1],[0,CARD_ART_H,1,-1],[CARD_ART_W,CARD_ART_H,-1,-1]].forEach(function(c){
       ctx.strokeStyle='rgba(255,203,69,0.5)';
       ctx.lineWidth=3;

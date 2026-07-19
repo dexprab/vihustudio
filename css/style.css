@@ -5245,7 +5245,7 @@ body.creation-flow-active .app-header{ display:none; }
 }
 .creation-flow-world-thumb img{ width:100%; height:100%; object-fit:cover; }
 .creation-flow-world-name{ font-size:13px; font-weight:700; color:var(--text); }
-/* Vihu Card Platform v1 — "card imported themes should have some
+/* World Card Platform v1 — "card imported themes should have some
    distinct marking": a Card-unlocked World is time-boxed, not a
    permanent World Library addition, so it reads visibly differently
    at a glance — a small corner ribbon on the thumbnail (opposite
@@ -5279,7 +5279,7 @@ body.creation-flow-active .app-header{ display:none; }
   font-weight:700;
 }
 
-/* Vihu Card Platform v1 / Magic Card recall — Screen 1's "Already have
+/* World Card Platform v1 / Magic Card recall — Screen 1's "Already have
    something?" section. Both option cards used to render as two
    independent, identically-styled flat bars, each with its own dashed
    divider — no shared grouping, no visual hierarchy, easy to miss
@@ -5380,7 +5380,7 @@ body.creation-flow-active .app-header{ display:none; }
   line-height:1.5;
   text-align:center;
 }
-/* Vihu Card Platform v1 — the tap board matches the validated wireframe
+/* World Card Platform v1 — the tap board matches the validated wireframe
    artifact's own "Star Matrix" look, and deliberately reuses the exact
    same dark-navy/gold palette worldBuilderApp.js's _drawCardBack()
    already draws onto a real Card's back face (#2A2140/#120E1E/#E8C766)

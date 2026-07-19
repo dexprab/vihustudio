@@ -240,7 +240,7 @@ const CreationFlow=(function(){
     return (rec && rec.source) || 'official';
   }
 
-  // Vihu Card Platform v1 — "card imported themes should have some
+  // World Card Platform v1 — "card imported themes should have some
   // distinct marking." ThemeRegistry.getRecord() already stamps
   // redeemed:true/redeemedExpiresAt on a Card-unlocked theme's own
   // record (registerRedeemedTheme) — no new registry concept needed,
@@ -636,7 +636,7 @@ const CreationFlow=(function(){
     });
     content.appendChild(grid);
 
-    // Vihu Card Platform v1 — redemption lives HERE, before any
+    // World Card Platform v1 — redemption lives HERE, before any
     // Creation Type is chosen, not on Screen 2. Screen 2's own World
     // Library is already filtered to whichever single type is active
     // (_themesForType) — redeeming there risked unlocking a World for
@@ -657,7 +657,7 @@ const CreationFlow=(function(){
     }
     // Magic Card Identity Evolution, Phase 2 — the "come home on a new
     // device" recall widget lives here too, for the same reason the
-    // Vihu Card redeem widget does: this is the natural landing point
+    // World Card redeem widget does: this is the natural landing point
     // on a fresh device with zero local Magic Cards, before any
     // Creation Type has been chosen.
     let recallWidget=null;
@@ -942,7 +942,7 @@ const CreationFlow=(function(){
     paintPreview();
   }
 
-  // ---------- Vihu Card Platform v1 — Redeem widget ----------
+  // ---------- World Card Platform v1 — Redeem widget ----------
   // A thin UI hook into js/cardPlatform.js: this file owns none of the
   // pattern-matching/rarity/RPC logic, only the grid/line-drawing DOM
   // mechanics (ported near-verbatim from the validated wireframe) and
@@ -1072,7 +1072,7 @@ const CreationFlow=(function(){
   }
 
   function _buildCardRedeemPanel(panel){
-    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your Vihu Card, in order — a line connects them as you go. Tap a star again to undo it.'));
+    panel.appendChild(_el('p','creation-flow-card-redeem-intro','Tap the stars shown on your World Card, in order — a line connects them as you go. Tap a star again to undo it.'));
 
     const board=_el('div','creation-flow-card-board');
     panel.appendChild(board);
@@ -1156,7 +1156,7 @@ const CreationFlow=(function(){
     function submitCode(){
       const val=codeInput.value.trim();
       if(!val){
-        status.textContent='Enter your Vihu Card code first.';
+        status.textContent='Enter your World Card code first.';
         status.className='creation-flow-card-status err';
         return;
       }
@@ -1173,7 +1173,7 @@ const CreationFlow=(function(){
   }
 
   // Shared toggle markup for Screen 1's two "Already have something?"
-  // option cards (Vihu Card redeem, Magic Card recall) — an icon circle
+  // option cards (World Card redeem, Magic Card recall) — an icon circle
   // + title + chevron, matching the same card language the six Creation
   // Type cards already use, instead of one plain-text button label that
   // read as a flat, indistinguishable bar (a real, reported UX gap: the
@@ -1191,7 +1191,7 @@ const CreationFlow=(function(){
 
   function _buildCardRedeemWidget(){
     const wrap=_el('div','creation-flow-option-card');
-    const built_=_buildOptionToggle('creation-flow-option-accent-violet','🔮','Have a Vihu Card? Redeem it here');
+    const built_=_buildOptionToggle('creation-flow-option-accent-violet','🔮','Have a World Card? Redeem it here');
     const toggle=built_.toggle, chevron=built_.chevron;
     const panel=_el('div','creation-flow-card-redeem-panel hidden');
     wrap.appendChild(toggle);
@@ -1209,7 +1209,7 @@ const CreationFlow=(function(){
   }
 
   // ---------- Magic Card Identity Evolution, Phase 2 — Recall widget ----------
-  // Structurally parallel to the Vihu Card redeem widget directly
+  // Structurally parallel to the World Card redeem widget directly
   // above, reusing its exact grid/line-drawing DOM mechanics
   // (_cardBuildGrid/_cardRedrawLiveLines/_cardBoardKey/_cardCenterOfCell
   // — already fully generic, zero World/card-type coupling in any of

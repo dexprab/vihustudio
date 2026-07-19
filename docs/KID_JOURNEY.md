@@ -12,7 +12,7 @@ pixel-identical.
 
 This doc supersedes nothing — it sits alongside `docs/STUDIO_CREATION_JOURNEY_V1.md`
 (the original Screen1→Publish stage contract, still correct at the product-behaviour
-level) and `docs/VIHU_CARD_PLATFORM.md` (the Magic Card / Vihu Card technical
+level) and `docs/WORLD_CARD_PLATFORM.md` (the Magic Card / World Card technical
 reference). This is the one place both are shown together, in order, as a real
 child would actually experience them.
 
@@ -61,8 +61,8 @@ is a real, tap-to-open popover (not a hover-only tooltip, which never fires
 on a touch device) with a one-line orientation. Two option cards — grouped
 under one "Already have something?" heading, each with its own icon circle
 and accent tint — sit at the bottom for a **returning** Visitor or Creator on
-a **new device** with nothing local yet: "Have a Vihu Card? Redeem it here" (a
-Vihu Card — someone shared a World with them) and "My Magic Card? Tap to
+a **new device** with nothing local yet: "Have a World Card? Redeem it here" (a
+World Card — someone shared a World with them) and "My Magic Card? Tap to
 come home" (their own identity/projects, recalled from the cloud). Both are
 covered in §9.
 
@@ -312,7 +312,7 @@ Two quiet, collapsed entry points on Screen 1 (visible in the Stage 1
 screenshot above) exist specifically for a **fresh device with nothing local
 yet** — the actual "second device" case neither role's screens above cover:
 
-- **"🔮 Have a Vihu Card? Redeem it here"** — a Vihu Card someone shared: tap the
+- **"🔮 Have a World Card? Redeem it here"** — a World Card someone shared: tap the
   same star pattern printed on that physical/shared card to unlock its World
   in this device's World Library. Nothing to do with identity.
 - **"✨ My Magic Card? Tap to come home"** — a Creator's *own*
@@ -323,8 +323,8 @@ yet** — the actual "second device" case neither role's screens above cover:
 
 Both reuse the exact same tap-the-stars grid mechanic (`js/creationFlow.js`'s
 `_cardBuildGrid`/`_cardRedrawLiveLines`), just pointed at two different
-backends — a Vihu Card unlocks a *World*, a Magic Card recalls an *identity*.
-See `docs/VIHU_CARD_PLATFORM.md` §6.2 for why these are deliberately two
+backends — a World Card unlocks a *World*, a Magic Card recalls an *identity*.
+See `docs/WORLD_CARD_PLATFORM.md` §6.2 for why these are deliberately two
 separate systems, not one.
 
 ---

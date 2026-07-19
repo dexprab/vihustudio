@@ -144,7 +144,7 @@ const ThemeRegistry=(function(){
   const THEME_SYSTEM_VERSION='9.5.0';
 
   const IMPORTED_STORAGE_KEY='vihu.themeRegistry.imported.v1';
-  // Vihu Card Platform v1 — a redeemed Card grants time-boxed access to
+  // World Card Platform v1 — a redeemed Card grants time-boxed access to
   // someone else's Personal-repository Theme. Only identifiers + expiry
   // persist here, never theme content (same "Supabase/the owner's own
   // Personal Repository is the source of truth" discipline
@@ -452,7 +452,7 @@ const ThemeRegistry=(function(){
     return _cmpVersions(minStudioVersion, THEME_SYSTEM_VERSION)<=0;
   }
 
-  // Vihu Card Platform v1 — evicts any redeemed-via-Card theme whose
+  // World Card Platform v1 — evicts any redeemed-via-Card theme whose
   // grant has expired. Scans only entries marked redeemed:true, so this
   // stays O(redeemed-count) against the module's existing
   // always-recompute-on-read convention (no caching to invalidate, no
@@ -698,7 +698,7 @@ const ThemeRegistry=(function(){
     return {ok:true,theme:theme,manifest:manifest};
   }
 
-  // ---------- Vihu Card Platform v1 — redeemed-theme registration ----------
+  // ---------- World Card Platform v1 — redeemed-theme registration ----------
   // Registers a Theme obtained by redeeming a Card. Reuses the exact
   // same validation + registration choke point (_setImported) every
   // other registration path already goes through — a redeemed theme is

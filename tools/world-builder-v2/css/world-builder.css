@@ -394,7 +394,7 @@ html, body {
 
 .wb-project-card-btn:hover { border-color: var(--wb-gold); }
 
-/* Vihu Card Platform v1 — "Generate a Card" panel (a small, disabled-
+/* World Card Platform v1 — "Generate a Card" panel (a small, disabled-
    by-default 🎴 icon action on a Personal-published project card,
    see .wb-project-card-btn-card below; opens inside the same standalone
    .wb-repo-info-modal shell the Sign In form already proved can host a
@@ -484,7 +484,7 @@ html, body {
     color: var(--wb-text-secondary);
 }
 
-/* Vihu Card Platform v1 — Card Art preview (front/back, download,
+/* World Card Platform v1 — Card Art preview (front/back, download,
    print). Canvas elements carry their own real print-resolution pixels
    (CARD_ART_W/H in worldBuilderApp.js); CSS here only scales them down
    for on-screen display. */

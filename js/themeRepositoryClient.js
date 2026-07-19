@@ -290,7 +290,7 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
-  // Vihu Card Platform v1. `load()` above always scopes a Personal read
+  // World Card Platform v1. `load()` above always scopes a Personal read
   // to the CALLING session's own uid (`.eq('owner_id', session.user.id)`)
   // — correct for its own callers (an author loading their own Theme),
   // but wrong for a card redeemer, who needs a specific OTHER owner's

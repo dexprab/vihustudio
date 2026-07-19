@@ -236,7 +236,7 @@
                 if (!window.confirm('Delete "' + project.name + '"? If it\'s published to your Personal Repository, that copy and its online backup are removed too. This cannot be undone.')) return;
                 _deleteProjectEverywhere(project);
             }],
-            // Vihu Card Platform v1 — card generation lives on THIS
+            // World Card Platform v1 — card generation lives on THIS
             // screen, not the Publish screen (the approved design's own
             // placement: a Card is a shareable object built from an
             // already-published World, not a step in publishing it).
@@ -350,7 +350,7 @@
     }
 
     // ---------------------------------------------------------------
-    // Vihu Card Platform v1 — "Generate a Card" panel
+    // World Card Platform v1 — "Generate a Card" panel
     // ---------------------------------------------------------------
     // Card generation is a thin UI hook into js/cardPlatform.js — this
     // file never touches Supabase/pattern placement/rarity math
@@ -387,7 +387,7 @@
     }
 
     // ---------------------------------------------------------------
-    // Vihu Card Platform v1 — Card Art (front/back visual + download +
+    // World Card Platform v1 — Card Art (front/back visual + download +
     // print). "The card is distributable — downloadable, printable, and
     // I should be able to see it front and back in Builder." Drawn
     // entirely from data this session already has (card.pattern/
@@ -398,7 +398,7 @@
     // bottom rarity+code bar) and back layout (dark starfield, the
     // card's own real constellation pattern connected star-to-star, the
     // code, "Map the stars. Unlock the magic.") both follow the
-    // approved VihuCard design reference directly; a hand-drawn
+    // approved World Card design reference directly; a hand-drawn
     // ornamental corner flourish stands in for the reference's fuller
     // gold filigree, since Canvas 2D primitives are this codebase's own
     // established convention for generative/decorative graphics
@@ -590,7 +590,7 @@
         ctx.fillText('⭐', CARD_ART_W / 2, 92);
         ctx.font = '700 30px Georgia, serif';
         ctx.fillStyle = '#F3E6CB';
-        ctx.fillText('VihuCard', CARD_ART_W / 2, 140);
+        ctx.fillText('World Card', CARD_ART_W / 2, 140);
 
         // Star matrix — this Card's own real, randomly-placed pattern,
         // not a decorative stand-in.
@@ -1831,7 +1831,7 @@
                 if (statusEl) { statusEl.textContent = '👤 Personal'; statusEl.className = 'wb-project-status wb-project-status-personal'; }
                 badge.className = 'wb-project-badge wb-hidden';
             }
-            // Vihu Card Platform v1 — "Generate a Card" only makes sense
+            // World Card Platform v1 — "Generate a Card" only makes sense
             // once this World is a real, Personal-published Theme (a
             // Card mints against target_theme_id/target_repository:
             // 'personal', and the redeem_card RPC's own cross-owner

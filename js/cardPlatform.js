@@ -1,6 +1,6 @@
-// js/cardPlatform.js — Vihu Card Platform v1.
+// js/cardPlatform.js — World Card Platform v1.
 //
-// A shareable "magic card" that unlocks one Personal-repository World
+// A shareable "World Card" that unlocks one Personal-repository World
 // in Creator for a limited number of tries/duration, redeemed by
 // matching a real constellation's shape on a 10x10 star grid. This
 // module is the platform boundary the design session settled on:
@@ -8,8 +8,8 @@
 // functions below — neither owns card logic itself, and neither
 // should grow card-specific business logic beyond calling these
 // functions and rendering their results. See
-// docs/VIHU_CARD_PLATFORM.md for the full design and
-// supabase/schema.sql's own "Vihu Card Platform v1" section for the
+// docs/WORLD_CARD_PLATFORM.md for the full design and
+// supabase/schema.sql's own "World Card Platform v1" section for the
 // backing tables/RPC this module talks to.
 //
 // Structural mirror of js/themeRepositoryClient.js (IIFE, 'use

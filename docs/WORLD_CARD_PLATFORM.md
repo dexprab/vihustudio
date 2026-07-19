@@ -1,6 +1,6 @@
-# Vihu Card Platform v1
+# World Card Platform v1
 
-**Sprint:** Vihu Card Platform v1 — Implementation Sprint.
+**Sprint:** World Card Platform v1 — Implementation Sprint.
 **Status:** Canonical for the v1 shipped scope (Builder Cards only).
 Maintain going forward the same way `docs/THEME_REPOSITORY_ARCHITECTURE.md`
 is maintained for the repository layer this feature sits on top of.
@@ -155,7 +155,7 @@ the existing World Library row (`js/creationFlow.js`'s
 `_buildCardRedeemWidget()`, inserted right after the World Library
 `_sourceGroup()` call).
 
-- `🔮 Have a Vihu Card? Redeem it here` toggles open a real, numbered 10×10
+- `🔮 Have a World Card? Redeem it here` toggles open a real, numbered 10×10
   tap grid (ported near-verbatim from the validated wireframe's own
   `buildLabeledGrid`/`centerOfCell` mechanics): tap a star to place it,
   tap it again to undo, a live connecting line redraws after every
@@ -321,7 +321,7 @@ World Builder UI reading data the platform already had.
 
 ---
 
-## 6.2 Not a Vihu Card — Magic Card identities are a separate system
+## 6.2 Not a World Card — Magic Card identities are a separate system
 
 A Magic Card (`js/magicCard.js`/`js/magicCardUI.js`, root Creator, see
 CLAUDE.md's own "Magic Card Identity Evolution" sprint entries) is
@@ -335,7 +335,7 @@ The two share a *technique* (constellation-pattern placement, tap-to-
 match redemption UI, a `SECURITY DEFINER` RPC that never echoes the
 secret back) but solve genuinely different problems:
 
-- A **Vihu Card** is *shareable and disposable* — many people can hold
+- A **World Card** is *shareable and disposable* — many people can hold
   a copy of the same physical/printed card, it has tries and an
   expiry, and redeeming it grants time-boxed access to *someone else's*
   published Theme. The Card itself has no owner-facing identity beyond
