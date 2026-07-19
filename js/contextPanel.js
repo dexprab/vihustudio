@@ -520,6 +520,8 @@ const ContextPanel=(function(){
       }
       if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
       if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+      // Companion Engine Foundation (Sprint C1) — "User inserts artwork".
+      try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('artwork-added'); }catch(e){}
     };
     img.src=result.dataURL;
   }

@@ -811,6 +811,8 @@ const PublishStudio=(function(){
     }catch(e){ out=null; }
     _publishOutputMeta=out;
     _publishOutputBlob=out ? out.blob : null;
+    // Companion Engine Foundation (Sprint C1) — "Published".
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
     try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
     // Magic Card Identity Evolution, Phase 1 — "Instead of immediately
     // downloading the creation, something unexpected happens" (design

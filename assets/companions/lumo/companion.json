@@ -1,0 +1,16 @@
+{
+  "id": "lumo",
+  "name": "Lumo",
+  "species": "Story Dragon",
+  "version": "1.0",
+  "defaultState": "idle",
+  "states": {
+    "idle": "idle.png",
+    "wave": "wave.png",
+    "think": "think.png",
+    "talk": "talk.png",
+    "celebrate": "celebrate.png",
+    "sleep": "sleep.png",
+    "curious": "curious.png"
+  }
+}

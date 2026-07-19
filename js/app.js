@@ -1706,4 +1706,11 @@ function _beginBoot(){
   _beginBoot();
 })();
 try{ if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge(); }catch(e){}
+// Companion Engine Foundation (Sprint C1) — "Studio opens" is this
+// call itself; CompanionDirector.init() loads Lumo's Companion
+// Package, shows it, and runs the wave->idle boot choreography on its
+// own. Fully optional/defensive: an older cached index.html missing
+// these two script tags, or a companion.json fetch failure, leaves
+// Studio's boot sequence completely unaffected.
+try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
 });

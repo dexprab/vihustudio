@@ -1452,6 +1452,8 @@ const CreationFlow=(function(){
       if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
       else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
     }catch(e){}
+    // Companion Engine Foundation (Sprint C1) — "User starts creating".
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('story-started'); }catch(e){}
   }
 
   // ---------- Change Representation (from the Context Panel) ----------

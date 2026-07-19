@@ -6728,3 +6728,99 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
     page-break-inside:avoid;
   }
 }
+
+/* ================================================================
+   Companion Engine (Sprint C1) — a small, non-interactive floating
+   widget mounted by js/companionEngine.js. Every rule here is written
+   against generic ".companion-*" classes only — nothing here (or in
+   the JS that toggles these classes) knows it happens to be showing
+   Lumo today; a future companion package renders through the exact
+   same markup/CSS. Deliberately pointer-events:none throughout: this
+   sprint defines no click/tap behaviour for the companion, so it must
+   never intercept a click meant for the real UI beneath or around it.
+   z-index:1200 sits above the Creation Flow overlay (1000) and the
+   Publish Studio modal (300) — so the companion stays visible across
+   Screen 1/2 and Publish — but below the Magic Card ceremony's own
+   separate visual world (1400) and the restore-session modal (2000),
+   which are deliberately not companioned. ================================================================ */
+.companion-widget{
+  position:fixed;
+  /* Bottom-RIGHT, not bottom-left: Screen 1's own decorative Story
+     Meadow signpost ("Your adventure starts here") already occupies
+     the bottom-left corner (.creation-scene-signpost, left:3%), and
+     a real screenshot during this sprint's own verification showed
+     the two visibly colliding. The dev build-info footer already
+     lives in the bottom-right corner (right:8px, bottom:8px, ~18px
+     tall) with nothing else nearby, so the companion sits just above
+     it instead. */
+  right:16px;
+  bottom:40px;
+  z-index:1200;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+  pointer-events:none;
+}
+.companion-widget.companion-hidden{ display:none; }
+
+.companion-portrait{
+  width:92px;
+  height:92px;
+  border-radius:50%;
+  background:var(--panel,#fff);
+  box-shadow:0 8px 22px rgba(29,52,87,0.22), 0 0 0 3px rgba(255,203,69,0.55);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.companion-portrait-img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  transition:opacity .18s ease;
+}
+
+.companion-bubble{
+  max-width:220px;
+  padding:10px 14px;
+  border-radius:16px;
+  background:var(--cf-paper,#fffbf3);
+  border:1px solid var(--cf-line,#eadfc4);
+  color:var(--navy,#1D3457);
+  font-size:13.5px;
+  font-weight:600;
+  line-height:1.4;
+  box-shadow:0 10px 24px rgba(29,52,87,0.16);
+  position:relative;
+  opacity:1;
+  transform:translateY(0) scale(1);
+  transition:opacity .16s ease, transform .16s ease;
+}
+.companion-bubble::after{
+  content:'';
+  position:absolute;
+  right:28px;
+  bottom:-7px;
+  width:14px;
+  height:14px;
+  background:inherit;
+  border-right:1px solid var(--cf-line,#eadfc4);
+  border-bottom:1px solid var(--cf-line,#eadfc4);
+  transform:rotate(45deg);
+}
+.companion-bubble.companion-bubble-hidden{
+  opacity:0;
+  transform:translateY(6px) scale(.96);
+  pointer-events:none;
+}
+@media (prefers-reduced-motion:reduce){
+  .companion-portrait-img,
+  .companion-bubble{ transition:none; }
+}
+@media (max-width:560px){
+  .companion-widget{ right:10px; bottom:36px; }
+  .companion-portrait{ width:72px; height:72px; }
+  .companion-bubble{ max-width:170px; font-size:12.5px; }
+}
