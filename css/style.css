@@ -6730,19 +6730,28 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 
 /* ================================================================
-   Companion Engine (Sprint C1) — a small, non-interactive floating
-   widget mounted by js/companionEngine.js. Every rule here is written
-   against generic ".companion-*" classes only — nothing here (or in
-   the JS that toggles these classes) knows it happens to be showing
-   Lumo today; a future companion package renders through the exact
-   same markup/CSS. Deliberately pointer-events:none throughout: this
-   sprint defines no click/tap behaviour for the companion, so it must
-   never intercept a click meant for the real UI beneath or around it.
-   z-index:1200 sits above the Creation Flow overlay (1000) and the
-   Publish Studio modal (300) — so the companion stays visible across
-   Screen 1/2 and Publish — but below the Magic Card ceremony's own
-   separate visual world (1400) and the restore-session modal (2000),
-   which are deliberately not companioned. ================================================================ */
+   Companion Platform v1 (Sprint C1) — a small floating widget mounted
+   by js/companionEngine.js. Every rule here is written against generic
+   ".companion-*" classes / [data-companion-state="..."] values only —
+   nothing here (or in the JS that toggles these classes/attributes)
+   knows it happens to be showing Lumo today, or what any given state
+   name "means" beyond a CSS hook to react to; a future companion
+   package renders through the exact same markup/CSS. The widget as a
+   whole stays pointer-events:none (so it can float above Studio UI
+   without ever intercepting a click meant for something beneath it),
+   except its portrait circle, which is the one deliberately draggable
+   surface (Companion UI: "be draggable, remember position per
+   session"). z-index:1200 sits above the Creation Flow overlay (1000)
+   and the Publish Studio modal (300) — so the companion stays visible
+   across Screen 1/2 and Publish by default — but js/companionDirector.js
+   additionally hides it outright (engine.hide(), the same opacity/
+   visibility fade every other hide() uses) whenever a real Studio
+   dialog (restore-session/theme-picker/Publish Studio/Magic Card) is
+   open, satisfying "automatically avoid overlapping dialogs or menus"
+   without this stylesheet needing to know anything about geometry. It
+   sits below the Magic Card ceremony's own separate visual world
+   (1400) and the restore-session modal (2000) for the same reason.
+   ================================================================ */
 .companion-widget{
   position:fixed;
   /* Bottom-RIGHT, not bottom-left: Screen 1's own decorative Story
@@ -6752,7 +6761,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
      the two visibly colliding. The dev build-info footer already
      lives in the bottom-right corner (right:8px, bottom:8px, ~18px
      tall) with nothing else nearby, so the companion sits just above
-     it instead. */
+     it instead. Once dragged, the engine switches this element to
+     explicit left/top positioning (see companionEngine.js's own
+     _wireDrag/_restorePosition) and these right/bottom values are
+     simply overridden inline — restored automatically on the very
+     next page load within the same browser session unless dragged
+     again, since no saved position exists until a real drag happens. */
   right:16px;
   bottom:40px;
   z-index:1200;
@@ -6761,9 +6775,30 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   align-items:flex-end;
   gap:8px;
   pointer-events:none;
+  opacity:1;
+  transform:translateY(0) scale(1);
+  visibility:visible;
+  transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s;
 }
-.companion-widget.companion-hidden{ display:none; }
+/* opacity/transform fade out, then (only once the fade has actually
+   finished, via the delayed "visibility" transition below) the widget
+   leaves the accessibility tree entirely — a real fade in/out instead
+   of the previous instant display:none, with no JS-side timing needed
+   to sequence the two. */
+.companion-widget.companion-hidden{
+  opacity:0;
+  transform:translateY(14px) scale(.94);
+  pointer-events:none;
+  visibility:hidden;
+  transition:opacity .22s ease, transform .22s ease, visibility 0s linear .22s;
+}
+.companion-widget.companion-dragging{
+  transition:none; /* a dragged widget must track the pointer with zero lag */
+}
 
+.companion-portrait-wrap{
+  position:relative; /* lets .companion-zzz float outside the circle's own overflow:hidden clip */
+}
 .companion-portrait{
   width:92px;
   height:92px;
@@ -6774,12 +6809,75 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   display:flex;
   align-items:center;
   justify-content:center;
+  pointer-events:auto; /* the one interactive/draggable surface on the whole widget */
+  cursor:grab;
+  animation:companion-breathe 4.2s ease-in-out infinite;
+}
+.companion-widget.companion-dragging .companion-portrait{
+  cursor:grabbing;
+  animation:none;
+}
+.companion-portrait-wrap:hover .companion-portrait{
+  animation:none;
+  transform:scale(1.08) rotate(-3deg);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
 }
 .companion-portrait-img{
   width:100%;
   height:100%;
   object-fit:contain;
   transition:opacity .18s ease;
+}
+
+/* ---------- Micro polish: per-state reactions, driven only by the
+   [data-companion-state] attribute companionEngine.js's own
+   _applyState() sets — the engine itself has no idea "talk" means
+   "pulse" or "celebrate" means "bounce"; that meaning lives here,
+   entirely in CSS, so a future package with a richer state vocabulary
+   automatically gets a plain, un-animated (but still correct) image
+   swap for any state this stylesheet doesn't happen to style yet. ---------- */
+@keyframes companion-breathe{
+  0%,100%{ transform:translateY(0) scale(1); }
+  50%{ transform:translateY(-3px) scale(1.015); }
+}
+.companion-widget[data-companion-state="talk"] .companion-portrait{
+  animation:companion-talk-pulse .9s ease-in-out infinite;
+}
+@keyframes companion-talk-pulse{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.06); }
+}
+.companion-widget[data-companion-state="celebrate"] .companion-portrait{
+  animation:companion-celebrate-bounce .6s cubic-bezier(.34,1.56,.64,1) infinite;
+}
+@keyframes companion-celebrate-bounce{
+  0%,100%{ transform:translateY(0); }
+  40%{ transform:translateY(-10px); }
+  60%{ transform:translateY(-2px); }
+}
+.companion-widget[data-companion-state="sleep"] .companion-portrait{
+  animation:none;
+  opacity:.82;
+  filter:saturate(.75);
+}
+
+.companion-zzz{
+  position:absolute;
+  top:-10px;
+  right:-6px;
+  font-size:18px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .3s ease;
+}
+.companion-widget[data-companion-state="sleep"] .companion-zzz{
+  opacity:1;
+  animation:companion-zzz-float 2.6s ease-in-out infinite;
+}
+@keyframes companion-zzz-float{
+  0%{ transform:translateY(0) scale(.85); opacity:.55; }
+  50%{ transform:translateY(-10px) scale(1.05); opacity:1; }
+  100%{ transform:translateY(-18px) scale(.9); opacity:0; }
 }
 
 .companion-bubble{
@@ -6816,8 +6914,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   pointer-events:none;
 }
 @media (prefers-reduced-motion:reduce){
+  .companion-widget,
+  .companion-widget.companion-hidden,
+  .companion-portrait,
   .companion-portrait-img,
-  .companion-bubble{ transition:none; }
+  .companion-bubble,
+  .companion-zzz{ transition:none; animation:none; }
 }
 @media (max-width:560px){
   .companion-widget{ right:10px; bottom:36px; }

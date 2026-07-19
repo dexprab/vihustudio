@@ -1,0 +1,10 @@
+{
+  "companions": [
+    {
+      "id": "lumo",
+      "name": "Lumo",
+      "species": "Story Dragon",
+      "path": "lumo/"
+    }
+  ]
+}

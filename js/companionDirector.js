@@ -1,19 +1,31 @@
-// js/companionDirector.js — Studio integration for the Companion Engine
-// (Sprint C1, Lumo v1).
+// js/companionDirector.js — Studio integration for the Companion
+// Platform (Sprint C1, Companion Platform v1).
 //
 // This file is deliberately NOT part of the Companion Engine
 // (js/companionEngine.js) — it is the one place in the codebase
 // allowed to know when "Studio opened," "the user started creating,"
 // "the user is typing," "artwork was inserted," "nothing has happened
-// for a while," or "the story was published" occur, and to translate
-// each of those Creator-specific moments into a generic
-// CompanionEngine.setState()/.speak() call. The engine itself stays
-// 100% companion-agnostic; this director stays 100% state-machine-
-// agnostic about *which* companion is on screen — companionId is a
-// plain configuration value (defaulting to 'lumo', the only package
-// that ships today), never a hardcoded branch. Swapping in a future
-// companion package needs a one-line default change here, nothing
-// inside companionEngine.js.
+// for a while," "the story was published," or "a Studio dialog is
+// open right now" occur, and to translate each of those Creator-
+// specific moments into a generic CompanionEngine call. The engine
+// itself stays 100% companion-agnostic; this director stays 100%
+// state-machine-agnostic about *which* companion is on screen — the
+// default companion to boot is read from assets/companions/registry.json
+// (the first entry) when no explicit id is given, with 'lumo' as the
+// one, final, disclosed fallback if the registry can't be reached at
+// all — a single literal, not a branch. Swapping in a future companion
+// needs a one-line registry.json edit (or an explicit opts.companionId),
+// nothing inside companionEngine.js and nothing else in this file.
+//
+// Timing that belongs to the *companion itself* (how long a wave or a
+// celebration lasts before settling back to idle) deliberately lives
+// nowhere in this file — js/companionEngine.js's own setState() reads
+// that straight from the loaded package's animations.json and handles
+// it internally. What stays here is genuinely Studio's own policy, not
+// the companion's: how long Studio waits before considering itself
+// idle (IDLE_SLEEP_MS), and how often typing is allowed to re-trigger
+// "curious" (TYPING_COOLDOWN_MS) — neither is a property of Lumo, both
+// would apply identically to any future companion.
 //
 // Every hook site elsewhere in the app is a single, defensive,
 // try/catch-guarded line calling CompanionDirector.notify(event) —
@@ -25,15 +37,32 @@
 
   const IDLE_SLEEP_MS=120000;      // "No interaction for 2 minutes -> sleep."
   const TYPING_COOLDOWN_MS=4000;   // Don't re-fire "curious" on every keystroke.
-  const BOOT_WAVE_MS=3000;         // "Studio opens -> wave -> (3s) -> idle."
-  const WAKE_WAVE_MS=2000;         // "User interacts again -> wave -> idle."
-  const CELEBRATE_HOLD_MS=2000;    // "...celebrate -> (2s) -> idle."
+
+  // "Avoid overlapping dialogs or menus" — the small, closed set of
+  // Studio-owned overlays this file (and only this file) is allowed to
+  // know about. Every one of these follows the same convention already
+  // established across this codebase: a container that gains/loses a
+  // plain ".hidden" class. When any of them is open, the companion is
+  // simply hidden (engine.hide(), the exact same fade every other
+  // hide() call already uses) rather than repositioned — the lowest-
+  // risk way to guarantee it never sits on top of a dialog's own
+  // controls, since this file has no reliable way to know a future
+  // dialog's own geometry in advance. Creation Flow's own overlay is
+  // deliberately NOT in this list — the companion is meant to be
+  // visible there (that's where the boot "wave" greeting happens).
+  const BUSY_SELECTORS=[
+    '#restoreModal:not(.hidden)',
+    '#themePickerModal:not(.hidden)',
+    '.publish-studio-modal:not(.hidden)',
+    '#magicCardOverlay:not(.hidden)'
+  ];
 
   const MESSAGES={
     open:"Let's imagine!",
     storyStarted:"I can't wait to see your story!",
-    artworkAdded:"That's wonderful!",
-    published:"Your story is ready!"
+    artworkAdded:"That looks magical!",
+    published:"Your story is ready!",
+    idleWake:"Welcome back!"
   };
 
   const CompanionDirector=(function(){
@@ -43,6 +72,10 @@
     let idleTimer=null;
     let typingCooldownUntil=0;
     let typingListenerBound=false;
+    let occlusionObserver=null;
+    let occlusionPending=false;
+    let occludedForBusyUI=false;
+    let wasVisibleBeforeOcclusion=true;
 
     function safe(fn){
       try{ fn(); }catch(e){ /* a companion hiccup must never break Studio */ }
@@ -53,15 +86,18 @@
       idleTimer=setTimeout(function(){
         if(!ready || asleep) return;
         asleep=true;
-        safe(function(){ engine.setState('sleep'); });
+        safe(function(){ engine.sleep(); });
       },IDLE_SLEEP_MS);
     }
 
     function onActivity(){
       if(ready && asleep){
         asleep=false;
-        safe(function(){ engine.setState('wave'); });
-        setTimeout(function(){ safe(function(){ if(ready) engine.setState('idle'); }); },WAKE_WAVE_MS);
+        // "User interacts again -> wave -> idle." wake() sets state to
+        // 'wave'; the loaded package's own animations.json (Lumo's
+        // own wave duration) is what actually settles it back to idle
+        // afterward — no timer of any kind lives in this file.
+        safe(function(){ engine.wake(); engine.speak(MESSAGES.idleWake); });
       }
       resetIdleTimer();
     }
@@ -101,34 +137,97 @@
       resetIdleTimer();
     }
 
+    function isStudioBusy(){
+      for(let i=0;i<BUSY_SELECTORS.length;i++){
+        if(document.querySelector(BUSY_SELECTORS[i])) return true;
+      }
+      return false;
+    }
+
+    function updateOcclusion(){
+      if(!ready || !engine) return;
+      const busy=isStudioBusy();
+      if(busy && !occludedForBusyUI){
+        occludedForBusyUI=true;
+        wasVisibleBeforeOcclusion=engine.isVisible();
+        if(wasVisibleBeforeOcclusion) safe(function(){ engine.hide(); });
+      }else if(!busy && occludedForBusyUI){
+        occludedForBusyUI=false;
+        if(wasVisibleBeforeOcclusion) safe(function(){ engine.show(); });
+      }
+    }
+
+    function bindOcclusionWatcher(){
+      if(occlusionObserver) return;
+      occlusionObserver=new MutationObserver(function(){
+        // A single dialog opening/closing can trigger several class/
+        // childList mutations in one go — coalesce them into one
+        // occlusion check per animation frame rather than one per
+        // mutation record.
+        if(occlusionPending) return;
+        occlusionPending=true;
+        requestAnimationFrame(function(){
+          occlusionPending=false;
+          updateOcclusion();
+        });
+      });
+      occlusionObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+      updateOcclusion();
+    }
+
+    // Prefers the loaded package's own personality.json greetings
+    // (Lumo's own three), picking one at random each boot for a
+    // little authored variety; falls back to the one hardcoded default
+    // message only for a package with no personality.json at all.
+    function pickGreeting(){
+      const p=engine.getPersonality();
+      if(p && Array.isArray(p.greetings) && p.greetings.length){
+        return p.greetings[Math.floor(Math.random()*p.greetings.length)];
+      }
+      return MESSAGES.open;
+    }
+
+    function bootWithId(id){
+      const companionId=id||'lumo'; // the one, final, disclosed fallback — see this file's own header comment
+      engine=new window.CompanionEngine();
+      engine.load(companionId).then(function(){
+        ready=true;
+        engine.show();
+        engine.setState('wave'); // auto-reverts to idle per the package's own animations.json, no timer here
+        engine.speak(pickGreeting());
+        bindGlobalListeners();
+        bindOcclusionWatcher();
+      }).catch(function(){
+        // No companion.json / broken package — Studio boots exactly
+        // as it always has, just without a companion this session.
+        engine=null;
+      });
+    }
+
     /**
      * Boots the companion for this Studio session. Safe to call more
      * than once — later calls are ignored once a companion is already
      * loaded, so multiple defensive init() call sites never double-
      * mount the widget.
      * @param {object} [opts]
-     * @param {string} [opts.companionId] Defaults to 'lumo' — the only
-     *   Companion Package that ships today. A configuration value, not
-     *   a hardcoded behavioural branch.
+     * @param {string} [opts.companionId] Explicit override. When
+     *   omitted, the default companion is read from the first entry of
+     *   assets/companions/registry.json — 'lumo' only if that registry
+     *   can't be reached or is empty.
      */
     function init(opts){
       if(engine) return;
       if(typeof window.CompanionEngine==='undefined') return;
       opts=opts||{};
-      const companionId=opts.companionId||'lumo';
-      engine=new window.CompanionEngine();
-      engine.load(companionId).then(function(){
-        ready=true;
-        engine.show();
-        engine.setState('wave');
-        engine.speak(MESSAGES.open);
-        setTimeout(function(){ safe(function(){ if(ready) engine.setState('idle'); }); },BOOT_WAVE_MS);
-        bindGlobalListeners();
-      }).catch(function(){
-        // No companion.json / broken package — Studio boots exactly
-        // as it always has, just without a companion this session.
-        engine=null;
-      });
+      if(opts.companionId){
+        bootWithId(opts.companionId);
+      }else if(typeof window.CompanionEngine.loadRegistry==='function'){
+        window.CompanionEngine.loadRegistry().then(function(list){
+          bootWithId(list && list.length ? list[0].id : null);
+        }).catch(function(){ bootWithId(null); });
+      }else{
+        bootWithId(null);
+      }
     }
 
     /**
@@ -144,13 +243,13 @@
           engine.setState('think');
           engine.speak(MESSAGES.storyStarted);
         }else if(event==='artwork-added'){
+          // celebrate auto-reverts to idle per the package's own
+          // animations.json duration/transition — no timer here.
           engine.setState('celebrate');
           engine.speak(MESSAGES.artworkAdded);
-          setTimeout(function(){ safe(function(){ if(ready) engine.setState('idle'); }); },CELEBRATE_HOLD_MS);
         }else if(event==='published'){
           engine.setState('celebrate');
           engine.speak(MESSAGES.published);
-          setTimeout(function(){ safe(function(){ if(ready) engine.setState('idle'); }); },CELEBRATE_HOLD_MS);
         }
       });
     }

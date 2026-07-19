@@ -1,0 +1,12 @@
+{
+  "transitions": {
+    "wave": "idle",
+    "celebrate": "idle",
+    "talk": "idle",
+    "sleep": "idle"
+  },
+  "durations": {
+    "wave": 3000,
+    "celebrate": 2000
+  }
+}
