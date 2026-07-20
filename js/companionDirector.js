@@ -11,12 +11,12 @@
 // registry) and a plain pose name.
 //
 // ---------- Companion Canon V2, in code terms ----------
-// A Visitor is not yet a Creator, and does not have a companion. Every
-// Visitor is instead represented by a Story Egg (registry role
-// "visitor") — no face, no limbs, never speaks, expressed only through
+// A Traveller is not yet a Creator, and does not have a companion. Every
+// Traveller is instead represented by a Story Egg (registry role
+// "traveller") — no face, no limbs, never speaks, expressed only through
 // pose. The Story Egg belongs to nobody; it is waiting for a Creator.
 //
-// The first successful Publish is the Creator Ceremony (Canon: "Visitor
+// The first successful Publish is the Creator Ceremony (Canon: "Traveller
 // -> Story Egg -> Create -> First Publish -> Magic Card awakens -> Lumo
 // arrives -> Lumo blesses the Story Egg -> Story Egg hatches -> A Story
 // Companion is born -> The Companion chooses the Creator -> Magic Card
@@ -37,11 +37,11 @@
 // Companion Canon revisions used. Resolving that specific, per-Creator
 // companion id is _resolveCreatorCompanionId() below; it is the one
 // real behavioural change this sprint makes to the ambient companion
-// widget (visitor/story-egg choreography is completely untouched).
+// widget (traveller/story-egg choreography is completely untouched).
 //
 // Which entity id actually gets loaded is still resolved generically,
 // never as a literal `if (id === 'story-egg')` / `if (id === 'lumo')`
-// branch — by matching a registry entry's own `role` field (visitor ->
+// branch — by matching a registry entry's own `role` field (traveller ->
 // Story Egg, guardian -> Lumo, companion -> whichever Story Companion a
 // Creator is bonded to) or, for the Creator case, by the exact id
 // recorded on the active Magic Card. Adding a third, fourth, hundredth
@@ -95,7 +95,7 @@
   };
 
   // The whole Canon, as data. `role` is what's matched against a
-  // registry entry's own `role` field for the visitor Story Egg
+  // registry entry's own `role` field for the traveller Story Egg
   // lookup (see _resolveEntityIdByRole below) — MODES.creator has no
   // `role` at all, since which SPECIFIC Story Companion a Creator's
   // widget shows is resolved per-Creator (their own Magic Card's
@@ -105,7 +105,7 @@
   // (nothing here relies on the Egg simply having no personality.json
   // to speak from); `bootPose`/`wakePose` and the four Studio-event ->
   // pose mappings are each entity's own canonical pose vocabulary —
-  // Visitor and Creator intentionally use DIFFERENT pose names for the
+  // Traveller and Creator intentionally use DIFFERENT pose names for the
   // same Studio moment (e.g. "creating content" is "think" for a Story
   // Companion, "thinking" for the Egg) because that's what the two
   // frozen pose lists actually are, not a special case for either
@@ -114,8 +114,8 @@
   // 'think'/'celebrate'/'sleep' poses MODES.creator already names, so
   // this table needs zero change per companion.
   const MODES={
-    visitor:{
-      role:'visitor',
+    traveller:{
+      role:'traveller',
       speaks:false,
       bootPose:'idle',
       wakePose:'idle', // no "just returned" flourish pose exists for a limbless Egg
@@ -170,7 +170,7 @@
       }catch(e){ return 0; }
     }
 
-    function modeCfg(){ return MODES[currentMode]||MODES.visitor; }
+    function modeCfg(){ return MODES[currentMode]||MODES.traveller; }
 
     function resetIdleTimer(){
       if(idleTimer) clearTimeout(idleTimer);
@@ -274,7 +274,7 @@
     // picking one at random each boot; falls back to the one hardcoded
     // default message only for a package with no personality.json at
     // all (the Egg never reaches this — Canon 1's "never speaks" is
-    // enforced structurally by MODES.visitor.speaks; a Story Companion
+    // enforced structurally by MODES.traveller.speaks; a Story Companion
     // authored without its own greetings falls back the same way Lumo
     // itself would).
     function pickGreeting(){
@@ -287,13 +287,13 @@
 
     // Whether this browser currently has a Creator identity active —
     // the ONE place this file reads Studio's own Magic Card state to
-    // decide Visitor vs Creator. A missing/unavailable MagicCard module
-    // defaults to Visitor, the safe, canon-correct default.
+    // decide Traveller vs Creator. A missing/unavailable MagicCard module
+    // defaults to Traveller, the safe, canon-correct default.
     function detectMode(){
       try{
         if(typeof MagicCard!=='undefined' && MagicCard.getActive()) return 'creator';
       }catch(e){}
-      return 'visitor';
+      return 'traveller';
     }
 
     // Resolves which registry entity id serves a given ROLE (never an
@@ -308,7 +308,7 @@
       return (list && list[0] && list[0].id) || 'lumo';
     }
 
-    // Visitor-only convenience: MODES.visitor is the one remaining mode
+    // Traveller-only convenience: MODES.traveller is the one remaining mode
     // whose entity is a plain role match.
     function _resolveEntityId(list,mode){
       return _resolveEntityIdByRole(list,MODES[mode].role);
@@ -465,12 +465,12 @@
         // function (js/magicCardUI.js's _finishAwakening), regardless
         // of outcome. If a Creator was just born, 'creator-born'
         // already handled everything above. If the child is still a
-        // Visitor (declined/deferred), the Egg may be sitting in
+        // Traveller (declined/deferred), the Egg may be sitting in
         // 'hatching' from the Publish moment that opened the ceremony
         // — settle it back to a quiet idle rather than leaving it
         // mid-hatch indefinitely.
         if(event==='ceremony-closed'){
-          if(currentMode==='visitor') engine.setState('idle');
+          if(currentMode==='traveller') engine.setState('idle');
           return;
         }
         const cfg=modeCfg();
@@ -489,7 +489,7 @@
           engine.setState(cfg.poses.publish);
           if(cfg.speaks) engine.speak(MESSAGES.published);
         }else if(event==='page-added'){
-          // "New Page -> excited," Story Egg only (see MODES.visitor's
+          // "New Page -> excited," Story Egg only (see MODES.traveller's
           // own 'newPage' key above) — an event with no mapped pose in
           // the current mode (Creator today) is a safe, silent no-op.
           const pose=cfg.poses.newPage;

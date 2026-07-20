@@ -7674,3 +7674,250 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .companion-environment{ width:96px; height:36px; }
   .companion-bubble{ max-width:170px; font-size:12.5px; }
 }
+
+/* ============================================================
+   The Creator Gateway — VihuPlanet Canon Milestone 1
+   ============================================================
+   Scenes 1-3: The Sky (arrival) -> Lumo's Arrival -> the Greeting.
+   Mirrors .creation-flow-overlay's own proven container shape (a fixed,
+   full-viewport overlay with one purely-decorative aria-hidden layer
+   behind a JS-populated content panel) exactly, per this codebase's own
+   "reuse an existing proven pattern" discipline — see
+   js/gatewaySequence.js. z-index sits above .magic-card-overlay (1400)
+   and .companion-widget (1450): the Gateway plays BEFORE either of
+   those, but a moment above them is the safe default should anything
+   ever race. A dusk/dawn "arriving in another world" gradient is used
+   deliberately, distinct from Story Meadow's own daytime palette and
+   from the Magic Card's own indigo night sky (the two flanking moments
+   this experience sits between) — this is its own, in-between arrival
+   light. --gw-gold echoes the Magic Card's own --mc-gold for visual
+   continuity into the constellation moment that follows later in the
+   flow. */
+.gateway-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1600;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:linear-gradient(180deg,#171034 0%,#372a63 30%,#7c5c86 56%,#dd9c62 80%,#f6ce8c 100%);
+  --gw-gold:#FFCB45;
+}
+.gateway-overlay.hidden{ display:none; }
+
+.gateway-scene{
+  position:absolute; inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.gateway-scene-sky{
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 15%,rgba(255,222,168,.22) 0%,rgba(255,222,168,0) 60%);
+}
+.gateway-scene-sun{
+  position:absolute; bottom:-10%; left:50%;
+  width:60vw; height:60vw; max-width:640px; max-height:640px;
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,207,138,.5) 0%,rgba(255,207,138,0) 68%);
+}
+.gateway-scene-cloud{
+  position:absolute;
+  width:150px; height:46px;
+  background:rgba(255,255,255,.22);
+  border-radius:50px;
+  filter:blur(1px);
+  animation:gateway-drift 70s linear infinite;
+}
+.gateway-scene-cloud::before,.gateway-scene-cloud::after{
+  content:'';
+  position:absolute;
+  background:rgba(255,255,255,.22);
+  border-radius:50%;
+}
+.gateway-scene-cloud::before{ width:74px; height:74px; top:-34px; left:16px; }
+.gateway-scene-cloud::after{ width:56px; height:56px; top:-24px; right:18px; }
+.gateway-scene-cloud.cloud-1{ top:14%; left:-180px; animation-duration:75s; }
+.gateway-scene-cloud.cloud-2{ top:26%; left:-180px; animation-duration:100s; animation-delay:-35s; transform:scale(.72); }
+.gateway-scene-cloud.cloud-3{ top:8%; left:-180px; animation-duration:120s; animation-delay:-60s; transform:scale(.5); opacity:.7; }
+@keyframes gateway-drift{ from{ transform:translateX(0); } to{ transform:translateX(140vw); } }
+
+.gateway-scene-island{
+  position:absolute;
+  font-size:34px;
+  opacity:.55;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.25));
+  animation:gateway-island-float 9s ease-in-out infinite;
+}
+.island-1{ bottom:32%; left:12%; animation-delay:0s; }
+.island-2{ bottom:44%; right:14%; font-size:26px; opacity:.4; animation-delay:-4s; }
+@keyframes gateway-island-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-14px); } }
+
+.gateway-scene-bird{
+  position:absolute;
+  top:22%;
+  font-size:20px;
+  opacity:.75;
+  animation:gateway-bird-fly 26s linear infinite;
+}
+.bird-1{ animation-delay:0s; }
+.bird-2{ top:32%; font-size:15px; animation-delay:-11s; animation-duration:34s; }
+@keyframes gateway-bird-fly{
+  from{ transform:translate(-10vw,0); }
+  to{ transform:translate(110vw,-60px); }
+}
+
+.gateway-scene-particle{
+  position:absolute;
+  bottom:10%;
+  color:var(--gw-gold);
+  font-size:14px;
+  opacity:0;
+  animation:gateway-particle-drift 8s ease-in infinite;
+}
+.gateway-scene-particle.p1{ left:12%; animation-delay:0s; }
+.gateway-scene-particle.p2{ left:26%; animation-delay:-2.4s; font-size:10px; }
+.gateway-scene-particle.p3{ left:44%; animation-delay:-4.8s; }
+.gateway-scene-particle.p4{ left:62%; animation-delay:-1.2s; font-size:11px; }
+.gateway-scene-particle.p5{ left:78%; animation-delay:-6s; }
+.gateway-scene-particle.p6{ left:90%; animation-delay:-3.6s; font-size:9px; }
+@keyframes gateway-particle-drift{
+  0%{ transform:translateY(0) scale(.8); opacity:0; }
+  12%{ opacity:.85; }
+  88%{ opacity:.4; }
+  100%{ transform:translateY(-64vh) scale(1.15); opacity:0; }
+}
+
+.gateway-panel{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:280px;
+  width:100%;
+  padding:24px;
+}
+
+/* Scene 2 — Lumo's Arrival. A deliberate CSS-transform illusion on ONE
+   flat companion image — no independently-animatable wing/tail/eye art
+   layers exist or are fabricated (see js/gatewaySequence.js's own
+   header comment). --gateway-tilt is a plain numeric custom property
+   (set live by JS from cursor position) standing in for "eye tracking" /
+   attentiveness; every keyframe below that touches `transform`
+   re-declares rotate(var(--gateway-tilt,0deg)) alongside its own
+   translate/scale so the cursor-tilt keeps applying continuously even
+   while breathing/blinking animates the same property. */
+.gateway-lumo-stage{
+  position:relative;
+  width:clamp(160px,26vw,240px);
+  height:clamp(160px,26vw,240px);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+}
+.gateway-lumo-shadow{
+  position:absolute;
+  bottom:-6px;
+  width:62%;
+  height:18px;
+  border-radius:50%;
+  background:rgba(15,8,30,.35);
+  filter:blur(3px);
+  transform:scale(.3);
+  opacity:0;
+  animation:gateway-shadow-land 1.8s ease-out forwards;
+}
+@keyframes gateway-shadow-land{
+  0%{ transform:scale(.3); opacity:0; }
+  60%{ opacity:.5; }
+  100%{ transform:scale(1); opacity:.35; }
+}
+.gateway-lumo-portrait{
+  position:relative;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  filter:drop-shadow(0 18px 30px rgba(10,4,24,.4));
+  --gateway-tilt:0deg;
+}
+.gateway-lumo-portrait.gateway-lumo-flying{
+  animation:gateway-lumo-arrive 1.8s cubic-bezier(.22,.9,.34,1) forwards;
+}
+@keyframes gateway-lumo-arrive{
+  0%{ transform:translate(-58vw,-32vh) scale(.5) rotate(-16deg); opacity:0; }
+  50%{ opacity:1; }
+  76%{ transform:translate(0,8px) scale(1.05) rotate(3deg); opacity:1; }
+  100%{ transform:translate(0,0) scale(1) rotate(0deg); opacity:1; }
+}
+.gateway-lumo-portrait.gateway-lumo-settled{
+  animation:gateway-lumo-alive 4.4s ease-in-out infinite;
+}
+@keyframes gateway-lumo-alive{
+  0%,100%{ transform:translateY(0) rotate(var(--gateway-tilt,0deg)); opacity:1; }
+  8%{ transform:translateY(-2px) rotate(var(--gateway-tilt,0deg)); }
+  46%{ transform:translateY(-6px) rotate(var(--gateway-tilt,0deg)); }
+  48%{ opacity:.6; } /* a quick, honest blink-illusion flicker */
+  50%{ opacity:1; }
+  92%{ transform:translateY(-2px) rotate(var(--gateway-tilt,0deg)); }
+}
+
+/* Scene 3 — the Greeting. Paced, narrative lines only (never a tutorial
+   or UI instruction) — see GREETING_LINES in js/gatewaySequence.js. */
+.gateway-greeting-bubble{
+  margin-top:30px;
+  min-height:1.5em;
+  max-width:640px;
+  padding:0 24px;
+  font-size:clamp(20px,3vw,30px);
+  font-weight:600;
+  line-height:1.35;
+  color:#fff8e6;
+  text-align:center;
+  text-shadow:0 2px 20px rgba(0,0,0,.35);
+  opacity:0;
+}
+.gateway-greeting-bubble.gateway-greeting-in{
+  animation:gateway-line-in 2000ms ease-out;
+}
+@keyframes gateway-line-in{
+  0%{ opacity:0; transform:translateY(10px); }
+  15%{ opacity:1; transform:translateY(0); }
+  82%{ opacity:1; }
+  100%{ opacity:0; }
+}
+
+.gateway-tap-hint{
+  position:absolute;
+  bottom:36px;
+  left:50%;
+  transform:translateX(-50%);
+  color:rgba(255,255,255,.55);
+  font-size:13px;
+  letter-spacing:.06em;
+  pointer-events:none;
+  animation:gateway-hint-pulse 2.4s ease-in-out infinite;
+}
+@keyframes gateway-hint-pulse{ 0%,100%{ opacity:.32; } 50%{ opacity:.82; } }
+
+@media (prefers-reduced-motion:reduce){
+  .gateway-scene-cloud,
+  .gateway-scene-island,
+  .gateway-scene-bird,
+  .gateway-scene-particle,
+  .gateway-lumo-portrait.gateway-lumo-flying,
+  .gateway-lumo-portrait.gateway-lumo-settled,
+  .gateway-lumo-shadow,
+  .gateway-greeting-bubble.gateway-greeting-in,
+  .gateway-tap-hint{ animation:none; }
+  .gateway-lumo-portrait.gateway-lumo-flying{ opacity:1; transform:none; }
+  .gateway-lumo-shadow{ opacity:.35; transform:scale(1); }
+  .gateway-greeting-bubble.gateway-greeting-in{ opacity:1; transform:none; }
+}
+@media (max-width:560px){
+  .gateway-lumo-stage{ width:150px; height:150px; }
+  .gateway-greeting-bubble{ font-size:18px; padding:0 18px; }
+}

@@ -8,7 +8,7 @@
 // ceremony) triggered once from Publish Studio's first-ever Publish;
 // Screen 11 (Magic Card Home) reachable from a small header glyph.
 //
-// Screen 1 (Welcome) and Screen 3 (Visitor Entry) are deliberately NOT
+// Screen 1 (Welcome) and Screen 3 (Traveller Entry) are deliberately NOT
 // built here — the design document itself says Screen 1 is skipped
 // entirely when zero Magic Cards are known on a device, landing
 // straight on Screen 3, which is byte-for-byte identical to Creator's
@@ -376,7 +376,7 @@ const MagicCardUI=(function(){
       // a shared device left the PREVIOUS card's id sitting in
       // ACTIVE_KEY untouched -- MagicCard.getActive() would keep
       // reporting a Creator even though the person explicitly chose to
-      // continue as a Visitor this time. setActive(null) already
+      // continue as a Traveller this time. setActive(null) already
       // correctly clears the pointer (see js/magicCard.js); this was
       // only ever a missing call, not a missing capability. (Recall's
       // own MagicCard.recall() already calls setActive() internally via
@@ -624,7 +624,7 @@ const MagicCardUI=(function(){
   // uniformly across every verification path (Continue/tile-tap/Recall)
   // rather than resolving each card's own bonded companion — simpler,
   // and thematically a Guardian/gatekeeper is a fixed figure at the
-  // gate, not a different face per visitor. Resolved the identical way
+  // gate, not a different face per traveller. Resolved the identical way
   // every other Lumo portrait in this file already is. `name` is the
   // known card's own nickname (Continue/tile-tap) or undefined (Recall,
   // where no identity is known yet) — folded into the greeting line
@@ -977,7 +977,7 @@ const MagicCardUI=(function(){
   }
 
   // Resolves {id, name, basePath, pkg} for either a registry ROLE
-  // ('visitor' -> the Story Egg, 'guardian' -> Lumo) or an explicit id
+  // ('traveller' -> the Story Egg, 'guardian' -> Lumo) or an explicit id
   // (the Creator's own randomly-bonded Story Companion) — a beat names
   // exactly one of the two (see _entityLookupFor below), never both.
   function _ceremonyResolveEntity(regList,lookup){
@@ -992,7 +992,7 @@ const MagicCardUI=(function(){
   }
 
   function _entityLookupFor(beatEntity,companionId){
-    if(beatEntity==='egg') return {role:'visitor'};
+    if(beatEntity==='egg') return {role:'traveller'};
     if(beatEntity==='guardian') return {role:'guardian'};
     return {id:companionId};
   }
@@ -1106,7 +1106,7 @@ const MagicCardUI=(function(){
     // regardless of outcome (Claimed / Maybe Later / Just Exploring).
     // A Creator born during this ceremony was already handled by
     // MagicCard.claim()'s own 'creator-born' hook; this covers the
-    // still-Visitor case (settling a Story Egg left mid-"hatching").
+    // still-Traveller case (settling a Story Egg left mid-"hatching").
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('ceremony-closed'); }catch(e){}
     try{ onDone(); }catch(e){}
   }

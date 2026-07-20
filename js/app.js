@@ -1665,14 +1665,14 @@ function _startCreationFlow(){
 // built as separate code here.
 function _beginBoot(){
   // Companion Canon Freeze — this is where CompanionDirector.init()
-  // now lives, not the outer bootstrapSession() IIFE below. A Visitor
+  // now lives, not the outer bootstrapSession() IIFE below. A Traveller
   // vs. Creator decision (Story Egg vs. Lumo) depends on
   // MagicCard.getActive(), which the Identity Gate above (when shown)
   // can still change — via a specific card pick, or "Begin Exploring"
   // now correctly clearing it (see js/magicCardUI.js's own proceed()
   // fix) — before ever calling _beginBoot(). Booting the companion
   // here, after that gate has fully resolved, is what makes the
-  // Visitor/Creator decision correct rather than a stale snapshot from
+  // Traveller/Creator decision correct rather than a stale snapshot from
   // the moment the page merely loaded.
   try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
@@ -1707,7 +1707,17 @@ function _beginBoot(){
     _startCreationFlow();
   }
 }
-(function bootstrapSession(){
+// The Creator Gateway (VihuPlanet Canon Milestone 1) — this is
+// bootstrapSession()'s own pre-existing Identity Gate / Creation Flow
+// decision, completely UNMODIFIED, just extracted into its own function
+// so GatewaySequence.begin() (below) can hand off into it once Scenes
+// 1-3 (The Sky -> Lumo's Arrival -> the Greeting) finish. Scenes 4-6
+// (Traveller Choice / Gates of Creation / the Hall of Creation reveal)
+// are a disclosed gap this milestone does not build — today, calling
+// this function IS Scenes 4-6: it's Studio's own already-canon-aligned
+// Identity Gate/Creator Signature machinery (js/magicCardUI.js), not a
+// stand-in for it.
+function _afterGateway(){
   try{
     if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.list().length>0){
       MagicCardUI.checkIdentityGate(_beginBoot);
@@ -1715,6 +1725,19 @@ function _beginBoot(){
     }
   }catch(e){}
   _beginBoot();
+}
+(function bootstrapSession(){
+  // A missing/broken GatewaySequence module degrades to exactly
+  // today's own pre-Gateway behaviour — booting straight into
+  // _afterGateway() — never blocking Studio's boot on a decorative
+  // arrival experience.
+  try{
+    if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin){
+      GatewaySequence.begin(_afterGateway);
+      return;
+    }
+  }catch(e){}
+  _afterGateway();
 })();
 try{ if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge(); }catch(e){}
 });

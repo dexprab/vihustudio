@@ -14,7 +14,7 @@
 // pattern (recall_magic_card RPC). Local stays authoritative for
 // everything the child actually interacts with — every cloud call
 // below is fire-and-forget, never on the hot path of claim/rename/
-// touch, and a Visitor (no claimed card) never triggers a single
+// touch, and a Traveller (no claimed card) never triggers a single
 // network call, unchanged from Phase 1.
 //
 // The central design decision from the design document: a claimed
@@ -51,7 +51,7 @@
 // Creator" — a real, deliberately isolated random pick from every
 // registry entry with role:'companion' (js/companionEngine.js's
 // loadRegistry, unchanged), never a role match (that's how Lumo, the
-// never-bonding Guardian, and the Story Egg, the never-bonded Visitor
+// never-bonding Guardian, and the Story Egg, the never-bonded Traveller
 // entity, both already resolve — see js/companionDirector.js). A card's
 // bonded companion is set exactly once, at claim() (or inherited
 // verbatim from the identity's own row on a cross-device adopt()), and
@@ -234,7 +234,7 @@ const MagicCard=(function(){
   // perspective -- local mutation (above) has already completed and
   // returned before any of this runs, and every promise here resolves
   // rather than rejects on failure, matching cardPlatform.js's own
-  // "never block, never throw" convention throughout. A Visitor (no
+  // "never block, never throw" convention throughout. A Traveller (no
   // claimed card, so none of the local functions above ever call these)
   // never triggers a single network call -- unchanged from Phase 1.
   const _cloudSyncTimers={};
@@ -510,7 +510,7 @@ const MagicCard=(function(){
     setActive(card.id);
     _pullRecalledProjects(remoteResult.owner_id);
     // Companion Canon Freeze -- recalling an identity on a new device
-    // is the other real "Visitor becomes Creator" path (alongside
+    // is the other real "Traveller becomes Creator" path (alongside
     // claim() above) -- this device now recognizes a Creator too.
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('creator-born'); }catch(e){}
     return card;

@@ -7,7 +7,7 @@
 // the first time. js/creatorProjectStore.js's localStorage write is
 // still what Creator reads from and renders immediately; this module's
 // job is only to make sure that write isn't the only copy anywhere,
-// once a Magic Card has been claimed (a Visitor never reaches this
+// once a Magic Card has been claimed (a Traveller never reaches this
 // module at all — see js/projectManager.js's own guard).
 //
 // Reuses ThemeRepositoryClient.getClient()/.getSession() exactly like

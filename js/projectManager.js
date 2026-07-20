@@ -218,9 +218,9 @@ const ProjectManager=(function(){
   // mirror once claimed" architecture: local stays authoritative and
   // this is fire-and-forget, debounced on its own separate timer from
   // the local write above (mirrors worldBuilderApp.js's own
-  // _scheduleCloudSync exactly). A Visitor (no claimed Magic Card)
+  // _scheduleCloudSync exactly). A Traveller (no claimed Magic Card)
   // never reaches CreatorProjectSync.push at all — this is the one
-  // guard that keeps a Visitor's own projects 100% local forever.
+  // guard that keeps a Traveller's own projects 100% local forever.
   const CLOUD_PROJECT_SYNC_DEBOUNCE_MS=2000;
   let _cloudProjectSyncTimer=null;
   function _scheduleCloudProjectSync(id){
