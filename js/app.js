@@ -1707,7 +1707,7 @@ function _beginBoot(){
     _startCreationFlow();
   }
 }
-// The Creator Gateway (VihuPlanet Canon Milestone 1) — this is
+// The Traveller Gateway (VihuPlanet Canon Milestone 1) — this is
 // bootstrapSession()'s own pre-existing Identity Gate / Creation Flow
 // decision, completely UNMODIFIED, just extracted into its own function
 // so GatewaySequence.begin() (below) can hand off into it once Scenes
@@ -1727,12 +1727,19 @@ function _afterGateway(){
   _beginBoot();
 }
 (function bootstrapSession(){
-  // A missing/broken GatewaySequence module degrades to exactly
-  // today's own pre-Gateway behaviour — booting straight into
-  // _afterGateway() — never blocking Studio's boot on a decorative
-  // arrival experience.
+  // It's the TRAVELLER Gateway, not a Creator one — Lumo greeting "a
+  // stranger it has never met" is a first-arrival ritual, not something
+  // a recognized returning Creator should re-live on every boot (they
+  // already have their own "Welcome back / show me your stars" moment,
+  // js/magicCardUI.js's own Identity Gate). So this only plays when the
+  // device has NO known Magic Card at all; a device that already has one
+  // — or a missing/broken GatewaySequence module — both degrade to
+  // exactly today's own pre-Gateway behaviour, booting straight into
+  // _afterGateway(), never blocking Studio's boot on a decorative arrival
+  // experience a known Creator has no reason to see again.
   try{
-    if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin){
+    if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin &&
+       typeof MagicCard!=='undefined' && MagicCard.list().length===0){
       GatewaySequence.begin(_afterGateway);
       return;
     }

@@ -1,4 +1,4 @@
-// js/gatewayAudio.js — Creator Gateway, real click-triggered sound only.
+// js/gatewayAudio.js — the Traveller Gateway, real click-triggered sound only.
 //
 // Mirrors vihuplanet/js/heroAudio.js's own proven discipline exactly: no
 // autoplay, no ambient/looping background music, one shared volume

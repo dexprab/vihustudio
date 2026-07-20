@@ -1,7 +1,8 @@
 # Gateway Audio
 
-Real click-triggered sound for the Creator Gateway (`js/gatewaySequence.js` /
-`js/gatewayAudio.js`) — VihuPlanet Canon Milestone 1.
+Real click-triggered sound for the Traveller Gateway (`js/gatewaySequence.js` /
+`js/gatewayAudio.js`) — VihuPlanet Canon Milestone 1. Not a "Creator Gateway":
+it only ever plays for a device with no known Magic Card yet.
 
 ## What's here
 
@@ -26,7 +27,7 @@ module allowed to touch these files.
 
 ## A disclosed, standing gap
 
-The Creator Gateway epic calls for "peaceful music" playing throughout
+The Traveller Gateway epic calls for "peaceful music" playing throughout
 Scenes 1-3. No real music file can be sourced, composed, or recorded in
 this sandbox — so Scenes 1-3 play silently except for the one soft
 transition sound above. Closing this gap for real needs a human sound

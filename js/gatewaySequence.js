@@ -1,12 +1,18 @@
-// js/gatewaySequence.js — The Creator Gateway (VihuPlanet Canon
-// Milestone 1). Scenes 1-3 of the epic's own six: The Sky (arrival,
+// js/gatewaySequence.js — The Traveller Gateway (VihuPlanet Canon
+// Milestone 1) — NOT a "Creator Gateway": this is Lumo greeting a
+// stranger it has never met, so it only ever plays for a device with no
+// known Magic Card. Scenes 1-3 of the epic's own six: The Sky (arrival,
 // anticipation — no menus/editor/cards/tools visible), Lumo's Arrival
 // (a real, orchestrated flight-and-landing, not a teleport), and the
 // Greeting (paced narrative speech lines — no tutorials, no UI
 // instructions). Plays once, automatically, at the very front of every
-// boot (see js/app.js's bootstrapSession IIFE) before Studio's own
-// existing Identity Gate / Creation Flow ever runs — "never feel like
-// opening software; feel like arriving in another world."
+// boot ONLY while this device has no claimed Magic Card yet (see
+// js/app.js's bootstrapSession IIFE, which gates this on
+// MagicCard.list().length===0) before Studio's own existing Identity
+// Gate / Creation Flow ever runs — "never feel like opening software;
+// feel like arriving in another world." A recognized, returning
+// Creator never sees this again — their own "Welcome back" moment lives
+// entirely in js/magicCardUI.js's Identity Gate instead.
 //
 // Scenes 4-6 (Traveller Choice / Creator Signature composition, the
 // Gates of Creation, the Hall of Creation reveal) are a disclosed,
