@@ -630,7 +630,11 @@ const MagicCardUI=(function(){
     const line=_el('div','magic-card-gatekeeper-line');
     bubble.appendChild(line);
     wrap.appendChild(bubble);
-    _typewriterReveal(line,name?('Show me your stars, '+name+'!'):'Show me your stars, traveler.');
+    // "vihupapa, the creator lord, show me your stars, and you may
+    // pass. this is the line. or something similar" — a grander,
+    // Guardian-addressing-a-title greeting, kept generic (never a
+    // literal hardcoded "creator lord") so it fits any nickname.
+    _typewriterReveal(line,name?(name+', the Creator — show me your stars, and you may pass.'):'Traveler, show me your stars, and you may pass.');
     if(typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
       MagicCardArt.resolveCompanionPortrait('lumo').then(function(img){
         if(!img) return;
