@@ -1662,7 +1662,13 @@ function _startCreationFlow(){
 // claimed cards (the common case until a family's first claim) skips
 // this entirely and boot proceeds exactly as it always has — see
 // js/magicCardUI.js's own header comment for why Screen 1/3 aren't
-// built as separate code here.
+// built as separate code here. Traveller Gateway Rework V1.1: this
+// standalone gate is no longer reached on a normal boot at all —
+// identity resolution now happens INSIDE the Gateway's own Scene 3, via
+// js/magicCardUI.js's leaner beginCreatorSignature() entry point (see
+// js/gatewaySequence.js). checkIdentityGate() below survives only inside
+// _afterGateway()'s own fallback, for the one case where the Gateway
+// itself couldn't be reached.
 function _beginBoot(){
   // Companion Canon Freeze — this is where CompanionDirector.init()
   // now lives, not the outer bootstrapSession() IIFE below. A Traveller
@@ -1707,16 +1713,23 @@ function _beginBoot(){
     _startCreationFlow();
   }
 }
-// The Traveller Gateway (VihuPlanet Canon Milestone 1) — this is
-// bootstrapSession()'s own pre-existing Identity Gate / Creation Flow
-// decision, completely UNMODIFIED, just extracted into its own function
-// so GatewaySequence.begin() (below) can hand off into it once Scenes
-// 1-3 (The Sky -> Lumo's Arrival -> the Greeting) finish. Scenes 4-6
-// (Traveller Choice / Gates of Creation / the Hall of Creation reveal)
-// are a disclosed gap this milestone does not build — today, calling
-// this function IS Scenes 4-6: it's Studio's own already-canon-aligned
-// Identity Gate/Creator Signature machinery (js/magicCardUI.js), not a
-// stand-in for it.
+// The Traveller Gateway (VihuPlanet Canon Milestone 1, reworked under
+// the "Canon Update Sprint — Traveller Gateway Rework V1.1") — the
+// physical journey from the Sky into the Hall of Creation now plays on
+// EVERY launch, for a first-time Traveller and a Returning Creator
+// alike; only Scene 3 (Identity) differs between the two, resolved
+// INSIDE the Gateway itself (js/gatewaySequence.js's own runScene3(),
+// which hands off to js/magicCardUI.js's beginCreatorSignature() for a
+// Returning Creator's "show me your stars" check). Per the rework's own
+// "Remove Legacy Flow" instruction, the standalone Identity Gate
+// (checkIdentityGate — Welcome/Picker screens) is no longer reachable
+// from a normal boot at all: the Gateway's own onComplete() below hands
+// off straight into _beginBoot(), never back through it. _afterGateway()
+// survives only as the defensive fallback for the one case where
+// GatewaySequence itself can't be reached (a missing/broken module) — in
+// that one case Studio's boot must still resolve identity somehow, so it
+// falls back to exactly what booting looked like before the Gateway
+// existed at all.
 function _afterGateway(){
   try{
     if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.list().length>0){
@@ -1727,20 +1740,14 @@ function _afterGateway(){
   _beginBoot();
 }
 (function bootstrapSession(){
-  // It's the TRAVELLER Gateway, not a Creator one — Lumo greeting "a
-  // stranger it has never met" is a first-arrival ritual, not something
-  // a recognized returning Creator should re-live on every boot (they
-  // already have their own "Welcome back / show me your stars" moment,
-  // js/magicCardUI.js's own Identity Gate). So this only plays when the
-  // device has NO known Magic Card at all; a device that already has one
-  // — or a missing/broken GatewaySequence module — both degrade to
-  // exactly today's own pre-Gateway behaviour, booting straight into
-  // _afterGateway(), never blocking Studio's boot on a decorative arrival
-  // experience a known Creator has no reason to see again.
+  // Unconditional — every launch sees the Gateway now, known device or
+  // not; "the only difference is what happens before the gates open"
+  // lives entirely inside Scene 3 itself, not in whether the Gateway
+  // plays at all. A missing/broken GatewaySequence module is the one
+  // remaining degrade path, straight to _afterGateway()'s own fallback.
   try{
-    if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin &&
-       typeof MagicCard!=='undefined' && MagicCard.list().length===0){
-      GatewaySequence.begin(_afterGateway);
+    if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin){
+      GatewaySequence.begin(_beginBoot);
       return;
     }
   }catch(e){}

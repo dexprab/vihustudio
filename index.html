@@ -13,8 +13,8 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0187'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0187'>
+<link rel='stylesheet' href='css/style.css?v=0188'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0188'>
 </head>
 <body class='light-theme'>
 <!-- Header -->
@@ -57,20 +57,23 @@
 </div>
 </header>
 
-<!-- The Traveller Gateway — VihuPlanet Canon Milestone 1 (NOT a "Creator
-     Gateway": Lumo greeting a stranger it has never met). Plays once, at
-     the very front of every boot, ONLY for a device with no known Magic
-     Card yet, before Studio's own existing Identity Gate or Creation
-     Flow ever run (see js/app.js's bootstrapSession() IIFE, gated on
-     MagicCard.list().length===0, and js/gatewaySequence.js). A
-     recognized, returning Creator skips this entirely and goes straight
-     to their own "Welcome back" moment instead. Scenes 1-3 today: The
-     Sky (arrival, purely illustrative and pointer-events:none, mirroring
-     #creationFlowOverlay's own proven container pattern exactly) ->
-     Lumo's Arrival -> the Greeting. Scenes 4-6 (Traveller Choice / Gates
-     of Creation / the Hall of Creation reveal) are a disclosed gap this
-     milestone does not build -- onComplete() hands off directly into
-     today's own already-canon-aligned boot sequence. -->
+<!-- The Traveller Gateway — VihuPlanet Canon Milestone 1, reworked under
+     the "Canon Update Sprint — Traveller Gateway Rework V1.1": the always-
+     identical physical journey from the Sky into the Hall of Creation.
+     Plays on EVERY boot now, both a first-time Traveller and a Returning
+     Creator alike (see js/app.js's bootstrapSession() IIFE, which calls
+     this unconditionally, and js/gatewaySequence.js) — only Scene 3
+     (Identity) differs between the two paths, resolved INSIDE the
+     Gateway itself; a Returning Creator is recognized and verified there
+     via js/magicCardUI.js's own Creator Signature tap challenge, never
+     shown Studio's standalone Identity Gate directly. Six scenes: The Sky
+     (arrival, purely illustrative and pointer-events:none, mirroring
+     #creationFlowOverlay's own proven container pattern exactly) -> Lumo's
+     Arrival -> Identity (the branch, and where it ends) -> The Gates
+     Appear -> Journey Through the Sky -> The Gates Open. onComplete()
+     fires only once the gates finish opening, handing off directly into
+     Studio's own boot sequence (_beginBoot) — the Hall of Creation is
+     never visible before that moment, for anyone. -->
 <div id='gatewayOverlay' class='gateway-overlay hidden'>
 <div class='gateway-scene' aria-hidden='true'>
 <div class='gateway-scene-sky'></div>

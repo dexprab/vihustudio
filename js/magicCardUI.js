@@ -27,6 +27,18 @@
 // explicitly, as later work in the design document's own Section 15
 // (Edge Cases / Multiple Children) and Section 3 (Design Synthesis) —
 // not glossed over here.
+//
+// Traveller Gateway Rework V1.1: checkIdentityGate() (this file's own
+// standalone Welcome/Picker screens) is no longer js/app.js's primary
+// boot-time identity check — every launch now runs the Traveller Gateway
+// first (js/gatewaySequence.js), whose own Scene 3 resolves identity via
+// the leaner beginCreatorSignature(card, onResult) below instead (the
+// SAME tap-grid pattern challenge, reused rather than reimplemented, but
+// skipping straight to the challenge — no Welcome/Picker screens, no
+// second "recognize me" moment). checkIdentityGate() itself is untouched
+// and still fully functional — it survives as js/app.js's own
+// _afterGateway() fallback for the one case where the Gateway can't be
+// reached at all.
 const MagicCardUI=(function(){
   'use strict';
 
@@ -397,6 +409,46 @@ const MagicCardUI=(function(){
     if(cards.length===1) toWelcome(); else toPicker();
   }
 
+  // Traveller Gateway V1.1 — the Gateway's own Scene 3 (Identity,
+  // Returning Creator branch) entry point. Unlike checkIdentityGate()
+  // above (the standalone Identity Gate, reached directly from boot
+  // before this rework), this is called FROM WITHIN an already-playing
+  // Gateway sequence (js/gatewaySequence.js) that has already recognized
+  // the device and already said its own "Welcome home... show me your
+  // stars" line — so this mounts the tap-grid challenge DIRECTLY,
+  // skipping the Welcome/Picker screens and the challenge's own
+  // redundant second speech line (skipSpeech:true), reusing the exact
+  // same _renderPatternChallenge machinery (grid, decoys, star colours,
+  // board-fit sizing) with zero duplication. `onResult(ok, cardId)`
+  // fires on success (the challenge verified this card's real pattern)
+  // or on "← Back" (treated as "not me" — the Gateway's own caller
+  // falls through to the Traveller path when ok is false).
+  function beginCreatorSignature(card,onResult){
+    _ensureDom();
+    _clear();
+    overlay.classList.remove('magic-card-mode-home');
+    overlay.classList.add('magic-card-mode-gate');
+    _show();
+    const panel=_el('div','magic-card-gate-panel');
+    content.appendChild(panel);
+    _renderPatternChallenge(panel,{
+      name:card.nickname||'Star Traveler',
+      subtitle:'Tap your stars, in order, to continue.',
+      skipSpeech:true,
+      verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+      onSuccess:function(){
+        MagicCard.setActive(card.id);
+        _hide();
+        refreshHeaderBadge();
+        onResult(true,card.id);
+      },
+      onBack:function(){
+        _hide();
+        onResult(false,null);
+      }
+    });
+  }
+
   function _renderGateWelcome(panel,cards,proceed,toPicker){
     panel.innerHTML='';
     panel.classList.remove('magic-card-gate-panel--challenge');
@@ -629,7 +681,14 @@ const MagicCardUI=(function(){
   // known card's own nickname (Continue/tile-tap) or undefined (Recall,
   // where no identity is known yet) — folded into the greeting line
   // itself, per "add the kids name there."
-  function _buildGatekeeperHeader(name){
+  // `skipSpeech` (Traveller Gateway V1.1 — the Gateway's own Scene 3
+  // already says "Welcome home... show me your stars" via its own
+  // sequential greeting bubble before ever mounting this challenge, so
+  // repeating a second, differently-worded speech line here would read
+  // as redundant) omits the bubble entirely, keeping only the portrait/
+  // ring/name — every existing caller (the standalone Identity Gate)
+  // passes nothing for this and is completely unaffected.
+  function _buildGatekeeperHeader(name,skipSpeech){
     const wrap=_el('div','magic-card-gatekeeper');
     const portraitWrap=_el('div','magic-card-gatekeeper-portrait-wrap');
     portraitWrap.appendChild(_el('div','magic-card-gatekeeper-ring'));
@@ -639,15 +698,17 @@ const MagicCardUI=(function(){
     wrap.appendChild(portraitWrap);
     wrap.appendChild(_el('div','magic-card-gatekeeper-shadow'));
     wrap.appendChild(_el('div','magic-card-gatekeeper-name','Lumo, the Gatekeeper'));
-    const bubble=_el('div','magic-card-gatekeeper-bubble');
-    const line=_el('div','magic-card-gatekeeper-line');
-    bubble.appendChild(line);
-    wrap.appendChild(bubble);
-    // "vihupapa, the creator lord, show me your stars, and you may
-    // pass. this is the line. or something similar" — a grander,
-    // Guardian-addressing-a-title greeting, kept generic (never a
-    // literal hardcoded "creator lord") so it fits any nickname.
-    _typewriterReveal(line,name?(name+', the Creator — show me your stars, and you may pass.'):'Traveler, show me your stars, and you may pass.');
+    if(!skipSpeech){
+      const bubble=_el('div','magic-card-gatekeeper-bubble');
+      const line=_el('div','magic-card-gatekeeper-line');
+      bubble.appendChild(line);
+      wrap.appendChild(bubble);
+      // "vihupapa, the creator lord, show me your stars, and you may
+      // pass. this is the line. or something similar" — a grander,
+      // Guardian-addressing-a-title greeting, kept generic (never a
+      // literal hardcoded "creator lord") so it fits any nickname.
+      _typewriterReveal(line,name?(name+', the Creator — show me your stars, and you may pass.'):'Traveler, show me your stars, and you may pass.');
+    }
     if(typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
       MagicCardArt.resolveCompanionPortrait('lumo').then(function(img){
         if(!img) return;
@@ -707,7 +768,7 @@ const MagicCardUI=(function(){
     // No separate title line — "we can remove this line, we have ample
     // space" — Lumo's own speech bubble (built with the kid's name
     // folded in) now carries the whole "prove it's you" framing itself.
-    panel.appendChild(_buildGatekeeperHeader(opts.name));
+    panel.appendChild(_buildGatekeeperHeader(opts.name,opts.skipSpeech));
     if(opts.subtitle) panel.appendChild(_el('div','magic-card-tapgrid-subtitle',opts.subtitle));
 
     // The wrap is the SIZED, overflow:hidden element; the board fills
@@ -1115,7 +1176,8 @@ const MagicCardUI=(function(){
     checkIdentityGate:checkIdentityGate,
     showAwakening:showAwakening,
     openHome:openHome,
-    refreshHeaderBadge:refreshHeaderBadge
+    refreshHeaderBadge:refreshHeaderBadge,
+    beginCreatorSignature:beginCreatorSignature
   };
   try{ window.MagicCardUI=api; }catch(e){}
   return api;

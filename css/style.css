@@ -7677,25 +7677,32 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 /* ============================================================
    The Traveller Gateway — VihuPlanet Canon Milestone 1
+   (reworked: Canon Update Sprint — Traveller Gateway Rework V1.1)
    ============================================================
-   NOT a "Creator Gateway" — Lumo greeting a stranger it has never met,
-   so it only ever plays for a device with no known Magic Card (see
-   js/app.js's bootstrapSession()). Scenes 1-3: The Sky (arrival) ->
-   Lumo's Arrival -> the Greeting. Mirrors .creation-flow-overlay's own
-   proven container shape (a fixed,
-   full-viewport overlay with one purely-decorative aria-hidden layer
-   behind a JS-populated content panel) exactly, per this codebase's own
-   "reuse an existing proven pattern" discipline — see
-   js/gatewaySequence.js. z-index sits above .magic-card-overlay (1400)
-   and .companion-widget (1450): the Gateway plays BEFORE either of
-   those, but a moment above them is the safe default should anything
-   ever race. A dusk/dawn "arriving in another world" gradient is used
-   deliberately, distinct from Story Meadow's own daytime palette and
-   from the Magic Card's own indigo night sky (the two flanking moments
-   this experience sits between) — this is its own, in-between arrival
-   light. --gw-gold echoes the Magic Card's own --mc-gold for visual
-   continuity into the constellation moment that follows later in the
-   flow. */
+   The always-identical physical journey from the Sky into the Hall of
+   Creation — plays for EVERY launch, both a first-time Traveller and a
+   Returning Creator alike (see js/app.js's bootstrapSession(), which now
+   calls this unconditionally). Only Scene 3 (Identity) differs between
+   the two paths; Scenes 1-2 and 4-6 are identical for everyone. Six
+   scenes: The Sky (arrival) -> Lumo's Arrival -> Identity (the branch,
+   and where it ends) -> The Gates Appear -> Journey Through the Sky ->
+   The Gates Open. Mirrors .creation-flow-overlay's own proven container
+   shape (a fixed, full-viewport overlay with one purely-decorative
+   aria-hidden layer behind a JS-populated content panel) exactly, per
+   this codebase's own "reuse an existing proven pattern" discipline —
+   see js/gatewaySequence.js. z-index sits above .magic-card-overlay
+   (1400) and .companion-widget (1450) as the safe default, though Scene
+   3's Returning-Creator branch briefly HIDES this overlay (never tears
+   it down) so the Magic Card Identity Gate's own Creator Signature
+   challenge — genuinely at a lower z-index — can show through; see
+   .gateway-overlay.gateway-mode-hidden-for-signature below. A dusk/dawn
+   "arriving in another world" gradient is used deliberately, distinct
+   from Story Meadow's own daytime palette and from the Magic Card's own
+   indigo night sky (the two flanking moments this experience sits
+   between) — this is its own, in-between arrival light. --gw-gold
+   echoes the Magic Card's own --mc-gold for visual continuity into the
+   constellation moment Scene 3 may show, and into the golden threshold
+   light Scene 6 ends on. */
 .gateway-overlay{
   position:fixed;
   inset:0;
@@ -7708,6 +7715,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   --gw-gold:#FFCB45;
 }
 .gateway-overlay.hidden{ display:none; }
+/* Scene 3's Returning-Creator branch only — a brief, non-destructive
+   hide (never .hidden, which is the whole Gateway's own terminal state)
+   so the Magic Card Identity Gate's own Creator Signature tap challenge,
+   genuinely at a lower z-index, can show through underneath while this
+   overlay's own state/timers stay completely intact. See
+   js/gatewaySequence.js's runScene3(). */
+.gateway-overlay.gateway-mode-hidden-for-signature{ display:none; }
 
 .gateway-scene{
   position:absolute; inset:0;
@@ -7868,6 +7882,46 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   92%{ transform:translateY(-2px) rotate(var(--gateway-tilt,0deg)); }
 }
 
+/* Scene 5 (Journey) / Scene 6 (Gates Open) — both toggle classes on the
+   whole .gateway-lumo-stage (shadow+portrait+wing move together as one
+   figure), not the portrait alone. */
+.gateway-lumo-stage.gateway-lumo-journey{
+  animation:gateway-lumo-fly-ahead var(--gw-journey-ms,6800ms) ease-in-out forwards;
+}
+@keyframes gateway-lumo-fly-ahead{
+  0%{ transform:translate(0,0) scale(1); }
+  22%{ transform:translate(10vw,-6vh) scale(.86) scaleX(-1); } /* a glance back */
+  40%{ transform:translate(16vw,-9vh) scale(.8); }
+  62%{ transform:translate(24vw,-13vh) scale(.72) scaleX(-1); } /* another glance back */
+  100%{ transform:translate(34vw,-19vh) scale(.62); }
+}
+.gateway-lumo-stage.gateway-lumo-turn{
+  transition:transform 900ms ease-out;
+  transform:translate(34vw,-19vh) scale(.62) scaleX(-1); /* turns to face the Traveller */
+}
+.gateway-lumo-stage.gateway-lumo-turn .gateway-lumo-wing{
+  animation:gateway-wing-raise 1.4s ease-out .3s forwards;
+}
+.gateway-lumo-wing{
+  position:absolute;
+  top:22%;
+  right:-6%;
+  width:46%;
+  height:56%;
+  border-radius:0 90% 60% 40%;
+  background:linear-gradient(135deg,rgba(255,236,190,.85),rgba(255,203,69,.15));
+  box-shadow:0 0 26px rgba(255,203,69,.35);
+  opacity:0;
+  transform:rotate(6deg) scale(.6);
+  transform-origin:0% 60%;
+  pointer-events:none;
+}
+@keyframes gateway-wing-raise{
+  0%{ opacity:0; transform:rotate(6deg) scale(.6); }
+  55%{ opacity:.9; transform:rotate(-38deg) scale(1.05); }
+  100%{ opacity:.75; transform:rotate(-26deg) scale(1); }
+}
+
 /* Scene 3 — the Greeting. Paced, narrative lines only (never a tutorial
    or UI instruction) — see GREETING_LINES in js/gatewaySequence.js. */
 .gateway-greeting-bubble{
@@ -7893,6 +7947,158 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   100%{ opacity:0; }
 }
 
+/* Scene 4 — The Gates Appear. Two soft "curtain" cloud shapes obscure
+   the gate from the start, then slowly part (wind moving through);
+   the gate itself fades/grows in behind them at the same time — "no
+   sudden appearance, slow reveal." */
+.gateway-curtain-cloud{
+  position:absolute;
+  bottom:2%;
+  width:min(60vw,520px);
+  height:220px;
+  z-index:0;
+  background:radial-gradient(ellipse at center,rgba(255,255,255,.92) 0%,rgba(255,255,255,.5) 46%,rgba(255,255,255,0) 78%);
+  filter:blur(6px);
+  pointer-events:none;
+  transition:transform 2.6s ease-in-out,opacity 2.6s ease-in-out;
+}
+.gateway-curtain-left{ left:50%; transform:translateX(-96%); }
+.gateway-curtain-right{ right:50%; transform:translateX(96%); }
+.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-left{ transform:translateX(-168%); opacity:0; }
+.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-right{ transform:translateX(168%); opacity:0; }
+
+.gateway-gates-wrap{
+  position:absolute;
+  bottom:8%;
+  left:50%;
+  width:280px;
+  height:320px;
+  z-index:0;
+  pointer-events:none;
+  transform:translateX(-50%) scale(.32);
+  opacity:0;
+  transition:opacity 2.6s ease-out,transform 2.6s ease-out;
+}
+.gateway-gates-wrap.gateway-gates-reveal{
+  opacity:1;
+  transform:translateX(-50%) scale(.6);
+}
+/* Scene 5 — Journey. The gates grow larger over the whole scene, the
+   epic's own "camera slowly moves toward the gates... gates become
+   larger over time" made real via one continuous approach. */
+.gateway-gates-wrap.gateway-gates-journey{
+  animation:gateway-gates-approach var(--gw-journey-ms,6800ms) ease-in forwards;
+}
+@keyframes gateway-gates-approach{
+  0%{ transform:translateX(-50%) scale(.6); bottom:8%; }
+  100%{ transform:translateX(-50%) scale(1.5); bottom:-8%; }
+}
+.gateway-gates{ position:relative; width:100%; height:100%; }
+.gateway-gate-glow{
+  position:absolute; inset:8% 18%;
+  border-radius:50% 50% 6% 6%;
+  background:radial-gradient(ellipse at 50% 62%,rgba(255,214,140,.95) 0%,rgba(255,180,80,.4) 45%,rgba(255,180,80,0) 76%);
+  opacity:.12;
+  filter:blur(2px);
+  transition:opacity .6s ease-out;
+}
+.gateway-gate-arch{
+  position:absolute; inset:0;
+  border:9px solid #caa15a;
+  border-bottom:none;
+  border-radius:52% 52% 0 0/62% 62% 0 0;
+  background:linear-gradient(180deg,rgba(94,70,42,.9),rgba(48,32,18,.94));
+  box-shadow:0 0 42px rgba(255,196,110,.22),inset 0 0 30px rgba(0,0,0,.45);
+}
+.gateway-gate-leaf{
+  position:absolute;
+  top:6%; bottom:2%;
+  width:47%;
+  background:linear-gradient(180deg,#8a6a3c,#4a3620);
+  box-shadow:inset 0 0 20px rgba(0,0,0,.5);
+}
+.gateway-gate-leaf-left{ left:2%; border-radius:6px 0 0 6px; transform-origin:left center; }
+.gateway-gate-leaf-right{ right:2%; border-radius:0 6px 6px 0; transform-origin:right center; }
+.gateway-gate-rune{
+  position:absolute;
+  color:var(--gw-gold);
+  font-size:14px;
+  opacity:0;
+  text-shadow:0 0 10px rgba(255,203,69,.9);
+}
+.gateway-gate-rune-1{ top:20%; left:16%; }
+.gateway-gate-rune-2{ top:13%; right:18%; }
+.gateway-gate-rune-3{ top:38%; left:50%; transform:translateX(-50%); }
+
+/* Scene 6 — The Gates Open. Ancient mechanisms awaken (the runes
+   twinkle), the doors slowly unlock and swing outward, and warm golden
+   light pours through the widening gap. */
+.gateway-gates-wrap.gateway-gates-open .gateway-gate-rune{
+  animation:gateway-rune-twinkle 1.5s ease-in-out infinite;
+}
+@keyframes gateway-rune-twinkle{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+.gateway-gates-wrap.gateway-gates-open .gateway-gate-glow{
+  animation:gateway-gate-glow-flood 2.8s ease-in forwards;
+}
+@keyframes gateway-gate-glow-flood{
+  0%{ opacity:.12; transform:scale(.6); }
+  100%{ opacity:1; transform:scale(1.7); }
+}
+.gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left{
+  animation:gateway-leaf-open-left 2.6s ease-in-out .3s forwards;
+}
+.gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right{
+  animation:gateway-leaf-open-right 2.6s ease-in-out .3s forwards;
+}
+@keyframes gateway-leaf-open-left{ 0%{ transform:translateX(0) rotateY(0); } 100%{ transform:translateX(-58%) rotateY(22deg); } }
+@keyframes gateway-leaf-open-right{ 0%{ transform:translateX(0) rotateY(0); } 100%{ transform:translateX(58%) rotateY(-22deg); } }
+
+/* "The objective is to create anticipation" — a handful of extra
+   islands/clouds/birds stream past during Scene 5 for a genuine sense
+   of forward motion, on top of the ambient sky's own decorations (also
+   sped up briefly, see .gateway-journey-active below). */
+.gateway-journey-extras{ position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.gateway-journey-island{
+  position:absolute;
+  top:calc(18% + (var(--i) * 15%));
+  left:-12%;
+  font-size:30px;
+  opacity:0;
+  animation:gateway-journey-pass 2.8s linear forwards;
+  animation-delay:calc(var(--i) * 1.1s);
+}
+@keyframes gateway-journey-pass{
+  0%{ transform:translateX(0); opacity:0; }
+  14%{ opacity:.65; }
+  86%{ opacity:.5; }
+  100%{ transform:translateX(132vw); opacity:0; }
+}
+.gateway-overlay.gateway-journey-active .gateway-scene-bird{ animation-duration:5.5s; }
+.gateway-overlay.gateway-journey-active .gateway-scene-cloud{ animation-duration:7s; }
+.gateway-overlay.gateway-journey-active .gateway-scene-particle{ animation-duration:2.4s; }
+
+/* Scene 6's own closing beat — "the camera passes through the gates."
+   A full-bleed golden flood standing in for crossing the threshold;
+   fixed positioning so it covers the whole viewport regardless of
+   .gateway-panel's own flex layout. Removed wholesale, like everything
+   else in #gatewayContent, the moment done() fires. */
+.gateway-threshold-flash{
+  position:fixed;
+  inset:0;
+  z-index:1601;
+  background:radial-gradient(circle at 50% 64%,#fff6da 0%,#ffcf7f 34%,#caa15a 60%,transparent 100%);
+  opacity:0;
+  pointer-events:none;
+}
+.gateway-threshold-flash.gateway-threshold-flash-in{
+  animation:gateway-threshold-flood 900ms ease-in forwards;
+}
+@keyframes gateway-threshold-flood{
+  0%{ opacity:0; transform:scale(.4); }
+  70%{ opacity:1; transform:scale(1.5); }
+  100%{ opacity:1; transform:scale(2.3); }
+}
+
 .gateway-tap-hint{
   position:absolute;
   bottom:36px;
@@ -7915,12 +8121,32 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-lumo-portrait.gateway-lumo-settled,
   .gateway-lumo-shadow,
   .gateway-greeting-bubble.gateway-greeting-in,
-  .gateway-tap-hint{ animation:none; }
+  .gateway-tap-hint,
+  .gateway-lumo-stage.gateway-lumo-journey,
+  .gateway-lumo-wing,
+  .gateway-gates-wrap.gateway-gates-journey,
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-rune,
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-glow,
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left,
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right,
+  .gateway-journey-island,
+  .gateway-threshold-flash.gateway-threshold-flash-in{ animation:none; }
   .gateway-lumo-portrait.gateway-lumo-flying{ opacity:1; transform:none; }
   .gateway-lumo-shadow{ opacity:.35; transform:scale(1); }
   .gateway-greeting-bubble.gateway-greeting-in{ opacity:1; transform:none; }
+  .gateway-curtain-cloud,
+  .gateway-gates-wrap{ transition:none; }
+  .gateway-curtain-cloud.gateway-curtain-parted{ opacity:0; }
+  .gateway-gates-wrap.gateway-gates-reveal{ opacity:1; transform:translateX(-50%) scale(1); }
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left{ transform:translateX(-58%) rotateY(22deg); }
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right{ transform:translateX(58%) rotateY(-22deg); }
+  .gateway-gates-wrap.gateway-gates-open .gateway-gate-glow{ opacity:1; transform:scale(1.4); }
+  .gateway-threshold-flash.gateway-threshold-flash-in{ opacity:1; transform:scale(1.6); }
+  .gateway-lumo-stage.gateway-lumo-turn{ transition:none; }
 }
 @media (max-width:560px){
   .gateway-lumo-stage{ width:150px; height:150px; }
   .gateway-greeting-bubble{ font-size:18px; padding:0 18px; }
+  .gateway-gates-wrap{ width:200px; height:230px; }
+  .gateway-curtain-cloud{ height:160px; }
 }
