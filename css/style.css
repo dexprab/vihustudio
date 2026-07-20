@@ -7805,6 +7805,26 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   filter:drop-shadow(0 18px 30px rgba(10,4,24,.4));
   --gateway-tilt:0deg;
 }
+/* "Instead of static png portrait fly in this dragon" — the real,
+   hand-supplied lumo-flying.mp4 replaces the static PNG for the arrival
+   itself (mountLumo() in js/gatewaySequence.js). The static <img> stays
+   invisible (this class) the whole time the video is playing that
+   arrival, so the two are never both visible at once; it's never
+   applied at all under reduced motion, where the video is skipped
+   entirely and the portrait is simply already settled. */
+.gateway-lumo-portrait.gateway-lumo-pending{ opacity:0; }
+/* The clip is Lumo isolated on a genuinely solid (0,0,0) black
+   background (confirmed by sampling real frames) — screen blend mode
+   composites it correctly with zero per-frame canvas processing: black
+   stays fully invisible against whatever is underneath, only Lumo's own
+   bright, saturated art actually shows. A short opacity transition lets
+   JS fade it out just before removal (.gateway-lumo-flyvideo-out)
+   instead of an instant cut once the static portrait takes over. */
+.gateway-lumo-flyvideo{
+  mix-blend-mode:screen;
+  transition:opacity .25s ease-out;
+}
+.gateway-lumo-flyvideo.gateway-lumo-flyvideo-out{ opacity:0; }
 .gateway-lumo-portrait.gateway-lumo-flying{
   animation:gateway-lumo-arrive 1.8s cubic-bezier(.22,.9,.34,1) forwards;
 }
@@ -8254,6 +8274,10 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-magic-spark,
   .gateway-overlay.gateway-threshold-dolly,
   .gateway-threshold-flash.gateway-threshold-flash-in{ animation:none; }
+  /* Defensive only — js/gatewaySequence.js never creates the flying
+     video at all under reduced motion (mountLumo's own `reduced` branch
+     settles the static portrait immediately instead). */
+  .gateway-lumo-flyvideo{ display:none; }
   .gateway-lumo-portrait.gateway-lumo-flying{ opacity:1; transform:none; }
   .gateway-lumo-shadow{ opacity:.35; transform:scale(1); }
   .gateway-greeting-bubble.gateway-greeting-in{ opacity:1; transform:none; }

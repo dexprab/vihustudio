@@ -149,8 +149,31 @@
   const ASSETS_BASE='assets/';
   const GATE_VIDEO_SRC=ASSETS_BASE+'video/gateway/gate-sequence.mp4';
   const GATE_POSTER_SRC=ASSETS_BASE+'video/gateway/gate-poster.jpg';
+  // "instead of static png portrait fly in this dragon" — a real,
+  // hand-supplied clip (isolated Lumo, solid black background, 5.04s,
+  // no baked-in gate/environment — see assets/video/gateway/README.md)
+  // replaces the static PNG for the arrival beat outright. mountLumo()
+  // still uses the existing .gateway-lumo-arrive CSS keyframe (1.8s,
+  // unchanged) to fly the whole video element in from off-screen — only
+  // WHAT'S being flown in changed, not the choreography that flies it.
+  const LUMO_FLY_VIDEO_SRC=ASSETS_BASE+'video/gateway/lumo-flying.mp4';
+  // Same fallback discipline as GATE_POSTER_SRC above: a frame-0 still
+  // (Lumo mid-wave, isolated on the identical solid-black background the
+  // real clip uses) shown until the video actually has a frame to paint —
+  // covers a slow connection, and, in this sandbox specifically, a
+  // headless Chromium build with no real H.264 decoder at all (a standing,
+  // already-documented limitation for the Gate video too).
+  const LUMO_FLY_POSTER_SRC=ASSETS_BASE+'video/gateway/lumo-flying-poster.jpg';
 
-  const FLIGHT_MS=1800;
+  // How long the video plays before crossfading to the static settled
+  // portrait — matches the clip's own real ~5.04s length (with a small
+  // buffer so the crossfade starts a beat before the very last frame,
+  // never right at a potential end-of-buffer stutter). The .gateway-
+  // lumo-arrive transform (off-screen -> guard post) still only takes
+  // its own hardcoded 1.8s regardless of this value — once landed, the
+  // video keeps playing its own internal flight motion in place for the
+  // rest of this window before the swap.
+  const FLIGHT_MS=4900;
   const LUMO_TO_GREETING_MS=600;
   const TAP_HINT_DELAY_MS=3600;
   const GREETING_LINES=[
@@ -326,16 +349,38 @@
     function mountLumo(lumo,reduced){
       const stage=el('div','gateway-lumo-stage gateway-lumo-guard');
       const shadow=el('div','gateway-lumo-shadow');
-      const img=el('img','gateway-lumo-portrait gateway-lumo-flying');
+      // The static hero portrait is still what Lumo settles into once
+      // it lands — only the ARRIVAL itself now uses the real video (see
+      // LUMO_FLY_VIDEO_SRC above). It starts .gateway-lumo-pending
+      // (invisible) whenever a video is playing the arrival instead, so
+      // the two never show at once; reduced motion skips the video
+      // entirely and the portrait is simply already settled.
+      const img=el('img','gateway-lumo-portrait');
       img.src=lumo.src;
       img.alt=lumo.name;
       const wing=el('div','gateway-lumo-wing');
       const tail=el('div','gateway-lumo-tail');
+      let flyVideo=null;
+      if(reduced){
+        img.classList.add('gateway-lumo-settled');
+      }else{
+        img.classList.add('gateway-lumo-pending');
+        flyVideo=el('video','gateway-lumo-portrait gateway-lumo-flying gateway-lumo-flyvideo');
+        flyVideo.muted=true;
+        flyVideo.playsInline=true;
+        flyVideo.preload='auto';
+        flyVideo.poster=LUMO_FLY_POSTER_SRC;
+        flyVideo.src=LUMO_FLY_VIDEO_SRC;
+      }
       stage.appendChild(shadow);
+      if(flyVideo) stage.appendChild(flyVideo);
       stage.appendChild(img);
       stage.appendChild(tail);
       stage.appendChild(wing);
       content.appendChild(stage);
+      if(flyVideo){
+        try{ flyVideo.play().catch(function(){}); }catch(e){}
+      }
       const onMove=function(e){
         try{
           const rect=stage.getBoundingClientRect();
@@ -346,14 +391,31 @@
       };
       if(!reduced) document.addEventListener('mousemove',onMove);
       after(reduced?0:FLIGHT_MS,function(){
-        img.classList.remove('gateway-lumo-flying');
+        if(flyVideo){
+          flyVideo.classList.add('gateway-lumo-flyvideo-out');
+          after(260,function(){
+            if(flyVideo&&flyVideo.parentNode){
+              try{ flyVideo.pause(); }catch(e){}
+              flyVideo.parentNode.removeChild(flyVideo);
+            }
+          });
+          img.classList.remove('gateway-lumo-pending');
+        }
         img.classList.add('gateway-lumo-settled');
         stage.classList.add('gateway-lumo-idle');
       });
       return {
         stage:stage,
         img:img,
-        cleanup:function cleanup(){ document.removeEventListener('mousemove',onMove); }
+        cleanup:function cleanup(){
+          document.removeEventListener('mousemove',onMove);
+          // Defensive, matching the Gate video's own discipline (done()
+          // already pauses gateVideoEl before tearing it down) — if the
+          // Traveller taps to skip mid-arrival, content.innerHTML=''
+          // removes this element regardless, but pausing first stops it
+          // decoding/playing in the background a moment sooner.
+          if(flyVideo){ try{ flyVideo.pause(); }catch(e){} }
+        }
       };
     }
 
