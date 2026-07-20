@@ -6555,26 +6555,57 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    A fixed presence at the gate for every verification path (Continue,
    tile-tap, Recall alike) -- see js/magicCardUI.js's own comment on
    _buildGatekeeperHeader for why a fixed Guardian rather than a
-   per-card companion. */
+   per-card companion. Sized to fill the room the removed "Prove it's
+   you" title line freed up ("we have ample space, we can bring bigger
+   lumo") -- --gk-size is a clamp() so it shrinks on a short viewport
+   the same way every other no-scroll-screen measurement in this file
+   already does, rather than a fixed pixel value that could reintroduce
+   the exact scrollbar bug this screen's own CSS comments above already
+   root-caused once. */
 .magic-card-gatekeeper{
+  --gk-size:clamp(88px,15vh,132px);
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:4px;
   margin-bottom:clamp(6px,1.6vh,14px);
 }
-.magic-card-gatekeeper-portrait{
-  width:64px;
-  height:64px;
+/* The wrap exists so the ring can extend past the portrait's own
+   overflow:hidden bounds (needed to clip the image to a circle)
+   without either clipping the ring or -- per the exact Chromium quirk
+   already root-caused for .magic-card-tapgrid-boardwrap above -- ever
+   registering as scrollable overflow on an ancestor, since the ring
+   only ever grows *inward* from its own already-reserved box, ->never
+   scales/transforms outward the way a tapped star does. */
+.magic-card-gatekeeper-portrait-wrap{
+  position:relative;
+  width:var(--gk-size);
+  height:var(--gk-size);
+}
+/* A slow, watchful ring standing guard around Lumo -- "flying or guard
+   position" -- rather than a literal wing-flap, since the art is a
+   single static hero pose per state; the ring + float + landing-shadow
+   trio together read as "hovering on watch" without needing new art. */
+.magic-card-gatekeeper-ring{
+  position:absolute;
+  inset:-9px;
   border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.16),rgba(255,255,255,.04));
-  border:2px solid var(--mc-gold);
-  box-shadow:0 0 16px 4px rgba(255,203,69,.35);
+  border:1.5px dashed rgba(255,203,69,.4);
+  animation:magicCardGatekeeperSpin 13s linear infinite, magicCardGatekeeperPulse 3.2s ease-in-out infinite;
+}
+.magic-card-gatekeeper-portrait{
+  position:relative;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.18),rgba(255,255,255,.04));
+  border:3px solid var(--mc-gold);
+  box-shadow:0 0 28px 6px rgba(255,203,69,.4), 0 14px 22px rgba(0,0,0,.35);
   display:flex;
   align-items:center;
   justify-content:center;
   overflow:hidden;
-  flex-shrink:0;
+  animation:magicCardGatekeeperFloat 4.4s ease-in-out infinite;
 }
 .magic-card-gatekeeper-portrait img{
   width:100%;
@@ -6582,17 +6613,68 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   object-fit:cover;
   display:block;
 }
-.magic-card-gatekeeper-fallback{ font-size:28px; line-height:1; }
+.magic-card-gatekeeper-fallback{ font-size:calc(var(--gk-size) * 0.42); line-height:1; }
+/* A soft "landing shadow" beneath Lumo, shrinking opposite the float --
+   the classic hover-character illusion, grounding the guard even while
+   it drifts. */
+.magic-card-gatekeeper-shadow{
+  width:calc(var(--gk-size) * 0.5);
+  height:12px;
+  margin:6px auto 0;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.4), transparent 72%);
+  animation:magicCardGatekeeperShadow 4.4s ease-in-out infinite;
+}
+@keyframes magicCardGatekeeperFloat{
+  0%,100%{ transform:translateY(0) rotate(-1.5deg); }
+  50%{ transform:translateY(-10px) rotate(1.5deg); }
+}
+@keyframes magicCardGatekeeperSpin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+@keyframes magicCardGatekeeperPulse{ 0%,100%{ opacity:.35; } 50%{ opacity:.8; } }
+@keyframes magicCardGatekeeperShadow{
+  0%,100%{ transform:scale(1); opacity:.5; }
+  50%{ transform:scale(.68); opacity:.24; }
+}
+@media (prefers-reduced-motion:reduce){
+  .magic-card-gatekeeper-portrait,
+  .magic-card-gatekeeper-ring,
+  .magic-card-gatekeeper-shadow{ animation:none; }
+}
 .magic-card-gatekeeper-name{
   font:800 12px/1 inherit;
   color:var(--mc-gold);
   letter-spacing:.04em;
   text-transform:uppercase;
+  margin-top:2px;
+}
+/* Lumo's own speech bubble -- carries the whole "prove it's you"
+   framing itself now that the separate title line is gone, with the
+   kid's own name folded in ("add the kids name there") and revealed
+   via a typewriter effect ("let the line reveal as a lumo speaking it
+   to the kid" -- see js/magicCardUI.js's _typewriterReveal). */
+.magic-card-gatekeeper-bubble{
+  max-width:300px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:8px 14px;
+  margin-top:2px;
 }
 .magic-card-gatekeeper-line{
-  font-size:12px;
+  font-size:12.5px;
   color:var(--mc-ink-soft);
   font-style:italic;
+  min-height:1.4em;
+}
+.magic-card-gatekeeper-line--typing::after{
+  content:'▍';
+  margin-left:1px;
+  color:var(--mc-gold);
+  animation:magicCardGatekeeperCursor .8s step-end infinite;
+}
+@keyframes magicCardGatekeeperCursor{ 50%{ opacity:0; } }
+@media (prefers-reduced-motion:reduce){
+  .magic-card-gatekeeper-line--typing::after{ animation:none; }
 }
 
 .magic-card-tapgrid-subtitle{
@@ -6620,7 +6702,18 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
       somewhere to bleed into that this wrap itself then clips, so
       nothing above it ever sees an overflow to react to. */
 .magic-card-tapgrid-boardwrap{
-  width:min(460px, 92vw, 48vh);
+  /* 100% (not a vw percentage) deliberately -- a flex item's explicit
+     percentage width resolves against its own containing block's real
+     content box (.magic-card-gate-panel's own width minus its own
+     padding), so this always fits whatever room the panel genuinely
+     has left, in every panel width/padding combination, rather than a
+     fixed vw guess that can't know about the panel's own padding/
+     max-width and was found (via a real, narrow+tall viewport sweep)
+     to overflow exactly there once the panel grew for "the size can
+     still increase." The 48vh term is left as the OTHER real cap --
+     it's what keeps the board from ever outgrowing a genuinely short
+     viewport's own vertical room, which 100% alone can't express. */
+  width:min(460px, 100%, 48vh);
   aspect-ratio:1;
   margin:4px auto 0;
   padding:26px;
@@ -6762,6 +6855,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-tapgrid-code-fallback.hidden{ display:none; }
 .magic-card-tapgrid-code-input{
   flex:1;
+  /* A flex item's default min-width is its content's own intrinsic
+     minimum, not 0 -- for a plain <input> that's wide enough (~170-
+     200px) to force this row to overflow its own flex container on a
+     narrow panel instead of actually shrinking, a real, measured
+     overflow found alongside the boardwrap fix above. min-width:0 lets
+     it genuinely shrink to whatever room flex:1 actually leaves it. */
+  min-width:0;
   padding:8px 10px;
   border:1px solid var(--mc-line);
   border-radius:10px;

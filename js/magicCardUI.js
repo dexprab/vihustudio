@@ -409,7 +409,7 @@ const MagicCardUI=(function(){
     btn.type='button';
     btn.addEventListener('click',function(){
       _renderPatternChallenge(panel,{
-        title:'Prove it\'s you, '+(card.nickname||'Star Traveler')+'!',
+        name:card.nickname||'Star Traveler',
         subtitle:'Tap your stars, in order, to continue.',
         verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
         onSuccess:function(){ proceed(card.id); },
@@ -451,7 +451,7 @@ const MagicCardUI=(function(){
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
       tile.addEventListener('click',function(){
         _renderPatternChallenge(panel,{
-          title:'Prove it\'s you, '+(card.nickname||'Star Traveler')+'!',
+          name:card.nickname||'Star Traveler',
           subtitle:'Tap your stars, in order, to continue.',
           verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
           onSuccess:function(){ proceed(card.id); },
@@ -471,7 +471,6 @@ const MagicCardUI=(function(){
     // verifyTyped split below).
     grid.appendChild(_buildGateActionTile('✨','Recall a different card',function(){
       _renderPatternChallenge(panel,{
-        title:'Recall a different card',
         subtitle:'Tap the stars shown on your Magic Card, in order.',
         allowTyped:true,
         verify:function(pattern){ return MagicCard.recall({pattern:pattern}); },
@@ -580,21 +579,58 @@ const MagicCardUI=(function(){
     }
   }
 
-  // A small companion portrait presiding over the tap challenge itself
-  // — "bring companion as gatekeeper." Lumo (the Guardian, per Companion
+  // Reveals `text` into `el` one character at a time, like Lumo is
+  // actually speaking the line rather than it simply appearing — "let
+  // the line reveal as a lumo speaking it to the kid." Skips straight to
+  // the full text under prefers-reduced-motion, matching every other
+  // animated flourish in this codebase's own established convention.
+  // Safe to call on a freshly-built, still-detached element; if the
+  // whole challenge is torn down mid-reveal (a real but harmless race —
+  // Back/Confirm before the line finishes typing), the interval simply
+  // keeps writing into an orphaned node for the remaining ~1s and then
+  // clears itself, with no visible or functional effect.
+  function _typewriterReveal(el,text){
+    const reduced=(typeof window.matchMedia==='function')&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduced){ el.textContent=text; return; }
+    el.textContent='';
+    el.classList.add('magic-card-gatekeeper-line--typing');
+    let i=0;
+    const timer=setInterval(function(){
+      i++;
+      el.textContent=text.slice(0,i);
+      if(i>=text.length){
+        clearInterval(timer);
+        el.classList.remove('magic-card-gatekeeper-line--typing');
+      }
+    },30);
+  }
+
+  // A companion portrait presiding over the tap challenge itself —
+  // "bring companion as gatekeeper." Lumo (the Guardian, per Companion
   // Canon V2's own "keeper of Creator Ceremonies" framing) stands watch
   // uniformly across every verification path (Continue/tile-tap/Recall)
   // rather than resolving each card's own bonded companion — simpler,
   // and thematically a Guardian/gatekeeper is a fixed figure at the
   // gate, not a different face per visitor. Resolved the identical way
-  // every other Lumo portrait in this file already is.
-  function _buildGatekeeperHeader(){
+  // every other Lumo portrait in this file already is. `name` is the
+  // known card's own nickname (Continue/tile-tap) or undefined (Recall,
+  // where no identity is known yet) — folded into the greeting line
+  // itself, per "add the kids name there."
+  function _buildGatekeeperHeader(name){
     const wrap=_el('div','magic-card-gatekeeper');
+    const portraitWrap=_el('div','magic-card-gatekeeper-portrait-wrap');
+    portraitWrap.appendChild(_el('div','magic-card-gatekeeper-ring'));
     const portrait=_el('div','magic-card-gatekeeper-portrait');
     portrait.appendChild(_el('span','magic-card-gatekeeper-fallback','🛡️'));
-    wrap.appendChild(portrait);
+    portraitWrap.appendChild(portrait);
+    wrap.appendChild(portraitWrap);
+    wrap.appendChild(_el('div','magic-card-gatekeeper-shadow'));
     wrap.appendChild(_el('div','magic-card-gatekeeper-name','Lumo, the Gatekeeper'));
-    wrap.appendChild(_el('div','magic-card-gatekeeper-line','Show me your stars, and you may pass.'));
+    const bubble=_el('div','magic-card-gatekeeper-bubble');
+    const line=_el('div','magic-card-gatekeeper-line');
+    bubble.appendChild(line);
+    wrap.appendChild(bubble);
+    _typewriterReveal(line,name?('Show me your stars, '+name+'!'):'Show me your stars, traveler.');
     if(typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
       MagicCardArt.resolveCompanionPortrait('lumo').then(function(img){
         if(!img) return;
@@ -627,8 +663,10 @@ const MagicCardUI=(function(){
     // _renderGatePicker, which remove this class again on their own
     // panel.innerHTML='' reset).
     panel.classList.add('magic-card-gate-panel--challenge');
-    panel.appendChild(_buildGatekeeperHeader());
-    panel.appendChild(_el('div','magic-card-gate-title',opts.title||'Prove it\'s you'));
+    // No separate title line — "we can remove this line, we have ample
+    // space" — Lumo's own speech bubble (built with the kid's name
+    // folded in) now carries the whole "prove it's you" framing itself.
+    panel.appendChild(_buildGatekeeperHeader(opts.name));
     if(opts.subtitle) panel.appendChild(_el('div','magic-card-tapgrid-subtitle',opts.subtitle));
 
     // The wrap is the SIZED, overflow:hidden element; the board fills
