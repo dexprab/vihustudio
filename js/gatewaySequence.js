@@ -198,11 +198,17 @@
   // equivalent registry fetch, this is purely a visual settle).
   const GATE_SETTLE_MS=600;
   const TAP_HINT_DELAY_MS=3600;
+  // Each entry is {title, subtitle} — a short spoken line plus a
+  // smaller, quieter second line underneath it (see the reference text
+  // sequence board: "Welcome, Traveller." / "You've found the Gateway."
+  // etc.), rendered by playLines() below as two stacked lines inside
+  // the one shared bubble rather than a single flat sentence.
   const GREETING_LINES=[
-    'Welcome, Traveller.',
-    'I am Lumo.',
-    'Guardian of Story Companions.',
-    'Every Creator begins here.'
+    {title:'Welcome, Traveller.',subtitle:"You've found the Gateway."},
+    {title:'I am Lumo.',subtitle:"It's wonderful to meet you."},
+    {title:'Guardian of Story Companions.',subtitle:'I help stories come to life.'},
+    {title:'Every Creator begins here.',subtitle:'And every story begins with a spark of imagination.'},
+    {title:"I've been waiting for you.",subtitle:'Shall we begin? ✨'}
   ];
   const LINE_MS=2000;
   const LINE_GAP_MS=550;
@@ -212,6 +218,20 @@
   ];
   const RETURNING_LINE_MS=2200;
   const RETURNING_LINE_GAP_MS=650;
+  // Traveller-only pacing — "increase blank time to 1000ms." Kept as
+  // its own constants, distinct from the shared LINE_GAP_MS above
+  // (still used by the Returning Creator's own Lumo-arrival lines, see
+  // playLumoArrival below), so this change is scoped to only what the
+  // user is actually looking at rather than silently retiming the
+  // Returning path too. GREETING_END_PAUSE_MS is new — "the traveller
+  // greeting looks unfinished ending abruptly": the 4th line used to
+  // vanish and the video resumed in the very same instant, with no beat
+  // to let the last line land before the scene moves on; this holds on
+  // the empty, silent frame for a moment first (the same "real silence,
+  // nothing new happens" principle already used elsewhere in this file
+  // for the Returning path's own Pause beat).
+  const GREETING_GAP_MS=1000;
+  const GREETING_END_PAUSE_MS=1200;
 
   // Scene 7 — Lumo Arrives. "In next scene let lumo interact with the
   // traveller" — the first, and only, lines Lumo actually speaks IN
@@ -486,7 +506,25 @@
         if(skipRequested) return;
         if(i>=lines.length){ onDone(bubble); return; }
         bubble.classList.remove('gateway-greeting-in');
-        bubble.textContent=lines[i];
+        const line=lines[i];
+        // A line can be either a plain string (Returning Creator's
+        // welcome, Lumo's own in-person arrival lines) or a
+        // {title,subtitle} pair (the Traveller greeting's own richer
+        // two-line text sequence) -- rendered as two stacked children
+        // instead of one flat sentence when it's the latter.
+        if(line&&typeof line==='object'){
+          bubble.textContent='';
+          const title=el('div','gateway-greeting-title');
+          title.textContent=line.title;
+          bubble.appendChild(title);
+          if(line.subtitle){
+            const sub=el('div','gateway-greeting-subtitle');
+            sub.textContent=line.subtitle;
+            bubble.appendChild(sub);
+          }
+        }else{
+          bubble.textContent=line;
+        }
         void bubble.offsetWidth; // force reflow so the fade-in re-triggers every line
         bubble.classList.add('gateway-greeting-in');
         i++;
@@ -970,12 +1008,15 @@
           if(skipRequested) return;
           playVideoSegmentTo(gateVideoEl,PAUSE_AT_S,SEGMENT1_FALLBACK_MS,reduced,function(){
             if(skipRequested) return;
-            playLines(GREETING_LINES,LINE_MS,LINE_GAP_MS,reduced,function(bubble){
+            playLines(GREETING_LINES,LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
               if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
               if(skipRequested) return;
-              playVideoSegmentToEnd(gateVideoEl,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
+              after(reduced?0:GREETING_END_PAUSE_MS,function(){
                 if(skipRequested) return;
-                playFinalFlash(reduced,done);
+                playVideoSegmentToEnd(gateVideoEl,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
+                  if(skipRequested) return;
+                  playFinalFlash(reduced,done);
+                });
               });
             });
           });

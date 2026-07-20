@@ -7983,6 +7983,27 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   background:linear-gradient(90deg,transparent,var(--gw-gold),transparent);
   opacity:.85;
 }
+/* The richer two-line text sequence board — a short spoken title plus a
+   smaller, quieter second line beneath it (see GREETING_LINES's
+   {title,subtitle} pairs). .gateway-greeting-title needs no rule of its
+   own — it's a plain block inheriting the bubble's own Cinzel/gold/glow
+   styling untouched, exactly like the flat-string case (Returning
+   Creator's welcome, Lumo's in-person arrival lines) already relies on.
+   The subtitle steps down to a warmer, quieter body serif and a softer
+   parchment tone — a whispered aside under Lumo's own spoken line,
+   never competing with it. */
+.gateway-greeting-subtitle{
+  display:block;
+  margin-top:7px;
+  font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  font-style:italic;
+  font-weight:400;
+  font-size:clamp(13px,1.6vw,17px);
+  letter-spacing:.01em;
+  line-height:1.5;
+  color:rgba(255,241,214,.8);
+  text-shadow:0 1px 8px rgba(0,0,0,.6);
+}
 .gateway-greeting-bubble.gateway-greeting-in{
   animation:gateway-line-in 2000ms ease-out;
 }
