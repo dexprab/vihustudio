@@ -355,7 +355,7 @@ const MagicCardUI=(function(){
   // i should give my constellation pattern to gain access" — and,
   // critically, "it should be shown on same screen without entering
   // into the home screen." Continuing as a known card (either the
-  // single-card "Continue My Journey" or a picker tile tap) and
+  // single-card "Return to My Adventure" or a picker tile tap) and
   // recalling an unknown one both now route through an inline
   // pattern-tap challenge rendered directly inside this SAME panel —
   // proceed(cardId) is only ever called after a real match, never on a
@@ -405,7 +405,11 @@ const MagicCardUI=(function(){
     // _buildGateIdentityGlyph's own comment above.
     panel.appendChild(_buildGateIdentityGlyph(card,140));
     panel.appendChild(_el('div','magic-card-gate-welcome','Welcome back, '+(card.nickname||'Star Traveler')));
-    const btn=_el('button','magic-card-gate-continue','Continue My Journey');
+    // "continue is wrong word use vihustudio vocabulary" — VihuStudio's
+    // own established term for a Creator's ongoing work is "Adventure"
+    // (js/publishStudio.js's "Publish My Adventure"/"Get My Adventure"),
+    // never the generic "Continue".
+    const btn=_el('button','magic-card-gate-continue','Return to My Adventure');
     btn.type='button';
     btn.addEventListener('click',function(){
       _renderPatternChallenge(panel,{
@@ -524,28 +528,37 @@ const MagicCardUI=(function(){
   // --mc-* visual language (.magic-card-tapgrid-* in css/style.css),
   // matching this codebase's established "kept in lockstep by hand"
   // precedent for this exact situation.
+  //
+  // No row/column numbers — the coordinate system is never shown, so
+  // nothing about the board's own look hints at the secret. Every cell
+  // carries a "★" glyph (CSS controls its visibility — invisible at
+  // rest, dim for a decoy, bright once selected — see .magic-card-
+  // tapgrid-cell in css/style.css); a fixed-COUNT, randomly-positioned
+  // subset gets the "--decoy" class, a sparse scatter of always-dim
+  // "unlit" stars that are pure visual noise (this function has no
+  // idea what the real secret pattern is) — "spread stars sparingly...
+  // enough to mask the pattern," so a shoulder-surfer watching someone
+  // tap their real pattern can't tell a genuine tap from background
+  // camouflage that was always faintly there.
   function _gateBuildGrid(boardEl,size,onClick){
     boardEl.innerHTML='';
-    const corner=_el('div','magic-card-tapgrid-gridlabel');
-    corner.style.gridRow='1'; corner.style.gridColumn='1';
-    boardEl.appendChild(corner);
-    for(let c=0;c<size;c++){
-      const colHead=_el('div','magic-card-tapgrid-gridlabel',String(c+1));
-      colHead.style.gridRow='1'; colHead.style.gridColumn=String(c+2);
-      boardEl.appendChild(colHead);
+    const total=size*size;
+    const decoyCount=Math.round(total*0.22);
+    const order=[];
+    for(let i=0;i<total;i++) order.push(i);
+    for(let i=order.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      const tmp=order[i]; order[i]=order[j]; order[j]=tmp;
     }
-    for(let r=0;r<size;r++){
-      const rowHead=_el('div','magic-card-tapgrid-gridlabel',String(r+1));
-      rowHead.style.gridRow=String(r+2); rowHead.style.gridColumn='1';
-      boardEl.appendChild(rowHead);
-    }
+    const decoySet=new Set(order.slice(0,decoyCount));
     for(let rr=0;rr<size;rr++){
       for(let cc=0;cc<size;cc++){
         const cell=document.createElement('button');
         cell.type='button';
-        cell.className='magic-card-tapgrid-cell';
+        cell.className='magic-card-tapgrid-cell'+(decoySet.has(rr*size+cc)?' magic-card-tapgrid-cell--decoy':'');
+        cell.textContent='★';
         cell.dataset.row=rr; cell.dataset.col=cc;
-        cell.style.gridRow=String(rr+2); cell.style.gridColumn=String(cc+2);
+        cell.style.gridRow=String(rr+1); cell.style.gridColumn=String(cc+1);
         cell.setAttribute('aria-label','Row '+(rr+1)+', Column '+(cc+1));
         cell.addEventListener('click',function(){ onClick(rr,cc,cell); });
         boardEl.appendChild(cell);
@@ -647,6 +660,30 @@ const MagicCardUI=(function(){
     return wrap;
   }
 
+  // Robustly fits the tap board to whatever vertical room the panel
+  // genuinely has left, MEASURED directly rather than approximated via
+  // a vh-percentage guess — the guess-based approach broke twice: once
+  // at narrow+tall viewports, then again for real users on ordinary
+  // wide desktop windows, where flexbox silently squished the board's
+  // own HEIGHT without preserving its width (aspect-ratio quietly lost
+  // through flex-shrink), clipping rows off the bottom of the grid.
+  // Idempotent — always resets to the natural CSS-driven size before
+  // re-measuring — so it's safe to call repeatedly (on first build,
+  // after the typed-code fallback expands, from a ResizeObserver on
+  // any later layout change) with no risk of oscillating.
+  function _fitBoardToAvailableSpace(panel,boardWrap){
+    boardWrap.style.width='';
+    boardWrap.style.height='';
+    const available=panel.clientHeight;
+    const needed=panel.scrollHeight;
+    if(needed<=available+1) return; // already fits at its natural size
+    const naturalSize=boardWrap.getBoundingClientRect().width;
+    const deficit=needed-available;
+    const fitted=Math.max(140,naturalSize-deficit);
+    boardWrap.style.width=fitted+'px';
+    boardWrap.style.height=fitted+'px';
+  }
+
   // Renders the tap-grid challenge directly into `panel` (replacing
   // whatever was there — Welcome or Picker), never opening a second
   // screen/modal/overlay. `opts.verify(pattern)` and the optional
@@ -692,17 +729,20 @@ const MagicCardUI=(function(){
     panel.appendChild(status);
 
     let selected=[];
+    // Every cell already carries its own "★" glyph (set once in
+    // _gateBuildGrid) — selection is purely a CSS class + colour
+    // toggle now, never a textContent rewrite, so a decoy cell that's
+    // deselected correctly reverts to its own dim "unlit" look instead
+    // of going fully blank.
     const svg=_gateBuildGrid(board,GATE_TAPGRID_SIZE,function(r,c,cell){
       const k=_gateBoardKey(r,c);
       const idx=selected.indexOf(k);
       if(idx===-1){
         selected.push(k);
         cell.classList.add('selected');
-        cell.textContent='★';
       }else{
         selected.splice(idx,1);
         cell.classList.remove('selected');
-        cell.textContent='';
         cell.style.removeProperty('--star-color');
       }
       counter.textContent=selected.length+' star'+(selected.length===1?'':'s')+' selected';
@@ -713,7 +753,6 @@ const MagicCardUI=(function(){
     function clearBoard(){
       board.querySelectorAll('.magic-card-tapgrid-cell').forEach(function(el){
         el.classList.remove('selected');
-        el.textContent='';
         el.style.removeProperty('--star-color');
       });
       svg.innerHTML='';
@@ -769,6 +808,9 @@ const MagicCardUI=(function(){
         const opening=codeFallback.classList.contains('hidden');
         codeFallback.classList.toggle('hidden',!opening);
         codeToggle.textContent='Prefer to type your code instead? '+(opening?'⌃':'⌄');
+        // Expanding the fallback adds real height — re-fit immediately
+        // rather than waiting on the ResizeObserver's own next frame.
+        _fitBoardToAvailableSpace(panel,boardWrap);
       });
       function submitCode(){
         const val=codeInput.value.trim();
@@ -800,6 +842,20 @@ const MagicCardUI=(function(){
     back.type='button';
     back.addEventListener('click',opts.onBack);
     panel.appendChild(back);
+
+    // Fit the board once, synchronously, right now — every child is
+    // appended, so this measurement reflects the true total. A
+    // ResizeObserver keeps it correct afterward (window resize, a
+    // future layout change) without ever needing a fixed vh guess
+    // again; it disconnects itself the moment this screen is replaced.
+    _fitBoardToAvailableSpace(panel,boardWrap);
+    if(typeof ResizeObserver!=='undefined'){
+      const ro=new ResizeObserver(function(){
+        if(!document.contains(panel)){ ro.disconnect(); return; }
+        _fitBoardToAvailableSpace(panel,boardWrap);
+      });
+      ro.observe(panel);
+    }
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------
