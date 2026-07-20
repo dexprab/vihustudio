@@ -928,7 +928,7 @@ const ProjectModel = (function () {
             scopeSceneId: null,
             attachments: [],
             tags: [],
-            properties: (window.ExperienceSchema && window.ExperienceSchema.defaultProperties(type)) || {},
+            properties: (window.ExperienceSchema && window.ExperienceSchema.defaultProperties(type, spec.hostedBy)) || {},
             createdAt: now,
             updatedAt: now
         });

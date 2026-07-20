@@ -416,8 +416,23 @@ class BuildEngine {
         // every kind of mirrored Layer (not just 'fill') closes that gap
         // — "Hosted by Scene" now uniformly means wall-level/behind,
         // regardless of what content the author put there.
+        // "Hosted by Scene" is now a resizable/repositionable mode — an
+        // author can shrink or offset a Scene-hosted Layer instead of
+        // being pinned to full bleed by the Inspector's own self-heal.
+        // The distinction from Free-hosted is therefore *z-order*, not
+        // size: Scene-hosted always converges onto `target:'slide'` so it
+        // still renders BEFORE the Frame/Panel (behind the picture),
+        // whatever its rect. Free-hosted continues to converge onto
+        // 'overlay' (in front of everything). A pre-hostedBy plain
+        // `kind:'fill'` background (Blueprint §9's own "set the
+        // background", predating the hostedBy concept) still resolves to
+        // 'slide' only when it's genuinely full-bleed, preserving
+        // backward-compat for every Scene Layer authored before this
+        // capability change.
         const isFullBleed = rect.w >= 0.98 && rect.h >= 0.98;
-        const target = ((layer.kind === 'fill' || layer.hostedByScene === true) && isFullBleed) ? 'slide' : 'overlay';
+        const target = (layer.hostedByScene === true)
+            ? 'slide'
+            : ((layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay');
         const base = {
             id: 'scene-' + scene.id + '-' + layer.id,
             // Studio's own _humanizeLayerId fallback only ever had the

@@ -2141,6 +2141,29 @@ html, body {
     cursor: pointer;
 }
 
+/* Quick-action button inside a Context Inspector field group (e.g. Fill
+ * Scene under a Scene-hosted Experience's Transform). Sized explicitly to
+ * escape the global `button{}` cascade this codebase's own established
+ * fix pattern already documents (Object Strip cards, Publish Studio close
+ * button, Doodle pen swatches) — a bare `<button>` inside a
+ * .wb-context-panel would otherwise stretch to full width and 40px tall. */
+.wb-inline-action {
+    font-family: inherit !important;
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    margin-top: 6px !important;
+    height: auto !important;
+    width: auto !important;
+    align-self: flex-start;
+    background: var(--wb-paper);
+    color: var(--wb-text);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    cursor: pointer;
+}
+.wb-inline-action:disabled { opacity: 0.5; cursor: default; }
+.wb-inline-action:hover:not(:disabled) { background: var(--wb-cream); }
+
 .wb-rep-list-row {
     display: flex;
     align-items: center;

@@ -63,7 +63,16 @@ const ExperienceSchema = (function () {
     // only migrated-copied into these new fields once
     // (js/projectModel.js's `_ensureExperienceDefaults`), so its
     // historical rendering is provably unaffected by this milestone.
-    function defaultUniversalContent() {
+    // hostedBy (optional): when 'scene', seed every content section's
+    // Transform to full-bleed (0,0,1,1). Scene-hosted Experiences are
+    // now editable/resizable (was read-only, always pinned to full
+    // bleed by the Inspector's own self-heal) — so this preserves the
+    // "Scene-hosted starts filling the whole Scene" default the user
+    // already expects, while letting an author resize it afterward.
+    // Any other value (or omitted) keeps the small partial-rect
+    // defaults that a Free-hosted Experience has always started with.
+    function defaultUniversalContent(hostedBy) {
+        const fillBleed = hostedBy === 'scene';
         return {
             // Text
             textContent: '',
@@ -73,16 +82,16 @@ const ExperienceSchema = (function () {
             textAlign: 'left',
             textColor: '#1D3457',
             textOpacity: 1,
-            textX: 0.1, textY: 0.1, textW: 0.6, textH: 0.25,
+            textX: fillBleed ? 0 : 0.1, textY: fillBleed ? 0 : 0.1, textW: fillBleed ? 1 : 0.6, textH: fillBleed ? 1 : 0.25,
             // Image
             imageSrc: null,
             imageFit: 'fit',
             imageOpacity: 1,
-            imageX: 0.1, imageY: 0.4, imageW: 0.4, imageH: 0.4,
+            imageX: fillBleed ? 0 : 0.1, imageY: fillBleed ? 0 : 0.4, imageW: fillBleed ? 1 : 0.4, imageH: fillBleed ? 1 : 0.4,
             // Graphics (reusable SVG/PNG visual assets — icons, stickers)
             graphicSrc: null,
             graphicOpacity: 1,
-            graphicX: 0.55, graphicY: 0.4, graphicW: 0.3, graphicH: 0.3,
+            graphicX: fillBleed ? 0 : 0.55, graphicY: fillBleed ? 0 : 0.4, graphicW: fillBleed ? 1 : 0.3, graphicH: fillBleed ? 1 : 0.3,
             // A Graphics section may alternatively hold an author-drawn
             // Shape (SHAPE_KINDS below) instead of an uploaded image —
             // mutually exclusive with graphicSrc by construction (the
@@ -120,8 +129,8 @@ const ExperienceSchema = (function () {
     // Attach/Reuse Existing.
     const EXPERIENCE_HOSTS = [
         { value: 'place', label: 'A Place — lives inside one Place' },
-        { value: 'scene', label: 'A Scene — fills the whole Scene' },
-        { value: 'free', label: 'Free — roams a Scene on its own' }
+        { value: 'scene', label: 'A Scene — behind the picture frame, full bleed by default' },
+        { value: 'free', label: 'Free — in front of the picture, position and size however you like' }
     ];
 
     // Author-drawable shapes for the Graphics section's "Pick a Shape"
@@ -179,7 +188,7 @@ const ExperienceSchema = (function () {
     // fields — so the Milestone 3 mirroring bridge (attachExperience)
     // never has to translate between two different field vocabularies
     // for the same visual idea.
-    function defaultProperties(type) {
+    function defaultProperties(type, hostedBy) {
         let legacy;
         switch (type) {
             case 'frame':
@@ -201,7 +210,10 @@ const ExperienceSchema = (function () {
         // regardless of `type` — legacy fields above remain what the
         // Engine Adapter's Place-hosted Frame mirror reads (unchanged);
         // the universal fields are what Scene/Free hosting now renders.
-        return Object.assign({}, legacy, defaultUniversalContent());
+        // hostedBy is forwarded so a Scene-hosted Experience starts with
+        // full-bleed Transforms (matches the pre-editable-sliders default
+        // behavior); every other host uses the pre-existing small rects.
+        return Object.assign({}, legacy, defaultUniversalContent(hostedBy));
     }
 
     // Whether `type` can actually be painted by the current Engine

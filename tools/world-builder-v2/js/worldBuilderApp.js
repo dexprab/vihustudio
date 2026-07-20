@@ -7031,14 +7031,16 @@
     // — no separate migration step, no silently-wrong stored data left
     // behind for a future Build to trip over again.
     function _contentTransformFields(props, xKey, yKey, wKey, hKey, onProp, hostedBy) {
-        if (hostedBy === 'scene' || hostedBy === 'place') {
-            if (props[xKey] !== 0 || props[yKey] !== 0 || props[wKey] !== 1 || props[hKey] !== 1) {
-                onProp(xKey)(0);
-                onProp(yKey)(0);
-                onProp(wKey)(1);
-                onProp(hKey)(1);
-            }
-            contextPanel.appendChild(_fieldHelp('Position and size are inherited from ' + (hostedBy === 'scene' ? 'the Scene' : 'the Place') + ' — this content fills it completely.'));
+        // Place-hosted stays read-only: a Place-hosted Experience maps to
+        // a Place's Frame slot (Engine Adapter), which is a reference, not
+        // a rect — resizing has no meaning there. Scene-hosted and Free-
+        // hosted both edit their own Layer's position/size via the same
+        // fractional-rect model; the only difference between them is
+        // z-order (Scene-hosted → target:'slide', behind the picture
+        // frame; Free-hosted → target:'overlay', in front), decided at
+        // compile time in js/services/builder.js's convergeSceneLayer.
+        if (hostedBy === 'place') {
+            contextPanel.appendChild(_fieldHelp('Position and size are inherited from the Place — this content fills it completely.'));
             return;
         }
         const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round((props[xKey] || 0) * 100), function (v) { onProp(xKey)(v / 100); }));
@@ -7047,6 +7049,27 @@
         const wGroup = _buildFieldGroup('Width %', _range(2, 100, Math.round((props[wKey] || 0.1) * 100), function (v) { onProp(wKey)(v / 100); }));
         const hGroup = _buildFieldGroup('Height %', _range(2, 100, Math.round((props[hKey] || 0.1) * 100), function (v) { onProp(hKey)(v / 100); }));
         _fieldRow(wGroup, hGroup);
+        // Scene-hosted gets a one-click "Fill Scene" restore since full
+        // bleed is the intended default for the "sits behind the picture"
+        // mode — an author who resized down and wants to snap back
+        // shouldn't have to drag four sliders. Deliberately not offered
+        // for Free-hosted, whose whole reason for existing is a specific
+        // position and size in front of the picture; a Fill Scene there
+        // would conflate the two modes.
+        if (hostedBy === 'scene') {
+            const fillBtn = document.createElement('button');
+            fillBtn.type = 'button';
+            fillBtn.className = 'wb-inline-action';
+            fillBtn.textContent = '↔ Fill Scene';
+            fillBtn.disabled = currentProjectReadOnly;
+            fillBtn.addEventListener('click', function () {
+                onProp(xKey)(0);
+                onProp(yKey)(0);
+                onProp(wKey)(1);
+                onProp(hKey)(1);
+            });
+            contextPanel.appendChild(fillBtn);
+        }
     }
 
     function _contentSectionHeading(label) {
@@ -7432,11 +7455,11 @@
         contextPanel.appendChild(heading);
 
         if (exp.hostedBy === 'scene') {
-            contextPanel.appendChild(_fieldHelp('Inherited from Scene (read-only) — this Experience fills the whole Scene. Text/Image/Graphics can still be positioned within it using each section’s own Transform above.'));
+            contextPanel.appendChild(_fieldHelp('Sits at scene level, behind the picture frame — full bleed by default. Each section’s own Transform above sets its position and size; use ↔ Fill Scene there to snap back to full bleed.'));
         } else if (exp.hostedBy === 'place') {
             contextPanel.appendChild(_fieldHelp('Inherited from Place (read-only) — this Experience fills whichever Place hosts it.'));
         } else {
-            contextPanel.appendChild(_fieldHelp('Free — each content section above (Text/Image/Graphics) has its own position and size (Transform), roaming the Scene independently.'));
+            contextPanel.appendChild(_fieldHelp('Free — sits in front of the picture. Each content section above (Text/Image/Graphics) has its own position and size (Transform), roaming the Scene independently.'));
         }
     }
 
