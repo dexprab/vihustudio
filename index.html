@@ -13,8 +13,8 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0192'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0192'>
+<link rel='stylesheet' href='css/style.css?v=0193'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0193'>
 </head>
 <body class='light-theme'>
 <!-- Header -->
@@ -67,38 +67,21 @@
      Gateway itself; a Returning Creator is recognized and verified there
      via js/magicCardUI.js's own Creator Signature tap challenge, never
      shown Studio's standalone Identity Gate directly. Six scenes: The Sky
-     (arrival, purely illustrative and pointer-events:none, mirroring
-     #creationFlowOverlay's own proven container pattern exactly) -> Lumo's
-     Arrival -> Identity (the branch, and where it ends) -> The Gates
-     Appear -> Journey Through the Sky -> The Gates Open. onComplete()
-     fires only once the gates finish opening, handing off directly into
-     Studio's own boot sequence (_beginBoot) — the Hall of Creation is
-     never visible before that moment, for anyone. -->
+     (arrival) -> Lumo's Arrival -> Identity (the branch, and where it
+     ends) -> The Gates Appear -> Journey Through the Sky -> The Gates
+     Open. onComplete() fires only once the gates finish opening, handing
+     off directly into Studio's own boot sequence (_beginBoot) — the Hall
+     of Creation is never visible before that moment, for anyone.
+     "The Gate Covers the Full Screen" removed the old illustrative
+     ambient-sky decoration layer (clouds/islands/birds/particles/rays/
+     wind-streaks) entirely — "remove the environment elements," direct
+     feedback once the real Gate video became a full-bleed backdrop and
+     those CSS decorations only ever clashed with it, whether bleeding
+     through during the Gate's own fade-in or simply reading as clutter
+     against real footage. .gateway-overlay's own background gradient is
+     the only remaining pre-video atmosphere, and it's invisible the
+     instant the Gate video paints. -->
 <div id='gatewayOverlay' class='gateway-overlay hidden'>
-<div class='gateway-scene' aria-hidden='true'>
-<div class='gateway-scene-sky'></div>
-<div class='gateway-scene-haze'></div>
-<div class='gateway-scene-rays'></div>
-<div class='gateway-scene-sun'></div>
-<span class='gateway-scene-cloud cloud-1'></span>
-<span class='gateway-scene-cloud cloud-2'></span>
-<span class='gateway-scene-cloud cloud-3'></span>
-<span class='gateway-scene-island island-1'>🏝️</span>
-<span class='gateway-scene-island island-2'>🗻</span>
-<span class='gateway-scene-island island-3'>🏔️</span>
-<span class='gateway-scene-bird bird-1'>🕊️</span>
-<span class='gateway-scene-bird bird-2'>🕊️</span>
-<span class='gateway-scene-bird bird-3'>🕊️</span>
-<span class='gateway-scene-particle p1'>✦</span>
-<span class='gateway-scene-particle p2'>✧</span>
-<span class='gateway-scene-particle p3'>⋆</span>
-<span class='gateway-scene-particle p4'>✦</span>
-<span class='gateway-scene-particle p5'>✧</span>
-<span class='gateway-scene-particle p6'>⋆</span>
-<span class='gateway-wind-streak s1'></span>
-<span class='gateway-wind-streak s2'></span>
-<span class='gateway-wind-streak s3'></span>
-</div>
 <div id='gatewayContent' class='gateway-panel'></div>
 </div>
 

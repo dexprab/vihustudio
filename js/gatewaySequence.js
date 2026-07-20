@@ -444,42 +444,27 @@
       return {wrap:wrap,video:video||null,egg:eggEl};
     }
 
-    // Scene 4 — Approach lead-in. A single quiet "wind rises" beat before
-    // the world starts streaming past (Scene 5) — the Gate itself needs
-    // no reveal of its own, it has been visible since Scene 2.
+    // Scene 4 — Approach lead-in. A single quiet beat before the Journey
+    // (Scene 5) — the Gate itself needs no reveal of its own, it has been
+    // visible since Scene 2. "Remove the environment elements" retired
+    // the ambient wind-streak decorations this beat used to speed up; the
+    // pause itself (and its place in the six-scene pipeline) is kept.
     function playApproachLeadIn(reduced,onDone){
-      overlay.classList.add('gateway-wind-rising');
-      after(reduced?0:WIND_RISE_MS,function(){
-        overlay.classList.remove('gateway-wind-rising');
-        onDone();
-      });
+      after(reduced?0:WIND_RISE_MS,onDone);
     }
 
     // Scene 5 — "Do NOT teleport. Travel." Principle 2: the TRAVELLER
-    // moves, the Gate does not — a real parallax world (near: big, fast,
-    // brighter; far: small, slow, faint) streams past while the Gate
-    // itself only grows modestly, still bottom-anchored beside Lumo, who
-    // stays fixed at its guard post the whole time (Lumo no longer flies
-    // ahead leading a multi-leg journey — see "Lumo Guards the Gate" in
-    // the header comment above). The one deliberate large growth is
-    // reserved for Arrival, below.
+    // moves, the Gate does not — the Gate itself grows modestly (its own
+    // Journey zoom, .gateway-gates-wrap.gateway-gates-journey) while
+    // Lumo stays fixed at its guard post the whole time (Lumo no longer
+    // flies ahead leading a multi-leg journey — see "Lumo Guards the
+    // Gate" in the header comment above). "Remove the environment
+    // elements" retired the streaming cloud/mountain/bird parallax bands
+    // that used to cross the screen here — the real, full-bleed video
+    // already reads as travel on its own. The one deliberate large
+    // growth is reserved for Arrival, below.
     function playJourney(gateEls,reduced,onDone){
-      overlay.classList.add('gateway-journey-active');
       gateEls.wrap.classList.add('gateway-gates-journey');
-      const extras=el('div','gateway-journey-extras');
-      ['☁️','🏝️'].forEach(function(g,i){
-        const s=el('span','gateway-journey-near');
-        s.textContent=g;
-        s.style.setProperty('--i',String(i));
-        extras.appendChild(s);
-      });
-      ['🗻','☁️','🕊️'].forEach(function(g,i){
-        const s=el('span','gateway-journey-far');
-        s.textContent=g;
-        s.style.setProperty('--i',String(i));
-        extras.appendChild(s);
-      });
-      content.appendChild(extras);
       after(reduced?250:JOURNEY_MS,onDone);
     }
 
@@ -491,10 +476,9 @@
     // (see css/style.css) keeps it visibly standing in front of the now-
     // massive doorway rather than being buried underneath it. Then, beat
     // 2 — Principle 5's real anticipation Pause: nothing new happens,
-    // only the ambient wind/particles/rays quiet slightly (.gateway-hush)
+    // only the Gate's own halo glow quiets slightly (.gateway-hush)
     // before the magic begins.
     function playArrival(gateEls,reduced,onDone){
-      overlay.classList.remove('gateway-journey-active');
       gateEls.wrap.classList.remove('gateway-gates-journey');
       gateEls.wrap.classList.add('gateway-gates-arrive');
       after(reduced?150:ARRIVE_MS,function(){
@@ -616,13 +600,13 @@
         try{ if(cleanupLumo) cleanupLumo(); }catch(e){}
         try{ if(gateVideoEl) gateVideoEl.pause(); }catch(e){}
         overlay.classList.add('hidden');
-        overlay.classList.remove('gateway-journey-active','gateway-mode-hidden-for-signature','gateway-wind-rising','gateway-hush','gateway-threshold-dolly');
+        overlay.classList.remove('gateway-mode-hidden-for-signature','gateway-hush','gateway-threshold-dolly');
         content.innerHTML='';
         skipRequested=false;
         try{ onComplete(); }catch(e){}
       };
 
-      overlay.classList.remove('hidden','gateway-journey-active','gateway-mode-hidden-for-signature','gateway-wind-rising','gateway-hush','gateway-threshold-dolly');
+      overlay.classList.remove('hidden','gateway-mode-hidden-for-signature','gateway-hush','gateway-threshold-dolly');
       content.innerHTML='';
       skipRequested=false;
       wireSkip(done);

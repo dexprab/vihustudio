@@ -7736,153 +7736,15 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    js/gatewaySequence.js's runScene3(). */
 .gateway-overlay.gateway-mode-hidden-for-signature{ display:none; }
 
-.gateway-scene{
-  position:absolute; inset:0;
-  z-index:0;
-  overflow:hidden;
-  pointer-events:none;
-}
-.gateway-scene-sky{
-  position:absolute; inset:0;
-  background:radial-gradient(ellipse at 50% 15%,rgba(255,222,168,.22) 0%,rgba(255,222,168,0) 60%);
-}
-.gateway-scene-sun{
-  position:absolute; bottom:-10%; left:50%;
-  width:60vw; height:60vw; max-width:640px; max-height:640px;
-  transform:translateX(-50%);
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(255,207,138,.5) 0%,rgba(255,207,138,0) 68%);
-}
-/* Cinematic Polish Sprint — environmental polish. Soft atmospheric haze
-   (a warm colour wash low in the sky, not a texture) plus faint,
-   gently-swaying sunlight ray beams (a conic gradient, not individually
-   drawn shapes) — both deliberately subtle ("nothing should feel busy")
-   and always present, giving the whole Sky its own quiet depth even
-   before anything else in the sequence moves. */
-.gateway-scene-haze{
-  position:absolute; inset:0;
-  background:linear-gradient(180deg,rgba(255,235,200,0) 0%,rgba(255,214,150,.08) 55%,rgba(255,196,120,.15) 100%);
-  mix-blend-mode:screen;
-}
-.gateway-scene-rays{
-  position:absolute;
-  left:50%; bottom:-8%;
-  width:150vw; height:150vw; max-width:1500px; max-height:1500px;
-  transform:translateX(-50%) rotate(0deg);
-  background:conic-gradient(from 200deg at 50% 100%,
-    transparent 0deg, rgba(255,226,160,.08) 4deg, transparent 9deg,
-    transparent 24deg, rgba(255,226,160,.06) 29deg, transparent 35deg,
-    transparent 50deg, rgba(255,226,160,.09) 55deg, transparent 62deg,
-    transparent 126deg, rgba(255,226,160,.07) 131deg, transparent 138deg,
-    transparent 156deg, rgba(255,226,160,.08) 161deg, transparent 168deg
-  );
-  opacity:.55;
-  mix-blend-mode:screen;
-  animation:gateway-rays-sway 24s ease-in-out infinite;
-}
-@keyframes gateway-rays-sway{
-  0%,100%{ transform:translateX(-50%) rotate(-1deg); }
-  50%{ transform:translateX(-50%) rotate(1deg); }
-}
-/* "Wind increases" — a quiet lead-in beat as the Traveller draws close
-   enough to begin the Approach. Hidden entirely at rest; only that
-   moment (see .gateway-overlay.gateway-wind-rising below) speeds the
-   ambient sky up and lets these faint horizontal gusts pass through. */
-.gateway-wind-streak{
-  position:absolute;
-  top:var(--wy,30%);
-  left:-25%;
-  width:30%;
-  height:2px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
-  opacity:0;
-  pointer-events:none;
-}
-.gateway-wind-streak.s1{ --wy:22%; }
-.gateway-wind-streak.s2{ --wy:44%; }
-.gateway-wind-streak.s3{ --wy:62%; }
-.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s1{ animation:gateway-wind-streak-pass 2.1s ease-in .1s forwards; }
-.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s2{ animation:gateway-wind-streak-pass 2.1s ease-in .5s forwards; }
-.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s3{ animation:gateway-wind-streak-pass 2.1s ease-in .9s forwards; }
-@keyframes gateway-wind-streak-pass{
-  0%{ transform:translateX(0); opacity:0; }
-  22%{ opacity:.5; }
-  100%{ transform:translateX(240vw); opacity:0; }
-}
-.gateway-overlay.gateway-wind-rising .gateway-scene-cloud{ animation-duration:36s; }
-.gateway-overlay.gateway-wind-rising .gateway-scene-particle{ animation-duration:5.5s; }
-.gateway-overlay.gateway-wind-rising .gateway-scene-rays{ animation-duration:8s; }
-.gateway-scene-cloud{
-  position:absolute;
-  width:150px; height:46px;
-  background:rgba(255,255,255,.22);
-  border-radius:50px;
-  filter:blur(1px);
-  animation:gateway-drift 70s linear infinite;
-}
-.gateway-scene-cloud::before,.gateway-scene-cloud::after{
-  content:'';
-  position:absolute;
-  background:rgba(255,255,255,.22);
-  border-radius:50%;
-}
-.gateway-scene-cloud::before{ width:74px; height:74px; top:-34px; left:16px; }
-.gateway-scene-cloud::after{ width:56px; height:56px; top:-24px; right:18px; }
-.gateway-scene-cloud.cloud-1{ top:14%; left:-180px; animation-duration:75s; }
-.gateway-scene-cloud.cloud-2{ top:26%; left:-180px; animation-duration:100s; animation-delay:-35s; transform:scale(.72); }
-.gateway-scene-cloud.cloud-3{ top:8%; left:-180px; animation-duration:120s; animation-delay:-60s; transform:scale(.5); opacity:.7; }
-@keyframes gateway-drift{ from{ transform:translateX(0); } to{ transform:translateX(140vw); } }
-
-.gateway-scene-island{
-  position:absolute;
-  font-size:34px;
-  opacity:.55;
-  filter:drop-shadow(0 8px 14px rgba(0,0,0,.25));
-  animation:gateway-island-float 9s ease-in-out infinite;
-}
-.island-1{ bottom:32%; left:12%; animation-delay:0s; }
-.island-2{ bottom:44%; right:14%; font-size:26px; opacity:.4; animation-delay:-4s; }
-/* "Very distant floating islands" — a third, much smaller and fainter
-   island reads as genuinely far away rather than just a smaller copy of
-   the other two, giving the Sky real depth. */
-.island-3{ bottom:38%; left:46%; font-size:15px; opacity:.22; animation-delay:-7s; animation-duration:13s; filter:blur(.4px) drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
-@keyframes gateway-island-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-14px); } }
-
-.gateway-scene-bird{
-  position:absolute;
-  top:22%;
-  font-size:20px;
-  opacity:.75;
-  animation:gateway-bird-fly 26s linear infinite;
-}
-.bird-1{ animation-delay:0s; }
-.bird-2{ top:32%; font-size:15px; animation-delay:-11s; animation-duration:34s; }
-.bird-3{ top:15%; font-size:11px; opacity:.5; animation-delay:-19s; animation-duration:42s; }
-@keyframes gateway-bird-fly{
-  from{ transform:translate(-10vw,0); }
-  to{ transform:translate(110vw,-60px); }
-}
-
-.gateway-scene-particle{
-  position:absolute;
-  bottom:10%;
-  color:var(--gw-gold);
-  font-size:14px;
-  opacity:0;
-  animation:gateway-particle-drift 8s ease-in infinite;
-}
-.gateway-scene-particle.p1{ left:12%; animation-delay:0s; }
-.gateway-scene-particle.p2{ left:26%; animation-delay:-2.4s; font-size:10px; }
-.gateway-scene-particle.p3{ left:44%; animation-delay:-4.8s; }
-.gateway-scene-particle.p4{ left:62%; animation-delay:-1.2s; font-size:11px; }
-.gateway-scene-particle.p5{ left:78%; animation-delay:-6s; }
-.gateway-scene-particle.p6{ left:90%; animation-delay:-3.6s; font-size:9px; }
-@keyframes gateway-particle-drift{
-  0%{ transform:translateY(0) scale(.8); opacity:0; }
-  12%{ opacity:.85; }
-  88%{ opacity:.4; }
-  100%{ transform:translateY(-64vh) scale(1.15); opacity:0; }
-}
+/* "Remove the environment elements" — the old illustrative ambient-sky
+   decoration layer (clouds/islands/birds/particles/rays/haze/sun/wind-
+   streaks, formerly here as .gateway-scene) is gone entirely: once the
+   Gate became a real, full-bleed video, these CSS decorations only ever
+   clashed with it — bleeding through during the Gate's own opacity
+   fade-in, or simply reading as mismatched clutter layered against real
+   footage. .gateway-overlay's own background gradient (above) is the
+   only remaining pre-video atmosphere, invisible the instant the Gate
+   video paints. */
 
 .gateway-panel{
   position:relative;
@@ -8276,12 +8138,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* Principle 5 — anticipation. Between Arrival and the magic beginning,
    a real, silent Pause: no new class here at all is deliberate — see
    .gateway-overlay.gateway-hush below, which only ever quiets what is
-   already playing (wind/particles/rays), never adds anything new. */
-.gateway-overlay.gateway-hush .gateway-scene-particle,
-.gateway-overlay.gateway-hush .gateway-scene-rays{
-  transition:opacity 1.2s ease-in-out;
-  opacity:.55;
-}
+   already playing (the Gate's own halo glow), never adds anything new. */
 .gateway-overlay.gateway-hush .gateway-gate-halo{
   transition:opacity 1.2s ease-in-out;
   opacity:.4;
@@ -8325,48 +8182,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    playGateOpen() simply waits on the video's own 'ended' event instead of
    a separate CSS door-animation timer. No CSS is needed for this beat. */
 
-/* Principle 2's parallax "the world moves" — two depth bands stream
-   past during the Journey (near: big, fast, brighter; far: small,
-   slow, faint) on top of the ambient Sky's own decorations (also sped
-   up while this plays, see .gateway-journey-active below). Camera
-   motion is implied entirely by things passing beside it — the Gate
-   itself never sells the travel alone. */
-.gateway-journey-extras{ position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
-.gateway-journey-near{
-  position:absolute;
-  top:calc(30% + (var(--i) * 22%));
-  left:-16%;
-  font-size:52px;
-  opacity:0;
-  filter:blur(.3px) drop-shadow(0 10px 16px rgba(0,0,0,.25));
-  animation:gateway-journey-pass-near 3.4s cubic-bezier(.3,0,.6,1) forwards;
-  animation-delay:calc(var(--i) * 1.5s + .2s);
-}
-@keyframes gateway-journey-pass-near{
-  0%{ transform:translateX(0) scale(.85); opacity:0; }
-  12%{ opacity:.85; }
-  85%{ opacity:.6; }
-  100%{ transform:translateX(140vw) scale(1.1); opacity:0; }
-}
-.gateway-journey-far{
-  position:absolute;
-  top:calc(14% + (var(--i) * 12%));
-  left:-10%;
-  font-size:17px;
-  opacity:0;
-  filter:blur(.6px);
-  animation:gateway-journey-pass-far 8.8s linear forwards;
-  animation-delay:calc(var(--i) * 2.2s);
-}
-@keyframes gateway-journey-pass-far{
-  0%{ transform:translateX(0); opacity:0; }
-  10%{ opacity:.3; }
-  90%{ opacity:.22; }
-  100%{ transform:translateX(122vw); opacity:0; }
-}
-.gateway-overlay.gateway-journey-active .gateway-scene-bird{ animation-duration:6s; }
-.gateway-overlay.gateway-journey-active .gateway-scene-cloud{ animation-duration:7.5s; }
-.gateway-overlay.gateway-journey-active .gateway-scene-particle{ animation-duration:2.6s; }
+/* Principle 2 — "the Traveller moves, the Gate does not." The old
+   streaming-cloud/mountain/bird parallax bands that used to cross the
+   Journey are gone along with the rest of the ambient environment layer
+   (see the note beside .gateway-panel above) — a real full-bleed video
+   Gate already reads as travel on its own via its own Journey zoom
+   (.gateway-gates-wrap.gateway-gates-journey), and emoji streaking over
+   real footage only ever clashed with it. */
 
 /* Scene 6's finale — "camera slowly moves forward... soft bloom" before
    crossing the threshold. A genuine forward dolly (the whole overlay,
@@ -8418,12 +8240,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 @keyframes gateway-hint-pulse{ 0%,100%{ opacity:.32; } 50%{ opacity:.82; } }
 
 @media (prefers-reduced-motion:reduce){
-  .gateway-scene-cloud,
-  .gateway-scene-island,
-  .gateway-scene-bird,
-  .gateway-scene-particle,
-  .gateway-scene-rays,
-  .gateway-wind-streak,
   .gateway-lumo-portrait.gateway-lumo-flying,
   .gateway-lumo-portrait.gateway-lumo-settled,
   .gateway-lumo-shadow,
@@ -8436,8 +8252,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-gate-halo,
   .gateway-gate-gather-particle,
   .gateway-magic-spark,
-  .gateway-journey-near,
-  .gateway-journey-far,
   .gateway-overlay.gateway-threshold-dolly,
   .gateway-threshold-flash.gateway-threshold-flash-in{ animation:none; }
   .gateway-lumo-portrait.gateway-lumo-flying{ opacity:1; transform:none; }
@@ -8456,8 +8270,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-overlay.gateway-threshold-dolly{ transform:none; filter:none; }
   .gateway-threshold-flash.gateway-threshold-flash-in{ opacity:1; transform:scale(1.6); }
   .gateway-lumo-stage.gateway-lumo-magic .gateway-lumo-wing{ opacity:.78; transform:rotate(-26deg) scale(1); }
-  .gateway-overlay.gateway-hush .gateway-scene-particle,
-  .gateway-overlay.gateway-hush .gateway-scene-rays,
   .gateway-overlay.gateway-hush .gateway-gate-halo{ transition:none; }
 }
 @media (max-width:560px){
