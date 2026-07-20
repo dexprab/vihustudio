@@ -1,8 +1,11 @@
 // js/gatewaySequence.js — The Traveller Gateway (VihuPlanet Canon Milestone
 // 1, reworked under "Canon Update Sprint — Traveller Gateway Rework V1.1",
-// then given a full cinematic polish pass under "Cinematic Polish Sprint —
-// Traveller Gateway V1"). Two ideas that were previously conflated are kept
-// explicitly separate:
+// given a full cinematic polish pass under "Cinematic Polish Sprint —
+// Traveller Gateway V1", then a real hand-supplied Gate video replaced the
+// CSS-drawn arch outright, and finally "Lumo Guards the Gate" restaged
+// Scenes 2-6 around that real video — see the header comments further
+// down and in css/style.css for the full account of each change). Two
+// ideas that were previously conflated are kept explicitly separate:
 //
 //   Traveller Journey  — WHO is arriving (a Returning Creator or a
 //                         first-time Traveller). A branching DECISION,
@@ -19,7 +22,20 @@
 //
 // Six scenes, always in this order:
 //   1. The Sky            — arrival, anticipation. Identical for everyone.
-//   2. Lumo's Arrival     — a real flight-and-landing. Identical for
+//   2. Lumo's Arrival     — a real flight-and-landing, but landing beside
+//                            the Gate rather than in empty sky: "let the
+//                            gate be there [from the start]... show lumo
+//                            guarding the gate and our egg also there
+//                            somewhere, not in limelight but there" —
+//                            direct feedback once the CSS-drawn Gate was
+//                            replaced by a real video (see below). The
+//                            Gate (its real footage, paused on its own
+//                            first frame) and the Story Egg (small, dim,
+//                            tucked at the Gate's base) both mount here
+//                            too, right alongside Lumo — the Gate is no
+//                            longer hidden and later "revealed," it is
+//                            simply the stage everything else happens in
+//                            front of, from this point on. Identical for
 //                            everyone.
 //   3. Identity           — THE BRANCH, and where it ends. A Returning
 //                            Creator is recognized ("Welcome home... show
@@ -30,26 +46,34 @@
 //                            of Creator verification or Magic Cards.
 //                            Neither branch transitions into Studio or
 //                            into the standalone Identity Gate here —
-//                            both simply continue into Scene 4.
-//   4. The Gates Appear   — a slow REVEAL, never a pop/fade: wind rises,
-//                            a golden light glows behind the still-hidden
-//                            Gate, curtain clouds part onto a dark
-//                            silhouette, then the silhouette brightens
-//                            into real stone with texture, and particles
-//                            gather onto it.
-//   5. Journey Through the Sky — a real cinematic transition (~7-8s): the
-//                            TRAVELLER moves, not the Gate — parallax
-//                            near/far layers stream past while Lumo leads
-//                            with a real "fly a leg, glance back, wait,
-//                            continue" sequence; the Gate itself grows
-//                            only modestly here.
+//                            both simply continue into Scene 4. Lumo and
+//                            the Gate/Egg simply stand there, alive
+//                            (breathing/glowing) but doing nothing new.
+//   4-5. Approach / Journey Through the Sky — a real cinematic transition
+//                            (~7-8s): the TRAVELLER moves, not the Gate —
+//                            parallax near/far layers stream past (the
+//                            same technique as before) while the Gate
+//                            itself grows only modestly, still bottom-
+//                            anchored beside Lumo, who stays fixed at its
+//                            watch post the whole time — Lumo no longer
+//                            flies ahead leading a multi-leg journey
+//                            (superseded design); it is a stationary
+//                            guardian the Traveller approaches.
 //   6. The Gates Open     — Arrival (one deliberate, large Gate growth —
-//                            "the doors dominate the screen"), a real
-//                            silent Pause (anticipation, nothing new
-//                            happens), then Lumo raises one wing and
-//                            magic begins, the runes ignite one at a
-//                            time, the stone doors slowly unlock, warm
-//                            golden light floods through, a genuine
+//                            "the doors dominate the screen," Lumo stays
+//                            visibly in front of it via a real elevated
+//                            z-index), a real silent Pause (anticipation,
+//                            nothing new happens), then Lumo raises one
+//                            wing and the Story Egg stirs/brightens at
+//                            the Gate's base — "if Lumo allows the
+//                            Traveller, it carries the Egg along with it
+//                            inside the Gate," realized as the Egg
+//                            visibly waking right as the real Gate
+//                            footage (see assets/video/gateway/README.md)
+//                            starts playing, its own already-filmed
+//                            opening motion carrying both "the runes
+//                            ignite" and "the doors slowly unlock, warm
+//                            light floods through" — then a genuine
 //                            forward camera dolly + bloom, and only then
 //                            the final threshold flash. onComplete() only
 //                            fires after that flash — the Hall of
@@ -58,12 +82,17 @@
 //                            moment, for anyone, regardless of path.
 //
 // Lumo's canon, frozen: welcomes Travellers, recognizes Returning
-// Creators, verifies Creator Signatures, summons the Gates, opens the
-// Gates — and never enters the Hall, never becomes anyone's companion.
+// Creators, verifies Creator Signatures, guards the Gate, opens the
+// Gate — and never enters the Hall, never becomes anyone's companion.
 // "The Hall belongs to the Creator. The Gateway belongs to Lumo." Story
-// Egg and any bonded Story Companion only ever mount inside the Hall
-// (js/companionDirector.js's own init(), called from Studio's boot
-// sequence AFTER this whole file's onComplete() fires) — never here.
+// Egg and any bonded Story Companion only ever MOUNT AS THE HALL'S OWN
+// ambient companion inside the Hall (js/companionDirector.js's own
+// init(), called from Studio's boot sequence AFTER this whole file's
+// onComplete() fires) — the Story Egg visible here, at the Gate's base,
+// is a purely cinematic presence within the Gateway itself, a separate
+// DOM element torn down with everything else the moment onComplete()
+// fires; it does not persist into the Hall as the same element, only as
+// the same character.
 //
 // Plays automatically, every launch, at the very front of boot — see
 // js/app.js's bootstrapSession IIFE, which calls GatewaySequence.begin
@@ -79,17 +108,17 @@
 // torn down, no timers reset — for the one interlude that challenge needs.
 //
 // Every one of Lumo's behaviours (flight/landing/breathing/blink/cursor-
-// tilt/leading/turning/wing-raise/idle wing-flutter/tail sway) is a
-// deliberate CSS-transform illusion on ONE flat companion image — no
-// independently-animatable wing/tail/eye art layers exist or are
-// fabricated here (see css/style.css's own matching comments). "Restrained
-// animation... avoid exaggerated cartoon animation... Lumo should feel
-// noble" (Cinematic Polish Sprint) governs every new keyframe added this
-// pass — small amplitudes, generous holds, no bouncing.
+// tilt/wing-raise/idle wing-flutter/tail sway) is a deliberate CSS-
+// transform illusion on ONE flat companion image — no independently-
+// animatable wing/tail/eye art layers exist or are fabricated here (see
+// css/style.css's own matching comments). "Restrained animation... avoid
+// exaggerated cartoon animation... Lumo should feel noble" (Cinematic
+// Polish Sprint) governs every keyframe here — small amplitudes, generous
+// holds, no bouncing.
 //
-// A disclosed, deliberate scope decision on Audio: the sprint's own brief
-// asks for "subtle layers — wind, birds, magic, deep stone resonance" on
-// top of the existing ambience. No real audio matching any of those exists
+// A disclosed, deliberate scope decision on Audio: earlier feedback asked
+// for "subtle layers — wind, birds, magic, deep stone resonance" on top of
+// the existing ambience. No real audio matching any of those exists
 // anywhere in this sandbox (only two unrelated click/transition sounds,
 // see js/gatewayAudio.js's own README), and — more fundamentally —
 // js/gatewayAudio.js's whole existing discipline (mirroring
@@ -100,10 +129,23 @@
 // policy — a real architecture decision, not a polish-sprint call to make
 // unilaterally. Left as a disclosed, unchanged gap rather than either
 // fabricating a mismatched sound or quietly breaking the no-autoplay rule.
+//
+// The Gate itself, in Scene 6, is a real video (see
+// assets/video/gateway/README.md) — direct feedback on the original
+// CSS-only version of the Gate ("nope, its so bad") led to a real,
+// hand-supplied clip replacing it outright, muted (it carries no audio
+// track at all) and started via video.play() only once the Gateway
+// actually reaches the Awaken beat — never autoplaying ambient sound,
+// so the no-autoplay-audio policy above is completely unaffected. A
+// further round of feedback ("why dont we make this starting point of
+// the traveller animation") is what moved the Gate's own mounting from
+// deep inside Scene 6 up to Scene 2 — see mountGates()/mountLumo() below.
 (function(){
   'use strict';
 
   const ASSETS_BASE='assets/';
+  const GATE_VIDEO_SRC=ASSETS_BASE+'video/gateway/gate-sequence.mp4';
+  const GATE_POSTER_SRC=ASSETS_BASE+'video/gateway/gate-poster.jpg';
 
   // Scenes 1-3 timing is UNCHANGED this sprint — "The Sky works. Lumo
   // works. The greeting works... This sprint is about fixing [the
@@ -128,25 +170,23 @@
   const RETURNING_LINE_MS=2200;
   const RETURNING_LINE_GAP_MS=650;
 
-  // Scene 4 — The Gates Appear. Four real, sequenced beats (Principle 1):
-  // wind rises, a golden light glows behind the still-hidden Gate, the
-  // curtains part onto a dark silhouette, the silhouette brightens into
-  // real stone with gathering particles.
+  // Scene 4 — Approach lead-in. A single quiet "wind rises" beat before
+  // the world starts streaming past — the Gate itself is already visible
+  // (mounted back in Scene 2), so there is no separate reveal to stage.
   const WIND_RISE_MS=1500;
-  const GLOW_RISE_MS=1300;
-  const SILHOUETTE_MS=1900;
-  const DETAIL_MS=1700;
 
   // Scene 5 — Journey Through the Sky. Within the epic's own "~5-8s"
-  // window; the world moves, not the Gate (Principle 2).
+  // window; the world moves, not the Gate (Principle 2). Its own real
+  // duration also drives the Gate's own modest widening — see
+  // .gateway-gates-wrap.gateway-gates-journey in css/style.css.
   const JOURNEY_MS=7400;
 
   // Scene 6 — The Gates Open, staged as its own five beats.
   const ARRIVE_MS=2400;        // the one deliberate, large Gate growth.
   const PAUSE_MS=2200;         // Principle 5 — do nothing. Real silence.
   const WING_RAISE_LEAD_MS=250;
-  const AWAKEN_MS=2100;        // runes ignite, magic sparks travel.
-  const OPEN_MS=3800;          // doors slowly unlock, light floods.
+  const AWAKEN_MS=900;         // wing raise + magic sparks + Egg stirring read before the real footage's own opening motion (playGateOpen, below) takes over.
+  const OPEN_FALLBACK_MS=7000; // safety only — the real wait is the video's own 'ended' event; this timer only fires if metadata/ended never arrives.
   const DOLLY_MS=2100;         // forward camera dolly + bloom.
   const THRESHOLD_MS=1150;     // the final light-flood / pass-through flash.
 
@@ -180,6 +220,33 @@
         if(!pkg) return null;
         const heroFile=(pkg.states&&(pkg.states.hero||pkg.states.idle))||'idle.png';
         return {name:entry.name||'Lumo',src:basePath+heroFile};
+      });
+    }).catch(function(){ return null; });
+  }
+
+  // Resolves the Story Egg's own idle portrait purely from the
+  // registry's role:'traveller' entry (the Companion Canon V2 role name
+  // — a first-time visitor to VihuPlanet has no companion yet, only the
+  // Story Egg, per docs/COMPANION_CANON.md) — the same generic, id-free
+  // pattern as resolveLumo above. Prefers 'idle' (a resting, dim look
+  // fits "not in limelight" better than the Egg's own 'hero' pose, if it
+  // ever differs) and falls back to 'hero' only if 'idle' isn't
+  // declared. Gracefully resolves null (no Egg mounted at all) if the
+  // registry is unreachable, the entry is missing, or its companion.json
+  // can't be fetched — the Gate/Lumo experience is never blocked on
+  // this.
+  function resolveEgg(){
+    if(typeof window.CompanionEngine==='undefined' || !window.CompanionEngine.loadRegistry){
+      return Promise.resolve(null);
+    }
+    return window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(list){
+      const entry=(list||[]).find(function(e){ return e.role==='traveller'; });
+      if(!entry) return null;
+      const basePath=ASSETS_BASE+entry.path;
+      return fetchJSON(basePath+'companion.json').then(function(pkg){
+        if(!pkg) return null;
+        const idleFile=(pkg.states&&(pkg.states.idle||pkg.states.hero))||'idle.png';
+        return {name:entry.name||'Story Egg',src:basePath+idleFile};
       });
     }).catch(function(){ return null; });
   }
@@ -245,13 +312,21 @@
     // restrained throughout) — the same standing-in-for-"eye tracking"
     // technique companionEngine.js's own corner widget already
     // established, reapplied here at the Gateway's own larger scale.
-    // Every later scene (Journey, Arrival, Magic) toggles classes on the
-    // returned `stage` element so the shadow/portrait/wing/tail all move
-    // together as one figure. Returns a cleanup function removing the
-    // one document-level listener this adds; the DOM node itself is torn
-    // down wholesale by done()'s own content.innerHTML='' on completion.
+    // .gateway-lumo-guard is added SYNCHRONOUSLY, before the flight-in
+    // keyframe even plays — the whole stage (shadow+portrait+wing+tail)
+    // is offset to its watch post beside the Gate from the very first
+    // frame, so Lumo's own relative flight-in animation (on the <img>,
+    // unchanged) composes with that offset and Lumo visibly flies in
+    // from further off-screen and lands exactly at its guard position —
+    // "Lumo Guards the Gate" (see the header comment above and
+    // css/style.css's own matching section). Lumo then simply stays
+    // there for the rest of the sequence; only .gateway-lumo-magic
+    // (Scene 6's wing-raise) is ever toggled again. Returns a cleanup
+    // function removing the one document-level listener this adds; the
+    // DOM node itself is torn down wholesale by done()'s own
+    // content.innerHTML='' on completion.
     function mountLumo(lumo,reduced){
-      const stage=el('div','gateway-lumo-stage');
+      const stage=el('div','gateway-lumo-stage gateway-lumo-guard');
       const shadow=el('div','gateway-lumo-shadow');
       const img=el('img','gateway-lumo-portrait gateway-lumo-flying');
       img.src=lumo.src;
@@ -310,89 +385,89 @@
       nextLine();
     }
 
-    // Scene 4 — mounts the Gate (initially small, distant, fully hidden:
-    // no opacity, no colour, no light) plus two "curtain" cloud shapes
-    // obscuring it, and the small set of elements every later beat needs
-    // — a halo (Stage A's rising light), a stonework texture overlay
-    // (Stage C's detail), and five gathering particles (Stage C).
-    // Returns the element refs every later phase animates.
-    function mountGates(){
+    // Preloads the real Gate video as early as possible — called from the
+    // very start of begin(), long before Scene 2 needs it, so its ~4.5MB
+    // has as much runtime as possible to buffer. Kept off-screen (not
+    // merely off-DOM — some browsers pause loading a detached element) via
+    // .gateway-preload-hidden until mountGates() moves this SAME element
+    // (never a fresh one) into the visible frame, preserving whatever it
+    // already downloaded. Muted + no audio track at all, so this never
+    // touches the no-autoplay-audio policy above.
+    function preloadGateVideo(){
+      try{
+        const video=el('video','gateway-preload-hidden');
+        video.muted=true;
+        video.playsInline=true;
+        video.preload='auto';
+        video.poster=GATE_POSTER_SRC;
+        video.src=GATE_VIDEO_SRC;
+        video.setAttribute('aria-hidden','true');
+        return video;
+      }catch(e){ return null; }
+    }
+
+    // Scene 2 — mounts the Gate (its real footage, paused on its own
+    // first frame, at a modest resting size — see .gateway-gates-wrap in
+    // css/style.css) and, tucked at its base, the Story Egg (small, dim,
+    // "not in limelight but there") — both right alongside Lumo, so the
+    // Gate reads as a persistent stage rather than something hidden and
+    // later revealed. `video` is the SAME element preloadGateVideo
+    // mounted earlier, simply moved into the visible frame here, never
+    // recreated, so none of its buffered download is lost; `egg` is
+    // resolveEgg()'s own resolved {name,src} or null (gracefully
+    // degrades to no Egg element at all). Returns the element refs
+    // every later phase animates.
+    function mountGates(video,egg){
       const wrap=el('div','gateway-gates-wrap');
       const gate=el('div','gateway-gates');
       gate.appendChild(el('div','gateway-gate-halo'));
-      gate.appendChild(el('div','gateway-gate-glow'));
-      const arch=el('div','gateway-gate-arch');
-      arch.appendChild(el('div','gateway-gate-stonework'));
-      gate.appendChild(arch);
-      gate.appendChild(el('div','gateway-gate-leaf gateway-gate-leaf-left'));
-      gate.appendChild(el('div','gateway-gate-leaf gateway-gate-leaf-right'));
-      const r1=el('span','gateway-gate-rune gateway-gate-rune-1'); r1.textContent='✦';
-      const r2=el('span','gateway-gate-rune gateway-gate-rune-2'); r2.textContent='✧';
-      const r3=el('span','gateway-gate-rune gateway-gate-rune-3'); r3.textContent='✦';
-      gate.appendChild(r1); gate.appendChild(r2); gate.appendChild(r3);
+      const frame=el('div','gateway-gate-video-frame');
+      if(video){
+        video.classList.remove('gateway-preload-hidden');
+        video.classList.add('gateway-gate-video');
+        frame.appendChild(video);
+      }
+      gate.appendChild(frame);
       ['gp1','gp2','gp3','gp4','gp5'].forEach(function(cls){
         gate.appendChild(el('span','gateway-gate-gather-particle '+cls));
       });
+      let eggEl=null;
+      if(egg){
+        eggEl=el('div','gateway-egg-wrap');
+        const eggImg=el('img','gateway-egg-portrait');
+        eggImg.src=egg.src;
+        eggImg.alt=egg.name;
+        eggEl.appendChild(eggImg);
+        gate.appendChild(eggEl);
+      }
       wrap.appendChild(gate);
-      const curtainL=el('div','gateway-curtain-cloud gateway-curtain-left');
-      const curtainR=el('div','gateway-curtain-cloud gateway-curtain-right');
       content.appendChild(wrap);
-      content.appendChild(curtainL);
-      content.appendChild(curtainR);
-      return {wrap:wrap,curtainL:curtainL,curtainR:curtainR};
+      requestAnimationFrame(function(){ wrap.classList.add('gateway-gates-visible'); });
+      return {wrap:wrap,video:video||null,egg:eggEl};
     }
 
-    // Principle 1 — the Gate is REVEALED, never popped or faded in one
-    // step. Four real, JS-sequenced beats: wind rises; a golden light
-    // glows behind the still-hidden Gate; the curtains part onto a dark
-    // silhouette ("the child should feel the gate was always there,
-    // hidden beyond the clouds"); the silhouette brightens into real
-    // stone with texture while particles gather onto it.
-    function playGateReveal(gateEls,lumoRef,reduced,onDone){
-      // Lumo rests dead-center after Scene 3 (the greeting), and the
-      // Gate reveals dead-center too — left untouched, the two would
-      // collide right on screen the instant the Gate's silhouette
-      // appears. Lumo steps aside first, so the Gate reveals into open
-      // sky beside him rather than materializing inside him.
-      if(lumoRef&&lumoRef.stage){
-        lumoRef.stage.classList.remove('gateway-lumo-idle');
-        lumoRef.stage.classList.add('gateway-lumo-yield');
-      }
+    // Scene 4 — Approach lead-in. A single quiet "wind rises" beat before
+    // the world starts streaming past (Scene 5) — the Gate itself needs
+    // no reveal of its own, it has been visible since Scene 2.
+    function playApproachLeadIn(reduced,onDone){
       overlay.classList.add('gateway-wind-rising');
       after(reduced?0:WIND_RISE_MS,function(){
-        if(skipRequested) return;
-        gateEls.wrap.classList.add('gateway-gates-glow-rise');
-        after(reduced?0:GLOW_RISE_MS,function(){
-          if(skipRequested) return;
-          gateEls.curtainL.classList.add('gateway-curtain-parted');
-          gateEls.curtainR.classList.add('gateway-curtain-parted');
-          gateEls.wrap.classList.add('gateway-gates-silhouette');
-          after(reduced?0:SILHOUETTE_MS,function(){
-            if(skipRequested) return;
-            gateEls.wrap.classList.add('gateway-gates-detail');
-            after(reduced?0:DETAIL_MS,function(){
-              overlay.classList.remove('gateway-wind-rising');
-              onDone();
-            });
-          });
-        });
+        overlay.classList.remove('gateway-wind-rising');
+        onDone();
       });
     }
 
     // Scene 5 — "Do NOT teleport. Travel." Principle 2: the TRAVELLER
     // moves, the Gate does not — a real parallax world (near: big, fast,
-    // brighter; far: small, slow, faint) streams past while Lumo leads
-    // with its own multi-leg "fly, glance back, wait, continue"
-    // sequence (Principle 3). The Gate itself only grows modestly here
-    // (see .gateway-gates-approach-modest) — the one deliberate large
-    // growth is reserved for Arrival, below.
-    function playJourney(gateEls,lumoRef,reduced,onDone){
+    // brighter; far: small, slow, faint) streams past while the Gate
+    // itself only grows modestly, still bottom-anchored beside Lumo, who
+    // stays fixed at its guard post the whole time (Lumo no longer flies
+    // ahead leading a multi-leg journey — see "Lumo Guards the Gate" in
+    // the header comment above). The one deliberate large growth is
+    // reserved for Arrival, below.
+    function playJourney(gateEls,reduced,onDone){
       overlay.classList.add('gateway-journey-active');
       gateEls.wrap.classList.add('gateway-gates-journey');
-      if(lumoRef&&lumoRef.stage){
-        lumoRef.stage.classList.remove('gateway-lumo-idle','gateway-lumo-yield');
-        lumoRef.stage.classList.add('gateway-lumo-lead');
-      }
       const extras=el('div','gateway-journey-extras');
       ['☁️','🏝️'].forEach(function(g,i){
         const s=el('span','gateway-journey-near');
@@ -413,19 +488,17 @@
     // Scene 6, beat 1 — Arrival. Principle 4: ONE deliberate, large Gate
     // growth so the doors genuinely dominate the screen — "massive,
     // timeless, sacred" — never simulated by scaling continuously
-    // through the Journey. Lumo settles facing the Gate at exactly the
-    // position the Journey's own keyframe ended on, so the hand-off is
-    // invisible. Then, beat 2 — Principle 5's real anticipation Pause:
-    // nothing new happens, only the ambient wind/particles/rays quiet
-    // slightly (.gateway-hush) before the magic begins.
-    function playArrival(gateEls,lumoRef,reduced,onDone){
+    // through the Journey. Lumo stays exactly where it already is (its
+    // .gateway-lumo-guard position never changes) — its elevated z-index
+    // (see css/style.css) keeps it visibly standing in front of the now-
+    // massive doorway rather than being buried underneath it. Then, beat
+    // 2 — Principle 5's real anticipation Pause: nothing new happens,
+    // only the ambient wind/particles/rays quiet slightly (.gateway-hush)
+    // before the magic begins.
+    function playArrival(gateEls,reduced,onDone){
       overlay.classList.remove('gateway-journey-active');
       gateEls.wrap.classList.remove('gateway-gates-journey');
       gateEls.wrap.classList.add('gateway-gates-arrive');
-      if(lumoRef&&lumoRef.stage){
-        lumoRef.stage.classList.remove('gateway-lumo-lead');
-        lumoRef.stage.classList.add('gateway-lumo-arrived');
-      }
       after(reduced?150:ARRIVE_MS,function(){
         if(skipRequested) return;
         overlay.classList.add('gateway-hush');
@@ -438,8 +511,10 @@
 
     // Scene 6, beat 3 — "Only then... Lumo raises one wing. Magic
     // begins." A small burst of gold sparks travels from Lumo's raised
-    // wing toward the Gate; the runes ignite one at a time rather than
-    // all at once ("ancient mechanisms awaken... locks awaken").
+    // wing toward the Gate, the runes ignite one at a time rather than
+    // all at once ("ancient mechanisms awaken... locks awaken"), and the
+    // Story Egg at the Gate's base stirs and brightens — "if Lumo allows
+    // the Traveller, it carries the Egg along with it inside the Gate."
     function spawnMagicSparks(){
       const wrap=el('div','gateway-magic-sparks');
       for(let i=0;i<5;i++){
@@ -455,25 +530,54 @@
         if(skipRequested) return;
         spawnMagicSparks();
         gateEls.wrap.classList.add('gateway-gates-awaken');
+        if(gateEls.egg) gateEls.egg.classList.add('gateway-egg-awaken');
+        // The real footage's own opening motion IS the "doors open" beat
+        // (see playGateOpen, below) — never played under reduced motion,
+        // matching every other new animation this sprint added.
+        if(gateEls.video&&!reduced){
+          try{
+            const p=gateEls.video.play();
+            if(p&&p.catch) p.catch(function(){});
+          }catch(e){}
+        }
         after(reduced?150:AWAKEN_MS,onDone);
       });
     }
 
-    // Scene 6, beat 4 — Principle 6: the stone doors slowly unlock and
-    // swing outward; warm golden light pours through the widening gap.
-    // Never rushed — OPEN_MS is deliberately the single longest beat in
-    // the whole finale.
+    // Scene 6, beat 4 — Principle 6: the stone doors slowly unlocking and
+    // swinging outward, warm light pouring through the widening gap, is
+    // the real Gate footage's own already-filmed motion (started in
+    // playGateAwaken, above) — this beat simply waits for it to finish,
+    // via the video's genuine 'ended' event, rather than a fixed CSS
+    // animation timer. A duration-based fallback guarantees Studio's own
+    // boot never hangs behind this even if metadata/ended never arrives
+    // (a network hiccup, a future browser without support for this file).
     function playGateOpen(gateEls,reduced,onDone){
-      gateEls.wrap.classList.add('gateway-gates-open');
-      after(reduced?200:OPEN_MS,onDone);
+      const video=gateEls.video;
+      if(reduced||!video){
+        after(200,onDone);
+        return;
+      }
+      let settled=false;
+      function finish(){
+        if(settled) return;
+        settled=true;
+        video.removeEventListener('ended',finish);
+        onDone();
+      }
+      video.addEventListener('ended',finish);
+      const fallbackMs=(isFinite(video.duration)&&video.duration>0)
+        ? Math.ceil(video.duration*1000)+800
+        : OPEN_FALLBACK_MS;
+      after(fallbackMs,finish);
     }
 
     // Scene 6, beat 5 — crossing the threshold. A genuine forward camera
-    // dolly (the whole overlay — sky and Gate together — scales up and
-    // brightens, "soft bloom") plays BEFORE the final flash, rather than
-    // jumping straight from open doors to a flood. Principle 7: the
-    // flash holds at full opacity before the cut, so the Hall is never
-    // glimpsed mid-transition.
+    // dolly (the whole overlay — sky, Gate, Lumo, and the Egg together —
+    // scales up and brightens, "soft bloom") plays BEFORE the final
+    // flash, rather than jumping straight from open doors to a flood.
+    // Principle 7: the flash holds at full opacity before the cut, so
+    // the Hall is never glimpsed mid-transition.
     function playThreshold(reduced,onDone){
       overlay.classList.add('gateway-threshold-dolly');
       after(reduced?150:DOLLY_MS,function(){
@@ -506,10 +610,13 @@
 
       let cleanupLumo=null;
       let lumoRef=null;
+      let gateVideoEl=null;
+      let gateEls=null;
       const done=function(){
         clearTimers();
         unwireSkip();
         try{ if(cleanupLumo) cleanupLumo(); }catch(e){}
+        try{ if(gateVideoEl) gateVideoEl.pause(); }catch(e){}
         overlay.classList.add('hidden');
         overlay.classList.remove('gateway-journey-active','gateway-mode-hidden-for-signature','gateway-wind-rising','gateway-hush','gateway-threshold-dolly');
         content.innerHTML='';
@@ -521,6 +628,11 @@
       content.innerHTML='';
       skipRequested=false;
       wireSkip(done);
+
+      // Kicked off immediately, well before Scene 2 needs it — see
+      // preloadGateVideo's own comment for why this matters.
+      gateVideoEl=preloadGateVideo();
+      if(gateVideoEl) content.appendChild(gateVideoEl);
 
       const reduced=prefersReducedMotion();
       after(reduced?800:TAP_HINT_DELAY_MS,showTapHint);
@@ -542,15 +654,17 @@
 
       // Scenes 4-6 — the transition this sprint exists to fix. Each
       // beat is its own small function above, chained here in the
-      // frozen order the seven principles describe.
+      // frozen order the seven principles describe. gateEls is
+      // guaranteed to exist by the time this runs — mounted back in
+      // Scene 2, alongside Lumo, regardless of whether Lumo itself
+      // resolved (see the SCENE1_MS callback below).
       function runGatesSequence(){
         if(skipRequested) return;
-        const gateEls=mountGates();
-        playGateReveal(gateEls,lumoRef,reduced,function(){
+        playApproachLeadIn(reduced,function(){
           if(skipRequested) return;
-          playJourney(gateEls,lumoRef,reduced,function(){
+          playJourney(gateEls,reduced,function(){
             if(skipRequested) return;
-            playArrival(gateEls,lumoRef,reduced,function(){
+            playArrival(gateEls,reduced,function(){
               if(skipRequested) return;
               playGateAwaken(gateEls,lumoRef,reduced,function(){
                 if(skipRequested) return;
@@ -610,18 +724,26 @@
 
       after(reduced?0:SCENE1_MS,function(){
         if(skipRequested) return;
-        resolveLumo().then(function(lumo){
+        Promise.all([resolveLumo(),resolveEgg()]).then(function(results){
           if(skipRequested) return;
-          if(!lumo){
-            runScene3();
-            return;
+          const lumo=results[0], egg=results[1];
+          // The Gate mounts here regardless of whether Lumo resolved —
+          // it is the actual portal Scene 6 depends on, not decoration
+          // that should disappear if the Guardian's own art is
+          // unreachable. Lumo (if resolved) mounts right alongside it.
+          gateEls=mountGates(gateVideoEl,egg);
+          if(lumo){
+            lumoRef=mountLumo(lumo,reduced);
+            cleanupLumo=lumoRef.cleanup;
           }
-          lumoRef=mountLumo(lumo,reduced);
-          cleanupLumo=lumoRef.cleanup;
           after(reduced?0:LUMO_TO_GREETING_MS,function(){
             if(!skipRequested) runScene3();
           });
-        }).catch(function(){ if(!skipRequested) runScene3(); });
+        }).catch(function(){
+          if(skipRequested) return;
+          if(!gateEls) gateEls=mountGates(gateVideoEl,null);
+          runScene3();
+        });
       });
     }
 
