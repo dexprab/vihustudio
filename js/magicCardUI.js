@@ -37,6 +37,20 @@ const MagicCardUI=(function(){
     if(overlay) return;
     overlay=document.getElementById('magicCardOverlay');
     content=document.getElementById('magicCardContent');
+    // A purely decorative, ambient starfield behind every screen this
+    // overlay shows (Welcome/Picker/Challenge/Home/Awakening alike) —
+    // "make the entire page feel like a night sky." Inserted once,
+    // first in DOM order (so #magicCardContent, added later, naturally
+    // paints above it with no z-index needed), a real background-image
+    // layer rather than per-star DOM nodes so it can never re-trigger
+    // the transform-driven scrollable-overflow bug this file's own
+    // tap-grid glow already had to work around once.
+    if(!overlay.querySelector('.magic-card-starfield')){
+      const sf=document.createElement('div');
+      sf.className='magic-card-starfield';
+      sf.setAttribute('aria-hidden','true');
+      overlay.insertBefore(sf,overlay.firstChild);
+    }
   }
   function _clear(){ content.innerHTML=''; }
   function _show(){ overlay.classList.remove('hidden'); }
@@ -385,6 +399,7 @@ const MagicCardUI=(function(){
 
   function _renderGateWelcome(panel,cards,proceed,toPicker){
     panel.innerHTML='';
+    panel.classList.remove('magic-card-gate-panel--challenge');
     const card=cards[0];
     // Never the constellation, real or decorative — see
     // _buildGateIdentityGlyph's own comment above.
@@ -425,6 +440,7 @@ const MagicCardUI=(function(){
 
   function _renderGatePicker(panel,cards,proceed,toWelcome){
     panel.innerHTML='';
+    panel.classList.remove('magic-card-gate-panel--challenge');
     panel.appendChild(_el('div','magic-card-gate-title','Whose adventure is this?'));
 
     const grid=_el('div','magic-card-gate-grid');
@@ -483,6 +499,19 @@ const MagicCardUI=(function(){
   }
 
   const GATE_TAPGRID_SIZE=10;
+  // Each tapped star gets its OWN colour, in tap order, cycling through
+  // this palette — recomputed fresh from the current `selected` array on
+  // every change (never persisted per-cell), so removing a star in the
+  // middle of a sequence correctly re-colours everything after it rather
+  // than leaving a stale gap.
+  const STAR_PALETTE=['#FFCB45','#B388FF','#5CE1E6','#FF6FA5','#5CFFB0','#FF8B5C','#7C9CFF','#FFD166'];
+  function _applyStarColors(board,selected){
+    selected.forEach(function(k,i){
+      const parts=k.split(',');
+      const cell=board.querySelector('[data-row="'+parts[0]+'"][data-col="'+parts[1]+'"]');
+      if(cell) cell.style.setProperty('--star-color',STAR_PALETTE[i%STAR_PALETTE.length]);
+    });
+  }
   function _gateBoardKey(r,c){ return r+','+c; }
   function _gateCenterOfCell(boardEl,r,c){
     const el=boardEl.querySelector('[data-row="'+r+'"][data-col="'+c+'"]');
@@ -541,8 +570,41 @@ const MagicCardUI=(function(){
       line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
       line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
       line.setAttribute('class','magic-card-tapgrid-line');
+      // A segment is tinted by the star it leads INTO, so the whole
+      // constellation reads as a genuine multi-coloured trail rather
+      // than one flat gold line.
+      const color=STAR_PALETTE[(i+1)%STAR_PALETTE.length];
+      line.style.stroke=color;
+      line.style.filter='drop-shadow(0 0 4px '+color+')';
       svg.appendChild(line);
     }
+  }
+
+  // A small companion portrait presiding over the tap challenge itself
+  // — "bring companion as gatekeeper." Lumo (the Guardian, per Companion
+  // Canon V2's own "keeper of Creator Ceremonies" framing) stands watch
+  // uniformly across every verification path (Continue/tile-tap/Recall)
+  // rather than resolving each card's own bonded companion — simpler,
+  // and thematically a Guardian/gatekeeper is a fixed figure at the
+  // gate, not a different face per visitor. Resolved the identical way
+  // every other Lumo portrait in this file already is.
+  function _buildGatekeeperHeader(){
+    const wrap=_el('div','magic-card-gatekeeper');
+    const portrait=_el('div','magic-card-gatekeeper-portrait');
+    portrait.appendChild(_el('span','magic-card-gatekeeper-fallback','🛡️'));
+    wrap.appendChild(portrait);
+    wrap.appendChild(_el('div','magic-card-gatekeeper-name','Lumo, the Gatekeeper'));
+    wrap.appendChild(_el('div','magic-card-gatekeeper-line','Show me your stars, and you may pass.'));
+    if(typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
+      MagicCardArt.resolveCompanionPortrait('lumo').then(function(img){
+        if(!img) return;
+        portrait.innerHTML='';
+        const el=document.createElement('img');
+        el.src=img.src;
+        portrait.appendChild(el);
+      });
+    }
+    return wrap;
   }
 
   // Renders the tap-grid challenge directly into `panel` (replacing
@@ -557,11 +619,31 @@ const MagicCardUI=(function(){
   // screen (Welcome or Picker) opened this challenge.
   function _renderPatternChallenge(panel,opts){
     panel.innerHTML='';
+    // "let the page own the authentication visually" — this specific
+    // screen (the actual proof-of-identity moment) sheds the panel's
+    // own boxed card chrome so it reads as part of the night sky itself
+    // rather than a modal floating on top of it; Welcome/Picker keep
+    // their ordinary boxed look unchanged (see _renderGateWelcome/
+    // _renderGatePicker, which remove this class again on their own
+    // panel.innerHTML='' reset).
+    panel.classList.add('magic-card-gate-panel--challenge');
+    panel.appendChild(_buildGatekeeperHeader());
     panel.appendChild(_el('div','magic-card-gate-title',opts.title||'Prove it\'s you'));
     if(opts.subtitle) panel.appendChild(_el('div','magic-card-tapgrid-subtitle',opts.subtitle));
 
+    // The wrap is the SIZED, overflow:hidden element; the board fills
+    // it at 100%/100%. Its padding exists purely to give a selected
+    // cell's transform:scale()+glow bloom somewhere to bleed into
+    // without ever registering as real scrollable overflow on
+    // .magic-card-gate-panel above it — see css/style.css's own comment
+    // on .magic-card-tapgrid-boardwrap for the full root-cause story
+    // (a genuine Chromium quirk: transformed/glowing descendants count
+    // toward an ancestor's scrollable overflow even though they never
+    // affect layout).
+    const boardWrap=_el('div','magic-card-tapgrid-boardwrap');
     const board=_el('div','magic-card-tapgrid-board');
-    panel.appendChild(board);
+    boardWrap.appendChild(board);
+    panel.appendChild(boardWrap);
     const counter=_el('div','magic-card-tapgrid-counter','0 stars selected');
     panel.appendChild(counter);
     const status=_el('p','magic-card-tapgrid-status');
@@ -579,8 +661,10 @@ const MagicCardUI=(function(){
         selected.splice(idx,1);
         cell.classList.remove('selected');
         cell.textContent='';
+        cell.style.removeProperty('--star-color');
       }
       counter.textContent=selected.length+' star'+(selected.length===1?'':'s')+' selected';
+      _applyStarColors(board,selected);
       _gateRedrawLiveLines(board,svg,selected);
     });
 
@@ -588,6 +672,7 @@ const MagicCardUI=(function(){
       board.querySelectorAll('.magic-card-tapgrid-cell').forEach(function(el){
         el.classList.remove('selected');
         el.textContent='';
+        el.style.removeProperty('--star-color');
       });
       svg.innerHTML='';
       selected=[];

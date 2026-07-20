@@ -6247,6 +6247,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   align-items:safe center;
   justify-content:center;
   overflow-y:auto;
+  /* Explicit (not left to default "visible") -- otherwise the CSS rule
+     that couples the two overflow axes together (an unspecified axis
+     left "visible" is silently forced to "auto" the moment the OTHER
+     axis is anything but "visible") would make this axis scrollable
+     too, real content or not. See .magic-card-tapgrid-boardwrap's own
+     comment for the specific bug this was actually protecting against. */
+  overflow-x:hidden;
   padding:clamp(16px,3vh,48px) 24px;
   background:radial-gradient(ellipse at 28% 18%,#232d5c 0%,#141a38 46%,#080a16 100%);
   --mc-gold:#FFCB45;
@@ -6256,11 +6263,56 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   --mc-line:rgba(255,255,255,0.14);
 }
 .magic-card-overlay.hidden{ display:none; }
+/* "make the entire page feel like a night sky" -- a purely decorative,
+   ambient star layer behind every Magic Card screen, not just the
+   pattern challenge. A tiled multi-layer radial-gradient background
+   image rather than individually placed/animated DOM stars, so it can
+   never contribute to scrollable overflow the way a transformed
+   element can (see .magic-card-tapgrid-cell.selected's own comment) --
+   purely paint, no layout participation at all. */
+.magic-card-starfield{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.8;
+  background-image:
+    radial-gradient(1.6px 1.6px at 8% 15%,#fff,transparent 60%),
+    radial-gradient(1.1px 1.1px at 22% 58%,#fff,transparent 60%),
+    radial-gradient(1.8px 1.8px at 38% 8%,#fff,transparent 60%),
+    radial-gradient(1.1px 1.1px at 52% 38%,#cbd4ff,transparent 60%),
+    radial-gradient(1.4px 1.4px at 68% 74%,#fff,transparent 60%),
+    radial-gradient(1.2px 1.2px at 80% 20%,#ffe9b8,transparent 60%),
+    radial-gradient(1.6px 1.6px at 92% 52%,#fff,transparent 60%),
+    radial-gradient(1.1px 1.1px at 4% 84%,#cbd4ff,transparent 60%),
+    radial-gradient(1.3px 1.3px at 32% 92%,#fff,transparent 60%),
+    radial-gradient(1.5px 1.5px at 62% 12%,#ffe9b8,transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 88%,#fff,transparent 60%),
+    radial-gradient(1.4px 1.4px at 14% 46%,#ffe9b8,transparent 60%);
+  background-repeat:repeat;
+  background-size:360px 360px;
+  animation:magicCardStarTwinkle 7s ease-in-out infinite;
+}
+@keyframes magicCardStarTwinkle{
+  0%,100%{ opacity:.55; }
+  50%{ opacity:.95; }
+}
+@media (prefers-reduced-motion:reduce){
+  .magic-card-starfield{ animation:none; opacity:.75; }
+}
 .magic-card-panel{
+  position:relative;
+  z-index:1;
   width:100%;
   max-width:520px;
   display:flex;
   justify-content:center;
+}
+/* The Identity Gate ("size can still increase" / "let the page own the
+   authentication visually") gets meaningfully more room than Home's own
+   compact card-review layout -- scoped to gate mode only. */
+.magic-card-overlay.magic-card-mode-gate .magic-card-panel{
+  max-width:680px;
 }
 /* Screen 11 (Magic Card Home) is reached mid-edit, from the header
    badge, over an already-open editor — a slightly less "takeover the
@@ -6356,9 +6408,10 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* ---------- Screen 2/9 — Identity Gate ---------- */
 .magic-card-gate-panel{
   width:100%;
-  max-width:420px;
+  max-width:480px;
   max-height:calc(100vh - 64px);
   overflow-y:auto;
+  overflow-x:hidden;
   background:var(--mc-panel);
   border:1px solid var(--mc-line);
   border-radius:24px;
@@ -6370,6 +6423,22 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   gap:clamp(3px,1vh,6px);
   box-shadow:0 24px 64px rgba(0,0,0,0.45);
   backdrop-filter:blur(6px);
+  transition:max-width .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+/* "let the page own the authentication visually" -- the actual
+   proof-of-identity screen sheds the boxed-card chrome (background/
+   border/shadow) so the tap challenge reads as sitting directly on the
+   night sky itself, not a modal floating on top of it. Welcome/Picker
+   keep the ordinary boxed look (this class is only ever added by
+   _renderPatternChallenge and removed again by _renderGateWelcome/
+   _renderGatePicker). Also meaningfully larger, matching "the size can
+   still increase." */
+.magic-card-gate-panel.magic-card-gate-panel--challenge{
+  max-width:640px;
+  background:rgba(10,14,32,0.4);
+  border-color:rgba(255,255,255,0.08);
+  box-shadow:none;
+  backdrop-filter:blur(1px);
 }
 .magic-card-gate-welcome{
   font-size:19px;
@@ -6482,6 +6551,50 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    helpers are module-private in creationFlow.js and cannot be reused
    directly, matching this codebase's established "kept in lockstep by
    hand" precedent for visually-similar-but-structurally-separate UI. */
+/* ---------- The Gatekeeper ("bring companion as gatekeeper") ----------
+   A fixed presence at the gate for every verification path (Continue,
+   tile-tap, Recall alike) -- see js/magicCardUI.js's own comment on
+   _buildGatekeeperHeader for why a fixed Guardian rather than a
+   per-card companion. */
+.magic-card-gatekeeper{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  margin-bottom:clamp(6px,1.6vh,14px);
+}
+.magic-card-gatekeeper-portrait{
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.16),rgba(255,255,255,.04));
+  border:2px solid var(--mc-gold);
+  box-shadow:0 0 16px 4px rgba(255,203,69,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.magic-card-gatekeeper-portrait img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.magic-card-gatekeeper-fallback{ font-size:28px; line-height:1; }
+.magic-card-gatekeeper-name{
+  font:800 12px/1 inherit;
+  color:var(--mc-gold);
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.magic-card-gatekeeper-line{
+  font-size:12px;
+  color:var(--mc-ink-soft);
+  font-style:italic;
+}
+
 .magic-card-tapgrid-subtitle{
   font-size:12.5px;
   color:var(--mc-ink-soft);
@@ -6489,24 +6602,39 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   margin:-4px 0 4px;
   line-height:1.5;
 }
-/* Sized by the SMALLEST of a fixed cap, the available width, and a
-   viewport-height-relative cap (min()) -- not just width:100% with a
-   fixed max-width -- so the board itself shrinks on a short viewport
-   instead of forcing .magic-card-gate-panel's own overflow-y:auto
-   (a real, measured scrollbar below ~600px viewport height) to ever
-   actually trigger. That overflow-y:auto stays as a last-resort safety
-   net only, matching the same "never triggered at any realistic
-   height" discipline Creation Flow's own no-scroll screens already
-   established. */
+/* The WRAP is the sized, overflow:hidden box; the board fills it at
+   100%/100%. Two jobs live here, both load-bearing:
+   1) Sized by the smallest of a fixed cap, the available width, and a
+      viewport-height-relative cap (min()) -- not just width:100% with
+      a fixed max-width -- so it shrinks on a short viewport instead of
+      forcing .magic-card-gate-panel's own overflow-y:auto (a real,
+      measured scrollbar below a certain viewport height) to trigger.
+   2) Its own overflow:hidden + generous padding is what actually
+      contains a selected cell's glow bloom -- a real, measured
+      Chromium quirk: a descendant's transform:scale()/box-shadow paint
+      extends an ancestor's SCROLLABLE overflow even though it never
+      touches layout, so the un-contained glow was quietly forcing this
+      exact ancestor chain to scroll horizontally too (the coupled
+      overflow-x:auto every un-set overflow-x axis gets the moment the
+      other axis isn't "visible"). Padding here gives that bloom
+      somewhere to bleed into that this wrap itself then clips, so
+      nothing above it ever sees an overflow to react to. */
+.magic-card-tapgrid-boardwrap{
+  width:min(460px, 92vw, 48vh);
+  aspect-ratio:1;
+  margin:4px auto 0;
+  padding:26px;
+  overflow:hidden;
+  border-radius:28px;
+}
 .magic-card-tapgrid-board{
   position:relative;
+  width:100%;
+  height:100%;
   display:grid;
   grid-template-columns:18px repeat(10,1fr);
   grid-template-rows:18px repeat(10,1fr);
   gap:2px;
-  width:min(320px, 100%, 30vh);
-  aspect-ratio:1;
-  margin:4px auto 0;
   padding:8px;
   border:2px solid var(--mc-gold);
   border-radius:16px;
@@ -6518,14 +6646,16 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   align-items:center;
   justify-content:center;
   font-family:'SF Mono','Cascadia Code',Consolas,monospace;
-  font-size:8.5px;
+  font-size:9.5px;
   color:var(--mc-ink-soft);
   opacity:.6;
   user-select:none;
 }
 /* Round tap targets, "star field" style — a soft circle at rest, a
-   bright lit-up glowing orb once tapped, rather than a flat coloured
-   square. */
+   bright lit-up glowing orb once tapped, in a colour that's unique to
+   THAT star's own tap order (--star-color, set per-cell by
+   js/magicCardUI.js's _applyStarColors) rather than one flat gold for
+   every star. */
 .magic-card-tapgrid-cell{
   width:100%;
   height:100%;
@@ -6536,7 +6666,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   border-radius:50%;
   background:rgba(255,255,255,.05);
   color:transparent;
-  font-size:11px;
+  font-size:12px;
   line-height:1;
   cursor:pointer;
   display:flex;
@@ -6550,17 +6680,17 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   transform:scale(1.12);
 }
 .magic-card-tapgrid-cell.selected{
-  background:radial-gradient(circle at 35% 30%, #fff8db 0%, var(--mc-gold) 55%, #c9962a 100%);
-  border-color:var(--mc-gold);
+  background:radial-gradient(circle at 35% 30%, #fff8db 0%, var(--star-color,var(--mc-gold)) 55%, color-mix(in srgb, var(--star-color,var(--mc-gold)) 65%, black) 100%);
+  border-color:var(--star-color,var(--mc-gold));
   color:#241a3d;
   text-shadow:none;
-  box-shadow:0 0 9px 2px rgba(255,203,69,.9), 0 0 20px 6px rgba(255,203,69,.5);
+  box-shadow:0 0 9px 2px color-mix(in srgb, var(--star-color,var(--mc-gold)) 85%, transparent), 0 0 20px 6px color-mix(in srgb, var(--star-color,var(--mc-gold)) 45%, transparent);
   transform:scale(1.08);
   animation:magicCardCellLightUp .3s ease-out;
 }
 @keyframes magicCardCellLightUp{
-  0%{ box-shadow:0 0 0 0 rgba(255,203,69,0); transform:scale(0.85); }
-  100%{ box-shadow:0 0 9px 2px rgba(255,203,69,.9), 0 0 20px 6px rgba(255,203,69,.5); transform:scale(1.08); }
+  0%{ box-shadow:0 0 0 0 transparent; transform:scale(0.85); }
+  100%{ box-shadow:0 0 9px 2px color-mix(in srgb, var(--star-color,var(--mc-gold)) 85%, transparent), 0 0 20px 6px color-mix(in srgb, var(--star-color,var(--mc-gold)) 45%, transparent); transform:scale(1.08); }
 }
 @media (prefers-reduced-motion:reduce){
   .magic-card-tapgrid-cell{ transition:background .2s ease, border-color .2s ease, box-shadow .2s ease; }
@@ -6574,8 +6704,11 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   overflow:visible;
 }
 .magic-card-tapgrid-line{
+  /* Default only -- js/magicCardUI.js's _gateRedrawLiveLines sets a
+     real per-segment stroke/drop-shadow colour inline, matching the
+     star each segment leads into. */
   stroke:var(--mc-gold);
-  stroke-width:2;
+  stroke-width:2.4;
   stroke-linecap:round;
   filter:drop-shadow(0 0 4px rgba(255,203,69,.7));
 }
