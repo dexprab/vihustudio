@@ -6532,7 +6532,22 @@
                 canvas.height = h;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                const out = canvas.toDataURL('image/jpeg', 0.85);
+                // Preserve PNG format for PNG sources — JPEG has no alpha
+                // channel, so re-encoding a transparent PNG as JPEG flattens
+                // every transparent pixel to solid canvas-default black
+                // (the reported bug: a transparent forest artwork whose
+                // transparent regions rendered as a solid black cutout in
+                // a Scene). PNG re-encode is lossless and preserves alpha.
+                // If the PNG re-encode happens to produce more bytes than
+                // the original (photographic PNGs sometimes do, since PNG
+                // is lossless), the existing fallback below keeps the
+                // original bytes, preserving both size and alpha. A JPEG
+                // source has no alpha to lose, so JPEG stays the
+                // compression choice for it.
+                const isPNG = /^data:image\/png/i.test(dataURL);
+                const out = isPNG
+                    ? canvas.toDataURL('image/png')
+                    : canvas.toDataURL('image/jpeg', 0.85);
                 onDone(out.length < dataURL.length ? out : dataURL);
             } catch (e) {
                 onDone(dataURL); // canvas export failed — fall back to the original upload
