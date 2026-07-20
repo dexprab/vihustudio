@@ -7712,7 +7712,16 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   inset:0;
   z-index:1600;
   display:flex;
-  align-items:center;
+  /* stretch (not center) — "the gate needs to cover the full screen":
+     .gateway-panel is this flex container's only real child (.gateway-scene
+     is position:absolute and never participates in flex layout at all), so
+     stretching it gives it a genuine, definite 100%-of-viewport height
+     instead of shrinking to its own content's min-height. That, in turn,
+     is what lets .gateway-gates-wrap's own inset:0 below actually reach
+     every edge of the real screen rather than a content-sized box.
+     .gateway-panel's own internal justify-content:center still centers
+     Lumo/the greeting bubble/etc. within that now-full-height box. */
+  align-items:stretch;
   justify-content:center;
   overflow:hidden;
   background:linear-gradient(180deg,#171034 0%,#372a63 30%,#7c5c86 56%,#dd9c62 80%,#f6ce8c 100%);
@@ -8086,21 +8095,28 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    Gate's own growth, is what sells forward motion) and one deliberate,
    massive push at Arrival (Principle 4 — "the doors dominate the
    screen"), unchanged from before. */
+/* "The gate needs to cover the full screen" — the Gate is now a true,
+   always-full-bleed backdrop layer (inset:0 against .gateway-panel, which
+   .gateway-overlay's own align-items:stretch above makes genuinely
+   viewport-tall) rather than a small floating "postcard" box that only
+   ever grew toward near-fullscreen at the very end. It fills the screen
+   from the moment it first appears; Journey/Arrival below now express
+   "drawing closer" as a modest zoom (transform:scale) on top of that
+   already-full frame instead of growing width/height from a small resting
+   size — object-fit:cover on the video (below) means a deeper zoom just
+   crops in further, never reveals any edge. */
 .gateway-gates-wrap{
   position:absolute;
-  bottom:5%;
-  left:50%;
-  width:min(42vw,560px);
-  height:auto;
-  aspect-ratio:1366/768;
+  inset:0;
+  width:100%;
+  height:100%;
   z-index:0;
   pointer-events:none;
-  transform:translateX(-50%);
   opacity:0;
   filter:saturate(.9) brightness(.94);
+  transform:scale(1);
   transition:opacity 1.8s ease-out,
-             width 2.6s cubic-bezier(.16,.84,.44,1),
-             bottom 2.6s cubic-bezier(.16,.84,.44,1),
+             transform 2.6s cubic-bezier(.16,.84,.44,1),
              filter 1.8s ease-out;
 }
 .gateway-gates-wrap.gateway-gates-visible{ opacity:1; }
@@ -8120,77 +8136,71 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   50%{ opacity:.42; transform:translate(-50%,-50%) scale(1.04); }
 }
 
-/* Principle 2 — the Traveller moves, the Gate does not. A modest,
-   transitioned widening (matching the Journey's own real duration)
-   rather than a separate keyframe — the parallax world streaming past
-   (see .gateway-journey-* below) is what sells forward motion. */
+/* Principle 2 — the Traveller moves, the Gate does not. The Gate is
+   already full-screen at rest (see .gateway-gates-wrap above); a subtle
+   zoom-in (matching the Journey's own real duration) is the whole of its
+   own "drawing closer," so the parallax world streaming past (see
+   .gateway-journey-* below) — not the Gate itself — is what sells
+   forward motion. */
 .gateway-gates-wrap.gateway-gates-journey{
-  transition:width 7.4s cubic-bezier(.37,0,.63,1),
-             bottom 7.4s cubic-bezier(.37,0,.63,1);
-  width:min(58vw,780px);
-  bottom:3%;
+  transition:transform 7.4s cubic-bezier(.37,0,.63,1);
+  transform:scale(1.06);
 }
 /* Principle 4 — the Gate feels ancient. ONE deliberate final push, at
-   Arrival, growing genuinely near-fullscreen (not just a multiple of its
-   own modest resting size) so the doors truly dominate the screen once
-   the Traveller has drawn close enough — "massive, timeless, sacred."
-   Re-centers (the resting box was bottom-anchored; a near-fullscreen one
-   reads better centered) and switches from a transform scale to real
-   width/height so it can grow independent of its own starting size,
-   capped by BOTH viewport dimensions via calc() so it fills as much as
-   possible without ever overflowing either one, at the real footage's
-   own 1366:768 aspect ratio. Lumo, elevated to a real z-index above the
-   Gate (see .gateway-lumo-stage), stays visibly standing guard in front
-   of this now-massive doorway rather than being buried underneath it.
+   Arrival — since the Gate has covered the full screen since it first
+   appeared, "the doors truly dominate the screen" is now realized as one
+   more, stronger zoom-in on top of the already-full frame (cropping in
+   via object-fit:cover on the video, never revealing any edge) rather
+   than growing a bounded box toward the viewport's size. Lumo, elevated
+   to a real z-index above the Gate (see .gateway-lumo-stage), stays
+   visibly standing guard in front of it regardless of how far this zooms.
    Stays applied through Pause, Awaken, and Open, below — the whole
    climax plays at this size. */
 .gateway-gates-wrap.gateway-gates-arrive{
-  transition:width 2.4s cubic-bezier(.16,.84,.44,1),
-             height 2.4s cubic-bezier(.16,.84,.44,1),
-             top 2.4s cubic-bezier(.16,.84,.44,1),
-             bottom 2.4s cubic-bezier(.16,.84,.44,1),
-             transform 2.4s cubic-bezier(.16,.84,.44,1);
-  top:50%;
-  bottom:auto;
-  transform:translate(-50%,-50%);
-  width:min(94vw,calc(94vh * 1.77865));
-  height:auto;
+  transition:transform 2.4s cubic-bezier(.16,.84,.44,1);
+  transform:scale(1.16);
 }
 
 .gateway-gates{ position:relative; width:100%; height:100%; }
+/* Painted ON TOP of the (now full-bleed, opaque) video frame below — see
+   its z-index — since a glow layered BEHIND an edge-to-edge opaque video
+   would never be visible at all; still the same warm ambient wash and
+   still the layer the Awaken pulse (.gateway-gates-wrap.gateway-gates-
+   awaken) animates. */
 .gateway-gate-halo{
   position:absolute;
   left:50%; top:50%;
-  width:175%; height:175%;
+  width:70%; height:70%;
+  z-index:1;
   transform:translate(-50%,-50%);
   border-radius:50%;
-  background:radial-gradient(circle,rgba(255,214,140,.55) 0%,rgba(255,180,80,.18) 45%,rgba(255,180,80,0) 72%);
-  filter:blur(10px);
+  background:radial-gradient(circle,rgba(255,214,140,.4) 0%,rgba(255,180,80,.12) 45%,rgba(255,180,80,0) 72%);
+  filter:blur(24px);
   pointer-events:none;
+  mix-blend-mode:screen;
 }
 /* The Gate itself — a real, hand-supplied cinematic clip (see
    assets/video/gateway/README.md) replaces the earlier CSS-drawn arch/
    leaves/runes outright: direct feedback on the CSS-only version ("nope,
-   its so bad") led to this. The frame carries the visual chrome (soft
-   blue rim glow + a gentle edge-fade so a plain rectangle doesn't read
-   as pasted onto the sky); the <video> itself is added inside by
-   js/gatewaySequence.js's mountGates(). */
+   its so bad") led to this. "The gate needs to cover the full screen" —
+   the frame is now a true full-bleed layer with no rounded corners, no
+   floating-postcard rim glow, and no edge-fade mask (all of which
+   assumed a smaller box floating in front of the ambient sky and would
+   otherwise punch a hole revealing it at the corners); a gentle inset
+   vignette darkens the true screen edges instead, without any
+   transparency, so the cinematic feel survives full coverage. The
+   <video> itself is added inside by js/gatewaySequence.js's mountGates(). */
 .gateway-gate-video-frame{
   position:absolute; inset:0;
-  border-radius:16px;
   overflow:hidden;
   background:#04070d;
-  box-shadow:0 0 0 1px rgba(140,200,255,.22),
-             0 0 46px rgba(90,170,255,.30),
-             0 24px 54px rgba(0,0,0,.55);
-  -webkit-mask-image:radial-gradient(ellipse 88% 90% at 50% 54%,#000 64%,transparent 100%);
-  mask-image:radial-gradient(ellipse 88% 90% at 50% 54%,#000 64%,transparent 100%);
+  box-shadow:inset 0 0 22vw rgba(0,0,0,.4);
 }
 .gateway-gate-video{
   display:block;
   width:100%;
   height:100%;
-  object-fit:contain;
+  object-fit:cover;
   object-position:center;
 }
 .gateway-preload-hidden{
@@ -8436,8 +8446,9 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-gates-wrap,
   .gateway-lumo-stage.gateway-lumo-guard,
   .gateway-egg-wrap{ transition:none; }
-  .gateway-gates-wrap{ filter:none; }
-  .gateway-gates-wrap.gateway-gates-arrive{ top:50%; bottom:auto; transform:translate(-50%,-50%); width:min(94vw,calc(94vh * 1.77865)); height:auto; }
+  .gateway-gates-wrap{ filter:none; transform:none; }
+  .gateway-gates-wrap.gateway-gates-journey,
+  .gateway-gates-wrap.gateway-gates-arrive{ transform:none; }
   .gateway-gate-halo{ opacity:.55; }
   .gateway-gate-gather-particle,
   .gateway-magic-spark{ opacity:0; }
@@ -8452,6 +8463,5 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 @media (max-width:560px){
   .gateway-lumo-stage{ width:150px; height:150px; }
   .gateway-greeting-bubble{ font-size:18px; padding:0 18px; }
-  .gateway-gates-wrap{ width:min(56vw,280px); }
   .gateway-lumo-stage.gateway-lumo-guard{ transform:translate(21vw,0) scale(.55) scaleX(-1); }
 }
