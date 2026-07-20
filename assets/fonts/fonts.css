@@ -38,3 +38,17 @@
   src: url("nunito-latin.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
+/* Cinzel — the Traveller Gateway's own "royal and mystical, old story"
+   display face for the Scene 3 greeting (see .gateway-greeting-bubble
+   in css/style.css). A Roman-inscription-style serif, fetched fresh
+   from Google Fonts (OFL, same license as every font above) rather than
+   copied from vihuplanet, since none of that set reads as royal/
+   mystical. Only the one weight actually used (600) ships. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("cinzel-600-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

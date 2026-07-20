@@ -7937,19 +7937,51 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 /* Scene 3 — the Greeting. Paced, narrative lines only (never a tutorial
    or UI instruction) — see GREETING_LINES in js/gatewaySequence.js.
-   Unchanged this sprint (Scenes 1-3 were judged already working). */
+   "the font and color of text are not matching the scene" — the plain
+   body sans-serif (Arial) and a flat cream tone read as generic UI copy
+   against the ornate carved-stone/gold-inscription banners in the real
+   Gate footage. "something royal and mystical at same time. use old
+   story fonts" — Cinzel (a Roman-inscription-style display serif, self-
+   hosted in assets/fonts/, see fonts.css) replaces the generic Georgia
+   fallback stack entirely; --gw-gold (the same tone the Gate's own
+   particles/sparks already use — see .gateway-overlay above) stays, now
+   paired with a genuine gold glow instead of a plain black drop shadow.
+   "give this some base" — a slim gold rule beneath the words (::after)
+   gives each line something to visually stand on, like the base of an
+   inscribed plaque, rather than floating loose over the footage; its
+   own width scales to each line's own rendered width (a % of the
+   bubble's own content-hugging box, capped at 210px), so a short line
+   ("I am Lumo.") gets a proportionally short line rather than the long
+   line's own wide one. No animation of its own is needed — parent
+   opacity animations already composite the whole box (main content +
+   pseudo-elements) together, so the rule fades in/out in lockstep with
+   the text for free. */
 .gateway-greeting-bubble{
+  position:relative;
   margin-top:30px;
   min-height:1.5em;
   max-width:640px;
-  padding:0 24px;
-  font-size:clamp(20px,3vw,30px);
+  padding:4px 28px 22px;
+  font-family:'Cinzel',"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  font-size:clamp(19px,2.8vw,29px);
   font-weight:600;
-  line-height:1.35;
-  color:#fff8e6;
+  letter-spacing:.04em;
+  line-height:1.55;
+  color:var(--gw-gold);
   text-align:center;
-  text-shadow:0 2px 20px rgba(0,0,0,.35);
+  text-shadow:0 0 26px rgba(255,203,69,.55), 0 2px 14px rgba(0,0,0,.7);
   opacity:0;
+}
+.gateway-greeting-bubble::after{
+  content:'';
+  position:absolute;
+  left:50%;
+  bottom:2px;
+  width:min(64%,210px);
+  height:1px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,var(--gw-gold),transparent);
+  opacity:.85;
 }
 .gateway-greeting-bubble.gateway-greeting-in{
   animation:gateway-line-in 2000ms ease-out;
@@ -8208,9 +8240,10 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 .gateway-tap-hint{
   position:absolute;
-  bottom:36px;
-  left:50%;
-  transform:translateX(-50%);
+  bottom:26px;
+  right:28px;
+  left:auto;
+  transform:none;
   color:rgba(255,255,255,.55);
   font-size:13px;
   letter-spacing:.06em;
@@ -8256,6 +8289,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 @media (max-width:560px){
   .gateway-lumo-stage{ width:150px; height:150px; }
-  .gateway-greeting-bubble{ font-size:18px; padding:0 18px; }
+  .gateway-greeting-bubble{ font-size:18px; padding:4px 18px 22px; }
   .gateway-lumo-stage.gateway-lumo-guard{ transform:translate(21vw,0) scale(.55) scaleX(-1); }
 }
