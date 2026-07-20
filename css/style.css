@@ -6367,7 +6367,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   flex-direction:column;
   align-items:center;
   text-align:center;
-  gap:6px;
+  gap:clamp(3px,1vh,6px);
   box-shadow:0 24px 64px rgba(0,0,0,0.45);
   backdrop-filter:blur(6px);
 }
@@ -6381,7 +6381,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   font-size:19px;
   font-weight:800;
   color:var(--mc-ink);
-  margin:0 0 18px;
+  margin:0 0 clamp(8px,2.2vh,18px);
 }
 .magic-card-gate-continue{
   width:100% !important;
@@ -6489,14 +6489,22 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   margin:-4px 0 4px;
   line-height:1.5;
 }
+/* Sized by the SMALLEST of a fixed cap, the available width, and a
+   viewport-height-relative cap (min()) -- not just width:100% with a
+   fixed max-width -- so the board itself shrinks on a short viewport
+   instead of forcing .magic-card-gate-panel's own overflow-y:auto
+   (a real, measured scrollbar below ~600px viewport height) to ever
+   actually trigger. That overflow-y:auto stays as a last-resort safety
+   net only, matching the same "never triggered at any realistic
+   height" discipline Creation Flow's own no-scroll screens already
+   established. */
 .magic-card-tapgrid-board{
   position:relative;
   display:grid;
   grid-template-columns:18px repeat(10,1fr);
   grid-template-rows:18px repeat(10,1fr);
   gap:2px;
-  width:100%;
-  max-width:320px;
+  width:min(320px, 100%, 30vh);
   aspect-ratio:1;
   margin:4px auto 0;
   padding:8px;
@@ -6515,6 +6523,9 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   opacity:.6;
   user-select:none;
 }
+/* Round tap targets, "star field" style — a soft circle at rest, a
+   bright lit-up glowing orb once tapped, rather than a flat coloured
+   square. */
 .magic-card-tapgrid-cell{
   width:100%;
   height:100%;
@@ -6522,7 +6533,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   margin:0 !important;
   min-width:0;
   border:1px solid var(--mc-line);
-  border-radius:4px;
+  border-radius:50%;
   background:rgba(255,255,255,.05);
   color:transparent;
   font-size:11px;
@@ -6531,14 +6542,30 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:background .15s ease, border-color .15s ease;
+  transition:background .2s ease, border-color .2s ease, box-shadow .2s ease, transform .15s ease;
 }
-.magic-card-tapgrid-cell:hover{ border-color:rgba(255,255,255,.35); }
+.magic-card-tapgrid-cell:hover{
+  border-color:rgba(255,255,255,.4);
+  background:rgba(255,255,255,.14);
+  transform:scale(1.12);
+}
 .magic-card-tapgrid-cell.selected{
-  background:rgba(255,203,69,.5);
+  background:radial-gradient(circle at 35% 30%, #fff8db 0%, var(--mc-gold) 55%, #c9962a 100%);
   border-color:var(--mc-gold);
-  color:var(--mc-gold);
-  text-shadow:0 0 6px rgba(255,203,69,.7);
+  color:#241a3d;
+  text-shadow:none;
+  box-shadow:0 0 9px 2px rgba(255,203,69,.9), 0 0 20px 6px rgba(255,203,69,.5);
+  transform:scale(1.08);
+  animation:magicCardCellLightUp .3s ease-out;
+}
+@keyframes magicCardCellLightUp{
+  0%{ box-shadow:0 0 0 0 rgba(255,203,69,0); transform:scale(0.85); }
+  100%{ box-shadow:0 0 9px 2px rgba(255,203,69,.9), 0 0 20px 6px rgba(255,203,69,.5); transform:scale(1.08); }
+}
+@media (prefers-reduced-motion:reduce){
+  .magic-card-tapgrid-cell{ transition:background .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .magic-card-tapgrid-cell:hover,
+  .magic-card-tapgrid-cell.selected{ transform:none; animation:none; }
 }
 .magic-card-tapgrid-lines{
   position:absolute;
