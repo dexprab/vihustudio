@@ -21,22 +21,25 @@
 //                         open" (Scene 3).
 //
 // Six scenes, always in this order:
-//   1. The Sky            — arrival, anticipation. Identical for everyone.
-//   2. Lumo's Arrival     — a real flight-and-landing, but landing beside
-//                            the Gate rather than in empty sky: "let the
-//                            gate be there [from the start]... show lumo
-//                            guarding the gate and our egg also there
-//                            somewhere, not in limelight but there" —
-//                            direct feedback once the CSS-drawn Gate was
-//                            replaced by a real video (see below). The
-//                            Gate (its real footage, paused on its own
-//                            first frame) and the Story Egg (small, dim,
-//                            tucked at the Gate's base) both mount here
-//                            too, right alongside Lumo — the Gate is no
-//                            longer hidden and later "revealed," it is
-//                            simply the stage everything else happens in
-//                            front of, from this point on. Identical for
-//                            everyone.
+//   1-2. The Sky / Lumo's Arrival — one immediate opening beat, not a
+//                            separate atmosphere-only pause followed by a
+//                            later arrival: "use the gate sequence for
+//                            the point go, we dont need any sky sequence"
+//                            — direct feedback once "let the gate be
+//                            there [from the start]" had already replaced
+//                            the CSS-drawn Gate with a real video (see
+//                            below). The Gate (its real footage, paused
+//                            on its own first frame), the Story Egg
+//                            (small, dim, tucked at the Gate's base), and
+//                            Lumo (a real flight-and-landing, but landing
+//                            beside the Gate rather than in empty sky)
+//                            all mount together the moment the sequence
+//                            begins — the ambient sky decorations
+//                            (clouds/particles/rays/haze, static in
+//                            index.html) are simply the backdrop this
+//                            trio sits in front of from frame one, never
+//                            a separate empty beat shown first. Identical
+//                            for everyone.
 //   3. Identity           — THE BRANCH, and where it ends. A Returning
 //                            Creator is recognized ("Welcome home... show
 //                            me your stars") and verified via the
@@ -147,11 +150,6 @@
   const GATE_VIDEO_SRC=ASSETS_BASE+'video/gateway/gate-sequence.mp4';
   const GATE_POSTER_SRC=ASSETS_BASE+'video/gateway/gate-poster.jpg';
 
-  // Scenes 1-3 timing is UNCHANGED this sprint — "The Sky works. Lumo
-  // works. The greeting works... This sprint is about fixing [the
-  // transition]," per the brief's own Current Assessment. Only Scenes
-  // 4-6 below received real creative investment.
-  const SCENE1_MS=2400;
   const FLIGHT_MS=1800;
   const LUMO_TO_GREETING_MS=600;
   const TAP_HINT_DELAY_MS=3600;
@@ -657,7 +655,7 @@
       // frozen order the seven principles describe. gateEls is
       // guaranteed to exist by the time this runs — mounted back in
       // Scene 2, alongside Lumo, regardless of whether Lumo itself
-      // resolved (see the SCENE1_MS callback below).
+      // resolved (see the immediate Promise.all() callback below).
       function runGatesSequence(){
         if(skipRequested) return;
         playApproachLeadIn(reduced,function(){
@@ -722,8 +720,15 @@
         }
       }
 
-      after(reduced?0:SCENE1_MS,function(){
-        if(skipRequested) return;
+      // "use the gate sequence for the point go, we dont need any sky
+      // sequence" — the Gate is the very first thing shown, not eased
+      // into after a separate atmosphere-only pause. The ambient sky
+      // decorations (clouds/particles/rays/haze, static in index.html)
+      // still form the backdrop the Gate/Egg/Lumo sit in front of; only
+      // the old fixed empty-pause beat before anything appeared is gone.
+      // No skipRequested guard is needed here — this runs synchronously,
+      // before a user could possibly have tapped to skip yet.
+      {
         Promise.all([resolveLumo(),resolveEgg()]).then(function(results){
           if(skipRequested) return;
           const lumo=results[0], egg=results[1];
@@ -744,7 +749,7 @@
           if(!gateEls) gateEls=mountGates(gateVideoEl,null);
           runScene3();
         });
-      });
+      }
     }
 
     return {begin:begin};
