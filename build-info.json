@@ -4,6 +4,6 @@
   "task": "A direct follow-up: 'VihuPapa, the creator lord, show me your stars, and you may pass. this is the line. or something similar.' Recast the gatekeeper's own speech line from the flatter 'Show me your stars, <name>!' to a grander, title-addressing greeting -- '<name>, the Creator -- show me your stars, and you may pass.' -- kept deliberately generic (never a literal hardcoded 'creator lord') so it reads well for any nickname; the Recall path's no-name-known fallback recast to match, 'Traveler, show me your stars, and you may pass.' Both still flow through the existing, unmodified _typewriterReveal() mechanism from the prior sprint -- this is a pure copy change, no new mechanism. Re-verified via the existing 33-assertion pattern-challenge suite (one assertion updated to match the recast fallback wording) and the full width/height no-scrollbar sweep, both passing with zero overflow, plus a real screenshot confirming the new copy wraps cleanly. Both goldenBuild.js suites pass unchanged. Confined to one string in js/magicCardUI.js.",
   "build": "0184",
   "buildDate": "2026-07-20",
-  "commit": "pending",
+  "commit": "5f4ee3b",
   "environment": "Release"
 }
