@@ -7740,6 +7740,65 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   border-radius:50%;
   background:radial-gradient(circle,rgba(255,207,138,.5) 0%,rgba(255,207,138,0) 68%);
 }
+/* Cinematic Polish Sprint — environmental polish. Soft atmospheric haze
+   (a warm colour wash low in the sky, not a texture) plus faint,
+   gently-swaying sunlight ray beams (a conic gradient, not individually
+   drawn shapes) — both deliberately subtle ("nothing should feel busy")
+   and always present, giving the whole Sky its own quiet depth even
+   before anything else in the sequence moves. */
+.gateway-scene-haze{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg,rgba(255,235,200,0) 0%,rgba(255,214,150,.08) 55%,rgba(255,196,120,.15) 100%);
+  mix-blend-mode:screen;
+}
+.gateway-scene-rays{
+  position:absolute;
+  left:50%; bottom:-8%;
+  width:150vw; height:150vw; max-width:1500px; max-height:1500px;
+  transform:translateX(-50%) rotate(0deg);
+  background:conic-gradient(from 200deg at 50% 100%,
+    transparent 0deg, rgba(255,226,160,.08) 4deg, transparent 9deg,
+    transparent 24deg, rgba(255,226,160,.06) 29deg, transparent 35deg,
+    transparent 50deg, rgba(255,226,160,.09) 55deg, transparent 62deg,
+    transparent 126deg, rgba(255,226,160,.07) 131deg, transparent 138deg,
+    transparent 156deg, rgba(255,226,160,.08) 161deg, transparent 168deg
+  );
+  opacity:.55;
+  mix-blend-mode:screen;
+  animation:gateway-rays-sway 24s ease-in-out infinite;
+}
+@keyframes gateway-rays-sway{
+  0%,100%{ transform:translateX(-50%) rotate(-1deg); }
+  50%{ transform:translateX(-50%) rotate(1deg); }
+}
+/* "Wind increases" — the first, quiet beat of the Gate reveal (Principle
+   1). Hidden entirely at rest; only Scene 4's own opening moment (see
+   .gateway-overlay.gateway-wind-rising below) speeds the ambient sky up
+   and lets these faint horizontal gusts pass through. */
+.gateway-wind-streak{
+  position:absolute;
+  top:var(--wy,30%);
+  left:-25%;
+  width:30%;
+  height:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+  opacity:0;
+  pointer-events:none;
+}
+.gateway-wind-streak.s1{ --wy:22%; }
+.gateway-wind-streak.s2{ --wy:44%; }
+.gateway-wind-streak.s3{ --wy:62%; }
+.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s1{ animation:gateway-wind-streak-pass 2.1s ease-in .1s forwards; }
+.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s2{ animation:gateway-wind-streak-pass 2.1s ease-in .5s forwards; }
+.gateway-overlay.gateway-wind-rising .gateway-wind-streak.s3{ animation:gateway-wind-streak-pass 2.1s ease-in .9s forwards; }
+@keyframes gateway-wind-streak-pass{
+  0%{ transform:translateX(0); opacity:0; }
+  22%{ opacity:.5; }
+  100%{ transform:translateX(240vw); opacity:0; }
+}
+.gateway-overlay.gateway-wind-rising .gateway-scene-cloud{ animation-duration:36s; }
+.gateway-overlay.gateway-wind-rising .gateway-scene-particle{ animation-duration:5.5s; }
+.gateway-overlay.gateway-wind-rising .gateway-scene-rays{ animation-duration:8s; }
 .gateway-scene-cloud{
   position:absolute;
   width:150px; height:46px;
@@ -7770,6 +7829,10 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .island-1{ bottom:32%; left:12%; animation-delay:0s; }
 .island-2{ bottom:44%; right:14%; font-size:26px; opacity:.4; animation-delay:-4s; }
+/* "Very distant floating islands" — a third, much smaller and fainter
+   island reads as genuinely far away rather than just a smaller copy of
+   the other two, giving the Sky real depth. */
+.island-3{ bottom:38%; left:46%; font-size:15px; opacity:.22; animation-delay:-7s; animation-duration:13s; filter:blur(.4px) drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
 @keyframes gateway-island-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-14px); } }
 
 .gateway-scene-bird{
@@ -7781,6 +7844,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .bird-1{ animation-delay:0s; }
 .bird-2{ top:32%; font-size:15px; animation-delay:-11s; animation-duration:34s; }
+.bird-3{ top:15%; font-size:11px; opacity:.5; animation-delay:-19s; animation-duration:42s; }
 @keyframes gateway-bird-fly{
   from{ transform:translate(-10vw,0); }
   to{ transform:translate(110vw,-60px); }
@@ -7882,25 +7946,124 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   92%{ transform:translateY(-2px) rotate(var(--gateway-tilt,0deg)); }
 }
 
-/* Scene 5 (Journey) / Scene 6 (Gates Open) — both toggle classes on the
-   whole .gateway-lumo-stage (shadow+portrait+wing move together as one
-   figure), not the portrait alone. */
-.gateway-lumo-stage.gateway-lumo-journey{
-  animation:gateway-lumo-fly-ahead var(--gw-journey-ms,6800ms) ease-in-out forwards;
+/* Cinematic Polish Sprint — "Lumo should feel noble... restrained
+   animation... wing flutter, tail movement." A small tail shape sways
+   continuously and low-amplitude at every stage (it never needs its own
+   state gating — the whole figure moves together via .gateway-lumo-stage
+   transforms, so the tail's own local sway always reads correctly
+   underneath); the wing, otherwise fully hidden until Scene 6's real
+   raise, gets one quiet extra idle flutter while Lumo is simply standing
+   and greeting — the same honest CSS-transform-illusion discipline as
+   everything else in this file, never a second art asset. */
+.gateway-lumo-tail{
+  position:absolute;
+  bottom:8%;
+  left:40%;
+  width:14%;
+  height:26%;
+  border-radius:50% 10% 40% 60%;
+  background:linear-gradient(200deg,rgba(150,120,255,.38),rgba(150,120,255,0));
+  opacity:.5;
+  transform-origin:80% 12%;
+  pointer-events:none;
+  animation:gateway-tail-sway 3.8s ease-in-out infinite;
 }
-@keyframes gateway-lumo-fly-ahead{
-  0%{ transform:translate(0,0) scale(1); }
-  22%{ transform:translate(10vw,-6vh) scale(.86) scaleX(-1); } /* a glance back */
-  40%{ transform:translate(16vw,-9vh) scale(.8); }
-  62%{ transform:translate(24vw,-13vh) scale(.72) scaleX(-1); } /* another glance back */
-  100%{ transform:translate(34vw,-19vh) scale(.62); }
+@keyframes gateway-tail-sway{
+  0%,100%{ transform:rotate(-5deg); }
+  50%{ transform:rotate(8deg); }
 }
-.gateway-lumo-stage.gateway-lumo-turn{
-  transition:transform 900ms ease-out;
-  transform:translate(34vw,-19vh) scale(.62) scaleX(-1); /* turns to face the Traveller */
+.gateway-lumo-stage.gateway-lumo-idle .gateway-lumo-wing{
+  opacity:.16;
+  animation:gateway-wing-idle-flutter 3.4s ease-in-out infinite;
 }
-.gateway-lumo-stage.gateway-lumo-turn .gateway-lumo-wing{
-  animation:gateway-wing-raise 1.4s ease-out .3s forwards;
+@keyframes gateway-wing-idle-flutter{
+  0%,100%{ opacity:.13; transform:rotate(5deg) scale(.52); }
+  50%{ opacity:.26; transform:rotate(-2deg) scale(.58); }
+}
+
+/* ============================================================
+   Cinematic Polish Sprint — Traveller Gateway V1
+   ============================================================
+   Not a feature sprint — Scenes 1-3 (Sky/Lumo's Arrival/Identity) were
+   judged already working and are left with their own timing/behaviour
+   untouched (only the shared ambient Sky layer above gained quiet extra
+   depth — haze/rays/a third island/a third bird/wind streaks). Every
+   class below reworks the TRANSITION itself (Scenes 4-6) around seven
+   frozen principles: (1) the Gate is revealed, never popped/faded — a
+   silhouette-then-detail crossfade behind a rising golden halo, with
+   particles gathering as the stone comes into focus; (2) the Traveller
+   moves, the Gate does not — Journey is dominated by parallax
+   near/far layers streaming past, the Gate itself growing only
+   modestly; (3) Lumo leads — a real multi-leg "fly, glance back, wait,
+   continue" sequence, not a single flip; (4) the Gate feels ancient —
+   one deliberate, large final growth at Arrival, not a continuous
+   scale-up; (5) anticipation — a real, silent Pause beat (wind/
+   particles/clouds only) between arriving and the magic beginning;
+   (6) crossing the threshold — doors slowly unlock, then a genuine
+   forward camera dolly + bloom before the final light flood; (7) the
+   Hall is never glimpsed early — the flash's own full-opacity hold
+   guarantees a clean cut. */
+
+/* A real, screenshot-caught composition bug, fixed here: Lumo's own
+   resting spot (Scene 2/3, dead center via .gateway-panel's flex
+   centering) and the Gate's own reveal anchor (also dead center) sat
+   directly on top of one another — during Scene 4's Reveal (before
+   Journey ever repositions Lumo), the Gate appeared to materialize
+   INSIDE Lumo rather than in the sky beyond him. Fixed by having Lumo
+   quietly step aside — "yield" — the moment the Reveal begins (see
+   js/gatewaySequence.js's playGateReveal, which adds this class before
+   even the wind rises), giving the Gate room to read clearly on its
+   own. Only .gateway-lumo-lead-on's OWN 0%-19% stops are pulled toward
+   this yielded start (so the hand-off reads as one continuous motion,
+   not a jump) — every later stop, and the Arrival resting position,
+   are deliberately left at their original, already-screenshot-verified
+   values (Principle 4's "gate dominates the screen" composition needs
+   Lumo well clear of it, not tucked in close behind it). */
+.gateway-lumo-stage.gateway-lumo-yield{
+  transition:transform 1.7s cubic-bezier(.22,.61,.36,1);
+  transform:translate(-19vw,8vh) scale(.82) scaleX(1);
+}
+/* Principle 3 — Lumo leads. A real staged sequence (turn -> fly a leg
+   -> glance back -> hold (waits) -> continue -> repeat -> arrive) with
+   genuine plateaus, not one continuous flip — "this tiny behaviour
+   communicates 'follow me' without dialogue." Toggled on the whole
+   .gateway-lumo-stage (shadow+portrait+wing+tail move as one figure).
+   Starts exactly where .gateway-lumo-yield left Lumo standing, then
+   catches back up to the original flight path by ~27%. */
+.gateway-lumo-stage.gateway-lumo-lead{
+  animation:gateway-lumo-lead-on var(--gw-journey-ms,7400ms) cubic-bezier(.45,.05,.55,.95) forwards;
+}
+@keyframes gateway-lumo-lead-on{
+  0%{   transform:translate(-19vw,8vh) scale(.82) scaleX(1); }  /* picks up from yield */
+  9%{   transform:translate(-8vw,4vh) scale(.85) scaleX(1); }   /* turns and sets off */
+  19%{  transform:translate(3vw,-3vh) scale(.87) scaleX(1); }   /* catching up to the flight path */
+  27%{  transform:translate(8vw,-6vh) scale(.87) scaleX(-1); }  /* leg 1 done — looks back */
+  34%{  transform:translate(8vw,-6vh) scale(.87) scaleX(-1); }  /* waits */
+  41%{  transform:translate(8vw,-6vh) scale(.87) scaleX(1); }   /* continues */
+  54%{  transform:translate(16vw,-11vh) scale(.78) scaleX(1); } /* leg 2 done */
+  62%{  transform:translate(16vw,-11vh) scale(.78) scaleX(-1); }/* looks back again */
+  69%{  transform:translate(16vw,-11vh) scale(.78) scaleX(-1); }/* waits */
+  76%{  transform:translate(16vw,-11vh) scale(.78) scaleX(1); } /* continues */
+  100%{ transform:translate(24vw,-15vh) scale(.7) scaleX(1); }  /* nearly at the gate, clear of it */
+}
+/* Arrival — Lumo settles facing the Gate (still, small idle bob only;
+   see Principle 5, nothing new happens here) at exactly the position
+   .gateway-lumo-lead-on ends on, so the hand-off is invisible — well
+   clear of the Gate's own massive Arrival growth (Principle 4). */
+.gateway-lumo-stage.gateway-lumo-arrived{
+  transition:transform 1.5s cubic-bezier(.16,.84,.44,1);
+  transform:translate(24vw,-15vh) scale(.7) scaleX(-1);
+  animation:gateway-lumo-arrived-bob 3.4s ease-in-out infinite 1.5s;
+}
+@keyframes gateway-lumo-arrived-bob{
+  0%,100%{ transform:translate(24vw,-15vh) scale(.7) scaleX(-1) translateY(0); }
+  50%{ transform:translate(24vw,-15vh) scale(.7) scaleX(-1) translateY(-4px); }
+}
+/* Principle 5's "only then" — Lumo raises one wing and magic begins.
+   Deliberately does NOT move Lumo again (.gateway-lumo-arrived already
+   has the correct position/facing) — its only job is the wing. */
+.gateway-lumo-stage.gateway-lumo-magic .gateway-lumo-wing{
+  animation:gateway-wing-raise 1.7s cubic-bezier(.22,.7,.34,1) .1s forwards;
 }
 .gateway-lumo-wing{
   position:absolute;
@@ -7919,11 +8082,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 @keyframes gateway-wing-raise{
   0%{ opacity:0; transform:rotate(6deg) scale(.6); }
   55%{ opacity:.9; transform:rotate(-38deg) scale(1.05); }
-  100%{ opacity:.75; transform:rotate(-26deg) scale(1); }
+  100%{ opacity:.78; transform:rotate(-26deg) scale(1); }
 }
 
 /* Scene 3 — the Greeting. Paced, narrative lines only (never a tutorial
-   or UI instruction) — see GREETING_LINES in js/gatewaySequence.js. */
+   or UI instruction) — see GREETING_LINES in js/gatewaySequence.js.
+   Unchanged this sprint (Scenes 1-3 were judged already working). */
 .gateway-greeting-bubble{
   margin-top:30px;
   min-height:1.5em;
@@ -7947,10 +8111,17 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   100%{ opacity:0; }
 }
 
-/* Scene 4 — The Gates Appear. Two soft "curtain" cloud shapes obscure
-   the gate from the start, then slowly part (wind moving through);
-   the gate itself fades/grows in behind them at the same time — "no
-   sudden appearance, slow reveal." */
+/* Principle 1 — the Gate is REVEALED, never popped or faded in as one
+   step. Two curtain clouds obscure it from the start; a golden halo
+   glows behind them first (light becomes visible before any shape
+   does); the curtains part and the Gate's own SILHOUETTE shows through
+   (a flat, desaturated, dark read — "the child should feel the gate
+   was always there, hidden beyond the clouds"); only then does the
+   silhouette brighten into real stone colour and a carved-stone
+   texture crossfades on, while a handful of gold particles gather in
+   from the sides and settle onto it. Every stage is a distinct,
+   JS-sequenced class (js/gatewaySequence.js's playGateReveal) so the
+   reveal genuinely takes its time rather than resolving in one tween. */
 .gateway-curtain-cloud{
   position:absolute;
   bottom:2%;
@@ -7960,40 +8131,78 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   background:radial-gradient(ellipse at center,rgba(255,255,255,.92) 0%,rgba(255,255,255,.5) 46%,rgba(255,255,255,0) 78%);
   filter:blur(6px);
   pointer-events:none;
-  transition:transform 2.6s ease-in-out,opacity 2.6s ease-in-out;
+  transition:transform 3s cubic-bezier(.22,.61,.36,1),opacity 3s cubic-bezier(.22,.61,.36,1);
 }
 .gateway-curtain-left{ left:50%; transform:translateX(-96%); }
 .gateway-curtain-right{ right:50%; transform:translateX(96%); }
-.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-left{ transform:translateX(-168%); opacity:0; }
-.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-right{ transform:translateX(168%); opacity:0; }
+.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-left{ transform:translateX(-172%); opacity:0; }
+.gateway-curtain-cloud.gateway-curtain-parted.gateway-curtain-right{ transform:translateX(172%); opacity:0; }
 
 .gateway-gates-wrap{
   position:absolute;
-  bottom:8%;
+  bottom:6%;
   left:50%;
-  width:280px;
-  height:320px;
+  width:380px;
+  height:440px;
   z-index:0;
   pointer-events:none;
-  transform:translateX(-50%) scale(.32);
+  transform:translateX(-50%) scale(.3);
   opacity:0;
-  transition:opacity 2.6s ease-out,transform 2.6s ease-out;
+  filter:brightness(.28) saturate(0);
+  transition:opacity 2.4s cubic-bezier(.22,.61,.36,1),
+             transform 2.4s cubic-bezier(.22,.61,.36,1),
+             filter 2.2s ease-out;
 }
-.gateway-gates-wrap.gateway-gates-reveal{
+/* Stage A — a golden light glows behind the still-hidden Gate. */
+.gateway-gates-wrap .gateway-gate-halo{ opacity:0; transition:opacity 2.6s ease-out; }
+.gateway-gates-wrap.gateway-gates-glow-rise .gateway-gate-halo{ opacity:.55; }
+/* Stage B — the curtains part; the Gate's own silhouette shows through. */
+.gateway-gates-wrap.gateway-gates-silhouette{
   opacity:1;
-  transform:translateX(-50%) scale(.6);
+  transform:translateX(-50%) scale(.48);
 }
-/* Scene 5 — Journey. The gates grow larger over the whole scene, the
-   epic's own "camera slowly moves toward the gates... gates become
-   larger over time" made real via one continuous approach. */
+/* Stage C — the silhouette brightens into real stone; texture + a
+   handful of particles gathering onto it. */
+.gateway-gates-wrap.gateway-gates-detail{
+  filter:brightness(1) saturate(1);
+}
+.gateway-gates-wrap.gateway-gates-detail .gateway-gate-stonework{ opacity:.32; }
+.gateway-gates-wrap.gateway-gates-detail .gateway-gate-gather-particle{
+  animation:gateway-gate-particle-gather 1.9s ease-out forwards;
+}
+
+/* Principle 2 — the Traveller moves, the Gate does not. Only a modest
+   growth during the Journey (the parallax world streaming past is what
+   sells forward motion — see .gateway-journey-* below); the one
+   deliberate large growth is reserved for Arrival, matching Principle
+   4 ("never simulate travel by scaling the gate alone"). */
 .gateway-gates-wrap.gateway-gates-journey{
-  animation:gateway-gates-approach var(--gw-journey-ms,6800ms) ease-in forwards;
+  animation:gateway-gates-approach-modest var(--gw-journey-ms,7400ms) cubic-bezier(.37,.0,.63,1) forwards;
 }
-@keyframes gateway-gates-approach{
-  0%{ transform:translateX(-50%) scale(.6); bottom:8%; }
-  100%{ transform:translateX(-50%) scale(1.5); bottom:-8%; }
+@keyframes gateway-gates-approach-modest{
+  0%{ transform:translateX(-50%) scale(.48); bottom:6%; }
+  100%{ transform:translateX(-50%) scale(.66); bottom:3%; }
 }
+/* Principle 4 — the Gate feels ancient. ONE deliberate final push,
+   at Arrival, so the doors genuinely dominate the screen once Lumo has
+   led the Traveller all the way there — "massive, timeless, sacred." */
+.gateway-gates-wrap.gateway-gates-arrive{
+  transition:transform 2.4s cubic-bezier(.16,.84,.44,1),bottom 2.4s cubic-bezier(.16,.84,.44,1);
+  transform:translateX(-50%) scale(1.95);
+  bottom:-16%;
+}
+
 .gateway-gates{ position:relative; width:100%; height:100%; }
+.gateway-gate-halo{
+  position:absolute;
+  left:50%; top:50%;
+  width:175%; height:175%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,214,140,.55) 0%,rgba(255,180,80,.18) 45%,rgba(255,180,80,0) 72%);
+  filter:blur(10px);
+  pointer-events:none;
+}
 .gateway-gate-glow{
   position:absolute; inset:8% 18%;
   border-radius:50% 50% 6% 6%;
@@ -8009,6 +8218,19 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   border-radius:52% 52% 0 0/62% 62% 0 0;
   background:linear-gradient(180deg,rgba(94,70,42,.9),rgba(48,32,18,.94));
   box-shadow:0 0 42px rgba(255,196,110,.22),inset 0 0 30px rgba(0,0,0,.45);
+  overflow:hidden;
+}
+/* "Stone details emerge" — a subtle carved-block texture, invisible
+   until Stage C crossfades it in (see .gateway-gates-detail above). */
+.gateway-gate-stonework{
+  position:absolute; inset:0;
+  background-image:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 36px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 60px);
+  opacity:0;
+  transition:opacity 2s ease-out;
+  pointer-events:none;
+  mix-blend-mode:overlay;
 }
 .gateway-gate-leaf{
   position:absolute;
@@ -8022,63 +8244,168 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .gateway-gate-rune{
   position:absolute;
   color:var(--gw-gold);
-  font-size:14px;
+  font-size:16px;
   opacity:0;
   text-shadow:0 0 10px rgba(255,203,69,.9);
 }
 .gateway-gate-rune-1{ top:20%; left:16%; }
 .gateway-gate-rune-2{ top:13%; right:18%; }
 .gateway-gate-rune-3{ top:38%; left:50%; transform:translateX(-50%); }
-
-/* Scene 6 — The Gates Open. Ancient mechanisms awaken (the runes
-   twinkle), the doors slowly unlock and swing outward, and warm golden
-   light pours through the widening gap. */
-.gateway-gates-wrap.gateway-gates-open .gateway-gate-rune{
-  animation:gateway-rune-twinkle 1.5s ease-in-out infinite;
+/* "Particles gather" — a handful of gold sparks converge from the
+   sides onto the Gate as its stone detail comes into focus. */
+.gateway-gate-gather-particle{
+  position:absolute;
+  top:50%; left:50%;
+  width:5px; height:5px;
+  border-radius:50%;
+  background:var(--gw-gold);
+  box-shadow:0 0 8px 2px rgba(255,203,69,.8);
+  opacity:0;
+  pointer-events:none;
+  --gx:0px; --gy:0px;
+  transform:translate(calc(-50% + var(--gx)),calc(-50% + var(--gy))) scale(1.4);
 }
-@keyframes gateway-rune-twinkle{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+@keyframes gateway-gate-particle-gather{
+  0%{ opacity:0; transform:translate(calc(-50% + var(--gx)),calc(-50% + var(--gy))) scale(1.4); }
+  30%{ opacity:.9; }
+  100%{ opacity:0; transform:translate(-50%,-50%) scale(.4); }
+}
+.gateway-gate-gather-particle.gp1{ --gx:-160px; --gy:-90px; animation-delay:0s; }
+.gateway-gate-gather-particle.gp2{ --gx:150px; --gy:-110px; animation-delay:.15s; }
+.gateway-gate-gather-particle.gp3{ --gx:-130px; --gy:100px; animation-delay:.3s; }
+.gateway-gate-gather-particle.gp4{ --gx:140px; --gy:110px; animation-delay:.1s; }
+.gateway-gate-gather-particle.gp5{ --gx:0px; --gy:-150px; animation-delay:.25s; }
+
+/* Principle 5 — anticipation. Between Arrival and the magic beginning,
+   a real, silent Pause: no new class here at all is deliberate — see
+   .gateway-overlay.gateway-hush below, which only ever quiets what is
+   already playing (wind/particles/rays), never adds anything new. */
+.gateway-overlay.gateway-hush .gateway-scene-particle,
+.gateway-overlay.gateway-hush .gateway-scene-rays{
+  transition:opacity 1.2s ease-in-out;
+  opacity:.55;
+}
+.gateway-overlay.gateway-hush .gateway-gate-halo{
+  transition:opacity 1.2s ease-in-out;
+  opacity:.4;
+}
+
+/* Locks awaken — the runes ignite in sequence (not all at once), each
+   settling into its own steady twinkle; a small burst of magic sparks
+   travels from Lumo's raised wing toward the Gate (js/gatewaySequence.js
+   mounts .gateway-magic-sparks at the same moment this class lands). */
+.gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-1{
+  animation:gateway-rune-ignite 900ms ease-out forwards,gateway-rune-twinkle 1.6s ease-in-out .9s infinite;
+}
+.gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-2{
+  animation:gateway-rune-ignite 900ms ease-out .35s forwards,gateway-rune-twinkle 1.6s ease-in-out 1.25s infinite;
+}
+.gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-3{
+  animation:gateway-rune-ignite 900ms ease-out .7s forwards,gateway-rune-twinkle 1.6s ease-in-out 1.6s infinite;
+}
+@keyframes gateway-rune-ignite{
+  0%{ opacity:.15; transform:scale(1); text-shadow:0 0 4px rgba(255,203,69,.3); }
+  55%{ opacity:1; transform:scale(1.35); text-shadow:0 0 18px rgba(255,203,69,1); }
+  100%{ opacity:.9; transform:scale(1); text-shadow:0 0 12px rgba(255,203,69,.85); }
+}
+@keyframes gateway-rune-twinkle{ 0%,100%{ opacity:.7; } 50%{ opacity:1; } }
+.gateway-magic-sparks{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.gateway-magic-spark{
+  position:absolute;
+  right:30%;
+  top:calc(38% + (var(--si) * 4%));
+  width:4px; height:4px;
+  border-radius:50%;
+  background:var(--gw-gold);
+  box-shadow:0 0 10px 3px rgba(255,203,69,.85);
+  opacity:0;
+  animation:gateway-magic-spark-travel 1.5s ease-in forwards;
+  animation-delay:calc(var(--si) * .18s);
+}
+@keyframes gateway-magic-spark-travel{
+  0%{ opacity:0; transform:translate(0,0) scale(1); }
+  15%{ opacity:.9; }
+  100%{ opacity:0; transform:translate(-22vw,-4vh) scale(.3); }
+}
+
+/* Principle 6 — crossing the threshold. The stone doors slowly unlock
+   and swing outward (extended, gentler than before — never rushed);
+   warm golden light pours through the widening gap. */
 .gateway-gates-wrap.gateway-gates-open .gateway-gate-glow{
-  animation:gateway-gate-glow-flood 2.8s ease-in forwards;
+  animation:gateway-gate-glow-flood 3.2s ease-in forwards;
 }
 @keyframes gateway-gate-glow-flood{
   0%{ opacity:.12; transform:scale(.6); }
   100%{ opacity:1; transform:scale(1.7); }
 }
 .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left{
-  animation:gateway-leaf-open-left 2.6s ease-in-out .3s forwards;
+  animation:gateway-leaf-open-left 3.4s cubic-bezier(.22,.61,.36,1) .2s forwards;
 }
 .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right{
-  animation:gateway-leaf-open-right 2.6s ease-in-out .3s forwards;
+  animation:gateway-leaf-open-right 3.4s cubic-bezier(.22,.61,.36,1) .2s forwards;
 }
 @keyframes gateway-leaf-open-left{ 0%{ transform:translateX(0) rotateY(0); } 100%{ transform:translateX(-58%) rotateY(22deg); } }
 @keyframes gateway-leaf-open-right{ 0%{ transform:translateX(0) rotateY(0); } 100%{ transform:translateX(58%) rotateY(-22deg); } }
 
-/* "The objective is to create anticipation" — a handful of extra
-   islands/clouds/birds stream past during Scene 5 for a genuine sense
-   of forward motion, on top of the ambient sky's own decorations (also
-   sped up briefly, see .gateway-journey-active below). */
+/* Principle 2's parallax "the world moves" — two depth bands stream
+   past during the Journey (near: big, fast, brighter; far: small,
+   slow, faint) on top of the ambient Sky's own decorations (also sped
+   up while this plays, see .gateway-journey-active below). Camera
+   motion is implied entirely by things passing beside it — the Gate
+   itself never sells the travel alone. */
 .gateway-journey-extras{ position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
-.gateway-journey-island{
+.gateway-journey-near{
   position:absolute;
-  top:calc(18% + (var(--i) * 15%));
-  left:-12%;
-  font-size:30px;
+  top:calc(30% + (var(--i) * 22%));
+  left:-16%;
+  font-size:52px;
   opacity:0;
-  animation:gateway-journey-pass 2.8s linear forwards;
-  animation-delay:calc(var(--i) * 1.1s);
+  filter:blur(.3px) drop-shadow(0 10px 16px rgba(0,0,0,.25));
+  animation:gateway-journey-pass-near 3.4s cubic-bezier(.3,0,.6,1) forwards;
+  animation-delay:calc(var(--i) * 1.5s + .2s);
 }
-@keyframes gateway-journey-pass{
+@keyframes gateway-journey-pass-near{
+  0%{ transform:translateX(0) scale(.85); opacity:0; }
+  12%{ opacity:.85; }
+  85%{ opacity:.6; }
+  100%{ transform:translateX(140vw) scale(1.1); opacity:0; }
+}
+.gateway-journey-far{
+  position:absolute;
+  top:calc(14% + (var(--i) * 12%));
+  left:-10%;
+  font-size:17px;
+  opacity:0;
+  filter:blur(.6px);
+  animation:gateway-journey-pass-far 8.8s linear forwards;
+  animation-delay:calc(var(--i) * 2.2s);
+}
+@keyframes gateway-journey-pass-far{
   0%{ transform:translateX(0); opacity:0; }
-  14%{ opacity:.65; }
-  86%{ opacity:.5; }
-  100%{ transform:translateX(132vw); opacity:0; }
+  10%{ opacity:.3; }
+  90%{ opacity:.22; }
+  100%{ transform:translateX(122vw); opacity:0; }
 }
-.gateway-overlay.gateway-journey-active .gateway-scene-bird{ animation-duration:5.5s; }
-.gateway-overlay.gateway-journey-active .gateway-scene-cloud{ animation-duration:7s; }
-.gateway-overlay.gateway-journey-active .gateway-scene-particle{ animation-duration:2.4s; }
+.gateway-overlay.gateway-journey-active .gateway-scene-bird{ animation-duration:6s; }
+.gateway-overlay.gateway-journey-active .gateway-scene-cloud{ animation-duration:7.5s; }
+.gateway-overlay.gateway-journey-active .gateway-scene-particle{ animation-duration:2.6s; }
 
-/* Scene 6's own closing beat — "the camera passes through the gates."
-   A full-bleed golden flood standing in for crossing the threshold;
+/* Scene 6's finale — "camera slowly moves forward... soft bloom" before
+   crossing the threshold. A genuine forward dolly (the whole overlay,
+   sky and Gate together, scales up and brightens) precedes the final
+   light flood, rather than jumping straight from open doors to a flash.
+   Custom, gentle cubic-bezier curves throughout this sprint's own new
+   motion — "the camera should feel like it is floating... never like
+   scrolling." */
+.gateway-overlay.gateway-threshold-dolly{
+  animation:gateway-threshold-dolly-move 2100ms cubic-bezier(.3,0,.3,1) forwards;
+}
+@keyframes gateway-threshold-dolly-move{
+  0%{ transform:scale(1); filter:brightness(1); }
+  100%{ transform:scale(1.3); filter:brightness(1.32); }
+}
+/* Principle 7 — protect the mystery. The final flood holds at full
+   opacity before the cut, so nothing is ever glimpsed mid-transition;
    fixed positioning so it covers the whole viewport regardless of
    .gateway-panel's own flex layout. Removed wholesale, like everything
    else in #gatewayContent, the moment done() fires. */
@@ -8091,12 +8418,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   pointer-events:none;
 }
 .gateway-threshold-flash.gateway-threshold-flash-in{
-  animation:gateway-threshold-flood 900ms ease-in forwards;
+  animation:gateway-threshold-flood 1150ms cubic-bezier(.25,.46,.45,.94) forwards;
 }
 @keyframes gateway-threshold-flood{
-  0%{ opacity:0; transform:scale(.4); }
-  70%{ opacity:1; transform:scale(1.5); }
-  100%{ opacity:1; transform:scale(2.3); }
+  0%{ opacity:0; transform:scale(.5); }
+  55%{ opacity:1; transform:scale(1.4); }
+  100%{ opacity:1; transform:scale(2.4); }
 }
 
 .gateway-tap-hint{
@@ -8117,36 +8444,64 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-scene-island,
   .gateway-scene-bird,
   .gateway-scene-particle,
+  .gateway-scene-rays,
+  .gateway-wind-streak,
   .gateway-lumo-portrait.gateway-lumo-flying,
   .gateway-lumo-portrait.gateway-lumo-settled,
   .gateway-lumo-shadow,
+  .gateway-lumo-tail,
+  .gateway-lumo-stage.gateway-lumo-idle .gateway-lumo-wing,
   .gateway-greeting-bubble.gateway-greeting-in,
   .gateway-tap-hint,
-  .gateway-lumo-stage.gateway-lumo-journey,
+  .gateway-lumo-stage.gateway-lumo-lead,
+  .gateway-lumo-stage.gateway-lumo-arrived,
   .gateway-lumo-wing,
   .gateway-gates-wrap.gateway-gates-journey,
-  .gateway-gates-wrap.gateway-gates-open .gateway-gate-rune,
+  .gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-1,
+  .gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-2,
+  .gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune-3,
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-glow,
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left,
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right,
-  .gateway-journey-island,
+  .gateway-gate-gather-particle,
+  .gateway-magic-spark,
+  .gateway-journey-near,
+  .gateway-journey-far,
+  .gateway-overlay.gateway-threshold-dolly,
   .gateway-threshold-flash.gateway-threshold-flash-in{ animation:none; }
   .gateway-lumo-portrait.gateway-lumo-flying{ opacity:1; transform:none; }
   .gateway-lumo-shadow{ opacity:.35; transform:scale(1); }
   .gateway-greeting-bubble.gateway-greeting-in{ opacity:1; transform:none; }
   .gateway-curtain-cloud,
-  .gateway-gates-wrap{ transition:none; }
+  .gateway-gates-wrap,
+  .gateway-gate-halo,
+  .gateway-gate-stonework,
+  .gateway-lumo-stage.gateway-lumo-yield,
+  .gateway-lumo-stage.gateway-lumo-arrived{ transition:none; }
+  .gateway-lumo-stage.gateway-lumo-yield{ transform:translate(-19vw,8vh) scale(.82) scaleX(1); }
   .gateway-curtain-cloud.gateway-curtain-parted{ opacity:0; }
-  .gateway-gates-wrap.gateway-gates-reveal{ opacity:1; transform:translateX(-50%) scale(1); }
+  .gateway-gates-wrap.gateway-gates-reveal,
+  .gateway-gates-wrap.gateway-gates-silhouette{ opacity:1; filter:none; transform:translateX(-50%) scale(.75); }
+  .gateway-gates-wrap.gateway-gates-detail{ filter:none; }
+  .gateway-gates-wrap.gateway-gates-detail .gateway-gate-stonework{ opacity:.32; }
+  .gateway-gates-wrap.gateway-gates-arrive{ transform:translateX(-50%) scale(1.6); bottom:-10%; }
+  .gateway-gate-gather-particle,
+  .gateway-magic-spark{ opacity:0; }
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-left{ transform:translateX(-58%) rotateY(22deg); }
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-leaf-right{ transform:translateX(58%) rotateY(-22deg); }
   .gateway-gates-wrap.gateway-gates-open .gateway-gate-glow{ opacity:1; transform:scale(1.4); }
+  .gateway-gates-wrap.gateway-gates-awaken .gateway-gate-rune{ opacity:.9; }
+  .gateway-overlay.gateway-threshold-dolly{ transform:none; filter:none; }
   .gateway-threshold-flash.gateway-threshold-flash-in{ opacity:1; transform:scale(1.6); }
-  .gateway-lumo-stage.gateway-lumo-turn{ transition:none; }
+  .gateway-lumo-stage.gateway-lumo-magic .gateway-lumo-wing{ opacity:.78; transform:rotate(-26deg) scale(1); }
+  .gateway-lumo-stage.gateway-lumo-arrived{ transform:translate(24vw,-15vh) scale(.7) scaleX(-1); }
+  .gateway-overlay.gateway-hush .gateway-scene-particle,
+  .gateway-overlay.gateway-hush .gateway-scene-rays,
+  .gateway-overlay.gateway-hush .gateway-gate-halo{ transition:none; }
 }
 @media (max-width:560px){
   .gateway-lumo-stage{ width:150px; height:150px; }
   .gateway-greeting-bubble{ font-size:18px; padding:0 18px; }
-  .gateway-gates-wrap{ width:200px; height:230px; }
+  .gateway-gates-wrap{ width:250px; height:290px; }
   .gateway-curtain-cloud{ height:160px; }
 }
