@@ -144,6 +144,22 @@
 // mounting (mountLumo(), unchanged since it was built) has since moved
 // again, from that same Scene 2 to the very end, Scene 7 — see
 // playLumoArrival() below.
+//
+// A SECOND real Gate video (assets/video/gateway/gate-sequence-final.mp4,
+// audio-stripped — see assets/video/gateway/README.md) tells the whole
+// "doors alone -> Lumo arrives carrying the Story Egg -> lands and
+// presents it -> picks it back up and carries it through the now-open
+// door" arc in one continuous shot, no compositing needed. Used for the
+// TRAVELLER (first-time) path only — see runTravellerGateway() below.
+// The Returning Creator path is deliberately left completely untouched,
+// still the original seven-scene, two-video, CSS-composited pipeline
+// above: this second clip visibly carries the Story Egg the whole time,
+// and per this file's own frozen canon (the Egg is purely a Hall/
+// Ceremony concept, never a Gateway one) that doesn't obviously fit a
+// Returning Creator, who has already been through their own Ceremony —
+// "am unsure [how the returning path should work], i would have to
+// remove the egg from the sequence altogether... for now lets just
+// focus on traveller first." Revisit once that's resolved.
 (function(){
   'use strict';
 
@@ -215,6 +231,40 @@
   // Same role as GATE_SETTLE_MS above, reused here for the pause
   // between Lumo's own flight-in landing and the first arrival line.
   const LUMO_LANDING_PAUSE_MS=600;
+
+  // ---- Traveller-only path: the single continuous Gate+Lumo clip. ----
+  // "show the doors for 2 sec and than let lumo enter sequence till he
+  // put the egg down. at this point there should be the interaction
+  // sequence... post interaction... continue with the video sequence
+  // from 7.5 sec onwards till end. post end show the studio home
+  // screen." One video, played in two segments with the greeting/
+  // interaction happening in the gap between them.
+  const GATE_FINAL_VIDEO_SRC=ASSETS_BASE+'video/gateway/gate-sequence-final.mp4';
+  const GATE_FINAL_POSTER_SRC=ASSETS_BASE+'video/gateway/gate-sequence-final-poster.jpg';
+  // A deliberate extra hold on the closed, glowing doors before any
+  // playback starts at all — "i dont want lumo to enter as soon as the
+  // page has loaded." On top of GATE_SETTLE_MS's own small fade-in
+  // settle (600ms), giving roughly 2.6s of stillness before Segment 1
+  // begins; the footage's own first ~2s (doors alone, no Lumo) then
+  // extends that further before Lumo actually becomes visible in frame.
+  const GATE_HOLD_MS=2000;
+  // Segment 1 plays from the start up to this timestamp, then pauses —
+  // Lumo has landed and set the Story Egg down between its feet, wings
+  // still spread. This exact held frame is where the interaction (the
+  // greeting) plays, in person, rather than heard over an empty screen.
+  const PAUSE_AT_S=5;
+  // Segment 2 resumes from this timestamp (skipping the brief "Lumo
+  // crouches to pick the Egg back up" transition) through to the video's
+  // real natural end — Lumo turns, carries the Egg through the now-open
+  // door, into the light.
+  const RESUME_AT_S=7.5;
+  // Safety-only fallback timers (this file's own established discipline
+  // — see playGateOpen's own OPEN_FALLBACK_MS): the real waits are
+  // driven by video.currentTime/the 'ended' event; these only fire if
+  // playback stalls or an event never arrives, so Studio's boot can
+  // never hang behind this file.
+  const SEGMENT1_FALLBACK_MS=6500;
+  const SEGMENT2_FALLBACK_MS=9000;
 
   // Scene 4 — Approach lead-in. A single quiet "wind rises" beat before
   // the world starts streaming past — the Gate itself is already visible
@@ -493,6 +543,128 @@
       return {wrap:wrap,video:video||null};
     }
 
+    // ---- Traveller-only path helpers (see the header comment's own
+    // "A SECOND real Gate video" note) — the Returning Creator path
+    // above is completely untouched and never calls any of these. ----
+
+    // Same idea as preloadGateVideo() above, pointed at the second real
+    // clip instead — kept off-screen until mountFinalGate() moves this
+    // SAME element into the visible frame.
+    function preloadFinalGateVideo(){
+      try{
+        const video=el('video','gateway-preload-hidden');
+        video.muted=true;
+        video.playsInline=true;
+        video.preload='auto';
+        video.poster=GATE_FINAL_POSTER_SRC;
+        video.src=GATE_FINAL_VIDEO_SRC;
+        video.setAttribute('aria-hidden','true');
+        return video;
+      }catch(e){ return null; }
+    }
+
+    // Mounts the second Gate video full-bleed and alone, reusing the
+    // exact same full-bleed wrapper CSS as mountGates() above
+    // (.gateway-gates-wrap/.gateway-gates/.gateway-gate-video-frame) —
+    // but skips the halo/gather-particle children entirely: this clip
+    // already has its own magic (the Egg's glow, the runes, the light)
+    // baked into its own footage, so there is nothing left for a
+    // separate CSS spark layer to add.
+    function mountFinalGate(video){
+      const wrap=el('div','gateway-gates-wrap');
+      const gate=el('div','gateway-gates');
+      const frame=el('div','gateway-gate-video-frame');
+      if(video){
+        video.classList.remove('gateway-preload-hidden');
+        video.classList.add('gateway-gate-video');
+        frame.appendChild(video);
+      }
+      gate.appendChild(frame);
+      wrap.appendChild(gate);
+      content.appendChild(wrap);
+      requestAnimationFrame(function(){ wrap.classList.add('gateway-gates-visible'); });
+      return {wrap:wrap,video:video||null};
+    }
+
+    // Plays the video from wherever it currently sits up to `toS`
+    // seconds, then pauses and snaps exactly to that timestamp —
+    // 'timeupdate' fires at an irregular cadence, so the snap guarantees
+    // a precise visual landing on the held frame regardless of exactly
+    // when the event fired. A duration-based fallback timer guarantees
+    // this can never hang Studio's own boot if playback stalls or
+    // 'timeupdate' never arrives. Reduced motion never actually plays —
+    // it jumps straight to the target timestamp and resolves almost
+    // immediately.
+    function playVideoSegmentTo(video,toS,fallbackMs,reduced,onDone){
+      if(!video){ after(200,onDone); return; }
+      if(reduced){
+        try{ video.currentTime=toS; }catch(e){}
+        after(120,onDone);
+        return;
+      }
+      let settled=false;
+      function finish(){
+        if(settled||skipRequested) return;
+        settled=true;
+        video.removeEventListener('timeupdate',onTime);
+        try{ video.pause(); video.currentTime=toS; }catch(e){}
+        onDone();
+      }
+      function onTime(){
+        if(video.currentTime>=toS-0.05) finish();
+      }
+      video.addEventListener('timeupdate',onTime);
+      try{
+        const p=video.play();
+        if(p&&p.catch) p.catch(function(){});
+      }catch(e){}
+      after(fallbackMs,finish);
+    }
+
+    // Resumes the video from `fromS` and plays it all the way to its
+    // real natural end (the video's own genuine 'ended' event) — never
+    // an artificial stopping point, this is the clip's own final
+    // footage: Lumo picks the Egg back up and carries it through the
+    // open door into the light. A duration-based fallback guarantees
+    // this can never hang Studio's boot if 'ended' never arrives.
+    function playVideoSegmentToEnd(video,fromS,fallbackMs,reduced,onDone){
+      if(!video){ after(200,onDone); return; }
+      if(reduced){ after(150,onDone); return; }
+      let settled=false;
+      function finish(){
+        if(settled||skipRequested) return;
+        settled=true;
+        video.removeEventListener('ended',finish);
+        onDone();
+      }
+      video.addEventListener('ended',finish);
+      try{
+        video.currentTime=fromS;
+        const p=video.play();
+        if(p&&p.catch) p.catch(function(){});
+      }catch(e){}
+      const remaining=(isFinite(video.duration)&&video.duration>fromS)
+        ? Math.ceil((video.duration-fromS)*1000)+800
+        : fallbackMs;
+      after(remaining,finish);
+    }
+
+    // The Traveller path's own final beat — a brief flash before the cut
+    // to the Hall, reusing the exact same .gateway-threshold-flash CSS
+    // the returning path's playThreshold() uses. No forward camera dolly
+    // here — the video's own final seconds already read as a camera-
+    // through-the-light moment on their own; stacking a CSS zoom on top
+    // would double up rather than add anything.
+    function playFinalFlash(reduced,onDone){
+      if(skipRequested) return;
+      const flash=el('div','gateway-threshold-flash');
+      content.appendChild(flash);
+      requestAnimationFrame(function(){
+        flash.classList.add('gateway-threshold-flash-in');
+      });
+      after(reduced?150:THRESHOLD_MS,onDone);
+    }
+
     // Scene 4 — Approach lead-in. A single quiet beat before the Journey
     // (Scene 5) — the Gate itself needs no reveal of its own, it has been
     // visible since Scene 2. "Remove the environment elements" retired
@@ -658,18 +830,16 @@
       skipRequested=false;
       wireSkip(done);
 
-      // Kicked off immediately, well before Scene 2 needs it — see
-      // preloadGateVideo's own comment for why this matters.
-      gateVideoEl=preloadGateVideo();
-      if(gateVideoEl) content.appendChild(gateVideoEl);
-
       const reduced=prefersReducedMotion();
       after(reduced?800:TAP_HINT_DELAY_MS,showTapHint);
 
       // Session detection happens before the Gateway — "The Traveller
       // Journey ends before the Gateway begins" — computed once, up
-      // front, with no visuals of its own; Scene 3 below is simply the
-      // first moment that content differs between the two outcomes.
+      // front, with no visuals of its own. It now also decides WHICH
+      // Gate video to preload (see the header comment's own "A SECOND
+      // real Gate video" note) — the two paths use genuinely different
+      // footage, so there is no single video to kick off before this
+      // resolves.
       let isReturning=false, card=null;
       try{
         if(typeof MagicCard!=='undefined'){
@@ -785,17 +955,51 @@
         }
       }
 
+      // Traveller path — "show the doors for 2 sec and than let lumo
+      // enter sequence till he put the egg down. at this point there
+      // should be the interaction sequence with traveller... post
+      // interaction... continue with the video sequence from 7.5 sec
+      // onwards till end. post end show the studio home screen." One
+      // continuous clip, played in two segments with the greeting in
+      // the gap between them — no separate Approach/Journey/Arrival/
+      // Awaken/Open/Lumo-arrival scenes needed, the video already tells
+      // that whole story on its own.
+      function runTravellerGateway(){
+        gateEls=mountFinalGate(gateVideoEl);
+        after(reduced?0:(GATE_SETTLE_MS+GATE_HOLD_MS),function(){
+          if(skipRequested) return;
+          playVideoSegmentTo(gateVideoEl,PAUSE_AT_S,SEGMENT1_FALLBACK_MS,reduced,function(){
+            if(skipRequested) return;
+            playLines(GREETING_LINES,LINE_MS,LINE_GAP_MS,reduced,function(bubble){
+              if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
+              if(skipRequested) return;
+              playVideoSegmentToEnd(gateVideoEl,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
+                if(skipRequested) return;
+                playFinalFlash(reduced,done);
+              });
+            });
+          });
+        });
+      }
+
       // "use the gate sequence for the point go, we dont need any sky
       // sequence" — the Gate is the very first thing shown, not eased
-      // into after a separate atmosphere-only pause. "Remove egg and
-      // lumo from the scene. Let it be just the gate." — with nobody
-      // else to resolve from the registry first, the Gate mounts
-      // synchronously, immediately: still the very first thing shown,
-      // now with no async wait of any kind. The ambient sky decorations
-      // (clouds/particles/rays/haze, static in index.html) still form
-      // the backdrop the Gate sits in front of.
-      gateEls=mountGates(gateVideoEl);
-      after(reduced?0:GATE_SETTLE_MS,runScene3);
+      // into after a separate atmosphere-only pause. The ambient sky
+      // decorations (clouds/particles/rays/haze, static in index.html)
+      // still form the backdrop the Gate sits in front of.
+      if(isReturning){
+        // Unchanged, still the original seven-scene, two-video pipeline
+        // — see the header comment's own "A SECOND real Gate video"
+        // note for why this path is deliberately left exactly as-is.
+        gateVideoEl=preloadGateVideo();
+        if(gateVideoEl) content.appendChild(gateVideoEl);
+        gateEls=mountGates(gateVideoEl);
+        after(reduced?0:GATE_SETTLE_MS,runScene3);
+      }else{
+        gateVideoEl=preloadFinalGateVideo();
+        if(gateVideoEl) content.appendChild(gateVideoEl);
+        runTravellerGateway();
+      }
     }
 
     return {begin:begin};
