@@ -7882,42 +7882,36 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 
 /* ============================================================
-   "Lumo Guards the Gate" — Traveller Gateway V2
+   "Lumo Guards the Gate" — Traveller Gateway V2, then pulled out of
+   the Gate scene entirely
    ============================================================
-   Supersedes the Cinematic Polish Sprint's own reveal-and-lead staging,
-   per direct feedback once a real video replaced the CSS-drawn Gate:
-   "let the gate be there [from the start]... show lumo guarding the
-   gate and our egg also there somewhere, not in limelight but there."
-   The Gate is no longer hidden-then-revealed — it is the STAGE the
-   whole Gateway happens in front of, visible (softly, at rest) from the
-   moment Lumo lands. Lumo no longer leads a multi-leg flight across an
-   open sky (Principle 3 is now realized differently — see below); it
-   settles into ONE fixed "guard" position beside the Gate the instant
-   it lands (js/gatewaySequence.js's mountLumo adds .gateway-lumo-guard
+   Originally supersedes the Cinematic Polish Sprint's own reveal-and-
+   lead staging, per direct feedback once a real video replaced the
+   CSS-drawn Gate: "let the gate be there [from the start]... show lumo
+   guarding the gate." Then, "remove egg and lumo from the scene. let
+   it be just the gate... in next scene let lumo interact with the
+   traveller" moved WHEN Lumo appears — from the Gate's own opening
+   scene to a brand-new final scene, once the doors have already
+   finished opening (js/gatewaySequence.js's playLumoArrival, called
+   after playGateOpen) — but not HOW it appears: this exact "guard"
+   position mechanic is completely unchanged. Lumo settles into ONE
+   fixed position beside the Gate the instant it lands
+   (js/gatewaySequence.js's mountLumo adds .gateway-lumo-guard
    synchronously, before the flight-in keyframe even plays, so Lumo
    flies in and lands directly at its watch post) and stays there for
-   the rest of the sequence — a stationary sentinel the Traveller
-   approaches, not a companion who flies ahead. Six of the original
-   seven principles still hold, reinterpreted: (1) the Gate reveals its
-   DETAIL gradually (a quiet particle-gather + a continuous idle glow)
-   rather than being hidden then popped into view; (2) the Traveller
-   moves, the Gate does not — the same parallax near/far streaming sells
-   forward motion while both Lumo and the Gate hold their ground; (4)
-   the Gate still gets one deliberate, massive Arrival growth so the
-   doors genuinely dominate the screen — Lumo, now elevated to a real
-   z-index above the Gate (see .gateway-lumo-stage above), stays visibly
-   in front of it rather than being buried underneath; (5)/(6)/(7) —
-   the silent Pause, the real video's own opening motion, and the
-   threshold flash's protect-the-mystery hold — are all unchanged. */
+   the rest of the sequence. */
 .gateway-lumo-stage.gateway-lumo-guard{
   transition:transform 1.6s cubic-bezier(.16,.84,.44,1);
   transform:translate(27vw,-2vh) scale(.6) scaleX(-1);
 }
-/* Principle 5's "only then" — Lumo raises one wing and magic begins.
-   Deliberately does NOT move Lumo again (its .gateway-lumo-guard
-   position is correct throughout the whole sequence) — its only job is
-   the wing (and, alongside it, the Story Egg stirring at the Gate's
-   base — see .gateway-egg-wrap.gateway-egg-awaken below). */
+/* Lumo raises one wing as it speaks its own arrival greeting (Scene 7,
+   js/gatewaySequence.js's playLumoArrival) — a welcoming gesture now,
+   not the "opening the gate" trigger it once was back when Lumo stood
+   beside the Gate the whole time; the Gate now opens entirely on its
+   own (see .gateway-gates-wrap.gateway-gates-awaken below), well
+   before Lumo ever arrives. Deliberately does NOT move Lumo again (its
+   .gateway-lumo-guard position is correct throughout) — its only job
+   is the wing. */
 .gateway-lumo-stage.gateway-lumo-magic .gateway-lumo-wing{
   animation:gateway-wing-raise 1.7s cubic-bezier(.22,.7,.34,1) .1s forwards;
 }
@@ -8117,44 +8111,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .gateway-gate-gather-particle.gp4{ --gx:140px; --gy:110px; animation-delay:.1s; }
 .gateway-gate-gather-particle.gp5{ --gx:0px; --gy:-150px; animation-delay:.25s; }
 
-/* The Story Egg — present from the very start, tucked at the Gate's own
-   base, small and dim ("not in limelight but there"). A percentage-
-   positioned CHILD of .gateway-gates (not the viewport), so it grows
-   and repositions automatically alongside the Gate's own Journey/
-   Arrival growth with no separate transform-syncing logic needed — see
-   js/gatewaySequence.js's mountGates(). At Awaken (js/gatewaySequence.js's
-   playGateAwaken) it stirs and brightens alongside Lumo's wing-raise —
-   "if Lumo allows the Traveller, it carries the Egg along with it
-   inside the Gate" realized as the Egg visibly waking and glowing right
-   as the real doors begin to open, rather than a literal cross-screen
-   carry (Lumo and the Egg live in genuinely different positioning
-   contexts — the Gate's own local space vs. the viewport — so this is
-   the honest, achievable reading of that beat). */
-.gateway-egg-wrap{
-  position:absolute;
-  bottom:6%;
-  left:9%;
-  width:9%;
-  aspect-ratio:1/1;
-  opacity:.4;
-  filter:saturate(.35) brightness(.7);
-  transform:scale(.85);
-  transform-origin:bottom center;
-  pointer-events:none;
-  transition:opacity 1.6s ease, filter 1.6s ease, transform 1.6s cubic-bezier(.22,.61,.36,1);
-}
-.gateway-egg-portrait{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  filter:drop-shadow(0 6px 10px rgba(10,4,24,.35));
-}
-.gateway-egg-wrap.gateway-egg-awaken{
-  opacity:1;
-  filter:saturate(1) brightness(1.05) drop-shadow(0 0 14px rgba(255,203,69,.55));
-  transform:scale(1.05) translateY(-6%);
-}
-
 /* Principle 5 — anticipation. Between Arrival and the magic beginning,
    a real, silent Pause: no new class here at all is deliberate — see
    .gateway-overlay.gateway-hush below, which only ever quiets what is
@@ -8164,11 +8120,15 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   opacity:.4;
 }
 
-/* Locks awaken — a small burst of magic sparks travels from Lumo's
-   raised wing toward the Gate, and the halo behind it pulses once, right
-   as js/gatewaySequence.js calls video.play() on the real footage — "the
-   magic begins" now lands on the moment the real opening motion starts,
-   rather than on a separately faked CSS rune-ignite animation. */
+/* Locks awaken — nobody is beside the Gate at this point (Lumo doesn't
+   arrive until Scene 7, well after the doors are already open — see
+   js/gatewaySequence.js's playLumoArrival) — a small burst of magic
+   sparks gathers and travels across the Gate's own runes on its own,
+   and the halo behind it pulses once, right as js/gatewaySequence.js
+   calls video.play() on the real footage — "welcome traveller and open
+   the gate," "the magic begins" now landing on the moment the real
+   opening motion starts, rather than on a separately faked CSS
+   rune-ignite animation. */
 .gateway-gates-wrap.gateway-gates-awaken .gateway-gate-halo{
   animation:gateway-gate-halo-pulse 1.4s ease-out forwards;
 }
@@ -8282,15 +8242,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-lumo-shadow{ opacity:.35; transform:scale(1); }
   .gateway-greeting-bubble.gateway-greeting-in{ opacity:1; transform:none; }
   .gateway-gates-wrap,
-  .gateway-lumo-stage.gateway-lumo-guard,
-  .gateway-egg-wrap{ transition:none; }
+  .gateway-lumo-stage.gateway-lumo-guard{ transition:none; }
   .gateway-gates-wrap{ filter:none; transform:none; }
   .gateway-gates-wrap.gateway-gates-journey,
   .gateway-gates-wrap.gateway-gates-arrive{ transform:none; }
   .gateway-gate-halo{ opacity:.55; }
   .gateway-gate-gather-particle,
   .gateway-magic-spark{ opacity:0; }
-  .gateway-egg-wrap.gateway-egg-awaken{ opacity:1; filter:none; transform:none; }
   .gateway-overlay.gateway-threshold-dolly{ transform:none; filter:none; }
   .gateway-threshold-flash.gateway-threshold-flash-in{ opacity:1; transform:scale(1.6); }
   .gateway-lumo-stage.gateway-lumo-magic .gateway-lumo-wing{ opacity:.78; transform:rotate(-26deg) scale(1); }
