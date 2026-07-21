@@ -744,11 +744,16 @@ const MagicCardUI=(function(){
       const line=_el('div','magic-card-gatekeeper-line');
       bubble.appendChild(line);
       wrap.appendChild(bubble);
-      // "vihupapa, the creator lord, show me your stars, and you may
-      // pass. this is the line. or something similar" — a grander,
-      // Guardian-addressing-a-title greeting, kept generic (never a
-      // literal hardcoded "creator lord") so it fits any nickname.
-      _typewriterReveal(line,name?(name+', the Creator — show me your stars, and you may pass.'):'Traveler, show me your stars, and you may pass.');
+      // One unified line regardless of whether a nickname is known
+      // (Continue/tile-tap) or not (Recall) — no nickname/fallback split
+      // needed once the greeting itself doesn't address anyone by name.
+      _typewriterReveal(line,'My friend, show me your stars, and you may pass.');
+      // Real recorded Lumo voice line, staged as it becomes available
+      // (see js/lumoVoice.js) — fires alongside the typewriter reveal,
+      // from inside this same user-gesture-originated call chain, so
+      // browser autoplay policy is satisfied. A no-op until/unless this
+      // id has a real file wired in.
+      if(typeof window.LumoVoice!=='undefined') LumoVoice.play('tapgrid');
     }
     if(typeof window.MagicCardArt!=='undefined' && typeof MagicCardArt.resolveCompanionPortrait==='function'){
       MagicCardArt.resolveCompanionPortrait('lumo').then(function(img){
