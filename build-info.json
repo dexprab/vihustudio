@@ -4,6 +4,6 @@
   "task": "Two same-day follow-ups on the sky-recognition challenge: (1) hid the beginCreatorSignature bubble entirely instead of rendering it empty, fixing wasted vertical space and an unnecessary scrollbar; (2) reversed after direct user correction ('we still need a text line asking creator to find his stars') -- beginCreatorSignature now always shows the real prompt, matching the other two known-card entry points (Welcome/Picker), never a silent screen. Verified via Playwright: prompt renders and types out correctly on all three entry points; scroll overflow re-measured with text restored, matching the sibling flows' existing overflow-y:auto safety net, no regression.",
   "build": "0216",
   "buildDate": "2026-07-21",
-  "commit": "pending",
+  "commit": "5d6f8d9",
   "environment": "Release"
 }
