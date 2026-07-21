@@ -45,16 +45,16 @@
   // together.
   const FOUNDATION_LAYERS=[
     {file:'air.mp3',volume:0.5},
-    {file:'harmony.mp3',volume:0.4},
-    {file:'magic.mp3',volume:0.3},
-    {file:'forest.mp3',volume:0.35},
-    {file:'wind.mp3',volume:0.3}
+    {file:'harmony.mp3',volume:0.03},
+    {file:'magic.mp3',volume:0},
+    {file:'forest.mp3',volume:0.28},
+    {file:'wind.mp3',volume:0.07}
   ];
 
   const MUTE_KEY='vihu-audio-muted';
   const VOLUME_KEY='vihu-audio-volume';
-  const DEFAULT_VOLUME=0.6;
-  const DEFAULT_WORLD_FADE_MS=2000;
+  const DEFAULT_VOLUME=0.4;
+  const DEFAULT_WORLD_FADE_MS=2700;
   const DEFAULT_MUTE_FADE_MS=300;
 
   let _initialized=false;

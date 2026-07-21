@@ -39,13 +39,13 @@
 
     var DEFAULT_LAYERS=[
       {file:'air.mp3',volume:0.5},
-      {file:'harmony.mp3',volume:0.4},
-      {file:'magic.mp3',volume:0.3},
-      {file:'forest.mp3',volume:0.35},
-      {file:'wind.mp3',volume:0.3}
+      {file:'harmony.mp3',volume:0.03},
+      {file:'magic.mp3',volume:0},
+      {file:'forest.mp3',volume:0.28},
+      {file:'wind.mp3',volume:0.07}
     ];
-    var DEFAULT_MASTER=0.6;
-    var DEFAULT_WORLD_FADE=2000;
+    var DEFAULT_MASTER=0.4;
+    var DEFAULT_WORLD_FADE=2700;
     var DEFAULT_MUTE_FADE=300;
 
     function pct(n){ return Math.round(n*100); }

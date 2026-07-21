@@ -33,10 +33,12 @@ Foundation layers, applies fixed volumes, loops them indefinitely and
 optionally overlays a World ambience layer."
 
 Each file's own relative mix level lives in `js/audioManager.js`'s
-`FOUNDATION_LAYERS` table — still a placeholder balance (0.5/0.4/0.3/0.35/0.3),
-since re-tuning it "by ear" needs a human actually listening to the five real
-files mixed together, which this environment has no way to do; verified only
-that each file decodes correctly and plays for its full real duration.
+`FOUNDATION_LAYERS` table — tuned by ear via `tools/audio-mixer/` (a temporary
+dev utility exposing these exact values as live sliders) and set as the real
+shipped mix: Air 0.5, Harmony 0.03, Magic 0, Forest 0.28, Wind 0.07, alongside
+a Master Volume of 0.4 and a 2700ms World Fade (Mute Fade stays at the
+original 300ms). "For the time being" — still open to further re-tuning the
+same way, disclosed as a real, current mix rather than a guessed placeholder.
 
 ## Discipline
 
