@@ -26,15 +26,28 @@
 //     own clearAll() already established, rather than a permanent,
 //     one-time-forever dismiss).
 //
-// A thin host-binding module (configure({...})), matching the
+// Copy note: a Magic Card is never claimed on its own — per direct
+// product correction ("why we are saying claim magic card as there is
+// no other way to claim the card"), the ONLY way a Traveller becomes a
+// Creator is MagicCard.shouldOfferAwakening()'s own ceremony, offered
+// automatically the moment a first Publish actually succeeds
+// (js/publishStudio.js's _finalizePublish). So this notice names exactly
+// one real action — Publish — rather than implying "publish OR claim"
+// are two independent, separately-reachable choices.
+//
+// Placement note: originally a position:fixed floating toast anchored to
+// the viewport — moved into normal document flow, mounted inside
+// .right-sidebar as a sibling of #contextPanelRoot (see _ensureDom()),
+// after a real screenshot showed the floating toast visually colliding
+// with the Object Strip's cards/scroll-arrows at the bottom of the
+// canvas column. .right-sidebar already has overflow-y:auto (a safe,
+// scrollable container for new in-flow content) and is never wiped by
+// ContextPanel.refresh()'s own panelRoot.innerHTML='' calls, since this
+// element is inserted as ContextPanel's SIBLING, never its child — a
+// thin host-binding module (configure({...})), matching the
 // js/objectStrip.js / js/contextPanel.js / js/pageRuntime.js pattern —
 // no new architecture, just one more small panel reading the same
-// AppState/MagicCard state everything else already reads. Deliberately
-// a floating notice (position:fixed, no layout height reserved) rather
-// than a permanent banner slotted into .workspace's own fixed
-// calc(100vh - 64px) grid — this codebase has hit that exact class of
-// height-overflow bug (a fixed-height ancestor silently clipping a new
-// sibling) more than once, and a toast avoids it entirely.
+// AppState/MagicCard state everything else already reads.
 const TravellerSaveNotice=(function(){
   'use strict';
 
@@ -75,11 +88,37 @@ const TravellerSaveNotice=(function(){
     _el=document.createElement('div');
     _el.className='traveller-save-notice hidden';
     _el.innerHTML=
-      '<span class="traveller-save-notice-icon" aria-hidden="true">🌱</span>'+
-      '<span class="traveller-save-notice-text">You’re creating as a Traveller — publish your adventure (or claim your Magic Card) to make sure it’s kept safe.</span>'+
-      '<button type="button" class="traveller-save-notice-publish">📖 Publish Now</button>'+
-      '<button type="button" class="traveller-save-notice-dismiss" title="Dismiss for now" aria-label="Dismiss">✕</button>';
-    document.body.appendChild(_el);
+      '<div class="traveller-save-notice-row">'+
+        '<span class="traveller-save-notice-icon" aria-hidden="true">🌱</span>'+
+        '<span class="traveller-save-notice-text">You’re creating as a Traveller. Publish your adventure to make sure it’s kept safe.</span>'+
+        '<button type="button" class="traveller-save-notice-dismiss" title="Dismiss for now" aria-label="Dismiss">✕</button>'+
+      '</div>'+
+      '<button type="button" class="traveller-save-notice-publish">📖 Publish Now</button>';
+
+    // Mount as a normal, in-flow FIRST child of .right-sidebar — never
+    // document.body/position:fixed (see the Placement note above for
+    // why that collided with the Object Strip). Deliberately always
+    // .right-sidebar's very first child (before .tabs, before
+    // #contextPanelRoot) rather than "right after .tabs" — .tabs is
+    // itself always display:none (a permanent base rule, unrelated to
+    // this notice), and inserting relative to it turned out to be
+    // boot-order-dependent: if this ran before ContextPanel.init() had
+    // created #contextPanelRoot, a later ContextPanel.init() call would
+    // insert its own root using that same "right after .tabs" logic and
+    // push this notice below the whole Context Panel instead of above
+    // it. Being unconditionally first sidesteps that race entirely and
+    // is completely unaffected by ContextPanel.refresh()'s frequent
+    // panelRoot.innerHTML='' calls, since this element lives outside
+    // #contextPanelRoot entirely.
+    const rightSidebar=document.querySelector('.right-sidebar');
+    if(rightSidebar){
+      rightSidebar.insertBefore(_el,rightSidebar.firstChild);
+    }else{
+      // Defensive fallback only — should not happen in production,
+      // .right-sidebar is always present once the app has booted.
+      document.body.appendChild(_el);
+    }
+
     const publishBtn=_el.querySelector('.traveller-save-notice-publish');
     if(publishBtn){
       publishBtn.addEventListener('click',function(){

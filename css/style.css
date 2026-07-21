@@ -7991,41 +7991,40 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 
 /* js/travellerSaveNotice.js — "for a traveller who once start creating
    we need to tell if they do not publish their creation might get
-   lost." A floating toast, deliberately NOT slotted into .workspace's
-   own fixed calc(100vh - 64px) grid (this codebase has hit that exact
-   class of height-overflow bug more than once when a new sibling was
-   added there) — position:fixed reserves zero layout height, so it can
-   never push or clip anything else in the Workspace. Sits below the
-   Companion widget (z-index:1450) and every modal overlay, above
-   ordinary page content. */
+   lost." Originally a position:fixed floating toast anchored to the
+   viewport bottom-center -- moved into normal document flow, mounted as
+   a sibling of #contextPanelRoot inside .right-sidebar, after a real
+   screenshot showed the floating toast visually colliding with the
+   Object Strip's cards/scroll-arrows at the bottom of the canvas
+   column. As an ordinary in-flow card at the top of the right sidebar
+   it can never overlap anything else -- .right-sidebar already scrolls
+   (overflow-y:auto) if content ever runs long. */
 .traveller-save-notice{
-  position:fixed;
-  left:50%;
-  bottom:18px;
-  transform:translateX(-50%);
-  z-index:900;
   display:flex;
-  align-items:center;
-  gap:10px;
-  max-width:min(560px,92vw);
-  padding:10px 14px;
-  border-radius:16px;
+  flex-direction:column;
+  gap:8px;
+  margin:0 0 var(--section-gap);
+  padding:12px 14px;
+  border-radius:14px;
   background:linear-gradient(135deg,#fff8e6,#fff1c9);
   border:1px solid rgba(255,203,69,0.55);
-  box-shadow:0 10px 28px rgba(0,0,0,0.18);
   color:#4a3a10;
 }
 body.dark-theme .traveller-save-notice{
   background:linear-gradient(135deg,#3a3320,#2c2717);
   border-color:rgba(255,203,69,0.35);
   color:#f3e6bd;
-  box-shadow:0 10px 28px rgba(0,0,0,0.45);
 }
 .traveller-save-notice.hidden{ display:none; }
+.traveller-save-notice-row{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
 .traveller-save-notice-icon{
-  font-size:20px;
+  font-size:18px;
   flex-shrink:0;
-  line-height:1;
+  line-height:1.3;
 }
 .traveller-save-notice-text{
   font-size:13px;
@@ -8034,34 +8033,28 @@ body.dark-theme .traveller-save-notice{
 }
 /* Buttons need explicit overrides -- the global
    button:not(...){width:100%;margin-bottom:12px} reset would otherwise
-   stretch these into a vertical stack inside a horizontal toast, the
-   same recurring class of bug this codebase has fixed repeatedly
+   double up the margin/width this layout already sets deliberately,
+   the same recurring class of bug this codebase has fixed repeatedly
    (Object Strip cards, the Publish Studio close button, Doodle's pen
    swatches). */
 .traveller-save-notice-publish{
-  width:auto !important;
-  height:32px !important;
+  width:100% !important;
+  height:34px !important;
   margin:0 !important;
-  padding:0 12px !important;
-  flex-shrink:0;
   font-size:12px;
-  white-space:nowrap;
+  font-weight:600;
 }
 .traveller-save-notice-dismiss{
-  width:26px !important;
-  height:26px !important;
+  width:22px !important;
+  height:22px !important;
   margin:0 !important;
   padding:0 !important;
   flex-shrink:0;
   border-radius:50% !important;
   background:rgba(0,0,0,0.08) !important;
   color:inherit !important;
-  font-size:12px;
+  font-size:11px;
 }
 body.dark-theme .traveller-save-notice-dismiss{
   background:rgba(255,255,255,0.12) !important;
-}
-@media (max-width:560px){
-  .traveller-save-notice{ left:12px; right:12px; bottom:12px; transform:none; max-width:none; }
-  .traveller-save-notice-text{ font-size:12px; }
 }
