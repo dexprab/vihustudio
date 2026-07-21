@@ -232,7 +232,13 @@
   // (see gateway-line-in's new percentages in css/style.css) rather
   // than the old brief 300ms/360ms snap, so "gradual" applies to both
   // how long a line stays up and how it actually arrives/leaves.
-  const GREETING_LINE_MS=2600;
+  // "we need to allow more time to kids... increase all timings by
+  // 800ms" — every timing that governs how the greeting itself appears/
+  // holds/disappears (this one, the gap below, and the closing pause)
+  // all got the identical +800ms, keeping their relative proportions
+  // (and so the fade's own 26%/74% split) exactly the same, just slower
+  // end to end: 2600->3400, 1000->1800, 1200->2000.
+  const GREETING_LINE_MS=3400;
   // GREETING_END_PAUSE_MS is new — "the traveller
   // greeting looks unfinished ending abruptly": the 4th line used to
   // vanish and the video resumed in the very same instant, with no beat
@@ -240,8 +246,8 @@
   // the empty, silent frame for a moment first (the same "real silence,
   // nothing new happens" principle already used elsewhere in this file
   // for the Returning path's own Pause beat).
-  const GREETING_GAP_MS=1000;
-  const GREETING_END_PAUSE_MS=1200;
+  const GREETING_GAP_MS=1800;
+  const GREETING_END_PAUSE_MS=2000;
 
   // Scene 7 — Lumo Arrives. "In next scene let lumo interact with the
   // traveller" — the first, and only, lines Lumo actually speaks IN
