@@ -48,7 +48,16 @@
 //      reimplemented; Lumo is the Gatekeeper in both experiences, so the
 //      Gateway is briefly, non-destructively hidden — never torn down,
 //      no timers reset — for this one interlude, reading as one
-//      continuous encounter rather than a hand-off). A first-time
+//      continuous encounter rather than a hand-off). "retry or continue
+//      as traveller. options" — a wrong pattern already lets someone
+//      retry in place indefinitely; giving up now shows an explicit
+//      choice (Try Again / Continue as a Traveller) instead of silently
+//      deciding for them. Choosing "Continue as a Traveller" swaps the
+//      still-unplayed no-egg clip out for the real Traveller clip and
+//      restarts this same function with the Traveller's own opts — a
+//      declined check genuinely BECOMES the Traveller experience, not
+//      a cleared identity riding along on the Returning Creator's own
+//      reunion-toned video. A first-time
 //      Traveller has no preLines at all and skips straight to segment 1
 //      — there is nobody to recognize yet.
 //   4. Segment 1 plays — Lumo flies in (its own real, already-filmed
@@ -592,13 +601,25 @@
             MagicCardUI.beginCreatorSignature(card,function(success){
               overlay.classList.remove('gateway-mode-hidden-for-signature');
               if(skipRequested) return;
-              if(!success){
-                // A declined/failed check never blocks the physical
-                // Gateway — it simply proceeds without a recognized
-                // identity, exactly like a first-time Traveller would.
-                try{ if(typeof MagicCard!=='undefined') MagicCard.setActive(null); }catch(e){}
+              if(success){
+                beginSegment1();
+                return;
               }
-              beginSegment1();
+              // "Continue as a Traveller" — a declined check never
+              // blocks the physical Gateway, but it must genuinely
+              // BECOME the Traveller experience (its own clip, its own
+              // first-meeting greeting), not quietly clear the identity
+              // while still playing the Returning Creator's own reunion-
+              // toned video and lines underneath it. Nothing has visibly
+              // played yet at this point (still the closed-doors frame),
+              // so swapping the mounted video out here is a clean cut,
+              // not a jarring one.
+              try{ if(typeof MagicCard!=='undefined') MagicCard.setActive(null); }catch(e){}
+              if(gateEls&&gateEls.wrap&&gateEls.wrap.parentNode) gateEls.wrap.parentNode.removeChild(gateEls.wrap);
+              try{ if(video) video.pause(); }catch(e){}
+              gateVideoEl=preloadFinalGateVideo(GATE_FINAL_VIDEO_SRC,GATE_FINAL_POSTER_SRC);
+              if(gateVideoEl) content.appendChild(gateVideoEl);
+              runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES});
             });
           });
         });

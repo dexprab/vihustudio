@@ -420,9 +420,17 @@ const MagicCardUI=(function(){
   // redundant second speech line (skipSpeech:true), reusing the exact
   // same _renderPatternChallenge machinery (grid, decoys, star colours,
   // board-fit sizing) with zero duplication. `onResult(ok, cardId)`
-  // fires on success (the challenge verified this card's real pattern)
-  // or on "← Back" (treated as "not me" — the Gateway's own caller
-  // falls through to the Traveller path when ok is false).
+  // fires on success (the challenge verified this card's real pattern),
+  // or once the Traveller explicitly chooses "Continue as a Traveller"
+  // from the choice screen below (never on the FIRST "← Back" tap by
+  // itself — see showChoice).
+  //
+  // "retry or continue as traveller. options" — a wrong tap already
+  // lets someone retry indefinitely in place (the challenge itself just
+  // clears the board and says "try again"); what "← Back" used to do
+  // was skip straight past that and silently give up on their behalf.
+  // Now "← Back" opens one small, explicit choice instead: try the
+  // stars again, or genuinely continue as a Traveller.
   function beginCreatorSignature(card,onResult){
     _ensureDom();
     _clear();
@@ -431,22 +439,38 @@ const MagicCardUI=(function(){
     _show();
     const panel=_el('div','magic-card-gate-panel');
     content.appendChild(panel);
-    _renderPatternChallenge(panel,{
-      name:card.nickname||'Star Traveler',
-      subtitle:'Tap your stars, in order, to continue.',
-      skipSpeech:true,
-      verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
-      onSuccess:function(){
-        MagicCard.setActive(card.id);
-        _hide();
-        refreshHeaderBadge();
-        onResult(true,card.id);
-      },
-      onBack:function(){
+    function showChallenge(){
+      _renderPatternChallenge(panel,{
+        name:card.nickname||'Star Traveler',
+        subtitle:'Tap your stars, in order, to continue.',
+        skipSpeech:true,
+        verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+        onSuccess:function(){
+          MagicCard.setActive(card.id);
+          _hide();
+          refreshHeaderBadge();
+          onResult(true,card.id);
+        },
+        onBack:showChoice
+      });
+    }
+    function showChoice(){
+      panel.innerHTML='';
+      panel.classList.remove('magic-card-gate-panel--challenge');
+      panel.appendChild(_el('div','magic-card-gate-welcome',"Not able to show your stars right now?"));
+      const retryBtn=_el('button','magic-card-gate-continue','🔁 Try Again');
+      retryBtn.type='button';
+      retryBtn.addEventListener('click',showChallenge);
+      panel.appendChild(retryBtn);
+      const travellerBtn=_el('button','magic-card-gate-notyou','🌱 Continue as a Traveller');
+      travellerBtn.type='button';
+      travellerBtn.addEventListener('click',function(){
         _hide();
         onResult(false,null);
-      }
-    });
+      });
+      panel.appendChild(travellerBtn);
+    }
+    showChallenge();
   }
 
   function _renderGateWelcome(panel,cards,proceed,toPicker){
