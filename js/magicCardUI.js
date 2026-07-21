@@ -1143,6 +1143,12 @@ const MagicCardUI=(function(){
       if(beat.effect==='blessing') _ceremonySparkleBurst(els.particles,3);
       els.msg.textContent=beat.speech||'';
       els.msg.classList.toggle('magic-card-ceremony-msg-hidden',!beat.speech);
+      // Real recorded Lumo voice for the two Guardian beats (see
+      // getCeremonySequence's own voiceId field) -- a no-op for any beat
+      // that doesn't declare one (the Story Egg's silent beats, and the
+      // newly-bonded Story Companion's own "Hello!" line, which has no
+      // recording of its own yet -- it isn't Lumo).
+      if(beat.voiceId && typeof window.LumoVoice!=='undefined') LumoVoice.play(beat.voiceId);
       return new Promise(function(resolve){ setTimeout(resolve,beat.durationMs||1500); });
     }).then(function(){
       return _playCeremonyBeats(els,regList,beats,index+1,companionId);

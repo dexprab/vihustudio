@@ -134,6 +134,18 @@
     {title:'Every Creator begins here.',subtitle:'And every story begins with a spark of imagination.'},
     {title:"I've been waiting for you.",subtitle:'Shall we begin? ✨'}
   ];
+  // Real recorded Lumo voice for each GREETING_LINES entry — title clip
+  // then subtitle clip, played back to back via LumoVoice.playSequence()
+  // while both lines of text are already visible together in one bubble
+  // (see js/lumoVoice.js). One entry per GREETING_LINES index, same
+  // order.
+  const GREETING_VOICE_IDS=[
+    ['greeting1','greeting1b'],
+    ['greeting2','greeting2b'],
+    ['greeting3','greeting3b'],
+    ['greeting4','greeting4b'],
+    ['greeting5','greeting5b']
+  ];
   // Returning Creator's own recognition line — played first, HEARD not
   // witnessed (nobody visible yet but the Gate itself), before the
   // Creator Signature challenge verifies who's arrived.
@@ -141,6 +153,7 @@
     'Welcome home.',
     'Show me your stars.'
   ];
+  const RETURNING_VOICE_IDS=['returning1','returning2'];
   const RETURNING_LINE_MS=2200;
   const RETURNING_LINE_GAP_MS=650;
   // GREETING_LINE_MS/GREETING_GAP_MS/GREETING_END_PAUSE_MS govern the
@@ -172,6 +185,7 @@
     "It's good to see you again.",
     'Welcome back to your story.'
   ];
+  const LUMO_ARRIVAL_RETURNING_VOICE_IDS=['arrivalReturning1','arrivalReturning2'];
 
   // ---- The single continuous Gate+Lumo clip, one per path. ----
   // "show the doors for 2 sec and than let lumo enter sequence till he
@@ -304,7 +318,22 @@
     // `reduced` genuinely shortens each line's own hold time at the JS
     // level (not just a CSS backstop) — six real scenes is long enough
     // that a reduced-motion boot must still resolve quickly.
-    function playLines(lines,lineMs,gapMs,reduced,onDone){
+    //
+    // `voiceIds` (optional) is a parallel array, one entry per line —
+    // each entry either null (no recording for this line yet), a single
+    // LumoVoice id, or an array of ids (a title clip followed by its own
+    // subtitle clip, played back to back via LumoVoice.playSequence()).
+    // A line's REAL hold time becomes max(lineMs, its own recorded
+    // voice's total duration + a short trailing pause) — several of the
+    // Traveller greeting's own recorded lines genuinely run longer than
+    // the original fixed lineMs (one pair alone is ~7.6s), so a flat
+    // timer would either cut the voice off mid-sentence or race ahead of
+    // it; this keeps the text on screen exactly as long as Lumo is still
+    // speaking, and simply falls back to the original fixed lineMs for
+    // any line with no recording (or under reduced motion, where voice
+    // playback is skipped entirely, matching every other flourish in
+    // this file).
+    function playLines(lines,lineMs,gapMs,reduced,onDone,voiceIds){
       if(reduced){ lineMs=120; gapMs=0; }
       const bubble=el('div','gateway-greeting-bubble');
       content.appendChild(bubble);
@@ -314,6 +343,7 @@
         if(i>=lines.length){ onDone(bubble); return; }
         bubble.classList.remove('gateway-greeting-in');
         const line=lines[i];
+        const voice=voiceIds?voiceIds[i]:null;
         // A line can be either a plain string (Returning Creator's
         // welcome, Lumo's own in-person arrival lines) or a
         // {title,subtitle} pair (the Traveller greeting's own richer
@@ -332,6 +362,12 @@
         }else{
           bubble.textContent=line;
         }
+        let effectiveMs=lineMs;
+        if(!reduced && voice && typeof window.LumoVoice!=='undefined'){
+          const voiceMs=LumoVoice.durationMs(voice);
+          if(voiceMs>0) effectiveMs=Math.max(lineMs,voiceMs+400);
+          LumoVoice.playSequence(voice);
+        }
         // The fade itself (see gateway-line-in in css/style.css) now
         // scales its own duration to whatever lineMs this specific
         // caller passed, rather than a CSS-side value that could drift
@@ -341,11 +377,11 @@
         // using each one's own already-tuned hold time, not just a
         // fixed 2000ms. An inline style always wins over the stylesheet
         // rule it's overriding, with no !important needed.
-        bubble.style.animationDuration=lineMs+'ms';
+        bubble.style.animationDuration=effectiveMs+'ms';
         void bubble.offsetWidth; // force reflow so the fade-in re-triggers every line
         bubble.classList.add('gateway-greeting-in');
         i++;
-        after(lineMs+gapMs,nextLine);
+        after(effectiveMs+gapMs,nextLine);
       }
       nextLine();
     }
@@ -576,7 +612,7 @@
                     playFinalFlash(reduced,done);
                   });
                 });
-              });
+              },opts.pauseVoiceIds);
             });
           });
         }
@@ -619,20 +655,20 @@
               try{ if(video) video.pause(); }catch(e){}
               gateVideoEl=preloadFinalGateVideo(GATE_FINAL_VIDEO_SRC,GATE_FINAL_POSTER_SRC);
               if(gateVideoEl) content.appendChild(gateVideoEl);
-              runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES});
+              runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES,pauseVoiceIds:GREETING_VOICE_IDS});
             });
-          });
+          },opts.preVoiceIds);
         });
       }
 
       if(isReturning){
         gateVideoEl=preloadFinalGateVideo(GATE_FINAL_NOEGG_VIDEO_SRC,GATE_FINAL_NOEGG_POSTER_SRC);
         if(gateVideoEl) content.appendChild(gateVideoEl);
-        runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,verify:true,pauseLines:LUMO_ARRIVAL_RETURNING_LINES});
+        runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});
       }else{
         gateVideoEl=preloadFinalGateVideo(GATE_FINAL_VIDEO_SRC,GATE_FINAL_POSTER_SRC);
         if(gateVideoEl) content.appendChild(gateVideoEl);
-        runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES});
+        runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES,pauseVoiceIds:GREETING_VOICE_IDS});
       }
     }
 

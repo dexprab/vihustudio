@@ -420,8 +420,8 @@
         {entity:'egg',pose:'idle',effect:null,speech:null,durationMs:900},
         {entity:'egg',pose:'magic',effect:'glow',speech:null,durationMs:1800},
         {entity:'egg',pose:'hatching',effect:'cracks',speech:null,durationMs:1800},
-        {entity:'guardian',pose:'wave',effect:null,speech:'A new light is stirring…',durationMs:2400},
-        {entity:'guardian',pose:'celebrate',effect:'blessing',speech:'I bless this Story Egg.',durationMs:2600},
+        {entity:'guardian',pose:'wave',effect:null,speech:'A new light is stirring…',voiceId:'ceremony1',durationMs:2400},
+        {entity:'guardian',pose:'celebrate',effect:'blessing',speech:'I bless this Story Egg.',voiceId:'ceremony2',durationMs:2600},
         {entity:'companion',pose:'hatching',effect:'cracks',speech:null,durationMs:1800},
         {entity:'companion',pose:'hero',effect:null,speech:'Hello! I’m '+name+'. Let’s make magic together.',durationMs:2800}
       ];
