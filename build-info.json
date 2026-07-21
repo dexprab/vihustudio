@@ -4,6 +4,6 @@
   "task": "Moved AudioManager.init() from _beginBoot() (after the Traveller Gateway hands off) to the very top of boot, so ambience plays under the Gateway's own cinematic too, not just the Hall reached afterward. Fixed a real bug in js/lumoVoice.js: every recorded voice line was created lazily at play() time with zero preload and a silently-swallowed failure -- exactly the reported 'audio does not play always, may be load lag.' Added preload()/whenReady() to both js/audioManager.js and js/lumoVoice.js, and a real preload-gate overlay (per a direct follow-up request) that holds every screen until both are ready or a bounded timeout elapses. Verified via Playwright: gate shows immediately, clears once readiness resolves (~625ms on this sandbox), AudioManager confirmed initialized before the Gateway is even skipped; full regression across the sky-challenge suites unchanged.",
   "build": "0218",
   "buildDate": "2026-07-21",
-  "commit": "pending",
+  "commit": "225778a",
   "environment": "Release"
 }
