@@ -13,13 +13,18 @@ played **simultaneously, always, at their own fixed relative volume**,
 forming one composite ambient sound — not five alternatives to choose
 between, and not a rotation:
 
-- `air.mp3`
+- `air.mp3` — supplied under the name "breath.mp3"; this is genuinely the
+  air/breath-toned layer, matching what its own content sounds like.
 - `harmony.mp3`
 - `magic.mp3`
 - `forest.mp3`
-- `wind.mp3` — supplied under the name "breath.mp3"; renamed on arrival to
-  match the filename already established in `js/audioManager.js`'s
-  `FOUNDATION_LAYERS` table and every design doc — no code change was needed.
+- `wind.mp3` — supplied under the name "air.mp3"; corrected once the product
+  owner listened and confirmed its actual content reads as wind, not air —
+  the two clips' filenames were swapped from an initial guess (which had
+  matched them the other way around, purely by upload order) to their real
+  content. `js/audioManager.js`'s own `FOUNDATION_LAYERS` table already
+  expects exactly these five filenames, so no code change was needed either
+  time.
 
 This is a direct, explicit product correction over an earlier draft of this
 system's own design: "Keep all five Foundation layers. The simplification was
