@@ -618,6 +618,16 @@ const ThemeEngine=(function(){
     if(!(opts&&opts.silent)){
       try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     }
+    // Atmosphere V1 (MLAS) — World ambience is optional, resolved generically
+    // off whatever this Theme's own audio.ambience array declares (absent for
+    // every Theme today, a graceful no-op). AudioManager never knows what a
+    // "Theme" is; it only ever receives the plain array already extracted here.
+    try{
+      if(typeof AudioManager!=='undefined'){
+        if(t.audio && t.audio.ambience && t.audio.ambience.length) AudioManager.playWorld(t.audio.ambience);
+        else AudioManager.stopWorld();
+      }
+    }catch(e){}
     return t;
   }
 
@@ -638,7 +648,19 @@ const ThemeEngine=(function(){
     if(!(opts&&opts.silent)){
       try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
     }
-    return resolvedId ? ThemeRegistry.get(resolvedId) : null;
+    const resolvedTheme=resolvedId ? ThemeRegistry.get(resolvedId) : null;
+    // Atmosphere V1 (MLAS) — identical hook to applyTheme() above. Whichever
+    // of the two Theme slots (Story/Artwork) applies most recently simply
+    // wins the single World-ambience slot for V1 — see
+    // docs/ATMOSPHERE_V1_BLUEPRINT.md §8's disclosed, not-yet-solved
+    // multi-source question.
+    try{
+      if(typeof AudioManager!=='undefined'){
+        if(resolvedTheme && resolvedTheme.audio && resolvedTheme.audio.ambience && resolvedTheme.audio.ambience.length) AudioManager.playWorld(resolvedTheme.audio.ambience);
+        else AudioManager.stopWorld();
+      }
+    }catch(e){}
+    return resolvedTheme;
   }
 
   function buildLeftPaneCard(){

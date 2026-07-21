@@ -31,13 +31,21 @@ plain data (an array of ambience references) from a caller that already resolved
 the same discipline `CompanionEngine` holds to (zero hardcoded companion-id branches) — here,
 zero hardcoded World-id branches.
 
-**Assumption I'm building on, not yet confirmed** (flagging it, not blocking on it): of the five
-generated assets, **`air.mp3` is the single Foundation track** (always on), and **Harmony,
-Magic, Forest, Wind are the initial pool of available World-ambience options** any World's
-manifest can reference by filename — this reading comes directly from your own manifest
-example (`audio: ambience: - forest.mp3`), which only makes sense if `forest.mp3` is a World
-asset, not the Foundation. If Air was meant to be something else, everything below still holds —
-only the filename changes.
+**Corrected per explicit product direction** (an earlier draft of this document guessed wrong
+here — flagging the correction rather than quietly editing it away): Foundation is **not** a
+single track. All five generated assets — Air, Harmony, Magic, Forest, Wind — are Foundation
+layers, and **all five loop simultaneously, always, at their own fixed relative volumes,
+forming one composite always-on sound.** "The simplification was architectural, not
+experiential" — V1 has no scheduling, no rotation, no selection logic among them; it's simply
+five `<audio>` elements, each `loop=true`, each carrying its own fixed mix level, all started
+together and never stopped. This is genuinely *simpler* code than a single-track design would
+have needed once World ambience and mute/volume are added, since there's no "which one is
+active" state to track at all — only "are all five on or muted."
+
+World ambience (§8) still overlays on top of the full five-layer Foundation stack, unchanged
+from the original design — no World-ambience tracks exist yet among the five supplied assets,
+so `assets/audio/worlds/` starts empty for V1; the capability is built and ready, simply unused
+until World-specific content exists.
 
 ---
 
@@ -51,26 +59,25 @@ assets/audio/
   gateway/                  (existing, untouched)
     transition-breeze.wav
     telescope-click.wav
-  foundation/                (NEW)
+  foundation/                (NEW — all five layers, always played together)
     air.mp3
-  worlds/                    (NEW)
     harmony.mp3
     magic.mp3
     forest.mp3
     wind.mp3
+  worlds/                    (NEW — empty for V1, no World-ambience content exists yet)
   ui/                        (NEW, reserved — empty for V1)
   README.md                  (NEW — disclosure, matching every other asset folder's convention)
 ```
 
-Two deliberate departures from your own sketch, both justified per your own "only if justified"
+Deliberate departures from your own sketch, justified per your own "only if justified"
 instruction:
 
-- **`worlds/` is a flat shared pool, not per-World-id subfolders.** All four files today are
-  general-purpose, platform-generated ambience, not bespoke-per-Theme content authored through
-  World Builder — there's nothing to nest yet. A manifest's `ambience` array is just filenames;
-  whether they resolve flat or nested is invisible to whoever authors a World's manifest, so
-  introducing per-World subfolders later (if bespoke per-World audio ever becomes real) costs
-  zero contract change.
+- **All five supplied assets live in `foundation/`, not split across `foundation/`/`worlds/`.**
+  Corrected per explicit direction — see §1.
+- **`worlds/` starts empty**, ready for the first real World-specific ambience file whenever one
+  exists; a manifest's `ambience` array is just filenames, so nothing about this folder being
+  currently empty constrains what it can hold later.
 - **No `companions/` folder.** Lumo's voice already lives, shipped and wired, at
   `assets/lumo/voice/`. Adding a second, empty `assets/audio/companions/` would be a redundant,
   confusing second home for the same concept. Nothing moves.
@@ -161,14 +168,28 @@ from an actual Theme is the caller's job (see §8).
 1. `init()`:
    - Reads `vihu-audio-muted` / `vihu-audio-volume` from `localStorage` (sane defaults: not
      muted, volume `0.6`).
-   - Creates (but does not play) one `<audio>` element for Foundation, `loop=true`,
-     `src=assets/audio/foundation/air.mp3`, `preload='auto'`.
+   - Creates (but does not play) **five** `<audio>` elements, one per Foundation layer, each
+     `loop=true`, `preload='auto'`, each carrying its own fixed relative volume from a small
+     constants table (see below) — not five equal volumes, a genuine mix:
+     ```
+     FOUNDATION_LAYERS = [
+       { file:'air.mp3',     volume:0.5 },
+       { file:'harmony.mp3', volume:0.4 },
+       { file:'magic.mp3',   volume:0.3 },
+       { file:'forest.mp3',  volume:0.35 },
+       { file:'wind.mp3',    volume:0.3 }
+     ]
+     ```
+     These starting values are a placeholder balance, not a creative judgment I'm able to make —
+     they're deliberately just one easily-editable constants table in `js/audioManager.js`, meant
+     to be re-tuned by ear once the five real files actually exist and can be heard mixed
+     together.
    - Installs one self-removing, document-level `pointerdown`/`keydown` listener (the "unlock"
      listener). It exists purely to satisfy browser autoplay policy — the very first real
-     gesture anywhere in the session calls `.play()` on the Foundation element from inside a
-     real gesture handler, then removes itself. This mirrors the exact discipline
-     `js/gatewayAudio.js`/`js/lumoVoice.js` already use ("`.play()` only ever fires from inside a
-     real click/keydown handler").
+     gesture anywhere in the session calls `.play()` on all five Foundation elements together,
+     from inside that one real gesture handler, then removes itself. This mirrors the exact
+     discipline `js/gatewayAudio.js`/`js/lumoVoice.js` already use ("`.play()` only ever fires
+     from inside a real click/keydown handler").
    - Does nothing else — no World element is created until `playWorld()` is first called.
 
 2. **When to call `init()`**: not during the Traveller Gateway cinematic. The Gateway already
@@ -249,9 +270,10 @@ not solved here, and not currently possible today since no shipped Theme declare
 - `setMuted(true)`: fades the whole output (Foundation + World together, one multiplier — no
   per-layer control, matching "no audio buses") to 0 over ~300ms, persists immediately.
 - `setMuted(false)`: restores to the persisted volume over ~300ms.
-- `setVolume(n)`: applied instantly as a multiplier on whatever's currently playing; persisted
-  immediately. Foundation and World always move together — there is no separate World-volume
-  control in V1.
+- `setVolume(n)`: applied instantly as a multiplier on top of each element's own fixed relative
+  volume — every Foundation layer's own mix balance (§6) is preserved, master volume just scales
+  the whole composite up or down together with World ambience. There is no separate World-volume
+  or per-Foundation-layer control exposed in V1 — one master multiplier only.
 - Both preferences persist to `localStorage` under their own keys (`vihu-audio-muted`,
   `vihu-audio-volume`), read back on the very next `init()` — matching how every other
   preference in this codebase already persists (dark/light mode, Workspace layout, etc.).
@@ -273,10 +295,11 @@ just the path of least resistance:
   separate autoplay-unlock lifecycle (`AudioContext` has its own "suspended until resumed"
   state, layered on top of the `<audio>` element's own autoplay policy — two unlock mechanisms
   to reason about instead of one).
-- V1's actual needs — one or two looping elements, a linear volume ramp for fades, a master
-  multiplier — are all achievable with `element.loop = true` and `element.volume` interpolated
-  via a small `setInterval`/`requestAnimationFrame` ramp helper. No `GainNode`, no
-  `AudioContext`, no equal-power curve math.
+- V1's actual needs — six looping elements at most (five Foundation + one World), a linear
+  volume ramp for World-swap fades, a master multiplier applied per-element on top of each
+  element's own fixed relative volume — are all achievable with `element.loop = true` and
+  `element.volume` interpolated via a small `setInterval`/`requestAnimationFrame` ramp helper.
+  No `GainNode`, no `AudioContext`, no equal-power curve math.
 - **Accepted trade-off, disclosed rather than hidden**: native `<audio loop>` can introduce a
   small click/gap at the loop boundary on some browser/codec combinations, whereas a real
   Web Audio API `AudioBufferSourceNode` loop is sample-accurate. Since the five assets are
@@ -290,16 +313,18 @@ just the path of least resistance:
 
 ## 11. Performance Considerations
 
-- At most two elements ever playing concurrently (Foundation + one World) — negligible CPU/
-  memory cost on any modern browser.
-- **Preload discipline**: Foundation loads at `init()` time (small, always needed, matches the
-  existing Gateway video's own "preload early, mount later" pattern already proven in this
-  codebase). World ambience files load lazily, only the first time `playWorld()` is actually
-  called with a given filename — never all four preloaded at boot.
+- At most six elements ever playing concurrently (five Foundation + one World) — still
+  negligible CPU/memory cost on any modern browser; six looping 30-second MP3s is a trivial
+  decode/playback load compared to, say, a single video element.
+- **Preload discipline**: all five Foundation elements load at `init()` time (small, always
+  needed, matches the existing Gateway video's own "preload early, mount later" pattern already
+  proven in this codebase). World ambience files load lazily, only the first time `playWorld()`
+  is actually called with a given filename — never preloaded at boot, since none exist yet.
 - File size: 30-second compressed loops; no encoding pipeline is needed since the five assets
   are already final, but worth a one-time sanity check on their actual byte sizes (a rough
   target well under 1MB each keeps this comfortably lazy-loadable on a weak connection, which
-  matters for a product used by children on shared/school devices).
+  matters for a product used by children on shared/school devices) — with five files loading
+  together at boot instead of one, total Foundation payload is worth checking in aggregate too.
 - Nothing here requires Page Visibility API handling, tab-backgrounding pause/resume, or any
   other runtime behavior beyond the responsibility list in §4 — those are named only as future
   extension points (§12), not built now.

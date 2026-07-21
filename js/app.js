@@ -1693,6 +1693,14 @@ function _beginBoot(){
   // Traveller/Creator decision correct rather than a stale snapshot from
   // the moment the page merely loaded.
   try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
+  // Atmosphere V1 (MLAS) — same timing as CompanionDirector.init() above,
+  // deliberately: the Traveller Gateway already has its own complete,
+  // bespoke sound design (the Gate video's own track, Lumo's real
+  // recorded voice, gatewayAudio.js's own click sound); starting the
+  // Foundation ambience here, once the Gateway has handed off and the
+  // Hall is actually reached, avoids stacking a third, competing sound
+  // layer underneath it. See docs/ATMOSPHERE_V1_BLUEPRINT.md §6.
+  try{ if(typeof AudioManager!=='undefined') AudioManager.init(); }catch(e){}
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
