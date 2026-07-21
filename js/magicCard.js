@@ -174,11 +174,46 @@ const MagicCard=(function(){
     return 'mc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
   }
 
+  // The CONSTELLATIONS.CYGNUS reorder above (Top/Center/Bottom/Left/
+  // Right -> Top/Center/Left/Bottom/Right) only fixes NEW claims --
+  // claim() stores a card's real pattern permanently at claim time
+  // (never re-derived from CONSTELLATIONS on later renders), so an
+  // already-claimed CYGNUS card's stored pattern still carries the old,
+  // self-crossing order until this migration runs once. _rotate/
+  // _mirrorHorizontal/_shiftToOrigin are all plain .map() calls that
+  // never reorder the array -- index 0 is always the transformed "Top"
+  // point, index 1 always "Center", etc, for every card regardless of
+  // which random rotation/mirror it got -- so swapping stored indices 2
+  // and 3 (the exact same permutation the base array's own reorder
+  // applied) repairs any already-placed CYGNUS pattern correctly, no
+  // matter its orientation. Same stars, same position, only the
+  // connect-the-dots order changes -- recall_magic_card() matches a
+  // tapped pattern order-independently, so this can never affect
+  // whether a real device can still recall the card. Gated by a
+  // one-time flag (mirrors this file's own _ensureUniversalContentDefaults
+  // -style read-time reconciliation elsewhere in this codebase) so it
+  // runs exactly once per card and never re-touches an already-correct
+  // pattern from a fresh claim() made after this fix shipped.
+  function _migrateCygnusOrder(cards){
+    let changed=false;
+    cards.forEach(function(card){
+      if(card && card.constellation==='CYGNUS' && Array.isArray(card.pattern) && card.pattern.length===5 && !card.constellationOrderFixed){
+        const p=card.pattern;
+        card.pattern=[p[0],p[1],p[3],p[2],p[4]];
+        card.constellationOrderFixed=true;
+        changed=true;
+      }
+    });
+    return changed;
+  }
+
   function _readCards(){
     try{
       const raw=localStorage.getItem(CARDS_KEY);
       const parsed=raw?JSON.parse(raw):[];
-      return Array.isArray(parsed)?parsed:[];
+      const cards=Array.isArray(parsed)?parsed:[];
+      if(_migrateCygnusOrder(cards)) _writeCards(cards);
+      return cards;
     }catch(e){ return []; }
   }
   function _writeCards(list){
