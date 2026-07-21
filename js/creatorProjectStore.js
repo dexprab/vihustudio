@@ -73,13 +73,24 @@ const CreatorProjectStore=(function(){
     return _writeAll(records);
   }
 
+  // "traveller should not see projects of previous creators" -- called
+  // by js/gatewaySequence.js exactly once per genuinely new browser
+  // session, only when that session is identified as a first-time
+  // Traveller (never for a Returning Creator) -- wipes the whole list
+  // outright so a story a DIFFERENT anonymous Traveller left on a
+  // shared device never surfaces in "My Projects" for the next one.
+  function clearAll(){
+    return _writeAll([]);
+  }
+
   const api={
     STORAGE_KEY:STORAGE_KEY,
     newId:newId,
     list:list,
     get:get,
     upsert:upsert,
-    remove:remove
+    remove:remove,
+    clearAll:clearAll
   };
   try{ window.CreatorProjectStore=api; }catch(e){}
   return api;

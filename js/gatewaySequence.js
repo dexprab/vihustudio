@@ -164,6 +164,10 @@
   'use strict';
 
   const ASSETS_BASE='assets/';
+  // sessionStorage marker for "has the Gateway already run once in this
+  // tab's own browser session" -- see the My-Projects-clearing block
+  // inside begin() below.
+  const GATEWAY_SESSION_MARKER='vihu-gateway-session-entered';
   const GATE_VIDEO_SRC=ASSETS_BASE+'video/gateway/gate-sequence.mp4';
   const GATE_POSTER_SRC=ASSETS_BASE+'video/gateway/gate-poster.jpg';
   // "instead of static png portrait fly in this dragon" — a real,
@@ -926,6 +930,25 @@
             isReturning=true;
             card=MagicCard.getActive()||known[0];
           }
+        }
+      }catch(e){}
+
+      // "if the system has identified its a traveller than all the
+      // caches should be cleared. traveller should not see projects of
+      // previous creators" -- "the cache clean should only be requested
+      // when its entry sequence" (a genuinely NEW browser session, not
+      // every reload) -- scoped to just My Projects (CreatorProjectStore),
+      // per explicit direction. sessionStorage starts empty in every new
+      // tab/window but survives an in-page reload within the same one,
+      // so it's the exact "is this session's very first Gateway entry"
+      // signal needed; the marker is set unconditionally (both paths)
+      // so a Returning Creator boot also correctly counts as "already
+      // entered" for the rest of that tab session.
+      try{
+        const isNewSession=!sessionStorage.getItem(GATEWAY_SESSION_MARKER);
+        sessionStorage.setItem(GATEWAY_SESSION_MARKER,'1');
+        if(isNewSession&&!isReturning&&typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.clearAll){
+          CreatorProjectStore.clearAll();
         }
       }catch(e){}
 
