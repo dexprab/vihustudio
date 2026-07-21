@@ -46,11 +46,29 @@ const CardPlatform = (function () {
   // mirror/translation. Not astronomically precise; recognizable and
   // pleasant to trace is the actual bar (a rotated Big Dipper still
   // reads as a dipper).
+  // "the star marker grid needs rework. it cannot mark any constellation
+  // which has crossing lines" -- every connecting-line drawer in this
+  // codebase (js/magicCardArt.js's drawBack, js/magicCardUI.js's
+  // _renderConstellation) draws a straight line between each consecutive
+  // pair of points in THIS array's own order, so that order alone
+  // decides whether the shape reads as a clean constellation or an
+  // overlapping tangle. CYGNUS's original order (Top, Center, Bottom,
+  // Left, Right) drew its last segment (Left-to-Right) straight through
+  // the Center point a second time -- exactly the "number 4"-looking
+  // defect reported on a real claimed card -- confirmed and reproduced
+  // with a real segment-intersection check before being fixed; the
+  // other four shapes were checked the same way and were already clean.
+  // Reordered to Top, Center, Left, Bottom, Right, which traces the same
+  // five points with zero self-crossing or vertex pass-through, verified
+  // (not just reasoned) to stay crossing-free across every one of
+  // _placeConstellation()'s 4 rotations x mirror-on/off combinations
+  // too, since a rotation/reflection/translation never changes whether
+  // two line segments cross.
   const CONSTELLATIONS = {
     ORION: [[1, 2], [1, 7], [4, 4], [4, 5], [4, 6], [8, 2], [8, 7]],
     CASSIOPEIA: [[2, 1], [4, 3], [2, 5], [4, 7], [2, 9]],
     URSA_MAJOR: [[1, 1], [1, 4], [3, 4], [3, 2], [4, 5], [6, 7], [8, 8]],
-    CYGNUS: [[1, 5], [4, 5], [7, 5], [4, 2], [4, 8]],
+    CYGNUS: [[1, 5], [4, 5], [4, 2], [7, 5], [4, 8]],
     LYRA: [[2, 5], [5, 3], [5, 7], [7, 3], [7, 7]]
   };
   const GRID_SIZE = 10;

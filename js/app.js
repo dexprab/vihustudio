@@ -103,6 +103,18 @@ if(typeof PageRuntime!=='undefined'){
   }catch(e){}
 }
 
+// "for a traveller who once start creating we need to tell if they do
+// not publish their creation might get lost" — TravellerSaveNotice
+// reads the same AppState.slides PageRuntime already exposes; refreshed
+// from PageRuntime.notify() below (its own real choke point) so it
+// never needs any wiring of its own beyond this one configure() call.
+if(typeof TravellerSaveNotice!=='undefined'){
+  try{
+    TravellerSaveNotice.configure({ getSlides:function(){ return AppState.slides; } });
+    TravellerSaveNotice.refresh();
+  }catch(e){}
+}
+
 function _getTextDefaults(elementId){
   const theme=(typeof ThemeEngine!=='undefined')?ThemeEngine.getActiveTheme():null;
   const opts=(typeof ThemeEngine!=='undefined')?ThemeEngine.getOptions():null;

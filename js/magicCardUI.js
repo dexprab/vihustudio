@@ -256,6 +256,13 @@ const MagicCardUI=(function(){
 
   // ---------- Header glyph ----------
   function refreshHeaderBadge(){
+    // Every call site that already refreshes the header badge is
+    // exactly the same moment a Traveller may have just become a
+    // Creator (claim/rename/rehydrate/boot) — TravellerSaveNotice's own
+    // "no active Magic Card" gate needs to know the instant that
+    // happens too, rather than waiting for the next unrelated page
+    // notify() to catch up.
+    if(typeof TravellerSaveNotice!=='undefined'){ try{ TravellerSaveNotice.refresh(); }catch(e){} }
     if(!_headerBadge) _headerBadge=document.getElementById('magicCardBadge');
     if(!_headerBadge) return;
     const active=(typeof MagicCard!=='undefined')?MagicCard.getActive():null;

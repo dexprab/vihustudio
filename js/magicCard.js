@@ -66,11 +66,23 @@ const MagicCard=(function(){
 
   // Same curated shapes/grid as js/cardPlatform.js's own CONSTELLATIONS
   // — not astronomically precise, recognizable and pleasant to trace.
+  // "the star marker grid needs rework. it cannot mark any constellation
+  // which has crossing lines" -- kept in lockstep with cardPlatform.js's
+  // own copy of this fix: CYGNUS's original order (Top, Center, Bottom,
+  // Left, Right) drew its last segment straight back through the Center
+  // point a second time, reading as an overlapping "number 4" rather
+  // than a clean shape -- confirmed on a real claimed card, reproduced
+  // with a segment-intersection check, and fixed by reordering to Top,
+  // Center, Left, Bottom, Right, which traces the same five points with
+  // zero self-crossing in the base order or under any of
+  // _placeConstellation()'s 4 rotation x mirror-on/off combinations
+  // (an isometry never changes whether two segments cross). The other
+  // four shapes were checked the same way and were already clean.
   const CONSTELLATIONS={
     ORION:[[1,2],[1,7],[4,4],[4,5],[4,6],[8,2],[8,7]],
     CASSIOPEIA:[[2,1],[4,3],[2,5],[4,7],[2,9]],
     URSA_MAJOR:[[1,1],[1,4],[3,4],[3,2],[4,5],[6,7],[8,8]],
-    CYGNUS:[[1,5],[4,5],[7,5],[4,2],[4,8]],
+    CYGNUS:[[1,5],[4,5],[4,2],[7,5],[4,8]],
     LYRA:[[2,5],[5,3],[5,7],[7,3],[7,7]]
   };
   const GRID_SIZE=10;

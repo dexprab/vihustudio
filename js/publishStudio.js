@@ -814,6 +814,10 @@ const PublishStudio=(function(){
     // Companion Engine Foundation (Sprint C1) — "Published".
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
     try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
+    // "if they do not publish their creation might get lost" — a real
+    // publish just happened, so the notice has nothing left to nag
+    // about for the rest of this tab session.
+    try{ if(typeof TravellerSaveNotice!=='undefined') TravellerSaveNotice.markPublished(); }catch(e){}
     // Magic Card Identity Evolution, Phase 1 — "Instead of immediately
     // downloading the creation, something unexpected happens" (design
     // document, Screen 5). Fires at most once ever per browser

@@ -7988,3 +7988,80 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 @media (max-width:560px){
   .gateway-greeting-bubble{ font-size:23px; padding:6px 18px 24px; }
 }
+
+/* js/travellerSaveNotice.js — "for a traveller who once start creating
+   we need to tell if they do not publish their creation might get
+   lost." A floating toast, deliberately NOT slotted into .workspace's
+   own fixed calc(100vh - 64px) grid (this codebase has hit that exact
+   class of height-overflow bug more than once when a new sibling was
+   added there) — position:fixed reserves zero layout height, so it can
+   never push or clip anything else in the Workspace. Sits below the
+   Companion widget (z-index:1450) and every modal overlay, above
+   ordinary page content. */
+.traveller-save-notice{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:900;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  max-width:min(560px,92vw);
+  padding:10px 14px;
+  border-radius:16px;
+  background:linear-gradient(135deg,#fff8e6,#fff1c9);
+  border:1px solid rgba(255,203,69,0.55);
+  box-shadow:0 10px 28px rgba(0,0,0,0.18);
+  color:#4a3a10;
+}
+body.dark-theme .traveller-save-notice{
+  background:linear-gradient(135deg,#3a3320,#2c2717);
+  border-color:rgba(255,203,69,0.35);
+  color:#f3e6bd;
+  box-shadow:0 10px 28px rgba(0,0,0,0.45);
+}
+.traveller-save-notice.hidden{ display:none; }
+.traveller-save-notice-icon{
+  font-size:20px;
+  flex-shrink:0;
+  line-height:1;
+}
+.traveller-save-notice-text{
+  font-size:13px;
+  line-height:1.4;
+  flex:1;
+}
+/* Buttons need explicit overrides -- the global
+   button:not(...){width:100%;margin-bottom:12px} reset would otherwise
+   stretch these into a vertical stack inside a horizontal toast, the
+   same recurring class of bug this codebase has fixed repeatedly
+   (Object Strip cards, the Publish Studio close button, Doodle's pen
+   swatches). */
+.traveller-save-notice-publish{
+  width:auto !important;
+  height:32px !important;
+  margin:0 !important;
+  padding:0 12px !important;
+  flex-shrink:0;
+  font-size:12px;
+  white-space:nowrap;
+}
+.traveller-save-notice-dismiss{
+  width:26px !important;
+  height:26px !important;
+  margin:0 !important;
+  padding:0 !important;
+  flex-shrink:0;
+  border-radius:50% !important;
+  background:rgba(0,0,0,0.08) !important;
+  color:inherit !important;
+  font-size:12px;
+}
+body.dark-theme .traveller-save-notice-dismiss{
+  background:rgba(255,255,255,0.12) !important;
+}
+@media (max-width:560px){
+  .traveller-save-notice{ left:12px; right:12px; bottom:12px; transform:none; max-width:none; }
+  .traveller-save-notice-text{ font-size:12px; }
+}
