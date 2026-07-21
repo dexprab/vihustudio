@@ -7955,21 +7955,27 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    line's own wide one. No animation of its own is needed — parent
    opacity animations already composite the whole box (main content +
    pseudo-elements) together, so the rule fades in/out in lockstep with
-   the text for free. */
+   the text for free. "increase the font... let it appear gradually and
+   disappear gradually" — font-size raised a full step (see the clamp
+   below); the fade itself is redesigned in gateway-line-in below, and
+   its actual duration now comes from js/gatewaySequence.js's own
+   per-call lineMs (playLines sets bubble.style.animationDuration)
+   rather than a value hardcoded here that could quietly drift out of
+   sync with it. */
 .gateway-greeting-bubble{
   position:relative;
   margin-top:30px;
   min-height:1.5em;
-  max-width:640px;
-  padding:4px 28px 22px;
+  max-width:680px;
+  padding:6px 28px 24px;
   font-family:'Cinzel',"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-  font-size:clamp(19px,2.8vw,29px);
+  font-size:clamp(24px,3.6vw,38px);
   font-weight:600;
-  letter-spacing:.04em;
-  line-height:1.55;
+  letter-spacing:.035em;
+  line-height:1.5;
   color:var(--gw-gold);
   text-align:center;
-  text-shadow:0 0 26px rgba(255,203,69,.55), 0 2px 14px rgba(0,0,0,.7);
+  text-shadow:0 0 30px rgba(255,203,69,.55), 0 2px 16px rgba(0,0,0,.7);
   opacity:0;
 }
 .gateway-greeting-bubble::after{
@@ -7994,24 +8000,32 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    never competing with it. */
 .gateway-greeting-subtitle{
   display:block;
-  margin-top:7px;
+  margin-top:9px;
   font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   font-style:italic;
   font-weight:400;
-  font-size:clamp(13px,1.6vw,17px);
+  font-size:clamp(16px,2vw,21px);
   letter-spacing:.01em;
   line-height:1.5;
   color:rgba(255,241,214,.8);
   text-shadow:0 1px 8px rgba(0,0,0,.6);
 }
+/* "let it appear gradually and disappear gradually... running very
+   quickly" — the old 15%/82% split spent only ~300ms/360ms of a 2000ms
+   line on the actual fade (a snap, not a glide); the fade portion now
+   takes up roughly a quarter of the line's own duration on each side,
+   with a longer, gentler drift (18px, matching the bigger type) instead
+   of the old faint 10px nudge. The 2000ms in the shorthand below is
+   only a pre-JS fallback — js/gatewaySequence.js's playLines() always
+   sets the real animation-duration inline per call. */
 .gateway-greeting-bubble.gateway-greeting-in{
-  animation:gateway-line-in 2000ms ease-out;
+  animation:gateway-line-in 2000ms ease-in-out;
 }
 @keyframes gateway-line-in{
-  0%{ opacity:0; transform:translateY(10px); }
-  15%{ opacity:1; transform:translateY(0); }
-  82%{ opacity:1; }
-  100%{ opacity:0; }
+  0%{ opacity:0; transform:translateY(18px); }
+  26%{ opacity:1; transform:translateY(0); }
+  74%{ opacity:1; }
+  100%{ opacity:0; transform:translateY(-10px); }
 }
 
 /* The Gate is present from the very start — not hidden behind curtain
@@ -8310,6 +8324,6 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 @media (max-width:560px){
   .gateway-lumo-stage{ width:150px; height:150px; }
-  .gateway-greeting-bubble{ font-size:18px; padding:4px 18px 22px; }
+  .gateway-greeting-bubble{ font-size:23px; padding:6px 18px 24px; }
   .gateway-lumo-stage.gateway-lumo-guard{ transform:translate(21vw,0) scale(.55) scaleX(-1); }
 }

@@ -223,7 +223,17 @@
   // (still used by the Returning Creator's own Lumo-arrival lines, see
   // playLumoArrival below), so this change is scoped to only what the
   // user is actually looking at rather than silently retiming the
-  // Returning path too. GREETING_END_PAUSE_MS is new — "the traveller
+  // Returning path too.
+  // GREETING_LINE_MS — "running very quickly" — a dedicated, longer hold
+  // per line than the shared LINE_MS (2000, still used by Lumo's own
+  // arrival lines below), since a two-line title+subtitle needs more
+  // time to read than the old flat sentences ever did; playLines() also
+  // now stretches its own fade-in/fade-out portion of this duration
+  // (see gateway-line-in's new percentages in css/style.css) rather
+  // than the old brief 300ms/360ms snap, so "gradual" applies to both
+  // how long a line stays up and how it actually arrives/leaves.
+  const GREETING_LINE_MS=2600;
+  // GREETING_END_PAUSE_MS is new — "the traveller
   // greeting looks unfinished ending abruptly": the 4th line used to
   // vanish and the video resumed in the very same instant, with no beat
   // to let the last line land before the scene moves on; this holds on
@@ -273,18 +283,32 @@
   // still spread. This exact held frame is where the interaction (the
   // greeting) plays, in person, rather than heard over an empty screen.
   const PAUSE_AT_S=5;
-  // Segment 2 resumes from this timestamp (skipping the brief "Lumo
-  // crouches to pick the Egg back up" transition) through to the video's
-  // real natural end — Lumo turns, carries the Egg through the now-open
-  // door, into the light.
-  const RESUME_AT_S=7.5;
+  // Segment 2 resumes from the SAME timestamp Segment 1 paused at —
+  // "the sequence of him picking up the egg seems to be chopped off...
+  // lumo seems to be abruptly flying." The video was originally resumed
+  // from 7.5s, hard-skipping the real footage between 5-7.3s (a genuine
+  // frame-by-frame check confirmed this is exactly where Lumo crouches,
+  // grabs the Egg, and leaps into flight) — so Segment 2 used to open
+  // mid-air, already airborne, with the actual "pick up" motion never
+  // shown at all. Frames 4.5s-6.0s all read as the same held "standing,
+  // wings out, Egg on the ground" pose (confirmed via ffmpeg frame
+  // extraction), so resuming from exactly PAUSE_AT_S costs nothing
+  // visually during the dialogue pause and removes the hard seek/jump-
+  // cut entirely — playVideoSegmentTo() already snaps the video's own
+  // currentTime to PAUSE_AT_S when it pauses, so resuming from the same
+  // value is a genuine no-op seek; the video simply un-pauses exactly
+  // where it left off and the crouch/grab/liftoff/flight all play in
+  // full, continuously, for the first time.
+  const RESUME_AT_S=PAUSE_AT_S;
   // Safety-only fallback timers (this file's own established discipline
   // — see playGateOpen's own OPEN_FALLBACK_MS): the real waits are
   // driven by video.currentTime/the 'ended' event; these only fire if
   // playback stalls or an event never arrives, so Studio's boot can
-  // never hang behind this file.
+  // never hang behind this file. SEGMENT2_FALLBACK_MS is a touch larger
+  // than before since Segment 2 now plays a longer remaining stretch of
+  // the clip (from ~5s rather than ~7.5s).
   const SEGMENT1_FALLBACK_MS=6500;
-  const SEGMENT2_FALLBACK_MS=9000;
+  const SEGMENT2_FALLBACK_MS=11000;
 
   // Scene 4 — Approach lead-in. A single quiet "wind rises" beat before
   // the world starts streaming past — the Gate itself is already visible
@@ -525,6 +549,16 @@
         }else{
           bubble.textContent=line;
         }
+        // The fade itself (see gateway-line-in in css/style.css) now
+        // scales its own duration to whatever lineMs this specific
+        // caller passed, rather than a CSS-side value that could drift
+        // out of sync with it -- "let it appear gradually and disappear
+        // gradually" applies to every text moment (Traveller greeting,
+        // Returning Creator's welcome, Lumo's in-person arrival lines)
+        // using each one's own already-tuned hold time, not just a
+        // fixed 2000ms. An inline style always wins over the stylesheet
+        // rule it's overriding, with no !important needed.
+        bubble.style.animationDuration=lineMs+'ms';
         void bubble.offsetWidth; // force reflow so the fade-in re-triggers every line
         bubble.classList.add('gateway-greeting-in');
         i++;
@@ -986,7 +1020,7 @@
             });
           });
         }else{
-          playLines(GREETING_LINES,LINE_MS,LINE_GAP_MS,reduced,function(bubble){
+          playLines(GREETING_LINES,GREETING_LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
             if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
             runGatesSequence();
           });
@@ -996,8 +1030,8 @@
       // Traveller path — "show the doors for 2 sec and than let lumo
       // enter sequence till he put the egg down. at this point there
       // should be the interaction sequence with traveller... post
-      // interaction... continue with the video sequence from 7.5 sec
-      // onwards till end. post end show the studio home screen." One
+      // interaction... continue with the video sequence [from where it
+      // paused] till end. post end show the studio home screen." One
       // continuous clip, played in two segments with the greeting in
       // the gap between them — no separate Approach/Journey/Arrival/
       // Awaken/Open/Lumo-arrival scenes needed, the video already tells
@@ -1008,7 +1042,7 @@
           if(skipRequested) return;
           playVideoSegmentTo(gateVideoEl,PAUSE_AT_S,SEGMENT1_FALLBACK_MS,reduced,function(){
             if(skipRequested) return;
-            playLines(GREETING_LINES,LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
+            playLines(GREETING_LINES,GREETING_LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
               if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
               if(skipRequested) return;
               after(reduced?0:GREETING_END_PAUSE_MS,function(){
