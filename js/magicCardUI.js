@@ -425,8 +425,8 @@ const MagicCardUI=(function(){
   // stars" line — so this mounts the tap-grid challenge DIRECTLY,
   // skipping the Welcome/Picker screens and the challenge's own
   // redundant second speech line (skipSpeech:true), reusing the exact
-  // same _renderPatternChallenge machinery (grid, decoys, star colours,
-  // board-fit sizing) with zero duplication. `onResult(ok, cardId)`
+  // same _renderPatternChallenge machinery (grid, star colours, board-fit
+  // sizing) with zero duplication. `onResult(ok, cardId)`
   // fires on success (the challenge verified this card's real pattern),
   // or once the Traveller explicitly chooses "Continue as a Traveller"
   // from the choice screen below (never on the FIRST "← Back" tap by
@@ -449,7 +449,14 @@ const MagicCardUI=(function(){
     function showChallenge(){
       _renderPatternChallenge(panel,{
         name:card.nickname||'Star Traveler',
-        subtitle:'Tap your stars, in order, to continue.',
+        // "think kids. its not easy for kids. they need fun not a test" —
+        // dropped "in order" from every one of this screen's subtitles:
+        // verification (both the local _patternsMatch below and the real
+        // recall_magic_card() RPC) has always compared taps as an
+        // unordered SET, never a sequence, so telling a kid to remember a
+        // strict order was needless pressure for a rule that was never
+        // actually enforced.
+        subtitle:'Tap your stars to continue.',
         skipSpeech:true,
         verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
         onSuccess:function(){
@@ -497,7 +504,7 @@ const MagicCardUI=(function(){
     btn.addEventListener('click',function(){
       _renderPatternChallenge(panel,{
         name:card.nickname||'Star Traveler',
-        subtitle:'Tap your stars, in order, to continue.',
+        subtitle:'Tap your stars to continue.',
         verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
         onSuccess:function(){ proceed(card.id); },
         onBack:function(){ _renderGateWelcome(panel,cards,proceed,toPicker); }
@@ -539,7 +546,7 @@ const MagicCardUI=(function(){
       tile.addEventListener('click',function(){
         _renderPatternChallenge(panel,{
           name:card.nickname||'Star Traveler',
-          subtitle:'Tap your stars, in order, to continue.',
+          subtitle:'Tap your stars to continue.',
           verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
           onSuccess:function(){ proceed(card.id); },
           onBack:function(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
@@ -558,7 +565,7 @@ const MagicCardUI=(function(){
     // verifyTyped split below).
     grid.appendChild(_buildGateActionTile('✨','Recall a different card',function(){
       _renderPatternChallenge(panel,{
-        subtitle:'Tap the stars shown on your Magic Card, in order.',
+        subtitle:'Tap the stars shown on your Magic Card.',
         allowTyped:true,
         verify:function(pattern){ return MagicCard.recall({pattern:pattern}); },
         verifyTyped:function(val){ return MagicCard.recall({typed:val}); },
@@ -614,34 +621,37 @@ const MagicCardUI=(function(){
   //
   // No row/column numbers — the coordinate system is never shown, so
   // nothing about the board's own look hints at the secret. Every cell
-  // carries a "★" glyph (CSS controls its visibility — invisible at
-  // rest, dim for a decoy, bright once selected — see .magic-card-
-  // tapgrid-cell in css/style.css); a fixed-COUNT, randomly-positioned
-  // subset gets the "--decoy" class, a sparse scatter of always-dim
-  // "unlit" stars that are pure visual noise (this function has no
-  // idea what the real secret pattern is) — "spread stars sparingly...
-  // enough to mask the pattern," so a shoulder-surfer watching someone
-  // tap their real pattern can't tell a genuine tap from background
-  // camouflage that was always faintly there.
+  // carries a "★" glyph, and — a real, user-reported legibility fix,
+  // "very difficult to show the stars" — EVERY cell now shows the same
+  // dim "unlit star" at rest (see .magic-card-tapgrid-cell in
+  // css/style.css), not just a sparse ~22% subset with the rest fully
+  // invisible: a kid on a touch device (no :hover at all before the tap
+  // itself) previously had no visual cue where ~78% of the 100 tappable
+  // positions even were. This is a strict improvement on the original
+  // "camouflage" property too, not a trade-off against it — with every
+  // cell now identical at rest, there is no visible subset to
+  // distinguish from "real" positions at all, so a shoulder-surfer
+  // watching someone tap their real pattern still can't tell a genuine
+  // tap from the rest of the (now uniformly dim) starfield around it.
   function _gateBuildGrid(boardEl,size,onClick){
     boardEl.innerHTML='';
-    const total=size*size;
-    const decoyCount=Math.round(total*0.22);
-    const order=[];
-    for(let i=0;i<total;i++) order.push(i);
-    for(let i=order.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      const tmp=order[i]; order[i]=order[j]; order[j]=tmp;
-    }
-    const decoySet=new Set(order.slice(0,decoyCount));
+    // A little delight, not just a legibility fix — "they need fun not
+    // a test": each cell's own gentle twinkle (css/style.css's
+    // magicCardStarTwinkle keyframe) gets a randomized delay/duration
+    // here so the whole board twinkles out of sync, like a real sky,
+    // rather than one flat uniform pulse. Harmless to set even under
+    // reduced motion — the media query there disables the animation
+    // outright regardless of these inline values.
     for(let rr=0;rr<size;rr++){
       for(let cc=0;cc<size;cc++){
         const cell=document.createElement('button');
         cell.type='button';
-        cell.className='magic-card-tapgrid-cell'+(decoySet.has(rr*size+cc)?' magic-card-tapgrid-cell--decoy':'');
+        cell.className='magic-card-tapgrid-cell';
         cell.textContent='★';
         cell.dataset.row=rr; cell.dataset.col=cc;
         cell.style.gridRow=String(rr+1); cell.style.gridColumn=String(cc+1);
+        cell.style.animationDelay=(Math.random()*2.4).toFixed(2)+'s';
+        cell.style.animationDuration=(1.8+Math.random()*1.6).toFixed(2)+'s';
         cell.setAttribute('aria-label','Row '+(rr+1)+', Column '+(cc+1));
         cell.addEventListener('click',function(){ onClick(rr,cc,cell); });
         boardEl.appendChild(cell);
@@ -823,9 +833,9 @@ const MagicCardUI=(function(){
     let selected=[];
     // Every cell already carries its own "★" glyph (set once in
     // _gateBuildGrid) — selection is purely a CSS class + colour
-    // toggle now, never a textContent rewrite, so a decoy cell that's
-    // deselected correctly reverts to its own dim "unlit" look instead
-    // of going fully blank.
+    // toggle now, never a textContent rewrite, so a deselected cell
+    // correctly reverts to its own dim "unlit" look instead of going
+    // fully blank.
     const svg=_gateBuildGrid(board,GATE_TAPGRID_SIZE,function(r,c,cell){
       const k=_gateBoardKey(r,c);
       const idx=selected.indexOf(k);
@@ -852,16 +862,21 @@ const MagicCardUI=(function(){
       counter.textContent='0 stars selected';
     }
 
-    const confirmBtn=_el('button','magic-card-tapgrid-confirm','✨ Confirm');
+    // "they need fun not a test" — softened every status/button line on
+    // this screen away from clinical pass/fail wording (no more ✗ marks
+    // reading as a wrong-answer buzzer), and renamed the button to match
+    // this screen's own established "sky" language (see e.g. Magic Card
+    // Home's "your sky is alive").
+    const confirmBtn=_el('button','magic-card-tapgrid-confirm','✨ That’s My Sky!');
     confirmBtn.type='button';
     confirmBtn.addEventListener('click',function(){
       if(selected.length<2){
-        status.textContent='Tap at least two stars first.';
+        status.textContent='Tap a couple of stars first! ✨';
         status.className='magic-card-tapgrid-status err';
         return;
       }
       confirmBtn.disabled=true;
-      status.textContent='Checking…';
+      status.textContent='✨ Looking for your sky…';
       status.className='magic-card-tapgrid-status';
       const pattern=selected.map(function(k){
         const parts=k.split(',');
@@ -870,11 +885,11 @@ const MagicCardUI=(function(){
       opts.verify(pattern).then(function(result){
         confirmBtn.disabled=false;
         if(result&&result.ok){
-          status.textContent='✓ Welcome back!';
+          status.textContent='✨ Found it! Welcome back!';
           status.className='magic-card-tapgrid-status ok';
           setTimeout(function(){ opts.onSuccess(result); },350);
         }else{
-          status.textContent='✗ Not quite — try again.';
+          status.textContent='Not quite — let’s try again! 🌟';
           status.className='magic-card-tapgrid-status err';
           clearBoard();
         }
@@ -907,21 +922,21 @@ const MagicCardUI=(function(){
       function submitCode(){
         const val=codeInput.value.trim();
         if(!val){
-          status.textContent='Enter your code first.';
+          status.textContent='Type your code first! ✨';
           status.className='magic-card-tapgrid-status err';
           return;
         }
         codeSubmit.disabled=true;
-        status.textContent='Checking…';
+        status.textContent='✨ Looking for your sky…';
         status.className='magic-card-tapgrid-status';
         opts.verifyTyped(val).then(function(result){
           codeSubmit.disabled=false;
           if(result&&result.ok){
-            status.textContent='✓ Welcome back!';
+            status.textContent='✨ Found it! Welcome back!';
             status.className='magic-card-tapgrid-status ok';
             setTimeout(function(){ opts.onSuccess(result); },350);
           }else{
-            status.textContent='✗ Not quite — check the code and try again.';
+            status.textContent='Not quite — check the code and try again! 🌟';
             status.className='magic-card-tapgrid-status err';
           }
         });

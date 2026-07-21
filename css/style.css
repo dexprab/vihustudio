@@ -6714,7 +6714,11 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
      width/height explicitly inline -- flex-shrink:0 below is the other
      half of that fix, guaranteeing flexbox can never silently shrink
      this box on its own and break the square. */
-  width:min(460px, 100%);
+  /* 520px (up from 460px) -- "think kids, they need fun not a test":
+     bigger cells are bigger, friendlier tap targets for little fingers.
+     Safe to grow, since _fitBoardToAvailableSpace() below always shrinks
+     this back down on a short viewport that can't fit it. */
+  width:min(520px, 100%);
   aspect-ratio:1;
   flex-shrink:0;
   margin:4px auto 0;
@@ -6737,13 +6741,20 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   box-shadow:0 8px 20px rgba(0,0,0,.35);
 }
 /* Every cell is a star glyph, not a circle -- "make each square unlit
-   star" -- invisible at rest by default. A sparse, randomly-chosen
-   subset (js/magicCardUI.js's _gateBuildGrid, ~22% of cells) shows a
-   dim "unlit" glow instead ("spread stars sparingly... enough to mask
-   the pattern") so the board reads as a genuine faint night sky and a
-   shoulder-surfer can't tell a real tapped star from ordinary
-   background noise. No coordinate numbers anywhere -- the whole point
-   is that nothing about the board's own look hints at the secret. */
+   star." A real, user-reported legibility bug ("very difficult to show
+   the stars") traced to this rest state: only a sparse ~22% subset
+   used to show any glow at all, the remaining ~78% were fully
+   color:transparent -- on a touch device (no :hover before the tap
+   itself), a kid had no visual cue where most of the 100 tappable
+   positions even were. EVERY cell now shows the same dim "unlit" glow
+   at rest, so the whole 10x10 grid reads as one visible, tappable
+   starfield -- a strict improvement on the original "camouflage" idea
+   too, not a trade-off against it: with every cell now identical at
+   rest, there's no visible subset left to distinguish from "real"
+   positions, so a shoulder-surfer watching a real tap sequence still
+   can't tell a genuine tap from the rest of the uniformly dim sky
+   around it. No coordinate numbers anywhere -- the whole point is that
+   nothing about the board's own look hints at the secret. */
 .magic-card-tapgrid-cell{
   width:100%;
   height:100%;
@@ -6752,21 +6763,34 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   min-width:0;
   border:none;
   background:transparent;
-  color:transparent;
-  font-size:15px;
+  color:rgba(255,255,255,.34);
+  text-shadow:0 0 4px rgba(255,255,255,.16);
+  font-size:20px;
   line-height:1;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
   transition:color .2s ease, text-shadow .2s ease, transform .15s ease;
+  /* A gentle twinkle -- "they need fun not a test" -- purely on element
+     opacity (independent of the rgba alpha baked into `color` above),
+     so it never fights the hover/active/selected colour transitions.
+     Each cell's own animation-delay/-duration is set inline in
+     js/magicCardUI.js's _gateBuildGrid so the whole board twinkles out
+     of sync, like a real sky, not one uniform pulse. */
+  animation:magicCardStarTwinkle 2.4s ease-in-out infinite;
+}
+@keyframes magicCardStarTwinkle{
+  0%,100%{ opacity:.55; }
+  50%{ opacity:1; }
 }
 .magic-card-tapgrid-cell:hover{
-  color:rgba(255,255,255,.4);
+  color:rgba(255,255,255,.75);
   transform:scale(1.2);
 }
-.magic-card-tapgrid-cell--decoy{
-  color:rgba(255,255,255,.22);
+.magic-card-tapgrid-cell:active{
+  color:rgba(255,255,255,.9);
+  transform:scale(1.15);
 }
 .magic-card-tapgrid-cell.selected{
   color:var(--star-color,var(--mc-gold));
@@ -6779,8 +6803,9 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   100%{ text-shadow:0 0 6px color-mix(in srgb, var(--star-color,var(--mc-gold)) 90%, transparent), 0 0 15px color-mix(in srgb, var(--star-color,var(--mc-gold)) 55%, transparent); transform:scale(1.35); }
 }
 @media (prefers-reduced-motion:reduce){
-  .magic-card-tapgrid-cell{ transition:color .2s ease, text-shadow .2s ease; }
+  .magic-card-tapgrid-cell{ transition:color .2s ease, text-shadow .2s ease; animation:none; }
   .magic-card-tapgrid-cell:hover,
+  .magic-card-tapgrid-cell:active,
   .magic-card-tapgrid-cell.selected{ transform:none; animation:none; }
 }
 .magic-card-tapgrid-lines{
