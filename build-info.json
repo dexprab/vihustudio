@@ -1,9 +1,9 @@
 {
-  "version": "2.88.1",
-  "sprint": "Creator Signature Sky Challenge — No Wasted Space, Prompt Line Never Silent",
-  "task": "Two same-day follow-ups on the sky-recognition challenge: (1) hid the beginCreatorSignature bubble entirely instead of rendering it empty, fixing wasted vertical space and an unnecessary scrollbar; (2) reversed after direct user correction ('we still need a text line asking creator to find his stars') -- beginCreatorSignature now always shows the real prompt, matching the other two known-card entry points (Welcome/Picker), never a silent screen. Verified via Playwright: prompt renders and types out correctly on all three entry points; scroll overflow re-measured with text restored, matching the sibling flows' existing overflow-y:auto safety net, no regression.",
-  "build": "0216",
+  "version": "2.88.2",
+  "sprint": "Creator Signature Sky Challenge — Measured Fit, Not clamp()-Only Sizing",
+  "task": "Root-caused a fresh 'widget still has scroll' report: the sky-recognition challenge relied entirely on CSS clamp() sizing, unlike the sibling star-tap-grid screen which has always used a real measure-and-shrink fit function. Added _fitSkyChallengeToAvailableSpace, mirroring _fitBoardToAvailableSpace's own discipline: shrinks Lumo's portrait, then the sky-card grid, then (via a new --sky-density custom property) every remaining fixed margin/padding on the screen, solved analytically rather than guessed. Verified via Playwright across 10 realistic viewport sizes (420x500 to 1920x1080): zero overflow everywhere, versus real measured overflow at several before the fix; extreme sizes correctly degrade to the existing overflow-y:auto safety net. Full regression across both existing sky-challenge suites passes unchanged.",
+  "build": "0217",
   "buildDate": "2026-07-21",
-  "commit": "5d6f8d9",
+  "commit": "pending",
   "environment": "Release"
 }

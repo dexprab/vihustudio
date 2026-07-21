@@ -1086,6 +1086,65 @@ const MagicCardUI=(function(){
     return {el:wrap,setMood:setMood};
   }
 
+  // Robustly fits the sky-recognition challenge to whatever vertical room
+  // the panel genuinely has left, MEASURED directly rather than relying on
+  // clamp()'s own vh-based guesses alone -- mirroring
+  // _fitBoardToAvailableSpace's identical discipline above. A real
+  // screenshotted report ("the widget still has scroll") confirmed the
+  // clamp() values alone weren't enough: at real, ordinary desktop window
+  // heights they only avoid overflow above a certain point, with nothing
+  // actively shrinking further down below it. Runs in up to three steps,
+  // each only taken if the previous one still isn't enough:
+  //   1. shrink Lumo's own portrait (the --gk-size custom property) --
+  //      the single largest element on the screen;
+  //   2. shrink the sky-card grid itself;
+  //   3. compress every remaining fixed margin/padding on this screen too,
+  //      via the --sky-density custom property css/style.css's own
+  //      calc() expressions reference (js/magicCardUI.js never touches
+  //      those rules directly) -- a genuinely short viewport needs more
+  //      than the two big elements alone can give back.
+  // Idempotent (always resets to the natural CSS size first) so it's safe
+  // to call on every paint and from a ResizeObserver with no oscillation
+  // risk.
+  function _fitSkyChallengeToAvailableSpace(panel,gatekeeperEl,gridEl){
+    gatekeeperEl.style.removeProperty('--gk-size');
+    gridEl.style.removeProperty('max-width');
+    panel.style.removeProperty('--sky-density');
+    gridEl.querySelectorAll('svg').forEach(function(svg){ svg.style.removeProperty('max-width'); });
+    const available=panel.clientHeight;
+    let needed=panel.scrollHeight;
+    if(needed<=available+1) return;
+
+    let deficit=needed-available;
+    const naturalGk=parseFloat(getComputedStyle(gatekeeperEl).getPropertyValue('--gk-size'))||120;
+    gatekeeperEl.style.setProperty('--gk-size',Math.max(56,naturalGk-deficit)+'px');
+    needed=panel.scrollHeight;
+    if(needed<=available+1) return;
+
+    deficit=needed-available;
+    const naturalGrid=gridEl.getBoundingClientRect().width;
+    const fittedGrid=Math.max(168,naturalGrid-deficit*2.2);
+    gridEl.style.maxWidth=fittedGrid+'px';
+    const fittedSvg=Math.max(52,Math.floor(fittedGrid/2-26));
+    gridEl.querySelectorAll('svg').forEach(function(svg){ svg.style.maxWidth=fittedSvg+'px'; });
+    needed=panel.scrollHeight;
+    if(needed<=available+1) return;
+
+    // Solve for the density directly rather than guessing discrete steps:
+    // scrollHeight(d) = fixed + d*scalable is linear in d (every affected
+    // rule is a plain `calc(var(--sky-density) * Npx)`), so one extra
+    // measurement at d=0.5 is enough to derive both constants and land on
+    // the exact density that closes the remaining gap in a single try.
+    const needed1=needed;
+    panel.style.setProperty('--sky-density','0.5');
+    const neededHalf=panel.scrollHeight;
+    const scalable=Math.max(0,2*(needed1-neededHalf));
+    const fixed=needed1-scalable;
+    let density=scalable>0?(available-fixed)/scalable:1;
+    density=Math.max(0.3,Math.min(1,density));
+    panel.style.setProperty('--sky-density',density.toFixed(3));
+  }
+
   // Renders the recognition challenge directly into `panel` (replacing
   // whatever was there), mirroring _renderPatternChallenge's own
   // "replace in place, never a second screen" convention.
@@ -1179,6 +1238,7 @@ const MagicCardUI=(function(){
         decoyIdx=[keep].concat(fresh);
         paintCards();
         gatekeeper.setMood('wave','Here’s a new look — some mystery friends are new.',null);
+        _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
         busy=false;
       },1100);
     }
@@ -1186,6 +1246,21 @@ const MagicCardUI=(function(){
     paintTries();
     paintCards();
     gatekeeper.setMood('curious','One of these skies is yours. Can you find it?',null);
+
+    // Fit once, synchronously, right now — every child is appended, so
+    // this measurement reflects the true total, exactly matching
+    // _fitBoardToAvailableSpace's own established convention. A
+    // ResizeObserver keeps it correct afterward (window resize) without
+    // ever needing a fixed vh guess again; it disconnects itself the
+    // moment this screen is replaced.
+    _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
+    if(typeof ResizeObserver!=='undefined'){
+      const ro=new ResizeObserver(function(){
+        if(!document.contains(panel)){ ro.disconnect(); return; }
+        _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
+      });
+      ro.observe(panel);
+    }
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------
