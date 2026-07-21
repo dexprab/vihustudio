@@ -1693,14 +1693,6 @@ function _beginBoot(){
   // Traveller/Creator decision correct rather than a stale snapshot from
   // the moment the page merely loaded.
   try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
-  // Atmosphere V1 (MLAS) — same timing as CompanionDirector.init() above,
-  // deliberately: the Traveller Gateway already has its own complete,
-  // bespoke sound design (the Gate video's own track, Lumo's real
-  // recorded voice, gatewayAudio.js's own click sound); starting the
-  // Foundation ambience here, once the Gateway has handed off and the
-  // Hall is actually reached, avoids stacking a third, competing sound
-  // layer underneath it. See docs/ATMOSPHERE_V1_BLUEPRINT.md §6.
-  try{ if(typeof AudioManager!=='undefined') AudioManager.init(); }catch(e){}
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
@@ -1759,7 +1751,7 @@ function _afterGateway(){
   }catch(e){}
   _beginBoot();
 }
-(function bootstrapSession(){
+function _runBootstrap(){
   // Unconditional — every launch sees the Gateway now, known device or
   // not; "the only difference is what happens before the gates open"
   // lives entirely inside Scene 3 itself, not in whether the Gateway
@@ -1772,6 +1764,62 @@ function _afterGateway(){
     }
   }catch(e){}
   _afterGateway();
+}
+// "play the ambience system throughout the studio... threaded through
+// all the screens irrespective where we are" — Atmosphere V1 (MLAS) now
+// initializes here, before the Gateway even begins, instead of only
+// after it hands off: its Foundation layers are already mixed quietly
+// (see js/audioManager.js's own volumes) and are meant to be audible
+// under every screen, the Gateway's own dedicated sound design included,
+// not just the Hall reached afterward.
+//
+// "may be we need a preload sequence... something which can hold the
+// screens till everything is loaded and ready" — a real, direct request
+// for a genuine preload gate, not just background priming: nothing (not
+// even the Gateway's first frame) shows until AudioManager's Foundation
+// layers and every one of Lumo's recorded voice lines have had a real
+// chance to buffer, closing the exact "audio doesn't always play, may be
+// load lag" gap reported against the Gateway's own Returning-Creator
+// recognition screen. Bounded by a hard overall timeout so a slow or
+// broken connection can never hang boot forever — a real Studio launch
+// still proceeds, just without every clip guaranteed pre-buffered.
+function _showPreloadGate(){
+  try{
+    const el=document.createElement('div');
+    el.id='preloadGate';
+    el.className='preload-gate';
+    el.innerHTML='<div class="preload-gate-spinner"></div><div class="preload-gate-text">Preparing your adventure…</div>';
+    document.body.appendChild(el);
+    return el;
+  }catch(e){ return null; }
+}
+function _hidePreloadGate(el){
+  if(!el) return;
+  try{
+    el.classList.add('preload-gate-fade');
+    setTimeout(function(){ try{ el.remove(); }catch(e){} },260);
+  }catch(e){}
+}
+(function bootWithPreloadGate(){
+  const gate=_showPreloadGate();
+  const tasks=[];
+  try{
+    if(typeof AudioManager!=='undefined'){
+      AudioManager.init();
+      tasks.push(AudioManager.whenFoundationReady(4000));
+    }
+  }catch(e){}
+  try{
+    if(typeof LumoVoice!=='undefined'){
+      LumoVoice.preload();
+      tasks.push(LumoVoice.whenReady(null,4000));
+    }
+  }catch(e){}
+  const overallSafety=new Promise(function(resolve){ setTimeout(resolve,5000); });
+  Promise.race([Promise.all(tasks),overallSafety]).catch(function(){}).then(function(){
+    _hidePreloadGate(gate);
+    _runBootstrap();
+  });
 })();
 try{ if(typeof MagicCardUI!=='undefined') MagicCardUI.refreshHeaderBadge(); }catch(e){}
 });

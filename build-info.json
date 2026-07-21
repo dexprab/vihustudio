@@ -1,9 +1,9 @@
 {
-  "version": "2.88.2",
-  "sprint": "Creator Signature Sky Challenge — Measured Fit, Not clamp()-Only Sizing",
-  "task": "Root-caused a fresh 'widget still has scroll' report: the sky-recognition challenge relied entirely on CSS clamp() sizing, unlike the sibling star-tap-grid screen which has always used a real measure-and-shrink fit function. Added _fitSkyChallengeToAvailableSpace, mirroring _fitBoardToAvailableSpace's own discipline: shrinks Lumo's portrait, then the sky-card grid, then (via a new --sky-density custom property) every remaining fixed margin/padding on the screen, solved analytically rather than guessed. Verified via Playwright across 10 realistic viewport sizes (420x500 to 1920x1080): zero overflow everywhere, versus real measured overflow at several before the fix; extreme sizes correctly degrade to the existing overflow-y:auto safety net. Full regression across both existing sky-challenge suites passes unchanged.",
-  "build": "0217",
+  "version": "2.89.0",
+  "sprint": "Ambience Threaded Through Every Screen + Real Preload Gate + LumoVoice Load-Lag Fix",
+  "task": "Moved AudioManager.init() from _beginBoot() (after the Traveller Gateway hands off) to the very top of boot, so ambience plays under the Gateway's own cinematic too, not just the Hall reached afterward. Fixed a real bug in js/lumoVoice.js: every recorded voice line was created lazily at play() time with zero preload and a silently-swallowed failure -- exactly the reported 'audio does not play always, may be load lag.' Added preload()/whenReady() to both js/audioManager.js and js/lumoVoice.js, and a real preload-gate overlay (per a direct follow-up request) that holds every screen until both are ready or a bounded timeout elapses. Verified via Playwright: gate shows immediately, clears once readiness resolves (~625ms on this sandbox), AudioManager confirmed initialized before the Gateway is even skipped; full regression across the sky-challenge suites unchanged.",
+  "build": "0218",
   "buildDate": "2026-07-21",
-  "commit": "5b3e85c",
+  "commit": "pending",
   "environment": "Release"
 }

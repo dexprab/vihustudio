@@ -35,6 +35,47 @@ body{
   transition:background-color 0.3s, color 0.3s;
 }
 
+/* Preload gate ("may be we need a preload sequence... something which
+   can hold the screens till everything is loaded and ready") -- a real,
+   brief hold shown at the very start of boot, before the Gateway or
+   anything else, while js/app.js primes AudioManager's Foundation layers
+   and every one of Lumo's recorded voice lines. z-index deliberately
+   above everything else in the app (the Magic Card overlay's 1400, the
+   companion widget's 1450, the restore-session modal's 2000) since it
+   must cover literally the whole page while it's up. Removed from the
+   DOM entirely once boot actually proceeds -- see js/app.js's
+   _hidePreloadGate(). */
+.preload-gate{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  background:var(--bg);
+  color:var(--text-secondary);
+  transition:opacity .25s ease;
+}
+.preload-gate.preload-gate-fade{ opacity:0; pointer-events:none; }
+.preload-gate-spinner{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  border:3px solid var(--line);
+  border-top-color:var(--gold);
+  animation:preloadGateSpin .8s linear infinite;
+}
+@keyframes preloadGateSpin{ to{ transform:rotate(360deg); } }
+.preload-gate-text{
+  font:600 14px/1.4 Arial,sans-serif;
+  letter-spacing:.02em;
+}
+@media (prefers-reduced-motion:reduce){
+  .preload-gate-spinner{ animation:none; border-top-color:var(--line); }
+}
+
 /* Header — Creator UI Convergence Sprint: kept deliberately lightweight
    per the sprint brief (Home / Current World / Current Page Style /
    Project Name / Open / Save As / Publish, no editing toolbar). Same

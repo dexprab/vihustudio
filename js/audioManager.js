@@ -174,6 +174,32 @@
     _installUnlockListener();
   }
 
+  // A real preload-gate signal ("something which can hold the screens till
+  // everything is loaded and ready") -- resolves once every Foundation layer
+  // has buffered enough to play through without stalling (or already has,
+  // checked via readyState first so an already-cached repeat load resolves
+  // instantly), racing a bounded timeout so a slow/broken connection can
+  // never hang boot forever. A no-op-resolved Promise if init() hasn't run.
+  function whenFoundationReady(timeoutMs){
+    if(!_initialized || !_foundationEls.length) return Promise.resolve();
+    const ms=(typeof timeoutMs==='number'&&isFinite(timeoutMs))?timeoutMs:4000;
+    const perEl=_foundationEls.map(function(entry){
+      return new Promise(function(resolve){
+        const el=entry.el;
+        if(el.readyState>=3){ resolve(); return; } // HAVE_FUTURE_DATA
+        const done=function(){
+          el.removeEventListener('canplaythrough',done);
+          el.removeEventListener('error',done);
+          resolve();
+        };
+        el.addEventListener('canplaythrough',done,{once:true});
+        el.addEventListener('error',done,{once:true});
+      });
+    });
+    const timeout=new Promise(function(resolve){ setTimeout(resolve,ms); });
+    return Promise.race([Promise.all(perEl),timeout]);
+  }
+
   // Safe to call any time after init() -- a no-op if already playing (the
   // unlock listener already starts everything on the first real gesture; this
   // exists for a caller that wants to explicitly ensure playback has begun,
@@ -315,6 +341,7 @@
 
   const AudioManager={
     init:init,
+    whenFoundationReady:whenFoundationReady,
     playFoundation:playFoundation,
     playWorld:playWorld,
     stopWorld:stopWorld,

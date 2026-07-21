@@ -25,6 +25,14 @@
 // a disclosed, deliberate trade-off against the complexity/risk of
 // loading real <audio> metadata asynchronously mid-sequence for a small,
 // already-final batch of known clips.
+//
+// Real bug fix ("the audio does not play always, may be initialization
+// and load time lag"): every clip used to be created lazily, on the very
+// call that plays it, with no lead time to fetch/decode -- a genuine
+// race play() could lose silently. preload(ids) now primes clips ahead
+// of need -- js/app.js calls it with no argument at Studio boot, priming
+// the whole ~1.3MB set at once -- and a real play()/canplay retry
+// replaces the old silent give-up if a clip still wasn't ready.
 (function(){
   'use strict';
 
@@ -71,17 +79,45 @@
     if(!audio){
       audio=new Audio(BASE+entry.file);
       audio.volume=VOLUME;
+      // Explicit, not just relying on the constructor's own implicit
+      // fetch -- the strongest hint to start buffering right away, same
+      // as js/audioManager.js's own Foundation layers already do.
+      audio.preload='auto';
       cache[id]=audio;
     }
     return audio;
+  }
+
+  // Real, confirmed bug: a freshly-created Audio element's play() call can
+  // race the network/decode and reject (readyState too low), and every
+  // caller here swallowed that silently -- "the audio does not play
+  // always, may be its initialization and load time lag," exactly. If the
+  // element genuinely wasn't ready yet, wait for it to actually become
+  // playable and try exactly once more instead of silently giving up.
+  function _playWithRetry(audio,onSettle){
+    audio.currentTime=0;
+    let played=false;
+    const p=audio.play();
+    if(p && typeof p.then==='function'){
+      p.then(function(){ played=true; if(onSettle) onSettle(); }).catch(function(){
+        if(played) return;
+        if(audio.readyState<2){ // below HAVE_CURRENT_DATA -- the load-lag case
+          const retry=function(){
+            audio.removeEventListener('canplay',retry);
+            audio.play().then(function(){ if(onSettle) onSettle(); })
+              .catch(function(){ if(onSettle) onSettle(); });
+          };
+          audio.addEventListener('canplay',retry,{once:true});
+        }else if(onSettle){ onSettle(); }
+      });
+    }else if(onSettle){ onSettle(); }
   }
 
   function play(id){
     try{
       const audio=_audioFor(id);
       if(!audio) return;
-      audio.currentTime=0;
-      audio.play().catch(function(){});
+      _playWithRetry(audio);
     }catch(e){}
   }
 
@@ -101,13 +137,61 @@
         const audio=_audioFor(list[i]);
         i++;
         if(!audio){ next(); return; }
-        audio.currentTime=0;
         audio.removeEventListener('ended',next);
         audio.addEventListener('ended',next,{once:true});
-        audio.play().catch(function(){ next(); });
+        _playWithRetry(audio,function(){
+          // A clip that never actually became playable (retry also
+          // failed) won't fire 'ended' on its own -- move on rather than
+          // silently stall the rest of the sequence forever.
+          if(audio.paused && audio.currentTime===0){
+            audio.removeEventListener('ended',next);
+            next();
+          }
+        });
       }
       next();
     }catch(e){}
+  }
+
+  // Primes one, several, or (with no argument) every known line ahead of
+  // actual playback time -- the real fix for the load-lag bug: giving the
+  // browser real lead time to fetch/decode before play()/playSequence()
+  // is ever called, rather than lazily creating the element at the exact
+  // moment it's needed. Safe to call as early and as often as useful (a
+  // no-op for an id already cached); the full 17-clip set is ~1.3MB
+  // total, small enough to prime unconditionally at Studio boot.
+  function preload(ids){
+    try{
+      const list=ids?(Array.isArray(ids)?ids:[ids]):Object.keys(LINES);
+      list.forEach(function(id){ _audioFor(id); });
+    }catch(e){}
+  }
+
+  // A real preload-gate signal, matching js/audioManager.js's own
+  // whenFoundationReady() -- resolves once every clip currently primed
+  // via preload() has buffered enough to play through (or already had),
+  // racing a bounded timeout. Only ever checks whatever's already in
+  // `cache` -- call preload(ids) first so there's something to wait on;
+  // an empty cache resolves immediately.
+  function whenReady(ids,timeoutMs){
+    const list=ids?(Array.isArray(ids)?ids:[ids]):Object.keys(cache);
+    if(!list.length) return Promise.resolve();
+    const ms=(typeof timeoutMs==='number'&&isFinite(timeoutMs))?timeoutMs:4000;
+    const perClip=list.map(function(id){
+      return new Promise(function(resolve){
+        const audio=cache[id];
+        if(!audio || audio.readyState>=3){ resolve(); return; }
+        const done=function(){
+          audio.removeEventListener('canplaythrough',done);
+          audio.removeEventListener('error',done);
+          resolve();
+        };
+        audio.addEventListener('canplaythrough',done,{once:true});
+        audio.addEventListener('error',done,{once:true});
+      });
+    });
+    const timeout=new Promise(function(resolve){ setTimeout(resolve,ms); });
+    return Promise.race([Promise.all(perClip),timeout]);
   }
 
   // Synchronous, since every duration here is a known, pre-measured
@@ -124,6 +208,6 @@
     return total;
   }
 
-  const LumoVoice={ play:play, playSequence:playSequence, durationMs:durationMs };
+  const LumoVoice={ play:play, playSequence:playSequence, durationMs:durationMs, preload:preload, whenReady:whenReady };
   try{ window.LumoVoice=LumoVoice; }catch(e){}
 })();
