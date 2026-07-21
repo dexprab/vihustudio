@@ -6678,6 +6678,71 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .magic-card-gatekeeper-line--typing::after{ animation:none; }
 }
 
+/* ---------- "Which Sky Is Yours?" -- Creator Signature recognition
+   challenge (js/magicCardUI.js's _renderSkyChallenge). Replaces the
+   star-tap-grid RECALL mechanic below for the "this device already
+   knows which card it is, just confirm it's really them" case --
+   recognition, not recall, since recognizing something already familiar
+   is genuinely easier for a young child than recalling an abstract
+   secret tap order. Reuses the exact .magic-card-gatekeeper-* ring/
+   float/shadow/bubble presentation above (Lumo's mood/pose just swaps
+   live per moment instead of staying fixed), and the exact
+   .magic-card-constellation-svg/.magic-card-star* rendering
+   _renderConstellation() already draws elsewhere -- every one of the 4
+   cards below renders with that IDENTICAL styling, deliberately: the
+   real sky and the 3 fixed "mystery sky" decoys must be visually
+   indistinguishable from each other, or the whole recognition test
+   would be defeated by "just pick the brighter/different-looking one." */
+.magic-card-sky-tries{ display:flex; gap:7px; justify-content:center; margin:14px 0 2px; }
+.magic-card-sky-tries span{
+  width:11px; height:11px;
+  transform:rotate(45deg);
+  background:var(--mc-gold);
+  box-shadow:0 0 8px rgba(255,203,69,.6);
+  border-radius:2px;
+}
+.magic-card-sky-tries span.spent{ background:transparent; border:1.5px solid rgba(255,255,255,.22); box-shadow:none; }
+.magic-card-sky-tries-label{
+  font-size:11px;
+  color:var(--mc-ink-soft);
+  letter-spacing:.03em;
+  margin-bottom:16px;
+}
+.magic-card-sky-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  width:100%;
+  max-width:380px;
+  margin:0 auto 16px;
+}
+.magic-card-sky-card{
+  background:rgba(255,255,255,.05);
+  border:1.5px solid var(--mc-line);
+  border-radius:20px;
+  padding:14px 6px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.magic-card-sky-card:hover{ border-color:rgba(255,203,69,.35); background:rgba(255,255,255,.08); }
+.magic-card-sky-card svg{ width:100%; max-width:96px; height:auto; }
+.magic-card-sky-card.tapped-wrong{ border-color:#ff8f7a; animation:magicCardSkyShake .38s ease; }
+@keyframes magicCardSkyShake{
+  0%,100%{ transform:translateX(0); }
+  25%{ transform:translateX(-4px); }
+  75%{ transform:translateX(4px); }
+}
+.magic-card-sky-card.correct{
+  border-color:var(--mc-gold);
+  background:linear-gradient(180deg, rgba(255,203,69,.14), rgba(255,255,255,.05));
+  box-shadow:0 0 0 1px rgba(255,203,69,.4), 0 0 28px rgba(255,203,69,.32);
+  transform:scale(1.06);
+}
+.magic-card-sky-card.fade{ opacity:.32; transform:scale(.94); pointer-events:none; }
+
 .magic-card-tapgrid-subtitle{
   font-size:12.5px;
   color:var(--mc-ink-soft);

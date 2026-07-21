@@ -447,18 +447,9 @@ const MagicCardUI=(function(){
     const panel=_el('div','magic-card-gate-panel');
     content.appendChild(panel);
     function showChallenge(){
-      _renderPatternChallenge(panel,{
-        name:card.nickname||'Star Traveler',
-        // "think kids. its not easy for kids. they need fun not a test" —
-        // dropped "in order" from every one of this screen's subtitles:
-        // verification (both the local _patternsMatch below and the real
-        // recall_magic_card() RPC) has always compared taps as an
-        // unordered SET, never a sequence, so telling a kid to remember a
-        // strict order was needless pressure for a rule that was never
-        // actually enforced.
-        subtitle:'Tap your stars to continue.',
+      _renderSkyChallenge(panel,{
+        card:card,
         skipSpeech:true,
-        verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
         onSuccess:function(){
           MagicCard.setActive(card.id);
           _hide();
@@ -502,10 +493,8 @@ const MagicCardUI=(function(){
     const btn=_el('button','magic-card-gate-continue','Return to My Adventure');
     btn.type='button';
     btn.addEventListener('click',function(){
-      _renderPatternChallenge(panel,{
-        name:card.nickname||'Star Traveler',
-        subtitle:'Tap your stars to continue.',
-        verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+      _renderSkyChallenge(panel,{
+        card:card,
         onSuccess:function(){ proceed(card.id); },
         onBack:function(){ _renderGateWelcome(panel,cards,proceed,toPicker); }
       });
@@ -544,10 +533,8 @@ const MagicCardUI=(function(){
       tile.appendChild(_buildGateIdentityGlyph(card,56));
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
       tile.addEventListener('click',function(){
-        _renderPatternChallenge(panel,{
-          name:card.nickname||'Star Traveler',
-          subtitle:'Tap your stars to continue.',
-          verify:function(pattern){ return Promise.resolve(_patternsMatch(pattern,card.pattern)?{ok:true}:{ok:false}); },
+        _renderSkyChallenge(panel,{
+          card:card,
           onSuccess:function(){ proceed(card.id); },
           onBack:function(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
         });
@@ -577,20 +564,14 @@ const MagicCardUI=(function(){
   }
 
   // ---------- Inline pattern-verification challenge ----------
-  // Order-independent set comparison for a LOCAL (already-known-on-this-
-  // -device) card's own pattern — mirrors the exact canonicalization
-  // supabase/schema.sql's _card_platform_sort_pattern() already
-  // establishes server-side for the cross-device recall RPC, so a tap
-  // order that doesn't match the original claim order still verifies
-  // correctly here too.
-  function _patternsMatch(a,b){
-    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
-    function norm(arr){ return arr.map(function(p){ return p[0]+','+p[1]; }).sort(); }
-    const na=norm(a), nb=norm(b);
-    for(let i=0;i<na.length;i++){ if(na[i]!==nb[i]) return false; }
-    return true;
-  }
-
+  // (The order-independent local pattern-match helper that used to live
+  // here, _patternsMatch(), was only ever called by the "known card, same
+  // device" verification paths — Continue/tile-tap/beginCreatorSignature —
+  // all three of which now use _renderSkyChallenge below instead. It has
+  // no remaining callers and was removed rather than left as dead code;
+  // the cross-device Recall flow below never used it — it always went
+  // through the real recall_magic_card() RPC, whose own canonicalization,
+  // _card_platform_sort_pattern(), is untouched.)
   const GATE_TAPGRID_SIZE=10;
   // Each tapped star gets its OWN colour, in tap order, cycling through
   // this palette — recomputed fresh from the current `selected` array on
@@ -695,17 +676,28 @@ const MagicCardUI=(function(){
   // Back/Confirm before the line finishes typing), the interval simply
   // keeps writing into an orphaned node for the remaining ~1s and then
   // clears itself, with no visible or functional effect.
+  //
+  // A real, previously-latent race found while building _renderSkyChallenge
+  // (the first caller to ever invoke this on the SAME element more than
+  // once in a row, as Lumo's mood/line changes across several states):
+  // calling this a second time before the first reveal finished used to
+  // leave both setInterval timers writing into el.textContent
+  // concurrently — nothing tracked or cleared the previous one. Fixed by
+  // stashing the timer handle on the element itself and clearing it, if
+  // present, before starting a new one.
   function _typewriterReveal(el,text){
+    if(el.__typewriterTimer){ clearInterval(el.__typewriterTimer); el.__typewriterTimer=null; }
     const reduced=(typeof window.matchMedia==='function')&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if(reduced){ el.textContent=text; return; }
     el.textContent='';
     el.classList.add('magic-card-gatekeeper-line--typing');
     let i=0;
-    const timer=setInterval(function(){
+    el.__typewriterTimer=setInterval(function(){
       i++;
       el.textContent=text.slice(0,i);
       if(i>=text.length){
-        clearInterval(timer);
+        clearInterval(el.__typewriterTimer);
+        el.__typewriterTimer=null;
         el.classList.remove('magic-card-gatekeeper-line--typing');
       }
     },30);
@@ -968,6 +960,216 @@ const MagicCardUI=(function(){
       });
       ro.observe(panel);
     }
+  }
+
+  // ---------- "Which Sky Is Yours?" — Creator Signature recognition
+  // challenge, replacing the star-tap-grid RECALL mechanic above for
+  // the "this device already knows which card it is, just confirm it's
+  // really them" case (Continue/tile-tap/beginCreatorSignature) —
+  // recognition, not recall. Recalling an abstract secret tap order is
+  // genuinely harder for a young child than recognizing something
+  // already familiar; and unlike the real secret pattern, the "correct"
+  // sky shown here (MagicCard.decorativeSkyFor(card), the same safe,
+  // id-derived shape already used for the header badge) was never a
+  // secret to begin with, so nothing is weakened by making it easier.
+  //
+  // The cross-device Recall flow (an unknown card, verified against the
+  // real secret pattern via the recall_magic_card() RPC) is untouched
+  // and still uses _renderPatternChallenge above — there is no local
+  // card yet for a "decorative sky" to be derived from in that case.
+  //
+  // "1 real 3 fakes at every wrong attempt all cards reorganise and 2
+  // fakes regenerate": 4 cards total; a wrong tap always reshuffles
+  // every position AND swaps 2 of the 3 mystery skies for brand-new
+  // shapes from the fixed pool below — the 3rd mystery sky carries over
+  // unchanged, so the board is never a total reset, just fresh enough
+  // that nothing can be memorized by position. 3 tries; exhausting them
+  // calls onBack() automatically, same as the manual "← Back" button.
+  const SKY_TOTAL_TRIES=3;
+  // A small, fixed pool of decoy shapes — never derived from any real
+  // card (this one's or anyone else's), matching the same "decoys must
+  // never be tied to a real user" principle already established for the
+  // World Card platform's own redeem-challenge decoys.
+  const SKY_DECOY_PATTERNS=[
+    [[1,1],[3,4],[1,7],[6,6],[8,2]],
+    [[2,2],[2,7],[7,7],[7,2]],
+    [[1,4],[4,1],[4,7],[7,4],[4,4]],
+    [[1,1],[1,8],[8,8],[8,1],[4,4]],
+    [[2,5],[5,2],[5,8],[8,5]],
+    [[0,5],[3,2],[3,8],[6,5],[9,5]]
+  ];
+  function _skyPickIndices(count,pool,exclude){
+    exclude=exclude||[];
+    const avail=[];
+    for(let i=0;i<pool.length;i++){ if(exclude.indexOf(i)===-1) avail.push(i); }
+    const picked=[];
+    for(let i=0;i<count&&avail.length;i++){
+      const j=Math.floor(Math.random()*avail.length);
+      picked.push(avail.splice(j,1)[0]);
+    }
+    return picked;
+  }
+  function _skyShuffle(arr){
+    const a=arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      const t=a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+  }
+
+  // A Lumo presence that can change mood live across several states —
+  // reuses the exact .magic-card-gatekeeper-* ring/float/landing-shadow/
+  // bubble presentation _buildGatekeeperHeader already establishes
+  // above, but resolves Lumo's FULL package once (not just the 'hero'
+  // pose resolveCompanionPortrait fetches) so setMood() can swap in
+  // curious/think/wave/celebrate as the moment changes — "instead of
+  // lumo being a sigil, we have different poses of him."
+  function _buildSkyGatekeeperHeader(){
+    const wrap=_el('div','magic-card-gatekeeper');
+    const portraitWrap=_el('div','magic-card-gatekeeper-portrait-wrap');
+    portraitWrap.appendChild(_el('div','magic-card-gatekeeper-ring'));
+    const portrait=_el('div','magic-card-gatekeeper-portrait');
+    portrait.appendChild(_el('span','magic-card-gatekeeper-fallback','🐉'));
+    portraitWrap.appendChild(portrait);
+    wrap.appendChild(portraitWrap);
+    wrap.appendChild(_el('div','magic-card-gatekeeper-shadow'));
+    const bubble=_el('div','magic-card-gatekeeper-bubble');
+    const line=_el('div','magic-card-gatekeeper-line');
+    bubble.appendChild(line);
+    wrap.appendChild(bubble);
+
+    let lumoInfo=null, currentPose='curious';
+    function paintPose(){
+      if(!lumoInfo) return;
+      const file=lumoInfo.pkg.states[currentPose]||lumoInfo.pkg.states[lumoInfo.pkg.defaultState];
+      if(!file) return;
+      let img=portrait.querySelector('img');
+      if(!img){
+        portrait.innerHTML='';
+        img=document.createElement('img');
+        portrait.appendChild(img);
+      }
+      img.src=lumoInfo.basePath+file;
+    }
+    if(typeof window.CompanionEngine!=='undefined'){
+      CompanionEngine.loadRegistry(CEREMONY_ASSETS_BASE).then(function(regList){
+        return _ceremonyResolveEntity(regList,{role:'guardian'});
+      }).then(function(info){ if(info){ lumoInfo=info; paintPose(); } });
+    }
+    // moodClass toggles the bubble's own win/oops tint (matching the
+    // tap-grid's identical convention); speechText undefined leaves
+    // whatever line is already showing untouched, '' clears it, any
+    // other string types it in via _typewriterReveal.
+    function setMood(pose,speechText,moodClass){
+      currentPose=pose;
+      paintPose();
+      bubble.classList.remove('win','oops');
+      if(moodClass) bubble.classList.add(moodClass);
+      if(speechText===undefined) return;
+      if(!speechText){ line.textContent=''; return; }
+      _typewriterReveal(line,speechText);
+    }
+    return {el:wrap,setMood:setMood};
+  }
+
+  // Renders the recognition challenge directly into `panel` (replacing
+  // whatever was there), mirroring _renderPatternChallenge's own
+  // "replace in place, never a second screen" convention.
+  // `opts.card` is the already-known local Magic Card being confirmed.
+  // `opts.onSuccess()` fires once the real sky is correctly tapped;
+  // `opts.onBack()` fires on the manual "← Back" tap OR automatically
+  // once all 3 tries are spent. `opts.skipSpeech` mirrors
+  // _renderPatternChallenge's own convention — the Traveller Gateway's
+  // own Scene 3 already spoke its own greeting before this ever mounts,
+  // so only the very first line here is omitted; every later message
+  // (oops/fresh board/success) still speaks normally, since those are
+  // new information the Gateway's own greeting never said.
+  function _renderSkyChallenge(panel,opts){
+    panel.innerHTML='';
+    panel.classList.add('magic-card-gate-panel--challenge');
+
+    const gatekeeper=_buildSkyGatekeeperHeader();
+    panel.appendChild(gatekeeper.el);
+
+    const triesRow=_el('div','magic-card-sky-tries');
+    const triesLabel=_el('div','magic-card-sky-tries-label');
+    panel.appendChild(triesRow);
+    panel.appendChild(triesLabel);
+
+    const grid=_el('div','magic-card-sky-grid');
+    panel.appendChild(grid);
+
+    const back=_el('button','magic-card-gate-notyou','← Back');
+    back.type='button';
+    back.addEventListener('click',function(){ opts.onBack(); });
+    panel.appendChild(back);
+
+    const realPattern=MagicCard.decorativeSkyFor(opts.card).pattern;
+    let triesLeft=SKY_TOTAL_TRIES;
+    let decoyIdx=_skyPickIndices(3,SKY_DECOY_PATTERNS,[]);
+    let busy=false;
+
+    function paintTries(){
+      triesRow.innerHTML='';
+      for(let i=0;i<SKY_TOTAL_TRIES;i++){
+        triesRow.appendChild(_el('span',i<triesLeft?'':'spent'));
+      }
+      triesLabel.textContent=triesLeft+' tr'+(triesLeft===1?'y':'ies')+' left';
+    }
+
+    // Every card renders through the IDENTICAL _renderConstellation()
+    // styling regardless of real/decoy — deliberately: if a decoy ever
+    // looked visually different from the real sky, the whole
+    // recognition test would be defeated by "just pick the one that
+    // looks different," with no actual recognition required.
+    function paintCards(){
+      grid.innerHTML='';
+      const cards=_skyShuffle(
+        [{real:true,pattern:realPattern}].concat(
+          decoyIdx.map(function(i){ return {real:false,pattern:SKY_DECOY_PATTERNS[i]}; })
+        )
+      );
+      cards.forEach(function(c){
+        const cardEl=_el('div','magic-card-sky-card');
+        cardEl.appendChild(_renderConstellation(c.pattern,{size:96}));
+        cardEl.addEventListener('click',function(){ onCardTap(c.real,cardEl,grid); });
+        grid.appendChild(cardEl);
+      });
+    }
+
+    function onCardTap(isReal,cardEl,gridEl){
+      if(busy) return;
+      busy=true;
+      if(isReal){
+        Array.prototype.slice.call(gridEl.children).forEach(function(el){
+          el.classList.add(el===cardEl?'correct':'fade');
+        });
+        gatekeeper.setMood('celebrate','✨ There it is! Welcome back. ✨','win');
+        setTimeout(function(){ opts.onSuccess(); },900);
+        return;
+      }
+      cardEl.classList.add('tapped-wrong');
+      triesLeft--;
+      paintTries();
+      gatekeeper.setMood('think','Not quite — let’s look again! 🌟','oops');
+      setTimeout(function(){
+        if(triesLeft<=0){ opts.onBack(); return; }
+        // "not just reorder, regenerate the fakes also" — 2 of the 3
+        // mystery skies swap for brand-new shapes; the 3rd carries over
+        // unchanged, and all 4 positions reshuffle either way.
+        const keep=decoyIdx[Math.floor(Math.random()*decoyIdx.length)];
+        const fresh=_skyPickIndices(2,SKY_DECOY_PATTERNS,decoyIdx);
+        decoyIdx=[keep].concat(fresh);
+        paintCards();
+        gatekeeper.setMood('wave','Here’s a new look — some mystery friends are new.',null);
+        busy=false;
+      },1100);
+    }
+
+    paintTries();
+    paintCards();
+    gatekeeper.setMood('curious',opts.skipSpeech?'':'One of these skies is yours. Can you find it?',null);
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------
