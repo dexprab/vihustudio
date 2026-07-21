@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Mixer — VihuStudio</title>
+    <link rel="stylesheet" href="css/audio-mixer.css">
+</head>
+<body>
+    <!-- Atmosphere Engine V1 (MLAS) — Audio Mixer.
+         A temporary developer utility, deliberately NOT a Builder or Studio
+         feature: no product styling, not reachable from any in-app link.
+         Exposes js/audioManager.js's own live per-layer volume + fade-timing
+         API (setLayerVolume/setWorldFadeMs/setMuteFadeMs, all additive, see
+         that file's own "Temporary mixing-console API" section) so the five
+         Foundation layers' relative mix and the World/mute crossfade
+         durations can be dialed in by ear, then copied as code straight into
+         js/audioManager.js's own FOUNDATION_LAYERS table and fade defaults.
+         Nothing here writes back to the real app automatically — the
+         "Copy as Code" panel is the deliberate hand-off point. -->
+    <div id="am-root">
+        <header class="am-header">
+            <h1>🎚️ Audio Mixer</h1>
+            <p class="am-subtitle">A temporary tuning console for the Atmosphere Engine's Foundation ambience — not a Builder or Studio feature.</p>
+        </header>
+
+        <section class="am-card am-start">
+            <p class="am-start-hint">Sound only plays after a real click, per browser autoplay rules — the moment you touch anything below, all five layers start looping together.</p>
+            <button id="am-start-btn" class="am-btn am-btn-primary">▶ Start Ambient Mix</button>
+            <button id="am-mute-btn" class="am-btn">🔇 Mute</button>
+        </section>
+
+        <section class="am-card">
+            <h2>Master</h2>
+            <div class="am-row">
+                <label for="am-master-volume">Master Volume</label>
+                <input type="range" id="am-master-volume" min="0" max="100" value="60">
+                <span class="am-value" id="am-master-volume-val">60%</span>
+            </div>
+        </section>
+
+        <section class="am-card">
+            <h2>Foundation Mix</h2>
+            <p class="am-card-note">Each layer's own relative volume — all five loop simultaneously, forming one composite ambient sound.</p>
+            <div id="am-layers"></div>
+        </section>
+
+        <section class="am-card">
+            <h2>Fades</h2>
+            <p class="am-card-note">How long the World-ambience crossfade and the mute/unmute ramp take.</p>
+            <div class="am-row">
+                <label for="am-world-fade">World Fade</label>
+                <input type="range" id="am-world-fade" min="0" max="6000" step="100" value="2000">
+                <span class="am-value" id="am-world-fade-val">2000ms</span>
+            </div>
+            <div class="am-row">
+                <label for="am-mute-fade">Mute Fade</label>
+                <input type="range" id="am-mute-fade" min="0" max="2000" step="50" value="300">
+                <span class="am-value" id="am-mute-fade-val">300ms</span>
+            </div>
+        </section>
+
+        <section class="am-card">
+            <h2>Test a World Ambience Track</h2>
+            <p class="am-card-note">Optional — <code>assets/audio/worlds/</code> is empty today. If you drop a file there, type its name below to hear it layered on top of the Foundation mix at the World Fade duration above.</p>
+            <div class="am-row">
+                <label for="am-world-file">Filename</label>
+                <input type="text" id="am-world-file" placeholder="e.g. forest.mp3" class="am-text-input">
+            </div>
+            <div class="am-btn-row">
+                <button id="am-world-play" class="am-btn">Play World Track</button>
+                <button id="am-world-stop" class="am-btn">Stop World Track</button>
+            </div>
+        </section>
+
+        <section class="am-card">
+            <h2>Copy as Code</h2>
+            <p class="am-card-note">Paste this into <code>js/audioManager.js</code> to make your current mix the new shipped default — replacing <code>FOUNDATION_LAYERS</code> and the two <code>DEFAULT_*_FADE_MS</code> constants.</p>
+            <pre id="am-code-out"></pre>
+            <div class="am-btn-row">
+                <button id="am-copy-btn" class="am-btn am-btn-primary">📋 Copy to Clipboard</button>
+                <button id="am-reset-btn" class="am-btn">↺ Reset to Defaults</button>
+            </div>
+            <p class="am-copy-status" id="am-copy-status"></p>
+        </section>
+    </div>
+
+    <script src="../../js/audioManager.js"></script>
+    <script src="js/audioMixer.js"></script>
+</body>
+</html>

@@ -23,8 +23,19 @@
 (function(){
   'use strict';
 
-  const FOUNDATION_BASE='assets/audio/foundation/';
-  const WORLDS_BASE='assets/audio/worlds/';
+  // Resolved relative to this script's own file (js/audioManager.js sits one
+  // folder below the project root, where assets/ lives) rather than the page
+  // that loaded it -- a bare relative path would otherwise resolve
+  // differently for index.html (project root) vs. a nested tool page like
+  // tools/audio-mixer/index.html (two folders deeper), silently 404ing there
+  // even though the real files exist -- mirroring the identical fix already
+  // established for js/themeRepositoryClient.js's own supabase-config.json path.
+  const AUDIO_ROOT=(function(){
+    const scriptEl=document.currentScript;
+    return scriptEl ? new URL('../assets/audio/',scriptEl.src).href : 'assets/audio/';
+  })();
+  const FOUNDATION_BASE=AUDIO_ROOT+'foundation/';
+  const WORLDS_BASE=AUDIO_ROOT+'worlds/';
 
   // Five Foundation layers, each with its own fixed relative volume -- a
   // deliberate mix, not five equal levels. These starting values are a
@@ -43,17 +54,24 @@
   const MUTE_KEY='vihu-audio-muted';
   const VOLUME_KEY='vihu-audio-volume';
   const DEFAULT_VOLUME=0.6;
-  const WORLD_FADE_MS=2000;
-  const MUTE_FADE_MS=300;
+  const DEFAULT_WORLD_FADE_MS=2000;
+  const DEFAULT_MUTE_FADE_MS=300;
 
   let _initialized=false;
   let _muted=false;
   let _masterVolume=DEFAULT_VOLUME;
-  let _foundationEls=[]; // [{el, baseVolume}]
+  let _foundationEls=[]; // [{el, baseVolume, file}]
   let _worldEl=null;
   let _worldRefsKey=null; // JSON-stringified current World ambience refs, for the no-op re-entry check
   let _unlockHandler=null;
   let _fadeTimers=[]; // active setInterval ids, cleared defensively on shutdown
+
+  // Mutable fade timings -- a temporary mixing-console affordance (see
+  // tools/audio-mixer/) so the actual crossfade/mute feel can be dialed in by
+  // ear; every existing caller that never touches these keeps the exact same
+  // defaults this module always shipped with.
+  let _worldFadeMs=DEFAULT_WORLD_FADE_MS;
+  let _muteFadeMs=DEFAULT_MUTE_FADE_MS;
 
   function _readPrefs(){
     try{
@@ -150,7 +168,7 @@
         el.loop=true;
         el.preload='auto';
         el.volume=_effectiveVolume(layer.volume);
-        return {el:el,baseVolume:layer.volume};
+        return {el:el,baseVolume:layer.volume,file:layer.file};
       });
     }catch(e){ _foundationEls=[]; }
     _installUnlockListener();
@@ -192,7 +210,7 @@
     }catch(e){ newEl=null; }
 
     if(oldEl){
-      _ramp(oldEl,oldEl.volume,0,WORLD_FADE_MS,function(){
+      _ramp(oldEl,oldEl.volume,0,_worldFadeMs,function(){
         try{ oldEl.pause(); }catch(e){}
       });
     }
@@ -201,7 +219,7 @@
       try{
         newEl.play().catch(function(){});
       }catch(e){}
-      _ramp(newEl,0,_effectiveVolume(1),WORLD_FADE_MS);
+      _ramp(newEl,0,_effectiveVolume(1),_worldFadeMs);
     }
   }
 
@@ -210,7 +228,7 @@
     const el=_worldEl;
     _worldEl=null;
     _worldRefsKey=null;
-    _ramp(el,el.volume,0,WORLD_FADE_MS,function(){
+    _ramp(el,el.volume,0,_worldFadeMs,function(){
       try{ el.pause(); }catch(e){}
     });
   }
@@ -219,9 +237,9 @@
     _muted=!!bool;
     _persistMuted();
     _foundationEls.forEach(function(entry){
-      _ramp(entry.el,entry.el.volume,_effectiveVolume(entry.baseVolume),MUTE_FADE_MS);
+      _ramp(entry.el,entry.el.volume,_effectiveVolume(entry.baseVolume),_muteFadeMs);
     });
-    if(_worldEl) _ramp(_worldEl,_worldEl.volume,_effectiveVolume(_worldEl.__baseVolume||1),MUTE_FADE_MS);
+    if(_worldEl) _ramp(_worldEl,_worldEl.volume,_effectiveVolume(_worldEl.__baseVolume||1),_muteFadeMs);
   }
 
   function isMuted(){ return _muted; }
@@ -234,6 +252,46 @@
   }
 
   function getVolume(){ return _masterVolume; }
+
+  // ---- Temporary mixing-console API (see tools/audio-mixer/) ----
+  // Additive only -- every method below is a new capability layered on top
+  // of the existing playback/volume machinery above; nothing here changes
+  // what any pre-existing caller (js/app.js, js/themeEngine.js) does.
+
+  // Returns a plain, disconnected snapshot -- [{file, volume}] -- of each
+  // Foundation layer's own filename and current relative mix level, so a
+  // caller can build a per-layer control without reaching into internals.
+  function getFoundationLayers(){
+    return _foundationEls.map(function(entry){
+      return {file:entry.file, volume:entry.baseVolume};
+    });
+  }
+
+  // Adjusts one Foundation layer's own relative mix level live -- the exact
+  // per-file entries in FOUNDATION_LAYERS at the top of this file, found by
+  // filename (e.g. 'air.mp3'). A no-op if init() hasn't run yet or the file
+  // name doesn't match a real layer.
+  function setLayerVolume(file,vol){
+    if(typeof vol!=='number' || !isFinite(vol)) return;
+    const clamped=Math.max(0,Math.min(1,vol));
+    const entry=_foundationEls.filter(function(e){ return e.file===file; })[0];
+    if(!entry) return;
+    entry.baseVolume=clamped;
+    try{ entry.el.volume=_effectiveVolume(clamped); }catch(e){}
+  }
+
+  function getLayerVolume(file){
+    const entry=_foundationEls.filter(function(e){ return e.file===file; })[0];
+    return entry ? entry.baseVolume : null;
+  }
+
+  // World-ambience crossfade duration (playWorld()/stopWorld()'s own ramp).
+  function setWorldFadeMs(ms){ if(typeof ms==='number' && isFinite(ms) && ms>=0) _worldFadeMs=ms; }
+  function getWorldFadeMs(){ return _worldFadeMs; }
+
+  // Mute/unmute ramp duration.
+  function setMuteFadeMs(ms){ if(typeof ms==='number' && isFinite(ms) && ms>=0) _muteFadeMs=ms; }
+  function getMuteFadeMs(){ return _muteFadeMs; }
 
   function shutdown(){
     _fadeTimers.forEach(function(id){ clearInterval(id); });
@@ -264,7 +322,14 @@
     isMuted:isMuted,
     setVolume:setVolume,
     getVolume:getVolume,
-    shutdown:shutdown
+    shutdown:shutdown,
+    getFoundationLayers:getFoundationLayers,
+    setLayerVolume:setLayerVolume,
+    getLayerVolume:getLayerVolume,
+    setWorldFadeMs:setWorldFadeMs,
+    getWorldFadeMs:getWorldFadeMs,
+    setMuteFadeMs:setMuteFadeMs,
+    getMuteFadeMs:getMuteFadeMs
   };
   try{ window.AudioManager=AudioManager; }catch(e){}
 })();
