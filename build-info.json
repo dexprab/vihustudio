@@ -4,6 +4,6 @@
   "task": "A direct, same-day follow-up: \"actually air is wind.\" The previous sprint's own filename mapping was a guess made purely from upload order (the file literally supplied as air.mp3 was kept as air.mp3; the one supplied as breath.mp3 was renamed to wind.mp3 to match the pre-existing FOUNDATION_LAYERS table) -- nobody had actually listened to either clip yet. Once the product owner listened, the guess turned out backwards: the clip supplied as air.mp3 genuinely sounds like wind, and the clip supplied as breath.mp3 genuinely sounds like air/breath. Swapped the two files' names to match their real content (confirmed via md5sum before and after -- the two byte-identical clips just trade places, nothing re-encoded or re-generated) -- js/audioManager.js's FOUNDATION_LAYERS table needed zero change either time, since it only ever names the five files by their conceptual role, never by which upload produced them. assets/audio/foundation/README.md updated to record the real provenance of both files rather than silently overwriting the previous entry's own now-incorrect claim. Re-verified via ffprobe that both files are still genuine, valid 30.024-second clips post-swap. No Theme Contract/Engine V2 Scene Model/Builder/Creator Governing Rules change; confined to swapping two already-present audio files and one README update.",
   "build": "0212",
   "buildDate": "2026-07-21",
-  "commit": "pending",
+  "commit": "4ac8d37",
   "environment": "Release"
 }
