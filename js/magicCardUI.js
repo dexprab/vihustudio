@@ -449,7 +449,6 @@ const MagicCardUI=(function(){
     function showChallenge(){
       _renderSkyChallenge(panel,{
         card:card,
-        skipSpeech:true,
         onSuccess:function(){
           MagicCard.setActive(card.id);
           _hide();
@@ -1061,13 +1060,27 @@ const MagicCardUI=(function(){
     // tap-grid's identical convention); speechText undefined leaves
     // whatever line is already showing untouched, '' clears it, any
     // other string types it in via _typewriterReveal.
+    //
+    // "no scroll please, there is so much vertical space use that" — a
+    // real, screenshotted bug: an empty bubble (skipSpeech's own initial
+    // '' text, the Gateway's own case) still rendered its full padded box
+    // with nothing in it, wasting real vertical room and contributing to
+    // the panel needing to scroll. The bubble is now hidden outright
+    // whenever there's no line to show, and un-hidden the moment a real
+    // message arrives (every later beat — oops/fresh board/success —
+    // always has one).
     function setMood(pose,speechText,moodClass){
       currentPose=pose;
       paintPose();
       bubble.classList.remove('win','oops');
       if(moodClass) bubble.classList.add(moodClass);
       if(speechText===undefined) return;
-      if(!speechText){ line.textContent=''; return; }
+      if(!speechText){
+        line.textContent='';
+        bubble.classList.add('magic-card-gatekeeper-bubble-empty');
+        return;
+      }
+      bubble.classList.remove('magic-card-gatekeeper-bubble-empty');
       _typewriterReveal(line,speechText);
     }
     return {el:wrap,setMood:setMood};
@@ -1079,12 +1092,15 @@ const MagicCardUI=(function(){
   // `opts.card` is the already-known local Magic Card being confirmed.
   // `opts.onSuccess()` fires once the real sky is correctly tapped;
   // `opts.onBack()` fires on the manual "← Back" tap OR automatically
-  // once all 3 tries are spent. `opts.skipSpeech` mirrors
-  // _renderPatternChallenge's own convention — the Traveller Gateway's
-  // own Scene 3 already spoke its own greeting before this ever mounts,
-  // so only the very first line here is omitted; every later message
-  // (oops/fresh board/success) still speaks normally, since those are
-  // new information the Gateway's own greeting never said.
+  // once all 3 tries are spent.
+  //
+  // The initial "find your stars" line always shows, on every call site
+  // (Continue/tile-tap/beginCreatorSignature alike) — an earlier draft
+  // suppressed it for beginCreatorSignature specifically, reasoning the
+  // Gateway's own preceding greeting already covered it, but "we still
+  // need a text line asking creator to find his stars" corrected that:
+  // this screen's own prompt is what actually tells the child what to
+  // do here, regardless of whatever led them to it.
   function _renderSkyChallenge(panel,opts){
     panel.innerHTML='';
     panel.classList.add('magic-card-gate-panel--challenge');
@@ -1169,7 +1185,7 @@ const MagicCardUI=(function(){
 
     paintTries();
     paintCards();
-    gatekeeper.setMood('curious',opts.skipSpeech?'':'One of these skies is yours. Can you find it?',null);
+    gatekeeper.setMood('curious','One of these skies is yours. Can you find it?',null);
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------

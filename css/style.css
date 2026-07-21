@@ -6661,6 +6661,11 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   padding:8px 14px;
   margin-top:2px;
 }
+/* "no scroll please, there is so much vertical space use that" -- an
+   empty bubble (skipSpeech's own initial state) used to still render
+   its full padded box with nothing in it, wasting real room. Hidden
+   outright instead, reclaiming that space until a real message arrives. */
+.magic-card-gatekeeper-bubble.magic-card-gatekeeper-bubble-empty{ display:none; }
 .magic-card-gatekeeper-line{
   font-size:12.5px;
   color:var(--mc-ink-soft);
