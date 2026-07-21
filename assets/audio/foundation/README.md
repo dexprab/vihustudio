@@ -5,17 +5,21 @@ V1 (MLAS, the Minimum Lovable Atmosphere System). See
 `docs/ATMOSPHERE_V1_BLUEPRINT.md` for the full spec; `js/audioManager.js` is
 the one module that reads this folder.
 
-## What's here (once supplied)
+## What's here
 
-Five looping layers, all played **simultaneously, always, at their own fixed
-relative volume**, forming one composite ambient sound — not five alternatives
-to choose between, and not a rotation:
+Five real, ElevenLabs-generated looping layers (each a genuine, distinct
+30-second clip — confirmed via `ffprobe`, matching the generation cap), all
+played **simultaneously, always, at their own fixed relative volume**,
+forming one composite ambient sound — not five alternatives to choose
+between, and not a rotation:
 
 - `air.mp3`
 - `harmony.mp3`
 - `magic.mp3`
 - `forest.mp3`
-- `wind.mp3`
+- `wind.mp3` — supplied under the name "breath.mp3"; renamed on arrival to
+  match the filename already established in `js/audioManager.js`'s
+  `FOUNDATION_LAYERS` table and every design doc — no code change was needed.
 
 This is a direct, explicit product correction over an earlier draft of this
 system's own design: "Keep all five Foundation layers. The simplification was
@@ -24,17 +28,10 @@ Foundation layers, applies fixed volumes, loops them indefinitely and
 optionally overlays a World ambience layer."
 
 Each file's own relative mix level lives in `js/audioManager.js`'s
-`FOUNDATION_LAYERS` table — a placeholder balance today, meant to be re-tuned
-by ear once all five real files can actually be heard mixed together.
-
-## A disclosed, standing gap
-
-**These five files do not exist on disk yet.** They were generated via
-ElevenLabs (max-30-second clips, designed to loop seamlessly) but have not
-been uploaded into this repository. `js/audioManager.js` degrades gracefully
-in their absence — `new Audio(...)` against a missing file simply never plays
-anything audible; it does not throw or block the rest of the app. Once
-uploaded, no code change is needed — they're picked up automatically.
+`FOUNDATION_LAYERS` table — still a placeholder balance (0.5/0.4/0.3/0.35/0.3),
+since re-tuning it "by ear" needs a human actually listening to the five real
+files mixed together, which this environment has no way to do; verified only
+that each file decodes correctly and plays for its full real duration.
 
 ## Discipline
 
