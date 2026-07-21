@@ -4,6 +4,6 @@
   "task": "Replaces the star-tap-grid Creator Signature challenge with a recognition-based mechanic for the known-card case (Continue/tile-tap/beginCreatorSignature). Corrected mid-design after the user asked 'why are we confirming companion, should we not be confirming the stars' -- the correct answer recognizes the card's own safe decorativeSkyFor() shape (never the real secret pattern, per the already-shipped never-show-the-pattern rule) among 4 cards total: 1 real + 3 fixed mystery-sky decoys. A wrong tap shakes, decrements one of 3 tries, and regenerates 2 of the 3 decoys while 1 persists, reshuffling all 4 positions. Lumo swaps real poses (curious/think/wave/celebrate) live via the existing gatekeeper ring/float/bubble presentation instead of a static sigil. The cross-device Recall flow keeps the real secret-pattern tap-grid, untouched. Found and fixed a real, previously-latent race in _typewriterReveal (two reveals on the same element could write concurrently) exposed by this being the first caller to retype the same line repeatedly. Verified via Playwright: single-card/multi-card/Gateway flows, decoy regenerate-not-reorder, exhaust-3-tries auto choice screen, Recall flow confirmed unaffected.",
   "build": "0215",
   "buildDate": "2026-07-21",
-  "commit": "pending",
+  "commit": "ea28489",
   "environment": "Release"
 }
