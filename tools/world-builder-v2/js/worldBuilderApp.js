@@ -1842,6 +1842,19 @@
         const card = document.createElement('div');
         card.className = 'wb-project-card wb-cloud-world-card';
 
+        // A real, reported layout bug: this card's own action label
+        // ("Sync to This Device" / "Update Available — Load It") is
+        // real text, not a single glyph like the My World Projects
+        // card's corner-anchored Rename/Duplicate/Delete controls — it
+        // can't share one narrow inline row with a long World Name
+        // without crushing the name down to 1-2 characters (exactly
+        // what a real screenshot showed). Fixed by stacking the action
+        // below the name/meta row instead of squeezing both onto one
+        // line — .wb-cloud-world-top holds the thumb+info, the action
+        // button sits on its own full-width row beneath it.
+        const topRow = document.createElement('div');
+        topRow.className = 'wb-cloud-world-top';
+
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
         const manifest = row.data && row.data.files && row.data.files['manifest.json'];
@@ -1860,6 +1873,8 @@
         metaLine.appendChild(status);
         info.appendChild(name);
         info.appendChild(metaLine);
+        topRow.appendChild(thumb);
+        topRow.appendChild(info);
 
         const actions = document.createElement('span');
         actions.className = 'wb-cloud-world-actions';
@@ -1900,8 +1915,7 @@
         }
         actions.appendChild(btn);
 
-        card.appendChild(thumb);
-        card.appendChild(info);
+        card.appendChild(topRow);
         card.appendChild(actions);
         return card;
     }

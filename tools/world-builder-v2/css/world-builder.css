@@ -389,13 +389,39 @@ html, body {
    action button ("Sync to This Device" / "Check for Updates") — not an
    icon-only control like Delete's 🗑, since the two actions read very
    differently and a glyph alone wouldn't say which. */
-.wb-cloud-world-card { cursor: default; }
+/* Two real, reported layout bugs, both closed here. (1) The base
+   .wb-project-card rule's 112px right padding is reserved purely for
+   the My World Projects card's own absolutely-positioned Rename/
+   Duplicate/Delete control trio — this card has none, so that padding
+   sat empty, wasting horizontal space (same fix
+   .wb-project-card-repo-only already uses for the identical reason).
+   (2) This card's own action is a real text label ("Sync to This
+   Device" / "Update Available — Load It"), not a single glyph like
+   Rename/Duplicate/Delete — it can't share one narrow inline row with
+   a long World Name without crushing the name down to 1-2 characters
+   (exactly what a real screenshot showed). Fixed by overriding the
+   base row layout to a column stack: .wb-cloud-world-top (thumb+info,
+   a nested row) sits on its own line, and the action button gets a
+   full, un-shared width beneath it. */
+.wb-cloud-world-card {
+    cursor: default;
+    padding-right: 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+.wb-cloud-world-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
 .wb-cloud-world-actions {
-    flex-shrink: 0;
+    width: 100%;
 }
 .wb-cloud-world-action-btn {
-    width: auto;
-    padding: 6px 16px;
+    width: 100%;
+    padding: 8px 16px;
     border-radius: 999px;
     border: none;
     background: var(--wb-gold);
