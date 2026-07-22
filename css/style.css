@@ -6363,12 +6363,31 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-overlay.magic-card-mode-home{
   background:rgba(8,10,20,0.82);
 }
+/* "ensure there are no scrolls on any screen" -- .magic-card-panel has
+   no bounded height of its own (only .magic-card-overlay, the true
+   scrolling ancestor, does), so it had nothing for
+   _fitAwakenStageToAvailableSpace() to measure a real overflow against.
+   Bounded here, scoped to awaken mode only, mirroring .magic-card-gate-
+   panel's own identical max-height/overflow pattern -- gives the fit
+   function a real clientHeight ceiling to compare scrollHeight against. */
+.magic-card-overlay.magic-card-mode-awaken .magic-card-panel{
+  max-height:calc(100vh - 64px);
+  overflow-y:auto;
+  overflow-x:hidden;
+}
 
 /* ---------- Shared: constellation SVG ---------- */
 .magic-card-constellation-svg{ display:block; overflow:visible; }
 .magic-card-star{ fill:var(--mc-gold); }
 .magic-card-star-core{
   filter:drop-shadow(0 0 3px rgba(255,203,69,0.85));
+}
+/* "the connected pattern should have stars" -- an 8-point sparkle
+   polygon layered on top of each core dot (see
+   js/magicCardUI.js's _sparklePoints/_renderConstellation), giving the
+   pattern a genuine glowing-star silhouette instead of a plain circle. */
+.magic-card-star-spark{
+  filter:drop-shadow(0 0 4px rgba(255,203,69,0.9));
 }
 .magic-card-star-companion{
   fill:#c9d4ff;
@@ -6382,9 +6401,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 /* Awakening reveal — stars and connecting lines fade/scale in one at a
    time via each element's own staggered animation-delay (set inline by
-   js/magicCardUI.js's _renderConstellation, opts.animate). */
-.magic-card-awaken-sky .magic-card-star,
-.magic-card-awaken-sky .magic-card-star-line{
+   js/magicCardUI.js's _renderConstellation, opts.animate). Scoped to
+   .magic-card-sky-frame -- the card-shaped wrapper _runReveal/
+   _runClaimPanel mount the constellation SVG inside (see the frame's own
+   rule further down this file). */
+.magic-card-sky-frame .magic-card-star,
+.magic-card-sky-frame .magic-card-star-line{
   animation:magicCardTwinkleIn .5s ease-out both;
 }
 @keyframes magicCardTwinkleIn{
@@ -6397,8 +6419,8 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   to{ opacity:1; }
 }
 @media (prefers-reduced-motion:reduce){
-  .magic-card-awaken-sky .magic-card-star,
-  .magic-card-awaken-sky .magic-card-star-line{ animation:none; opacity:1; transform:none; }
+  .magic-card-sky-frame .magic-card-star,
+  .magic-card-sky-frame .magic-card-star-line{ animation:none; opacity:1; transform:none; }
 }
 .magic-card-claimed-glow .magic-card-star-core{
   filter:drop-shadow(0 0 7px rgba(255,203,69,1));
@@ -7044,26 +7066,73 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* ---------- Screens 5-7 — The Awakening ceremony ---------- */
 .magic-card-awaken-stage{
   width:100%;
-  max-width:460px;
+  /* Wide enough for the First Claimed Moment's own two bigger (up to
+     240px) Front/Back cards to sit side by side (2*240+14px gap=494px)
+     instead of being forced to wrap into a tall vertical stack purely
+     because this container was narrower than its own biggest possible
+     children -- the actual root cause "ensure there are no scrolls"
+     surfaced on that one screen. Every other ceremony screen (a single
+     centered sky-frame, or the smaller 150px nickname-preview pair)
+     already fits comfortably within this wider cap too, so nothing
+     shrinks or spreads out oddly elsewhere. See
+     _fitAwakenStageToAvailableSpace() for the remaining, genuinely
+     short-viewport safety net this alone can't cover. */
+  max-width:510px;
   display:flex;
   flex-direction:column;
   align-items:center;
   text-align:center;
-  gap:8px;
+  /* --awaken-density (default 1) is the last-resort step of
+     _fitAwakenStageToAvailableSpace() -- see that function's own
+     comment -- compressing this whole screen family's spacing on a
+     genuinely short viewport, after shrinking the sky-frame/art-canvas
+     elements alone still isn't enough. Set on .magic-card-panel (an
+     ancestor of every element below that reads it), never here, so it
+     naturally reaches .magic-card-art-row/-col too (also used by Magic
+     Card Home's own, separate .magic-card-home-panel, which never sets
+     this property and so is completely unaffected). */
+  gap:calc(var(--awaken-density,1) * 8px);
 }
 .magic-card-awaken-msg{
   font-size:20px;
   font-weight:800;
   color:var(--mc-ink);
-  margin:0 0 18px;
+  margin:0 0 calc(var(--awaken-density,1) * 18px);
   transition:opacity .3s;
 }
 .magic-card-awaken-msg-settled{ color:var(--mc-gold); }
 .magic-card-awaken-sky{ margin-bottom:18px; }
+/* "its missing card all together" -- a simple card-shaped frame around
+   the forming/claiming sky (Screens 5-6, before a nickname/species
+   exists to fill out a real front/back canvas render) so the ceremony
+   reads as "a Magic Card is materializing," not just dots floating in
+   space. Same gradient stops MagicCardArt's own canvas-drawn card uses,
+   so this frame and the later real card feel like one continuous
+   object. */
+.magic-card-sky-frame{
+  width:clamp(170px,30vw,230px);
+  aspect-ratio:700/980;
+  border-radius:22px;
+  border:2px solid var(--mc-gold);
+  background:radial-gradient(ellipse at 32% 20%,#232d5c 0%,#141a38 55%,#080a16 100%);
+  box-shadow:0 14px 34px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto calc(var(--awaken-density,1) * 18px);
+}
+.magic-card-sky-frame .magic-card-constellation-svg{ width:68%; height:68%; }
+.magic-card-claim-subtext{
+  font-size:13px;
+  color:var(--mc-ink-soft);
+  max-width:320px;
+  line-height:1.5;
+  margin:-14px 0 calc(var(--awaken-density,1) * 20px);
+}
 .magic-card-awaken-tap{
   width:auto !important;
   height:auto !important;
-  margin:22px 0 0 !important;
+  margin:calc(var(--awaken-density,1) * 22px) 0 0 !important;
   padding:12px 26px;
   border-radius:999px;
   background:var(--mc-gold);
@@ -7081,7 +7150,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   font-size:19px;
   font-weight:800;
   color:var(--mc-ink);
-  margin:4px 0 22px;
+  margin:4px 0 calc(var(--awaken-density,1) * 22px);
 }
 .magic-card-claim-btn{
   width:100% !important;
@@ -7092,7 +7161,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   background:var(--mc-gold);
   color:var(--navy);
   font:800 16px/1 inherit;
-  margin-bottom:14px !important;
+  margin-bottom:calc(var(--awaken-density,1) * 14px) !important;
   box-shadow:0 8px 24px rgba(255,203,69,0.25);
 }
 .magic-card-claim-secondary{
@@ -7117,14 +7186,14 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   font-size:19px;
   font-weight:800;
   color:var(--mc-ink);
-  margin:6px 0 8px;
+  margin:6px 0 calc(var(--awaken-density,1) * 8px);
 }
 .magic-card-claimed-hint{
   font-size:13px;
   color:var(--mc-ink-soft);
   max-width:340px;
   line-height:1.5;
-  margin:0 0 22px;
+  margin:0 0 calc(var(--awaken-density,1) * 22px);
 }
 .magic-card-nickname-input{
   width:100%;
@@ -7136,7 +7205,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   color:var(--mc-ink);
   font:700 15px/1 inherit;
   text-align:center;
-  margin:8px 0 18px;
+  margin:calc(var(--awaken-density,1) * 8px) 0 calc(var(--awaken-density,1) * 18px);
 }
 .magic-card-nickname-input::placeholder{ color:rgba(238,241,255,0.4); }
 .magic-card-nickname-input:focus{ outline:none; border-color:var(--mc-gold); background:rgba(255,255,255,0.12); }
@@ -7305,7 +7374,12 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .magic-card-art-row{
   display:flex;
-  gap:14px;
+  /* --awaken-density (default 1) only ever gets set on .magic-card-panel
+     inside the Awakening ceremony (see .magic-card-awaken-stage's own
+     comment) -- Magic Card Home's completely separate .magic-card-home-
+     panel never sets it, so its own reuse of .magic-card-art-row/-col
+     stays at the plain 14px/6px default, unaffected. */
+  gap:calc(var(--awaken-density,1) * 14px);
   justify-content:center;
   flex-wrap:wrap;
 }
@@ -7313,7 +7387,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:6px;
+  gap:calc(var(--awaken-density,1) * 6px);
 }
 .magic-card-art-label{
   font-size:11px;
@@ -7328,6 +7402,20 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   aspect-ratio:700/980;
   border-radius:14px;
   box-shadow:0 10px 28px rgba(0,0,0,0.4);
+}
+/* "Star Traveller screen make both sides of card shown here bigger" --
+   the ceremony's own First Claimed Moment ("<nickname>, your sky is
+   alive."), the one screen the shared 150px .magic-card-art-canvas base
+   was too small for. Scoped to .magic-card-awaken-stage .magic-card-
+   art-view specifically -- _buildCardArtView()'s own wrapper class,
+   used only here and by Magic Card Home's "View My Card" (which lives
+   in .magic-card-home-panel, never .magic-card-awaken-stage, so it's
+   untouched and stays at the original 150px) -- rather than the bare
+   class, so Home's own card view and the earlier nickname-prompt
+   preview (a different wrapper, .magic-card-nickname-preview-row) both
+   keep their original size. */
+.magic-card-awaken-stage .magic-card-art-view .magic-card-art-canvas{
+  width:clamp(150px,32vw,240px);
 }
 /* Reveal-gate — Magic Card Home's "View My Card" only (the ceremony's
    own First Claimed Moment never sets this). The Back face is the

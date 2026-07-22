@@ -70,20 +70,27 @@
   // established across this codebase: a container that gains/loses a
   // plain ".hidden" class. Creation Flow's own overlay is deliberately
   // NOT in this list — a companion (Egg or Companion) is meant to be
-  // visible there.
+  // visible there. Publish Studio is ALSO deliberately not in this list
+  // anymore — "Publish studio screen 1,2,3: companion/egg is missing"
+  // (Read/Almost Ready/Choose Destination) reverses an earlier sprint's
+  // own "avoids clutter over functional UI" reasoning for hiding it
+  // there; the companion staying present through the whole Publish
+  // journey (all five stages, since there is no separate per-stage
+  // selector to scope this to only three of them) reads as genuine
+  // companionship at the moment a Story Author needs it most, not
+  // clutter.
   const BUSY_SELECTORS=[
     '#restoreModal:not(.hidden)',
-    '#themePickerModal:not(.hidden)',
-    '.publish-studio-modal:not(.hidden)'
+    '#themePickerModal:not(.hidden)'
   ];
   // #magicCardOverlay is deliberately NOT one of the plain
   // BUSY_SELECTORS above — it's an override, checked first. It covers
-  // the Identity Gate, the Creator Ceremony, AND Home. The ceremony
-  // always opens ON TOP OF an already-open Publish Studio modal (itself
-  // a BUSY_SELECTOR), so treating the overlay as just another busy
-  // dialog to hide behind would make the Story Egg's own "hatching"
-  // pose and the whole Egg -> Lumo -> Companion ceremony invisible —
-  // exactly the moment this pose vocabulary exists to show.
+  // the Identity Gate, the Creator Ceremony, AND Home. A ceremony can
+  // still open on top of another genuinely busy dialog (e.g. a restore
+  // prompt), so treating the overlay as just another busy dialog to
+  // hide behind would make the Story Egg's own "hatching" pose and the
+  // whole Egg -> Lumo -> Companion ceremony invisible — exactly the
+  // moment this pose vocabulary exists to show.
   const CEREMONY_SELECTOR='#magicCardOverlay:not(.hidden)';
 
   const MESSAGES={

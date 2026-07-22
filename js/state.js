@@ -1,8 +1,8 @@
 const AppState={
  project:{
-   title:'The Worst Birthday Ever',
+   title:'My Adventure',
    author:'',
-   bookTitle:'The Worst Birthday Ever',
+   bookTitle:'My Adventure',
    theme:'storybook-classic',
    themeOptions:{
      variant:'classic',

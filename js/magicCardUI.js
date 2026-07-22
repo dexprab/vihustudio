@@ -75,6 +75,24 @@ const MagicCardUI=(function(){
     return e;
   }
 
+  // "the connected pattern should have stars" — an 8-point sparkle
+  // polygon (alternating outer/inner radius), layered ON TOP of each
+  // core point's existing plain circle (never replacing it — several
+  // Playwright suites identify "the real card" by querying
+  // circle.magic-card-star-core's own cx/cy attributes, and a
+  // <polygon> has no such attributes to query) so the connected
+  // pattern reads as genuine glowing stars, not flat dots, with zero
+  // risk to that existing test contract.
+  function _sparklePoints(cx,cy,rOuter,rInner){
+    const pts=[];
+    for(let i=0;i<8;i++){
+      const angle=(Math.PI/4)*i-Math.PI/2;
+      const r=(i%2===0)?rOuter:rInner;
+      pts.push((cx+r*Math.cos(angle)).toFixed(3)+','+(cy+r*Math.sin(angle)).toFixed(3));
+    }
+    return pts.join(' ');
+  }
+
   // ---------- Shared: constellation SVG (decorative — no tap
   // interaction in Phase 1, since there is no cross-device recall yet
   // for a tap gesture to serve) ----------
@@ -114,6 +132,11 @@ const MagicCardUI=(function(){
       c.setAttribute('class','magic-card-star magic-card-star-core');
       if(opts.animate) c.style.animationDelay=(i*0.22)+'s';
       svg.appendChild(c);
+      const spark=document.createElementNS(svgNS,'polygon');
+      spark.setAttribute('points',_sparklePoints(p.x,p.y,0.36,0.11));
+      spark.setAttribute('class','magic-card-star magic-card-star-spark');
+      if(opts.animate) spark.style.animationDelay=(i*0.22)+'s';
+      svg.appendChild(spark);
     });
     return svg;
   }
@@ -1157,6 +1180,77 @@ const MagicCardUI=(function(){
     panel.style.setProperty('--sky-density',density.toFixed(3));
   }
 
+  // "ensure there are no scrolls on any screen. its essential not to
+  // have scrolls" -- the Awakening ceremony's own equivalent of
+  // _fitSkyChallengeToAvailableSpace above, applied to `panel`
+  // (.magic-card-panel/#magicCardContent, now genuinely bounded --
+  // max-height:calc(100vh - 64px) -- rather than the unbounded box it
+  // used to be, which had nothing for a fit function to measure a real
+  // overflow against) and `stage` (.magic-card-awaken-stage, the one
+  // container reused, cleared and repopulated, across every Awakening
+  // screen). Idempotent (always resets every prior override first) so
+  // it's safe to call after every screen builds its own DOM and from a
+  // single, screen-spanning ResizeObserver with no oscillation risk.
+  //
+  // Runs up to four escalating steps, each taken only if the previous
+  // one still isn't enough -- shrink whichever big image element the
+  // CURRENT screen actually has (the sky-frame on Reveal/Claim, the
+  // paired art-canvases on the nickname preview/First Claimed Moment,
+  // the ceremony beat's own fixed 240x240 image wrap), then fall back to
+  // the same --awaken-density linear-solve _fitSkyChallengeToAvailable
+  // Space already established for its own last-resort step.
+  function _fitAwakenStageToAvailableSpace(panel,stage){
+    panel.style.removeProperty('--awaken-density');
+    const skyFrame=stage.querySelector('.magic-card-sky-frame');
+    if(skyFrame) skyFrame.style.removeProperty('width');
+    const artCanvases=stage.querySelectorAll('.magic-card-art-canvas');
+    artCanvases.forEach(function(c){ c.style.removeProperty('width'); });
+    const ceremonyImgWrap=stage.querySelector('.magic-card-ceremony-img-wrap');
+    if(ceremonyImgWrap){
+      ceremonyImgWrap.style.removeProperty('width');
+      ceremonyImgWrap.style.removeProperty('height');
+    }
+
+    const available=panel.clientHeight;
+    let needed=panel.scrollHeight;
+    if(needed<=available+1) return;
+
+    if(skyFrame){
+      const deficit=needed-available;
+      const naturalW=skyFrame.getBoundingClientRect().width;
+      skyFrame.style.width=Math.max(110,naturalW-deficit*1.4)+'px';
+      needed=panel.scrollHeight;
+      if(needed<=available+1) return;
+    }
+
+    if(artCanvases.length){
+      const deficit=needed-available;
+      const naturalW=artCanvases[0].getBoundingClientRect().width;
+      const fittedW=Math.max(90,naturalW-deficit*1.4)+'px';
+      artCanvases.forEach(function(c){ c.style.width=fittedW; });
+      needed=panel.scrollHeight;
+      if(needed<=available+1) return;
+    }
+
+    if(ceremonyImgWrap){
+      const deficit=needed-available;
+      const fittedSize=Math.max(90,240-deficit*1.4)+'px';
+      ceremonyImgWrap.style.width=fittedSize;
+      ceremonyImgWrap.style.height=fittedSize;
+      needed=panel.scrollHeight;
+      if(needed<=available+1) return;
+    }
+
+    const needed1=needed;
+    panel.style.setProperty('--awaken-density','0.5');
+    const neededHalf=panel.scrollHeight;
+    const scalable=Math.max(0,2*(needed1-neededHalf));
+    const fixed=needed1-scalable;
+    let density=scalable>0?(available-fixed)/scalable:1;
+    density=Math.max(0.3,Math.min(1,density));
+    panel.style.setProperty('--awaken-density',density.toFixed(3));
+  }
+
   // Renders the recognition challenge directly into `panel` (replacing
   // whatever was there), mirroring _renderPatternChallenge's own
   // "replace in place, never a second screen" convention.
@@ -1361,6 +1455,23 @@ const MagicCardUI=(function(){
     const stage=_el('div','magic-card-awaken-stage');
     content.appendChild(stage);
 
+    // "essential not to have scrolls" -- one ResizeObserver, set up once
+    // here since `content`/`stage` are the same two elements reused
+    // (innerHTML-cleared and repopulated) across every remaining
+    // Awakening screen, catching a real window resize mid-flow; each
+    // screen's own build function additionally calls
+    // _fitAwakenStageToAvailableSpace synchronously right after
+    // appending its DOM, matching _fitSkyChallengeToAvailableSpace's own
+    // established "fit once now, ResizeObserver keeps it correct after"
+    // convention.
+    if(typeof ResizeObserver!=='undefined'){
+      const ro=new ResizeObserver(function(){
+        if(!document.contains(content)){ ro.disconnect(); return; }
+        _fitAwakenStageToAvailableSpace(content,stage);
+      });
+      ro.observe(content);
+    }
+
     // Generated once, here, and threaded through every remaining step
     // of the ceremony (reveal -> claim panel -> nickname prompt ->
     // first claimed moment) — the same `placed` value is what
@@ -1377,9 +1488,17 @@ const MagicCardUI=(function(){
     stage.innerHTML='';
     const msg=_el('div','magic-card-awaken-msg','A Magic Card is waking up…');
     stage.appendChild(msg);
-    const skyWrap=_el('div','magic-card-awaken-sky');
-    skyWrap.appendChild(_renderConstellation(placed.pattern,{size:240,animate:true}));
-    stage.appendChild(skyWrap);
+    // "its missing card all together" — the pattern used to float in
+    // open space with nothing reading as "a card." A simple card-shaped
+    // frame (the same gradient/border language the final canvas-drawn
+    // card itself uses, see css/style.css's .magic-card-sky-frame)
+    // around the forming sky is enough to make this genuinely read as a
+    // Magic Card waking up, with no name/species data needed yet —
+    // nothing has been claimed at this point in the ceremony.
+    const cardFrame=_el('div','magic-card-sky-frame');
+    cardFrame.appendChild(_renderConstellation(placed.pattern,{size:240,animate:true}));
+    stage.appendChild(cardFrame);
+    _fitAwakenStageToAvailableSpace(content,stage);
 
     const totalStars=placed.pattern.length;
     const revealMs=totalStars*220+totalStars*150+900;
@@ -1390,13 +1509,22 @@ const MagicCardUI=(function(){
       tap.type='button';
       tap.addEventListener('click',onNext);
       stage.appendChild(tap);
+      _fitAwakenStageToAvailableSpace(content,stage);
     },revealMs);
   }
 
   function _runClaimPanel(stage,placed,onDone){
     stage.innerHTML='';
-    stage.appendChild(_renderConstellation(placed.pattern,{size:200}));
+    const cardFrame=_el('div','magic-card-sky-frame');
+    cardFrame.appendChild(_renderConstellation(placed.pattern,{size:200}));
+    stage.appendChild(cardFrame);
     stage.appendChild(_el('div','magic-card-claim-prompt','This card wants to remember you.'));
+    // "we should also speak something about sky and why it is
+    // important" — explains what the sky actually does (Companion
+    // Canon's own recall mechanism), not just that the card wants to
+    // remember the child.
+    stage.appendChild(_el('div','magic-card-claim-subtext',
+      'No two skies are the same — yours is the one thing that can bring this card back to you, on any device, any time.'));
 
     const claimBtn=_el('button','magic-card-claim-btn','✨ Claim It ✨');
     claimBtn.type='button';
@@ -1413,17 +1541,59 @@ const MagicCardUI=(function(){
     explore.addEventListener('click',function(){ _finishAwakening(onDone); });
     secondary.appendChild(explore);
     stage.appendChild(secondary);
+    _fitAwakenStageToAvailableSpace(content,stage);
   }
 
   function _runNicknamePrompt(stage,placed,onDone){
     stage.innerHTML='';
     stage.appendChild(_el('div','magic-card-claimed-title','What should we call you?'));
+
+    // "this screen should show both sides of screen, so the creator
+    // knows where the name will actually show. also the sky is shown
+    // there so that he can remember it" — a real, live-updating
+    // Front/Back preview, built from a lightweight draft object (no
+    // MagicCard record exists yet — nothing is claimed until the
+    // Continue button below actually runs the ceremony). drawFront/
+    // drawBack are pure functions over whatever fields a card-shaped
+    // object happens to carry (js/magicCardArt.js), so a draft with no
+    // companionName degrades exactly the way a real companion-less card
+    // already does elsewhere: the typed nickname becomes the Front's
+    // own headline. The Back shows the REAL pattern the child already
+    // watched form during the reveal — the one thing this screen's own
+    // hint asks them to remember — never gated/blurred here, since
+    // studying it before it's tucked away is the whole point.
+    const draftCard={nickname:'',pattern:placed.pattern,constellation:placed.constellation,claimedAt:new Date().toISOString()};
+    let frontCanvas=null, backCanvas=null;
+    if(typeof MagicCardArt!=='undefined'){
+      const previewRow=_el('div','magic-card-art-row magic-card-nickname-preview-row');
+      const frontCol=_el('div','magic-card-art-col');
+      frontCol.appendChild(_el('div','magic-card-art-label','Front'));
+      frontCanvas=document.createElement('canvas');
+      frontCanvas.className='magic-card-art-canvas';
+      frontCol.appendChild(frontCanvas);
+      previewRow.appendChild(frontCol);
+      const backCol=_el('div','magic-card-art-col');
+      backCol.appendChild(_el('div','magic-card-art-label','Back'));
+      backCanvas=document.createElement('canvas');
+      backCanvas.className='magic-card-art-canvas';
+      backCol.appendChild(backCanvas);
+      previewRow.appendChild(backCol);
+      stage.appendChild(previewRow);
+      MagicCardArt.drawFront(frontCanvas,draftCard,{counts:{stories:0,worlds:0}});
+      MagicCardArt.drawBack(backCanvas,draftCard);
+    }
+
     const input=document.createElement('input');
     input.type='text';
     input.maxLength=24;
     input.placeholder='Star Traveler';
     input.className='magic-card-nickname-input';
     stage.appendChild(input);
+    input.addEventListener('input',function(){
+      if(!frontCanvas) return;
+      draftCard.nickname=input.value;
+      MagicCardArt.drawFront(frontCanvas,draftCard,{counts:{stories:0,worlds:0}});
+    });
     stage.appendChild(_el('div','magic-card-claimed-hint',
       'Remember this sky — it\'s how your card finds its way back to you, anywhere.'));
     const cont=_el('button','magic-card-claim-btn','Continue');
@@ -1448,6 +1618,7 @@ const MagicCardUI=(function(){
       });
     });
     stage.appendChild(cont);
+    _fitAwakenStageToAvailableSpace(content,stage);
     setTimeout(function(){ try{ input.focus(); }catch(e){} },50);
   }
 
@@ -1516,6 +1687,25 @@ const MagicCardUI=(function(){
       if(info && info.pkg){
         const file=info.pkg.states[beat.pose]||info.pkg.states[info.pkg.defaultState];
         if(file){
+          // "Story egg magic image is broken" — root cause: a pose
+          // DECLARED in companion.json's states map (e.g. magic:
+          // "magic.png") isn't a guarantee the file has actually been
+          // uploaded yet (a real, disclosed gap for Story Egg's own
+          // hero/magic poses, and for Nimbus/Quill more broadly) — the
+          // old code only ever fell back to defaultState when the pose
+          // wasn't DECLARED at all, never when the declared file itself
+          // 404s. A real onerror handler closes that gap: if the actual
+          // image fails to load, fall back to the package's own real,
+          // already-uploaded defaultState pose instead of a broken
+          // glyph — the same graceful-degradation discipline
+          // CompanionEngine's own widget already relies on, just made
+          // real for this separate ceremony-stage rendering path too.
+          const fallbackFile=info.pkg.states[info.pkg.defaultState];
+          const fallbackSrc=fallbackFile?(info.basePath+fallbackFile):null;
+          els.img.onerror=function(){
+            els.img.onerror=null;
+            if(fallbackSrc && els.img.src.indexOf(fallbackFile)===-1) els.img.src=fallbackSrc;
+          };
           els.img.src=info.basePath+file;
           els.img.alt=(info.name||info.id)+' — '+beat.pose;
         }
@@ -1523,6 +1713,10 @@ const MagicCardUI=(function(){
       if(beat.effect==='blessing') _ceremonySparkleBurst(els.particles,3);
       els.msg.textContent=beat.speech||'';
       els.msg.classList.toggle('magic-card-ceremony-msg-hidden',!beat.speech);
+      // "ensure there are no scrolls on any screen" -- each beat's own
+      // speech length varies, so re-measure/shrink after every swap
+      // rather than only once when the stage first mounts.
+      _fitAwakenStageToAvailableSpace(content,els.stage.parentElement||els.stage);
       // Real recorded Lumo voice for the two Guardian beats (see
       // getCeremonySequence's own voiceId field) -- a no-op for any beat
       // that doesn't declare one (the Story Egg's silent beats, and the
@@ -1593,6 +1787,11 @@ const MagicCardUI=(function(){
     cont.type='button';
     cont.addEventListener('click',onNext);
     stage.appendChild(cont);
+    // "ensure there are no scrolls on any screen" -- this is the
+    // single highest-risk Awakening screen (item 6's enlarged 240px
+    // Front/Back cards), so it gets the same fit pass every other
+    // screen in this flow already does.
+    _fitAwakenStageToAvailableSpace(content,stage);
   }
 
   function _finishAwakening(onDone){
