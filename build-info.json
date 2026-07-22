@@ -1,9 +1,9 @@
 {
-  "version": "2.97.2",
-  "sprint": "World Builder — Cache-Bust Query Params",
-  "task": "The just-shipped card-layout fix was correctly deployed, but the user's browser kept showing the old, broken layout after refreshing -- traced to tools/world-builder-v2/index.html never having adopted the same ?v=NNNN cache-busting convention the root Studio index.html has carried on its stylesheet links since an earlier, separate fix. Fixed by appending ?v=0095 to the stylesheet link and all 24 <script src> tags in tools/world-builder-v2/index.html; the going-forward convention is to bump this one number on every future World Builder v2 ship that touches CSS/JS. A real Playwright-harness gotcha was found and fixed while re-verifying (not an app bug): the existing test suites' page.route() mocks for themeRepositoryClient.js/projectSync.js stopped matching once the real URL gained a query string, since Playwright's glob pattern must match the full URL -- widened with a trailing wildcard, re-verified passing. Both goldenBuild.js suites pass unchanged. Confined to tools/world-builder-v2/index.html.",
-  "build": "0233",
+  "version": "2.97.3",
+  "sprint": "My Cloud Worlds — Real Thumbnails",
+  "task": "A direct follow-up: \"can we show the thumbnails in the cloud worlds.\" tools/world-builder-v2's Cloud World cards previously only ever showed a plain glyph icon, never a real authored thumbnail image, unlike the local \"My World Projects\" cards which already resolve thumbnail.png via ProjectModel.getAsset(). Confirmed this was a real oversight, not a constraint -- ProjectSync.push() stores the full raw Project object (including .files) verbatim, so a Cloud World row's data is already thumbnail-resolvable with no translation. Fixed by reusing the identical getAsset/fallback/onerror-degrades-to-glyph pattern the local project card already uses; no CSS change needed since the shared .wb-project-thumb img rule already applies. Verified via a new 8-assertion Playwright suite (module-body route mocking, the established pattern for this feature) plus full regression across the existing 13/15/8-assertion suites and both goldenBuild.js suites, all unchanged. Confined to tools/world-builder-v2/js/worldBuilderApp.js.",
+  "build": "0234",
   "buildDate": "2026-07-22",
-  "commit": "f3b8f32",
+  "commit": "PENDING",
   "environment": "Release"
 }

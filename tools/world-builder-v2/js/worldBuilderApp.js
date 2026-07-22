@@ -1858,7 +1858,24 @@
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
         const manifest = row.data && row.data.files && row.data.files['manifest.json'];
-        thumb.textContent = (manifest && manifest.themeIcon) || (row.data && row.data.icon) || '☁️';
+        const glyphFallback = (manifest && manifest.themeIcon) || (row.data && row.data.icon) || '☁️';
+        // Same getAsset/fallback pattern _projectCard already uses for a
+        // local World's card — row.data is the exact same raw Project
+        // shape ProjectStore persists (push() stores `data: project`
+        // verbatim), so a real authored thumbnail.png resolves here
+        // identically to how it resolves for a local card, rather than
+        // this card always showing a generic icon glyph regardless of
+        // whether a real thumbnail was ever uploaded.
+        const cloudThumbURL = row.data ? window.ProjectModel.getAsset(row.data, 'thumbnail.png') : null;
+        if (cloudThumbURL) {
+            const img = document.createElement('img');
+            img.onerror = function () { thumb.innerHTML = ''; thumb.textContent = glyphFallback; };
+            img.src = cloudThumbURL;
+            img.alt = '';
+            thumb.appendChild(img);
+        } else {
+            thumb.textContent = glyphFallback;
+        }
 
         const info = document.createElement('div');
         info.className = 'wb-project-info';
