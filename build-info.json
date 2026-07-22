@@ -1,9 +1,9 @@
 {
-  "version": "2.89.4",
-  "sprint": "Gate Segment 2's lumoFlying Beat Now Loops for the Whole Flight",
-  "task": "Direct follow-up: 'is the audio not in loop on second fly of lumo?' -- confirmed it wasn't. The lumoFlying clip (~2.7s) played once while Segment 2's own flight footage runs roughly 10s (from RESUME_AT_S to the video's real end), so the audio ended and went silent for the rest of the flight. js/lumoVoice.js gained an opts.loop parameter on play() (sets audio.loop before playing, every other caller unaffected since it's optional) and a new stop() function (pauses, resets currentTime, clears loop) -- exported on the LumoVoice public object. js/gatewaySequence.js's Segment 2 start now calls LumoVoice.play('lumoFlying',{loop:true}), stopped the instant playVideoSegmentToEnd's own onDone fires (right before the final flash); a matching LumoVoice.stop('lumoFlying') safety net was added both before the Segment 1 landing beat (in case that flight's own shorter, one-shot clip is still trailing) and inside clearTimers() (the one centralized cleanup point a mid-flight tap-to-skip already routes through), so a looping clip can never keep playing after the Gateway hands off. Verified via Playwright wrapping the real LumoVoice.play/stop functions (not a full mock) across the whole Traveller greeting cycle: the second lumoFlying call is confirmed to carry loop:true, and a matching stop('lumoFlying') call is confirmed to fire afterward. Full regression across the existing sky-challenge Playwright suite and both goldenBuild.js suites (World Builder v1 and v2) passes unchanged.",
-  "build": "0222",
+  "version": "2.89.5",
+  "sprint": "Gateway Skip Hint Copy — 'Tap to Continue' to 'Tap to Skip'",
+  "task": "Direct copy fix: the Gateway's own tap hint (js/gatewaySequence.js's showTapHint(), shown after TAP_HINT_DELAY_MS) read '✦ tap to continue ✦', but tapping it actually skips the whole cinematic sequence outright (onSkipClick) rather than advancing one step -- 'continue' undersold what the action does. Changed to '✦ tap to skip ✦'. Confirmed the codebase's only other 'Tap to continue' string (js/magicCardUI.js's Creator Ceremony reveal-stage button) is a different feature -- not touched, since it wasn't part of what was being discussed. Verified via node --check and both goldenBuild.js suites (World Builder v1 and v2) unchanged.",
+  "build": "0223",
   "buildDate": "2026-07-22",
-  "commit": "5e09c35",
+  "commit": "pending",
   "environment": "Release"
 }

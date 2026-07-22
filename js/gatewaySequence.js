@@ -317,7 +317,7 @@
     function showTapHint(){
       if(!content||skipRequested) return;
       const hint=el('div','gateway-tap-hint');
-      hint.textContent='✦ tap to continue ✦';
+      hint.textContent='✦ tap to skip ✦';
       content.appendChild(hint);
     }
 
