@@ -296,6 +296,11 @@
     function clearTimers(){
       timers.forEach(function(t){ clearTimeout(t); });
       timers=[];
+      // A skip mid-flight (Segment 2's own loop) must never leave a
+      // looping clip playing after the Gateway itself has handed off --
+      // the only exit path that doesn't already reach the segment's own
+      // onDone stop() call.
+      try{ if(typeof LumoVoice!=='undefined') LumoVoice.stop('lumoFlying'); }catch(e){}
     }
     function after(ms,fn){
       const t=setTimeout(fn,ms);
@@ -713,9 +718,13 @@
             playVideoSegmentTo(video,PAUSE_AT_S,SEGMENT1_FALLBACK_MS,reduced,function(){
               if(skipRequested) return;
               // Segment 1 has just paused -- Lumo has landed and is
-              // standing there. Speak the landing beat, then let its own
-              // duration settle before the in-person greeting begins, so
-              // the two lines don't talk over each other.
+              // standing there. Stop any still-playing flying clip (a
+              // safety net, since Segment 1's own real duration is close
+              // to the clip's length) before speaking the landing beat,
+              // then let its own duration settle before the in-person
+              // greeting begins, so the two lines don't talk over each
+              // other.
+              try{ if(typeof LumoVoice!=='undefined') LumoVoice.stop('lumoFlying'); }catch(e){}
               try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoLanding'); }catch(e){}
               after(reduced?0:LUMO_LANDING_HOLD_MS,function(){
                 if(skipRequested) return;
@@ -727,10 +736,15 @@
                     // Lumo is flying again -- picking the Story Egg back
                     // up and leaping into flight through the gate. Same
                     // clip as the Segment 1 approach; Lumo is airborne
-                    // either way.
-                    try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoFlying'); }catch(e){}
+                    // either way. Segment 2's own flight footage runs
+                    // roughly 10s, well past the clip's own ~2.7s, so it
+                    // loops for the whole segment ("is the audio not in
+                    // loop on second fly of lumo?" -- it wasn't) and is
+                    // stopped the instant the segment actually ends.
+                    try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoFlying',{loop:true}); }catch(e){}
                     playVideoSegmentToEnd(video,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
                       if(skipRequested) return;
+                      try{ if(typeof LumoVoice!=='undefined') LumoVoice.stop('lumoFlying'); }catch(e){}
                       playFinalFlash(reduced,done);
                     });
                   });

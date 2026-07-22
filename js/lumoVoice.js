@@ -130,11 +130,30 @@
     }else if(onSettle){ onSettle(); }
   }
 
-  function play(id){
+  // "is the audio not in loop on second fly of lumo?" -- confirmed: it
+  // wasn't. A single clip (~2.7s) played once while Segment 2's own
+  // flight footage runs roughly 10s, so the audio ended and went silent
+  // for the rest of the flight. opts.loop repeats the clip until stop()
+  // is called (or the page unloads); every other caller keeps the exact
+  // same one-shot behaviour by simply not passing it.
+  function play(id,opts){
     try{
       const audio=_audioFor(id);
       if(!audio) return;
+      audio.loop=!!(opts&&opts.loop);
       _playWithRetry(audio);
+    }catch(e){}
+  }
+
+  // Stops a looping (or still-playing) clip started via play(id,{loop:
+  // true}) and resets it so a later play() of the same id starts clean.
+  function stop(id){
+    try{
+      const audio=cache[id];
+      if(!audio) return;
+      audio.loop=false;
+      audio.pause();
+      audio.currentTime=0;
     }catch(e){}
   }
 
@@ -225,6 +244,6 @@
     return total;
   }
 
-  const LumoVoice={ play:play, playSequence:playSequence, durationMs:durationMs, preload:preload, whenReady:whenReady };
+  const LumoVoice={ play:play, stop:stop, playSequence:playSequence, durationMs:durationMs, preload:preload, whenReady:whenReady };
   try{ window.LumoVoice=LumoVoice; }catch(e){}
 })();
