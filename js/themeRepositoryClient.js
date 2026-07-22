@@ -140,6 +140,35 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // World Builder — Mandatory Sign-In. Creates a brand-new, real,
+  // persistent Supabase Auth user (first-time account creation) rather
+  // than authenticating as an existing one — the sibling of signIn()
+  // above, same shape, same "replace whatever session was active"
+  // semantics, same never-throws contract. A Builder Welcome-screen
+  // gate can offer both this and signIn() side by side (Create Account
+  // / Sign In) with no other new low-level auth mechanism needed.
+  function signUp(email, password) {
+    return _getClient().then(function (client) {
+      return client.auth.signUp({ email: email, password: password }).then(function (res) {
+        if (res.error) throw res.error;
+        // A Supabase project with email confirmation turned on returns a
+        // real user but no session until the link is clicked — leaving
+        // _authPromise cached (untouched) so _ensureAuth() still falls
+        // back correctly rather than getting stuck on a resolved `null`
+        // session; the caller is told via needsConfirmation so the UI
+        // can say "check your email" instead of silently proceeding as
+        // if sign-up finished.
+        if (!res.data.session) {
+          return { ok: true, session: null, needsConfirmation: true };
+        }
+        _authPromise = Promise.resolve(res.data.session);
+        return { ok: true, session: res.data.session };
+      });
+    }).catch(function (error) {
+      return { ok: false, error: error };
+    });
+  }
+
   // Signs out of whatever session is active. Deliberately does NOT
   // immediately re-establish a fresh anonymous session here — clearing
   // the cache and letting the next _ensureAuth() call do that lazily
@@ -553,6 +582,7 @@ const ThemeRepositoryClient = (function () {
     reset: reset,
     deleteTheme: deleteTheme,
     signIn: signIn,
+    signUp: signUp,
     signOut: signOut,
     getIdentity: getIdentity,
     // Exposed so a second, unrelated Supabase-backed feature (Builder

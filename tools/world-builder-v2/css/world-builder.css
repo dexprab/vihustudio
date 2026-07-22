@@ -122,6 +122,63 @@ html, body {
     gap: 40px;
 }
 
+/* Mandatory Sign-In gate (World Builder only). A real, non-dismissible
+   screen — no backdrop-click/✕ escape hatch like the standalone
+   .wb-repo-info-modal has, since signing in isn't optional here — that
+   replaces .wb-welcome-main entirely until a real, non-anonymous
+   session is confirmed. Reuses the exact .wb-signin-form/-field-group/
+   -error/-submit classes the old optional Sign In modal already
+   established, just mounted inline instead of inside a modal shell. */
+.wb-signin-gate {
+    display: flex;
+    justify-content: center;
+    padding: 24px 0 40px;
+}
+.wb-signin-gate-panel {
+    width: 100%;
+    max-width: 380px;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 20px;
+    box-shadow: 0 8px 20px var(--wb-shadow);
+    padding: 28px 26px;
+}
+.wb-signin-gate-title {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+.wb-signin-gate-sub {
+    margin: 0 0 20px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--wb-text-secondary);
+}
+.wb-signin-gate-note {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--wb-text-secondary);
+}
+.wb-signin-note {
+    background: var(--wb-sage);
+    color: #3E5C36;
+}
+.wb-signin-toggle-line {
+    margin: 4px 0 0;
+}
+.wb-signin-toggle-btn {
+    width: auto;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--wb-navy);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .wb-cta-create {
     display: flex;
     align-items: center;
@@ -322,6 +379,39 @@ html, body {
 .wb-project-card-repo-only {
     cursor: pointer;
     padding-right: 18px;
+}
+
+/* "My Cloud Worlds" — one card per builder_projects row this signed-in
+   account owns, reusing the exact same .wb-project-card/-thumb/-info/
+   -name/-meta-line/-status/-badge visual language as "My World
+   Projects" above rather than a second card design. The one thing this
+   card needs that neither of the existing ones does is a real text
+   action button ("Sync to This Device" / "Check for Updates") — not an
+   icon-only control like Delete's 🗑, since the two actions read very
+   differently and a glyph alone wouldn't say which. */
+.wb-cloud-world-card { cursor: default; }
+.wb-cloud-world-actions {
+    flex-shrink: 0;
+}
+.wb-cloud-world-action-btn {
+    width: auto;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: none;
+    background: var(--wb-gold);
+    color: var(--wb-navy);
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+}
+.wb-cloud-world-action-btn:disabled {
+    opacity: .6;
+    cursor: default;
+}
+.wb-cloud-world-action-btn.wb-cloud-world-action-secondary {
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    color: var(--wb-navy);
 }
 
 /* Real Identity Foundation — the Sign In modal's form, mounted into the

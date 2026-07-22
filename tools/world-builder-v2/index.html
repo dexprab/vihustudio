@@ -16,14 +16,30 @@
                     <span class="wb-brand-name">World Builder</span>
                 </div>
                 <p class="wb-brand-tagline">Make a World for VihuStudio — a Story or an Artwork Showcase any child can pick.</p>
-                <!-- Real Identity Foundation — rendered by worldBuilderApp.js's
-                     _renderIdentityBar(). Signing in is optional: Builder keeps
-                     working exactly as before (an anonymous per-browser session)
-                     until someone actually signs in here. -->
+                <!-- Real Identity Foundation, superseded by Mandatory Sign-In
+                     (see wb-signin-gate below) — rendered by worldBuilderApp.js's
+                     _renderIdentityBar(). Shows only the signed-in status +
+                     Sign Out once a real account is active; renders nothing
+                     while signed out, since the gate below is what handles
+                     signing in now. -->
                 <div id="wb-identity-bar" class="wb-identity-bar"></div>
             </header>
 
-            <div class="wb-welcome-main">
+            <!-- Mandatory Sign-In gate (World Builder only — Studio's own
+                 signinless design is untouched). No Welcome screen content
+                 renders until ThemeRepositoryClient.getIdentity() reports a
+                 real, non-anonymous signedIn:true — an anonymous session
+                 (Studio's own default) never satisfies this. Rendered by
+                 worldBuilderApp.js's _checkIdentityGate()/_renderSigninGateBody(). -->
+            <div id="wb-signin-gate" class="wb-signin-gate wb-hidden">
+                <div class="wb-signin-gate-panel">
+                    <h2 class="wb-signin-gate-title">Sign In to World Builder</h2>
+                    <p class="wb-signin-gate-sub">World Builder needs a real account so your Worlds can sync safely across devices — this is separate from VihuStudio, which stays signinless for children.</p>
+                    <div id="wb-signin-gate-body"><!-- rendered by worldBuilderApp.js --></div>
+                </div>
+            </div>
+
+            <div id="wb-welcome-main" class="wb-welcome-main">
                 <button id="wb-create-new" class="wb-cta-create" type="button">
                     <span class="wb-cta-icon">➕</span>
                     <span class="wb-cta-text">
@@ -38,6 +54,24 @@
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
                     <p id="wb-my-worlds-empty" class="wb-empty-note">✨ Your worlds will appear here.<br>Create your first world to begin your journey.</p>
+                </section>
+
+                <!-- "My Cloud Worlds" — every Personal-repository World this
+                     signed-in account owns in Supabase's builder_projects
+                     table (js/services/projectSync.js's list()), regardless
+                     of whether a matching local draft already exists on THIS
+                     device. Distinct from the existing "My World Projects"
+                     section above (local drafts, plus its own narrower
+                     orphan-repo-card fallback) — this is the real "browse my
+                     cloud Worlds on a new machine and choose which to sync
+                     down" screen. Rendered by worldBuilderApp.js's
+                     _renderCloudWorlds(). -->
+                <section class="wb-section wb-cloud-worlds">
+                    <h2 class="wb-section-title">My Cloud Worlds</h2>
+                    <div id="wb-cloud-worlds-list" class="wb-my-worlds-list">
+                        <!-- rendered by worldBuilderApp.js -->
+                    </div>
+                    <p id="wb-cloud-worlds-empty" class="wb-empty-note">☁️ Nothing backed up to the cloud yet.<br>Every World you work on here is backed up automatically once you're signed in.</p>
                 </section>
 
                 <!-- Real, measured browser-storage readout (worldBuilderApp.js's

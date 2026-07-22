@@ -34,24 +34,93 @@ const ProjectSync = (function () {
   // Never throws — every failure (not configured, network, RLS) comes
   // back as {ok:false, error}, so a caller can show a real, disclosed
   // "backup failed" state instead of a silent no-op or a crash.
-  function push(project) {
+  //
+  // Versioned, conflict-aware sync — a real, confirmed data-loss
+  // incident traced this whole module's original "local-primary, cloud
+  // backup only" design back to having zero protection against two
+  // tabs/sessions/devices silently overwriting each other's saves for
+  // the same Project id. `opts.expectedUpdatedAt`, when passed, turns
+  // this into a genuine optimistic-concurrency write: the update only
+  // takes effect if the cloud row's own `updated_at` still matches what
+  // the caller last saw — otherwise this returns {ok:false, conflict:
+  // true, cloudUpdatedAt} instead of silently overwriting whatever
+  // someone else already saved. No merge logic of any kind — every
+  // conflict is surfaced to a human to decide, never resolved
+  // automatically. Omitting opts (or opts.expectedUpdatedAt) keeps the
+  // exact original unconditional-upsert behaviour, so every existing
+  // caller that hasn't opted into conflict-awareness is unaffected.
+  function push(project, opts) {
+    opts = opts || {};
     if (!window.ThemeRepositoryClient) {
       return Promise.resolve({ ok: false, error: new Error('ThemeRepositoryClient did not load') });
     }
     return window.ThemeRepositoryClient.getClient().then(function (client) {
       return window.ThemeRepositoryClient.getSession().then(function (session) {
-        return client.from(TABLE).upsert({
-          id: project.id,
-          owner_id: session.user.id,
-          data: project,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' }).then(function (res) {
-          if (res.error) throw res.error;
-          return { ok: true };
-        });
+        const nowIso = new Date().toISOString();
+        if (!opts.expectedUpdatedAt) {
+          return client.from(TABLE).upsert({
+            id: project.id,
+            owner_id: session.user.id,
+            data: project,
+            updated_at: nowIso
+          }, { onConflict: 'id' }).then(function (res) {
+            if (res.error) throw res.error;
+            return { ok: true, updatedAt: nowIso };
+          });
+        }
+        // Chaining .select() after .update() makes PostgREST return the
+        // rows it actually touched (Prefer: return=representation) —
+        // the one reliable way to tell "the row's updated_at had already
+        // moved, so nothing was written" apart from "the write silently
+        // didn't happen," mirroring themeRepositoryClient.js's own
+        // reset()/deleteTheme() discipline for exactly this reason.
+        return client.from(TABLE).update({ data: project, updated_at: nowIso })
+          .eq('id', project.id).eq('owner_id', session.user.id).eq('updated_at', opts.expectedUpdatedAt)
+          .select('id').then(function (res) {
+            if (res.error) throw res.error;
+            if ((res.data || []).length > 0) return { ok: true, updatedAt: nowIso };
+            // Nothing matched — find out whether that's a real conflict
+            // (a row exists with a different updated_at than expected,
+            // meaning someone else's save already moved it) or simply no
+            // row yet at all (a brand-new Project this device has never
+            // pushed before, where expectedUpdatedAt was never anything
+            // but an unset guess) — only the first case is a genuine
+            // conflict a caller should ever show as "someone else
+            // changed this."
+            return client.from(TABLE).select('updated_at').eq('id', project.id).eq('owner_id', session.user.id).maybeSingle().then(function (checkRes) {
+              if (checkRes.error) throw checkRes.error;
+              if (!checkRes.data) {
+                return client.from(TABLE).insert({
+                  id: project.id, owner_id: session.user.id, data: project, updated_at: nowIso
+                }).then(function (insertRes) {
+                  if (insertRes.error) throw insertRes.error;
+                  return { ok: true, updatedAt: nowIso };
+                });
+              }
+              return { ok: false, conflict: true, cloudUpdatedAt: checkRes.data.updated_at };
+            });
+          });
       });
     }).catch(function (error) {
       return { ok: false, error: error };
+    });
+  }
+
+  // Fetches the current cloud row for one Project id — used both for a
+  // pre-open "is the cloud ahead of what I have locally?" check and for
+  // the "My Cloud Worlds" browse screen. Resolves `null` (never throws)
+  // when unconfigured, unreachable, or genuinely no row exists yet.
+  function get(projectId) {
+    if (!window.ThemeRepositoryClient) return Promise.resolve(null);
+    return window.ThemeRepositoryClient.getClient().then(function (client) {
+      return window.ThemeRepositoryClient.getSession().then(function (session) {
+        return client.from(TABLE).select('id,data,updated_at').eq('id', projectId).eq('owner_id', session.user.id).maybeSingle().then(function (res) {
+          if (res.error) throw res.error;
+          return res.data || null;
+        });
+      });
+    }).catch(function () {
+      return null;
     });
   }
 
@@ -106,7 +175,7 @@ const ProjectSync = (function () {
     });
   }
 
-  const api = { isAvailable: isAvailable, push: push, list: list, remove: remove };
+  const api = { isAvailable: isAvailable, push: push, get: get, list: list, remove: remove };
   try { window.ProjectSync = api; } catch (e) {}
   return api;
 })();

@@ -17,6 +17,13 @@
     const storageMeterBody = $('wb-storage-meter-body');
     const identityBar = $('wb-identity-bar');
     const templateGrid = $('wb-template-grid');
+    // Mandatory Sign-In gate + "My Cloud Worlds" — see _checkIdentityGate/
+    // _renderSigninGateBody/_renderCloudWorlds below.
+    const signinGate = $('wb-signin-gate');
+    const signinGateBody = $('wb-signin-gate-body');
+    const welcomeMain = $('wb-welcome-main');
+    const cloudWorldsList = $('wb-cloud-worlds-list');
+    const cloudWorldsEmpty = $('wb-cloud-worlds-empty');
 
     function _hideAllScreens() {
         screenWelcome.classList.add('wb-hidden');
@@ -28,7 +35,12 @@
         _hideAllScreens();
         screenWelcome.classList.remove('wb-hidden');
         _renderIdentityBar();
-        renderMyWorlds();
+        // Mandatory Sign-In gate — renderMyWorlds()/_renderCloudWorlds() no
+        // longer run unconditionally here; _checkIdentityGate() only calls
+        // them once a real, signed-in identity is confirmed, and shows the
+        // gate itself in every other case (not configured, not signed in,
+        // still an anonymous session, or a check that failed).
+        _checkIdentityGate();
     }
 
     function showTemplates() {
@@ -1424,7 +1436,7 @@
         });
     }
 
-    function _repoOnlyCard(entry, kind, backupProject) {
+    function _repoOnlyCard(entry, kind, backupProject, backupUpdatedAt) {
         const man = entry.manifest || {};
         const displayName = entry.name || man.name || entry.theme_id;
         const card = document.createElement('div');
@@ -1526,6 +1538,11 @@
                 return;
             }
             const restored = JSON.parse(JSON.stringify(backupProject));
+            // Versioned Cloud Sync — record exactly what this device now
+            // knows the cloud row's own updated_at to be, so the very next
+            // save's conditional push (see _scheduleCloudSync) compares
+            // against the real stored value instead of a guessed one.
+            if (backupUpdatedAt) restored.cloudSyncedAt = backupUpdatedAt;
             const saveResult = window.ProjectStore.save(restored);
             if (!saveResult.ok) {
                 window.alert('Couldn\'t restore "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
@@ -1584,26 +1601,31 @@
                 _identityStatusLine('⚠️ Couldn’t check sign-in status', 'wb-identity-muted');
                 return;
             }
+            // Not-signed-in is deliberately silent here now — the mandatory
+            // Sign-In gate (see _checkIdentityGate below) is the one real
+            // place to sign in; showing a second, smaller "Sign In" button
+            // here too, right beside the same gate, would just be a
+            // redundant, confusing second entry point for the identical
+            // action. Signed-in status + Sign Out is the only state this
+            // bar still ever needs to show.
+            if (!identity.signedIn) {
+                identityBar.innerHTML = '';
+                return;
+            }
             const span = document.createElement('span');
             span.className = 'wb-identity-status';
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'wb-identity-btn';
-            if (identity.signedIn) {
-                span.textContent = '✓ Signed in as ' + identity.email;
-                btn.textContent = 'Sign Out';
-                btn.addEventListener('click', function () {
-                    btn.disabled = true;
-                    window.ThemeRepositoryClient.signOut().then(function () {
-                        _renderIdentityBar();
-                        renderMyWorlds();
-                    });
+            span.textContent = '✓ Signed in as ' + identity.email;
+            btn.textContent = 'Sign Out';
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                window.ThemeRepositoryClient.signOut().then(function () {
+                    _renderIdentityBar();
+                    _checkIdentityGate();
                 });
-            } else {
-                span.textContent = '👤 Browsing anonymously';
-                btn.textContent = 'Sign In';
-                btn.addEventListener('click', _showSignInModal);
-            }
+            });
             identityBar.appendChild(span);
             identityBar.appendChild(btn);
         }).catch(function () {
@@ -1611,7 +1633,74 @@
         });
     }
 
-    function _showSignInModal() {
+    // ---------------------------------------------------------------
+    // Mandatory Sign-In gate (World Builder only)
+    // ---------------------------------------------------------------
+    // Real, confirmed data loss in a Builder Project's own Cloud Backup
+    // (builder_projects) traced back to a genuine architecture gap —
+    // "local-primary, cloud backup only" had zero protection against two
+    // tabs/sessions/devices silently overwriting each other's saves, and
+    // no real way to browse/restore a Project from a different machine
+    // in the first place, since ownership was only ever a disposable,
+    // per-browser anonymous session with nothing to browse it BY. "Builder
+    // is backend, it has to be robust" — signing in becomes mandatory
+    // here (Studio's own signinless-for-children design, and
+    // ThemeRepositoryClient's own _ensureAuth() anonymous fallback it
+    // depends on, are both completely untouched; this gate only ever
+    // decides whether World Builder's OWN Welcome-screen content renders).
+    // An anonymous session (identity.signedIn === false, per
+    // _isAnonymousUser) never satisfies this gate — it isn't a
+    // "different," lesser identity, it's treated the same as no identity
+    // at all.
+    let _signinGateMode = 'signin'; // 'signin' | 'signup'
+
+    function _checkIdentityGate() {
+        if (!window.ThemeRepositoryClient || !window.ThemeRepositoryClient.getIdentity) {
+            _renderSigninGateBody({ configured: false, unavailable: true });
+            if (signinGate) signinGate.classList.remove('wb-hidden');
+            if (welcomeMain) welcomeMain.classList.add('wb-hidden');
+            return;
+        }
+        window.ThemeRepositoryClient.getIdentity().then(function (identity) {
+            if (identity.configured && identity.signedIn) {
+                if (signinGate) signinGate.classList.add('wb-hidden');
+                if (welcomeMain) welcomeMain.classList.remove('wb-hidden');
+                renderMyWorlds();
+                _renderCloudWorlds();
+                return;
+            }
+            _renderSigninGateBody(identity);
+            if (signinGate) signinGate.classList.remove('wb-hidden');
+            if (welcomeMain) welcomeMain.classList.add('wb-hidden');
+        }).catch(function () {
+            // A failed check is treated the same as "not signed in" —
+            // fails closed, never silently reveals Welcome-screen content
+            // on an unconfirmed identity.
+            _renderSigninGateBody({ configured: true, error: true });
+            if (signinGate) signinGate.classList.remove('wb-hidden');
+            if (welcomeMain) welcomeMain.classList.add('wb-hidden');
+        });
+    }
+
+    function _renderSigninGateBody(identity) {
+        if (!signinGateBody) return;
+        signinGateBody.innerHTML = '';
+
+        if (identity.unavailable) {
+            const p = document.createElement('p');
+            p.className = 'wb-signin-gate-note';
+            p.textContent = 'js/themeRepositoryClient.js did not load in this deployment, so World Builder can’t verify sign-in at all right now.';
+            signinGateBody.appendChild(p);
+            return;
+        }
+        if (!identity.configured) {
+            const p = document.createElement('p');
+            p.className = 'wb-signin-gate-note';
+            p.textContent = 'World Builder needs a configured Repository backend to sign in. Ask whoever deployed this Builder to add supabase-config.json (see supabase-config.example.json).';
+            signinGateBody.appendChild(p);
+            return;
+        }
+
         const wrap = document.createElement('div');
         wrap.className = 'wb-signin-form';
 
@@ -1635,24 +1724,53 @@
         const passInput = document.createElement('input');
         passInput.type = 'password';
         passInput.className = 'wb-field-input';
-        passInput.autocomplete = 'current-password';
+        passInput.autocomplete = _signinGateMode === 'signup' ? 'new-password' : 'current-password';
         passGroup.appendChild(passLabel);
         passGroup.appendChild(passInput);
 
+        const confirmGroup = document.createElement('div');
+        confirmGroup.className = 'wb-field-group' + (_signinGateMode === 'signup' ? '' : ' wb-hidden');
+        const confirmLabel = document.createElement('label');
+        confirmLabel.className = 'wb-field-label';
+        confirmLabel.textContent = 'Confirm Password';
+        const confirmInput = document.createElement('input');
+        confirmInput.type = 'password';
+        confirmInput.className = 'wb-field-input';
+        confirmInput.autocomplete = 'new-password';
+        confirmGroup.appendChild(confirmLabel);
+        confirmGroup.appendChild(confirmInput);
+
         const errorMsg = document.createElement('p');
         errorMsg.className = 'wb-signin-error wb-hidden';
+        if (identity.error) {
+            errorMsg.textContent = 'Couldn’t check your sign-in status just now — you can still try signing in below.';
+            errorMsg.classList.remove('wb-hidden');
+        }
 
         const submitBtn = document.createElement('button');
         submitBtn.type = 'button';
         submitBtn.className = 'wb-signin-submit';
-        submitBtn.textContent = 'Sign In';
+        submitBtn.textContent = _signinGateMode === 'signup' ? 'Create Account' : 'Sign In';
+
+        const toggleLine = document.createElement('p');
+        toggleLine.className = 'wb-signin-toggle-line';
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'wb-signin-toggle-btn';
+        toggleBtn.textContent = _signinGateMode === 'signup' ? 'Already have an account? Sign in' : 'Don’t have an account? Create one';
+        toggleBtn.addEventListener('click', function () {
+            _signinGateMode = _signinGateMode === 'signup' ? 'signin' : 'signup';
+            _renderSigninGateBody(identity);
+        });
+        toggleLine.appendChild(toggleBtn);
 
         wrap.appendChild(emailGroup);
         wrap.appendChild(passGroup);
+        wrap.appendChild(confirmGroup);
         wrap.appendChild(errorMsg);
         wrap.appendChild(submitBtn);
-
-        const close = _showInfoModal('🔑 Sign In', wrap);
+        wrap.appendChild(toggleLine);
+        signinGateBody.appendChild(wrap);
 
         function submit() {
             const email = emailInput.value.trim();
@@ -1662,25 +1780,153 @@
                 errorMsg.classList.remove('wb-hidden');
                 return;
             }
+            if (_signinGateMode === 'signup' && password !== confirmInput.value) {
+                errorMsg.textContent = 'Passwords don’t match.';
+                errorMsg.classList.remove('wb-hidden');
+                return;
+            }
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing in…';
-            errorMsg.classList.add('wb-hidden');
-            window.ThemeRepositoryClient.signIn(email, password).then(function (result) {
+            submitBtn.textContent = _signinGateMode === 'signup' ? 'Creating account…' : 'Signing in…';
+            errorMsg.className = 'wb-signin-error wb-hidden';
+            const call = _signinGateMode === 'signup'
+                ? window.ThemeRepositoryClient.signUp(email, password)
+                : window.ThemeRepositoryClient.signIn(email, password);
+            call.then(function (result) {
                 if (!result.ok) {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Sign In';
-                    errorMsg.textContent = (result.error && result.error.message) || 'Sign in failed — check your email and password.';
+                    submitBtn.textContent = _signinGateMode === 'signup' ? 'Create Account' : 'Sign In';
+                    errorMsg.textContent = (result.error && result.error.message) ||
+                        (_signinGateMode === 'signup' ? 'Couldn’t create that account.' : 'Sign in failed — check your email and password.');
                     errorMsg.classList.remove('wb-hidden');
                     return;
                 }
-                close();
+                if (result.needsConfirmation) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account';
+                    errorMsg.className = 'wb-signin-error wb-signin-note';
+                    errorMsg.textContent = 'Account created! Check your email to confirm it, then sign in below.';
+                    return;
+                }
                 _renderIdentityBar();
-                renderMyWorlds();
+                _checkIdentityGate();
             });
         }
         submitBtn.addEventListener('click', submit);
+        confirmInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
         passInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
         emailInput.focus();
+    }
+
+    // ---------------------------------------------------------------
+    // "My Cloud Worlds" — browse every Personal-repository backup this
+    // signed-in account owns and choose which to sync onto this device
+    // ---------------------------------------------------------------
+    // Distinct from "My World Projects"'s own existing orphan-repo-card
+    // mechanism (_annotateProjectBadges below, unchanged) — this is a
+    // real, always-visible, complete listing, the actual "see all my
+    // Personal repos on a new machine and choose which to sync down"
+    // capability. Reuses ProjectSync.list() (already returns every
+    // builder_projects row this account owns: {id, data, updated_at})
+    // and the exact same raw-restore mechanism _repoOnlyCard's
+    // personal+backupProject branch already proved safe (a plain deep
+    // copy of the real Project JSON — never a lossy re-synthesis from a
+    // compiled Theme).
+    function _cloudWorldName(row) {
+        const manifest = row.data && row.data.files && row.data.files['manifest.json'];
+        return (row.data && row.data.name) || (manifest && manifest.name) || row.id;
+    }
+
+    function _cloudWorldCard(row) {
+        const localProject = window.ProjectStore ? window.ProjectStore.get(row.id) : null;
+        const displayName = _cloudWorldName(row);
+        const card = document.createElement('div');
+        card.className = 'wb-project-card wb-cloud-world-card';
+
+        const thumb = document.createElement('span');
+        thumb.className = 'wb-project-thumb';
+        const manifest = row.data && row.data.files && row.data.files['manifest.json'];
+        thumb.textContent = (manifest && manifest.themeIcon) || (row.data && row.data.icon) || '☁️';
+
+        const info = document.createElement('div');
+        info.className = 'wb-project-info';
+        const name = document.createElement('span');
+        name.className = 'wb-project-name';
+        name.textContent = displayName;
+        const metaLine = document.createElement('span');
+        metaLine.className = 'wb-project-meta-line';
+        const status = document.createElement('span');
+        status.className = 'wb-project-status';
+        status.textContent = '☁️ Cloud · synced ' + _timeAgo(row.updated_at);
+        metaLine.appendChild(status);
+        info.appendChild(name);
+        info.appendChild(metaLine);
+
+        const actions = document.createElement('span');
+        actions.className = 'wb-cloud-world-actions';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wb-cloud-world-action-btn';
+
+        function restoreFromCloud() {
+            const restored = JSON.parse(JSON.stringify(row.data));
+            restored.cloudSyncedAt = row.updated_at;
+            const saveResult = window.ProjectStore.save(restored);
+            if (!saveResult.ok) {
+                window.alert('Couldn\'t sync "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                return;
+            }
+            openWorkspace(restored);
+        }
+
+        if (!localProject) {
+            // The real "new machine" case — nothing local to compare
+            // against, so this is an unconditional pull.
+            btn.textContent = 'Sync to This Device';
+            btn.addEventListener('click', restoreFromCloud);
+        } else {
+            const localSyncedAt = localProject.cloudSyncedAt || null;
+            const cloudIsNewer = !localSyncedAt || new Date(row.updated_at) > new Date(localSyncedAt);
+            if (cloudIsNewer) {
+                btn.textContent = 'Update Available — Load It';
+                btn.className += ' wb-cloud-world-action-secondary';
+                btn.addEventListener('click', function () {
+                    if (!window.confirm('Load the newer cloud version of "' + displayName + '"? Your current local copy on this device will be replaced.')) return;
+                    restoreFromCloud();
+                });
+            } else {
+                btn.textContent = 'Up to Date';
+                btn.disabled = true;
+            }
+        }
+        actions.appendChild(btn);
+
+        card.appendChild(thumb);
+        card.appendChild(info);
+        card.appendChild(actions);
+        return card;
+    }
+
+    function _renderCloudWorlds() {
+        if (!cloudWorldsList) return;
+        cloudWorldsList.innerHTML = '';
+        if (!window.ProjectSync || !window.ProjectSync.list) {
+            if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
+            return;
+        }
+        window.ProjectSync.list().then(function (rows) {
+            cloudWorldsList.innerHTML = '';
+            if (!rows.length) {
+                if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
+                return;
+            }
+            if (cloudWorldsEmpty) cloudWorldsEmpty.classList.add('wb-hidden');
+            rows.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+            rows.forEach(function (row) {
+                cloudWorldsList.appendChild(_cloudWorldCard(row));
+            });
+        }).catch(function () {
+            if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
+        });
     }
 
     // A real, measured browser-storage readout — added directly in
@@ -1884,7 +2130,7 @@
                     const rowManifest = row.data && row.data.files && row.data.files['manifest.json'];
                     return rowManifest && rowManifest.id === entry.theme_id;
                 });
-                myWorldsList.appendChild(_repoOnlyCard(entry, 'personal', match ? match.data : null));
+                myWorldsList.appendChild(_repoOnlyCard(entry, 'personal', match ? match.data : null, match ? match.updated_at : null));
             });
         }
     }
@@ -2350,8 +2596,10 @@
     // Repository's configured state is actually known (mirrors
     // #wb-status-pill's own "no status pill until there's a real status"
     // discipline) rather than guessing.
-    function _setCloudSyncState(state) {
+    function _setCloudSyncState(state, project) {
         cloudSyncBadge.classList.remove('wb-hidden');
+        cloudSyncBadge.onclick = null;
+        cloudSyncBadge.style.cursor = '';
         if (state === 'unavailable') {
             cloudSyncDot.textContent = '⚪';
             cloudSyncText.textContent = 'Cloud backup unavailable';
@@ -2364,13 +2612,41 @@
             cloudSyncDot.textContent = '⚠️';
             cloudSyncText.textContent = 'Cloud backup failed';
             cloudSyncBadge.title = 'The background copy to your Personal space did not go through — your work is still saved locally in this browser.';
+        } else if (state === 'conflict') {
+            // Versioned Cloud Sync — someone (another tab, another
+            // device) saved a newer version of THIS World to the cloud
+            // since this tab last synced it. Never silently overwritten:
+            // local work is completely safe (still saved on this device
+            // exactly as it always was), it just isn't pushed to the
+            // cloud until a human decides what to do — click through to
+            // force-overwrite, the deliberate, rare-case escape hatch for
+            // "I know I'm the only one editing this, in two tabs."
+            cloudSyncDot.textContent = '⚠️';
+            cloudSyncText.textContent = 'Cloud has newer changes';
+            cloudSyncBadge.title = 'Someone (another tab or device) saved a newer version of this World to the cloud. Your local work is safe and unaffected — click to overwrite the cloud copy with what you have here instead.';
+            cloudSyncBadge.style.cursor = 'pointer';
+            cloudSyncBadge.onclick = function () { _forceOverwriteCloud(project); };
         } else {
             cloudSyncDot.textContent = '☁️';
             cloudSyncText.textContent = 'Backed up';
             cloudSyncBadge.title = 'A copy of this World Project is saved to your Personal space.';
         }
         cloudSyncBadge.classList.toggle('wb-save-dirty', state === 'pending');
-        cloudSyncBadge.classList.toggle('wb-save-error', state === 'error');
+        cloudSyncBadge.classList.toggle('wb-save-error', state === 'error' || state === 'conflict');
+    }
+
+    // The conflict escape hatch — an unconditional push (no
+    // expectedUpdatedAt), the exact same call every pre-Versioned-Sync
+    // save already made. Only ever reachable by a deliberate click on
+    // the "Cloud has newer changes" badge, never automatic.
+    function _forceOverwriteCloud(project) {
+        if (!window.confirm('Overwrite the cloud copy of "' + project.name + '" with what you have on this device? Whatever was saved to the cloud since your last sync will be replaced.')) return;
+        _setCloudSyncState('pending');
+        window.ProjectSync.push(project).then(function (result) {
+            if (project !== currentProject) return;
+            if (result.ok) project.cloudSyncedAt = result.updatedAt;
+            _setCloudSyncState(result.ok ? 'synced' : 'error');
+        });
     }
 
     // Debounced separately from the local save (which is synchronous and
@@ -2380,6 +2656,13 @@
     // background copy actually goes out; ProjectSync.push() itself never
     // throws (see its own header comment), so this never needs a
     // try/catch of its own.
+    //
+    // Versioned Cloud Sync — passes project.cloudSyncedAt (the cloud
+    // row's own updated_at as of the last time THIS device successfully
+    // synced it) as the conditional write's expectedUpdatedAt, so a save
+    // from a stale tab/device can never silently clobber a newer one
+    // already sitting in the cloud; see _setCloudSyncState's 'conflict'
+    // branch for what happens instead.
     let _cloudSyncTimer = null;
     function _scheduleCloudSync() {
         if (!window.ProjectSync) return;
@@ -2389,11 +2672,27 @@
             window.ProjectSync.isAvailable().then(function (ok) {
                 if (!ok) { _setCloudSyncState('unavailable'); return; }
                 _setCloudSyncState('pending');
-                window.ProjectSync.push(project).then(function (result) {
+                window.ProjectSync.push(project, { expectedUpdatedAt: project.cloudSyncedAt }).then(function (result) {
                     // A later edit may have already fired a newer sync —
                     // never let a stale response overwrite a fresher state.
                     if (project !== currentProject) return;
-                    _setCloudSyncState(result.ok ? 'synced' : 'error');
+                    if (result.ok) {
+                        // Record what the cloud row's own updated_at now
+                        // is (a plain in-memory + local-storage write,
+                        // never another _persist()/_scheduleCloudSync()
+                        // round trip of its own) so the *next* save's
+                        // conditional push compares against the real
+                        // stored value.
+                        project.cloudSyncedAt = result.updatedAt;
+                        window.ProjectStore.save(project);
+                        _setCloudSyncState('synced');
+                        return;
+                    }
+                    if (result.conflict) {
+                        _setCloudSyncState('conflict', project);
+                        return;
+                    }
+                    _setCloudSyncState('error');
                 });
             });
         }, 2000);
@@ -3076,6 +3375,55 @@
         // Reflects the cloud badge's real state shortly after opening,
         // not only after the author's first edit.
         _scheduleCloudSync();
+        // Versioned Cloud Sync — a non-blocking background check (fails
+        // open, matching this function's own established View Mode
+        // discipline above: never delay opening the Workspace on a
+        // network round trip) that surfaces an explicit choice if the
+        // cloud already has a newer save of this exact World than what
+        // just opened here — the real, root-cause fix for the data-loss
+        // incident that started this sprint (two tabs/sessions silently
+        // overwriting each other with no signal either had happened).
+        _checkCloudFreshness(project);
+    }
+
+    // See openWorkspace's own call site above for why this runs after
+    // the Workspace already opened rather than gating it — reuses the
+    // exact same raw-restore mechanism _repoOnlyCard's personal+
+    // backupProject branch and "My Cloud Worlds"'s own restoreFromCloud
+    // already use (a plain deep copy of the real Project JSON, never a
+    // lossy re-synthesis from a compiled Theme).
+    function _checkCloudFreshness(project) {
+        if (!window.ProjectSync || !window.ProjectSync.get) return;
+        window.ProjectSync.get(project.id).then(function (row) {
+            if (project !== currentProject) return; // navigated away already
+            if (!row) return; // never synced anywhere — nothing to compare
+            const localSyncedAt = project.cloudSyncedAt || null;
+            const cloudIsNewer = !localSyncedAt || new Date(row.updated_at) > new Date(localSyncedAt);
+            if (!cloudIsNewer) return;
+            const body = document.createElement('div');
+            body.className = 'wb-signin-form';
+            const p = document.createElement('p');
+            p.className = 'wb-signin-gate-note';
+            p.textContent = 'This World has newer changes saved to the cloud (from another tab or device) than what you have open right now. Load the cloud version, or close this and keep working on what you have open here — nothing changes automatically either way.';
+            const loadBtn = document.createElement('button');
+            loadBtn.type = 'button';
+            loadBtn.className = 'wb-signin-submit';
+            loadBtn.textContent = 'Load Cloud Version';
+            body.appendChild(p);
+            body.appendChild(loadBtn);
+            const close = _showInfoModal('☁️ Newer Cloud Version Found', body);
+            loadBtn.addEventListener('click', function () {
+                close();
+                const restored = JSON.parse(JSON.stringify(row.data));
+                restored.cloudSyncedAt = row.updated_at;
+                const saveResult = window.ProjectStore.save(restored);
+                if (!saveResult.ok) {
+                    window.alert('Couldn\'t load the cloud version — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                    return;
+                }
+                openWorkspace(restored);
+            });
+        }).catch(function () {});
     }
 
     // Sprint B2.0.6 — see _setSaveState above for why this shows the
@@ -9542,5 +9890,12 @@
 
     renderTemplateGrid();
     _renderIdentityBar();
-    renderMyWorlds();
+    // Mandatory Sign-In gate — this module's own initial boot sequence
+    // used to call renderMyWorlds() directly here, completely bypassing
+    // the gate on the very first page load (showWelcome()'s own,
+    // already-gated call path only runs on a LATER return to Welcome).
+    // Routed through the same _checkIdentityGate() showWelcome() now
+    // uses, so "no Welcome-screen content renders until signed in" holds
+    // from the very first paint, not just after navigating back here.
+    _checkIdentityGate();
 })();
