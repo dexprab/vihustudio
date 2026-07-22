@@ -1437,13 +1437,40 @@ const MagicCardUI=(function(){
           el.classList.add(el===cardEl?'correct':'fade');
         });
         gatekeeper.setMood('celebrate','✨ There it is! Welcome back. ✨','win');
-        try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skySuccess'); }catch(e){}
-        setTimeout(function(){ opts.onSuccess(item.id); },900);
+        // "transition is very fast, its not allowing user to savor the
+        // success, neither the voice is completed" — this used to hand
+        // off after a flat 900ms no matter how long the real skySuccess
+        // clip actually runs (2429ms recorded), cutting the line off
+        // mid-sentence and barely showing the win state at all. The hold
+        // is now driven by the clip's own real, measured duration (via
+        // LumoVoice.durationMs — the same "stretch the timer to the
+        // real recording" pattern js/gatewaySequence.js's playLines()
+        // already established) plus a real pause afterward so the
+        // moment can be genuinely enjoyed, not merely un-clipped;
+        // falls back to the original flat 900ms if LumoVoice is
+        // unavailable.
+        var holdMs=900;
+        try{
+          if(typeof LumoVoice!=='undefined'){
+            LumoVoice.play('skySuccess');
+            holdMs=Math.max(900,LumoVoice.durationMs('skySuccess')+900);
+          }
+        }catch(e){}
+        setTimeout(function(){ opts.onSuccess(item.id); },holdMs);
         return;
       }
       // Only reachable in the terminal (decoy-bearing) batch — a
       // non-terminal (all-real, hasMore) batch never contains a decoy to
       // tap wrong to begin with.
+      //
+      // Disclosed scope note: the wrong-tap path below has the same
+      // class of timing gap (skyWrong's own real clip runs 2847ms but
+      // the regenerate-and-reshuffle delay is a flat 1100ms, so a wrong
+      // guess's own voice line can get cut off by skyFresh starting
+      // right after) — left untouched here since the user's report
+      // named the correct-tap transition specifically ("on correct tile
+      // choose"), not the wrong-tap flow. Worth the identical fix in a
+      // future pass if it's ever reported.
       cardEl.classList.add('tapped-wrong');
       triesLeft--;
       paintTries(true);
