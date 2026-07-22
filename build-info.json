@@ -4,6 +4,6 @@
   "task": "Direct copy fix: the Gateway's own tap hint (js/gatewaySequence.js's showTapHint(), shown after TAP_HINT_DELAY_MS) read '✦ tap to continue ✦', but tapping it actually skips the whole cinematic sequence outright (onSkipClick) rather than advancing one step -- 'continue' undersold what the action does. Changed to '✦ tap to skip ✦'. Confirmed the codebase's only other 'Tap to continue' string (js/magicCardUI.js's Creator Ceremony reveal-stage button) is a different feature -- not touched, since it wasn't part of what was being discussed. Verified via node --check and both goldenBuild.js suites (World Builder v1 and v2) unchanged.",
   "build": "0223",
   "buildDate": "2026-07-22",
-  "commit": "pending",
+  "commit": "61ec058",
   "environment": "Release"
 }
