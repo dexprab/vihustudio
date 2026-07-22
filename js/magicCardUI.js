@@ -1462,20 +1462,29 @@ const MagicCardUI=(function(){
       // Only reachable in the terminal (decoy-bearing) batch — a
       // non-terminal (all-real, hasMore) batch never contains a decoy to
       // tap wrong to begin with.
-      //
-      // Disclosed scope note: the wrong-tap path below has the same
-      // class of timing gap (skyWrong's own real clip runs 2847ms but
-      // the regenerate-and-reshuffle delay is a flat 1100ms, so a wrong
-      // guess's own voice line can get cut off by skyFresh starting
-      // right after) — left untouched here since the user's report
-      // named the correct-tap transition specifically ("on correct tile
-      // choose"), not the wrong-tap flow. Worth the identical fix in a
-      // future pass if it's ever reported.
       cardEl.classList.add('tapped-wrong');
       triesLeft--;
       paintTries(true);
       gatekeeper.setMood('think','Not quite — let’s look again! 🌟','oops');
-      try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyWrong'); }catch(e){}
+      // "voices are overlapping" — this used to fire LumoVoice.play for
+      // skyWrong, then unconditionally regenerate the board and start
+      // skyFresh after a flat 1100ms, even though the real skyWrong clip
+      // runs 2847ms — so the "here's a new look" line always started
+      // while "not quite" was still talking. Same fix as the
+      // correct-tap savor-the-success pass: drive the wait off the
+      // clip's own real, measured duration (via LumoVoice.durationMs —
+      // the same pattern js/gatewaySequence.js's playLines() already
+      // established, matching its own +400ms buffer) instead of a
+      // guessed constant, so skyFresh never starts until skyWrong has
+      // actually finished; falls back to the original flat 1100ms if
+      // LumoVoice is unavailable.
+      var wrongHoldMs=1100;
+      try{
+        if(typeof LumoVoice!=='undefined'){
+          LumoVoice.play('skyWrong');
+          wrongHoldMs=Math.max(1100,LumoVoice.durationMs('skyWrong')+400);
+        }
+      }catch(e){}
       setTimeout(function(){
         if(triesLeft<=0){ opts.onBack(); return; }
         // "not just reorder, regenerate the fakes also" — one mystery
@@ -1490,7 +1499,7 @@ const MagicCardUI=(function(){
         _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
         busy=false;
         gridEl.style.pointerEvents='';
-      },1100);
+      },wrongHoldMs);
     }
 
     paintCards();
