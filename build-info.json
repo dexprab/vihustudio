@@ -4,6 +4,6 @@
   "task": "Fixed the sky-recognition challenge to show each known Magic Card's REAL card.pattern (the same pattern shown during the Awakening ceremony reveal, later persisted by claim()) instead of MagicCard.decorativeSkyFor()'s different, safe stand-in -- a real, screenshotted bug ('none of the patterns in the above screenshot is my sky') caused by a decoupling an earlier security sprint introduced. _renderSkyChallenge(panel,opts) now takes opts.cards (every known card from MagicCard.list()) instead of opts.card (one targeted card), pages real accounts in batches of up to 4 with a 'None of these' overflow tile when more than 4 are known, and reports onSuccess(cardId) for whichever real sky was actually tapped. All three call sites (_renderGateWelcome/_renderGatePicker/beginCreatorSignature) updated to match. Verified via 3 new Playwright scenarios (1 card, 3 cards, 6-card overflow) plus a full unmocked end-to-end Gateway Returning Creator run reaching the real Workspace; both goldenBuild.js suites unchanged.",
   "build": "0224",
   "buildDate": "2026-07-22",
-  "commit": "pending",
+  "commit": "37f97d2",
   "environment": "Release"
 }
