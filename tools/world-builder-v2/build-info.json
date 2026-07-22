@@ -5,6 +5,6 @@
   "slice": "A direct follow-up: \"give delete option on cloud worlds also.\" _cloudWorldCard() had no way to remove itself -- only local project cards and Personal-repo-only cards had Delete, and this lists a genuinely different resource (a builder_projects cloud backup row). Fixed by adding a Delete button that removes only the cloud backup row (ProjectSync.remove), never any local draft on this device, matching the module's own local-primary/cloud-backup-only discipline; reused the exact corner-anchored Delete visual language the Personal-repo-only card already established. A real, measured layout bug was found while verifying: the absolutely-positioned Delete control doesn't participate in flex layout, so nothing reserved room for it and a long World Name overlapped it by ~22px -- fixed by widening the card's own padding-right from 18px to 46px, re-measured with a clean gap afterward. Verified via a new 8-assertion Playwright suite (button count, the layout measurement, a correct-id remove call, the deleted card disappearing while the other remains) plus full regression across the existing 13/15/8/8-assertion suites and both goldenBuild.js suites, all unchanged. Cache-bust ?v= bumped 0097->0098 since this touches both worldBuilderApp.js and world-builder.css. Confined to js/worldBuilderApp.js, css/world-builder.css, and index.html.",
   "build": "0098",
   "buildDate": "2026-07-22",
-  "commit": "PENDING",
+  "commit": "52fa8ab",
   "environment": "Release"
 }
