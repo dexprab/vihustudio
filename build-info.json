@@ -4,6 +4,6 @@
   "task": "The just-shipped card-layout fix was correctly deployed, but the user's browser kept showing the old, broken layout after refreshing -- traced to tools/world-builder-v2/index.html never having adopted the same ?v=NNNN cache-busting convention the root Studio index.html has carried on its stylesheet links since an earlier, separate fix. Fixed by appending ?v=0095 to the stylesheet link and all 24 <script src> tags in tools/world-builder-v2/index.html; the going-forward convention is to bump this one number on every future World Builder v2 ship that touches CSS/JS. A real Playwright-harness gotcha was found and fixed while re-verifying (not an app bug): the existing test suites' page.route() mocks for themeRepositoryClient.js/projectSync.js stopped matching once the real URL gained a query string, since Playwright's glob pattern must match the full URL -- widened with a trailing wildcard, re-verified passing. Both goldenBuild.js suites pass unchanged. Confined to tools/world-builder-v2/index.html.",
   "build": "0233",
   "buildDate": "2026-07-22",
-  "commit": "PENDING",
+  "commit": "f3b8f32",
   "environment": "Release"
 }
