@@ -1221,6 +1221,7 @@ const MagicCardUI=(function(){
           el.classList.add(el===cardEl?'correct':'fade');
         });
         gatekeeper.setMood('celebrate','✨ There it is! Welcome back. ✨','win');
+        try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skySuccess'); }catch(e){}
         setTimeout(function(){ opts.onSuccess(); },900);
         return;
       }
@@ -1228,6 +1229,7 @@ const MagicCardUI=(function(){
       triesLeft--;
       paintTries();
       gatekeeper.setMood('think','Not quite — let’s look again! 🌟','oops');
+      try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyWrong'); }catch(e){}
       setTimeout(function(){
         if(triesLeft<=0){ opts.onBack(); return; }
         // "not just reorder, regenerate the fakes also" — 2 of the 3
@@ -1238,6 +1240,7 @@ const MagicCardUI=(function(){
         decoyIdx=[keep].concat(fresh);
         paintCards();
         gatekeeper.setMood('wave','Here’s a new look — some mystery friends are new.',null);
+        try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyFresh'); }catch(e){}
         _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
         busy=false;
       },1100);
@@ -1246,6 +1249,7 @@ const MagicCardUI=(function(){
     paintTries();
     paintCards();
     gatekeeper.setMood('curious','One of these skies is yours. Can you find it?',null);
+    try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyPrompt'); }catch(e){}
 
     // Fit once, synchronously, right now — every child is appended, so
     // this measurement reflects the true total, exactly matching

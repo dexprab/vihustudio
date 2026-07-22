@@ -261,6 +261,10 @@
   // left off and the crouch/liftoff/flight all play in full,
   // continuously, for the first time.
   const RESUME_AT_S=PAUSE_AT_S;
+  // A brief settle after the "lumoLanding" line so it's fully heard
+  // before the in-person greeting/recognition lines begin talking over
+  // it -- matches the clip's own real ~2.7s length plus a small buffer.
+  const LUMO_LANDING_HOLD_MS=2900;
   // Safety-only fallback timers: the real waits are driven by
   // video.currentTime/the 'ended' event; these only fire if playback
   // stalls or an event never arrives, so Studio's boot can never hang
@@ -700,19 +704,31 @@
         function beginSegment1(){
           after(reduced?0:GATE_HOLD_MS,function(){
             if(skipRequested) return;
+            // Lumo becomes visible flying in right as Segment 1 starts
+            // (the footage's own first ~2s is doors alone) -- a real,
+            // atmospheric line, not gated on anything downstream.
+            try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoFlying'); }catch(e){}
             playVideoSegmentTo(video,PAUSE_AT_S,SEGMENT1_FALLBACK_MS,reduced,function(){
               if(skipRequested) return;
-              playLines(opts.pauseLines,GREETING_LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
-                if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
+              // Segment 1 has just paused -- Lumo has landed and is
+              // standing there. Speak the landing beat, then let its own
+              // duration settle before the in-person greeting begins, so
+              // the two lines don't talk over each other.
+              try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoLanding'); }catch(e){}
+              after(reduced?0:LUMO_LANDING_HOLD_MS,function(){
                 if(skipRequested) return;
-                after(reduced?0:GREETING_END_PAUSE_MS,function(){
+                playLines(opts.pauseLines,GREETING_LINE_MS,GREETING_GAP_MS,reduced,function(bubble){
+                  if(bubble&&bubble.parentNode) bubble.parentNode.removeChild(bubble);
                   if(skipRequested) return;
-                  playVideoSegmentToEnd(video,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
+                  after(reduced?0:GREETING_END_PAUSE_MS,function(){
                     if(skipRequested) return;
-                    playFinalFlash(reduced,done);
+                    playVideoSegmentToEnd(video,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
+                      if(skipRequested) return;
+                      playFinalFlash(reduced,done);
+                    });
                   });
-                });
-              },opts.pauseVoiceIds);
+                },opts.pauseVoiceIds);
+              });
             });
           });
         }

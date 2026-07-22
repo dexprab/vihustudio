@@ -8,13 +8,15 @@
 // objects, every failure swallowed defensively so a missing/broken clip
 // can never break the screen it's attached to.
 //
-// Every one of Lumo's ~17 spoken lines in the app is covered here now (the
+// Every one of Lumo's ~23 spoken lines in the app is covered here now (the
 // tap-grid gatekeeper greeting; the Traveller Gateway's 5-line greeting,
 // title+subtitle each recorded as its own clip; the Returning Creator's
 // short "Welcome home / Show me your stars" recognition pair; the
-// Returning Creator's own "It's good to see you again" reunion pair; and
-// the Creator Ceremony's two Guardian beats) -- see CLAUDE.md's own
-// running disclosure of this batch.
+// Returning Creator's own "It's good to see you again" reunion pair; the
+// Creator Ceremony's two Guardian beats; the Creator Signature
+// sky-recognition challenge's 4 lines -- prompt/wrong-tap/fresh-decoys/
+// success; and the Gate video's own flying-in/landing beats) -- see
+// CLAUDE.md's own running disclosure of this batch.
 //
 // `ms` is each clip's own real, measured duration (via ffprobe at the
 // moment it was staged) -- exposed synchronously via durationMs() so a
@@ -67,7 +69,22 @@
 
     // Creator Ceremony -- Lumo's two Guardian beats.
     ceremony1:{file:'lumo-16-ceremony1.mp3',ms:2038},
-    ceremony2:{file:'lumo-17-ceremony2.mp3',ms:2351}
+    ceremony2:{file:'lumo-17-ceremony2.mp3',ms:2351},
+
+    // Creator Signature sky-recognition challenge -- the gatekeeper's
+    // own 4 spoken lines (prompt / wrong tap / fresh decoys / success).
+    skyPrompt:{file:'lumo-18-skyprompt.mp3',ms:3971},
+    skyWrong:{file:'lumo-19-skywrong.mp3',ms:2847},
+    skyFresh:{file:'lumo-20-skyfresh.mp3',ms:3553},
+    skySuccess:{file:'lumo-21-skysuccess.mp3',ms:2429},
+
+    // Traveller Gateway -- the single Gate video's own Segment 1: Lumo
+    // becomes visible flying in (lumoFlying, fired as Segment 1 starts),
+    // then lands and settles with the Story Egg between its feet
+    // (lumoLanding, fired the instant Segment 1 pauses, just before the
+    // in-person greeting/recognition lines begin).
+    lumoFlying:{file:'lumo-22-flying.mp3',ms:2712},
+    lumoLanding:{file:'lumo-23-landing.mp3',ms:2712}
   };
 
   const cache={};
