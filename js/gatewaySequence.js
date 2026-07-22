@@ -199,9 +199,11 @@
   // ending abruptly": the pause-point dialogue used to vanish and the
   // video resume in the very same instant, with no beat to let the last
   // line land before the scene moves on; this holds on the empty,
-  // silent frame for a moment first before Segment 2 resumes.
+  // silent frame for a moment first before Segment 2 resumes. "reduce
+  // the time after saying shall we begin to lumo picking up the egg by
+  // 300ms" — 2000ms -> 1700ms.
   const GREETING_GAP_MS=1800;
-  const GREETING_END_PAUSE_MS=2000;
+  const GREETING_END_PAUSE_MS=1700;
 
   // The Returning Creator's own reunion-toned pair, spoken IN PERSON at
   // the video's own pause point (see runVideoSequence's pauseLines,
@@ -722,6 +724,11 @@
                   if(skipRequested) return;
                   after(reduced?0:GREETING_END_PAUSE_MS,function(){
                     if(skipRequested) return;
+                    // Lumo is flying again -- picking the Story Egg back
+                    // up and leaping into flight through the gate. Same
+                    // clip as the Segment 1 approach; Lumo is airborne
+                    // either way.
+                    try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('lumoFlying'); }catch(e){}
                     playVideoSegmentToEnd(video,RESUME_AT_S,SEGMENT2_FALLBACK_MS,reduced,function(){
                       if(skipRequested) return;
                       playFinalFlash(reduced,done);
