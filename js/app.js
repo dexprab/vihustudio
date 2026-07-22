@@ -1682,6 +1682,23 @@ function _startCreationFlow(){
 // _afterGateway()'s own fallback, for the one case where the Gateway
 // itself couldn't be reached.
 function _beginBoot(){
+  // "under any circumstance, inner studio screen can never load before
+  // home screen" — index.html's <body> now starts with
+  // creation-flow-active PRESENT (hiding #app from the very first byte
+  // of HTML parse, closing the "boot flash" gap the class only used to
+  // guard against once CreationFlow.start() had already run). This is
+  // the ONE place that removes it — every real boot path (a missing
+  // ProjectManager, a valid/corrupt/blank saved session) funnels through
+  // this exact function, reached only after the Gateway (or its
+  // _afterGateway() fallback) has already fully completed. Removing it
+  // here, synchronously, either (a) leaves #app dimly visible behind the
+  // restore-session modal's own translucent backdrop below — unchanged,
+  // pre-existing behaviour, not something this fix alters — or (b) is
+  // immediately followed, in the same synchronous tick, by
+  // _startCreationFlow()'s own CreationFlow.start() call re-adding the
+  // class right back, so nothing ever actually paints in between and
+  // there is no visible flash either way.
+  document.body.classList.remove('creation-flow-active');
   // Companion Canon Freeze — this is where CompanionDirector.init()
   // now lives, not the outer bootstrapSession() IIFE below. A Traveller
   // vs. Creator decision (Story Egg vs. Lumo) depends on

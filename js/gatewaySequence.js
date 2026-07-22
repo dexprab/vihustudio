@@ -57,9 +57,15 @@
 //      restarts this same function with the Traveller's own opts — a
 //      declined check genuinely BECOMES the Traveller experience, not
 //      a cleared identity riding along on the Returning Creator's own
-//      reunion-toned video. A first-time
-//      Traveller has no preLines at all and skips straight to segment 1
-//      — there is nobody to recognize yet.
+//      reunion-toned video. A CORRECTLY verified pattern, by contrast,
+//      skips straight to step 7 below (the closing flash) — Lumo already
+//      greeted this Creator through the sky-challenge's own Gatekeeper
+//      presence, so steps 4-6's full flying-in/landing/greeting/flying-
+//      off cinematic is redundant on every single boot once they're
+//      already recognized ("skip the re-entry of lumo flow"). A
+//      first-time Traveller has no preLines at all and skips straight to
+//      segment 1 — there is nobody to recognize yet, so steps 4-6 are
+//      this path's own genuine first meeting.
 //   4. Segment 1 plays — Lumo flies in (its own real, already-filmed
 //      footage) and lands, standing, wings spread — then pauses exactly
 //      there.
@@ -775,7 +781,14 @@
               overlay.classList.remove('gateway-mode-hidden-for-signature');
               if(skipRequested) return;
               if(success){
-                beginSegment1();
+                // "on correct pattern recognition, skip the re-entry of
+                // lumo flow" — Lumo already greeted this Creator through
+                // the sky-challenge's own Gatekeeper presence; making
+                // them sit through the FULL flying-in/landing/greeting/
+                // flying-off cinematic again on every single boot is
+                // redundant once they're already recognized. Straight to
+                // the closing flash and the Hall.
+                playFinalFlash(reduced,done);
                 return;
               }
               // "Continue as a Traveller" — a declined check never
@@ -787,7 +800,20 @@
               // played yet at this point (still the closed-doors frame),
               // so swapping the mounted video out here is a clean cut,
               // not a jarring one.
+              //
+              // "past creators project should not be shown in the
+              // project tab" — the top-of-begin() My-Projects clear only
+              // ever runs for a genuinely NEW session, and only when
+              // isReturning was already false; declining here happens
+              // mid-session, AFTER isReturning=true already skipped that
+              // clear, so the previous Creator's own local projects would
+              // otherwise silently leak into this now-anonymous
+              // Traveller's "My Projects" list. Clearing it here, at the
+              // exact moment identity is actually relinquished, closes
+              // that gap the same way the new-session check already
+              // does for a fresh tab.
               try{ if(typeof MagicCard!=='undefined') MagicCard.setActive(null); }catch(e){}
+              try{ if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.clearAll) CreatorProjectStore.clearAll(); }catch(e){}
               if(gateEls&&gateEls.wrap&&gateEls.wrap.parentNode) gateEls.wrap.parentNode.removeChild(gateEls.wrap);
               try{ if(video) video.pause(); }catch(e){}
               gateVideoEl=preloadFinalGateVideo(GATE_FINAL_VIDEO_SRC,GATE_FINAL_POSTER_SRC);

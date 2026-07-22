@@ -8165,12 +8165,24 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .gateway-begin-gate-inner{ animation:none; }
 }
 
+/* "when lumo comes, tap to skip is missing" (the decline-to-Traveller
+   restart specifically): the hint has no explicit z-index of its own —
+   for two sibling positioned elements neither one of which negatively
+   z-indexes, later DOM order paints on top. The decline path removes the
+   OLD .gateway-gates-wrap and mounts a brand-new one for the Traveller's
+   own clip, appended AFTER this hint (already present from the very
+   first run's own 3.6s timer, which almost always fires well before a
+   Creator Signature check resolves) -- so the new, later-appended,
+   full-bleed opaque video silently painted over it. A real z-index
+   (above .gateway-gates-wrap's 0) fixes this structurally, regardless of
+   which run's video was mounted last. */
 .gateway-tap-hint{
   position:absolute;
   bottom:26px;
   right:28px;
   left:auto;
   transform:none;
+  z-index:2;
   color:rgba(255,255,255,.55);
   font-size:13px;
   letter-spacing:.06em;

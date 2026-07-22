@@ -13,10 +13,33 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0224'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0224'>
+<link rel='stylesheet' href='css/style.css?v=0225'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0225'>
 </head>
-<body class='light-theme'>
+<body class='light-theme creation-flow-active'>
+<!-- "under any circumstance, inner studio screen can never load before
+     home screen" -- creation-flow-active starts PRESENT here, in the raw
+     markup, rather than only being added by JS once Creation Flow itself
+     opens: body.creation-flow-active #app{display:none} (css/style.css)
+     is what actually hides the Workspace, and until now that only ever
+     applied once js/creationFlow.js's start() explicitly added the
+     class -- meaning #app's own raw, real chrome (whatever unstyled/
+     no-data state it starts in) was visible-by-default for however long
+     page parse + every earlier <script> tag took to finish (none of
+     them are defer/async), the exact same class of "boot flash" bug
+     already found and fixed once for .tabs/.buddy-placeholder in an
+     earlier sprint, just never closed for #app itself. js/app.js's
+     _beginBoot() -- the one function every real boot path funnels
+     through, reached only after the Gateway (or its own fallback)
+     completes -- now explicitly REMOVES this class as its very first
+     action, synchronously followed by either a restore-session decision
+     (leaving it removed, #app dimly visible behind the restore modal's
+     own translucent backdrop, exactly as it always has) or
+     CreationFlow.start() (which immediately adds the class right back,
+     with zero visible flash since nothing paints between the two
+     synchronous calls) -- so the Workspace can never be shown before
+     _beginBoot() itself explicitly decides to reveal it, regardless of
+     how long everything upstream takes. -->
 <!-- Header -->
 <header class='app-header'>
 <div class='header-left'>

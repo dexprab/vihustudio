@@ -1279,9 +1279,23 @@ const MagicCardUI=(function(){
       }
     }
 
+    // "on first wrong, multiple clicks are getting registered and second
+    // try is never provided" — the JS-level `busy` guard already blocks
+    // re-entrancy correctly (verified directly: rapid repeat taps on the
+    // same or a different card during the 1100ms regenerate window never
+    // double-decrement triesLeft), but nothing stopped the BROWSER itself
+    // from dispatching a click at all during that window — an eager
+    // child tapping several cards in a row while the shake/regenerate is
+    // still settling gets no feedback that their extra taps did nothing,
+    // which reads exactly like "my second try got skipped." Disabling
+    // pointer-events on the whole grid for the duration closes this at
+    // the browser level too (belt and suspenders over the `busy`
+    // variable alone) and gives real visual feedback (the board visibly
+    // stops responding) instead of a silent, confusing no-op.
     function onCardTap(item,cardEl,gridEl){
       if(busy) return;
       busy=true;
+      gridEl.style.pointerEvents='none';
       if(item.real){
         Array.prototype.slice.call(gridEl.children).forEach(function(el){
           el.classList.add(el===cardEl?'correct':'fade');
@@ -1312,6 +1326,7 @@ const MagicCardUI=(function(){
         try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyFresh'); }catch(e){}
         _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
         busy=false;
+        gridEl.style.pointerEvents='';
       },1100);
     }
 
