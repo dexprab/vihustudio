@@ -355,6 +355,24 @@ const MagicCardUI=(function(){
     panel.appendChild(grid);
 
     content.appendChild(panel);
+
+    // "screen 1: scroll" -- .magic-card-home-panel has always had its
+    // own genuine max-height/overflow-y bound (unlike the outer
+    // .magic-card-panel in this mode, which stays unbounded on
+    // purpose so the two don't fight over which one scrolls) but
+    // nothing ever measured real content against that bound and
+    // shrunk to fit -- it just quietly scrolled. Reusing the exact
+    // same fit function the Awakening ceremony already established,
+    // passed the home panel itself for both arguments since IT is the
+    // bounded, scrolling container here (not the outer content div).
+    _fitAwakenStageToAvailableSpace(panel,panel);
+    if(typeof ResizeObserver!=='undefined'){
+      const ro=new ResizeObserver(function(){
+        if(!document.contains(panel)){ ro.disconnect(); return; }
+        _fitAwakenStageToAvailableSpace(panel,panel);
+      });
+      ro.observe(panel);
+    }
   }
 
   // ---------- Identity glyph (never the constellation pattern) ----------
@@ -1182,29 +1200,39 @@ const MagicCardUI=(function(){
 
   // "ensure there are no scrolls on any screen. its essential not to
   // have scrolls" -- the Awakening ceremony's own equivalent of
-  // _fitSkyChallengeToAvailableSpace above, applied to `panel`
-  // (.magic-card-panel/#magicCardContent, now genuinely bounded --
-  // max-height:calc(100vh - 64px) -- rather than the unbounded box it
-  // used to be, which had nothing for a fit function to measure a real
-  // overflow against) and `stage` (.magic-card-awaken-stage, the one
-  // container reused, cleared and repopulated, across every Awakening
-  // screen). Idempotent (always resets every prior override first) so
-  // it's safe to call after every screen builds its own DOM and from a
-  // single, screen-spanning ResizeObserver with no oscillation risk.
+  // _fitSkyChallengeToAvailableSpace above. Genuinely generic over
+  // WHICH bounded panel it's measuring: called with `panel=content`
+  // (.magic-card-panel/#magicCardContent, bounded to
+  // max-height:calc(100vh - 64px) only in awaken mode) and
+  // `stage=.magic-card-awaken-stage` for the ceremony's own five
+  // screens; also called with `panel=stage=` Magic Card Home's own
+  // .magic-card-home-panel (its OWN, separate max-height/overflow-y
+  // bound -- "screen 1: scroll" was this exact screen never getting
+  // this same treatment when it first shipped, only the Awakening
+  // screens did). Idempotent (always resets every prior override
+  // first) so it's safe to call after every screen builds its own DOM
+  // and from a screen-spanning ResizeObserver with no oscillation risk.
   //
-  // Runs up to four escalating steps, each taken only if the previous
+  // Runs up to five escalating steps, each taken only if the previous
   // one still isn't enough -- shrink whichever big image element the
   // CURRENT screen actually has (the sky-frame on Reveal/Claim, the
   // paired art-canvases on the nickname preview/First Claimed Moment,
-  // the ceremony beat's own fixed 240x240 image wrap), then fall back to
-  // the same --awaken-density linear-solve _fitSkyChallengeToAvailable
-  // Space already established for its own last-resort step.
+  // Magic Card Home's own stories thumbnail row, the ceremony beat's
+  // own fixed 240x240 image wrap), then fall back to the same
+  // --awaken-density linear-solve _fitSkyChallengeToAvailableSpace
+  // already established for its own last-resort step.
   function _fitAwakenStageToAvailableSpace(panel,stage){
     panel.style.removeProperty('--awaken-density');
     const skyFrame=stage.querySelector('.magic-card-sky-frame');
     if(skyFrame) skyFrame.style.removeProperty('width');
     const artCanvases=stage.querySelectorAll('.magic-card-art-canvas');
     artCanvases.forEach(function(c){ c.style.removeProperty('width'); });
+    // Magic Card Home only -- its stories thumbnail row is a real,
+    // sizeable block of content none of the Awakening screens have
+    // (they never grow this stage's own querySelector list, so this
+    // is simply always null there).
+    const storiesGrid=stage.querySelector('.magic-card-home-stories-grid');
+    if(storiesGrid) storiesGrid.style.removeProperty('width');
     const ceremonyImgWrap=stage.querySelector('.magic-card-ceremony-img-wrap');
     if(ceremonyImgWrap){
       ceremonyImgWrap.style.removeProperty('width');
@@ -1228,6 +1256,20 @@ const MagicCardUI=(function(){
       const naturalW=artCanvases[0].getBoundingClientRect().width;
       const fittedW=Math.max(90,naturalW-deficit*1.4)+'px';
       artCanvases.forEach(function(c){ c.style.width=fittedW; });
+      needed=panel.scrollHeight;
+      if(needed<=available+1) return;
+    }
+
+    if(storiesGrid){
+      // Every thumbnail cell keeps its own aspect-ratio:4/5, so
+      // shrinking the GRID's overall width proportionally shrinks its
+      // rendered height too, with every thumbnail still shown whole
+      // -- no cropping, the same "shrink width, let aspect-ratio do
+      // the rest" technique the art-canvases step above already uses.
+      const deficit=needed-available;
+      const rect=storiesGrid.getBoundingClientRect();
+      const scale=Math.max(0.55,Math.min(1,1-(deficit*1.4)/Math.max(1,rect.height)));
+      storiesGrid.style.width=Math.round(rect.width*scale)+'px';
       needed=panel.scrollHeight;
       if(needed<=available+1) return;
     }

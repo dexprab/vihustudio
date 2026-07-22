@@ -5158,7 +5158,9 @@ body.creation-flow-active .app-header{ display:none; }
   cursor:pointer;
   text-align:left;
 }
-.creation-flow-project-card:hover{ background:var(--cf-paper-alt); }
+.creation-flow-project-card:hover,
+.creation-flow-project-card:focus-visible{ background:var(--cf-paper-alt); }
+.creation-flow-project-card:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
 .creation-flow-project-thumb{
   aspect-ratio:4/5;
   border-radius:10px;
@@ -5181,6 +5183,32 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-project-meta{
   font-size:11.5px;
   color:var(--text-secondary);
+}
+/* "self projects no delete option" -- a real, nested <button> inside
+   the now-div-based .creation-flow-project-card. The global
+   button:not(...){width:100%;height:var(--button-height);margin-bottom:
+   12px} cascade rule would otherwise silently stretch this into a
+   full-width row (the same recurring bug class already fixed once for
+   Object Strip cards/the Publish Studio close button/Doodle's pen
+   swatches), so every dimension is re-declared !important here. */
+.creation-flow-project-delete{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:4px 8px !important;
+  align-self:flex-end;
+  font-size:11px;
+  font-weight:600;
+  background:transparent;
+  color:var(--text-secondary);
+  border:1px solid var(--cf-line);
+  border-radius:8px;
+}
+.creation-flow-project-delete:hover{
+  background:rgba(200,60,60,0.1);
+  color:#b83c3c;
+  border-color:rgba(200,60,60,0.3);
+  opacity:1;
 }
 
 /* ---------- Screen 2: two-column World Sources / Selected World Preview ---------- */
@@ -7313,7 +7341,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   backdrop-filter:blur(6px);
 }
 .magic-card-home-name{
-  margin-top:14px;
+  margin-top:calc(var(--awaken-density,1) * 14px);
   font-size:20px;
   font-weight:800;
   color:var(--mc-ink);
@@ -7321,20 +7349,20 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-home-since{
   font-size:12.5px;
   color:var(--mc-ink-soft);
-  margin:2px 0 16px;
+  margin:2px 0 calc(var(--awaken-density,1) * 16px);
 }
 .magic-card-home-stories-label{
   align-self:flex-start;
   font-size:12px;
   font-weight:700;
   color:var(--mc-ink-soft);
-  margin:0 0 10px;
+  margin:0 0 calc(var(--awaken-density,1) * 10px);
 }
 .magic-card-home-stories-grid{
   width:100%;
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  gap:10px;
+  gap:calc(var(--awaken-density,1) * 10px);
 }
 .magic-card-home-story-thumb{
   aspect-ratio:4/5;
@@ -7374,11 +7402,15 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .magic-card-art-row{
   display:flex;
-  /* --awaken-density (default 1) only ever gets set on .magic-card-panel
-     inside the Awakening ceremony (see .magic-card-awaken-stage's own
-     comment) -- Magic Card Home's completely separate .magic-card-home-
-     panel never sets it, so its own reuse of .magic-card-art-row/-col
-     stays at the plain 14px/6px default, unaffected. */
+  /* --awaken-density (default 1) is set on whichever ancestor panel is
+     genuinely bounded and scrolling for the current screen --
+     .magic-card-panel inside the Awakening ceremony (see
+     .magic-card-awaken-stage's own comment), or .magic-card-home-panel
+     itself for Magic Card Home's "View My Card" (its own real
+     max-height/overflow-y bound, separate from the outer panel -- see
+     openHome()'s own _fitAwakenStageToAvailableSpace() call). Either
+     way this rule just reads whatever value its nearest such ancestor
+     set, unaffected when neither has (the plain 1 default). */
   gap:calc(var(--awaken-density,1) * 14px);
   justify-content:center;
   flex-wrap:wrap;

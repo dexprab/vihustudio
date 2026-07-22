@@ -355,8 +355,28 @@
       return Promise.resolve(_resolveEntityId(list,mode));
     }
 
+    // "overall on studio screen sometimes the companion does not load"
+    // -- traced, not guessed: engine.load(id)'s own fetch(companion.json)
+    // had zero retry, and _mountEntity's catch below permanently gave up
+    // (engine=null) with nothing anywhere re-attempting init() for the
+    // rest of the session -- a single transient network blip (a cold
+    // static-host request, a brief connectivity hiccup) meant no
+    // companion for that whole visit, with no visible error and no
+    // recovery. One bounded retry with a short delay recovers exactly
+    // that class of failure without masking a genuinely broken/missing
+    // package (which still fails, correctly, after the retry).
+    const LOAD_RETRY_ATTEMPTS=2;
+    const LOAD_RETRY_DELAY_MS=700;
+    function _loadWithRetry(id,attemptsLeft){
+      return engine.load(id).catch(function(err){
+        if(attemptsLeft<=1) throw err;
+        return new Promise(function(resolve){ setTimeout(resolve,LOAD_RETRY_DELAY_MS); })
+          .then(function(){ return _loadWithRetry(id,attemptsLeft-1); });
+      });
+    }
+
     function _mountEntity(id,mode,onReady){
-      engine.load(id).then(function(){
+      _loadWithRetry(id,LOAD_RETRY_ATTEMPTS).then(function(){
         currentMode=mode;
         ready=true;
         engine.show();

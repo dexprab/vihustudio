@@ -180,9 +180,28 @@ const CreationFlow=(function(){
     });
   }
 
+  // "self projects no delete option" -- a plain <button> can't legally
+  // contain a nested clickable action (a real HTML restriction, not a
+  // stylistic choice), so the card follows the same role="button" div
+  // + Enter/Space keydown handler + stopPropagation() pattern World
+  // Builder's own project cards already established for the identical
+  // "open on card click, but also offer a nested Delete" shape.
+  function _deleteProjectRecord(record){
+    const ok=window.confirm('Delete "'+(record.name||'Untitled')+'"? This removes it from this device only.');
+    if(!ok) return;
+    try{ if(typeof CreatorProjectStore!=='undefined') CreatorProjectStore.remove(record.id); }catch(e){}
+    // Deleting the last remaining project would otherwise leave this
+    // screen showing an empty grid with nothing left to continue --
+    // Screen 1 already has its own "nothing yet" story, so return there
+    // instead of a dead-end empty state here.
+    if(_myProjects().length) _renderMyProjectsScreen();
+    else _renderTypeScreen();
+  }
+
   function _projectCard(record){
-    const card=_el('button','creation-flow-project-card');
-    card.type='button';
+    const card=_el('div','creation-flow-project-card');
+    card.setAttribute('role','button');
+    card.setAttribute('tabindex','0');
     const thumb=_el('div','creation-flow-project-thumb');
     if(record.thumbnail){
       const img=document.createElement('img');
@@ -194,7 +213,16 @@ const CreationFlow=(function(){
     card.appendChild(thumb);
     card.appendChild(_el('div','creation-flow-project-name',record.name||'Untitled'));
     card.appendChild(_el('div','creation-flow-project-meta','Edited '+_timeAgo(record.updatedAt)));
-    card.addEventListener('click',function(){ _openProjectRecord(record); });
+    const del=_el('button','creation-flow-project-delete','🗑 Delete');
+    del.type='button';
+    del.setAttribute('aria-label','Delete this project');
+    del.addEventListener('click',function(e){ e.stopPropagation(); _deleteProjectRecord(record); });
+    card.appendChild(del);
+    function open(){ _openProjectRecord(record); }
+    card.addEventListener('click',open);
+    card.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); }
+    });
     return card;
   }
 
