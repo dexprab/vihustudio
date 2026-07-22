@@ -405,7 +405,15 @@ html, body {
    full, un-shared width beneath it. */
 .wb-cloud-world-card {
     cursor: default;
-    padding-right: 18px;
+    /* Room for the one corner-anchored Delete button (30px + its own
+       10px inset from the edge, plus a small buffer) -- the absolute
+       .wb-project-card-controls control never participates in flex
+       layout, so a plain 18px (the value _repoOnlyCard's own,
+       Delete-free-at-the-time-it-was-set reasoning used) left the
+       World Name free to grow right underneath it; a real, measured
+       overlap (nameBox/delBox bounding rects, not just eyeballed) with
+       a genuinely long World Name confirmed this before fixing it. */
+    padding-right: 46px;
     flex-direction: column;
     align-items: stretch;
     gap: 12px;

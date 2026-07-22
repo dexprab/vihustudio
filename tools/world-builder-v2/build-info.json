@@ -1,10 +1,10 @@
 {
-  "version": "3.35.3",
+  "version": "3.35.4",
   "phase": "Platform Hardening",
-  "milestone": "My Cloud Worlds — Real Thumbnails",
-  "slice": "A direct follow-up: \"can we show the thumbnails in the cloud worlds.\" _cloudWorldCard() previously only ever showed a plain glyph icon, never a real authored thumbnail image, unlike the local \"My World Projects\" cards which already resolve thumbnail.png via ProjectModel.getAsset(). Confirmed this was a real oversight, not a constraint -- ProjectSync.push() stores the full raw Project object (including .files) verbatim, so a Cloud World row's data is already thumbnail-resolvable with no translation. Fixed by reusing the identical getAsset/fallback/onerror-degrades-to-glyph pattern the local project card already uses; no CSS change needed since the shared .wb-project-thumb img rule already applies. Since this changes worldBuilderApp.js's own content, the ?v= cache-bust query param on every tag in index.html was bumped from 0095 to 0097 to match, per the established ritual -- skipping it would have reintroduced the exact stale-cache bug the prior sprint fixed. Verified via a new 8-assertion Playwright suite (module-body route mocking, the established pattern for this feature) plus full regression across the existing 13/15/8-assertion suites and both goldenBuild.js suites, all unchanged. Confined to js/worldBuilderApp.js and index.html.",
-  "build": "0097",
+  "milestone": "My Cloud Worlds — Delete Option",
+  "slice": "A direct follow-up: \"give delete option on cloud worlds also.\" _cloudWorldCard() had no way to remove itself -- only local project cards and Personal-repo-only cards had Delete, and this lists a genuinely different resource (a builder_projects cloud backup row). Fixed by adding a Delete button that removes only the cloud backup row (ProjectSync.remove), never any local draft on this device, matching the module's own local-primary/cloud-backup-only discipline; reused the exact corner-anchored Delete visual language the Personal-repo-only card already established. A real, measured layout bug was found while verifying: the absolutely-positioned Delete control doesn't participate in flex layout, so nothing reserved room for it and a long World Name overlapped it by ~22px -- fixed by widening the card's own padding-right from 18px to 46px, re-measured with a clean gap afterward. Verified via a new 8-assertion Playwright suite (button count, the layout measurement, a correct-id remove call, the deleted card disappearing while the other remains) plus full regression across the existing 13/15/8/8-assertion suites and both goldenBuild.js suites, all unchanged. Cache-bust ?v= bumped 0097->0098 since this touches both worldBuilderApp.js and world-builder.css. Confined to js/worldBuilderApp.js, css/world-builder.css, and index.html.",
+  "build": "0098",
   "buildDate": "2026-07-22",
-  "commit": "6ee13bc",
+  "commit": "PENDING",
   "environment": "Release"
 }

@@ -1932,8 +1932,35 @@
         }
         actions.appendChild(btn);
 
+        // Delete — removes only this Cloud Backup row (builder_projects),
+        // never any local draft already on this device. "My Cloud Worlds"
+        // represents the backup itself, so Delete here means "stop
+        // keeping this World backed up in the cloud," not "delete my
+        // local work" -- matching this module's own established
+        // local-primary/cloud-backup-only discipline (js/services/
+        // projectSync.js's own header comment). Reuses the identical
+        // .wb-project-card-controls/-btn absolute-corner pattern
+        // _repoOnlyCard's own Delete button already established, rather
+        // than inventing a second delete-button visual language.
+        const ctrls = document.createElement('span');
+        ctrls.className = 'wb-project-card-controls';
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'wb-project-card-btn';
+        delBtn.title = 'Delete';
+        delBtn.setAttribute('aria-label', 'Delete');
+        delBtn.textContent = '🗑';
+        delBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (!window.confirm('Remove "' + displayName + '" from your cloud backups? Any local copy already on this device is not affected. This cannot be undone.')) return;
+            if (!window.ProjectSync || !window.ProjectSync.remove) return;
+            window.ProjectSync.remove(row.id).then(function () { _renderCloudWorlds(); });
+        });
+        ctrls.appendChild(delBtn);
+
         card.appendChild(topRow);
         card.appendChild(actions);
+        card.appendChild(ctrls);
         return card;
     }
 
