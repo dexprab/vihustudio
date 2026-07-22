@@ -4,6 +4,6 @@
   "task": "A direct follow-up: \"can we show the thumbnails in the cloud worlds.\" tools/world-builder-v2's Cloud World cards previously only ever showed a plain glyph icon, never a real authored thumbnail image, unlike the local \"My World Projects\" cards which already resolve thumbnail.png via ProjectModel.getAsset(). Confirmed this was a real oversight, not a constraint -- ProjectSync.push() stores the full raw Project object (including .files) verbatim, so a Cloud World row's data is already thumbnail-resolvable with no translation. Fixed by reusing the identical getAsset/fallback/onerror-degrades-to-glyph pattern the local project card already uses; no CSS change needed since the shared .wb-project-thumb img rule already applies. Verified via a new 8-assertion Playwright suite (module-body route mocking, the established pattern for this feature) plus full regression across the existing 13/15/8-assertion suites and both goldenBuild.js suites, all unchanged. Confined to tools/world-builder-v2/js/worldBuilderApp.js.",
   "build": "0234",
   "buildDate": "2026-07-22",
-  "commit": "PENDING",
+  "commit": "6ee13bc",
   "environment": "Release"
 }
