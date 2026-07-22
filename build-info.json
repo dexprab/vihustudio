@@ -1,9 +1,9 @@
 {
-  "version": "2.89.5",
-  "sprint": "Gateway Skip Hint Copy — 'Tap to Continue' to 'Tap to Skip'",
-  "task": "Direct copy fix: the Gateway's own tap hint (js/gatewaySequence.js's showTapHint(), shown after TAP_HINT_DELAY_MS) read '✦ tap to continue ✦', but tapping it actually skips the whole cinematic sequence outright (onSkipClick) rather than advancing one step -- 'continue' undersold what the action does. Changed to '✦ tap to skip ✦'. Confirmed the codebase's only other 'Tap to continue' string (js/magicCardUI.js's Creator Ceremony reveal-stage button) is a different feature -- not touched, since it wasn't part of what was being discussed. Verified via node --check and both goldenBuild.js suites (World Builder v1 and v2) unchanged.",
-  "build": "0223",
+  "version": "2.90.0",
+  "sprint": "Creator Signature Sky Challenge — Real Patterns for Every Known Account",
+  "task": "Fixed the sky-recognition challenge to show each known Magic Card's REAL card.pattern (the same pattern shown during the Awakening ceremony reveal, later persisted by claim()) instead of MagicCard.decorativeSkyFor()'s different, safe stand-in -- a real, screenshotted bug ('none of the patterns in the above screenshot is my sky') caused by a decoupling an earlier security sprint introduced. _renderSkyChallenge(panel,opts) now takes opts.cards (every known card from MagicCard.list()) instead of opts.card (one targeted card), pages real accounts in batches of up to 4 with a 'None of these' overflow tile when more than 4 are known, and reports onSuccess(cardId) for whichever real sky was actually tapped. All three call sites (_renderGateWelcome/_renderGatePicker/beginCreatorSignature) updated to match. Verified via 3 new Playwright scenarios (1 card, 3 cards, 6-card overflow) plus a full unmocked end-to-end Gateway Returning Creator run reaching the real Workspace; both goldenBuild.js suites unchanged.",
+  "build": "0224",
   "buildDate": "2026-07-22",
-  "commit": "61ec058",
+  "commit": "pending",
   "environment": "Release"
 }

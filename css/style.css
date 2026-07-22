@@ -6795,6 +6795,28 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 }
 .magic-card-sky-card.fade{ opacity:.32; transform:scale(.94); pointer-events:none; }
 
+/* "None of these" — the overflow-paging escape hatch, shown only when
+   more than 4 real cards are known on one device ("highly improbable...
+   if in case that happens... add one more option which will be none of
+   these"). Deliberately NOT styled like a constellation card — a dashed
+   border and plain text instead of an SVG sky — so it always reads as a
+   functional action, never a sky choice a child might mistake for one of
+   the real options. */
+.magic-card-sky-card--more{
+  border-style:dashed;
+  border-color:rgba(255,255,255,.28);
+  background:rgba(255,255,255,.03);
+  min-height:96px;
+}
+.magic-card-sky-card--more:hover{ border-color:rgba(255,203,69,.5); background:rgba(255,255,255,.07); }
+.magic-card-sky-card-more-label{
+  font-size:13px;
+  color:var(--mc-ink-soft);
+  text-align:center;
+  line-height:1.4;
+  letter-spacing:.01em;
+}
+
 .magic-card-tapgrid-subtitle{
   font-size:12.5px;
   color:var(--mc-ink-soft);

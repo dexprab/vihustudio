@@ -447,13 +447,18 @@ const MagicCardUI=(function(){
     const panel=_el('div','magic-card-gate-panel');
     content.appendChild(panel);
     function showChallenge(){
+      // Companion Canon V2 fix: pass EVERY known card on this device, not
+      // just the one greeted -- a device can legitimately know more than
+      // one Creator, and the recognition test now identifies+verifies
+      // whichever real sky is actually tapped, not only the pre-targeted
+      // `card`.
       _renderSkyChallenge(panel,{
-        card:card,
-        onSuccess:function(){
-          MagicCard.setActive(card.id);
+        cards:MagicCard.list(),
+        onSuccess:function(cardId){
+          MagicCard.setActive(cardId);
           _hide();
           refreshHeaderBadge();
-          onResult(true,card.id);
+          onResult(true,cardId);
         },
         onBack:showChoice
       });
@@ -492,9 +497,11 @@ const MagicCardUI=(function(){
     const btn=_el('button','magic-card-gate-continue','Return to My Adventure');
     btn.type='button';
     btn.addEventListener('click',function(){
+      // Companion Canon V2 fix: show every known card's real sky, not
+      // just this one — see _renderSkyChallenge's own header comment.
       _renderSkyChallenge(panel,{
-        card:card,
-        onSuccess:function(){ proceed(card.id); },
+        cards:cards,
+        onSuccess:function(cardId){ proceed(cardId); },
         onBack:function(){ _renderGateWelcome(panel,cards,proceed,toPicker); }
       });
     });
@@ -532,9 +539,14 @@ const MagicCardUI=(function(){
       tile.appendChild(_buildGateIdentityGlyph(card,56));
       tile.appendChild(_el('span','magic-card-gate-tile-name',card.nickname||'Star Traveler'));
       tile.addEventListener('click',function(){
+        // Companion Canon V2 fix: tapping any one nickname tile opens the
+        // SAME shared challenge showing every known card's real sky —
+        // the tile tap is a soft "I'm one of these people" gesture, not
+        // a hard pre-commitment, since the challenge itself already
+        // identifies+verifies whichever real sky is actually tapped.
         _renderSkyChallenge(panel,{
-          card:card,
-          onSuccess:function(){ proceed(card.id); },
+          cards:cards,
+          onSuccess:function(cardId){ proceed(cardId); },
           onBack:function(){ _renderGatePicker(panel,cards,proceed,toWelcome); }
         });
       });
@@ -1148,10 +1160,39 @@ const MagicCardUI=(function(){
   // Renders the recognition challenge directly into `panel` (replacing
   // whatever was there), mirroring _renderPatternChallenge's own
   // "replace in place, never a second screen" convention.
-  // `opts.card` is the already-known local Magic Card being confirmed.
-  // `opts.onSuccess()` fires once the real sky is correctly tapped;
-  // `opts.onBack()` fires on the manual "← Back" tap OR automatically
-  // once all 3 tries are spent.
+  // `opts.cards` is the FULL array of every real Magic Card known on this
+  // device (MagicCard.list()) -- `opts.onSuccess(cardId)` fires once a
+  // real sky is correctly tapped, reporting WHICH one, since this screen
+  // both identifies and verifies in one step; `opts.onBack()` fires on
+  // the manual "← Back" tap OR automatically once all tries are spent.
+  //
+  // "my username is rockon, none of the patterns in the above screenshot
+  // is my sky" -- a real, confirmed design gap: the Awakening ceremony's
+  // reveal shows the REAL secret pattern (MagicCard.generatePattern(),
+  // later persisted verbatim by claim() as card.pattern), but this
+  // recognition screen used to show MagicCard.decorativeSkyFor(card)'s
+  // DIFFERENT, safe stand-in instead -- a pattern the child never saw and
+  // could never have recognized. Fixed by showing the REAL card.pattern
+  // here, a deliberate, explicit, user-confirmed exception to the
+  // "decorativeSkyFor is the only sky ever shown passively" rule
+  // established for the header badge/Identity Gate -- confirmed directly:
+  // "i would like challenge screen to show real patterns for all the
+  // accounts found logged in, whatever slots are left need to have fake
+  // sky patterns."
+  //
+  // Real accounts page through in batches of up to 4 ("its highly
+  // improbable to have so many new accounts on same browser, if in case
+  // that happens fill all slots with real patterns capping them to max 4
+  // ... add one more option which will be none of these"). The common
+  // case (<=4 known cards) is one, terminal batch: every real card shown
+  // + decoys padding to exactly 4 slots, with the existing tries/
+  // wrong-tap/regenerate mechanic generalized to N real + (4-N) decoys
+  // instead of a fixed 1-real-3-decoy split. The rare overflow case pages
+  // 4 real cards at a time with NO decoys and a "None of these" 5th
+  // option leading to the next batch; only the FINAL batch (the first
+  // one with <=4 REMAINING real cards) ever shows decoys or the tries
+  // mechanic, since only a decoy tap can ever be "wrong" — every
+  // real-card tap, in ANY batch, correctly identifies that exact account.
   //
   // The initial "find your stars" line always shows, on every call site
   // (Continue/tile-tap/beginCreatorSignature alike) — an earlier draft
@@ -1180,12 +1221,16 @@ const MagicCardUI=(function(){
     back.addEventListener('click',function(){ opts.onBack(); });
     panel.appendChild(back);
 
-    const realPattern=MagicCard.decorativeSkyFor(opts.card).pattern;
+    const allCards=opts.cards||[];
+    let batchStart=0;
     let triesLeft=SKY_TOTAL_TRIES;
-    let decoyIdx=_skyPickIndices(3,SKY_DECOY_PATTERNS,[]);
+    let decoyIdx=[];
     let busy=false;
 
-    function paintTries(){
+    function paintTries(hasDecoys){
+      triesRow.style.display=hasDecoys?'':'none';
+      triesLabel.style.display=hasDecoys?'':'none';
+      if(!hasDecoys) return;
       triesRow.innerHTML='';
       for(let i=0;i<SKY_TOTAL_TRIES;i++){
         triesRow.appendChild(_el('span',i<triesLeft?'':'spent'));
@@ -1193,51 +1238,75 @@ const MagicCardUI=(function(){
       triesLabel.textContent=triesLeft+' tr'+(triesLeft===1?'y':'ies')+' left';
     }
 
-    // Every card renders through the IDENTICAL _renderConstellation()
-    // styling regardless of real/decoy — deliberately: if a decoy ever
-    // looked visually different from the real sky, the whole
-    // recognition test would be defeated by "just pick the one that
-    // looks different," with no actual recognition required.
+    // Every real card and every decoy renders through the IDENTICAL
+    // _renderConstellation() styling — deliberately: if a decoy ever
+    // looked visually different from a real sky, the whole recognition
+    // test would be defeated by "just pick the one that looks
+    // different," with no actual recognition required.
     function paintCards(){
+      const realBatch=allCards.slice(batchStart,batchStart+4);
+      const hasMore=(batchStart+4)<allCards.length;
+      const decoyCount=hasMore?0:Math.max(0,4-realBatch.length);
+      if(!hasMore&&decoyIdx.length!==decoyCount){
+        decoyIdx=_skyPickIndices(decoyCount,SKY_DECOY_PATTERNS,[]);
+      }
+      paintTries(!hasMore&&decoyCount>0);
+
       grid.innerHTML='';
-      const cards=_skyShuffle(
-        [{real:true,pattern:realPattern}].concat(
-          decoyIdx.map(function(i){ return {real:false,pattern:SKY_DECOY_PATTERNS[i]}; })
+      const items=_skyShuffle(
+        realBatch.map(function(c){ return {real:true,id:c.id,pattern:c.pattern}; }).concat(
+          hasMore?[]:decoyIdx.map(function(i){ return {real:false,pattern:SKY_DECOY_PATTERNS[i]}; })
         )
       );
-      cards.forEach(function(c){
+      items.forEach(function(item){
         const cardEl=_el('div','magic-card-sky-card');
-        cardEl.appendChild(_renderConstellation(c.pattern,{size:96}));
-        cardEl.addEventListener('click',function(){ onCardTap(c.real,cardEl,grid); });
+        cardEl.appendChild(_renderConstellation(item.pattern,{size:96}));
+        cardEl.addEventListener('click',function(){ onCardTap(item,cardEl,grid); });
         grid.appendChild(cardEl);
       });
+      if(hasMore){
+        const moreEl=_el('div','magic-card-sky-card magic-card-sky-card--more');
+        moreEl.appendChild(_el('span','magic-card-sky-card-more-label','None of these'));
+        moreEl.addEventListener('click',function(){
+          if(busy) return;
+          batchStart+=4;
+          paintCards();
+          gatekeeper.setMood('wave','Let’s look at some more skies.',null);
+          try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyFresh'); }catch(e){}
+          _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
+        });
+        grid.appendChild(moreEl);
+      }
     }
 
-    function onCardTap(isReal,cardEl,gridEl){
+    function onCardTap(item,cardEl,gridEl){
       if(busy) return;
       busy=true;
-      if(isReal){
+      if(item.real){
         Array.prototype.slice.call(gridEl.children).forEach(function(el){
           el.classList.add(el===cardEl?'correct':'fade');
         });
         gatekeeper.setMood('celebrate','✨ There it is! Welcome back. ✨','win');
         try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skySuccess'); }catch(e){}
-        setTimeout(function(){ opts.onSuccess(); },900);
+        setTimeout(function(){ opts.onSuccess(item.id); },900);
         return;
       }
+      // Only reachable in the terminal (decoy-bearing) batch — a
+      // non-terminal (all-real, hasMore) batch never contains a decoy to
+      // tap wrong to begin with.
       cardEl.classList.add('tapped-wrong');
       triesLeft--;
-      paintTries();
+      paintTries(true);
       gatekeeper.setMood('think','Not quite — let’s look again! 🌟','oops');
       try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyWrong'); }catch(e){}
       setTimeout(function(){
         if(triesLeft<=0){ opts.onBack(); return; }
-        // "not just reorder, regenerate the fakes also" — 2 of the 3
-        // mystery skies swap for brand-new shapes; the 3rd carries over
-        // unchanged, and all 4 positions reshuffle either way.
-        const keep=decoyIdx[Math.floor(Math.random()*decoyIdx.length)];
-        const fresh=_skyPickIndices(2,SKY_DECOY_PATTERNS,decoyIdx);
-        decoyIdx=[keep].concat(fresh);
+        // "not just reorder, regenerate the fakes also" — one mystery
+        // sky carries over unchanged, the rest swap for brand-new
+        // shapes; all positions reshuffle either way.
+        const keep=decoyIdx.length?[decoyIdx[Math.floor(Math.random()*decoyIdx.length)]]:[];
+        const fresh=_skyPickIndices(decoyIdx.length-keep.length,SKY_DECOY_PATTERNS,decoyIdx);
+        decoyIdx=keep.concat(fresh);
         paintCards();
         gatekeeper.setMood('wave','Here’s a new look — some mystery friends are new.',null);
         try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyFresh'); }catch(e){}
@@ -1246,7 +1315,6 @@ const MagicCardUI=(function(){
       },1100);
     }
 
-    paintTries();
     paintCards();
     gatekeeper.setMood('curious','One of these skies is yours. Can you find it?',null);
     try{ if(typeof LumoVoice!=='undefined') LumoVoice.play('skyPrompt'); }catch(e){}
