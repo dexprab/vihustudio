@@ -4,6 +4,6 @@
   "task": "Two direct follow-ups on the just-shipped Gate flying/landing voice batch. (1) 'lumo flying after saying shall we begin needs lumo flying audio' -- lumoFlying previously only played once, at Segment 1's own start (Lumo's first approach); Segment 2 (Lumo picking the Story Egg back up and leaping into flight through the gate, right after the greeting's final 'I've been waiting for you. / Shall we begin?' line finishes) had no voice of its own. Reused the same lumoFlying clip -- Lumo is airborne either way -- now played a second time right as playVideoSegmentToEnd() begins, immediately after GREETING_END_PAUSE_MS elapses. (2) 'reduce the time after saying shall we begin to lumo picking up the egg by 300ms' -- GREETING_END_PAUSE_MS reduced from 2000ms to 1700ms. Verified via a real-timing Playwright poll (no reduced-motion, confirmed via matchMedia) across the full ~51s Traveller greeting cycle: the call sequence lands lumoFlying -> lumoLanding -> [5-line greeting] -> lumoFlying, confirming the second beat fires correctly after the greeting's last line and the now-shorter pause. Full regression across the existing sky-challenge Playwright suite and both goldenBuild.js suites (World Builder v1 and v2) passes unchanged.",
   "build": "0221",
   "buildDate": "2026-07-22",
-  "commit": "pending",
+  "commit": "703897d",
   "environment": "Release"
 }
