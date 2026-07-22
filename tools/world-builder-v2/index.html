@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Builder</title>
-    <link rel="stylesheet" href="css/world-builder.css?v=0098">
+    <link rel="stylesheet" href="css/world-builder.css?v=0099">
 </head>
 <body>
     <div id="wb-root">
@@ -56,22 +56,28 @@
                     <p id="wb-my-worlds-empty" class="wb-empty-note">✨ Your worlds will appear here.<br>Create your first world to begin your journey.</p>
                 </section>
 
-                <!-- "My Cloud Worlds" — every Personal-repository World this
-                     signed-in account owns in Supabase's builder_projects
-                     table (js/services/projectSync.js's list()), regardless
-                     of whether a matching local draft already exists on THIS
-                     device. Distinct from the existing "My World Projects"
-                     section above (local drafts, plus its own narrower
-                     orphan-repo-card fallback) — this is the real "browse my
-                     cloud Worlds on a new machine and choose which to sync
-                     down" screen. Rendered by worldBuilderApp.js's
-                     _renderCloudWorlds(). -->
+                <!-- "My Cloud Worlds" — Cloud backups (Supabase's
+                     builder_projects table, js/services/projectSync.js's
+                     list()) that AREN'T already the live backup of a card
+                     shown in "My World Projects" above. A backup that
+                     exactly matches a local Project (by its own Project id)
+                     is folded into that local card's own inline cloud-
+                     status line instead of duplicating it down here — a
+                     real, reported source of confusion ("showing multiple
+                     copies of the same theme"). What remains is either a
+                     🔗 Related Backup (same World identity as a local
+                     Project, but a separate, older save — most often left
+                     behind by a rename/re-save/Duplicate at some point in
+                     that World's own history) or a genuine ☁️ Cloud Backup
+                     orphan (no local match at all — the real "restore this
+                     on a new machine" case). Rendered by
+                     worldBuilderApp.js's _refreshCloudWorlds(). -->
                 <section class="wb-section wb-cloud-worlds">
                     <h2 class="wb-section-title">My Cloud Worlds</h2>
                     <div id="wb-cloud-worlds-list" class="wb-my-worlds-list">
                         <!-- rendered by worldBuilderApp.js -->
                     </div>
-                    <p id="wb-cloud-worlds-empty" class="wb-empty-note">☁️ Nothing backed up to the cloud yet.<br>Every World you work on here is backed up automatically once you're signed in.</p>
+                    <p id="wb-cloud-worlds-empty" class="wb-empty-note">☁️ Nothing else backed up to the cloud.<br>Every World already shown above is backed up automatically once you're signed in — this section only ever shows backups that aren't part of one of those cards.</p>
                 </section>
 
                 <!-- Real, measured browser-storage readout (worldBuilderApp.js's
@@ -380,49 +386,49 @@
     </footer>
 
     <!-- Internal services (reused, unmodified — see docs/WORLD_BUILDER_ARCHITECTURE.md) -->
-    <script src="js/services/constants.js?v=0098"></script>
-    <script src="js/services/engineSchema.js?v=0098"></script>
-    <script src="js/services/experienceSchema.js?v=0098"></script>
-    <script src="js/services/projectLoader.js?v=0098"></script>
-    <script src="js/services/validator.js?v=0098"></script>
-    <script src="js/services/builder.js?v=0098"></script>
+    <script src="js/services/constants.js?v=0099"></script>
+    <script src="js/services/engineSchema.js?v=0099"></script>
+    <script src="js/services/experienceSchema.js?v=0099"></script>
+    <script src="js/services/projectLoader.js?v=0099"></script>
+    <script src="js/services/validator.js?v=0099"></script>
+    <script src="js/services/builder.js?v=0099"></script>
 
     <!-- The native Engine V2 Runtime + Validation (docs/ENGINE_V2_SCENE_MODEL.md
          §5, LOCK V2-04) — load after engineSchema.js (aspect resolution)
          and before worldBuilderApp.js (their only consumer so far). -->
-    <script src="js/services/engineRuntime.js?v=0098"></script>
-    <script src="js/services/engineValidator.js?v=0098"></script>
-    <script src="js/services/engineBuilder.js?v=0098"></script>
+    <script src="js/services/engineRuntime.js?v=0099"></script>
+    <script src="js/services/engineValidator.js?v=0099"></script>
+    <script src="js/services/engineBuilder.js?v=0099"></script>
 
     <!-- VihuStudio Runtime engine (reused, unmodified — Sprint B2.0.1's
          Preview renders through the exact same pipeline Runtime uses,
          never a Builder-owned re-implementation). -->
-    <script src="../../js/themePresets.js?v=0098"></script>
-    <script src="../../js/layerEngine.js?v=0098"></script>
-    <script src="../../renderer/slideRenderer.js?v=0098"></script>
-    <script src="../../js/themeRegistry.js?v=0098"></script>
-    <script src="../../js/themeRepositoryClient.js?v=0098"></script>
+    <script src="../../js/themePresets.js?v=0099"></script>
+    <script src="../../js/layerEngine.js?v=0099"></script>
+    <script src="../../renderer/slideRenderer.js?v=0099"></script>
+    <script src="../../js/themeRegistry.js?v=0099"></script>
+    <script src="../../js/themeRepositoryClient.js?v=0099"></script>
     <!-- World Card Platform v1 — thin Welcome-screen hook into the
          shared js/cardPlatform.js module (mints/lists/revokes Builder
          Cards for a Personal-published World); loaded right after
          themeRepositoryClient.js, whose getClient()/getSession() it
          reuses rather than a second Supabase config/session. -->
-    <script src="../../js/cardPlatform.js?v=0098"></script>
+    <script src="../../js/cardPlatform.js?v=0099"></script>
     <!-- AV-011 — the same reusable "insert emoji" affordance the main
          Studio app already wires onto every Text Element field
          (Sprint 9.6), reused as-is rather than building a second one. -->
-    <script src="../../js/emojiPicker.js?v=0098"></script>
+    <script src="../../js/emojiPicker.js?v=0099"></script>
 
     <!-- Builder application -->
-    <script src="js/templates.js?v=0098"></script>
-    <script src="js/projectStore.js?v=0098"></script>
-    <script src="js/projectModel.js?v=0098"></script>
-    <script src="js/assetSpec.js?v=0098"></script>
-    <script src="js/projectCompiler.js?v=0098"></script>
+    <script src="js/templates.js?v=0099"></script>
+    <script src="js/projectStore.js?v=0099"></script>
+    <script src="js/projectModel.js?v=0099"></script>
+    <script src="js/assetSpec.js?v=0099"></script>
+    <script src="js/projectCompiler.js?v=0099"></script>
     <!-- Builder Project cloud backup — reuses ThemeRepositoryClient's
          already-loaded Supabase client/session, never a second sign-in. -->
-    <script src="js/services/projectSync.js?v=0098"></script>
-    <script src="js/worldBuilderApp.js?v=0098"></script>
-    <script src="js/buildInfo.js?v=0098"></script>
+    <script src="js/services/projectSync.js?v=0099"></script>
+    <script src="js/worldBuilderApp.js?v=0099"></script>
+    <script src="js/buildInfo.js?v=0099"></script>
 </body>
 </html>

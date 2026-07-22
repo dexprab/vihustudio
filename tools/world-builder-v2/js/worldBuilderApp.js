@@ -35,11 +35,12 @@
         _hideAllScreens();
         screenWelcome.classList.remove('wb-hidden');
         _renderIdentityBar();
-        // Mandatory Sign-In gate — renderMyWorlds()/_renderCloudWorlds() no
-        // longer run unconditionally here; _checkIdentityGate() only calls
-        // them once a real, signed-in identity is confirmed, and shows the
-        // gate itself in every other case (not configured, not signed in,
-        // still an anonymous session, or a check that failed).
+        // Mandatory Sign-In gate — renderMyWorlds() (which itself refreshes
+        // "My Cloud Worlds") no longer runs unconditionally here;
+        // _checkIdentityGate() only calls it once a real, signed-in
+        // identity is confirmed, and shows the gate itself in every other
+        // case (not configured, not signed in, still an anonymous session,
+        // or a check that failed).
         _checkIdentityGate();
     }
 
@@ -168,6 +169,13 @@
         // today's real "growing"-only status) whenever the Repository is
         // unreachable or this World was never actually published there.
         card.dataset.worldId = window.ProjectModel.manifest(project).id || '';
+        // Separate from data-world-id (the World's own manifest identity)
+        // — this is the Project's own storage id, what a Cloud backup
+        // row's own `id` field matches exactly when it's the live backup
+        // of THIS local draft. _annotateCloudLink (see "My Cloud Worlds"
+        // below) looks this up to enrich the card in place rather than
+        // rendering a second, redundant card for the same Project.
+        card.dataset.projectId = project.id || '';
 
         const thumb = document.createElement('span');
         thumb.className = 'wb-project-thumb';
@@ -310,6 +318,12 @@
             myWorldsList.appendChild(_projectCard(p));
         });
         _annotateProjectBadges(projects);
+        // "My Cloud Worlds" reads from myWorldsList's own already-
+        // rendered cards (data-project-id) to fold a linked backup's
+        // status inline instead of a second card — always refreshed
+        // together with this function's own synchronous card render,
+        // so the two never drift out of sync with each other.
+        _refreshCloudWorlds();
     }
 
     // A small, self-contained modal for read-only Repository-Theme info
@@ -1665,8 +1679,11 @@
             if (identity.configured && identity.signedIn) {
                 if (signinGate) signinGate.classList.add('wb-hidden');
                 if (welcomeMain) welcomeMain.classList.remove('wb-hidden');
+                // renderMyWorlds() now refreshes "My Cloud Worlds" itself
+                // (see its own trailing _refreshCloudWorlds() call) --
+                // a separate call here would just re-fetch the same data
+                // a second time.
                 renderMyWorlds();
-                _renderCloudWorlds();
                 return;
             }
             _renderSigninGateBody(identity);
@@ -1831,27 +1848,83 @@
     // personal+backupProject branch already proved safe (a plain deep
     // copy of the real Project JSON — never a lossy re-synthesis from a
     // compiled Theme).
+    //
+    // "i want you to figure out how to easily interpret them, showing
+    // multiple copies of the same theme is confusing" — a real, direct
+    // user report. Every Cloud backup row used to render as its own
+    // top-level card regardless of what it actually was, so a World
+    // that had simply been saved/renamed/re-authored since its cloud
+    // backup was last pushed would show up TWICE — once as the current
+    // local draft in "My World Projects," once as an unrelated-looking
+    // "Sync to This Device" card down here — with no visible link
+    // between the two, and an action verb ("Sync"/"Update Available")
+    // that implied the two were the same thing when they'd actually
+    // already diverged into two separate Project records.
+    //
+    // Every Cloud row is now classified against the local Projects
+    // already on this device, using the SAME World-id matching
+    // precedent _annotateProjectBadges already established for
+    // personalOnly rows above (rowManifest.id === entry.theme_id) —
+    // matching by the World's own identity, not its Project storage id
+    // or its (freely user-editable, unreliable) display name:
+    //
+    //   1. LINKED — row.id equals an existing local Project's own id.
+    //      This is the same Project record, just also backed up — never
+    //      a second card; folded into that local card's own inline
+    //      cloud-status line instead (_annotateCloudLink below).
+    //   2. RELATED — no Project-id match, but the row's own
+    //      manifest.id (World identity) matches a local Project's World
+    //      id. A genuinely separate save (a different Project id) of a
+    //      World that's ALSO still open locally — the exact
+    //      "Story-Forest Adventure" vs. today's "My Forest Adventure"
+    //      case: same World, an older save under a different id, most
+    //      often left behind by a rename/re-save/Duplicate at some
+    //      point in this World's own history. Shown explicitly labelled
+    //      as a related, older backup — never presented as if it were
+    //      an independent new World — with an action verb ("Open as a
+    //      Separate Copy") that can never be read as "update my current
+    //      draft."
+    //   3. ORPHAN — no match of any kind. The genuine "restore this on
+    //      a new machine" case, shown plainly with real Last Edited +
+    //      a lightweight content hint (scene count) so a decision to
+    //      open it can be made from real information, not a guess.
     function _cloudWorldName(row) {
         const manifest = row.data && row.data.files && row.data.files['manifest.json'];
         return (row.data && row.data.name) || (manifest && manifest.name) || row.id;
     }
 
-    function _cloudWorldCard(row) {
-        const localProject = window.ProjectStore ? window.ProjectStore.get(row.id) : null;
+    function _cloudBackupWorldId(row) {
+        const manifest = row.data && row.data.files && row.data.files['manifest.json'];
+        return (manifest && manifest.id) || null;
+    }
+
+    function _cloudBackupSceneCount(row) {
+        const files = row.data && row.data.files;
+        if (!files) return 0;
+        return Object.keys(files).filter(function (k) { return k.indexOf('scenes/') === 0; }).length;
+    }
+
+    function _cloudBackupDetailText(row) {
+        const n = _cloudBackupSceneCount(row);
+        const scenesPart = n ? (n + ' scene' + (n === 1 ? '' : 's')) : 'no scenes yet';
+        return 'Last saved ' + _timeAgo(row.updated_at) + ' · ' + scenesPart;
+    }
+
+    // Shared thumb/name/meta-line construction — the one piece every
+    // card type below needs identically; each caller appends its own
+    // status pill, note, and actions on top.
+    function _cloudCardBase(row, extraCardClass) {
         const displayName = _cloudWorldName(row);
         const card = document.createElement('div');
-        card.className = 'wb-project-card wb-cloud-world-card';
+        card.className = 'wb-project-card wb-cloud-world-card' + (extraCardClass ? ' ' + extraCardClass : '');
 
-        // A real, reported layout bug: this card's own action label
-        // ("Sync to This Device" / "Update Available — Load It") is
-        // real text, not a single glyph like the My World Projects
-        // card's corner-anchored Rename/Duplicate/Delete controls — it
-        // can't share one narrow inline row with a long World Name
-        // without crushing the name down to 1-2 characters (exactly
-        // what a real screenshot showed). Fixed by stacking the action
-        // below the name/meta row instead of squeezing both onto one
-        // line — .wb-cloud-world-top holds the thumb+info, the action
-        // button sits on its own full-width row beneath it.
+        // A real, reported layout bug: this card's own action label is
+        // real text, not a single glyph like My World Projects' own
+        // corner-anchored Rename/Duplicate/Delete controls — it can't
+        // share one narrow inline row with a long World Name without
+        // crushing the name down to 1-2 characters (exactly what a
+        // real screenshot showed). Fixed by stacking the action below
+        // the name/meta row instead of squeezing both onto one line.
         const topRow = document.createElement('div');
         topRow.className = 'wb-cloud-world-top';
 
@@ -1863,9 +1936,7 @@
         // local World's card — row.data is the exact same raw Project
         // shape ProjectStore persists (push() stores `data: project`
         // verbatim), so a real authored thumbnail.png resolves here
-        // identically to how it resolves for a local card, rather than
-        // this card always showing a generic icon glyph regardless of
-        // whether a real thumbnail was ever uploaded.
+        // identically to how it resolves for a local card.
         const cloudThumbURL = row.data ? window.ProjectModel.getAsset(row.data, 'thumbnail.png') : null;
         if (cloudThumbURL) {
             const img = document.createElement('img');
@@ -1884,64 +1955,24 @@
         name.textContent = displayName;
         const metaLine = document.createElement('span');
         metaLine.className = 'wb-project-meta-line';
-        const status = document.createElement('span');
-        status.className = 'wb-project-status';
-        status.textContent = '☁️ Cloud · synced ' + _timeAgo(row.updated_at);
-        metaLine.appendChild(status);
         info.appendChild(name);
         info.appendChild(metaLine);
         topRow.appendChild(thumb);
         topRow.appendChild(info);
+        card.appendChild(topRow);
 
-        const actions = document.createElement('span');
-        actions.className = 'wb-cloud-world-actions';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'wb-cloud-world-action-btn';
+        return { card: card, metaLine: metaLine, displayName: displayName };
+    }
 
-        function restoreFromCloud() {
-            const restored = JSON.parse(JSON.stringify(row.data));
-            restored.cloudSyncedAt = row.updated_at;
-            const saveResult = window.ProjectStore.save(restored);
-            if (!saveResult.ok) {
-                window.alert('Couldn\'t sync "' + displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
-                return;
-            }
-            openWorkspace(restored);
-        }
-
-        if (!localProject) {
-            // The real "new machine" case — nothing local to compare
-            // against, so this is an unconditional pull.
-            btn.textContent = 'Sync to This Device';
-            btn.addEventListener('click', restoreFromCloud);
-        } else {
-            const localSyncedAt = localProject.cloudSyncedAt || null;
-            const cloudIsNewer = !localSyncedAt || new Date(row.updated_at) > new Date(localSyncedAt);
-            if (cloudIsNewer) {
-                btn.textContent = 'Update Available — Load It';
-                btn.className += ' wb-cloud-world-action-secondary';
-                btn.addEventListener('click', function () {
-                    if (!window.confirm('Load the newer cloud version of "' + displayName + '"? Your current local copy on this device will be replaced.')) return;
-                    restoreFromCloud();
-                });
-            } else {
-                btn.textContent = 'Up to Date';
-                btn.disabled = true;
-            }
-        }
-        actions.appendChild(btn);
-
-        // Delete — removes only this Cloud Backup row (builder_projects),
-        // never any local draft already on this device. "My Cloud Worlds"
-        // represents the backup itself, so Delete here means "stop
-        // keeping this World backed up in the cloud," not "delete my
-        // local work" -- matching this module's own established
-        // local-primary/cloud-backup-only discipline (js/services/
-        // projectSync.js's own header comment). Reuses the identical
-        // .wb-project-card-controls/-btn absolute-corner pattern
-        // _repoOnlyCard's own Delete button already established, rather
-        // than inventing a second delete-button visual language.
+    function _cloudDeleteControl(row, displayName) {
+        // Removes only this Cloud Backup row (builder_projects), never
+        // any local draft already on this device — "stop keeping this
+        // World backed up in the cloud," not "delete my local work,"
+        // matching this module's own established local-primary/cloud-
+        // backup-only discipline (js/services/projectSync.js's own
+        // header comment). Reuses the identical .wb-project-card-
+        // controls/-btn absolute-corner pattern _repoOnlyCard's own
+        // Delete button already established.
         const ctrls = document.createElement('span');
         ctrls.className = 'wb-project-card-controls';
         const delBtn = document.createElement('button');
@@ -1952,35 +1983,177 @@
         delBtn.textContent = '🗑';
         delBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            if (!window.confirm('Remove "' + displayName + '" from your cloud backups? Any local copy already on this device is not affected. This cannot be undone.')) return;
+            if (!window.confirm('Remove this backup of "' + displayName + '" from the cloud? Any local copy already on this device is not affected. This cannot be undone.')) return;
             if (!window.ProjectSync || !window.ProjectSync.remove) return;
-            window.ProjectSync.remove(row.id).then(function () { _renderCloudWorlds(); });
+            window.ProjectSync.remove(row.id).then(function () { _refreshCloudWorlds(); });
         });
         ctrls.appendChild(delBtn);
-
-        card.appendChild(topRow);
-        card.appendChild(actions);
-        card.appendChild(ctrls);
-        return card;
+        return ctrls;
     }
 
-    function _renderCloudWorlds() {
+    // Case 2 — RELATED: same World identity as an existing local
+    // Project, different Project id. Explicitly labelled as a separate,
+    // older save rather than an independent new World; opening it
+    // reuses _duplicateProject (the exact fresh-Project-id + fresh-
+    // World-id + "(Copy)" mechanism Duplicate already established) so
+    // it can never collide with — or be confused for — the local
+    // Project it's related to.
+    function _relatedBackupCard(row, localProject) {
+        const base = _cloudCardBase(row, 'wb-cloud-world-card-related');
+        const status = document.createElement('span');
+        status.className = 'wb-project-status wb-project-status-related';
+        status.textContent = '🔗 Related Backup';
+        const detail = document.createElement('span');
+        detail.className = 'wb-project-badge muted';
+        detail.textContent = _cloudBackupDetailText(row);
+        base.metaLine.appendChild(status);
+        base.metaLine.appendChild(detail);
+
+        const note = document.createElement('p');
+        note.className = 'wb-cloud-world-note';
+        note.textContent = 'A separate, older save of "' + localProject.name + '" (already in My World Projects above). Opening it makes a brand-new, separate copy — your current draft is not touched.';
+        base.card.appendChild(note);
+
+        const actions = document.createElement('span');
+        actions.className = 'wb-cloud-world-actions';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wb-cloud-world-action-btn wb-cloud-world-action-secondary';
+        btn.textContent = '📂 Open as a Separate Copy';
+        btn.addEventListener('click', function () {
+            const result = _duplicateProject(row.data);
+            if (!result.ok) { _reportDuplicateFailure(base.displayName); return; }
+            openWorkspace(result.project);
+        });
+        actions.appendChild(btn);
+        base.card.appendChild(actions);
+        base.card.appendChild(_cloudDeleteControl(row, base.displayName));
+        return base.card;
+    }
+
+    // Case 3 — ORPHAN: no match of any kind, the genuine "restore this
+    // on a new machine" case. `restoreFromCloud` saves under the row's
+    // own existing id (safe here specifically because this branch has
+    // already confirmed nothing local shares that Project id or World
+    // id) and opens it directly.
+    function _orphanBackupCard(row) {
+        const base = _cloudCardBase(row, 'wb-cloud-world-card-orphan');
+        const status = document.createElement('span');
+        status.className = 'wb-project-status';
+        status.textContent = '☁️ Cloud Backup';
+        const detail = document.createElement('span');
+        detail.className = 'wb-project-badge muted';
+        detail.textContent = _cloudBackupDetailText(row);
+        base.metaLine.appendChild(status);
+        base.metaLine.appendChild(detail);
+
+        const actions = document.createElement('span');
+        actions.className = 'wb-cloud-world-actions';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wb-cloud-world-action-btn';
+        btn.textContent = 'Sync to This Device';
+        btn.addEventListener('click', function () {
+            const restored = JSON.parse(JSON.stringify(row.data));
+            restored.cloudSyncedAt = row.updated_at;
+            const saveResult = window.ProjectStore.save(restored);
+            if (!saveResult.ok) {
+                window.alert('Couldn\'t sync "' + base.displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                return;
+            }
+            openWorkspace(restored);
+        });
+        actions.appendChild(btn);
+        base.card.appendChild(actions);
+        base.card.appendChild(_cloudDeleteControl(row, base.displayName));
+        return base.card;
+    }
+
+    // Case 1 — LINKED: this Cloud row IS the live backup of an already-
+    // rendered local card (found by its own `data-project-id`) — an
+    // inline status line/action appended into that card's own
+    // .wb-project-info instead of a second, redundant top-level card.
+    function _annotateCloudLink(project, row) {
+        if (!myWorldsList) return;
+        const card = myWorldsList.querySelector('[data-project-id="' + project.id.replace(/"/g, '') + '"]');
+        const info = card && card.querySelector('.wb-project-info');
+        if (!info) return;
+        const existing = info.querySelector('.wb-cloud-link-line');
+        if (existing) existing.remove();
+
+        const localSyncedAt = project.cloudSyncedAt || null;
+        const cloudIsNewer = !localSyncedAt || new Date(row.updated_at) > new Date(localSyncedAt);
+
+        const line = document.createElement('span');
+        line.className = 'wb-cloud-link-line';
+        if (cloudIsNewer) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-cloud-link-btn';
+            btn.textContent = '☁️ Newer backup available — Load It';
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!window.confirm('Load the newer cloud version of "' + project.name + '"? Your current local copy on this device will be replaced.')) return;
+                const restored = JSON.parse(JSON.stringify(row.data));
+                restored.cloudSyncedAt = row.updated_at;
+                const saveResult = window.ProjectStore.save(restored);
+                if (!saveResult.ok) {
+                    window.alert('Couldn\'t load the cloud version of "' + project.name + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
+                    return;
+                }
+                renderMyWorlds();
+            });
+            line.appendChild(btn);
+        } else {
+            line.classList.add('wb-cloud-link-line-quiet');
+            line.textContent = '☁️ Backed up ' + _timeAgo(row.updated_at);
+        }
+        info.appendChild(line);
+    }
+
+    function _refreshCloudWorlds() {
         if (!cloudWorldsList) return;
         cloudWorldsList.innerHTML = '';
         if (!window.ProjectSync || !window.ProjectSync.list) {
             if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
             return;
         }
+        const localProjects = window.ProjectStore ? window.ProjectStore.list() : [];
+        const localById = {};
+        const localByWorldId = {};
+        localProjects.forEach(function (p) {
+            localById[p.id] = p;
+            const wid = window.ProjectModel.manifest(p).id;
+            if (wid) localByWorldId[wid] = p;
+        });
+
         window.ProjectSync.list().then(function (rows) {
             cloudWorldsList.innerHTML = '';
-            if (!rows.length) {
+            const related = [];
+            const orphans = [];
+            rows.forEach(function (row) {
+                const linkedProject = localById[row.id];
+                if (linkedProject) { _annotateCloudLink(linkedProject, row); return; }
+                const wid = _cloudBackupWorldId(row);
+                const relatedProject = wid ? localByWorldId[wid] : null;
+                if (relatedProject) { related.push({ row: row, project: relatedProject }); return; }
+                orphans.push(row);
+            });
+
+            if (!related.length && !orphans.length) {
                 if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
                 return;
             }
             if (cloudWorldsEmpty) cloudWorldsEmpty.classList.add('wb-hidden');
-            rows.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
-            rows.forEach(function (row) {
-                cloudWorldsList.appendChild(_cloudWorldCard(row));
+
+            related.sort(function (a, b) { return new Date(b.row.updated_at) - new Date(a.row.updated_at); });
+            orphans.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+
+            related.forEach(function (entry) {
+                cloudWorldsList.appendChild(_relatedBackupCard(entry.row, entry.project));
+            });
+            orphans.forEach(function (row) {
+                cloudWorldsList.appendChild(_orphanBackupCard(row));
             });
         }).catch(function () {
             if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');

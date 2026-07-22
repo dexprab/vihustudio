@@ -448,6 +448,52 @@ html, body {
     color: var(--wb-navy);
 }
 
+/* "My Cloud Worlds" — Related vs. Orphan backup cards. A Related card
+   (same World identity as an existing local Project, different Project
+   id) gets its own accent — a left rail in --wb-sky, the one palette
+   colour not already claimed by Growing/Personal/Official/Available —
+   so it visually reads as "connected to something else on this screen"
+   rather than as an unrelated new World sitting beside it. */
+.wb-cloud-world-card-related {
+    border-left: 4px solid var(--wb-sky);
+}
+.wb-project-status-related {
+    color: #2B5D7A;
+    background: var(--wb-sky);
+}
+.wb-cloud-world-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--wb-text-secondary);
+}
+
+/* The inline cloud-backup status line folded into an already-rendered
+   My World Projects card (_annotateCloudLink) — appended into that
+   card's own .wb-project-info, right after the existing name/meta-line,
+   so a Project with a live cloud backup never gets a second, redundant
+   card down in "My Cloud Worlds" for the exact same Project id. */
+.wb-cloud-link-line {
+    display: block;
+    margin-top: 2px;
+}
+.wb-cloud-link-line-quiet {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+.wb-cloud-link-btn {
+    width: auto;
+    height: auto;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--wb-sky);
+    background: var(--wb-sky);
+    color: #2B5D7A;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
 /* Real Identity Foundation — the Sign In modal's form, mounted into the
    same standalone .wb-repo-info-modal used by the read-only Repository-
    Theme info panel; reuses the existing .wb-field-group/-label/-input
