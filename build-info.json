@@ -1,9 +1,9 @@
 {
-  "version": "2.97.1",
-  "sprint": "My Cloud Worlds — Card Layout Fix",
-  "task": "A real, user-supplied screenshot of the just-shipped My Cloud Worlds feature showed every card's World Name crushed to 1-2 characters, overlapping the action button. Two compounding CSS bugs fixed: (1) .wb-cloud-world-card inherited the 112px right padding .wb-project-card reserves for My World Projects' own absolutely-positioned Rename/Duplicate/Delete controls -- a Cloud World card has none, so that padding sat empty, wasting space; fixed with the same padding-right:18px override .wb-project-card-repo-only already uses. (2) The card's own action is a real text label, not a single glyph, so it can't share one inline row with a long name without crushing it; fixed by restructuring _cloudWorldCard() into a two-row stack (thumb+info on top, the action button full-width beneath). Verified via direct Playwright measurement: before, the name rendered at 64.6px wide (crushed); after, 224px wide (full name, no crushing), zero overlap with the button. Both goldenBuild.js suites and all three existing verification suites for this feature pass unchanged. Confined to tools/world-builder-v2/css/world-builder.css and tools/world-builder-v2/js/worldBuilderApp.js.",
-  "build": "0232",
+  "version": "2.97.2",
+  "sprint": "World Builder — Cache-Bust Query Params",
+  "task": "The just-shipped card-layout fix was correctly deployed, but the user's browser kept showing the old, broken layout after refreshing -- traced to tools/world-builder-v2/index.html never having adopted the same ?v=NNNN cache-busting convention the root Studio index.html has carried on its stylesheet links since an earlier, separate fix. Fixed by appending ?v=0095 to the stylesheet link and all 24 <script src> tags in tools/world-builder-v2/index.html; the going-forward convention is to bump this one number on every future World Builder v2 ship that touches CSS/JS. A real Playwright-harness gotcha was found and fixed while re-verifying (not an app bug): the existing test suites' page.route() mocks for themeRepositoryClient.js/projectSync.js stopped matching once the real URL gained a query string, since Playwright's glob pattern must match the full URL -- widened with a trailing wildcard, re-verified passing. Both goldenBuild.js suites pass unchanged. Confined to tools/world-builder-v2/index.html.",
+  "build": "0233",
   "buildDate": "2026-07-22",
-  "commit": "21b9781",
+  "commit": "PENDING",
   "environment": "Release"
 }
