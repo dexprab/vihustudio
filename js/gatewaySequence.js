@@ -812,8 +812,36 @@
               // exact moment identity is actually relinquished, closes
               // that gap the same way the new-session check already
               // does for a fresh tab.
+              //
+              // "start as traveller, become creator, reload the page on
+              // the challenge screen, go back and choose to move forward
+              // as a traveller" — two more real gaps found on that exact
+              // sequence, closed here at the same decline point: (1)
+              // clearing CreatorProjectStore's own catalog wasn't enough
+              // on its own, because the just-abandoned Creator's actual
+              // LIVE session (ProjectManager's separate vihustudio-session
+              // key — the in-progress project itself, not the gallery
+              // listing of it) was left completely untouched; the very
+              // next autosave would silently re-populate "My Projects"
+              // with that same stale project. Discarding it here means
+              // this newly-declared Traveller genuinely starts blank,
+              // never re-inheriting an identity they just said "not me"
+              // to. (2) the device-wide awakeningOffered flag (set the
+              // instant the FIRST ceremony closed, regardless of outcome)
+              // permanently blocked shouldOfferAwakening() for every
+              // later Traveller session too, even a genuinely fresh one
+              // declared right here — resetting it lets this Traveller's
+              // own next Publish get a real shot at the ceremony, exactly
+              // like js/magicCard.js's shouldOfferAwakening() doc comment
+              // now explains. Deliberately NOT wiped here: the actual
+              // Magic Card record itself (vihu-magic-cards) — on a shared
+              // device this may be a sibling's own real, recoverable
+              // card, and destroying it just because a different person
+              // declined to be recognized as it would be real data loss.
               try{ if(typeof MagicCard!=='undefined') MagicCard.setActive(null); }catch(e){}
+              try{ if(typeof MagicCard!=='undefined') MagicCard.setFlags({awakeningOffered:false}); }catch(e){}
               try{ if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.clearAll) CreatorProjectStore.clearAll(); }catch(e){}
+              try{ if(typeof ProjectManager!=='undefined' && ProjectManager.discardSession) ProjectManager.discardSession(); }catch(e){}
               if(gateEls&&gateEls.wrap&&gateEls.wrap.parentNode) gateEls.wrap.parentNode.removeChild(gateEls.wrap);
               try{ if(video) video.pause(); }catch(e){}
               gateVideoEl=preloadFinalGateVideo(GATE_FINAL_VIDEO_SRC,GATE_FINAL_POSTER_SRC);

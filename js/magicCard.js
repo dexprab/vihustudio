@@ -635,15 +635,25 @@ const MagicCard=(function(){
     };
   }
 
-  // Whether the first-Publish Awakening ceremony should run right now —
-  // true exactly once per browser: no claimed card exists yet, and the
-  // ceremony has never been offered before (whether the earlier offer
-  // was claimed, deferred, or declined — offering it is a one-time
-  // event per this design's own "never nagged again automatically"
-  // decision; a permanent, quiet "claim later" affordance lives
-  // elsewhere for a child who said not-yet).
+  // Whether the first-Publish Awakening ceremony should run right now.
+  // "start as traveller, become creator, reload the page on the
+  // challenge screen, go back and choose to move forward as a
+  // traveller" -- checking list().length===0 here meant that once ANY
+  // card had ever been claimed on this device, the ceremony could never
+  // be offered again to ANY later Traveller session on it, even one
+  // that just explicitly declared "I'm not that recognized Creator,
+  // treat me as fresh" (js/gatewaySequence.js's own "Continue as a
+  // Traveller" decline, which already clears the active-card pointer
+  // for exactly this reason). The real question is "is nobody currently
+  // recognized," not "has this device ever seen a card" -- a shared
+  // device may legitimately carry a sibling's own card in list() while
+  // THIS session is a genuine, unrecognized Traveller. getActive() is
+  // that per-session signal; list().length is not. awakeningOffered
+  // still gates the "never nagged again automatically" rule -- once
+  // set, it's reset only at the exact same decline point that clears
+  // the active pointer (see gatewaySequence.js), never here.
   function shouldOfferAwakening(){
-    return list().length===0 && !_readFlags().awakeningOffered;
+    return !getActive() && !_readFlags().awakeningOffered;
   }
   function markAwakeningOffered(){ setFlags({awakeningOffered:true}); }
   function markEverPublished(){ setFlags({hasEverPublished:true}); }
