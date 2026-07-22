@@ -5,6 +5,6 @@
   "slice": "A real, reported bug: \"a world which is published despite the warning save failed. if we delete local copy of this the cloud sync file also gets deleted on its own.\" Root cause: Build/Publish reads the live, in-memory Project directly, bypassing local save entirely, so a Theme can be successfully Published while this exact Project's local save is actively failing -- meaning the Published Theme/Cloud Backup can genuinely hold content the local draft never saved. Local Delete's own cascade (a deliberate earlier feature, \"i deleted it twice but it keeps coming back\") destroyed both unconditionally the instant the local draft was removed. Fixed by removing the cascade entirely: local Delete now removes only the local draft; the cascade is no longer needed since the repo-only-card and Cloud-Worlds-classification mechanisms already surface a leftover Published Theme/Cloud Backup as their own clearly-labelled, separately-deletable cards, never a confusing zombie duplicate. Verified via a new 11-assertion Playwright suite reproducing the exact scenario, plus full regression across the existing sign-in/versioned-sync/thumbnail/delete/classification suites and both goldenBuild.js suites, all unchanged. No CSS/HTML change. Confined to js/worldBuilderApp.js.",
   "build": "0100",
   "buildDate": "2026-07-22",
-  "commit": "PENDING",
+  "commit": "e1d408e",
   "environment": "Release"
 }
