@@ -124,37 +124,50 @@
         );
     }
 
-    // "i deleted it twice but it keeps coming back" — a real, confirmed
-    // bug: Delete used to remove only this Project's local draft
-    // (ProjectStore), deliberately never the Repository row itself, so
-    // an Official theme could never be nuked by accident. That same
-    // local-only rule applied just as much to a Theme the author owns
-    // in their OWN Personal Repository — but there, it meant Delete
-    // could never actually finish: the very next "My World Projects"
-    // render (_annotateProjectBadges) re-discovers the still-published
-    // Personal row + Cloud Backup and redraws the identical card. Fixed
-    // by extending Delete, for a Personal-owned Theme, to also remove
-    // the Personal Repository row/assets and the Cloud Backup — never
-    // 'official', by construction (deleteTheme always targets the
-    // 'personal' repository only, so an Official-badged local draft's
-    // Delete still only ever removes its local copy, unchanged). The
-    // local draft disappears immediately either way; the remote cleanup
-    // is best-effort and silently ignored on failure (no Repository
-    // configured, network error, nothing was ever published there) —
-    // one more renderMyWorlds() once it settles reflects the final,
-    // real state rather than leaving a stale card on screen.
-    function _deleteProjectEverywhere(project) {
-        const worldId = window.ProjectModel.manifest(project).id;
+    // "i deleted it twice but it keeps coming back" (the ORIGINAL report
+    // this function was built to fix) — Delete used to remove only this
+    // Project's local draft (ProjectStore), so a Theme the author owned
+    // in their OWN Personal Repository kept resurrecting the identical
+    // card, since the very next "My World Projects" render
+    // (_annotateProjectBadges) re-discovered the still-published
+    // Personal row + Cloud Backup and redrew it. The original fix made
+    // local Delete ALSO cascade-remove the Personal Repository row and
+    // the Cloud Backup automatically.
+    //
+    // "a world which is published despite the warning save failed. if
+    // we delete local copy of this the cloud sync file also gets
+    // deleted on its own" — a second, real, confirmed bug that
+    // cascade-delete itself introduced: Build/Publish reads the live,
+    // in-memory currentProject directly (never localStorage), so a
+    // Theme can be successfully Published even while this exact
+    // Project's local save is actively failing (the real "Save Failed —
+    // try a smaller image" state, AV-009) — meaning the Published Theme
+    // can genuinely hold content the local draft never actually saved.
+    // Cascade-deleting that Published Theme + its Cloud Backup the
+    // instant the (stale/broken) local draft is deleted destroyed real,
+    // working, already-Published content with no way to recover it —
+    // exactly the same class of silent data loss the Versioned Cloud
+    // Sync sprint (see "Story-Forest Adventure") already fixed once for
+    // a different cause.
+    //
+    // The cascade is no longer needed to solve the original "keeps
+    // coming back" complaint either: "My World Projects Lists Personal/
+    // Official/Growing" (_annotateProjectBadges' own personalOnly/
+    // officialOnly) and this session's own Cloud Worlds classification
+    // redesign (_relatedBackupCard/_orphanBackupCard) both already
+    // render a leftover Published Theme or Cloud Backup as its own
+    // clearly-labelled, non-duplicate card — never the confusing "same
+    // deleted thing reappears" experience the cascade was built to
+    // avoid. So Delete on a local draft now removes ONLY the local
+    // draft, unconditionally, and never touches the Repository or the
+    // Cloud Backup — those stay exactly as published/backed-up until
+    // the author deliberately removes them from their own dedicated
+    // Delete button (the repo-only card's, or a Cloud World card's),
+    // which already existed independently before this fix and needed
+    // no change.
+    function _deleteLocalDraft(project) {
         window.ProjectStore.remove(project.id);
         renderMyWorlds();
-        const cleanups = [];
-        if (window.ThemeRepositoryClient && window.ThemeRepositoryClient.deleteTheme && worldId) {
-            cleanups.push(window.ThemeRepositoryClient.deleteTheme('personal', worldId).catch(function () {}));
-        }
-        if (window.ProjectSync && window.ProjectSync.remove) {
-            cleanups.push(window.ProjectSync.remove(project.id).catch(function () {}));
-        }
-        if (cleanups.length) Promise.all(cleanups).then(function () { renderMyWorlds(); });
     }
 
     function _projectCard(project) {
@@ -253,8 +266,8 @@
             }],
             ['🗑', 'Delete', function (e) {
                 e.stopPropagation();
-                if (!window.confirm('Delete "' + project.name + '"? If it\'s published to your Personal Repository, that copy and its online backup are removed too. This cannot be undone.')) return;
-                _deleteProjectEverywhere(project);
+                if (!window.confirm('Delete "' + project.name + '" from this device? If it\'s published to your Personal Repository, that copy stays published — remove it separately from its own card if you want it gone too. This cannot be undone.')) return;
+                _deleteLocalDraft(project);
             }],
             // World Card Platform v1 — card generation lives on THIS
             // screen, not the Publish screen (the approved design's own
