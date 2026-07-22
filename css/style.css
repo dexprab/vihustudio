@@ -8105,6 +8105,44 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   100%{ opacity:1; transform:scale(2.4); }
 }
 
+/* The ONE required "Tap to Begin" gate — see js/gatewaySequence.js's
+   showBeginGate() for the real bug this fixes (ambience/Lumo voice
+   silently blocked by the browser's own autoplay-gesture policy — a
+   spinner-based preload gate alone, .preload-gate above, never satisfies
+   it, since no real gesture occurs during a passive wait). Sits above
+   .gateway-gates-wrap (z-index:0) within the same .gateway-panel
+   stacking context established by .gateway-overlay above. Shown
+   regardless of prefers-reduced-motion (only its own CSS transition/
+   pulse is disabled there) — this is a mechanically necessary step, not
+   a visual flourish to skip. */
+.gateway-begin-gate{
+  position:absolute;
+  inset:0;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(10,7,22,.55);
+  cursor:pointer;
+  opacity:0;
+  transition:opacity .5s ease-out;
+  outline:none;
+}
+.gateway-begin-gate.gateway-begin-gate-in{ opacity:1; }
+.gateway-begin-gate-inner{
+  font-family:'Cinzel',"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  font-size:clamp(20px,3vw,30px);
+  font-weight:600;
+  letter-spacing:.06em;
+  color:var(--gw-gold);
+  text-shadow:0 0 30px rgba(255,203,69,.55), 0 2px 16px rgba(0,0,0,.7);
+  animation:gateway-hint-pulse 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion:reduce){
+  .gateway-begin-gate{ transition:none; }
+  .gateway-begin-gate-inner{ animation:none; }
+}
+
 .gateway-tap-hint{
   position:absolute;
   bottom:26px;
