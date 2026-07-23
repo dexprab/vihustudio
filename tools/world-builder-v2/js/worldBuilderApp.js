@@ -2230,7 +2230,16 @@
     function _renderStorageMeter() {
         if (!storageMeterBody || !window.ProjectStore || !window.ProjectStore.getStorageStats) return;
         const stats = window.ProjectStore.getStorageStats();
-        const pct = Math.min(100, Math.round((stats.totalBytes / STORAGE_FLOOR_BYTES) * 100));
+        // Real, previously-missing context: World Builder and
+        // VihuStudio's own Creator app share ONE storage limit for this
+        // site — the bar and percentage below are now based on that real,
+        // origin-wide total (getStorageStats()'s new originTotalBytes),
+        // not just World Builder's own 3 keys, so this can never show
+        // "plenty of room" while Studio's own saved Stories/Magic Cards
+        // are what's actually filling the shared quota.
+        const originBytes = typeof stats.originTotalBytes === 'number' ? stats.originTotalBytes : stats.totalBytes;
+        const otherBytes = typeof stats.otherBytes === 'number' ? stats.otherBytes : 0;
+        const pct = Math.min(100, Math.round((originBytes / STORAGE_FLOOR_BYTES) * 100));
         const fillClass = pct >= 100 ? 'wb-storage-full' : (pct >= 75 ? 'wb-storage-warn' : '');
 
         storageMeterBody.innerHTML = '';
@@ -2240,7 +2249,7 @@
         const stat = document.createElement('div');
         stat.className = 'wb-storage-meter-stats';
         stat.innerHTML =
-            '<span><strong>' + _formatMB(stats.totalBytes) + '</strong> used by your World Projects</span>' +
+            '<span><strong>' + _formatMB(originBytes) + '</strong> used on this browser for this site</span>' +
             '<span>' + pct + '% of a typical browser\'s minimum limit</span>';
         body.appendChild(stat);
 
@@ -2252,11 +2261,17 @@
         track.appendChild(fill);
         body.appendChild(track);
 
+        const breakdown = document.createElement('p');
+        breakdown.className = 'wb-storage-meter-breakdown';
+        breakdown.textContent = _formatMB(stats.totalBytes) + ' is your World Projects here' +
+            (otherBytes > 0 ? '; ' + _formatMB(otherBytes) + ' is other VihuStudio data on this site (Stories, Magic Cards, etc.) — not shown anywhere in World Builder, but sharing the same limit.' : '.');
+        body.appendChild(breakdown);
+
         const note = document.createElement('p');
         note.className = 'wb-storage-meter-note';
         note.textContent = pct >= 100
-            ? '⚠️ You\'re at or past most browsers\' storage limit — Duplicate/Save may fail silently on large Worlds. Publishing a World (Publish → Personal Repository) moves its built Theme to Supabase, but the editable Project itself stays here; there\'s no way to free this up except removing a World Project you no longer need.'
-            : 'This is only your editable World Projects, stored in this browser — a published Theme lives in your Personal/Official Repository on Supabase instead, and doesn\'t count against this. No browser publishes an exact limit; 5 MB is the lowest ceiling any mainstream browser is known to enforce, used here as a conservative reference.';
+            ? '⚠️ You\'re at or past most browsers\' storage limit for this whole site — Duplicate/Save may fail even on a brand-new, empty World if the rest of this total is from elsewhere. Deleting a World Project here only frees the "World Projects" share above; if the rest is from Stories or other VihuStudio data, clear that from Creator instead. Publishing a World (Publish → Personal Repository) moves its built Theme to Supabase, which never counts here.'
+            : 'This counts everything VihuStudio stores in this browser for this site, since it all shares one limit — not just your World Projects. A published Theme lives in your Personal/Official Repository on Supabase instead, and never counts against this. No browser publishes an exact limit; 5 MB is the lowest ceiling any mainstream browser is known to enforce, used here as a conservative reference.';
         body.appendChild(note);
 
         storageMeterBody.appendChild(body);

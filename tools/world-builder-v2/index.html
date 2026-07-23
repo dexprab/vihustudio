@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Builder</title>
-    <link rel="stylesheet" href="css/world-builder.css?v=0106">
+    <link rel="stylesheet" href="css/world-builder.css?v=0107">
 </head>
 <body>
     <div id="wb-root">
@@ -386,28 +386,28 @@
     </footer>
 
     <!-- Internal services (reused, unmodified — see docs/WORLD_BUILDER_ARCHITECTURE.md) -->
-    <script src="js/services/constants.js?v=0106"></script>
-    <script src="js/services/engineSchema.js?v=0106"></script>
-    <script src="js/services/experienceSchema.js?v=0106"></script>
-    <script src="js/services/projectLoader.js?v=0106"></script>
-    <script src="js/services/validator.js?v=0106"></script>
-    <script src="js/services/builder.js?v=0106"></script>
+    <script src="js/services/constants.js?v=0107"></script>
+    <script src="js/services/engineSchema.js?v=0107"></script>
+    <script src="js/services/experienceSchema.js?v=0107"></script>
+    <script src="js/services/projectLoader.js?v=0107"></script>
+    <script src="js/services/validator.js?v=0107"></script>
+    <script src="js/services/builder.js?v=0107"></script>
 
     <!-- The native Engine V2 Runtime + Validation (docs/ENGINE_V2_SCENE_MODEL.md
          §5, LOCK V2-04) — load after engineSchema.js (aspect resolution)
          and before worldBuilderApp.js (their only consumer so far). -->
-    <script src="js/services/engineRuntime.js?v=0106"></script>
-    <script src="js/services/engineValidator.js?v=0106"></script>
-    <script src="js/services/engineBuilder.js?v=0106"></script>
+    <script src="js/services/engineRuntime.js?v=0107"></script>
+    <script src="js/services/engineValidator.js?v=0107"></script>
+    <script src="js/services/engineBuilder.js?v=0107"></script>
 
     <!-- VihuStudio Runtime engine (reused, unmodified — Sprint B2.0.1's
          Preview renders through the exact same pipeline Runtime uses,
          never a Builder-owned re-implementation). -->
-    <script src="../../js/themePresets.js?v=0106"></script>
-    <script src="../../js/layerEngine.js?v=0106"></script>
-    <script src="../../renderer/slideRenderer.js?v=0106"></script>
-    <script src="../../js/themeRegistry.js?v=0106"></script>
-    <script src="../../js/themeRepositoryClient.js?v=0106"></script>
+    <script src="../../js/themePresets.js?v=0107"></script>
+    <script src="../../js/layerEngine.js?v=0107"></script>
+    <script src="../../renderer/slideRenderer.js?v=0107"></script>
+    <script src="../../js/themeRegistry.js?v=0107"></script>
+    <script src="../../js/themeRepositoryClient.js?v=0107"></script>
     <!-- Shared Asset Store (Platform Hardening — Draft Asset
          Architecture, Phase A) — IndexedDB-backed local cache + Supabase
          Storage durability tier for uploaded images, replacing the old
@@ -416,28 +416,28 @@
          already-loaded Supabase client/session, never a second sign-in.
          Loaded now, called by nothing yet — see js/assetStore.js's own
          header for the full phased rollout. -->
-    <script src="../../js/assetStore.js?v=0106"></script>
+    <script src="../../js/assetStore.js?v=0107"></script>
     <!-- World Card Platform v1 — thin Welcome-screen hook into the
          shared js/cardPlatform.js module (mints/lists/revokes Builder
          Cards for a Personal-published World); loaded right after
          themeRepositoryClient.js, whose getClient()/getSession() it
          reuses rather than a second Supabase config/session. -->
-    <script src="../../js/cardPlatform.js?v=0106"></script>
+    <script src="../../js/cardPlatform.js?v=0107"></script>
     <!-- AV-011 — the same reusable "insert emoji" affordance the main
          Studio app already wires onto every Text Element field
          (Sprint 9.6), reused as-is rather than building a second one. -->
-    <script src="../../js/emojiPicker.js?v=0106"></script>
+    <script src="../../js/emojiPicker.js?v=0107"></script>
 
     <!-- Builder application -->
-    <script src="js/templates.js?v=0106"></script>
-    <script src="js/projectStore.js?v=0106"></script>
-    <script src="js/projectModel.js?v=0106"></script>
-    <script src="js/assetSpec.js?v=0106"></script>
-    <script src="js/projectCompiler.js?v=0106"></script>
+    <script src="js/templates.js?v=0107"></script>
+    <script src="js/projectStore.js?v=0107"></script>
+    <script src="js/projectModel.js?v=0107"></script>
+    <script src="js/assetSpec.js?v=0107"></script>
+    <script src="js/projectCompiler.js?v=0107"></script>
     <!-- Builder Project cloud backup — reuses ThemeRepositoryClient's
          already-loaded Supabase client/session, never a second sign-in. -->
-    <script src="js/services/projectSync.js?v=0106"></script>
-    <script src="js/worldBuilderApp.js?v=0106"></script>
-    <script src="js/buildInfo.js?v=0106"></script>
+    <script src="js/services/projectSync.js?v=0107"></script>
+    <script src="js/worldBuilderApp.js?v=0107"></script>
+    <script src="js/buildInfo.js?v=0107"></script>
 </body>
 </html>

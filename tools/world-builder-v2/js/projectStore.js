@@ -160,7 +160,30 @@ const ProjectStore = (function () {
       byKey[label] = bytes;
       totalBytes += bytes;
     });
-    return { totalBytes: totalBytes, byKey: byKey };
+
+    // A real gap this closes: World Builder and VihuStudio's own Creator
+    // app (Stories, Magic Cards, etc.) are served from the same site, so
+    // they share ONE localStorage quota for this origin — that shared
+    // total, not just these 3 World-Builder-owned keys, is what actually
+    // decides whether a save here can succeed. A Theme Author who
+    // deletes every World Project can still hit a failed save if
+    // Studio's own separate data is what's filling the shared quota —
+    // invisible to totalBytes/byKey above, which is why this walks every
+    // key actually present in localStorage rather than only the 3 known
+    // ones. `otherBytes` is what's left once this module's own usage is
+    // subtracted out — never negative, even if a key changed between the
+    // two passes.
+    let originTotalBytes = totalBytes;
+    try {
+      originTotalBytes = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const raw = localStorage.getItem(localStorage.key(i));
+        if (raw) originTotalBytes += new Blob([raw]).size;
+      }
+    } catch (e) { originTotalBytes = totalBytes; }
+    const otherBytes = Math.max(0, originTotalBytes - totalBytes);
+
+    return { totalBytes: totalBytes, byKey: byKey, originTotalBytes: originTotalBytes, otherBytes: otherBytes };
   }
 
   return {
