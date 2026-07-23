@@ -1858,8 +1858,20 @@ const SlideRenderer=(()=>{
     if(_decorationImgCache[src]) return _decorationImgCache[src];
     const placeholder={};
     _decorationImgCache[src]=placeholder;
+    // Diagnostic-only addition — neither branch below previously logged
+    // anything on failure, so a Decoration image that silently never
+    // resolves (a broken/expired signed URL, a cross-owner Storage
+    // access denial, AssetStore.resolve() coming back null) rendered as
+    // nothing at all with zero signal anywhere an author or a future
+    // debugger could see — confirmed the real, silent failure mode while
+    // investigating a real report ("Paper BG" invisible on a World-Card-
+    // redeemed Theme). This never changes what's drawn — a genuinely
+    // still-loading image still resolves normally the instant it loads.
+    const warn=function(reason){
+      try{ console.warn('[Decoration Image] failed to load ("'+reason+'"): '+src); }catch(_){}
+    };
     const start=function(resolvedSrc){
-      if(!resolvedSrc) return;
+      if(!resolvedSrc){ warn('AssetStore.resolve() returned null'); return; }
       const img=new Image();
       img.onload=function(){
         img.__ready=true;
@@ -1867,6 +1879,7 @@ const SlideRenderer=(()=>{
           try{ window.redrawPreview(); }catch(_){}
         }
       };
+      img.onerror=function(){ warn('image failed to decode/load: '+resolvedSrc); };
       img.src=resolvedSrc;
       _decorationImgCache[src]=img;
     };

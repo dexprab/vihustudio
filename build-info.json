@@ -1,9 +1,9 @@
 {
-  "version": "2.106.1",
-  "sprint": "World Builder \u2014 \"Everytime I Delete It Reappears\": Local Delete Now Also Removes the Cloud Backup",
-  "task": "everytime i delete it reappears -- a real bug hit doing fresh manual testing right after Cloud-Primary Project Storage Phase 6 shipped. Root cause: an earlier fix (\"Delete No Longer Cascades\") made local Delete remove only the local draft, never the Cloud Backup, to protect against a since-superseded quota-failure scenario -- but Phase 3 of this same effort later made an orphaned Cloud Backup (no local match) auto-materialize with ZERO click required, silently invalidating that earlier fix's own safety assumption. Fixed: _deleteLocalDraft now also removes the Project's own Cloud Backup (ProjectSync.remove), sequenced so that removal settles before the screen re-renders, closing the race. The Published Theme (a genuinely different, potentially shared consumer) stays completely untouched, unlike the original problematic cascade. See CLAUDE.md's own entry for the full account.",
-  "build": "0247",
+  "version": "2.106.2",
+  "sprint": "Decoration Image Failures Now Log a Diagnostic Instead of Failing Silently",
+  "task": "authored a theme in builder this is how it shows up in studio -- a Cover page showed only a flat, unstyled coloured rectangle with a real uploaded \"Paper BG\" image nowhere to be seen. Investigation traced the visible shape to #previewCanvas's own CSS (rounded corners, 4:5 aspect) painted by the theme's base fillStyle, and confirmed _layerDrawDecorationImage/_ensureDecorationImage silently return/no-op with zero console signal whenever a Decoration image's resolved src ever fails to load/decode -- a broken/expired signed URL, a cross-owner Storage access denial (plausible for a World-Card-redeemed viewer, a different Supabase identity than the Builder author), or any other resolution failure all looked identical: nothing drawn, no error anywhere. Fixed by adding a real, additive-only diagnostic: a console.warn fires when AssetStore.resolve() itself returns null, and another fires on the underlying Image's own onerror -- naming the failed src either way. Zero change to what's drawn for a working image or a genuinely still-loading one. Verified via a new Playwright suite confirming the warning fires correctly for a broken image and never fires for a real one. See CLAUDE.md's own entry for the full account.",
+  "build": "0248",
   "buildDate": "2026-07-23",
-  "commit": "7bdb04339125f13878403900d18982705b669370",
+  "commit": "PENDING",
   "environment": "Release"
 }
