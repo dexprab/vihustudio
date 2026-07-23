@@ -542,8 +542,28 @@ class BuildEngine {
         const relPath = 'scenes/' + scene.id + '/' + layer.id + '.png';
         let src = layer.image;
         if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
+            // Root-caused via a real, live report ("Paper BG" -- a Scene
+            // Decoration image -- rendering as a broken image in Studio,
+            // with a 404 for the bare relPath itself, proving nothing was
+            // ever embedded at package_.assets[relPath]). The old code
+            // called AssetStore.resolve() here and only embedded the
+            // result if it happened to be a data: URI -- but resolve()
+            // deliberately never returns one for a vihu-asset: reference
+            // (it resolves to a warm blob: object URL or a signed Storage
+            // https: URL, per docs/DRAFT_ASSET_ARCHITECTURE.md), so that
+            // check always failed silently for every real upload since
+            // Draft Asset Architecture's Phase B shipped, and this
+            // function kept returning relPath as if externalization had
+            // succeeded regardless. AssetStore.hydrateForExport() is the
+            // module's own existing, already-tested inverse of put() --
+            // it resolves a ref straight to a real, durable, embeddable
+            // data: URI (checking the local IndexedDB blob directly
+            // before ever falling back to a network fetch), matching
+            // every other package_.assets entry's own shape -- reused
+            // here rather than reimplementing its own fetch+FileReader
+            // logic a second time.
             src = (typeof window !== 'undefined' && window.AssetStore)
-                ? await window.AssetStore.resolve(src)
+                ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
                 : null;
         }
         if (typeof src === 'string' && src.indexOf('data:') === 0) {
