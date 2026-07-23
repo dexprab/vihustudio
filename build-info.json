@@ -1,9 +1,9 @@
 {
-  "version": "2.105.0",
-  "sprint": "Cloud-Primary Project Storage \u2014 Phase 5: Studio cloud-first restore/My-Projects freshness checks",
-  "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. New CreatorProjectSync.get(projectId) plus js/app.js's checkStudioCloudFreshness(projectId) mirror World Builder's own openWorkspace()/_checkCloudFreshness reasoning for Studio -- wired into _beginBoot()'s restore-modal onPrimary handler and js/creationFlow.js's _openProjectRecord(), both non-blocking background checks offering a genuinely newer cloud copy (Load Cloud Version / Keep What I Have) via the existing restore-modal dialog, never delaying the editor on a network round trip. A Traveller (no active Magic Card) never reaches the network at all, by design. See CLAUDE.md's own entry for the full design, two real test-authoring bugs found and fixed along the way, and verification.",
-  "build": "0245",
+  "version": "2.106.0",
+  "sprint": "Cloud-Primary Project Storage — Phase 6: Verification, a real cross-surface bug found and fixed, docs, ship",
+  "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. Closes the full 6-phase plan: a new Playwright suite (phase6_test.js) covering legacy-migration idempotency, IndexedDB-only-broken degrade, and offline-then-online recovery for both surfaces, plus a real two-device conflict proven through the FULL Studio pipeline (upsert -> _attemptSync -> getConflictIds), not just the isolated push() unit test. That last test found a real, previously-shipped bug: js/creatorProjectStore.js's upsert() constructed a brand-new record on every save with no cloudSyncedAt field, silently wiping the Phase 4 versioned-push hardening the instant editing continued past a Story's first save -- fixed by carrying cloudSyncedAt forward from the existing record. New docs/PROJECT_CLOUD_ARCHITECTURE.md is now the canonical reference for this whole effort. See CLAUDE.md's own entry for the full account.",
+  "build": "0246",
   "buildDate": "2026-07-23",
-  "commit": "64caaaf2234332538d80c92691af5b87693c4d50",
+  "commit": "PENDING",
   "environment": "Release"
 }

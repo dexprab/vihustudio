@@ -83,6 +83,31 @@ const CreatorProjectStore=(function(){
   // place — the one entry point ProjectManager's autosave hook calls.
   // `data` is exactly ProjectManager.serialize()'s own payload shape, so
   // reopening a record later is just ProjectManager.deserialize(record.data).
+  //
+  // Cloud-Primary Project Storage, Phase 6 — a real, confirmed bug found
+  // while writing this phase's own conflict-pipeline verification test:
+  // this function used to construct a brand-new record object on EVERY
+  // call with no cloudSyncedAt field at all, silently discarding
+  // whatever js/creatorProjectCache.js's markCloudSynced() had recorded
+  // after a prior successful push. Since js/projectManager.js's
+  // _writeStorage() calls upsert() on every single debounced autosave —
+  // not just the first one — this meant cloudSyncedAt was wiped the
+  // instant editing continued past a Story's very first save, so
+  // js/creatorProjectCache.js's _attemptSync() (reading
+  // record.cloudSyncedAt fresh from the map at call time) always passed
+  // an undefined expectedUpdatedAt to CreatorProjectSync.push() — which
+  // takes that as "no conflict check needed" and falls through to a
+  // plain, unconditional upsert. The Phase 4 hardening ("no data loss...
+  // world & studio both") was correctly built end to end but never
+  // actually engaged in practice past a Story's first save, for any real
+  // editing session. Fixed by carrying cloudSyncedAt forward from the
+  // existing record exactly like createdAt already was — a genuinely
+  // new record still gets no cloudSyncedAt (existing is null), correctly
+  // taking the unconditional first-touch push path, matching World
+  // Builder's own save()'s equivalent in-place-mutation behaviour
+  // (tools/world-builder-v2/js/projectStore.js), which never had this
+  // bug since it mutates the caller's existing object rather than
+  // constructing a fresh one.
   function upsert(id,meta,data){
     const now=new Date().toISOString();
     const existing=_cache().get(id);
@@ -92,6 +117,7 @@ const CreatorProjectStore=(function(){
       thumbnail:(meta&&meta.thumbnail)||null,
       createdAt:existing?existing.createdAt:now,
       updatedAt:now,
+      cloudSyncedAt:existing?existing.cloudSyncedAt:undefined,
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
