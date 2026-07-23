@@ -120,7 +120,16 @@ const ObjectStrip=(function(){
     }
     if(v && v.kind==='image' && v.src){
       const img=document.createElement('img');
-      img.src=v.src;
+      // Platform Hardening — Draft Asset Architecture, Phase C. v.src may
+      // be a durable vihu-asset: reference (a Story-Author-replaced
+      // World-owned object image) rather than a directly-usable src —
+      // resolve it first; a legacy data:/http(s) URL resolves through the
+      // same call, same-tick, with zero behaviour change.
+      if(typeof v.src==='string' && v.src.indexOf('vihu-asset:')===0 && typeof window!=='undefined' && window.AssetStore){
+        window.AssetStore.resolve(v.src).then(function(resolvedSrc){ if(resolvedSrc) img.src=resolvedSrc; });
+      }else{
+        img.src=v.src;
+      }
       thumb.appendChild(img);
       return;
     }

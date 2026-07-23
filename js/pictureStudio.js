@@ -335,14 +335,28 @@ const PictureStudio=(function(){
     // Focus trap minimal — escape closes.
     document.addEventListener('keydown',_onKeyDown);
 
-    // Accept (a) an Image already loaded, (b) a data URL, (c) a File.
+    // Accept (a) an Image already loaded, (b) a data URL (or, Phase C, a
+    // durable vihu-asset: reference), (c) a File.
     if(input instanceof HTMLImageElement){
       _origImg=input;
       _render();
     }else if(typeof input==='string'){
-      const img=new Image();
-      img.onload=function(){ _origImg=img; _render(); };
-      img.src=input;
+      const loadImg=function(src){
+        const img=new Image();
+        img.onload=function(){ _origImg=img; _render(); };
+        img.src=src;
+      };
+      // Platform Hardening — Draft Asset Architecture, Phase C. `input`
+      // may be a vihu-asset: reference (a Place/Scene-Object picture not
+      // yet rehydrated into a cached Image object, so its own Crop/Rotate
+      // re-edit falls back to the raw string field) — resolve it first. A
+      // legacy data: URI (or any other string) resolves through the same
+      // call, same-tick, with zero behaviour change.
+      if(input.indexOf('vihu-asset:')===0 && typeof window.AssetStore!=='undefined'){
+        window.AssetStore.resolve(input).then(function(src){ if(src) loadImg(src); });
+      }else{
+        loadImg(input);
+      }
     }else if(input && typeof File!=='undefined' && input instanceof File){
       const reader=new FileReader();
       reader.onload=function(ev){

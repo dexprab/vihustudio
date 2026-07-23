@@ -109,6 +109,25 @@ const ProjectManager=(function(){
     });
   }
 
+  // Platform Hardening — Draft Asset Architecture, Phase C. A stored
+  // field (a page's own serialized image, a Place's own dataURL) may now
+  // be a durable vihu-asset: reference instead of a raw data: URI --
+  // resolve it to a real, directly-usable src (warm cache -> IndexedDB ->
+  // a signed Storage URL) before ever handing it to loadImageFromDataURL,
+  // which only ever knew how to load a real URL. A legacy data: URI (or
+  // null) passes through unchanged, same-tick, so untouched old sessions
+  // rehydrate exactly as they always have. Total failure (offline + never
+  // cached) resolves null, matching AssetStore.resolve()'s own contract --
+  // the picture simply doesn't load this time (same as a broken/missing
+  // image already did before this phase); the original reference itself
+  // is never discarded (see below), so a later load can still recover it.
+  function _resolveMaybeRef(value){
+    if(typeof window!=='undefined' && window.AssetStore && typeof value==='string' && value.indexOf('vihu-asset:')===0){
+      return window.AssetStore.resolve(value);
+    }
+    return Promise.resolve(value);
+  }
+
   function validatePayload(p){
     if(!p||typeof p!=='object') throw new Error('Invalid project file');
     if(!p.version||typeof p.version!=='string') throw new Error('Missing project version');
@@ -146,7 +165,7 @@ const ProjectManager=(function(){
       const slides=[];
       for(let i=0;i<total;i++){
         const p=payload.pages[i];
-        const img=await loadImageFromDataURL(p.image);
+        const img=await loadImageFromDataURL(await _resolveMaybeRef(p.image));
         const slide={
           id:Date.now()+i,
           image:img,
@@ -173,7 +192,7 @@ const ProjectManager=(function(){
             const pid=placeIds[pi];
             const dataURL=placeContent[pid] && placeContent[pid].dataURL;
             if(!dataURL) continue;
-            const placeImg=await loadImageFromDataURL(dataURL);
+            const placeImg=await loadImageFromDataURL(await _resolveMaybeRef(dataURL));
             if(placeImg){
               if(!slide._placeImages) slide._placeImages={};
               slide._placeImages[pid]=placeImg;
@@ -310,9 +329,58 @@ const ProjectManager=(function(){
     return (name||'project').replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'')||'project';
   }
 
-  function saveProjectAs(filename){
+  // Platform Hardening — Draft Asset Architecture, Phase C (plan §8). A
+  // portable .vihu file must stay self-contained outside this app's own
+  // Supabase project, so any vihu-asset: reference in the built payload
+  // needs hydrating back to a real, embedded data: URI before the file is
+  // written — every accessor pair here is a plain {get,set} over one
+  // asset-bearing field in the JUST-SERIALIZED payload (never the live
+  // AppState.slides objects), so this never mutates what's actually
+  // persisted to localStorage/cloud, only the one-off exported copy.
+  function _collectExportAssetAccessors(payload){
+    const jobs=[];
+    (payload.pages||[]).forEach(function(page){
+      jobs.push({ get:function(){ return page.image; }, set:function(v){ page.image=v; } });
+      const md=page.metadata;
+      if(md && md.placeContent){
+        Object.keys(md.placeContent).forEach(function(pid){
+          const entry=md.placeContent[pid];
+          if(entry) jobs.push({ get:function(){ return entry.dataURL; }, set:function(v){ entry.dataURL=v; } });
+        });
+      }
+      if(md && md.elementOverrides){
+        Object.keys(md.elementOverrides).forEach(function(oid){
+          const entry=md.elementOverrides[oid];
+          if(entry && typeof entry.image!=='undefined') jobs.push({ get:function(){ return entry.image; }, set:function(v){ entry.image=v; } });
+        });
+      }
+    });
+    return jobs;
+  }
+
+  async function _hydratePayloadForExport(payload){
+    if(typeof window==='undefined' || !window.AssetStore) return payload;
+    const accessors=_collectExportAssetAccessors(payload);
+    for(let i=0;i<accessors.length;i++){
+      const a=accessors[i];
+      const v=a.get();
+      if(typeof v==='string' && v.indexOf('vihu-asset:')===0){
+        try{
+          const dataURL=await window.AssetStore.hydrateForExport(v);
+          if(dataURL) a.set(dataURL);
+          // else: leave the un-hydrated reference in place — a real,
+          // disclosed, rare failure (offline + never cached); the
+          // exported file still opens, just without that one picture.
+        }catch(e){ /* leave the un-hydrated reference in place */ }
+      }
+    }
+    return payload;
+  }
+
+  async function saveProjectAs(filename){
     try{
       const data=serialize();
+      await _hydratePayloadForExport(data);
       const json=JSON.stringify(data,null,2);
       const blob=new Blob([json],{type:'application/json'});
       const url=URL.createObjectURL(blob);
@@ -370,7 +438,15 @@ const ProjectManager=(function(){
     openProjectRecord:openProjectRecord,
     getSessionStatus:getSessionStatus,
     restoreSession:restoreSession,
-    discardSession:discardSession
+    discardSession:discardSession,
+    // Platform Hardening — Draft Asset Architecture, Phase C. Exposes the
+    // same lazy id-minting _writeStorage()/_syncProjectStore() already use
+    // internally, so an upload producer (js/app.js, js/contextPanel.js,
+    // js/pageDesigner.js) can get a stable projectId for AssetStore.put()
+    // even on a brand-new project's very first upload, before any save has
+    // ever run — guaranteeing exactly one id is ever minted per project,
+    // never a race between two producers minting two different ones.
+    ensureProjectId:_ensureProjectId
   };
   try{ window.ProjectManager=api; }catch(e){}
   return api;

@@ -416,6 +416,48 @@
     return Promise.all(jobs).then(function () {});
   }
 
+  // Platform Hardening — Draft Asset Architecture, Phase C. The exact
+  // threshold/algorithm World Builder v2's own private
+  // _downscaleImageDataURL (tools/world-builder-v2/js/worldBuilderApp.js)
+  // already uses -- duplicated here as the one canonical, Promise-based
+  // copy Studio's own upload call sites share (matching this module's own
+  // async style, unlike World Builder's callback-based one), so a future
+  // caller on either surface never has to reinvent it. World Builder's
+  // own already-shipped, already-tested private copy is left completely
+  // untouched -- zero behaviour change there.
+  const UPLOAD_DOWNSCALE_THRESHOLD_BYTES = 1.5 * 1024 * 1024;
+  const UPLOAD_MAX_DIMENSION = 1600;
+
+  function downscaleImageDataURL(dataURL) {
+    return new Promise(function (resolve) {
+      const img = new Image();
+      img.onload = function () {
+        const longestEdge = Math.max(img.naturalWidth, img.naturalHeight);
+        const scale = Math.min(1, UPLOAD_MAX_DIMENSION / longestEdge);
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          // Preserve PNG format for PNG sources — JPEG has no alpha
+          // channel (the same reasoning World Builder's own copy
+          // documents: re-encoding a transparent PNG as JPEG flattens
+          // every transparent pixel to solid black).
+          const isPNG = /^data:image\/png/i.test(dataURL);
+          const out = isPNG ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85);
+          resolve(out.length < dataURL.length ? out : dataURL);
+        } catch (e) {
+          resolve(dataURL); // canvas export failed — fall back to the original upload
+        }
+      };
+      img.onerror = function () { resolve(dataURL); };
+      img.src = dataURL;
+    });
+  }
+
   function _scheduleBackgroundRetry() {
     if (_retryTimer) return;
     _retryTimer = setInterval(function () { retryPending(); }, 60000);
@@ -444,7 +486,9 @@
     migrateFieldsOnSave: migrateFieldsOnSave,
     hydrateForExport: hydrateForExport,
     retryPending: retryPending,
-    getPendingCount: getPendingCount
+    getPendingCount: getPendingCount,
+    downscaleImageDataURL: downscaleImageDataURL,
+    UPLOAD_DOWNSCALE_THRESHOLD_BYTES: UPLOAD_DOWNSCALE_THRESHOLD_BYTES
   };
   try { window.AssetStore = AssetStore; } catch (e) {}
 

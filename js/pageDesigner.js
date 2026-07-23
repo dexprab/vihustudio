@@ -171,6 +171,37 @@ const PageDesigner=(function(){
   // Works for every role that supports an image (Story / Cover / Hook /
   // End). Routes through a hidden <input type=file> so it reuses the
   // existing upload pipeline; no new image processing logic.
+
+  // Platform Hardening — Draft Asset Architecture, Phase C. Every real
+  // upload in this file (the Picture-Studio-baked path, and the
+  // defensive direct-load fallback) funnels through this one function
+  // before it ever reaches a slide — mirrors js/app.js's/js/contextPanel.
+  // js's own identically-named helper exactly (duplicated here rather
+  // than shared across files, matching this codebase's own established
+  // "kept in lockstep by hand" precedent for small, per-module adapter
+  // functions). A missing AssetStore/ProjectManager, or any put()
+  // failure, falls back to handing the caller the raw data: URI
+  // unchanged — exactly today's pre-Phase-C behaviour, never a silently
+  // lost upload.
+  function _storeUploadedAsset(dataURL,onFile){
+    if(typeof window.AssetStore==='undefined' || typeof ProjectManager==='undefined' || typeof ProjectManager.ensureProjectId!=='function'){
+      onFile(dataURL); return;
+    }
+    const projectId=ProjectManager.ensureProjectId();
+    if(!projectId){ onFile(dataURL); return; }
+    const finish=function(finalDataURL){
+      window.AssetStore.put(finalDataURL,{surface:'creator',projectId:projectId}).then(function(ref){
+        onFile(ref);
+      }).catch(function(){ onFile(finalDataURL); });
+    };
+    const isImage=typeof dataURL==='string' && dataURL.indexOf('data:image/')===0;
+    if(isImage && dataURL.length>window.AssetStore.UPLOAD_DOWNSCALE_THRESHOLD_BYTES && typeof window.AssetStore.downscaleImageDataURL==='function'){
+      window.AssetStore.downscaleImageDataURL(dataURL).then(finish).catch(function(){ finish(dataURL); });
+    }else{
+      finish(dataURL);
+    }
+  }
+
   let _imageInput=null;
   function _ensureImageInput(){
     if(_imageInput) return _imageInput;
@@ -208,13 +239,15 @@ const PageDesigner=(function(){
     reader.onload=function(ev){
       const img=new Image();
       img.onload=function(){
-        const s=_currentSlide();
-        if(!s) return;
-        s.image=img;
-        s._imageDataURL=ev.target.result;
-        delete s.thumbnail;
-        _commitContent();
-        _renderEditor();
+        _storeUploadedAsset(ev.target.result,function(finalRef){
+          const s=_currentSlide();
+          if(!s) return;
+          s.image=img;
+          s._imageDataURL=finalRef;
+          delete s.thumbnail;
+          _commitContent();
+          _renderEditor();
+        });
       };
       img.src=ev.target.result;
     };
@@ -225,38 +258,40 @@ const PageDesigner=(function(){
     if(!result || !result.dataURL) return;
     const img=new Image();
     img.onload=function(){
-      const s=_currentSlide();
-      if(!s) return;
-      s.image=img;
-      s._imageDataURL=result.dataURL;
-      // Sprint 6.7: imageView is reset to a clean slate after a Picture
-      // Studio bake. The picture itself is the new source of truth —
-      // crop / rotate / flip / enhance are already baked in. Only the
-      // placement mode (fit / fill) rides along.
-      if(!s.metadata) s.metadata={};
-      if(!s.metadata.cardOverrides) s.metadata.cardOverrides={};
-      const mode=(result.imageView && result.imageView.mode)==='fill' ? 'fill' : 'fit';
-      s.metadata.cardOverrides.image={ mode:mode, fit:mode, scale:1, offsetX:0, offsetY:0 };
-      delete s.thumbnail;
-      _commitContent();
-      _renderEditor();
-      // Route the right pane to Card Designer so the child can keep
-      // editing the picture immediately. On scene-role pages, also
-      // auto-select the image-holder so the Frame outline + handles
-      // appear on the canvas — the spec's "Picture automatically
-      // selected" guarantee.
-      const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-      if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-      if(typeof SceneEngine!=='undefined' && typeof window.setSelectedSceneElement==='function'){
-        try{
-          const data=SceneEngine.getRenderData(s);
-          if(data && data.elements){
-            const holder=data.elements.find(function(el){ return el.type==='image-holder'; });
-            if(holder) window.setSelectedSceneElement(holder.id,'image-holder');
-          }
-        }catch(e){}
-      }
-      if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+      _storeUploadedAsset(result.dataURL,function(finalRef){
+        const s=_currentSlide();
+        if(!s) return;
+        s.image=img;
+        s._imageDataURL=finalRef;
+        // Sprint 6.7: imageView is reset to a clean slate after a Picture
+        // Studio bake. The picture itself is the new source of truth —
+        // crop / rotate / flip / enhance are already baked in. Only the
+        // placement mode (fit / fill) rides along.
+        if(!s.metadata) s.metadata={};
+        if(!s.metadata.cardOverrides) s.metadata.cardOverrides={};
+        const mode=(result.imageView && result.imageView.mode)==='fill' ? 'fill' : 'fit';
+        s.metadata.cardOverrides.image={ mode:mode, fit:mode, scale:1, offsetX:0, offsetY:0 };
+        delete s.thumbnail;
+        _commitContent();
+        _renderEditor();
+        // Route the right pane to Card Designer so the child can keep
+        // editing the picture immediately. On scene-role pages, also
+        // auto-select the image-holder so the Frame outline + handles
+        // appear on the canvas — the spec's "Picture automatically
+        // selected" guarantee.
+        const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
+        if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
+        if(typeof SceneEngine!=='undefined' && typeof window.setSelectedSceneElement==='function'){
+          try{
+            const data=SceneEngine.getRenderData(s);
+            if(data && data.elements){
+              const holder=data.elements.find(function(el){ return el.type==='image-holder'; });
+              if(holder) window.setSelectedSceneElement(holder.id,'image-holder');
+            }
+          }catch(e){}
+        }
+        if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+      });
     };
     img.src=result.dataURL;
   }

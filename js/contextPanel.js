@@ -102,6 +102,35 @@ const ContextPanel=(function(){
     return null;
   }
 
+  // Platform Hardening — Draft Asset Architecture, Phase C. Every real
+  // upload in this file (Add/Replace Artwork, Crop/Rotate's re-apply, a
+  // World-owned object's own Replace Image control) funnels through this
+  // one function before it ever reaches a slide — mirrors js/app.js's own
+  // identically-named helper exactly (duplicated here rather than shared
+  // across files, matching this codebase's own established "kept in
+  // lockstep by hand" precedent for small, per-module adapter functions).
+  // A missing AssetStore/ProjectManager, or any put() failure, falls back
+  // to handing the caller the raw data: URI unchanged — exactly today's
+  // pre-Phase-C behaviour, never a silently lost upload.
+  function _storeUploadedAsset(dataURL,onFile){
+    if(typeof window.AssetStore==='undefined' || typeof ProjectManager==='undefined' || typeof ProjectManager.ensureProjectId!=='function'){
+      onFile(dataURL); return;
+    }
+    const projectId=ProjectManager.ensureProjectId();
+    if(!projectId){ onFile(dataURL); return; }
+    const finish=function(finalDataURL){
+      window.AssetStore.put(finalDataURL,{surface:'creator',projectId:projectId}).then(function(ref){
+        onFile(ref);
+      }).catch(function(){ onFile(finalDataURL); });
+    };
+    const isImage=typeof dataURL==='string' && dataURL.indexOf('data:image/')===0;
+    if(isImage && dataURL.length>window.AssetStore.UPLOAD_DOWNSCALE_THRESHOLD_BYTES && typeof window.AssetStore.downscaleImageDataURL==='function'){
+      window.AssetStore.downscaleImageDataURL(dataURL).then(finish).catch(function(){ finish(dataURL); });
+    }else{
+      finish(dataURL);
+    }
+  }
+
   function init(){
     if(initialized) return;
     rightSidebar=document.querySelector('.right-sidebar');
@@ -359,8 +388,10 @@ const ContextPanel=(function(){
           if(!file) return;
           const reader=new FileReader();
           reader.onload=function(){
-            SceneEngine.setContentOverride(slide,sceneObj.id,'image',reader.result);
-            _afterWorldObjectEdit();
+            _storeUploadedAsset(reader.result,function(finalRef){
+              SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
+              _afterWorldObjectEdit();
+            });
           };
           reader.readAsDataURL(file);
         });
@@ -494,34 +525,36 @@ const ContextPanel=(function(){
     const placeId=_currentPlaceId();
     const img=new Image();
     img.onload=function(){
-      if(!placeId){
-        slide.image=img;
-        slide._imageDataURL=result.dataURL;
-      }else{
-        if(!slide.metadata) slide.metadata={};
-        if(!slide.metadata.placeContent) slide.metadata.placeContent={};
-        if(!slide.metadata.placeContent[placeId]) slide.metadata.placeContent[placeId]={};
-        slide.metadata.placeContent[placeId].dataURL=result.dataURL;
-        if(!slide._placeImages) slide._placeImages={};
-        slide._placeImages[placeId]=img;
-      }
-      // The page thumbnail represents every Place combined, so any
-      // Place's picture changing invalidates it, not only Place 1's.
-      delete slide.thumbnail;
-      if(typeof ThumbnailEngine!=='undefined'){
-        try{ ThumbnailEngine.generate(slide).then(function(){
-          try{ if(typeof window.renderList==='function') window.renderList(); }catch(e){}
-          try{ if(typeof window.renderTimeline==='function') window.renderTimeline(); }catch(e){}
-        }); }catch(e){}
-      }
-      if(host){
-        if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
-        if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
-      }
-      if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
-      if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
-      // Companion Engine Foundation (Sprint C1) — "User inserts artwork".
-      try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('artwork-added'); }catch(e){}
+      _storeUploadedAsset(result.dataURL,function(finalRef){
+        if(!placeId){
+          slide.image=img;
+          slide._imageDataURL=finalRef;
+        }else{
+          if(!slide.metadata) slide.metadata={};
+          if(!slide.metadata.placeContent) slide.metadata.placeContent={};
+          if(!slide.metadata.placeContent[placeId]) slide.metadata.placeContent[placeId]={};
+          slide.metadata.placeContent[placeId].dataURL=finalRef;
+          if(!slide._placeImages) slide._placeImages={};
+          slide._placeImages[placeId]=img;
+        }
+        // The page thumbnail represents every Place combined, so any
+        // Place's picture changing invalidates it, not only Place 1's.
+        delete slide.thumbnail;
+        if(typeof ThumbnailEngine!=='undefined'){
+          try{ ThumbnailEngine.generate(slide).then(function(){
+            try{ if(typeof window.renderList==='function') window.renderList(); }catch(e){}
+            try{ if(typeof window.renderTimeline==='function') window.renderTimeline(); }catch(e){}
+          }); }catch(e){}
+        }
+        if(host){
+          if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+          if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+        }
+        if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+        if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
+        // Companion Engine Foundation (Sprint C1) — "User inserts artwork".
+        try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('artwork-added'); }catch(e){}
+      });
     };
     img.src=result.dataURL;
   }

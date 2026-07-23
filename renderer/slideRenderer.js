@@ -1834,26 +1834,47 @@ const SlideRenderer=(()=>{
   // _ensureStickerImage already established (line ~1509) — a second,
   // parallel cache rather than reusing that one since sticker ids and
   // asset references are different keyspaces, but identical mechanics.
+  // Platform Hardening — Draft Asset Architecture, Phase C. `src` may now
+  // be a durable vihu-asset: reference (a Story-Author-replaced image via
+  // SceneEngine.setContentOverride) rather than a directly-usable data:/
+  // http(s) URL — a placeholder entry is cached under the ORIGINAL src key
+  // immediately (so a second call for the same still-resolving src is a
+  // cache hit, not a duplicate resolve), then swapped in place for the
+  // real Image once AssetStore.resolve() settles, reusing the exact same
+  // onload/redraw-nudge mechanics. A legacy data:/http(s) URL resolves
+  // through the same call, same-tick, with zero behaviour change.
   const _decorationImgCache={};
   function _ensureDecorationImage(src){
     if(!src) return null;
     if(_decorationImgCache[src]) return _decorationImgCache[src];
-    const img=new Image();
-    img.onload=function(){
-      img.__ready=true;
-      if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
-        try{ window.redrawPreview(); }catch(_){}
-      }
+    const placeholder={};
+    _decorationImgCache[src]=placeholder;
+    const start=function(resolvedSrc){
+      if(!resolvedSrc) return;
+      const img=new Image();
+      img.onload=function(){
+        img.__ready=true;
+        if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){
+          try{ window.redrawPreview(); }catch(_){}
+        }
+      };
+      img.src=resolvedSrc;
+      _decorationImgCache[src]=img;
     };
-    img.src=src;
-    _decorationImgCache[src]=img;
-    return img;
+    if(typeof src==='string' && src.indexOf('vihu-asset:')===0 && typeof window!=='undefined' && window.AssetStore){
+      window.AssetStore.resolve(src).then(start);
+    }else{
+      start(src);
+    }
+    return _decorationImgCache[src];
   }
   function _layerDrawDecorationImage(d,rect,s,ov){
     // Honour World-Owned Object Commitments sprint — a Story-Author-
-    // replaced image (editable:true) is already a full data URI, so it
-    // needs no asset-reference resolution, unlike the theme-authored
-    // relative path below. Absent an override, behaviour is unchanged.
+    // replaced image (editable:true) may be a durable vihu-asset:
+    // reference now (Phase C) or a legacy embedded data: URI, either way
+    // resolved by _ensureDecorationImage below — unlike the theme-
+    // authored relative path, which resolves through ThemeRegistry
+    // instead. Absent an override, behaviour is unchanged.
     let src=(ov && ov.image) || d.image;
     if(!src) return;
     if(!(ov && ov.image)){
