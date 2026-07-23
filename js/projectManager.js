@@ -84,6 +84,12 @@ const ProjectManager=(function(){
         bookTitle:readDomString('bookTitle')||AppState.project.bookTitle||'',
         theme:readDomString('themeSelect')||AppState.project.theme||'default',
         themeOptions:AppState.project.themeOptions||null,
+        // Draft Asset Architecture, Phase E — carried forward on every
+        // re-save so a Magic-Card-recalled project (js/magicCard.js's
+        // _pullRecalledProjects stamps this once, at adoption time)
+        // still resolves any pre-recall vihu-asset: reference correctly
+        // after a later reload — see deserialize()'s own comment below.
+        recallOwnerId:AppState.project.recallOwnerId||null,
         createdDate:AppState.project.createdDate,
         modifiedDate:AppState.project.modifiedDate
       },
@@ -121,9 +127,18 @@ const ProjectManager=(function(){
   // the picture simply doesn't load this time (same as a broken/missing
   // image already did before this phase); the original reference itself
   // is never discarded (see below), so a later load can still recover it.
-  function _resolveMaybeRef(value){
+  //
+  // `fallbackOwnerId` (Phase E) is threaded through to AssetStore.resolve()'s
+  // own `opts.ownerId` -- only ever consulted by AssetStore as a SECOND
+  // attempt after the current session's own owner id fails, so passing it
+  // unconditionally for every field on a Magic-Card-recalled project (see
+  // deserialize() below) is safe: a genuinely local reference (including a
+  // brand-new upload made on this device after the recall) still resolves
+  // via the fast, correct, current-session path first and never even
+  // reaches the fallback.
+  function _resolveMaybeRef(value,fallbackOwnerId){
     if(typeof window!=='undefined' && window.AssetStore && typeof value==='string' && value.indexOf('vihu-asset:')===0){
-      return window.AssetStore.resolve(value);
+      return window.AssetStore.resolve(value,fallbackOwnerId?{ownerId:fallbackOwnerId}:undefined);
     }
     return Promise.resolve(value);
   }
@@ -152,6 +167,16 @@ const ProjectManager=(function(){
         bookTitle:project.bookTitle||'',
         theme:project.theme||'default',
         themeOptions:project.themeOptions||null,
+        // Draft Asset Architecture, Phase E — a Magic-Card-recalled
+        // project (js/magicCard.js's _pullRecalledProjects) stamps the
+        // ORIGINAL device's own owner id here at adoption time, before
+        // this project is ever opened locally. Any vihu-asset: reference
+        // this payload still carries from before the recall belongs to
+        // that owner, not this device's own session — AssetStore.resolve()
+        // needs it as a fallback (see _resolveMaybeRef above). Absent for
+        // every ordinary (non-recalled) project — most everything reading
+        // this project's images never needs it at all.
+        recallOwnerId:project.recallOwnerId||null,
         createdDate:project.createdDate||new Date().toISOString(),
         modifiedDate:project.modifiedDate||new Date().toISOString()
       };
@@ -161,11 +186,12 @@ const ProjectManager=(function(){
       writeDomString('bookTitle',AppState.project.bookTitle);
       writeDomString('themeSelect',AppState.project.theme);
 
+      const recallOwnerId=AppState.project.recallOwnerId;
       const total=payload.pages.length;
       const slides=[];
       for(let i=0;i<total;i++){
         const p=payload.pages[i];
-        const img=await loadImageFromDataURL(await _resolveMaybeRef(p.image));
+        const img=await loadImageFromDataURL(await _resolveMaybeRef(p.image,recallOwnerId));
         const slide={
           id:Date.now()+i,
           image:img,
@@ -174,6 +200,13 @@ const ProjectManager=(function(){
           storyDraft:p.storyDraft||'',
           pageType:normalizePageType(p.pageType,!!img),
           metadata:p.metadata||{},
+          // Draft Asset Architecture, Phase E — carried per-slide (not
+          // just on AppState.project) so renderer/slideRenderer.js's own
+          // render-time image resolution (_ensureDecorationImage, for a
+          // World-owned Scene Object override) can read it straight off
+          // the slide it was handed, matching that module's deliberate
+          // "never reach into AppState directly" discipline.
+          recallOwnerId:recallOwnerId||null,
           page:i+1,
           totalPages:total
         };
@@ -192,7 +225,7 @@ const ProjectManager=(function(){
             const pid=placeIds[pi];
             const dataURL=placeContent[pid] && placeContent[pid].dataURL;
             if(!dataURL) continue;
-            const placeImg=await loadImageFromDataURL(await _resolveMaybeRef(dataURL));
+            const placeImg=await loadImageFromDataURL(await _resolveMaybeRef(dataURL,recallOwnerId));
             if(placeImg){
               if(!slide._placeImages) slide._placeImages={};
               slide._placeImages[pid]=placeImg;

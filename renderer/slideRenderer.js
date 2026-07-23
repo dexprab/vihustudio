@@ -1843,8 +1843,17 @@ const SlideRenderer=(()=>{
   // real Image once AssetStore.resolve() settles, reusing the exact same
   // onload/redraw-nudge mechanics. A legacy data:/http(s) URL resolves
   // through the same call, same-tick, with zero behaviour change.
+  //
+  // Phase E — `fallbackOwnerId` (this module deliberately takes no
+  // dependency on AppState directly, per its own established "operate
+  // purely on the slide object passed in" discipline — the caller reads
+  // it off `s.recallOwnerId`, stamped there by ProjectManager.deserialize()
+  // only for a Magic-Card-recalled project) is threaded to
+  // AssetStore.resolve() as its own opts.ownerId fallback, so a Story-
+  // Author-replaced image left over from before a recall still resolves
+  // on the recalling device. See AssetStore.resolve()'s own comment.
   const _decorationImgCache={};
-  function _ensureDecorationImage(src){
+  function _ensureDecorationImage(src,fallbackOwnerId){
     if(!src) return null;
     if(_decorationImgCache[src]) return _decorationImgCache[src];
     const placeholder={};
@@ -1862,7 +1871,7 @@ const SlideRenderer=(()=>{
       _decorationImgCache[src]=img;
     };
     if(typeof src==='string' && src.indexOf('vihu-asset:')===0 && typeof window!=='undefined' && window.AssetStore){
-      window.AssetStore.resolve(src).then(start);
+      window.AssetStore.resolve(src,fallbackOwnerId?{ownerId:fallbackOwnerId}:undefined).then(start);
     }else{
       start(src);
     }
@@ -1884,7 +1893,7 @@ const SlideRenderer=(()=>{
         try{ src=ThemeRegistry.resolveAssetRef(themeId,d.image)||d.image; }catch(e){}
       }
     }
-    const img=_ensureDecorationImage(src);
+    const img=_ensureDecorationImage(src,s&&s.recallOwnerId);
     if(!img || !img.__ready || !img.width || !img.height) return;
     const fit=d.fit||'fill';
     x.save();

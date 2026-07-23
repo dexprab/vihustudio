@@ -582,7 +582,22 @@ const MagicCard=(function(){
         if(!record) return;
         const newId=CreatorProjectStore.newId();
         const data=record.data;
-        if(data && data.project) data.project.id=newId;
+        if(data && data.project){
+          data.project.id=newId;
+          // Draft Asset Architecture, Phase E -- a real, previously-
+          // undiscovered gap found while verifying recall: this payload
+          // may still carry `vihu-asset:` references authored on the
+          // ORIGINAL device, under that device's own anonymous session --
+          // not this one. Stamping the original owner id here is what
+          // lets ProjectManager.deserialize()/AssetStore.resolve() fall
+          // back to it (only ever as a SECOND attempt, after the current
+          // session's own owner id fails, so a brand-new upload made on
+          // THIS device after recall is never misrouted) instead of
+          // silently failing to resolve the recalled Story's own
+          // pictures. See AssetStore.resolve()'s own header comment for
+          // the full mechanism.
+          data.project.recallOwnerId=ownerId;
+        }
         CreatorProjectStore.upsert(newId,{name:record.name,thumbnail:record.thumbnail},data);
       });
     }).catch(function(){});

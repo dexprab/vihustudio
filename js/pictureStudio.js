@@ -351,9 +351,13 @@ const PictureStudio=(function(){
       // yet rehydrated into a cached Image object, so its own Crop/Rotate
       // re-edit falls back to the raw string field) — resolve it first. A
       // legacy data: URI (or any other string) resolves through the same
-      // call, same-tick, with zero behaviour change.
+      // call, same-tick, with zero behaviour change. Phase E —
+      // options.fallbackOwnerId (the current slide's own recallOwnerId,
+      // threaded in by the caller) is passed to AssetStore.resolve() as
+      // its own opts.ownerId fallback, so a Magic-Card-recalled Place's
+      // picture still resolves on the recalling device.
       if(input.indexOf('vihu-asset:')===0 && typeof window.AssetStore!=='undefined'){
-        window.AssetStore.resolve(input).then(function(src){ if(src) loadImg(src); });
+        window.AssetStore.resolve(input,options.fallbackOwnerId?{ownerId:options.fallbackOwnerId}:undefined).then(function(src){ if(src) loadImg(src); });
       }else{
         loadImg(input);
       }

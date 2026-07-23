@@ -124,9 +124,16 @@ const ObjectStrip=(function(){
       // be a durable vihu-asset: reference (a Story-Author-replaced
       // World-owned object image) rather than a directly-usable src —
       // resolve it first; a legacy data:/http(s) URL resolves through the
-      // same call, same-tick, with zero behaviour change.
+      // same call, same-tick, with zero behaviour change. Phase E — the
+      // current slide's own recallOwnerId (stamped only for a Magic-
+      // Card-recalled project, see ProjectManager.deserialize()) is
+      // passed as AssetStore.resolve()'s fallback owner, so a Story-
+      // Author-replaced image left over from before a recall still
+      // resolves on the recalling device.
       if(typeof v.src==='string' && v.src.indexOf('vihu-asset:')===0 && typeof window!=='undefined' && window.AssetStore){
-        window.AssetStore.resolve(v.src).then(function(resolvedSrc){ if(resolvedSrc) img.src=resolvedSrc; });
+        const slide=cfg.getCurrentSlide && cfg.getCurrentSlide();
+        const fallbackOwnerId=slide && slide.recallOwnerId;
+        window.AssetStore.resolve(v.src,fallbackOwnerId?{ownerId:fallbackOwnerId}:undefined).then(function(resolvedSrc){ if(resolvedSrc) img.src=resolvedSrc; });
       }else{
         img.src=v.src;
       }

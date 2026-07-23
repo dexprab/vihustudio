@@ -585,7 +585,7 @@ const ContextPanel=(function(){
       ? ((slide._placeImages && slide._placeImages[placeId]) || (slide.metadata && slide.metadata.placeContent && slide.metadata.placeContent[placeId] && slide.metadata.placeContent[placeId].dataURL))
       : (slide.image||slide._imageDataURL);
     if(!source) return;
-    PictureStudio.open(source,{defaultMode:'fit',onApply:_applyImageResult});
+    PictureStudio.open(source,{defaultMode:'fit',onApply:_applyImageResult,fallbackOwnerId:slide.recallOwnerId});
   }
 
   function _renderArtworkActions(){

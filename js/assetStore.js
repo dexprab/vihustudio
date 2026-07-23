@@ -303,20 +303,47 @@
     }).catch(function () { return 0; });
   }
 
-  function _resolveFromStorage(parsed) {
+  function _signedUrlFor(client, parsed, ownerId) {
+    const remotePath = _remotePathFor(parsed.surface, parsed.projectId, parsed.assetId, ownerId);
+    return client.storage.from(BUCKET).createSignedUrl(remotePath, SIGNED_URL_TTL_SECONDS).then(function (signed) {
+      if (signed.error) throw signed.error;
+      return signed.data.signedUrl;
+    });
+  }
+
+  // Draft Asset Architecture, Phase E -- a real, previously-undiscovered
+  // gap found while verifying Magic Card recall: `resolve()` always
+  // computed the Storage object path from the CURRENT session's own
+  // owner id, with no way to resolve an asset that belongs to a
+  // DIFFERENT owner -- exactly the Magic Card recall case
+  // (js/magicCard.js's `_pullRecalledProjects` adopts another device's
+  // Creator project as a brand-new local copy, but any `vihu-asset:`
+  // reference it still carries from before the recall was authored
+  // under the ORIGINAL device's own anonymous session, never this
+  // one). `fallbackOwnerId`, when supplied by the caller, is tried only
+  // as a SECOND attempt after the current session's own owner id fails
+  // -- never tried first -- so a genuinely local asset (including a
+  // brand-new upload made on this device after recall) always resolves
+  // via the fast, correct, current-session path with zero risk of being
+  // misrouted to someone else's folder; only a foreign reference that
+  // fails under the current session falls through to it. This needs no
+  // per-reference bookkeeping (which project/asset ids are "mine" vs.
+  // "recalled") -- Storage's own createSignedUrl already fails cleanly
+  // for a path that doesn't exist under the tried owner, which is
+  // exactly the signal this fallback needs.
+  function _resolveFromStorage(parsed, fallbackOwnerId) {
     if (typeof window.ThemeRepositoryClient === 'undefined') return Promise.resolve(null);
     return window.ThemeRepositoryClient.getClient().then(function (client) {
       return _currentOwnerId().then(function (ownerId) {
-        const remotePath = _remotePathFor(parsed.surface, parsed.projectId, parsed.assetId, ownerId);
-        return client.storage.from(BUCKET).createSignedUrl(remotePath, SIGNED_URL_TTL_SECONDS).then(function (signed) {
-          if (signed.error) throw signed.error;
-          return signed.data.signedUrl;
+        return _signedUrlFor(client, parsed, ownerId).catch(function (err) {
+          if (!fallbackOwnerId || fallbackOwnerId === ownerId) throw err;
+          return _signedUrlFor(client, parsed, fallbackOwnerId);
         });
       });
     }).catch(function () { return null; });
   }
 
-  // AssetStore.resolve(ref) -> Promise<string|null src>
+  // AssetStore.resolve(ref, opts) -> Promise<string|null src>
   //
   // A legacy `data:` URI (or anything else that isn't a vihu-asset: ref --
   // including null/undefined, which every existing "no image yet" call
@@ -330,7 +357,13 @@
   // than reinvented). Never rejects, never throws -- total failure
   // resolves null, which every call site already treats as "show
   // placeholder."
-  function resolve(ref) {
+  //
+  // `opts.ownerId`, if supplied, is a FALLBACK owner id tried only when
+  // resolving under the current session's own owner id fails -- see
+  // _resolveFromStorage's own comment above for the full Magic Card
+  // recall rationale. Omitted (every pre-Phase-E call site) means
+  // identical behavior to before this parameter existed.
+  function resolve(ref, opts) {
     const parsed = _parseRef(ref);
     if (!parsed) return Promise.resolve(ref);
     if (Object.prototype.hasOwnProperty.call(_warmCache, ref)) return Promise.resolve(_warmCache[ref]);
@@ -340,7 +373,7 @@
         _warmCache[ref] = src;
         return src;
       }
-      return _resolveFromStorage(parsed).then(function (signedUrl) {
+      return _resolveFromStorage(parsed, opts && opts.ownerId).then(function (signedUrl) {
         if (signedUrl) _warmCache[ref] = signedUrl;
         return signedUrl;
       });
