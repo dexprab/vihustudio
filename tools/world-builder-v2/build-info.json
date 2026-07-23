@@ -5,6 +5,6 @@
   "slice": "New shared js/assetStore.js (IndexedDB local cache + a durable, retry-forever pendingUploads queue + a new draft-assets Supabase Storage bucket) closes the real, confirmed root cause behind the 'Story-Forest Adventure' data-loss incident -- every uploaded image embedded as base64 in one localStorage-backed JSON blob, with Build/Publish reading live memory directly and bypassing whatever the local save last persisted. Pure infrastructure this phase -- nothing calls put()/resolve() yet; World Builder v2's own upload/read call-site rewiring is Phase B, a separate future increment. Loaded into this app's own index.html right after themeRepositoryClient.js, whose getClient()/getSession() it reuses. Cache-bust bumped to ?v=0101 on every tag since this changes index.html. Verified via a new 24-assertion Playwright suite (real IndexedDB, mocked Supabase) plus goldenBuild.js unchanged (30/30).",
   "build": "0101",
   "buildDate": "2026-07-23",
-  "commit": "pending",
+  "commit": "f78a846f8d0d3c87213cabaabbeeeaa32b011fb5",
   "environment": "Release"
 }

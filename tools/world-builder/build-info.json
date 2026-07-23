@@ -5,6 +5,6 @@
   "slice": "v1 shares the literal, byte-identical localStorage key 'vihu-world-builder-projects' with v2 -- a Project touched in v2 may now hold a vihu-asset:<surface>:<projectId>:<assetId> reference (part of a new shared asset-storage architecture fixing a real, confirmed data-loss bug), which v1's own 3 img.src= read call sites would otherwise show as a broken image. Loaded the new shared js/assetStore.js and added one small helper, _wbResolveImgSrc(img,ref), routing those 3 sites through AssetStore.resolve() -- a legacy data: URI still assigns synchronously exactly as before (zero behavior change); a vihu-asset: reference resolves asynchronously with no guaranteed-broken flash. v1's own upload pipeline, persistence, and everything else is completely untouched -- v1 never produces a vihu-asset: reference itself. Verified end to end via Playwright: a v2-shaped Project seeded with a vihu-asset: thumbnail reference opens fresh in v1 and correctly resolves to a real blob: URL; goldenBuild.js 30/30 unchanged.",
   "build": "0048",
   "buildDate": "2026-07-23",
-  "commit": "pending",
+  "commit": "f78a846f8d0d3c87213cabaabbeeeaa32b011fb5",
   "environment": "Release"
 }

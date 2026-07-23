@@ -1,9 +1,9 @@
 {
   "version": "2.98.0",
-  "sprint": "Platform Hardening — Draft Asset Architecture, Phase A: Foundation",
+  "sprint": "Platform Hardening \u2014 Draft Asset Architecture, Phase A: Foundation",
   "task": "A deliberate architecture change (planned and approved before implementation) closing the real, confirmed root cause behind the 'Story-Forest Adventure' data-loss incident: every uploaded image in both authoring surfaces has been embedded as a base64 data: URI directly inside one JSON object written wholesale to a single localStorage key -- Build/Publish reads live in-memory state directly, bypassing whatever the local save last successfully persisted, so a Theme/Story can Publish successfully at the exact moment its own local save is failing on quota, permanently diverging the two. User's own binding words: 'ok lets go with plan 1. think clearly, at no moment under any circumstances there should be any data loss or jittery sessions.' This is Phase A only -- pure infrastructure, nothing in the app calls any of it yet, zero behavior-change risk. New shared js/assetStore.js (loaded by all three authoring surfaces) implements a vihu-asset:<surface>:<projectId>:<assetId> reference format, an IndexedDB local cache tier (blobs + a durable, retry-forever pendingUploads queue) that's 'truth for fast reads,' and a new draft-assets Supabase Storage bucket that's 'truth for durability' -- put() never blocks on the network, resolve() falls back gracefully through warm cache -> IndexedDB -> signed URL, retryPending() makes an upload durably resumable across a reload/crash. A real, confirmed cross-version risk (v1 and v2 World Builder share the literal localStorage key 'vihu-world-builder-projects') was found and closed with a minimal, read-only 3-call-site mitigation in v1. Verified via a new 24-assertion Playwright suite (real IndexedDB, mocked Supabase) plus both goldenBuild.js suites unchanged. Confined to a new js/assetStore.js, supabase/schema.sql (additive, disclosed/unexecuted), all three index.html files, and tools/world-builder/js/worldBuilderApp.js.",
   "build": "0238",
   "buildDate": "2026-07-23",
-  "commit": "pending",
+  "commit": "f78a846f8d0d3c87213cabaabbeeeaa32b011fb5",
   "environment": "Release"
 }
