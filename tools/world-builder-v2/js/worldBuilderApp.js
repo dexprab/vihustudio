@@ -2876,16 +2876,22 @@
         cloudSyncBadge.classList.remove('wb-hidden');
         cloudSyncBadge.onclick = null;
         cloudSyncBadge.style.cursor = '';
+        // Real red/yellow/green traffic-light dot, not an emoji glyph —
+        // see the .wb-signal-dot CSS comment for why. One state maps to
+        // one colour class; 'grey' is the deliberate fourth state for
+        // "not configured at all," kept separate from red/green since
+        // that's a different fact than "configured and broken."
+        var signalClass = 'wb-signal-dot-grey';
         if (state === 'unavailable') {
-            cloudSyncDot.textContent = '⚪';
+            signalClass = 'wb-signal-dot-grey';
             cloudSyncText.textContent = 'Cloud backup unavailable';
             cloudSyncBadge.title = 'Supabase is not configured in this deployment — your work is still saved locally in this browser.';
         } else if (state === 'pending') {
-            cloudSyncDot.textContent = '🌤️';
+            signalClass = 'wb-signal-dot-yellow';
             cloudSyncText.textContent = 'Backing up…';
             cloudSyncBadge.title = '';
         } else if (state === 'error') {
-            cloudSyncDot.textContent = '⚠️';
+            signalClass = 'wb-signal-dot-red';
             cloudSyncText.textContent = 'Cloud backup failed';
             cloudSyncBadge.title = 'The background copy to your Personal space did not go through — your work is still saved locally in this browser.';
         } else if (state === 'conflict') {
@@ -2897,16 +2903,18 @@
             // cloud until a human decides what to do — click through to
             // force-overwrite, the deliberate, rare-case escape hatch for
             // "I know I'm the only one editing this, in two tabs."
-            cloudSyncDot.textContent = '⚠️';
+            signalClass = 'wb-signal-dot-red';
             cloudSyncText.textContent = 'Cloud has newer changes';
             cloudSyncBadge.title = 'Someone (another tab or device) saved a newer version of this World to the cloud. Your local work is safe and unaffected — click to overwrite the cloud copy with what you have here instead.';
             cloudSyncBadge.style.cursor = 'pointer';
             cloudSyncBadge.onclick = function () { _forceOverwriteCloud(project); };
         } else {
-            cloudSyncDot.textContent = '☁️';
+            signalClass = 'wb-signal-dot-green';
             cloudSyncText.textContent = 'Backed up';
             cloudSyncBadge.title = 'A copy of this World Project is saved to your Personal space.';
         }
+        cloudSyncDot.classList.remove('wb-signal-dot-green', 'wb-signal-dot-yellow', 'wb-signal-dot-red', 'wb-signal-dot-grey');
+        cloudSyncDot.classList.add(signalClass);
         cloudSyncBadge.classList.toggle('wb-save-dirty', state === 'pending');
         cloudSyncBadge.classList.toggle('wb-save-error', state === 'error' || state === 'conflict');
     }
