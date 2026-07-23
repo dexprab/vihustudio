@@ -1,9 +1,9 @@
 {
   "version": "2.103.0",
-  "sprint": "Cloud-Primary Project Storage — Phase 2: World Builder rewire",
+  "sprint": "Cloud-Primary Project Storage \u2014 Phase 2: World Builder rewire",
   "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. This phase's own root-app change is a small, proactive, still-uncalled hardening of js/creatorProjectCache.js (Studio's own Phase 4 target, unwired until then): _persistOne()'s catch branch now falls back to the same emergency localStorage write World Builder's own cache module already had, and putLocal() gained the matching opts.onPersistFailed callback -- both purely additive, zero behaviour-change risk. The real Phase 2 work -- rewiring tools/world-builder-v2/js/projectStore.js to route through js/projectCache.js's in-memory mirror, retiring _attemptQuotaSelfHeal, adding ProjectStore.onPersistError()/ProjectCache.onSyncStateChange()/ProjectCache.forceSync() -- is confined to tools/world-builder-v2/. See CLAUDE.md's own entry for the full design and verification.",
   "build": "0243",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "3267cabc98e4f77481905c5ad2f22956abb67fef",
   "environment": "Release"
 }
