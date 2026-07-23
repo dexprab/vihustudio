@@ -223,6 +223,39 @@
         _deleteOne(id);
     }
 
+    // Cloud-Primary Project Storage, Phase 4 — js/creatorProjectStore.js's
+    // own clearAll() ("traveller should not see projects of previous
+    // creators," js/gatewaySequence.js's one-time-per-session wipe) needs
+    // a real whole-store clear now that this cache, not a plain
+    // localStorage array, is the actual source of truth. The in-memory Map
+    // is cleared synchronously — so a list() call immediately after this
+    // returns already reflects empty, matching every existing caller's own
+    // fire-and-forget usage (none of them read this function's own return
+    // value) — while the real IndexedDB clear (both stores) and the
+    // legacy localStorage key removal happen in the background,
+    // mirroring every other write in this module.
+    function clearAll() {
+        _map.clear();
+        if (_useFallback) {
+            try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+            return Promise.resolve({ ok: true });
+        }
+        return _tx([PROJECT_STORE, PENDING_STORE], 'readwrite').then(function (tx) {
+            return new Promise(function (resolve, reject) {
+                tx.objectStore(PROJECT_STORE).clear();
+                tx.objectStore(PENDING_STORE).clear();
+                tx.oncomplete = function () { resolve(); };
+                tx.onerror = function () { reject(tx.error || new Error('IndexedDB clear failed')); };
+            });
+        }).then(function () {
+            try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+            return { ok: true };
+        }).catch(function (e) {
+            try { localStorage.removeItem(LEGACY_KEY); } catch (e2) {}
+            return { ok: false, error: e };
+        });
+    }
+
     function markCloudSynced(id, updatedAt) {
         const record = _map.get(id);
         if (!record) return;
@@ -339,6 +372,30 @@
         _scheduleBackgroundRetry();
     }
 
+    // A genuine unconditional overwrite push, mirroring
+    // tools/world-builder-v2/js/projectCache.js's own forceSync(id) —
+    // Studio has no equivalent visible "cloud has newer changes, force
+    // overwrite?" UI today (there is no cloud-sync badge in Creator at
+    // all — a deliberate product choice, see this module's own header
+    // comment), but the underlying escape hatch is exposed here anyway,
+    // matching the World Builder sibling's public shape exactly, for any
+    // future Studio surface (or Phase 5's own restore-modal freshness
+    // check) that needs it.
+    function forceSync(id) {
+        const record = _map.get(id);
+        if (!record) return Promise.resolve({ ok: false });
+        if (!window.CreatorProjectSync) return Promise.resolve({ ok: false });
+        return window.CreatorProjectSync.push(record).then(function (result) {
+            if (result.ok) {
+                markCloudSynced(id, result.updatedAt);
+                return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () {
+                    return { ok: true };
+                });
+            }
+            return { ok: false, error: result.error };
+        });
+    }
+
     const CreatorProjectCache = {
         hydrate: hydrate,
         isReady: isReady,
@@ -346,8 +403,10 @@
         get: get,
         putLocal: putLocal,
         removeLocal: removeLocal,
+        clearAll: clearAll,
         markCloudSynced: markCloudSynced,
         enqueueSync: enqueueSync,
+        forceSync: forceSync,
         getPendingSyncCount: getPendingSyncCount,
         getConflictIds: getConflictIds,
         drainPendingSync: drainPendingSync

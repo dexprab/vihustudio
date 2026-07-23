@@ -273,16 +273,30 @@ const ProjectManager=(function(){
   // _scheduleCloudSync exactly). A Traveller (no claimed Magic Card)
   // never reaches CreatorProjectSync.push at all — this is the one
   // guard that keeps a Traveller's own projects 100% local forever.
+  //
+  // Cloud-Primary Project Storage, Phase 4 — this function no longer
+  // pushes to Supabase directly. CreatorProjectStore.upsert() (called
+  // by _syncProjectStore, right before this) already durably enqueues +
+  // drains the sync through js/creatorProjectCache.js the instant the
+  // record is written — durable because it survives this tab closing
+  // before the timer below ever fires, unlike the plain setTimeout this
+  // function used to be. This function's only remaining job is a
+  // prompt, debounced nudge via CreatorProjectCache.enqueueSync(id)
+  // (mirroring worldBuilderApp.js's own simplified _scheduleCloudSync
+  // exactly) — Studio has no cloud-sync-status badge to update, unlike
+  // the World Builder sibling, so there is no live UI feedback for this
+  // function to drive; both the immediate _scheduleDrainSoon() call
+  // already inside putLocal() and this function's own separate nudge
+  // are safe to run redundantly, since the underlying drain timer is a
+  // single shared, idempotent debounce.
   const CLOUD_PROJECT_SYNC_DEBOUNCE_MS=2000;
   let _cloudProjectSyncTimer=null;
   function _scheduleCloudProjectSync(id){
-    if(typeof CreatorProjectSync==='undefined' || typeof MagicCard==='undefined' || !MagicCard.getActive()) return;
+    if(typeof CreatorProjectCache==='undefined' || typeof MagicCard==='undefined' || !MagicCard.getActive()) return;
     if(_cloudProjectSyncTimer) clearTimeout(_cloudProjectSyncTimer);
     _cloudProjectSyncTimer=setTimeout(function(){
       _cloudProjectSyncTimer=null;
-      if(typeof CreatorProjectStore==='undefined') return;
-      const record=CreatorProjectStore.get(id);
-      if(record) CreatorProjectSync.push(record);
+      CreatorProjectCache.enqueueSync(id);
     },CLOUD_PROJECT_SYNC_DEBOUNCE_MS);
   }
 

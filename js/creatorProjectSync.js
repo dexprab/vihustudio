@@ -31,21 +31,71 @@ const CreatorProjectSync = (function () {
   // render a card (name/thumbnail) with zero re-derivation, exactly
   // matching the reasoning already established for the sibling Builder
   // Project Cloud Backup module.
-  function push(record) {
+  //
+  // Cloud-Primary Project Storage, Phase 4 — a real, confirmed gap this
+  // module carried since it was first built: this push() was a PLAIN,
+  // unconditional upsert with no optimistic-concurrency check at all —
+  // the exact class of blind-overwrite bug that caused the real
+  // "Story-Forest Adventure" data-loss incident for World Builder,
+  // before that surface's own Versioned Cloud Sync closed it (see
+  // tools/world-builder-v2/js/services/projectSync.js's own push(),
+  // mirrored here almost verbatim, not reinvented). `opts.
+  // expectedUpdatedAt`, when passed, turns this into a genuine
+  // optimistic-concurrency write: the update only takes effect if the
+  // cloud row's own `updated_at` still matches what the caller last saw
+  // — otherwise this returns {ok:false, conflict:true, cloudUpdatedAt}
+  // instead of silently overwriting whatever another tab/session/device
+  // already saved for this same Story. Omitting opts (or opts.
+  // expectedUpdatedAt) keeps the exact original unconditional-upsert
+  // behaviour, so any caller that hasn't opted in yet is unaffected.
+  function push(record, opts) {
+    opts = opts || {};
     if (!window.ThemeRepositoryClient) {
       return Promise.resolve({ ok: false, error: new Error('ThemeRepositoryClient did not load') });
     }
     return window.ThemeRepositoryClient.getClient().then(function (client) {
       return window.ThemeRepositoryClient.getSession().then(function (session) {
-        return client.from(TABLE).upsert({
-          id: record.id,
-          owner_id: session.user.id,
-          data: record,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' }).then(function (res) {
-          if (res.error) throw res.error;
-          return { ok: true };
-        });
+        const nowIso = new Date().toISOString();
+        if (!opts.expectedUpdatedAt) {
+          return client.from(TABLE).upsert({
+            id: record.id,
+            owner_id: session.user.id,
+            data: record,
+            updated_at: nowIso
+          }, { onConflict: 'id' }).then(function (res) {
+            if (res.error) throw res.error;
+            return { ok: true, updatedAt: nowIso };
+          });
+        }
+        // Chaining .select() after .update() makes PostgREST return the
+        // rows it actually touched (Prefer: return=representation) —
+        // the one reliable way to tell "the row's updated_at had
+        // already moved, so nothing was written" apart from "the write
+        // silently didn't happen," mirroring the reference module's own
+        // discipline exactly.
+        return client.from(TABLE).update({ data: record, updated_at: nowIso })
+          .eq('id', record.id).eq('owner_id', session.user.id).eq('updated_at', opts.expectedUpdatedAt)
+          .select('id').then(function (res) {
+            if (res.error) throw res.error;
+            if ((res.data || []).length > 0) return { ok: true, updatedAt: nowIso };
+            // Nothing matched — a real conflict (a row exists with a
+            // different updated_at, meaning someone else's save already
+            // moved it) or simply no row yet at all (a brand-new Story
+            // this device has never pushed before) — only the first
+            // case is a genuine conflict a caller should ever show.
+            return client.from(TABLE).select('updated_at').eq('id', record.id).eq('owner_id', session.user.id).maybeSingle().then(function (checkRes) {
+              if (checkRes.error) throw checkRes.error;
+              if (!checkRes.data) {
+                return client.from(TABLE).insert({
+                  id: record.id, owner_id: session.user.id, data: record, updated_at: nowIso
+                }).then(function (insertRes) {
+                  if (insertRes.error) throw insertRes.error;
+                  return { ok: true, updatedAt: nowIso };
+                });
+              }
+              return { ok: false, conflict: true, cloudUpdatedAt: checkRes.data.updated_at };
+            });
+          });
       });
     }).catch(function (error) {
       return { ok: false, error: error };
