@@ -531,7 +531,12 @@
     retryPending: retryPending,
     getPendingCount: getPendingCount,
     downscaleImageDataURL: downscaleImageDataURL,
-    UPLOAD_DOWNSCALE_THRESHOLD_BYTES: UPLOAD_DOWNSCALE_THRESHOLD_BYTES
+    UPLOAD_DOWNSCALE_THRESHOLD_BYTES: UPLOAD_DOWNSCALE_THRESHOLD_BYTES,
+    // Cloud-Primary Project Storage — exported so js/projectCache.js and
+    // js/creatorProjectCache.js's own retry-forever queues share this
+    // exact ladder rather than forking a second copy; a trivial, additive
+    // export with zero effect on this module's own existing behaviour.
+    BACKOFF_MS: BACKOFF_MS
   };
   try { window.AssetStore = AssetStore; } catch (e) {}
 
