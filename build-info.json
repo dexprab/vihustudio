@@ -4,6 +4,6 @@
   "task": "authored a theme in builder this is how it shows up in studio -- a Cover page showed only a flat, unstyled coloured rectangle with a real uploaded \"Paper BG\" image nowhere to be seen. Investigation traced the visible shape to #previewCanvas's own CSS (rounded corners, 4:5 aspect) painted by the theme's base fillStyle, and confirmed _layerDrawDecorationImage/_ensureDecorationImage silently return/no-op with zero console signal whenever a Decoration image's resolved src ever fails to load/decode -- a broken/expired signed URL, a cross-owner Storage access denial (plausible for a World-Card-redeemed viewer, a different Supabase identity than the Builder author), or any other resolution failure all looked identical: nothing drawn, no error anywhere. Fixed by adding a real, additive-only diagnostic: a console.warn fires when AssetStore.resolve() itself returns null, and another fires on the underlying Image's own onerror -- naming the failed src either way. Zero change to what's drawn for a working image or a genuinely still-loading one. Verified via a new Playwright suite confirming the warning fires correctly for a broken image and never fires for a real one. See CLAUDE.md's own entry for the full account.",
   "build": "0248",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "4818b12bc3a99eb79a5e7a0eebe8f48664dd2aa5",
   "environment": "Release"
 }
