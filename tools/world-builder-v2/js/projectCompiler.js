@@ -23,12 +23,34 @@ const ProjectCompiler = (function () {
         return await resp.blob();
     }
 
+    // Platform Hardening — Draft Asset Architecture, Phase B. A top-level
+    // project.files entry (Identity thumbnail/hero, an Assets-screen
+    // slot) may now hold a durable `vihu-asset:<surface>:<projectId>:
+    // <assetId>` reference (js/assetStore.js) instead of an embedded
+    // data: URI — resolve it to a real src (warm cache, IndexedDB, or a
+    // signed Storage URL) and fetch that, exactly the same "fetch()
+    // turns it back into a Blob" technique _dataURLToBlob already uses
+    // for a data: URI, just with one resolution step first. A ref that
+    // can't be resolved at all (offline + never cached, or AssetStore
+    // itself unavailable) throws a clear, disclosed error rather than
+    // silently falling through to the byte-encode-the-string-itself
+    // fallback below, which would corrupt the asset.
     async function _toBlob(path, value) {
         if (path.endsWith('.json')) {
             return new Blob([JSON.stringify(value)], { type: 'application/json' });
         }
         if (path.endsWith('.md')) {
             return new Blob([String(value)], { type: 'text/plain' });
+        }
+        if (typeof value === 'string' && value.indexOf('vihu-asset:') === 0) {
+            if (typeof window === 'undefined' || !window.AssetStore) {
+                throw new Error('Asset ' + value + ' could not be resolved for Build (AssetStore unavailable).');
+            }
+            const src = await window.AssetStore.resolve(value);
+            if (!src) {
+                throw new Error('Asset ' + value + ' could not be resolved for Build.');
+            }
+            return await _dataURLToBlob(src);
         }
         if (typeof value === 'string' && value.indexOf('data:') === 0) {
             return await _dataURLToBlob(value);

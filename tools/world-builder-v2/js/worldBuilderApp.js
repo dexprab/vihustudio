@@ -207,9 +207,16 @@
             // instead of a broken-image icon rather than leaving a
             // visibly wrong card on screen.
             img.onerror = function () { thumb.innerHTML = ''; thumb.textContent = project.icon || '🌎'; };
-            img.src = thumbURL;
             img.alt = '';
             thumb.appendChild(img);
+            // Phase B — thumbURL may be a durable vihu-asset: reference
+            // (js/assetStore.js) rather than an embedded data: URI;
+            // resolve it to a real src before assigning (a legacy data:
+            // URI resolves through the same call, same-tick).
+            _resolveAssetRefToSrc(thumbURL).then(function (src) {
+                if (src) img.src = src;
+                else { thumb.innerHTML = ''; thumb.textContent = project.icon || '🌎'; }
+            });
         } else {
             thumb.textContent = project.icon || '🌎';
         }
@@ -588,9 +595,16 @@
 
         paint(null);
         if (worldMeta.heroImage) {
-            const img = new Image();
-            img.onload = function () { paint(img); };
-            img.src = worldMeta.heroImage;
+            // Phase B — worldMeta.heroImage may be a durable vihu-asset:
+            // reference rather than an embedded data: URI; resolve it to
+            // a real src first (a legacy data: URI resolves through the
+            // same call, same-tick).
+            _resolveAssetRefToSrc(worldMeta.heroImage).then(function (src) {
+                if (!src) return; // unresolvable — the plain paint(null) above stays as the fallback
+                const img = new Image();
+                img.onload = function () { paint(img); };
+                img.src = src;
+            });
         }
     }
 
@@ -1329,16 +1343,26 @@
         // `new Blob([String(value)])`, byte-encoding the URL TEXT
         // itself as if it were the image's own pixels. Fixed at the
         // real root: every signed-URL asset this materializer wrote is
-        // now actually downloaded and converted to a real data: URI
-        // before the Project is ever opened or saved -- matching the
-        // convention every other asset in this file already follows,
-        // and permanently correct (no expiry, no future corruption)
-        // rather than merely resolving faster. A fetch failure (an
-        // already-expired URL, a transient network error) is disclosed,
-        // not swallowed silently -- the asset is left as its original
-        // signed-URL string (today's exact behaviour), so one broken
-        // asset can never block the rest of a real clone from
-        // succeeding.
+        // now actually downloaded before the Project is ever opened or
+        // saved, so it's permanently correct (no expiry, no future
+        // corruption) rather than merely resolving faster. Platform
+        // Hardening — Draft Asset Architecture: the fetched bytes are
+        // stored via AssetStore.put() (a real vihu-asset: reference,
+        // resolved locally through IndexedDB from then on, with a
+        // background upload to durable Storage) rather than hydrated
+        // into a full embedded data: URI — cloning/viewing an Official
+        // Theme with real, possibly-large artwork must not re-introduce
+        // large embedded base64 right back into project.files, which is
+        // exactly the quota problem this architecture exists to
+        // eliminate. Falls back to the original data: URI hydration only
+        // if AssetStore somehow isn't loaded, matching this function's
+        // own pre-existing behaviour exactly rather than leaving a
+        // signed URL that will expire and later corrupt a re-Build. A
+        // fetch failure (an already-expired URL, a transient network
+        // error) is disclosed, not swallowed silently -- the asset is
+        // left as its original signed-URL string (today's exact
+        // behaviour), so one broken asset can never block the rest of a
+        // real clone from succeeding.
         const urlAssetPaths = Object.keys(files).filter(function (p) {
             return typeof files[p] === 'string' && /^https?:\/\//i.test(files[p]);
         });
@@ -1348,13 +1372,16 @@
                 if (!res.ok) throw new Error('fetch failed: ' + res.status);
                 return res.blob();
             }).then(function (blob) {
-                return new Promise(function (resolve, reject) {
-                    const reader = new FileReader();
-                    reader.onload = function () { resolve(reader.result); };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-            }).then(function (dataURL) { files[p] = dataURL; }).catch(function () { /* leave as the original signed URL -- disclosed, non-blocking degrade */ });
+                if (typeof window.AssetStore === 'undefined') {
+                    return new Promise(function (resolve, reject) {
+                        const reader = new FileReader();
+                        reader.onload = function () { resolve(reader.result); };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                }
+                return window.AssetStore.put(blob, { surface: 'builder', projectId: project.id });
+            }).then(function (refOrDataURL) { files[p] = refOrDataURL; }).catch(function () { /* leave as the original signed URL -- disclosed, non-blocking degrade */ });
         })).then(function () { return project; });
     }
 
@@ -1954,9 +1981,14 @@
         if (cloudThumbURL) {
             const img = document.createElement('img');
             img.onerror = function () { thumb.innerHTML = ''; thumb.textContent = glyphFallback; };
-            img.src = cloudThumbURL;
             img.alt = '';
             thumb.appendChild(img);
+            // Phase B — cloudThumbURL may be a durable vihu-asset:
+            // reference; resolve it to a real src before assigning.
+            _resolveAssetRefToSrc(cloudThumbURL).then(function (src) {
+                if (src) img.src = src;
+                else { thumb.innerHTML = ''; thumb.textContent = glyphFallback; }
+            });
         } else {
             thumb.textContent = glyphFallback;
         }
@@ -3813,12 +3845,19 @@
         const thumbURL = window.ProjectModel.getAsset(currentProject, 'thumbnail.png');
         if (thumbURL) {
             const img = document.createElement('img');
-            img.src = thumbURL;
             img.style.width = '64px';
             img.style.height = '64px';
             img.style.objectFit = 'cover';
             img.style.borderRadius = '8px';
             frameEl.appendChild(img);
+            // Phase B — thumbURL may be a durable vihu-asset: reference;
+            // resolve it to a real src before assigning. Falls back to
+            // the icon glyph if it can't be resolved, matching the
+            // pre-existing no-thumbnail branch below.
+            _resolveAssetRefToSrc(thumbURL).then(function (src) {
+                if (src) { img.src = src; }
+                else { img.remove(); frameEl.appendChild(icon); }
+            });
         } else {
             frameEl.appendChild(icon);
         }
@@ -4457,6 +4496,17 @@
     // the Decorations quick-picker below keep its exact existing one-
     // click feel while creating a real Experience underneath, rather
     // than inventing a fifth content section just for this.
+    // Platform Hardening — Draft Asset Architecture, Phase B, a
+    // deliberate, disclosed scope exception: this stays a plain
+    // synchronous data: URI, not a durable AssetStore.put() reference.
+    // A 160x160 single-glyph PNG is a few KB at most — nowhere near the
+    // scale that ever threatened localStorage's quota (real photographic
+    // artwork uploads did, which is why _fileInputUpload's own path was
+    // rewired) — and its one call site (the Decorations quick-picker) is
+    // a synchronous, multi-step sequence (create -> graduate -> set
+    // property -> attach -> persist -> render) that a Promise-based
+    // put() would need real restructuring to fit into for no real
+    // benefit at this size.
     function _rasterizeGlyphToDataURL(glyph) {
         const canvas = document.createElement('canvas');
         canvas.width = 160; canvas.height = 160;
@@ -4518,6 +4568,25 @@
         return frame ? (frame.fields || {}) : null;
     }
 
+    // Platform Hardening — Draft Asset Architecture, Phase B. A stored
+    // asset field may now hold either a legacy embedded data: URI (used
+    // verbatim, no resolution needed) or a durable
+    // `vihu-asset:<surface>:<projectId>:<assetId>` reference
+    // (js/assetStore.js) that must be resolved to a real, loadable src
+    // (warm cache / IndexedDB / a signed Storage URL) before any <img>/
+    // canvas painter can use it. AssetStore.resolve() already handles
+    // both forms correctly (a data: URI resolves through it verbatim,
+    // same-tick for all practical purposes), so every read call site
+    // below funnels through this one, defensively-guarded wrapper rather
+    // than re-deriving the same branch itself — if AssetStore isn't
+    // loaded for any reason, the raw field value is used as-is, exactly
+    // today's pre-Phase-B behaviour.
+    function _resolveAssetRefToSrc(ref) {
+        if (!ref) return Promise.resolve(null);
+        if (typeof window.AssetStore === 'undefined') return Promise.resolve(ref);
+        return window.AssetStore.resolve(ref);
+    }
+
     // EV-002 — the World's own authored Hero Image is its representative
     // artwork; Thumbnail is the fallback when no Hero Image has been
     // uploaded yet (the ticket's own "prefer its original high-resolution
@@ -4528,53 +4597,62 @@
     // inventing a second "sample artwork" concept (the ticket's own
     // explicit instruction) — `_sampleArtworkImage` above is a wholly
     // separate, generic stand-in the legacy Engine V1 specimen path
-    // uses and is untouched by this. Cached by data-URL so a change to
+    // uses and is untouched by this. Cached by the raw stored field
+    // value (a data: URI or a vihu-asset: reference) so a change to
     // either asset (re-upload) is picked up on the very next redraw
-    // without re-decoding an unchanged image every frame.
+    // without re-resolving/re-decoding an unchanged image every frame.
     let _repArtCache = { src: null, img: null };
     function _representativeArtworkImage(project, sceneId) {
-        const src = window.ProjectModel.getAsset(project, 'preview.png') || window.ProjectModel.getAsset(project, 'thumbnail.png');
-        if (!src) { _repArtCache = { src: null, img: null }; return null; }
-        if (_repArtCache.src === src) return _repArtCache.img;
-        _repArtCache = { src: src, img: null };
-        const img = new Image();
-        img.onload = function () {
-            if (_repArtCache.src !== src) return; // superseded by a newer upload before this one finished loading
-            _repArtCache.img = img;
-            _redrawSceneCanvases(sceneId);
-        };
-        img.src = src;
-        return null; // not decoded yet this frame — falls back to placeholder chrome until onload fires
+        const ref = window.ProjectModel.getAsset(project, 'preview.png') || window.ProjectModel.getAsset(project, 'thumbnail.png');
+        if (!ref) { _repArtCache = { src: null, img: null }; return null; }
+        if (_repArtCache.src === ref) return _repArtCache.img;
+        _repArtCache = { src: ref, img: null };
+        _resolveAssetRefToSrc(ref).then(function (resolvedSrc) {
+            if (!resolvedSrc || _repArtCache.src !== ref) return; // superseded by a newer upload, or unresolvable
+            const img = new Image();
+            img.onload = function () {
+                if (_repArtCache.src !== ref) return; // superseded by a newer upload before this one finished loading
+                _repArtCache.img = img;
+                _redrawSceneCanvases(sceneId);
+            };
+            img.src = resolvedSrc;
+        });
+        return null; // not decoded yet this frame — falls back to placeholder chrome until onload/resolve fires
     }
 
     // Builder V3 MEP — Decoration Image support. Same "caller resolves,
     // module only draws" shape as `_representativeArtworkImage` above,
-    // generalized to any number of data-URI images a Scene's Layers may
+    // generalized to any number of images a Scene's Layers may
     // reference (rather than the one Holder-level artwork slot): a
-    // plain cache keyed by the data URI itself, so re-using the same
-    // uploaded image across multiple Decorations decodes it only once.
+    // plain cache keyed by the raw stored reference itself (a data: URI
+    // or a vihu-asset: reference), so re-using the same uploaded image
+    // across multiple Decorations resolves/decodes it only once.
     const _layerImageCache = {};
     function _resolveLayerImage(dataURI, sceneId) {
         if (!dataURI) return null;
         const cached = _layerImageCache[dataURI];
         if (cached) return cached.loaded ? cached.img : null;
         const entry = { img: new Image(), loaded: false };
-        entry.img.onload = function () {
-            entry.loaded = true;
-            _redrawSceneCanvases(sceneId);
-            // Builder V3.1 — the Experience Studio's Image/Graphics
-            // sections resolve through this same cache but aren't Scene-
-            // keyed (a Nurturing Experience may have no Scene at all),
-            // so `_redrawSceneCanvases`'s own Scene-id early return can't
-            // reach it; give it an explicit nudge once decoding finishes.
-            if (_experienceStudioShouldBeActive()) {
-                const exp = window.ProjectModel.findExperience(currentProject, experienceInspectorId);
-                if (exp) _renderExperienceStudio(exp);
-            }
-        };
-        entry.img.src = dataURI;
         _layerImageCache[dataURI] = entry;
-        return null; // not decoded yet this frame — falls back to glyph until onload fires
+        _resolveAssetRefToSrc(dataURI).then(function (resolvedSrc) {
+            if (!resolvedSrc || _layerImageCache[dataURI] !== entry) return; // unresolvable, or superseded before this settled
+            entry.img.onload = function () {
+                entry.loaded = true;
+                _redrawSceneCanvases(sceneId);
+                // Builder V3.1 — the Experience Studio's Image/Graphics
+                // sections resolve through this same cache but aren't
+                // Scene-keyed (a Nurturing Experience may have no Scene at
+                // all), so `_redrawSceneCanvases`'s own Scene-id early
+                // return can't reach it; give it an explicit nudge once
+                // decoding finishes.
+                if (_experienceStudioShouldBeActive()) {
+                    const exp = window.ProjectModel.findExperience(currentProject, experienceInspectorId);
+                    if (exp) _renderExperienceStudio(exp);
+                }
+            };
+            entry.img.src = resolvedSrc;
+        });
+        return null; // not decoded yet this frame — falls back to glyph until onload/resolve fires
     }
 
     // Draws the Scene's full Scene Stack through the native Engine V2
@@ -5875,9 +5953,13 @@
             const props = owningExp.properties || {};
             if (props.imageSrc || props.graphicSrc) {
                 const img = document.createElement('img');
-                img.src = props.imageSrc || props.graphicSrc;
                 img.alt = '';
                 thumb.appendChild(img);
+                // Phase B — imageSrc/graphicSrc may be a durable
+                // vihu-asset: reference; resolve it to a real src.
+                _resolveAssetRefToSrc(props.imageSrc || props.graphicSrc).then(function (src) {
+                    if (src) img.src = src;
+                });
             } else if (props.graphicShape) {
                 _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
             } else if (!props.colorTransparent && props.colorValue) {
@@ -5889,9 +5971,12 @@
             thumb.textContent = '✍️';
         } else if (layer.image) {
             const img = document.createElement('img');
-            img.src = layer.image;
             img.alt = '';
             thumb.appendChild(img);
+            // Phase B — layer.image may be a durable vihu-asset: reference.
+            _resolveAssetRefToSrc(layer.image).then(function (src) {
+                if (src) img.src = src;
+            });
         } else {
             thumb.textContent = layer.glyph || '✨';
         }
@@ -5983,9 +6068,13 @@
             const props = exp.properties || {};
             if (props.imageSrc || props.graphicSrc) {
                 const img = document.createElement('img');
-                img.src = props.imageSrc || props.graphicSrc;
                 img.alt = '';
                 thumb.appendChild(img);
+                // Phase B — imageSrc/graphicSrc may be a durable
+                // vihu-asset: reference; resolve it to a real src.
+                _resolveAssetRefToSrc(props.imageSrc || props.graphicSrc).then(function (src) {
+                    if (src) img.src = src;
+                });
             } else if (props.graphicShape) {
                 _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
             } else if (exp.type === 'frame' && props.borderColor) {
@@ -6422,11 +6511,14 @@
                 glyph.className = 'wb-scene-template-icon';
                 if (l.image) {
                     const img = document.createElement('img');
-                    img.src = l.image;
                     img.style.width = '100%';
                     img.style.height = '100%';
                     img.style.objectFit = 'contain';
                     glyph.appendChild(img);
+                    // Phase B — l.image may be a durable vihu-asset: reference.
+                    _resolveAssetRefToSrc(l.image).then(function (src) {
+                        if (src) img.src = src;
+                    });
                 } else {
                     glyph.textContent = l.glyph;
                 }
@@ -7149,10 +7241,33 @@
         img.src = dataURL;
     }
 
+    // Platform Hardening — Draft Asset Architecture, Phase B. Every real
+    // upload in this file funnels through this one function, so this is
+    // the single, centralized point that replaces the old "embed the
+    // whole data URI into project.files" behaviour with a durable
+    // vihu-asset: reference — every existing call site's own onFile(v)
+    // callback is unchanged, it just now receives a small reference
+    // string instead of a (potentially multi-megabyte) data: URI, and
+    // stores it exactly as it always has (setIdentityAsset/setAsset/
+    // updateExperienceProperty all just persist whatever string they're
+    // handed). AssetStore.put() itself never blocks on the network and
+    // never loses the upload if its own local write somehow fails (it
+    // resolves with the original data: URI in that case, so the caller's
+    // behaviour degrades to exactly what it was before this phase,
+    // never silently drops the picture).
+    function _storeUploadedAsset(dataURL, onFile) {
+        if (typeof window.AssetStore === 'undefined' || !currentProject) { onFile(dataURL); return; }
+        window.AssetStore.put(dataURL, { surface: 'builder', projectId: currentProject.id }).then(function (ref) {
+            onFile(ref);
+        }).catch(function () { onFile(dataURL); });
+    }
+
     // Real upload — a hidden file input read via FileReader into a data
-    // URI, the same embedding approach js/services/builder.js already
-    // expects for assets/preview.png/thumbnail.png (Sprint B2.0; no
-    // asset upload existed before this sprint).
+    // URI, then (Phase B) durably stored via _storeUploadedAsset before
+    // the caller ever sees it, the same embedding approach
+    // js/services/builder.js already expects for assets/preview.png/
+    // thumbnail.png at Build time (Sprint B2.0), now backed by
+    // AssetStore instead of raw localStorage-embedded base64.
     function _fileInputUpload(accept, onFile) {
         const input = document.createElement('input');
         input.type = 'file';
@@ -7165,10 +7280,11 @@
             reader.onload = function () {
                 const dataURL = reader.result;
                 const isImage = file.type && file.type.indexOf('image/') === 0;
+                const finish = function (finalDataURL) { _storeUploadedAsset(finalDataURL, onFile); };
                 if (isImage && dataURL.length > UPLOAD_DOWNSCALE_THRESHOLD_BYTES) {
-                    _downscaleImageDataURL(dataURL, onFile);
+                    _downscaleImageDataURL(dataURL, finish);
                 } else {
-                    onFile(dataURL);
+                    finish(dataURL);
                 }
             };
             reader.readAsDataURL(file);
@@ -7183,12 +7299,17 @@
         thumb.className = 'wb-asset-thumb';
         if (existingDataURL) {
             const img = document.createElement('img');
-            img.src = existingDataURL;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'cover';
             img.style.borderRadius = '10px';
             thumb.appendChild(img);
+            // Phase B — existingDataURL may be a durable vihu-asset:
+            // reference; resolve it to a real src before assigning.
+            _resolveAssetRefToSrc(existingDataURL).then(function (src) {
+                if (src) img.src = src;
+                else { img.remove(); thumb.textContent = iconFallback; }
+            });
         } else {
             thumb.textContent = iconFallback;
         }
@@ -7426,18 +7547,24 @@
         // own glyph) so nothing already authored loses its preview.
         if (props.imageSrc) {
             const img = document.createElement('img');
-            img.src = props.imageSrc;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
             thumb.appendChild(img);
+            // Phase B — imageSrc may be a durable vihu-asset: reference.
+            _resolveAssetRefToSrc(props.imageSrc).then(function (src) {
+                if (src) img.src = src;
+            });
         } else if (props.graphicSrc) {
             const img = document.createElement('img');
-            img.src = props.graphicSrc;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
             thumb.appendChild(img);
+            // Phase B — graphicSrc may be a durable vihu-asset: reference.
+            _resolveAssetRefToSrc(props.graphicSrc).then(function (src) {
+                if (src) img.src = src;
+            });
         } else if (props.graphicShape) {
             _fillShapeThumb(thumb, props.graphicShape, props.graphicFillColor);
         } else if (exp.type === 'frame' && props.borderColor) {
@@ -9481,12 +9608,17 @@
         const existing = window.ProjectModel.getAsset(project, slot.path);
         if (existing && slot.previewType !== 'none') {
             const img = document.createElement('img');
-            img.src = existing;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'cover';
             img.style.borderRadius = '10px';
             thumb.appendChild(img);
+            // Phase B — existing may be a durable vihu-asset: reference;
+            // resolve it to a real src before assigning.
+            _resolveAssetRefToSrc(existing).then(function (src) {
+                if (src) img.src = src;
+                else { img.remove(); thumb.textContent = '📄'; }
+            });
         } else {
             thumb.textContent = existing ? '📄' : '—';
         }

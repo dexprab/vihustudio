@@ -478,7 +478,7 @@ class BuildEngine {
         }
 
         if (layer.kind === 'decoration' && layer.image) {
-            const assetPath = this.externalizeSceneImage(scene, layer, package_);
+            const assetPath = await this.externalizeSceneImage(scene, layer, package_);
             return Object.assign({}, base, {
                 type: 'decoration',
                 anchor: 'top-left',
@@ -522,20 +522,32 @@ class BuildEngine {
     }
 
     /**
-     * A Scene Layer's `.image` field is always a raw data URI (Builder
-     * upload fields never write a project-relative asset path for
-     * Scene content — see js/projectModel.js's _syncUniversalContent) —
-     * so it must be externalized into the SAME package_.assets map
-     * every assets/*, preview.png and thumbnail.png entry already uses
-     * (packageTheme(), above), replacing it with a plain relative-path
-     * reference resolved at render time via
-     * ThemeRegistry.resolveAssetRef() — identical discipline to the
-     * Asset Repository Transition sprint's own externalization fix.
+     * A Scene Layer's `.image` field is a raw data URI (a legacy upload,
+     * or a Studio-side rehydration) OR, since the Draft Asset
+     * Architecture's Phase B upload rewiring, a durable
+     * `vihu-asset:<surface>:<projectId>:<assetId>` reference
+     * (js/assetStore.js) — either way it must be externalized into the
+     * SAME package_.assets map every assets/*, preview.png and
+     * thumbnail.png entry already uses (packageTheme(), above),
+     * replacing it with a plain relative-path reference resolved at
+     * render time via ThemeRegistry.resolveAssetRef() — identical
+     * discipline to the Asset Repository Transition sprint's own
+     * externalization fix. A vihu-asset: reference is resolved through
+     * AssetStore first (warm cache / IndexedDB / a signed Storage URL)
+     * before being embedded — this function is already async (called
+     * with `await` from convergeSceneLayer above), so no caller change
+     * beyond that one await was needed.
      */
-    externalizeSceneImage(scene, layer, package_) {
+    async externalizeSceneImage(scene, layer, package_) {
         const relPath = 'scenes/' + scene.id + '/' + layer.id + '.png';
-        if (typeof layer.image === 'string' && layer.image.indexOf('data:') === 0) {
-            package_.assets[relPath] = layer.image;
+        let src = layer.image;
+        if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
+            src = (typeof window !== 'undefined' && window.AssetStore)
+                ? await window.AssetStore.resolve(src)
+                : null;
+        }
+        if (typeof src === 'string' && src.indexOf('data:') === 0) {
+            package_.assets[relPath] = src;
         }
         return relPath;
     }
