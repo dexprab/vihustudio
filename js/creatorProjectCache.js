@@ -136,7 +136,14 @@
                 tx.onerror = function () { reject(tx.error || new Error('IndexedDB write failed')); };
                 tx.onabort = function () { reject(tx.error || new Error('IndexedDB transaction aborted')); };
             });
-        }).then(function () { return { ok: true }; }).catch(function (e) { return { ok: false, error: e }; });
+        }).then(function () { return { ok: true }; }).catch(function (e) {
+            // Same "no data loss under any circumstances" backstop as the
+            // World Builder sibling — see that module's own comment on
+            // this exact catch branch for the full reasoning.
+            const fallback = _writeLegacyLocalStorageFallback();
+            if (fallback.ok) return { ok: true };
+            return { ok: false, error: e };
+        });
     }
 
     function _deleteOne(id) {
@@ -197,10 +204,16 @@
     function list() { return Array.from(_map.values()); }
     function get(id) { return _map.get(id) || null; }
 
-    function putLocal(record) {
+    // `opts.onPersistFailed(error)` — see
+    // tools/world-builder-v2/js/projectCache.js's own putLocal() comment
+    // for the full reasoning; mirrored here for parity, wired in by
+    // js/creatorProjectStore.js once Phase 4 rewires this module's caller.
+    function putLocal(record, opts) {
+        opts = opts || {};
         _map.set(record.id, record);
         _persistOne(record).then(function (result) {
             if (result.ok) _scheduleDrainSoon();
+            else if (typeof opts.onPersistFailed === 'function') opts.onPersistFailed(result.error);
         });
         return record;
     }

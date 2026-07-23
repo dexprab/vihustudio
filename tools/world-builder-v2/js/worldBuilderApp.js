@@ -1715,7 +1715,19 @@
             if (welcomeMain) welcomeMain.classList.add('wb-hidden');
             return;
         }
-        window.ThemeRepositoryClient.getIdentity().then(function (identity) {
+        // Cloud-Primary Project Storage, Phase 2 — renderMyWorlds() (only
+        // ever reached once this gate confirms a real signed-in identity,
+        // below) now reads Projects through js/projectCache.js's own
+        // synchronous in-memory mirror, which must be hydrated from
+        // IndexedDB first. hydrate() is memoized and safe to call any
+        // number of times; running it in parallel with the identity check
+        // (not after it) means this gate never gets slower for it — the
+        // two independent async things this screen needs both resolve
+        // together.
+        const hydrateReady = (window.ProjectCache && window.ProjectCache.hydrate)
+            ? window.ProjectCache.hydrate() : Promise.resolve();
+        Promise.all([window.ThemeRepositoryClient.getIdentity(), hydrateReady]).then(function (results) {
+            const identity = results[0];
             if (identity.configured && identity.signedIn) {
                 if (signinGate) signinGate.classList.add('wb-hidden');
                 if (welcomeMain) welcomeMain.classList.remove('wb-hidden');
@@ -2848,21 +2860,19 @@
     let _saveDisplayTimer = null;
     function _setSaveState(state) {
         if (state === 'error') {
-            // AV-009 — a real, visible failure state: the previous binary
-            // dirty/saved model had no way to say "this did not actually
-            // save," which is exactly how a quota-exceeded write went
-            // unnoticed until the next reload silently reverted it.
+            // AV-009 originally shipped this for a localStorage quota
+            // failure — Cloud-Primary Project Storage, Phase 2 retired
+            // that cause entirely (ProjectStore.save()'s local write now
+            // goes through js/projectCache.js's in-memory mirror, which
+            // can't fail to update — see that file's own header comment).
+            // This state is reachable today only via the genuinely rare
+            // ProjectStore.onPersistError(...) listener registered below —
+            // IndexedDB AND its own localStorage emergency fallback BOTH
+            // failing on one write, meaning this device's storage is
+            // broken in some deeper way, not an ordinary quota event.
             saveDot.textContent = '🔴';
-            savedText.textContent = 'Save Failed — try a smaller image';
-            // The badge alone left real ambiguity: a Build+Publish/Promote
-            // that runs while this is showing still succeeds correctly
-            // (both read this Project directly from memory, never from
-            // localStorage), so a creator seeing "Save Failed" right next
-            // to "Published successfully" had no way to tell whether that
-            // was a contradiction or two separate, both-true facts. It's
-            // the latter — spelled out here since the badge itself has no
-            // room for it.
-            savedBadge.title = 'This edit hasn’t saved to this browser — reloading now could lose it. Anything you’ve already Published or Promoted is safe (that always uses what’s on screen, not this local save). Shrink the image and this should clear on its own.';
+            savedText.textContent = 'Couldn’t Save on This Device';
+            savedBadge.title = 'This browser could not save your work locally just now — try reloading, or check whether this device is low on storage. Anything you’ve already Published or Promoted is unaffected (that always uses what’s on screen, not this local save).';
         } else if (state === 'dirty') {
             saveDot.textContent = '🟠';
             savedText.textContent = 'Unsaved Changes';
@@ -2938,12 +2948,24 @@
     // expectedUpdatedAt), the exact same call every pre-Versioned-Sync
     // save already made. Only ever reachable by a deliberate click on
     // the "Cloud has newer changes" badge, never automatic.
+    //
+    // Cloud-Primary Project Storage, Phase 2 — routed through
+    // ProjectCache.forceSync() rather than calling ProjectSync.push()
+    // directly: enqueueSync() alone would re-attempt a CONDITIONAL push
+    // still comparing against the same stale cloudSyncedAt that caused
+    // the conflict in the first place (conflicting again, not
+    // overwriting) — forceSync() is the cache's own unconditional
+    // equivalent, and it already updates the in-memory record's
+    // cloudSyncedAt + marks its pending-sync bookkeeping 'done' on
+    // success, so the badge (via the onSyncStateChange listener
+    // registered below) settles correctly with no separate handling
+    // needed here.
     function _forceOverwriteCloud(project) {
         if (!window.confirm('Overwrite the cloud copy of "' + project.name + '" with what you have on this device? Whatever was saved to the cloud since your last sync will be replaced.')) return;
         _setCloudSyncState('pending');
-        window.ProjectSync.push(project).then(function (result) {
+        if (!window.ProjectCache) { _setCloudSyncState('error'); return; }
+        window.ProjectCache.forceSync(project.id).then(function (result) {
             if (project !== currentProject) return;
-            if (result.ok) project.cloudSyncedAt = result.updatedAt;
             _setCloudSyncState(result.ok ? 'synced' : 'error');
         });
     }
@@ -3046,53 +3068,69 @@
         }, 1500);
     }
 
-    // Debounced separately from the local save (which is synchronous and
-    // immediate, per AV-009/Sprint B2.0.6) — a network push on every
-    // keystroke would be wasteful and would just queue up redundant
-    // requests behind each other. 2s of no further edits before the
-    // background copy actually goes out; ProjectSync.push() itself never
-    // throws (see its own header comment), so this never needs a
-    // try/catch of its own.
-    //
-    // Versioned Cloud Sync — passes project.cloudSyncedAt (the cloud
-    // row's own updated_at as of the last time THIS device successfully
-    // synced it) as the conditional write's expectedUpdatedAt, so a save
-    // from a stale tab/device can never silently clobber a newer one
-    // already sitting in the cloud; see _setCloudSyncState's 'conflict'
-    // branch for what happens instead.
+    // Cloud-Primary Project Storage, Phase 2 — this function no longer
+    // performs the cloud push itself. That durability now lives one
+    // layer down, in js/projectCache.js: ProjectStore.save() (called by
+    // every _persist()) already routes through ProjectCache.putLocal(),
+    // which durably refreshes this project's own pendingCloudSync
+    // bookkeeping in the SAME IndexedDB transaction as the local write,
+    // then schedules its own debounced drain — so the record is queued
+    // for a background push the instant an edit lands, whether or not
+    // this tab is still open a moment later (the exact "survives a tab
+    // crash/close" guarantee _scheduleCloudSync's own bare setTimeout
+    // could never give). This function's remaining job is purely the
+    // live UI feedback while the Workspace stays open: show "pending"
+    // right away, and ask the cache for a prompt attempt rather than
+    // waiting out its own full drain-debounce window, so an author sees
+    // the badge move quickly. The 2s debounce here is kept only to avoid
+    // hammering isAvailable()/enqueueSync() on every keystroke of a rapid
+    // edit — it no longer has anything to do with durability.
     let _cloudSyncTimer = null;
     function _scheduleCloudSync() {
-        if (!window.ProjectSync) return;
+        if (!window.ProjectSync || !window.ProjectCache) return;
         clearTimeout(_cloudSyncTimer);
         _cloudSyncTimer = setTimeout(function () {
             const project = currentProject;
             window.ProjectSync.isAvailable().then(function (ok) {
+                if (project !== currentProject) return;
                 if (!ok) { _setCloudSyncState('unavailable'); return; }
                 _setCloudSyncState('pending');
-                window.ProjectSync.push(project, { expectedUpdatedAt: project.cloudSyncedAt }).then(function (result) {
-                    // A later edit may have already fired a newer sync —
-                    // never let a stale response overwrite a fresher state.
-                    if (project !== currentProject) return;
-                    if (result.ok) {
-                        // Record what the cloud row's own updated_at now
-                        // is (a plain in-memory + local-storage write,
-                        // never another _persist()/_scheduleCloudSync()
-                        // round trip of its own) so the *next* save's
-                        // conditional push compares against the real
-                        // stored value.
-                        project.cloudSyncedAt = result.updatedAt;
-                        window.ProjectStore.save(project);
-                        _setCloudSyncState('synced');
-                        return;
-                    }
-                    if (result.conflict) {
-                        _setCloudSyncState('conflict', project);
-                        return;
-                    }
-                    _setCloudSyncState('error');
-                });
+                window.ProjectCache.enqueueSync(project.id);
             });
         }, 2000);
+    }
+
+    // The other half of the live-feedback loop above: whatever settles
+    // this project's own queued cloud push — this tab's own prompt
+    // enqueueSync() attempt, the cache's own periodic background drain,
+    // or the migration-triggered re-sync in _scheduleAssetMigration below
+    // — funnels through js/projectCache.js's own _attemptSync() and
+    // fires this one shared listener with the real outcome. Registered
+    // once; every check below is "is this about the project currently
+    // open," so a background sync for a DIFFERENT World (queued from an
+    // earlier session, drained on this boot) never touches a badge that
+    // isn't describing it.
+    if (window.ProjectCache && window.ProjectCache.onSyncStateChange) {
+        window.ProjectCache.onSyncStateChange(function (id, outcome) {
+            if (!currentProject || currentProject.id !== id) return;
+            if (outcome === 'synced') _setCloudSyncState('synced');
+            else if (outcome === 'conflict') _setCloudSyncState('conflict', currentProject);
+            else if (outcome === 'unavailable') _setCloudSyncState('unavailable');
+            else _setCloudSyncState('error');
+        });
+    }
+
+    // Cloud-Primary Project Storage, Phase 2 — the genuinely rare
+    // durable-write-failure signal (see _setSaveState's own 'error'
+    // branch for why this can now only mean a deeper storage problem,
+    // not an ordinary quota event). Registered once, for whichever
+    // project happens to be open at the moment it actually fires.
+    if (window.ProjectStore && window.ProjectStore.onPersistError) {
+        window.ProjectStore.onPersistError(function (id, error) {
+            if (!currentProject || currentProject.id !== id) return;
+            clearTimeout(_saveDisplayTimer);
+            _setSaveState('error');
+        });
     }
 
     // Overflow menu — Duplicate/Reset Layout/Delete. No dead entries.
@@ -3838,73 +3876,24 @@
         // function before being saved.
         if (currentProjectReadOnly) return;
         _setSaveState('dirty');
-        const result = window.ProjectStore.save(currentProject);
+        // Cloud-Primary Project Storage, Phase 2 — ProjectStore.save()'s
+        // local write now always succeeds synchronously (it's an
+        // in-memory Map update — see js/projectCache.js's own header
+        // comment); the old AV-009 "did this reach localStorage" branch
+        // and its own migrate-and-retry self-heal are retired along with
+        // it. A genuine, rare durable-write failure (IndexedDB AND its
+        // own localStorage emergency fallback both failing) is reported
+        // later, asynchronously, via the ProjectStore.onPersistError(...)
+        // listener registered once near _setSaveState above — not from
+        // this return value.
+        window.ProjectStore.save(currentProject);
         clearTimeout(_saveDisplayTimer);
-        if (!result.ok) {
-            // AV-009 — a save that didn't actually reach localStorage
-            // (quota exceeded is the realistic case, e.g. a very large
-            // upload) must never claim "All Changes Saved" — that lie is
-            // exactly what let Hero Image uploads silently vanish on the
-            // next reload. Show the real state and keep it visible
-            // (no auto-return to "saved") until a save actually succeeds.
-            _setSaveState('error');
-            // Real, confirmed gap this closes: _scheduleAssetMigration()
-            // (Phase D) only ever ran as a side effect of an ALREADY-
-            // successful save — so a Project still carrying legacy
-            // embedded base64 (authored, or last saved, before Draft
-            // Asset Architecture externalized uploads) could get stuck
-            // failing forever: every edit tries to save, the write is
-            // already too big to fit, and migration — the one thing that
-            // would shrink it back under quota — never gets a chance to
-            // run. Self-heal: migrate this Project's own legacy fields
-            // right now (migrateFieldsOnSave only ever touches local
-            // IndexedDB, never a network round trip, so this is safe and
-            // fast even offline) and retry the save once. If this
-            // Project has nothing left to migrate — the failure came
-            // from a different, still-bloated sibling Project sharing
-            // this browser's one localStorage array — the retry simply
-            // fails too, and "Save Failed" keeps showing exactly as
-            // honestly as before.
-            _attemptQuotaSelfHeal(currentProject);
-        } else {
-            _saveDisplayTimer = setTimeout(function () {
-                _setSaveState('saved');
-            }, 600);
-            // Only schedule a cloud backup for a write that actually
-            // reached localStorage — an errored local save already shows
-            // its own real failure state, and pushing to Supabase
-            // wouldn't make an unsaved edit any safer.
-            _scheduleCloudSync();
-            // Phase D — same reasoning: only a Project that actually
-            // reached localStorage is worth walking for legacy data:
-            // fields to migrate.
-            _scheduleAssetMigration();
-        }
+        _saveDisplayTimer = setTimeout(function () {
+            _setSaveState('saved');
+        }, 600);
+        _scheduleCloudSync();
+        _scheduleAssetMigration();
         _renderWorkspaceHeader();
-    }
-
-    // See _persist()'s error branch above for why this exists. Runs
-    // immediately (not debounced like _scheduleAssetMigration — a Project
-    // that's already failing to save has nothing to lose by trying right
-    // away) and re-renders the header itself once it settles, since
-    // _persist() has already returned by the time this Promise resolves.
-    function _attemptQuotaSelfHeal(project) {
-        if (!window.AssetStore || typeof window.AssetStore.migrateFieldsOnSave !== 'function') return;
-        const accessors = _collectMigrationAccessors(project);
-        window.AssetStore.migrateFieldsOnSave('builder', project.id, accessors).then(function () {
-            // A later edit (or a project switch) may have already moved
-            // on — never let a stale self-heal attempt clobber whatever
-            // is showing now.
-            if (project !== currentProject) return;
-            const retry = window.ProjectStore.save(project);
-            if (!retry.ok) return; // still too big — "Save Failed" stays, honestly.
-            clearTimeout(_saveDisplayTimer);
-            _saveDisplayTimer = setTimeout(function () {
-                _setSaveState('saved');
-            }, 600);
-            _scheduleCloudSync();
-            _renderWorkspaceHeader();
-        });
     }
 
     function _renderWorkspaceHeader() {

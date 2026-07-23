@@ -1,9 +1,9 @@
 {
-  "version": "2.102.0",
-  "sprint": "Cloud-Primary Project Storage — Phase 1: Foundation",
-  "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. New js/creatorProjectCache.js (a sibling to tools/world-builder-v2/js/projectCache.js) is an IndexedDB cache tier sitting beneath js/creatorProjectStore.js's own localStorage catalog -- a synchronous in-memory Map mirror (hydrated from IndexedDB once at boot) plus a durably-queued, retry-forever background cloud push, reusing js/assetStore.js's own exponential-backoff ladder (newly exported as AssetStore.BACKOFF_MS) and trigger set. Nothing calls it yet -- zero behaviour-change risk, exactly Draft Asset Architecture's own Phase A discipline. Verified via a new scratch Playwright suite (hydrate/putLocal/get/list/removeLocal/drainPendingSync all correct in isolation; the untouched CreatorProjectStore/ProjectManager path confirmed unaffected) plus both goldenBuild.js suites, unchanged. No forced sign-in change for Studio -- the anonymous Traveller model and MagicCard.getActive() cloud-sync gate are completely untouched. See CLAUDE.md's own entry for the full design and the remaining Phase 2-6 rollout.",
-  "build": "0242",
+  "version": "2.103.0",
+  "sprint": "Cloud-Primary Project Storage — Phase 2: World Builder rewire",
+  "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. This phase's own root-app change is a small, proactive, still-uncalled hardening of js/creatorProjectCache.js (Studio's own Phase 4 target, unwired until then): _persistOne()'s catch branch now falls back to the same emergency localStorage write World Builder's own cache module already had, and putLocal() gained the matching opts.onPersistFailed callback -- both purely additive, zero behaviour-change risk. The real Phase 2 work -- rewiring tools/world-builder-v2/js/projectStore.js to route through js/projectCache.js's in-memory mirror, retiring _attemptQuotaSelfHeal, adding ProjectStore.onPersistError()/ProjectCache.onSyncStateChange()/ProjectCache.forceSync() -- is confined to tools/world-builder-v2/. See CLAUDE.md's own entry for the full design and verification.",
+  "build": "0243",
   "buildDate": "2026-07-23",
-  "commit": "783b734a9d945611caa4798e716d9a190562e2ef",
+  "commit": "PENDING",
   "environment": "Release"
 }

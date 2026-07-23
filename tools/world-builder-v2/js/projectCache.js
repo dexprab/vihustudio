@@ -82,6 +82,24 @@
     let _hydratePromise = null;
     let _retryTimer = null;
 
+    // Phase 2 — a small pub/sub so worldBuilderApp.js's own cloud-sync
+    // badge (_setCloudSyncState) can react to a real settled outcome for
+    // whichever project id it cares about right now, without this module
+    // needing to know anything about that UI. Fired from _attemptSync()
+    // below for every one of its outcomes (unavailable/synced/conflict/
+    // failed) — the same "id + outcome, nothing UI-specific" shape
+    // js/projectStore.js's own onPersistError(id, error) already
+    // establishes for the sibling durable-write-failure case.
+    const _syncListeners = [];
+    function onSyncStateChange(fn) {
+        if (typeof fn === 'function') _syncListeners.push(fn);
+    }
+    function _notifySyncStateChange(id, outcome) {
+        _syncListeners.forEach(function (fn) {
+            try { fn(id, outcome); } catch (e) {}
+        });
+    }
+
     function _openDB() {
         if (_dbPromise) return _dbPromise;
         _dbPromise = new Promise(function (resolve, reject) {
@@ -171,7 +189,22 @@
                 tx.onabort = function () { reject(tx.error || new Error('IndexedDB transaction aborted')); };
             });
         }).then(function () { return { ok: true }; })
-            .catch(function (e) { return { ok: false, error: e }; });
+            .catch(function (e) {
+                // A real "no data loss under any circumstances" backstop —
+                // _useFallback only ever covers indexedDB.open() itself
+                // failing; THIS catch is the rarer case where IndexedDB
+                // opened fine but this specific write transaction still
+                // failed (a transient disk/quota hiccup). Rather than
+                // report failure with nothing durable saved at all, fall
+                // back to the same plain localStorage write _useFallback
+                // mode already uses — the record is still genuinely safe,
+                // just via the legacy path instead of IndexedDB, exactly
+                // matching (never worse than) this app's own pre-Phase-1
+                // baseline durability.
+                const fallback = _writeLegacyLocalStorageFallback();
+                if (fallback.ok) return { ok: true };
+                return { ok: false, error: e };
+            });
     }
 
     function _deleteOne(id) {
@@ -256,10 +289,24 @@
     // Map immediately (genuinely synchronous from the caller's point of
     // view) and fires the durable IndexedDB write + pending-sync refresh
     // in the background, never awaited here.
-    function putLocal(record) {
+    //
+    // `opts.onPersistFailed(error)`, when supplied, is called ONLY in the
+    // genuinely rare case where the durable write ultimately failed even
+    // after _persistOne's own localStorage emergency backstop — i.e.
+    // "this device's storage is broken in some deeper way," not an
+    // ordinary quota event (images are already externalized; a plain
+    // Scenes/Places/Experiences JSON blob is tiny). js/projectStore.js's
+    // save()/duplicate()/create() thread this through to
+    // ProjectStore.onPersistError()'s registered listeners, so the
+    // Workspace can flip its save badge to a real, honestly-rare failure
+    // state asynchronously — a beat after the synchronous {ok:true}
+    // return every caller already reads, never blocking on it.
+    function putLocal(record, opts) {
+        opts = opts || {};
         _map.set(record.id, record);
         _persistOne(record).then(function (result) {
             if (result.ok) _scheduleDrainSoon();
+            else if (typeof opts.onPersistFailed === 'function') opts.onPersistFailed(result.error);
         });
         return record;
     }
@@ -331,14 +378,20 @@
         if (!record) return Promise.resolve('failed');
         if (!window.ProjectSync) return Promise.resolve('failed');
         return window.ProjectSync.isAvailable().then(function (ok) {
-            if (!ok) return 'unavailable';
+            if (!ok) { _notifySyncStateChange(id, 'unavailable'); return 'unavailable'; }
             return window.ProjectSync.push(record, { expectedUpdatedAt: record.cloudSyncedAt }).then(function (result) {
                 if (result.ok) {
                     markCloudSynced(id, result.updatedAt);
-                    return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () { return 'synced'; });
+                    return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () {
+                        _notifySyncStateChange(id, 'synced');
+                        return 'synced';
+                    });
                 }
                 if (result.conflict) {
-                    return _updatePendingRecord(id, { status: 'conflict', nextAttemptAt: null, lastError: null, cloudUpdatedAt: result.cloudUpdatedAt }).then(function () { return 'conflict'; });
+                    return _updatePendingRecord(id, { status: 'conflict', nextAttemptAt: null, lastError: null, cloudUpdatedAt: result.cloudUpdatedAt }).then(function () {
+                        _notifySyncStateChange(id, 'conflict');
+                        return 'conflict';
+                    });
                 }
                 return _getPendingRecordRaw(id).then(function (existing) {
                     const attempts = ((existing && existing.attempts) || 0) + 1;
@@ -347,9 +400,35 @@
                     return _updatePendingRecord(id, {
                         status: 'failed', attempts: attempts, nextAttemptAt: Date.now() + delay,
                         lastError: (result.error && result.error.message) || String(result.error || 'unknown error')
-                    }).then(function () { return 'failed'; });
+                    }).then(function () {
+                        _notifySyncStateChange(id, 'failed');
+                        return 'failed';
+                    });
                 });
             });
+        });
+    }
+
+    // forceSync(id) -> Promise<{ok,error}> — the conflict escape hatch's
+    // own unconditional push, bypassing the conditional expectedUpdatedAt
+    // check entirely (the same "I know I'm the only one editing this in
+    // two tabs" override worldBuilderApp.js's own _forceOverwriteCloud
+    // already offered before this module existed). Always resolves
+    // {ok:true}/{ok:false}, never {conflict:true} — an unconditional push
+    // can't conflict by definition.
+    function forceSync(id) {
+        const record = _map.get(id);
+        if (!record) return Promise.resolve({ ok: false });
+        if (!window.ProjectSync) return Promise.resolve({ ok: false });
+        return window.ProjectSync.push(record).then(function (result) {
+            if (result.ok) {
+                markCloudSynced(id, result.updatedAt);
+                return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () {
+                    _notifySyncStateChange(id, 'synced');
+                    return { ok: true };
+                });
+            }
+            return { ok: false, error: result.error };
         });
     }
 
@@ -425,9 +504,11 @@
         removeLocal: removeLocal,
         markCloudSynced: markCloudSynced,
         enqueueSync: enqueueSync,
+        forceSync: forceSync,
         getPendingSyncCount: getPendingSyncCount,
         getConflictIds: getConflictIds,
-        drainPendingSync: drainPendingSync
+        drainPendingSync: drainPendingSync,
+        onSyncStateChange: onSyncStateChange
     };
     try { window.ProjectCache = ProjectCache; } catch (e) {}
 
