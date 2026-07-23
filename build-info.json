@@ -1,9 +1,9 @@
 {
-  "version": "2.106.0",
-  "sprint": "Cloud-Primary Project Storage \u2014 Phase 6: Verification, a real cross-surface bug found and fixed, docs, ship",
-  "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. Closes the full 6-phase plan: a new Playwright suite (phase6_test.js) covering legacy-migration idempotency, IndexedDB-only-broken degrade, and offline-then-online recovery for both surfaces, plus a real two-device conflict proven through the FULL Studio pipeline (upsert -> _attemptSync -> getConflictIds), not just the isolated push() unit test. That last test found a real, previously-shipped bug: js/creatorProjectStore.js's upsert() constructed a brand-new record on every save with no cloudSyncedAt field, silently wiping the Phase 4 versioned-push hardening the instant editing continued past a Story's first save -- fixed by carrying cloudSyncedAt forward from the existing record. New docs/PROJECT_CLOUD_ARCHITECTURE.md is now the canonical reference for this whole effort. See CLAUDE.md's own entry for the full account.",
-  "build": "0246",
+  "version": "2.106.1",
+  "sprint": "World Builder \u2014 \"Everytime I Delete It Reappears\": Local Delete Now Also Removes the Cloud Backup",
+  "task": "everytime i delete it reappears -- a real bug hit doing fresh manual testing right after Cloud-Primary Project Storage Phase 6 shipped. Root cause: an earlier fix (\"Delete No Longer Cascades\") made local Delete remove only the local draft, never the Cloud Backup, to protect against a since-superseded quota-failure scenario -- but Phase 3 of this same effort later made an orphaned Cloud Backup (no local match) auto-materialize with ZERO click required, silently invalidating that earlier fix's own safety assumption. Fixed: _deleteLocalDraft now also removes the Project's own Cloud Backup (ProjectSync.remove), sequenced so that removal settles before the screen re-renders, closing the race. The Published Theme (a genuinely different, potentially shared consumer) stays completely untouched, unlike the original problematic cascade. See CLAUDE.md's own entry for the full account.",
+  "build": "0247",
   "buildDate": "2026-07-23",
-  "commit": "f737248a129fba1d8f26c413c1daed9f022629a5",
+  "commit": "PENDING",
   "environment": "Release"
 }

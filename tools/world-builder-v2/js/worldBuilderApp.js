@@ -150,24 +150,59 @@
     // Sync sprint (see "Story-Forest Adventure") already fixed once for
     // a different cause.
     //
-    // The cascade is no longer needed to solve the original "keeps
-    // coming back" complaint either: "My World Projects Lists Personal/
-    // Official/Growing" (_annotateProjectBadges' own personalOnly/
-    // officialOnly) and this session's own Cloud Worlds classification
-    // redesign (_relatedBackupCard/_orphanBackupCard) both already
-    // render a leftover Published Theme or Cloud Backup as its own
-    // clearly-labelled, non-duplicate card — never the confusing "same
-    // deleted thing reappears" experience the cascade was built to
-    // avoid. So Delete on a local draft now removes ONLY the local
-    // draft, unconditionally, and never touches the Repository or the
-    // Cloud Backup — those stay exactly as published/backed-up until
-    // the author deliberately removes them from their own dedicated
-    // Delete button (the repo-only card's, or a Cloud World card's),
-    // which already existed independently before this fix and needed
-    // no change.
+    // The cascade was no longer needed to solve the original "keeps
+    // coming back" complaint, PER THIS COMMENT'S OWN REASONING AT THE
+    // TIME: "My World Projects Lists Personal/Official/Growing"
+    // (_annotateProjectBadges' own personalOnly/officialOnly) and the
+    // Cloud Worlds classification redesign (_relatedBackupCard/
+    // _orphanBackupCard) both rendered a leftover Published Theme or
+    // Cloud Backup as its own clearly-labelled, non-duplicate card —
+    // crucially, at THAT time, an Orphan backup only ever restored on a
+    // deliberate "Sync to This Device" CLICK, never automatically.
+    //
+    // Cloud-Primary Project Storage's own Phase 3 (a later sprint) then
+    // changed that: an Orphan (a Cloud Backup with no local match) now
+    // auto-materializes into "My World Projects" with ZERO click
+    // required, "everything should be on cloud" taken literally. That
+    // change silently broke the assumption this function's own removed
+    // cascade relied on — reported directly: "everytime i delete it
+    // reappears." Root cause, confirmed by tracing the exact call chain:
+    // _deleteLocalDraft removes only the LOCAL record; the Cloud Backup
+    // row survives untouched; the very next renderMyWorlds() call runs
+    // _refreshCloudWorlds(), which finds that now-orphaned backup and —
+    // per its own, correct-in-isolation "nothing local to overwrite, so
+    // just restore it" logic — immediately recreates the local Project
+    // from it, undoing the delete on the spot, every single time.
+    //
+    // Fix: local Delete now ALSO removes the Project's own Cloud Backup
+    // (ProjectSync.remove) — this is NOT the dangerous half of the
+    // original cascade. The Cloud Backup (builder_projects) is a
+    // private, single-purpose recovery copy of THIS Project's own data
+    // with no other consumer anywhere; removing it when the author
+    // explicitly, deliberately deletes the Project (the confirm()
+    // dialog below already makes this a real, confirmed destructive
+    // action) can never destroy content anyone else depends on. The
+    // Published Theme (a Personal Repository row, potentially still
+    // being read by Studio or a Card recipient) stays completely
+    // untouched — exactly the real, dangerous half of the original bug
+    // this file's own history already fixed once, still correctly not
+    // reintroduced here. Sequenced so the Cloud Backup removal is
+    // attempted BEFORE the screen re-renders (not merely fired in the
+    // background) — re-rendering first would race _refreshCloudWorlds's
+    // own ProjectSync.list() fetch against the still-in-flight removal,
+    // risking the exact same "reappears" symptom for one more render
+    // before self-correcting. A removal that fails (offline, RLS,
+    // whatever) is a disclosed, honest limitation — the backup then
+    // genuinely still exists, so it can still resurface once
+    // connectivity returns, matching every other best-effort cloud
+    // operation in this codebase; there is no way to guarantee a
+    // network delete succeeds without a network.
     function _deleteLocalDraft(project) {
         window.ProjectStore.remove(project.id);
-        renderMyWorlds();
+        const cloudCleanup = (window.ProjectSync && window.ProjectSync.remove)
+            ? window.ProjectSync.remove(project.id).catch(function () {})
+            : Promise.resolve();
+        cloudCleanup.then(function () { renderMyWorlds(); });
     }
 
     function _projectCard(project) {
@@ -273,7 +308,7 @@
             }],
             ['🗑', 'Delete', function (e) {
                 e.stopPropagation();
-                if (!window.confirm('Delete "' + project.name + '" from this device? If it\'s published to your Personal Repository, that copy stays published — remove it separately from its own card if you want it gone too. This cannot be undone.')) return;
+                if (!window.confirm('Delete "' + project.name + '" from this device (and its cloud backup)? If it\'s published to your Personal Repository, that copy stays published — remove it separately from its own card if you want it gone too. This cannot be undone.')) return;
                 _deleteLocalDraft(project);
             }],
             // World Card Platform v1 — card generation lives on THIS
