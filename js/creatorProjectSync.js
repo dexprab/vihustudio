@@ -102,6 +102,28 @@ const CreatorProjectSync = (function () {
     });
   }
 
+  // Cloud-Primary Project Storage, Phase 5 — fetches the current cloud
+  // row for one Story id, mirroring tools/world-builder-v2/js/services/
+  // projectSync.js's own get() exactly. Used for the "is the cloud ahead
+  // of what I have locally?" freshness checks js/app.js's restore-modal
+  // flow and js/creationFlow.js's "My Projects" open path both run.
+  // Resolves null (never throws) when unconfigured, unreachable, or
+  // genuinely no row exists yet — the caller already treats that as
+  // "nothing to compare, proceed as normal."
+  function get(projectId) {
+    if (!window.ThemeRepositoryClient) return Promise.resolve(null);
+    return window.ThemeRepositoryClient.getClient().then(function (client) {
+      return window.ThemeRepositoryClient.getSession().then(function (session) {
+        return client.from(TABLE).select('id,data,updated_at').eq('id', projectId).eq('owner_id', session.user.id).maybeSingle().then(function (res) {
+          if (res.error) throw res.error;
+          return res.data || null;
+        });
+      });
+    }).catch(function () {
+      return null;
+    });
+  }
+
   // My own projects (self auth.uid()) — a convenience wrapper, unused
   // by the recall flow itself (see listByOwner below) but kept for
   // parity with the reference module and any future "what's already
@@ -163,7 +185,7 @@ const CreatorProjectSync = (function () {
     });
   }
 
-  const api = { isAvailable: isAvailable, push: push, list: list, listByOwner: listByOwner, remove: remove };
+  const api = { isAvailable: isAvailable, push: push, get: get, list: list, listByOwner: listByOwner, remove: remove };
   try { window.CreatorProjectSync = api; } catch (e) {}
   return api;
 })();

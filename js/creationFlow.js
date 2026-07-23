@@ -177,6 +177,12 @@ const CreationFlow=(function(){
         if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
         else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
       }catch(e){}
+      // Cloud-Primary Project Storage, Phase 5 — mirrors World Builder's
+      // own openWorkspace()/_checkCloudFreshness: a non-blocking
+      // background check, run after the record is already open (never
+      // delaying this click on a network round trip), offering the
+      // cloud's own newer save of this exact Story if one exists.
+      try{ if(typeof window.checkStudioCloudFreshness==='function') window.checkStudioCloudFreshness(record.id); }catch(e){}
     });
   }
 

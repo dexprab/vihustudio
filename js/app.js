@@ -1645,6 +1645,59 @@ function showRestoreModal(opts){
 }
 function hideRestoreModal(){ if(restoreModal) restoreModal.classList.add('hidden'); }
 
+// Cloud-Primary Project Storage, Phase 5 — Studio's own version of World
+// Builder's _checkCloudFreshness (tools/world-builder-v2/js/worldBuilderApp.js).
+// A non-blocking background check (fails open, never delays showing the
+// editor on a network round trip) that surfaces an explicit human choice
+// if the cloud already has a newer save of this exact Story than what
+// just opened here — from either the restore-session slot or "My
+// Projects" — the same root-cause reasoning that closed the earlier
+// "Story-Forest Adventure" data-loss incident for World Builder: two
+// tabs/sessions/devices silently overwriting each other with no signal
+// either had happened is exactly what "no data loss beacause of
+// whatsoever reason" rules out. Only ever reaches the network for a
+// Creator (MagicCard.getActive()) — a Traveller's session has no cloud
+// copy of anything to compare against, by design (see
+// js/projectManager.js's own _scheduleCloudProjectSync guard). Reuses the
+// existing restore-modal dialog (showRestoreModal/hideRestoreModal) —
+// a generic Primary/Secondary choice, exactly what this needs — rather
+// than building a second small-modal component from scratch.
+function checkStudioCloudFreshness(projectId){
+  if(!projectId) return;
+  if(typeof MagicCard==='undefined' || !MagicCard.getActive()) return;
+  if(typeof CreatorProjectSync==='undefined' || typeof CreatorProjectSync.get!=='function') return;
+  if(typeof CreatorProjectStore==='undefined') return;
+  CreatorProjectSync.get(projectId).then(function(row){
+    if(!row) return; // never synced anywhere -- nothing to compare
+    // The Story may have moved on (a fresh boot, a different project now
+    // open) by the time this network round trip resolves -- only act if
+    // it's still the same Story currently open.
+    if(!AppState.project || AppState.project.id!==projectId) return;
+    const localRecord=CreatorProjectStore.get(projectId);
+    const localSyncedAt=localRecord && localRecord.cloudSyncedAt;
+    const cloudIsNewer=!localSyncedAt || new Date(row.updated_at)>new Date(localSyncedAt);
+    if(!cloudIsNewer) return;
+    showRestoreModal({
+      title:'☁️ Newer Cloud Version Found',
+      body:'This Story has newer changes saved to the cloud (from another tab or device) than what you have open right now. Load the cloud version, or keep working on what you have here — nothing changes automatically either way.',
+      primary:'Load Cloud Version',
+      secondary:'Keep What I Have',
+      onPrimary:async ()=>{
+        try{
+          await ProjectManager.deserialize(row.data);
+          ProjectManager.saveToLocalStorage();
+        }catch(e){}
+      },
+      onSecondary:()=>{}
+    });
+  }).catch(function(){});
+}
+// Exposed globally so js/creationFlow.js's "My Projects" open path
+// (_openProjectRecord) can run the same check after opening a record —
+// every other function in this file lives inside the DOMContentLoaded
+// closure and isn't reachable from another script otherwise.
+window.checkStudioCloudFreshness=checkStudioCloudFreshness;
+
 // Session bootstrap
 // Sprint 10.0 — Creation Experience V1. A brand-new session (no saved
 // project at all, or a discarded/corrupt one) now opens the Creation Flow
@@ -1756,7 +1809,16 @@ function _beginBoot(){
       primary:'Restore',
       secondary:'Discard',
       onPrimary:async ()=>{
-        try{ await ProjectManager.restoreSession(); setAutosaveStatus('saved'); }
+        try{
+          await ProjectManager.restoreSession();
+          setAutosaveStatus('saved');
+          // Cloud-Primary Project Storage, Phase 5 — the moment a saved
+          // session is about to be offered for restore, per the plan's
+          // own §5, is exactly here: the Project isn't already open/
+          // being edited (by construction, we're mid-restore), so a
+          // background check against the cloud is safe to run now.
+          try{ checkStudioCloudFreshness(info.data.project && info.data.project.id); }catch(e){}
+        }
         catch(e){ ProjectManager.discardSession(); setAutosaveStatus('failed'); }
       },
       onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); }
