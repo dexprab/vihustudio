@@ -45,6 +45,28 @@
         return days + (days === 1 ? ' day ago' : ' days ago');
     }
 
+    // Read-only mitigation (Platform Hardening — Draft Asset
+    // Architecture, Phase A §7): v1 and v2 (tools/world-builder-v2/)
+    // share the literal, byte-identical localStorage key
+    // 'vihu-world-builder-projects' (js/projectStore.js in both), so a
+    // Project touched in v2 may now hold a vihu-asset:<surface>:
+    // <projectId>:<assetId> reference here — v1's own upload pipeline
+    // never produces one and is otherwise completely untouched by this
+    // fix. A real, legacy data: URI (the only thing v1 itself ever
+    // writes) is assigned synchronously, exactly as before, with zero
+    // behavior change. A vihu-asset: reference is left unassigned (no
+    // guaranteed-broken-image flash) until AssetStore.resolve() lands,
+    // or forever blank if AssetStore isn't loaded for any reason —
+    // never throws, never corrupts the image element either way.
+    function _wbResolveImgSrc(img, ref) {
+        const isRef = typeof ref === 'string' && ref.indexOf('vihu-asset:') === 0;
+        if (!isRef) { img.src = ref; return; }
+        if (typeof window.AssetStore === 'undefined') return;
+        window.AssetStore.resolve(ref).then(function (src) {
+            if (src) img.src = src;
+        }).catch(function () {});
+    }
+
     // ---------------------------------------------------------------
     // Screen 1 — Welcome
     // ---------------------------------------------------------------
@@ -80,7 +102,7 @@
         const thumbURL = window.ProjectModel.getAsset(project, 'thumbnail.png');
         if (thumbURL) {
             const img = document.createElement('img');
-            img.src = thumbURL;
+            _wbResolveImgSrc(img, thumbURL);
             img.alt = '';
             thumb.appendChild(img);
         } else {
@@ -1080,7 +1102,7 @@
         const thumbURL = window.ProjectModel.getAsset(currentProject, 'thumbnail.png');
         if (thumbURL) {
             const img = document.createElement('img');
-            img.src = thumbURL;
+            _wbResolveImgSrc(img, thumbURL);
             img.style.width = '64px';
             img.style.height = '64px';
             img.style.objectFit = 'cover';
@@ -3612,7 +3634,7 @@
         thumb.className = 'wb-asset-thumb';
         if (existingDataURL) {
             const img = document.createElement('img');
-            img.src = existingDataURL;
+            _wbResolveImgSrc(img, existingDataURL);
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'cover';

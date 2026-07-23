@@ -1,10 +1,10 @@
 {
-  "version": "3.35.6",
+  "version": "3.36.0",
   "phase": "Platform Hardening",
-  "milestone": "Delete No Longer Cascades to a Published Theme's Cloud Copies",
-  "slice": "A real, reported bug: \"a world which is published despite the warning save failed. if we delete local copy of this the cloud sync file also gets deleted on its own.\" Root cause: Build/Publish reads the live, in-memory Project directly, bypassing local save entirely, so a Theme can be successfully Published while this exact Project's local save is actively failing -- meaning the Published Theme/Cloud Backup can genuinely hold content the local draft never saved. Local Delete's own cascade (a deliberate earlier feature, \"i deleted it twice but it keeps coming back\") destroyed both unconditionally the instant the local draft was removed. Fixed by removing the cascade entirely: local Delete now removes only the local draft; the cascade is no longer needed since the repo-only-card and Cloud-Worlds-classification mechanisms already surface a leftover Published Theme/Cloud Backup as their own clearly-labelled, separately-deletable cards, never a confusing zombie duplicate. Verified via a new 11-assertion Playwright suite reproducing the exact scenario, plus full regression across the existing sign-in/versioned-sync/thumbnail/delete/classification suites and both goldenBuild.js suites, all unchanged. No CSS/HTML change. Confined to js/worldBuilderApp.js.",
-  "build": "0100",
-  "buildDate": "2026-07-22",
-  "commit": "e1d408e",
+  "milestone": "Draft Asset Architecture, Phase A: Foundation",
+  "slice": "New shared js/assetStore.js (IndexedDB local cache + a durable, retry-forever pendingUploads queue + a new draft-assets Supabase Storage bucket) closes the real, confirmed root cause behind the 'Story-Forest Adventure' data-loss incident -- every uploaded image embedded as base64 in one localStorage-backed JSON blob, with Build/Publish reading live memory directly and bypassing whatever the local save last persisted. Pure infrastructure this phase -- nothing calls put()/resolve() yet; World Builder v2's own upload/read call-site rewiring is Phase B, a separate future increment. Loaded into this app's own index.html right after themeRepositoryClient.js, whose getClient()/getSession() it reuses. Cache-bust bumped to ?v=0101 on every tag since this changes index.html. Verified via a new 24-assertion Playwright suite (real IndexedDB, mocked Supabase) plus goldenBuild.js unchanged (30/30).",
+  "build": "0101",
+  "buildDate": "2026-07-23",
+  "commit": "pending",
   "environment": "Release"
 }

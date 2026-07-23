@@ -828,3 +828,86 @@ create policy creator_projects_select
         and r.recaller_id = auth.uid()::text
     )
   );
+
+-- ---------------------------------------------------------------
+-- Storage bucket: draft-assets
+-- ---------------------------------------------------------------
+-- A confirmed, real data-loss bug (js/assetStore.js's own header comment
+-- has the full account): every uploaded image in both authoring surfaces
+-- has been embedded as a base64 `data:` URI directly inside `builder_
+-- projects`/`creator_projects`' own `data` jsonb column (and the matching
+-- localStorage key each surface saves to first) -- with no size limit of
+-- its own, this let a Project's editable content silently diverge from
+-- its own already-Published/already-Built output the moment a local save
+-- failed on quota, with the divergence unrecoverable (a compiled Theme
+-- cannot be reverse-compiled back into editable authoring data).
+--
+-- `draft-assets` is a NEW bucket, distinct from `theme-assets` (which is
+-- scoped to compiled/Published output keyed by theme_id -- it has no
+-- concept of an editable, pre-compile draft Project at all). Path
+-- convention: {surface}/{owner_id}/{project_id}/{asset_id}, surface in
+-- ('builder','creator') -- mirrors theme-assets' own {repository}/
+-- {owner_id-or-'_official'}/{theme_id}/{relativePath} convention exactly,
+-- letting js/assetStore.js derive the object path deterministically from
+-- a `vihu-asset:<surface>:<projectId>:<assetId>` reference plus whatever
+-- session is live right now, with no separate lookup table needed --
+-- same "Storage objects are the index" philosophy theme-assets already
+-- established (no new Postgres table for the assets themselves).
+--
+-- Once the asset bucket, not the jsonb column, holds the real bytes,
+-- builder_projects/creator_projects' own `data` payload shrinks
+-- automatically (it holds a tiny reference string instead of embedded
+-- base64) -- no schema change is needed to either of those two tables.
+insert into storage.buckets (id, name, public)
+values ('draft-assets', 'draft-assets', false)
+on conflict (id) do nothing;
+
+-- Owner-only read for both surfaces, PLUS the Creator-only cross-owner
+-- exception for a proven Magic Card recall -- mirrors creator_projects_
+-- select's own exists(...) grant exactly (see above), so a recalled
+-- Creator project's images actually resolve on the new device instead of
+-- a permission-denied dead end the instant it tries to render them.
+-- World Builder gets no such exception -- builder_projects has none
+-- either (plain owner-only, full stop; a recalled World Builder Project
+-- doesn't exist as a concept at all).
+drop policy if exists draft_assets_owner_read on storage.objects;
+create policy draft_assets_owner_read
+  on storage.objects for select
+  using (
+    bucket_id = 'draft-assets'
+    and (storage.foldername(name))[1] in ('builder', 'creator')
+    and (
+      (storage.foldername(name))[2] = auth.uid()::text
+      or (
+        (storage.foldername(name))[1] = 'creator'
+        and exists (
+          select 1 from public.magic_card_recalls r
+          join public.magic_card_identities i on i.id = r.identity_id
+          where i.owner_id = (storage.foldername(name))[2]
+            and r.recaller_id = auth.uid()::text
+        )
+      )
+    )
+  );
+
+-- Write/update/delete: owner-only, no cross-owner exception ever -- a
+-- recalled project is always adopted as a brand-new local copy with a
+-- fresh project_id on the recalling device (js/magicCard.js's own
+-- adopt()), never written back to the original owner's objects; RLS
+-- would silently block a cross-owner write anyway, matching creator_
+-- projects_select's own select-only cross-owner grant precedent.
+drop policy if exists draft_assets_owner_write on storage.objects;
+create policy draft_assets_owner_write
+  on storage.objects for insert
+  with check (bucket_id = 'draft-assets' and (storage.foldername(name))[2] = auth.uid()::text);
+
+drop policy if exists draft_assets_owner_update on storage.objects;
+create policy draft_assets_owner_update
+  on storage.objects for update
+  using (bucket_id = 'draft-assets' and (storage.foldername(name))[2] = auth.uid()::text)
+  with check (bucket_id = 'draft-assets' and (storage.foldername(name))[2] = auth.uid()::text);
+
+drop policy if exists draft_assets_owner_delete on storage.objects;
+create policy draft_assets_owner_delete
+  on storage.objects for delete
+  using (bucket_id = 'draft-assets' and (storage.foldername(name))[2] = auth.uid()::text);

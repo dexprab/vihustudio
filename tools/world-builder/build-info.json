@@ -1,10 +1,10 @@
 {
-  "version": "3.10.1",
-  "phase": "Repository Architecture Transition",
-  "milestone": "Artwork Gallery starter Scene renamed Story -> Gallery",
-  "slice": "The Builder & Studio Alignment Sprint's neutral default for the Artwork Gallery template's starter Scene, \"Story,\" turned out to be its own mismatch once actually seen in Studio's Screen 2 Representation carousel: it reads (and, with the default masks thumbnail glyph, visually looks) like the Tell a Story Creation Type, not an artwork showcase. Renamed to \"Gallery\" in TEMPLATE_STARTER_SCENE -- still not part of the flagged Showcase/Portrait/Quote trio, while actually describing the template. Only affects new Artwork Gallery projects going forward. Verified via Playwright: a freshly created Artwork Gallery project's starter Scene (and thus its default Representation) is named \"Gallery\"; goldenBuild.js 30/30 unchanged.",
-  "build": "0047",
-  "buildDate": "2026-07-12",
-  "commit": "3dd1650",
+  "version": "3.10.2",
+  "phase": "Platform Hardening",
+  "milestone": "Draft Asset Architecture, Phase A: read-only cross-version mitigation",
+  "slice": "v1 shares the literal, byte-identical localStorage key 'vihu-world-builder-projects' with v2 -- a Project touched in v2 may now hold a vihu-asset:<surface>:<projectId>:<assetId> reference (part of a new shared asset-storage architecture fixing a real, confirmed data-loss bug), which v1's own 3 img.src= read call sites would otherwise show as a broken image. Loaded the new shared js/assetStore.js and added one small helper, _wbResolveImgSrc(img,ref), routing those 3 sites through AssetStore.resolve() -- a legacy data: URI still assigns synchronously exactly as before (zero behavior change); a vihu-asset: reference resolves asynchronously with no guaranteed-broken flash. v1's own upload pipeline, persistence, and everything else is completely untouched -- v1 never produces a vihu-asset: reference itself. Verified end to end via Playwright: a v2-shaped Project seeded with a vihu-asset: thumbnail reference opens fresh in v1 and correctly resolves to a real blob: URL; goldenBuild.js 30/30 unchanged.",
+  "build": "0048",
+  "buildDate": "2026-07-23",
+  "commit": "pending",
   "environment": "Release"
 }

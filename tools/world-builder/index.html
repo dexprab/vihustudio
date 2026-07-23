@@ -208,6 +208,14 @@
     <script src="../../renderer/slideRenderer.js"></script>
     <script src="../../js/themeRegistry.js"></script>
     <script src="../../js/themeRepositoryClient.js"></script>
+    <!-- Shared Asset Store, read-only mitigation only (Platform Hardening
+         — Draft Asset Architecture, Phase A §7). v1 shares the literal
+         localStorage key 'vihu-world-builder-projects' with v2 — a
+         Project touched in v2 now contains vihu-asset: references, which
+         v1's own 3 img.src= read call sites (worldBuilderApp.js) would
+         otherwise show as a broken image. v1's own upload pipeline is
+         completely untouched; this is read-only, additive safety. -->
+    <script src="../../js/assetStore.js"></script>
     <!-- AV-011 — the same reusable "insert emoji" affordance the main
          Studio app already wires onto every Text Element field
          (Sprint 9.6), reused as-is rather than building a second one. -->
