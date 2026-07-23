@@ -934,6 +934,17 @@ html, body {
     align-items: center;
     gap: 12px;
     min-width: 0;
+    /* A long save-state message ("Save Failed — try a smaller image")
+       has no min-width:0/overflow:hidden of its own (unlike the World
+       name/breadcrumb, which do), so it can never shrink below its own
+       text width — without wrap, that pushed this row wider than the
+       header had room for, visually clipping/overlapping whatever sat
+       next to it (the Scene Configuration glance's pixel-Size chip).
+       flex-wrap lets it drop to its own line instead, matching the same
+       fix already used once for the Welcome screen's Repository-only
+       card badges. */
+    flex-wrap: wrap;
+    row-gap: 6px;
 }
 
 .wb-view-mode-banner {

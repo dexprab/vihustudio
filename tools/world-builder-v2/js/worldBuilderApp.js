@@ -3833,6 +3833,24 @@
             // next reload. Show the real state and keep it visible
             // (no auto-return to "saved") until a save actually succeeds.
             _setSaveState('error');
+            // Real, confirmed gap this closes: _scheduleAssetMigration()
+            // (Phase D) only ever ran as a side effect of an ALREADY-
+            // successful save — so a Project still carrying legacy
+            // embedded base64 (authored, or last saved, before Draft
+            // Asset Architecture externalized uploads) could get stuck
+            // failing forever: every edit tries to save, the write is
+            // already too big to fit, and migration — the one thing that
+            // would shrink it back under quota — never gets a chance to
+            // run. Self-heal: migrate this Project's own legacy fields
+            // right now (migrateFieldsOnSave only ever touches local
+            // IndexedDB, never a network round trip, so this is safe and
+            // fast even offline) and retry the save once. If this
+            // Project has nothing left to migrate — the failure came
+            // from a different, still-bloated sibling Project sharing
+            // this browser's one localStorage array — the retry simply
+            // fails too, and "Save Failed" keeps showing exactly as
+            // honestly as before.
+            _attemptQuotaSelfHeal(currentProject);
         } else {
             _saveDisplayTimer = setTimeout(function () {
                 _setSaveState('saved');
@@ -3848,6 +3866,30 @@
             _scheduleAssetMigration();
         }
         _renderWorkspaceHeader();
+    }
+
+    // See _persist()'s error branch above for why this exists. Runs
+    // immediately (not debounced like _scheduleAssetMigration — a Project
+    // that's already failing to save has nothing to lose by trying right
+    // away) and re-renders the header itself once it settles, since
+    // _persist() has already returned by the time this Promise resolves.
+    function _attemptQuotaSelfHeal(project) {
+        if (!window.AssetStore || typeof window.AssetStore.migrateFieldsOnSave !== 'function') return;
+        const accessors = _collectMigrationAccessors(project);
+        window.AssetStore.migrateFieldsOnSave('builder', project.id, accessors).then(function () {
+            // A later edit (or a project switch) may have already moved
+            // on — never let a stale self-heal attempt clobber whatever
+            // is showing now.
+            if (project !== currentProject) return;
+            const retry = window.ProjectStore.save(project);
+            if (!retry.ok) return; // still too big — "Save Failed" stays, honestly.
+            clearTimeout(_saveDisplayTimer);
+            _saveDisplayTimer = setTimeout(function () {
+                _setSaveState('saved');
+            }, 600);
+            _scheduleCloudSync();
+            _renderWorkspaceHeader();
+        });
     }
 
     function _renderWorkspaceHeader() {
