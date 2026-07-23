@@ -2925,6 +2925,104 @@
         });
     }
 
+    // Platform Hardening — Draft Asset Architecture, Phase D (migration
+    // activation). Walks every known image-bearing field this Project
+    // can carry a raw `data:` URI in (§2 of the plan) and returns
+    // {get,set} accessor pairs for AssetStore.migrateFieldsOnSave() —
+    // this module never touches AssetStore's own IndexedDB/Storage
+    // logic, it only tells the shared, generic module where to look.
+    //
+    // A decoration Scene Layer mirrored from an Experience
+    // (sourceExperienceId/contentSlot set — Builder V3.1's Universal
+    // Experience Authoring, _syncUniversalContent) is deliberately
+    // skipped here rather than given its own accessor — its `.image` is
+    // always a plain string copy of the source Experience's own
+    // imageSrc/graphicSrc, so migrating it independently would call
+    // put() a second time for byte-identical content (the exact
+    // "one upload becomes two" the plan's own §2 note warns against).
+    // Instead the source Experience's accessor below also writes the
+    // freshly-resolved reference onto the mirrored Layer directly (no
+    // second put() call), using the Layer reference already collected
+    // during this same scene walk. The legacy `layer-packs/*.json`
+    // editor (Layers/Type/Target/Anchor/Position/Offset/Z-Index/Text
+    // Source only — confirmed via direct read, no image field of its
+    // own) needs no accessor at all.
+    function _collectMigrationAccessors(project) {
+        const jobs = [];
+
+        // project.files[path] top-level entries not ending in .json/.md
+        // hold a raw string value directly (Identity Thumbnail/Hero via
+        // setIdentityAsset, Assets-screen slots via setAsset) — mirrors
+        // projectCompiler.js's own _toBlob classification exactly.
+        Object.keys(project.files || {}).forEach(function (path) {
+            if (path.endsWith('.json') || path.endsWith('.md')) return;
+            jobs.push({
+                get: function () { return project.files[path]; },
+                set: function (ref) { project.files[path] = ref; }
+            });
+        });
+
+        const mirroredLayers = {};
+        (window.ProjectModel.scenes(project) || []).forEach(function (scene) {
+            (scene.layers || []).forEach(function (layer) {
+                if (layer.kind !== 'decoration' || typeof layer.image !== 'string') return;
+                if (layer.sourceExperienceId && layer.contentSlot) {
+                    mirroredLayers[layer.sourceExperienceId + ':' + layer.contentSlot] = layer;
+                    return;
+                }
+                jobs.push({
+                    get: function () { return layer.image; },
+                    set: function (ref) { layer.image = ref; }
+                });
+            });
+        });
+
+        (window.ProjectModel.experiences(project) || []).forEach(function (experience) {
+            const props = experience.properties || {};
+            [['imageSrc', 'image'], ['graphicSrc', 'graphic']].forEach(function (pair) {
+                const key = pair[0], slot = pair[1];
+                jobs.push({
+                    get: function () { return props[key]; },
+                    set: function (ref) {
+                        props[key] = ref;
+                        const mirrored = mirroredLayers[experience.id + ':' + slot];
+                        if (mirrored) mirrored.image = ref;
+                    }
+                });
+            });
+        });
+
+        return jobs;
+    }
+
+    // Fired only as a background side effect of an already-successful
+    // local save (never on read, never a proactive sweep — matching the
+    // plan's own "lazy migrate-on-save" principle) — debounced like
+    // _scheduleCloudSync below, since most saves have nothing left to
+    // migrate and re-walking the whole Project's files/scenes/
+    // experiences on every keystroke would be wasted work. A field
+    // migrateFieldsOnSave couldn't put() (offline, etc.) is simply left
+    // as-is and retried on the next save; a project with zero legacy
+    // fields left resolves this Promise with nothing to persist, so no
+    // extra local save (or cloud sync nudge) ever fires for it.
+    let _assetMigrationTimer = null;
+    function _scheduleAssetMigration() {
+        if (!window.AssetStore || typeof window.AssetStore.migrateFieldsOnSave !== 'function') return;
+        clearTimeout(_assetMigrationTimer);
+        _assetMigrationTimer = setTimeout(function () {
+            const project = currentProject;
+            const accessors = _collectMigrationAccessors(project);
+            const before = accessors.map(function (a) { return a.get(); });
+            window.AssetStore.migrateFieldsOnSave('builder', project.id, accessors).then(function () {
+                if (project !== currentProject) return;
+                const changed = accessors.some(function (a, i) { return a.get() !== before[i]; });
+                if (!changed) return;
+                window.ProjectStore.save(project);
+                _scheduleCloudSync();
+            });
+        }, 1500);
+    }
+
     // Debounced separately from the local save (which is synchronous and
     // immediate, per AV-009/Sprint B2.0.6) — a network push on every
     // keystroke would be wasteful and would just queue up redundant
@@ -3736,6 +3834,10 @@
             // its own real failure state, and pushing to Supabase
             // wouldn't make an unsaved edit any safer.
             _scheduleCloudSync();
+            // Phase D — same reasoning: only a Project that actually
+            // reached localStorage is worth walking for legacy data:
+            // fields to migrate.
+            _scheduleAssetMigration();
         }
         _renderWorkspaceHeader();
     }

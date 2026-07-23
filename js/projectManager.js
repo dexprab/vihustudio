@@ -253,6 +253,91 @@ const ProjectManager=(function(){
     },CLOUD_PROJECT_SYNC_DEBOUNCE_MS);
   }
 
+  // Platform Hardening — Draft Asset Architecture, Phase D (migration
+  // activation). Walks AppState.slides for every known image-bearing
+  // string field this Project can carry a raw `data:` URI in and
+  // returns {get,set} accessor pairs for AssetStore.migrateFieldsOnSave()
+  // — Place 1's own _imageDataURL, every extra Place's own
+  // placeContent[id].dataURL, and every World-owned Scene Object content
+  // override's own .image field (SceneEngine.setContentOverride).
+  //
+  // `slide.thumbnail` is deliberately NOT included — a disclosed scope
+  // decision, not an oversight: unlike the three fields above (already
+  // rewired end-to-end in Phase C, every real read site resolving a
+  // vihu-asset: reference correctly), slide.thumbnail is read directly
+  // as an <img>.src at several call sites this Phase never touched
+  // (js/app.js's page-strip/thumbnail-grid renders, js/creatorProjectStore.js/
+  // js/magicCardUI.js's own Story/My-Projects cards) — migrating it here
+  // would produce a genuinely broken thumbnail the instant it shrank to
+  // a reference those sites don't know how to resolve. Thumbnails are
+  // also small, derived, and regenerated on demand (ThumbnailEngine),
+  // nowhere near the scale that caused the original quota bug, so the
+  // benefit doesn't justify rewiring every one of those read sites too.
+  function _collectMigrationAccessors(){
+    const jobs=[];
+    (AppState.slides||[]).forEach(function(slide){
+      if(typeof slide._imageDataURL==='string'){
+        jobs.push({
+          get:function(){ return slide._imageDataURL; },
+          set:function(ref){ slide._imageDataURL=ref; }
+        });
+      }
+      const placeContent=slide.metadata&&slide.metadata.placeContent;
+      if(placeContent){
+        Object.keys(placeContent).forEach(function(pid){
+          const entry=placeContent[pid];
+          if(entry && typeof entry.dataURL==='string'){
+            jobs.push({
+              get:function(){ return entry.dataURL; },
+              set:function(ref){ entry.dataURL=ref; }
+            });
+          }
+        });
+      }
+      const overrides=slide.metadata&&slide.metadata.elementOverrides;
+      if(overrides){
+        Object.keys(overrides).forEach(function(id){
+          const entry=overrides[id];
+          if(entry && typeof entry.image==='string'){
+            jobs.push({
+              get:function(){ return entry.image; },
+              set:function(ref){ entry.image=ref; }
+            });
+          }
+        });
+      }
+    });
+    return jobs;
+  }
+
+  // Fired only as a background side effect of an already-successful
+  // local save (mirrors worldBuilderApp.js's own _scheduleAssetMigration
+  // exactly) — never on read, never a proactive sweep. Debounced
+  // separately from the synchronous local write, since most saves have
+  // nothing left to migrate and re-walking every slide on every
+  // keystroke would be wasted work. A field migrateFieldsOnSave couldn't
+  // put() (offline, etc.) is simply left as-is and retried on the next
+  // save; a project with zero legacy fields resolves with nothing
+  // changed, so no extra local save fires for it.
+  const ASSET_MIGRATION_DEBOUNCE_MS=1500;
+  let _assetMigrationTimer=null;
+  function _scheduleAssetMigration(){
+    if(typeof window==='undefined' || !window.AssetStore || typeof window.AssetStore.migrateFieldsOnSave!=='function') return;
+    const id=_ensureProjectId();
+    if(!id) return;
+    clearTimeout(_assetMigrationTimer);
+    _assetMigrationTimer=setTimeout(function(){
+      const accessors=_collectMigrationAccessors();
+      if(!accessors.length) return;
+      const before=accessors.map(function(a){ return a.get(); });
+      window.AssetStore.migrateFieldsOnSave('creator',id,accessors).then(function(){
+        const changed=accessors.some(function(a,i){ return a.get()!==before[i]; });
+        if(!changed) return;
+        _writeStorage();
+      });
+    },ASSET_MIGRATION_DEBOUNCE_MS);
+  }
+
   function _syncProjectStore(data){
     if(typeof CreatorProjectStore==='undefined') return;
     const id=_ensureProjectId();
@@ -277,6 +362,9 @@ const ProjectManager=(function(){
       localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
       _syncProjectStore(data);
       setStatus('saved');
+      // Phase D — only a write that actually reached localStorage is
+      // worth walking the live slides for legacy data: fields to migrate.
+      _scheduleAssetMigration();
       return true;
     }catch(e){
       setStatus('failed');

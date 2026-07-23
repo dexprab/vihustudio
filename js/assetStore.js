@@ -390,8 +390,10 @@
   // The lazy migration hook. `accessors` is a plain array of {get, set}
   // pairs the CALLER builds by walking its own known image-bearing fields
   // (World Builder's Identity/Assets-screen/Scene-Layer/Experience
-  // fields; Creator's slide.image/_imageDataURL/thumbnail/placeContent/
-  // elementOverrides fields) -- this module stays generic and has no
+  // fields; Creator's slide._imageDataURL/placeContent/elementOverrides
+  // fields -- deliberately not slide.thumbnail, a disclosed Phase D
+  // scope decision, see projectManager.js's own _collectMigrationAccessors
+  // comment) -- this module stays generic and has no
   // built-in knowledge of either surface's own data shape, matching "a
   // shared module reusable by both surfaces" rather than hardcoding
   // surface-specific field paths in here. For any accessor whose get()
@@ -403,16 +405,24 @@
   // only ever called from an existing debounced save path, so it only
   // touches a Project the user is actively saving right now.
   function migrateFieldsOnSave(surface, projectId, accessors) {
-    const jobs = (accessors || []).filter(function (a) {
-      const v = a.get();
-      return typeof v === 'string' && v.indexOf('data:') === 0;
-    }).map(function (a) {
-      return put(a.get(), { surface: surface, projectId: projectId }).then(function (ref) {
-        if (typeof ref === 'string' && ref.indexOf(REF_PREFIX) === 0) a.set(ref);
-        // else: put() itself fell back to the original data: URI --
-        // leave the field exactly as it was, retried next save.
+    const jobs = (accessors || []).map(function (a) {
+      const original = a.get();
+      if (typeof original !== 'string' || original.indexOf('data:') !== 0) return null;
+      return put(original, { surface: surface, projectId: projectId }).then(function (ref) {
+        // Compare-and-swap, not a blind overwrite -- a real, narrow race
+        // this closes: this Project's own live in-memory field may have
+        // been replaced by a genuinely NEW upload (Replace Artwork, a
+        // fresh Experience image, etc.) while THIS put()'s own local
+        // IndexedDB write was still in flight. Only rewrite the field if
+        // it still holds the exact bytes just migrated -- anything else
+        // (a real new upload's own, already-current reference) is left
+        // completely untouched, never silently reverted to a stale ref.
+        if (typeof ref === 'string' && ref.indexOf(REF_PREFIX) === 0 && a.get() === original) a.set(ref);
+        // else: put() itself fell back to the original data: URI, or
+        // the field genuinely moved on in the meantime -- leave it
+        // exactly as it now is, retried next save if it's still data:.
       }).catch(function () {});
-    });
+    }).filter(Boolean);
     return Promise.all(jobs).then(function () {});
   }
 

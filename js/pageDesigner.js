@@ -312,7 +312,13 @@ const PageDesigner=(function(){
     if(s && s.image && s._imageDataURL){
       const preview=document.createElement('img');
       preview.className='page-image-preview';
-      preview.src=s._imageDataURL;
+      // Phase D gap fix: s._imageDataURL may now be a vihu-asset:
+      // reference, not a directly-usable src -- s.image is already the
+      // real, resolved Image object this branch's own condition already
+      // confirmed exists (rehydrated by ProjectManager.deserialize's
+      // AssetStore.resolve() step), so its own .src is always a safe,
+      // already-resolved URL to reuse here, no second resolve needed.
+      preview.src=s.image.src;
       preview.alt='Current image';
       wrap.appendChild(preview);
       const actions=document.createElement('div');
