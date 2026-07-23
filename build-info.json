@@ -1,9 +1,9 @@
 {
   "version": "2.106.0",
-  "sprint": "Cloud-Primary Project Storage — Phase 6: Verification, a real cross-surface bug found and fixed, docs, ship",
+  "sprint": "Cloud-Primary Project Storage \u2014 Phase 6: Verification, a real cross-surface bug found and fixed, docs, ship",
   "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. Closes the full 6-phase plan: a new Playwright suite (phase6_test.js) covering legacy-migration idempotency, IndexedDB-only-broken degrade, and offline-then-online recovery for both surfaces, plus a real two-device conflict proven through the FULL Studio pipeline (upsert -> _attemptSync -> getConflictIds), not just the isolated push() unit test. That last test found a real, previously-shipped bug: js/creatorProjectStore.js's upsert() constructed a brand-new record on every save with no cloudSyncedAt field, silently wiping the Phase 4 versioned-push hardening the instant editing continued past a Story's first save -- fixed by carrying cloudSyncedAt forward from the existing record. New docs/PROJECT_CLOUD_ARCHITECTURE.md is now the canonical reference for this whole effort. See CLAUDE.md's own entry for the full account.",
   "build": "0246",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "f737248a129fba1d8f26c413c1daed9f022629a5",
   "environment": "Release"
 }
