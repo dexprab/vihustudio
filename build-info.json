@@ -4,6 +4,6 @@
   "task": "everytime i delete it reappears -- a real bug hit doing fresh manual testing right after Cloud-Primary Project Storage Phase 6 shipped. Root cause: an earlier fix (\"Delete No Longer Cascades\") made local Delete remove only the local draft, never the Cloud Backup, to protect against a since-superseded quota-failure scenario -- but Phase 3 of this same effort later made an orphaned Cloud Backup (no local match) auto-materialize with ZERO click required, silently invalidating that earlier fix's own safety assumption. Fixed: _deleteLocalDraft now also removes the Project's own Cloud Backup (ProjectSync.remove), sequenced so that removal settles before the screen re-renders, closing the race. The Published Theme (a genuinely different, potentially shared consumer) stays completely untouched, unlike the original problematic cascade. See CLAUDE.md's own entry for the full account.",
   "build": "0247",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "7bdb04339125f13878403900d18982705b669370",
   "environment": "Release"
 }
