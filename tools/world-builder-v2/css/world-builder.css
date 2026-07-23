@@ -757,23 +757,6 @@ html, body {
     font-weight: 700;
 }
 
-.wb-storage-meter-bar-track {
-    height: 10px;
-    border-radius: 6px;
-    background: var(--wb-sand);
-    overflow: hidden;
-}
-
-.wb-storage-meter-bar-fill {
-    height: 100%;
-    border-radius: 6px;
-    background: var(--wb-sage);
-    transition: width 0.3s ease, background 0.3s ease;
-}
-
-.wb-storage-meter-bar-fill.wb-storage-warn { background: var(--wb-gold); }
-.wb-storage-meter-bar-fill.wb-storage-full { background: #C4634A; }
-
 .wb-storage-meter-note {
     font-size: 12px;
     line-height: 1.5;

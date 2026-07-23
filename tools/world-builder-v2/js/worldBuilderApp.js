@@ -2088,58 +2088,47 @@
         return base.card;
     }
 
-    // Case 3 — ORPHAN: no match of any kind, the genuine "restore this
-    // on a new machine" case. `restoreFromCloud` saves under the row's
-    // own existing id (safe here specifically because this branch has
-    // already confirmed nothing local shares that Project id or World
-    // id) and opens it directly.
-    function _orphanBackupCard(row) {
-        const base = _cloudCardBase(row, 'wb-cloud-world-card-orphan');
-        const status = document.createElement('span');
-        status.className = 'wb-project-status';
-        status.textContent = '☁️ Cloud Backup';
-        const detail = document.createElement('span');
-        detail.className = 'wb-project-badge muted';
-        detail.textContent = _cloudBackupDetailText(row);
-        base.metaLine.appendChild(status);
-        base.metaLine.appendChild(detail);
-
-        const actions = document.createElement('span');
-        actions.className = 'wb-cloud-world-actions';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'wb-cloud-world-action-btn';
-        btn.textContent = 'Sync to This Device';
-        btn.addEventListener('click', function () {
-            const restored = JSON.parse(JSON.stringify(row.data));
-            restored.cloudSyncedAt = row.updated_at;
-            const saveResult = window.ProjectStore.save(restored);
-            if (!saveResult.ok) {
-                window.alert('Couldn\'t sync "' + base.displayName + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
-                return;
-            }
-            openWorkspace(restored);
-        });
-        actions.appendChild(btn);
-        base.card.appendChild(actions);
-        base.card.appendChild(_cloudDeleteControl(row, base.displayName));
-        return base.card;
-    }
-
     // Case 1 — LINKED: this Cloud row IS the live backup of an already-
     // rendered local card (found by its own `data-project-id`) — an
     // inline status line/action appended into that card's own
     // .wb-project-info instead of a second, redundant top-level card.
+    // Cloud-Primary Project Storage, Phase 3 — a Linked Project that
+    // ISN'T the one currently open in the Workspace has, by construction,
+    // no live in-memory edits anywhere to lose: silently pulling the
+    // newer cloud copy into the local cache and re-rendering is safe
+    // specifically because nothing is mid-edit for it, sitting on the
+    // Welcome screen. `currentProject` is never reset to null just by
+    // navigating back to Welcome (see its own declaration) — so a
+    // Project the author just came FROM stays correctly treated as "may
+    // still have something in memory," matching openWorkspace()'s own
+    // _checkCloudFreshness real-human-decision modal for the Project
+    // that's genuinely open right now, which is deliberately left
+    // completely unchanged.
+    // Returns true when this call silently refreshed the local copy —
+    // the caller (_refreshCloudWorlds's own rows.forEach) must NOT
+    // trigger a full renderMyWorlds() re-render itself from inside that
+    // loop (a synchronous, mid-iteration re-render would rebuild
+    // myWorldsList and invalidate every DOM reference the rest of that
+    // same loop pass still expects to use) — it collects this return
+    // value instead and re-renders exactly once, after the loop
+    // completes entirely.
     function _annotateCloudLink(project, row) {
-        if (!myWorldsList) return;
+        if (!myWorldsList) return false;
         const card = myWorldsList.querySelector('[data-project-id="' + project.id.replace(/"/g, '') + '"]');
         const info = card && card.querySelector('.wb-project-info');
-        if (!info) return;
+        if (!info) return false;
         const existing = info.querySelector('.wb-cloud-link-line');
         if (existing) existing.remove();
 
         const localSyncedAt = project.cloudSyncedAt || null;
         const cloudIsNewer = !localSyncedAt || new Date(row.updated_at) > new Date(localSyncedAt);
+
+        if (cloudIsNewer && project !== currentProject) {
+            const restored = JSON.parse(JSON.stringify(row.data));
+            restored.cloudSyncedAt = row.updated_at;
+            window.ProjectStore.save(restored);
+            return true;
+        }
 
         const line = document.createElement('span');
         line.className = 'wb-cloud-link-line';
@@ -2153,11 +2142,7 @@
                 if (!window.confirm('Load the newer cloud version of "' + project.name + '"? Your current local copy on this device will be replaced.')) return;
                 const restored = JSON.parse(JSON.stringify(row.data));
                 restored.cloudSyncedAt = row.updated_at;
-                const saveResult = window.ProjectStore.save(restored);
-                if (!saveResult.ok) {
-                    window.alert('Couldn\'t load the cloud version of "' + project.name + '" — this browser\'s storage is full. Try deleting an old World you no longer need, then try again.');
-                    return;
-                }
+                window.ProjectStore.save(restored);
                 renderMyWorlds();
             });
             line.appendChild(btn);
@@ -2166,8 +2151,18 @@
             line.textContent = '☁️ Backed up ' + _timeAgo(row.updated_at);
         }
         info.appendChild(line);
+        return false;
     }
 
+    // Cloud-Primary Project Storage, Phase 3 — "everything should be on
+    // cloud" means an ORPHAN (no local match at all — the real "restore
+    // this on a new machine" case) now auto-materializes directly into
+    // "My World Projects" the instant it's discovered, with no manual
+    // "Sync to This Device" click required; this can never overwrite or
+    // discard local data, since there IS no local data for it by
+    // definition. "My Cloud Worlds" below is now a smaller, purely
+    // diagnostic strip for the genuinely separate 🔗 Related Backup case
+    // only.
     function _refreshCloudWorlds() {
         if (!cloudWorldsList) return;
         cloudWorldsList.innerHTML = '';
@@ -2187,72 +2182,82 @@
         window.ProjectSync.list().then(function (rows) {
             cloudWorldsList.innerHTML = '';
             const related = [];
-            const orphans = [];
+            let needsRerender = false;
             rows.forEach(function (row) {
                 const linkedProject = localById[row.id];
-                if (linkedProject) { _annotateCloudLink(linkedProject, row); return; }
+                if (linkedProject) {
+                    // _annotateCloudLink's own true/false return decides
+                    // whether it silently refreshed the local copy — the
+                    // actual re-render is deferred until this whole loop
+                    // finishes (see this function's own header comment
+                    // for why calling renderMyWorlds() mid-loop would be
+                    // a real correctness bug, not just a style choice).
+                    if (_annotateCloudLink(linkedProject, row)) needsRerender = true;
+                    return;
+                }
                 const wid = _cloudBackupWorldId(row);
                 const relatedProject = wid ? localByWorldId[wid] : null;
                 if (relatedProject) { related.push({ row: row, project: relatedProject }); return; }
-                orphans.push(row);
+                // Orphan — materialize it as a real local Project under
+                // its own existing id (safe here specifically because
+                // this branch has already confirmed nothing local shares
+                // that Project id or World id).
+                const restored = JSON.parse(JSON.stringify(row.data));
+                restored.cloudSyncedAt = row.updated_at;
+                window.ProjectStore.save(restored);
+                needsRerender = true;
             });
 
-            if (!related.length && !orphans.length) {
+            if (needsRerender) {
+                // A materialized/silently-refreshed World needs a real,
+                // up-to-date card in "My World Projects" — re-render the
+                // whole Welcome screen, which calls this function again
+                // at its own tail; the second pass finds every row this
+                // pass touched now correctly classified Linked with a
+                // matching cloudSyncedAt, so it terminates naturally with
+                // nothing left to refresh or materialize.
+                renderMyWorlds();
+                return;
+            }
+
+            if (!related.length) {
                 if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
                 return;
             }
             if (cloudWorldsEmpty) cloudWorldsEmpty.classList.add('wb-hidden');
 
             related.sort(function (a, b) { return new Date(b.row.updated_at) - new Date(a.row.updated_at); });
-            orphans.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
-
             related.forEach(function (entry) {
                 cloudWorldsList.appendChild(_relatedBackupCard(entry.row, entry.project));
-            });
-            orphans.forEach(function (row) {
-                cloudWorldsList.appendChild(_orphanBackupCard(row));
             });
         }).catch(function () {
             if (cloudWorldsEmpty) cloudWorldsEmpty.classList.remove('wb-hidden');
         });
     }
 
-    // A real, measured browser-storage readout — added directly in
-    // response to a Duplicate silently failing on a large World with no
-    // visible cause. Only Builder Projects (the editable Scenes/Places/
-    // Experiences/Frames a Theme Author is actively working on) live in
-    // this browser's own localStorage; a *published* Theme (via Publish/
-    // Promote) lives in the Personal/Official Repository on Supabase
-    // instead, completely outside this quota — the two are easy to
-    // conflate but are not the same storage. There is no browser API
-    // that reports an exact localStorage quota, so this shows what's
-    // actually measurable (real bytes used, via getStorageStats()) next
-    // to a disclosed, conservative reference floor (5 MB — the lowest
-    // limit any mainstream browser is known to enforce) rather than
-    // inventing a precise "Available" number no browser actually
-    // promises. Called every time the Welcome screen re-renders — after
-    // every Create/Rename/Duplicate/Delete — so it stays live without a
-    // separate refresh mechanism.
-    const STORAGE_FLOOR_BYTES = 5 * 1024 * 1024;
-
-    function _formatMB(bytes) {
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-
+    // Cloud-Primary Project Storage, Phase 3 — retired the quota-
+    // percentage framing this panel used to show. That framing existed
+    // because World Projects lived in one localStorage key with a small,
+    // fixed browser quota — Phase 2 moved the real, primary storage tier
+    // to IndexedDB (hundreds of MB-low GB, not a realistic ceiling for a
+    // Theme Author's Scenes/Places/Experiences JSON), so a percentage bar
+    // against that old 5MB reference floor would now sit near-permanent
+    // 0%, actively teaching authors to ignore a meter that no longer
+    // measures anything meaningful. Replaced with a calmer "Local Cache &
+    // Cloud Sync" status readout: how many Worlds this device has cached,
+    // and whether they're all caught up with the cloud or still syncing
+    // in the background — the two facts that actually matter now that
+    // durability comes from IndexedDB + the retry-forever cloud queue,
+    // not from staying under a quota. ProjectStore.getStorageStats() is
+    // kept, unchanged, as a still-useful diagnostic for Studio's own
+    // separate localStorage footprint (Stories, Magic Cards) — it just no
+    // longer feeds this panel. Called every time the Welcome screen
+    // re-renders — after every Create/Rename/Duplicate/Delete/sync — so
+    // it stays live without a separate refresh mechanism.
     function _renderStorageMeter() {
-        if (!storageMeterBody || !window.ProjectStore || !window.ProjectStore.getStorageStats) return;
-        const stats = window.ProjectStore.getStorageStats();
-        // Real, previously-missing context: World Builder and
-        // VihuStudio's own Creator app share ONE storage limit for this
-        // site — the bar and percentage below are now based on that real,
-        // origin-wide total (getStorageStats()'s new originTotalBytes),
-        // not just World Builder's own 3 keys, so this can never show
-        // "plenty of room" while Studio's own saved Stories/Magic Cards
-        // are what's actually filling the shared quota.
-        const originBytes = typeof stats.originTotalBytes === 'number' ? stats.originTotalBytes : stats.totalBytes;
-        const otherBytes = typeof stats.otherBytes === 'number' ? stats.otherBytes : 0;
-        const pct = Math.min(100, Math.round((originBytes / STORAGE_FLOOR_BYTES) * 100));
-        const fillClass = pct >= 100 ? 'wb-storage-full' : (pct >= 75 ? 'wb-storage-warn' : '');
+        if (!storageMeterBody) return;
+        const projects = window.ProjectStore ? window.ProjectStore.list() : [];
+        const cachedCount = projects.length;
 
         storageMeterBody.innerHTML = '';
         const body = document.createElement('div');
@@ -2260,33 +2265,40 @@
 
         const stat = document.createElement('div');
         stat.className = 'wb-storage-meter-stats';
-        stat.innerHTML =
-            '<span><strong>' + _formatMB(originBytes) + '</strong> used on this browser for this site</span>' +
-            '<span>' + pct + '% of a typical browser\'s minimum limit</span>';
+        stat.innerHTML = '<span><strong>' + cachedCount + '</strong> World' + (cachedCount === 1 ? '' : 's') + ' cached on this device</span>';
         body.appendChild(stat);
-
-        const track = document.createElement('div');
-        track.className = 'wb-storage-meter-bar-track';
-        const fill = document.createElement('div');
-        fill.className = 'wb-storage-meter-bar-fill' + (fillClass ? ' ' + fillClass : '');
-        fill.style.width = pct + '%';
-        track.appendChild(fill);
-        body.appendChild(track);
-
-        const breakdown = document.createElement('p');
-        breakdown.className = 'wb-storage-meter-breakdown';
-        breakdown.textContent = _formatMB(stats.totalBytes) + ' is your World Projects here' +
-            (otherBytes > 0 ? '; ' + _formatMB(otherBytes) + ' is other VihuStudio data on this site (Stories, Magic Cards, etc.) — not shown anywhere in World Builder, but sharing the same limit.' : '.');
-        body.appendChild(breakdown);
 
         const note = document.createElement('p');
         note.className = 'wb-storage-meter-note';
-        note.textContent = pct >= 100
-            ? '⚠️ You\'re at or past most browsers\' storage limit for this whole site — Duplicate/Save may fail even on a brand-new, empty World if the rest of this total is from elsewhere. Deleting a World Project here only frees the "World Projects" share above; if the rest is from Stories or other VihuStudio data, clear that from Creator instead. Publishing a World (Publish → Personal Repository) moves its built Theme to Supabase, which never counts here.'
-            : 'This counts everything VihuStudio stores in this browser for this site, since it all shares one limit — not just your World Projects. A published Theme lives in your Personal/Official Repository on Supabase instead, and never counts against this. No browser publishes an exact limit; 5 MB is the lowest ceiling any mainstream browser is known to enforce, used here as a conservative reference.';
+        note.textContent = 'Your Worlds are cached on this device for instant, offline-friendly editing, and backed up to the cloud automatically in the background.';
         body.appendChild(note);
 
+        const syncLine = document.createElement('p');
+        syncLine.className = 'wb-storage-meter-breakdown';
+        syncLine.textContent = 'Checking cloud sync status…';
+        body.appendChild(syncLine);
+
         storageMeterBody.appendChild(body);
+
+        if (window.ProjectCache && window.ProjectCache.getPendingSyncCount) {
+            window.ProjectCache.getPendingSyncCount().then(function (pending) {
+                if (!body.isConnected) return; // a later render already replaced this
+                if (pending > 0) {
+                    syncLine.textContent = '☁️ ' + pending + ' World' + (pending === 1 ? '' : 's') + ' still syncing to the cloud in the background.';
+                    return;
+                }
+                const mostRecentSync = projects.reduce(function (latest, p) {
+                    if (!p.cloudSyncedAt) return latest;
+                    const t = new Date(p.cloudSyncedAt);
+                    return (!latest || t > latest) ? t : latest;
+                }, null);
+                syncLine.textContent = mostRecentSync
+                    ? '☁️ All caught up — last synced ' + _timeAgo(mostRecentSync.toISOString()) + '.'
+                    : '☁️ Nothing has synced to the cloud yet.';
+            });
+        } else {
+            syncLine.remove();
+        }
     }
 
     // Stamps every project card's badge with the same text/class/tooltip
