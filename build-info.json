@@ -4,6 +4,6 @@
   "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. New CreatorProjectSync.get(projectId) plus js/app.js's checkStudioCloudFreshness(projectId) mirror World Builder's own openWorkspace()/_checkCloudFreshness reasoning for Studio -- wired into _beginBoot()'s restore-modal onPrimary handler and js/creationFlow.js's _openProjectRecord(), both non-blocking background checks offering a genuinely newer cloud copy (Load Cloud Version / Keep What I Have) via the existing restore-modal dialog, never delaying the editor on a network round trip. A Traveller (no active Magic Card) never reaches the network at all, by design. See CLAUDE.md's own entry for the full design, two real test-authoring bugs found and fixed along the way, and verification.",
   "build": "0245",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "64caaaf2234332538d80c92691af5b87693c4d50",
   "environment": "Release"
 }
