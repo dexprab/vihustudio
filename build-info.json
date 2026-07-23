@@ -4,6 +4,6 @@
   "task": "everything should be on cloud... world & studio both. i dont want any kind of trouble later on. no data loss beacause of whatsoever reason. js/creatorProjectStore.js's internals now route through js/creatorProjectCache.js's synchronous in-memory Map mirror (hydrated from IndexedDB) instead of a plain localStorage array, public API unchanged. js/creatorProjectSync.js's push() is hardened with the same optimistic-concurrency expectedUpdatedAt check tools/world-builder-v2/js/services/projectSync.js already proved out -- closes a real, confirmed gap: Studio's push was a plain unconditional upsert with no conflict safety at all, the exact class of bug that caused the earlier Story-Forest Adventure data-loss incident for World Builder before Versioned Cloud Sync closed it there. js/projectManager.js's _scheduleCloudProjectSync now routes through CreatorProjectCache.enqueueSync(id) instead of a bare, lost-on-close setTimeout. See CLAUDE.md's own entry for the full design and verification.",
   "build": "0244",
   "buildDate": "2026-07-23",
-  "commit": "PENDING",
+  "commit": "69cce545e27368feeb7cbd271db346aa074b7b78",
   "environment": "Release"
 }
