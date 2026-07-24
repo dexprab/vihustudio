@@ -10,9 +10,13 @@
 -- Trimmed from the Phase 1 draft: no updated_at trigger, no
 -- denormalized name/version columns (both were premature for "a few
 -- themes"; the full manifest is already selected wherever those
--- values are needed), no extra indexes (not required at this scale).
--- One thing was ADDED beyond Phase 1's draft: Official rows are now
--- writable by the anon role, because "Builder -> Publish Official
+-- values are needed). "No extra indexes (not required at this scale)"
+-- was true at the time but is now factually superseded — see the
+-- "Performance Indexes — P0 fix for Postgres error 57014" section near
+-- the end of this file, which corrects that once the World Card/Magic
+-- Card system's own correlated RLS subqueries stopped being "at this
+-- scale." One thing was ADDED beyond Phase 1's draft: Official rows are
+-- now writable by the anon role, because "Builder -> Publish Official
 -- Theme -> Supabase" is this sprint's own explicit requirement — see
 -- the disclosure comment above those policies below.
 --
@@ -911,3 +915,76 @@ drop policy if exists draft_assets_owner_delete on storage.objects;
 create policy draft_assets_owner_delete
   on storage.objects for delete
   using (bucket_id = 'draft-assets' and (storage.foldername(name))[2] = auth.uid()::text);
+
+-- ---------------------------------------------------------------
+-- Performance Indexes — P0 fix for Postgres error 57014
+-- (statement timeout) on World Builder Publish/Promote/Save
+-- ---------------------------------------------------------------
+-- A real, user-reported P0: "getting same error from supabase" —
+-- 57014, a native Postgres statement-cancelled-due-to-timeout error,
+-- recurring on Publish/Promote/Save specifically. Root-caused, not
+-- guessed: `themes_personal_select` (above) — the SELECT policy that
+-- governs every read of a `personal` `themes` row, INCLUDING the
+-- implicit RETURNING representation PostgREST evaluates for
+-- publish()'s own `.upsert()` and promote()'s own `.select().single()`
+-- lookup — carries an `or exists(select 1 from card_redemptions r join
+-- cards c on c.id = r.card_id where c.target_theme_id = themes.
+-- theme_id and c.owner_id = themes.owner_id and ...)` clause added by
+-- the World Card Platform sprint. `theme_assets_personal_read` (the
+-- Storage-object twin, evaluated by every asset list/signed-URL call)
+-- carries the structurally identical clause. Confirmed via a full read
+-- of this file end to end: NOT ONE of `cards.target_theme_id`,
+-- `cards.owner_id`, `card_redemptions.card_id`, `card_redemptions.
+-- redeemer_id`, `magic_card_identities.owner_id`, `magic_card_recalls.
+-- identity_id`, or `magic_card_recalls.recaller_id` had ANY supporting
+-- index anywhere in this schema — every one of these correlated EXISTS
+-- subqueries (evaluated on EVERY Personal-repository Theme read/write,
+-- storage.objects read, and creator_projects/draft-assets cross-owner
+-- read, platform-wide, not just this one author's own rows) could only
+-- resolve via a sequential scan of `cards`/`card_redemptions`/
+-- `magic_card_identities`/`magic_card_recalls` — cheap while those
+-- tables are small, but genuinely, silently getting slower as the
+-- World Card / Magic Card system accumulates more cards, redemptions,
+-- identities, and recalls across the WHOLE platform (not scoped to any
+-- one Theme Author), eventually exceeding even the `authenticated`
+-- role's 8-second statement_timeout — exactly matching "the same
+-- error" recurring, and exactly why it wasn't reproducible at smaller
+-- data volumes earlier in the platform's life.
+--
+-- Fix: add the exact B-tree indexes each correlated subquery's join/
+-- filter columns need, so Postgres can resolve every one of these
+-- EXISTS clauses via an index scan instead of a sequential scan —
+-- O(log N) instead of O(N) as these tables grow, with zero change to
+-- any policy's semantics, any RLS behaviour, or any application code.
+-- `CREATE INDEX IF NOT EXISTS` (Postgres supports this directly,
+-- unlike `CREATE POLICY`) makes this section safely re-runnable, same
+-- idempotency discipline as the rest of this file.
+
+-- Supports themes_personal_select's / theme_assets_personal_read's
+-- own `c.target_theme_id = ... and c.owner_id = ...` filter, and
+-- doubles as support for cards_owner_select/_update/_delete's own
+-- plain `owner_id = auth.uid()` filter as the cards table grows.
+create index if not exists idx_cards_target_theme_owner
+  on public.cards (target_theme_id, owner_id);
+create index if not exists idx_cards_owner_id
+  on public.cards (owner_id);
+
+-- Supports the `card_redemptions r join cards c on c.id = r.card_id
+-- ... and r.redeemer_id = auth.uid()` half of the same EXISTS clause,
+-- and card_redemptions_visible's own `redeemer_id = auth.uid()` filter.
+create index if not exists idx_card_redemptions_card_redeemer
+  on public.card_redemptions (card_id, redeemer_id);
+
+-- Supports creator_projects_select's / draft_assets_owner_read's own
+-- `i.owner_id = creator_projects.owner_id` / `... = (storage.
+-- foldername(name))[2]` filter, and magic_card_recalls_visible's own
+-- `i.owner_id = auth.uid()` filter.
+create index if not exists idx_magic_card_identities_owner_id
+  on public.magic_card_identities (owner_id);
+
+-- Supports the `magic_card_recalls r join magic_card_identities i on
+-- i.id = r.identity_id ... and r.recaller_id = auth.uid()` half of the
+-- creator_projects_select / draft_assets_owner_read / magic_card_
+-- recalls_visible EXISTS clauses.
+create index if not exists idx_magic_card_recalls_identity_recaller
+  on public.magic_card_recalls (identity_id, recaller_id);
