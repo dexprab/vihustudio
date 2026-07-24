@@ -364,8 +364,34 @@
         }).catch(function () { return null; });
     }
 
+    // IN-FLIGHT GUARD — a real, confirmed bug found chasing a live "Cloud
+    // backup failed" / Postgres 57014 statement-timeout report on the
+    // sibling builder_projects table (world-builder-v2's projectCache.js
+    // has the identical fix, kept in lockstep by hand): with four
+    // independent triggers (boot, `online`, the 60s interval, and
+    // putLocal()/markCloudSynced()'s own 2s _scheduleDrainSoon debounce)
+    // and no coordination between them, two of these could legitimately
+    // fire close together and both start a drain cycle — each reading
+    // the SAME "pending" record (the first hasn't flipped its status to
+    // 'done' yet, since its own push() is still in flight) and both
+    // calling _attemptSync(id) concurrently. That's two separate DB
+    // transactions racing to UPDATE the exact same creator_projects row;
+    // the second blocks on the first's row lock until it commits, and
+    // any real-world hiccup holding the first transaction open (a slow
+    // round trip, an interrupted connection) turns that ordinary
+    // sub-millisecond wait into a genuine, repeating statement-timeout.
+    // _drainInFlightPromise makes every one of the four triggers share
+    // the SAME in-flight drain instead of starting a second, overlapping
+    // one — set synchronously before any await, so even two calls in the
+    // same tick correctly de-duplicate. A record that becomes due WHILE
+    // a drain is already running simply waits for the next trigger
+    // (worst case ~60s later, the background interval) — never a
+    // durability risk, since the record is already safely durable in
+    // IndexedDB regardless of when its cloud push happens.
+    let _drainInFlightPromise = null;
     function drainPendingSync() {
-        return _allPendingRecords().then(function (all) {
+        if (_drainInFlightPromise) return _drainInFlightPromise;
+        const runPromise = _allPendingRecords().then(function (all) {
             const now = Date.now();
             const due = (all || []).filter(function (r) {
                 if (r.status === 'done') return false;
@@ -384,6 +410,14 @@
                 });
             }, Promise.resolve()).then(function () { return { synced: synced, conflicted: conflicted, failed: failed }; });
         }).catch(function () { return { synced: 0, conflicted: 0, failed: 0 }; });
+        _drainInFlightPromise = runPromise.then(function (result) {
+            _drainInFlightPromise = null;
+            return result;
+        }, function (err) {
+            _drainInFlightPromise = null;
+            throw err;
+        });
+        return _drainInFlightPromise;
     }
 
     let _drainSoonTimer = null;
