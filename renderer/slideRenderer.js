@@ -1383,7 +1383,7 @@ const SlideRenderer=(()=>{
     // Design Board's two-line museum label (bold serif title, then a
     // muted "By {artist} ✍️  Age {age} 🎂 | {date} 📅" line) from real
     // per-slide fields instead of one flat string.
-    if(t.source==='museumCaption') return _drawMuseumCaption(t,anchor,s);
+    if(t.source==='museumCaption') return _drawMuseumCaption(t,anchor,s,layer);
     const ov=_layerOverride(s,layer.id);
     let content=t.content||'';
     // 'slideCaption' — a plain per-slide caption string a child typed
@@ -1480,7 +1480,7 @@ const SlideRenderer=(()=>{
     return {bx:bx,by:by,bw:maxLineWidth,bh:totalH+8};
   }
 
-  function _drawMuseumCaption(t,anchor,s){
+  function _drawMuseumCaption(t,anchor,s,layer){
     const m=(s && s.metadata) || {};
     const title=(typeof m.artworkTitle==='string') ? m.artworkTitle.trim() : '';
     const artist=(typeof m.artist==='string') ? m.artist.trim() : '';
@@ -1495,30 +1495,81 @@ const SlideRenderer=(()=>{
 
     const titleSize=t.size||20;
     const align=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
+    const font=t.font||'Georgia, serif';
+
+    // Real, user-reported freeze bug ("reposition text first and then
+    // try to resize" — the visible pixels never moved even though the
+    // model kept recording a fresh override on every drag/resize tick):
+    // unlike every other _layerDrawText text source, this whole draw
+    // path early-returned before `ov=_layerOverride(s,layer.id)` was
+    // ever read, so a moveable/editable museumCaption Layer's own
+    // position/size overrides were silently never applied at all — a
+    // direct Guardrails (Rule #2) violation, since resize handles are
+    // shown for it (type:'text') the same as any other moveable text
+    // object. Fixed by measuring first (never drawing until the final
+    // position is known, matching _layerDrawText's own natural-center-
+    // relative translation for position), and treating ov.size.w as a
+    // wrap-width constraint for both lines — reusing the shared
+    // _wrapText helper — exactly the same "resize changes wrap width,
+    // never font size" semantics _layerDrawText already applies.
+    // Absent any override, maxWidth stays Infinity (never wraps) and
+    // drawX/drawY stay anchor.x/anchor.y — byte-identical to before
+    // this fix for every existing, unmoved Museum Caption.
+    const ov=_layerOverride(s, layer && layer.id);
+    // Real regression caught via a git-stash pixel-hash A/B before
+    // shipping: routing the natural (no-override) string through
+    // _wrapText even at maxWidth=Infinity still re-joins its
+    // whitespace-split words with a single space each, silently
+    // collapsing metaLine's own deliberate '   |   ' (3-space) visual
+    // separator to a single space for EVERY existing Museum Caption —
+    // wrapping (and the whitespace normalization that comes with it)
+    // must only ever kick in once a real size override actually asks
+    // for it; absent one, the exact original strings/whitespace are
+    // used untouched, one line each, matching pre-fix pixels exactly.
+    const hasSizeOverride=!!(ov && ov.size && typeof ov.size.w==='number');
+    const maxWidth=hasSizeOverride?Math.max(1,ov.size.w):Infinity;
+    const titleLineHeight=Math.round(titleSize*1.2);
+    const metaLineHeight=Math.round(titleSize*0.65*1.2);
+
+    let maxW=0;
+    x.save();
+    x.font=titleSize+'px '+font;
+    const titleLines=!title?[]:(hasSizeOverride?_wrapText(title,maxWidth):[title]);
+    titleLines.forEach(function(line){ maxW=Math.max(maxW,x.measureText(line).width); });
+    x.font=Math.round(titleSize*0.65)+'px '+font;
+    const metaLines=!metaLine?[]:(hasSizeOverride?_wrapText(metaLine,maxWidth):[metaLine]);
+    metaLines.forEach(function(line){ maxW=Math.max(maxW,x.measureText(line).width); });
+    x.restore();
+    if(!titleLines.length && !metaLines.length) return null;
+
+    const totalH=(titleLines.length*titleLineHeight)+(metaLines.length*metaLineHeight);
+    let natBx=anchor.x-maxW/2; if(align==='left') natBx=anchor.x; else if(align==='right') natBx=anchor.x-maxW;
+    const natBy=anchor.y;
+    let drawX=anchor.x, drawY=anchor.y;
+    if(ov && ov.position){
+      drawX+=ov.position.x-(natBx+maxW/2);
+      drawY+=ov.position.y-(natBy+totalH/2);
+    }
+
     x.save();
     x.textAlign=align;
     x.textBaseline='top';
-    let cy=anchor.y;
-    let maxW=0;
-    if(title){
-      x.font=titleSize+'px '+(t.font||'Georgia, serif');
+    let cy=drawY;
+    if(titleLines.length){
+      x.font=titleSize+'px '+font;
       x.fillStyle=t.color||'#3A3A3A';
-      x.fillText(title,anchor.x,cy);
-      maxW=Math.max(maxW,x.measureText(title).width);
-      cy+=Math.round(titleSize*1.2);
+      titleLines.forEach(function(line){ x.fillText(line,drawX,cy); cy+=titleLineHeight; });
     }
-    if(metaLine){
-      x.font=Math.round(titleSize*0.65)+'px '+(t.font||'Georgia, serif');
+    if(metaLines.length){
+      x.font=Math.round(titleSize*0.65)+'px '+font;
       x.fillStyle='rgba(58,58,58,0.72)';
-      x.fillText(metaLine,anchor.x,cy);
-      maxW=Math.max(maxW,x.measureText(metaLine).width);
-      cy+=Math.round(titleSize*0.65*1.2);
+      metaLines.forEach(function(line){ x.fillText(line,drawX,cy); cy+=metaLineHeight; });
     }
     x.restore();
-    if(maxW===0) return null;
-    let bx=anchor.x-maxW/2;
-    if(align==='left') bx=anchor.x; else if(align==='right') bx=anchor.x-maxW;
-    return {bx:bx,by:anchor.y,bw:maxW,bh:cy-anchor.y};
+
+    let bx=drawX-maxW/2;
+    if(align==='left') bx=drawX; else if(align==='right') bx=drawX-maxW;
+    return {bx:bx,by:drawY,bw:maxW,bh:totalH};
   }
 
   // Wax Seal (Museum Gallery's one shipped Sticker Layer, Frame-
