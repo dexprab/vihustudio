@@ -13,8 +13,8 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0251'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0251'>
+<link rel='stylesheet' href='css/style.css?v=0252'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0252'>
 </head>
 <body class='light-theme creation-flow-active'>
 <!-- "under any circumstance, inner studio screen can never load before
@@ -208,21 +208,29 @@
 
 <!-- Center preview -->
 <main class='preview-area'>
-<!-- Option B (Refined) — the selection action strip. Anchored to the
-     canvas FRAME (a sibling above .preview-wrapper, never a child
-     positioned relative to the selected object's own coordinates), so it
-     can never end up floating over the slide itself, regardless of where
-     on the page the selected object sits. Populated by
+<!-- Option B (Refined), pencil/small-side-widget follow-up — the
+     selection action strip. A sibling of .preview-wrapper (never a
+     child positioned relative to the selected object's own on-canvas
+     coordinates) so it can never end up over the slide; positioned as a
+     small floating widget in whichever side gutter is actually free
+     beside the canvas (js/selectionActionStrip.js's _positionWidget()
+     measures this at runtime), falling back to a compact strip above
+     the canvas only when there's no gutter at all. Populated by
      js/selectionActionStrip.js, refreshed via PageRuntime.notify() like
-     every other panel. -->
+     every other panel. Edit opens a small inline popup right here with
+     the real editing control (ContextPanel.mountQuickEditControl) —
+     never just a "make the right panel active" no-op. -->
 <div id='selectionActionStrip' class='selection-action-strip selection-action-strip-hidden'>
+<div class='selection-action-strip-row'>
 <span id='selectionActionBadge' class='selection-action-badge'></span>
 <span id='selectionActionName' class='selection-action-name'></span>
-<span id='selectionActionOwner' class='selection-action-owner'></span>
 <span class='selection-action-btns'>
-<button type='button' id='selectionActionEdit' class='selection-action-btn' title='Edit'>✏️</button>
+<button type='button' id='selectionActionEdit' class='selection-action-btn' title='Edit' aria-expanded='false'>✏️</button>
 <button type='button' id='selectionActionDeselect' class='selection-action-btn selection-action-btn-danger' title='Deselect'>✕</button>
 </span>
+</div>
+<span id='selectionActionOwner' class='selection-action-owner'></span>
+<div id='selectionActionEditPanel' class='selection-action-edit-panel selection-action-edit-panel-hidden'></div>
 </div>
 <div class='preview-wrapper'>
 <canvas id='previewCanvas'></canvas>

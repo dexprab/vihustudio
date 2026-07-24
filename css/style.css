@@ -404,6 +404,7 @@ button:active{
  * fixed 500 CSS px width that made the editor look softer than
  * the PDF viewer's ~720 CSS px natural display. */
 .preview-area{
+  position:relative; /* anchors the Selection Action Strip's absolute side placement below */
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -426,28 +427,49 @@ button:active{
   width:100%;
 }
 
-/* Option B (Refined) — the selection action strip. A sibling ABOVE
- * .preview-wrapper (never a child positioned relative to the selected
- * object), so it can only ever occupy this one fixed slot at the top of
- * the preview column — it can never end up floating over the canvas
- * itself, no matter what's selected or where that object sits on the
- * slide. align-self:stretch fills the column's own width (the parent,
- * .preview-area, centers its children by default) so it reads as a real
- * toolbar, not a floating chip. */
+/* Option B (Refined), pencil/small-side-widget follow-up — the
+ * selection action strip. Absolutely positioned within .preview-area
+ * (position:relative above) so it's a small floating widget rather than
+ * a full-width bar — js/selectionActionStrip.js's _positionWidget()
+ * measures the real gap on either side of the canvas at runtime and
+ * toggles one of the 3 modifier classes below, always choosing whichever
+ * placement keeps the widget's own x-range entirely outside the
+ * canvas's own x-range (so it can never overlap it, no matter how tall
+ * the inline edit popup grows). The .selection-action-strip-top fallback
+ * (a narrow viewport with no side gutter at all) drops out of absolute
+ * positioning into the column's own normal flow instead, which
+ * structurally can never overlap the canvas below it either. */
 .selection-action-strip{
-  align-self:stretch;
-  max-width:100%;
+  position:absolute;
+  top:16px;
+  width:auto;
+  max-width:230px;
+  min-width:160px;
   display:flex;
-  align-items:center;
-  gap:10px;
+  flex-direction:column;
+  gap:6px;
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:12px;
-  padding:8px 12px;
-  margin-bottom:10px;
-  box-shadow:0 1px 3px rgba(0,0,0,0.06);
+  padding:10px 12px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.14);
+  z-index:5;
 }
 .selection-action-strip-hidden{ display:none; }
+.selection-action-strip-side-right{ right:16px; left:auto; }
+.selection-action-strip-side-left{ left:16px; right:auto; }
+.selection-action-strip-top{
+  position:static;
+  align-self:flex-start;
+  width:auto;
+  max-width:280px;
+  margin-bottom:10px;
+}
+.selection-action-strip-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
 .selection-action-badge{
   font-size:18px;
   line-height:1;
@@ -460,6 +482,8 @@ button:active{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+  flex:1;
+  min-width:0;
 }
 .selection-action-owner{
   font-size:12px;
@@ -468,8 +492,6 @@ button:active{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  flex:1;
-  min-width:0;
 }
 .selection-action-btns{
   display:flex;
@@ -496,6 +518,46 @@ button:active{
 }
 .selection-action-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.14); }
 .selection-action-btn-danger:hover{ border-color:#e05d5d; background:rgba(224,93,93,0.12); }
+.selection-action-btn-hidden{ display:none; }
+
+/* The inline "Edit" popup — the real editing control (color/image/text,
+ * via ContextPanel.mountQuickEditControl) or the plain fallback hint +
+ * "Open Right Panel" link, mounted directly inside this same widget. */
+.selection-action-edit-panel{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-top:8px;
+  margin-top:2px;
+  border-top:1px solid var(--line);
+}
+.selection-action-edit-panel-hidden{ display:none; }
+.selection-action-edit-hint{
+  font-size:12px;
+  color:var(--text);
+  opacity:0.75;
+  line-height:1.4;
+}
+.selection-action-open-panel-btn{
+  width:auto !important;
+  height:auto !important;
+  align-self:flex-start;
+  padding:6px 10px !important;
+  margin:0 !important;
+  font-size:12px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  cursor:pointer;
+}
+.selection-action-open-panel-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.14); }
+/* The real quick-edit control (ContextPanel.mountQuickEditControl) was
+ * designed for the right panel's own wider column — a couple of small
+ * overrides keep it tidy inside this narrower ~200px popup rather than
+ * an auto-width pill button wrapping awkwardly. */
+.selection-action-edit-panel .context-btn{ width:100%; text-align:center; }
+.selection-action-edit-panel .context-textarea{ min-height:56px; }
 
 #previewCanvas{
   /* Fluid sizing so the display expands to match the available

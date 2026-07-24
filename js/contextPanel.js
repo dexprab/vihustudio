@@ -366,7 +366,13 @@ const ContextPanel=(function(){
   // separately maintained. Writes through SceneEngine.setContentOverride
   // (js/sceneEngine.js), the exact elementOverrides bag every other
   // per-object override already lives in.
-  function _appendWorldObjectEditControl(sceneObj,v){
+  // Takes an explicit container instead of always writing into panelRoot
+  // -- Selection Confidence Sprint (Option B follow-up) reuses this exact
+  // function to mount the SAME real control inline in the Selection
+  // Action Strip's own small popup, rather than duplicating the
+  // color/image/text branching a second time. _renderWorldObjectDisclosure
+  // below still passes panelRoot, so its own behaviour is unchanged.
+  function _appendWorldObjectEditControl(container,sceneObj,v){
     const slide=_currentSlide();
     if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
     if(v.kind==='color' || v.kind==='shape'){
@@ -381,7 +387,7 @@ const ContextPanel=(function(){
         _afterWorldObjectEdit();
       });
       row.appendChild(input);
-      panelRoot.appendChild(row);
+      container.appendChild(row);
     }else if(v.kind==='image'){
       const btn=_el('button','context-btn','🖼️ Replace Image');
       btn.type='button';
@@ -403,9 +409,9 @@ const ContextPanel=(function(){
         });
         fileInput.click();
       });
-      panelRoot.appendChild(btn);
+      container.appendChild(btn);
     }else if(v.kind==='text'){
-      panelRoot.appendChild(_el('div','designer-row-label','Words'));
+      container.appendChild(_el('div','designer-row-label','Words'));
       const textarea=document.createElement('textarea');
       textarea.className='context-textarea';
       textarea.value=v.content||'';
@@ -413,8 +419,27 @@ const ContextPanel=(function(){
         SceneEngine.setContentOverride(slide,sceneObj.id,'content',textarea.value);
         _afterWorldObjectEdit();
       });
-      panelRoot.appendChild(textarea);
+      container.appendChild(textarea);
     }
+  }
+
+  // Public seam for the Selection Action Strip's own inline "Edit" popup
+  // (js/selectionActionStrip.js) -- reuses this exact rendering/write
+  // path rather than a second implementation, so the strip's control and
+  // this panel's own disclosure can never disagree about what a field
+  // means or where it writes. Deliberately scoped to World-owned objects
+  // only (owner==='world') -- a Story-owned sticker's own content lives
+  // in a completely different bag (SceneEngine.updateSticker's instance
+  // fields, not setContentOverride's elementOverrides), so reusing this
+  // function for one would silently write to the wrong place. Returns
+  // whether a real control was actually mounted, so the caller can show
+  // its own fallback when there's nothing to mount.
+  function mountQuickEditControl(container,sceneObj){
+    if(!container || !sceneObj || sceneObj.owner!=='world' || !sceneObj.editable) return false;
+    const v=sceneObj.visual;
+    if(!v || !(v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')) return false;
+    _appendWorldObjectEditControl(container,sceneObj,v);
+    return true;
   }
 
   // Decoration Slot — "Let the Story Author add their own decorations
@@ -463,7 +488,7 @@ const ContextPanel=(function(){
           ? 'This is part of the World, but you may adjust it. That kind of edit isn’t available in Creator yet.'
           : 'This is part of the World.'
     ));
-    if(hasRealControl) _appendWorldObjectEditControl(sceneObj,v);
+    if(hasRealControl) _appendWorldObjectEditControl(panelRoot,sceneObj,v);
     if(sceneObj.decorationSlot) _appendDecorationSlotButton(sceneObj);
     _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
@@ -1122,7 +1147,8 @@ const ContextPanel=(function(){
   return {
     configure:configure,
     init:init,
-    refresh:refresh
+    refresh:refresh,
+    mountQuickEditControl:mountQuickEditControl
   };
 })();
 try{ window.ContextPanel=ContextPanel; }catch(e){}

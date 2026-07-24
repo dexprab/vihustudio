@@ -256,16 +256,22 @@ if(typeof ObjectStrip!=='undefined'){
   }catch(e){}
 }
 
-// Option B (Refined) — the selection action strip. Anchored above the
-// canvas (see index.html/css/style.css), so "focus the editor" just
-// means "make sure the right panel's Refine section is showing and
-// scrolled into view" — the existing tab-activation/section-focus
-// machinery already does that, this just reuses it.
+// Option B (Refined), pencil/small-side-widget follow-up — the
+// selection action strip. Its own inline Edit popup now shows the real
+// editing control directly (js/selectionActionStrip.js's
+// ContextPanel.mountQuickEditControl reuse) for anything that has one —
+// focusEditor is only the FALLBACK "Open Right Panel" link's action, for
+// a Story-owned object (whose Refine controls live in CardDesigner's own
+// sections, already shown automatically on selection) or a World-owned
+// object with no in-place quick-edit shape at all. getCurrentSlide lets
+// the strip resolve a Place's own Theme-Author guardrail
+// (SlideRenderer.getPlacePermissions), mirroring ContextPanel/ObjectStrip's
+// own established host-binding pattern.
 if(typeof SelectionActionStrip!=='undefined'){
   try{
     SelectionActionStrip.configure({
+      getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
       focusEditor:function(){
-        _activateTab('card');
         try{
           const panel=document.querySelector('.right-sidebar');
           if(panel && typeof panel.scrollIntoView==='function') panel.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1380,13 +1386,19 @@ previewCanvas.addEventListener('mousedown',function(e){
 // `.preview-wrapper` and the Object Strip's own background — that never
 // had a listener at all, so clicking there silently did nothing. This
 // is a genuinely separate gap, not a duplicate of the canvas's own
-// logic: `closest('#previewCanvas, .object-card')` excludes both the
-// canvas (handles its own hit-testing) and Object Strip cards (their own
-// click already selects/deselects via _clearSelection), so this only
-// ever fires for the actual empty background of the pane.
+// logic: `closest('#previewCanvas, .object-card, #selectionActionStrip')`
+// excludes the canvas (handles its own hit-testing), Object Strip cards
+// (their own click already selects/deselects via _clearSelection), and
+// the Selection Action Strip (a real, confirmed bug found chasing the
+// pencil/small-side-widget follow-up: the strip's Edit/Deselect buttons
+// are DOM children of .preview-area too, so a click on them was
+// bubbling into THIS listener as a mousedown and silently deselecting
+// the very object Edit was about to open a real inline control for,
+// before the strip's own click handler ever got a chance to run) — so
+// this only ever fires for the actual empty background of the pane.
 if(previewArea){
   previewArea.addEventListener('mousedown',function(e){
-    if(e.target.closest('#previewCanvas, .object-card')) return;
+    if(e.target.closest('#previewCanvas, .object-card, #selectionActionStrip')) return;
     if(_selectedTextElement) _setSelectedTextElement(null);
     if(_selectedSceneElement) _setSelectedSceneElement(null,null);
   });
