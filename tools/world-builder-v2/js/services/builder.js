@@ -500,7 +500,20 @@ class BuildEngine {
             return Object.assign({}, base, {
                 type: 'decoration',
                 anchor: 'top-left',
-                decoration: { kind: 'image', image: assetPath, fit: layer.fit || 'fill', alpha: alpha }
+                // Fidelity fix — default Fit aligned to 'fit' (contain),
+                // matching engineRuntime.js's own _paintLayer default
+                // exactly; the compile step previously hardcoded 'fill'
+                // (cover, crops) here regardless, so an unset Fit choice
+                // rendered differently in Builder's own Working View/
+                // Runtime Preview than in the compiled/Published Theme a
+                // Story Author actually sees in Studio. `rotation` is now
+                // also carried through (previously only reached the
+                // compiled package for a Shape kind, never an uploaded
+                // Image, even though _paintLayer already applies it to
+                // both uniformly) so a future authoring path that sets it
+                // isn't silently dropped, matching the identical field
+                // already compiled for kind:'shape' below.
+                decoration: { kind: 'image', image: assetPath, fit: layer.fit || 'fit', rotation: layer.rotation || 0, alpha: alpha }
             });
         }
 

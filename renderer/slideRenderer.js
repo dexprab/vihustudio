@@ -1587,31 +1587,67 @@ const SlideRenderer=(()=>{
     const kind=d.kind||'spotlight';
     const ov=_layerOverride(s,layer.id);
     let r=layerRect||rect;
+    // baseR — r's value BEFORE any Story-Author override below ever
+    // mutates it (both blocks below reassign r to a new object rather
+    // than mutating in place, so this reference never changes). Used by
+    // spotlight's own dx/dy shift: its glow "hotspot" is anchor-based,
+    // not r-based, so it needs the delta r moved by, not r itself.
+    const baseR=r;
+    // Guardrails — a moveable:true Layer's Story-Author SIZE override
+    // (SceneEngine.setSize, the same generic override bag position
+    // already uses — js/app.js's resize-drag handler writes both size
+    // and position together on every resize gesture) is applied first,
+    // recentred around r's own current center, so the position override
+    // immediately below still lands the final center exactly where the
+    // Story Author dragged it to, regardless of order. Absent a size
+    // override, r is unchanged — byte-identical to before this fix for
+    // every existing theme.
+    if(ov && ov.size && typeof ov.size.w==='number' && typeof ov.size.h==='number'){
+      const scx=r.x+r.w/2, scy=r.y+r.h/2;
+      r={x:scx-ov.size.w/2,y:scy-ov.size.h/2,w:ov.size.w,h:ov.size.h};
+    }
     // Honour World-Owned Object Commitments sprint — fill/image/shape
     // all position themselves purely from `r` (never anchor.x/y), so a
     // moveable:true override is a straightforward translation of `r`
     // itself, correct regardless of the decoration's own kind. Absent
     // an override, `r` is unchanged — byte-identical to before this
-    // sprint for every existing theme. (spotlight/paperTexture/
-    // shadowWash draw against the full `rect` directly and have no
-    // realistic "move" concept — not specially handled here.)
+    // sprint for every existing theme.
+    //
+    // Guardrails fix — spotlight/paperTexture/shadowWash used to be
+    // excluded here ("have no realistic 'move' concept") and drew
+    // against the raw, un-overridden `rect` regardless of any position/
+    // size a Story Author had dragged — a real, confirmed bug: a
+    // moveable:true legacy decoration silently never moved or resized.
+    // Now generalized: paperTexture/shadowWash draw against `r` exactly
+    // like fill/image/shape (their whole visual — blob positions,
+    // gradient center, fill bounds — is defined purely relative to
+    // whichever rect they're handed, so this is a safe, direct swap);
+    // spotlight keeps its glow radius/fill bounds tied to `r` too, and
+    // shifts its own anchor-based hotspot by the exact delta `r` moved
+    // by (dx/dy below), since its resting position is deliberately an
+    // authored anchor point (e.g. Museum Gallery's top-center), not r's
+    // own center — recentering on r's center outright would silently
+    // relocate every existing theme's unmoved glow. When no override
+    // exists at all, r===rect===baseR and dx/dy are 0 — byte-identical
+    // to the pre-fix rendering for every theme that never gets moved.
     if(ov && ov.position){
       const cx=r.x+r.w/2, cy=r.y+r.h/2;
       r={x:r.x+(ov.position.x-cx),y:r.y+(ov.position.y-cy),w:r.w,h:r.h};
     }
+    const dx=r.x-baseR.x, dy=r.y-baseR.y;
     if(kind==='spotlight'){
-      const radius=(typeof d.radius==='number')?d.radius:Math.max(rect.w,rect.h)*0.6;
+      const radius=(typeof d.radius==='number')?d.radius:Math.max(r.w,r.h)*0.6;
       const alpha=(typeof d.alpha==='number')?d.alpha:0.12;
-      _lightingGlow(rect,anchor.x,anchor.y,radius,alpha);
+      _lightingGlow(r,anchor.x+dx,anchor.y+dy,radius,alpha);
     }else if(kind==='paperTexture'){
-      _paperMottled(rect,(typeof d.alpha==='number')?d.alpha:0.5);
+      _paperMottled(r,(typeof d.alpha==='number')?d.alpha:0.5);
     }else if(kind==='shadowWash'){
       x.save();
-      const grad=x.createRadialGradient(rect.x+rect.w/2,rect.y+rect.h/2,Math.min(rect.w,rect.h)*0.3,rect.x+rect.w/2,rect.y+rect.h/2,Math.max(rect.w,rect.h)*0.7);
+      const grad=x.createRadialGradient(r.x+r.w/2,r.y+r.h/2,Math.min(r.w,r.h)*0.3,r.x+r.w/2,r.y+r.h/2,Math.max(r.w,r.h)*0.7);
       grad.addColorStop(0,'rgba(0,0,0,0)');
       grad.addColorStop(1,'rgba(0,0,0,'+((typeof d.alpha==='number')?d.alpha:0.18).toFixed(3)+')');
       x.fillStyle=grad;
-      x.fillRect(rect.x,rect.y,rect.w,rect.h);
+      x.fillRect(r.x,r.y,r.w,r.h);
       x.restore();
     }else if(kind==='fill'){
       x.save();
@@ -1937,9 +1973,25 @@ const SlideRenderer=(()=>{
     }
     const img=_ensureDecorationImage(src,s&&s.recallOwnerId);
     if(!img || !img.__ready || !img.width || !img.height) return;
-    const fit=d.fit||'fill';
+    // Fidelity fix — a Theme's own Fit dropdown for Image content has no
+    // rotation control today (rotation is Shape/Graphics-only), but this
+    // function's own sibling, _layerDrawShape, already applies rotation
+    // generically, and tools/world-builder-v2's engineRuntime.js's own
+    // _paintLayer applies layer.rotation to BOTH shape and image
+    // decorations uniformly — this brought Studio's image renderer into
+    // that same generic shape, so a compiled decoration.rotation (from
+    // any current or future authoring path, including a hand-authored
+    // Layer Pack) is honoured here exactly as it already is for shapes,
+    // rather than being silently dropped. Absent d.rotation (every
+    // existing theme today), this is a byte-identical no-op.
+    const fit=d.fit||'fit';
     x.save();
     x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
+    const rotation=(typeof d.rotation==='number')?d.rotation:0;
+    if(rotation){
+      const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
+      x.translate(rcx,rcy); x.rotate(rotation*Math.PI/180); x.translate(-rcx,-rcy);
+    }
     x.beginPath(); x.rect(rect.x,rect.y,rect.w,rect.h); x.clip();
     // 'stretch' -- a real, user-requested addition (World Builder's own
     // Image Experience Fit dropdown, kept in lockstep with

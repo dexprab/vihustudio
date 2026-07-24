@@ -346,11 +346,17 @@ const ContextPanel=(function(){
   // canvas + Object Strip only, exactly like every other in-place edit
   // control elsewhere in Creator already does.
   function _afterWorldObjectEdit(){
+    // Diagnostic-only addition — this catch used to swallow whatever
+    // host.redraw() throws with zero signal, which could leave the
+    // canvas silently stuck on its last successfully-drawn frame after
+    // an in-place World-owned-object edit with no visible error anywhere
+    // an author or a future debugger could see. Never changes behaviour
+    // on a successful redraw — only surfaces a genuine failure.
     if(host){
-      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
-      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){ try{ console.error('[Context Panel] redraw after World-owned object edit failed:',e); }catch(_){} } }
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){ try{ console.error('[Context Panel] markDirty after World-owned object edit failed:',e); }catch(_){} } }
     }
-    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){ try{ console.error('[Context Panel] ObjectStrip.refresh after World-owned object edit failed:',e); }catch(_){} } }
   }
 
   // Kind-specific in-place edit control, built from the exact same

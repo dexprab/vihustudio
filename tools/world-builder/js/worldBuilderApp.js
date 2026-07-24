@@ -3198,7 +3198,10 @@
         { value: 'Georgia, serif', label: 'Georgia (Serif)' },
         { value: '"Iowan Old Style", "Palatino Linotype", serif', label: 'Iowan Old Style' },
         { value: 'Helvetica, Arial, sans-serif', label: 'Helvetica (Sans)' },
-        { value: '"Comic Sans MS", cursive', label: 'Comic Sans' },
+        // Fidelity — matches js/cardDesigner.js's FONT_FAMILY_OPTIONS Comic
+        // entry (and world-builder-v2's own identical fix) exactly, kept in
+        // lockstep by hand across both Builder versions.
+        { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans' },
         { value: '"Palatino Linotype", Palatino, serif', label: 'Palatino' }
     ];
 
@@ -3994,7 +3997,8 @@
 
     const TEXT_FONT_CHOICES = [
         { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
-        { value: '"Comic Sans MS", cursive', label: 'Comic Sans' }
+        // Fidelity fix — same "Chalkboard SE" fallback as TEXT_FONT_OPTIONS above.
+        { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans' }
     ];
     const TEXT_ALIGN_CHOICES = [
         { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }

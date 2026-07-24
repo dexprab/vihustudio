@@ -368,7 +368,14 @@ class BuildEngine {
             return Object.assign({}, base, {
                 type: 'decoration',
                 anchor: 'top-left',
-                decoration: { kind: 'image', image: assetPath, fit: layer.fit || 'fill', alpha: alpha }
+                // Fidelity fix — default Fit aligned to 'fit' (contain),
+                // matching this version's own engineRuntime.js _paintLayer
+                // default exactly (same fix applied to world-builder-v2's
+                // builder.js) — the compile step previously hardcoded
+                // 'fill' (cover, crops) regardless, so an unset Fit choice
+                // rendered differently in Builder's own preview than in
+                // the compiled/Published Theme Studio actually shows.
+                decoration: { kind: 'image', image: assetPath, fit: layer.fit || 'fit', alpha: alpha }
             });
         }
 
