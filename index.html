@@ -13,8 +13,8 @@
      whenever this file changes -- bump ?v= here alongside any future
      CSS-affecting ship, the same manual ritual build-info.json's own
      version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0249'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0249'>
+<link rel='stylesheet' href='css/style.css?v=0251'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0251'>
 </head>
 <body class='light-theme creation-flow-active'>
 <!-- "under any circumstance, inner studio screen can never load before
@@ -208,6 +208,22 @@
 
 <!-- Center preview -->
 <main class='preview-area'>
+<!-- Option B (Refined) — the selection action strip. Anchored to the
+     canvas FRAME (a sibling above .preview-wrapper, never a child
+     positioned relative to the selected object's own coordinates), so it
+     can never end up floating over the slide itself, regardless of where
+     on the page the selected object sits. Populated by
+     js/selectionActionStrip.js, refreshed via PageRuntime.notify() like
+     every other panel. -->
+<div id='selectionActionStrip' class='selection-action-strip selection-action-strip-hidden'>
+<span id='selectionActionBadge' class='selection-action-badge'></span>
+<span id='selectionActionName' class='selection-action-name'></span>
+<span id='selectionActionOwner' class='selection-action-owner'></span>
+<span class='selection-action-btns'>
+<button type='button' id='selectionActionEdit' class='selection-action-btn' title='Edit'>✏️</button>
+<button type='button' id='selectionActionDeselect' class='selection-action-btn selection-action-btn-danger' title='Deselect'>✕</button>
+</span>
+</div>
 <div class='preview-wrapper'>
 <canvas id='previewCanvas'></canvas>
 </div>
@@ -555,6 +571,6 @@ Your <strong>World</strong> is the story's whole look and feel. Every change her
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/assetStore.js'></script><script src='js/cardPlatform.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/creatorProjectStore.js'></script><script src='js/creatorProjectSync.js'></script><script src='js/creatorProjectCache.js'></script><script src='js/magicCardArt.js'></script><script src='js/magicCard.js'></script><script src='js/lumoVoice.js'></script><script src='js/magicCardUI.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/objectStrip.js'></script><script src='js/pageRuntime.js'></script><script src='js/travellerSaveNotice.js'></script><script src='js/companionEngine.js'></script><script src='js/companionDirector.js'></script><script src='js/audioManager.js'></script><script src='js/gatewayAudio.js'></script><script src='js/gatewaySequence.js'></script><script src='js/app.js'></script>
+<script src='js/state.js'></script><script src='js/zipReader.js'></script><script src='js/themePresets.js'></script><script src='js/themeRegistry.js'></script><script src='js/themeRepositoryClient.js'></script><script src='js/assetStore.js'></script><script src='js/cardPlatform.js'></script><script src='js/themeEngine.js'></script><script src='js/workspaceBuilder.js'></script><script src='js/sceneEngine.js'></script><script src='js/imageViewEngine.js'></script><script src='js/stickerLibrary.js'></script><script src='js/layerEngine.js'></script><script src='renderer/slideRenderer.js'></script><script src='js/buildInfo.js'></script><script src='js/thumbnails.js'></script><script src='js/pageOps.js'></script><script src='js/theme.js'></script><script src='js/creatorProjectStore.js'></script><script src='js/creatorProjectSync.js'></script><script src='js/creatorProjectCache.js'></script><script src='js/magicCardArt.js'></script><script src='js/magicCard.js'></script><script src='js/lumoVoice.js'></script><script src='js/magicCardUI.js'></script><script src='js/projectManager.js'></script><script src='js/pictureStudio.js'></script><script src='js/emojiPicker.js'></script><script src='js/cardDesigner.js'></script><script src='js/pageDesigner.js'></script><script src='js/stickerStudio.js'></script><script src='js/publishValidator.js'></script><script src='js/pdfWriter.js'></script><script src='js/zipWriter.js'></script><script src='js/storyDestinations.js'></script><script src='js/publishStudio.js'></script><script src='js/creationFlow.js'></script><script src='js/contextPanel.js'></script><script src='js/objectStrip.js'></script><script src='js/selectionActionStrip.js'></script><script src='js/pageRuntime.js'></script><script src='js/travellerSaveNotice.js'></script><script src='js/companionEngine.js'></script><script src='js/companionDirector.js'></script><script src='js/audioManager.js'></script><script src='js/gatewayAudio.js'></script><script src='js/gatewaySequence.js'></script><script src='js/app.js'></script>
 </body>
 </html>

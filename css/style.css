@@ -426,6 +426,77 @@ button:active{
   width:100%;
 }
 
+/* Option B (Refined) — the selection action strip. A sibling ABOVE
+ * .preview-wrapper (never a child positioned relative to the selected
+ * object), so it can only ever occupy this one fixed slot at the top of
+ * the preview column — it can never end up floating over the canvas
+ * itself, no matter what's selected or where that object sits on the
+ * slide. align-self:stretch fills the column's own width (the parent,
+ * .preview-area, centers its children by default) so it reads as a real
+ * toolbar, not a floating chip. */
+.selection-action-strip{
+  align-self:stretch;
+  max-width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px 12px;
+  margin-bottom:10px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);
+}
+.selection-action-strip-hidden{ display:none; }
+.selection-action-badge{
+  font-size:18px;
+  line-height:1;
+  flex-shrink:0;
+}
+.selection-action-name{
+  font-weight:600;
+  font-size:14px;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.selection-action-owner{
+  font-size:12px;
+  color:var(--text);
+  opacity:0.7;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  flex:1;
+  min-width:0;
+}
+.selection-action-btns{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.selection-action-btn{
+  width:32px !important;
+  height:32px !important;
+  min-width:32px;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:15px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.selection-action-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.14); }
+.selection-action-btn-danger:hover{ border-color:#e05d5d; background:rgba(224,93,93,0.12); }
+
 #previewCanvas{
   /* Fluid sizing so the display expands to match the available
    * preview column, capped at native 1080 × 1350 CSS px. On a

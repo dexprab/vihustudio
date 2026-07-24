@@ -3617,8 +3617,12 @@ const SlideRenderer=(()=>{
   // Sprint 6.5 (Object Designer) — resize handles. Eight handles total
   // (four corners + four side midpoints) on the selected scene element's
   // bbox. App.js hit-tests against the same positions to drive resize
-  // drag.
-  const HANDLE_RADIUS=12;
+  // drag. Option B ("chunky corner grips") bumped this from the original
+  // thin-circle radius (12) to a bigger, bolder value — js/app.js's own
+  // hit-test slop (_hitTestResizeHandle's `r*1.4`) reads this same
+  // constant via getHandleRadius(), so the clickable area widens to match
+  // automatically, no separate change needed there.
+  const HANDLE_RADIUS=18;
   function _supportsResize(el){
     if(!el || !el.type) return false;
     // Sprint 8.3 — Universal Object Consistency. Lock disables resize
@@ -3651,13 +3655,26 @@ const SlideRenderer=(()=>{
       [cx1,cy1],[cx2,cy1],[cx1,cy2],[cx2,cy2],
       [mx,cy1],[mx,cy2],[cx1,my],[cx2,my]
     ];
+    // Option B ("chunky corner grips") — bigger, bolder rounded squares
+    // in place of the original thin gold circles. These are direct-
+    // manipulation handles (drag to resize), so sitting right on the
+    // selected object is exactly their job — unlike the action strip,
+    // which never renders on canvas at all (see js/selectionActionStrip.js).
+    const half=HANDLE_RADIUS;
+    const corner=5;
     x.save();
     x.fillStyle='#FFCB45';
     x.strokeStyle='#1D3457';
-    x.lineWidth=2;
+    x.lineWidth=2.5;
     positions.forEach(function(p){
+      const gx=p[0]-half, gy=p[1]-half, gw=half*2, gh=half*2;
       x.beginPath();
-      x.arc(p[0],p[1],HANDLE_RADIUS,0,Math.PI*2);
+      x.moveTo(gx+corner,gy);
+      x.arcTo(gx+gw,gy,gx+gw,gy+gh,corner);
+      x.arcTo(gx+gw,gy+gh,gx,gy+gh,corner);
+      x.arcTo(gx,gy+gh,gx,gy,corner);
+      x.arcTo(gx,gy,gx+gw,gy,corner);
+      x.closePath();
       x.fill();
       x.stroke();
     });

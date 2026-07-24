@@ -256,6 +256,26 @@ if(typeof ObjectStrip!=='undefined'){
   }catch(e){}
 }
 
+// Option B (Refined) — the selection action strip. Anchored above the
+// canvas (see index.html/css/style.css), so "focus the editor" just
+// means "make sure the right panel's Refine section is showing and
+// scrolled into view" — the existing tab-activation/section-focus
+// machinery already does that, this just reuses it.
+if(typeof SelectionActionStrip!=='undefined'){
+  try{
+    SelectionActionStrip.configure({
+      focusEditor:function(){
+        _activateTab('card');
+        try{
+          const panel=document.querySelector('.right-sidebar');
+          if(panel && typeof panel.scrollIntoView==='function') panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+        }catch(e){}
+      }
+    });
+    SelectionActionStrip.init();
+  }catch(e){}
+}
+
 function _setSelectedTextElement(id){
   _selectedTextElement=id||null;
   if(id){

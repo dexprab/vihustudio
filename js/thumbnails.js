@@ -60,16 +60,24 @@ const ThumbnailEngine=(function(){
         const dataUrl=thumbCanvas.toDataURL('image/png');
         slide.thumbnail=dataUrl;
 
+        // A real, confirmed bug: this restore step used to build its own
+        // bare payload and call SlideRenderer.render() directly, bypassing
+        // js/app.js's draw() -- the ONLY place that stamps
+        // selectedSceneElement / selectedTextElement / dragActiveId /
+        // showSafeArea onto the payload. Since every drag-move handler
+        // deletes slide.thumbnail before calling draw() (so the thumbnail
+        // regenerates), this ran after essentially every drag+release,
+        // silently wiping the selection outline/resize handles/drag guides
+        // off the visible editor canvas the instant it completed --
+        // exactly the "selecting/dragging looks like it does nothing"
+        // symptom. window.redrawPreview() is the same real choke point
+        // every other "something changed off to the side, please repaint
+        // correctly" case already uses (_ensureDecorationImage's/
+        // _ensureStickerImage's own onload nudge) -- it reads whichever
+        // slide/selection is actually current and stamps it correctly.
         SlideRenderer.init(previewCanvas);
-        const currentIdx=AppState.currentSlide||0;
-        const current=AppState.slides[currentIdx];
-        if(current){
-          try{
-            const _titleEl=document.getElementById('bookTitle');
-            SlideRenderer.render(SlideRenderer.buildPayload(current,{
-              defaultBookTitle: _titleEl ? _titleEl.value : ''
-            }));
-          }catch(e){}
+        if(typeof window.redrawPreview==='function'){
+          try{ window.redrawPreview(); }catch(e){}
         }
 
         generatingCount--;

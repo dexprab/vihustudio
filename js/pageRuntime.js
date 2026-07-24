@@ -128,6 +128,7 @@ const PageRuntime=(function(){
     if(typeof ContextPanel!=='undefined'){ try{ ContextPanel.refresh(); }catch(e){} }
     if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
     if(typeof TravellerSaveNotice!=='undefined'){ try{ TravellerSaveNotice.refresh(); }catch(e){} }
+    if(typeof SelectionActionStrip!=='undefined'){ try{ SelectionActionStrip.refresh(); }catch(e){} }
   }
 
   return {
