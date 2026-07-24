@@ -7900,6 +7900,81 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   100%{ transform:translateY(-18px) scale(.9); opacity:0; }
 }
 
+/* ---------- "why i dont have red, orange, green in studio... we might
+   even use companion for this" -- Studio's own cloud-sync signal, a
+   small floating cloud charm rather than a flat dot (World Builder's
+   own #wb-cloud-sync traffic light is a Theme-Author-facing badge; this
+   is the same idea, dressed for a Story Author who's still a kid).
+   Opposite corner from .companion-zzz (top-right) so a companion that's
+   both asleep and mid-sync never has the two badges overlap. Hidden
+   entirely (opacity:0, no data-sync-badge attribute at all) until the
+   first real sync of the session — nothing to report yet is nothing
+   shown, matching this codebase's own established "quiet unless
+   something's happening" discipline (js/travellerSaveNotice.js). Driven
+   purely by [data-sync-badge] on .companion-widget, set by
+   CompanionEngine.setSyncBadge() — the class itself has no idea what
+   "busy/good/attention" mean; js/companionDirector.js assigns that
+   meaning from a real cloud-sync outcome. ---------- */
+.companion-cloud-charm{
+  position:absolute;
+  bottom:-6px;
+  left:-8px;
+  font-size:16px;
+  opacity:0;
+  transform:scale(1);
+  pointer-events:none;
+  text-shadow:0 0 4px rgba(255,255,255,.9);
+  filter:none;
+  transition:opacity .3s ease;
+}
+/* Busy — a save is queued/in flight. A gentle, unhurried pulse (never
+   frantic), tinted the same warm gold this app already uses for its
+   Foundation/gateway sparkle glow, so it reads as "part of the family"
+   rather than a borrowed dashboard colour. */
+.companion-widget[data-sync-badge="busy"] .companion-cloud-charm{
+  opacity:.9;
+  filter:drop-shadow(0 0 3px rgba(242,169,59,.7)) saturate(1.3) hue-rotate(-6deg);
+  animation:companion-cloud-busy 1.7s ease-in-out infinite;
+}
+@keyframes companion-cloud-busy{
+  0%,100%{ transform:scale(1) translateY(0); opacity:.75; }
+  50%{ transform:scale(1.14) translateY(-2px); opacity:1; }
+}
+/* Good — safely backed up. A brief, one-time "settle" from a bright
+   flourish down to a calm, dim resting glow (forwards keeps the final
+   frame applied) rather than looping forever — a quiet, permanent
+   little reassurance for the rest of the session instead of a nag. */
+.companion-widget[data-sync-badge="good"] .companion-cloud-charm{
+  filter:drop-shadow(0 0 4px rgba(46,158,91,.65)) saturate(1.4) hue-rotate(70deg) brightness(1.05);
+  animation:companion-cloud-good 1.8s ease-out 1 forwards;
+}
+@keyframes companion-cloud-good{
+  0%{ opacity:.95; transform:scale(1.2); }
+  40%{ opacity:.95; transform:scale(1); }
+  100%{ opacity:.5; transform:scale(1); }
+}
+/* Attention — a hiccup, still retrying automatically. A soft, brief
+   wobble (never a shake/alarm) in a warm coral tone, deliberately not
+   harsh red — "no scary error UI for kids" (matches
+   js/travellerSaveNotice.js's own non-alarming tone), settling to the
+   same calm dim resting opacity as "good" so it's visible without
+   nagging. */
+.companion-widget[data-sync-badge="attention"] .companion-cloud-charm{
+  filter:drop-shadow(0 0 4px rgba(226,112,58,.65)) saturate(1.5) hue-rotate(-25deg);
+  animation:companion-cloud-attention .6s ease-in-out 1, companion-cloud-attention-settle 1.8s ease-out 1 forwards;
+}
+@keyframes companion-cloud-attention{
+  0%,100%{ transform:translateX(0) rotate(0deg); }
+  20%{ transform:translateX(-2px) rotate(-7deg); }
+  40%{ transform:translateX(2px) rotate(7deg); }
+  60%{ transform:translateX(-1px) rotate(-4deg); }
+  80%{ transform:translateX(1px) rotate(4deg); }
+}
+@keyframes companion-cloud-attention-settle{
+  0%{ opacity:.95; }
+  100%{ opacity:.6; }
+}
+
 .companion-bubble{
   max-width:220px;
   padding:10px 14px;
@@ -7940,6 +8015,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   .companion-portrait-img,
   .companion-bubble,
   .companion-zzz,
+  .companion-cloud-charm,
   .companion-glow-ring,
   .companion-env-glow,
   .companion-sparkle{ transition:none; animation:none; }

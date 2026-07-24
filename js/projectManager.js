@@ -283,12 +283,21 @@ const ProjectManager=(function(){
   // function used to be. This function's only remaining job is a
   // prompt, debounced nudge via CreatorProjectCache.enqueueSync(id)
   // (mirroring worldBuilderApp.js's own simplified _scheduleCloudSync
-  // exactly) — Studio has no cloud-sync-status badge to update, unlike
-  // the World Builder sibling, so there is no live UI feedback for this
-  // function to drive; both the immediate _scheduleDrainSoon() call
-  // already inside putLocal() and this function's own separate nudge
-  // are safe to run redundantly, since the underlying drain timer is a
-  // single shared, idempotent debounce.
+  // exactly); both the immediate _scheduleDrainSoon() call already
+  // inside putLocal() and this function's own separate nudge are safe
+  // to run redundantly, since the underlying drain timer is a single
+  // shared, idempotent debounce.
+  //
+  // "why i dont have red, orange, green in studio... we might even use
+  // companion for this" — this is the one place Studio knows a real
+  // sync attempt is about to begin (the settled outcome itself arrives
+  // later, via js/creatorProjectCache.js's own onSyncStateChange
+  // pub/sub, subscribed to directly by js/companionDirector.js). A
+  // plain, defensive notify() call, matching the exact hook shape every
+  // other Studio-event -> companion moment in this codebase already
+  // uses (js/app.js's artwork-added, js/creationFlow.js's
+  // story-started, etc.) — a missing/broken CompanionDirector can never
+  // affect whether the real sync itself proceeds.
   const CLOUD_PROJECT_SYNC_DEBOUNCE_MS=2000;
   let _cloudProjectSyncTimer=null;
   function _scheduleCloudProjectSync(id){
@@ -297,6 +306,7 @@ const ProjectManager=(function(){
     _cloudProjectSyncTimer=setTimeout(function(){
       _cloudProjectSyncTimer=null;
       CreatorProjectCache.enqueueSync(id);
+      try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('project-sync-pending'); }catch(e){}
     },CLOUD_PROJECT_SYNC_DEBOUNCE_MS);
   }
 

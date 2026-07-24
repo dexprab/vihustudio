@@ -46,6 +46,16 @@
 // continuous rendering loop — drag rotation/trail piggyback on the
 // native pointermove stream already driving _wireDrag, never a
 // separate requestAnimationFrame ticker.
+//
+// "why i dont have red, orange, green in studio... something which kid
+// might love... we might even use companion for this" — one more
+// additive pair, setSyncBadge()/getSyncBadge(), a small floating cloud
+// charm near the portrait that toggles between three CSS-driven states
+// (see css/style.css's own .companion-cloud-charm rules). Same
+// discipline as setRichness: this class has no idea what "busy/good/
+// attention" mean to whoever's calling it — js/companionDirector.js is
+// the one file that maps a real Studio cloud-sync outcome onto one of
+// these three generic values.
 (function(){
   'use strict';
 
@@ -108,6 +118,7 @@
       this._reducedMotion=false;
       this._crossfadeRaf=null;
       this._richness=0;
+      this._syncBadgeEl=null;
     }
 
     // ---------- Loading ----------
@@ -337,6 +348,33 @@
       setTimeout(()=>{ if(this._root) this._root.classList.remove('companion-glow-boost'); },GLOW_BOOST_MS);
     }
 
+    /**
+     * A small floating cloud charm near the portrait, purely mechanical
+     * — this class has no idea a caller means "your story is being
+     * saved to the cloud right now" by 'busy', "safely backed up" by
+     * 'good', or "having a little trouble, still trying" by 'attention'
+     * (js/companionDirector.js assigns that meaning; see this codebase's
+     * own CLAUDE.md entry for the full account). Setting it to a
+     * falsy value hides the charm entirely — its natural resting state
+     * before anything has ever needed reporting. Survives unload()/
+     * load() (a Creator Ceremony entity swap) untouched, since the
+     * underlying Story's own cloud-sync status has nothing to do with
+     * which companion avatar happens to be showing.
+     * @param {string|null|undefined} state one of 'busy'|'good'|
+     *   'attention', or a falsy value to hide the charm.
+     */
+    setSyncBadge(state){
+      this._ensureDom();
+      if(!this._root) return;
+      if(!state){ this._root.removeAttribute('data-sync-badge'); return; }
+      this._root.setAttribute('data-sync-badge',state);
+    }
+
+    /** The charm's current state, or null if hidden. */
+    getSyncBadge(){
+      return (this._root && this._root.getAttribute('data-sync-badge')) || null;
+    }
+
     _scheduleAutoTransition(state){
       if(this._autoTransitionTimer){ clearTimeout(this._autoTransitionTimer); this._autoTransitionTimer=null; }
       const anims=this._animations;
@@ -509,6 +547,23 @@
       zzz.textContent='💤'; // 💤
       portraitWrap.appendChild(zzz);
 
+      // "why i dont have red, orange, green in studio... something
+      // which kid might love... we might even use companion for this" —
+      // a small floating cloud charm, opposite corner from the zzz
+      // badge so the two never visually collide (a companion could, in
+      // principle, be both asleep and mid-sync at once). Purely
+      // mechanical, same discipline as the zzz badge itself: this class
+      // has zero idea what "busy/good/attention" mean, only that
+      // setSyncBadge() below toggles a data-sync-badge attribute for
+      // CSS to react to. Positioned just outside the portrait circle's
+      // own bounds (negative offsets, matching zzz's own technique)
+      // so it never needs an explicit z-index to sit above it.
+      const syncBadge=document.createElement('span');
+      syncBadge.className='companion-cloud-charm';
+      syncBadge.setAttribute('aria-hidden','true');
+      syncBadge.textContent='☁️';
+      portraitWrap.appendChild(syncBadge);
+
       root.appendChild(portraitWrap);
 
       document.body.appendChild(root);
@@ -520,6 +575,7 @@
       this._environmentEl=environment;
       this._particlesEl=particles;
       this._glowRingEl=glowRing;
+      this._syncBadgeEl=syncBadge;
 
       this._restorePosition();
       this._wireDrag(portraitWrap);

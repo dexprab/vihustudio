@@ -59,6 +59,34 @@
         return (window.AssetStore && window.AssetStore.BACKOFF_MS) || FALLBACK_BACKOFF_MS;
     }
 
+    // "why i dont have red, orange, green in studio" -- a small pub/sub,
+    // mirroring tools/world-builder-v2/js/projectCache.js's own
+    // onSyncStateChange(id, outcome) exactly, so js/companionDirector.js
+    // (the ONE file allowed to know what a settled sync outcome should
+    // mean for the companion widget) can react to a real settled outcome
+    // for whichever project id it cares about right now, without this
+    // module knowing anything about Companion UI at all. Fired from
+    // _attemptSync() below for every one of its outcomes
+    // (unavailable/synced/conflict/failed) -- the same "id + outcome,
+    // nothing UI-specific" shape js/projectStore.js's own
+    // onPersistError(id, error) already establishes for the sibling
+    // durable-write-failure case. Unlike the World Builder sibling, this
+    // module deliberately does NOT also notify a 'pending' outcome here
+    // -- js/projectManager.js's own _scheduleCloudProjectSync already
+    // knows the exact moment a sync is first requested (mirroring
+    // worldBuilderApp.js's own _setCloudSyncState('pending') being set
+    // by the *caller*, not the cache module), so there is no need to
+    // duplicate that signal here.
+    const _syncListeners = [];
+    function onSyncStateChange(fn) {
+        if (typeof fn === 'function') _syncListeners.push(fn);
+    }
+    function _notifySyncStateChange(id, outcome) {
+        _syncListeners.forEach(function (fn) {
+            try { fn(id, outcome); } catch (e) {}
+        });
+    }
+
     let _dbPromise = null;
     let _useFallback = false;
     const _map = new Map(); // id -> {id,name,thumbnail,createdAt,updatedAt,cloudSyncedAt,data}
@@ -298,15 +326,21 @@
     function _attemptSync(id) {
         const record = _map.get(id);
         if (!record) return Promise.resolve('failed');
-        if (typeof MagicCard === 'undefined' || !MagicCard.getActive()) return Promise.resolve('unavailable');
-        if (typeof CreatorProjectSync === 'undefined') return Promise.resolve('failed');
+        if (typeof MagicCard === 'undefined' || !MagicCard.getActive()) { _notifySyncStateChange(id, 'unavailable'); return Promise.resolve('unavailable'); }
+        if (typeof CreatorProjectSync === 'undefined') { _notifySyncStateChange(id, 'failed'); return Promise.resolve('failed'); }
         return CreatorProjectSync.push(record, { expectedUpdatedAt: record.cloudSyncedAt }).then(function (result) {
             if (result.ok) {
                 markCloudSynced(id, result.updatedAt || new Date().toISOString());
-                return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () { return 'synced'; });
+                return _updatePendingRecord(id, { status: 'done', attempts: 0, nextAttemptAt: null, lastError: null, cloudUpdatedAt: null }).then(function () {
+                    _notifySyncStateChange(id, 'synced');
+                    return 'synced';
+                });
             }
             if (result.conflict) {
-                return _updatePendingRecord(id, { status: 'conflict', nextAttemptAt: null, lastError: null, cloudUpdatedAt: result.cloudUpdatedAt }).then(function () { return 'conflict'; });
+                return _updatePendingRecord(id, { status: 'conflict', nextAttemptAt: null, lastError: null, cloudUpdatedAt: result.cloudUpdatedAt }).then(function () {
+                    _notifySyncStateChange(id, 'conflict');
+                    return 'conflict';
+                });
             }
             return _getPendingRecordRaw(id).then(function (existing) {
                 const attempts = ((existing && existing.attempts) || 0) + 1;
@@ -315,7 +349,10 @@
                 return _updatePendingRecord(id, {
                     status: 'failed', attempts: attempts, nextAttemptAt: Date.now() + delay,
                     lastError: (result.error && result.error.message) || String(result.error || 'unknown error')
-                }).then(function () { return 'failed'; });
+                }).then(function () {
+                    _notifySyncStateChange(id, 'failed');
+                    return 'failed';
+                });
             });
         });
     }
@@ -374,13 +411,14 @@
 
     // A genuine unconditional overwrite push, mirroring
     // tools/world-builder-v2/js/projectCache.js's own forceSync(id) —
-    // Studio has no equivalent visible "cloud has newer changes, force
-    // overwrite?" UI today (there is no cloud-sync badge in Creator at
-    // all — a deliberate product choice, see this module's own header
-    // comment), but the underlying escape hatch is exposed here anyway,
-    // matching the World Builder sibling's public shape exactly, for any
-    // future Studio surface (or Phase 5's own restore-modal freshness
-    // check) that needs it.
+    // Studio's own cloud-sync companion charm (js/companionDirector.js)
+    // has no "force overwrite?" UI of its own (a settled conflict just
+    // shows a quiet, non-blocking "attention" state, matching this
+    // codebase's own "no scary error UI for kids" discipline rather
+    // than a click-to-resolve control), but the underlying escape hatch
+    // is exposed here anyway, matching the World Builder sibling's
+    // public shape exactly, for any future Studio surface (or Phase 5's
+    // own restore-modal freshness check) that needs it.
     function forceSync(id) {
         const record = _map.get(id);
         if (!record) return Promise.resolve({ ok: false });
@@ -409,7 +447,8 @@
         forceSync: forceSync,
         getPendingSyncCount: getPendingSyncCount,
         getConflictIds: getConflictIds,
-        drainPendingSync: drainPendingSync
+        drainPendingSync: drainPendingSync,
+        onSyncStateChange: onSyncStateChange
     };
     try { window.CreatorProjectCache = CreatorProjectCache; } catch (e) {}
 

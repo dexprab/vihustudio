@@ -422,6 +422,42 @@
     function bindReady(){
       bindGlobalListeners();
       bindOcclusionWatcher();
+      bindCloudSyncBadge();
+    }
+
+    // "why i dont have red, orange, green in studio... we might even
+    // use companion for this" — subscribes once (bindReady() only ever
+    // runs once, on the original boot-time mount, and stays correct
+    // across a later Creator Ceremony entity swap since this
+    // subscription lives at the module level, not on any one engine
+    // instance) to js/creatorProjectCache.js's own onSyncStateChange
+    // pub/sub, translating a real settled cloud-sync outcome into one
+    // of CompanionEngine.setSyncBadge()'s three generic states. Ignores
+    // a settle event for a project id that's no longer the one actually
+    // open (AppState.project.id) — a background retry can legitimately
+    // finish after a Story Author has already switched to a different
+    // Story. A Traveller (no claimed Magic Card) never reaches this at
+    // all in practice, since js/projectManager.js's own
+    // _scheduleCloudProjectSync already gates every real cloud sync
+    // attempt on MagicCard.getActive() — the currentMode!=='creator'
+    // check here is a defensive backstop, not the primary gate.
+    function bindCloudSyncBadge(){
+      if(typeof CreatorProjectCache==='undefined' || typeof CreatorProjectCache.onSyncStateChange!=='function') return;
+      CreatorProjectCache.onSyncStateChange(function(id,outcome){
+        safe(function(){
+          if(!ready || !engine || !engine.setSyncBadge || currentMode!=='creator') return;
+          const activeId=(typeof AppState!=='undefined' && AppState.project) ? AppState.project.id : null;
+          if(activeId && id!==activeId) return;
+          if(outcome==='synced'){
+            engine.setSyncBadge('good');
+            if(engine.boostGlow) engine.boostGlow(); // a little one-shot flourish — "safely tucked away"
+          }else if(outcome==='conflict' || outcome==='failed'){
+            engine.setSyncBadge('attention');
+          }else if(outcome==='unavailable'){
+            engine.setSyncBadge(null); // lost Creator identity mid-flight — nothing honest left to show
+          }
+        });
+      });
     }
 
     /**
@@ -458,11 +494,23 @@
      * Translates a named Studio moment into a state change + optional
      * speech bubble, per the current mode's own MODES entry.
      * @param {string} event one of: 'story-started' | 'artwork-added' |
-     *   'published' | 'creator-born' | 'ceremony-closed' | 'page-added'
+     *   'published' | 'creator-born' | 'ceremony-closed' | 'page-added' |
+     *   'project-sync-pending'
      */
     function notify(event){
       if(!ready || !engine) return;
       safe(function(){
+        // The one moment js/projectManager.js's own _scheduleCloudProjectSync
+        // knows a real cloud-sync attempt is about to begin — the
+        // settled outcome (synced/conflict/failed/unavailable) arrives
+        // separately, later, via bindCloudSyncBadge()'s own subscription
+        // above. A Traveller never reaches this (that scheduler already
+        // gates on MagicCard.getActive()), so the mode check here is a
+        // defensive backstop, not the primary gate.
+        if(event==='project-sync-pending'){
+          if(currentMode==='creator' && engine.setSyncBadge) engine.setSyncBadge('busy');
+          return;
+        }
         // Companion Canon V2 — the literal "Story Egg hatches -> A
         // Story Companion is born" moment: fired once, right after the
         // Creator Ceremony finishes claiming/bonding
