@@ -176,7 +176,25 @@ const SelectionActionStrip=(function(){
     // honors the guardrails."
     if(editBtn) editBtn.classList.toggle('selection-action-btn-hidden',!isPlace && !editable);
 
-    if(_editOpen) _openEditPanel(); // keep an already-open popup in sync across a live redraw
+    // Real bug found investigating "the change seems to be happening but
+    // not showing up on center pane": this used to call _openEditPanel()
+    // again on EVERY refresh() while the popup was open, "to keep it in
+    // sync" — but _openEditPanel() tears down and rebuilds the whole
+    // popup (editPanelEl.innerHTML=''), including a fresh <textarea> with
+    // no focus. refresh() fires on essentially every PageRuntime.notify()
+    // in the whole app (any page mutation, any unrelated selection
+    // elsewhere, autosave, companion sync ticks) — so a Story Author
+    // mid-keystroke here could have the textarea silently swapped out
+    // from under their cursor by something completely unrelated,
+    // discarding focus for every keystroke typed after that point even
+    // though the value shown looked correct. This directly violated this
+    // module's own stated "never rebuild mid-edit" rule (see the header
+    // comment and the _lastKey tracking above, which already exists
+    // specifically to prevent this). Fixed by simply never rebuilding an
+    // already-open popup on a same-selection refresh — a genuinely NEW
+    // selection already closes it via _closeEditPanel() in the
+    // key-changed branch above, so there is nothing left to "keep in
+    // sync" here.
     _positionWidget();
   }
 

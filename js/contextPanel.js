@@ -481,14 +481,27 @@ const ContextPanel=(function(){
     _appendStatusPill(panelRoot,'🌍',sceneObj.editable?'Part of the World — you can adjust it':'Part of the World','world');
     const v=sceneObj.visual;
     const hasRealControl=sceneObj.editable && v && (v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text');
+    // Direct product feedback after the Selection Action Strip shipped
+    // its own inline popup reusing this exact control ("i like context
+    // menu better"): showing the SAME live-editable field here too was
+    // pure duplication — two independent DOM nodes bound to one
+    // underlying value, with no reason to keep both live at once. When
+    // the strip is loaded (the real, always-true case in this app —
+    // gated defensively so a build missing the module still gets the
+    // old inline control rather than a silent dead end), this panel now
+    // shows only the status banner/hint and points at the strip's own
+    // popup instead of mounting a second, redundant editing surface.
+    const stripAvailable=typeof SelectionActionStrip!=='undefined';
     panelRoot.appendChild(_el('div','context-nothing-selected-hint',
       hasRealControl
-        ? 'This is part of the World — you can adjust it below.'
+        ? (stripAvailable
+            ? 'This is part of the World — tap ✏️ Edit on the toolbar above the page to adjust it.'
+            : 'This is part of the World — you can adjust it below.')
         : sceneObj.editable
           ? 'This is part of the World, but you may adjust it. That kind of edit isn’t available in Creator yet.'
           : 'This is part of the World.'
     ));
-    if(hasRealControl) _appendWorldObjectEditControl(panelRoot,sceneObj,v);
+    if(hasRealControl && !stripAvailable) _appendWorldObjectEditControl(panelRoot,sceneObj,v);
     if(sceneObj.decorationSlot) _appendDecorationSlotButton(sceneObj);
     _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
