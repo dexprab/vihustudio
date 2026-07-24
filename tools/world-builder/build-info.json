@@ -5,6 +5,6 @@
   "slice": "Auditing the just-shipped Stretch image-fit and Text-newline fixes against CLAUDE.md's own Creator Governing Rules surfaced a genuine Rule 1 (Fidelity) violation in convergeSceneLayer: a compiled Text Experience's anchor was always hardcoded 'top-left', silently discarding the Scene Layer's own real, authored align field (left/center/right) -- so a centred or right-aligned Text Experience rendered correctly in Builder's own preview but always came back left-aligned once compiled/Published. Fixed identically to tools/world-builder-v2's own builder.js, kept in lockstep by hand per this codebase's established discipline: the compiled anchor's horizontal component now derives from layer.align ('center'->'top-center', 'right'->'top-right', else 'top-left'), matching layerEngine.js's own 9-point resolveAnchor vocabulary exactly. Vertical positioning stays 'top' always, unchanged. Verified via a new Playwright suite covering both Builder versions' real convergeSceneLayer plus an end-to-end Studio render confirming the compiled anchor actually sets ctx.textAlign correctly. See CLAUDE.md's own entry for the full account.",
   "build": "0049",
   "buildDate": "2026-07-24",
-  "commit": "PENDING",
+  "commit": "17773026e58349bf13b451d458df762bc79e6094",
   "environment": "Release"
 }
