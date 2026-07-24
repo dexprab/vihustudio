@@ -1408,9 +1408,24 @@ document.addEventListener('mousemove',function(e){
     // Sprint 6.6 — sticker corner drags preserve aspect ratio by default
     // so stickers stay recognisable as resized. Side handles still do
     // 1-axis scaling for fine-tuning.
+    //
+    // "honoring the story author can adjust this grid... finalize it
+    // for any text object" — a text-type element locks aspect on EVERY
+    // handle, not just corners (unlike a sticker, which still allows a
+    // 1-axis side-handle stretch). Canvas text has no sensible way to
+    // independently stretch width vs. height in this renderer (it's a
+    // wrap-width + font-size model, not a literal box the glyphs get
+    // squashed into) — a height-only (n/s) drag with no matching width
+    // change would otherwise be a dead handle. Locking every handle to
+    // one uniform scale means dw stays 0 for n/s handles, so the
+    // `else` branch below (newW derived from newH via aspect) is what
+    // actually drives the resize in that case — the same math already
+    // used for a sticker's own corner-only lock, just applied
+    // unconditionally for text.
     let newW=Math.max(MIN, _resizeDragState.baseW+dw);
     let newH=Math.max(MIN, _resizeDragState.baseH+dh);
-    if(_resizeDragState.elementType==='sticker' && (h==='nw'||h==='ne'||h==='sw'||h==='se')){
+    const lockAspect=(_resizeDragState.elementType==='sticker' && (h==='nw'||h==='ne'||h==='sw'||h==='se')) || _resizeDragState.elementType==='text';
+    if(lockAspect){
       const aspect=_resizeDragState.baseW/_resizeDragState.baseH;
       if(Math.abs(dw) > Math.abs(dh)*aspect){
         newH=Math.max(MIN, newW/aspect);

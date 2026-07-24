@@ -1394,10 +1394,11 @@ const SlideRenderer=(()=>{
     if(t.source==='slideCaption') content=(s && s.metadata && typeof s.metadata.caption==='string' && s.metadata.caption) || content;
     if(ov && typeof ov.content==='string') content=ov.content;
     if(!content) return null;
-    const size=t.size||18;
+    const baseSize=t.size||18;
     const hAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
     const vAlign=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
     x.save();
+    let size=baseSize;
     x.font=size+'px '+(t.font||'Georgia, serif');
     // Real, user-reported gap: a Text Experience's own manual line
     // breaks (Enter in the Words/Content field, World Builder's own
@@ -1413,14 +1414,44 @@ const SlideRenderer=(()=>{
     // renders on one line exactly as before) and treats an explicit
     // '\n' as a forced line break either way.
     const maxWidth=Math.max(1, rect && typeof rect.w==='number' ? rect.w : Infinity);
-    const lines=_wrapText(content,maxWidth);
-    const lineHeight=Math.round(size*1.25);
-    const totalH=lines.length*lineHeight;
+    let lines=_wrapText(content,maxWidth);
+    let lineHeight=Math.round(size*1.25);
+    let totalH=lines.length*lineHeight;
     let maxLineWidth=0;
     lines.forEach(function(line){
       const lw=x.measureText(line).width;
       if(lw>maxLineWidth) maxLineWidth=lw;
     });
+    // "honoring the story author can adjust this grid... finalize it
+    // for any text object" — a moveable:true text layer now also gets
+    // the 8-corner resize grid (_supportsResize above), and js/app.js's
+    // own resize-drag handler locks every one of those 8 handles to a
+    // uniform scale for a text-type element specifically (canvas text
+    // has no sensible independent width/height "stretch" in this
+    // renderer's wrap+font-size model — unlike an image, glyph
+    // proportions would just look broken). Derive that same scale here
+    // from how the override's target width compares to this text's own
+    // natural (un-resized) width just measured above — the exact width
+    // js/app.js used as baseW when it computed the drag delta — then
+    // apply it to BOTH font size and wrap width together and re-measure,
+    // so a wider/narrower box genuinely reads as bigger/smaller text,
+    // not a silent no-op. Absent an override, size/lines/lineHeight/
+    // totalH/maxLineWidth are all untouched — byte-identical to before
+    // this fix for every existing theme.
+    if(ov && ov.size && typeof ov.size.w==='number' && maxLineWidth>0){
+      const scale=Math.max(0.2,Math.min(6,ov.size.w/maxLineWidth));
+      size=Math.max(6,Math.round(baseSize*scale));
+      x.font=size+'px '+(t.font||'Georgia, serif');
+      const scaledMaxWidth=Math.max(1,maxWidth*scale);
+      lines=_wrapText(content,scaledMaxWidth);
+      lineHeight=Math.round(size*1.25);
+      totalH=lines.length*lineHeight;
+      maxLineWidth=0;
+      lines.forEach(function(line){
+        const lw=x.measureText(line).width;
+        if(lw>maxLineWidth) maxLineWidth=lw;
+      });
+    }
     // Honour World-Owned Object Commitments sprint — a moveable:true
     // text layer's Story-Author position override is a translation
     // applied to whatever this layer would have drawn at naturally,
@@ -3592,7 +3623,7 @@ const SlideRenderer=(()=>{
     if(!el || !el.type) return false;
     // Sprint 8.3 — Universal Object Consistency. Lock disables resize
     // (and drag) for ANY scene element type. Resize otherwise applies
-    // to the Frame (image-holder), decorations, and stickers.
+    // to the Frame (image-holder), decorations, stickers, and text.
     if(el.locked) return false;
     // Guardrails — an Artwork Place (marked `isPlace`, distinguishing it
     // from a real Cover/Hook/End Scene blueprint image-holder element,
@@ -3601,7 +3632,16 @@ const SlideRenderer=(()=>{
     // size-override read exists anywhere in _placePixelRectFor today, so
     // showing resize handles here would silently do nothing useful.
     if(el.isPlace) return false;
-    return el.type==='image-holder' || el.type==='decoration' || el.type==='sticker';
+    // "honoring the story author can adjust this grid... finalize it
+    // for any text object" — a World-owned Text Layer (Museum Caption-
+    // style) was the one type excluded here even though Move already
+    // worked for it (Honour World-Owned Object Commitments sprint) —
+    // `el.locked` above already correctly gates this on the same
+    // Theme Author moveable:true permission every other kind uses, so
+    // no separate permission check is needed; _layerDrawText below now
+    // actually reads the resulting size override, so the grid this
+    // adds is never a silent no-op.
+    return el.type==='image-holder' || el.type==='decoration' || el.type==='sticker' || el.type==='text';
   }
   function _drawResizeHandles(el){
     const cx1=el.bx, cy1=el.by;
