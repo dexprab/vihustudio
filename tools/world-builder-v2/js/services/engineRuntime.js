@@ -378,20 +378,35 @@ const EngineV2Runtime = (function () {
     // textFootprint (query, AV-006) — extracted so painting and
     // measuring can never diverge, the same one-source-of-truth pattern
     // AV-004's _holderInsets/holderBands already established.
+    //
+    // Real, user-reported gap: pressing Enter in a Text Experience's
+    // Words/Content field always inserts a real '\n' (a plain textarea's
+    // own native behaviour) -- but this function used to split only on
+    // ' ', so an embedded '\n' was silently absorbed mid-word-wrap with
+    // zero visible line break. Fixed by splitting on '\n' into paragraphs
+    // first, then word-wrapping each paragraph independently -- a blank
+    // paragraph (from '\n\n') still pushes an empty line, preserving the
+    // author's own blank-line spacing. For any text with no '\n' at all
+    // (every pre-existing single-paragraph Text Experience), paragraphs
+    // is just [text] and this is byte-identical to the original
+    // algorithm -- purely additive, no regression.
     function _wrapLines(ctx, text, maxWidth) {
-        const words = (text || '').split(' ');
+        const paragraphs = (text || '').split('\n');
         const lines = [];
-        let line = '';
-        words.forEach(function (word) {
-            const test = line + word + ' ';
-            if (ctx.measureText(test).width > maxWidth && line) {
-                lines.push(line.trim());
-                line = word + ' ';
-            } else {
-                line = test;
-            }
+        paragraphs.forEach(function (paragraph) {
+            const words = paragraph.split(' ');
+            let line = '';
+            words.forEach(function (word) {
+                const test = line + word + ' ';
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    lines.push(line.trim());
+                    line = word + ' ';
+                } else {
+                    line = test;
+                }
+            });
+            lines.push(line.trim());
         });
-        lines.push(line.trim());
         return lines;
     }
 

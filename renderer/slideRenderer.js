@@ -1399,31 +1399,60 @@ const SlideRenderer=(()=>{
     const vAlign=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
     x.save();
     x.font=size+'px '+(t.font||'Georgia, serif');
-    const w=x.measureText(content).width;
+    // Real, user-reported gap: a Text Experience's own manual line
+    // breaks (Enter in the Words/Content field, World Builder's own
+    // Working View/Runtime Preview already honour this) were silently
+    // flattened here — this drew the whole `content` string in one
+    // fillText call, no wrap, no newline handling at all. Fixed by
+    // reusing the same _wrapText helper Quote/freeform-sticker text
+    // already use (kept in lockstep with engineRuntime.js's own
+    // _wrapLines) — word-wraps against this layer's own rect width
+    // (a Scene-converged Text Layer always carries a real, non-zero
+    // rect.w; a legacy declarative caption falls back to the broader
+    // panel/slide/holder rect, wide enough that a short caption still
+    // renders on one line exactly as before) and treats an explicit
+    // '\n' as a forced line break either way.
+    const maxWidth=Math.max(1, rect && typeof rect.w==='number' ? rect.w : Infinity);
+    const lines=_wrapText(content,maxWidth);
+    const lineHeight=Math.round(size*1.25);
+    const totalH=lines.length*lineHeight;
+    let maxLineWidth=0;
+    lines.forEach(function(line){
+      const lw=x.measureText(line).width;
+      if(lw>maxLineWidth) maxLineWidth=lw;
+    });
     // Honour World-Owned Object Commitments sprint — a moveable:true
     // text layer's Story-Author position override is a translation
     // applied to whatever this layer would have drawn at naturally,
     // computed from the natural (un-dragged) bbox center so the shift
     // is correct regardless of text alignment (left/center/right).
     // Absent an override, drawX/drawY equal anchor.x/anchor.y exactly —
-    // byte-identical to before this sprint for every existing theme.
-    let natBx=anchor.x-w/2; if(hAlign==='left') natBx=anchor.x; else if(hAlign==='right') natBx=anchor.x-w;
-    let natBy=anchor.y-size/2; if(vAlign==='top') natBy=anchor.y; else if(vAlign==='bottom') natBy=anchor.y-size;
+    // byte-identical to before this fix for every existing theme (a
+    // single line's own totalH is size*1.25, a few px taller than the
+    // old bare `size` — the bbox is a hit-test/selection box only,
+    // never rendered, so this is a negligible, disclosed difference).
+    let natBx=anchor.x-maxLineWidth/2; if(hAlign==='left') natBx=anchor.x; else if(hAlign==='right') natBx=anchor.x-maxLineWidth;
+    let natBy=anchor.y-totalH/2; if(vAlign==='top') natBy=anchor.y; else if(vAlign==='bottom') natBy=anchor.y-totalH;
     let drawX=anchor.x, drawY=anchor.y;
     if(ov && ov.position){
-      drawX+=ov.position.x-(natBx+w/2);
-      drawY+=ov.position.y-(natBy+size/2);
+      drawX+=ov.position.x-(natBx+maxLineWidth/2);
+      drawY+=ov.position.y-(natBy+totalH/2);
     }
     x.fillStyle=(ov && ov.color)||t.color||'#333333';
     x.textAlign=hAlign;
-    x.textBaseline=vAlign;
-    x.fillText(content,drawX,drawY);
+    lines.forEach(function(line,i){
+      let lineY;
+      if(vAlign==='top'){ x.textBaseline='top'; lineY=drawY+i*lineHeight; }
+      else if(vAlign==='bottom'){ x.textBaseline='bottom'; lineY=drawY-(lines.length-1-i)*lineHeight; }
+      else { x.textBaseline='middle'; lineY=drawY-totalH/2+(i+0.5)*lineHeight; }
+      x.fillText(line,drawX,lineY);
+    });
     x.restore();
-    let bx=drawX-w/2;
-    if(hAlign==='left') bx=drawX; else if(hAlign==='right') bx=drawX-w;
-    let by=drawY-size/2;
-    if(vAlign==='top') by=drawY; else if(vAlign==='bottom') by=drawY-size;
-    return {bx:bx,by:by,bw:w,bh:size+8};
+    let bx=drawX-maxLineWidth/2;
+    if(hAlign==='left') bx=drawX; else if(hAlign==='right') bx=drawX-maxLineWidth;
+    let by=drawY-totalH/2;
+    if(vAlign==='top') by=drawY; else if(vAlign==='bottom') by=drawY-totalH;
+    return {bx:bx,by:by,bw:maxLineWidth,bh:totalH+8};
   }
 
   function _drawMuseumCaption(t,anchor,s){
@@ -2139,16 +2168,32 @@ const SlideRenderer=(()=>{
   // Quote composition ("Minimal Quote" — no Frame/Holder at all, just
   // a centered quote). Basic word-wrap since Canvas text has none
   // built in; a quote with no text set renders nothing, leaving a
-  // plain gallery wall rather than an empty box.
+  // plain gallery wall rather than an empty box. Also reused, kept in
+  // lockstep with engineRuntime.js's own _wrapLines, by _drawFreeformText
+  // (Creator freeform Text stickers) and _layerDrawText (a published
+  // Theme's compiled Text Experience/Layer Pack content) — every one of
+  // this function's callers benefits together from splitting on '\n'
+  // into paragraphs first, then word-wrapping each independently, so a
+  // Theme Author's own manual Enter/newline survives as a real line
+  // break instead of being silently absorbed by whitespace-collapsing
+  // word-wrap. A blank paragraph (from '\n\n') pushes an empty line,
+  // preserving intentional blank-line spacing. Text with no '\n' at all
+  // (every pre-existing caller) is byte-identical to the original
+  // single-paragraph algorithm.
   function _wrapText(text,maxWidth){
-    const words=String(text).split(/\s+/).filter(Boolean);
-    const lines=[]; let line='';
-    words.forEach(function(w){
-      const trial=line?line+' '+w:w;
-      if(x.measureText(trial).width>maxWidth && line){ lines.push(line); line=w; }
-      else line=trial;
+    const paragraphs=String(text).split('\n');
+    const lines=[];
+    paragraphs.forEach(function(paragraph){
+      const words=paragraph.split(/\s+/).filter(Boolean);
+      if(!words.length){ lines.push(''); return; }
+      let line='';
+      words.forEach(function(w){
+        const trial=line?line+' '+w:w;
+        if(x.measureText(trial).width>maxWidth && line){ lines.push(line); line=w; }
+        else line=trial;
+      });
+      if(line) lines.push(line);
     });
-    if(line) lines.push(line);
     return lines;
   }
   function _drawQuoteText(s,t,rect){
