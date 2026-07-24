@@ -1413,45 +1413,39 @@ const SlideRenderer=(()=>{
     // panel/slide/holder rect, wide enough that a short caption still
     // renders on one line exactly as before) and treats an explicit
     // '\n' as a forced line break either way.
-    const maxWidth=Math.max(1, rect && typeof rect.w==='number' ? rect.w : Infinity);
-    let lines=_wrapText(content,maxWidth);
-    let lineHeight=Math.round(size*1.25);
-    let totalH=lines.length*lineHeight;
+    // Real, user-reported bug (found testing Guardrails specifically —
+    // "am only testing the rules which builder has provided and are they
+    // getting honored"): resizing a moveable:true World-owned text object
+    // past ~6x its own natural width made the canvas appear to "freeze"
+    // — the underlying size override kept growing on every further drag
+    // tick (confirmed via a direct sweep: overrideW climbed from 333 to
+    // 4003 with zero further visual change past the 6x mark) while the
+    // render silently stopped changing, because the resize-grid fix this
+    // replaces derived a font-size SCALE from the override width and
+    // clamped that scale to Math.max(0.2,Math.min(6,...)) — an invented
+    // mechanism with no counterpart anywhere in Builder. Confirmed via
+    // direct comparison against tools/world-builder-v2/js/services/
+    // engineRuntime.js's own _paintLayer/textFootprint: Builder's text
+    // Layers NEVER scale font size off a resized box at all — resizing
+    // only changes the WRAP WIDTH (rewraps the same-size text), and
+    // height is always derived from the resulting wrapped line count,
+    // never independently read from the box's own height. Studio's own
+    // freeform text stickers (_textObjBbox/_textLineMetrics) already
+    // follow this exact model correctly — only this Layer Pack path
+    // invented a divergent one. Fixed to match both references: a size
+    // override's own w becomes the wrap width directly (no ratio, no
+    // clamp, no ceiling — matching Builder's genuinely unbounded resize),
+    // font size is never touched by resize, and height keeps being
+    // derived from the wrapped line count exactly as it already was.
+    const maxWidth=Math.max(1, (ov && ov.size && typeof ov.size.w==='number') ? ov.size.w : (rect && typeof rect.w==='number' ? rect.w : Infinity));
+    const lines=_wrapText(content,maxWidth);
+    const lineHeight=Math.round(size*1.25);
+    const totalH=lines.length*lineHeight;
     let maxLineWidth=0;
     lines.forEach(function(line){
       const lw=x.measureText(line).width;
       if(lw>maxLineWidth) maxLineWidth=lw;
     });
-    // "honoring the story author can adjust this grid... finalize it
-    // for any text object" — a moveable:true text layer now also gets
-    // the 8-corner resize grid (_supportsResize above), and js/app.js's
-    // own resize-drag handler locks every one of those 8 handles to a
-    // uniform scale for a text-type element specifically (canvas text
-    // has no sensible independent width/height "stretch" in this
-    // renderer's wrap+font-size model — unlike an image, glyph
-    // proportions would just look broken). Derive that same scale here
-    // from how the override's target width compares to this text's own
-    // natural (un-resized) width just measured above — the exact width
-    // js/app.js used as baseW when it computed the drag delta — then
-    // apply it to BOTH font size and wrap width together and re-measure,
-    // so a wider/narrower box genuinely reads as bigger/smaller text,
-    // not a silent no-op. Absent an override, size/lines/lineHeight/
-    // totalH/maxLineWidth are all untouched — byte-identical to before
-    // this fix for every existing theme.
-    if(ov && ov.size && typeof ov.size.w==='number' && maxLineWidth>0){
-      const scale=Math.max(0.2,Math.min(6,ov.size.w/maxLineWidth));
-      size=Math.max(6,Math.round(baseSize*scale));
-      x.font=size+'px '+(t.font||'Georgia, serif');
-      const scaledMaxWidth=Math.max(1,maxWidth*scale);
-      lines=_wrapText(content,scaledMaxWidth);
-      lineHeight=Math.round(size*1.25);
-      totalH=lines.length*lineHeight;
-      maxLineWidth=0;
-      lines.forEach(function(line){
-        const lw=x.measureText(line).width;
-        if(lw>maxLineWidth) maxLineWidth=lw;
-      });
-    }
     // Honour World-Owned Object Commitments sprint — a moveable:true
     // text layer's Story-Author position override is a translation
     // applied to whatever this layer would have drawn at naturally,
