@@ -310,12 +310,21 @@ const EngineV2Runtime = (function () {
     // AV-007/EV-002 — object-fit-style scaling for a real representative
     // image: 'fit' contains (letterboxed, no crop), 'fill' covers (crops
     // overflow at the caller's own clip), 'original' draws at native
-    // pixel size. Pure geometry, no Scene Model/Engine V2 pipeline change
-    // — just how a Holder's content resolves an image it's handed.
+    // pixel size, 'stretch' (a real, user-requested addition — no
+    // uniform-scale option existed anywhere in this codebase before it —
+    // scales both axes independently to exactly match `rect`, never
+    // cropping and never leaving a gap, at the cost of distorting the
+    // image's own aspect ratio) draws it at exactly rect.w x rect.h.
+    // Pure geometry, no Scene Model/Engine V2 pipeline change — just how
+    // a Holder's content resolves an image it's handed.
     function _drawImageWithFit(ctx, img, rect, fit) {
         const iw = img.naturalWidth || img.width;
         const ih = img.naturalHeight || img.height;
         if (!iw || !ih) return;
+        if (fit === 'stretch') {
+            ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+            return;
+        }
         let dw, dh;
         if (fit === 'original') {
             dw = iw;

@@ -7922,8 +7922,18 @@
     const TEXT_WEIGHT_CHOICES = [
         { value: 'normal', label: 'Normal' }, { value: 'bold', label: 'Bold' }
     ];
+    // 'stretch' -- a real, user-requested capability (a Theme Author
+    // wanting an Experience image to exactly fill its whole Scene/rect
+    // with no gap and no crop, distinct from 'fill' which preserves
+    // aspect ratio by cropping the overflow) -- confirmed absent
+    // anywhere in this codebase before this addition. Scales both axes
+    // independently to exactly match the target rect; kept in lockstep
+    // with engineRuntime.js's _drawImageWithFit and
+    // renderer/slideRenderer.js's _layerDrawDecorationImage, the same
+    // hand-mirrored discipline already used for every other fit value.
     const IMAGE_FIT_CHOICES = [
-        { value: 'fit', label: 'Fit' }, { value: 'fill', label: 'Fill' }, { value: 'original', label: 'Original' }
+        { value: 'fit', label: 'Fit' }, { value: 'fill', label: 'Fill' },
+        { value: 'stretch', label: 'Stretch' }, { value: 'original', label: 'Original' }
     ];
 
     // A section's own Transform (Move/Resize, Builder V3.1) — X/Y/Width/

@@ -1912,6 +1912,17 @@ const SlideRenderer=(()=>{
     x.save();
     x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
     x.beginPath(); x.rect(rect.x,rect.y,rect.w,rect.h); x.clip();
+    // 'stretch' -- a real, user-requested addition (World Builder's own
+    // Image Experience Fit dropdown, kept in lockstep with
+    // engineRuntime.js's _drawImageWithFit) -- scales both axes
+    // independently to exactly match rect, so a compiled Theme's
+    // Decoration image renders identically here whether authored as
+    // fit/fill/original/stretch.
+    if(fit==='stretch'){
+      x.drawImage(img,rect.x,rect.y,rect.w,rect.h);
+      x.restore();
+      return;
+    }
     const iw=img.width, ih=img.height;
     const base=fit==='fit' ? Math.min(rect.w/iw,rect.h/ih) : Math.max(rect.w/iw,rect.h/ih);
     const dw=iw*base, dh=ih*base;
