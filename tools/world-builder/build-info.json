@@ -1,10 +1,10 @@
 {
-  "version": "3.10.2",
+  "version": "3.10.3",
   "phase": "Platform Hardening",
-  "milestone": "Draft Asset Architecture, Phase A: read-only cross-version mitigation",
-  "slice": "v1 shares the literal, byte-identical localStorage key 'vihu-world-builder-projects' with v2 -- a Project touched in v2 may now hold a vihu-asset:<surface>:<projectId>:<assetId> reference (part of a new shared asset-storage architecture fixing a real, confirmed data-loss bug), which v1's own 3 img.src= read call sites would otherwise show as a broken image. Loaded the new shared js/assetStore.js and added one small helper, _wbResolveImgSrc(img,ref), routing those 3 sites through AssetStore.resolve() -- a legacy data: URI still assigns synchronously exactly as before (zero behavior change); a vihu-asset: reference resolves asynchronously with no guaranteed-broken flash. v1's own upload pipeline, persistence, and everything else is completely untouched -- v1 never produces a vihu-asset: reference itself. Verified end to end via Playwright: a v2-shaped Project seeded with a vihu-asset: thumbnail reference opens fresh in v1 and correctly resolves to a real blob: URL; goldenBuild.js 30/30 unchanged.",
-  "build": "0048",
-  "buildDate": "2026-07-23",
-  "commit": "f78a846f8d0d3c87213cabaabbeeeaa32b011fb5",
+  "milestone": "Creator Governing Rules Audit — Text-Alignment Fidelity Fix (kept in lockstep with v2)",
+  "slice": "Auditing the just-shipped Stretch image-fit and Text-newline fixes against CLAUDE.md's own Creator Governing Rules surfaced a genuine Rule 1 (Fidelity) violation in convergeSceneLayer: a compiled Text Experience's anchor was always hardcoded 'top-left', silently discarding the Scene Layer's own real, authored align field (left/center/right) -- so a centred or right-aligned Text Experience rendered correctly in Builder's own preview but always came back left-aligned once compiled/Published. Fixed identically to tools/world-builder-v2's own builder.js, kept in lockstep by hand per this codebase's established discipline: the compiled anchor's horizontal component now derives from layer.align ('center'->'top-center', 'right'->'top-right', else 'top-left'), matching layerEngine.js's own 9-point resolveAnchor vocabulary exactly. Vertical positioning stays 'top' always, unchanged. Verified via a new Playwright suite covering both Builder versions' real convergeSceneLayer plus an end-to-end Studio render confirming the compiled anchor actually sets ctx.textAlign correctly. See CLAUDE.md's own entry for the full account.",
+  "build": "0049",
+  "buildDate": "2026-07-24",
+  "commit": "PENDING",
   "environment": "Release"
 }

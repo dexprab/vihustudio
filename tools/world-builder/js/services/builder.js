@@ -332,9 +332,20 @@ class BuildEngine {
         };
 
         if (layer.kind === 'text') {
+            // Creator Governing Rule 1 (Fidelity) fix, kept in lockstep
+            // with the identical fix in tools/world-builder-v2's own
+            // builder.js -- this used to hardcode anchor:'top-left'
+            // regardless of the Scene Layer's own real align field,
+            // silently discarding a centred/right-aligned Text
+            // Experience's alignment on the way from Builder into
+            // Creator/Studio. Vertical positioning stays 'top' always;
+            // only the horizontal anchor now derives from the authored
+            // align, matching layerEngine.js's own resolveAnchor
+            // vocabulary.
+            const hAnchor = layer.align === 'center' ? 'top-center' : layer.align === 'right' ? 'top-right' : 'top-left';
             return Object.assign({}, base, {
                 type: 'text',
-                anchor: 'top-left',
+                anchor: hAnchor,
                 text: {
                     content: layer.text || '',
                     font: layer.font || 'Georgia, serif',

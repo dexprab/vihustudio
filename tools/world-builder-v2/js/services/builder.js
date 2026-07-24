@@ -457,9 +457,27 @@ class BuildEngine {
         };
 
         if (layer.kind === 'text') {
+            // Creator Governing Rule 1 (Fidelity) — "Nothing about a
+            // Scene's geometry, layout, or content is silently discarded
+            // or substituted on the way into Creator." This used to
+            // hardcode anchor:'top-left' regardless of the Scene Layer's
+            // own real align field (left/center/right, set via the
+            // Universal Text Experience's Alignment dropdown and already
+            // correctly honoured by engineRuntime.js's own _paintLayer in
+            // Builder's Working View/Runtime Preview) -- so a centred or
+            // right-aligned Text Experience rendered correctly in Builder
+            // but always came back left-aligned once compiled/Published,
+            // a real, confirmed Fidelity violation. Vertical positioning
+            // stays 'top' always (both this compiled path's own
+            // _layerDrawText and engineRuntime.js's _paintLayer anchor a
+            // text Layer's rect at its own top edge regardless of
+            // alignment) -- only the horizontal anchor now derives from
+            // the authored align, matching layerEngine.js's own
+            // 9-point resolveAnchor vocabulary exactly.
+            const hAnchor = layer.align === 'center' ? 'top-center' : layer.align === 'right' ? 'top-right' : 'top-left';
             return Object.assign({}, base, {
                 type: 'text',
-                anchor: 'top-left',
+                anchor: hAnchor,
                 text: {
                     content: layer.text || '',
                     font: layer.font || 'Georgia, serif',
