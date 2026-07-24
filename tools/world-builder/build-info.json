@@ -5,6 +5,6 @@
   "slice": "Applied the same font-fallback and Fit-default fixes shipped in tools/world-builder-v2's own build, kept in lockstep by hand per this codebase's established discipline: TEXT_FONT_OPTIONS/TEXT_FONT_CHOICES gained the \"Chalkboard SE\" fallback for Comic Sans matching js/cardDesigner.js's own equivalent, and convergeSceneLayer's compiled decoration.fit default changed from 'fill' (cover) to 'fit' (contain) matching this version's own engineRuntime.js _paintLayer default. v1 has no shape-kind compile branch or rotation-authoring concept for Scene Layers at all (confirmed via grep), so the rotation field was not added here — that part of the fix is v2-only. The remaining three bugs in this same batch (legacy-decoration-kind position/size Guardrails, the World-owned-Text-edit redraw diagnostic) live in renderer/slideRenderer.js and js/contextPanel.js, both shared by v1- and v2-compiled Themes alike, so no separate v1 change was needed for those. See CLAUDE.md's own entry for the full account.",
   "build": "0050",
   "buildDate": "2026-07-24",
-  "commit": "17773026e58349bf13b451d458df762bc79e6094",
+  "commit": "607aebc1971330c6b0fd3d79fa3c78c0f35cf258",
   "environment": "Release"
 }
