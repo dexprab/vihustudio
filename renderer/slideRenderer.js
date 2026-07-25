@@ -1395,11 +1395,20 @@ const SlideRenderer=(()=>{
     if(ov && typeof ov.content==='string') content=ov.content;
     if(!content) return null;
     const baseSize=t.size||18;
-    const hAlign=anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center';
+    // Honor Grid follow-up — full typography becomes a real Story-Author
+    // capability for a moveable/editable World-owned Text object (Font
+    // Family/Size/Weight/Style/Colour already had ov.color read above;
+    // Alignment joins here). Each field falls back to the Theme Author's
+    // own authored value when no override exists — byte-identical to
+    // before this change for every object nobody has ever touched.
+    const hAlign=(ov && (ov.alignment==='left'||ov.alignment==='center'||ov.alignment==='right')) ? ov.alignment : (anchor.hAlign==='left'?'left':anchor.hAlign==='right'?'right':'center');
     const vAlign=anchor.vAlign==='top'?'top':anchor.vAlign==='bottom'?'bottom':'middle';
+    const fontFamily=(ov && ov.fontFamily)||t.font||'Georgia, serif';
+    const fontWeight=(ov && ov.fontWeight)||'';
+    const fontStyle=(ov && ov.fontStyle==='italic')?'italic':'';
     x.save();
-    let size=baseSize;
-    x.font=size+'px '+(t.font||'Georgia, serif');
+    let size=(ov && typeof ov.fontSize==='number' && ov.fontSize>0)?ov.fontSize:baseSize;
+    x.font=(fontStyle?fontStyle+' ':'')+(fontWeight?fontWeight+' ':'')+size+'px '+fontFamily;
     // Real, user-reported gap: a Text Experience's own manual line
     // breaks (Enter in the Words/Content field, World Builder's own
     // Working View/Runtime Preview already honour this) were silently
@@ -1462,6 +1471,19 @@ const SlideRenderer=(()=>{
     if(ov && ov.position){
       drawX+=ov.position.x-(natBx+maxLineWidth/2);
       drawY+=ov.position.y-(natBy+totalH/2);
+    }
+    // Honor Grid follow-up — Rotation (Honor 2/Moveable, a spatial
+    // transform living in the same bucket as Move/Resize) rotates around
+    // the resolved (post-position-override) center; Opacity (Honor
+    // 3/Editable, an appearance property alongside Colour/Words) fades
+    // it. Both ride on this function's own existing x.save()/x.restore()
+    // wrap (above/below), so neither needs its own cleanup. Absent
+    // either override this is a no-op — byte-identical to before.
+    x.globalAlpha=(ov && typeof ov.opacity==='number')?Math.max(0,Math.min(1,ov.opacity)):1;
+    if(ov && typeof ov.rotation==='number' && ov.rotation){
+      x.translate(drawX,drawY);
+      x.rotate(ov.rotation*Math.PI/180);
+      x.translate(-drawX,-drawY);
     }
     x.fillStyle=(ov && ov.color)||t.color||'#333333';
     x.textAlign=hAlign;

@@ -332,6 +332,17 @@ const SceneEngine=(function(){
     else entry.rotation=rotation;
     _maybePrune(slide,id);
   }
+  // Honor Grid follow-up — the World-owned Text object build. Mirrors
+  // setRotation's exact "clear at the neutral default" convention: full
+  // opacity (1, what every existing object already renders at with no
+  // override present) clears the override rather than storing a
+  // redundant 1, so an untouched object's overrides bag stays absent.
+  function setOpacity(slide,id,opacity){
+    const entry=_ensureEntry(slide,id);
+    if(typeof opacity!=='number' || opacity>=1) delete entry.opacity;
+    else entry.opacity=Math.max(0,Math.min(1,opacity));
+    _maybePrune(slide,id);
+  }
   // Sprint 8.3 — Frame Holder completion + Universal Object
   // Consistency. Every scene element can now be locked (preventing
   // drag + resize without removing the picture). Lock state rides on
@@ -363,16 +374,22 @@ const SceneEngine=(function(){
 
   // Honour World-Owned Object Commitments sprint — a Story Author's
   // in-place edit (editable:true) to a World-owned Layer Pack object's
-  // own content: `field` is one of 'fillColor'/'content'/'image'/'color'
-  // (mutually exclusive per the object's own kind, never all set at
-  // once). Rides on the exact same elementOverrides bag every other
-  // override already uses — renderer/slideRenderer.js's draw functions
-  // read these fields back directly (see _layerOverride there), the
-  // same "check override, else fall back to authored default" shape
-  // setPosition/setRotation/etc. already establish for blueprint
-  // elements. A blank/empty value clears the override rather than
-  // storing an empty string, matching setPosition's own null-clears
-  // convention.
+  // own content: `field` was originally 'fillColor'/'content'/'image'/
+  // 'color' (mutually exclusive per the object's own kind, never all set
+  // at once). Honor Grid follow-up (the World-owned Text object build)
+  // widens this to a genuinely generic field name — 'fontFamily'/
+  // 'fontSize'/'fontWeight'/'fontStyle'/'alignment' now ride the same
+  // bag too, since `entry[field]=value` was already field-name-agnostic;
+  // Rotation/Opacity stay their own dedicated setRotation/setOpacity
+  // mutators (numeric, "clears at the neutral default" convention) since
+  // that's a different enough shape to keep separate. Rides on the exact
+  // same elementOverrides bag every other override already uses —
+  // renderer/slideRenderer.js's draw functions read these fields back
+  // directly (see _layerOverride there), the same "check override, else
+  // fall back to authored default" shape setPosition/setRotation/etc.
+  // already establish for blueprint elements. A blank/empty/null value
+  // clears the override rather than storing one, matching setPosition's
+  // own null-clears convention.
   function setContentOverride(slide,id,field,value){
     const entry=_ensureEntry(slide,id);
     if(value===null || value===undefined || value==='') delete entry[field];
@@ -557,6 +574,7 @@ const SceneEngine=(function(){
     setPosition:setPosition,
     setSize:setSize,
     setRotation:setRotation,
+    setOpacity:setOpacity,
     setLocked:setLocked,
     adjustZIndex:adjustZIndex,
     clearOverride:clearOverride,

@@ -143,9 +143,10 @@ const SelectionActionStrip=(function(){
     const type=(obj && obj.type)||sel.sceneType;
     const label=(obj && obj.label)||(isPlace ? 'Artwork' : 'Object');
     const owner=obj ? obj.owner : 'story';
-    let editable;
+    let editable, moveable;
     if(obj){
       editable=!!obj.editable;
+      moveable=!!obj.moveable;
     }else{
       // A Place has no render-tree bbox entry — ask the Theme Author's
       // own compiled guardrail directly, mirroring js/cardDesigner.js's
@@ -159,6 +160,7 @@ const SelectionActionStrip=(function(){
       }else{
         editable=true;
       }
+      moveable=true; // unused for a Place — its Edit button always shows regardless (see below)
     }
 
     if(badgeEl) badgeEl.textContent=_friendlyIcon(type);
@@ -171,10 +173,15 @@ const SelectionActionStrip=(function(){
     // A Place always has real, reachable Refine controls (Fit/Frame/
     // Presentation, in the existing right-panel section) even though it
     // has no in-place quick-edit shape here — so its Edit button always
-    // shows. A Scene Object's Edit button shows only when it's genuinely
-    // editable, matching Rule 2 (Guardrails): "Every object on Scene
-    // honors the guardrails."
-    if(editBtn) editBtn.classList.toggle('selection-action-btn-hidden',!isPlace && !editable);
+    // shows. A Scene Object's Edit button shows whenever EITHER honor is
+    // true — Rotation is gated on moveable alone (a spatial transform,
+    // not a content edit), so a moveable:true/editable:false object
+    // still needs a reachable Edit button for its Rotation slider, even
+    // though mountQuickEditControl's content controls (Words/Colour/
+    // Image/Font/Size/Weight/Style/Alignment/Opacity) stay editable-only.
+    // Matches Rule 2 (Guardrails): "Every object on Scene honors the
+    // guardrails" — never shows a button that would open to nothing.
+    if(editBtn) editBtn.classList.toggle('selection-action-btn-hidden',!isPlace && !editable && !moveable);
 
     // Real bug found investigating "the change seems to be happening but
     // not showing up on center pane": this used to call _openEditPanel()

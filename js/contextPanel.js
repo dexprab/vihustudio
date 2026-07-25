@@ -359,6 +359,99 @@ const ContextPanel=(function(){
     if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){ try{ console.error('[Context Panel] ObjectStrip.refresh after World-owned object edit failed:',e); }catch(_){} } }
   }
 
+  // Honor Grid follow-up — the World-owned Text object build. Kept as
+  // this module's own small copy (matching js/objectStrip.js's/
+  // js/selectionActionStrip.js's own established per-module vocabulary-
+  // table duplication precedent, rather than reaching into cardDesigner.
+  // js's private, closure-scoped FONT_FAMILY_OPTIONS/FONT_WEIGHT_OPTIONS)
+  // — same option set and the same field-name convention (fontFamily/
+  // fontSize/fontWeight/fontStyle/alignment) as that file's own fixed-
+  // Text typography system, so a Story Author sees identical vocabulary
+  // in both places even though the two write to genuinely different
+  // override bags (cardOverrides.textElements there, elementOverrides
+  // here).
+  const WORLD_TEXT_FONT_OPTIONS=[
+    {value:'',label:'World Default'},
+    {value:'Georgia, serif',label:'Georgia'},
+    {value:'"Times New Roman", Times, serif',label:'Times'},
+    {value:'Arial, Helvetica, sans-serif',label:'Arial'},
+    {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
+    {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
+    {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
+    {value:'"Courier New", Courier, monospace',label:'Courier'},
+    {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+  ];
+  const WORLD_TEXT_WEIGHT_OPTIONS=[
+    {value:'',label:'World Default'},
+    {value:'300',label:'Light'},
+    {value:'400',label:'Regular'},
+    {value:'500',label:'Medium'},
+    {value:'600',label:'Semibold'},
+    {value:'700',label:'Bold'},
+    {value:'900',label:'Black'}
+  ];
+
+  function _makeRangeRow(parent,opts){
+    // opts: {labelText, min, max, step, value, format(v), onInput(v)}
+    const row=_el('div','designer-row context-row');
+    const lbl=_el('div','designer-row-label text-slider-label');
+    lbl.appendChild(_el('span',null,opts.labelText));
+    const val=_el('span','context-range-value',opts.format(opts.value));
+    lbl.appendChild(val);
+    row.appendChild(lbl);
+    const slider=document.createElement('input');
+    slider.type='range';
+    slider.min=String(opts.min);
+    slider.max=String(opts.max);
+    slider.step=String(opts.step);
+    slider.className='context-range-input';
+    slider.value=String(opts.value);
+    slider.addEventListener('input',function(){
+      const v=parseFloat(slider.value);
+      val.textContent=opts.format(v);
+      opts.onInput(v);
+    });
+    row.appendChild(slider);
+    parent.appendChild(row);
+  }
+
+  function _makeSelectRow(parent,labelText,options,currentValue,onChange){
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label',labelText));
+    const sel=document.createElement('select');
+    sel.className='context-select';
+    options.forEach(function(o){
+      const opt=document.createElement('option');
+      opt.value=o.value; opt.textContent=o.label;
+      sel.appendChild(opt);
+    });
+    sel.value=currentValue||'';
+    sel.addEventListener('change',function(){ onChange(sel.value); });
+    row.appendChild(sel);
+    parent.appendChild(row);
+  }
+
+  function _makeIconChoiceRow(parent,labelText,choices,currentValue,onChoose){
+    // choices: [[value,label], ...] — reuses the same .icon-row/.icon-card
+    // vocabulary cardDesigner.js's own Style/Alignment rows already use,
+    // so this reads as the same control language, not a new one.
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label',labelText));
+    const icons=_el('div','icon-row');
+    choices.forEach(function(c){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card'+(currentValue===c[0]?' active':'');
+      const lbl=_el('span','icon-label',c[1]);
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ onChoose(c[0]); });
+      icons.appendChild(btn);
+    });
+    row.appendChild(icons);
+    parent.appendChild(row);
+  }
+
   // Kind-specific in-place edit control, built from the exact same
   // `visual` descriptor (renderer/slideRenderer.js's `_layerVisual`)
   // Object Strip's own thumbnail already reads — editing here and the
@@ -372,55 +465,125 @@ const ContextPanel=(function(){
   // Action Strip's own small popup, rather than duplicating the
   // color/image/text branching a second time. _renderWorldObjectDisclosure
   // below still passes panelRoot, so its own behaviour is unchanged.
+  // Honor Grid follow-up — content controls (Words/Colour/Image, plus
+  // Text's own Typography+Alignment+Opacity) stay gated on
+  // sceneObj.editable (Honor 3); Rotation is a spatial transform gated
+  // on sceneObj.moveable (Honor 2) instead, independent of editable —
+  // matching the same bucket Move/Resize already live in. Returns
+  // whether anything was actually mounted.
   function _appendWorldObjectEditControl(container,sceneObj,v){
     const slide=_currentSlide();
-    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
-    if(v.kind==='color' || v.kind==='shape'){
-      const row=_el('div','designer-row context-row');
-      row.appendChild(_el('div','designer-row-label','Colour'));
-      const input=document.createElement('input');
-      input.type='color';
-      input.className='theme-color-input';
-      input.value=_safeColor(v.color||v.fillColor);
-      input.addEventListener('input',function(){
-        SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',input.value);
-        _afterWorldObjectEdit();
-      });
-      row.appendChild(input);
-      container.appendChild(row);
-    }else if(v.kind==='image'){
-      const btn=_el('button','context-btn','🖼️ Replace Image');
-      btn.type='button';
-      btn.addEventListener('click',function(){
-        const fileInput=document.createElement('input');
-        fileInput.type='file';
-        fileInput.accept='image/*';
-        fileInput.addEventListener('change',function(){
-          const file=fileInput.files && fileInput.files[0];
-          if(!file) return;
-          const reader=new FileReader();
-          reader.onload=function(){
-            _storeUploadedAsset(reader.result,function(finalRef){
-              SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
-              _afterWorldObjectEdit();
-            });
-          };
-          reader.readAsDataURL(file);
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return false;
+    let mounted=false;
+    // The raw override bag — Rotation/Opacity/Font/Size/Weight/Style/
+    // Alignment aren't part of the `v` visual descriptor (_layerVisual
+    // only carries what a thumbnail/popup's INITIAL content value needs
+    // for color/image/text), so read the same bag renderer/
+    // slideRenderer.js's own _layerOverride reads, directly.
+    const ov=(slide.metadata && slide.metadata.elementOverrides && slide.metadata.elementOverrides[sceneObj.id]) || {};
+    if(sceneObj.editable){
+      if(v.kind==='color' || v.kind==='shape'){
+        const row=_el('div','designer-row context-row');
+        row.appendChild(_el('div','designer-row-label','Colour'));
+        const input=document.createElement('input');
+        input.type='color';
+        input.className='theme-color-input';
+        input.value=_safeColor(v.color||v.fillColor);
+        input.addEventListener('input',function(){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',input.value);
+          _afterWorldObjectEdit();
         });
-        fileInput.click();
-      });
-      container.appendChild(btn);
-    }else if(v.kind==='text'){
-      container.appendChild(_el('div','designer-row-label','Words'));
-      const textarea=document.createElement('textarea');
-      textarea.className='context-textarea';
-      textarea.value=v.content||'';
-      textarea.addEventListener('input',function(){
-        SceneEngine.setContentOverride(slide,sceneObj.id,'content',textarea.value);
-        _afterWorldObjectEdit();
-      });
-      container.appendChild(textarea);
+        row.appendChild(input);
+        container.appendChild(row);
+        mounted=true;
+      }else if(v.kind==='image'){
+        const btn=_el('button','context-btn','🖼️ Replace Image');
+        btn.type='button';
+        btn.addEventListener('click',function(){
+          const fileInput=document.createElement('input');
+          fileInput.type='file';
+          fileInput.accept='image/*';
+          fileInput.addEventListener('change',function(){
+            const file=fileInput.files && fileInput.files[0];
+            if(!file) return;
+            const reader=new FileReader();
+            reader.onload=function(){
+              _storeUploadedAsset(reader.result,function(finalRef){
+                SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
+                _afterWorldObjectEdit();
+              });
+            };
+            reader.readAsDataURL(file);
+          });
+          fileInput.click();
+        });
+        container.appendChild(btn);
+        mounted=true;
+      }else if(v.kind==='text'){
+        container.appendChild(_el('div','designer-row-label','Words'));
+        const textarea=document.createElement('textarea');
+        textarea.className='context-textarea';
+        textarea.value=v.content||'';
+        textarea.addEventListener('input',function(){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'content',textarea.value);
+          _afterWorldObjectEdit();
+        });
+        container.appendChild(textarea);
+
+        container.appendChild(_el('div','designer-sublabel','Typography'));
+        _makeSelectRow(container,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
+          _afterWorldObjectEdit();
+        });
+        _makeRangeRow(container,{
+          labelText:'Font Size',min:12,max:96,step:1,
+          value:(typeof ov.fontSize==='number')?ov.fontSize:24,
+          format:function(n){ return Math.round(n)+'px'; },
+          onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'fontSize',Math.round(n)); _afterWorldObjectEdit(); }
+        });
+        _makeSelectRow(container,'Weight',WORLD_TEXT_WEIGHT_OPTIONS,ov.fontWeight||'',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fontWeight',val===''?null:val);
+          _afterWorldObjectEdit();
+        });
+        _makeIconChoiceRow(container,'Style',[['normal','Normal'],['italic','Italic']],ov.fontStyle||'normal',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',val==='normal'?null:val);
+          _afterWorldObjectEdit();
+        });
+        const colorRow=_el('div','designer-row context-row');
+        colorRow.appendChild(_el('div','designer-row-label','Colour'));
+        const colorInput=document.createElement('input');
+        colorInput.type='color';
+        colorInput.className='theme-color-input';
+        colorInput.value=_safeColor(ov.color);
+        colorInput.addEventListener('input',function(){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'color',colorInput.value);
+          _afterWorldObjectEdit();
+        });
+        colorRow.appendChild(colorInput);
+        container.appendChild(colorRow);
+        _makeIconChoiceRow(container,'Alignment',[['left','Left'],['center','Center'],['right','Right']],ov.alignment||'',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'alignment',val);
+          _afterWorldObjectEdit();
+        });
+        _makeRangeRow(container,{
+          labelText:'Opacity',min:0,max:1,step:0.01,
+          value:(typeof ov.opacity==='number')?ov.opacity:1,
+          format:function(n){ return Math.round(n*100)+'%'; },
+          onInput:function(n){ SceneEngine.setOpacity(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
+        });
+        mounted=true;
+      }
     }
+    if(v.kind==='text' && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
+      _makeRangeRow(container,{
+        labelText:'Rotation',min:-180,max:180,step:1,
+        value:(typeof ov.rotation==='number')?ov.rotation:0,
+        format:function(n){ return Math.round(n)+'°'; },
+        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
+      });
+      mounted=true;
+    }
+    return mounted;
   }
 
   // Public seam for the Selection Action Strip's own inline "Edit" popup
@@ -431,15 +594,17 @@ const ContextPanel=(function(){
   // only (owner==='world') -- a Story-owned sticker's own content lives
   // in a completely different bag (SceneEngine.updateSticker's instance
   // fields, not setContentOverride's elementOverrides), so reusing this
-  // function for one would silently write to the wrong place. Returns
-  // whether a real control was actually mounted, so the caller can show
-  // its own fallback when there's nothing to mount.
+  // function for one would silently write to the wrong place.
+  // Honor Grid follow-up — no longer gates on sceneObj.editable up front
+  // (Rotation is real and reachable on a moveable:true/editable:false
+  // object too) — _appendWorldObjectEditControl itself decides per honor
+  // now and reports back whether anything was actually mounted, so the
+  // caller can show its own fallback when there's nothing to mount.
   function mountQuickEditControl(container,sceneObj){
-    if(!container || !sceneObj || sceneObj.owner!=='world' || !sceneObj.editable) return false;
+    if(!container || !sceneObj || sceneObj.owner!=='world') return false;
     const v=sceneObj.visual;
     if(!v || !(v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')) return false;
-    _appendWorldObjectEditControl(container,sceneObj,v);
-    return true;
+    return _appendWorldObjectEditControl(container,sceneObj,v);
   }
 
   // Decoration Slot — "Let the Story Author add their own decorations

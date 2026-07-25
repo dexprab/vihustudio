@@ -558,6 +558,35 @@ button:active{
  * an auto-width pill button wrapping awkwardly. */
 .selection-action-edit-panel .context-btn{ width:100%; text-align:center; }
 .selection-action-edit-panel .context-textarea{ min-height:56px; }
+/* Honor Grid follow-up — the World-owned Text object build's Typography/
+ * Rotation/Opacity controls. Matches .context-textarea's own weight
+ * (border/radius/background) rather than a plain unstyled <select>/
+ * <input type=range>, and scoped to width:100% for this same ~200px
+ * popup .context-textarea already had to be narrowed for. */
+.context-select{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  font-family:inherit;
+}
+.context-range-input{
+  width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  accent-color:var(--gold);
+}
+.context-range-value{
+  font-size:12px;
+  font-weight:700;
+  opacity:0.75;
+}
+.selection-action-edit-panel .icon-row{ flex-wrap:wrap; }
+.selection-action-edit-panel .icon-card{ min-width:0; flex:1 1 auto; }
 
 #previewCanvas{
   /* Fluid sizing so the display expands to match the available
