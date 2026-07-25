@@ -1593,7 +1593,6 @@ const SlideRenderer=(()=>{
   };
   function _layerDrawSticker(layer,anchor,s){
     const st=layer.sticker||{};
-    const size=st.size||36;
     const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
     // Honour World-Owned Object Commitments sprint — a Sticker Layer's
     // bbox is always centered on its anchor for both the glyph and the
@@ -1604,6 +1603,23 @@ const SlideRenderer=(()=>{
     const ov=_layerOverride(s,layer.id);
     let ax=anchor.x, ay=anchor.y;
     if(ov && ov.position){ ax=ov.position.x; ay=ov.position.y; }
+    // "The Grid" audit — a moveable:true Layer Pack Sticker (e.g. a
+    // Wax Seal) has always structurally offered resize handles
+    // (_supportsResize includes type:'sticker') but this function never
+    // read the Story-Author's own size override at all — the exact
+    // "resize is completely inert" gap already fixed once for fill/
+    // image/shape/legacy-decoration kinds, just missed for this
+    // separate declarative-sticker draw path. A sticker's own resize is
+    // corner-only and uniformly scaled (js/app.js locks aspect for
+    // type:'sticker' the same way it does for type:'text'), so
+    // ov.size.w/.h are always roughly equal — averaging them keeps a
+    // genuinely square glyph/circle square regardless of tiny
+    // mouse-drag rounding either side. Absent an override, this is
+    // byte-identical to before this fix.
+    let size=st.size||36;
+    if(ov && ov.size && typeof ov.size.w==='number' && typeof ov.size.h==='number'){
+      size=(ov.size.w+ov.size.h)/2;
+    }
     if(glyph){
       x.save();
       x.font=size+'px sans-serif';
@@ -1616,7 +1632,14 @@ const SlideRenderer=(()=>{
     x.save();
     x.translate(ax,ay);
     const r=size/2;
-    x.fillStyle=st.color||'#7A1F2B';
+    // A glyph-less sticker (the colour-circle fallback) already showed
+    // a real Colour edit control in the right panel/action strip — its
+    // _layerVisual entry resolves kind:'color' — but this draw call
+    // never read the ov.fillColor that control writes, so picking a
+    // new colour silently did nothing visible. Fixed to match the
+    // identical ov.fillColor precedence _layerDrawDecoration's own
+    // 'fill' branch already uses.
+    x.fillStyle=(ov && ov.fillColor)||st.color||'#7A1F2B';
     x.beginPath(); x.arc(0,0,r,0,Math.PI*2); x.fill();
     x.strokeStyle='rgba(255,255,255,0.35)';
     x.lineWidth=2;
@@ -2185,7 +2208,14 @@ const SlideRenderer=(()=>{
       const st=layer.sticker||{};
       const glyph=st.glyph||LAYER_STICKER_GLYPH[layer.id];
       if(glyph) return {kind:'glyph',glyph:glyph};
-      return {kind:'color',color:st.color||'#7A1F2B'};
+      // "The Grid" audit — this branch never read ov.fillColor, unlike
+      // decoration's own 'fill' kind right above it, so a colour-
+      // fallback sticker's edit popup always reopened showing the
+      // ORIGINAL authored colour rather than whatever the Story Author
+      // last picked, and the Object Strip thumbnail swatch never
+      // reflected an edit either — even once _layerDrawSticker's own
+      // matching read (above) made the actual canvas paint correctly.
+      return {kind:'color',color:(ov&&ov.fillColor)||st.color||'#7A1F2B'};
     }
     if(type==='text'){
       const t=layer.text||{};
