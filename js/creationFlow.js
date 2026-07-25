@@ -1400,6 +1400,30 @@ const CreationFlow=(function(){
       grid.appendChild(_repCard(r,false,function(){ _applyRepresentationToCurrentSlide(r); },themeId));
     });
     content.appendChild(grid);
+    // Real, user-reported bug ("the studio center screen froze," reported
+    // twice, video-confirmed as a permanent freeze that survives deselect/
+    // reselect): every _repCard above that resolves a real theme paints a
+    // genuine live render via _renderCarouselCanvas -- SlideRenderer.init()
+    // on that card's own temp <canvas>, exactly paintPreview()'s own Screen
+    // 2 carousel technique (see its matching comment). paintPreview() always
+    // restores the shared canvas target right after building its grid;
+    // this screen -- the Context Panel's "Change Look" shortcut, reachable
+    // mid-edit from inside the Workspace itself, unlike Screen 2 -- never
+    // did. Once SlideRenderer's one shared canvas target is left pointed at
+    // a card's own temp canvas (hidden behind this overlay, then orphaned
+    // the next time _clear() runs), #previewCanvas is silently cut off:
+    // every later edit still correctly updates the model (a selected
+    // object's Words field, Object Strip, etc. all read the model
+    // directly, never the canvas) but the VISIBLE canvas never repaints
+    // again for the rest of the session -- indistinguishable from a
+    // permanent freeze, and consistent (not timing-dependent) exactly as
+    // reported, since nothing else in ordinary Creator use ever calls
+    // SlideRenderer.init(previewCanvas) on its own. Restored the moment
+    // this grid finishes building -- the same point paintPreview() already
+    // restores at -- rather than only on close, so a background redraw
+    // triggered while this screen is still open (autosave, cloud sync,
+    // an unrelated PageRuntime.notify()) can never misdirect either.
+    _restoreEditorCanvas();
   }
 
   // A Representation authored in World Builder can name a `defaultFrame`
