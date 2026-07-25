@@ -398,10 +398,39 @@ if(addPageBtnEl){
 const homeBtnEl=document.getElementById('homeBtn');
 if(homeBtnEl){
   homeBtnEl.addEventListener('click',function(){
-    // Reuses the exact flow already shown at boot — no new capability,
-    // just a way back to it. Autosave already covers the current
-    // project, so there's nothing to lose by starting a new creation.
-    if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+    // Real, user-reported bug: "start working on one theme. press home
+    // button. start working on new theme. studio owned changes done on
+    // first theme reflects on second theme as well" (confirmed with a
+    // Doodle sticker). Root cause — this used to just call
+    // CreationFlow.start() against the SAME live, in-memory AppState;
+    // js/creationFlow.js's _finish() only calls PageOps.addBefore(0) to
+    // create a first page when AppState.slides is genuinely empty, so a
+    // mid-session Home press never actually started a NEW project — it
+    // silently re-skinned the CURRENT one in place, carrying every
+    // Story-owned object (stickers, Doodles, Words edits...) straight
+    // over onto the newly-picked theme. AppState (js/state.js) is one
+    // scattered top-level singleton with no single function that resets
+    // every field a live session can touch (theme/artworkTheme/
+    // creationType/representationId/recallOwnerId/cloudSyncedAt/id/
+    // slides/...) — js/publishStudio.js's own _makeAnotherStory() hit
+    // this exact problem already and solved it the only reliable way:
+    // discard the saved session, then a soft reload for a genuinely
+    // blank AppState, reusing that same proven mechanism here rather
+    // than hand-resetting fields and risking missing one, the precise
+    // class of gap that caused this bug. The current project is never
+    // actually lost — CreatorProjectStore.upsert() (inside every
+    // _writeStorage() autosave, Cloud-Primary Project Storage) already
+    // durably keeps a separate copy in "My Projects," independent of
+    // the one single-slot session key discardSession() clears, so it
+    // stays fully recoverable — matching this button's own original
+    // "autosave already covers the current project" reasoning, now
+    // actually true rather than only assumed.
+    try{
+      if(typeof ProjectManager!=='undefined' && typeof ProjectManager.discardSession==='function'){
+        ProjectManager.discardSession();
+      }
+    }catch(e){}
+    window.location.reload();
   });
 }
 if(themePickerClose){
