@@ -2014,6 +2014,14 @@ const SlideRenderer=(()=>{
     const start=function(resolvedSrc){
       if(!resolvedSrc){ warn('AssetStore.resolve() returned null'); return; }
       const img=new Image();
+      // Same root cause as js/projectManager.js's loadImageFromDataURL —
+      // `resolvedSrc` may be a genuinely cross-origin Supabase Storage
+      // signed URL (AssetStore.resolve()'s own fallback tier), and
+      // drawing it onto the canvas with no `crossOrigin` set silently
+      // taints it, breaking a later toDataURL()/getImageData() call
+      // elsewhere (ThumbnailEngine, Publish/Export) — the real,
+      // confirmed cause of a "Studio center pane frozen" bug.
+      img.crossOrigin='anonymous';
       img.onload=function(){
         img.__ready=true;
         if(typeof window!=='undefined' && typeof window.redrawPreview==='function'){

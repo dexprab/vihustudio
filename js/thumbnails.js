@@ -22,6 +22,7 @@ const ThumbnailEngine=(function(){
     _notifyProgress();
 
     queue = queue.then(()=> new Promise((resolve)=>{
+      let dataUrl=null;
       try{
         // Sprint 9.0.2 — WYSIWYE. Render at dpr:1 so the temp bitmap
         // stays predictably sized for the thumb downscale.
@@ -57,37 +58,51 @@ const ThumbnailEngine=(function(){
         try{ tctx.imageSmoothingEnabled=true; tctx.imageSmoothingQuality='high'; }catch(e){}
         tctx.fillStyle='#fff'; tctx.fillRect(0,0,thumbW,thumbH);
         tctx.drawImage(temp,0,0,thumbW,thumbH);
-        const dataUrl=thumbCanvas.toDataURL('image/png');
+        dataUrl=thumbCanvas.toDataURL('image/png');
         slide.thumbnail=dataUrl;
-
-        // A real, confirmed bug: this restore step used to build its own
-        // bare payload and call SlideRenderer.render() directly, bypassing
-        // js/app.js's draw() -- the ONLY place that stamps
-        // selectedSceneElement / selectedTextElement / dragActiveId /
-        // showSafeArea onto the payload. Since every drag-move handler
-        // deletes slide.thumbnail before calling draw() (so the thumbnail
-        // regenerates), this ran after essentially every drag+release,
-        // silently wiping the selection outline/resize handles/drag guides
-        // off the visible editor canvas the instant it completed --
-        // exactly the "selecting/dragging looks like it does nothing"
-        // symptom. window.redrawPreview() is the same real choke point
-        // every other "something changed off to the side, please repaint
-        // correctly" case already uses (_ensureDecorationImage's/
-        // _ensureStickerImage's own onload nudge) -- it reads whichever
-        // slide/selection is actually current and stamps it correctly.
-        SlideRenderer.init(previewCanvas);
-        if(typeof window.redrawPreview==='function'){
-          try{ window.redrawPreview(); }catch(e){}
-        }
-
-        generatingCount--;
-        _notifyProgress();
-        resolve(dataUrl);
       }catch(err){
-        generatingCount--;
-        _notifyProgress();
-        resolve(null);
+        // A real, confirmed root cause behind a "Studio center pane
+        // frozen" bug: drawing a cross-origin image with no CORS
+        // clearance (a Supabase Storage signed URL AssetStore.resolve()
+        // can hand back, now fixed at the source in projectManager.js /
+        // slideRenderer.js / pictureStudio.js) silently taints `temp`,
+        // then `thumbCanvas` via the drawImage above, and
+        // thumbCanvas.toDataURL() throws a SecurityError right here.
+        // dataUrl simply stays null — slide.thumbnail is never set, so
+        // the next call to generate() for this slide retries on its own.
+        // The one thing that must never happen, whatever throws here, is
+        // skipping the restore below.
       }
+      // A real, confirmed bug: this restore step used to sit INSIDE the
+      // same try block as the risky render/encode work above, with no
+      // guarantee it would ever run — any exception thrown before it
+      // (previously just a theoretical "ensure we continue" concern;
+      // confirmed for real by the tainted-canvas SecurityError above)
+      // jumped straight to the catch block and skipped it entirely,
+      // leaving SlideRenderer's one shared canvas target permanently
+      // stuck pointing at this now-discarded `temp` canvas for the rest
+      // of the session — every later edit kept updating the model
+      // correctly (the Words field, the render tree, Object Strip all
+      // read the model directly) while the VISIBLE #previewCanvas never
+      // got touched again, reading exactly like a frozen canvas. Moved
+      // outside the try/catch above so it unconditionally runs whether
+      // the render/encode succeeded or threw — the same discipline
+      // js/publishStudio.js's own three swap-restore pairs and
+      // js/storyDestinations.js's _renderSlideInto already use.
+      //
+      // window.redrawPreview() is the same real choke point every other
+      // "something changed off to the side, please repaint correctly"
+      // case already uses (_ensureDecorationImage's/_ensureStickerImage's
+      // own onload nudge) -- it reads whichever slide/selection is
+      // actually current and stamps it correctly.
+      SlideRenderer.init(previewCanvas);
+      if(typeof window.redrawPreview==='function'){
+        try{ window.redrawPreview(); }catch(e){}
+      }
+
+      generatingCount--;
+      _notifyProgress();
+      resolve(dataUrl);
     }));
     return queue;
   }

@@ -343,6 +343,15 @@ const PictureStudio=(function(){
     }else if(typeof input==='string'){
       const loadImg=function(src){
         const img=new Image();
+        // Same root cause as js/projectManager.js's loadImageFromDataURL
+        // — `src` may be a genuinely cross-origin Supabase Storage
+        // signed URL (a Place/Scene-Object picture resolved via
+        // AssetStore.resolve() above), and drawing it with no
+        // `crossOrigin` set silently taints _render()'s own preview
+        // canvas, breaking Apply's own out.toDataURL() bake step with a
+        // SecurityError. Harmless for the plain-string/data: fallback
+        // path below, which also calls this same function.
+        img.crossOrigin='anonymous';
         img.onload=function(){ _origImg=img; _render(); };
         img.src=src;
       };

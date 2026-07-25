@@ -130,6 +130,20 @@ const ProjectManager=(function(){
     return new Promise(function(resolve){
       if(!dataURL){ resolve(null); return; }
       const img=new Image();
+      // Root cause of a real, confirmed "Studio center pane frozen" bug:
+      // despite its name, `dataURL` may actually be a genuinely
+      // cross-origin Supabase Storage signed URL — AssetStore.resolve()'s
+      // own third resolution tier, reached whenever the local IndexedDB
+      // blob cache misses (a fresh device, a cleared cache, a Magic-Card-
+      // recalled project). Loading such a URL with no `crossOrigin` set
+      // silently TAINTS every canvas this Image is later drawn onto — no
+      // error at draw time, but the next toDataURL()/getImageData() call
+      // on that canvas (ThumbnailEngine's own thumbnail encode, Publish/
+      // Export) throws a SecurityError instead. Harmless to set
+      // unconditionally — a `data:`/`blob:` URI is always same-origin
+      // regardless of this attribute, so every existing caller is
+      // unaffected.
+      img.crossOrigin='anonymous';
       img.onload=function(){ resolve(img); };
       img.onerror=function(){ resolve(null); };
       img.src=dataURL;
