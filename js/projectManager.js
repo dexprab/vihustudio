@@ -84,6 +84,27 @@ const ProjectManager=(function(){
         bookTitle:readDomString('bookTitle')||AppState.project.bookTitle||'',
         theme:readDomString('themeSelect')||AppState.project.theme||'default',
         themeOptions:AppState.project.themeOptions||null,
+        // A real, confirmed root cause found investigating "the studio
+        // center screen froze" a second time, after the earlier Museum
+        // Caption fix was correctly rejected as incomplete: this field
+        // was never saved at all — every World-owned Layer Pack object
+        // (background/decoration/text alike) is resolved purely through
+        // ThemeEngine.applyArtworkTheme()'s own AppState.project.
+        // artworkTheme, a completely separate field from the Story
+        // theme's own `theme` above (Sprint 9.3's own frame/panel-colour
+        // concept is unrelated) — omitting it here meant every reload
+        // (a real page refresh) OR every mid-session
+        // ProjectManager.deserialize() call (js/app.js's own
+        // checkStudioCloudFreshness — "Load Cloud Version," the Cloud-
+        // Primary Project Storage Phase 5 freshness check) silently lost
+        // the active World reference entirely, with the Story theme's
+        // own default panel rendering left as the only fallback — every
+        // World-owned object (backgrounds/decorations/captions) vanished
+        // from both the render tree and the Object Strip the instant
+        // deserialize() ran, confirmed via a live Playwright reproduction
+        // driving the exact checkStudioCloudFreshness code path with no
+        // page reload involved at all.
+        artworkTheme:AppState.project.artworkTheme||null,
         // Draft Asset Architecture, Phase E — carried forward on every
         // re-save so a Magic-Card-recalled project (js/magicCard.js's
         // _pullRecalledProjects stamps this once, at adoption time)
@@ -167,6 +188,13 @@ const ProjectManager=(function(){
         bookTitle:project.bookTitle||'',
         theme:project.theme||'default',
         themeOptions:project.themeOptions||null,
+        // See serialize()'s own matching comment above — restored here,
+        // then actually applied (via ThemeEngine.applyArtworkTheme, below,
+        // alongside applyTheme's own existing call) so a restored session
+        // re-resolves its World exactly as it looked before the reload/
+        // mid-session deserialize, not silently falling back to "no
+        // World active."
+        artworkTheme:project.artworkTheme||null,
         // Draft Asset Architecture, Phase E — a Magic-Card-recalled
         // project (js/magicCard.js's _pullRecalledProjects) stamps the
         // ORIGINAL device's own owner id here at adoption time, before
@@ -242,6 +270,9 @@ const ProjectManager=(function(){
       }
       if(typeof ThemeEngine!=='undefined'){
         try{ ThemeEngine.applyTheme(AppState.project.theme,{silent:true}); }catch(e){}
+        // The missing half of the fix above — applyArtworkTheme(null,...)
+        // is a safe, correct no-op for a project that never had one.
+        try{ ThemeEngine.applyArtworkTheme(AppState.project.artworkTheme,{silent:true}); }catch(e){}
       }
 
       if(typeof window.renderList==='function') window.renderList();
