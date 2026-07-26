@@ -380,6 +380,10 @@ const SceneEngine=(function(){
   // widens this to a genuinely generic field name — 'fontFamily'/
   // 'fontSize'/'fontWeight'/'fontStyle'/'alignment' now ride the same
   // bag too, since `entry[field]=value` was already field-name-agnostic;
+  // a further follow-up adds 'underline'/'strikethrough' (boolean, true
+  // or cleared — never `false`, matching this function's own null-clears
+  // rule, since `false` is not null/undefined/'' and would otherwise be
+  // stored as a redundant explicit "off" instead of simply absent);
   // Rotation/Opacity stay their own dedicated setRotation/setOpacity
   // mutators (numeric, "clears at the neutral default" convention) since
   // that's a different enough shape to keep separate. Rides on the exact

@@ -1487,12 +1487,48 @@ const SlideRenderer=(()=>{
     }
     x.fillStyle=(ov && ov.color)||t.color||'#333333';
     x.textAlign=hAlign;
+    // "why we dont have underline as a style, and strikethrough also" —
+    // Canvas has no native text-decoration; the only way to render either
+    // is a manually-stroked line. Drawn per-line (not once across the
+    // whole block) so a shorter wrapped line — the last line of a
+    // paragraph, say — gets a stroke matching ITS OWN measured width,
+    // never the shared maxLineWidth every line was wrapped against.
+    const hasUnderline=!!(ov && ov.underline);
+    const hasStrikethrough=!!(ov && ov.strikethrough);
     lines.forEach(function(line,i){
       let lineY;
       if(vAlign==='top'){ x.textBaseline='top'; lineY=drawY+i*lineHeight; }
       else if(vAlign==='bottom'){ x.textBaseline='bottom'; lineY=drawY-(lines.length-1-i)*lineHeight; }
       else { x.textBaseline='middle'; lineY=drawY-totalH/2+(i+0.5)*lineHeight; }
       x.fillText(line,drawX,lineY);
+      if(hasUnderline || hasStrikethrough){
+        const lw=x.measureText(line).width;
+        let lsx=drawX-lw/2, lex=drawX+lw/2;
+        if(hAlign==='left'){ lsx=drawX; lex=drawX+lw; }
+        else if(hAlign==='right'){ lsx=drawX-lw; lex=drawX; }
+        // `lineY` means something different per textBaseline mode set
+        // above — convert each back to an approximate true glyph
+        // baseline (ascent≈0.8×size above it, descent≈0.2×size below)
+        // since full font metrics aren't reliably available across
+        // browsers/fonts, then offset a small fraction of size for each
+        // decoration's own conventional position below/through the text.
+        let baselineY;
+        if(vAlign==='top') baselineY=lineY+size*0.8;
+        else if(vAlign==='bottom') baselineY=lineY-size*0.2;
+        else baselineY=lineY+size*0.3;
+        x.save();
+        x.strokeStyle=x.fillStyle;
+        x.lineWidth=Math.max(1,size*0.06);
+        if(hasUnderline){
+          const uy=baselineY+size*0.08;
+          x.beginPath(); x.moveTo(lsx,uy); x.lineTo(lex,uy); x.stroke();
+        }
+        if(hasStrikethrough){
+          const sy=baselineY-size*0.3;
+          x.beginPath(); x.moveTo(lsx,sy); x.lineTo(lex,sy); x.stroke();
+        }
+        x.restore();
+      }
     });
     x.restore();
     let bx=drawX-maxLineWidth/2;

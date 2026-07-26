@@ -459,6 +459,43 @@ const ContextPanel=(function(){
     return row;
   }
 
+  // Multi-select sibling of _makeIconChoiceRow above — that one is a
+  // single-select, radio-style control (clicking one deselects every
+  // other), unsuitable for Style once Italic/Underline/Strikethrough must
+  // combine freely (a line can be all three at once) rather than one
+  // replacing another. Each button toggles its own boolean independently;
+  // the glyph preview itself is styled to actually look italic/underlined/
+  // struck-through, so the effect is visible before it's even applied.
+  // `isActive(value)` seeds each button's initial state from the current
+  // model; after that, each button's own class toggle is the source of
+  // truth for the rest of this popup's lifetime (mirrors how this file
+  // never rebuilds the popup mid-edit — _afterWorldObjectEdit deliberately
+  // never calls refresh() — so there's nothing that would re-derive it
+  // from a stale closure anyway).
+  function _makeMultiToggleRow(parent,labelText,choices,isActive,onToggle){
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label',labelText));
+    const icons=_el('div','icon-row');
+    choices.forEach(function(c){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card'+(isActive(c[0])?' active':'');
+      const lbl=_el('span','icon-label icon-label-glyph',c[1]);
+      if(c[0]==='italic') lbl.style.fontStyle='italic';
+      else if(c[0]==='underline') lbl.style.textDecoration='underline';
+      else if(c[0]==='strikethrough') lbl.style.textDecoration='line-through';
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        onToggle(c[0]);
+        btn.classList.toggle('active');
+      });
+      icons.appendChild(btn);
+    });
+    row.appendChild(icons);
+    if(parent) parent.appendChild(row);
+    return row;
+  }
+
   function _makeColorRow(parent,labelText,colorValue,onInput){
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label',labelText));
@@ -596,8 +633,22 @@ const ContextPanel=(function(){
         });
         _pairRow(container,familyCell,weightCell);
 
-        const styleCell=_makeIconChoiceRow(null,'Style',[['normal','Normal'],['italic','Italic']],ov.fontStyle||'normal',function(val){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',val==='normal'?null:val);
+        // "why we dont have underline as a style, and strikethrough also" —
+        // folded into this same Style row as three independently-toggling
+        // buttons rather than three new stacked rows, matching the exact
+        // scope the user asked for ("add it in the styles"). Italic keeps
+        // riding the existing `fontStyle` field (unchanged elsewhere);
+        // Underline/Strikethrough are new booleans on the same override
+        // bag (see setContentOverride's own widened doc comment in
+        // js/sceneEngine.js).
+        const styleState={italic:ov.fontStyle==='italic',underline:!!ov.underline,strikethrough:!!ov.strikethrough};
+        const styleCell=_makeMultiToggleRow(null,'Style',[['italic','I'],['underline','U'],['strikethrough','S']],function(key){
+          return styleState[key];
+        },function(key){
+          const next=!styleState[key];
+          if(key==='italic') SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',next?'italic':null);
+          else SceneEngine.setContentOverride(slide,sceneObj.id,key,next?true:null);
+          styleState[key]=next;
           _afterWorldObjectEdit();
         });
         const alignCell=_makeIconChoiceRow(null,'Alignment',[['left','Left'],['center','Center'],['right','Right']],ov.alignment||'',function(val){

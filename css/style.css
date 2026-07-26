@@ -2854,6 +2854,15 @@ button:active{
   text-align:center;
   white-space:nowrap;
 }
+/* World-owned Text Style toggle (Italic/Underline/Strikethrough) — a
+   single glyph doubling as its own live preview, so it needs to actually
+   read at a glance rather than the plain 9px word-label size every other
+   .icon-label already uses for "Normal"/"Left"/etc. */
+.icon-label-glyph{
+  font-size:15px;
+  font-weight:600;
+  padding:1px 2px;
+}
 /* Creator V2 — Frame Variations swatch tiles (wireframe's colour-circle
    row); reuses .icon-card/.icon-preview/.icon-label, just swaps the
    preview content for a colour dot instead of a rendered frame thumb. */
