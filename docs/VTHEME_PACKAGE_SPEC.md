@@ -137,7 +137,8 @@ raw, unmerged content.
   "layouts": [ "...flattened from layouts/*.json" ],
   "frameVariations": [ "...flattened from frames/*.json" ],
   "layerPack": [ "...flattened from layer-packs/*.json" ],
-  "representations": [ "...flattened from representations/*.json — omitted if the project has none" ]
+  "representations": [ "...flattened from representations/*.json — omitted if the project has none" ],
+  "collectionAssets": [ "...availableToCreator Collection entries only — omitted if the project has none" ]
 }
 ```
 
@@ -156,7 +157,8 @@ raw, unmerged content.
   "layouts": [ "..." ],
   "frameVariations": [ "..." ],
   "layerPack": [ "..." ],
-  "representations": [ "..." ]
+  "representations": [ "..." ],
+  "collectionAssets": [ "..." ]
 }
 ```
 
@@ -193,6 +195,55 @@ specific theme's Representation names. See `docs/THEME_PROJECT_SPEC.md` §8
 for the full field-by-field schema (`id`/`name`/`description`/`thumbnail`/
 `supportedCreationTypes`/`layout`/`defaultFrame`/`defaultLayerPack`/
 `background`/`actions`).
+
+**`collectionAssets`** (Collection Phase 5 — Creator-Facing Availability
+Metadata) — a flat array of sanitized, Creator-safe metadata, one entry per
+Collection asset the Theme Author explicitly flagged "Let Creators use this
+too" (`availableToCreator: true`, set via the Manage Collection screen's own
+availability checkbox — `tools/world-builder-v2/js/projectModel.js`'s
+`setCollectionAssetAvailability()`; Collection's own authoring-side folder
+convention, `collection/<id>.json`, is not yet documented in
+`docs/THEME_PROJECT_SPEC.md` — see the CLAUDE.md Collection Phase 1-4
+entries for the current source of truth on the authoring side). Absent
+entirely for a theme with no such entries —
+this includes every theme authored before Collection existed, and any
+theme whose Collection assets are all used only inside Scenes and never
+flagged for reuse — matching `frameVariations`'/`representations`' own
+"simply absent, never an empty array" convention.
+
+```json
+{
+  "id": "ast_7f3k1p",
+  "name": "Golden Leaf",
+  "kind": "image",
+  "relPath": "collection/ast_7f3k1p.png",
+  "availableToCreator": true
+}
+```
+
+- `id` / `name` / `kind` (`"image"` or `"graphic"`) mirror the Theme
+  Author's own authoring-side Collection entry (`ProjectModel.collectionAssets()`)
+  exactly — the same values shown on the Manage Collection screen.
+- `relPath` is a plain relative-path **reference** into the compiled
+  `assets` map, resolved the same way as `manifest.thumbnail`/`.previewImage`
+  above — via `ThemeRegistry.resolveAssetRef(themeId, relPath)`, never read
+  as a ready `src` directly. This is the one thing `js/contextPanel.js`'s
+  "🎁 From This World" browsing surface (Phase 6) needs to render each
+  entry's art.
+- **`collectionAssets` deliberately never carries a Collection entry's own
+  internal `.ref` field** (the `vihu-asset:`/`data:` string that identifies
+  the asset's real bytes inside the Builder's own draft storage) — that is
+  a Builder-session-internal detail, not something a published Theme should
+  ever expose. Only the already-embedded, already-public `relPath` crosses
+  the compile boundary, exactly like every other image-bearing field in
+  this document.
+- An entry flagged `availableToCreator` is embedded into the compiled
+  `assets` map (below) regardless of whether any Layer Pack entry actually
+  references it — unlike every asset field elsewhere in this document,
+  which is only ever embedded because something on-Scene points at it. This
+  is the one deliberate exception: "available for customization" assets can
+  exist purely for a Story Author to discover and use, with no Scene
+  ever having referenced them at authoring time.
 
 ---
 

@@ -144,6 +144,38 @@ class BuildEngine {
         // sprint.
         await this.convergeScenes(package_);
 
+        // Collection Phase 5 — Creator-Facing Availability Metadata. Every
+        // Collection entry the Theme Author flagged "Let Creators use this
+        // too" (availableToCreator, ProjectModel.setCollectionAssetAvailability)
+        // must reach the compiled package regardless of whether any Layer
+        // currently references it -- that's the whole point of the flag
+        // ("collection can have assets which are used in scenes and others
+        // which builder would want creator to have access for
+        // customization," the user's own words). package_.collectionAssets
+        // (above) still carries every entry's own internal .ref -- a
+        // Builder-session detail that must never leak into a published
+        // Theme -- so this builds a SEPARATE, sanitized array
+        // (creatorCollectionAssets) with id/name/kind/relPath/
+        // availableToCreator only, assigned onto theme.collectionAssets by
+        // buildTheme() below, mirroring the exact frameVariations/
+        // layerPack/representations pattern already established there. A
+        // Theme with zero availableToCreator entries produces [] here and
+        // theme.collectionAssets stays simply absent -- the same
+        // "omitted, not an empty array" convention every sibling field
+        // above already uses.
+        package_.creatorCollectionAssets = [];
+        for (const entry of (package_.collectionAssets || [])) {
+            if (!entry || entry.availableToCreator !== true) continue;
+            const relPath = await this._embedCollectionEntry(entry, package_);
+            package_.creatorCollectionAssets.push({
+                id: entry.id,
+                name: entry.name || null,
+                kind: entry.kind || 'image',
+                relPath: relPath,
+                availableToCreator: true
+            });
+        }
+
         // Assets — flattened to a { relativePath: dataURI } map, paths
         // relative to assets/ (spec §8), exactly the shape
         // js/zipReader.js + themeEngine.js's _buildPackageFromZipFiles
@@ -601,7 +633,9 @@ class BuildEngine {
         // raw data: URI — Collection is a ref-indexed side table, never a
         // translation layer, per the plan's own corrected headline design
         // decision), converge onto that entry's OWN stable compiled key
-        // (`collection/<id>.png`) instead of minting a fresh
+        // (`collection/<id>.png`) via the shared _embedCollectionEntry
+        // helper (Phase 5 also calls it directly, for an entry with no
+        // Layer at all — see packageTheme()) instead of minting a fresh
         // scenes/<sceneId>/<layerId>.png for every Layer independently —
         // this is the one place "reduces data load on builder by
         // remapping to same asset used in different experiences" (the
@@ -613,21 +647,11 @@ class BuildEngine {
         // through to exactly today's per-Layer relPath — fully backward
         // compatible.
         const collectionEntry = (refToEntry && layer.image) ? refToEntry[layer.image] : null;
-        const relPath = collectionEntry
-            ? 'collection/' + collectionEntry.id + '.png'
-            : 'scenes/' + scene.id + '/' + layer.id + '.png';
+        if (collectionEntry) {
+            return await this._embedCollectionEntry(collectionEntry, package_);
+        }
 
-        // Memoization — if an earlier Layer/Experience already hydrated
-        // and embedded this same Collection entry's bytes,
-        // package_.assets[relPath] is already set; skip re-hydrating
-        // identical bytes a second time. Purely an efficiency guard
-        // (writing the same value to the same key twice would be
-        // harmless either way) — it avoids a redundant AssetStore round
-        // trip (a real Storage fetch, not just a cache hit, the first
-        // time a shared entry's bytes aren't yet warm in IndexedDB) for
-        // every additional Layer sharing one Collection asset.
-        if (collectionEntry && package_.assets[relPath]) return relPath;
-
+        const relPath = 'scenes/' + scene.id + '/' + layer.id + '.png';
         let src = layer.image;
         if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
             // Root-caused via a real, live report ("Paper BG" -- a Scene
@@ -650,6 +674,41 @@ class BuildEngine {
             // every other package_.assets entry's own shape -- reused
             // here rather than reimplementing its own fetch+FileReader
             // logic a second time.
+            src = (typeof window !== 'undefined' && window.AssetStore)
+                ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
+                : null;
+        }
+        if (typeof src === 'string' && src.indexOf('data:') === 0) {
+            package_.assets[relPath] = src;
+        }
+        return relPath;
+    }
+
+    /**
+     * Shared hydrate-and-embed step for a Collection entry
+     * (id/name/kind/ref/availableToCreator, ProjectModel.collectionAssets()'s
+     * own shape) — resolves `entry.ref` (a vihu-asset: reference or a
+     * legacy data: URI, exactly like a Scene Layer's own `.image` field,
+     * since a Collection entry's `.ref` IS that same string by design —
+     * "Collection is a derived, ref-indexed side table," never a
+     * translation layer) into real bytes at this entry's own stable
+     * compiled key, `collection/<id>.png`. Two call sites share this one
+     * implementation: externalizeSceneImage() above (Phase 4's own
+     * dedup path, when a Layer's image matches a registered ref) and
+     * packageTheme() below (Phase 5 — an availableToCreator entry with
+     * no Layer pointing at it at all still needs its bytes embedded, or
+     * theme.collectionAssets' own relPath would resolve to nothing).
+     * Memoized — a relPath already present in package_.assets is
+     * returned immediately with no re-hydration, so calling this twice
+     * for the same entry (once via dedup, once via the availableToCreator
+     * sweep) never re-fetches identical bytes a second time.
+     */
+    async _embedCollectionEntry(entry, package_) {
+        const relPath = 'collection/' + entry.id + '.png';
+        if (package_.assets[relPath]) return relPath;
+
+        let src = entry.ref;
+        if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
             src = (typeof window !== 'undefined' && window.AssetStore)
                 ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
                 : null;
@@ -716,8 +775,8 @@ class BuildEngine {
      * Build the runtime theme object — theme.json's own fields (minus
      * id/name duplication, which stay for clarity but must already
      * equal the manifest's per validation) plus layouts/frameVariations/
-     * layerPack/representations flattened onto it (spec §4's compiled
-     * shape).
+     * layerPack/representations/collectionAssets flattened onto it
+     * (spec §4's compiled shape, docs/VTHEME_PACKAGE_SPEC.md).
      */
     buildTheme(packageData, manifest) {
         const theme = Object.assign({}, packageData.theme);
@@ -739,6 +798,17 @@ class BuildEngine {
         // rather than an empty array Studio would have to special-case.
         if (theme.representations === undefined && packageData.representations.length) {
             theme.representations = packageData.representations;
+        }
+        // Collection Phase 5 — Creator-Facing Availability Metadata.
+        // packageData.creatorCollectionAssets (packageTheme(), above) is
+        // already the sanitized id/name/kind/relPath/availableToCreator
+        // array — never packageData.collectionAssets itself, which still
+        // carries every entry's internal .ref and must never leak into a
+        // published Theme. Same "only when non-empty" convention as
+        // representations above — a theme with zero availableToCreator
+        // entries compiles with the key simply absent.
+        if (theme.collectionAssets === undefined && packageData.creatorCollectionAssets && packageData.creatorCollectionAssets.length) {
+            theme.collectionAssets = packageData.creatorCollectionAssets;
         }
 
         return theme;
