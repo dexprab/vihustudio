@@ -75,8 +75,26 @@ const SelectionActionStrip=(function(){
         if(typeof PageRuntime!=='undefined'){ try{ PageRuntime.clearSelection(); }catch(e){} }
       });
     }
+    // Real multi-line content ("this is not what is intended" follow-up)
+    // needs the Words textarea to genuinely grow to fit what's typed,
+    // never hide extra lines behind its own inner scrollbar while the
+    // popup's own outer overflow stays the true last resort. One
+    // delegated listener here (rather than special-casing this inside
+    // contextPanel.js's own textarea-building code, which has no reason
+    // to know about this popup's own chrome) autosizes ANY textarea
+    // mounted into the popup, live, on every keystroke.
+    if(editPanelEl){
+      editPanelEl.addEventListener('input',function(e){
+        if(e.target && e.target.tagName==='TEXTAREA') _autosizeTextarea(e.target);
+      });
+    }
     window.addEventListener('resize',function(){ _positionWidget(); });
     refresh();
+  }
+
+  function _autosizeTextarea(el){
+    el.style.height='auto';
+    el.style.height=el.scrollHeight+'px';
   }
 
   // A small, closed icon table mirroring Object Strip's own FRIENDLY_TYPE
@@ -237,38 +255,85 @@ const SelectionActionStrip=(function(){
       try{ mounted=ContextPanel.mountQuickEditControl(editPanelEl,obj); }catch(e){ mounted=false; }
     }
     if(!mounted) _openPanelFallback();
+    // _positionWidget() first — it's what fixes the popup's own final
+    // width, and a textarea's scrollHeight (what the autosize pass below
+    // measures) depends on that width being settled already, not
+    // whatever width the popup happened to have before this open.
     _positionWidget();
+    const areas=editPanelEl.querySelectorAll('textarea');
+    for(let i=0;i<areas.length;i++) _autosizeTextarea(areas[i]);
   }
 
+  // Real bug found via a second, real-content regression report ("this is
+  // not what is intended"): the ORIGINAL version of this function required
+  // the widget's FULL width to fit inside the narrow gutter between the
+  // canvas and .preview-area's own edge before choosing a side placement
+  // at all — reasonable when the widget was position:absolute and
+  // strictly confined inside .preview-area's own overflow:hidden box, but
+  // once the user explicitly relaxed the constraint ("context menu can
+  // overlap on right and left panel that should be ok if needed") and the
+  // widget switched to position:fixed (css/style.css, escaping that
+  // clipping so it can genuinely render over the sidebar), that same
+  // strict gutter-fit check would have kept pushing the now-wider popup
+  // into the less useful 'top' fallback for no reason — it no longer
+  // needs the FULL width to fit in the gutter, only *some* real room past
+  // the canvas's own edge to safely anchor against.
+  //
+  // Rewritten around one real, load-bearing invariant instead: whichever
+  // side is chosen, the widget's near edge is always placed strictly on
+  // the far side of the canvas's own edge (never crossing into it,
+  // structurally — the one constraint that stays hard), and its own
+  // WIDTH is capped to whatever room genuinely exists between that near
+  // edge and the true viewport edge — so it can extend into the sidebar
+  // as far as it likes without ever crossing the canvas OR spilling off
+  // the real screen. This is deliberately a width-cap, not a position-
+  // clamp: clamping the *position* toward the viewport edge when the
+  // widget is wider than the available room would risk sliding its far
+  // edge back across the canvas boundary — capping the *width* instead
+  // means the far edge can never be computed past the viewport, by
+  // construction, regardless of how little room is actually available.
   function _positionWidget(){
     if(!root || root.classList.contains('selection-action-strip-hidden')) return;
     const area=document.querySelector('.preview-area');
     const canvas=document.getElementById('previewCanvas');
     root.classList.remove('selection-action-strip-side-left','selection-action-strip-side-right','selection-action-strip-top');
+    root.style.top='';
+    root.style.left='';
+    root.style.maxWidth='';
+    root.style.maxHeight='';
     if(!area || !canvas){
       root.classList.add('selection-action-strip-top');
       return;
     }
     const areaRect=area.getBoundingClientRect();
     const canvasRect=canvas.getBoundingClientRect();
-    const w=root.offsetWidth||220;
-    const GAP=16;
-    const rightGutter=areaRect.right-canvasRect.right;
-    const leftGutter=canvasRect.left-areaRect.left;
-    if(rightGutter>=w+GAP){
-      // A real gutter exists to the right of the canvas within the
-      // preview column — anchoring the whole widget's x-range there
-      // puts it entirely outside the canvas's own x-range, so it can
-      // never overlap it no matter how tall the inline edit popup below
-      // grows.
+    const GAP=16; // clearance kept between the canvas's own edge and the widget's near edge
+    const EDGE=8; // safety margin from the true viewport edge, so the widget is never flush against it
+    const MAX_WIDTH=440; // matches the CSS ceiling — never grown past this even when more room exists
+    const MIN_USABLE=160; // matches min-width; below this on a side, a floating widget genuinely isn't useful there
+    const spaceRight=window.innerWidth-canvasRect.right-GAP-EDGE;
+    const spaceLeft=canvasRect.left-GAP-EDGE;
+    const top=areaRect.top+16;
+    if(spaceRight>=MIN_USABLE){
       root.classList.add('selection-action-strip-side-right');
-    }else if(leftGutter>=w+GAP){
+      const width=Math.min(MAX_WIDTH,spaceRight);
+      root.style.maxWidth=width+'px';
+      root.style.left=(canvasRect.right+GAP)+'px';
+      root.style.top=top+'px';
+      root.style.maxHeight=(window.innerHeight-top-16)+'px';
+    }else if(spaceLeft>=MIN_USABLE){
       root.classList.add('selection-action-strip-side-left');
+      const width=Math.min(MAX_WIDTH,spaceLeft);
+      root.style.maxWidth=width+'px';
+      root.style.left=(canvasRect.left-GAP-width)+'px';
+      root.style.top=top+'px';
+      root.style.maxHeight=(window.innerHeight-top-16)+'px';
     }else{
-      // No real side gutter (a narrow viewport where the canvas spans
-      // the whole column) — fall back to a compact, normal-flow
-      // placement ABOVE the canvas, which structurally can never
-      // overlap it.
+      // Neither side has genuinely enough room (a narrow viewport where
+      // the .workspace media queries have already collapsed the
+      // sidebars out of the layout, css/style.css ~line 3057) — fall
+      // back to a compact, normal-flow placement ABOVE the canvas, which
+      // structurally can never overlap it either.
       root.classList.add('selection-action-strip-top');
     }
   }

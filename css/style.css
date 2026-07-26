@@ -428,30 +428,48 @@ button:active{
 }
 
 /* Option B (Refined), pencil/small-side-widget follow-up — the
- * selection action strip. Absolutely positioned within .preview-area
- * (position:relative above) so it's a small floating widget rather than
- * a full-width bar — js/selectionActionStrip.js's _positionWidget()
- * measures the real gap on either side of the canvas at runtime and
- * toggles one of the 3 modifier classes below, always choosing whichever
- * placement keeps the widget's own x-range entirely outside the
- * canvas's own x-range (so it can never overlap it, no matter how tall
- * the inline edit popup grows). The .selection-action-strip-top fallback
- * (a narrow viewport with no side gutter at all) drops out of absolute
- * positioning into the column's own normal flow instead, which
- * structurally can never overlap the canvas below it either.
- * Widened from 230/280px (World-owned Text popup layout fix) — paired
- * with the .context-field-row 2-column layout further down, this gives
- * the quick-edit popup enough room for two short controls to share one
- * line instead of every field claiming a full row of its own, which is
- * what made the popup need a scrollbar. _positionWidget() re-measures
- * the real rendered width every time, so a wider popup that genuinely
- * doesn't fit in either gutter still falls back correctly, with no JS
- * change needed here. */
+ * selection action strip.
+ *
+ * A SECOND, real-content follow-up ("this is not what is intended") found
+ * that widening alone (see the history below) still wasn't enough once the
+ * user explicitly relaxed the constraint further: "context menu can
+ * overlap on right and left panel that should be ok if needed." Making
+ * genuine use of that meant escaping .preview-area's own
+ * overflow:hidden (line ~406 above) — a wide popup positioned
+ * position:absolute within that box was silently CLIPPED the instant it
+ * tried to extend past .preview-area's own edge into the sidebar, no
+ * matter how much real room the sidebar itself had. Switched to
+ * position:fixed (viewport coordinates, immune to any ancestor's own
+ * overflow/clipping — confirmed no ancestor sets transform/filter/
+ * perspective/contain, which would otherwise trap position:fixed inside a
+ * new containing block) so the popup can genuinely render on top of the
+ * left/right sidebar panels now. js/selectionActionStrip.js's
+ * _positionWidget() computes real inline top/left/max-width/max-height
+ * every time — never a fixed 16px offset — always anchoring the widget's
+ * near edge strictly on the far side of the canvas's own edge (so it can
+ * never overlap the canvas, the one constraint that stays hard) and
+ * shrinking its own width to whatever room is actually available on that
+ * side (so it can never render off the true viewport edge either, even
+ * while intentionally overlapping a sidebar). Only when neither side has
+ * genuinely enough room (a narrow viewport where the sidebars have
+ * already collapsed out of the layout via the .workspace media queries
+ * below) does .selection-action-strip-top take over — position:static,
+ * back in the column's own normal document flow above the canvas, which
+ * structurally can never overlap it either.
+ *
+ * History — earlier real-content follow-up: "the implementation is
+ * clean, the UI is not... scroll is needed" held even after the very
+ * first "clean, but cramped" fix, once real Cover-page byline content (a
+ * genuinely multi-line Words field, Alignment's 3 icon choices wrapping
+ * to a second row in the narrower ~300px popup) was tested against it —
+ * widening to ~440px (this file's own current max-width ceiling) gives
+ * every paired icon-choice row room to lay out on one line with no wrap,
+ * which is what actually closes most of the remaining vertical gap —
+ * width, not height tricks, was the real fix. */
 .selection-action-strip{
-  position:absolute;
-  top:16px;
+  position:fixed;
   width:auto;
-  max-width:300px;
+  max-width:440px;
   min-width:160px;
   display:flex;
   flex-direction:column;
@@ -462,17 +480,21 @@ button:active{
   padding:10px 12px;
   box-shadow:0 4px 16px rgba(0,0,0,0.14);
   z-index:5;
-  max-height:calc(100vh - 96px);
+  max-height:calc(100vh - 72px);
   overflow-y:auto;
 }
 .selection-action-strip-hidden{ display:none; }
-.selection-action-strip-side-right{ right:16px; left:auto; }
-.selection-action-strip-side-left{ left:16px; right:auto; }
+/* .selection-action-strip-side-right / -side-left carry no positioning
+   rules of their own any more — js/selectionActionStrip.js sets real,
+   measured top/left/max-width/max-height inline every call, since a
+   static CSS offset can't know how much of the sidebar is actually safe
+   to render over on a given screen. The two classes stay purely as a
+   semantic/test hook for which side was chosen. */
 .selection-action-strip-top{
   position:static;
   align-self:flex-start;
   width:auto;
-  max-width:340px;
+  max-width:460px;
   margin-bottom:10px;
 }
 .selection-action-strip-row{
@@ -564,10 +586,21 @@ button:active{
 .selection-action-open-panel-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.14); }
 /* The real quick-edit control (ContextPanel.mountQuickEditControl) was
  * designed for the right panel's own wider column — a couple of small
- * overrides keep it tidy inside this narrower ~270px popup rather than
- * an auto-width pill button wrapping awkwardly. */
+ * overrides keep it tidy inside this popup rather than an auto-width
+ * pill button wrapping awkwardly. */
 .selection-action-edit-panel .context-btn{ width:100%; text-align:center; }
-.selection-action-edit-panel .context-textarea{ min-height:52px; }
+/* Real multi-line content (a genuine 2-3 line Cover-page byline, e.g.
+ * "A Story / by / Vihaan Sharma") needs real room to show every line at
+ * once with no inner scroll of its own — js/selectionActionStrip.js's
+ * _openEditPanel()/its own generic textarea-input listener now grow this
+ * element's own explicit height to fit its real content (measured via
+ * scrollHeight, re-measured on every keystroke), so the base .context-
+ * textarea rule's 70px min-height (css line ~6424) is only ever a floor
+ * for short/empty content — overflow-y:hidden means there's never a
+ * native inner scrollbar competing with the popup's own genuine
+ * last-resort overflow-y:auto (the base .selection-action-strip rule
+ * above) while that auto-grow keeps up. */
+.selection-action-edit-panel .context-textarea{ overflow-y:hidden; }
 /* A little tighter than the shared .designer-row default (10px) — every
  * px matters in a popup this narrow/short, and .context-field-row below
  * already carries its own margin-bottom for the paired case. */
