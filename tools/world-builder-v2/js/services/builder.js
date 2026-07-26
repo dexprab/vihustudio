@@ -116,6 +116,21 @@ class BuildEngine {
         // Step 3", the same as before this existed).
         package_.representations = await this.collectFolder('representations');
 
+        // Collection Phase 4 — Compile-Time Dedup. A Theme's Collection
+        // registry (tools/world-builder-v2/js/projectModel.js's
+        // collectionAssets()) compiles onto the package the exact same
+        // way as layouts/frameVariations/layerPack/representations above
+        // — metadata only (id/name/kind/ref/availableToCreator), never
+        // itself holding embedded bytes. This is purely an internal
+        // lookup table for convergeScenes()/externalizeSceneImage() below
+        // in this phase — theme.collectionAssets (Creator-facing
+        // availability metadata on the compiled .vtheme) is a later,
+        // separately-scoped phase; a Theme with zero collection/ files
+        // compiles this to [] and every downstream lookup is a clean
+        // miss, so nothing here changes output for a Theme that hasn't
+        // adopted Collection.
+        package_.collectionAssets = await this.collectFolder('collection');
+
         // Builder Convergence Sprint — a Scene (Engine V2's own
         // authoring model: Scene -> Place/Layer -> Runtime Preview) has
         // no compiled representation of its own; it converges into the
@@ -215,13 +230,23 @@ class BuildEngine {
         // position; Layouts/Frames are resolved by id, never by "first
         // in array" — the only ordering-sensitive consumer of this
         // array is Creation Flow's own reps[0] default).
+        // Collection Phase 4 — Compile-Time Dedup. One ref-keyed lookup
+        // built once per build, threaded down through convergeScene ->
+        // convergeSceneLayer -> externalizeSceneImage — every call site
+        // below the Scene-file loop stays a plain, cheap object lookup,
+        // never re-deriving this map per Layer.
+        const refToEntry = {};
+        (package_.collectionAssets || []).forEach(function (entry) {
+            if (entry && entry.ref) refToEntry[entry.ref] = entry;
+        });
+
         const sceneRepresentations = [];
         for (const file of projectLoader.getFilesInFolder('scenes')) {
             if (!file.endsWith('.json')) continue;
             const content = await projectLoader.getFileContent(file);
             const scene = projectLoader.parseJSON(content);
             if (!scene || !scene.id) continue;
-            const rep = await this.convergeScene(scene, package_);
+            const rep = await this.convergeScene(scene, package_, refToEntry);
             if (rep) sceneRepresentations.push(rep);
         }
         if (sceneRepresentations.length) {
@@ -253,7 +278,7 @@ class BuildEngine {
      * themselves aside) converges via convergeSceneLayer below, in
      * Scene Stack order so z-ordering survives the trip.
      */
-    async convergeScene(scene, package_) {
+    async convergeScene(scene, package_, refToEntry) {
         const layoutId = 'scene-' + scene.id;
         const aspect = (scene.canvas && scene.canvas.aspectRatio) || 'portrait';
 
@@ -342,7 +367,7 @@ class BuildEngine {
             if (!entry || entry.type !== 'layer') continue;
             const layer = layersById[entry.id];
             if (!layer) continue;
-            const compiled = await this.convergeSceneLayer(scene, layer, z, layoutId, package_);
+            const compiled = await this.convergeSceneLayer(scene, layer, z, layoutId, package_, refToEntry);
             if (compiled) package_.layerPack.push(compiled);
         }
 
@@ -359,7 +384,7 @@ class BuildEngine {
      * one theme with many converged Scenes never cross-contaminates
      * (renderer/slideRenderer.js's _activeLayerPack filters on it).
      */
-    async convergeSceneLayer(scene, layer, zIndex, layoutId, package_) {
+    async convergeSceneLayer(scene, layer, zIndex, layoutId, package_, refToEntry) {
         const position = layer.position || { x: 0, y: 0 };
         const size = layer.size || { w: 0, h: 0 };
         const rect = { x: position.x || 0, y: position.y || 0, w: size.w || 0, h: size.h || 0 };
@@ -496,7 +521,7 @@ class BuildEngine {
         }
 
         if (layer.kind === 'decoration' && layer.image) {
-            const assetPath = await this.externalizeSceneImage(scene, layer, package_);
+            const assetPath = await this.externalizeSceneImage(scene, layer, package_, refToEntry);
             return Object.assign({}, base, {
                 type: 'decoration',
                 anchor: 'top-left',
@@ -569,8 +594,40 @@ class BuildEngine {
      * with `await` from convergeSceneLayer above), so no caller change
      * beyond that one await was needed.
      */
-    async externalizeSceneImage(scene, layer, package_) {
-        const relPath = 'scenes/' + scene.id + '/' + layer.id + '.png';
+    async externalizeSceneImage(scene, layer, package_, refToEntry) {
+        // Collection Phase 4 — Compile-Time Dedup. When this Layer's own
+        // `.image` matches a Collection entry's `.ref` exactly (the
+        // identical string, whether a vihu-asset: reference or a legacy
+        // raw data: URI — Collection is a ref-indexed side table, never a
+        // translation layer, per the plan's own corrected headline design
+        // decision), converge onto that entry's OWN stable compiled key
+        // (`collection/<id>.png`) instead of minting a fresh
+        // scenes/<sceneId>/<layerId>.png for every Layer independently —
+        // this is the one place "reduces data load on builder by
+        // remapping to same asset used in different experiences" (the
+        // user's own words) is actually realized: N Experiences sharing
+        // one Collection asset compile to exactly one embedded image, not
+        // N duplicates. A Layer whose image isn't a registered Collection
+        // entry (every Theme authored before Collection existed, or
+        // content Phase 1's auto-registration hook never saw) falls
+        // through to exactly today's per-Layer relPath — fully backward
+        // compatible.
+        const collectionEntry = (refToEntry && layer.image) ? refToEntry[layer.image] : null;
+        const relPath = collectionEntry
+            ? 'collection/' + collectionEntry.id + '.png'
+            : 'scenes/' + scene.id + '/' + layer.id + '.png';
+
+        // Memoization — if an earlier Layer/Experience already hydrated
+        // and embedded this same Collection entry's bytes,
+        // package_.assets[relPath] is already set; skip re-hydrating
+        // identical bytes a second time. Purely an efficiency guard
+        // (writing the same value to the same key twice would be
+        // harmless either way) — it avoids a redundant AssetStore round
+        // trip (a real Storage fetch, not just a cache hit, the first
+        // time a shared entry's bytes aren't yet warm in IndexedDB) for
+        // every additional Layer sharing one Collection asset.
+        if (collectionEntry && package_.assets[relPath]) return relPath;
+
         let src = layer.image;
         if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
             // Root-caused via a real, live report ("Paper BG" -- a Scene
