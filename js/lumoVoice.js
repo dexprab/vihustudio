@@ -42,40 +42,45 @@
   const BASE='assets/lumo/voice/';
 
   const LINES={
-    tapgrid:{file:'lumo-01-tapgrid.mp3',ms:5407},
+    // "i have recorded all the prompts" — the real voices, uploaded as
+    // vlumo-*.mp3 and swapped in over the original placeholder clips (git
+    // mv, so every filename below is unchanged); durations re-measured
+    // via ffprobe against the real files, since a re-recorded line rarely
+    // runs the exact same length as its placeholder.
+    tapgrid:{file:'lumo-01-tapgrid.mp3',ms:3866},
 
     // Traveller Gateway greeting -- title then subtitle, one real clip
     // each, played back to back (see playSequence()) while both lines of
     // text are already visible together in one bubble.
-    greeting1:{file:'lumo-02-greeting1.mp3',ms:1881},
-    greeting1b:{file:'lumo-03-greeting1b.mp3',ms:2116},
-    greeting2:{file:'lumo-04-greeting2.mp3',ms:1646},
-    greeting2b:{file:'lumo-05-greeting2b.mp3',ms:1802},
-    greeting3:{file:'lumo-06-greeting3.mp3',ms:2691},
-    greeting3b:{file:'lumo-07-greeting3b.mp3',ms:2508},
-    greeting4:{file:'lumo-08-greeting4.mp3',ms:2926},
-    greeting4b:{file:'lumo-09-greeting4b.mp3',ms:4676},
-    greeting5:{file:'lumo-10-greeting5.mp3',ms:1724},
-    greeting5b:{file:'lumo-11-greeting5b.mp3',ms:3239},
+    greeting1:{file:'lumo-02-greeting1.mp3',ms:1228},
+    greeting1b:{file:'lumo-03-greeting1b.mp3',ms:2273},
+    greeting2:{file:'lumo-04-greeting2.mp3',ms:1567},
+    greeting2b:{file:'lumo-05-greeting2b.mp3',ms:2351},
+    greeting3:{file:'lumo-06-greeting3.mp3',ms:2586},
+    greeting3b:{file:'lumo-07-greeting3b.mp3',ms:2429},
+    greeting4:{file:'lumo-08-greeting4.mp3',ms:2429},
+    greeting4b:{file:'lumo-09-greeting4b.mp3',ms:4362},
+    greeting5:{file:'lumo-10-greeting5.mp3',ms:1959},
+    greeting5b:{file:'lumo-11-greeting5b.mp3',ms:1411},
 
     // Returning Creator -- recognition line, heard before the star-tap
     // check (over the still-closed gate).
-    returning1:{file:'lumo-12-returning1.mp3',ms:1306},
-    returning2:{file:'lumo-13-returning2.mp3',ms:1646},
+    returning1:{file:'lumo-12-returning1.mp3',ms:1646},
+    returning2:{file:'lumo-13-returning2.mp3',ms:1724},
 
     // Returning Creator -- reunion pair, spoken in person once Lumo lands.
-    arrivalReturning1:{file:'lumo-14-arrivalreturning1.mp3',ms:1802},
-    arrivalReturning2:{file:'lumo-15-arrivalreturning2.mp3',ms:2273},
+    arrivalReturning1:{file:'lumo-14-arrivalreturning1.mp3',ms:2194},
+    arrivalReturning2:{file:'lumo-15-arrivalreturning2.mp3',ms:2351},
 
     // Creator Ceremony -- Lumo's two Guardian beats.
-    ceremony1:{file:'lumo-16-ceremony1.mp3',ms:2038},
-    ceremony2:{file:'lumo-17-ceremony2.mp3',ms:2351},
+    ceremony1:{file:'lumo-16-ceremony1.mp3',ms:2429},
+    ceremony2:{file:'lumo-17-ceremony2.mp3',ms:2194},
 
     // Creator Signature sky-recognition challenge -- the gatekeeper's
     // own 4 spoken lines (prompt / wrong tap / fresh decoys / success).
-    skyPrompt:{file:'lumo-18-skyprompt.mp3',ms:3971},
-    skyWrong:{file:'lumo-19-skywrong.mp3',ms:2847},
-    skyFresh:{file:'lumo-20-skyfresh.mp3',ms:3553},
+    skyPrompt:{file:'lumo-18-skyprompt.mp3',ms:3396},
+    skyWrong:{file:'lumo-19-skywrong.mp3',ms:2926},
+    skyFresh:{file:'lumo-20-skyfresh.mp3',ms:4598},
     skySuccess:{file:'lumo-21-skysuccess.mp3',ms:2429},
 
     // Traveller Gateway -- the single Gate video's own Segment 1: Lumo
