@@ -3076,9 +3076,23 @@
                 jobs.push({
                     get: function () { return props[key]; },
                     set: function (ref) {
+                        const oldRef = props[key];
                         props[key] = ref;
                         const mirrored = mirroredLayers[experience.id + ':' + slot];
                         if (mirrored) mirrored.image = ref;
+                        // Collection migration-retarget fix (Platform
+                        // Hardening) — this migration can rewrite the
+                        // exact same underlying bytes from a legacy
+                        // data: URI to a vihu-asset: reference,
+                        // entirely independent of Collection's own
+                        // ref-indexed lookup. Without this, the
+                        // Collection entry registered under oldRef
+                        // would silently orphan (its .ref pointing at a
+                        // string nothing holds anymore) instead of
+                        // following the field it was registered from.
+                        if (window.ProjectModel.retargetCollectionAssetRef) {
+                            window.ProjectModel.retargetCollectionAssetRef(project, oldRef, ref);
+                        }
                     }
                 });
             });

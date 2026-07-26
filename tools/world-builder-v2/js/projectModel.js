@@ -258,6 +258,172 @@ const ProjectModel = (function () {
     }
 
     // ---------------------------------------------------------------
+    // Collection (Platform Hardening — a Theme-scoped, deduplicated
+    // asset registry). "Any asset added while authoring a Scene also
+    // goes into Collection; a Scene always refers to the asset that's
+    // in Collection; builder can delete from Collection but not
+    // Creator; Collection can hold assets used in Scenes and others the
+    // Builder wants Creator to have access to for customization."
+    //
+    // A Collection entry is a derived, ref-indexed side table — NOT a
+    // new indirection layer. `experience.properties.imageSrc`/
+    // `.graphicSrc` and the mirrored `layer.image` field never change
+    // shape: they still hold a plain `vihu-asset:`/`data:` string,
+    // exactly what AssetStore.resolve()/ThemeRegistry.resolveAssetRef()/
+    // externalizeSceneImage()/the Draft Asset Architecture migration
+    // accessor all already expect. A Collection entry's own `.ref`
+    // field is literally that same string — "connecting to an existing
+    // Collection asset" means writing that entry's `.ref` back onto a
+    // different Experience's `imageSrc`/`graphicSrc`, the identical
+    // write path a fresh upload already uses.
+    //
+    // Mirrors the Frame CRUD pattern above 1:1 (a Frame is its own
+    // file, referenced by id, deleted by nulling every dangling
+    // reference in the same operation, "AV-012") — the one real
+    // difference is Collection needs no separate Scene-Layer scan the
+    // way Frame's `_clearFrameReferences` does: `layer.image` has
+    // exactly one producer today, the Experience mirror chain
+    // (`_syncUniversalContent`) — no direct-to-Scene-Layer
+    // decoration-image upload UI exists anywhere in this codebase.
+    // ---------------------------------------------------------------
+
+    function collectionAssets(project) {
+        const list = _filesWithPrefix(project, 'collection/').map(function (e) { return e.data; });
+        return _ordered(project, 'collectionOrder', list);
+    }
+
+    function findCollectionAsset(project, id) {
+        return collectionAssets(project).find(function (a) { return a.id === id; }) || null;
+    }
+
+    // AssetStore.put() mints a brand-new random assetId on every call
+    // (js/assetStore.js's own id generator), so two genuinely different
+    // uploads never collide on `ref` — a plain linear scan by ref-value
+    // match is reliable and needs no separate index structure.
+    function findCollectionAssetByRef(project, ref) {
+        if (!ref) return null;
+        return collectionAssets(project).find(function (a) { return a.ref === ref; }) || null;
+    }
+
+    function setCollectionAsset(project, entry) {
+        project.files['collection/' + entry.id + '.json'] = entry;
+    }
+
+    // The one entry point "any asset added to a Scene also goes into
+    // Collection" is realized through — called from
+    // updateExperienceProperty below for every real producer (a picker
+    // upload, the Decoration glyph-rasterization path) with zero
+    // per-caller changes needed elsewhere. Idempotent: a ref already
+    // registered is simply touched (bumped updatedAt), never
+    // duplicated — this is also how "reuse" is expressed: registering
+    // the same ref a second time (because a Theme Author picked an
+    // existing Collection entry rather than uploading a new one) is a
+    // clean no-op, not a second entry.
+    function registerCollectionAsset(project, ref, meta) {
+        if (!ref) return null;
+        const existing = findCollectionAssetByRef(project, ref);
+        if (existing) {
+            existing.updatedAt = Date.now();
+            setCollectionAsset(project, existing);
+            return existing;
+        }
+        meta = meta || {};
+        const existingIds = collectionAssets(project).map(function (a) { return a.id; });
+        const id = _uniqueId(existingIds, 'asset');
+        const now = Date.now();
+        const entry = {
+            id: id,
+            name: meta.name || 'Untitled Asset',
+            kind: meta.kind || 'image',
+            ref: ref,
+            availableToCreator: false,
+            createdAt: now,
+            updatedAt: now
+        };
+        setCollectionAsset(project, entry);
+        return entry;
+    }
+
+    // Repoints an already-registered Collection entry's own `.ref` to a
+    // new string for the SAME underlying bytes — the migration-retarget
+    // fix. Draft Asset Architecture's own lazy migration
+    // (AssetStore.migrateFieldsOnSave, called from
+    // worldBuilderApp.js's _collectMigrationAccessors) can rewrite an
+    // Experience's imageSrc/graphicSrc from a legacy data: URI to a
+    // vihu-asset: reference for the exact same bytes, entirely
+    // independent of Collection — without this, a naive ref-indexed
+    // lookup would either orphan the existing entry (its own .ref now
+    // points at a string nothing holds anymore) or spawn a wasteful
+    // duplicate the next time that string is registered. Never creates,
+    // never duplicates — a no-op if no entry is currently registered
+    // under oldRef.
+    function retargetCollectionAssetRef(project, oldRef, newRef) {
+        if (!oldRef || !newRef || oldRef === newRef) return null;
+        const entry = findCollectionAssetByRef(project, oldRef);
+        if (!entry) return null;
+        entry.ref = newRef;
+        entry.updatedAt = Date.now();
+        setCollectionAsset(project, entry);
+        return entry;
+    }
+
+    function renameCollectionAsset(project, id, name) {
+        const entry = findCollectionAsset(project, id);
+        if (!entry) return null;
+        entry.name = name;
+        entry.updatedAt = Date.now();
+        return entry;
+    }
+
+    function setCollectionAssetAvailability(project, id, available) {
+        const entry = findCollectionAsset(project, id);
+        if (!entry) return null;
+        entry.availableToCreator = !!available;
+        entry.updatedAt = Date.now();
+        return entry;
+    }
+
+    // Every Experience currently referencing this Collection entry —
+    // used by the Manage Collection delete confirmation to show "used
+    // by N Experiences" before a Builder commits to deleting.
+    function collectionAssetUsageCount(project, id) {
+        const entry = findCollectionAsset(project, id);
+        if (!entry) return 0;
+        let count = 0;
+        experiences(project).forEach(function (exp) {
+            const props = exp.properties || {};
+            if (props.imageSrc === entry.ref || props.graphicSrc === entry.ref) count++;
+        });
+        return count;
+    }
+
+    // Builder-only — never reachable from any Creator-facing code path
+    // ("builder can delete from collection but not creator"). Nulls
+    // every Experience's imageSrc/graphicSrc currently equal to this
+    // entry's own ref — never blocks, never fabricates a substitute —
+    // the exact discipline already established for Frame
+    // (_clearFrameReferences, "AV-012"). Routed back through the real
+    // updateExperienceProperty for each affected Experience, so its
+    // existing Engine Adapter re-sync (_syncExperienceAttachments)
+    // fires too and Working View/Runtime Preview both correctly clear,
+    // never left showing a stale image for a reference that no longer
+    // resolves to anything.
+    function deleteCollectionAsset(project, id) {
+        const entry = findCollectionAsset(project, id);
+        if (!entry) return false;
+        delete project.files['collection/' + id + '.json'];
+        if (Array.isArray(project.collectionOrder)) {
+            project.collectionOrder = project.collectionOrder.filter(function (x) { return x !== id; });
+        }
+        experiences(project).forEach(function (exp) {
+            const props = exp.properties || {};
+            if (props.imageSrc === entry.ref) updateExperienceProperty(project, exp.id, 'imageSrc', null);
+            if (props.graphicSrc === entry.ref) updateExperienceProperty(project, exp.id, 'graphicSrc', null);
+        });
+        return true;
+    }
+
+    // ---------------------------------------------------------------
     // Layer Packs (Sprint B2.0 — multiple named packs; the compiled
     // Runtime still merges every layer-packs/*.json file into one flat
     // theme.layerPack array (docs/THEME_PROJECT_SPEC.md §7, unchanged) —
@@ -958,6 +1124,17 @@ const ProjectModel = (function () {
         if (!experience.properties) experience.properties = {};
         experience.properties[key] = value;
         experience.updatedAt = Date.now();
+        // Collection auto-registration (Platform Hardening) — "any
+        // asset am adding to any scene gets added into collection
+        // also." One chokepoint covers every current and future
+        // producer (the Experience content picker's upload branch, the
+        // Decoration glyph-rasterization path) with zero per-caller
+        // changes needed. A null/cleared value (e.g. Collection's own
+        // Builder-only delete nulling a dangling reference) never
+        // registers anything.
+        if ((key === 'imageSrc' || key === 'graphicSrc') && value) {
+            registerCollectionAsset(project, value, { kind: key === 'imageSrc' ? 'image' : 'graphic', name: experience.name });
+        }
         _syncExperienceAttachments(project, experience);
         return experience;
     }
@@ -1549,6 +1726,16 @@ const ProjectModel = (function () {
         setFrameFieldValue: setFrameFieldValue,
         moveFrame: moveFrame,
         reconcileFrameReferences: reconcileFrameReferences,
+        collectionAssets: collectionAssets,
+        findCollectionAsset: findCollectionAsset,
+        findCollectionAssetByRef: findCollectionAssetByRef,
+        setCollectionAsset: setCollectionAsset,
+        registerCollectionAsset: registerCollectionAsset,
+        retargetCollectionAssetRef: retargetCollectionAssetRef,
+        renameCollectionAsset: renameCollectionAsset,
+        setCollectionAssetAvailability: setCollectionAssetAvailability,
+        collectionAssetUsageCount: collectionAssetUsageCount,
+        deleteCollectionAsset: deleteCollectionAsset,
         listLayerPacks: listLayerPacks,
         getLayerPack: getLayerPack,
         addLayerPack: addLayerPack,
