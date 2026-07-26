@@ -3549,8 +3549,39 @@ const SlideRenderer=(()=>{
     const totalH=lines.length*lineHeight;
     let ty=-totalH/2+lineHeight/2;
     const tx=(align==='left')?-w/2:(align==='right')?w/2:0;
+    // "add bold, underline and strike through styles" — the Bold half
+    // already rides the existing st.fontWeight field (_textFontString
+    // above already applies any weight, including '700'); Underline/
+    // Strikethrough have no native canvas text-decoration, so they're
+    // drawn the identical way _layerDrawText already does it for a
+    // World-owned Text object (a manually-stroked line per wrapped line,
+    // matching THAT line's own measured width, not the shared wrap
+    // width) — reused rather than reinvented, just against this
+    // function's own fixed textBaseline='middle' (_layerDrawText varies
+    // its baseline approximation per vAlign; a freeform sticker only
+    // ever centers vertically, so only that one case is needed here).
+    const hasUnderline=!!st.underline, hasStrikethrough=!!st.strikethrough;
     lines.forEach(function(line){
       x.fillText(line,tx,ty);
+      if(hasUnderline || hasStrikethrough){
+        const lw=x.measureText(line).width;
+        let lsx=tx-lw/2, lex=tx+lw/2;
+        if(align==='left'){ lsx=tx; lex=tx+lw; }
+        else if(align==='right'){ lsx=tx-lw; lex=tx; }
+        const baselineY=ty+size*0.3;
+        x.save();
+        x.strokeStyle=x.fillStyle;
+        x.lineWidth=Math.max(1,size*0.06);
+        if(hasUnderline){
+          const uy=baselineY+size*0.08;
+          x.beginPath(); x.moveTo(lsx,uy); x.lineTo(lex,uy); x.stroke();
+        }
+        if(hasStrikethrough){
+          const sy=baselineY-size*0.3;
+          x.beginPath(); x.moveTo(lsx,sy); x.lineTo(lex,sy); x.stroke();
+        }
+        x.restore();
+      }
       ty+=lineHeight;
     });
     x.restore();

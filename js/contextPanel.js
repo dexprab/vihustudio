@@ -812,16 +812,6 @@ const ContextPanel=(function(){
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
     {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
   ];
-  const STICKER_TEXT_WEIGHT_OPTIONS=[
-    {value:'',label:'Default'},
-    {value:'300',label:'Light'},
-    {value:'400',label:'Regular'},
-    {value:'500',label:'Medium'},
-    {value:'600',label:'Semibold'},
-    {value:'700',label:'Bold'},
-    {value:'900',label:'Black'}
-  ];
-
   // "2 corrections for text object" — 1) a Delete option inside the
   // quick-edit popup ("under modify delete is also an option, add
   // that"); 2) from a Story-owned freeform text sticker's SECOND
@@ -837,6 +827,16 @@ const ContextPanel=(function(){
   // _stickerUpdate, never setContentOverride's elementOverrides bag
   // (that bag is keyed for World-owned objects and isn't this object's
   // own storage at all).
+  //
+  // "remove the weights drop down. add bold, underline and strike
+  // through styles" — the Weight dropdown (STICKER_TEXT_WEIGHT_OPTIONS)
+  // is retired outright, matching the exact same trade the World-owned
+  // Text popup already made ("weight is a very technical term, is that
+  // drop down even needed?") — Bold folds into the Style row as one more
+  // _makeMultiToggleRow toggle, sharing the same fontWeight field the
+  // dropdown used to write ('700' on, '' off). Font Family now spans its
+  // own row alone (_pairRow's own cellB===null branch already handles a
+  // lone, full-width cell).
   function _appendStickerTextEditControl(container,sceneObj){
     const slide=_currentSlide();
     if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.findSticker!=='function' || typeof SceneEngine.updateSticker!=='function') return false;
@@ -856,10 +856,30 @@ const ContextPanel=(function(){
 
     container.appendChild(_el('div','designer-sublabel','Typography'));
     const familyCell=_makeSelectRow(null,'Font',STICKER_TEXT_FONT_OPTIONS,st.fontFamily||'',function(val){ update({fontFamily:val}); });
-    const weightCell=_makeSelectRow(null,'Weight',STICKER_TEXT_WEIGHT_OPTIONS,st.fontWeight||'',function(val){ update({fontWeight:val}); });
-    _pairRow(container,familyCell,weightCell);
+    _pairRow(container,familyCell,null);
 
-    const styleCell=_makeIconChoiceRow(null,'Style',[['normal','Normal'],['italic','Italic']],st.fontStyle||'normal',function(val){ update({fontStyle:val}); });
+    // Bold/Italic/Underline/Strikethrough — a multi-select toggle row
+    // (any combination can be active at once), mirroring the World-owned
+    // Text popup's own [['bold','B'],['italic','I'],['underline','U'],
+    // ['strikethrough','S']] shape exactly. Bold shares the sticker's own
+    // fontWeight field ('700' on, '' off — matching what the retired
+    // Weight dropdown used to write); Italic keeps writing fontStyle as
+    // 'italic'/'normal' (the exact stored shape this popup's own prior
+    // single-select Style row already used, so an already-authored
+    // sticker's fontStyle value keeps meaning the same thing); Underline/
+    // Strikethrough are new plain boolean instance fields, drawn by
+    // renderer/slideRenderer.js's _drawFreeformText.
+    const styleState={bold:st.fontWeight==='700',italic:st.fontStyle==='italic',underline:!!st.underline,strikethrough:!!st.strikethrough};
+    const styleCell=_makeMultiToggleRow(null,'Style',[['bold','B'],['italic','I'],['underline','U'],['strikethrough','S']],function(key){
+      return styleState[key];
+    },function(key){
+      const next=!styleState[key];
+      if(key==='bold') update({fontWeight:next?'700':''});
+      else if(key==='italic') update({fontStyle:next?'italic':'normal'});
+      else if(key==='underline') update({underline:next});
+      else update({strikethrough:next});
+      styleState[key]=next;
+    });
     const alignCell=_makeIconChoiceRow(null,'Alignment',[['left','Left'],['center','Center'],['right','Right']],st.align||'center',function(val){ update({align:val}); });
     _pairRow(container,styleCell,alignCell);
 
