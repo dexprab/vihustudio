@@ -392,6 +392,10 @@ const ContextPanel=(function(){
     {value:'900',label:'Black'}
   ];
 
+  // Every builder below now optionally appends (pass a real `parent`) or
+  // just returns the built row unattached (`parent` falsy) — the second
+  // form is what lets _pairRow() below combine two of these into one
+  // shared line instead of each claiming a full row of its own.
   function _makeRangeRow(parent,opts){
     // opts: {labelText, min, max, step, value, format(v), onInput(v)}
     const row=_el('div','designer-row context-row');
@@ -413,7 +417,8 @@ const ContextPanel=(function(){
       opts.onInput(v);
     });
     row.appendChild(slider);
-    parent.appendChild(row);
+    if(parent) parent.appendChild(row);
+    return row;
   }
 
   function _makeSelectRow(parent,labelText,options,currentValue,onChange){
@@ -429,7 +434,8 @@ const ContextPanel=(function(){
     sel.value=currentValue||'';
     sel.addEventListener('change',function(){ onChange(sel.value); });
     row.appendChild(sel);
-    parent.appendChild(row);
+    if(parent) parent.appendChild(row);
+    return row;
   }
 
   function _makeIconChoiceRow(parent,labelText,choices,currentValue,onChoose){
@@ -449,7 +455,40 @@ const ContextPanel=(function(){
       icons.appendChild(btn);
     });
     row.appendChild(icons);
-    parent.appendChild(row);
+    if(parent) parent.appendChild(row);
+    return row;
+  }
+
+  function _makeColorRow(parent,labelText,colorValue,onInput){
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label',labelText));
+    const input=document.createElement('input');
+    input.type='color';
+    input.className='theme-color-input';
+    input.value=_safeColor(colorValue);
+    input.addEventListener('input',function(){ onInput(input.value); });
+    row.appendChild(input);
+    if(parent) parent.appendChild(row);
+    return row;
+  }
+
+  // Popup-cramping fix (screenshot-reported: "all options are not visible,
+  // scroll is needed but i dont want scroll") — pairs two short field rows
+  // side by side on one line instead of each stacking as its own full-width
+  // row, mirroring World Builder's own established _fieldRow()/
+  // _buildFieldGroup() pairing convention (tools/world-builder-v2's
+  // Inspector already solved this exact "too many stacked fields, not
+  // enough vertical room" problem the same way). `cellB` is optional — a
+  // lone cell (e.g. Rotation with no Colour to pair with, on a moveable-
+  // only object) spans the row's own full width on its own, never left
+  // half-empty.
+  function _pairRow(container,cellA,cellB){
+    if(!cellA) return;
+    if(!cellB){ container.appendChild(cellA); return; }
+    const row=_el('div','context-field-row');
+    row.appendChild(cellA);
+    row.appendChild(cellB);
+    container.appendChild(row);
   }
 
   // Kind-specific in-place edit control, built from the exact same
@@ -481,20 +520,32 @@ const ContextPanel=(function(){
     // for color/image/text), so read the same bag renderer/
     // slideRenderer.js's own _layerOverride reads, directly.
     const ov=(slide.metadata && slide.metadata.elementOverrides && slide.metadata.elementOverrides[sceneObj.id]) || {};
+
+    // Built first, regardless of order below, so it can be paired onto
+    // Colour's own row when both are present (screenshot-reported: the
+    // popup was cramped enough to need a scrollbar with every field
+    // stacked one-per-line) — or stand alone, full-width, when Colour
+    // isn't shown at all (a moveable:true/editable:false object still
+    // needs a reachable Rotation control with nothing to pair it with).
+    let rotationCell=null;
+    if(v.kind==='text' && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
+      rotationCell=_makeRangeRow(null,{
+        labelText:'Rotation',min:-180,max:180,step:1,
+        value:(typeof ov.rotation==='number')?ov.rotation:0,
+        format:function(n){ return Math.round(n)+'°'; },
+        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
+      });
+      mounted=true;
+    }
+
     if(sceneObj.editable){
       if(v.kind==='color' || v.kind==='shape'){
-        const row=_el('div','designer-row context-row');
-        row.appendChild(_el('div','designer-row-label','Colour'));
-        const input=document.createElement('input');
-        input.type='color';
-        input.className='theme-color-input';
-        input.value=_safeColor(v.color||v.fillColor);
-        input.addEventListener('input',function(){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',input.value);
+        const colorCell=_makeColorRow(null,'Colour',v.color||v.fillColor,function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',val);
           _afterWorldObjectEdit();
         });
-        row.appendChild(input);
-        container.appendChild(row);
+        _pairRow(container,colorCell,rotationCell);
+        rotationCell=null;
         mounted=true;
       }else if(v.kind==='image'){
         const btn=_el('button','context-btn','🖼️ Replace Image');
@@ -531,58 +582,58 @@ const ContextPanel=(function(){
         container.appendChild(textarea);
 
         container.appendChild(_el('div','designer-sublabel','Typography'));
-        _makeSelectRow(container,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
+        // Paired into 4 shared rows instead of 7 stacked ones (Family,
+        // Weight, Style, Alignment, Size, Opacity, Colour/Rotation) —
+        // closes the vertical space the un-paired layout needed, the
+        // real cause of the reported cramped/scrolling popup.
+        const familyCell=_makeSelectRow(null,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
           _afterWorldObjectEdit();
         });
-        _makeRangeRow(container,{
+        const weightCell=_makeSelectRow(null,'Weight',WORLD_TEXT_WEIGHT_OPTIONS,ov.fontWeight||'',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fontWeight',val===''?null:val);
+          _afterWorldObjectEdit();
+        });
+        _pairRow(container,familyCell,weightCell);
+
+        const styleCell=_makeIconChoiceRow(null,'Style',[['normal','Normal'],['italic','Italic']],ov.fontStyle||'normal',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',val==='normal'?null:val);
+          _afterWorldObjectEdit();
+        });
+        const alignCell=_makeIconChoiceRow(null,'Alignment',[['left','Left'],['center','Center'],['right','Right']],ov.alignment||'',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'alignment',val);
+          _afterWorldObjectEdit();
+        });
+        _pairRow(container,styleCell,alignCell);
+
+        const sizeCell=_makeRangeRow(null,{
           labelText:'Font Size',min:12,max:96,step:1,
           value:(typeof ov.fontSize==='number')?ov.fontSize:24,
           format:function(n){ return Math.round(n)+'px'; },
           onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'fontSize',Math.round(n)); _afterWorldObjectEdit(); }
         });
-        _makeSelectRow(container,'Weight',WORLD_TEXT_WEIGHT_OPTIONS,ov.fontWeight||'',function(val){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'fontWeight',val===''?null:val);
-          _afterWorldObjectEdit();
-        });
-        _makeIconChoiceRow(container,'Style',[['normal','Normal'],['italic','Italic']],ov.fontStyle||'normal',function(val){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',val==='normal'?null:val);
-          _afterWorldObjectEdit();
-        });
-        const colorRow=_el('div','designer-row context-row');
-        colorRow.appendChild(_el('div','designer-row-label','Colour'));
-        const colorInput=document.createElement('input');
-        colorInput.type='color';
-        colorInput.className='theme-color-input';
-        colorInput.value=_safeColor(ov.color);
-        colorInput.addEventListener('input',function(){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'color',colorInput.value);
-          _afterWorldObjectEdit();
-        });
-        colorRow.appendChild(colorInput);
-        container.appendChild(colorRow);
-        _makeIconChoiceRow(container,'Alignment',[['left','Left'],['center','Center'],['right','Right']],ov.alignment||'',function(val){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'alignment',val);
-          _afterWorldObjectEdit();
-        });
-        _makeRangeRow(container,{
+        const opacityCell=_makeRangeRow(null,{
           labelText:'Opacity',min:0,max:1,step:0.01,
           value:(typeof ov.opacity==='number')?ov.opacity:1,
           format:function(n){ return Math.round(n*100)+'%'; },
           onInput:function(n){ SceneEngine.setOpacity(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
         });
+        _pairRow(container,sizeCell,opacityCell);
+
+        const colorCell=_makeColorRow(null,'Colour',ov.color,function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'color',val);
+          _afterWorldObjectEdit();
+        });
+        _pairRow(container,colorCell,rotationCell);
+        rotationCell=null;
         mounted=true;
       }
     }
-    if(v.kind==='text' && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
-      _makeRangeRow(container,{
-        labelText:'Rotation',min:-180,max:180,step:1,
-        value:(typeof ov.rotation==='number')?ov.rotation:0,
-        format:function(n){ return Math.round(n)+'°'; },
-        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
-      });
-      mounted=true;
-    }
+    // Only reached when Rotation was built but nothing above claimed it
+    // as a pairing partner (editable:false, or a color/shape/image kind
+    // that never builds a rotationCell in the first place) — its own
+    // full-width row rather than being silently dropped.
+    if(rotationCell) container.appendChild(rotationCell);
     return mounted;
   }
 

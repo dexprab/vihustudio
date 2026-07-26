@@ -438,12 +438,20 @@ button:active{
  * the inline edit popup grows). The .selection-action-strip-top fallback
  * (a narrow viewport with no side gutter at all) drops out of absolute
  * positioning into the column's own normal flow instead, which
- * structurally can never overlap the canvas below it either. */
+ * structurally can never overlap the canvas below it either.
+ * Widened from 230/280px (World-owned Text popup layout fix) — paired
+ * with the .context-field-row 2-column layout further down, this gives
+ * the quick-edit popup enough room for two short controls to share one
+ * line instead of every field claiming a full row of its own, which is
+ * what made the popup need a scrollbar. _positionWidget() re-measures
+ * the real rendered width every time, so a wider popup that genuinely
+ * doesn't fit in either gutter still falls back correctly, with no JS
+ * change needed here. */
 .selection-action-strip{
   position:absolute;
   top:16px;
   width:auto;
-  max-width:230px;
+  max-width:300px;
   min-width:160px;
   display:flex;
   flex-direction:column;
@@ -454,6 +462,8 @@ button:active{
   padding:10px 12px;
   box-shadow:0 4px 16px rgba(0,0,0,0.14);
   z-index:5;
+  max-height:calc(100vh - 96px);
+  overflow-y:auto;
 }
 .selection-action-strip-hidden{ display:none; }
 .selection-action-strip-side-right{ right:16px; left:auto; }
@@ -462,7 +472,7 @@ button:active{
   position:static;
   align-self:flex-start;
   width:auto;
-  max-width:280px;
+  max-width:340px;
   margin-bottom:10px;
 }
 .selection-action-strip-row{
@@ -526,7 +536,7 @@ button:active{
 .selection-action-edit-panel{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:6px;
   padding-top:8px;
   margin-top:2px;
   border-top:1px solid var(--line);
@@ -554,14 +564,19 @@ button:active{
 .selection-action-open-panel-btn:hover{ border-color:var(--gold); background:rgba(255,203,69,0.14); }
 /* The real quick-edit control (ContextPanel.mountQuickEditControl) was
  * designed for the right panel's own wider column — a couple of small
- * overrides keep it tidy inside this narrower ~200px popup rather than
+ * overrides keep it tidy inside this narrower ~270px popup rather than
  * an auto-width pill button wrapping awkwardly. */
 .selection-action-edit-panel .context-btn{ width:100%; text-align:center; }
-.selection-action-edit-panel .context-textarea{ min-height:56px; }
+.selection-action-edit-panel .context-textarea{ min-height:52px; }
+/* A little tighter than the shared .designer-row default (10px) — every
+ * px matters in a popup this narrow/short, and .context-field-row below
+ * already carries its own margin-bottom for the paired case. */
+.selection-action-edit-panel .designer-row{ margin-bottom:8px; }
+.selection-action-edit-panel .designer-row:last-child{ margin-bottom:0; }
 /* Honor Grid follow-up — the World-owned Text object build's Typography/
  * Rotation/Opacity controls. Matches .context-textarea's own weight
  * (border/radius/background) rather than a plain unstyled <select>/
- * <input type=range>, and scoped to width:100% for this same ~200px
+ * <input type=range>, and scoped to width:100% for this same narrow
  * popup .context-textarea already had to be narrowed for. */
 .context-select{
   width:100%;
@@ -587,6 +602,28 @@ button:active{
 }
 .selection-action-edit-panel .icon-row{ flex-wrap:wrap; }
 .selection-action-edit-panel .icon-card{ min-width:0; flex:1 1 auto; }
+
+/* Popup-cramping fix (screenshot-reported: "all options are not visible.
+ * scroll is needed but i dont want to put scroll... need alternative way
+ * ... options are visible, scroll is last way out") — two short field
+ * rows (a select, a slider, an icon-choice row, a colour swatch) share
+ * one line instead of each claiming a full row of its own, mirroring
+ * World Builder's own established _fieldRow()/_buildFieldGroup() pairing
+ * convention (tools/world-builder-v2's Inspector already solved this
+ * exact too-many-stacked-fields problem the same way). A lone cell with
+ * no partner (js/contextPanel.js's _pairRow appends it directly, never
+ * wrapped in this class) spans the full width on its own. */
+.context-field-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px;
+}
+.context-field-row:last-child{ margin-bottom:0; }
+.context-field-row .designer-row{
+  flex:1;
+  min-width:0;
+  margin-bottom:0;
+}
 
 #previewCanvas{
   /* Fluid sizing so the display expands to match the available
