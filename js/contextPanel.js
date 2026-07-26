@@ -76,6 +76,17 @@ const ContextPanel=(function(){
   let personalizeOpenSection=null;
   let _lastSelectionKey=null;
 
+  // "2 corrections for text object" — a Story-owned freeform text
+  // sticker's own first-ever selection still opens the full right-panel
+  // editor (today's exact existing behaviour); every selection after
+  // that routes to the lightweight quick-edit popup instead. Computed
+  // exactly once per genuine new selection (inside refresh()'s own
+  // key!==_lastSelectionKey gate, via _consumeStickerTextFirstEdition
+  // below) — never re-derived on a same-selection refresh() triggered by
+  // typing mid-edit, or the very first editing session would itself get
+  // yanked over to the popup the instant the first keystroke fires one.
+  let _currentStickerTextFirstEdition=true;
+
   // "need back button to go to previous selection else every time have
   // to reset it by clicking outside" — a small, real selection history
   // (browser-back-button semantics), independent of Personalize's own
@@ -208,6 +219,13 @@ const ContextPanel=(function(){
       }
       personalizeExpanded=false;
       personalizeOpenSection=null;
+      // "2 corrections for text object" — computed here, exactly once
+      // per genuine new selection, same reasoning as the reset above:
+      // a same-selection refresh() (e.g. every keystroke while the
+      // right-panel editor is open) must never re-derive this and yank
+      // a Story Author's own first editing session over to the popup
+      // mid-sentence.
+      _currentStickerTextFirstEdition=_consumeStickerTextFirstEdition(sceneId,sceneType);
     }
     _lastSelectionSnapshot={sceneId:sceneId,sceneType:sceneType,textId:textId};
     _lastSelectionKey=key;
@@ -244,6 +262,18 @@ const ContextPanel=(function(){
         // contradicting it.
         _hideAllTabs();
         _renderWorldObjectDisclosure(sceneObj);
+        return;
+      }
+      // "2 corrections for text object" — a Story-owned freeform text
+      // sticker's own SECOND and later selection routes to the
+      // lightweight quick-edit popup pointer view instead of reopening
+      // the full right-panel editor every time; its first-ever
+      // selection (the flag computed above, once, on this same genuine
+      // selection change) falls straight through to the existing
+      // unconditional behaviour right below, unchanged.
+      if(sceneType==='sticker' && sceneObj.visual && sceneObj.visual.kind==='text' && !_currentStickerTextFirstEdition){
+        _hideAllTabs();
+        _renderStickerTextQuickEditPointer(sceneObj);
         return;
       }
       _setTabVisible('card-tab');
@@ -286,6 +316,33 @@ const ContextPanel=(function(){
       : ((typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getSceneElements==='function') ? SlideRenderer.getSceneElements() : []);
     for(let i=0;i<list.length;i++){ if(list[i].id===sceneId) return list[i]; }
     return null;
+  }
+
+  // "2 corrections for text object" — decides (and durably records) which
+  // edition a Story-owned freeform text sticker's selection is: the
+  // FIRST time it's ever opened here (the sticker instance carries no
+  // `_edited` flag yet) returns true and stamps `_edited:true` right
+  // away — a later reselection of the SAME sticker, this session or any
+  // future one (the flag rides on the sticker instance, saved with the
+  // slide), then correctly returns false. Reads the sticker's own
+  // `kind` field directly rather than needing the render-tree's
+  // `visual.kind` — this runs from refresh()'s own key-change gate,
+  // before the render-tree lookup that would otherwise supply it.
+  // Every non-text-sticker selection (World-owned objects, Places,
+  // Scene blueprint elements, shape/doodle/glyph stickers) always
+  // returns true — the flag has no meaning for them, so the caller's
+  // own dispatch is what actually decides whether this value is ever
+  // consulted at all.
+  function _consumeStickerTextFirstEdition(sceneId,sceneType){
+    if(sceneType!=='sticker' || !sceneId) return true;
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.findSticker!=='function' || typeof SceneEngine.updateSticker!=='function') return true;
+    let st;
+    try{ st=SceneEngine.findSticker(slide,sceneId); }catch(e){ st=null; }
+    if(!st || st.kind!=='text') return true;
+    if(st._edited) return false;
+    try{ SceneEngine.updateSticker(slide,sceneId,{_edited:true}); }catch(e){}
+    return true;
   }
 
   // "need back button to go to previous selection else every time have
@@ -344,8 +401,12 @@ const ContextPanel=(function(){
   // calls refresh() (which would rebuild this very panel — including
   // the input the child is actively using — mid-edit); redraws the
   // canvas + Object Strip only, exactly like every other in-place edit
-  // control elsewhere in Creator already does.
-  function _afterWorldObjectEdit(){
+  // control elsewhere in Creator already does. Renamed from
+  // _afterWorldObjectEdit — a Story-owned freeform text sticker's own
+  // quick-edit popup (_appendStickerTextEditControl below) now shares
+  // this exact same commit tail, so the name no longer says "World"
+  // only.
+  function _afterQuickEditChange(){
     // Diagnostic-only addition — this catch used to swallow whatever
     // host.redraw() throws with zero signal, which could leave the
     // canvas silently stuck on its last successfully-drawn frame after
@@ -469,7 +530,7 @@ const ContextPanel=(function(){
   // applied. `isActive(value)` seeds each button's initial state from the
   // current model; after that, each button's own class toggle is the
   // source of truth for the rest of this popup's lifetime (mirrors how
-  // this file never rebuilds the popup mid-edit — _afterWorldObjectEdit
+  // this file never rebuilds the popup mid-edit — _afterQuickEditChange
   // deliberately never calls refresh() — so there's nothing that would
   // re-derive it from a stale closure anyway).
   function _makeMultiToggleRow(parent,labelText,choices,isActive,onToggle){
@@ -571,7 +632,7 @@ const ContextPanel=(function(){
         labelText:'Rotation',min:-180,max:180,step:1,
         value:(typeof ov.rotation==='number')?ov.rotation:0,
         format:function(n){ return Math.round(n)+'°'; },
-        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
+        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterQuickEditChange(); }
       });
       mounted=true;
     }
@@ -580,7 +641,7 @@ const ContextPanel=(function(){
       if(v.kind==='color' || v.kind==='shape'){
         const colorCell=_makeColorRow(null,'Colour',v.color||v.fillColor,function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fillColor',val);
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         _pairRow(container,colorCell,rotationCell);
         rotationCell=null;
@@ -599,7 +660,7 @@ const ContextPanel=(function(){
             reader.onload=function(){
               _storeUploadedAsset(reader.result,function(finalRef){
                 SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
-                _afterWorldObjectEdit();
+                _afterQuickEditChange();
               });
             };
             reader.readAsDataURL(file);
@@ -615,7 +676,7 @@ const ContextPanel=(function(){
         textarea.value=v.content||'';
         textarea.addEventListener('input',function(){
           SceneEngine.setContentOverride(slide,sceneObj.id,'content',textarea.value);
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         container.appendChild(textarea);
 
@@ -626,7 +687,7 @@ const ContextPanel=(function(){
         // already handles "just append this one row," no new plumbing.
         const familyCell=_makeSelectRow(null,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         _pairRow(container,familyCell,null);
 
@@ -652,11 +713,11 @@ const ContextPanel=(function(){
           else if(key==='italic') SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',next?'italic':null);
           else SceneEngine.setContentOverride(slide,sceneObj.id,key,next?true:null);
           styleState[key]=next;
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         const alignCell=_makeIconChoiceRow(null,'Alignment',[['left','Left'],['center','Center'],['right','Right']],ov.alignment||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'alignment',val);
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         _pairRow(container,styleCell,alignCell);
 
@@ -664,19 +725,19 @@ const ContextPanel=(function(){
           labelText:'Font Size',min:12,max:96,step:1,
           value:(typeof ov.fontSize==='number')?ov.fontSize:24,
           format:function(n){ return Math.round(n)+'px'; },
-          onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'fontSize',Math.round(n)); _afterWorldObjectEdit(); }
+          onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'fontSize',Math.round(n)); _afterQuickEditChange(); }
         });
         const opacityCell=_makeRangeRow(null,{
           labelText:'Opacity',min:0,max:1,step:0.01,
           value:(typeof ov.opacity==='number')?ov.opacity:1,
           format:function(n){ return Math.round(n*100)+'%'; },
-          onInput:function(n){ SceneEngine.setOpacity(slide,sceneObj.id,n); _afterWorldObjectEdit(); }
+          onInput:function(n){ SceneEngine.setOpacity(slide,sceneObj.id,n); _afterQuickEditChange(); }
         });
         _pairRow(container,sizeCell,opacityCell);
 
         const colorCell=_makeColorRow(null,'Colour',ov.color,function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'color',val);
-          _afterWorldObjectEdit();
+          _afterQuickEditChange();
         });
         _pairRow(container,colorCell,rotationCell);
         rotationCell=null;
@@ -695,21 +756,156 @@ const ContextPanel=(function(){
   // (js/selectionActionStrip.js) -- reuses this exact rendering/write
   // path rather than a second implementation, so the strip's control and
   // this panel's own disclosure can never disagree about what a field
-  // means or where it writes. Deliberately scoped to World-owned objects
-  // only (owner==='world') -- a Story-owned sticker's own content lives
-  // in a completely different bag (SceneEngine.updateSticker's instance
-  // fields, not setContentOverride's elementOverrides), so reusing this
-  // function for one would silently write to the wrong place.
-  // Honor Grid follow-up — no longer gates on sceneObj.editable up front
-  // (Rotation is real and reachable on a moveable:true/editable:false
-  // object too) — _appendWorldObjectEditControl itself decides per honor
-  // now and reports back whether anything was actually mounted, so the
-  // caller can show its own fallback when there's nothing to mount.
+  // means or where it writes.
+  // Honor Grid follow-up — no longer gates World-owned objects on
+  // sceneObj.editable up front (Rotation is real and reachable on a
+  // moveable:true/editable:false object too) — _appendWorldObjectEditControl
+  // itself decides per honor now and reports back whether anything was
+  // actually mounted, so the caller can show its own fallback when
+  // there's nothing to mount.
+  // "2 corrections for text object" — widened beyond World-owned objects
+  // to also cover a Story-owned freeform text sticker (owner==='story',
+  // type==='sticker', visual.kind==='text') on its SECOND and later
+  // selection (js/selectionActionStrip.js only ever opens this popup at
+  // all; refresh()'s own first-edition gate below decides whether that
+  // popup or the full right-panel editor is what a given selection
+  // reaches). A World-owned object's content lives in
+  // slide.metadata.elementOverrides (SceneEngine.setContentOverride); a
+  // Story-owned sticker's own content lives in a completely different
+  // bag — its own instance fields on slide.metadata.stickers[]
+  // (SceneEngine.updateSticker) — so this dispatches on ownership first,
+  // routing each kind to its own, separate write path rather than
+  // silently writing to the wrong one.
   function mountQuickEditControl(container,sceneObj){
-    if(!container || !sceneObj || sceneObj.owner!=='world') return false;
-    const v=sceneObj.visual;
-    if(!v || !(v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')) return false;
-    return _appendWorldObjectEditControl(container,sceneObj,v);
+    if(!container || !sceneObj) return false;
+    if(sceneObj.owner==='world'){
+      const v=sceneObj.visual;
+      if(!v || !(v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')) return false;
+      return _appendWorldObjectEditControl(container,sceneObj,v);
+    }
+    if(sceneObj.type==='sticker' && sceneObj.visual && sceneObj.visual.kind==='text'){
+      return _appendStickerTextEditControl(container,sceneObj);
+    }
+    return false;
+  }
+
+  // "2 corrections for text object" — mirrors js/cardDesigner.js's own
+  // sticker-Text-group option lists field-for-field (same values, so a
+  // Story Author sees identical choices whichever surface they're on),
+  // duplicated as this module's own small copy rather than reaching into
+  // cardDesigner.js's private, closure-scoped FONT_FAMILY_OPTIONS/
+  // FONT_WEIGHT_OPTIONS — matching this file's own established
+  // WORLD_TEXT_FONT_OPTIONS precedent. The first option is relabelled
+  // 'Default' rather than 'World Default': a freeform sticker has no
+  // Theme backing it (renderer/slideRenderer.js's _drawFreeformText falls
+  // back to plain Georgia serif / unweighted, never a World value), so
+  // "World Default" would be a wrong claim here.
+  const STICKER_TEXT_FONT_OPTIONS=[
+    {value:'',label:'Default'},
+    {value:'Georgia, serif',label:'Georgia'},
+    {value:'"Times New Roman", Times, serif',label:'Times'},
+    {value:'Arial, Helvetica, sans-serif',label:'Arial'},
+    {value:'"Helvetica Neue", Helvetica, Arial, sans-serif',label:'Helvetica'},
+    {value:'"Trebuchet MS", sans-serif',label:'Trebuchet'},
+    {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
+    {value:'"Courier New", Courier, monospace',label:'Courier'},
+    {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+  ];
+  const STICKER_TEXT_WEIGHT_OPTIONS=[
+    {value:'',label:'Default'},
+    {value:'300',label:'Light'},
+    {value:'400',label:'Regular'},
+    {value:'500',label:'Medium'},
+    {value:'600',label:'Semibold'},
+    {value:'700',label:'Bold'},
+    {value:'900',label:'Black'}
+  ];
+
+  // "2 corrections for text object" — 1) a Delete option inside the
+  // quick-edit popup ("under modify delete is also an option, add
+  // that"); 2) from a Story-owned freeform text sticker's SECOND
+  // selection onward, this popup (not the full right-panel editor) is
+  // what a Story Author reaches — see refresh()'s own
+  // _consumeStickerTextFirstEdition gate below. Mirrors
+  // js/cardDesigner.js's own sticker Text group field-for-field (Words/
+  // Font/Size/Weight/Style/Colour/Alignment/Width, plus the Rotation/
+  // Opacity rows every sticker kind shares there) — same option lists,
+  // same default fallback values, so a Story Author sees the identical
+  // control language whichever surface reaches it; writes through
+  // SceneEngine.updateSticker exactly like CardDesigner's own
+  // _stickerUpdate, never setContentOverride's elementOverrides bag
+  // (that bag is keyed for World-owned objects and isn't this object's
+  // own storage at all).
+  function _appendStickerTextEditControl(container,sceneObj){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.findSticker!=='function' || typeof SceneEngine.updateSticker!=='function') return false;
+    const st=SceneEngine.findSticker(slide,sceneObj.id);
+    if(!st) return false;
+    const update=function(changes){
+      SceneEngine.updateSticker(slide,sceneObj.id,changes);
+      _afterQuickEditChange();
+    };
+
+    container.appendChild(_el('div','designer-row-label','Words'));
+    const textarea=document.createElement('textarea');
+    textarea.className='context-textarea';
+    textarea.value=typeof st.text==='string'?st.text:'';
+    textarea.addEventListener('input',function(){ update({text:textarea.value}); });
+    container.appendChild((typeof EmojiPicker!=='undefined' && typeof EmojiPicker.wrap==='function') ? EmojiPicker.wrap(textarea) : textarea);
+
+    container.appendChild(_el('div','designer-sublabel','Typography'));
+    const familyCell=_makeSelectRow(null,'Font',STICKER_TEXT_FONT_OPTIONS,st.fontFamily||'',function(val){ update({fontFamily:val}); });
+    const weightCell=_makeSelectRow(null,'Weight',STICKER_TEXT_WEIGHT_OPTIONS,st.fontWeight||'',function(val){ update({fontWeight:val}); });
+    _pairRow(container,familyCell,weightCell);
+
+    const styleCell=_makeIconChoiceRow(null,'Style',[['normal','Normal'],['italic','Italic']],st.fontStyle||'normal',function(val){ update({fontStyle:val}); });
+    const alignCell=_makeIconChoiceRow(null,'Alignment',[['left','Left'],['center','Center'],['right','Right']],st.align||'center',function(val){ update({align:val}); });
+    _pairRow(container,styleCell,alignCell);
+
+    const sizeCell=_makeRangeRow(null,{
+      labelText:'Font Size',min:16,max:140,step:1,
+      value:(typeof st.fontSize==='number')?st.fontSize:44,
+      format:function(n){ return Math.round(n)+'px'; },
+      onInput:function(n){ update({fontSize:Math.round(n)}); }
+    });
+    const widthCell=_makeRangeRow(null,{
+      labelText:'Width',min:120,max:1000,step:1,
+      value:(typeof st.w==='number')?st.w:420,
+      format:function(n){ return Math.round(n)+'px'; },
+      onInput:function(n){ update({w:Math.round(n)}); }
+    });
+    _pairRow(container,sizeCell,widthCell);
+
+    const colorCell=_makeColorRow(null,'Colour',st.color||'#1D3457',function(val){ update({color:val}); });
+    const opacityCell=_makeRangeRow(null,{
+      labelText:'See Through',min:0,max:1,step:0.01,
+      value:(typeof st.opacity==='number')?st.opacity:1,
+      format:function(n){ return Math.round(n*100)+'%'; },
+      onInput:function(n){ update({opacity:Math.round(n*100)/100}); }
+    });
+    _pairRow(container,colorCell,opacityCell);
+
+    const rotationCell=_makeRangeRow(null,{
+      labelText:'Spin',min:-180,max:180,step:1,
+      value:(typeof st.rotation==='number')?st.rotation:0,
+      format:function(n){ return Math.round(n)+'°'; },
+      onInput:function(n){ update({rotation:Math.round(n)}); }
+    });
+    _pairRow(container,rotationCell,null);
+
+    const delBtn=document.createElement('button');
+    delBtn.type='button';
+    delBtn.className='context-btn selection-quick-delete-btn';
+    delBtn.textContent='🗑 Delete';
+    delBtn.addEventListener('click',function(){
+      SceneEngine.removeSticker(slide,sceneObj.id);
+      if(typeof PageRuntime!=='undefined'){ try{ PageRuntime.clearSelection(); }catch(e){} }
+      _afterQuickEditChange();
+    });
+    container.appendChild(delBtn);
+
+    return true;
   }
 
   // Decoration Slot — "Let the Story Author add their own decorations
@@ -773,6 +969,47 @@ const ContextPanel=(function(){
     ));
     if(hasRealControl && !stripAvailable) _appendWorldObjectEditControl(panelRoot,sceneObj,v);
     if(sceneObj.decorationSlot) _appendDecorationSlotButton(sceneObj);
+    _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
+  }
+
+  // "2 corrections for text object" — the lightweight view a Story-owned
+  // freeform text sticker's SECOND and later selections land on (its
+  // first-ever selection still opens the full right-panel editor via
+  // _renderSelectionHeading below, unchanged). Mirrors
+  // _renderWorldObjectDisclosure's own banner/back/status/hint shape,
+  // but never shows a Delete button here itself — that lives inside the
+  // Selection Action Strip's own popup (_appendStickerTextEditControl),
+  // matching this file's own already-established "one live control, not
+  // two independent DOM nodes bound to the same value" rule. When the
+  // strip isn't loaded at all (defensive — should not happen in
+  // production), "Open Full Editor →" is still a real, always-reachable
+  // escape hatch into the identical full editor a first-time selection
+  // gets.
+  function _renderStickerTextQuickEditPointer(sceneObj){
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    const banner=_el('div','context-panel-heading context-selection-banner');
+    banner.appendChild(_el('span','context-selection-banner-icon','📝'));
+    banner.appendChild(_el('span','context-selection-banner-label','Your Text'));
+    panelRoot.appendChild(banner);
+    _appendBackControl(panelRoot);
+    _appendStatusPill(panelRoot,'✏️','You can edit this','editable');
+    const stripAvailable=typeof SelectionActionStrip!=='undefined';
+    panelRoot.appendChild(_el('div','context-nothing-selected-hint',
+      stripAvailable
+        ? 'You’ve already set this up once — tap ✏️ Edit on the toolbar above the page to make more changes, or open the full editor below.'
+        : 'You’ve already set this up once — use the full editor below to make more changes.'
+    ));
+    const link=document.createElement('button');
+    link.type='button';
+    link.className='context-btn';
+    link.textContent='Open Full Editor →';
+    link.addEventListener('click',function(){
+      _setTabVisible('card-tab');
+      _setCardSections(['sticker']);
+      _renderSelectionHeading('sticker');
+    });
+    panelRoot.appendChild(link);
     _renderPersonalizeZone(panelRoot,{full:personalizeExpanded});
   }
 
