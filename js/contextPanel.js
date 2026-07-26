@@ -382,15 +382,15 @@ const ContextPanel=(function(){
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
     {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
   ];
-  const WORLD_TEXT_WEIGHT_OPTIONS=[
-    {value:'',label:'World Default'},
-    {value:'300',label:'Light'},
-    {value:'400',label:'Regular'},
-    {value:'500',label:'Medium'},
-    {value:'600',label:'Semibold'},
-    {value:'700',label:'Bold'},
-    {value:'900',label:'Black'}
-  ];
+  // "weight is a very technical term, is that drop down even needed?" ->
+  // "approved make the change" — the old 7-option Weight dropdown
+  // (World Default/Light/Regular/Medium/Semibold/Bold/Black) is retired
+  // outright; Bold now lives as a fourth Style-row toggle instead (see
+  // _makeMultiToggleRow below), writing the identical `fontWeight` field
+  // ('700' on, cleared/World-Default off) through the exact same
+  // SceneEngine.setContentOverride path the dropdown always used — a
+  // narrower vocabulary a Story Author actually reasons about, not a new
+  // mechanism.
 
   // Every builder below now optionally appends (pass a real `parent`) or
   // just returns the built row unattached (`parent` falsy) — the second
@@ -461,17 +461,17 @@ const ContextPanel=(function(){
 
   // Multi-select sibling of _makeIconChoiceRow above — that one is a
   // single-select, radio-style control (clicking one deselects every
-  // other), unsuitable for Style once Italic/Underline/Strikethrough must
-  // combine freely (a line can be all three at once) rather than one
+  // other), unsuitable for Style once Bold/Italic/Underline/Strikethrough
+  // must combine freely (a line can be all four at once) rather than one
   // replacing another. Each button toggles its own boolean independently;
-  // the glyph preview itself is styled to actually look italic/underlined/
-  // struck-through, so the effect is visible before it's even applied.
-  // `isActive(value)` seeds each button's initial state from the current
-  // model; after that, each button's own class toggle is the source of
-  // truth for the rest of this popup's lifetime (mirrors how this file
-  // never rebuilds the popup mid-edit — _afterWorldObjectEdit deliberately
-  // never calls refresh() — so there's nothing that would re-derive it
-  // from a stale closure anyway).
+  // the glyph preview itself is styled to actually look bold/italic/
+  // underlined/struck-through, so the effect is visible before it's even
+  // applied. `isActive(value)` seeds each button's initial state from the
+  // current model; after that, each button's own class toggle is the
+  // source of truth for the rest of this popup's lifetime (mirrors how
+  // this file never rebuilds the popup mid-edit — _afterWorldObjectEdit
+  // deliberately never calls refresh() — so there's nothing that would
+  // re-derive it from a stale closure anyway).
   function _makeMultiToggleRow(parent,labelText,choices,isActive,onToggle){
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label',labelText));
@@ -481,7 +481,8 @@ const ContextPanel=(function(){
       btn.type='button';
       btn.className='icon-card'+(isActive(c[0])?' active':'');
       const lbl=_el('span','icon-label icon-label-glyph',c[1]);
-      if(c[0]==='italic') lbl.style.fontStyle='italic';
+      if(c[0]==='bold') lbl.style.fontWeight='800';
+      else if(c[0]==='italic') lbl.style.fontStyle='italic';
       else if(c[0]==='underline') lbl.style.textDecoration='underline';
       else if(c[0]==='strikethrough') lbl.style.textDecoration='line-through';
       btn.appendChild(lbl);
@@ -619,34 +620,36 @@ const ContextPanel=(function(){
         container.appendChild(textarea);
 
         container.appendChild(_el('div','designer-sublabel','Typography'));
-        // Paired into 4 shared rows instead of 7 stacked ones (Family,
-        // Weight, Style, Alignment, Size, Opacity, Colour/Rotation) —
-        // closes the vertical space the un-paired layout needed, the
-        // real cause of the reported cramped/scrolling popup.
+        // Font Family now spans its own row alone — its old partner,
+        // Weight, no longer exists as a dropdown (folded into Style as a
+        // Bold toggle, right below); _pairRow's own cellB-is-null branch
+        // already handles "just append this one row," no new plumbing.
         const familyCell=_makeSelectRow(null,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
           _afterWorldObjectEdit();
         });
-        const weightCell=_makeSelectRow(null,'Weight',WORLD_TEXT_WEIGHT_OPTIONS,ov.fontWeight||'',function(val){
-          SceneEngine.setContentOverride(slide,sceneObj.id,'fontWeight',val===''?null:val);
-          _afterWorldObjectEdit();
-        });
-        _pairRow(container,familyCell,weightCell);
+        _pairRow(container,familyCell,null);
 
         // "why we dont have underline as a style, and strikethrough also" —
-        // folded into this same Style row as three independently-toggling
-        // buttons rather than three new stacked rows, matching the exact
-        // scope the user asked for ("add it in the styles"). Italic keeps
-        // riding the existing `fontStyle` field (unchanged elsewhere);
-        // Underline/Strikethrough are new booleans on the same override
-        // bag (see setContentOverride's own widened doc comment in
-        // js/sceneEngine.js).
-        const styleState={italic:ov.fontStyle==='italic',underline:!!ov.underline,strikethrough:!!ov.strikethrough};
-        const styleCell=_makeMultiToggleRow(null,'Style',[['italic','I'],['underline','U'],['strikethrough','S']],function(key){
+        // folded into this same Style row as independently-toggling
+        // buttons rather than new stacked rows, matching the exact scope
+        // the user asked for ("add it in the styles"). Bold joined the
+        // same row later ("approved make the change," replacing the old
+        // Weight dropdown above) for the identical reason — one small,
+        // legible glyph a Story Author actually reasons about, instead of
+        // a jargon-heavy Light/Regular/Medium/Semibold/Bold/Black list.
+        // Bold is the one entry here that does NOT write a plain boolean
+        // — it shares the `fontWeight` field the old dropdown wrote,
+        // toggling it between '700' and cleared (World Default) — every
+        // other entry (Italic/Underline/Strikethrough) still writes its
+        // own boolean/`fontStyle` field exactly as before.
+        const styleState={bold:ov.fontWeight==='700',italic:ov.fontStyle==='italic',underline:!!ov.underline,strikethrough:!!ov.strikethrough};
+        const styleCell=_makeMultiToggleRow(null,'Style',[['bold','B'],['italic','I'],['underline','U'],['strikethrough','S']],function(key){
           return styleState[key];
         },function(key){
           const next=!styleState[key];
-          if(key==='italic') SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',next?'italic':null);
+          if(key==='bold') SceneEngine.setContentOverride(slide,sceneObj.id,'fontWeight',next?'700':null);
+          else if(key==='italic') SceneEngine.setContentOverride(slide,sceneObj.id,'fontStyle',next?'italic':null);
           else SceneEngine.setContentOverride(slide,sceneObj.id,key,next?true:null);
           styleState[key]=next;
           _afterWorldObjectEdit();
@@ -937,20 +940,6 @@ const ContextPanel=(function(){
     if(typeof c!=='string') return '#1D3457';
     const m=c.match(/^#?[0-9a-f]{6}/i);
     return m ? ('#'+m[0].replace('#','').toLowerCase()) : '#1D3457';
-  }
-
-  // Creator Acceptance Sprint — same lookup js/app.js's own
-  // _updateHeaderContext() already makes (Artwork Theme first, Story
-  // Theme fallback), reused here so the default view can greet the
-  // child by the active World's own name/icon instead of a generic hint.
-  function _worldIdentity(){
-    if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined') return null;
-    const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
-    const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
-    const themeId=artworkId||storyId;
-    const theme=themeId && ThemeRegistry.get ? ThemeRegistry.get(themeId) : null;
-    if(!theme) return null;
-    return {icon:theme.themeIcon||'📖', name:theme.name||''};
   }
 
   // Sprint 10.1 — Theme Driven Representations. The active theme's own
@@ -1410,16 +1399,14 @@ const ContextPanel=(function(){
     if(stickerStudioOpen) return;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    // Creator Acceptance Sprint / Right Panel Redesign — greet the child
-    // by the active World's own name/icon; Personalize itself (below)
-    // now teaches what's addable/settable, so the standalone ownership
-    // legend and "tap anything" hint are dropped in favour of each
-    // object's own Status pill doing that teaching contextually, once
-    // something is actually selected.
-    const world=_worldIdentity();
-    if(world){
-      panelRoot.appendChild(_el('div','context-welcome-heading','Welcome to '+world.icon+' '+world.name));
-    }
+    // Creator Acceptance Sprint / Right Panel Redesign — the panel used
+    // to open with a "Welcome to <icon> <World Name>" greeting here;
+    // "what i meant is that welcome string in the right pane of studio
+    // is not needed. we can remove it" — dropped outright, not replaced.
+    // Personalize itself (below) already teaches what's addable/
+    // settable, so the standalone ownership legend and "tap anything"
+    // hint stay dropped too, in favour of each object's own Status pill
+    // doing that teaching contextually once something is selected.
     _appendBackControl(panelRoot);
     _renderPersonalizeZone(panelRoot,{full:true});
   }

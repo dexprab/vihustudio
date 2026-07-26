@@ -6215,18 +6215,12 @@ body.dark-theme .context-selection-banner{ color:var(--text); }
   margin-bottom:6px;
   text-align:center;
 }
-/* Creator Acceptance Sprint — the default panel's "Welcome to <World>"
-   heading + ownership legend, shown before anything is selected. Reuses
-   the same warmth/weight .context-rep-name and .context-nothing-selected-hint
-   already established rather than introducing new tokens. */
-.context-welcome-heading{
-  font-size:19px;
-  font-weight:700;
-  color:var(--navy);
-  margin-bottom:10px;
-  text-align:center;
-}
-body.dark-theme .context-welcome-heading{ color:var(--text); }
+/* Creator Acceptance Sprint — the default panel's own ownership legend,
+   shown before anything is selected. Reuses the same warmth/weight
+   .context-rep-name and .context-nothing-selected-hint already
+   established rather than introducing new tokens. (The panel's own
+   "Welcome to <World>" heading that used to sit above this was removed
+   outright — see js/contextPanel.js's _renderDefault.) */
 .context-ownership-legend{
   display:flex;
   flex-direction:column;
