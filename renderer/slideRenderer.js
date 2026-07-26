@@ -2849,8 +2849,8 @@ const SlideRenderer=(()=>{
           }
         }else if(o.kind==='sticker'){
           const st=o.ref;
-          _drawSceneSticker(st);
-          _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+          _drawSceneSticker(st,s);
+          _lastSceneElements.push(_sceneObject(_stickerBbox(st,s),'story'));
         }
       });
 
@@ -2929,8 +2929,8 @@ const SlideRenderer=(()=>{
             _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
           }else if(o.kind==='sticker'){
             const st=o.ref;
-            _drawSceneSticker(st);
-            _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+            _drawSceneSticker(st,s);
+            _lastSceneElements.push(_sceneObject(_stickerBbox(st,s),'story'));
           }
         });
       }else if(typeof SceneEngine!=='undefined'){
@@ -2947,8 +2947,8 @@ const SlideRenderer=(()=>{
             _lastSceneElements.push(_sceneObject(_sceneBbox(el),'story'));
           }else if(o.kind==='sticker'){
             const st=o.ref;
-            _drawSceneSticker(st);
-            _lastSceneElements.push(_sceneObject(_stickerBbox(st),'story'));
+            _drawSceneSticker(st,s);
+            _lastSceneElements.push(_sceneObject(_stickerBbox(st,s),'story'));
           }
         });
       }
@@ -3684,11 +3684,70 @@ const SlideRenderer=(()=>{
     };
   }
 
-  function _drawSceneSticker(st){
+  // Collection ("From This World") — a Story Author's own Personalization
+  // capability, Collection Phase 6: picking one of a World's own
+  // availableToCreator Collection assets creates an ordinary new Story-
+  // owned Decoration sticker, matching exactly how Shapes/Text/Doodle
+  // above already work — the fourth genuinely new sticker `kind`, this
+  // time carrying real Theme-authored artwork rather than a vector/text/
+  // stroke payload. `st.image` is deliberately a compiled-package
+  // relPath (e.g. "collection/<id>.png"), NEVER a raw vihu-asset:/data:
+  // reference re-embedded onto the sticker — resolving it live through
+  // ThemeRegistry.resolveAssetRef (the exact mechanism a World-owned
+  // Decoration Layer's own d.image already resolves through,
+  // _layerDrawDecorationImage above) is what keeps a Collection-sourced
+  // picture out of the Story's own JSON, preserving Draft Asset
+  // Architecture's whole point. Resolved against whichever Theme is
+  // currently active (_layoutTheme(s), the same resolution
+  // _layerDrawDecorationImage already uses) — a disclosed, narrow edge
+  // case for this first cut: if the Story Author later swaps Worlds
+  // ("Change Look" onto a different Theme entirely), the reference can
+  // no longer resolve and the placeholder glyph below shows instead,
+  // exactly like a World-owned object's own art would if its owning
+  // Theme's assets ever changed out from under it.
+  function _drawStickerImage(st,s){
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const w=typeof st.w==='number'?st.w:260;
+    const h=typeof st.h==='number'?st.h:260;
+    x.save();
+    x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
+    x.translate(cx,cy);
+    if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
+    let src=st.image;
+    if(src){
+      const theme=_layoutTheme(s);
+      const themeId=theme && theme.id;
+      if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+        try{ src=ThemeRegistry.resolveAssetRef(themeId,st.image)||st.image; }catch(e){}
+      }
+    }
+    const img=src ? _ensureDecorationImage(src,s&&s.recallOwnerId) : null;
+    if(img && img.__ready && img.width && img.height){
+      const iw=img.width, ih=img.height;
+      const base=Math.min(w/iw,h/ih);
+      const dw=iw*base, dh=ih*base;
+      x.drawImage(img,-dw/2,-dh/2,dw,dh);
+    }else{
+      // Placeholder while the image resolves/decodes, or a genuinely
+      // stale reference (the disclosed World-swap edge case above) —
+      // never a blank/invisible sticker.
+      x.fillStyle='rgba(0,0,0,0.08)';
+      x.fillRect(-w/2,-h/2,w,h);
+      x.font=Math.round(Math.min(w,h)*0.4)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      x.textAlign='center';
+      x.textBaseline='middle';
+      x.fillText('🖼️',0,0);
+    }
+    x.restore();
+  }
+
+  function _drawSceneSticker(st,s){
     if(!st) return;
     if(st.kind==='shape'){ _drawSceneShape(st); return; }
     if(st.kind==='text'){ _drawFreeformText(st); return; }
     if(st.kind==='doodle'){ _drawSceneDoodle(st); return; }
+    if(st.kind==='image'){ _drawStickerImage(st,s); return; }
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
@@ -3718,7 +3777,7 @@ const SlideRenderer=(()=>{
     }
     x.restore();
   }
-  function _stickerBbox(st){
+  function _stickerBbox(st,s){
     if(st.kind==='shape') return _shapeBbox(st);
     if(st.kind==='text') return _textObjBbox(st);
     if(st.kind==='doodle') return _doodleBbox(st);
@@ -3732,7 +3791,7 @@ const SlideRenderer=(()=>{
       id:st.id,
       type:'sticker',
       stickerId:st.stickerId,
-      label:'Sticker',
+      label:st.kind==='image'?'Picture':'Sticker',
       bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
       visible:true,
       locked:!!st.locked
@@ -3740,6 +3799,21 @@ const SlideRenderer=(()=>{
     if(st.recolorEnabled){
       const url=_recoloredStickerDataURL(st);
       if(url) bbox.visual={kind:'image',src:url};
+    }else if(st.kind==='image' && st.image){
+      // Object Strip's own accurate-thumbnail convention — resolve the
+      // same way _drawStickerImage does so the card shows the real
+      // picture, not a generic icon; ObjectStrip._renderThumb's own
+      // vihu-asset:-prefix check is a no-op here since resolveAssetRef
+      // already returns a directly-usable src (or the bare relPath
+      // unchanged if unresolvable, matching every other image field's
+      // established degrade).
+      let src=st.image;
+      const theme=_layoutTheme(s);
+      const themeId=theme && theme.id;
+      if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+        try{ src=ThemeRegistry.resolveAssetRef(themeId,st.image)||st.image; }catch(e){}
+      }
+      bbox.visual={kind:'image',src:src};
     }
     return bbox;
   }

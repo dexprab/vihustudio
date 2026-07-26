@@ -1488,6 +1488,95 @@ const ContextPanel=(function(){
     }
   }
 
+  // Collection ("From This World") — Collection Phase 6. A Theme Author
+  // may flag a Collection asset availableToCreator:true in World Builder
+  // ("collection can have assets which are used in scenes and others
+  // which builder would want creator to have access for customization" —
+  // the user's own words); Phase 5 already compiles exactly those
+  // flagged entries into the published Theme's own theme.collectionAssets
+  // (id/name/kind/relPath, sanitized — never the internal Builder-
+  // session .ref) with the real bytes guaranteed embedded regardless of
+  // Scene usage. This resolves the CURRENTLY ACTIVE World/Story theme's
+  // own array — Artwork Theme first (a World, the common case for this
+  // feature), falling back to the Story Theme, mirroring the exact
+  // artworkId||storyId precedent js/app.js's own _updateHeaderContext()
+  // already established for "which theme is this Story actually using
+  // right now."
+  function _activeCollectionAssets(){
+    try{
+      if(typeof ThemeEngine==='undefined' || typeof ThemeRegistry==='undefined') return [];
+      const artworkId=ThemeEngine.getActiveArtworkThemeId && ThemeEngine.getActiveArtworkThemeId();
+      const storyId=ThemeEngine.getActiveThemeId && ThemeEngine.getActiveThemeId();
+      const themeId=artworkId||storyId;
+      if(!themeId) return [];
+      const theme=ThemeRegistry.get(themeId);
+      if(!theme || !Array.isArray(theme.collectionAssets)) return [];
+      return theme.collectionAssets
+        .filter(function(e){ return e && e.availableToCreator===true && e.relPath; })
+        .map(function(e){ return {id:e.id,name:e.name||'Picture',kind:e.kind||'image',relPath:e.relPath,themeId:themeId}; });
+    }catch(e){ return []; }
+  }
+
+  // "add new," per the user's own answered design fork ("Both" — ship
+  // this first, defer "swap an existing World-owned object's art" to its
+  // own later phase). Mirrors _showShapePicker's exact shape: a full-
+  // panel-replacing tile grid with a "← Done" exit, each tile a real
+  // resolved thumbnail (via ThemeRegistry.resolveAssetRef, the same
+  // synchronous resolver every other Creator-side World-asset read
+  // already uses — Scene Decoration images, World Card art,
+  // Representation thumbnails, Theme Library cards) rather than a
+  // generic icon, since the whole point is showing the Theme Author's
+  // own real artwork.
+  function _showCollectionPicker(){
+    stickerStudioOpen=true;
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','🎁 From This World'));
+    const grid=_el('div','context-collection-picker-grid');
+    _activeCollectionAssets().forEach(function(entry){
+      const tile=_el('button','context-collection-tile');
+      tile.type='button';
+      let src=entry.relPath;
+      if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+        try{ src=ThemeRegistry.resolveAssetRef(entry.themeId,entry.relPath)||entry.relPath; }catch(e){}
+      }
+      const thumb=_el('span','context-collection-tile-thumb');
+      const img=document.createElement('img');
+      img.src=src;
+      img.alt=entry.name;
+      thumb.appendChild(img);
+      tile.appendChild(thumb);
+      tile.appendChild(_el('span','context-collection-tile-label',entry.name));
+      tile.addEventListener('click',function(){ _addCollectionObject(entry); });
+      grid.appendChild(tile);
+    });
+    panelRoot.appendChild(grid);
+    const btn=_el('button','context-btn','← Done Browsing');
+    btn.type='button';
+    btn.addEventListener('click',function(){ refresh(); });
+    panelRoot.appendChild(btn);
+  }
+  // Same immediate-create-and-select flow as _addShapeObject/_addTextObject/
+  // _addDoodleObject above — a real, ordinary Story-owned Decoration
+  // sticker (kind:'image'), landing on its own Refine panel with nothing
+  // beyond Position/Size/Rotation/Opacity/Lock/Duplicate/Delete, since
+  // this kind carries real artwork rather than a vector/text/stroke
+  // payload to further configure. entry.relPath (never a raw vihu-asset:/
+  // data: reference) is resolved live at render time through whichever
+  // Theme is active — see renderer/slideRenderer.js's _drawStickerImage.
+  function _addCollectionObject(entry){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    const st=SceneEngine.addSticker(slide,{
+      kind:'image', image:entry.relPath, stickerId:'collection.'+entry.id,
+      w:320, h:320
+    });
+    if(!st) return;
+    if(typeof window.setSelectedSceneElement==='function'){
+      try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
+  }
+
   // ---------- Right Panel Redesign — Personalize zone ----------
 
   // "+ Add Something"'s rows. Stickers/Decorations are, today, the exact
@@ -1499,17 +1588,26 @@ const ContextPanel=(function(){
   // capabilities (see _showShapePicker/_addTextObject/_addDoodleObject
   // above). Photo was removed: it duplicates the existing per-Place "Add
   // Artwork" flow already reachable by selecting a Place directly, which
-  // is where artwork replacement belongs. Voice has no supporting
-  // SceneEngine/renderer capability today (no audio attachment) —
-  // stubbed honestly as Coming Soon rather than faked.
+  // is where artwork replacement belongs. "From This World" (Collection
+  // Phase 6) only appears when the active Theme actually has at least one
+  // availableToCreator Collection asset — never an empty, confusing
+  // picker, matching this codebase's own established discipline for a
+  // conditional row (e.g. the Caption tile's own actions-gated presence).
+  // Voice has no supporting SceneEngine/renderer capability today (no
+  // audio attachment) — stubbed honestly as Coming Soon rather than
+  // faked.
   function _addSomethingItems(){
-    return [
+    const items=[
       {id:'stickers',icon:'😀',label:'Emojis',onClick:function(){ _showStickerStudio(); }},
       {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
       {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
-      {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
-      {id:'voice',icon:'🎤',label:'Voice',comingSoon:true}
+      {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }}
     ];
+    if(_activeCollectionAssets().length>0){
+      items.push({id:'fromWorld',icon:'🎁',label:'From This World',onClick:function(){ _showCollectionPicker(); }});
+    }
+    items.push({id:'voice',icon:'🎤',label:'Voice',comingSoon:true});
+    return items;
   }
 
   function _buildAddSomethingAccordion(){

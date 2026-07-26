@@ -1913,6 +1913,14 @@ const CardDesigner=(function(){
     const isShapeKind=kind==='shape';
     const isTextKind=kind==='text';
     const isDoodleKind=kind==='doodle';
+    // Collection ("From This World") Phase 6 — a fifth sticker kind, but
+    // deliberately the simplest one yet: real Theme-authored artwork with
+    // no kind-specific field group of its own (no fill/outline/words/pad
+    // to edit) — Position/Size/Rotation/Opacity/Lock/Duplicate/Delete
+    // below already cover everything this kind needs, exactly the
+    // "no new Creator-side mechanism beyond what art does the new object
+    // start with" scope this phase was built to.
+    const isImageKind=kind==='image';
     section.querySelectorAll('.sticker-glyph-only').forEach(function(el){ el.classList.toggle('hidden',!isGlyphKind); });
     section.querySelectorAll('.sticker-hide-for-text').forEach(function(el){ el.classList.toggle('hidden',isTextKind); });
     const shapeGroupEl=section.querySelector('.sticker-shape-group');
@@ -1929,6 +1937,7 @@ const CardDesigner=(function(){
       if(isShapeKind) labelEl.textContent='Shape: '+(shapeKindInfo?shapeKindInfo.label:'Shape');
       else if(isTextKind) labelEl.textContent='Text';
       else if(isDoodleKind) labelEl.textContent='Doodle';
+      else if(isImageKind) labelEl.textContent='Picture';
       else labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
     }
 

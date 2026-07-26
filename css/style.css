@@ -6510,6 +6510,52 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .context-shape-tile-icon{ font-size:20px; line-height:1; }
 .context-shape-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }
 
+/* Collection ("From This World") Phase 6 — mirrors .context-shape-
+   picker-* above exactly, swapping the icon glyph for a real resolved
+   thumbnail of the Theme Author's own Collection artwork, since the
+   whole point of this row is showing real World content, not a generic
+   symbol. */
+.context-collection-picker-heading{
+  font-size:13.5px;
+  font-weight:800;
+  color:var(--text);
+  margin:0 0 10px;
+}
+.context-collection-picker-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+.context-collection-tile{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:8px 4px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel,var(--bg));
+  color:var(--text);
+  cursor:pointer;
+}
+.context-collection-tile:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
+.context-collection-tile-thumb{
+  display:block;
+  width:100%;
+  aspect-ratio:1;
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,0.06);
+}
+.context-collection-tile-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.context-collection-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }
+
 /* ===========================
    Magic Card Identity Evolution, Phase 1 (local-only) — see
    js/magicCard.js / js/magicCardUI.js. A deliberately distinct visual
