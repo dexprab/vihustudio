@@ -8517,6 +8517,21 @@
             return;
         }
 
+        // A real, confirmed report -- "i have added new scene to the world
+        // but the experience is not getting the other scene name in
+        // dropdown" -- turned out to be exactly this filtering, working
+        // as designed (Canon Decision #6/#8: a Personal Experience is
+        // permanently scoped to its own one Scene, never re-hostable
+        // elsewhere without first Graduating to Public) rather than a
+        // bug -- but with no signal here to tell the two apart, it reads
+        // identically to a real bug. Only shown when it would actually
+        // explain something (a World with other Scenes this Experience
+        // genuinely can't reach), never for a single-Scene World where
+        // the distinction is moot.
+        if (exp.lifecycle === 'personal' && allScenes.length > scenes.length) {
+            contextPanel.appendChild(_fieldHelp('This is a Personal Experience — it can only ever host in ' + scenes[0].name + ', the Scene it belongs to. Other Scenes in this World won’t show up here. To host it anywhere else, Graduate it to Public below.'));
+        }
+
         // Authoring Convergence Sprint (Objective 4) — a Personal
         // Experience only ever has one Scene to choose from, and if it's
         // already hosted there with nothing further to pick (no Place
