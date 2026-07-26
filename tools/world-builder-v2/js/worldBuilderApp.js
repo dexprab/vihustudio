@@ -46,6 +46,18 @@
 
     function showTemplates() {
         _hideAllScreens();
+        // Rebuild the grid fresh every time this screen opens (not just
+        // once at boot) -- a template card's own click handler marks
+        // itself `wb-busy` and never clears that class on the success
+        // path (the Template Rule means it's about to be replaced by the
+        // Workspace anyway) -- so a stale, once-clicked card left over
+        // from an earlier World would silently swallow every later click
+        // on the same template ("Create New World -> Blank" a second
+        // time in one page session did nothing at all: no new Project,
+        // Screen 2 just stayed put) with zero visible error. Fresh DOM
+        // nodes on every visit means there is never a stale card left to
+        // hit that guard.
+        renderTemplateGrid();
         screenTemplates.classList.remove('wb-hidden');
     }
 
@@ -7557,6 +7569,99 @@
         return row;
     }
 
+    // Platform Hardening — Collection Phase 2. Replaces the plain
+    // _assetUploadRow(...) call for an Experience's Image/Graphics content
+    // with a combined field: the same upload/replace/remove row
+    // (unchanged, still funnels through _storeUploadedAsset/AssetStore.put)
+    // plus, when the Theme already has at least one Collection entry of
+    // the matching kind, a "reuse existing" grid beneath it — mirroring
+    // _renderFramePicker's own grid-of-existing-options shape. Picking an
+    // existing entry writes that entry's own .ref string back through the
+    // identical write path a fresh upload already uses
+    // (updateExperienceProperty), so AssetStore/ThemeRegistry/the Engine
+    // Adapter mirror never need to know Collection exists at all — reuse
+    // is just "the same string, written to a second Experience."
+    // Appends directly to the module-level `contextPanel` (matching
+    // _renderFramePicker(scene,holder)'s own signature/behaviour exactly),
+    // so it lands correctly inside whichever content card is currently
+    // open (_openContentCard's swap-and-restore).
+    function _renderCollectionPicker(exp, key, iconFallback, accept) {
+        const kind = key === 'imageSrc' ? 'image' : 'graphic';
+        const props = exp.properties || {};
+        const currentRef = props[key];
+
+        function commit(ref) {
+            // Graphics' own pre-existing mutual-exclusion rule (an
+            // uploaded/reused image clears any Shape already chosen,
+            // since there is only one mirrored Layer for this section)
+            // applies identically whether the new value came from a
+            // fresh upload, a Remove (ref === null), or reusing an
+            // existing Collection entry — all three funnel through here.
+            if (key === 'graphicSrc') {
+                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicShape', null);
+            }
+            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, ref);
+            _persist();
+            _redrawSceneCanvasesForExperience(exp);
+            _renderContextPanel();
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-field-group';
+        const label = document.createElement('label');
+        label.className = 'wb-field-label';
+        label.textContent = key === 'imageSrc' ? 'Photo' : 'Asset';
+        wrap.appendChild(label);
+        wrap.appendChild(_assetUploadRow(iconFallback, currentRef, commit, accept));
+
+        const matches = (window.ProjectModel.collectionAssets(currentProject) || []).filter(function (a) { return a.kind === kind; });
+        if (matches.length) {
+            const pickHelp = document.createElement('div');
+            pickHelp.className = 'wb-field-help';
+            pickHelp.style.marginTop = '8px';
+            pickHelp.textContent = 'Or reuse one already used elsewhere in this World:';
+            wrap.appendChild(pickHelp);
+
+            const grid = document.createElement('div');
+            grid.className = 'wb-scene-template-grid';
+            matches.forEach(function (entry) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card' + (currentRef === entry.ref ? ' active' : '');
+                card.disabled = currentProjectReadOnly;
+                card.title = entry.name || 'Untitled Asset';
+
+                const thumb = document.createElement('div');
+                thumb.style.width = '100%';
+                thumb.style.height = '40px';
+                thumb.style.borderRadius = '6px';
+                thumb.style.background = 'rgba(0,0,0,0.06)';
+                thumb.style.overflow = 'hidden';
+                card.appendChild(thumb);
+                _resolveAssetRefToSrc(entry.ref).then(function (src) {
+                    if (!src) return;
+                    const img = document.createElement('img');
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.src = src;
+                    thumb.appendChild(img);
+                });
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'wb-scene-template-name';
+                nameEl.textContent = entry.name || 'Untitled Asset';
+                card.appendChild(nameEl);
+
+                card.addEventListener('click', function () { commit(entry.ref); });
+                grid.appendChild(card);
+            });
+            wrap.appendChild(grid);
+        }
+
+        contextPanel.appendChild(wrap);
+    }
+
     // ---------- Experiences — Experience Home (Builder V3 Milestone 2) ----------
     // Two creative spaces, per docs/BUILDER_V3_EXPERIENCE_STUDIO.md: The
     // Gallery (Theme Experiences — Personal/Public, "what can I use
@@ -8262,7 +8367,7 @@
         // ---- 🖼 Image ----
         if (kind === 'image') {
             const outer = _openContentCard('🖼', 'Image');
-            contextPanel.appendChild(_buildFieldGroup('Photo', _assetUploadRow('🖼️', props.imageSrc, onUploadProp('imageSrc'))));
+            _renderCollectionPicker(exp, 'imageSrc', '🖼️');
             _fieldRow(
                 _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
                 _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
@@ -8281,15 +8386,13 @@
         if (kind === 'graphics') {
             const outer = _openContentCard('🎭', 'Graphics');
             contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
-            contextPanel.appendChild(_buildFieldGroup('Asset', _assetUploadRow('🎭', props.graphicSrc, function (v) {
-                // Uploading a real image and picking a Shape are
-                // mutually exclusive within Graphics (there is only one
-                // mirrored Layer for this section) — uploading clears
-                // any Shape already chosen, matching the Shape picker's
-                // own symmetric clear-the-other-one below.
-                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicShape', null);
-                onUploadProp('graphicSrc')(v);
-            }, 'image/*,.svg,image/svg+xml')));
+            // _renderCollectionPicker's own commit() already clears
+            // graphicShape unconditionally for the graphicSrc key —
+            // uploading, removing, or reusing an existing Collection
+            // entry all correctly clear any Shape already chosen,
+            // matching the Shape picker's own symmetric clear-the-
+            // other-one below.
+            _renderCollectionPicker(exp, 'graphicSrc', '🎭', 'image/*,.svg,image/svg+xml');
 
             const shapeHeading = document.createElement('h4');
             shapeHeading.className = 'wb-context-subheading';
