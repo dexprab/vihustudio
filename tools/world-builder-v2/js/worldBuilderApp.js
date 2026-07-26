@@ -2667,6 +2667,7 @@
         frames: 'What: the visual "mount" around the artwork — mat, border, wall colour, shadow. Why: a Representation\'s Default Frame decides how its pictures are presented. Do: tune the fields for the selected Frame, or create another. Next: connect Frames to Layer Packs for captions and decorations.',
         layerpacks: 'What: small elements placed on the page — captions, page numbers, stickers. Why: this is how a World adds its own personality on top of a Layout/Frame. Do: add Layers and set their Target Container/Anchor. Next: check Assets for anything these Layers need (like a decoration image).',
         assets: 'What: the images (and other files) this World needs. Why: Thumbnail and Hero Image are required before you can Build; everything else is optional polish. Do: upload what you have — the checklist shows exactly what\'s missing and why. Next: run Validation once everything looks complete.',
+        collection: 'What: every image and graphic this World has ever used, automatically kept up to date as you author Scenes and Experiences — no separate upload step. Why: the same picture used in two Experiences only needs to be uploaded once, and anything marked "Let Creators use this too" becomes something a Story Author can add to their own page. Do: rename an asset for clarity, mark it available to Creators, or delete one you no longer need — deleting removes it from every Experience currently using it. Next: pick a picture from here instead of uploading a new one whenever you can, to keep this World small.',
         validation: 'What: a real check of this World against the World Project Contract — the same rules Studio itself enforces. Why: catches problems before you spend time Building. Do: press Run Validation, then fix anything marked Error (Warnings are optional polish). Next: once it says "All Good!", move on to Build.',
         build: 'What: compiles this World Project into a real .vtheme-shaped Theme, the same shape VihuStudio imports. Why: nothing can be Published until it\'s Built. Do: press Build Theme (Validation must pass first). Next: once built, continue to Publish.',
         checkbuild: 'What: check this World against the World Project Contract, then compile it into a real Theme — one screen, since Build always needs Validation to pass first anyway. Why: catches problems before you spend time Building, and nothing can be Published until it\'s Built. Do: press Run Validation, fix anything marked Error, then press Build Theme. Next: once built, continue to Publish.',
@@ -2735,7 +2736,7 @@
     // that dispatch's OUTPUT gets mounted (into #wb-modal-body instead
     // of #wb-context-panel) is new. 'scenes' is the one non-modal,
     // "resting" value.
-    const MODAL_NAVS = new Set(['overview', 'checkbuild', 'publish', 'representations', 'layouts', 'frames', 'layerpacks', 'assets']);
+    const MODAL_NAVS = new Set(['overview', 'checkbuild', 'publish', 'representations', 'layouts', 'frames', 'layerpacks', 'assets', 'collection']);
     // Working View keeps showing its own real content (the open Scene,
     // or the Experience Studio) behind most modals — only these navs
     // have a genuine Working View "specimen" of their own (AV-005's
@@ -2755,7 +2756,7 @@
     const MODAL_TITLES = {
         overview: '🌍 World Settings', checkbuild: '✅ Check & Build', publish: '📤 Publish',
         representations: '🎭 Representations', layouts: '📐 Layouts', frames: '🖼️ Frames',
-        layerpacks: '🧩 Layer Packs', assets: '📦 Assets'
+        layerpacks: '🧩 Layer Packs', assets: '📦 Assets', collection: '🗂️ Collection'
     };
     function _closeModal() {
         currentNav = 'scenes';
@@ -5962,6 +5963,7 @@
         if (currentNav === 'frames') return _renderFramesPanel();
         if (currentNav === 'layerpacks') return _renderLayerPacksPanel();
         if (currentNav === 'assets') return _renderAssetsPanel();
+        if (currentNav === 'collection') return _renderCollectionPanel();
         if (currentNav === 'checkbuild') return _renderCheckBuildPanel();
         if (currentNav === 'publish') return _renderPublishPanel();
         return _renderStubPanel();
@@ -7659,7 +7661,124 @@
             wrap.appendChild(grid);
         }
 
+        // Platform Hardening — Collection Phase 3. "Manage Collection"
+        // bridges to the full Collection screen, mirroring
+        // _renderFramePicker's own "Manage Frames" bridge exactly
+        // (currentNav='collection' + re-render, never a Global
+        // Navigation peer — matching the plan's own "New nav screen
+        // (mirrors the Frames screen's shape)"). Always shown, even
+        // with zero Collection entries yet, exactly like Frame's own
+        // manage link is always shown regardless of frames.length.
+        const manageLink = document.createElement('button');
+        manageLink.type = 'button';
+        manageLink.className = 'wb-workspace-btn';
+        manageLink.style.marginTop = '8px';
+        manageLink.textContent = '🗂️ Manage Collection →';
+        manageLink.addEventListener('click', function () {
+            currentNav = 'collection';
+            _renderNav();
+            _renderWorkspace();
+        });
+        wrap.appendChild(manageLink);
+
         contextPanel.appendChild(wrap);
+    }
+
+    // Platform Hardening — Collection Phase 3. The Theme-scoped registry's
+    // own management screen, mirroring _renderFramesPanel's shape (a
+    // Scene-anchored bridge editor, Blueprint §6.3 — reached from the
+    // Image/Graphics picker above, not a Global Navigation peer, Vision
+    // §1) — but Collection entries have no per-entry "selected" detail
+    // panel the way a Frame's 8 fields do: rename/availability/delete
+    // all fit inline on each row, so there's no separate detail state to
+    // track. Builder-only screen — Creator has zero code path anywhere
+    // that can reach this (the plan's own "builder can delete from
+    // collection but not creator").
+    function _renderCollectionPanel() {
+        contextPanel.innerHTML = '';
+        const project = currentProject;
+        _heading('Collection', 'Every image and graphic this World has used, in one place.');
+
+        if (currentSceneId) {
+            const back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'wb-workspace-btn';
+            back.style.marginBottom = '12px';
+            back.textContent = '← Back to Scene';
+            back.addEventListener('click', function () {
+                currentNav = 'scenes';
+                _renderNav();
+                _renderWorkspace();
+            });
+            contextPanel.appendChild(back);
+        }
+
+        _stateIntro('collection');
+
+        const assets = window.ProjectModel.collectionAssets(project);
+        if (!assets.length) {
+            contextPanel.appendChild(_fieldHelp('Nothing here yet — upload a Photo or Asset while authoring an Experience, and it will show up here automatically.'));
+            return;
+        }
+
+        assets.forEach(function (entry) {
+            const row = document.createElement('div');
+            row.className = 'wb-collection-row';
+
+            const thumb = document.createElement('div');
+            thumb.className = 'wb-collection-thumb';
+            row.appendChild(thumb);
+            _resolveAssetRefToSrc(entry.ref).then(function (src) {
+                if (!src) return;
+                const img = document.createElement('img');
+                img.src = src;
+                thumb.appendChild(img);
+            });
+
+            const info = document.createElement('div');
+            info.className = 'wb-collection-info';
+
+            const nameInput = _textInput(entry.name, function (v) {
+                window.ProjectModel.renameCollectionAsset(project, entry.id, v);
+                _persist();
+            });
+            nameInput.placeholder = 'Untitled Asset';
+            info.appendChild(nameInput);
+
+            const count = window.ProjectModel.collectionAssetUsageCount(project, entry.id);
+            const meta = document.createElement('div');
+            meta.className = 'wb-collection-meta';
+            meta.textContent = (entry.kind === 'graphic' ? '🎭 Graphic' : '🖼️ Image') + ' · Used by ' + count + (count === 1 ? ' Experience' : ' Experiences');
+            info.appendChild(meta);
+
+            info.appendChild(_checkboxField('Let Creators use this too', entry.availableToCreator, function (v) {
+                window.ProjectModel.setCollectionAssetAvailability(project, entry.id, v);
+                _persist();
+            }));
+
+            row.appendChild(info);
+
+            const controls = document.createElement('div');
+            controls.className = 'wb-row-controls';
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'wb-row-btn';
+            delBtn.textContent = '🗑';
+            delBtn.disabled = currentProjectReadOnly;
+            delBtn.addEventListener('click', function () {
+                const usage = window.ProjectModel.collectionAssetUsageCount(project, entry.id);
+                const usageNote = usage ? (' It is currently used by ' + usage + (usage === 1 ? ' Experience' : ' Experiences') + ' — those will lose this picture.') : '';
+                if (!window.confirm('Delete "' + (entry.name || 'Untitled Asset') + '" from this World\'s Collection?' + usageNote + ' This cannot be undone.')) return;
+                window.ProjectModel.deleteCollectionAsset(project, entry.id);
+                _persist();
+                _renderPreview();
+                _renderCollectionPanel();
+            });
+            controls.appendChild(delBtn);
+            row.appendChild(controls);
+
+            contextPanel.appendChild(row);
+        });
     }
 
     // ---------- Experiences — Experience Home (Builder V3 Milestone 2) ----------
