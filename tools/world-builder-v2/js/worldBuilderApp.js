@@ -8529,7 +8529,7 @@
         // genuinely can't reach), never for a single-Scene World where
         // the distinction is moot.
         if (exp.lifecycle === 'personal' && allScenes.length > scenes.length) {
-            contextPanel.appendChild(_fieldHelp('This is a Personal Experience — it can only ever host in ' + scenes[0].name + ', the Scene it belongs to. Other Scenes in this World won’t show up here. To host it anywhere else, Graduate it to Public below.'));
+            contextPanel.appendChild(_fieldHelp('Personal Experiences are permanently bound to one Scene each — whichever Scene they were created in. This one belongs to "' + scenes[0].name + '," so it can never host anywhere else, even in a Scene you add later. Other Scenes won’t show up here. To host it elsewhere, Graduate it to Public below.'));
         }
 
         // Authoring Convergence Sprint (Objective 4) — a Personal
