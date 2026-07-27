@@ -395,6 +395,11 @@ if(addPageBtnEl){
     PageOps.addAfter(AppState.currentSlide);
   });
 }
+// One-shot signal for "this reload was the Home button, not a genuine
+// fresh page load" — read+consumed exactly once by _runBootstrap() below.
+// See the Home click handler's own comment for the full story.
+const HOME_RETURN_FLAG='vihu-home-return-to-projects';
+let _homeReturnPending=false;
 const homeBtnEl=document.getElementById('homeBtn');
 if(homeBtnEl){
   homeBtnEl.addEventListener('click',function(){
@@ -425,7 +430,33 @@ if(homeBtnEl){
     // stays fully recoverable — matching this button's own original
     // "autosave already covers the current project" reasoning, now
     // actually true rather than only assumed.
+    //
+    // Real, direct follow-up report: "the press of home button from
+    // studio is taking out to very first screen tap to begin. it should
+    // be taking us to projects page as it was previously." The
+    // discardSession()+reload() fix above is still the right mechanism
+    // for a genuinely clean AppState (see the comment block above), but
+    // it never distinguished "the very first time this browser tab ever
+    // loaded Studio" from "a Story Author just pressed Home mid-session"
+    // — both are plain page loads, so both replayed the full Traveller
+    // Gateway cinematic (the Sky/Lumo/"Tap to Begin" sequence,
+    // js/gatewaySequence.js, unconditional on every launch per the
+    // Canon Update Sprint) before ever reaching Creation Flow, and even
+    // once there, always landed on Screen 1's "what shall we create"
+    // grid rather than "Continue a Project." A dedicated, one-shot
+    // sessionStorage flag (HOME_RETURN_FLAG, read+consumed exactly once
+    // at the very top of the next boot, in _runBootstrap() below) lets
+    // this one specific navigation skip straight to _beginBoot() — the
+    // Gateway's own "every launch, known device or not" rule is left
+    // completely intact for every real fresh load/refresh, since only
+    // this button ever sets the flag — and tells _startCreationFlow()
+    // to open "Continue a Project" instead of the Type-choice screen.
+    // MagicCard's own active identity is untouched by discardSession()
+    // (a separate concept from the ProjectManager session key), so
+    // skipping the Gateway's in-cinematic identity re-check here loses
+    // nothing — this session was already recognized once.
     try{
+      sessionStorage.setItem(HOME_RETURN_FLAG,'1');
       if(typeof ProjectManager!=='undefined' && typeof ProjectManager.discardSession==='function'){
         ProjectManager.discardSession();
       }
@@ -1819,7 +1850,10 @@ function _startCreationFlow(){
   // refresh in the background — instead of blocking first paint —
   // still reaches Screen 2 with up-to-date themes for the common case
   // where the user takes any time at all to get there.
-  if(typeof CreationFlow!=='undefined'){ try{ CreationFlow.start(); }catch(e){} }
+  if(typeof CreationFlow!=='undefined'){
+    try{ CreationFlow.start(_homeReturnPending?{screen:'myProjects'}:undefined); }catch(e){}
+  }
+  _homeReturnPending=false;
   _refreshRepositoryWithTimeout();
   // A Card-redeemed Theme's own content is deliberately never cached
   // to localStorage (only its identifiers + expiry are) — this is the
@@ -1940,6 +1974,24 @@ function _afterGateway(){
   _beginBoot();
 }
 function _runBootstrap(){
+  // The ONE deliberate exception to "every launch sees the Gateway" —
+  // a Home-button-triggered reload (see the click handler's own comment)
+  // is not a fresh arrival, it's a mid-session return to the dashboard.
+  // The flag is read and removed in the same breath, so it can only ever
+  // affect the single reload that immediately follows setting it — a
+  // genuine subsequent refresh/relaunch sees the Gateway exactly as
+  // before. Straight to _beginBoot(), skipping even _afterGateway()'s
+  // own standalone identity-gate fallback: MagicCard's active identity
+  // survives discardSession() untouched, so there's nothing left to
+  // re-verify.
+  try{
+    if(sessionStorage.getItem(HOME_RETURN_FLAG)){
+      sessionStorage.removeItem(HOME_RETURN_FLAG);
+      _homeReturnPending=true;
+      _beginBoot();
+      return;
+    }
+  }catch(e){}
   // Unconditional — every launch sees the Gateway now, known device or
   // not; "the only difference is what happens before the gates open"
   // lives entirely inside Scene 3 itself, not in whether the Gateway

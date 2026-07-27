@@ -1603,13 +1603,25 @@ const CreationFlow=(function(){
   }
 
   // ---------- Entry point (first boot / brand-new project) ----------
-  function start(){
+  // opts.screen==='myProjects' -- the Home button's own "return to the
+  // dashboard, not start over" call (js/app.js) -- opens "Continue a
+  // Project" directly instead of the Type-choice grid, matching the
+  // real, direct report this was built for: "it should be taking us to
+  // projects page as it was previously." Falls through to the ordinary
+  // Type screen when there's nothing to continue yet, mirroring the
+  // exact "never a dead-end" precedent _deleteProjectRecord already
+  // established for the last-project-deleted case.
+  function start(opts){
     _ensureDom();
     _mode='new';
     _selectedThemeId=null;
     document.body.classList.add('creation-flow-active');
     overlay.classList.remove('hidden');
-    _renderTypeScreen();
+    if(opts && opts.screen==='myProjects' && _myProjects().length){
+      _renderMyProjectsScreen();
+    }else{
+      _renderTypeScreen();
+    }
   }
 
   return {
