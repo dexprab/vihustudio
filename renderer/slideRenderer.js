@@ -1480,9 +1480,22 @@ const SlideRenderer=(()=>{
     // wrap (above/below), so neither needs its own cleanup. Absent
     // either override this is a no-op — byte-identical to before.
     x.globalAlpha=(ov && typeof ov.opacity==='number')?Math.max(0,Math.min(1,ov.opacity)):1;
-    if(ov && typeof ov.rotation==='number' && ov.rotation){
+    // "add rotation to text, and graphics in builder" — until this fix,
+    // ov.rotation (a Story-Author's own override, above) was the ONLY
+    // rotation mechanism this function read; a Theme-Author-authored
+    // rotation compiled at Build time (t.rotation, World Builder's own
+    // Rotation slider for a Text Experience) was silently never applied
+    // here at all — a real Fidelity gap, unlike the sibling image/shape
+    // Decoration draw functions, which already read a compiled
+    // decoration.rotation directly. t.rotation is now the base; a real
+    // Story-Author override (ov.rotation) still wins over it, matching
+    // the exact ov-overrides-t precedent every other field here already
+    // uses (fontFamily/color/etc.) — byte-identical to before for any
+    // object with neither set.
+    const rotation=(ov && typeof ov.rotation==='number')?ov.rotation:(typeof t.rotation==='number'?t.rotation:0);
+    if(rotation){
       x.translate(drawX,drawY);
-      x.rotate(ov.rotation*Math.PI/180);
+      x.rotate(rotation*Math.PI/180);
       x.translate(-drawX,-drawY);
     }
     x.fillStyle=(ov && ov.color)||t.color||'#333333';

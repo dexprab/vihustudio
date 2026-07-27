@@ -539,7 +539,17 @@ class BuildEngine {
                     content: layer.text || '',
                     font: layer.font || 'Georgia, serif',
                     size: layer.fontSize || 48,
-                    color: layer.color || '#333333'
+                    color: layer.color || '#333333',
+                    // "add rotation to text, and graphics in builder" — a
+                    // Text Experience's own Rotation control (Builder's
+                    // Working View/Runtime Preview already honour it via
+                    // engineRuntime.js's _paintLayer) was silently dropped
+                    // at compile time, unlike the sibling image/shape
+                    // Decoration branches below, which already carry
+                    // rotation through. Root Studio's renderer/
+                    // slideRenderer.js's _layerDrawText reads this as
+                    // t.rotation.
+                    rotation: layer.rotation || 0
                 }
             });
         }

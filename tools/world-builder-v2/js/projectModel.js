@@ -1418,6 +1418,10 @@ const ProjectModel = (function () {
                 Object.assign(layer, {
                     name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize,
                     align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
+                    // Rotation — "add rotation to text, and graphics in builder."
+                    // Graphics already had props.graphicRotation/imageRotation;
+                    // this was the one remaining slot silently hardcoded to 0.
+                    rotation: props.textRotation || 0,
                     position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
                     hostedByScene: fillMode === 'scene'
                 });
@@ -1428,6 +1432,7 @@ const ProjectModel = (function () {
                 });
                 created.color = props.textColor;
                 created.opacity = props.textOpacity;
+                created.rotation = props.textRotation || 0;
                 created.sourceExperienceId = experience.id;
                 created.contentSlot = 'text';
                 created.hostedByScene = fillMode === 'scene';

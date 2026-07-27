@@ -4317,7 +4317,8 @@
             const textLayer = Object.assign({
                 kind: 'text', text: props.textContent, font: props.textFont,
                 fontSize: Math.max(6, (props.textSize || 32) * zoom),
-                align: props.textAlign, color: props.textColor, opacity: props.textOpacity
+                align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
+                rotation: props.textRotation || 0
             }, local);
             window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
             const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
@@ -8590,6 +8591,7 @@
             textTransform.textContent = 'Transform';
             contextPanel.appendChild(textTransform);
             _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp, exp.hostedBy);
+            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))));
             _contentCardFoot(exp);
             contextPanel = outer;
         }

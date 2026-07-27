@@ -82,6 +82,7 @@ const ExperienceSchema = (function () {
             textAlign: 'left',
             textColor: '#1D3457',
             textOpacity: 1,
+            textRotation: 0,
             textX: fillBleed ? 0 : 0.1, textY: fillBleed ? 0 : 0.1, textW: fillBleed ? 1 : 0.6, textH: fillBleed ? 1 : 0.25,
             // Image
             imageSrc: null,

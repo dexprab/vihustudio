@@ -489,8 +489,19 @@ const EngineV2Runtime = (function () {
             ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
             ctx.restore();
         } else if (layer.kind === 'text') {
+            // Rotation — "add rotation to text, and graphics in builder."
+            // Mirrors the Decoration branch's own rotate-around-rect-
+            // centre convention exactly (below), so a rotated Text
+            // Experience's own bounding box never shifts.
+            const textRotation = typeof layer.rotation === 'number' ? layer.rotation : 0;
             ctx.save();
             ctx.globalAlpha = opacity;
+            if (textRotation) {
+                const tcx = rect.x + rect.w / 2, tcy = rect.y + rect.h / 2;
+                ctx.translate(tcx, tcy);
+                ctx.rotate(textRotation * Math.PI / 180);
+                ctx.translate(-tcx, -tcy);
+            }
             ctx.fillStyle = layer.color || '#1D3457';
             ctx.font = (layer.fontSize || 48) + 'px ' + (layer.font || 'Georgia, serif');
             ctx.textAlign = layer.align || 'left';
