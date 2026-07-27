@@ -373,17 +373,19 @@ const MagicCardUI=(function(){
     // "screen 1: scroll" -- .magic-card-home-panel has always had its
     // own genuine max-height/overflow-y bound (unlike the outer
     // .magic-card-panel in this mode, which stays unbounded on
-    // purpose so the two don't fight over which one scrolls) but
-    // nothing ever measured real content against that bound and
-    // shrunk to fit -- it just quietly scrolled. Reusing the exact
-    // same fit function the Awakening ceremony already established,
-    // passed the home panel itself for both arguments since IT is the
-    // bounded, scrolling container here (not the outer content div).
-    _fitAwakenStageToAvailableSpace(panel,panel);
+    // purpose so the two don't fight over which one scrolls). Home's
+    // three real element kinds (art canvases / stories strip / the
+    // shared density margins) are exactly what _sizeHomeArtCards
+    // itself now escalates through -- it fully replaces
+    // _fitAwakenStageToAvailableSpace for this one screen (Home has
+    // neither a sky-frame nor a ceremony-img-wrap for that shared
+    // function's other two steps to ever touch), so calling both
+    // would just have each one reset what the other just set.
+    _sizeHomeArtCards(panel);
     if(typeof ResizeObserver!=='undefined'){
       const ro=new ResizeObserver(function(){
         if(!document.contains(panel)){ ro.disconnect(); return; }
-        _fitAwakenStageToAvailableSpace(panel,panel);
+        _sizeHomeArtCards(panel);
       });
       ro.observe(panel);
     }
@@ -1210,6 +1212,120 @@ const MagicCardUI=(function(){
     let density=scalable>0?(available-fixed)/scalable:1;
     density=Math.max(0.3,Math.min(1,density));
     panel.style.setProperty('--sky-density',density.toFixed(3));
+  }
+
+  // "the size of cards need to be increased. the front and back of
+  // magic card. they are still the same size." -- the FIRST fix here
+  // (a CSS formula guessing "420px of surrounding chrome") was a real
+  // improvement at generous viewports but still under-delivered on a
+  // real, shorter browser window matching the reported screenshot;
+  // trying a single deficit-driven shrink pass (this file's other fit
+  // functions' own pattern) next actually made it WORSE -- that
+  // heuristic is only precise for a small correction, and badly
+  // overcorrected when started from an aggressive, ignore-the-height-
+  // budget target. Rewritten around exact, measured scenarios instead
+  // of a heuristic, and around two real findings from actually
+  // measuring the reported screenshot's shape rather than guessing
+  // further: (1) .magic-card-home-panel's own clientHeight -- what the
+  // ORIGINAL formula was measured against -- only reflects however
+  // tall the panel has auto-sized itself to whatever content it holds
+  // RIGHT NOW (max-height is a CAP, not a fixed size), so it
+  // understates the real room available once the canvas is actually
+  // allowed to grow toward that cap -- the true ceiling is
+  // getComputedStyle(panel).maxHeight (calc(100vh - 64px), resolved),
+  // used below instead. (2) even measured against that true ceiling,
+  // the reveal note + Front/Back/Print buttons (both genuinely inside
+  // .magic-card-art-view, not outside it) and the stories strip
+  // together still ate almost all of it at a real short viewport --
+  // the shared --awaken-density margins alone (0.3 floor) barely
+  // dented that, since the reveal-note/action-buttons margins were
+  // never made density-aware in the first place (fixed now, see
+  // css/style.css). The stories strip is real, useful content, but on
+  // THIS screen it is explicitly secondary -- _buildCardArtView's own
+  // header comment already calls the card itself "Home's own primary/
+  // leading content" -- so the escalation below tries three real,
+  // measured scenarios and picks whichever genuinely buys the biggest
+  // card: chrome at its natural size; chrome density-compressed with
+  // the stories strip merely shrunk; and, only when that still isn't
+  // enough, the stories strip hidden outright to give the card the
+  // room it needs. Never applies a heavier scenario than the lightest
+  // one that already delivers a meaningfully (>15px) bigger card, so a
+  // generous viewport keeps everything visible exactly as before.
+  function _sizeHomeArtCards(panel){
+    const artView=panel.querySelector('.magic-card-art-view');
+    if(!artView) return;
+    const canvases=artView.querySelectorAll('.magic-card-art-canvas');
+    if(!canvases.length) return;
+    const row=artView.querySelector('.magic-card-art-row');
+    const storiesLabel=panel.querySelector('.magic-card-home-stories-label');
+    const storiesGrid=panel.querySelector('.magic-card-home-stories-grid');
+    const canvas=canvases[0];
+
+    function resetOverrides(){
+      canvases.forEach(function(c){ c.style.removeProperty('width'); });
+      if(storiesGrid){
+        storiesGrid.style.removeProperty('width');
+        storiesGrid.style.removeProperty('display');
+      }
+      if(storiesLabel) storiesLabel.style.removeProperty('display');
+      panel.style.removeProperty('--awaken-density');
+    }
+    // With whatever chrome overrides are CURRENTLY applied (density/
+    // stories-strip width or visibility), computes the canvas width
+    // that exactly fills whatever vertical budget is left against the
+    // panel's own TRUE ceiling -- never touches the canvas's own
+    // width itself, purely a measurement.
+    function fittingWidth(){
+      const chromeHeight=panel.scrollHeight-artView.offsetHeight;
+      const availH=maxHeightPx-chromeHeight-8;
+      const overhead=artView.offsetHeight-canvas.offsetHeight;
+      const heightTerm=(availH-overhead)*(700/980);
+      return Math.max(90,Math.min(widthTerm,heightTerm,480));
+    }
+
+    const maxHeightPx=parseFloat(getComputedStyle(panel).maxHeight)||panel.clientHeight;
+    const gapPx=parseFloat(getComputedStyle(row).gap)||14;
+    const widthTerm=(panel.clientWidth-gapPx)/2;
+
+    resetOverrides();
+    const widthNatural=fittingWidth();
+
+    if(storiesGrid){
+      const rect=storiesGrid.getBoundingClientRect();
+      storiesGrid.style.width=Math.round(rect.width*0.55)+'px';
+    }
+    panel.style.setProperty('--awaken-density','0.3');
+    const widthShrunkStories=fittingWidth();
+
+    if(storiesGrid) storiesGrid.style.display='none';
+    if(storiesLabel) storiesLabel.style.display='none';
+    const widthHiddenStories=fittingWidth();
+
+    // Only escalates past a tier when the CURRENT best still falls
+    // short of a comfortably-large card -- otherwise hiding the
+    // stories strip would win almost every time (it always frees a
+    // real, sizeable block of height, so it nearly always buys SOME
+    // extra card size, even at generous viewports where the card is
+    // already plenty big) and a screen with genuine room to spare
+    // would needlessly lose real content it never actually needed to.
+    const GOOD_ENOUGH=220;
+    let best=widthNatural, mode='natural';
+    if(best<GOOD_ENOUGH && widthShrunkStories>best+15){ best=widthShrunkStories; mode='shrunk'; }
+    if(best<GOOD_ENOUGH && widthHiddenStories>best+15){ best=widthHiddenStories; mode='hidden'; }
+
+    resetOverrides();
+    if(mode==='shrunk'){
+      if(storiesGrid){
+        const rect=storiesGrid.getBoundingClientRect();
+        storiesGrid.style.width=Math.round(rect.width*0.55)+'px';
+      }
+      panel.style.setProperty('--awaken-density','0.3');
+    }else if(mode==='hidden'){
+      if(storiesGrid) storiesGrid.style.display='none';
+      if(storiesLabel) storiesLabel.style.display='none';
+      panel.style.setProperty('--awaken-density','0.3');
+    }
+    canvases.forEach(function(c){ c.style.width=best+'px'; });
   }
 
   // "ensure there are no scrolls on any screen. its essential not to

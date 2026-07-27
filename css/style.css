@@ -7945,9 +7945,15 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-art-reveal-btn:hover{ background:rgba(8,10,20,0.58); }
 .magic-card-art-reveal-glyph{ font-size:26px; }
 .magic-card-art-reveal-label{ font:700 12px/1.3 inherit; }
+/* "the size of cards need to be increased" -- these two margins are
+   real, compressible height that _sizeHomeArtCards()'s own density
+   escalation (js/magicCardUI.js) needs to actually shrink when a short
+   viewport is fighting the Front/Back cards for room; they were never
+   made density-aware before, so the shared --awaken-density mechanism
+   used elsewhere on this same view barely touched this block at all. */
 .magic-card-art-reveal-note{
   max-width:340px;
-  margin:12px auto 0;
+  margin:calc(var(--awaken-density,1) * 12px) auto 0;
   font-size:11.5px;
   line-height:1.5;
   color:rgba(255,190,150,0.85);
@@ -7958,7 +7964,7 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   justify-content:center;
   gap:10px;
   flex-wrap:wrap;
-  margin:14px 0 4px;
+  margin:calc(var(--awaken-density,1) * 14px) 0 calc(var(--awaken-density,1) * 4px);
 }
 .magic-card-art-btn{
   width:auto !important;
