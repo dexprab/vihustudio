@@ -4298,7 +4298,7 @@
 
         if (kind === 'image' && props.imageSrc) {
             const local = toLocal(_experienceAbsRect(exp, 'image'));
-            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity }, local), graph);
+            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity, rotation: props.imageRotation || 0 }, local), graph);
             sections.push({ slot: 'image', rect: window.EngineV2Runtime.rectFor(local, graph) });
         }
         if (kind === 'graphics' && (props.graphicSrc || props.graphicShape)) {
@@ -8563,6 +8563,7 @@
             imageTransform.textContent = 'Transform';
             contextPanel.appendChild(imageTransform);
             _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp, exp.hostedBy);
+            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.imageRotation || 0, onProp('imageRotation'))));
             _contentCardFoot(exp);
             contextPanel = outer;
         }

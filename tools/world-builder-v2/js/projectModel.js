@@ -1471,6 +1471,16 @@ const ProjectModel = (function () {
                 // `engineRuntime.js`'s `_paintLayer` already defaults to
                 // 'fit' (contain).
                 const fit = spec.slot === 'image' ? (props.imageFit || 'fit') : undefined;
+                // Rotation — an uploaded Image now has its own Rotation
+                // control (props.imageRotation), matching how an
+                // author-drawn Graphics Shape already has one
+                // (props.graphicRotation) — `_paintLayer`/the compiled
+                // `decoration.rotation` field are both already generic
+                // to any decoration kind, so this is the one remaining
+                // place rotation was being silently hardcoded to 0 for
+                // the image slot. A plain (non-shape) Graphics image
+                // stays unrotatable, per the spec quoted above.
+                const rotation = spec.slot === 'image' ? (props.imageRotation || 0) : (shapeKind ? (props.graphicRotation || 0) : 0);
                 // `shape: null` in the non-shape branch is deliberate —
                 // it clears a stale shape when an author switches a
                 // Graphics section from a Shape back to an uploaded
@@ -1479,10 +1489,10 @@ const ProjectModel = (function () {
                     shape: shapeKind, shapeFillColor: props.graphicFillColor,
                     shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
                     shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                    rotation: props.graphicRotation, customPath: props.graphicCustomPath
-                } : { shape: null, rotation: 0, customPath: null };
+                    customPath: props.graphicCustomPath
+                } : { shape: null, customPath: null };
                 if (layer) {
-                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
+                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, rotation: rotation, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
                 } else {
                     // A real, pre-existing bug found while testing —
                     // addSceneLayer's own Object.assign only ever copies
@@ -1505,6 +1515,7 @@ const ProjectModel = (function () {
                     created.image = src || null;
                     created.opacity = props[spec.opKey];
                     created.fit = fit;
+                    created.rotation = rotation;
                     created.sourceExperienceId = experience.id;
                     created.contentSlot = spec.slot;
                     created.hostedByScene = fillMode === 'scene';

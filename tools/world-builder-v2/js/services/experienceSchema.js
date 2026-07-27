@@ -87,6 +87,7 @@ const ExperienceSchema = (function () {
             imageSrc: null,
             imageFit: 'fit',
             imageOpacity: 1,
+            imageRotation: 0,
             imageX: fillBleed ? 0 : 0.1, imageY: fillBleed ? 0 : 0.4, imageW: fillBleed ? 1 : 0.4, imageH: fillBleed ? 1 : 0.4,
             // Graphics (reusable SVG/PNG visual assets — icons, stickers)
             graphicSrc: null,
