@@ -97,6 +97,17 @@
                 <h2 style="margin:0;">3. Results <small id="se-results-count"></small></h2>
                 <button class="se-btn" id="se-download-all-btn">⬇ Download All as ZIP</button>
             </div>
+            <div class="se-compress-row">
+                <div class="se-field se-compress-field">
+                    <label for="se-compress-level">Compression</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-compress-level" min="0" max="6" step="1" value="0">
+                        <output id="se-compress-level-out">Lossless (optimized)</output>
+                    </div>
+                    <span class="se-field-help">Slide right to reduce the color count — every thumbnail and size below updates live, so you can see exactly what you'd be trading away before you download anything.</span>
+                </div>
+                <div class="se-compress-summary" id="se-compress-summary"></div>
+            </div>
             <div class="se-results-grid" id="se-results-grid"></div>
         </section>
 
@@ -106,6 +117,7 @@
     </div>
 
     <script src="js/pngEncoder.js"></script>
+    <script src="js/pngCompressor.js"></script>
     <script src="js/zipWriter.js"></script>
     <script src="js/extractor.js"></script>
     <script src="js/app.js"></script>

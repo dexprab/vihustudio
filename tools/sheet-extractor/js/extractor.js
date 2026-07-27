@@ -163,7 +163,12 @@ function isBoundary(labels, w, h, x, y, id) {
 // extractSheet(imgSrc, opts) -> Promise<{
 //   sourceWidth, sourceHeight, background, threshold,
 //   componentCountBeforeFilter,
-//   items: [{ index, pixelCount, bboxOriginal, bboxPadded, blob, objectUrl }]
+//   items: [{ index, pixelCount, bboxOriginal, bboxPadded, blob, objectUrl,
+//            pixelBuffer }]
+//     pixelBuffer: { data, width, height } -- the exact raw RGBA bytes `blob`
+//     was encoded from, kept alive so PngCompressor can re-encode this same
+//     item at any color-count level later without ever re-running
+//     segmentation.
 // }>
 //
 // imgSrc: a URL/object URL/data URI the browser's Image element can load.
@@ -251,7 +256,11 @@ function extractSheet(imgSrc, opts) {
               bboxOriginal: { x: tb.minX, y: tb.minY, w: bw, h: bh },
               bboxPadded: { x: x0, y: y0, w: ow, h: oh },
               blob: blob,
-              objectUrl: URL.createObjectURL(blob)
+              objectUrl: URL.createObjectURL(blob),
+              // Kept alive so the Compressor can re-encode at any color
+              // level later without ever re-running segmentation -- the
+              // exact same raw RGBA bytes `blob` above was built from.
+              pixelBuffer: { data: od, width: ow, height: oh }
             };
           });
         });

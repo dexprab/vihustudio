@@ -32,7 +32,16 @@
 // exactly what a PNG IDAT chunk requires, so no deflate implementation or
 // external dependency is needed either.
 //
-// Public API: PngEncoder.encode({data, width, height}) -> Promise<Blob>
+// Public API:
+//   PngEncoder.encode({data, width, height}) -> Promise<Blob>
+//     Lossless 8-bit RGBA PNG (color type 6).
+//   PngEncoder.encodeIndexed({indices, width, height, palette}) -> Promise<Blob>
+//     A palette (color type 3) PNG for the Compressor's quantized output —
+//     `indices` is one byte per pixel (0..palette.length-1), `palette` is
+//     an array of [r,g,b,a] tuples. A tRNS chunk carrying per-index alpha
+//     is written whenever any palette entry isn't fully opaque, so
+//     transparency survives exactly like the RGBA path — this still never
+//     touches <canvas>, matching this module's own header discipline.
 const PngEncoder = (function(){
   var CRC_TABLE = buildCrcTable();
 
@@ -85,23 +94,60 @@ const PngEncoder = (function(){
     return concatBytes([u32(data.length), typeAndData, u32(crc32(typeAndData))]);
   }
 
-  // Every scanline gets a leading filter-type byte. Filter 0 ("None") is
-  // always valid and never touches pixel values — correctness matters far
-  // more here than the extra few percent a real filter heuristic would
-  // save on file size.
-  function buildRawScanlines(pixelBuffer) {
-    var width = pixelBuffer.width;
-    var height = pixelBuffer.height;
-    var data = pixelBuffer.data;
-    var rowBytes = width * 4;
-    var raw = new Uint8Array((rowBytes + 1) * height);
+  function paethPredictor(a, b, c) {
+    var p = a + b - c;
+    var pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+    if (pa <= pb && pa <= pc) return a;
+    if (pb <= pc) return b;
+    return c;
+  }
+
+  // Every scanline gets a leading filter-type byte, one of the 5 standard
+  // PNG filters (None/Sub/Up/Average/Paeth). For each row this tries all
+  // 5, scores each by the sum of absolute (signed-byte) differences --
+  // the same "minimum sum of absolute differences" heuristic libpng's own
+  // default encoder uses -- and keeps whichever compresses best. This is
+  // purely a smaller-file-size improvement: every filter type is fully
+  // invertible, so the pixel bytes this reconstructs to on decode are
+  // byte-for-byte identical no matter which filter was picked; only the
+  // representation handed to DEFLATE changes. bytesPerPixel is 4 for the
+  // RGBA path (encode) and 1 for the indexed path (encodeIndexed).
+  function filterScanlines(rowData, width, height, bytesPerPixel) {
+    var stride = width * bytesPerPixel;
+    var out = new Uint8Array((stride + 1) * height);
+    var prior = new Uint8Array(stride); // all zero -- the spec's "row above the first row"
+    var candidates = [
+      new Uint8Array(stride), new Uint8Array(stride), new Uint8Array(stride),
+      new Uint8Array(stride), new Uint8Array(stride)
+    ];
     var offset = 0;
     for (var y = 0; y < height; y++) {
-      raw[offset++] = 0; // filter type: None
-      raw.set(data.subarray(y * rowBytes, y * rowBytes + rowBytes), offset);
-      offset += rowBytes;
+      var raw = rowData.subarray(y * stride, y * stride + stride);
+      var bestType = 0, bestScore = Infinity, bestRow = candidates[0];
+      for (var t = 0; t < 5; t++) {
+        var cand = candidates[t];
+        var score = 0;
+        for (var x = 0; x < stride; x++) {
+          var a = x >= bytesPerPixel ? raw[x - bytesPerPixel] : 0;
+          var b = prior[x];
+          var c = x >= bytesPerPixel ? prior[x - bytesPerPixel] : 0;
+          var v;
+          if (t === 0) v = raw[x];
+          else if (t === 1) v = (raw[x] - a) & 0xFF;
+          else if (t === 2) v = (raw[x] - b) & 0xFF;
+          else if (t === 3) v = (raw[x] - ((a + b) >> 1)) & 0xFF;
+          else v = (raw[x] - paethPredictor(a, b, c)) & 0xFF;
+          cand[x] = v;
+          score += v > 127 ? 256 - v : v;
+        }
+        if (score < bestScore) { bestScore = score; bestType = t; bestRow = cand; }
+      }
+      out[offset++] = bestType;
+      out.set(bestRow, offset);
+      offset += stride;
+      prior = raw;
     }
-    return raw;
+    return out;
   }
 
   async function deflateZlib(bytes) {
@@ -135,7 +181,7 @@ const PngEncoder = (function(){
       new Uint8Array([8, 6, 0, 0, 0]) // bit depth 8, color type 6 (RGBA), default compression/filter/interlace
     ]);
 
-    var rawScanlines = buildRawScanlines(pixelBuffer);
+    var rawScanlines = filterScanlines(pixelBuffer.data, width, height, 4);
     var idatData = await deflateZlib(rawScanlines);
 
     var file = concatBytes([
@@ -148,7 +194,51 @@ const PngEncoder = (function(){
     return new Blob([file], { type: 'image/png' });
   }
 
-  var api = { encode: encode };
+  // pixelBuffer: { indices: Uint8Array (one byte per pixel, values
+  // 0..palette.length-1), width, height, palette: [[r,g,b,a], ...] } --
+  // the Compressor's quantized output. A palette (color type 3) PNG is
+  // typically far smaller than the RGBA path for illustration-style
+  // content with a bounded number of distinct colors, since each pixel
+  // costs 1 byte instead of 4 even before DEFLATE. A tRNS chunk carrying
+  // per-index alpha is written whenever any palette entry isn't fully
+  // opaque (255) -- omitted entirely when every entry is opaque, since an
+  // absent tRNS already means "fully opaque" per the PNG spec.
+  async function encodeIndexed(pixelBuffer) {
+    var width = pixelBuffer.width;
+    var height = pixelBuffer.height;
+    var palette = pixelBuffer.palette;
+
+    var ihdr = concatBytes([
+      u32(width),
+      u32(height),
+      new Uint8Array([8, 3, 0, 0, 0]) // bit depth 8, color type 3 (indexed)
+    ]);
+
+    var plte = new Uint8Array(palette.length * 3);
+    var needsTrns = false;
+    for (var i = 0; i < palette.length; i++) {
+      plte[i * 3] = palette[i][0];
+      plte[i * 3 + 1] = palette[i][1];
+      plte[i * 3 + 2] = palette[i][2];
+      if (palette[i][3] !== 255) needsTrns = true;
+    }
+
+    var chunks = [PNG_SIGNATURE, makeChunk('IHDR', ihdr), makeChunk('PLTE', plte)];
+    if (needsTrns) {
+      var trns = new Uint8Array(palette.length);
+      for (var j = 0; j < palette.length; j++) trns[j] = palette[j][3];
+      chunks.push(makeChunk('tRNS', trns));
+    }
+
+    var rawScanlines = filterScanlines(pixelBuffer.indices, width, height, 1);
+    var idatData = await deflateZlib(rawScanlines);
+    chunks.push(makeChunk('IDAT', idatData));
+    chunks.push(makeChunk('IEND', new Uint8Array(0)));
+
+    return new Blob([concatBytes(chunks)], { type: 'image/png' });
+  }
+
+  var api = { encode: encode, encodeIndexed: encodeIndexed };
   try { window.PngEncoder = api; } catch (e) {}
   return api;
 })();

@@ -15,7 +15,9 @@ there.
 
 Open `index.html`. Upload (or drag-and-drop) a reference image, adjust the
 options if the defaults don't fit your sheet, click **Extract Objects**,
-then download individual PNGs or **Download All as ZIP**.
+then download individual PNGs or **Download All as ZIP**. A **Compression**
+slider above the results lets you trade file size for color count on the
+extracted PNGs — see "Compressing extracted images" below.
 
 ## How it works
 
@@ -56,6 +58,59 @@ below for why that distinction matters.
 | Gap Bridging | `2` | Radius (px) used only to decide which pixels belong to the same object — never affects what's actually cropped. |
 | Filename Prefix | (from filename) | Output files are named `<prefix>-001.png`, `<prefix>-002.png`, etc. |
 | Background | Auto-detect | Force a specific background color instead of auto-sampling the corners — use this if the corners aren't representative of the true background. |
+
+## Compressing extracted images
+
+Once objects are extracted, the Results section shows a **Compression**
+slider above the grid. It's a real, honest trade-off control, not just a
+"make it smaller" button — every card's thumbnail and size line update
+live as you move it, so you can actually see what a given setting looks
+like and costs before downloading anything.
+
+Two genuinely different techniques sit behind the slider's levels:
+
+1. **Lossless (the leftmost/default position)** — every extracted PNG
+   already benefits from this for free at extraction time: `pngEncoder.js`
+   picks, per scanline, whichever of the 5 standard PNG filters (None/
+   Sub/Up/Average/Paeth) compresses best, the same heuristic `libpng`'s
+   own default encoder uses. This is fully invertible — the pixels this
+   reconstructs to on decode are byte-for-byte identical no matter which
+   filter was picked — so it costs nothing in quality, only in file size.
+2. **Reduced color count (every other level)** — a real median-cut color
+   quantizer, written entirely in JS: it finds the actual distinct colors
+   used, groups them by splitting the group with the widest color range
+   until the requested count is reached, and writes a **palette (indexed)
+   PNG** instead of full RGBA — each pixel costs 1 byte instead of 4, on
+   top of whatever DEFLATE saves. Fully-transparent pixels are first
+   canonicalized to one shared color (their RGB carries no visual
+   information, so this avoids wasting palette slots on background noise).
+
+**When a level is honestly still lossless.** If an object's own real
+distinct-color count already fits the level you picked (a flat-color
+sticker with only a handful of real colors, say), the result is labeled
+*"still lossless, just a smaller file"* rather than implying quality loss
+that didn't actually happen — verified directly: the tool checks the real
+color count against the cap before deciding what to say, it doesn't guess.
+
+**Never makes a download bigger.** If quantizing an object would somehow
+produce a *larger* file than the lossless version (can happen on a tiny
+crop, where the palette table's own overhead outweighs the per-pixel
+savings), the tool silently keeps the lossless bytes instead and says so
+("kept lossless — a smaller version came out bigger, not smaller") — the
+same "never make a real download bigger" discipline used elsewhere in
+this codebase for image uploads.
+
+**Still never touches `<canvas>`.** The indexed-PNG writer
+(`PngEncoder.encodeIndexed`) is built the same way as the original RGBA
+writer — straight from the raw pixel buffer, with a real `PLTE` (palette)
+chunk and, when needed, a `tRNS` chunk carrying per-color transparency —
+so the premultiplied-alpha corruption this whole tool exists to avoid (see
+below) can never sneak back in through the compression step either.
+
+**Everything downstream uses whichever level is currently selected** — the
+individual "Download PNG" links, "Download All as ZIP", and even
+re-running Extract on the same file (the selected level is remembered and
+automatically re-applied, not reset to Lossless).
 
 ## A real bug, found and fixed: canvas export can silently corrupt RGB at partial alpha
 
@@ -138,6 +193,17 @@ matter for a real moodboard, run through the real, hosted UI end to end
   discarded by the minimum-area filter.
 - **The exported ZIP is a real, valid PKZip archive** — starts with the
   correct local-file-header signature and contains every extracted PNG.
+- **Compression genuinely does what it claims** — verified against the
+  real, hosted UI (a real upload, a real Extract, a real slider drag): a
+  high-color-count object (a radial gradient) compressed at the most
+  aggressive level produces a real indexed PNG whose own palette (parsed
+  directly from the file's `PLTE` chunk, no `<canvas>` involved) never
+  exceeds the requested color count, and whose real byte size shrinks; a
+  low-color-count object (a flat, non-anti-aliased shape) is correctly
+  labeled "still lossless" rather than falsely implying loss; reverting to
+  Lossless restores the *exact original* blob, not a new re-encode of it;
+  and "Download All as ZIP" / re-running Extract both correctly use
+  whichever compression level is currently selected.
 
 ## Real, disclosed limitations
 
@@ -171,7 +237,11 @@ semantic or ML-based object detection. Stated plainly, not glossed over:
 - `index.html` / `css/style.css` / `js/app.js` — the page itself and its
   UI wiring (upload, options, results grid, downloads).
 - `js/extractor.js` — the segmentation algorithm (`window.extractSheet`).
-- `js/pngEncoder.js` — the canvas-free PNG writer (`window.PngEncoder`).
+- `js/pngEncoder.js` — the canvas-free PNG writer (`window.PngEncoder`),
+  including the per-scanline filter selection both `encode`/`encodeIndexed`
+  share, and the indexed-PNG (palette + `tRNS`) writer the Compressor uses.
+- `js/pngCompressor.js` — the Compressor (`window.PngCompressor`): the
+  slider's level table and the median-cut color quantizer.
 - `js/zipWriter.js` — the "Download All as ZIP" writer, copied from this
   repo's own `js/zipWriter.js` (already dependency-free, STORED-only PKZip
   — no re-compression, since PNGs are already compressed).
