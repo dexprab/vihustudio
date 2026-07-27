@@ -2542,6 +2542,70 @@ html, body {
     margin: 4px 0 6px;
 }
 
+/* Platform Hardening — Collection Phase 2 layout fix. The Experience
+   Image/Graphics content card's own "reuse an existing asset" grid used
+   to be a plain auto-fill .wb-scene-template-grid -- vertical, no cap --
+   sitting inline inside the Context Inspector. As a World's Collection
+   grows, that grid grows with it, so the whole Inspector column kept
+   growing taller the more a Theme Author added to their Collection. A
+   horizontal-scroll strip (mirroring .wb-scenes-strip's own proven
+   shape below) fixes the panel's height contribution permanently --
+   the strip scrolls, the panel never grows, regardless of how many
+   Collection entries of the matching kind exist. */
+.wb-collection-reuse-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 2px 6px;
+    margin-top: 4px;
+}
+
+.wb-collection-reuse-card {
+    flex: 0 0 auto;
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border: 1.5px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-paper);
+    cursor: pointer;
+}
+
+.wb-collection-reuse-card:hover { border-color: var(--wb-gold); }
+.wb-collection-reuse-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
+.wb-collection-reuse-card:disabled { opacity: .5; cursor: not-allowed; }
+
+.wb-collection-reuse-thumb {
+    width: 100%;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.wb-collection-reuse-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.wb-collection-reuse-name {
+    width: 100%;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--wb-navy);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .wb-layer-row {
     display: flex;
     align-items: center;

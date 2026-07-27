@@ -7616,6 +7616,16 @@
         wrap.appendChild(label);
         wrap.appendChild(_assetUploadRow(iconFallback, currentRef, commit, accept));
 
+        // Platform Hardening — Collection Phase 2 layout fix ("as the
+        // collection will grow the screen size will keep growing"): the
+        // original .wb-scene-template-grid was a plain, unbounded
+        // auto-fill grid -- inline inside the Context Inspector, it made
+        // the whole panel grow taller with every Collection entry of a
+        // matching kind. A fixed-height horizontal strip
+        // (.wb-collection-reuse-strip, mirroring the Scenes Library
+        // strip's own proven shape) keeps this section's height
+        // constant forever -- the strip scrolls, the panel never grows,
+        // no matter how big this World's Collection gets.
         const matches = (window.ProjectModel.collectionAssets(currentProject) || []).filter(function (a) { return a.kind === kind; });
         if (matches.length) {
             const pickHelp = document.createElement('div');
@@ -7624,41 +7634,34 @@
             pickHelp.textContent = 'Or reuse one already used elsewhere in this World:';
             wrap.appendChild(pickHelp);
 
-            const grid = document.createElement('div');
-            grid.className = 'wb-scene-template-grid';
+            const strip = document.createElement('div');
+            strip.className = 'wb-collection-reuse-strip';
             matches.forEach(function (entry) {
                 const card = document.createElement('button');
                 card.type = 'button';
-                card.className = 'wb-scene-template-card' + (currentRef === entry.ref ? ' active' : '');
+                card.className = 'wb-collection-reuse-card' + (currentRef === entry.ref ? ' active' : '');
                 card.disabled = currentProjectReadOnly;
                 card.title = entry.name || 'Untitled Asset';
 
                 const thumb = document.createElement('div');
-                thumb.style.width = '100%';
-                thumb.style.height = '40px';
-                thumb.style.borderRadius = '6px';
-                thumb.style.background = 'rgba(0,0,0,0.06)';
-                thumb.style.overflow = 'hidden';
+                thumb.className = 'wb-collection-reuse-thumb';
                 card.appendChild(thumb);
                 _resolveAssetRefToSrc(entry.ref).then(function (src) {
                     if (!src) return;
                     const img = document.createElement('img');
-                    img.style.width = '100%';
-                    img.style.height = '100%';
-                    img.style.objectFit = 'cover';
                     img.src = src;
                     thumb.appendChild(img);
                 });
 
                 const nameEl = document.createElement('div');
-                nameEl.className = 'wb-scene-template-name';
+                nameEl.className = 'wb-collection-reuse-name';
                 nameEl.textContent = entry.name || 'Untitled Asset';
                 card.appendChild(nameEl);
 
                 card.addEventListener('click', function () { commit(entry.ref); });
-                grid.appendChild(card);
+                strip.appendChild(card);
             });
-            wrap.appendChild(grid);
+            wrap.appendChild(strip);
         }
 
         // Platform Hardening — Collection Phase 3. "Manage Collection"
