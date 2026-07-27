@@ -7516,32 +7516,71 @@
         }).catch(function () { onFile(dataURL); });
     }
 
+    // Shared single-file pipeline — FileReader -> downscale-if-large ->
+    // _storeUploadedAsset -> onFile(ref) -- factored out so both the
+    // single-file _fileInputUpload below and the multi-file
+    // _fileInputUploadMulti (Collection direct-add, "add multiple
+    // images in one go") reuse the identical read/downscale/store logic
+    // rather than duplicating it.
+    function _processUploadedFile(file, onFile) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            const dataURL = reader.result;
+            const isImage = file.type && file.type.indexOf('image/') === 0;
+            const finish = function (finalDataURL) { _storeUploadedAsset(finalDataURL, onFile); };
+            if (isImage && dataURL.length > UPLOAD_DOWNSCALE_THRESHOLD_BYTES) {
+                _downscaleImageDataURL(dataURL, finish);
+            } else {
+                finish(dataURL);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
     // Real upload — a hidden file input read via FileReader into a data
     // URI, then (Phase B) durably stored via _storeUploadedAsset before
     // the caller ever sees it, the same embedding approach
     // js/services/builder.js already expects for assets/preview.png/
     // thumbnail.png at Build time (Sprint B2.0), now backed by
-    // AssetStore instead of raw localStorage-embedded base64.
+    // AssetStore instead of raw localStorage-embedded base64. Single-
+    // file only -- every existing caller's onFile(ref) is called exactly
+    // once, so this signature stays untouched for all of them.
     function _fileInputUpload(accept, onFile) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = accept || 'image/*';
         input.style.display = 'none';
         input.addEventListener('change', function () {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-                const dataURL = reader.result;
-                const isImage = file.type && file.type.indexOf('image/') === 0;
-                const finish = function (finalDataURL) { _storeUploadedAsset(finalDataURL, onFile); };
-                if (isImage && dataURL.length > UPLOAD_DOWNSCALE_THRESHOLD_BYTES) {
-                    _downscaleImageDataURL(dataURL, finish);
-                } else {
-                    finish(dataURL);
-                }
-            };
-            reader.readAsDataURL(file);
+            _processUploadedFile(input.files[0], onFile);
+        });
+        return input;
+    }
+
+    // Platform Hardening — Collection multi-file add ("for collections
+    // in builder i would like to add multiple images in one go"). A
+    // dedicated multi-select variant, kept separate from
+    // _fileInputUpload rather than widening that function's own
+    // established single-file contract (every other caller -- Identity
+    // Thumbnail/Hero, the generic Assets-screen slots, Frame/Experience
+    // pickers -- expects onFile to fire exactly once with one ref).
+    // onFile is instead called once PER selected file, as each file's
+    // own upload pipeline finishes -- the same incremental,
+    // fire-as-you-go shape _fileInputUpload's single call already has,
+    // just repeated. Each file uploads/downscales/persists completely
+    // independently (registerCollectionAsset's own synchronous
+    // project.files mutation means calling it several times in a row,
+    // once per completed file, is safe regardless of completion order).
+    function _fileInputUploadMulti(accept, onFile) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = accept || 'image/*';
+        input.multiple = true;
+        input.style.display = 'none';
+        input.addEventListener('change', function () {
+            Array.prototype.slice.call(input.files || []).forEach(function (file) {
+                _processUploadedFile(file, onFile);
+            });
         });
         return input;
     }
@@ -7747,16 +7786,22 @@
         // "From This World" browsing surface (Phase 6) never filters by
         // kind at all -- so this keeps the common case (add a picture)
         // a single click, with the rarer Graphic case one click away
-        // rather than an extra decision every time.
+        // rather than an extra decision every time. Both use
+        // _fileInputUploadMulti ("for collections in builder i would
+        // like to add multiple images in one go") -- the native file
+        // picker lets several files be selected at once, and each one
+        // registers as its own Collection entry as its own
+        // upload/downscale pipeline completes, so the panel fills in
+        // incrementally rather than waiting on the slowest file.
         const addRow = document.createElement('div');
         addRow.className = 'wb-collection-add-row';
 
         const addImageBtn = document.createElement('button');
         addImageBtn.type = 'button';
         addImageBtn.className = 'wb-workspace-btn';
-        addImageBtn.textContent = '+ 🖼️ Add Image';
+        addImageBtn.textContent = '+ 🖼️ Add Image(s)';
         addImageBtn.disabled = currentProjectReadOnly;
-        const addImageInput = _fileInputUpload('image/*', function (ref) {
+        const addImageInput = _fileInputUploadMulti('image/*', function (ref) {
             window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'image' });
             _persist();
             _renderCollectionPanel();
@@ -7766,9 +7811,9 @@
         const addGraphicBtn = document.createElement('button');
         addGraphicBtn.type = 'button';
         addGraphicBtn.className = 'wb-workspace-btn';
-        addGraphicBtn.textContent = '+ 🎭 Add Graphic';
+        addGraphicBtn.textContent = '+ 🎭 Add Graphic(s)';
         addGraphicBtn.disabled = currentProjectReadOnly;
-        const addGraphicInput = _fileInputUpload('image/*', function (ref) {
+        const addGraphicInput = _fileInputUploadMulti('image/*', function (ref) {
             window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'graphic' });
             _persist();
             _renderCollectionPanel();
