@@ -6759,6 +6759,20 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-overlay.magic-card-mode-gate .magic-card-panel{
   max-width:680px;
 }
+/* "increase the size of card view on all screens" -- Magic Card Home's
+   own .magic-card-home-panel (below) got its max-width bumped 460px ->
+   600px to fit the enlarged Front/Back card pair side by side, but that
+   inner panel's width:100% is itself bounded by ITS OWN parent,
+   #magicCardContent (this .magic-card-panel), whose base rule above
+   caps every mode -- gate/awaken/home alike -- at a flat 520px. Without
+   this override the inner panel's own bigger max-width was never
+   reachable at all, a real bug caught by directly measuring the
+   rendered width rather than trusting the CSS source alone. Widened
+   here, scoped to home mode only, exactly mirroring the gate-mode
+   override immediately above. */
+.magic-card-overlay.magic-card-mode-home .magic-card-panel{
+  max-width:600px;
+}
 /* Screen 11 (Magic Card Home) is reached mid-edit, from the header
    badge, over an already-open editor — a slightly less "takeover the
    whole world" backdrop than the Awakening ceremony's own full-immersion
@@ -7702,7 +7716,26 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* ---------- Screen 11 — Magic Card Home ---------- */
 .magic-card-home-panel{
   width:100%;
-  max-width:460px;
+  /* Widened from 460px alongside the "increase the size of card view"
+     fix above -- at the old flat 150px card size, 460px was plenty of
+     room for the Front/Back pair to sit side by side (2*150+14=314px,
+     comfortably under the ~396px this panel's own horizontal padding
+     leaves), but at the new, bigger clamp(150px,32vw,240px) size
+     (2*240+14=494px needed) it was genuinely too narrow -- the pair
+     silently wrapped into a tall vertical stack, and
+     _fitAwakenStageToAvailableSpace()'s width-shrink escalation step
+     (tuned for a smooth, single-line-height response to width changes)
+     overshot all the way down to its own 90px floor the instant
+     shrinking crossed back under the wrap threshold, since un-wrapping
+     drops a whole second line's height at once -- a real discontinuity
+     its linear heuristic doesn't model. Rather than patch that shared,
+     multi-screen heuristic for one screen's own layout quirk, this
+     panel is widened to comfortably fit the pair on one line
+     (2*240+14=494px of content, plus up to ~64px of this panel's own
+     horizontal padding = ~558px minimum; 600px leaves real breathing
+     room) so the wrap -- and the escalation overshoot it triggered --
+     is never reached here at all on any normal viewport. */
+  max-width:600px;
   max-height:calc(100vh - 64px);
   overflow-y:auto;
   background:var(--mc-panel);
@@ -7804,26 +7837,32 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   text-transform:uppercase;
   color:var(--mc-ink-soft);
 }
+/* "increase the size of card view on all screens where each element is
+   easily readable" -- this base rule used to be a flat 150px, with a
+   separate, ancestor-scoped override (.magic-card-awaken-stage
+   .magic-card-art-view .magic-card-art-canvas) bumping only the
+   ceremony's own First Claimed Moment up to clamp(150px,32vw,240px).
+   That left Magic Card Home's "View My Card" and the nickname-prompt
+   preview (a DIFFERENT wrapper, .magic-card-nickname-preview-row,
+   which never matched the scoped selector's own .magic-card-art-view
+   requirement at all) both stuck at the small flat size. Generalized
+   here onto the bare class instead, so every screen that renders a
+   .magic-card-art-canvas gets the identical, already-proven-safe
+   larger size with zero dependency on which wrapper/ancestor happens
+   to contain it. Safe on every screen this appears on: .magic-card-
+   art-row already wraps (flex-wrap:wrap) rather than overflows when
+   two 240px-wide canvases don't both fit side by side in a narrower
+   container (e.g. Home's own 460px-max-width panel) -- they simply
+   stack, still legible, never clipped -- and every screen's own
+   _fitAwakenStageToAvailableSpace() call (openHome() included) already
+   shrinks this rule further via an inline width override on a
+   genuinely short viewport, exactly as it always has. */
 .magic-card-art-canvas{
-  width:150px;
+  width:clamp(150px,32vw,240px);
   height:auto;
   aspect-ratio:700/980;
   border-radius:14px;
   box-shadow:0 10px 28px rgba(0,0,0,0.4);
-}
-/* "Star Traveller screen make both sides of card shown here bigger" --
-   the ceremony's own First Claimed Moment ("<nickname>, your sky is
-   alive."), the one screen the shared 150px .magic-card-art-canvas base
-   was too small for. Scoped to .magic-card-awaken-stage .magic-card-
-   art-view specifically -- _buildCardArtView()'s own wrapper class,
-   used only here and by Magic Card Home's "View My Card" (which lives
-   in .magic-card-home-panel, never .magic-card-awaken-stage, so it's
-   untouched and stays at the original 150px) -- rather than the bare
-   class, so Home's own card view and the earlier nickname-prompt
-   preview (a different wrapper, .magic-card-nickname-preview-row) both
-   keep their original size. */
-.magic-card-awaken-stage .magic-card-art-view .magic-card-art-canvas{
-  width:clamp(150px,32vw,240px);
 }
 /* Reveal-gate — Magic Card Home's "View My Card" only (the ceremony's
    own First Claimed Moment never sets this). The Back face is the
