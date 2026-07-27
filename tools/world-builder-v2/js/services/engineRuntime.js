@@ -92,11 +92,54 @@ const EngineV2Runtime = (function () {
         };
     }
 
+    // A Layer converges to `target:'slide'` (drawn first/behind every
+    // Place) at compile time exactly when it's explicitly Scene-hosted,
+    // or is a true full-bleed Colour fill — tools/world-builder-v2/js/
+    // services/builder.js's convergeSceneLayer's own `target` computation,
+    // mirrored here byte-for-byte so this module and the compile step can
+    // never silently disagree about which Layers are "background."
+    function _isBackgroundLayer(layer) {
+        const size = layer.size || { w: 0, h: 0 };
+        const isFullBleed = (size.w || 0) >= 0.98 && (size.h || 0) >= 0.98;
+        return layer.hostedByScene === true || (layer.kind === 'fill' && isFullBleed);
+    }
+
     // ---------------------------------------------------------------
     // render — Engine Canon §5 pipeline step 4: paint the Scene Stack
     // bottom to top. `visible` is the only Base Object property that
     // gates output (Engine Invariant 22); `editable`/`moveable`/
     // `clickable` are never read here.
+    //
+    // Creator Governing Rule #1 (Fidelity) — a real, confirmed bug found
+    // tracing a user-reported "Studio shows a blank canvas" report all
+    // the way to a real .vtheme file: this function used to paint
+    // `graph.stack` in exact raw authored order with no regard for the
+    // z-order bucketing convergeSceneLayer (above) actually applies at
+    // compile time. A Theme Author who positions a Free-hosted "cover
+    // background" image at the very bottom of their Scene Stack — the
+    // natural way to intend something as a background — sees it render
+    // correctly, behind everything, right here in Working View/Runtime
+    // Preview, since this function simply drew the stack in its own
+    // order with no bucketing of any kind. But at compile time, ONLY
+    // Scene-hosted (or full-bleed-fill) Layers converge onto
+    // `target:'slide'` (drawn first); every other Layer — including that
+    // same Free-hosted "background" image — converges onto
+    // `target:'overlay'` (drawn dead LAST, on top of literally
+    // everything), regardless of where it actually sat in the authored
+    // Stack. The Theme Author never saw any signal in Builder that this
+    // divergence was coming — Working View lied about what would
+    // actually get Published. Bucketing this function's own paint order
+    // to match `convergeSceneLayer` exactly — background Layers first,
+    // then Places (their own relative order among themselves unchanged),
+    // then every remaining Layer — makes Working View/Runtime Preview a
+    // truthful proxy for the real compiled output, matching AV-004/
+    // AV-005's own "Runtime Preview is frozen — always exactly the
+    // published reader output" principle. This reorders PAINT ONLY, via
+    // a local array built fresh on every call — `graph.stack` itself is
+    // never mutated, so hit-testing (worldBuilderApp.js's own mousedown
+    // handler, which reads `ProjectModel.sceneStack` directly, a
+    // completely separate source built from the live Project, not this
+    // graph) is unaffected.
     // ---------------------------------------------------------------
     function render(ctx, graph) {
         const w = graph.width, h = graph.height;
@@ -110,7 +153,13 @@ const EngineV2Runtime = (function () {
         ctx.fillStyle = '#F4F1EC';
         ctx.fillRect(0, 0, w, h);
 
+        const before = [], middle = [], after = [];
         graph.stack.forEach(function (entry) {
+            if (entry.type === 'holder') { middle.push(entry); return; }
+            (_isBackgroundLayer(entry.object) ? before : after).push(entry);
+        });
+
+        before.concat(middle, after).forEach(function (entry) {
             if (entry.type === 'holder') _paintHolder(ctx, entry.object, graph);
             else _paintLayer(ctx, entry.object, graph);
         });
