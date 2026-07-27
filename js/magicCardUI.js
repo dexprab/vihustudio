@@ -311,10 +311,29 @@ const MagicCardUI=(function(){
     _show();
 
     const panel=_el('div','magic-card-home-panel');
+
+    // "give me a better screen for this. largest possible size for
+    // front and back" -- the nickname/since block used to sit stacked
+    // BELOW the card (its own two lines of vertical footprint), which
+    // is exactly the room this redesign reclaims to let the card itself
+    // grow: back button and identity now share one thin header row
+    // instead, back on the left, name+since right-aligned on the right
+    // (see .magic-card-home-header/-identity in css/style.css), so the
+    // big hero row below has meaningfully more of the panel's own
+    // height to work with.
+    const header=_el('div','magic-card-home-header');
     const back=_el('button','magic-card-back','← Studio');
     back.type='button';
     back.addEventListener('click',function(){ overlay.classList.remove('magic-card-mode-home'); _hide(); });
-    panel.appendChild(back);
+    header.appendChild(back);
+
+    const identity=_el('div','magic-card-home-identity');
+    identity.appendChild(_el('div','magic-card-home-name',(active.nickname||'Star Traveler')));
+    const since=new Date(active.claimedAt);
+    const sinceText='Creator since '+since.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
+    identity.appendChild(_el('div','magic-card-home-since',sinceText));
+    header.appendChild(identity);
+    panel.appendChild(header);
 
     // The two-sided identity card itself leads Home, rather than a
     // separate ambient "sky" rendered above it. Those used to be two
@@ -326,11 +345,6 @@ const MagicCardUI=(function(){
     // exposed by default) means there is only ever one thing on this
     // screen that looks like "the constellation."
     panel.appendChild(_buildCardArtView(active,{gateBack:true}));
-
-    panel.appendChild(_el('div','magic-card-home-name',(active.nickname||'Star Traveler')));
-    const since=new Date(active.claimedAt);
-    const sinceText='Creator since '+since.toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
-    panel.appendChild(_el('div','magic-card-home-since',sinceText));
 
     const storiesLabel=_el('div','magic-card-home-stories-label','A few of your stories live in this sky:');
     panel.appendChild(storiesLabel);

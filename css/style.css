@@ -6759,19 +6759,18 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .magic-card-overlay.magic-card-mode-gate .magic-card-panel{
   max-width:680px;
 }
-/* "increase the size of card view on all screens" -- Magic Card Home's
-   own .magic-card-home-panel (below) got its max-width bumped 460px ->
-   600px to fit the enlarged Front/Back card pair side by side, but that
-   inner panel's width:100% is itself bounded by ITS OWN parent,
-   #magicCardContent (this .magic-card-panel), whose base rule above
-   caps every mode -- gate/awaken/home alike -- at a flat 520px. Without
-   this override the inner panel's own bigger max-width was never
-   reachable at all, a real bug caught by directly measuring the
-   rendered width rather than trusting the CSS source alone. Widened
-   here, scoped to home mode only, exactly mirroring the gate-mode
-   override immediately above. */
+/* "give me a better screen for this. largest possible size for front
+   and back" -- widened again (600px -> min(94vw,1040px)) alongside
+   .magic-card-home-panel's own matching bump below, so a genuinely big
+   Front/Back pair (see .magic-card-home-panel .magic-card-art-canvas)
+   has real room to sit side by side without wrapping. Still mirrors
+   the gate-mode override immediately above in spirit -- an ancestor
+   cap that must move in lockstep with the inner panel's own max-width,
+   the exact bug already found once here (the inner panel's bigger
+   max-width being unreachable because THIS rule still capped it at a
+   flat 520px) -- just to a bigger number this time. */
 .magic-card-overlay.magic-card-mode-home .magic-card-panel{
-  max-width:600px;
+  max-width:min(94vw,1040px);
 }
 /* Screen 11 (Magic Card Home) is reached mid-edit, from the header
    badge, over an already-open editor — a slightly less "takeover the
@@ -7716,26 +7715,19 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* ---------- Screen 11 — Magic Card Home ---------- */
 .magic-card-home-panel{
   width:100%;
-  /* Widened from 460px alongside the "increase the size of card view"
-     fix above -- at the old flat 150px card size, 460px was plenty of
-     room for the Front/Back pair to sit side by side (2*150+14=314px,
-     comfortably under the ~396px this panel's own horizontal padding
-     leaves), but at the new, bigger clamp(150px,32vw,240px) size
-     (2*240+14=494px needed) it was genuinely too narrow -- the pair
-     silently wrapped into a tall vertical stack, and
-     _fitAwakenStageToAvailableSpace()'s width-shrink escalation step
-     (tuned for a smooth, single-line-height response to width changes)
-     overshot all the way down to its own 90px floor the instant
-     shrinking crossed back under the wrap threshold, since un-wrapping
-     drops a whole second line's height at once -- a real discontinuity
-     its linear heuristic doesn't model. Rather than patch that shared,
-     multi-screen heuristic for one screen's own layout quirk, this
-     panel is widened to comfortably fit the pair on one line
-     (2*240+14=494px of content, plus up to ~64px of this panel's own
-     horizontal padding = ~558px minimum; 600px leaves real breathing
-     room) so the wrap -- and the escalation overshoot it triggered --
-     is never reached here at all on any normal viewport. */
-  max-width:600px;
+  /* "give me a better screen for this. largest possible size for
+     front and back" -- widened again (600px -> min(94vw,1040px),
+     matching #magicCardContent/.magic-card-panel's own bump above) so
+     the genuinely bigger Front/Back pair below has real room. Getting
+     there also meant reclaiming vertical space, not just width: the
+     nickname/since block that used to sit stacked BELOW the card now
+     shares one thin header row with the back button instead (see
+     .magic-card-home-header/-identity), and the stories row below the
+     card became a fixed-height horizontal strip instead of an
+     up-to-2-row grid (see .magic-card-home-stories-grid) -- both
+     purely reclaiming height so it can go to the card, which is the
+     one thing this whole screen exists to show. */
+  max-width:min(94vw,1040px);
   max-height:calc(100vh - 64px);
   overflow-y:auto;
   background:var(--mc-panel);
@@ -7749,31 +7741,89 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   box-shadow:0 24px 64px rgba(0,0,0,0.45);
   backdrop-filter:blur(6px);
 }
+.magic-card-home-header{
+  width:100%;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px 16px;
+  margin-bottom:calc(var(--awaken-density,1) * 4px);
+}
+.magic-card-home-header .magic-card-back{ margin:0 !important; }
+.magic-card-home-identity{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  text-align:right;
+}
 .magic-card-home-name{
-  margin-top:calc(var(--awaken-density,1) * 14px);
-  font-size:20px;
+  margin-top:0;
+  font-size:22px;
   font-weight:800;
   color:var(--mc-ink);
+  line-height:1.15;
 }
 .magic-card-home-since{
   font-size:12.5px;
   color:var(--mc-ink-soft);
-  margin:2px 0 calc(var(--awaken-density,1) * 16px);
+  margin:2px 0 0;
+}
+/* The hero row (Front/Back) gets a touch more breathing room below the
+   new header row than .magic-card-art-view's own shared 8px default. */
+.magic-card-home-panel .magic-card-art-view{ margin-top:calc(var(--awaken-density,1) * 12px); }
+/* The one rule that actually delivers "largest possible size" -- Home
+   is the single screen whose whole purpose is showing this card, so
+   it gets a meaningfully bigger ceiling than the shared
+   clamp(150px,32vw,240px) every OTHER screen that renders
+   .magic-card-art-canvas still uses (the ceremony's First Claimed
+   Moment and the nickname-prompt preview are each one beat inside a
+   longer flow, not a dedicated "here's your card" screen, so they keep
+   their existing, more modest size -- untouched by this rule, which is
+   scoped to .magic-card-home-panel only). The height term,
+   calc((100vh - 420px) * 0.7143), ties the size to this screen's own
+   real measured footprint (420px is the panel's own padding + header
+   row + reveal note + action buttons + stories strip + the FRONT/BACK
+   label row, at their base size) rather than a guessed flat number --
+   on a typical short viewport this height term binds; on a tall one
+   the flat 380px ceiling does (kept comfortably under the canvas's own
+   native 700px resolution, so it's always downscaled, never blurry).
+   max(90px, ...) matches _fitAwakenStageToAvailableSpace's own 90px
+   floor so nothing ever renders at an invalid/negative size before
+   that function's real, dynamic shrink-to-fit safety net (unchanged)
+   gets a chance to run for anything shorter than this formula
+   accounts for. */
+.magic-card-home-panel .magic-card-art-canvas{
+  width:max(90px, min(30vw, 380px, calc((100vh - 420px) * 0.7143)));
 }
 .magic-card-home-stories-label{
   align-self:flex-start;
   font-size:12px;
   font-weight:700;
   color:var(--mc-ink-soft);
-  margin:0 0 calc(var(--awaken-density,1) * 10px);
+  margin:calc(var(--awaken-density,1) * 14px) 0 calc(var(--awaken-density,1) * 8px);
 }
+/* A fixed-height horizontal scroll strip instead of the old up-to-2-row
+   grid -- a predictable, small, constant footprint (unaffected by
+   however many stories exist) is exactly the "reclaim vertical space
+   for the card" this redesign needs, and reads as a proper filmstrip
+   rather than a cramped grid once thumbnails are this small. Each
+   thumb keeps a fixed pixel width (not a percentage of the strip) so
+   the row's own height never depends on viewport width at all --
+   deliberately, since a fixed height here is a feature, not a
+   simplification that happens to also work. */
 .magic-card-home-stories-grid{
   width:100%;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
+  display:flex;
   gap:calc(var(--awaken-density,1) * 10px);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
 }
+.magic-card-home-stories-grid::-webkit-scrollbar{ display:none; }
 .magic-card-home-story-thumb{
+  flex:0 0 74px;
   aspect-ratio:4/5;
   border-radius:10px;
   overflow:hidden;
@@ -7782,18 +7832,19 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   display:flex;
   align-items:center;
   justify-content:center;
+  scroll-snap-align:start;
 }
 .magic-card-home-story-thumb img{ width:100%; height:100%; object-fit:cover; }
-.magic-card-home-story-glyph{ font-size:24px; opacity:.6; }
+.magic-card-home-story-glyph{ font-size:22px; opacity:.6; }
 .magic-card-home-stories-empty{
-  grid-column:1 / -1;
+  flex:1 1 auto;
   font-size:12.5px;
   color:var(--mc-ink-soft);
   padding:18px 8px;
+  text-align:center;
 }
 @media (max-width:520px){
   .magic-card-gate-grid{ grid-template-columns:repeat(2,1fr); }
-  .magic-card-home-stories-grid{ grid-template-columns:repeat(3,1fr); }
 }
 
 /* ===========================
