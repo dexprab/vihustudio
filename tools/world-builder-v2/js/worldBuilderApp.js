@@ -7715,9 +7715,54 @@
 
         _stateIntro('collection');
 
+        // Platform Hardening — Collection direct-add. Until now the ONLY
+        // way anything reached the Collection was indirectly, through an
+        // Experience's own Image/Graphics field (the Phase 1 auto-
+        // registration hook) -- there was no way to open this screen and
+        // just add a picture on its own. Two separate upload buttons
+        // rather than one upload plus a kind-toggle: the Image/Graphic
+        // distinction only matters for the Experience picker's own
+        // reuse-grid filter (Phase 2, matches by kind) -- Creator's own
+        // "From This World" browsing surface (Phase 6) never filters by
+        // kind at all -- so this keeps the common case (add a picture)
+        // a single click, with the rarer Graphic case one click away
+        // rather than an extra decision every time.
+        const addRow = document.createElement('div');
+        addRow.className = 'wb-collection-add-row';
+
+        const addImageBtn = document.createElement('button');
+        addImageBtn.type = 'button';
+        addImageBtn.className = 'wb-workspace-btn';
+        addImageBtn.textContent = '+ 🖼️ Add Image';
+        addImageBtn.disabled = currentProjectReadOnly;
+        const addImageInput = _fileInputUpload('image/*', function (ref) {
+            window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'image' });
+            _persist();
+            _renderCollectionPanel();
+        });
+        addImageBtn.addEventListener('click', function () { addImageInput.click(); });
+
+        const addGraphicBtn = document.createElement('button');
+        addGraphicBtn.type = 'button';
+        addGraphicBtn.className = 'wb-workspace-btn';
+        addGraphicBtn.textContent = '+ 🎭 Add Graphic';
+        addGraphicBtn.disabled = currentProjectReadOnly;
+        const addGraphicInput = _fileInputUpload('image/*', function (ref) {
+            window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'graphic' });
+            _persist();
+            _renderCollectionPanel();
+        });
+        addGraphicBtn.addEventListener('click', function () { addGraphicInput.click(); });
+
+        addRow.appendChild(addImageBtn);
+        addRow.appendChild(addImageInput);
+        addRow.appendChild(addGraphicBtn);
+        addRow.appendChild(addGraphicInput);
+        contextPanel.appendChild(addRow);
+
         const assets = window.ProjectModel.collectionAssets(project);
         if (!assets.length) {
-            contextPanel.appendChild(_fieldHelp('Nothing here yet — upload a Photo or Asset while authoring an Experience, and it will show up here automatically.'));
+            contextPanel.appendChild(_fieldHelp('Nothing here yet — upload one above, or add a Photo/Asset while authoring an Experience and it will show up here automatically.'));
             return;
         }
 

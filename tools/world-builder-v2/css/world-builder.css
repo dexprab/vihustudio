@@ -2497,6 +2497,13 @@ html, body {
 
 /* ---------- Collection (Platform Hardening — Phase 3) ---------- */
 
+.wb-collection-add-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
 .wb-collection-row {
     display: flex;
     align-items: flex-start;
