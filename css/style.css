@@ -6510,29 +6510,86 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 .context-shape-tile-icon{ font-size:20px; line-height:1; }
 .context-shape-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }
 
-/* Collection ("From This World") Phase 6 — mirrors .context-shape-
-   picker-* above exactly, swapping the icon glyph for a real resolved
-   thumbnail of the Theme Author's own Collection artwork, since the
-   whole point of this row is showing real World content, not a generic
-   symbol. */
+/* Collection ("From This World") Phase 6, revisited: "from this world
+   section in studio will also need to be presented in better manner."
+   The original was a plain, unbounded display:grid (repeat(3,1fr)) —
+   the exact same "grows taller with every asset a Theme Author adds"
+   defect already found and fixed once for World Builder's own
+   Collection reuse picker (.wb-collection-reuse-strip). Here it also sat
+   inline inside the right sidebar's Context Inspector, so a growing
+   World Collection meant the whole panel grew with it. Rewritten as a
+   fixed-height horizontal scroll strip with round arrow buttons + an
+   edge-fade mask, mirroring .object-strip-scroll-row/.object-strip-
+   arrow/.object-strip-list's own already-proven, already-polished
+   pattern below (js/objectStrip.js's "this scroll can be better" fix) —
+   the same visual language Studio already uses for its other growing
+   horizontal collections, rather than a third, differently-styled
+   scroll widget. Tile width matches .object-card's own 78px exactly, so
+   every horizontal strip in this app shares one consistent card size. */
 .context-collection-picker-heading{
   font-size:13.5px;
   font-weight:800;
   color:var(--text);
   margin:0 0 10px;
 }
-.context-collection-picker-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
+.context-collection-picker-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
   margin-bottom:12px;
 }
+.context-collection-picker-wrap{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  -webkit-mask-image:linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+  mask-image:linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+}
+.context-collection-picker-arrow{
+  flex-shrink:0;
+  width:26px !important;
+  height:26px !important;
+  min-width:26px;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--panel,var(--bg));
+  color:var(--text);
+  font-size:16px;
+  line-height:1;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.context-collection-picker-arrow:hover:not(:disabled){ border-color:var(--gold); background:rgba(255,203,69,0.14); }
+.context-collection-picker-arrow:disabled{ opacity:0.28; cursor:default; }
+.context-collection-picker-grid{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:0 2px 4px;
+  overflow-x:auto;
+  overflow-y:visible;
+  scroll-behavior:smooth;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.context-collection-picker-grid::-webkit-scrollbar{ display:none; height:0; width:0; }
 .context-collection-tile{
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:4px;
-  padding:8px 4px;
+  width:78px !important;
+  height:auto !important;
+  flex-shrink:0;
+  scroll-snap-align:start;
+  margin:0 !important;
+  padding:8px 6px;
   border:1px solid var(--line);
   border-radius:12px;
   background:var(--panel,var(--bg));
@@ -6554,7 +6611,16 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   object-fit:cover;
   display:block;
 }
-.context-collection-tile-label{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.2; }
+.context-collection-tile-label{
+  font-size:10.5px;
+  font-weight:700;
+  text-align:center;
+  line-height:1.2;
+  width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 
 /* ===========================
    Magic Card Identity Evolution, Phase 1 (local-only) — see
