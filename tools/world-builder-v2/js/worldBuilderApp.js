@@ -780,8 +780,26 @@
             window.removeEventListener('afterprint', cleanup);
         }
         window.addEventListener('afterprint', cleanup);
-        window.print();
-        setTimeout(cleanup, 5000);
+        // A real, confirmed race: window.print() used to fire on the very
+        // next line after setting img.src, with no wait for the browser to
+        // actually decode the data: URI into pixels first -- a data: URI
+        // still needs real decode work (it isn't instant just because
+        // there's no network fetch), so print rendering could capture the
+        // sheet before either image finished, showing blank placeholder
+        // rectangles in the print preview. img.decode() is a real Promise
+        // the browser only resolves once fully decoded; a plain
+        // onload-based wait is the fallback for a browser without decode().
+        function ready(img) {
+            if (typeof img.decode === 'function') return img.decode().catch(function () {});
+            return new Promise(function (resolve) {
+                if (img.complete) resolve();
+                else img.addEventListener('load', resolve, { once: true });
+            });
+        }
+        Promise.all([ready(imgFront), ready(imgBack)]).then(function () {
+            window.print();
+            setTimeout(cleanup, 5000);
+        });
     }
 
     function _showCardArtPreview(card, project) {

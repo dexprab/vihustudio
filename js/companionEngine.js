@@ -311,6 +311,32 @@
       // synchronously (nothing here delays it), only the pixels fade.
       if(this._crossfadeRaf){ cancelAnimationFrame(this._crossfadeRaf); this._crossfadeRaf=null; }
       if(!this._reducedMotion) this._imgEl.classList.add('companion-portrait-img-fading');
+      // A pose DECLARED in companion.json's states map is not a
+      // guarantee the file has actually been uploaded yet (a real,
+      // disclosed gap for Story Egg/Nimbus/Quill's own less-common
+      // poses) — mirrors js/magicCardUI.js's own _playCeremonyBeats
+      // onerror fix: fall back to the package's own real,
+      // already-uploaded defaultState pose instead of letting the
+      // browser render its native broken-image glyph with wrapped alt
+      // text spilling out of the small circular portrait (the actual
+      // "the companion did not loaded" bug, reproduced from a real
+      // idle.png 404 for Quill). If defaultState itself is what's
+      // missing, hide the <img> outright rather than looping forever —
+      // the glow ring/environment around it still reads as "someone is
+      // here," which beats an ugly broken-image box.
+      const defaultFile=this._package.states[this._package.defaultState];
+      this._imgEl.classList.remove('companion-portrait-img-broken');
+      this._imgEl.onerror=()=>{
+        if(!this._imgEl) return;
+        if(defaultFile && this._imgEl.src.indexOf(defaultFile)===-1){
+          this._imgEl.onerror=()=>{
+            if(this._imgEl) this._imgEl.classList.add('companion-portrait-img-broken');
+          };
+          this._imgEl.src=this._basePath+defaultFile;
+        }else{
+          this._imgEl.classList.add('companion-portrait-img-broken');
+        }
+      };
       this._imgEl.src=this._basePath+file;
       this._imgEl.alt=(this._package.name||this._package.id)+' — '+state;
       this._root.setAttribute('data-companion-state',state);

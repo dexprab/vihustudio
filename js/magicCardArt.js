@@ -544,8 +544,27 @@ const MagicCardArt=(function(){
       window.removeEventListener('afterprint',cleanup);
     }
     window.addEventListener('afterprint',cleanup);
-    window.print();
-    setTimeout(cleanup,5000);
+    // "print for magic card not working" -- a real, confirmed race:
+    // window.print() used to fire on the very next line after setting
+    // img.src, with no wait for the browser to actually decode the
+    // data: URI into pixels first. A data: URI still needs real decode
+    // work (it isn't instant just because there's no network fetch),
+    // and print rendering could capture the sheet before either image
+    // finished — the exact "two blank placeholder rectangles" the print
+    // preview showed. img.decode() is a real Promise the browser only
+    // resolves once fully decoded; a plain onload-based wait is the
+    // fallback for a browser without decode() support.
+    function ready(img){
+      if(typeof img.decode==='function') return img.decode().catch(function(){});
+      return new Promise(function(resolve){
+        if(img.complete) resolve();
+        else img.addEventListener('load',resolve,{once:true});
+      });
+    }
+    Promise.all([ready(imgFront),ready(imgBack)]).then(function(){
+      window.print();
+      setTimeout(cleanup,5000);
+    });
   }
 
   const api={

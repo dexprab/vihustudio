@@ -4717,13 +4717,34 @@ body.dark-theme .publish-publishing-barwrap{ background:rgba(255,255,255,0.10); 
 body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.06); }
 
 /* Sprint 8.1.5 — Celebration stage ----------------------------------- */
+/* "top is getting overlapped" -- a real, screenshotted bug: at a
+   realistic-but-shorter browser window height, this stage's own
+   content (headline+message+3D cover+title+subtitle+download+
+   secondary actions, ~578px tall) genuinely exceeds the space left
+   below the modal header -- with overflow:hidden, the vertically
+   centered column got clipped flush against this box's own top edge,
+   which sits immediately below the header, reading exactly like the
+   heading was rendering underneath/overlapping it. overflow-y:auto is
+   the same safety-net discipline already established throughout this
+   codebase (never silently clip a heading, scroll as the last
+   resort); padding is trimmed via clamp() so the common case never
+   actually needs to. At a genuinely extreme height even this scrolls
+   the wrong way at first -- plain align-items:center on an overflowing
+   overflow:auto container leaves scrollTop:0 showing the CENTER of the
+   content with its own top half unreachable by scrolling up (the exact
+   bug already found and fixed once for Magic Card Home's own scroll
+   fix); "safe center" degrades to top-aligned/scrollable-from-the-top
+   the instant content stops fitting, reusing that same established
+   fix rather than reintroducing the trap here. */
 .publish-studio-body-celebration{
   display:none;
-  align-items:center;
+  align-items:flex-start;
+  align-items:safe center;
   justify-content:center;
-  padding:24px;
+  padding:clamp(12px,3vh,24px);
   min-height:0;
-  overflow:hidden;
+  overflow-y:auto;
+  overflow-x:hidden;
   position:relative;
   background:radial-gradient(ellipse at top, rgba(255,203,69,0.15), transparent 70%);
 }
@@ -4760,7 +4781,7 @@ body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:16px;
+  gap:clamp(8px,1.8vh,16px);
   max-width:520px;
   width:100%;
   text-align:center;
@@ -4794,7 +4815,7 @@ body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.
 
 .publish-celebration-stand{
   perspective:1600px;
-  padding:16px 0;
+  padding:clamp(6px,1.5vh,16px) 0;
 }
 .publish-celebration-book{
   width:220px;
@@ -8144,6 +8165,14 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* The crossfade dip _applyState() briefly applies around a pose swap. */
 .companion-portrait-img.companion-portrait-img-fading{
   opacity:0;
+}
+/* Both the requested pose AND the package's own defaultState pose
+   failed to load — visibility:hidden (not display:none, which would
+   collapse the portrait's own layout box and shift the glow ring/
+   environment beneath it) hides the browser's native broken-image
+   glyph and wrapped alt text, leaving a clean empty circle instead. */
+.companion-portrait-img.companion-portrait-img-broken{
+  visibility:hidden;
 }
 
 /* ---------- Ambient sparkle particles — companionEngine.js's own
