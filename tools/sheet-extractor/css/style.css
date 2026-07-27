@@ -1,0 +1,360 @@
+/* Sheet Extractor — a developer/creator utility, deliberately plain and
+   functional rather than styled like Builder/Studio's own warm/watercolor
+   product identity, matching this repo's tools/platform-status and
+   tools/audio-mixer precedent for this class of standalone page. */
+
+:root {
+    --se-bg: #f6f5f2;
+    --se-panel: #ffffff;
+    --se-border: #ddd8cf;
+    --se-text: #1e1c18;
+    --se-muted: #6b6459;
+    --se-accent: #1f6f66;
+    --se-accent-dark: #17544d;
+    --se-warn: #9a6700;
+    --se-danger: #b3261e;
+    --se-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --se-radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--se-bg);
+    color: var(--se-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+#se-root {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 32px 24px 72px;
+}
+
+.se-header {
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--se-border);
+    padding-bottom: 16px;
+}
+
+.se-header h1 {
+    font-size: 21px;
+    margin: 0 0 6px;
+}
+
+.se-header p {
+    margin: 0;
+    color: var(--se-muted);
+    max-width: 640px;
+}
+
+.se-section {
+    background: var(--se-panel);
+    border: 1px solid var(--se-border);
+    border-radius: var(--se-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.se-section h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    color: var(--se-text);
+}
+
+.se-section h2 small {
+    font-weight: 400;
+    color: var(--se-muted);
+    font-size: 12px;
+}
+
+/* --- Upload zone --- */
+
+.se-dropzone {
+    border: 2px dashed var(--se-border);
+    border-radius: var(--se-radius);
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--se-muted);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.se-dropzone:hover,
+.se-dropzone.se-dropzone-active {
+    border-color: var(--se-accent);
+    background: #eef6f4;
+}
+
+.se-dropzone strong { color: var(--se-text); }
+
+.se-dropzone input[type="file"] { display: none; }
+
+.se-preview-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.se-preview-frame {
+    flex: 0 0 auto;
+    max-width: 260px;
+    border: 1px solid var(--se-border);
+    border-radius: var(--se-radius);
+    overflow: hidden;
+    background:
+        linear-gradient(45deg, #e9e6de 25%, transparent 25%) -8px 0/16px 16px,
+        linear-gradient(-45deg, #e9e6de 25%, transparent 25%) -8px 0/16px 16px,
+        linear-gradient(45deg, transparent 75%, #e9e6de 75%) -8px 0/16px 16px,
+        linear-gradient(-45deg, transparent 75%, #e9e6de 75%) -8px 0/16px 16px,
+        #fff;
+}
+
+.se-preview-frame img {
+    display: block;
+    max-width: 260px;
+    max-height: 260px;
+    width: auto;
+    height: auto;
+}
+
+.se-preview-meta {
+    flex: 1 1 220px;
+    font-family: var(--se-mono);
+    font-size: 12.5px;
+    color: var(--se-muted);
+}
+
+.se-preview-meta dt { color: var(--se-text); font-weight: 600; margin-top: 6px; }
+.se-preview-meta dt:first-child { margin-top: 0; }
+.se-preview-meta dd { margin: 0 0 2px; }
+
+/* --- Controls --- */
+
+.se-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px 20px;
+}
+
+.se-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+}
+
+.se-field .se-field-help {
+    display: block;
+    font-weight: 400;
+    color: var(--se-muted);
+    font-size: 11.5px;
+    margin-top: 3px;
+}
+
+.se-field input[type="number"],
+.se-field input[type="text"] {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--se-border);
+    border-radius: 6px;
+    font-family: var(--se-mono);
+    font-size: 13px;
+    background: #fffdf9;
+    color: var(--se-text);
+}
+
+.se-field input[type="range"] {
+    width: 100%;
+}
+
+.se-field-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.se-field-inline output {
+    font-family: var(--se-mono);
+    font-size: 12.5px;
+    color: var(--se-text);
+    min-width: 34px;
+    text-align: right;
+}
+
+/* --- Buttons --- */
+
+.se-btn {
+    appearance: none;
+    border: 1px solid var(--se-border);
+    background: var(--se-panel);
+    color: var(--se-text);
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.se-btn:hover { border-color: var(--se-accent); }
+.se-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.se-btn-primary {
+    background: var(--se-accent);
+    border-color: var(--se-accent-dark);
+    color: #fff;
+}
+
+.se-btn-primary:hover { background: var(--se-accent-dark); }
+
+.se-actions-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+/* --- Status / errors --- */
+
+.se-status {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--se-muted);
+}
+
+.se-status.se-status-error {
+    color: var(--se-danger);
+    font-weight: 600;
+}
+
+.se-status.se-status-busy::before {
+    content: "⏳ ";
+}
+
+/* --- Results grid --- */
+
+.se-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.se-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.se-result-card {
+    border: 1px solid var(--se-border);
+    border-radius: var(--se-radius);
+    overflow: hidden;
+    background: #fffdf9;
+    display: flex;
+    flex-direction: column;
+}
+
+.se-result-thumb {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background:
+        linear-gradient(45deg, #e9e6de 25%, transparent 25%) -6px 0/14px 14px,
+        linear-gradient(-45deg, #e9e6de 25%, transparent 25%) -6px 0/14px 14px,
+        linear-gradient(45deg, transparent 75%, #e9e6de 75%) -6px 0/14px 14px,
+        linear-gradient(-45deg, transparent 75%, #e9e6de 75%) -6px 0/14px 14px,
+        #fff;
+}
+
+.se-result-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+}
+
+.se-result-info {
+    padding: 8px 10px 10px;
+    border-top: 1px solid var(--se-border);
+}
+
+.se-result-name {
+    font-family: var(--se-mono);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 3px;
+    word-break: break-all;
+}
+
+.se-result-dims {
+    font-family: var(--se-mono);
+    font-size: 11px;
+    color: var(--se-muted);
+    margin-bottom: 8px;
+}
+
+.se-result-download {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--se-border);
+    color: var(--se-text);
+}
+
+.se-result-download:hover {
+    border-color: var(--se-accent);
+    color: var(--se-accent-dark);
+}
+
+.se-empty-note {
+    color: var(--se-muted);
+    font-size: 13px;
+}
+
+.se-footnote {
+    color: var(--se-muted);
+    font-size: 12px;
+    margin-top: 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --se-bg: #17181a;
+        --se-panel: #201f1c;
+        --se-border: #3a372f;
+        --se-text: #ece8df;
+        --se-muted: #948d7f;
+        --se-accent: #4bb8a8;
+        --se-accent-dark: #6ccdbd;
+    }
+
+    .se-preview-frame,
+    .se-result-thumb {
+        background:
+            linear-gradient(45deg, #2b2924 25%, transparent 25%) -8px 0/16px 16px,
+            linear-gradient(-45deg, #2b2924 25%, transparent 25%) -8px 0/16px 16px,
+            linear-gradient(45deg, transparent 75%, #2b2924 75%) -8px 0/16px 16px,
+            linear-gradient(-45deg, transparent 75%, #2b2924 75%) -8px 0/16px 16px,
+            #201f1c;
+    }
+
+    .se-field input[type="number"],
+    .se-field input[type="text"] {
+        background: #17181a;
+        color: var(--se-text);
+    }
+}

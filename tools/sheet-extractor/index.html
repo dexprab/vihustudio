@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet Extractor — VihuStudio</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%96%BC%EF%B8%8F%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Sheet Extractor — a developer/creator utility, deliberately NOT a
+         Builder or Studio feature: no product styling, no Creation Flow,
+         no Workspace. Takes a real reference image (a moodboard, sprite
+         sheet, or a photographed/scanned flat-lay of stickers/objects) and
+         cuts each visually distinct object into its own transparent PNG,
+         using real pixels from the source — not illustration. See
+         README.md for how it works and what it was verified against. -->
+    <div id="se-root">
+        <header class="se-header">
+            <h1>🖼️ Sheet Extractor</h1>
+            <p>Upload a flat-lay reference image — a moodboard, sprite sheet, or a photographed/scanned sheet of stickers — and cut out every visually distinct object into its own real, transparent PNG.</p>
+        </header>
+
+        <section class="se-section">
+            <h2>1. Upload a reference image</h2>
+            <div class="se-dropzone" id="se-dropzone">
+                <p><strong>Click to choose a file</strong>, or drag and drop it here.</p>
+                <p>PNG or JPEG. Works best on a clean, roughly-uniform background with real gaps between objects.</p>
+                <input type="file" id="se-file-input" accept="image/*">
+            </div>
+            <div class="se-preview-row" id="se-preview-row" hidden>
+                <div class="se-preview-frame"><img id="se-preview-img" alt="Uploaded reference sheet"></div>
+                <dl class="se-preview-meta" id="se-preview-meta"></dl>
+            </div>
+        </section>
+
+        <section class="se-section">
+            <h2>2. Options <small>defaults work well for most sheets — only adjust if results look off</small></h2>
+            <div class="se-controls-grid">
+                <div class="se-field">
+                    <label for="se-threshold">Color Threshold</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-threshold" min="4" max="80" step="1" value="24">
+                        <output id="se-threshold-out">24</output>
+                    </div>
+                    <span class="se-field-help">How different a pixel must be from the background to count as part of an object. Lower = catches subtle/near-background colors; higher = more tolerant of background texture.</span>
+                </div>
+                <div class="se-field">
+                    <label for="se-pad">Padding</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-pad" min="0" max="0.30" step="0.01" value="0.08">
+                        <output id="se-pad-out">8%</output>
+                    </div>
+                    <span class="se-field-help">Extra room left around each object's own tight bounding box, so nothing is cropped flush.</span>
+                </div>
+                <div class="se-field">
+                    <label for="se-minarea">Min Object Size</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-minarea" min="0.00002" max="0.01" step="0.00002" value="0.00015">
+                        <output id="se-minarea-out">0.015%</output>
+                    </div>
+                    <span class="se-field-help">Objects smaller than this fraction of the whole image are discarded as noise/dust specks.</span>
+                </div>
+                <div class="se-field">
+                    <label for="se-dilate">Gap Bridging</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-dilate" min="0" max="8" step="1" value="2">
+                        <output id="se-dilate-out">2</output>
+                    </div>
+                    <span class="se-field-help">Bridges tiny anti-aliasing/compression gaps so one object isn't split into pieces. Never affects what's actually cropped.</span>
+                </div>
+                <div class="se-field">
+                    <label for="se-prefix">Filename Prefix</label>
+                    <input type="text" id="se-prefix" value="asset">
+                    <span class="se-field-help">Output files are named &lt;prefix&gt;-001.png, -002.png, etc.</span>
+                </div>
+                <div class="se-field">
+                    <label for="se-bg-mode">Background</label>
+                    <select id="se-bg-mode" class="se-field-help" style="width:100%;padding:7px 9px;border:1px solid var(--se-border);border-radius:6px;background:#fffdf9;color:var(--se-text);">
+                        <option value="auto" selected>Auto-detect (sample the corners)</option>
+                        <option value="manual">Force a specific color</option>
+                    </select>
+                    <div class="se-field-inline" style="margin-top:6px;">
+                        <input type="color" id="se-bg-color" value="#ffffff" disabled>
+                        <span class="se-field-help">Use this if the corners aren't representative of the true background.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="se-actions-row">
+                <button class="se-btn se-btn-primary" id="se-extract-btn" disabled>✂️ Extract Objects</button>
+            </div>
+            <p class="se-status" id="se-status"></p>
+        </section>
+
+        <section class="se-section" id="se-results-section" hidden>
+            <div class="se-results-header">
+                <h2 style="margin:0;">3. Results <small id="se-results-count"></small></h2>
+                <button class="se-btn" id="se-download-all-btn">⬇ Download All as ZIP</button>
+            </div>
+            <div class="se-results-grid" id="se-results-grid"></div>
+        </section>
+
+        <p class="se-footnote">
+            Color-distance / connected-component segmentation, not semantic object detection — it will merge two objects that visually touch with no gap, and it needs a reasonably clean background. See <a href="README.md">README.md</a> for the full, verified account of what this was tested against and its real, disclosed limitations. Runs entirely in your browser — nothing is uploaded anywhere.
+        </p>
+    </div>
+
+    <script src="js/pngEncoder.js"></script>
+    <script src="js/zipWriter.js"></script>
+    <script src="js/extractor.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
