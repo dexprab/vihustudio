@@ -490,14 +490,35 @@ const EngineV2Runtime = (function () {
             ctx.restore();
         } else if (layer.kind === 'text') {
             // Rotation — "add rotation to text, and graphics in builder."
-            // Mirrors the Decoration branch's own rotate-around-rect-
-            // centre convention exactly (below), so a rotated Text
-            // Experience's own bounding box never shifts.
+            // Real bug found afterward: "the current rotation is moving
+            // the object all around the canvas in circular motion...
+            // needs to rotate 360 degree tied down at its centre, like
+            // we did for image, like we have in studio." Root cause: this
+            // used to pivot on the Layer's *declared* box (rect, from
+            // rectFor()) — the same convention the Decoration branch
+            // below correctly uses, since an Image/Shape's declared box
+            // IS its visible content. A Text Layer's declared box is
+            // only ever a wrap-width/creation-time placeholder height
+            // (AV-006/AV-010's own finding — textFootprint()'s entire
+            // reason for existing), completely decoupled from where the
+            // real glyphs sit once actual content exists. Pivoting on
+            // that declared box's own center swung the visible text
+            // through a wide arc around empty space as the angle
+            // changed — reading exactly as "moving around the canvas"
+            // rather than spinning in place. Fixed by pivoting on
+            // textFootprint()'s own real, measured center instead — the
+            // identical extent this module already reports for hit-
+            // testing/dragging, so painting and interaction can never
+            // disagree about where the text's true center is. Matches
+            // root Studio's own _layerDrawText, which already rotates
+            // around a point derived from real rendered content, never a
+            // raw declared box.
             const textRotation = typeof layer.rotation === 'number' ? layer.rotation : 0;
             ctx.save();
             ctx.globalAlpha = opacity;
             if (textRotation) {
-                const tcx = rect.x + rect.w / 2, tcy = rect.y + rect.h / 2;
+                const footprint = textFootprint(ctx, layer, graph);
+                const tcx = footprint.x + footprint.w / 2, tcy = footprint.y + footprint.h / 2;
                 ctx.translate(tcx, tcy);
                 ctx.rotate(textRotation * Math.PI / 180);
                 ctx.translate(-tcx, -tcy);
