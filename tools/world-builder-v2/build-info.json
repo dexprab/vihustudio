@@ -5,6 +5,6 @@
   "slice": "js/magicCardArt.js's printCard() (root Studio) had a real, confirmed race -- window.print() fired on the very next line after setting <img>.src to data: URIs, with zero wait for the browser to actually decode them, producing blank placeholder rectangles in the print preview ('print for magic card not working'). js/magicCardArt.js's own header comment discloses printCard was 'ported verbatim' from this file's own _printCardArt() -- confirmed the byte-for-byte identical race exists here too, and fixed it in lockstep, matching this codebase's established convention for keeping sibling ported functions correct together. _printCardArt() now waits on Promise.all([ready(imgFront),ready(imgBack)]) -- ready(img) uses the real, Promise-based img.decode() where available (an onload-based wait, checking img.complete first, as the fallback for a browser without decode() support) -- before calling window.print(). Verified via the sibling root-Studio Playwright suite (three_bug_batch_verify.js) confirming worldBuilderApp.js still loads with zero syntax errors after the edit; _printCardArt is a private, module-scoped function with no direct export, so the fix was verified by direct code comparison against the now-fixed js/magicCardArt.js original plus a load-with-no-syntax-error check, rather than a call-through test. No Theme Contract/Engine V2 Scene Model/Creator Governing Rules change; confined to this one function.",
   "build": "0127",
   "buildDate": "2026-07-27",
-  "commit": "pending",
+  "commit": "40a856a",
   "environment": "Release"
 }
