@@ -3320,8 +3320,18 @@ html, body {
 .wb-content-section-card-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 7px;
     margin-bottom: 12px;
+}
+
+/* Multi-Asset Experience Parts (Phase 4) — icon+title share one side
+   of the header, leaving room for an optional per-part "🗑️ Remove"
+   button (a .wb-row-btn, reused unchanged) on the other. */
+.wb-content-section-card-header-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 }
 
 .wb-content-section-card-icon { font-size: 15px; line-height: 1; }

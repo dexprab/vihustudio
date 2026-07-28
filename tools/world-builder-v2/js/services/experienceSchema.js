@@ -125,6 +125,36 @@ const ExperienceSchema = (function () {
         };
     }
 
+    // Multi-Asset Experience Parts — "incorporate multiple assets in
+    // single experience... combinations... not exceeding 5," with
+    // repeats of the same kind allowed (e.g. two Image parts). An
+    // Experience's real content lives at `experience.properties.parts`,
+    // an array of up to MAX_EXPERIENCE_PARTS `{id, kind, props}`
+    // objects — `props` reuses the EXACT field names
+    // `defaultUniversalContent` already defines for that kind, just
+    // nested one level into the part instead of sitting flat on
+    // `experience.properties`, so every existing literal-string-keyed
+    // call site (Transform builders, Collection's registration hook,
+    // the compile step) needs no rename, only a different read
+    // location. PART_FIELD_KEYS is the one place that enumerates which
+    // of `defaultUniversalContent`'s keys belong to which kind, so
+    // `defaultPartProps` below never duplicates a hardcoded default —
+    // it always derives from that one real source.
+    const MAX_EXPERIENCE_PARTS = 5;
+    const PART_FIELD_KEYS = {
+        text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textX', 'textY', 'textW', 'textH'],
+        image: ['imageSrc', 'imageFit', 'imageOpacity', 'imageRotation', 'imageX', 'imageY', 'imageW', 'imageH'],
+        graphics: ['graphicSrc', 'graphicOpacity', 'graphicX', 'graphicY', 'graphicW', 'graphicH', 'graphicShape', 'graphicFillColor', 'graphicFillOpacity', 'graphicStrokeColor', 'graphicStrokeOpacity', 'graphicStrokeWidth', 'graphicRotation', 'graphicCustomPath'],
+        colour: ['colorValue', 'colorOpacity', 'colorTransparent']
+    };
+    function defaultPartProps(kind, hostedBy) {
+        const all = defaultUniversalContent(hostedBy);
+        const keys = PART_FIELD_KEYS[kind] || PART_FIELD_KEYS.text;
+        const out = {};
+        keys.forEach(function (k) { out[k] = all[k]; });
+        return out;
+    }
+
     // Hosted By is independent of Lifecycle/Ownership — this is the
     // *intended* hosting, chosen at creation time, before any real
     // placement exists (Milestone 3), and later exercised for real by
@@ -233,10 +263,13 @@ const ExperienceSchema = (function () {
         SHAPE_KINDS: SHAPE_KINDS,
         LIFECYCLE_LABELS: LIFECYCLE_LABELS,
         DEFAULT_EXPERIENCE_TYPE: DEFAULT_EXPERIENCE_TYPE,
+        MAX_EXPERIENCE_PARTS: MAX_EXPERIENCE_PARTS,
+        PART_FIELD_KEYS: PART_FIELD_KEYS,
         findType: findType,
         lifecycleInfo: lifecycleInfo,
         defaultProperties: defaultProperties,
         defaultUniversalContent: defaultUniversalContent,
+        defaultPartProps: defaultPartProps,
         rendersWhenHosted: rendersWhenHosted
     };
 })();

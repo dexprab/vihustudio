@@ -3056,20 +3056,28 @@
     // logic, it only tells the shared, generic module where to look.
     //
     // A decoration Scene Layer mirrored from an Experience
-    // (sourceExperienceId/contentSlot set — Builder V3.1's Universal
-    // Experience Authoring, _syncUniversalContent) is deliberately
-    // skipped here rather than given its own accessor — its `.image` is
-    // always a plain string copy of the source Experience's own
-    // imageSrc/graphicSrc, so migrating it independently would call
-    // put() a second time for byte-identical content (the exact
-    // "one upload becomes two" the plan's own §2 note warns against).
-    // Instead the source Experience's accessor below also writes the
-    // freshly-resolved reference onto the mirrored Layer directly (no
-    // second put() call), using the Layer reference already collected
-    // during this same scene walk. The legacy `layer-packs/*.json`
-    // editor (Layers/Type/Target/Anchor/Position/Offset/Z-Index/Text
-    // Source only — confirmed via direct read, no image field of its
-    // own) needs no accessor at all.
+    // (sourceExperienceId/partId set — Builder V3.1's Universal
+    // Experience Authoring, _syncUniversalContent, generalized for
+    // Multi-Asset Experience Parts) is deliberately skipped here rather
+    // than given its own accessor — its `.image` is always a plain
+    // string copy of the source part's own imageSrc/graphicSrc, so
+    // migrating it independently would call put() a second time for
+    // byte-identical content (the exact "one upload becomes two" the
+    // plan's own §2 note warns against). Instead the source part's own
+    // accessor below also writes the freshly-resolved reference onto
+    // its mirrored Layer directly (no second put() call), using the
+    // Layer reference already collected during this same scene walk —
+    // keyed by `sourceExperienceId + ':' + partId` now, not the older
+    // `sourceExperienceId + ':' + contentSlot`, since a kind alone can
+    // no longer identify one mirrored Layer once repeats of the same
+    // kind are allowed. A pre-migration mirrored Layer (tagged only by
+    // contentSlot, no partId yet) is left as its own independent job,
+    // exactly like before this feature — it gets a real partId the next
+    // time _syncUniversalContent claims it in place, unrelated to asset
+    // migration. The legacy `layer-packs/*.json` editor (Layers/Type/
+    // Target/Anchor/Position/Offset/Z-Index/Text Source only — confirmed
+    // via direct read, no image field of its own) needs no accessor at
+    // all.
     function _collectMigrationAccessors(project) {
         const jobs = [];
 
@@ -3089,8 +3097,8 @@
         (window.ProjectModel.scenes(project) || []).forEach(function (scene) {
             (scene.layers || []).forEach(function (layer) {
                 if (layer.kind !== 'decoration' || typeof layer.image !== 'string') return;
-                if (layer.sourceExperienceId && layer.contentSlot) {
-                    mirroredLayers[layer.sourceExperienceId + ':' + layer.contentSlot] = layer;
+                if (layer.sourceExperienceId && layer.partId) {
+                    mirroredLayers[layer.sourceExperienceId + ':' + layer.partId] = layer;
                     return;
                 }
                 jobs.push({
@@ -3101,15 +3109,24 @@
         });
 
         (window.ProjectModel.experiences(project) || []).forEach(function (experience) {
-            const props = experience.properties || {};
-            [['imageSrc', 'image'], ['graphicSrc', 'graphic']].forEach(function (pair) {
-                const key = pair[0], slot = pair[1];
+            const parts = (experience.properties && experience.properties.parts) || [];
+            parts.forEach(function (part) {
+                const key = part.kind === 'image' ? 'imageSrc' : (part.kind === 'graphics' ? 'graphicSrc' : null);
+                if (!key) return; // text/colour parts hold no raster asset
+                const isPrimaryPart = parts[0] === part;
                 jobs.push({
-                    get: function () { return props[key]; },
+                    get: function () { return part.props[key]; },
                     set: function (ref) {
-                        const oldRef = props[key];
-                        props[key] = ref;
-                        const mirrored = mirroredLayers[experience.id + ':' + slot];
+                        const oldRef = part.props[key];
+                        part.props[key] = ref;
+                        // Keep the flat top-level mirror (parts[0] only)
+                        // in sync too — see updateExperiencePartProperty's
+                        // own comment in projectModel.js for why that
+                        // mirror exists (v1/v2 share the same
+                        // localStorage key, and v1 only ever reads the
+                        // flat fields).
+                        if (isPrimaryPart) experience.properties[key] = ref;
+                        const mirrored = mirroredLayers[experience.id + ':' + part.id];
                         if (mirrored) mirrored.image = ref;
                         // Collection migration-retarget fix (Platform
                         // Hardening) — this migration can rewrite the
@@ -4145,9 +4162,25 @@
     // the unmodified Engine V2 pipeline, completely unaffected by it.
     const EXPERIENCE_STUDIO_REFERENCE_WIDTH = 1080;
 
+    // Multi-Asset Experience Parts (Phase 5): the Stage is now the union
+    // bounding box of every populated, non-colour part's own footprint —
+    // Colour has no positioned rect of its own (a full-bleed backdrop,
+    // never a Transform target) and is only used as a fallback if
+    // there's genuinely nothing else on this Experience. Reduces to the
+    // exact single-footprint result of before this generalization
+    // whenever `parts.length===1` and that one part isn't Colour — the
+    // pre-existing regression baseline.
     function _experienceStudioStage(exp) {
-        const props = exp.properties || {};
-        const footprint = window.ProjectModel.experienceContentFootprint(props, exp.contentKind || 'text');
+        const parts = (exp.properties && exp.properties.parts) || [];
+        const nonColour = parts.filter(function (p) { return p.kind !== 'colour'; });
+        const source = nonColour.length ? nonColour : parts;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        source.forEach(function (p) {
+            const f = window.ProjectModel.experienceContentFootprint(p.props, p.kind);
+            minX = Math.min(minX, f.x); minY = Math.min(minY, f.y);
+            maxX = Math.max(maxX, f.x + f.w); maxY = Math.max(maxY, f.y + f.h);
+        });
+        const footprint = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
         // 18% padding on every side — handles and guide labels need
         // room, and a single small object should never fill the Studio
         // edge-to-edge.
@@ -4178,9 +4211,15 @@
         return { x: 'graphicX', y: 'graphicY', w: 'graphicW', h: 'graphicH' };
     }
 
-    function _experienceAbsRect(exp, slot) {
-        const k = _experienceSlotKeys(slot);
-        const p = exp.properties || {};
+    // Multi-Asset Experience Parts (Phase 5): reads a specific PART's own
+    // `props` bag instead of the whole Experience's flat top-level
+    // fields — a real, previously-invisible identity requirement, since
+    // two parts of the same kind (two Image parts) now have their own,
+    // independent Transform values living at `part.props.imageX`, not
+    // one shared `exp.properties.imageX`.
+    function _experienceAbsRect(exp, part) {
+        const k = _experienceSlotKeys(part.kind);
+        const p = part.props || {};
         return { x: p[k.x] || 0, y: p[k.y] || 0, w: p[k.w] || 0.1, h: p[k.h] || 0.1 };
     }
 
@@ -4239,20 +4278,16 @@
         workingCanvas.classList.remove('wb-hidden');
         workingCanvas.parentElement.classList.remove('wb-hidden');
 
-        const props = exp.properties || {};
-        // Only-one-content-type-at-a-time — this isolated Studio used to
-        // paint every populated section simultaneously (Colour+Text+
-        // Image+Graphics all at once if each happened to have data),
-        // matching the old V3.1 "show everything" model but never
-        // updated when that model was replaced. Since switching kinds
-        // deliberately preserves the *other* sections' stored data
-        // (non-destructive, so switching back shows what was there
-        // before), leaving this ungated meant Working View kept
-        // painting stale, now-inactive content the real Adapter
-        // (ProjectModel._syncUniversalContent, already gated) had
-        // correctly stopped mirroring — a real Working View/Runtime
-        // Preview mismatch, not just a stale-redraw timing issue.
-        const kind = exp.contentKind || 'text';
+        // Multi-Asset Experience Parts (Phase 5): every populated part
+        // paints, in array order — array order IS paint order (parts[]
+        // append order, matching Scene's own `stack` convention) — so
+        // this generalizes the old fixed "exactly one active content
+        // kind" gate into a real multi-object canvas, exactly mirroring
+        // what ProjectModel._syncUniversalContent (Phase 2) already
+        // does for the real, compiled Scene Layers this Studio is a
+        // preview of; the two can never disagree about which parts are
+        // visible, since both simply walk the same `parts` array.
+        const parts = (exp.properties && exp.properties.parts) || [];
         const stage = frozenStage || _experienceStudioStage(exp);
 
         let canvasW, canvasH;
@@ -4273,12 +4308,17 @@
         ctx.clearRect(0, 0, canvasW, canvasH);
 
         // Colour — the Experience's own backdrop; checkerboard is the
-        // universal "no fill" convention when Transparent is enabled
-        // (or, now, whenever Colour simply isn't the active kind).
-        if (kind === 'colour' && props.colorTransparent === false) {
+        // universal "no fill" convention whenever no colour part exists
+        // at all, or its own Transparent flag is set. Mirrors
+        // _syncUniversalContent's own "only the FIRST colour-kind part"
+        // precedent — a second colour part (a rare, non-recommended
+        // combination) has no positioned rect of its own either way, so
+        // it never reaches the canvas as anything but this one backdrop.
+        const colourPart = parts.find(function (p) { return p.kind === 'colour'; });
+        if (colourPart && colourPart.props.colorTransparent === false) {
             ctx.save();
-            ctx.globalAlpha = typeof props.colorOpacity === 'number' ? props.colorOpacity : 1;
-            ctx.fillStyle = props.colorValue || '#F4F1EC';
+            ctx.globalAlpha = typeof colourPart.props.colorOpacity === 'number' ? colourPart.props.colorOpacity : 1;
+            ctx.fillStyle = colourPart.props.colorValue || '#F4F1EC';
             ctx.fillRect(0, 0, canvasW, canvasH);
             ctx.restore();
         } else {
@@ -4296,34 +4336,37 @@
         const zoom = canvasW / (stage.w * EXPERIENCE_STUDIO_REFERENCE_WIDTH);
         const sections = [];
 
-        if (kind === 'image' && props.imageSrc) {
-            const local = toLocal(_experienceAbsRect(exp, 'image'));
-            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity, rotation: props.imageRotation || 0 }, local), graph);
-            sections.push({ slot: 'image', rect: window.EngineV2Runtime.rectFor(local, graph) });
-        }
-        if (kind === 'graphics' && (props.graphicSrc || props.graphicShape)) {
-            const local = toLocal(_experienceAbsRect(exp, 'graphic'));
-            const shapeFields = props.graphicShape ? {
-                shape: props.graphicShape, shapeFillColor: props.graphicFillColor,
-                shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
-                shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                rotation: props.graphicRotation, customPath: props.graphicCustomPath
-            } : {};
-            window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc || null, glyph: '🎭', opacity: props.graphicOpacity }, local, shapeFields), graph);
-            sections.push({ slot: 'graphic', rect: window.EngineV2Runtime.rectFor(local, graph) });
-        }
-        if (kind === 'text' && props.textContent && props.textContent.trim()) {
-            const local = toLocal(_experienceAbsRect(exp, 'text'));
-            const textLayer = Object.assign({
-                kind: 'text', text: props.textContent, font: props.textFont,
-                fontSize: Math.max(6, (props.textSize || 32) * zoom),
-                align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
-                rotation: props.textRotation || 0
-            }, local);
-            window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
-            const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
-            sections.push({ slot: 'text', rect: footprint });
-        }
+        parts.forEach(function (part) {
+            const props = part.props || {};
+            if (part.kind === 'image' && props.imageSrc) {
+                const local = toLocal(_experienceAbsRect(exp, part));
+                window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.imageSrc, glyph: '🖼️', fit: props.imageFit || 'fit', opacity: props.imageOpacity, rotation: props.imageRotation || 0 }, local), graph);
+                sections.push({ partId: part.id, kind: part.kind, rect: window.EngineV2Runtime.rectFor(local, graph) });
+            } else if (part.kind === 'graphics' && (props.graphicSrc || props.graphicShape)) {
+                const local = toLocal(_experienceAbsRect(exp, part));
+                const shapeFields = props.graphicShape ? {
+                    shape: props.graphicShape, shapeFillColor: props.graphicFillColor,
+                    shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
+                    shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
+                    rotation: props.graphicRotation, customPath: props.graphicCustomPath
+                } : {};
+                window.EngineV2Runtime.paintLayer(ctx, Object.assign({ kind: 'decoration', image: props.graphicSrc || null, glyph: '🎭', opacity: props.graphicOpacity }, local, shapeFields), graph);
+                sections.push({ partId: part.id, kind: part.kind, rect: window.EngineV2Runtime.rectFor(local, graph) });
+            } else if (part.kind === 'text' && props.textContent && props.textContent.trim()) {
+                const local = toLocal(_experienceAbsRect(exp, part));
+                const textLayer = Object.assign({
+                    kind: 'text', text: props.textContent, font: props.textFont,
+                    fontSize: Math.max(6, (props.textSize || 32) * zoom),
+                    align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
+                    rotation: props.textRotation || 0
+                }, local);
+                window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
+                const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
+                sections.push({ partId: part.id, kind: part.kind, rect: footprint });
+            }
+            // part.kind === 'colour' -- already painted as the backdrop
+            // above; it has no positioned section of its own.
+        });
 
         // Editor-only chrome — selection outline + a resize handle for
         // every populated section, exactly like the Scene editor's own
@@ -5262,21 +5305,25 @@
     let _experienceStudioDragState = null;
 
     function _experienceStudioHit(state, pxX, pxY) {
-        const order = ['text', 'graphic', 'image']; // topmost-drawn-first
-        for (let i = 0; i < order.length; i++) {
-            const sec = state.sections.find(function (s) { return s.slot === order[i]; });
-            if (!sec) continue;
+        // Topmost-drawn-first = later in the parts array (paint order —
+        // `_renderExperienceStudio` builds `sections` in that same
+        // order), so a reversed walk of the already-paint-ordered
+        // `sections` list replaces the old fixed kind-name order — two
+        // same-kind parts can no longer be told apart by kind alone,
+        // only by which one actually paints on top.
+        const ordered = state.sections.slice().reverse();
+        for (let i = 0; i < ordered.length; i++) {
+            const sec = ordered[i];
             const hx = sec.rect.x + sec.rect.w, hy = sec.rect.y + sec.rect.h;
             const handleR = Math.max(12, state.canvasW * 0.022);
             if (Math.hypot(pxX - hx, pxY - hy) <= handleR * 1.5) {
-                return { slot: order[i], mode: 'resize' };
+                return { partId: sec.partId, kind: sec.kind, mode: 'resize' };
             }
         }
-        for (let i = 0; i < order.length; i++) {
-            const sec = state.sections.find(function (s) { return s.slot === order[i]; });
-            if (!sec) continue;
+        for (let i = 0; i < ordered.length; i++) {
+            const sec = ordered[i];
             if (pxX >= sec.rect.x && pxX <= sec.rect.x + sec.rect.w && pxY >= sec.rect.y && pxY <= sec.rect.y + sec.rect.h) {
-                return { slot: order[i], mode: 'move' };
+                return { partId: sec.partId, kind: sec.kind, mode: 'move' };
             }
         }
         return null;
@@ -5290,10 +5337,13 @@
         const pxX = pt.fx * state.canvasW, pxY = pt.fy * state.canvasH;
         const found = _experienceStudioHit(state, pxX, pxY);
         if (!found) return;
+        const parts = (state.exp.properties && state.exp.properties.parts) || [];
+        const part = parts.find(function (p) { return p.id === found.partId; });
+        if (!part) return;
         _experienceStudioDragState = {
-            mode: found.mode, slot: found.slot, exp: state.exp, stage: state.stage,
+            mode: found.mode, partId: found.partId, kind: found.kind, exp: state.exp, stage: state.stage,
             canvasW: state.canvasW, canvasH: state.canvasH,
-            startPxX: pxX, startPxY: pxY, startAbs: _experienceAbsRect(state.exp, found.slot)
+            startPxX: pxX, startPxY: pxY, startAbs: _experienceAbsRect(state.exp, part)
         };
         e.preventDefault();
     });
@@ -5309,14 +5359,14 @@
         // `toLocal` mapping, inverted.
         const dAbsX = ((pxX - d.startPxX) / d.canvasW) * d.stage.w;
         const dAbsY = ((pxY - d.startPxY) / d.canvasH) * d.stage.h;
-        const k = _experienceSlotKeys(d.slot);
+        const k = _experienceSlotKeys(d.kind);
         const exp = d.exp;
         if (d.mode === 'move') {
-            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.x, Math.max(0, d.startAbs.x + dAbsX));
-            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.y, Math.max(0, d.startAbs.y + dAbsY));
+            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, d.partId, k.x, Math.max(0, d.startAbs.x + dAbsX));
+            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, d.partId, k.y, Math.max(0, d.startAbs.y + dAbsY));
         } else {
-            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.w, Math.max(0.02, d.startAbs.w + dAbsX));
-            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, k.h, Math.max(0.02, d.startAbs.h + dAbsY));
+            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, d.partId, k.w, Math.max(0.02, d.startAbs.w + dAbsX));
+            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, d.partId, k.h, Math.max(0.02, d.startAbs.h + dAbsY));
         }
         // Working View redraws with the *same frozen stage* the gesture
         // started with (never re-cropping mid-drag, which would chase
@@ -6818,6 +6868,18 @@
                     name: 'Decoration', type: 'decoration', hostedBy: 'free'
                 });
                 window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);
+                // Multi-Asset Experience Parts — a fresh Experience's
+                // sole seeded part always starts pristine text-kind
+                // (_ensurePartsDefaults' own default), so writing
+                // graphicSrc via the flat updateExperienceProperty
+                // BEFORE swapping that part's own kind would silently
+                // land only on the legacy top-level mirror and never
+                // reach `parts[]` at all (the mirror-down only writes
+                // into a part's own props when the key already exists
+                // there) — invisible to rendering. Swap the part's kind
+                // in place first, exactly like the sibling "Add a
+                // Shape" flow (below) already does.
+                window.ProjectModel.updateExperience(currentProject, exp.id, { contentKind: 'graphics' });
                 window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicSrc', _rasterizeGlyphToDataURL(g));
                 window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: scene.id, placeId: null });
                 currentNav = 'experiences';
@@ -7012,20 +7074,34 @@
     // Holder's own block, already shown in the Place panel — a Frame
     // Experience's "editable" is literally the Holder panel's "Can a
     // Story Author change this? (its Frame, once populated)" checkbox,
-    // so nothing new is needed there). Scene/Free-hosted: the one real
-    // mirrored Scene Layer this Experience currently has in
-    // currentSceneId — "Only-one-content-type-at-a-time" guarantees at
-    // most one exists per Scene, so there is never an ambiguous choice
-    // of which instance's permissions to edit. Shown only once the
-    // Experience is actually hosted here (a Nurturing idea, or one not
-    // yet attached to the open Scene, has no real object yet to set
-    // permissions on).
+    // so nothing new is needed there).
+    //
+    // Scene/Free-hosted — Multi-Asset Experience Parts changed this:
+    // "Only-one-content-type-at-a-time guarantees at most one exists
+    // per Scene" is no longer true once an Experience can carry up to 5
+    // parts, each with its own mirrored Scene Layer. Permissions are
+    // still framed as Experience-level ("Can a Story Author move
+    // THIS?" — this Experience, not one of its parts), so every part's
+    // own mirrored Layer is read/written together: the summary and
+    // checkboxes reflect the first part's Layer, and every toggle
+    // below applies uniformly across all of them in one action, so
+    // they can never drift out of sync with each other. Shown only
+    // once the Experience is actually hosted here with at least one
+    // real mirrored Layer (a Nurturing idea, or one not yet attached
+    // to the open Scene, has no real object yet to set permissions on).
     function _renderExperiencePermissionBlock(exp) {
         if (exp.hostedBy === 'place') return;
         if (!currentSceneId) return;
-        const slot = _experienceMirroredSlot(exp);
-        const layer = window.ProjectModel.findMirroredSceneLayer(currentProject, currentSceneId, exp.id, slot);
-        if (!layer || !layer.permissions) return;
+        const parts = (exp.properties && exp.properties.parts) || [];
+        const layers = parts.map(function (part) {
+            return window.ProjectModel.findMirroredSceneLayer(currentProject, currentSceneId, exp.id, part.id);
+        }).filter(function (l) { return l && l.permissions; });
+        if (!layers.length) return;
+        const layer = layers[0];
+
+        function applyToAllParts(mutate) {
+            layers.forEach(mutate);
+        }
 
         const details = document.createElement('details');
         details.className = 'wb-state-intro';
@@ -7038,15 +7114,15 @@
         const body = document.createElement('div');
         body.className = 'wb-state-intro-body';
         body.appendChild(_permissionCheckbox('Can a Story Author move this?', layer.permissions.moveable, function (v) {
-            layer.permissions.moveable = v;
+            applyToAllParts(function (l) { l.permissions.moveable = v; });
             _persist();
         }));
         body.appendChild(_permissionCheckbox('Can a Story Author change this?', layer.permissions.editable, function (v) {
-            layer.permissions.editable = v;
+            applyToAllParts(function (l) { l.permissions.editable = v; });
             _persist();
         }));
         body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', layer.permissions.visible, function (v) {
-            layer.permissions.visible = v;
+            applyToAllParts(function (l) { l.permissions.visible = v; });
             _persist();
             _redrawSceneCanvases(currentSceneId);
         }));
@@ -7645,9 +7721,15 @@
     // _renderFramePicker(scene,holder)'s own signature/behaviour exactly),
     // so it lands correctly inside whichever content card is currently
     // open (_openContentCard's swap-and-restore).
-    function _renderCollectionPicker(exp, key, iconFallback, accept) {
+    // Multi-Asset Experience Parts (Phase 4) — part-scoped: `currentRef`
+    // reads off `part.props`, and `commit()` writes through
+    // `updateExperiencePartProperty(..., part.id, ...)` instead of the
+    // legacy Experience-wide `updateExperienceProperty` — the reuse
+    // strip and "Manage Collection →" bridge (below) are otherwise
+    // completely unchanged.
+    function _renderCollectionPicker(exp, part, key, iconFallback, accept) {
         const kind = key === 'imageSrc' ? 'image' : 'graphic';
-        const props = exp.properties || {};
+        const props = part.props || {};
         const currentRef = props[key];
 
         function commit(ref) {
@@ -7658,9 +7740,9 @@
             // fresh upload, a Remove (ref === null), or reusing an
             // existing Collection entry — all three funnel through here.
             if (key === 'graphicSrc') {
-                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicShape', null);
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicShape', null);
             }
-            window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, ref);
+            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, ref);
             _persist();
             _redrawSceneCanvasesForExperience(exp);
             _renderContextPanel();
@@ -8047,18 +8129,6 @@
         return 'Place';
     }
 
-    // The Scene Layer "slot" an Experience's active content kind mirrors
-    // onto (ProjectModel._syncUniversalContent's own naming) — matches
-    // the Adapter's own kind->slot mapping exactly, so a lookup here
-    // finds the same Layer the Adapter just wrote.
-    function _experienceMirroredSlot(exp) {
-        const kind = exp.contentKind || 'text';
-        if (kind === 'image') return 'image';
-        if (kind === 'graphics') return 'graphic';
-        if (kind === 'colour') return 'color';
-        return 'text';
-    }
-
     // Preview-first: a miniature composition, not a database row (Part
     // 4 of docs/BUILDER_V3_EXPERIENCE_STUDIO.md). Domain-sensitive —
     // Gallery cards show ownership + usage; Nursery cards deliberately
@@ -8378,20 +8448,30 @@
     // unmodified, it just lands inside the card instead of the raw
     // Inspector. Returns the outer contextPanel so the caller can
     // restore it once the section (and its foot, below) is done.
-    function _openContentCard(icon, title) {
+    //
+    // Multi-Asset Experience Parts (Phase 4) — an optional third
+    // `headerActionEl` (a per-part "🗑️ Remove" button) sits at the
+    // right edge of the header, opposite the icon+title; every
+    // pre-existing 2-arg call site is unaffected, since an omitted
+    // third argument is simply falsy and nothing is appended.
+    function _openContentCard(icon, title, headerActionEl) {
         const outer = contextPanel;
         const card = document.createElement('div');
         card.className = 'wb-content-section-card';
         const header = document.createElement('div');
         header.className = 'wb-content-section-card-header';
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'wb-content-section-card-header-title';
         const iconEl = document.createElement('span');
         iconEl.className = 'wb-content-section-card-icon';
         iconEl.textContent = icon;
         const titleEl = document.createElement('span');
         titleEl.className = 'wb-content-section-card-title';
         titleEl.textContent = title;
-        header.appendChild(iconEl);
-        header.appendChild(titleEl);
+        titleWrap.appendChild(iconEl);
+        titleWrap.appendChild(titleEl);
+        header.appendChild(titleWrap);
+        if (headerActionEl) header.appendChild(headerActionEl);
         card.appendChild(header);
         outer.appendChild(card);
         contextPanel = card;
@@ -8458,25 +8538,26 @@
         contextPanel.appendChild(foot);
     }
 
-    // Only-one-content-type-at-a-time (a direct product simplification
-    // request, superseding Builder V3.1's original "every Experience
-    // exposes all four sections simultaneously, do not hide any of
-    // them" instruction): `exp.contentKind` picks exactly one of Text/
-    // Image/Graphics/Colour, shown as a segmented control above the
-    // single matching card — switching it only changes which card is
-    // visible/editable here; it never destroys the other sections' own
-    // stored data, so switching back shows whatever was there before.
-    // The real, Engine-level enforcement lives in
-    // `ProjectModel._syncUniversalContent`'s own `kind` gate — this
-    // Inspector's one-card-at-a-time display and that gate are two
-    // views of the same single field, never two separate rules that
-    // could drift apart. `type` still decides one thing, Engine Adapter
-    // plumbing an author never sees: a legacy Frame Experience keeps
-    // its own dedicated Properties (matWidth/frameThickness/
-    // borderColor/wallTone/shadow — the mat/border chrome a Place's own
-    // single Frame slot still needs, a concept the universal content
-    // model doesn't replace) alongside whichever universal section is
-    // active.
+    // Multi-Asset Experience Parts (Phase 4) — superseded the earlier
+    // "only-one-content-type-at-a-time" model: `exp.properties.parts`
+    // holds up to 5 parts (any kind, repeats allowed), rendered below as
+    // one card per part, each independently editable and removable, plus
+    // an "+ Add a Part" control that always APPENDS a new part (never
+    // switches an existing one in place). The legacy top-level flat
+    // fields (`imageSrc`, `textContent`, `exp.contentKind`, etc.) stay a
+    // live mirror of `parts[0]` — the disclosed mitigation for
+    // `tools/world-builder/` (v1), which shares the same `localStorage`
+    // key and only ever reads those flat fields. The real, Engine-level
+    // mirroring for every part lives in
+    // `ProjectModel._syncUniversalContent` (Phase 2) — this Inspector's
+    // part list and that sync loop are two views of the same `parts`
+    // array, never two separate rules that could drift apart. `type`
+    // still decides one thing, Engine Adapter plumbing an author never
+    // sees: a legacy Frame Experience keeps its own dedicated Properties
+    // (matWidth/frameThickness/borderColor/wallTone/shadow — the
+    // mat/border chrome a Place's own single Frame slot still needs, a
+    // concept the universal content model doesn't replace) instead of a
+    // part list at all.
     const CONTENT_KIND_META = {
         text: { icon: '📝', label: 'Text' },
         image: { icon: '🖼', label: 'Image' },
@@ -8485,30 +8566,65 @@
     };
     const CONTENT_KIND_ORDER = ['text', 'image', 'graphics', 'colour'];
 
-    function _renderContentKindSelector(exp, kind) {
-        const row = document.createElement('div');
-        row.className = 'wb-content-kind-selector';
-        CONTENT_KIND_ORDER.forEach(function (k) {
-            const meta = CONTENT_KIND_META[k];
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'wb-content-kind-btn' + (k === kind ? ' active' : '');
-            btn.innerHTML = '<span>' + meta.icon + '</span>' + meta.label;
-            btn.addEventListener('click', function () {
-                if (k === kind) return;
-                window.ProjectModel.updateExperience(currentProject, exp.id, { contentKind: k });
-                _persist();
-                _redrawSceneCanvasesForExperience(exp);
-                _renderContextPanel();
-            });
-            row.appendChild(btn);
+    // Multi-Asset Experience Parts (Phase 4) — `_partOrdinals(exp)`
+    // returns `{partId: ordinal}` for every part on this Experience,
+    // giving repeated-kind parts a stable "2nd Image"/"3rd Image"
+    // disambiguator; deliberately mirrors the EXACT same counting rule
+    // `_syncUniversalContent`'s own compiled Layer-name suffix already
+    // uses (Phase 2) — a Scene-hosted `colour` part fills the whole
+    // Scene as its background and is excluded from the count, every
+    // other part (including a colour part beyond the first, or any
+    // colour part when Free/Place-hosted) counts in array order — so
+    // this Inspector's own card titles can never disagree with what
+    // the Object Strip/compiled Layer Pack actually calls the same
+    // object.
+    function _partOrdinals(exp) {
+        const parts = exp.properties.parts || [];
+        const backgroundPart = exp.hostedBy === 'scene'
+            ? (parts.find(function (p) { return p.kind === 'colour'; }) || null)
+            : null;
+        const kindCounts = {};
+        const ordinals = {};
+        parts.forEach(function (part) {
+            if (part === backgroundPart) { ordinals[part.id] = 1; return; }
+            kindCounts[part.kind] = (kindCounts[part.kind] || 0) + 1;
+            ordinals[part.id] = kindCounts[part.kind];
         });
-        contextPanel.appendChild(row);
+        return ordinals;
+    }
+
+    function _partCardTitle(kind, ordinal) {
+        const label = window.ProjectModel.partKindLabel(kind);
+        return ordinal > 1 ? (label + ' ' + ordinal) : label;
+    }
+
+    // A part's own "🗑️ Remove" button, mounted in `_openContentCard`'s
+    // header — disabled whenever this is the Experience's only
+    // remaining part (`removeExperiencePart` itself already refuses
+    // that at the model layer; disabling here just gives honest,
+    // immediate feedback instead of a click that silently does
+    // nothing).
+    function _partRemoveButton(exp, part) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wb-row-btn';
+        btn.title = 'Remove this part';
+        btn.textContent = '🗑️';
+        const parts = exp.properties.parts || [];
+        btn.disabled = currentProjectReadOnly || parts.length <= 1;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.removeExperiencePart(currentProject, exp.id, part.id);
+            _persist();
+            _redrawSceneCanvasesForExperience(exp);
+            _renderContextPanel();
+        });
+        return btn;
     }
 
     function _renderExperienceProperties(exp) {
-        const props = exp.properties || {};
-        const kind = exp.contentKind || 'text';
+        const parts = exp.properties.parts || [];
+        const ordinals = _partOrdinals(exp);
 
         // An author should always know what will be affected by an edit
         // (Builder V3 MEP — Usage completeness): a reused Experience's
@@ -8520,9 +8636,147 @@
             contextPanel.appendChild(_fieldHelp('Editing this updates everywhere it’s hosted — ' + usageCount + ' places right now.'));
         }
 
+        if (exp.type === 'frame') {
+            const frameProps = exp.properties;
+            function onFrameProp(key) {
+                return function (v) {
+                    window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
+                    _persist();
+                    _redrawSceneCanvasesForExperience(exp);
+                };
+            }
+            _contentSectionHeading('Frame');
+            _fieldRow(
+                _buildFieldGroup('Mat Width', _range(0, 80, frameProps.matWidth || 0, onFrameProp('matWidth'))),
+                _buildFieldGroup('Frame Thickness', _range(0, 20, frameProps.frameThickness || 0, onFrameProp('frameThickness')))
+            );
+            _fieldRow(
+                _buildFieldGroup('Border Colour', _colorInput(frameProps.borderColor, onFrameProp('borderColor'))),
+                _buildFieldGroup('Wall Tone', _colorInput(frameProps.wallTone, onFrameProp('wallTone')))
+            );
+            contextPanel.appendChild(_buildFieldGroup('Shadow', _select([
+                { value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' },
+                { value: 'floating', label: 'Floating' }, { value: 'gallery', label: 'Gallery' }
+            ], frameProps.shadow || 'soft', onFrameProp('shadow'))));
+        }
+
+        // Multi-Asset Experience Parts (Phase 4) — up to 5 independent
+        // content parts, any kind mix, repeats allowed; array order is
+        // paint order (later = on top), matching Scene's own `stack`
+        // convention. Each part gets its own bordered card (dispatched
+        // by kind) with a disambiguating title/Remove button.
+        parts.forEach(function (part) {
+            const ordinal = ordinals[part.id];
+            if (part.kind === 'text') _renderTextPartFields(exp, part, ordinal);
+            else if (part.kind === 'image') _renderImagePartFields(exp, part, ordinal);
+            else if (part.kind === 'graphics') _renderGraphicsPartFields(exp, part, ordinal);
+            else if (part.kind === 'colour') _renderColourPartFields(exp, part, ordinal);
+        });
+
+        // "+ Add a Part" — shown-but-disabled at the cap with an inline
+        // reason (this file's own established disclosure pattern, e.g.
+        // the Place-hosting gap message just below), never hidden.
+        const atCap = parts.length >= (window.ExperienceSchema.MAX_EXPERIENCE_PARTS || 5);
+        const addRow = document.createElement('div');
+        addRow.className = 'wb-content-kind-selector';
+        CONTENT_KIND_ORDER.forEach(function (k) {
+            const meta = CONTENT_KIND_META[k];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-content-kind-btn';
+            btn.disabled = currentProjectReadOnly || atCap;
+            btn.innerHTML = '<span>' + meta.icon + '</span>+ ' + meta.label;
+            btn.addEventListener('click', function () {
+                window.ProjectModel.addExperiencePart(currentProject, exp.id, k);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+                _renderContextPanel();
+            });
+            addRow.appendChild(btn);
+        });
+        contextPanel.appendChild(addRow);
+        if (atCap) {
+            contextPanel.appendChild(_fieldHelp('Up to 5 parts per Experience — remove one to add another.'));
+        }
+
+        _contentCardFoot(exp);
+
+        if (exp.hostedBy === 'place' && exp.type !== 'frame') {
+            contextPanel.appendChild(_fieldHelp('Text/Image/Graphics/Colour don’t render when hosted by a Place yet — try Scene or Free instead.'));
+        }
+    }
+
+    // ---- 📝 Text part ----
+    function _renderTextPartFields(exp, part, ordinal) {
+        const props = part.props;
         function onProp(key) {
             return function (v) {
-                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, v);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+            };
+        }
+        const outer = _openContentCard('📝', _partCardTitle('text', ordinal), _partRemoveButton(exp, part));
+        // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
+        // field already gets — carries over to the universal Text
+        // section too, so this authoring path doesn't lose a capability
+        // the legacy Text Layer panel already had.
+        const textContentInput = _textarea(props.textContent, onProp('textContent'));
+        contextPanel.appendChild(_buildFieldGroup('Content', window.EmojiPicker ? window.EmojiPicker.wrap(textContentInput) : textContentInput));
+        _fieldRow(
+            _buildFieldGroup('Font', _select(TEXT_FONT_CHOICES, props.textFont || 'Georgia, serif', onProp('textFont'))),
+            _buildFieldGroup('Size', _range(12, 160, props.textSize || 32, onProp('textSize')))
+        );
+        _fieldRow(
+            _buildFieldGroup('Weight', _select(TEXT_WEIGHT_CHOICES, props.textWeight || 'normal', onProp('textWeight'))),
+            _buildFieldGroup('Alignment', _select(TEXT_ALIGN_CHOICES, props.textAlign || 'left', onProp('textAlign')))
+        );
+        _fieldRow(
+            _buildFieldGroup('Colour', _colorInput(props.textColor, onProp('textColor'))),
+            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.textOpacity == null ? 1 : props.textOpacity) * 100), function (v) { onProp('textOpacity')(v / 100); }))
+        );
+        const textTransform = document.createElement('h4');
+        textTransform.className = 'wb-context-subheading';
+        textTransform.style.marginTop = '8px';
+        textTransform.textContent = 'Transform';
+        contextPanel.appendChild(textTransform);
+        _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp, exp.hostedBy);
+        contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))));
+        contextPanel = outer;
+    }
+
+    // ---- 🖼 Image part ----
+    function _renderImagePartFields(exp, part, ordinal) {
+        const props = part.props;
+        function onProp(key) {
+            return function (v) {
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, v);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+            };
+        }
+        const outer = _openContentCard('🖼', _partCardTitle('image', ordinal), _partRemoveButton(exp, part));
+        _renderCollectionPicker(exp, part, 'imageSrc', '🖼️');
+        _fieldRow(
+            _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
+            _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
+        );
+        const imageTransform = document.createElement('h4');
+        imageTransform.className = 'wb-context-subheading';
+        imageTransform.style.marginTop = '8px';
+        imageTransform.textContent = 'Transform';
+        contextPanel.appendChild(imageTransform);
+        _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp, exp.hostedBy);
+        contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.imageRotation || 0, onProp('imageRotation'))));
+        contextPanel = outer;
+    }
+
+    // ---- 🎭 Graphics part ----
+    function _renderGraphicsPartFields(exp, part, ordinal) {
+        const props = part.props;
+        function onProp(key) {
+            return function (v) {
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, v);
                 _persist();
                 _redrawSceneCanvasesForExperience(exp);
             };
@@ -8530,173 +8784,98 @@
         // Builder V3.1 P0 fix — an Upload/Replace/Remove action needs a
         // visible acknowledgment (a fresh thumbnail, "Replace"/"Remove"
         // appearing) the way a slider or colour swatch already shows its
-        // own new value inherently; the root cause of the reported
-        // "Image upload doesn't work" was that `onProp` above never
-        // re-rendered this panel, so the row silently stayed on
-        // "Upload" even though the Asset/Adapter/Working View/Runtime
-        // Preview had already all updated correctly. Only the discrete,
-        // one-shot upload actions need this — not every keystroke/drag
-        // on the other Properties fields.
+        // own new value inherently; only the discrete, one-shot upload
+        // actions need this — not every keystroke/drag on the other
+        // Properties fields.
         function onUploadProp(key) {
             return function (v) {
-                window.ProjectModel.updateExperienceProperty(currentProject, exp.id, key, v);
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, v);
                 _persist();
                 _redrawSceneCanvasesForExperience(exp);
                 _renderContextPanel();
             };
         }
+        const outer = _openContentCard('🎭', _partCardTitle('graphics', ordinal), _partRemoveButton(exp, part));
+        contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
+        // _renderCollectionPicker's own commit() already clears
+        // graphicShape unconditionally for the graphicSrc key —
+        // uploading, removing, or reusing an existing Collection
+        // entry all correctly clear any Shape already chosen,
+        // matching the Shape picker's own symmetric clear-the-
+        // other-one below.
+        _renderCollectionPicker(exp, part, 'graphicSrc', '🎭', 'image/*,.svg,image/svg+xml');
 
-        if (exp.type === 'frame') {
-            _contentSectionHeading('Frame');
-            _fieldRow(
-                _buildFieldGroup('Mat Width', _range(0, 80, props.matWidth || 0, onProp('matWidth'))),
-                _buildFieldGroup('Frame Thickness', _range(0, 20, props.frameThickness || 0, onProp('frameThickness')))
-            );
-            _fieldRow(
-                _buildFieldGroup('Border Colour', _colorInput(props.borderColor, onProp('borderColor'))),
-                _buildFieldGroup('Wall Tone', _colorInput(props.wallTone, onProp('wallTone')))
-            );
-            contextPanel.appendChild(_buildFieldGroup('Shadow', _select([
-                { value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' },
-                { value: 'floating', label: 'Floating' }, { value: 'gallery', label: 'Gallery' }
-            ], props.shadow || 'soft', onProp('shadow'))));
-        }
-
-        _renderContentKindSelector(exp, kind);
-
-        // ---- 📝 Text ----
-        if (kind === 'text') {
-            const outer = _openContentCard('📝', 'Text');
-            // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
-            // field already gets — carries over to the universal Text
-            // section too, so this authoring path doesn't lose a capability
-            // the legacy Text Layer panel already had.
-            const textContentInput = _textarea(props.textContent, onProp('textContent'));
-            contextPanel.appendChild(_buildFieldGroup('Content', window.EmojiPicker ? window.EmojiPicker.wrap(textContentInput) : textContentInput));
-            _fieldRow(
-                _buildFieldGroup('Font', _select(TEXT_FONT_CHOICES, props.textFont || 'Georgia, serif', onProp('textFont'))),
-                _buildFieldGroup('Size', _range(12, 160, props.textSize || 32, onProp('textSize')))
-            );
-            _fieldRow(
-                _buildFieldGroup('Weight', _select(TEXT_WEIGHT_CHOICES, props.textWeight || 'normal', onProp('textWeight'))),
-                _buildFieldGroup('Alignment', _select(TEXT_ALIGN_CHOICES, props.textAlign || 'left', onProp('textAlign')))
-            );
-            _fieldRow(
-                _buildFieldGroup('Colour', _colorInput(props.textColor, onProp('textColor'))),
-                _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.textOpacity == null ? 1 : props.textOpacity) * 100), function (v) { onProp('textOpacity')(v / 100); }))
-            );
-            const textTransform = document.createElement('h4');
-            textTransform.className = 'wb-context-subheading';
-            textTransform.style.marginTop = '8px';
-            textTransform.textContent = 'Transform';
-            contextPanel.appendChild(textTransform);
-            _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp, exp.hostedBy);
-            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))));
-            _contentCardFoot(exp);
-            contextPanel = outer;
-        }
-
-        // ---- 🖼 Image ----
-        if (kind === 'image') {
-            const outer = _openContentCard('🖼', 'Image');
-            _renderCollectionPicker(exp, 'imageSrc', '🖼️');
-            _fieldRow(
-                _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
-                _buildFieldGroup('Opacity', _range(0, 100, Math.round((props.imageOpacity == null ? 1 : props.imageOpacity) * 100), function (v) { onProp('imageOpacity')(v / 100); }))
-            );
-            const imageTransform = document.createElement('h4');
-            imageTransform.className = 'wb-context-subheading';
-            imageTransform.style.marginTop = '8px';
-            imageTransform.textContent = 'Transform';
-            contextPanel.appendChild(imageTransform);
-            _contentTransformFields(props, 'imageX', 'imageY', 'imageW', 'imageH', onProp, exp.hostedBy);
-            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.imageRotation || 0, onProp('imageRotation'))));
-            _contentCardFoot(exp);
-            contextPanel = outer;
-        }
-
-        // ---- 🎭 Graphics ----
-        if (kind === 'graphics') {
-            const outer = _openContentCard('🎭', 'Graphics');
-            contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
-            // _renderCollectionPicker's own commit() already clears
-            // graphicShape unconditionally for the graphicSrc key —
-            // uploading, removing, or reusing an existing Collection
-            // entry all correctly clear any Shape already chosen,
-            // matching the Shape picker's own symmetric clear-the-
-            // other-one below.
-            _renderCollectionPicker(exp, 'graphicSrc', '🎭', 'image/*,.svg,image/svg+xml');
-
-            const shapeHeading = document.createElement('h4');
-            shapeHeading.className = 'wb-context-subheading';
-            shapeHeading.style.marginTop = '8px';
-            shapeHeading.textContent = 'Or Pick a Shape';
-            contextPanel.appendChild(shapeHeading);
-            const shapeGrid = document.createElement('div');
-            shapeGrid.className = 'wb-scene-template-grid';
-            (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.className = 'wb-scene-template-card' + (props.graphicShape === s.value ? ' active' : '');
-                card.disabled = currentProjectReadOnly;
-                card.style.fontSize = '22px';
-                card.style.textAlign = 'center';
-                card.textContent = s.icon;
-                card.title = s.label;
-                card.addEventListener('click', function () {
-                    window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicSrc', null);
-                    onUploadProp('graphicShape')(s.value);
-                });
-                shapeGrid.appendChild(card);
+        const shapeHeading = document.createElement('h4');
+        shapeHeading.className = 'wb-context-subheading';
+        shapeHeading.style.marginTop = '8px';
+        shapeHeading.textContent = 'Or Pick a Shape';
+        contextPanel.appendChild(shapeHeading);
+        const shapeGrid = document.createElement('div');
+        shapeGrid.className = 'wb-scene-template-grid';
+        (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'wb-scene-template-card' + (props.graphicShape === s.value ? ' active' : '');
+            card.disabled = currentProjectReadOnly;
+            card.style.fontSize = '22px';
+            card.style.textAlign = 'center';
+            card.textContent = s.icon;
+            card.title = s.label;
+            card.addEventListener('click', function () {
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicSrc', null);
+                onUploadProp('graphicShape')(s.value);
             });
-            contextPanel.appendChild(shapeGrid);
+            shapeGrid.appendChild(card);
+        });
+        contextPanel.appendChild(shapeGrid);
 
-            if (props.graphicShape === 'custom') {
-                contextPanel.appendChild(_shapeDrawPad(props, function (pathOrNull) {
-                    window.ProjectModel.updateExperienceProperty(currentProject, exp.id, 'graphicCustomPath', pathOrNull);
-                    _persist();
-                    _redrawSceneCanvasesForExperience(exp);
-                    _renderContextPanel();
-                }));
-            }
-
-            if (props.graphicShape) {
-                _fieldRow(
-                    _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
-                    _buildFieldGroup('Fill Opacity', _range(0, 100, Math.round((props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity) * 100), function (v) { onProp('graphicFillOpacity')(v / 100); }), '0% makes the fill fully see-through.')
-                );
-                _fieldRow(
-                    _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor'))),
-                    _buildFieldGroup('Outline Opacity', _range(0, 100, Math.round((props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity) * 100), function (v) { onProp('graphicStrokeOpacity')(v / 100); }), '0% makes the outline fully see-through.')
-                );
-                contextPanel.appendChild(_buildFieldGroup('Outline Thickness', _range(0, 20, props.graphicStrokeWidth || 0, onProp('graphicStrokeWidth')), 'Leave at 0 for no outline.'));
-            }
-
-            contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
-            const graphicTransform = document.createElement('h4');
-            graphicTransform.className = 'wb-context-subheading';
-            graphicTransform.style.marginTop = '8px';
-            graphicTransform.textContent = 'Transform';
-            contextPanel.appendChild(graphicTransform);
-            _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp, exp.hostedBy);
-            contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.graphicRotation || 0, onProp('graphicRotation'))));
-            _contentCardFoot(exp);
-            contextPanel = outer;
+        if (props.graphicShape === 'custom') {
+            contextPanel.appendChild(_shapeDrawPad(props, function (pathOrNull) {
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicCustomPath', pathOrNull);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+                _renderContextPanel();
+            }));
         }
 
-        // ---- 🎨 Colour ----
-        if (kind === 'colour') {
-            const outer = _openContentCard('🎨', 'Colour');
-            contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
-            contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
-            contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
-            _contentCardFoot(exp);
-            contextPanel = outer;
+        if (props.graphicShape) {
+            _fieldRow(
+                _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
+                _buildFieldGroup('Fill Opacity', _range(0, 100, Math.round((props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity) * 100), function (v) { onProp('graphicFillOpacity')(v / 100); }), '0% makes the fill fully see-through.')
+            );
+            _fieldRow(
+                _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor'))),
+                _buildFieldGroup('Outline Opacity', _range(0, 100, Math.round((props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity) * 100), function (v) { onProp('graphicStrokeOpacity')(v / 100); }), '0% makes the outline fully see-through.')
+            );
+            contextPanel.appendChild(_buildFieldGroup('Outline Thickness', _range(0, 20, props.graphicStrokeWidth || 0, onProp('graphicStrokeWidth')), 'Leave at 0 for no outline.'));
         }
 
-        if (exp.hostedBy === 'place' && exp.type !== 'frame') {
-            contextPanel.appendChild(_fieldHelp('Text/Image/Graphics/Colour don’t render when hosted by a Place yet — try Scene or Free instead.'));
+        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.graphicOpacity == null ? 1 : props.graphicOpacity) * 100), function (v) { onProp('graphicOpacity')(v / 100); })));
+        const graphicTransform = document.createElement('h4');
+        graphicTransform.className = 'wb-context-subheading';
+        graphicTransform.style.marginTop = '8px';
+        graphicTransform.textContent = 'Transform';
+        contextPanel.appendChild(graphicTransform);
+        _contentTransformFields(props, 'graphicX', 'graphicY', 'graphicW', 'graphicH', onProp, exp.hostedBy);
+        contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.graphicRotation || 0, onProp('graphicRotation'))));
+        contextPanel = outer;
+    }
+
+    // ---- 🎨 Colour part ----
+    function _renderColourPartFields(exp, part, ordinal) {
+        const props = part.props;
+        function onProp(key) {
+            return function (v) {
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, v);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+            };
         }
+        const outer = _openContentCard('🎨', _partCardTitle('colour', ordinal), _partRemoveButton(exp, part));
+        contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
+        contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
+        contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
+        contextPanel = outer;
     }
 
     function _checkboxField(labelText, checked, onChange) {

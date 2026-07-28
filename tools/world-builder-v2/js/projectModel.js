@@ -386,28 +386,41 @@ const ProjectModel = (function () {
     // Every Experience currently referencing this Collection entry —
     // used by the Manage Collection delete confirmation to show "used
     // by N Experiences" before a Builder commits to deleting.
+    //
+    // Multi-Asset Experience Parts: scans every part in `parts[]`, not
+    // just the flat top-level imageSrc/graphicSrc mirror -- that mirror
+    // only ever reflects parts[0] ("the primary part"), so scanning it
+    // alone would silently undercount (or miss entirely) a reference
+    // held by part 2-5, and would double-count nothing either way since
+    // a part's own props are the one real source of truth here.
     function collectionAssetUsageCount(project, id) {
         const entry = findCollectionAsset(project, id);
         if (!entry) return 0;
         let count = 0;
         experiences(project).forEach(function (exp) {
-            const props = exp.properties || {};
-            if (props.imageSrc === entry.ref || props.graphicSrc === entry.ref) count++;
+            (exp.properties.parts || []).forEach(function (part) {
+                const props = part.props || {};
+                if (props.imageSrc === entry.ref || props.graphicSrc === entry.ref) count++;
+            });
         });
         return count;
     }
 
     // Builder-only — never reachable from any Creator-facing code path
     // ("builder can delete from collection but not creator"). Nulls
-    // every Experience's imageSrc/graphicSrc currently equal to this
+    // every part's own imageSrc/graphicSrc currently equal to this
     // entry's own ref — never blocks, never fabricates a substitute —
     // the exact discipline already established for Frame
-    // (_clearFrameReferences, "AV-012"). Routed back through the real
-    // updateExperienceProperty for each affected Experience, so its
-    // existing Engine Adapter re-sync (_syncExperienceAttachments)
-    // fires too and Working View/Runtime Preview both correctly clear,
-    // never left showing a stale image for a reference that no longer
-    // resolves to anything.
+    // (_clearFrameReferences, "AV-012"). Routed through
+    // updateExperiencePartProperty (not updateExperienceProperty) so a
+    // reference held by part 2-5 is nulled on that SPECIFIC part rather
+    // than accidentally overwriting whatever parts[0] independently
+    // holds; the function's own existing parts[0]-mirror logic still
+    // correctly updates the flat top-level fields when the nulled part
+    // happens to be parts[0]. Fires the existing Engine Adapter re-sync
+    // (_syncExperienceAttachments) for every affected part, so Working
+    // View/Runtime Preview both correctly clear, never left showing a
+    // stale image for a reference that no longer resolves to anything.
     function deleteCollectionAsset(project, id) {
         const entry = findCollectionAsset(project, id);
         if (!entry) return false;
@@ -416,9 +429,11 @@ const ProjectModel = (function () {
             project.collectionOrder = project.collectionOrder.filter(function (x) { return x !== id; });
         }
         experiences(project).forEach(function (exp) {
-            const props = exp.properties || {};
-            if (props.imageSrc === entry.ref) updateExperienceProperty(project, exp.id, 'imageSrc', null);
-            if (props.graphicSrc === entry.ref) updateExperienceProperty(project, exp.id, 'graphicSrc', null);
+            (exp.properties.parts || []).forEach(function (part) {
+                const props = part.props || {};
+                if (props.imageSrc === entry.ref) updateExperiencePartProperty(project, exp.id, part.id, 'imageSrc', null);
+                if (props.graphicSrc === entry.ref) updateExperiencePartProperty(project, exp.id, part.id, 'graphicSrc', null);
+            });
         });
         return true;
     }
@@ -1007,6 +1022,7 @@ const ProjectModel = (function () {
         if (!Array.isArray(exp.tags)) exp.tags = [];
         if (!exp.properties || typeof exp.properties !== 'object') exp.properties = {};
         _ensureUniversalContentDefaults(exp);
+        _ensurePartsDefaults(exp);
         // Only-one-content-type-at-a-time — a direct product simplification
         // request, after Builder V3.1 deliberately let every Experience
         // hold Text+Image+Graphics+Colour simultaneously. `contentKind`
@@ -1081,6 +1097,28 @@ const ProjectModel = (function () {
         return 'text';
     }
 
+    // Multi-Asset Experience Parts — "incorporate multiple assets in
+    // single experience... combinations... not exceeding 5." Wraps
+    // every pre-existing single-`contentKind` Experience (including a
+    // brand-new one from `addExperience` below, and every Experience
+    // authored before this feature existed) into a one-entry `parts`
+    // array on first touch — the exact same lazy, read-time
+    // reconciliation discipline `_ensureHolderDefaults`/`_ordered`
+    // already use elsewhere in this file. No proactive sweep; a Project
+    // never re-opened in v2 simply never gets `parts` written to disk.
+    // Idempotent — an Experience already carrying real `parts` is left
+    // completely untouched.
+    function _ensurePartsDefaults(exp) {
+        const props = exp.properties;
+        if (Array.isArray(props.parts) && props.parts.length) return;
+        const kind = exp.contentKind || _inferContentKind(props);
+        const schema = window.ExperienceSchema;
+        const keys = (schema && schema.PART_FIELD_KEYS && schema.PART_FIELD_KEYS[kind]) || [];
+        const partProps = {};
+        keys.forEach(function (k) { partProps[k] = props[k]; });
+        props.parts = [{ id: _uniqueId([], kind + '-part'), kind: kind, props: partProps }];
+    }
+
     // Placeholder creation (Milestone 2) plus real type-specific
     // Properties, seeded from js/services/experienceSchema.js's
     // `defaultProperties(type)` so the Inspector (Milestone 3) always
@@ -1121,6 +1159,51 @@ const ProjectModel = (function () {
         if (!experience) return null;
         Object.assign(experience, patch);
         experience.updatedAt = Date.now();
+        // The legacy Content Kind selector (pre-dates Multi-Asset
+        // Experience Parts, retired by Phase 4's real part-list UI in
+        // favour of explicit Add/Remove-a-Part) still switches which
+        // single section is "active" via a bare `contentKind` patch —
+        // with no concept of parts[0] at all. Left unhandled, a fresh
+        // Experience's very first content-kind pick (contentKind starts
+        // 'text' at creation, per _inferContentKind) would silently
+        // mirror nothing: parts[0].kind stays 'text' forever, so
+        // updateExperienceProperty's later `imageSrc` write never lands
+        // in a props bag that has that key at all. Per this feature's
+        // own disclosed scope ("changing an existing part's kind —
+        // remove + re-add instead"), genuinely swap parts[0] for a
+        // fresh part under a NEW id when the kind changes — the id
+        // change is what makes the existing orphan sweep in
+        // _syncUniversalContent correctly delete whatever mirrored
+        // Layer the old kind had (its own fields/`.kind` would
+        // otherwise be wrong for the new content, if reused in place)
+        // while a brand-new, correctly-typed Layer is created for the
+        // new kind on the very next sync.
+        //
+        // The new part's own props are read straight off the flat
+        // `experience.properties` bag (never fresh, blank defaults) —
+        // Builder V3.1 already guarantees every one of the four kinds'
+        // fields sits there simultaneously (_ensureUniversalContentDefaults),
+        // so this naturally picks up whatever a Theme Author already
+        // typed for this kind, whether that happened before this exact
+        // kind switch or after an earlier one — matching the pre-parts
+        // flat-bag model's own "switching kinds never loses data"
+        // guarantee exactly, just re-derived at swap time instead of
+        // being true for free.
+        if (patch && patch.contentKind) {
+            const parts = experience.properties.parts;
+            if (Array.isArray(parts) && parts[0] && parts[0].kind !== patch.contentKind) {
+                const schema = window.ExperienceSchema;
+                const keys = (schema && schema.PART_FIELD_KEYS && schema.PART_FIELD_KEYS[patch.contentKind]) || [];
+                const newProps = {};
+                keys.forEach(function (k) { newProps[k] = experience.properties[k]; });
+                parts[0] = {
+                    id: _uniqueId(parts.map(function (p) { return p.id; }), patch.contentKind + '-part'),
+                    kind: patch.contentKind,
+                    props: newProps
+                };
+                Object.assign(experience.properties, newProps);
+            }
+        }
         // Matches updateExperienceProperty's own re-sync below — a patch
         // through this generic path (e.g. contentKind, switching which
         // single content section is active) can affect what the Engine
@@ -1138,6 +1221,17 @@ const ProjectModel = (function () {
         if (!experience.properties) experience.properties = {};
         experience.properties[key] = value;
         experience.updatedAt = Date.now();
+        // Multi-Asset Experience Parts — the real content now lives at
+        // experience.properties.parts[0].props (the "primary" part);
+        // the flat top-level fields written above are kept as a live
+        // mirror of it, not retired, since v1 (and anything else that
+        // still only reads the flat fields) shares the same
+        // localStorage key as v2 and must keep seeing something correct
+        // rather than blank/stale. Every legacy caller of this function
+        // (Frame fields; any pre-Phase-4 Universal Content edit) keeps
+        // working byte-identically — this only adds a second write.
+        const primaryPart = (experience.properties.parts || [])[0];
+        if (primaryPart && primaryPart.props && key in primaryPart.props) primaryPart.props[key] = value;
         // Collection auto-registration (Platform Hardening) — "any
         // asset am adding to any scene gets added into collection
         // also." One chokepoint covers every current and future
@@ -1151,6 +1245,80 @@ const ProjectModel = (function () {
         }
         _syncExperienceAttachments(project, experience);
         return experience;
+    }
+
+    // The real, part-scoped setter — every Multi-Asset Experience Parts
+    // UI control (Phase 4) writes through this, never the legacy
+    // updateExperienceProperty above directly. Mirrors up to the flat
+    // top-level fields (and contentKind) only when the edited part IS
+    // parts[0] — see updateExperienceProperty's own comment for why
+    // that mirror exists at all.
+    function updateExperiencePartProperty(project, id, partId, key, value) {
+        const experience = findExperience(project, id);
+        if (!experience) return null;
+        const parts = experience.properties.parts || [];
+        const part = parts.find(function (p) { return p.id === partId; });
+        if (!part) return null;
+        if (!part.props) part.props = {};
+        part.props[key] = value;
+        experience.updatedAt = Date.now();
+        if (parts[0] && parts[0].id === partId) {
+            experience.properties[key] = value;
+            experience.contentKind = part.kind;
+        }
+        if ((key === 'imageSrc' || key === 'graphicSrc') && value) {
+            registerCollectionAsset(project, value, { kind: key === 'imageSrc' ? 'image' : 'graphic', name: experience.name });
+        }
+        _syncExperienceAttachments(project, experience);
+        return experience;
+    }
+
+    // Model-layer cap enforcement, not just a disabled UI button —
+    // matches this file's own established convention (e.g.
+    // deleteExperience already refuses at the model function for a
+    // non-Nurturing Experience, never only via a hidden button).
+    function addExperiencePart(project, experienceId, kind) {
+        const experience = findExperience(project, experienceId);
+        if (!experience) return null;
+        const parts = experience.properties.parts;
+        const schema = window.ExperienceSchema;
+        const max = (schema && schema.MAX_EXPERIENCE_PARTS) || 5;
+        if (!Array.isArray(parts) || parts.length >= max) return null;
+        const existingIds = parts.map(function (p) { return p.id; });
+        const part = {
+            id: _uniqueId(existingIds, kind + '-part'),
+            kind: kind,
+            props: (schema && schema.defaultPartProps(kind, experience.hostedBy)) || {}
+        };
+        parts.push(part);
+        experience.updatedAt = Date.now();
+        _syncExperienceAttachments(project, experience);
+        return part;
+    }
+
+    // An Experience always keeps at least one part — refuses rather
+    // than ever leaving `parts` empty, the same "never a degenerate
+    // empty state" discipline this file already applies elsewhere
+    // (e.g. an Experience is always born with real default Properties,
+    // never blank ones).
+    function removeExperiencePart(project, experienceId, partId) {
+        const experience = findExperience(project, experienceId);
+        if (!experience) return false;
+        const parts = experience.properties.parts;
+        if (!Array.isArray(parts) || parts.length <= 1) return false;
+        const idx = parts.findIndex(function (p) { return p.id === partId; });
+        if (idx === -1) return false;
+        parts.splice(idx, 1);
+        experience.updatedAt = Date.now();
+        if (parts[0]) {
+            Object.assign(experience.properties, parts[0].props);
+            experience.contentKind = parts[0].kind;
+        }
+        // _syncExperienceAttachments -> _syncUniversalContent also runs
+        // the orphan sweep that removes the deleted part's own mirrored
+        // Scene Layer (Phase 2).
+        _syncExperienceAttachments(project, experience);
+        return true;
     }
 
     // Delete exists only for Nurturing Experiences (Canon Decision #9)
@@ -1301,18 +1469,25 @@ const ProjectModel = (function () {
         });
     }
 
-    // `slot` is one of 'text'/'image'/'graphic' (a dedicated mirrored
-    // Scene Layer per populated universal content section) or undefined
-    // (a pre-Builder-V3.1 legacy single mirrored layer — Frame's old
-    // Decoration/Text single-Layer-per-Experience mechanism). Kept
-    // slot-aware rather than replaced so a legacy layer already on a
-    // Scene can be found and claimed (see `_claimLegacyMirrorLayer`)
-    // instead of silently duplicated.
-    function _findMirroredLayer(project, sceneId, experienceId, slot) {
+    // `partId` identifies exactly one of an Experience's own
+    // `properties.parts` entries (Multi-Asset Experience Parts — "up to
+    // 5 assets per Experience, repeats of the same kind allowed") — the
+    // real lookup key a mirrored Scene Layer needs now, since two parts
+    // can share one `kind` with nothing else to tell them apart.
+    // `partId === undefined` still matches the one genuinely older tier
+    // this file has to recognize on its own: a pre-Builder-V3.1 legacy
+    // single mirrored layer with neither a `contentSlot` nor a `partId`
+    // at all — Frame's old Decoration/Text single-Layer-per-Experience
+    // mechanism (see `_claimLegacyMirrorLayer`). `layer.contentSlot`
+    // (`'color'`/`'text'`/`'image'`/`'graphic'`) is kept, unchanged in
+    // shape, as a non-identity classification tag only — still useful
+    // for anything reading a mirrored Layer that only cares "what kind
+    // of content is this," never for finding it.
+    function _findMirroredLayer(project, sceneId, experienceId, partId) {
         const scene = findScene(project, sceneId);
         if (!scene) return null;
         return (scene.layers || []).find(function (l) {
-            return l.sourceExperienceId === experienceId && (slot === undefined ? !l.contentSlot : l.contentSlot === slot);
+            return l.sourceExperienceId === experienceId && (partId === undefined ? (!l.contentSlot && !l.partId) : l.partId === partId);
         }) || null;
     }
 
@@ -1322,15 +1497,37 @@ const ProjectModel = (function () {
     // means the Wax Seal/Museum Caption/etc an author already
     // positioned keeps its exact Scene position the first time its
     // owning Experience is touched under the new Universal model,
-    // instead of visually duplicating or jumping to a fresh default rect.
+    // instead of visually duplicating or jumping to a fresh default
+    // rect. Only ever attempted for `parts[0]` (the caller enforces
+    // this) — the one part that could possibly already have such a
+    // layer, since this tier predates every content-kind concept this
+    // file has.
     function _claimLegacyMirrorLayer(project, sceneId, experience, wantKind) {
         const legacy = _findMirroredLayer(project, sceneId, experience.id, undefined);
         if (!legacy || legacy.kind !== wantKind) return null;
         return legacy;
     }
 
-    function _removeMirroredLayer(project, sceneId, experienceId, slot) {
-        const layer = _findMirroredLayer(project, sceneId, experienceId, slot);
+    // The Multi-Asset Experience Parts sibling of the above — a
+    // V3.1-era mirrored Layer, already tagged with `contentSlot`, but
+    // authored before `partId` existed. Claimed in place for `parts[0]`
+    // only, the one part that could possibly already have one,
+    // preventing every already-authored Experience (including the
+    // real, on-disk Museum Gallery Theme) from visually duplicating or
+    // jumping the first time it's re-synced under this feature.
+    function _claimUntaggedPartLayer(project, sceneId, experience, part) {
+        if (experience.properties.parts[0] !== part) return null;
+        const scene = findScene(project, sceneId);
+        if (!scene) return null;
+        const slotForKind = { colour: 'color', text: 'text', image: 'image', graphics: 'graphic' }[part.kind];
+        if (!slotForKind) return null;
+        return (scene.layers || []).find(function (l) {
+            return l.sourceExperienceId === experience.id && l.contentSlot === slotForKind && !l.partId;
+        }) || null;
+    }
+
+    function _removeMirroredLayer(project, sceneId, experienceId, partId) {
+        const layer = _findMirroredLayer(project, sceneId, experienceId, partId);
         if (layer) deleteSceneLayer(project, sceneId, layer.id);
     }
 
@@ -1344,8 +1541,11 @@ const ProjectModel = (function () {
     // up — it gets the same sensible default rect as "nothing
     // populated yet." For every other kind, this returns that one
     // kind's own rect if it has real content, gated exactly like
-    // `_syncUniversalContent`'s own render gate so a stray, inactive
-    // section's leftover Transform can never influence this either.
+    // `_syncPartLayer`'s own render gate so a stray, inactive section's
+    // leftover Transform can never influence this either. Still a
+    // plain function of one part's own `props` bag and `kind` — every
+    // caller now passes `part.props`/`part.kind`, unchanged in
+    // signature and behavior.
     function _universalContentFootprint(props, kind) {
         if (kind === 'image' && props.imageSrc) {
             return { x: props.imageX, y: props.imageY, w: props.imageW, h: props.imageH };
@@ -1359,208 +1559,249 @@ const ProjectModel = (function () {
         return { x: 0.3, y: 0.3, w: 0.4, h: 0.4 };
     }
 
-    // Builder V3.1 Universal Experience Authoring — the Engine Adapter
-    // entry point every Scene/Free-hosted Experience now syncs through,
-    // regardless of `type`: up to four tagged Scene Layers (one per
-    // populated content section), each reusing an existing, unmodified
-    // Engine V2 Layer kind (`fill` for Colour, `text` for Text,
-    // `decoration` for Image/Graphics — Image and Graphics are both
-    // simply a Layer's `.image` field, the same mechanism Builder V3
-    // MEP's Decoration Image support already proved out). A section
-    // with no content (empty Colour/Text/Image/Graphics) mirrors
-    // nothing — no empty, invisible Layers cluttering the Scene Stack.
-    function _syncUniversalContent(project, sceneId, experience, fillMode) {
-        const props = experience.properties || {};
-        // Only-one-content-type-at-a-time — see _ensureExperienceDefaults'
-        // own comment. Gated here, not just in the Inspector, so stray
-        // data left in a non-active section (e.g. typed text, then
-        // switched to Image) can never still render alongside the
-        // active one — every non-matching section below explicitly
-        // takes the "no content" branch regardless of what its own
-        // fields hold.
-        const kind = experience.contentKind || _inferContentKind(props);
+    // Two same-kind parts on one Experience get numbered labels ("Image
+    // 2") on their own mirrored Layers so builder.js's compiled
+    // label/js/objectStrip.js's Object Strip card never read
+    // identically for both — see _syncUniversalContent's own comment.
+    function _partKindLabel(kind) {
+        if (kind === 'image') return 'Image';
+        if (kind === 'graphics') return 'Graphics';
+        if (kind === 'text') return 'Text';
+        if (kind === 'colour') return 'Colour';
+        return 'Content';
+    }
 
-        // Colour.
-        if (fillMode === 'scene') {
+    // Builder V3.1 Universal Experience Authoring, extended for
+    // Multi-Asset Experience Parts — "incorporate multiple assets in
+    // single experience... combinations... not exceeding 5," with
+    // repeats of the same kind allowed. `experience.properties.parts`
+    // is guaranteed non-empty by `_ensurePartsDefaults`; array order is
+    // paint order, matching Scene's own `stack`/`addSceneLayer`-appends
+    // convention. Only the FIRST `colour`-kind part, and only when
+    // Scene-hosted, may become the Scene's own full-bleed background
+    // (the existing, unchanged mechanism) — every other part, including
+    // a colour part beyond the first or any colour part when
+    // Free-hosted, mirrors as an ordinary positioned Scene Layer below,
+    // each keyed by its own `part.id` so N parts sharing one `kind`
+    // never collide.
+    function _syncUniversalContent(project, sceneId, experience, fillMode) {
+        const parts = experience.properties.parts || [];
+
+        const backgroundPart = fillMode === 'scene' ? (parts.find(function (p) { return p.kind === 'colour'; }) || null) : null;
+        if (backgroundPart) {
             // Hosted by the Scene itself — the existing full-bleed
             // background fill mechanism, not a new Engine capability.
             //
-            // Real, user-requested fix — "I want option to set background
-            // color as transparent": Transparent used to mean "leave
-            // whatever background already exists," a documented no-op
-            // that never actually delivered what its own checkbox
-            // promised. Now it always keeps the Scene's own background
-            // fill Layer in sync with BOTH knobs the Colour section
-            // already offers — Transparent forces the Layer to opacity 0
-            // (rendered as literally nothing, engineRuntime.js's
-            // _paintLayer/renderer/slideRenderer.js's fill-kind branch
-            // both already early-return/no-op at opacity<=0), otherwise
-            // the Opacity slider's own value applies. render()/render(s)
-            // in both engines skip their opaque backdrop fallback
-            // whenever this full-bleed Layer exists (any opacity), so a
-            // fully transparent one now genuinely shows through to
-            // whatever sits behind the canvas — not a hardcoded cream
-            // fallback — while every Scene that never touches Colour at
-            // all keeps that fallback completely unchanged.
-            if (kind === 'colour') {
-                const opacity = props.colorTransparent ? 0 : (typeof props.colorOpacity === 'number' ? props.colorOpacity : 1);
-                setSceneBackground(project, sceneId, props.colorValue || '#F4F1EC', opacity);
-            }
-        } else {
-            if (kind === 'colour' && props.colorTransparent === false) {
-                // The Colour section has no Transform of its own — since
-                // only one kind is ever active at a time, Colour (when
-                // active) is never "a backdrop behind" Text/Image/
-                // Graphics, so its rect is just a default centered rect.
-                const rect = _universalContentFootprint(props, kind);
-                const existing = _findMirroredLayer(project, sceneId, experience.id, 'color');
-                if (existing) {
-                    existing.color = props.colorValue;
-                    existing.opacity = props.colorOpacity;
-                    existing.position = { x: rect.x, y: rect.y };
-                    existing.size = { w: rect.w, h: rect.h };
-                } else {
-                    const layer = addSceneLayer(project, sceneId, {
-                        kind: 'fill', name: experience.name + ' — Colour', color: props.colorValue,
-                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h }, atBottom: true
-                    });
-                    layer.opacity = props.colorOpacity;
-                    layer.sourceExperienceId = experience.id;
-                    layer.contentSlot = 'color';
-                }
-            } else {
-                _removeMirroredLayer(project, sceneId, experience.id, 'color');
-            }
+            // Transparent forces the background to opacity 0 (rendered
+            // as literally nothing — engineRuntime.js's _paintLayer/
+            // renderer/slideRenderer.js's fill-kind branch both already
+            // early-return/no-op at opacity<=0), otherwise the Opacity
+            // slider's own value applies. render()/render(s) in both
+            // engines skip their opaque backdrop fallback whenever this
+            // full-bleed Layer exists (any opacity), so a fully
+            // transparent one now genuinely shows through to whatever
+            // sits behind the canvas — not a hardcoded cream fallback —
+            // while every Scene that never touches Colour at all keeps
+            // that fallback completely unchanged.
+            const opacity = backgroundPart.props.colorTransparent ? 0 : (typeof backgroundPart.props.colorOpacity === 'number' ? backgroundPart.props.colorOpacity : 1);
+            setSceneBackground(project, sceneId, backgroundPart.props.colorValue || '#F4F1EC', opacity);
         }
 
-        // Text.
-        if (kind === 'text' && props.textContent && props.textContent.trim()) {
-            let layer = _findMirroredLayer(project, sceneId, experience.id, 'text');
-            if (!layer) {
-                const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'text');
-                if (legacy) {
-                    legacy.contentSlot = 'text';
-                    props.textX = legacy.position.x; props.textY = legacy.position.y;
-                    props.textW = legacy.size.w; props.textH = legacy.size.h;
-                    layer = legacy;
+        // Layer-name disambiguation — builder.js copies a Layer's own
+        // `name` verbatim into the compiled Layer Pack entry's `label`,
+        // which js/objectStrip.js (root Studio) uses as the Object
+        // Strip card's own label with zero Experience-grouping
+        // awareness of its own. A second part of the same kind gets a
+        // numbered suffix (" — Image 2") so its own card never reads
+        // identically to the first's; a single part of a given kind
+        // keeps its exact pre-multi-part name (Colour's own
+        // " — Colour" suffix, Text/Image/Graphics unsuffixed).
+        const kindCounts = {};
+        const liveMirroredPartIds = [];
+
+        parts.forEach(function (part) {
+            if (part === backgroundPart) return; // already the Scene's own background — no separate Layer
+            kindCounts[part.kind] = (kindCounts[part.kind] || 0) + 1;
+            const ordinal = kindCounts[part.kind];
+            const isPrimaryPart = parts[0] === part;
+            liveMirroredPartIds.push(part.id);
+            _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart);
+        });
+
+        // Orphan sweep — a mirrored Layer whose partId no longer names
+        // a live part (a Remove-a-Part action) is deleted, matching
+        // AV-012's own "never leave a dangling reference behind"
+        // discipline already established for Frame.
+        const scene = findScene(project, sceneId);
+        if (scene) {
+            (scene.layers || []).slice().forEach(function (l) {
+                if (l.sourceExperienceId === experience.id && l.partId && liveMirroredPartIds.indexOf(l.partId) === -1) {
+                    deleteSceneLayer(project, sceneId, l.id);
                 }
-            }
-            if (layer) {
-                Object.assign(layer, {
-                    name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize,
-                    align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
-                    // Rotation — "add rotation to text, and graphics in builder."
-                    // Graphics already had props.graphicRotation/imageRotation;
-                    // this was the one remaining slot silently hardcoded to 0.
-                    rotation: props.textRotation || 0,
-                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
-                    hostedByScene: fillMode === 'scene'
-                });
+            });
+        }
+    }
+
+    // One part's own mirrored Scene Layer — the generalized body of
+    // what used to be three separate hardcoded blocks (Colour/Text/
+    // Image-or-Graphics) directly inside _syncUniversalContent,
+    // unchanged in behavior for the pre-multi-part single-part case.
+    // `isPrimaryPart` gates BOTH claim tiers (`_claimUntaggedPartLayer`/
+    // `_claimLegacyMirrorLayer`) to `parts[0]` only — the one part that
+    // could possibly already have a pre-existing mirrored Layer from
+    // before this feature (or before Universal Content itself) existed;
+    // a part added later via `addExperiencePart` always starts fresh.
+    function _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart) {
+        const props = part.props || {};
+        const kind = part.kind;
+        const nameSuffix = ordinal > 1 ? (' — ' + _partKindLabel(kind) + ' ' + ordinal) : (kind === 'colour' ? ' — Colour' : '');
+        const layerName = experience.name + nameSuffix;
+
+        if (kind === 'colour') {
+            // A Colour part that isn't the Scene's own background
+            // (beyond the first, or Free-hosted) mirrors as an ordinary
+            // fill Layer — unless it's fully Transparent, in which case
+            // there is nothing to render and no Layer is kept at all.
+            if (props.colorTransparent === false) {
+                const rect = _universalContentFootprint(props, kind);
+                let layer = _findMirroredLayer(project, sceneId, experience.id, part.id);
+                if (!layer && isPrimaryPart) layer = _claimUntaggedPartLayer(project, sceneId, experience, part);
+                if (layer) {
+                    layer.partId = part.id;
+                    layer.contentSlot = 'color';
+                    Object.assign(layer, {
+                        name: layerName, color: props.colorValue, opacity: props.colorOpacity,
+                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h }
+                    });
+                } else {
+                    const created = addSceneLayer(project, sceneId, {
+                        kind: 'fill', name: layerName, color: props.colorValue,
+                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h }, atBottom: true
+                    });
+                    created.opacity = props.colorOpacity;
+                    created.sourceExperienceId = experience.id;
+                    created.contentSlot = 'color';
+                    created.partId = part.id;
+                }
             } else {
-                const created = addSceneLayer(project, sceneId, {
-                    kind: 'text', name: experience.name, text: props.textContent, font: props.textFont, fontSize: props.textSize, align: props.textAlign,
-                    position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH }
-                });
-                created.color = props.textColor;
-                created.opacity = props.textOpacity;
-                created.rotation = props.textRotation || 0;
-                created.sourceExperienceId = experience.id;
-                created.contentSlot = 'text';
-                created.hostedByScene = fillMode === 'scene';
+                _removeMirroredLayer(project, sceneId, experience.id, part.id);
             }
-        } else {
-            _removeMirroredLayer(project, sceneId, experience.id, 'text');
+            return;
+        }
+
+        if (kind === 'text') {
+            if (props.textContent && props.textContent.trim()) {
+                let layer = _findMirroredLayer(project, sceneId, experience.id, part.id);
+                if (!layer && isPrimaryPart) {
+                    layer = _claimUntaggedPartLayer(project, sceneId, experience, part) || _claimLegacyMirrorLayer(project, sceneId, experience, 'text');
+                    if (layer) {
+                        props.textX = layer.position.x; props.textY = layer.position.y;
+                        props.textW = layer.size.w; props.textH = layer.size.h;
+                    }
+                }
+                if (layer) {
+                    layer.partId = part.id;
+                    layer.contentSlot = 'text';
+                    Object.assign(layer, {
+                        name: layerName, text: props.textContent, font: props.textFont, fontSize: props.textSize,
+                        align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
+                        rotation: props.textRotation || 0,
+                        position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
+                        hostedByScene: fillMode === 'scene'
+                    });
+                } else {
+                    const created = addSceneLayer(project, sceneId, {
+                        kind: 'text', name: layerName, text: props.textContent, font: props.textFont, fontSize: props.textSize, align: props.textAlign,
+                        position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH }
+                    });
+                    created.color = props.textColor;
+                    created.opacity = props.textOpacity;
+                    created.rotation = props.textRotation || 0;
+                    created.sourceExperienceId = experience.id;
+                    created.contentSlot = 'text';
+                    created.partId = part.id;
+                    created.hostedByScene = fillMode === 'scene';
+                }
+            } else {
+                _removeMirroredLayer(project, sceneId, experience.id, part.id);
+            }
+            return;
         }
 
         // Image and Graphics — both a Layer's `.image` field (the same
-        // Runtime mechanism), kept as two separate Layers/slots so each
-        // owns its own independent Transform.
-        [{ slot: 'image', kindMatch: 'image', srcKey: 'imageSrc', xKey: 'imageX', yKey: 'imageY', wKey: 'imageW', hKey: 'imageH', opKey: 'imageOpacity' },
-            { slot: 'graphic', kindMatch: 'graphics', srcKey: 'graphicSrc', xKey: 'graphicX', yKey: 'graphicY', wKey: 'graphicW', hKey: 'graphicH', opKey: 'graphicOpacity' }
-        ].forEach(function (spec) {
-            const src = (kind === spec.kindMatch) ? props[spec.srcKey] : null;
-            // A Graphics section may hold an author-drawn Shape instead
-            // of an uploaded image — same Layer/slot, mutually exclusive
-            // with graphicSrc by construction (the Inspector clears one
-            // when the other is picked). Folded into this loop rather
-            // than a parallel implementation, since a Shape needs the
-            // exact same Layer/position/size/opacity bookkeeping an
-            // Image already has — only the styling fields differ.
-            const shapeKind = (spec.slot === 'graphic' && kind === spec.kindMatch && !src) ? props.graphicShape : null;
-            if (src || shapeKind) {
-                let layer = _findMirroredLayer(project, sceneId, experience.id, spec.slot);
-                if (!layer) {
-                    const legacy = _claimLegacyMirrorLayer(project, sceneId, experience, 'decoration');
-                    if (legacy) {
-                        legacy.contentSlot = spec.slot;
-                        props[spec.xKey] = legacy.position.x; props[spec.yKey] = legacy.position.y;
-                        props[spec.wKey] = legacy.size.w; props[spec.hKey] = legacy.size.h;
-                        layer = legacy;
-                    }
-                }
-                const position = { x: props[spec.xKey], y: props[spec.yKey] };
-                const size = { w: props[spec.wKey], h: props[spec.hKey] };
-                // Only the Image section has a Fit control (Graphics'
-                // own Properties are Upload/Replace/Remove/Preview/
-                // Opacity only, per the spec) — `layer.fit` stays
-                // undefined for a Graphics Layer, which
-                // `engineRuntime.js`'s `_paintLayer` already defaults to
-                // 'fit' (contain).
-                const fit = spec.slot === 'image' ? (props.imageFit || 'fit') : undefined;
-                // Rotation — an uploaded Image now has its own Rotation
-                // control (props.imageRotation), matching how an
-                // author-drawn Graphics Shape already has one
-                // (props.graphicRotation) — `_paintLayer`/the compiled
-                // `decoration.rotation` field are both already generic
-                // to any decoration kind, so this is the one remaining
-                // place rotation was being silently hardcoded to 0 for
-                // the image slot. A plain (non-shape) Graphics image
-                // stays unrotatable, per the spec quoted above.
-                const rotation = spec.slot === 'image' ? (props.imageRotation || 0) : (shapeKind ? (props.graphicRotation || 0) : 0);
-                // `shape: null` in the non-shape branch is deliberate —
-                // it clears a stale shape when an author switches a
-                // Graphics section from a Shape back to an uploaded
-                // image on an already-mirrored Layer.
-                const shapeFields = shapeKind ? {
-                    shape: shapeKind, shapeFillColor: props.graphicFillColor,
-                    shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
-                    shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                    customPath: props.graphicCustomPath
-                } : { shape: null, customPath: null };
+        // Runtime mechanism); Graphics may instead hold an author-drawn
+        // Shape, mutually exclusive with an uploaded image by
+        // construction (the Inspector clears one when the other is
+        // picked).
+        const isImage = kind === 'image';
+        const src = isImage ? props.imageSrc : (kind === 'graphics' ? props.graphicSrc : null);
+        const shapeKind = (kind === 'graphics' && !src) ? props.graphicShape : null;
+        const xKey = isImage ? 'imageX' : 'graphicX', yKey = isImage ? 'imageY' : 'graphicY';
+        const wKey = isImage ? 'imageW' : 'graphicW', hKey = isImage ? 'imageH' : 'graphicH';
+        const opKey = isImage ? 'imageOpacity' : 'graphicOpacity';
+        if (src || shapeKind) {
+            let layer = _findMirroredLayer(project, sceneId, experience.id, part.id);
+            if (!layer && isPrimaryPart) {
+                layer = _claimUntaggedPartLayer(project, sceneId, experience, part) || _claimLegacyMirrorLayer(project, sceneId, experience, 'decoration');
                 if (layer) {
-                    Object.assign(layer, { name: experience.name, image: src || null, opacity: props[spec.opKey], fit: fit, rotation: rotation, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
-                } else {
-                    // A real, pre-existing bug found while testing —
-                    // addSceneLayer's own Object.assign only ever copies
-                    // a fixed field set from `spec` (id/name/kind/color/
-                    // glyph/position/size/permissions/decorationSlot,
-                    // plus sourceExperienceId and text-kind fields when
-                    // present) — `image` was never one of them, so a
-                    // brand-new Image/Graphics Layer's `spec.image` above
-                    // was silently discarded and the Layer was created
-                    // with no image at all; only a later edit (which
-                    // hits the `Object.assign(layer, {...})` update
-                    // branch above, a real mutation with no such filter)
-                    // ever actually set it. Explicit post-creation
-                    // assignment here, matching opacity/fit/
-                    // sourceExperienceId/contentSlot's own existing
-                    // pattern on the very next lines, fixes it at the
-                    // same place those are already set rather than
-                    // touching addSceneLayer's generic field list.
-                    const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: experience.name, position: position, size: size });
-                    created.image = src || null;
-                    created.opacity = props[spec.opKey];
-                    created.fit = fit;
-                    created.rotation = rotation;
-                    created.sourceExperienceId = experience.id;
-                    created.contentSlot = spec.slot;
-                    created.hostedByScene = fillMode === 'scene';
-                    Object.assign(created, shapeFields);
+                    props[xKey] = layer.position.x; props[yKey] = layer.position.y;
+                    props[wKey] = layer.size.w; props[hKey] = layer.size.h;
                 }
-            } else {
-                _removeMirroredLayer(project, sceneId, experience.id, spec.slot);
             }
-        });
+            const position = { x: props[xKey], y: props[yKey] };
+            const size = { w: props[wKey], h: props[hKey] };
+            // Only the Image section has a Fit control (Graphics' own
+            // Properties are Upload/Replace/Remove/Preview/Opacity
+            // only, per the spec) — `layer.fit` stays undefined for a
+            // Graphics Layer, which `engineRuntime.js`'s `_paintLayer`
+            // already defaults to 'fit' (contain).
+            const fit = isImage ? (props.imageFit || 'fit') : undefined;
+            const rotation = isImage ? (props.imageRotation || 0) : (shapeKind ? (props.graphicRotation || 0) : 0);
+            // `shape: null` in the non-shape branch is deliberate — it
+            // clears a stale shape when an author switches a Graphics
+            // section from a Shape back to an uploaded image on an
+            // already-mirrored Layer.
+            const shapeFields = shapeKind ? {
+                shape: shapeKind, shapeFillColor: props.graphicFillColor,
+                shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
+                shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
+                customPath: props.graphicCustomPath
+            } : { shape: null, customPath: null };
+            if (layer) {
+                layer.partId = part.id;
+                layer.contentSlot = isImage ? 'image' : 'graphic';
+                Object.assign(layer, { name: layerName, image: src || null, opacity: props[opKey], fit: fit, rotation: rotation, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
+            } else {
+                // A real, pre-existing bug found while testing —
+                // addSceneLayer's own Object.assign only ever copies a
+                // fixed field set from `spec` (id/name/kind/color/glyph/
+                // position/size/permissions/decorationSlot, plus
+                // sourceExperienceId and text-kind fields when present)
+                // — `image` was never one of them, so a brand-new Image/
+                // Graphics Layer's own image was silently discarded and
+                // the Layer created with no image at all; only a later
+                // edit (which hits the `Object.assign(layer, {...})`
+                // update branch above, a real mutation with no such
+                // filter) ever actually set it. Explicit post-creation
+                // assignment here, matching opacity/fit/
+                // sourceExperienceId/contentSlot/partId's own existing
+                // pattern on the very next lines, fixes it at the same
+                // place those are already set rather than touching
+                // addSceneLayer's generic field list.
+                const created = addSceneLayer(project, sceneId, { kind: 'decoration', name: layerName, position: position, size: size });
+                created.image = src || null;
+                created.opacity = props[opKey];
+                created.fit = fit;
+                created.rotation = rotation;
+                created.sourceExperienceId = experience.id;
+                created.contentSlot = isImage ? 'image' : 'graphic';
+                created.partId = part.id;
+                created.hostedByScene = fillMode === 'scene';
+                Object.assign(created, shapeFields);
+            }
+        } else {
+            _removeMirroredLayer(project, sceneId, experience.id, part.id);
+        }
     }
 
     function _clearMirror(project, experience, entry) {
@@ -1568,13 +1809,28 @@ const ProjectModel = (function () {
             const holder = findHolder(project, entry.sceneId, entry.placeId);
             if (holder && holder.frame === experience.id) updateHolder(project, entry.sceneId, entry.placeId, { frame: null });
         } else if (!entry.placeId) {
-            ['color', 'text', 'image', 'graphic'].forEach(function (slot) {
-                _removeMirroredLayer(project, entry.sceneId, experience.id, slot);
+            // Every current part's own mirrored Layer, found by partId
+            // — the normal, common case once an Experience has been
+            // synced at least once under the Multi-Asset Experience
+            // Parts model.
+            (experience.properties.parts || []).forEach(function (part) {
+                _removeMirroredLayer(project, entry.sceneId, experience.id, part.id);
             });
-            // A legacy (pre-Builder-V3.1), never-claimed single mirrored
-            // layer — only present for an old Experience whose content
-            // section was never touched under the new model.
+            // Two older, narrower tiers a mirrored Layer might still be
+            // sitting in if this Experience is detached before ever
+            // being re-synced under a newer model: a truly ancient
+            // (pre-Builder-V3.1) single layer with no contentSlot tag
+            // at all, or a V3.1-era one tagged only by contentSlot with
+            // no partId yet.
             _removeMirroredLayer(project, entry.sceneId, experience.id, undefined);
+            const scene = findScene(project, entry.sceneId);
+            if (scene) {
+                (scene.layers || []).slice().forEach(function (l) {
+                    if (l.sourceExperienceId === experience.id && l.contentSlot && !l.partId) {
+                        deleteSceneLayer(project, entry.sceneId, l.id);
+                    }
+                });
+            }
         }
     }
 
@@ -1823,6 +2079,15 @@ const ProjectModel = (function () {
         addExperience: addExperience,
         updateExperience: updateExperience,
         updateExperienceProperty: updateExperienceProperty,
+        updateExperiencePartProperty: updateExperiencePartProperty,
+        addExperiencePart: addExperiencePart,
+        removeExperiencePart: removeExperiencePart,
+        // Multi-Asset Experience Parts (Phase 4) — the exact same kind
+        // label _syncUniversalContent's own compiled Layer-name suffix
+        // already uses, exported so the Inspector's card-title
+        // disambiguation can never drift from what actually ends up in
+        // the compiled Layer Pack's own `label` field.
+        partKindLabel: _partKindLabel,
         deleteExperience: deleteExperience,
         graduateToPersonal: graduateToPersonal,
         graduateToPublic: graduateToPublic,
