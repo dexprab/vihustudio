@@ -267,24 +267,32 @@ const StoryDestinations=(function(){
   };
 
   // ---------- Story Carousel (PNG per page, ZIP if multi-page) ----------
-  // Two formats, both rendered at CAROUSEL_RENDER_SCALE (2x — genuine
+  // Two formats, both rendered at CAROUSEL_RENDER_SCALE (3x — genuine
   // higher-density pixels via SlideRenderer's own dpr, not an upscaled
-  // raster; see the Publish Quality note on _renderSlideInto):
-  //   • Instagram Portrait — 2160 × 2700 (2× the editor's native
+  // raster; see the Publish Quality note on _renderSlideInto). Bumped
+  // from 2x to 3x per a direct follow-up request to further increase
+  // Instagram Carousel/Feed export resolution, on top of the earlier
+  // Publish Quality pass that first introduced the 2x scale:
+  //   • Instagram Portrait — 3240 × 4050 (3× the editor's native
   //     1080 × 1350). Instagram itself only ever asks for a 1080px-wide
   //     upload — this is real headroom for saving/sharing the image
-  //     outside Instagram, viewing it zoomed in, or a future higher-
-  //     resolution upload path, not something IG requires.
-  //   • Instagram Square   — 2160 × 2160 (centre-cropped from portrait).
+  //     outside Instagram, viewing it zoomed in, printing it, or a
+  //     future higher-resolution upload path, not something IG
+  //     requires — but a higher-resolution source also survives
+  //     Instagram's own upload-time re-compression more cleanly than a
+  //     lower one, so "more headroom than IG needs" still buys a
+  //     genuinely crisper result once Instagram's own pipeline touches
+  //     it.
+  //   • Instagram Square   — 3240 × 3240 (centre-cropped from portrait).
   //
   // Portrait is a no-op recomposite of the native render. Square is a
-  // centre-crop of the same 2160×2700 canvas onto a 2160×2160 target
+  // centre-crop of the same 3240×4050 canvas onto a 3240×3240 target
   // — losing the top + bottom bands. Alternative approaches (letterbox
   // padding) were rejected because carousels prefer full-bleed pages.
-  const CAROUSEL_RENDER_SCALE=2;
+  const CAROUSEL_RENDER_SCALE=3;
   const CAROUSEL_FORMATS=[
-    {id:'portrait', label:'Instagram Portrait', description:'2160 × 2700 · Feed post (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1350*CAROUSEL_RENDER_SCALE, mode:'contain'},
-    {id:'square',   label:'Instagram Square',   description:'2160 × 2160 · Classic feed (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1080*CAROUSEL_RENDER_SCALE, mode:'centre-crop'}
+    {id:'portrait', label:'Instagram Portrait', description:'3240 × 4050 · Feed post (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1350*CAROUSEL_RENDER_SCALE, mode:'contain'},
+    {id:'square',   label:'Instagram Square',   description:'3240 × 3240 · Classic feed (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1080*CAROUSEL_RENDER_SCALE, mode:'centre-crop'}
   ];
   const CAROUSEL={
     id:'carousel',
@@ -316,11 +324,12 @@ const StoryDestinations=(function(){
       const octx=out.getContext('2d');
       try{ octx.imageSmoothingEnabled=true; octx.imageSmoothingQuality='high'; }catch(e){}
       if(format.mode==='centre-crop'){
-        // Centre-crop 2160×2700 onto 2160×2160 — drop 270 px from top
-        // and bottom (the same 135-logical-px trim as before, now at
-        // 2x scale). That preserves the panel band (see PANEL_Y=185,
-        // PANEL_H=930 in the renderer, logical units) so the story text
-        // sits in the square with room to breathe.
+        // Centre-crop 3240×4050 onto 3240×3240 — drop 405 px from top
+        // and bottom (the same 135-logical-px trim as before, scale-
+        // invariant since it's always (1350-1080)/2*scale). That
+        // preserves the panel band (see PANEL_Y=185, PANEL_H=930 in the
+        // renderer, logical units) so the story text sits in the square
+        // with room to breathe.
         const cropY=Math.round((canvas.height-format.outH)/2);
         octx.drawImage(canvas, 0, cropY, canvas.width, format.outH, 0, 0, format.outW, format.outH);
       }else{
