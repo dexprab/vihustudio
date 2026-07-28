@@ -7717,6 +7717,17 @@
     // (updateExperienceProperty), so AssetStore/ThemeRegistry/the Engine
     // Adapter mirror never need to know Collection exists at all — reuse
     // is just "the same string, written to a second Experience."
+    //
+    // Feature 1 (image-typed Frame Variations) needed the identical
+    // upload/reuse/manage mechanism for a Frame's own `frameImage` field
+    // — a Frame Variation has no Experience/part to key off, only a
+    // plain get/set pair. Rather than duplicate this whole function a
+    // second time, its shared core (the label + upload row + reuse strip
+    // + "Manage Collection →" bridge) is extracted into
+    // `_renderCollectionPickerCore(wrap, opts)` below — this function is
+    // now a thin wrapper supplying the Experience-part-specific
+    // read/write, with zero behaviour change of its own.
+    //
     // Appends directly to the module-level `contextPanel` (matching
     // _renderFramePicker(scene,holder)'s own signature/behaviour exactly),
     // so it lands correctly inside whichever content card is currently
@@ -7732,29 +7743,71 @@
         const props = part.props || {};
         const currentRef = props[key];
 
-        function commit(ref) {
-            // Graphics' own pre-existing mutual-exclusion rule (an
-            // uploaded/reused image clears any Shape already chosen,
-            // since there is only one mirrored Layer for this section)
-            // applies identically whether the new value came from a
-            // fresh upload, a Remove (ref === null), or reusing an
-            // existing Collection entry — all three funnel through here.
-            if (key === 'graphicSrc') {
-                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicShape', null);
-            }
-            window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, ref);
-            _persist();
-            _redrawSceneCanvasesForExperience(exp);
-            _renderContextPanel();
-        }
-
         const wrap = document.createElement('div');
         wrap.className = 'wb-field-group';
+
+        _renderCollectionPickerCore(wrap, {
+            kind: kind,
+            currentRef: currentRef,
+            iconFallback: iconFallback,
+            accept: accept,
+            labelText: key === 'imageSrc' ? 'Photo' : 'Asset',
+            onCommit: function (ref) {
+                // Graphics' own pre-existing mutual-exclusion rule (an
+                // uploaded/reused image clears any Shape already chosen,
+                // since there is only one mirrored Layer for this
+                // section) applies identically whether the new value
+                // came from a fresh upload, a Remove (ref === null), or
+                // reusing an existing Collection entry — all three
+                // funnel through here.
+                if (key === 'graphicSrc') {
+                    window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicShape', null);
+                }
+                window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, key, ref);
+                _persist();
+                _redrawSceneCanvasesForExperience(exp);
+                _renderContextPanel();
+            }
+        });
+
+        contextPanel.appendChild(wrap);
+    }
+
+    // The shared Collection-aware picker core, extracted from
+    // `_renderCollectionPicker` above so Feature 1's Frame Variation
+    // `frameImage` field can reuse the identical upload/reuse/manage
+    // mechanism through a plain get/set pair instead of an Experience's
+    // own part-scoped read/write. Appends its own label + upload row +
+    // (when matching entries exist) a fixed-height reuse strip + the
+    // "Manage Collection →" bridge directly into `wrap` — the caller
+    // owns building/appending `wrap` itself and supplying `opts.onCommit`,
+    // the one place this core needs to know WHERE the new value should
+    // actually be written.
+    //
+    // opts:
+    //   kind          — 'image' | 'graphic' — filters the reuse strip to
+    //                    matching Collection entries only.
+    //   currentRef    — the field's current value (a vihu-asset:/data:
+    //                    ref, or null) — used to mark the active reuse
+    //                    card and seed the upload row's own preview.
+    //   iconFallback  — passed straight to _assetUploadRow.
+    //   accept        — passed straight to _assetUploadRow (file input
+    //                    accept filter).
+    //   labelText     — the wb-field-label text shown above the row.
+    //   onCommit(ref) — called with the new ref (or null on Remove)
+    //                   whenever the value should change, from any of
+    //                   the three paths (fresh upload/Replace, Remove,
+    //                   or picking an existing Collection entry).
+    function _renderCollectionPickerCore(wrap, opts) {
+        const kind = opts.kind;
+        const currentRef = opts.currentRef;
+        const commit = opts.onCommit;
+
         const label = document.createElement('label');
         label.className = 'wb-field-label';
-        label.textContent = key === 'imageSrc' ? 'Photo' : 'Asset';
+        label.textContent = opts.labelText;
         wrap.appendChild(label);
-        wrap.appendChild(_assetUploadRow(iconFallback, currentRef, commit, accept));
+        wrap.appendChild(_assetUploadRow(opts.iconFallback, currentRef, commit, opts.accept));
 
         // Platform Hardening — Collection Phase 2 layout fix ("as the
         // collection will grow the screen size will keep growing"): the
@@ -7823,8 +7876,6 @@
             _renderWorkspace();
         });
         wrap.appendChild(manageLink);
-
-        contextPanel.appendChild(wrap);
     }
 
     // Platform Hardening — Collection Phase 3. The Theme-scoped registry's
@@ -9965,6 +10016,69 @@
         }));
         const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, onFrameField('wallTone')));
         _fieldRow(nameGroup, wallToneGroup);
+
+        // Feature 1 — Image-typed Frame Variations. `background`/`frame`
+        // have always been real, read fields (`_resolveArtworkFields`/
+        // `_artworkBorder`/`_paintHolder`) silently defaulted by
+        // `_ensureFrameFieldDefaults` with zero authoring UI anywhere
+        // until now. `background` now also offers a genuine `'image'`
+        // option — picking it reveals a Collection-aware picker for the
+        // new `frameImage` field below, reusing
+        // `_renderCollectionPickerCore` (the shared core extracted from
+        // `_renderCollectionPicker`) rather than a second upload
+        // mechanism. Both selects re-render the whole panel on change
+        // (`_renderFramesPanel()`, matching this file's own established
+        // "cheap full-panel re-render on any field that changes what
+        // else should show" convention, e.g. Layouts' Aspect/Composition
+        // auto-sync) so switching Background to/from 'image' correctly
+        // reveals/hides the picker immediately.
+        const backgroundGroup = _buildFieldGroup('Background', _select([
+            { value: 'white', label: 'White' },
+            { value: 'cream', label: 'Cream' },
+            { value: 'kraft-paper', label: 'Kraft Paper' },
+            { value: 'watercolor-paper', label: 'Watercolor Paper' },
+            { value: 'notebook-paper', label: 'Notebook Paper' },
+            { value: 'black', label: 'Black' },
+            { value: 'transparent', label: 'Transparent' },
+            { value: 'bulletin-board', label: 'Bulletin Board' },
+            { value: 'image', label: 'Image' }
+        ], f.background, function (v) { onFrameField('background')(v); _renderFramesPanel(); }));
+        const frameStyleGroup = _buildFieldGroup('Frame', _select([
+            { value: 'none', label: 'None' },
+            { value: 'white-mat', label: 'White Mat' },
+            { value: 'floating', label: 'Floating' },
+            { value: 'wood', label: 'Wood' },
+            { value: 'polaroid', label: 'Polaroid' },
+            { value: 'tape', label: 'Tape' },
+            { value: 'bulletin-board', label: 'Bulletin Board' }
+        ], f.frame, onFrameField('frame')));
+        _fieldRow(backgroundGroup, frameStyleGroup);
+
+        if (f.background === 'image') {
+            const imageWrap = document.createElement('div');
+            imageWrap.className = 'wb-field-group';
+            const setFrameImage = onFrameField('frameImage');
+            _renderCollectionPickerCore(imageWrap, {
+                kind: 'image',
+                currentRef: f.frameImage,
+                iconFallback: '🖼️',
+                accept: 'image/*',
+                labelText: 'Background Image',
+                onCommit: function (ref) {
+                    // registerCollectionAsset (not the Experience-only
+                    // updateExperienceProperty hook, since a plain,
+                    // non-Experience-backed Frame has no such hook at
+                    // all) — this is the one place a fresh
+                    // frameImage upload joins Collection, "just one
+                    // more producer of refs, exactly like imageSrc/
+                    // graphicSrc today" (the plan's own words).
+                    if (ref) window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'image', name: frame.name });
+                    setFrameImage(ref);
+                    _renderFramesPanel();
+                }
+            });
+            contextPanel.appendChild(imageWrap);
+        }
 
         const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, onFrameField('borderColor')));
         const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, onFrameField('cornerRadius')));

@@ -131,6 +131,20 @@ class BuildEngine {
         // adopted Collection.
         package_.collectionAssets = await this.collectFolder('collection');
 
+        // Feature 1 — Image-typed Frame Variations. A Frame's own
+        // fields.frameImage (authored via the Frames screen's Collection
+        // picker) needs the identical externalize-at-compile-time
+        // treatment every other image-bearing field already gets — a
+        // Frame Variation file isn't a Scene Layer, so this runs as its
+        // own small pass over package_.frameVariations rather than
+        // through convergeSceneLayer/externalizeSceneImage; it needs
+        // both frameVariations and collectionAssets, and nothing else,
+        // so it runs right here, before convergeScenes(), whose own
+        // Scene-Layer dedup is a completely independent concern. A Frame
+        // with no frameImage (every Frame authored before this feature,
+        // or one whose background isn't 'image') is left untouched.
+        await this._externalizeFrameVariationImages(package_);
+
         // Builder Convergence Sprint — a Scene (Engine V2's own
         // authoring model: Scene -> Place/Layer -> Runtime Preview) has
         // no compiled representation of its own; it converges into the
@@ -487,9 +501,23 @@ class BuildEngine {
         // backward-compat for every Scene Layer authored before this
         // capability change.
         const isFullBleed = rect.w >= 0.98 && rect.h >= 0.98;
-        const target = (layer.hostedByScene === true)
-            ? 'slide'
-            : ((layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay');
+        // "Extend Experiences to Places" — a Layer explicitly Hosted By
+        // a specific Place (js/projectModel.js's `_syncUniversalContent`
+        // 'place' fillMode, `layer.hostPlaceId`) converges onto a new
+        // `target:'place'` scope, carrying which Place via `placeId`
+        // below — distinct from both the existing 'slide' (wall-level,
+        // behind every Place) and 'overlay' (drawn last, on top of
+        // everything) scopes, since this content belongs alongside one
+        // specific Place, not the whole Scene. Checked first: a Layer
+        // can only ever be tagged with one host at a time
+        // (js/projectModel.js's `_syncPartLayer` always sets
+        // `hostedByScene`/`hostPlaceId` together, one true/set and the
+        // other false/cleared, on every sync).
+        const target = layer.hostPlaceId
+            ? 'place'
+            : ((layer.hostedByScene === true)
+                ? 'slide'
+                : ((layer.kind === 'fill' && isFullBleed) ? 'slide' : 'overlay'));
         const base = {
             id: 'scene-' + scene.id + '-' + layer.id,
             // Studio's own _humanizeLayerId fallback only ever had the
@@ -512,6 +540,7 @@ class BuildEngine {
             editable: editable,
             decorationSlot: decorationSlot
         };
+        if (layer.hostPlaceId) base.placeId = layer.hostPlaceId;
 
         if (layer.kind === 'text') {
             // Creator Governing Rule 1 (Fidelity) — "Nothing about a
@@ -727,6 +756,72 @@ class BuildEngine {
             package_.assets[relPath] = src;
         }
         return relPath;
+    }
+
+    /**
+     * Feature 1 — Image-typed Frame Variations. Walks every compiled
+     * Frame Variation (package_.frameVariations, already collected from
+     * frames/*.json by packageTheme() above) and, for any with a real
+     * fields.frameImage set, externalizes it into package_.assets —
+     * mirroring externalizeSceneImage()'s own two-branch shape exactly
+     * (reuse Collection's compile-time dedup when the ref is a
+     * registered Collection asset; otherwise hydrate-and-embed directly
+     * at a Frame-specific relPath), so a Frame's background image is
+     * compiled with the same "reference, not embedded bytes" discipline
+     * every other image-bearing field in this codebase already follows.
+     *
+     * The Frames screen's own onCommit handler
+     * (worldBuilderApp.js's _renderFramesPanel) always calls
+     * registerCollectionAsset() when a frameImage is set, so the
+     * Collection-hit branch below is the expected, common case; the
+     * fallback (a raw vihu-asset:/data: frameImage with no matching
+     * Collection entry — e.g. manually-edited JSON, or a package
+     * imported from outside this Builder) is a defensive path, not the
+     * norm.
+     *
+     * Rewrites fields.frameImage to the resulting relPath in place —
+     * package_.frameVariations is compiled onto theme.frameVariations by
+     * buildTheme() further down this pipeline, so the rewritten relPath
+     * (never the original vihu-asset:/data: string) is exactly what
+     * reaches the published Theme; every consumer (engineRuntime.js's
+     * resolveLayerImage, root Studio's ThemeRegistry.resolveAssetRef)
+     * already expects a plain relative-path reference here, matching
+     * every sibling image field's own compiled shape.
+     */
+    async _externalizeFrameVariationImages(package_) {
+        const frameVariations = package_.frameVariations || [];
+        if (!frameVariations.length) return;
+
+        const refToEntry = {};
+        (package_.collectionAssets || []).forEach(function (entry) {
+            if (entry && entry.ref) refToEntry[entry.ref] = entry;
+        });
+
+        for (const frame of frameVariations) {
+            const fields = frame && frame.fields;
+            if (!fields || !fields.frameImage) continue;
+
+            const collectionEntry = refToEntry[fields.frameImage];
+            if (collectionEntry) {
+                fields.frameImage = await this._embedCollectionEntry(collectionEntry, package_);
+                continue;
+            }
+
+            // Defensive fallback — mirrors externalizeSceneImage()'s own
+            // no-Collection-match branch, but at a Frame-specific relPath
+            // since a Frame Variation isn't a Scene Layer.
+            const relPath = 'frames/' + frame.id + '-image.png';
+            let src = fields.frameImage;
+            if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
+                src = (typeof window !== 'undefined' && window.AssetStore)
+                    ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
+                    : null;
+            }
+            if (typeof src === 'string' && src.indexOf('data:') === 0) {
+                package_.assets[relPath] = src;
+            }
+            fields.frameImage = relPath;
+        }
     }
 
     /**

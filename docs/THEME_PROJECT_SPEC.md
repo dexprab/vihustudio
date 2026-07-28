@@ -314,7 +314,8 @@ the Element inside them.
     "matWidth": 24,
     "frameThickness": 4,
     "borderColor": "#C9A227",
-    "wallTone": "#F8F2E4"
+    "wallTone": "#F8F2E4",
+    "frameImage": null
   }
 }
 ```
@@ -324,7 +325,7 @@ the Element inside them.
 | `id` | **Required** | Kebab-case, unique within this theme. |
 | `name` | **Required** | Display name shown in the Frame Variation picker. |
 | `description` | Optional | One line, e.g. a "mood" note. |
-| `fields.background` | Optional | The mat fill, one of the existing background enum values (`white`, `cream`, `kraft-paper`, `watercolor-paper`, `notebook-paper`, `black`, `transparent`, `bulletin-board`). |
+| `fields.background` | Optional | The mat fill: one of the existing background enum values (`white`, `cream`, `kraft-paper`, `watercolor-paper`, `notebook-paper`, `black`, `transparent`, `bulletin-board`), **or `"image"`** (Image-Typed Frame Variations, below) — a real, Collection-sourced picture fills the mat band instead of a flat colour, read via `fields.frameImage`. |
 | `fields.frame` | Optional | The frame ornament design (`none`, `white-mat`, `floating`, `wood`, `polaroid`, `tape`, `bulletin-board`). |
 | `fields.paper` | Optional | A texture pass drawn under the picture (`smooth`, `notebook`, `kraft`, `watercolor`, `canvas`, `handmade`). |
 | `fields.shadow` | Optional | Drop-shadow preset (`none`, `soft`, `gallery`, `floating`). |
@@ -332,6 +333,7 @@ the Element inside them.
 | `fields.frameThickness` | Optional | Border stroke width, in px. `0` (or omitted) means no visible border line. |
 | `fields.borderColor` | Optional | Border stroke colour. Only visible when `frameThickness > 0`. |
 | `fields.wallTone` | Optional | The **Slide's** background colour behind the Frame — the gallery wall, not the mat. A distinct concept from `background` (which is inside the Frame). Applies even on a Frame-less page (e.g. a Quote layout) since it's a room colour, not a mat colour. |
+| `fields.frameImage` | Optional, additive (Image-Typed Frame Variations) | `null` on every Frame Variation authored before this sprint — a purely additive default (`ProjectModel._ensureFrameFieldDefaults`), never required. Meaningful only when `fields.background === "image"`: a plain relative-path **reference** into the compiled `assets` map (the same reference convention as `manifest.thumbnail`/`representations[].thumbnail` elsewhere in this spec), resolved via `ThemeRegistry.resolveAssetRef(themeId, frameImage)`, never read as a ready `src` directly. Painted as the mat band's own fill in place of a flat colour, respecting the same `matWidth`/`cornerRadius`/`inset` band geometry a flat mat colour would (both `tools/world-builder-v2`'s Working View/Runtime Preview and root Studio's real Reader-facing renderer draw it at the identical point in the concentric wall→border→mat→content fill sequence, per Creator Governing Rule #5). Authored via the Frames screen's own Collection-aware picker (the same reuse-or-upload mechanism already shipped for Experience Image/Graphics content — Collection's own authoring-side folder convention, `collection/<id>.json`, is not yet documented in this spec; see the CLAUDE.md Collection Phase 1-6 entries for the current source of truth on the authoring side) — a Frame's `background`/`frame` fields have real authoring UI for the first time this sprint too; before it, both were silently defaulted with no way for a Theme Author to ever set them intentionally. |
 
 **Default Holder configuration.** A Frame does not itself configure the
 Holder's presentation mode (Fit/Fill/Original) — that is always a
@@ -386,7 +388,8 @@ same active Layer Pack.
 | `id` | **Required** | Kebab-case, unique across the *entire compiled pack* (not just one file — see §12). |
 | `label` | Optional | Author-facing display name shown in Creator's Object Strip. Omitted (every hand-authored `layer-packs/*.json` entry), the id is auto-humanized (`_humanizeLayerId`) — fine for a short, distinct id like `wax-seal`, but for a Scene-converged Layer whose compiled `id` is `scene-<sceneId>-<layerId>` (§ above, "Builder Convergence Sprint"), every Layer on the same Scene shares that id prefix and reads as visually-identical truncated cards. `tools/world-builder-v2`'s `convergeSceneLayer` carries the Builder Scene Layer's own author-given `name` (e.g. "Background") straight through as `label`, so Object Strip shows each converged Layer's real name instead. |
 | `type` | **Required** | `"text"` \| `"sticker"` \| `"decoration"`. |
-| `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` \| `"overlay"` — one of five containership scopes. A Layer never targets more than one scope. |
+| `target` | **Required** | `"slide"` \| `"frame"` \| `"holder"` \| `"element"` \| `"overlay"` \| `"place"` — one of six containership scopes. A Layer never targets more than one scope. `"place"` (Place-Hosted Experiences of Any Type) is the newest — see below. |
+| `placeId` | Required when `target: "place"` | The compiled id of the specific Holder/Place (e.g. `"holder-1"`) this Layer is anchored to, within the Scene named by `scope` (below — a `target: "place"` Layer always carries a `scope`, since a Place id is only meaningful within its own Scene's own compiled Layout). Absent for every other `target` value. |
 | `scope` | Optional, default none (global) | A Layout id this Layer is restricted to. Omitted (every hand-authored Layer before the Builder Convergence Sprint) means the Layer is active for every Layout/Representation in the theme, exactly as before. Set, the Layer only renders when the current slide's `metadata.layout` matches — this is how a Builder-authored Scene's own Layers stay scoped to the one Layout/Representation that Scene converged into, without cross-contaminating any other page using the same theme. |
 | `rect` | Optional, default none (anchor-based) | A fractional `{ x, y, w, h }` (0–1 of whatever rect the target scope hands it) giving the Layer a free-form absolute position/size, as an alternative to `anchor`/`offsetX`/`offsetY`. Omitted (every hand-authored Layer before the Builder Convergence Sprint), the Layer resolves via anchor exactly as before. This is how a Scene's own Place/Decoration/Text position survives compilation. |
 | `anchor` | Optional, default `"bottom-center"` | One of the nine standard anchor points (`top`/`bottom`/`middle` × `left`/`center`/`right`, e.g. `"top-left"`), resolved relative to whatever rect the target scope hands it (or `rect`, when present). |
@@ -407,6 +410,13 @@ their scope naturally occurs (Slide background → Frame → Holder →
 Element → **Overlay**, the last one painted, on top of literally
 everything else on the page — footer, page number, legacy Scene
 elements, stickers), never interleaved by authored order across scopes.
+A `target: "place"` Layer draws immediately alongside its own named
+Holder/Place — for Studio's real Reader-facing render this means right
+after that Place's own Frame/artwork paint, one Place at a time (both
+Place 1 and any Place 2+ alike — the one legacy `frame`/`holder`/
+`element` scopes have never reached beyond Place 1, but this newer
+scope does, see below); it never competes with `overlay`'s own
+whole-canvas z-order.
 
 **The `overlay` target** (Builder Convergence Sprint). The original four
 containership scopes each render at one specific point *inside* the
@@ -420,6 +430,27 @@ canvas fractional coordinates. No hand-authored theme uses it directly —
 it exists so a Builder-authored Scene's Decoration/Text Layers have
 somewhere correct to converge into (see "Builder Convergence Sprint" at
 the end of this document's history, below).
+
+**The `place` target** (Place-Hosted Experiences of Any Type). A real,
+confirmed gap this sprint closes: before it, an Experience Hosted By a
+Place only ever mirrored/rendered when its `type` was `"frame"` (the
+Frame-Variation-mirroring path, unrelated and unchanged) — every other,
+far more common Experience type an author can actually create through
+the ordinary "+ Add Experience" flow (permanently `type: "decoration"`
+since Universal Experience Authoring retired the Type picker) silently
+rendered nothing at all when Hosted By a Place, with zero visual signal.
+`target: "place"` is the sixth containership scope that fixes this: an
+ordinary mirrored Scene Layer (any `type` the Universal Content model
+already supports — text/image/graphics/colour, same as `scene`/`free`
+hosting), tagged with the Place it's anchored to via `placeId` (above).
+Unlike `scope` alone (which only narrows *which Scene*), a
+`target: "place"` Layer's own paint rect is always resolved fresh, at
+paint time, from that specific Place's own current geometry — never a
+value snapshotted at authoring time — so the Layer correctly follows
+its Place if the Place is later moved or resized, with zero staleness.
+`atmosphere`/`lighting`/`text-style` Experience types remain outside
+this (and every) rendering mechanism — a pre-existing, disclosed,
+zero-adapter reserved vocabulary, unchanged by this sprint.
 
 **Visibility.** `visible: false` is the only way to ship a Layer that
 exists in the pack (and therefore appears in any future layer-management
@@ -1117,4 +1148,135 @@ Freeze sprint's own suite all pass unchanged — this sprint touched
 template defaults, one validation rule, and documentation only; no
 Builder/Studio/Repository redesign, no new capabilities, Import stays
 deferred, and the Personal → Official promotion workflow is completely
+unchanged.
+
+### Image-Typed Frame Variations + Place-Hosted Experiences of Any Type (`tools/world-builder-v2` only)
+
+Two independent features shipped together, per the user's own request:
+**"i would like to do two things. 1st allow frames to be type of image
+also. and second yes extend experiences to places."** — begun while
+investigating a real, user-reported bug: *"check for experiences which
+get attached to places. they are not rendering in builder."*
+
+**Root cause of the reported bug, confirmed by direct code read, not
+assumed.** `js/services/experienceSchema.js`'s `EXPERIENCE_TYPES` table
+declared `renders.place: true` for exactly one type, `"frame"`, and
+`false` for every other type (`decoration`/`text`/`atmosphere`/
+`lighting`/`text-style`). Since Universal Experience Authoring (Builder
+V3.1) permanently retired the Type picker, every Experience an author
+can create through the real, everyday "+ Add Experience" flow is
+`type: "decoration"` — meaning every Experience a Theme Author could
+normally create rendered nothing at all when Hosted By a Place, with
+zero visual signal or error. `js/projectModel.js`'s
+`_syncExperienceAttachments`'s Place branch simply returned immediately
+once this gate failed. **One earlier claim made while reporting this to
+the user was itself wrong and is corrected here rather than silently
+carried forward**: the one path that DOES set `type: "frame"` (the Place
+panel's own "+ Add Experience" → "📎 Create & Host" shortcut) was never
+broken by the Multi-Asset Experience Parts refactor — `_mirrorFrame`'s
+Frame fields (Mat Width/Frame Thickness/Border Colour/Wall Tone/Shadow)
+live directly on `experience.properties`, **outside** the multi-part
+`parts[]` array entirely, so `_mirrorFrame`'s `Object.assign({},
+experience.properties)` still copies them correctly — this path worked
+throughout and needed no fix.
+
+**Feature 2 — Place-hosted Experiences of any type.**
+`EXPERIENCE_TYPES.renders.place` flips `decoration`/`text` from `false`
+to `true` — the two types that already render somewhere (Scene/Free
+hosting) via the Universal Content Layer-mirroring mechanism now also
+render at a Place via that same mechanism, just anchored differently.
+`frame` keeps its own separate, unchanged `place: true` path (the
+Frame-mirror shortcut above); `atmosphere`/`lighting`/`text-style` stay
+`false` across every hosting axis — a pre-existing, disclosed,
+zero-adapter reserved vocabulary this sprint does not extend.
+`_syncExperienceAttachments`'s Place branch keeps its existing
+`type === "frame"` branch completely unchanged and adds an `else`
+calling `_syncUniversalContent(project, sceneId, experience, "place",
+placeId)` — a new, additive 5th argument. Every mirrored part becomes an
+ordinary Scene Layer tagged `layer.hostPlaceId = placeId` (parallel to
+the existing `layer.hostedByScene` boolean, holding the target Place's
+own id instead of a bare flag), seeded `{position:{x:0,y:0},
+size:{w:1,h:1}}` — inert placeholder values, since the real paint rect
+is always resolved fresh from the Place's own live geometry at paint
+time (`rectFor(holder, graph)`), never copied/snapshotted, so the
+content correctly follows its Place through a later move/resize with
+zero staleness. `builder.js`'s `convergeSceneLayer` gains the third
+`target` branch, `layer.hostPlaceId ? "place" : (existing slide/overlay
+logic)`, carrying `placeId: layer.hostPlaceId` onto the compiled entry
+— purely additive; every pre-existing Layer with no `hostPlaceId`
+compiles exactly as before. `engineRuntime.js`'s `render(ctx, graph)`
+excludes `hostPlaceId`-tagged entries from its existing `before`/`after`
+bucketing split entirely and paints each one immediately after its
+matching Holder inside the `middle` loop instead — giving Builder's own
+Working View/Runtime Preview correct, live-following-the-Place
+rendering. Root Studio's `renderer/slideRenderer.js` gains a new
+`_renderPlaceHostedLayers(pack, placeId, placeRect, s)`, called from
+**both** `_drawPlaceOne` (Place 1) and `_drawPlaceExtra` (Place 2+) —
+this is the one part of the feature that reaches Publish/Studio at all,
+and the first time the new `target: "place"` scope reaches every Place
+on a page, not only Place 1 (the older, legacy `frame`/`holder`/
+`element` scopes remain Place-1-only, an unrelated, unchanged, disclosed
+limitation this sprint does not lift).
+
+**Feature 1 — Image-typed Frame Variations.** A separate, genuinely
+different system (§6, above) — a reusable, named Frame "recipe," never
+an ordinary content Layer. Two of its enum fields, `fields.background`
+and `fields.frame`, were silently defaulted by
+`ProjectModel._ensureFrameFieldDefaults` with **zero authoring UI
+anywhere** since the field itself was introduced (Sprint 2's Asset
+Repository Transition) — a real, confirmed gap, not a design choice.
+This sprint gives both real controls on the Frames screen for the first
+time, and adds a genuine `"image"` option to `background`, backed by a
+new `fields.frameImage` field (§6's field table, above) — a Collection-
+sourced picture that fills the Frame's own mat band in place of a flat
+colour. The picker reuses the exact reuse-or-upload mechanism already
+shipped for Experience Image/Graphics content (a small, extracted
+Collection-picker-core helper, since a Frame Variation has no `parts[]`
+of its own to key a picker off of) — Collection's own registry/dedup/
+delete machinery (CLAUDE.md's Collection Phase 1-6 entries) needed zero
+changes: `frameImage` is just one more producer of `vihu-asset:`/`data:`
+refs, exactly like `imageSrc`/`graphicSrc`. Both `engineRuntime.js`'s
+`_paintHolder` (Builder's own preview) and root Studio's
+`_drawPictureFrameFill` (the real Reader-facing renderer) gained the
+identical `background === "image"` draw step, painted at the same point
+in the concentric wall→border→mat→content fill sequence a flat mat
+colour would occupy, satisfying Creator Governing Rule #5 (Publish
+Fidelity) — verified identically correct for both a plainly-authored
+Frame Variation and an Experience-mirrored one (`type: "frame"` at a
+Place), confirming the two authoring paths genuinely converge on one
+`fields` object with zero special-casing needed. The compile step
+(`builder.js`) gained a new `_externalizeFrameVariationImages` step,
+resolving a set `frameImage` via `AssetStore.hydrateForExport()` exactly
+like every other image-bearing compiled field, reusing Collection's own
+compile-time dedup — a plain Frame Variation and an Experience-mirrored
+one sharing the same underlying image bytes converge to exactly one
+embedded asset, not two.
+
+**Scope.** `tools/world-builder/` (v1) is completely untouched by both
+features — v1 has no Multi-Asset Parts/Universal Content model of its
+own to extend, matching this project's established v2-is-the-actively-
+developed-surface precedent, confirmed via `goldenBuild.js` passing
+unchanged. `atmosphere`/`lighting`/`text-style` Experience types gaining
+any adapter support (Place, Scene, or Free) is explicitly out of scope
+for both features. Independent Transform positioning for a Place-hosted
+part within its own Place (always full-bleed-within-the-Place today),
+reordering multiple Place-hosted Experiences relative to each other
+within one Place, and extending the legacy `frame`/`holder`/`element`
+scopes to Place 2+ are all explicitly out of scope, named rather than
+silently dropped.
+
+Verified via new scratch Playwright suites at every phase (Feature 2
+Phase A — compiled-package shape; Phase B — Builder's own Working
+View/Runtime Preview, including a real Place move/resize confirming zero
+staleness; Phase C — a real compiled Theme's Place-hosted Experience
+rendering correctly at both Place 1 and a Place 2+ in root Studio;
+Feature 1 — end-to-end across compile dedup, both authoring paths,
+Builder's preview, and root Studio's real renderer, 18/18 assertions).
+Full regression across both `goldenBuild.js` suites (World Builder v1
+and v2), `museum_realfile_pixelhash.js` (Museum Gallery's real, on-disk
+`.vtheme` — SHA-256 `e7b2a905...`, byte-identical to this project's own
+recorded history, confirming zero regression for a theme that authors
+neither feature), the museumCaption drag/resize suites, and
+`scene_dropdown_repro3.js` (Experience Host Here/graduation flows,
+sharing code with Feature 2's own Engine Adapter changes) all pass
 unchanged.

@@ -107,6 +107,13 @@ const ProjectModel = (function () {
         if (f.borderColor === undefined) f.borderColor = '#1D3457';
         if (f.wallTone === undefined) f.wallTone = '#F4F1EC';
         if (f.shadow === undefined) f.shadow = 'soft';
+        // `frameImage` (Feature 1 -- image-typed Frame Variations): a
+        // Collection asset reference (`vihu-asset:...`/`data:...`), used as
+        // the mat/background fill in place of a flat colour when
+        // `f.background==='image'`. Additive, defaults to null (no image
+        // authored) exactly like every other field above -- every Frame
+        // Variation authored before this feature simply never has one.
+        if (f.frameImage === undefined) f.frameImage = null;
         return frame;
     }
 
@@ -393,6 +400,14 @@ const ProjectModel = (function () {
     // alone would silently undercount (or miss entirely) a reference
     // held by part 2-5, and would double-count nothing either way since
     // a part's own props are the one real source of truth here.
+    //
+    // Feature 1 (image-typed Frame Variations): also scans every Frame's
+    // own `fields.frameImage`, its own separate producer of Collection
+    // refs (registered explicitly from the Frames screen, not through
+    // updateExperienceProperty's imageSrc/graphicSrc hook — see
+    // `_renderFramesPanel`'s onCommit in worldBuilderApp.js) — the same
+    // AV-012 "never leave a dangling reference" discipline this whole
+    // function already applies to Experiences.
     function collectionAssetUsageCount(project, id) {
         const entry = findCollectionAsset(project, id);
         if (!entry) return 0;
@@ -402,6 +417,9 @@ const ProjectModel = (function () {
                 const props = part.props || {};
                 if (props.imageSrc === entry.ref || props.graphicSrc === entry.ref) count++;
             });
+        });
+        frames(project).forEach(function (fr) {
+            if (fr.fields && fr.fields.frameImage === entry.ref) count++;
         });
         return count;
     }
@@ -421,6 +439,15 @@ const ProjectModel = (function () {
     // (_syncExperienceAttachments) for every affected part, so Working
     // View/Runtime Preview both correctly clear, never left showing a
     // stale image for a reference that no longer resolves to anything.
+    //
+    // Feature 1: also nulls any Frame's own `fields.frameImage` matching
+    // this entry's ref — via setFrameFieldValue directly (a plain Frame
+    // has no Experience-mirror re-sync to fire at all; an
+    // Experience-backed Frame's own fields are re-derived from its
+    // properties by `_mirrorFrame` on the very next unrelated edit
+    // regardless, so nulling the Frame's own field here is enough to
+    // stop it rendering immediately without needing a second write path
+    // through updateExperienceProperty).
     function deleteCollectionAsset(project, id) {
         const entry = findCollectionAsset(project, id);
         if (!entry) return false;
@@ -434,6 +461,9 @@ const ProjectModel = (function () {
                 if (props.imageSrc === entry.ref) updateExperiencePartProperty(project, exp.id, part.id, 'imageSrc', null);
                 if (props.graphicSrc === entry.ref) updateExperiencePartProperty(project, exp.id, part.id, 'graphicSrc', null);
             });
+        });
+        frames(project).forEach(function (fr) {
+            if (fr.fields && fr.fields.frameImage === entry.ref) setFrameFieldValue(project, fr.id, 'frameImage', null);
         });
         return true;
     }
@@ -1441,14 +1471,23 @@ const ProjectModel = (function () {
         if (!window.ExperienceSchema) return;
         experience.attachments.forEach(function (a) {
             if (a.placeId) {
-                // Hosted by a Place — unchanged, legacy Frame-only path
-                // (Builder V3.1 disclosed gap: Text/Image/Graphics/Colour
-                // don't yet have a Place-hosted rendering mechanism —
-                // there is still only one Frame slot per Place).
                 if (!window.ExperienceSchema.rendersWhenHosted(experience.type, 'place')) return;
                 if (experience.type === 'frame') {
+                    // Unchanged — a Frame Experience Hosted By Place
+                    // projects its whole identity onto the Place's own
+                    // Frame slot (a reference, not a rect), exactly as
+                    // before "Extend Experiences to Places."
                     _mirrorFrame(project, experience);
                     updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
+                } else {
+                    // "Extend Experiences to Places" — every other type
+                    // (decoration/text, the ones authors actually create
+                    // through any real flow today) now mirrors its own
+                    // Universal Content parts as ordinary Scene Layers,
+                    // exactly like Scene/Free hosting already do, just
+                    // tagged to paint alongside this specific Place
+                    // instead of the whole Scene/canvas.
+                    _syncUniversalContent(project, a.sceneId, experience, 'place', a.placeId);
                 }
             } else {
                 // Scene or Free — Builder V3.1 Universal Experience
@@ -1574,17 +1613,20 @@ const ProjectModel = (function () {
     // Builder V3.1 Universal Experience Authoring, extended for
     // Multi-Asset Experience Parts — "incorporate multiple assets in
     // single experience... combinations... not exceeding 5," with
-    // repeats of the same kind allowed. `experience.properties.parts`
-    // is guaranteed non-empty by `_ensurePartsDefaults`; array order is
-    // paint order, matching Scene's own `stack`/`addSceneLayer`-appends
-    // convention. Only the FIRST `colour`-kind part, and only when
-    // Scene-hosted, may become the Scene's own full-bleed background
-    // (the existing, unchanged mechanism) — every other part, including
-    // a colour part beyond the first or any colour part when
-    // Free-hosted, mirrors as an ordinary positioned Scene Layer below,
-    // each keyed by its own `part.id` so N parts sharing one `kind`
-    // never collide.
-    function _syncUniversalContent(project, sceneId, experience, fillMode) {
+    // repeats of the same kind allowed — and for "Extend Experiences to
+    // Places" (a new `fillMode==='place'`, `placeId` naming which
+    // Place). `experience.properties.parts` is guaranteed non-empty by
+    // `_ensurePartsDefaults`; array order is paint order, matching
+    // Scene's own `stack`/`addSceneLayer`-appends convention. Only the
+    // FIRST `colour`-kind part, and only when Scene-hosted, may become
+    // the Scene's own full-bleed background (the existing, unchanged
+    // mechanism) — every other part, including a colour part beyond the
+    // first, any colour part when Free-hosted, or ANY part at all when
+    // Place-hosted (Colour included — a Place has no separate
+    // "background" concept of its own the way a Scene does), mirrors as
+    // an ordinary positioned Scene Layer below, each keyed by its own
+    // `part.id` so N parts sharing one `kind` never collide.
+    function _syncUniversalContent(project, sceneId, experience, fillMode, placeId) {
         const parts = experience.properties.parts || [];
 
         const backgroundPart = fillMode === 'scene' ? (parts.find(function (p) { return p.kind === 'colour'; }) || null) : null;
@@ -1625,7 +1667,7 @@ const ProjectModel = (function () {
             const ordinal = kindCounts[part.kind];
             const isPrimaryPart = parts[0] === part;
             liveMirroredPartIds.push(part.id);
-            _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart);
+            _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart, placeId);
         });
 
         // Orphan sweep — a mirrored Layer whose partId no longer names
@@ -1651,11 +1693,24 @@ const ProjectModel = (function () {
     // could possibly already have a pre-existing mirrored Layer from
     // before this feature (or before Universal Content itself) existed;
     // a part added later via `addExperiencePart` always starts fresh.
-    function _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart) {
+    // `placeId` (only meaningful when `fillMode==='place'`) tags the
+    // mirrored Layer with `hostPlaceId` — "Extend Experiences to
+    // Places": the compile step (js/services/builder.js's
+    // `convergeSceneLayer`) reads this to converge onto a new
+    // `target:'place'` scope, and both render engines resolve such a
+    // Layer's rect from its own Place's *current* geometry at paint
+    // time (never a copied/stale snapshot) — so the position/size this
+    // function still writes below (unchanged from the Scene/Free case)
+    // are genuinely fractional *within the Place*, not the Canvas, for
+    // a Place-hosted part; `defaultUniversalContent`'s own `fillBleed`
+    // seeding already treats `hostedBy==='place'` the same as `'scene'`
+    // for exactly this reason.
+    function _syncPartLayer(project, sceneId, experience, part, fillMode, ordinal, isPrimaryPart, placeId) {
         const props = part.props || {};
         const kind = part.kind;
         const nameSuffix = ordinal > 1 ? (' — ' + _partKindLabel(kind) + ' ' + ordinal) : (kind === 'colour' ? ' — Colour' : '');
         const layerName = experience.name + nameSuffix;
+        const hostPlaceId = fillMode === 'place' ? placeId : null;
 
         if (kind === 'colour') {
             // A Colour part that isn't the Scene's own background
@@ -1671,7 +1726,8 @@ const ProjectModel = (function () {
                     layer.contentSlot = 'color';
                     Object.assign(layer, {
                         name: layerName, color: props.colorValue, opacity: props.colorOpacity,
-                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h }
+                        position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h },
+                        hostPlaceId: hostPlaceId
                     });
                 } else {
                     const created = addSceneLayer(project, sceneId, {
@@ -1682,6 +1738,7 @@ const ProjectModel = (function () {
                     created.sourceExperienceId = experience.id;
                     created.contentSlot = 'color';
                     created.partId = part.id;
+                    created.hostPlaceId = hostPlaceId;
                 }
             } else {
                 _removeMirroredLayer(project, sceneId, experience.id, part.id);
@@ -1707,7 +1764,7 @@ const ProjectModel = (function () {
                         align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
                         rotation: props.textRotation || 0,
                         position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
-                        hostedByScene: fillMode === 'scene'
+                        hostedByScene: fillMode === 'scene', hostPlaceId: hostPlaceId
                     });
                 } else {
                     const created = addSceneLayer(project, sceneId, {
@@ -1721,6 +1778,7 @@ const ProjectModel = (function () {
                     created.contentSlot = 'text';
                     created.partId = part.id;
                     created.hostedByScene = fillMode === 'scene';
+                    created.hostPlaceId = hostPlaceId;
                 }
             } else {
                 _removeMirroredLayer(project, sceneId, experience.id, part.id);
@@ -1770,7 +1828,7 @@ const ProjectModel = (function () {
             if (layer) {
                 layer.partId = part.id;
                 layer.contentSlot = isImage ? 'image' : 'graphic';
-                Object.assign(layer, { name: layerName, image: src || null, opacity: props[opKey], fit: fit, rotation: rotation, position: position, size: size, hostedByScene: fillMode === 'scene' }, shapeFields);
+                Object.assign(layer, { name: layerName, image: src || null, opacity: props[opKey], fit: fit, rotation: rotation, position: position, size: size, hostedByScene: fillMode === 'scene', hostPlaceId: hostPlaceId }, shapeFields);
             } else {
                 // A real, pre-existing bug found while testing —
                 // addSceneLayer's own Object.assign only ever copies a
@@ -1797,6 +1855,7 @@ const ProjectModel = (function () {
                 created.contentSlot = isImage ? 'image' : 'graphic';
                 created.partId = part.id;
                 created.hostedByScene = fillMode === 'scene';
+                created.hostPlaceId = hostPlaceId;
                 Object.assign(created, shapeFields);
             }
         } else {
@@ -1808,7 +1867,17 @@ const ProjectModel = (function () {
         if (experience.type === 'frame' && entry.placeId) {
             const holder = findHolder(project, entry.sceneId, entry.placeId);
             if (holder && holder.frame === experience.id) updateHolder(project, entry.sceneId, entry.placeId, { frame: null });
-        } else if (!entry.placeId) {
+        } else {
+            // "Extend Experiences to Places" — a real, previously-latent
+            // gap: this branch used to only run for Scene/Free hosting
+            // (`!entry.placeId`), since Place-hosting only ever meant
+            // `type==='frame'` before this feature, and that case is
+            // already handled above. Now that a non-'frame' Experience
+            // Hosted By Place ALSO mirrors ordinary Scene Layers (tagged
+            // `hostPlaceId`), detaching one must clean those up too, or
+            // they'd sit orphaned on the Scene forever — this is exactly
+            // the `else` case (every host EXCEPT a Frame-hosted Place).
+            //
             // Every current part's own mirrored Layer, found by partId
             // — the normal, common case once an Experience has been
             // synced at least once under the Multi-Asset Experience

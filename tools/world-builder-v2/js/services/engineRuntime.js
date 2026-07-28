@@ -178,16 +178,68 @@ const EngineV2Runtime = (function () {
             ctx.fillRect(0, 0, w, h);
         }
 
+        // "Extend Experiences to Places" — a Layer tagged `hostPlaceId`
+        // (js/projectModel.js's `_syncPartLayer`) is anchored to one
+        // specific Place, not the whole Scene/canvas — a completely
+        // different axis from the slide/overlay z-order bucketing
+        // below, so it must never enter that split at all. It paints
+        // alongside its own Holder instead, immediately after that
+        // Holder's own chrome, inside the `middle` loop — grouped here
+        // by which Holder id it names.
+        const placeLayersById = {};
         const before = [], middle = [], after = [];
         graph.stack.forEach(function (entry) {
             if (entry.type === 'holder') { middle.push(entry); return; }
+            if (entry.object.hostPlaceId) {
+                const list = placeLayersById[entry.object.hostPlaceId] || (placeLayersById[entry.object.hostPlaceId] = []);
+                list.push(entry);
+                return;
+            }
             (_isBackgroundLayer(entry.object) ? before : after).push(entry);
         });
 
-        before.concat(middle, after).forEach(function (entry) {
-            if (entry.type === 'holder') _paintHolder(ctx, entry.object, graph);
-            else _paintLayer(ctx, entry.object, graph);
+        before.forEach(function (entry) { _paintLayer(ctx, entry.object, graph); });
+        middle.forEach(function (entry) {
+            _paintHolder(ctx, entry.object, graph);
+            // A Place-hosted Layer never paints past a hidden Place —
+            // content anchored to something not itself shown has
+            // nothing to anchor to.
+            if (entry.object.permissions && entry.object.permissions.visible === false) return;
+            const placeLayers = placeLayersById[entry.object.id] || [];
+            placeLayers.forEach(function (layerEntry) {
+                _paintLayerAtPlace(ctx, layerEntry.object, entry.object, graph);
+            });
         });
+        after.forEach(function (entry) { _paintLayer(ctx, entry.object, graph); });
+    }
+
+    // Paints a `hostPlaceId`-tagged Layer inside its own Holder's
+    // CURRENT rect — resolved fresh from the Holder's live geometry on
+    // every call (never a copied/stale snapshot, so a moved/resized
+    // Place is never a source of staleness for what's anchored to it).
+    // The Layer's own fractional position/size are unchanged fields
+    // (`_syncPartLayer` never forces them to a full-bleed {0,0,1,1} —
+    // they stay real, independently editable Transform values exactly
+    // like a Scene/Free-hosted part's own) but are now interpreted
+    // relative to the Place's own rect rather than the Canvas: a
+    // translated ctx plus a small scoped sub-graph (own width/height =
+    // the Place's own pixel size) means every existing, unmodified
+    // interior calculation — rectFor, textFootprint, rotation pivots,
+    // shape geometry — keeps working exactly as it already does for a
+    // Scene/Free-hosted Layer, just inside the Place's own local
+    // coordinate space instead of the whole Canvas's.
+    function _paintLayerAtPlace(ctx, layer, holder, graph) {
+        const placeRect = rectFor(holder, graph);
+        if (placeRect.w <= 0 || placeRect.h <= 0) return;
+        const placeGraph = {
+            width: placeRect.w,
+            height: placeRect.h,
+            resolveLayerImage: graph.resolveLayerImage
+        };
+        ctx.save();
+        ctx.translate(placeRect.x, placeRect.y);
+        _paintLayer(ctx, layer, placeGraph);
+        ctx.restore();
     }
 
     function _roundedRectPath(ctx, x, y, w, h, r) {
@@ -329,7 +381,33 @@ const EngineV2Runtime = (function () {
         // Mat band, inset by the border's own thickness — a fixed,
         // neutral mat-board tone regardless of wallTone (traditionally
         // white/cream regardless of the wall behind the frame).
-        if (matPx > 0) _band(insets.matInset, '#F5F2EA');
+        //
+        // Feature 1 — Image-typed Frame Variations. `fields.background`
+        // gained a genuine `'image'` option (Frames screen, worldBuilderApp.js
+        // `_renderFramesPanel`) alongside its existing flat-colour enum
+        // values; when set, and the referenced `frameImage` resolves to a
+        // real, already-loaded Image (`graph.resolveLayerImage`, the
+        // identical "host resolves, this module only draws" cache/redraw
+        // pattern Decoration images already use above), it's painted
+        // covering ('fill') the exact same mat-band rect the flat colour
+        // fill already computed — the flat fill still draws first (a
+        // sensible base/fallback for a transparent-PNG source, and the
+        // whole reason `_band` still runs unconditionally here), the
+        // image simply layers on top when one is actually authored.
+        if (matPx > 0) {
+            const matRect = _band(insets.matInset, '#F5F2EA');
+            if (fields && fields.background === 'image' && fields.frameImage) {
+                const bgImg = graph.resolveLayerImage(fields.frameImage);
+                if (bgImg) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(matRect.x, matRect.y, matRect.w, matRect.h);
+                    ctx.clip();
+                    _drawImageWithFit(ctx, bgImg, matRect, 'fill');
+                    ctx.restore();
+                }
+            }
+        }
 
         // Content band — the Holder's own Padding (Engine Canon §6:
         // "inset between the Holder's edge and its content"), applied

@@ -177,6 +177,22 @@ array) into `theme.layouts`, and likewise for `frames/` →
 `representations/` → `theme.representations`
 (`tools/world-builder/js/services/builder.js`'s `collectFolder()` / `buildTheme()`).
 
+**Image-Typed Frame Variations + Place-Hosted Experiences of Any Type**
+(`tools/world-builder-v2` only) added two field-level, purely additive
+compiled-shape changes *within* the flattened arrays above — neither
+introduces a new top-level package key, so both are documented at the
+field level in `docs/THEME_PROJECT_SPEC.md` rather than duplicated here:
+a compiled `theme.frameVariations[i].fields` entry may now carry
+`background: "image"` + a matching `frameImage` relative-path reference
+(§6 of that spec), and a compiled `theme.layerPack[i]` entry may now
+carry `target: "place"` + a matching `placeId` (§7 of that spec) — a
+sixth Layer containership scope, alongside the existing `slide`/`frame`/
+`holder`/`element`/`overlay` five. Both resolve through exactly the same
+mechanisms every other compiled asset reference / Layer entry already
+does (`ThemeRegistry.resolveAssetRef()`; `renderer/slideRenderer.js`'s
+existing per-Place render pipeline) — no change to this document's own
+`assets` map shape, `theme` object shape, or importer contract below.
+
 **`supportedCreationTypes`** (Sprint 10.1 — Theme Driven Representations) —
 a flat string array naming which of Studio's Creation Type ids
 (`js/creationFlow.js`'s `CREATION_TYPES`) this theme is offered under in

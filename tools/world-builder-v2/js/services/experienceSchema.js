@@ -33,10 +33,23 @@ const ExperienceSchema = (function () {
     // of what any engine can currently do with it (Canon Alignment
     // Objective 3 — the field's purpose here is honest disclosure, not
     // engine capability control).
+    // "Extend Experiences to Places" — a Theme Author can create only
+    // `decoration`-type Experiences through any real, everyday authoring
+    // flow (Builder V3.1 retired the Type picker), and `decoration`/
+    // `text` already render at Scene/Free via the Universal Content
+    // Layer-mirroring mechanism (js/projectModel.js's
+    // `_syncUniversalContent`) — Place-hosting now uses that exact same
+    // mechanism, just anchored to a specific Place's own rect instead of
+    // the whole Scene/canvas (see `_syncExperienceAttachments`'s Place
+    // branch and its new `fillMode==='place'` case). `frame` keeps its
+    // own separate, unchanged `place:true` (the pre-existing Frame-
+    // mirror path, `_mirrorFrame`). `atmosphere`/`lighting`/`text-style`
+    // stay `false` on every axis — genuinely reserved vocabulary with no
+    // adapter anywhere, unaffected by this change.
     const EXPERIENCE_TYPES = [
         { value: 'frame', label: 'Frame', icon: '🖼️', renders: { place: true, scene: false, free: false } },
-        { value: 'decoration', label: 'Decoration', icon: '✨', renders: { place: false, scene: true, free: true } },
-        { value: 'text', label: 'Text', icon: '✍️', renders: { place: false, scene: false, free: true } },
+        { value: 'decoration', label: 'Decoration', icon: '✨', renders: { place: true, scene: true, free: true } },
+        { value: 'text', label: 'Text', icon: '✍️', renders: { place: true, scene: false, free: true } },
         { value: 'atmosphere', label: 'Atmosphere', icon: '🌫️', renders: { place: false, scene: false, free: false } },
         { value: 'lighting', label: 'Lighting', icon: '💡', renders: { place: false, scene: false, free: false } },
         { value: 'text-style', label: 'Text Style', icon: '🔤', renders: { place: false, scene: false, free: false } }
@@ -63,16 +76,22 @@ const ExperienceSchema = (function () {
     // only migrated-copied into these new fields once
     // (js/projectModel.js's `_ensureExperienceDefaults`), so its
     // historical rendering is provably unaffected by this milestone.
-    // hostedBy (optional): when 'scene', seed every content section's
-    // Transform to full-bleed (0,0,1,1). Scene-hosted Experiences are
-    // now editable/resizable (was read-only, always pinned to full
-    // bleed by the Inspector's own self-heal) — so this preserves the
-    // "Scene-hosted starts filling the whole Scene" default the user
-    // already expects, while letting an author resize it afterward.
-    // Any other value (or omitted) keeps the small partial-rect
-    // defaults that a Free-hosted Experience has always started with.
+    // hostedBy (optional): when 'scene' OR 'place', seed every content
+    // section's Transform to full-bleed (0,0,1,1) — 'scene' fills the
+    // whole Scene; 'place' fills the whole Place its own fractional rect
+    // is resolved against ("Extend Experiences to Places" — a Place-
+    // hosted part's position/size are interpreted relative to the
+    // Place's own current rect at paint time, never the Scene's, so
+    // "full bleed" here means "fills the Place," not the Canvas). Both
+    // are editable/resizable afterward, unlike the one, unrelated
+    // read-only case that remains (a `type:'frame'` Experience Hosted By
+    // Place still projects onto the Place's own Frame slot via
+    // `_mirrorFrame`, never onto one of these ordinary Layers — see
+    // worldBuilderApp.js's `_contentTransformFields`). Any other value
+    // (or omitted) keeps the small partial-rect defaults that a
+    // Free-hosted Experience has always started with.
     function defaultUniversalContent(hostedBy) {
-        const fillBleed = hostedBy === 'scene';
+        const fillBleed = hostedBy === 'scene' || hostedBy === 'place';
         return {
             // Text
             textContent: '',

@@ -905,9 +905,28 @@ const SlideRenderer=(()=>{
   }
 
   // Picture-frame fill (with optional drop shadow). Drawn under the image.
+  //
+  // Feature 1 — Image-typed Frame Variations. `border._artwork` (stashed
+  // by `_artworkBorder` purely for lookups like this one — see that
+  // function's own comment) may now carry `background:'image'` +
+  // `frameImage` (a compiled Frame Variation field, externalized at
+  // Build time exactly like every other image-bearing field —
+  // `docs/VTHEME_PACKAGE_SPEC.md`'s "reference, not embedded bytes"
+  // convention — so by the time root Studio ever sees it, it's a plain
+  // relative-path reference resolved via `ThemeRegistry.resolveAssetRef`,
+  // the identical resolution `_layerDrawDecorationImage` already uses
+  // for a theme-authored Decoration image). Painted covering ('fill')
+  // the exact same frame-fill path/clip the flat colour already used,
+  // right after it — Rule #5 (Publish Fidelity): this must match
+  // `engineRuntime.js`'s own `_paintHolder` mat-band image step exactly,
+  // both painting a base colour first (a sensible fallback for a
+  // transparent-PNG source) then layering the image on top when
+  // authored, never the reverse.
   function _drawPictureFrameFill(rect,border,theme){
     const fillColor=_resolveBorderFillColor(border,theme);
-    if(!fillColor && !border.shadowEnabled) return;
+    const art=border._artwork;
+    const hasImageBg=!!(art && art.background==='image' && art.frameImage);
+    if(!fillColor && !border.shadowEnabled && !hasImageBg) return;
     x.save();
     if(border.shadowEnabled){
       x.shadowBlur=16+border.shadowIntensity*36;
@@ -920,6 +939,28 @@ const SlideRenderer=(()=>{
       x.fill();
     }
     x.restore();
+
+    if(hasImageBg){
+      let src=art.frameImage;
+      const themeId=art.id;
+      if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+        try{ src=ThemeRegistry.resolveAssetRef(themeId,art.frameImage)||art.frameImage; }catch(e){}
+      }
+      const img=_ensureDecorationImage(src);
+      if(img && img.__ready && img.width && img.height){
+        x.save();
+        _frameFillPath(rect,border);
+        x.clip();
+        // Always cover-fit ('fill') — a Frame's own background image is
+        // meant to fully cover the frame area, cropping if needed, the
+        // same fixed mode engineRuntime.js's own mat-band step uses.
+        const iw=img.width, ih=img.height;
+        const scale=Math.max(rect.w/iw,rect.h/ih);
+        const dw=iw*scale, dh=ih*scale;
+        x.drawImage(img,rect.x+rect.w/2-dw/2,rect.y+rect.h/2-dh/2,dw,dh);
+        x.restore();
+      }
+    }
   }
 
   // Sprint 6.5.1 — per-design ornament drawn after the image, under the
@@ -2396,6 +2437,28 @@ const SlideRenderer=(()=>{
     LayerEngine.renderOne(layer,rect,_layerHelpers(rect,s,target));
   }
 
+  // "Extend Experiences to Places" — a Layer whose Theme Author Hosted
+  // By a specific Place (any Experience type — decoration/text,
+  // mirroring exactly how Scene/Free hosting already work) compiles to
+  // one or more target:'place' Layer Pack entries, each carrying the
+  // exact Place id it belongs to (tools/world-builder-v2's
+  // convergeSceneLayer). Unlike the legacy 'frame'/'holder'/'element'
+  // scopes (Place 1 only, by design, a standing pre-existing
+  // limitation this does not lift), this new scope reaches every
+  // Place, 1 and 2+ alike — called from both _drawPlaceOne and
+  // _drawPlaceExtra below. Reuses LayerEngine.forTarget/renderOne, the
+  // exact same filtering/drawing primitives every other Layer Pack
+  // scope already uses — the only genuinely new step is filtering by
+  // placeId, since LayerEngine itself has no concept of which Place a
+  // 'place'-targeted layer belongs to (that's this function's own,
+  // additive job, not a change to the generic engine).
+  function _renderPlaceHostedLayers(pack,placeId,rect,s){
+    if(!pack || !placeId || !rect || typeof LayerEngine==='undefined') return;
+    LayerEngine.forTarget(pack,'place').forEach(function(layer){
+      if(layer.placeId===placeId) _renderOneLayer(layer,rect,s,'place');
+    });
+  }
+
   // Holder rect — same insets/padding math _drawImage already applies
   // to the panel rect, exposed separately so Holder-targeted layers
   // (Museum Caption) can anchor to the actual picture content area
@@ -2870,8 +2933,10 @@ const SlideRenderer=(()=>{
           const _placeSelId=o.id;
           const _perm=_resolvePlacePermissions(_place);
           let bbox;
+          let _thisPlaceRect;
           if(_placeIndex===0){
             bbox=_drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition);
+            _thisPlaceRect=_place1Rect;
           }else{
             // The storage/selection id for this Place is index-based
             // ('image-place-N'), deliberately distinct from the Place's
@@ -2883,6 +2948,25 @@ const SlideRenderer=(()=>{
             const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
             const _placeView=(_placeContent && _placeContent.imageView)||null;
             bbox=_drawPlaceExtra(s,t,opts,_placeRect,_placeBorder,_placeImg,_placeView,_chromeColor);
+            _thisPlaceRect=_placeRect;
+          }
+          // "Extend Experiences to Places" — paints any Experience Hosted
+          // By THIS specific Place (a compiled target:'place' Layer Pack
+          // entry, any Experience type, unlike the legacy Place-1-only
+          // 'frame'/'holder'/'element' scopes) right after the Place's own
+          // Frame/image draw, exactly where the plan calls for it — reuses
+          // the same pop-the-newly-pushed-bboxes-off-_layerObjectBboxes
+          // pattern the plain layer branch above already uses (splice, not
+          // pop, since more than one Layer/Experience can be hosted at one
+          // Place and their authored order should survive into the render
+          // tree), so a Place-hosted object is just as selectable/
+          // reorderable/Object-Strip-visible as anything else on the page.
+          if(_place && _place.id){
+            const _beforeLen=_layerObjectBboxes.length;
+            _renderPlaceHostedLayers(_layerPack,_place.id,_thisPlaceRect,s);
+            if(_layerObjectBboxes.length>_beforeLen){
+              _layerObjectBboxes.splice(_beforeLen).forEach(function(o2){ _lastSceneElements.push(o2); });
+            }
           }
           if(bbox){
             bbox.id=_placeSelId;
