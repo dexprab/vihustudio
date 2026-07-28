@@ -114,6 +114,13 @@ const ProjectModel = (function () {
         // authored) exactly like every other field above -- every Frame
         // Variation authored before this feature simply never has one.
         if (f.frameImage === undefined) f.frameImage = null;
+        // `frameImageRotation` (degrees, clockwise) -- "spin/rotate is
+        // missing" once Background = Image. Mirrors the identical
+        // rotate-around-rect-centre convention every other Universal
+        // Content rotation field already uses (Image/Graphics/Text
+        // Experience content) -- additive, defaults to 0 (no rotation),
+        // so every Frame authored before this exists renders identically.
+        if (f.frameImageRotation === undefined) f.frameImageRotation = 0;
         return frame;
     }
 

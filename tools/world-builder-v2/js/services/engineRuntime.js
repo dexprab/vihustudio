@@ -399,10 +399,22 @@ const EngineV2Runtime = (function () {
             if (fields && fields.background === 'image' && fields.frameImage) {
                 const bgImg = graph.resolveLayerImage(fields.frameImage);
                 if (bgImg) {
+                    // "spin/rotate is missing" -- rotated around the mat
+                    // band's own rect centre, the identical convention
+                    // already used for Image/Graphics/Text Experience
+                    // content rotation above (line ~703), so this reads as
+                    // the same, established capability, not a special case.
+                    const bgRotation = fields.frameImageRotation || 0;
                     ctx.save();
                     ctx.beginPath();
                     ctx.rect(matRect.x, matRect.y, matRect.w, matRect.h);
                     ctx.clip();
+                    if (bgRotation) {
+                        const bcx = matRect.x + matRect.w / 2, bcy = matRect.y + matRect.h / 2;
+                        ctx.translate(bcx, bcy);
+                        ctx.rotate(bgRotation * Math.PI / 180);
+                        ctx.translate(-bcx, -bcy);
+                    }
                     _drawImageWithFit(ctx, bgImg, matRect, 'fill');
                     ctx.restore();
                 }

@@ -2754,7 +2754,28 @@
     // that dispatch's OUTPUT gets mounted (into #wb-modal-body instead
     // of #wb-context-panel) is new. 'scenes' is the one non-modal,
     // "resting" value.
-    const MODAL_NAVS = new Set(['overview', 'checkbuild', 'publish', 'representations', 'layouts', 'frames', 'layerpacks', 'assets', 'collection']);
+    // "Manage Frames" was reported as feeling like "opens up as a
+    // separate window and we are not able to see how it is affecting
+    // the frame" -- confirmed real, not a misunderstanding: `frames` sat
+    // in MODAL_NAVS, and `.wb-modal` is `position:fixed;inset:0` with a
+    // full-screen dark backdrop (`css/world-builder.css`) -- Working
+    // View kept rendering the live specimen underneath (it was already
+    // in WORKING_VIEW_PASSTHROUGH_NAVS below, AV-005's own correct
+    // behaviour), but dimmed behind the scrim and mostly covered by the
+    // centred modal panel, so it was practically invisible while editing.
+    // Removed from MODAL_NAVS -- `_renderContextPanel()`'s `isModal`
+    // check now mounts Frame fields straight into the permanent
+    // `#wb-context-panel` column instead, which sits beside Working
+    // View/Runtime Preview at all times, exactly like Representations/
+    // Layouts already did before this fix (both were never modal to
+    // begin with). `_renderFramesPanel()`'s own content is completely
+    // mount-agnostic (it only ever writes into the module-level
+    // `contextPanel` variable, whichever element that currently is), so
+    // this needed no change to the panel itself -- only where it lands.
+    // The screen's own "← Back to Scene" button (always reachable, since
+    // Frames is only ever entered from a Place's Frame picker while a
+    // Scene is open) is the exit, unchanged.
+    const MODAL_NAVS = new Set(['overview', 'checkbuild', 'publish', 'representations', 'layouts', 'layerpacks', 'assets', 'collection']);
     // Working View keeps showing its own real content (the open Scene,
     // or the Experience Studio) behind most modals — only these navs
     // have a genuine Working View "specimen" of their own (AV-005's
@@ -2762,6 +2783,12 @@
     // the Experience Studio), so every other modal nav (Overview/
     // Check&Build/Publish/Layer Packs/Assets) leaves Working View
     // showing the Scene/inactive-state exactly as if nav were 'scenes'.
+    // `frames` stays listed here even though it's no longer in
+    // MODAL_NAVS -- `_workingViewNav()`'s own condition
+    // (`MODAL_NAVS.has(...) && !WORKING_VIEW_PASSTHROUGH_NAVS.has(...)`)
+    // already resolves to the same "keep showing the Frame specimen"
+    // result either way, so leaving this set untouched is correct, not
+    // just harmless.
     const WORKING_VIEW_PASSTHROUGH_NAVS = new Set(['representations', 'layouts', 'frames', 'experiences']);
     function _workingViewNav() {
         if (MODAL_NAVS.has(currentNav) && !WORKING_VIEW_PASSTHROUGH_NAVS.has(currentNav)) return 'scenes';
@@ -10078,6 +10105,14 @@
                 }
             });
             contextPanel.appendChild(imageWrap);
+
+            // "spin/rotate is missing" once Background = Image -- mirrors
+            // the identical rotate-around-rect-centre convention every
+            // other Universal Content rotation control already uses
+            // (Image/Graphics/Text Experience content, engineRuntime.js's
+            // _paintLayer) so this reads as the same, established
+            // capability rather than a one-off. Degrees, clockwise, 0-359.
+            _fieldGroup('Rotation', _range(0, 359, f.frameImageRotation || 0, onFrameField('frameImageRotation')));
         }
 
         const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, onFrameField('borderColor')));

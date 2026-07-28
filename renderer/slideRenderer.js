@@ -951,13 +951,24 @@ const SlideRenderer=(()=>{
         x.save();
         _frameFillPath(rect,border);
         x.clip();
+        // "spin/rotate is missing" -- rotated around the frame-fill
+        // rect's own centre, mirroring engineRuntime.js's identical
+        // rotate-around-rect-centre convention exactly (Rule #5, Publish
+        // Fidelity: Builder's preview and this render must agree).
+        const bgRotation=art.frameImageRotation||0;
+        const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
+        if(bgRotation){
+          x.translate(rcx,rcy);
+          x.rotate(bgRotation*Math.PI/180);
+          x.translate(-rcx,-rcy);
+        }
         // Always cover-fit ('fill') — a Frame's own background image is
         // meant to fully cover the frame area, cropping if needed, the
         // same fixed mode engineRuntime.js's own mat-band step uses.
         const iw=img.width, ih=img.height;
         const scale=Math.max(rect.w/iw,rect.h/ih);
         const dw=iw*scale, dh=ih*scale;
-        x.drawImage(img,rect.x+rect.w/2-dw/2,rect.y+rect.h/2-dh/2,dw,dh);
+        x.drawImage(img,rcx-dw/2,rcy-dh/2,dw,dh);
         x.restore();
       }
     }
