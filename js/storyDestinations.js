@@ -150,24 +150,41 @@ const StoryDestinations=(function(){
 
   function _renderSlideInto(canvas, slide, idx, total, opts){
     const editorCanvas=(typeof document!=='undefined') ? document.getElementById('previewCanvas') : null;
+    // Publish Quality — real resolution, not just a bigger destination
+    // canvas. `opts.scale` is the dpr SlideRenderer draws the
+    // intermediate render at (default 1, unchanged for any destination/
+    // format that doesn't ask for more). Handing it straight to
+    // SlideRenderer.init's own `dpr` option means the SAME logical
+    // viewport draws into a genuinely higher-density backing store —
+    // every glyph, vector shape, and Frame ornament renders natively
+    // sharper, never a blurred upscale of a lower-resolution raster.
+    // Before this fix, forcing dpr:1 here meant a destination whose own
+    // createCanvas size didn't match the logical viewport (e.g. the old
+    // "Print-ready PDF" at 1620×2025) was only ever a 1080×1350-quality
+    // render stretched up by the fit-composite step below, never a
+    // genuinely sharper one — see BOOK_FORMATS' own comment for the
+    // corrected 300 DPI print value. A raster Story image the child
+    // uploaded is still bounded by whatever resolution it was actually
+    // uploaded at — scale only benefits the app's own rendered content
+    // (text, Frames, decorations, Museum-style captions, etc.).
+    const scale=(opts && typeof opts.scale==='number' && opts.scale>0) ? opts.scale : 1;
     try{
       // Rule 5 — render the Slide at its OWN real Aspect Ratio first
       // (adaptiveViewport:true, matching the editor exactly) on a
       // throwaway intermediate canvas, then fit/composite that
       // correctly-shaped render into this destination's own fixed
-      // render coordinate space (1080×1350, unchanged since Sprint
-      // 9.0) — never resize `canvas` itself, since every downstream
-      // encodePage/finish step still assumes that fixed space; a PDF
-      // page size or "Instagram Portrait/Square" is a separate,
-      // deliberate destination-format decision this doesn't override.
-      // The overwhelming common case (a portrait Scene, or any Scene
+      // render coordinate space (unchanged since Sprint 9.0) — never
+      // resize `canvas` itself, since every downstream encodePage/
+      // finish step still assumes that fixed space; a PDF page size or
+      // "Instagram Portrait/Square" is a separate, deliberate
+      // destination-format decision this doesn't override. The
+      // overwhelming common case (a portrait Scene, or any Scene
       // authored before the Scene Viewport feature existed) hits the
-      // fast, byte-identical path below with zero extra compositing.
+      // fast, byte-identical path below with zero extra compositing —
+      // now genuinely at `scale`'s own resolution, not a downstream
+      // upscale of a flat 1x render.
       const mid=document.createElement('canvas');
-      // Force dpr:1 for every destination — the output is a flat
-      // bitmap (PNG / JPEG). DPR scaling would just balloon file
-      // sizes without adding usable resolution beyond 1080×1350.
-      SlideRenderer.init(mid,{dpr:1,adaptiveViewport:true});
+      SlideRenderer.init(mid,{dpr:scale,adaptiveViewport:true});
       const titleEl=(typeof document!=='undefined') ? document.getElementById('bookTitle') : null;
       const payload=SlideRenderer.buildPayload(slide,{
         page: idx+1,
@@ -188,13 +205,25 @@ const StoryDestinations=(function(){
 
   // ---------- Story Book (existing PDF path, wrapped as a destination) ----------
   // Two formats:
-  //   • Digital PDF   — 144 DPI, screen-sized JPEG per page. Small file.
-  //   • Print-ready PDF — 216 DPI, higher-fidelity JPEG per page.
+  //   • Digital PDF     — 144 DPI, screen-sized JPEG per page. Small file.
+  //   • Print-ready PDF — 300 DPI, the print-industry standard (was 216
+  //     DPI — a real, disclosed Publish Quality fix, not just bigger
+  //     numbers: see `renderScale`/`_renderSlideInto` below).
   // Both formats use the same PdfWriter; the only difference is the
-  // render canvas size + JPEG quality.
+  // render canvas size + JPEG quality. `renderScale` is the field that
+  // actually matters: it's the dpr SlideRenderer draws the page at (see
+  // `_renderSlideInto`), not merely a bigger destination canvas — at
+  // scale 1 the render happens natively at the logical 1080×1350
+  // viewport (144 DPI given a 540×675pt page); at scale (300/144) the
+  // SAME content renders into a genuinely higher-density backing store
+  // (2250×2813), so text/vector shapes/Frame ornaments come out crisp,
+  // not a blurred upscale of a lower-resolution raster — which is
+  // exactly what the old renderW:1620/renderH:2025 pairing produced,
+  // since nothing before this fix ever told SlideRenderer to draw at
+  // more than dpr:1.
   const BOOK_FORMATS=[
-    {id:'digital',   label:'Digital PDF',   description:'Small file · great on screen', renderW:1080, renderH:1350, jpegQuality:0.92, pageWpt:540, pageHpt:675},
-    {id:'print',     label:'Print-ready PDF', description:'Higher detail · ready to print', renderW:1620, renderH:2025, jpegQuality:0.95, pageWpt:540, pageHpt:675}
+    {id:'digital',   label:'Digital PDF',   description:'Small file · great on screen', renderScale:1, renderW:1080, renderH:1350, jpegQuality:0.92, pageWpt:540, pageHpt:675},
+    {id:'print',     label:'Print-ready PDF', description:'300 DPI · true print quality', renderScale:300/144, renderW:2250, renderH:2813, jpegQuality:0.95, pageWpt:540, pageHpt:675}
   ];
   const BOOK={
     id:'book',
@@ -210,7 +239,7 @@ const StoryDestinations=(function(){
       return c;
     },
     renderPage:function(canvas, slide, ctx){
-      _renderSlideInto(canvas, slide, ctx.index, ctx.total);
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:(ctx.format && ctx.format.renderScale) || 1});
     },
     encodePage:function(canvas, format){
       let url=null;
@@ -238,17 +267,24 @@ const StoryDestinations=(function(){
   };
 
   // ---------- Story Carousel (PNG per page, ZIP if multi-page) ----------
-  // Two formats:
-  //   • Instagram Portrait — 1080 × 1350 (the editor's native size).
-  //   • Instagram Square   — 1080 × 1080 (centre-cropped from portrait).
+  // Two formats, both rendered at CAROUSEL_RENDER_SCALE (2x — genuine
+  // higher-density pixels via SlideRenderer's own dpr, not an upscaled
+  // raster; see the Publish Quality note on _renderSlideInto):
+  //   • Instagram Portrait — 2160 × 2700 (2× the editor's native
+  //     1080 × 1350). Instagram itself only ever asks for a 1080px-wide
+  //     upload — this is real headroom for saving/sharing the image
+  //     outside Instagram, viewing it zoomed in, or a future higher-
+  //     resolution upload path, not something IG requires.
+  //   • Instagram Square   — 2160 × 2160 (centre-cropped from portrait).
   //
   // Portrait is a no-op recomposite of the native render. Square is a
-  // centre-crop of the same 1080×1350 canvas onto a 1080×1080 target
+  // centre-crop of the same 2160×2700 canvas onto a 2160×2160 target
   // — losing the top + bottom bands. Alternative approaches (letterbox
   // padding) were rejected because carousels prefer full-bleed pages.
+  const CAROUSEL_RENDER_SCALE=2;
   const CAROUSEL_FORMATS=[
-    {id:'portrait', label:'Instagram Portrait', description:'1080 × 1350 · Feed post', outW:1080, outH:1350, mode:'contain'},
-    {id:'square',   label:'Instagram Square',   description:'1080 × 1080 · Classic feed', outW:1080, outH:1080, mode:'centre-crop'}
+    {id:'portrait', label:'Instagram Portrait', description:'2160 × 2700 · Feed post (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1350*CAROUSEL_RENDER_SCALE, mode:'contain'},
+    {id:'square',   label:'Instagram Square',   description:'2160 × 2160 · Classic feed (HD)', outW:1080*CAROUSEL_RENDER_SCALE, outH:1080*CAROUSEL_RENDER_SCALE, mode:'centre-crop'}
   ];
   const CAROUSEL={
     id:'carousel',
@@ -257,11 +293,12 @@ const StoryDestinations=(function(){
     tagline:'Perfect for Instagram and sharing.',
     formats:CAROUSEL_FORMATS,
     createCanvas:function(){
-      // Every render happens in the 1080 × 1350 renderer coord space.
-      // The format's outW × outH is applied at the encode step.
+      // Every render happens in the 1080 × 1350 renderer coord space,
+      // scaled CAROUSEL_RENDER_SCALE× for genuine HD output. The
+      // format's outW × outH is applied at the encode step.
       const c=document.createElement('canvas');
-      c.width=1080;
-      c.height=1350;
+      c.width=1080*CAROUSEL_RENDER_SCALE;
+      c.height=1350*CAROUSEL_RENDER_SCALE;
       return c;
     },
     renderPage:function(canvas, slide, ctx){
@@ -269,7 +306,7 @@ const StoryDestinations=(function(){
       // format here that can actually carry alpha, so a non-matching
       // Scene's padding stays honestly empty instead of a fabricated
       // background colour (see _fitCompositeInto's own comment).
-      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {transparent:true});
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {transparent:true, scale:CAROUSEL_RENDER_SCALE});
     },
     encodePage:function(canvas, format, ctx){
       // Compose the shipped bitmap at format.outW × format.outH.
@@ -279,10 +316,11 @@ const StoryDestinations=(function(){
       const octx=out.getContext('2d');
       try{ octx.imageSmoothingEnabled=true; octx.imageSmoothingQuality='high'; }catch(e){}
       if(format.mode==='centre-crop'){
-        // Centre-crop 1080×1350 onto 1080×1080 — drop 135 px from top
-        // and bottom. That preserves the panel band (see PANEL_Y=185,
-        // PANEL_H=930 in the renderer) so the story text sits in the
-        // square with room to breathe.
+        // Centre-crop 2160×2700 onto 2160×2160 — drop 270 px from top
+        // and bottom (the same 135-logical-px trim as before, now at
+        // 2x scale). That preserves the panel band (see PANEL_Y=185,
+        // PANEL_H=930 in the renderer, logical units) so the story text
+        // sits in the square with room to breathe.
         const cropY=Math.round((canvas.height-format.outH)/2);
         octx.drawImage(canvas, 0, cropY, canvas.width, format.outH, 0, 0, format.outW, format.outH);
       }else{
