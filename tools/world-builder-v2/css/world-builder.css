@@ -2210,6 +2210,45 @@ html, body {
     margin: 0 0 4px;
 }
 
+/* Simplify Place & Frame Authoring -- "the ordering of manage frames
+   section. it is showing all frames at the same time, making the look
+   really confusing." A plain, undecorated <details>/<summary> (unlike
+   .wb-state-intro's boxed sky-blue callout above -- this is a section
+   heading, not a guidance box) collapsing the saved-Frames list behind
+   one line, so it no longer competes for attention with the new Frame
+   Style Gallery sitting right above it. Reuses the same ▸/▾ marker
+   convention .wb-state-intro-summary already established. */
+.wb-frames-list-details { margin-top: 20px; }
+.wb-frames-list-summary {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wb-navy);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.wb-frames-list-summary::-webkit-details-marker { display: none; }
+.wb-frames-list-summary::before { content: '▸ '; }
+.wb-frames-list-details[open] > .wb-frames-list-summary::before { content: '▾ '; }
+.wb-frames-list-body { margin-top: 10px; }
+
+/* Simplify Place & Frame Authoring -- "where ever we are using colors an
+   option of transparent color needs to be there." Mirrors this
+   codebase's own established convention (css/style.css's
+   .is-transparent rule for Creator's own Decoration Shape fill fields)
+   of dimming, never hiding, the colour swatch once Transparent is
+   checked -- so a Theme Author can still see and change what colour
+   they'll get back the instant they un-check it. */
+.wb-color-is-transparent input[type="color"],
+.wb-color-is-transparent .wb-field-hint {
+    opacity: 0.4;
+    pointer-events: none;
+}
+.wb-transparent-toggle-row {
+    margin-top: 6px;
+    font-size: 12px;
+}
+
 /* AP-002 — small inline icon set replacing emoji on panel-title
    headings (Place/Decorations/Text and the three permanent pane
    headings). currentColor so it always matches the heading's own text

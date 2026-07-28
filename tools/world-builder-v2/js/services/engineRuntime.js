@@ -280,6 +280,105 @@ const EngineV2Runtime = (function () {
         gallery: { blur: 30, offsetY: 10, color: 'rgba(0,0,0,0.35)' }
     };
 
+    // Simplify Place & Frame Authoring — "Mat Surface"'s own chosen
+    // value (`fields.background`) has always been silently ignored by
+    // the mat band below, which painted one universal flat '#F5F2EA'
+    // regardless. Mirrors root Studio's own real Reader-facing
+    // ARTWORK_BACKGROUND_FILL table exactly (renderer/slideRenderer.js)
+    // so Builder's preview and the compiled/Published Theme finally
+    // agree on what each Mat Surface choice actually looks like.
+    // 'transparent'/'color'/'image' are resolved separately in
+    // `_paintHolder` itself, never through this flat lookup.
+    const MAT_MATERIAL_FILL = {
+        white: '#ffffff', cream: '#F7F1E3', 'kraft-paper': '#C9A66B',
+        'watercolor-paper': '#F5F0E6', 'notebook-paper': '#F4F6FA',
+        black: '#000000', 'bulletin-board': '#C9A876'
+    };
+
+    // Mirrors root Studio's own real ARTWORK_FRAME_PRESET's own
+    // cornerRadius column exactly, so "Frame Style" visibly changes
+    // Builder's own preview the same way it already changes a
+    // Published Theme's real render. Corner Radius's own raw-number
+    // control is removed from the Frames screen (§4) — corner rounding
+    // is now always DERIVED from the chosen Frame Style, matching what
+    // Studio's Reader-facing renderer has always actually done, never a
+    // second, independent dial a Theme Author could set inconsistently.
+    const FRAME_ORNAMENT_PRESET = {
+        'none': { cornerRadius: 0 },
+        'white-mat': { cornerRadius: 0 },
+        'floating': { cornerRadius: 8 },
+        'wood': { cornerRadius: 6 },
+        'polaroid': { cornerRadius: 0 },
+        'tape': { cornerRadius: 0 },
+        'bulletin-board': { cornerRadius: 0 }
+    };
+
+    // A small, purely-additive, decoration-only distinguishing cue per
+    // Frame Style — corner radius alone leaves 5 of 7 values visually
+    // identical, so a Theme Author picking "Wood" or "Tape" from the
+    // relabeled Frame Style dropdown sees *something* actually change,
+    // not just a control that silently does nothing. Never changes
+    // geometry/hit-testing — purely a few extra strokes/shapes layered
+    // on top of the already-painted bands. `matRect` may be null when
+    // no mat band was drawn (matPx===0); every cue degrades gracefully
+    // in that case, falling back to the frame's own outer `rect`.
+    function _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent) {
+        const style = (fields && fields.frame) || 'none';
+        const isBulletinBoard = style === 'bulletin-board' || (fields && fields.background === 'bulletin-board');
+        if (style === 'none' || style === 'white-mat') return; // confirmed visually identical to real Studio too — correct parity, not a gap.
+
+        ctx.save();
+        if (style === 'wood' && insets.thicknessPx > 0) {
+            // 2-3 thin darker "grain" lines across the border band.
+            const bx = rect.x + insets.borderInset, by = rect.y + insets.borderInset;
+            const bw = Math.max(0, rect.w - insets.borderInset * 2);
+            ctx.strokeStyle = 'rgba(60,35,15,0.35)';
+            ctx.lineWidth = Math.max(1, insets.thicknessPx * 0.18);
+            const lines = 3;
+            for (let i = 1; i <= lines; i++) {
+                const ly = by + (insets.thicknessPx * i) / (lines + 1);
+                ctx.beginPath();
+                ctx.moveTo(bx, ly);
+                ctx.lineTo(bx + bw, ly);
+                ctx.stroke();
+            }
+        } else if (style === 'polaroid' && matRect && !matIsTransparent) {
+            // A single thin line near the bottom of the mat band — a
+            // caption-baseline stand-in (a real Polaroid's own wide
+            // bottom border is where a caption would be written).
+            ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+            ctx.lineWidth = 1.5;
+            const ly = matRect.y + matRect.h * 0.84;
+            ctx.beginPath();
+            ctx.moveTo(matRect.x + matRect.w * 0.12, ly);
+            ctx.lineTo(matRect.x + matRect.w * 0.88, ly);
+            ctx.stroke();
+        } else if (style === 'tape') {
+            // Two small semi-transparent tan rectangles at the top
+            // corners, like real tape holding the picture down.
+            const tw = Math.max(14, rect.w * 0.09), th = Math.max(10, tw * 0.55);
+            ctx.fillStyle = 'rgba(214,196,150,0.55)';
+            ctx.fillRect(rect.x + rect.w * 0.08, rect.y - th * 0.3, tw, th);
+            ctx.fillRect(rect.x + rect.w * 0.92 - tw, rect.y - th * 0.3, tw, th);
+        } else if (isBulletinBoard) {
+            // 4 small dark dot "pins" near the mat's (or, absent a mat,
+            // the frame's own) corners.
+            const pr = matRect || rect;
+            const dot = Math.max(2.5, rect.w * 0.006);
+            const pad = dot * 2.2;
+            ctx.fillStyle = 'rgba(40,30,20,0.55)';
+            [
+                [pr.x + pad, pr.y + pad], [pr.x + pr.w - pad, pr.y + pad],
+                [pr.x + pad, pr.y + pr.h - pad], [pr.x + pr.w - pad, pr.y + pr.h - pad]
+            ].forEach(function (p) {
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], dot, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        ctx.restore();
+    }
+
     // Paints a Holder: its internal Holder Stack (today: Engine-level
     // placeholder chrome only — no Holder Layers/Content Layer are yet
     // separately authored in Builder V2, Scene Model §7 open item 1),
@@ -337,7 +436,11 @@ const EngineV2Runtime = (function () {
         const wallTone = fields && fields.wallTone;
         const insets = _holderInsets(holder, fields, graph);
         const thicknessPx = insets.thicknessPx, marginPx = insets.marginPx, matPx = insets.matPx;
-        const cornerRadiusPx = fields && typeof fields.cornerRadius === 'number' ? Math.max(0, fields.cornerRadius) * graph.width * 0.001 : 0;
+        // Simplify Place & Frame Authoring — Corner Radius's own raw
+        // control is gone; radius is now always derived from the
+        // chosen Frame Style, mirroring root Studio's real renderer.
+        const ornamentCornerRadius = (FRAME_ORNAMENT_PRESET[(fields && fields.frame) || 'none'] || FRAME_ORNAMENT_PRESET.none).cornerRadius;
+        const cornerRadiusPx = ornamentCornerRadius * graph.width * 0.001;
         const shadowPreset = SHADOW_PRESETS[(fields && fields.shadow) || 'none'];
 
         // Each band below is a concentric *filled* shape, outside in —
@@ -357,18 +460,30 @@ const EngineV2Runtime = (function () {
             return { x: x, y: y, w: w, h: h };
         }
 
+        // Simplify Place & Frame Authoring — "a place with no
+        // customization... should be as good as transparent." Each of
+        // the three colour fields now has its own Transparent flag; when
+        // set, that band's fill is skipped entirely (a fully transparent
+        // fillStyle, never a fallback opaque tone) rather than painting
+        // something nobody asked for. Every check below defaults `false`
+        // for any pre-existing Frame with no such flag ever authored
+        // (`_ensureFrameFieldDefaults`), so this is a pure no-op for
+        // backward compatibility.
+        const wallTransparent = !!(fields && fields.wallToneTransparent);
+        const borderTransparent = !!(fields && fields.borderColorTransparent);
+
         // Outermost band: the wall margin (defaultMargin + inset,
         // wallTone) — this is also where Shadow is cast, since a
         // shadow belongs to the whole framed object, not just its
         // border. Drawn once, separately, so the shadow doesn't also
         // apply to every band stacked on top of it.
         ctx.save();
-        if (shadowPreset) {
+        if (shadowPreset && !wallTransparent) {
             ctx.shadowColor = shadowPreset.color;
             ctx.shadowBlur = shadowPreset.blur;
             ctx.shadowOffsetY = shadowPreset.offsetY;
         }
-        _band(0, (marginPx > 0 && wallTone) ? wallTone : '#E4DCCB');
+        _band(0, wallTransparent ? 'rgba(0,0,0,0)' : ((marginPx > 0 && wallTone) ? wallTone : '#E4DCCB'));
         ctx.restore(); // shadow must not leak into the bands drawn below
 
         ctx.save();
@@ -376,27 +491,43 @@ const EngineV2Runtime = (function () {
         ctx.clip();
 
         // Frame border band, inset by the wall margin.
-        if (thicknessPx > 0) _band(insets.borderInset, borderColor);
+        if (thicknessPx > 0) _band(insets.borderInset, borderTransparent ? 'rgba(0,0,0,0)' : borderColor);
 
-        // Mat band, inset by the border's own thickness — a fixed,
-        // neutral mat-board tone regardless of wallTone (traditionally
-        // white/cream regardless of the wall behind the frame).
+        // Mat band, inset by the border's own thickness. Simplify Place &
+        // Frame Authoring — "Mat Surface"'s own chosen value now
+        // actually resolves to a real colour (`MAT_MATERIAL_FILL`,
+        // mirroring root Studio's real Reader-facing render exactly)
+        // instead of a single hardcoded '#F5F2EA' every value used to
+        // paint identically; 'color' resolves the new Solid Colour
+        // swatch (`matColor`, itself Transparent-capable); 'transparent'
+        // and matColorTransparent both skip the fill outright.
         //
         // Feature 1 — Image-typed Frame Variations. `fields.background`
-        // gained a genuine `'image'` option (Frames screen, worldBuilderApp.js
-        // `_renderFramesPanel`) alongside its existing flat-colour enum
-        // values; when set, and the referenced `frameImage` resolves to a
-        // real, already-loaded Image (`graph.resolveLayerImage`, the
-        // identical "host resolves, this module only draws" cache/redraw
-        // pattern Decoration images already use above), it's painted
-        // covering ('fill') the exact same mat-band rect the flat colour
-        // fill already computed — the flat fill still draws first (a
+        // also offers a genuine `'image'` option (Frames screen,
+        // worldBuilderApp.js `_renderFramesPanel`); when set, and the
+        // referenced `frameImage` resolves to a real, already-loaded
+        // Image (`graph.resolveLayerImage`, the identical "host
+        // resolves, this module only draws" cache/redraw pattern
+        // Decoration images already use above), it's painted covering
+        // ('fill') the exact same mat-band rect the flat colour fill
+        // already computed — the flat fill still draws first (a
         // sensible base/fallback for a transparent-PNG source, and the
         // whole reason `_band` still runs unconditionally here), the
         // image simply layers on top when one is actually authored.
+        const bg = fields && fields.background;
+        let matFillColor = '#F5F2EA'; // unchanged legacy fallback -- unset/unrecognized background
+        if (bg === 'color') {
+            matFillColor = (fields.matColorTransparent) ? 'rgba(0,0,0,0)' : ((fields.matColor) || '#8B2C3B');
+        } else if (bg === 'transparent') {
+            matFillColor = 'rgba(0,0,0,0)';
+        } else if (bg && MAT_MATERIAL_FILL[bg]) {
+            matFillColor = MAT_MATERIAL_FILL[bg];
+        }
+        const matIsTransparent = matFillColor === 'rgba(0,0,0,0)';
+        let matRect = null;
         if (matPx > 0) {
-            const matRect = _band(insets.matInset, '#F5F2EA');
-            if (fields && fields.background === 'image' && fields.frameImage) {
+            matRect = _band(insets.matInset, matFillColor);
+            if (bg === 'image' && fields.frameImage) {
                 const bgImg = graph.resolveLayerImage(fields.frameImage);
                 if (bgImg) {
                     // "spin/rotate is missing" -- rotated around the mat
@@ -421,11 +552,21 @@ const EngineV2Runtime = (function () {
             }
         }
 
+        // A small, additive distinguishing cue per Frame Style — see
+        // `_paintFrameOrnament`'s own header comment. Painted after the
+        // mat (so it sits on top of it, matching a real frame's own
+        // wood-grain/tape/pin ornament) and before the content band.
+        _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent);
+
         // Content band — the Holder's own Padding (Engine Canon §6:
         // "inset between the Holder's edge and its content"), applied
         // after the Frame's own mat, so the two compose rather than
-        // overriding each other.
-        const contentRect = _band(insets.contentInset, matPx > 0 ? '#F5F2EA' : '#E4DCCB');
+        // overriding each other. Its own fallback now respects the same
+        // transparency signals as its neighbors -- a genuinely
+        // all-transparent Frame (every band above skipped) doesn't
+        // invent its own opaque backdrop here either.
+        const contentFallback = (matPx > 0 && !matIsTransparent) ? matFillColor : (wallTransparent ? 'rgba(0,0,0,0)' : '#E4DCCB');
+        const contentRect = _band(insets.contentInset, contentFallback);
         const cx = contentRect.x, cy = contentRect.y, cw = contentRect.w, chgt = contentRect.h;
 
         // Fit — how the Primary Element resolves against the Holder's

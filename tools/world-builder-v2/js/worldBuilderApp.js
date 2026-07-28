@@ -3793,12 +3793,43 @@
             theme: isArtwork ? null : theme,
             themeOptions: SAMPLE_THEME_OPTIONS,
             artworkTheme: isArtwork ? theme : null,
+            // Simplify Place & Frame Authoring -- a real, confirmed
+            // Working View fidelity bug: Layout/Holder/Frame chrome
+            // (_activeLayoutHolders/_resolveBorder/_resolveWallTone, all
+            // in renderer/slideRenderer.js) resolve through
+            // _layoutTheme(s), which only ever checks s.layoutTheme,
+            // then s.artworkTheme, then the GLOBAL
+            // ThemeEngine.getActiveTheme() -- never s.theme directly.
+            // For a Story-type World (isArtwork===false, artworkTheme
+            // left null above) this synthetic preview slide had no way
+            // to reach the live theme's own Layouts/Frame Variations at
+            // all, so Working View for the Frames/Layouts/
+            // Representations/Experiences screens silently fell back to
+            // a flat panel colour with zero Frame chrome regardless of
+            // what was actually being edited -- matching the reported
+            // "stuck on background colour" symptom exactly. Same fix
+            // already proven for Screen 2's carousel
+            // (js/creationFlow.js) -- stamp the live theme onto its own
+            // dedicated field; real slides never set this, so it's a
+            // no-op for every real render path.
+            layoutTheme: theme,
             imageView: null,
             overrides: null,
             pageType: 'story',
             metadata: Object.assign({
                 layout: active.layoutId,
-                cardOverrides: (isArtwork && frameId) ? { artwork: { frameVariation: frameId } } : null
+                // Same bug, second half: this reference feeds
+                // _resolveArtworkFields's frameVariationId, which alone
+                // decides whether ANY Frame/mat/border chrome counts as
+                // "explicit" and gets drawn at all
+                // (merged._hasExplicitChrome). Gating it on isArtwork
+                // meant a Story-type World's Frames screen could never
+                // show its own Frame's mat/border/ornament in Working
+                // View no matter what was selected -- only Wall Tone (a
+                // separate, Frame-independent resolution) ever showed.
+                // The currently-edited/previewed Frame should always be
+                // reflected here, regardless of World type.
+                cardOverrides: frameId ? { artwork: { frameVariation: frameId } } : null
             }, SAMPLE_METADATA)
         };
     }
@@ -6625,11 +6656,53 @@
         }), 'Inset between the Place’s edge and its content.');
 
         _renderFramePicker(scene, holder);
-        _renderContextualExperienceActions(scene, { sceneId: scene.id, placeId: holder.id }, {
-            compatibleType: 'frame',
-            defaultName: 'Frame for ' + holder.name,
-            attachedExperience: holder.frame ? window.ProjectModel.findExperience(currentProject, holder.frame) : null
-        });
+
+        // Simplify Place & Frame Authoring §6 -- Experience-as-Frame is a
+        // whole second, parallel authoring path (Nurturing/Personal/Public
+        // lifecycle, Hosted-By, Usage, Graduate, Reuse-Existing vocabulary)
+        // for the exact result the plain Frame picker right above it
+        // already gives 95% of authors. Tucked under a collapsed
+        // <details>, mirroring the identical idiom
+        // _renderHolderPermissionBlock already establishes just below
+        // this ("open when something's already true") -- collapsed by
+        // default, open automatically only once a Frame Experience is
+        // already attached, since at that point it's no longer
+        // "advanced," it's the real authoring surface for what's already
+        // there.
+        (function () {
+            const attachedExperience = holder.frame ? window.ProjectModel.findExperience(currentProject, holder.frame) : null;
+            const details = document.createElement('details');
+            details.className = 'wb-state-intro';
+            // Stay open not only once a Frame Experience is attached, but
+            // also while the Add/Reuse flow is actively in progress inside
+            // it -- otherwise clicking "Add Experience" re-renders the
+            // whole panel (via _renderContextPanel(), since
+            // contextualQuickCreateOpen is shared module state, not
+            // scoped to this <details>), rebuilds this block fresh with
+            // no attached Experience yet, and silently re-collapses
+            // around the very form the click just opened.
+            details.open = !!attachedExperience || contextualQuickCreateOpen || contextualReuseOpen;
+            const summary = document.createElement('summary');
+            summary.className = 'wb-state-intro-summary';
+            summary.textContent = attachedExperience
+                ? '🧵 This Frame is an Experience: ' + attachedExperience.name
+                : '🧵 Reuse this Frame as an Experience (Advanced)';
+            details.appendChild(summary);
+
+            const body = document.createElement('div');
+            body.className = 'wb-state-intro-body';
+            const outer = contextPanel;
+            contextPanel = body;
+            _renderContextualExperienceActions(scene, { sceneId: scene.id, placeId: holder.id }, {
+                compatibleType: 'frame',
+                defaultName: 'Frame for ' + holder.name,
+                attachedExperience: attachedExperience
+            });
+            contextPanel = outer;
+            details.appendChild(body);
+            contextPanel.appendChild(details);
+        })();
+
         _renderHolderPermissionBlock(scene, holder);
 
         const removeBtn = document.createElement('button');
@@ -7540,6 +7613,39 @@
         wrap.appendChild(input);
         wrap.appendChild(readout);
         return wrap;
+    }
+
+    // Simplify Place & Frame Authoring -- "where ever we are using colors
+    // an option of transparent color needs to be there." Wraps the plain
+    // _colorInput above with its own always-visible "Transparent"
+    // checkbox underneath -- mirrors this codebase's own established
+    // "keep the colour control visible but dim it, never hide it
+    // outright" convention (css/style.css's .is-transparent rule for
+    // Creator's own Decoration Shape fill fields) rather than a new
+    // pattern. The colour swatch itself is never disabled or removed --
+    // a Theme Author can still see and change what colour they'll get
+    // back the instant they un-check Transparent.
+    function _colorInputWithTransparent(value, transparentChecked, onColorChange, onTransparentChange) {
+        const outer = document.createElement('div');
+        const colorRow = _colorInput(value, onColorChange);
+        colorRow.classList.add('wb-color-with-transparent');
+        if (transparentChecked) colorRow.classList.add('wb-color-is-transparent');
+        outer.appendChild(colorRow);
+
+        const checkRow = document.createElement('label');
+        checkRow.className = 'wb-permission-row wb-transparent-toggle-row';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !!transparentChecked;
+        checkbox.disabled = currentProjectReadOnly;
+        checkbox.addEventListener('change', function () {
+            colorRow.classList.toggle('wb-color-is-transparent', checkbox.checked);
+            onTransparentChange(checkbox.checked);
+        });
+        checkRow.appendChild(checkbox);
+        checkRow.appendChild(document.createTextNode('Transparent'));
+        outer.appendChild(checkRow);
+        return outer;
     }
 
     // AV-009 — a raw camera-resolution photo can produce a multi-megabyte
@@ -9911,6 +10017,45 @@
 
     // ---------- State 4: Frames (Sprint B2.0) ----------
 
+    // Simplify Place & Frame Authoring — instead of always starting a
+    // new Frame from the same flat, hand-tuned baseline, an author
+    // picks a ready-made look from this gallery; the Frame Style
+    // Gallery mints a brand-new Frame record (never reuses/dedupes an
+    // existing one) with every preset.fields value already applied,
+    // landing the author directly on that Frame's own field editor,
+    // already good-looking, ready to fine-tune. Reuses _frameOptionCard
+    // verbatim (the same swatch+name card the Place activity's own
+    // Frame picker already uses) rather than a second card component.
+    function _renderFrameStyleGallery(project) {
+        const galleryHeading = document.createElement('h3');
+        galleryHeading.className = 'wb-context-heading';
+        galleryHeading.textContent = '🎨 Frame Style Gallery';
+        contextPanel.appendChild(galleryHeading);
+
+        const help = document.createElement('p');
+        help.className = 'wb-field-help';
+        help.textContent = 'Pick a ready-made look to start a brand-new Frame — you can still fine-tune every detail afterward.';
+        contextPanel.appendChild(help);
+
+        const grid = document.createElement('div');
+        grid.className = 'wb-scene-template-grid';
+        (window.FramePresets ? window.FramePresets.CATALOG : []).forEach(function (preset) {
+            grid.appendChild(_frameOptionCard(preset.name, preset.swatchColor, false, function () {
+                const frame = window.ProjectModel.addFrame(project);
+                Object.keys(preset.fields).forEach(function (key) {
+                    window.ProjectModel.setFrameFieldValue(project, frame.id, key, preset.fields[key]);
+                });
+                const uniqueName = window.ProjectModel._uniqueFrameName(project, preset.name);
+                window.ProjectModel.setFrameField(project, frame.id, 'name', uniqueName);
+                window.ProjectModel.setFrameField(project, frame.id, 'description', preset.description);
+                currentFrameId = frame.id;
+                _persist();
+                _renderWorkspace();
+            }));
+        });
+        contextPanel.appendChild(grid);
+    }
+
     function _renderFramesPanel() {
         contextPanel.innerHTML = '';
         const project = currentProject;
@@ -9936,7 +10081,26 @@
 
         _stateIntro('frames');
 
+        _renderFrameStyleGallery(project);
+
+        // "showing all frames at the same time, making the look really
+        // confusing" -- collapse the saved-Frames list behind a plain
+        // <details>, open by default only while there's nothing yet to
+        // be confusing about (0-1 Frames); already-crowded Worlds open
+        // it back up with one click instead of it being unavoidable.
         const frames = window.ProjectModel.frames(project);
+        const framesDetails = document.createElement('details');
+        framesDetails.className = 'wb-frames-list-details';
+        framesDetails.open = frames.length <= 1;
+        const framesSummary = document.createElement('summary');
+        framesSummary.className = 'wb-frames-list-summary';
+        framesSummary.textContent = 'Your Frames (' + frames.length + ')';
+        framesDetails.appendChild(framesSummary);
+        const framesBody = document.createElement('div');
+        framesBody.className = 'wb-frames-list-body';
+        framesDetails.appendChild(framesBody);
+        contextPanel.appendChild(framesDetails);
+
         frames.forEach(function (frame, idx) {
             const row = document.createElement('div');
             row.className = 'wb-rep-list-row' + (frame.id === currentFrameId ? ' active' : '');
@@ -9974,7 +10138,7 @@
                 currentFrameId = frame.id;
                 _renderWorkspace();
             });
-            contextPanel.appendChild(row);
+            framesBody.appendChild(row);
         });
 
         const addBtn = document.createElement('button');
@@ -9987,7 +10151,7 @@
             _persist();
             _renderWorkspace();
         });
-        contextPanel.appendChild(addBtn);
+        framesBody.appendChild(addBtn);
 
         const frame = window.ProjectModel.findFrame(project, currentFrameId);
         if (!frame) return;
@@ -10031,35 +10195,40 @@
         divider.textContent = 'Selected Frame';
         contextPanel.appendChild(divider);
 
-        // Sprint B2.0.6 — Property Editor grouping: Name|Wall Tone,
-        // Border|Corner Radius, Shadow|Inset, Padding|Margin, Thickness
-        // alone (doesn't pair naturally with what's left), Description
-        // last (multiline, full width).
+        // Simplify Place & Frame Authoring -- relabeled into a Theme
+        // Author's own plain vocabulary (never "Wall Tone (Background)"/
+        // "Padding (Mat Width)"/"Thickness (Frame Thickness)" again),
+        // Corner Radius and Inset removed outright (dead/confusing
+        // controls -- Corner Radius is now derived from Frame Style,
+        // §5 below; Inset stays a real, unremoved field, just with no
+        // UI of its own, easily confused with Wall Margin), and every
+        // colour field gains its own always-visible Transparent option.
         const nameGroup = _buildFieldGroup('Frame Name', _textInput(frame.name, function (v) {
             if (isExpBacked) window.ProjectModel.updateExperience(project, frame.id, { name: v });
             else window.ProjectModel.setFrameField(project, frame.id, 'name', v);
             _persist();
             _renderPreviewSelector();
         }));
-        const wallToneGroup = _buildFieldGroup('Wall Tone (Background)', _colorInput(f.wallTone, onFrameField('wallTone')));
-        _fieldRow(nameGroup, wallToneGroup);
+        const wallColourGroup = _buildFieldGroup('Wall Colour', _colorInputWithTransparent(
+            f.wallTone, !!f.wallToneTransparent, onFrameField('wallTone'), onFrameField('wallToneTransparent')
+        ));
+        _fieldRow(nameGroup, wallColourGroup);
 
         // Feature 1 — Image-typed Frame Variations. `background`/`frame`
         // have always been real, read fields (`_resolveArtworkFields`/
         // `_artworkBorder`/`_paintHolder`) silently defaulted by
         // `_ensureFrameFieldDefaults` with zero authoring UI anywhere
-        // until now. `background` now also offers a genuine `'image'`
-        // option — picking it reveals a Collection-aware picker for the
-        // new `frameImage` field below, reusing
-        // `_renderCollectionPickerCore` (the shared core extracted from
-        // `_renderCollectionPicker`) rather than a second upload
-        // mechanism. Both selects re-render the whole panel on change
-        // (`_renderFramesPanel()`, matching this file's own established
-        // "cheap full-panel re-render on any field that changes what
-        // else should show" convention, e.g. Layouts' Aspect/Composition
-        // auto-sync) so switching Background to/from 'image' correctly
-        // reveals/hides the picker immediately.
-        const backgroundGroup = _buildFieldGroup('Background', _select([
+        // until now. "Mat Surface" (relabeled from "Background") now
+        // also offers a genuine `'color'` option (Solid Colour, revealed
+        // just below) alongside the pre-existing `'image'` option —
+        // picking either reveals its own sub-control. Both selects
+        // re-render the whole panel on change (`_renderFramesPanel()`,
+        // matching this file's own established "cheap full-panel
+        // re-render on any field that changes what else should show"
+        // convention, e.g. Layouts' Aspect/Composition auto-sync) so
+        // switching Mat Surface to/from 'color'/'image' correctly
+        // reveals/hides its own picker immediately.
+        const backgroundGroup = _buildFieldGroup('Mat Surface', _select([
             { value: 'white', label: 'White' },
             { value: 'cream', label: 'Cream' },
             { value: 'kraft-paper', label: 'Kraft Paper' },
@@ -10068,9 +10237,10 @@
             { value: 'black', label: 'Black' },
             { value: 'transparent', label: 'Transparent' },
             { value: 'bulletin-board', label: 'Bulletin Board' },
+            { value: 'color', label: 'Solid Colour' },
             { value: 'image', label: 'Image' }
         ], f.background, function (v) { onFrameField('background')(v); _renderFramesPanel(); }));
-        const frameStyleGroup = _buildFieldGroup('Frame', _select([
+        const frameStyleGroup = _buildFieldGroup('Frame Style', _select([
             { value: 'none', label: 'None' },
             { value: 'white-mat', label: 'White Mat' },
             { value: 'floating', label: 'Floating' },
@@ -10080,6 +10250,12 @@
             { value: 'bulletin-board', label: 'Bulletin Board' }
         ], f.frame, onFrameField('frame')));
         _fieldRow(backgroundGroup, frameStyleGroup);
+
+        if (f.background === 'color') {
+            _fieldGroup('Solid Colour', _colorInputWithTransparent(
+                f.matColor, !!f.matColorTransparent, onFrameField('matColor'), onFrameField('matColorTransparent')
+            ));
+        }
 
         if (f.background === 'image') {
             const imageWrap = document.createElement('div');
@@ -10115,24 +10291,38 @@
             _fieldGroup('Rotation', _range(0, 359, f.frameImageRotation || 0, onFrameField('frameImageRotation')));
         }
 
-        const borderColorGroup = _buildFieldGroup('Border Color', _colorInput(f.borderColor, onFrameField('borderColor')));
-        const cornerRadiusGroup = _buildFieldGroup('Corner Radius', _range(0, 24, f.cornerRadius || 0, onFrameField('cornerRadius')));
-        _fieldRow(borderColorGroup, cornerRadiusGroup);
+        // Border Color now stands alone -- Corner Radius's own control is
+        // removed (§5, engineRuntime.js/renderer/slideRenderer.js derive
+        // corner radius from Frame Style instead of this raw number).
+        _fieldGroup('Border Color', _colorInputWithTransparent(
+            f.borderColor, !!f.borderColorTransparent, onFrameField('borderColor'), onFrameField('borderColorTransparent')
+        ));
 
+        // Shadow | Paper Texture (new) -- replaces Shadow | Inset; Inset's
+        // control is removed (the field itself is untouched in the data
+        // model/rendering, only its UI is gone -- too easily confused
+        // with Wall Margin/defaultMargin, which feeds the same band).
         const shadowGroup = _buildFieldGroup('Shadow', _select([
             { value: 'none', label: 'None' },
             { value: 'soft', label: 'Soft' },
             { value: 'floating', label: 'Floating' },
             { value: 'gallery', label: 'Gallery' }
         ], f.shadow, onFrameField('shadow')));
-        const insetGroup = _buildFieldGroup('Inset', _range(0, 20, f.inset || 0, onFrameField('inset')));
-        _fieldRow(shadowGroup, insetGroup);
+        const paperGroup = _buildFieldGroup('Paper Texture', _select([
+            { value: 'smooth', label: 'Smooth' },
+            { value: 'notebook', label: 'Notebook' },
+            { value: 'kraft', label: 'Kraft' },
+            { value: 'watercolor', label: 'Watercolor' },
+            { value: 'canvas', label: 'Canvas' },
+            { value: 'handmade', label: 'Handmade' }
+        ], f.paper, onFrameField('paper')));
+        _fieldRow(shadowGroup, paperGroup);
 
-        const matWidthGroup = _buildFieldGroup('Padding (Mat Width)', _range(0, 64, f.matWidth, onFrameField('matWidth')));
-        const defaultMarginGroup = _buildFieldGroup('Default Margin', _range(0, 40, f.defaultMargin || 0, onFrameField('defaultMargin')));
+        const matWidthGroup = _buildFieldGroup('Mat Width', _range(0, 64, f.matWidth, onFrameField('matWidth')));
+        const defaultMarginGroup = _buildFieldGroup('Wall Margin', _range(0, 40, f.defaultMargin || 0, onFrameField('defaultMargin')));
         _fieldRow(matWidthGroup, defaultMarginGroup);
 
-        _fieldGroup('Thickness (Frame Thickness)', _range(0, 40, f.frameThickness, onFrameField('frameThickness')));
+        _fieldGroup('Border Thickness', _range(0, 40, f.frameThickness, onFrameField('frameThickness')));
 
         _fieldGroup('Description', _textarea(frame.description, function (v) {
             window.ProjectModel.setFrameField(project, frame.id, 'description', v);

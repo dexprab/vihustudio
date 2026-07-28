@@ -121,6 +121,28 @@ const ProjectModel = (function () {
         // Experience content) -- additive, defaults to 0 (no rotation),
         // so every Frame authored before this exists renders identically.
         if (f.frameImageRotation === undefined) f.frameImageRotation = 0;
+        // `matColor` -- Simplify Place & Frame Authoring: a real "pick any
+        // colour" mat option (Background='color'). Only meaningful once
+        // that value is chosen; a reasonable default burgundy so a Frame
+        // switched to Solid Colour never starts on an undefined swatch.
+        if (f.matColor === undefined) f.matColor = '#8B2C3B';
+        // Simplify Place & Frame Authoring -- "where ever we are using
+        // colors an option of transparent color needs to be there."
+        // Mirrors the exact Colour-Experience-content convention
+        // already shipped (colorValue/colorOpacity/colorTransparent,
+        // Builder V3.1) rather than overloading the colour string
+        // itself with a special "transparent" value -- a checkbox
+        // alongside each colour swatch, independent of whatever hex
+        // value sits underneath it. Defaults to false for every Frame
+        // that predates this feature (a real, already-authored Frame's
+        // wall/border/mat were always concrete, visible colours, never
+        // transparent) -- a brand-new Frame's own transparent baseline
+        // is set explicitly by _defaultFrameFields() below, so these
+        // "if undefined" checks never fire for it and stay reserved
+        // for genuine backward-compat reconciliation only.
+        if (f.wallToneTransparent === undefined) f.wallToneTransparent = false;
+        if (f.borderColorTransparent === undefined) f.borderColorTransparent = false;
+        if (f.matColorTransparent === undefined) f.matColorTransparent = false;
         return frame;
     }
 
@@ -153,8 +175,28 @@ const ProjectModel = (function () {
         return order.map(function (id) { return byId[id]; }).filter(Boolean);
     }
 
+    // Simplify Place & Frame Authoring -- "a place with no customization
+    // ... is just a hook and make no difference. it should be exactly
+    // same [as transparent]." A brand-new Frame (from "+ Create Frame"
+    // only -- the Frame Style Gallery immediately overwrites these with
+    // a real preset's own `fields`) should render exactly like a Place
+    // with no Frame at all: zero visible wall/border/mat/shadow. Every
+    // value below is set explicitly, not left `undefined`, precisely so
+    // `_ensureFrameFieldDefaults`'s own backward-compat reconciliation
+    // (reserved for a Frame authored before one of these fields
+    // existed, which always resolves to a concrete, visible look) never
+    // overwrites this transparent baseline the first time the new
+    // Frame is read.
     function _defaultFrameFields() {
-        return { background: 'white', frame: 'white-mat', paper: 'smooth', matWidth: 20, frameThickness: 4, borderColor: '#1D3457', wallTone: '#F4F1EC', shadow: 'soft' };
+        return {
+            background: 'transparent', frame: 'none', paper: 'smooth',
+            matWidth: 0, frameThickness: 0, defaultMargin: 0,
+            borderColor: '#1D3457', borderColorTransparent: true,
+            wallTone: '#F4F1EC', wallToneTransparent: true,
+            matColor: '#8B2C3B', matColorTransparent: true,
+            shadow: 'none',
+            frameImage: null, frameImageRotation: 0
+        };
     }
 
     function addFrame(project) {
@@ -163,6 +205,18 @@ const ProjectModel = (function () {
         const frame = { id: id, name: 'New Frame', description: '', fields: _defaultFrameFields() };
         setFrame(project, frame);
         return frame;
+    }
+
+    // Neither addFrame nor duplicateFrame uniquify a Frame's own display
+    // NAME (only its id, via _uniqueId above) -- used by the Frame Style
+    // Gallery so two "Classic White" clicks in a row don't produce two
+    // identically-named records with no visible way to tell them apart.
+    function _uniqueFrameName(project, baseName) {
+        const existingNames = frames(project).map(function (f) { return f.name; });
+        if (existingNames.indexOf(baseName) === -1) return baseName;
+        let n = 2;
+        while (existingNames.indexOf(baseName + ' ' + n) !== -1) { n++; }
+        return baseName + ' ' + n;
     }
 
     function duplicateFrame(project, frameId) {
@@ -2100,6 +2154,7 @@ const ProjectModel = (function () {
         setFrame: setFrame,
         addFrame: addFrame,
         duplicateFrame: duplicateFrame,
+        _uniqueFrameName: _uniqueFrameName,
         deleteFrame: deleteFrame,
         setFrameField: setFrameField,
         setFrameFieldValue: setFrameFieldValue,
