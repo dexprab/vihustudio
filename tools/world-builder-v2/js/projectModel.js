@@ -918,16 +918,30 @@ const ProjectModel = (function () {
         return null;
     }
 
-    function setSceneBackground(project, sceneId, color) {
+    // `opacity` (0..1, default 1) — a real, user-requested "set the
+    // background colour as transparent" capability, added on top of the
+    // pre-existing colour-only signature (every existing caller omits it
+    // and keeps its exact opaque behaviour, byte-for-byte). Deliberately
+    // reuses the SAME "an ordinary full-bleed fill Scene Layer, not a
+    // special field" mechanism this function already established — a
+    // Layer's own `opacity` is already a real, already-rendered field
+    // (Universal Experience Content's Opacity slider) — so a fully
+    // transparent background is just this Layer at opacity 0, no new
+    // Engine capability, matching Engine Invariant 8 exactly.
+    function setSceneBackground(project, sceneId, color, opacity) {
+        const op = (typeof opacity === 'number') ? opacity : 1;
         const existing = _bottomFillLayer(project, sceneId);
         if (existing) {
             existing.color = color;
+            existing.opacity = op;
             return existing;
         }
-        return addSceneLayer(project, sceneId, {
+        const layer = addSceneLayer(project, sceneId, {
             kind: 'fill', name: 'Background', color: color,
             position: { x: 0, y: 0 }, size: { w: 1, h: 1 }, atBottom: true
         });
+        layer.opacity = op;
+        return layer;
     }
 
     function getSceneBackgroundColor(project, sceneId) {
@@ -1370,10 +1384,27 @@ const ProjectModel = (function () {
         if (fillMode === 'scene') {
             // Hosted by the Scene itself — the existing full-bleed
             // background fill mechanism, not a new Engine capability.
-            // Transparent means "leave whatever background already
-            // exists" — there's no new "no background" state to write.
-            if (kind === 'colour' && props.colorTransparent === false) {
-                setSceneBackground(project, sceneId, props.colorValue || '#F4F1EC');
+            //
+            // Real, user-requested fix — "I want option to set background
+            // color as transparent": Transparent used to mean "leave
+            // whatever background already exists," a documented no-op
+            // that never actually delivered what its own checkbox
+            // promised. Now it always keeps the Scene's own background
+            // fill Layer in sync with BOTH knobs the Colour section
+            // already offers — Transparent forces the Layer to opacity 0
+            // (rendered as literally nothing, engineRuntime.js's
+            // _paintLayer/renderer/slideRenderer.js's fill-kind branch
+            // both already early-return/no-op at opacity<=0), otherwise
+            // the Opacity slider's own value applies. render()/render(s)
+            // in both engines skip their opaque backdrop fallback
+            // whenever this full-bleed Layer exists (any opacity), so a
+            // fully transparent one now genuinely shows through to
+            // whatever sits behind the canvas — not a hardcoded cream
+            // fallback — while every Scene that never touches Colour at
+            // all keeps that fallback completely unchanged.
+            if (kind === 'colour') {
+                const opacity = props.colorTransparent ? 0 : (typeof props.colorOpacity === 'number' ? props.colorOpacity : 1);
+                setSceneBackground(project, sceneId, props.colorValue || '#F4F1EC', opacity);
             }
         } else {
             if (kind === 'colour' && props.colorTransparent === false) {

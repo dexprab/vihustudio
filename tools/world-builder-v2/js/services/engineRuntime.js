@@ -141,6 +141,24 @@ const EngineV2Runtime = (function () {
     // completely separate source built from the live Project, not this
     // graph) is unaffected.
     // ---------------------------------------------------------------
+    // Real, user-requested "set the background colour as transparent" —
+    // `js/projectModel.js`'s `setSceneBackground` (the Scene-hosted
+    // Colour Experience's own mechanism, Blueprint §9) is an ordinary
+    // full-bleed fill Layer pinned to the Stack's own bottom, exactly
+    // like every other Layer (Engine Invariant 8 — Canvas has no
+    // background property of its own). Whenever one exists, it IS the
+    // Scene's deliberate background — regardless of its own opacity —
+    // so the fallback backdrop below must never paint underneath it,
+    // even when the Layer itself is fully transparent (opacity 0): only
+    // then does "transparent" actually mean see-through rather than a
+    // hardcoded cream fill quietly showing through the gaps.
+    function _hasExplicitBottomFill(graph) {
+        const bottom = graph.stack[0];
+        if (!bottom || bottom.type !== 'layer' || bottom.object.kind !== 'fill') return false;
+        const size = bottom.object.size || { w: 0, h: 0 };
+        return (size.w || 0) >= 0.98 && (size.h || 0) >= 0.98;
+    }
+
     function render(ctx, graph) {
         const w = graph.width, h = graph.height;
         ctx.clearRect(0, 0, w, h);
@@ -149,9 +167,16 @@ const EngineV2Runtime = (function () {
         // background fill Layer (the common case, `setSceneBackground`)
         // paints over this entirely; nothing about this backdrop is
         // itself "the background" (Engine Invariant 8 — Canvas has no
-        // background property).
-        ctx.fillStyle = '#F4F1EC';
-        ctx.fillRect(0, 0, w, h);
+        // background property). Skipped outright when an explicit
+        // full-bleed background Layer already exists (any opacity,
+        // including fully transparent) — see `_hasExplicitBottomFill`'s
+        // own comment. A Scene that has never touched Colour at all is
+        // completely unaffected; this only ever engages once an author
+        // deliberately authors a Scene background.
+        if (!_hasExplicitBottomFill(graph)) {
+            ctx.fillStyle = '#F4F1EC';
+            ctx.fillRect(0, 0, w, h);
+        }
 
         const before = [], middle = [], after = [];
         graph.stack.forEach(function (entry) {

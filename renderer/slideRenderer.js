@@ -1363,6 +1363,27 @@ const SlideRenderer=(()=>{
     return pack.filter(function(l){ return !l || !l.scope || l.scope===chosenLayoutId; });
   }
 
+  // Real, user-requested "set the background colour as transparent" —
+  // Publish Fidelity's own mirror of engineRuntime.js's identical
+  // _hasExplicitBottomFill: a Scene-hosted Colour Experience's own
+  // full-bleed background fill Layer always compiles to target:'slide'
+  // (builder.js's convergeSceneLayer), so its presence here is the
+  // deliberate signal that this page's own opaque backdrop fallback
+  // (render(s)'s own fillStyle/fillRect line) must be skipped, letting
+  // the Layer's own colour+alpha (possibly fully transparent) be the
+  // ENTIRE base rather than painting underneath it. A page with no such
+  // Layer Pack entry is completely unaffected -- every existing theme,
+  // and any page authored before this capability, keeps its exact
+  // opaque wallTone/frameColor fallback.
+  function _hasSlideFullBleedFill(pack){
+    if(!pack) return false;
+    return pack.some(function(l){
+      return l && l.visible!==false && l.target==='slide' && l.type==='decoration' &&
+             l.decoration && l.decoration.kind==='fill' &&
+             l.rect && (l.rect.w||0)>=0.98 && (l.rect.h||0)>=0.98;
+    });
+  }
+
   // Sprint 9.7 — a declarative Layer Pack entry (Handle / Page Number)
   // may carry a `position` field pinning it to a specific corner,
   // overriding the Story Theme's own handlePosition/pageNumber default
@@ -2748,18 +2769,32 @@ const SlideRenderer=(()=>{
     // decides chrome-text legibility too -- a dark override still needs
     // light Handle/Page Number text, exactly like a dark wall tone does.
     const _chromeColor=_chromeTextColor(_bgOverride||_wallTone);
-    // A Story Author's own per-page Background Colour override (Context
-    // Panel's "Page Background" control) wins over both the World's own
-    // wall tone and the Story Theme's default frame colour -- see
-    // _slideBackgroundOverride's own comment for why this needed fixing.
-    x.fillStyle=_bgOverride||_wallTone||_frameColor(t,opts);
-    x.fillRect(0,0,_viewportW,_viewportH);
-
     // Sprint 9.6 — Slide-targeted layers (Gallery Spotlight) sit right
     // on the background wall, before the picture panel/border draws on
     // top of it. A theme with no layerPack (every theme before this
     // sprint) has _layerPack===null, so _renderLayers is a no-op.
     const _layerPack=_activeLayerPack(s);
+    // A Story Author's own per-page Background Colour override (Context
+    // Panel's "Page Background" control) wins over both the World's own
+    // wall tone and the Story Theme's default frame colour -- see
+    // _slideBackgroundOverride's own comment for why this needed fixing.
+    // Real, user-requested "set the background colour as transparent" —
+    // skipped outright (a plain clearRect instead) whenever no Story-
+    // Author override exists AND the World itself authored a real,
+    // full-bleed Scene background Layer (`_hasSlideFullBleedFill`,
+    // mirroring engineRuntime.js's own `_hasExplicitBottomFill` byte-
+    // for-byte) — that Layer's own colour+alpha, painted moments later
+    // in this same function's own 'slide'-target pass, becomes the
+    // entire base instead of this fallback painting underneath it,
+    // exactly as Builder's Working View/Runtime Preview already show. A
+    // page with no such Layer (every existing theme, and any page that
+    // never touches Colour) is completely unaffected.
+    if(!_bgOverride && _hasSlideFullBleedFill(_layerPack)){
+      x.clearRect(0,0,_viewportW,_viewportH);
+    }else{
+      x.fillStyle=_bgOverride||_wallTone||_frameColor(t,opts);
+      x.fillRect(0,0,_viewportW,_viewportH);
+    }
     // When this page uses the merged pass, 'slide'-target layers are
     // deferred into it instead of being bulk-drawn here — see that
     // pass's own comment.
