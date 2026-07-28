@@ -159,14 +159,18 @@ const StoryDestinations=(function(){
     // every glyph, vector shape, and Frame ornament renders natively
     // sharper, never a blurred upscale of a lower-resolution raster.
     // Before this fix, forcing dpr:1 here meant a destination whose own
-    // createCanvas size didn't match the logical viewport (e.g. the old
-    // "Print-ready PDF" at 1620×2025) was only ever a 1080×1350-quality
-    // render stretched up by the fit-composite step below, never a
-    // genuinely sharper one — see BOOK_FORMATS' own comment for the
-    // corrected 300 DPI print value. A raster Story image the child
-    // uploaded is still bounded by whatever resolution it was actually
-    // uploaded at — scale only benefits the app's own rendered content
-    // (text, Frames, decorations, Museum-style captions, etc.).
+    // createCanvas size didn't match the logical viewport (e.g. the old,
+    // *mislabeled* "Print-ready PDF" that once claimed 216 DPI at
+    // 1620×2025 pixels) was only ever a 1080×1350-quality render
+    // stretched up by the fit-composite step below, never a genuinely
+    // sharper one — see BOOK_FORMATS' own comment for the corrected
+    // 300 DPI print value. (Digital PDF's own, later, unrelated bump to
+    // a genuine 216 DPI happens to land on that identical 1620×2025
+    // pixel count — a coincidence of the math, not a reuse of the old
+    // bug's numbers on purpose.) A raster Story image the child uploaded
+    // is still bounded by whatever resolution it was actually uploaded
+    // at — scale only benefits the app's own rendered content (text,
+    // Frames, decorations, Museum-style captions, etc.).
     const scale=(opts && typeof opts.scale==='number' && opts.scale>0) ? opts.scale : 1;
     try{
       // Rule 5 — render the Slide at its OWN real Aspect Ratio first
@@ -205,7 +209,14 @@ const StoryDestinations=(function(){
 
   // ---------- Story Book (existing PDF path, wrapped as a destination) ----------
   // Two formats:
-  //   • Digital PDF     — 144 DPI, screen-sized JPEG per page. Small file.
+  //   • Digital PDF     — 216 DPI, bumped up from the original 144 DPI
+  //     per a direct follow-up ("Digital PDF too... bump it up as well,
+  //     e.g. matching Print-ready's 300 DPI or a middle ground") —
+  //     deliberately a middle ground, NOT matching Print-ready's 300 DPI
+  //     outright: collapsing the two down to nearly the same resolution
+  //     would erase the real distinction this format exists for (a
+  //     smaller, screen-optimized file vs. a true print-quality one),
+  //     leaving only a JPEG-quality difference between them.
   //   • Print-ready PDF — 300 DPI, the print-industry standard (was 216
   //     DPI — a real, disclosed Publish Quality fix, not just bigger
   //     numbers: see `renderScale`/`_renderSlideInto` below).
@@ -214,15 +225,13 @@ const StoryDestinations=(function(){
   // actually matters: it's the dpr SlideRenderer draws the page at (see
   // `_renderSlideInto`), not merely a bigger destination canvas — at
   // scale 1 the render happens natively at the logical 1080×1350
-  // viewport (144 DPI given a 540×675pt page); at scale (300/144) the
-  // SAME content renders into a genuinely higher-density backing store
-  // (2250×2813), so text/vector shapes/Frame ornaments come out crisp,
-  // not a blurred upscale of a lower-resolution raster — which is
-  // exactly what the old renderW:1620/renderH:2025 pairing produced,
-  // since nothing before this fix ever told SlideRenderer to draw at
-  // more than dpr:1.
+  // viewport (144 DPI given a 540×675pt page); at scale (216/144) or
+  // (300/144) the SAME content renders into a genuinely higher-density
+  // backing store (1620×2025 / 2250×2813), so text/vector shapes/Frame
+  // ornaments come out crisp, not a blurred upscale of a lower-resolution
+  // raster.
   const BOOK_FORMATS=[
-    {id:'digital',   label:'Digital PDF',   description:'Small file · great on screen', renderScale:1, renderW:1080, renderH:1350, jpegQuality:0.92, pageWpt:540, pageHpt:675},
+    {id:'digital',   label:'Digital PDF',   description:'216 DPI · sharp on screen, smaller file', renderScale:216/144, renderW:1620, renderH:2025, jpegQuality:0.92, pageWpt:540, pageHpt:675},
     {id:'print',     label:'Print-ready PDF', description:'300 DPI · true print quality', renderScale:300/144, renderW:2250, renderH:2813, jpegQuality:0.95, pageWpt:540, pageHpt:675}
   ];
   const BOOK={
