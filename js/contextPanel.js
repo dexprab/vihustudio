@@ -1499,6 +1499,49 @@ const ContextPanel=(function(){
     }
   }
 
+  // Add Image — the remaining piece of "Under add category for images":
+  // a genuinely new, freestanding picture the Story Author uploads from
+  // their OWN device, distinct from "From This World" below (which
+  // sources art the Theme Author already flagged in the World's own
+  // Collection registry). Reuses the exact hidden-file-input/FileReader/
+  // _storeUploadedAsset chain _appendWorldObjectEditControl's own Replace
+  // Image control already established, so an upload here is durably
+  // stored (vihu-asset:) the identical way every other picture upload in
+  // this app already is. Lands on an ordinary kind:'image' sticker's
+  // Refine panel — Position/Size/Rotation/Opacity/Lock/Duplicate/Delete —
+  // exactly like a Collection-sourced picture's own panel, since the
+  // picture itself is real artwork with nothing further to configure.
+  function _addImageObject(){
+    const slide=_currentSlide();
+    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    const fileInput=document.createElement('input');
+    fileInput.type='file';
+    fileInput.accept='image/*';
+    fileInput.addEventListener('change',function(){
+      const file=fileInput.files && fileInput.files[0];
+      if(!file) return;
+      const reader=new FileReader();
+      reader.onload=function(){
+        _storeUploadedAsset(reader.result,function(finalRef){
+          // Same synthetic-stickerId reasoning as _addShapeObject/
+          // _addTextObject/_addDoodleObject above — a fixed literal is
+          // fine since instance identity comes from st.id, not stickerId,
+          // and several freestanding photos may coexist on one page.
+          const st=SceneEngine.addSticker(slide,{
+            kind:'image', image:finalRef, stickerId:'image.upload',
+            w:320, h:320
+          });
+          if(!st) return;
+          if(typeof window.setSelectedSceneElement==='function'){
+            try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    fileInput.click();
+  }
+
   // Collection ("From This World") — Collection Phase 6. A Theme Author
   // may flag a Collection asset availableToCreator:true in World Builder
   // ("collection can have assets which are used in scenes and others
@@ -1635,10 +1678,17 @@ const ContextPanel=(function(){
   // it's open, so one combined entry point is enough — no pre-filtering
   // into a specific category. Shapes, Text, and Doodle are real, separate
   // capabilities (see _showShapePicker/_addTextObject/_addDoodleObject
-  // above). Photo was removed: it duplicates the existing per-Place "Add
-  // Artwork" flow already reachable by selecting a Place directly, which
-  // is where artwork replacement belongs. "From This World" (Collection
-  // Phase 6) only appears when the active Theme actually has at least one
+  // above). An earlier "Photo" row was removed once — it duplicated the
+  // per-Place "Add Artwork" flow (filling the Scene's own Artwork Place),
+  // which is where THAT kind of artwork replacement belongs. "Photo" here
+  // is a genuinely different capability, added for a later request's own
+  // "Under add category for images": a real, freestanding, ordinary
+  // Story-owned kind:'image' Decoration object the Story Author uploads
+  // from their own device (see _addImageObject above), grouped right
+  // beside "From This World" (Collection Phase 6, a World's own
+  // Theme-Author-flagged assets) so the two image-sourcing options read
+  // as one category, per that request's own framing. "From This World"
+  // only appears when the active Theme actually has at least one
   // availableToCreator Collection asset — never an empty, confusing
   // picker, matching this codebase's own established discipline for a
   // conditional row (e.g. the Caption tile's own actions-gated presence).
@@ -1650,7 +1700,8 @@ const ContextPanel=(function(){
       {id:'stickers',icon:'😀',label:'Emojis',onClick:function(){ _showStickerStudio(); }},
       {id:'shapes',icon:'🔺',label:'Shapes',onClick:function(){ _showShapePicker(); }},
       {id:'text',icon:'🅰️',label:'Text',onClick:function(){ _addTextObject(); }},
-      {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }}
+      {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
+      {id:'photo',icon:'🖼️',label:'Photo',onClick:function(){ _addImageObject(); }}
     ];
     if(_activeCollectionAssets().length>0){
       items.push({id:'fromWorld',icon:'🎁',label:'From This World',onClick:function(){ _showCollectionPicker(); }});
