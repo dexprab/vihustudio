@@ -2001,6 +2001,55 @@ const SlideRenderer=(()=>{
     return {bx:r.x,by:r.y,bw:r.w,bh:r.h};
   }
 
+  // Letter/Number shapes — "alphabets, numbers should also be part of
+  // shapes... your second interpretation is correct. the literal one.":
+  // a standalone, pickable Shape kind per A-Z/0-9 (SHAPE_KINDS), drawn as
+  // real, colourable/outlinable/rotatable glyph text rather than a
+  // hand-plotted vector path (36 hand-authored outlines would be
+  // impractical and lower quality than the browser's own font
+  // rendering) — mirrored by hand into engineRuntime.js's own
+  // _drawLetterShape for Builder's Working View/Runtime Preview.
+  function _shapeLetterChar(kind){
+    if(typeof kind!=='string') return null;
+    if(kind.indexOf('letter-')===0) return kind.slice(7);
+    if(kind.indexOf('number-')===0) return kind.slice(7);
+    return null;
+  }
+  function _drawLetterShape(ctx,ch,rect,cx,cy,d){
+    // Auto-fit: start near the full rect height, shrink proportionally
+    // only if the glyph's own measured width would overflow the rect —
+    // most letters/numbers are taller than wide, so height is the
+    // natural starting constraint and width is the one that ever needs
+    // correcting.
+    let fontSize=rect.h*0.82;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.font='bold '+fontSize+'px sans-serif';
+    const maxW=rect.w*0.86;
+    const measured=ctx.measureText(ch).width;
+    if(measured>maxW && measured>0){
+      fontSize=fontSize*(maxW/measured);
+      ctx.font='bold '+fontSize+'px sans-serif';
+    }
+    const baseAlpha=ctx.globalAlpha;
+    const fillA=(typeof d.fillOpacity==='number')?Math.max(0,Math.min(1,d.fillOpacity)):1;
+    const strokeA=(typeof d.strokeOpacity==='number')?Math.max(0,Math.min(1,d.strokeOpacity)):1;
+    // fillEnabled — the same "Outline Only" gate every other Shape kind
+    // already honours (undefined!==false keeps every pre-existing caller
+    // byte-identical).
+    if(d.fillEnabled!==false){
+      ctx.fillStyle=d.fillColor||'#F0B429';
+      ctx.globalAlpha=baseAlpha*fillA;
+      ctx.fillText(ch,cx,cy);
+    }
+    if(d.strokeWidth>0){
+      ctx.lineWidth=d.strokeWidth;
+      ctx.strokeStyle=d.strokeColor||'#24406B';
+      ctx.globalAlpha=baseAlpha*strokeA;
+      ctx.strokeText(ch,cx,cy);
+    }
+  }
+
   // A regular N-sided polygon inscribed in the same rx/ry ellipse
   // 'circle' already uses, point-up (matching 'star''s own starting
   // angle) — mirrors engineRuntime.js's own _regularPolygonPath.
@@ -2030,8 +2079,20 @@ const SlideRenderer=(()=>{
     x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
     const rotation=(typeof d.rotation==='number')?d.rotation:0;
     if(rotation){ x.translate(cx,cy); x.rotate(rotation*Math.PI/180); x.translate(-cx,-cy); }
-    x.beginPath();
     const kind=d.shape;
+    const letterCh=_shapeLetterChar(kind);
+    if(letterCh){
+      // Letter/Number shapes piggyback on the rotation transform above
+      // (already applied) but bypass the shared path-based fill()/
+      // stroke() tail entirely — fillText/strokeText already implement
+      // their own fill+stroke, matching a 'circle'/'star'/etc. shape's
+      // visible result exactly, just via glyph text instead of a plotted
+      // path.
+      _drawLetterShape(x,letterCh,rect,cx,cy,d);
+      x.restore();
+      return {bx:rect.x,by:rect.y,bw:rect.w,bh:rect.h};
+    }
+    x.beginPath();
     if(kind==='circle'){
       x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
     }else if(kind==='rectangle'){

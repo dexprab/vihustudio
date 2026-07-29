@@ -432,6 +432,51 @@ const StickerLibrary=(function(){
     {value:'arrow',label:'Arrow',icon:'➜'},
     {value:'speech-bubble',label:'Speech Bubble',icon:'💬'},
     {value:'banner',label:'Banner',icon:'🎗️'},
+    // Letters/Numbers — real, standalone, pickable Shape kinds, matching
+    // the "alphabets, numbers should also be part of shapes" requirement's
+    // own literal, confirmed reading: an individual letter/number is a
+    // Shape entry in this catalog, just like Circle/Star/Rectangle, not
+    // merely something the separate Shape-Mosaic Fill Style text mode can
+    // already render (that capability already existed and needed no work).
+    // Drawn via _drawLetterShape in renderer/slideRenderer.js, kept in
+    // lockstep with tools/world-builder-v2/js/services/engineRuntime.js's
+    // own mirrored copy.
+    {value:'letter-A',label:'Letter A',icon:'A'},
+    {value:'letter-B',label:'Letter B',icon:'B'},
+    {value:'letter-C',label:'Letter C',icon:'C'},
+    {value:'letter-D',label:'Letter D',icon:'D'},
+    {value:'letter-E',label:'Letter E',icon:'E'},
+    {value:'letter-F',label:'Letter F',icon:'F'},
+    {value:'letter-G',label:'Letter G',icon:'G'},
+    {value:'letter-H',label:'Letter H',icon:'H'},
+    {value:'letter-I',label:'Letter I',icon:'I'},
+    {value:'letter-J',label:'Letter J',icon:'J'},
+    {value:'letter-K',label:'Letter K',icon:'K'},
+    {value:'letter-L',label:'Letter L',icon:'L'},
+    {value:'letter-M',label:'Letter M',icon:'M'},
+    {value:'letter-N',label:'Letter N',icon:'N'},
+    {value:'letter-O',label:'Letter O',icon:'O'},
+    {value:'letter-P',label:'Letter P',icon:'P'},
+    {value:'letter-Q',label:'Letter Q',icon:'Q'},
+    {value:'letter-R',label:'Letter R',icon:'R'},
+    {value:'letter-S',label:'Letter S',icon:'S'},
+    {value:'letter-T',label:'Letter T',icon:'T'},
+    {value:'letter-U',label:'Letter U',icon:'U'},
+    {value:'letter-V',label:'Letter V',icon:'V'},
+    {value:'letter-W',label:'Letter W',icon:'W'},
+    {value:'letter-X',label:'Letter X',icon:'X'},
+    {value:'letter-Y',label:'Letter Y',icon:'Y'},
+    {value:'letter-Z',label:'Letter Z',icon:'Z'},
+    {value:'number-0',label:'Number 0',icon:'0'},
+    {value:'number-1',label:'Number 1',icon:'1'},
+    {value:'number-2',label:'Number 2',icon:'2'},
+    {value:'number-3',label:'Number 3',icon:'3'},
+    {value:'number-4',label:'Number 4',icon:'4'},
+    {value:'number-5',label:'Number 5',icon:'5'},
+    {value:'number-6',label:'Number 6',icon:'6'},
+    {value:'number-7',label:'Number 7',icon:'7'},
+    {value:'number-8',label:'Number 8',icon:'8'},
+    {value:'number-9',label:'Number 9',icon:'9'},
     {value:'custom',label:'Draw Your Own',icon:'✏️'}
   ];
   function getShapeKind(id){

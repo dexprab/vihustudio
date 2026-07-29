@@ -1026,6 +1026,56 @@ const EngineV2Runtime = (function () {
         }
     }
 
+    // Letter/Number shapes — "alphabets, numbers should also be part of
+    // shapes... your second interpretation is correct. the literal one.":
+    // a standalone, pickable Shape kind per A-Z/0-9 (ExperienceSchema
+    // .SHAPE_KINDS), drawn as real, colourable/outlinable/rotatable glyph
+    // text rather than a hand-plotted vector path (36 hand-authored
+    // outlines would be impractical and lower quality than the browser's
+    // own font rendering) — mirrored by hand into
+    // renderer/slideRenderer.js's own _drawLetterShape for the real
+    // Reader-facing Runtime.
+    function _shapeLetterChar(kind) {
+        if (typeof kind !== 'string') return null;
+        if (kind.indexOf('letter-') === 0) return kind.slice(7);
+        if (kind.indexOf('number-') === 0) return kind.slice(7);
+        return null;
+    }
+    function _drawLetterShape(ctx, ch, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity) {
+        // Auto-fit: start near the full rect height, shrink proportionally
+        // only if the glyph's own measured width would overflow the
+        // rect — most letters/numbers are taller than wide, so height is
+        // the natural starting constraint and width is the one that ever
+        // needs correcting.
+        let fontSize = rect.h * 0.82;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold ' + fontSize + 'px sans-serif';
+        const maxW = rect.w * 0.86;
+        const measured = ctx.measureText(ch).width;
+        if (measured > maxW && measured > 0) {
+            fontSize = fontSize * (maxW / measured);
+            ctx.font = 'bold ' + fontSize + 'px sans-serif';
+        }
+        const baseAlpha = ctx.globalAlpha;
+        const fillA = typeof fillOpacity === 'number' ? Math.max(0, Math.min(1, fillOpacity)) : 1;
+        const strokeA = typeof strokeOpacity === 'number' ? Math.max(0, Math.min(1, strokeOpacity)) : 1;
+        // No fillEnabled gate here — _drawShape's own caller never has one
+        // either (only renderer/slideRenderer.js's decoration-kind fill
+        // path exposes "Outline Only"), matching this function's own
+        // always-fills convention for every other kind.
+        ctx.fillStyle = fillColor || '#F0B429';
+        ctx.globalAlpha = baseAlpha * fillA;
+        ctx.fillText(ch, cx, cy);
+        if (strokeWidth > 0) {
+            ctx.lineWidth = strokeWidth;
+            ctx.strokeStyle = strokeColor || '#24406B';
+            ctx.globalAlpha = baseAlpha * strokeA;
+            ctx.strokeText(ch, cx, cy);
+        }
+        ctx.globalAlpha = baseAlpha;
+    }
+
     // A regular N-sided polygon inscribed in the same rx/ry ellipse
     // `circle` already uses, point-up (matching `star`'s own starting
     // angle) — shared by every basic straight-edged polygon
@@ -1065,6 +1115,16 @@ const EngineV2Runtime = (function () {
     function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity, customPath) {
         const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
         const rx = rect.w / 2, ry = rect.h / 2;
+        // Letter/Number kinds bypass the shared path-based fill()/
+        // stroke() tail entirely — fillText/strokeText already implement
+        // their own fill+stroke. Rotation is unaffected either way: the
+        // caller (_paintLayer) already applies it to ctx before this
+        // function ever runs, for every kind.
+        const letterCh = _shapeLetterChar(kind);
+        if (letterCh) {
+            _drawLetterShape(ctx, letterCh, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity);
+            return;
+        }
         ctx.beginPath();
         if (kind === 'circle') {
             ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
