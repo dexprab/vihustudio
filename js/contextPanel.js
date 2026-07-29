@@ -1539,76 +1539,66 @@ const ContextPanel=(function(){
   // generic icon, since the whole point is showing the Theme Author's
   // own real artwork.
   //
-  // "presented in a better manner" (a direct follow-up, mirroring the
-  // identical fix already shipped once for World Builder's own
-  // Collection reuse picker): the tile grid is a fixed-height horizontal
-  // scroll strip, not an unbounded vertical grid — a World's Collection
-  // grows every time a Theme Author flags a new asset for reuse, and
-  // this panel sits inline inside the right sidebar, so an unbounded
-  // grid kept making the whole Context Inspector taller. The scroll row
-  // + round arrow buttons + edge-fade mask reuse js/objectStrip.js's own
-  // already-polished ".this scroll can be better" pattern (css/
-  // style.css's .object-strip-scroll-row/-arrow/-list), rebuilt fresh
-  // every time this picker opens so it never needs persistent DOM ids —
-  // the arrow click handlers/scroll-position listener close over the
-  // local `list`/`prevBtn`/`nextBtn` variables directly.
+  // REVISITED per direct product feedback ("we have enough space.
+  // maximize space usage so maximum assets can be seen at a time"): the
+  // fixed-height horizontal-scroll-strip redesign that preceded this one
+  // (mirroring js/objectStrip.js's own pattern) traded away visible real
+  // estate for a bounded height — the right call for the Object Strip,
+  // which sits beside a fixed canvas, but the wrong call for a picker
+  // whose whole job is "browse everything this World offers." Reworked
+  // into a wrapping, auto-fill grid instead (mirroring Sticker Studio's
+  // own already-proven .sticker-studio-grid pattern, css/style.css:
+  // "repeat(auto-fill,minmax(Npx,1fr))") that fills the full width of
+  // the right sidebar and wraps into as many rows as needed — no per-
+  // picker scroll container or arrow buttons at all. .right-sidebar
+  // already scrolls (overflow-y:auto), the same safety net every other
+  // growing Context Panel section already relies on, so a large
+  // Collection simply makes the whole sidebar a little taller to scroll
+  // through, never forcing a second, nested scroll region. Entries are
+  // grouped by kind — Images / Graphics, the only two kinds
+  // registerCollectionAsset ever produces (confirmed via a repo-wide
+  // grep) — into two labelled sections, so a World's Collection reads
+  // as organized rather than one mixed pile.
+  function _collectionGroupLabel(kind){
+    return kind==='graphic' ? '🎭 Graphics' : '🖼️ Images';
+  }
+  function _buildCollectionTile(entry){
+    const tile=_el('button','context-collection-tile');
+    tile.type='button';
+    let src=entry.relPath;
+    if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+      try{ src=ThemeRegistry.resolveAssetRef(entry.themeId,entry.relPath)||entry.relPath; }catch(e){}
+    }
+    const thumb=_el('span','context-collection-tile-thumb');
+    const img=document.createElement('img');
+    img.src=src;
+    img.alt=entry.name;
+    thumb.appendChild(img);
+    tile.appendChild(thumb);
+    tile.appendChild(_el('span','context-collection-tile-label',entry.name));
+    tile.addEventListener('click',function(){ _addCollectionObject(entry); });
+    return tile;
+  }
   function _showCollectionPicker(){
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
     panelRoot.appendChild(_el('div','context-collection-picker-heading','🎁 From This World'));
 
-    const row=_el('div','context-collection-picker-row');
-    const prevBtn=_el('button','context-collection-picker-arrow','‹');
-    prevBtn.type='button';
-    prevBtn.setAttribute('aria-label','Scroll left');
-    const wrap=_el('div','context-collection-picker-wrap');
-    const list=_el('div','context-collection-picker-grid');
-    const nextBtn=_el('button','context-collection-picker-arrow','›');
-    nextBtn.type='button';
-    nextBtn.setAttribute('aria-label','Scroll right');
-
+    const groups={};
     _activeCollectionAssets().forEach(function(entry){
-      const tile=_el('button','context-collection-tile');
-      tile.type='button';
-      let src=entry.relPath;
-      if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
-        try{ src=ThemeRegistry.resolveAssetRef(entry.themeId,entry.relPath)||entry.relPath; }catch(e){}
-      }
-      const thumb=_el('span','context-collection-tile-thumb');
-      const img=document.createElement('img');
-      img.src=src;
-      img.alt=entry.name;
-      thumb.appendChild(img);
-      tile.appendChild(thumb);
-      tile.appendChild(_el('span','context-collection-tile-label',entry.name));
-      tile.addEventListener('click',function(){ _addCollectionObject(entry); });
-      list.appendChild(tile);
+      const key=entry.kind==='graphic' ? 'graphic' : 'image';
+      if(!groups[key]) groups[key]=[];
+      groups[key].push(entry);
     });
-
-    wrap.appendChild(list);
-    row.appendChild(prevBtn);
-    row.appendChild(wrap);
-    row.appendChild(nextBtn);
-    panelRoot.appendChild(row);
-
-    function scrollByPage(dir){
-      const amount=Math.max(160,list.clientWidth*0.8)*dir;
-      list.scrollBy({left:amount,behavior:'smooth'});
-    }
-    prevBtn.addEventListener('click',function(){ scrollByPage(-1); });
-    nextBtn.addEventListener('click',function(){ scrollByPage(1); });
-    function updateArrows(){
-      // Same 8px tolerance as js/objectStrip.js's own scroll-arrow
-      // update() — absorbs sub-pixel rounding from scroll-snap-type:x
-      // proximity settling near, but not exactly on, the true start/end.
-      const TOL=8;
-      const maxScroll=list.scrollWidth-list.clientWidth;
-      prevBtn.disabled=list.scrollLeft<=TOL;
-      nextBtn.disabled=maxScroll<=TOL || list.scrollLeft>=maxScroll-TOL;
-    }
-    list.addEventListener('scroll',updateArrows);
-    updateArrows();
+    ['image','graphic'].forEach(function(key){
+      const entries=groups[key];
+      if(!entries || !entries.length) return;
+      panelRoot.appendChild(_el('div','context-collection-group-label',_collectionGroupLabel(key)+' ('+entries.length+')'));
+      const grid=_el('div','context-collection-picker-grid');
+      entries.forEach(function(entry){ grid.appendChild(_buildCollectionTile(entry)); });
+      panelRoot.appendChild(grid);
+    });
 
     const btn=_el('button','context-btn','← Done Browsing');
     btn.type='button';
