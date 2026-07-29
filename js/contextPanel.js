@@ -63,6 +63,35 @@ const ContextPanel=(function(){
   let initialized=false;
   let stickerStudioOpen=false;
 
+  // BACKLOG.md item 4 ("Performance: ... moving object or choosing color
+  // becomes really difficult if there are over 20 objects on scene") — a
+  // real Playwright profiling reproduction confirmed ObjectStrip.refresh()
+  // (a full teardown-and-rebuild of every object card on the page) was
+  // responsible for 99.1% of a single drag-tick's cost when called from
+  // _afterQuickEditChange() below: 49.04ms/event at N=25 objects with the
+  // call present vs. 0.423ms/event with it stubbed out, over a simulated
+  // 30-tick native <input type=range>/<input type=color> drag gesture —
+  // ~1.47 seconds of blocking JS for one rotation-slider drag, directly
+  // matching the reported symptom. redrawPreview()/draw() and
+  // CardDesigner.refresh() were both separately, empirically confirmed to
+  // stay flat regardless of N (0.95x/0.92x scaling ratios N=3->50) and are
+  // therefore left firing on every tick unchanged below — only
+  // ObjectStrip.refresh() is debounced, via the one shared helper below so
+  // every call site (the World-owned/sticker-text quick-edit popup's own
+  // commit tail, and _appendBackground's Scene-hosted-background Colour
+  // Kit callback — both wired to a native <input type=range>/<input
+  // type=color>'s own continuously-firing 'input' event) coalesces onto
+  // the same timer rather than each keeping its own, independent one.
+  const OBJECT_STRIP_REFRESH_DEBOUNCE_MS=150;
+  let _objectStripRefreshTimer=null;
+  function _debouncedObjectStripRefresh(){
+    if(_objectStripRefreshTimer) clearTimeout(_objectStripRefreshTimer);
+    _objectStripRefreshTimer=setTimeout(function(){
+      _objectStripRefreshTimer=null;
+      if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){ try{ console.error('[Context Panel] ObjectStrip.refresh (debounced) failed:',e); }catch(_){} } }
+    },OBJECT_STRIP_REFRESH_DEBOUNCE_MS);
+  }
+
   // Right Panel Redesign — state for the Personalize ⇄ Refine swap.
   // personalizeExpanded: only meaningful once something is selected —
   // false shows the collapsed one-line strip, true re-expands the full
@@ -406,6 +435,25 @@ const ContextPanel=(function(){
   // quick-edit popup (_appendStickerTextEditControl below) now shares
   // this exact same commit tail, so the name no longer says "World"
   // only.
+  //
+  // BACKLOG.md item 4 (Performance with 20+ objects) — ObjectStrip.
+  // refresh() is a full teardown-and-rebuild of every object card on
+  // the page (confirmed via direct read of js/objectStrip.js's own
+  // refresh(): innerHTML='' then every card rebuilt from scratch, with
+  // real per-object canvas draws/Promise creation for image/shape/
+  // doodle visual kinds) — genuinely expensive, and every one of this
+  // function's ~15 call sites is wired to a native <input type=range>/
+  // <input type=color>'s own 'input' event, which fires continuously
+  // (many times per second) during a drag/pick gesture, not once at the
+  // end. Debouncing ONLY this call — never host.redraw()/markDirty(),
+  // both confirmed to stay flat regardless of object count and needed
+  // for live visual feedback on every tick — coalesces a whole drag
+  // gesture's worth of ticks into one real rebuild once the gesture
+  // settles, matching this codebase's own established "defer expensive
+  // work to gesture-end" convention (autosave/cloud-sync/asset-
+  // migration debouncing in js/projectManager.js, etc.). The canvas
+  // itself keeps repainting on every tick throughout — only the Object
+  // Strip's own thumbnail/label rebuild is deferred.
   function _afterQuickEditChange(){
     // Diagnostic-only addition — this catch used to swallow whatever
     // host.redraw() throws with zero signal, which could leave the
@@ -417,7 +465,7 @@ const ContextPanel=(function(){
       if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){ try{ console.error('[Context Panel] redraw after World-owned object edit failed:',e); }catch(_){} } }
       if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){ try{ console.error('[Context Panel] markDirty after World-owned object edit failed:',e); }catch(_){} } }
     }
-    if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){ try{ console.error('[Context Panel] ObjectStrip.refresh after World-owned object edit failed:',e); }catch(_){} } }
+    _debouncedObjectStripRefresh();
   }
 
   // Honor Grid follow-up — the World-owned Text object build. Kept as
@@ -1379,7 +1427,16 @@ const ContextPanel=(function(){
         SceneEngine.setContentOverride(slide,hostedBg.id,'fillColor',val);
         if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
         if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
-        if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
+        // BACKLOG.md item 4 (Performance) — this callback is wired to a
+        // native <input type=color>'s own 'input' event (via
+        // _appendColourKit -> buildColourKit's "Custom" swatch), which
+        // fires continuously during interactive colour-picker dragging in
+        // Chrome and similar browsers — the identical risk profile the
+        // World-owned quick-edit popup's own Rotation slider already had,
+        // confirmed and fixed via _afterQuickEditChange() above. Reuse the
+        // same shared debounce rather than calling ObjectStrip.refresh()
+        // unconditionally on every tick.
+        _debouncedObjectStripRefresh();
       });
       container.appendChild(row);
       return;
