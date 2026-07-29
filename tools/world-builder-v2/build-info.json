@@ -5,6 +5,6 @@
   "slice": "js/services/experienceSchema.js gained the shapeFill default field; js/projectModel.js's Engine Adapter mirrors a Text Experience's shapeFill choice onto its compiled Scene Layer exactly like every other typography field (rotation/opacity/fontWeight/etc.) already does; js/services/builder.js's compile step carries shapeFill through onto the published Theme's Layer Pack entry -- no Theme Contract/schema redesign, purely one more additive field riding the identical, already-proven typography-field pipeline. js/worldBuilderApp.js's Text content section Inspector gained a Fill Style (Solid/Shapes) toggle control matching root Studio's own quick-edit popups. Verified via verify_font_shapefill.js (37/0 PASS, spanning both surfaces) plus every existing rotation/text-fidelity suite (verify_text_rotation.js, verify_text_rotation_pivot.js, verify_text_align_fidelity_fix.js, verify_text_newline_fix.js, verify_rotation_publish_honored.js, verify_stretch_fit.js) confirmed passing unchanged. Full regression: both goldenBuild.js suites (World Builder v1 and v2) pass unchanged, confirming zero impact on the compile/validate/publish pipeline. No Theme Contract/Engine V2 Scene Model change; confined to js/projectModel.js, js/worldBuilderApp.js, and js/services/{builder,engineRuntime,experienceSchema}.js.",
   "build": "0140",
   "buildDate": "2026-07-29",
-  "commit": "PENDING",
+  "commit": "b286ede3fd472c76cbab13791f94b3396e8264c5",
   "environment": "Release"
 }
