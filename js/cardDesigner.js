@@ -869,18 +869,16 @@ const CardDesigner=(function(){
     lineColorLabel.className='designer-row-label';
     lineColorLabel.textContent='Line Color';
     lineColorRow.appendChild(lineColorLabel);
-    const lineColorInput=document.createElement('input');
-    lineColorInput.type='color';
-    lineColorInput.className='border-line-color-input';
-    lineColorInput.value=BORDER_DEFAULTS.lineColor;
-    lineColorInput.addEventListener('input',function(){
-      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
-      if(!b) return;
-      b.line=b.line||{};
-      b.line.color=lineColorInput.value;
-      _commitBorder();
-    });
-    lineColorRow.appendChild(lineColorInput);
+    buildColourKit(lineColorRow,{
+      value:BORDER_DEFAULTS.lineColor,
+      onChange:function(v){
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
+        if(!b) return;
+        b.line=b.line||{};
+        b.line.color=v;
+        _commitBorder();
+      }
+    }).classList.add('border-line-color-kit');
     borderGroup.appendChild(lineColorRow);
 
     // Shadow (on/off + intensity)
@@ -945,6 +943,123 @@ const CardDesigner=(function(){
     row.appendChild(toggle);
     parent.appendChild(row);
     input.addEventListener('change',function(){ onChange(input.checked); });
+  }
+
+  // ---- Colour Kit ----------------------------------------------------
+  // A shared, reusable colour-picking widget used everywhere a colour
+  // option exists in Creator ("the color kit should be available
+  // everywhere where color options are") — a row of curated swatches for
+  // a one-tap pick, plus a styled native colour input for anything else,
+  // and an optional Transparent toggle. Exposed via window.CardDesigner.
+  // buildColourKit so js/contextPanel.js can reuse the identical widget
+  // instead of a bare <input type=color>.
+  function _safeColorHex(c){
+    if(typeof c!=='string') return null;
+    const m=c.match(/^#?[0-9a-f]{6}/i);
+    return m ? ('#'+m[0].replace('#','').toLowerCase()) : null;
+  }
+  const COLOUR_KIT_DEFAULT_PALETTE=['#1D3457','#E0432B','#F4B942','#3FA34D','#2E86AB','#8E44AD','#E67E22','#111111','#FFFFFF','#8A1F10'];
+  function buildColourKit(parent,opts){
+    opts=opts||{};
+    const palette=opts.palette||COLOUR_KIT_DEFAULT_PALETTE;
+    const root=document.createElement('div');
+    root.className='colour-kit';
+
+    const swatchRow=document.createElement('div');
+    swatchRow.className='colour-kit-swatch-row';
+    root.appendChild(swatchRow);
+
+    let currentValue=_safeColorHex(opts.value)||palette[0];
+    let currentTransparent=!!opts.transparent;
+
+    const customInput=document.createElement('input');
+    customInput.type='color';
+    customInput.className='colour-kit-custom-input';
+
+    let transparentCheckbox=null;
+
+    function _sync(){
+      Array.prototype.forEach.call(swatchRow.querySelectorAll('.colour-kit-swatch'),function(el){
+        el.classList.toggle('active', !currentTransparent && el.getAttribute('data-color')===currentValue);
+      });
+      const customBtn=swatchRow.querySelector('.colour-kit-custom-btn');
+      const isCustom=palette.indexOf(currentValue)===-1;
+      if(customBtn) customBtn.classList.toggle('active', !currentTransparent && isCustom);
+      customPreview.style.background=isCustom?currentValue:'';
+      customInput.value=currentValue;
+      if(transparentCheckbox) transparentCheckbox.checked=currentTransparent;
+      root.classList.toggle('colour-kit-is-transparent',currentTransparent);
+    }
+
+    // Picking a real colour (a swatch or the custom native input) always
+    // turns Transparent back off, if it was on — firing onTransparentChange
+    // only when that was an actual state change, never a redundant call.
+    function _emitColor(v){
+      const wasTransparent=currentTransparent;
+      currentValue=_safeColorHex(v)||currentValue;
+      currentTransparent=false;
+      _sync();
+      if(typeof opts.onChange==='function') opts.onChange(currentValue);
+      if(wasTransparent && typeof opts.onTransparentChange==='function') opts.onTransparentChange(false);
+    }
+
+    palette.forEach(function(c){
+      const sw=document.createElement('button');
+      sw.type='button';
+      sw.className='colour-kit-swatch';
+      sw.setAttribute('data-color',c);
+      sw.style.background=c;
+      sw.title=c;
+      sw.addEventListener('click',function(){ _emitColor(c); });
+      swatchRow.appendChild(sw);
+    });
+
+    // "Custom" swatch — a styled native colour input, so any colour
+    // beyond the curated palette is one tap away with no separate control.
+    const customWrap=document.createElement('label');
+    customWrap.className='colour-kit-custom-btn';
+    customWrap.title='Custom colour';
+    const customPreview=document.createElement('span');
+    customPreview.className='colour-kit-custom-preview';
+    customWrap.appendChild(customPreview);
+    customInput.addEventListener('input',function(){ _emitColor(customInput.value); });
+    customWrap.appendChild(customInput);
+    swatchRow.appendChild(customWrap);
+
+    if(opts.showTransparent){
+      const tRow=document.createElement('label');
+      tRow.className='colour-kit-transparent-row';
+      transparentCheckbox=document.createElement('input');
+      transparentCheckbox.type='checkbox';
+      transparentCheckbox.className='colour-kit-transparent-checkbox';
+      transparentCheckbox.addEventListener('change',function(){
+        currentTransparent=transparentCheckbox.checked;
+        _sync();
+        if(typeof opts.onTransparentChange==='function') opts.onTransparentChange(currentTransparent);
+      });
+      tRow.appendChild(transparentCheckbox);
+      tRow.appendChild(document.createTextNode('Transparent'));
+      root.appendChild(tRow);
+    }
+
+    _sync();
+    // Lets a refresh function re-sync this widget's active state without
+    // rebuilding it — mirrors the query-and-toggle pattern every other
+    // refresh in this file already uses, just scoped to one DOM node.
+    // `disabled` reflects the Guardrails "locked" state a surface may
+    // already compute (e.g. a non-editable Place) — every real control
+    // inside the widget (swatch buttons, the custom input, the
+    // Transparent checkbox) is disabled together, matching how every
+    // other Frame Style/Refine control already disables as one group.
+    root.colourKitSync=function(value,transparent,disabled){
+      currentValue=_safeColorHex(value)||currentValue;
+      currentTransparent=!!transparent;
+      _sync();
+      root.classList.toggle('colour-kit-disabled',!!disabled);
+      Array.prototype.forEach.call(root.querySelectorAll('button,input'),function(el){ el.disabled=!!disabled; });
+    };
+    if(parent) parent.appendChild(root);
+    return root;
   }
 
   // Sprint 6.5 — border data lives under slide.metadata.cardOverrides.border.
@@ -1146,8 +1261,8 @@ const CardDesigner=(function(){
     const shadowToggle=mountedRoot.querySelector('.border-shadow-toggle');
     if(shadowToggle){ shadowToggle.checked=shadowEnabled; shadowToggle.disabled=locked; }
 
-    const lineColorInput=mountedRoot.querySelector('.border-line-color-input');
-    if(lineColorInput){ lineColorInput.value=_normalizeColor(lineColor); lineColorInput.disabled=locked||!lineEnabled; }
+    const lineColorKit=mountedRoot.querySelector('.border-line-color-kit');
+    if(lineColorKit&&lineColorKit.colourKitSync) lineColorKit.colourKitSync(_normalizeColor(lineColor),false,locked||!lineEnabled);
     const customColorInput=mountedRoot.querySelector('.border-fill-custom-input');
     if(customColorInput){
       if(isCustom) customColorInput.value=_normalizeColor(fillSetting);
@@ -1299,10 +1414,16 @@ const CardDesigner=(function(){
   const DOODLE_PALETTE=['#E63946','#F4A300','#FFD23F','#2A9D8F','#3A86FF','#8338EC','#1D3457','#FFFFFF'];
   const DOODLE_PASTEL_PALETTE=['#F6C6D2','#FDE2A7','#FFF3B0','#C9E4CA','#B5D8EB','#D6C6E1','#F4D9C6','#E8E4DC'];
   const DOODLE_BRUSH_PALETTE=['#B23A48','#D97D3D','#3F7D5C','#2B5F8A','#5B3A8C','#8C4A2E','#1B2A4A','#2E2E2E'];
+  // Spray -- the fourth drawing medium ("brushes, crayons, pastels,
+  // sprays"), an airy airbrush-like scatter of small dots rather than a
+  // continuous line -- its own curated palette, no colour shared with
+  // Crayon/Pastel/Brush's own 24 values above.
+  const DOODLE_SPRAY_PALETTE=['#FF3CAC','#00F5FF','#FFEA00','#7CFC00','#FF6B00','#9D00FF','#0047FF','#FF0054'];
   const DOODLE_MEDIA=[
     {id:'crayon', icon:'🖍️', label:'Crayon', palette:DOODLE_PALETTE},
     {id:'pastel', icon:'🎨', label:'Pastel', palette:DOODLE_PASTEL_PALETTE},
-    {id:'brush',  icon:'🖌️', label:'Brush',  palette:DOODLE_BRUSH_PALETTE}
+    {id:'brush',  icon:'🖌️', label:'Brush',  palette:DOODLE_BRUSH_PALETTE},
+    {id:'spray',  icon:'💨', label:'Spray',  palette:DOODLE_SPRAY_PALETTE}
   ];
   // Width fraction along a brush stroke's own length that the taper is
   // still ramping (0.15 -> 15% in from each end) -- shared by the two
@@ -1312,6 +1433,15 @@ const CardDesigner=(function(){
     if(t<0.15) return 0.35+(t/0.15)*0.65;
     if(t>0.85) return 0.35+((1-t)/0.15)*0.65;
     return 1;
+  }
+  // A deterministic (never Math.random -- so a Spray stroke renders
+  // identically on every redraw, matching Crayon's own design comment)
+  // GLSL-style sine hash, seeded by two plain integers -- used to scatter
+  // Spray's own dots around each stroke point without ever storing the
+  // scatter itself, only the stroke's real points.
+  function _sprayHash(i,k){
+    const x=Math.sin(i*12.9898+k*78.233)*43758.5453;
+    return x-Math.floor(x);
   }
   // The one real per-stroke drawing routine every Doodle surface in this
   // file routes through (only the live pad today -- the committed-render
@@ -1382,6 +1512,29 @@ const CardDesigner=(function(){
         g.stroke();
       });
       g.restore();
+    }else if(medium==='spray'){
+      // Airy, textured, airbrush-like -- a deterministic scatter of small
+      // dots around each point along the stroke (via _sprayHash, never
+      // Math.random) instead of a continuous line, mimicking a real spray
+      // can's own speckled coverage.
+      g.save();
+      g.fillStyle=col;
+      const dotsPerPoint=5;
+      const radius=Math.max(4,w*1.4);
+      points.forEach(function(p,i){
+        const m=mapPt(p);
+        for(let k=0;k<dotsPerPoint;k++){
+          const h1=_sprayHash(i,k), h2=_sprayHash(i+1000,k);
+          const angle=h1*Math.PI*2;
+          const dist=h2*radius;
+          const dotR=Math.max(0.6,w*0.09*(0.5+h1));
+          g.globalAlpha=baseAlpha*(0.28+0.35*h2);
+          g.beginPath();
+          g.arc(m.x+Math.cos(angle)*dist, m.y+Math.sin(angle)*dist, dotR, 0, Math.PI*2);
+          g.fill();
+        }
+      });
+      g.restore();
     }else{
       // Legacy/plain -- byte-identical to the original, pre-Coloring-Kit
       // algorithm. Every doodle stroke saved before this feature shipped
@@ -1423,7 +1576,6 @@ const CardDesigner=(function(){
     const selectedLabel=document.createElement('div');
     selectedLabel.className='sticker-selected-label';
     selectedLabel.textContent='Sticker';
-    editor.appendChild(selectedLabel);
 
     // Size — Bigger ↔ Smaller (uniform scale, preserves aspect ratio).
     // Real Vector Shapes + Freeform Text — hidden for kind:'text' (Text
@@ -1455,7 +1607,6 @@ const CardDesigner=(function(){
       _stickerUpdate({w:Math.round(target), h:Math.round(target/aspect)});
     });
     sizeRow.appendChild(sizeSlider);
-    editor.appendChild(sizeRow);
 
     // Rotation — Spin ↺ ↻.
     const rotRow=document.createElement('div');
@@ -1480,7 +1631,6 @@ const CardDesigner=(function(){
       _stickerUpdate({rotation:parseFloat(rotSlider.value)});
     });
     rotRow.appendChild(rotSlider);
-    editor.appendChild(rotRow);
 
     // Opacity — See Through.
     const opRow=document.createElement('div');
@@ -1505,7 +1655,6 @@ const CardDesigner=(function(){
       _stickerUpdate({opacity:Math.round(parseFloat(opSlider.value)*100)/100});
     });
     opRow.appendChild(opSlider);
-    editor.appendChild(opRow);
 
     // Flip row — Flip Left/Right + Flip Up/Down. Glyph stickers only —
     // Real Vector Shapes + Freeform Text: Shapes have no flip field in
@@ -1538,7 +1687,6 @@ const CardDesigner=(function(){
       flipIcons.appendChild(btn);
     });
     flipRow.appendChild(flipIcons);
-    editor.appendChild(flipRow);
 
     // "Colour This" — Auto Duotone recolor, per direct product decision
     // ("for every sticker/decoration/shape kid select i want a full
@@ -1566,27 +1714,25 @@ const CardDesigner=(function(){
         _stickerUpdate({recolorEnabled:false});
       }
     });
-    [['Inside Colour','bodyColor','sticker-body-color-input'],
-     ['Shade Colour','shadeColor','sticker-shade-color-input'],
-     ['Outline Colour','outlineColor','sticker-outline-color-input']].forEach(function(t){
+    [['Inside Colour','bodyColor','sticker-body-color-kit','#E0432B'],
+     ['Shade Colour','shadeColor','sticker-shade-color-kit','#8A1F10'],
+     ['Outline Colour','outlineColor','sticker-outline-color-kit','#1D3457']].forEach(function(t){
       const row=document.createElement('div');
       row.className='designer-row';
       const lbl=document.createElement('div');
       lbl.className='designer-row-label';
       lbl.textContent=t[0];
       row.appendChild(lbl);
-      const input=document.createElement('input');
-      input.type='color';
-      input.className=t[2];
-      input.addEventListener('input',function(){
-        const upd={};
-        upd[t[1]]=input.value;
-        _stickerUpdate(upd);
-      });
-      row.appendChild(input);
+      buildColourKit(row,{
+        value:t[3],
+        onChange:function(v){
+          const upd={};
+          upd[t[1]]=v;
+          _stickerUpdate(upd);
+        }
+      }).classList.add(t[2]);
       colorGroup.appendChild(row);
     });
-    editor.appendChild(colorGroup);
 
     // Real Vector Shapes — "outline shapes, geometry shapes, free style
     // shapes." Fill/Outline colour+opacity+thickness, mirroring World
@@ -1617,25 +1763,12 @@ const CardDesigner=(function(){
       lbl.className='designer-row-label';
       lbl.textContent='Fill Colour';
       row.appendChild(lbl);
-      const controls=document.createElement('div');
-      controls.className='sticker-shape-fill-color-controls';
-      const input=document.createElement('input');
-      input.type='color';
-      input.className='sticker-shape-fill-color-input';
-      input.addEventListener('input',function(){ _stickerUpdate({fillColor:input.value}); });
-      controls.appendChild(input);
-      const transparentLabel=document.createElement('label');
-      transparentLabel.className='sticker-shape-transparent-label';
-      const transparentCheckbox=document.createElement('input');
-      transparentCheckbox.type='checkbox';
-      transparentCheckbox.className='sticker-shape-transparent-checkbox';
-      transparentCheckbox.addEventListener('change',function(){
-        _stickerUpdate({fillEnabled:!transparentCheckbox.checked});
-      });
-      transparentLabel.appendChild(transparentCheckbox);
-      transparentLabel.appendChild(document.createTextNode('Transparent'));
-      controls.appendChild(transparentLabel);
-      row.appendChild(controls);
+      buildColourKit(row,{
+        value:'#F0B429',
+        showTransparent:true,
+        onChange:function(v){ _stickerUpdate({fillColor:v}); },
+        onTransparentChange:function(transparent){ _stickerUpdate({fillEnabled:!transparent}); }
+      }).classList.add('sticker-shape-fill-color-kit');
       fillFieldsWrap.appendChild(row);
       _makeSliderRow(fillFieldsWrap,{
         labelText:'Fill Opacity',valueClass:'sticker-shape-fill-opacity-value',sliderClass:'sticker-shape-fill-opacity-slider',
@@ -1652,11 +1785,10 @@ const CardDesigner=(function(){
       lbl.className='designer-row-label';
       lbl.textContent='Outline Colour';
       row.appendChild(lbl);
-      const input=document.createElement('input');
-      input.type='color';
-      input.className='sticker-shape-stroke-color-input';
-      input.addEventListener('input',function(){ _stickerUpdate({strokeColor:input.value}); });
-      row.appendChild(input);
+      buildColourKit(row,{
+        value:'#24406B',
+        onChange:function(v){ _stickerUpdate({strokeColor:v}); }
+      }).classList.add('sticker-shape-stroke-color-kit');
       shapeGroup.appendChild(row);
       _makeSliderRow(shapeGroup,{
         labelText:'Outline Opacity',valueClass:'sticker-shape-stroke-opacity-value',sliderClass:'sticker-shape-stroke-opacity-slider',
@@ -1774,8 +1906,6 @@ const CardDesigner=(function(){
       padLiveStroke=null;
     });
 
-    editor.appendChild(shapeGroup);
-
     // Freeform Text — "text should support all text related options.
     // nice kid friendly font... something which resemble handwriting
     // fonts." Reuses the fixed-Text section's own FONT_FAMILY_OPTIONS/
@@ -1869,11 +1999,10 @@ const CardDesigner=(function(){
     textColorLbl.className='designer-row-label';
     textColorLbl.textContent='Colour';
     textColorRow.appendChild(textColorLbl);
-    const textColorInput=document.createElement('input');
-    textColorInput.type='color';
-    textColorInput.className='sticker-text-color-input';
-    textColorInput.addEventListener('input',function(){ _stickerUpdate({color:textColorInput.value}); });
-    textColorRow.appendChild(textColorInput);
+    buildColourKit(textColorRow,{
+      value:'#1D3457',
+      onChange:function(v){ _stickerUpdate({color:v}); }
+    }).classList.add('sticker-text-color-kit');
     textGroup.appendChild(textColorRow);
 
     const textAlignRow=document.createElement('div');
@@ -1904,8 +2033,6 @@ const CardDesigner=(function(){
       min:120,max:1000,step:1,
       onInput:function(v){ _stickerUpdate({w:Math.round(v)}); }
     });
-
-    editor.appendChild(textGroup);
 
     // Doodle — a genuine multi-stroke freehand drawing capability
     // ("draw your own is just filling shape... this has potential to
@@ -2080,8 +2207,6 @@ const CardDesigner=(function(){
       doodleLivePoints=[];
     });
 
-    editor.appendChild(doodleGroup);
-
     // Layer ordering moved to the Object Strip's own drag-to-reorder
     // (per direct product feedback: "remove any reordering function from
     // the right panel") — the Order row that used to live here is gone;
@@ -2136,17 +2261,25 @@ const CardDesigner=(function(){
     });
     actionRow.appendChild(delBtn);
 
-    editor.appendChild(actionRow);
-
     // Sprint 9.4 — Holder → Sticker's theme-driven controls (today just
     // "shadow", e.g. Comic). Built as one additive container, hidden
     // entirely when the active workspace theme lists nothing here.
     const stickerWorkspace=document.createElement('div');
     stickerWorkspace.className='sticker-workspace-controls';
-    editor.appendChild(stickerWorkspace);
     if(typeof WorkspaceBuilder!=='undefined'){
       WorkspaceBuilder.layout(stickerWorkspace,'holder.sticker',{getSlide:_currentSlide,onChange:_commitSticker},stickerWorkspace);
     }
+
+    // Doodle first, then Colour Kit, then Size/Shape/Rotation/Opacity —
+    // per direct product direction ("move doodle area up. it should be
+    // first area than colors kit than size, shape, rotation, opacity").
+    // Every group above is built independently of DOM append order (none
+    // of them read from/depend on another group's element), so the whole
+    // visible sequence is decided here, in one place, rather than by
+    // moving each group's construction code around in the file.
+    [selectedLabel, doodleGroup, colorGroup, sizeRow, shapeGroup, rotRow, opRow, flipRow, textGroup, actionRow, stickerWorkspace].forEach(function(el){
+      editor.appendChild(el);
+    });
 
     body.appendChild(editor);
   }
@@ -2222,19 +2355,17 @@ const CardDesigner=(function(){
 
     if(isShapeKind){
       const fillEnabled=st.fillEnabled!==false;
-      const transparentCheckboxEl=section.querySelector('.sticker-shape-transparent-checkbox');
-      if(transparentCheckboxEl) transparentCheckboxEl.checked=!fillEnabled;
       const fillFieldsWrapEl=section.querySelector('.sticker-shape-fill-fields');
       if(fillFieldsWrapEl) fillFieldsWrapEl.classList.toggle('is-transparent',!fillEnabled);
-      const fillColorInput=section.querySelector('.sticker-shape-fill-color-input');
-      if(fillColorInput) fillColorInput.value=st.fillColor||'#F0B429';
+      const fillKit=section.querySelector('.sticker-shape-fill-color-kit');
+      if(fillKit&&fillKit.colourKitSync) fillKit.colourKitSync(st.fillColor||'#F0B429',!fillEnabled);
       const fillOpSlider=section.querySelector('.sticker-shape-fill-opacity-slider');
       const fillOpVal=section.querySelector('.sticker-shape-fill-opacity-value');
       const fillOp=typeof st.fillOpacity==='number'?st.fillOpacity:1;
       if(fillOpSlider) fillOpSlider.value=String(fillOp);
       if(fillOpVal) fillOpVal.textContent=Math.round(fillOp*100)+'%';
-      const strokeColorInput=section.querySelector('.sticker-shape-stroke-color-input');
-      if(strokeColorInput) strokeColorInput.value=st.strokeColor||'#24406B';
+      const strokeKit=section.querySelector('.sticker-shape-stroke-color-kit');
+      if(strokeKit&&strokeKit.colourKitSync) strokeKit.colourKitSync(st.strokeColor||'#24406B',false);
       const strokeOpSlider=section.querySelector('.sticker-shape-stroke-opacity-slider');
       const strokeOpVal=section.querySelector('.sticker-shape-stroke-opacity-value');
       const strokeOp=typeof st.strokeOpacity==='number'?st.strokeOpacity:1;
@@ -2272,8 +2403,8 @@ const CardDesigner=(function(){
       section.querySelectorAll('.sticker-text-style-btn').forEach(function(b){
         b.classList.toggle('active',b.getAttribute('data-style')===(st.fontStyle||'normal'));
       });
-      const textColorInputEl=section.querySelector('.sticker-text-color-input');
-      if(textColorInputEl) textColorInputEl.value=st.color||'#1D3457';
+      const textColorKit=section.querySelector('.sticker-text-color-kit');
+      if(textColorKit&&textColorKit.colourKitSync) textColorKit.colourKitSync(st.color||'#1D3457',false);
       section.querySelectorAll('.sticker-text-align-btn').forEach(function(b){
         b.classList.toggle('active',b.getAttribute('data-align')===(st.align||'center'));
       });
@@ -2309,12 +2440,12 @@ const CardDesigner=(function(){
 
     const recolorToggle=section.querySelector('.sticker-recolor-toggle');
     if(recolorToggle) recolorToggle.checked=!!st.recolorEnabled;
-    const bodyInput=section.querySelector('.sticker-body-color-input');
-    if(bodyInput) bodyInput.value=st.bodyColor||'#E0432B';
-    const shadeInput=section.querySelector('.sticker-shade-color-input');
-    if(shadeInput) shadeInput.value=st.shadeColor||'#8A1F10';
-    const outlineInput=section.querySelector('.sticker-outline-color-input');
-    if(outlineInput) outlineInput.value=st.outlineColor||'#1D3457';
+    const bodyKit=section.querySelector('.sticker-body-color-kit');
+    if(bodyKit&&bodyKit.colourKitSync) bodyKit.colourKitSync(st.bodyColor||'#E0432B',false);
+    const shadeKit=section.querySelector('.sticker-shade-color-kit');
+    if(shadeKit&&shadeKit.colourKitSync) shadeKit.colourKitSync(st.shadeColor||'#8A1F10',false);
+    const outlineKit=section.querySelector('.sticker-outline-color-kit');
+    if(outlineKit&&outlineKit.colourKitSync) outlineKit.colourKitSync(st.outlineColor||'#1D3457',false);
 
     const lockBtn=section.querySelector('.sticker-lock-btn');
     if(lockBtn){
@@ -2953,12 +3084,10 @@ const CardDesigner=(function(){
     colorLabel.className='designer-row-label';
     colorLabel.textContent='Color';
     colorRow.appendChild(colorLabel);
-    const colorInput=document.createElement('input');
-    colorInput.type='color';
-    colorInput.className='text-color-input';
-    colorInput.value='#ffffff';
-    colorInput.addEventListener('input',function(){ _setTextOverride('color',colorInput.value); });
-    colorRow.appendChild(colorInput);
+    buildColourKit(colorRow,{
+      value:'#ffffff',
+      onChange:function(v){ _setTextOverride('color',v); }
+    }).classList.add('text-color-kit');
     typoGroup.appendChild(colorRow);
 
     // Opacity
@@ -3104,8 +3233,8 @@ const CardDesigner=(function(){
     });
 
     // Color
-    const colorInput=mountedRoot.querySelector('.text-color-input');
-    if(colorInput) colorInput.value=_normalizeColor(ov.color||def.color);
+    const colorKit=mountedRoot.querySelector('.text-color-kit');
+    if(colorKit&&colorKit.colourKitSync) colorKit.colourKitSync(_normalizeColor(ov.color||def.color),false);
 
     // Opacity
     const opSlider=mountedRoot.querySelector('.text-opacity-slider');
@@ -3352,7 +3481,8 @@ const CardDesigner=(function(){
     focusSection:focusSection,
     getActiveImageView:getActiveImageView,
     notifyImageViewChanged:notifyImageViewChanged,
-    getSectionBody:getSectionBody
+    getSectionBody:getSectionBody,
+    buildColourKit:buildColourKit
   };
   try{ window.CardDesigner=api; }catch(e){}
   return api;

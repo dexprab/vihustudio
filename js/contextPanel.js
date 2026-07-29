@@ -558,15 +558,36 @@ const ContextPanel=(function(){
     return row;
   }
 
+  // "The color kit should be available everywhere where color options
+  // are" — the one shared seam every colour surface in this file (the 3
+  // _makeColorRow call sites below, plus _appendBackground's own 2
+  // direct colour inputs) funnels through, appending the shared,
+  // reusable Colour Kit widget (curated swatches + a custom native
+  // picker) js/cardDesigner.js already built and exposed on window.
+  // CardDesigner.buildColourKit, instead of a bare <input type=color>.
+  // Falls back to the original raw input only in the (practically
+  // unreachable) case CardDesigner hasn't loaded yet, so this can never
+  // leave a caller with no colour control at all.
+  function _appendColourKit(row,colorValue,onInput){
+    if(typeof window.CardDesigner!=='undefined' && typeof window.CardDesigner.buildColourKit==='function'){
+      window.CardDesigner.buildColourKit(row,{
+        value:_safeColor(colorValue),
+        onChange:function(v){ onInput(v); }
+      });
+    }else{
+      const input=document.createElement('input');
+      input.type='color';
+      input.className='theme-color-input';
+      input.value=_safeColor(colorValue);
+      input.addEventListener('input',function(){ onInput(input.value); });
+      row.appendChild(input);
+    }
+  }
+
   function _makeColorRow(parent,labelText,colorValue,onInput){
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label',labelText));
-    const input=document.createElement('input');
-    input.type='color';
-    input.className='theme-color-input';
-    input.value=_safeColor(colorValue);
-    input.addEventListener('input',function(){ onInput(input.value); });
-    row.appendChild(input);
+    _appendColourKit(row,colorValue,onInput);
     if(parent) parent.appendChild(row);
     return row;
   }
@@ -1337,26 +1358,18 @@ const ContextPanel=(function(){
       }
       const row=_el('div','designer-row context-row');
       row.appendChild(_el('div','designer-row-label','Background Colour'));
-      const input=document.createElement('input');
-      input.type='color';
-      input.className='theme-color-input';
-      input.value=_safeColor(hostedBg.visual.color);
-      input.addEventListener('input',function(){
-        SceneEngine.setContentOverride(slide,hostedBg.id,'fillColor',input.value);
+      _appendColourKit(row,hostedBg.visual.color,function(val){
+        SceneEngine.setContentOverride(slide,hostedBg.id,'fillColor',val);
         if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
         if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
         if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
       });
-      row.appendChild(input);
       container.appendChild(row);
       return;
     }
 
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label','Background Colour'));
-    const input=document.createElement('input');
-    input.type='color';
-    input.className='theme-color-input';
     const existing=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.background;
     let fallback='#1D3461';
     try{
@@ -1366,15 +1379,13 @@ const ContextPanel=(function(){
         fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
       }
     }catch(e){}
-    input.value=_safeColor(existing||fallback);
-    input.addEventListener('input',function(){
+    _appendColourKit(row,existing||fallback,function(val){
       if(!slide.metadata) slide.metadata={};
       if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
-      slide.metadata.cardOverrides.background=input.value;
+      slide.metadata.cardOverrides.background=val;
       if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
       if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
     });
-    row.appendChild(input);
     container.appendChild(row);
   }
 

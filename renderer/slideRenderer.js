@@ -3891,6 +3891,15 @@ const SlideRenderer=(()=>{
     if(t>0.85) return 0.35+((1-t)/0.15)*0.65;
     return 1;
   }
+  // A deterministic (never Math.random -- so a Spray stroke renders
+  // identically on every redraw) GLSL-style sine hash, seeded by two
+  // plain integers -- used to scatter Spray's own dots around each stroke
+  // point without ever storing the scatter itself, only the stroke's
+  // real points. Mirrors js/cardDesigner.js's own _sprayHash exactly.
+  function _sprayHash(i,k){
+    const v=Math.sin(i*12.9898+k*78.233)*43758.5453;
+    return v-Math.floor(v);
+  }
   function _drawDoodleStrokeOnCtx(points,rect,color,width,medium,baseAlpha){
     const mapPt=function(p){ return {x:rect.x+p.x*rect.w, y:rect.y+p.y*rect.h}; };
     const col=color||'#24406B';
@@ -3935,6 +3944,29 @@ const SlideRenderer=(()=>{
           if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
         });
         x.stroke();
+      });
+      x.restore();
+    }else if(medium==='spray'){
+      // Airy, textured, airbrush-like -- a deterministic scatter of small
+      // dots around each point along the stroke (via _sprayHash, never
+      // Math.random) instead of a continuous line, mimicking a real spray
+      // can's own speckled coverage.
+      x.save();
+      x.fillStyle=col;
+      const dotsPerPoint=5;
+      const radius=Math.max(4,w*1.4);
+      points.forEach(function(p,i){
+        const m=mapPt(p);
+        for(let k=0;k<dotsPerPoint;k++){
+          const h1=_sprayHash(i,k), h2=_sprayHash(i+1000,k);
+          const angle=h1*Math.PI*2;
+          const dist=h2*radius;
+          const dotR=Math.max(0.6,w*0.09*(0.5+h1));
+          x.globalAlpha=baseAlpha*(0.28+0.35*h2);
+          x.beginPath();
+          x.arc(m.x+Math.cos(angle)*dist, m.y+Math.sin(angle)*dist, dotR, 0, Math.PI*2);
+          x.fill();
+        }
       });
       x.restore();
     }else{
