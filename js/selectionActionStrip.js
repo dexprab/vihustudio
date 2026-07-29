@@ -43,7 +43,15 @@
 const SelectionActionStrip=(function(){
   let cfg={
     focusEditor:function(){},
-    getCurrentSlide:function(){ return null; }
+    getCurrentSlide:function(){ return null; },
+    // "change the size and shape of place if story author has allowed
+    // it" — a resizable Place's Shape picker (below) needs the exact
+    // same redraw/markDirty hooks js/contextPanel.js's own
+    // _afterQuickEditChange() already uses for a World-owned object
+    // edit; wired by js/app.js's own SelectionActionStrip.configure(...)
+    // call, mirroring its identical ContextPanel.configure(...) wiring.
+    redraw:function(){},
+    markDirty:function(){}
   };
   let root=null, badgeEl=null, nameEl=null, ownerEl=null, editBtn=null, deselectBtn=null, editPanelEl=null;
   // Tracks which object the inline popup currently belongs to, so a
@@ -130,6 +138,32 @@ const SelectionActionStrip=(function(){
     return objects.find(function(o){ return o.id===sel.sceneId; })||null;
   }
 
+  // Guardrails — a Place has no render-tree bbox entry of its own, so
+  // both refresh() (below, for `editable`) and _openEditPanel() (for
+  // `resizable`, gating the new Shape picker) ask the Theme Author's own
+  // compiled permissions directly via renderer/slideRenderer.js's
+  // getPlacePermissions — factored into one shared helper so the two
+  // call sites can never disagree about what a given Place is actually
+  // allowed. Mirrors js/cardDesigner.js's own established
+  // _placeEditableGuard pattern. `resizable` follows `moveable`'s own
+  // "absent resolves to false/closed" convention (renderer/
+  // slideRenderer.js's _resolvePlacePermissions) — a Place with no
+  // `resizable` value authored at all (every Place shipped before this
+  // feature) correctly resolves closed here too.
+  function _resolvePlacePerm(sceneId){
+    const slide=cfg.getCurrentSlide();
+    if(slide && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlacePermissions==='function'){
+      try{
+        const perm=SlideRenderer.getPlacePermissions(slide,sceneId);
+        return {
+          editable: !perm || perm.editable!==false,
+          resizable: !!(perm && perm.resizable)
+        };
+      }catch(e){ /* fall through to the safe default below */ }
+    }
+    return {editable:true, resizable:false};
+  }
+
   function refresh(){
     if(!root) return;
     if(typeof PageRuntime==='undefined'){ _hide(); return; }
@@ -166,18 +200,8 @@ const SelectionActionStrip=(function(){
       editable=!!obj.editable;
       moveable=!!obj.moveable;
     }else{
-      // A Place has no render-tree bbox entry — ask the Theme Author's
-      // own compiled guardrail directly, mirroring js/cardDesigner.js's
-      // own established _placeEditableGuard pattern.
-      const slide=cfg.getCurrentSlide();
-      if(slide && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlacePermissions==='function'){
-        try{
-          const perm=SlideRenderer.getPlacePermissions(slide,sel.sceneId);
-          editable=!perm || perm.editable!==false;
-        }catch(e){ editable=true; }
-      }else{
-        editable=true;
-      }
+      const perm=_resolvePlacePerm(sel.sceneId);
+      editable=perm.editable;
       moveable=true; // unused for a Place — its Edit button always shows regardless (see below)
     }
 
@@ -249,10 +273,27 @@ const SelectionActionStrip=(function(){
 
     const sel=(typeof PageRuntime!=='undefined') ? PageRuntime.getSelection() : null;
     const obj=sel ? _currentSceneObject(sel) : null;
+    const isPlace=!!(sel && sel.sceneType==='image-holder');
 
     let mounted=false;
     if(obj && typeof ContextPanel!=='undefined' && typeof ContextPanel.mountQuickEditControl==='function'){
       try{ mounted=ContextPanel.mountQuickEditControl(editPanelEl,obj); }catch(e){ mounted=false; }
+    }
+    // "change the size and shape of place if story author has allowed
+    // it" — a resizable Place gets a real Shape picker here, the one
+    // in-place quick-edit control a Place can have. A Place's SIZE
+    // itself is changed only via its own on-canvas resize handles
+    // (js/app.js's generic resize-drag handler, gated on this same
+    // `resizable` permission through renderer/slideRenderer.js's
+    // _supportsResize) — mirroring how every other resizable object in
+    // this app (Sticker/Text/Decoration) has its own size changed by
+    // dragging its handles, never a popup slider; a non-resizable Place
+    // (or one authored before this feature at all, absent → closed —
+    // see _resolvePlacePerm above) falls through to the existing,
+    // unchanged plain fallback below.
+    if(!mounted && isPlace){
+      const perm=_resolvePlacePerm(sel.sceneId);
+      if(perm.resizable) mounted=_mountPlaceShapePicker(editPanelEl,sel.sceneId);
     }
     if(!mounted) _openPanelFallback();
     // _positionWidget() first — it's what fixes the popup's own final
@@ -262,6 +303,64 @@ const SelectionActionStrip=(function(){
     _positionWidget();
     const areas=editPanelEl.querySelectorAll('textarea');
     for(let i=0;i<areas.length;i++) _autosizeTextarea(areas[i]);
+  }
+
+  // Runs the exact same redraw/markDirty/ObjectStrip.refresh() sequence
+  // js/contextPanel.js's own _afterQuickEditChange() runs after a
+  // World-owned object edit — kept as this module's own small copy
+  // (matching the established per-module vocabulary-table duplication
+  // precedent already used for _friendlyIcon above) rather than reaching
+  // into contextPanel.js's own closure-private function.
+  function _afterPlaceEdit(){
+    if(typeof cfg.redraw==='function'){ try{ cfg.redraw(); }catch(e){ try{ console.error('[Selection Action Strip] redraw after Place edit failed:',e); }catch(_){} } }
+    if(typeof cfg.markDirty==='function'){ try{ cfg.markDirty(); }catch(e){ try{ console.error('[Selection Action Strip] markDirty after Place edit failed:',e); }catch(_){} } }
+    if(typeof ObjectStrip!=='undefined' && typeof ObjectStrip.refresh==='function'){ try{ ObjectStrip.refresh(); }catch(e){ try{ console.error('[Selection Action Strip] ObjectStrip.refresh after Place edit failed:',e); }catch(_){} } }
+  }
+
+  // Reuses the exact .designer-row/.designer-row-label/.icon-row/
+  // .icon-card/.icon-label/.active vocabulary js/contextPanel.js's own
+  // _makeIconChoiceRow already established for every other single-select
+  // icon-choice control in this app (Font Style/Alignment, etc.) — this
+  // reads as the same control language, not a new one, and needs zero
+  // new CSS of its own (.selection-action-edit-panel .icon-row/.icon-
+  // card already have their own popup-scoped overrides, css/style.css).
+  const PLACE_SHAPE_CHOICES=[['rectangle','▭ Rectangle'],['rounded','▢ Rounded'],['circle','⬤ Circle']];
+
+  function _mountPlaceShapePicker(container,sceneId){
+    const slide=cfg.getCurrentSlide();
+    if(!slide) return false;
+    let current='rectangle';
+    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceShape==='function'){
+      try{ current=SlideRenderer.getPlaceShape(slide,sceneId)||'rectangle'; }catch(e){}
+    }
+    const row=document.createElement('div');
+    row.className='designer-row context-row';
+    const label=document.createElement('div');
+    label.className='designer-row-label';
+    label.textContent='Shape';
+    row.appendChild(label);
+    const icons=document.createElement('div');
+    icons.className='icon-row';
+    PLACE_SHAPE_CHOICES.forEach(function(c){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card'+(current===c[0]?' active':'');
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=c[1];
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        if(current===c[0]) return;
+        if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+        try{ SceneEngine.setContentOverride(slide,sceneId,'shape',c[0]); }catch(e){ return; }
+        _afterPlaceEdit();
+        _openEditPanel(); // rebuild the popup so the newly-picked shape shows as active
+      });
+      icons.appendChild(btn);
+    });
+    row.appendChild(icons);
+    container.appendChild(row);
+    return true;
   }
 
   // Real bug found via a second, real-content regression report ("this is

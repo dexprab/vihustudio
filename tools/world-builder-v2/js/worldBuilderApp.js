@@ -6840,7 +6840,7 @@
         details.className = 'wb-state-intro';
         const summary = document.createElement('summary');
         summary.className = 'wb-state-intro-summary';
-        const isOpen = holder.permissions.moveable || holder.permissions.editable;
+        const isOpen = holder.permissions.moveable || holder.permissions.editable || holder.permissions.resizable;
         summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
         details.appendChild(summary);
 
@@ -6856,6 +6856,21 @@
         }));
         body.appendChild(_permissionCheckbox('Should a Story Author see this at all?', holder.permissions.visible, function (v) {
             holder.permissions.visible = v;
+            _persist();
+        }));
+        // "change the size and shape of place if story author has
+        // allowed it" — a brand-new capability, deliberately never added
+        // to _defaultHolderPermissions() (projectModel.js) the way
+        // moveable/editable/visible always are for a fresh Place: every
+        // Place, new or already-authored, starts with `resizable` simply
+        // absent/undefined until a Theme Author explicitly checks this
+        // box — the same "no theme published before this feature ever
+        // authored a value, so absent must mean closed, everywhere"
+        // reasoning renderer/slideRenderer.js's own _resolvePlacePermissions
+        // and this file's own convergeScene compile step both already
+        // apply on the reading side.
+        body.appendChild(_permissionCheckbox('Can a Story Author change its size or shape?', holder.permissions.resizable, function (v) {
+            holder.permissions.resizable = v;
             _persist();
         }));
         details.appendChild(body);

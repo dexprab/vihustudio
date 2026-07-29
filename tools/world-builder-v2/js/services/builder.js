@@ -376,6 +376,27 @@ class BuildEngine {
                 const visible = !(h.permissions && h.permissions.visible === false);
                 const moveable = !(h.permissions && h.permissions.moveable === false);
                 const editable = !(h.permissions && h.permissions.editable === false);
+                // "change the size and shape of place if story author has
+                // allowed it" — a genuinely new, opt-in-only capability,
+                // deliberately compiled with the OPPOSITE default from the
+                // three permissions above: those default open (absent
+                // means "not explicitly closed"), because
+                // _defaultHolderPermissions() always stamps all three
+                // true for a real, live Holder, so absent is a rare edge
+                // case treated as "not yet locked." `resizable` is never
+                // stamped by that same function at all — it's absent on
+                // every Place, old or new, until a Theme Author
+                // explicitly checks the new "Can a Story Author change
+                // its size or shape?" box — so absent here must mean
+                // CLOSED, or every already-authored Place across every
+                // World would silently gain resize/shape capability the
+                // next time its Theme is Built, with nobody ever having
+                // opted in. Matches renderer/slideRenderer.js's own
+                // read-side _resolvePlacePermissions (`resizable:
+                // p.resizable===true`), which the same reasoning already
+                // governs for an already-compiled entry with no
+                // `resizable` key at all.
+                const resizable = !!(h.permissions && h.permissions.resizable === true);
                 return {
                     id: h.id,
                     name: h.name || null,
@@ -387,7 +408,8 @@ class BuildEngine {
                     frame: h.frame || null,
                     visible: visible,
                     moveable: moveable,
-                    editable: editable
+                    editable: editable,
+                    resizable: resizable
                 };
             })
         });

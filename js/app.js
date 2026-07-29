@@ -271,6 +271,14 @@ if(typeof SelectionActionStrip!=='undefined'){
   try{
     SelectionActionStrip.configure({
       getCurrentSlide:function(){ return PageRuntime.getActivePage(); },
+      // "change the size and shape of place if story author has allowed
+      // it" — the new Shape picker needs the exact same redraw/markDirty
+      // hooks ContextPanel.configure(...) already wires above, so a
+      // Place Shape edit made through this widget's own popup redraws
+      // the canvas and marks the project dirty exactly like every other
+      // quick-edit control in the app.
+      redraw:function(){ if(typeof window.redrawPreview==='function') window.redrawPreview(); },
+      markDirty:function(){ if(window.ProjectManager) ProjectManager.markDirty(); },
       focusEditor:function(){
         try{
           const panel=document.querySelector('.right-sidebar');

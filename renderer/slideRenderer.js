@@ -286,6 +286,24 @@ const SlideRenderer=(()=>{
     return (places && places[idx]) || null;
   }
 
+  // "change the size and shape of place if story author has allowed it" —
+  // resolves a Place's own shape (rectangle/rounded/circle): a Story-
+  // Author override first (js/selectionActionStrip.js's shape picker,
+  // written via SceneEngine.setContentOverride(...,'shape',...), gated on
+  // the same `resizable` permission that governs resize), else the
+  // Theme-Author-authored value (Builder's own compiled
+  // placeRects[i].shape, tools/world-builder-v2/js/services/builder.js's
+  // `shape: h.shape || 'rectangle'`), else 'rectangle' — matching every
+  // existing Place's own compiled default exactly, so this is byte-
+  // identical/backward-compatible for every theme authored before this
+  // feature and every Place with no override.
+  function _resolvePlaceShape(s,placeId){
+    const ov=_layerOverride(s,placeId);
+    if(ov && typeof ov.shape==='string' && ov.shape) return ov.shape;
+    const place=_placeByExternalId(s,placeId);
+    return (place && place.shape) || 'rectangle';
+  }
+
   function _layoutCompositionFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.composition) || 'below';
@@ -310,12 +328,21 @@ const SlideRenderer=(()=>{
   //    locked.
   //  - Absent `visible` resolves to `true` (a Place always showed before
   //    this fix).
+  //  - `resizable` (Story Author may change this Place's own size/shape) is
+  //    a BRAND NEW capability, added alongside `moveable` rather than
+  //    `editable` — so it follows `moveable`'s own "absent resolves to
+  //    false/closed" convention, not `editable`'s "absent resolves to
+  //    true/open" one. No theme published before this feature existed ever
+  //    authored a `resizable` value, so defaulting it closed means no
+  //    already-shipped Place silently becomes resizable/shapeable without
+  //    its Theme Author explicitly opting in.
   function _resolvePlacePermissions(place){
     const p=place||{};
     return {
       visible: p.visible!==false,
       moveable: p.moveable===true,
-      editable: p.editable!==false
+      editable: p.editable!==false,
+      resizable: p.resizable===true
     };
   }
   // Exported so app.js's grab-handle hit-test and js/objectStrip.js's
@@ -337,7 +364,7 @@ const SlideRenderer=(()=>{
   // Holder/image pipeline at all — see _drawQuoteText).
   function _drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition){
     if(s.image && s.image.width){
-      _drawImage(s,_border,_place1Rect);
+      _drawImage(s,_border,_place1Rect,null,null,'image-holder');
     }else if(_border){
       _drawArtworkPlaceholder(_place1Rect,_border,_chromeColor);
     }
@@ -354,8 +381,10 @@ const SlideRenderer=(()=>{
   }
 
   // An additional Place's own atomic paint step, extracted verbatim from
-  // render()'s old fixed Place-N loop body.
-  function _drawPlaceExtra(s,t,opts,placeRect,placeBorder,placeImg,placeView,_chromeColor){
+  // render()'s old fixed Place-N loop body. `placeId` (new) is this
+  // Place's own selection id — threaded through to _drawImage for
+  // shape-clipping (_resolvePlaceShape).
+  function _drawPlaceExtra(s,t,opts,placeRect,placeBorder,placeImg,placeView,_chromeColor,placeId){
     if(placeBorder){
       _drawPictureFrameFill(placeRect,placeBorder,t,s);
       _drawArtworkPresentation(placeRect,placeBorder);
@@ -363,7 +392,7 @@ const SlideRenderer=(()=>{
       _drawPanel(t.panel.color,opts.panelStyle,placeRect);
     }
     if(placeImg && placeImg.width){
-      _drawImage(s,placeBorder,placeRect,placeImg,placeView);
+      _drawImage(s,placeBorder,placeRect,placeImg,placeView,placeId);
     }else if(placeBorder){
       _drawArtworkPlaceholder(placeRect,placeBorder,_chromeColor);
     }
@@ -2374,6 +2403,27 @@ const SlideRenderer=(()=>{
     return {x:rect.x+dx, y:rect.y+dy, w:rect.w, h:rect.h};
   }
 
+  // Guardrails — a resizable Artwork Place's resize-handle drag writes a
+  // new absolute canvas-pixel {w,h} into the exact same generic override
+  // bag (js/sceneEngine.js's setSize/elementOverrides) every other
+  // resizable object already uses. Resizes about the AUTHORED rect's own
+  // pre-move center — this must run BEFORE _applyPlaceMoveOverride at
+  // every call site, since the real drag-resize gesture (js/app.js's
+  // generic resize-drag handler) always writes an absolute FINAL center
+  // into the position override that already accounts for whichever corner
+  // stayed fixed during the drag; applying the move override last,
+  // unconditionally forcing that exact center, is correct regardless of
+  // what size change preceded it. Absent an override (every Place today,
+  // and any non-resizable Place forever), this is a no-op — byte-
+  // identical to before this feature.
+  function _applyPlaceSizeOverride(rect,s,placeId){
+    const ov=_layerOverride(s,placeId);
+    if(!ov || !ov.size || typeof ov.size.w!=='number' || typeof ov.size.h!=='number') return rect;
+    const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+    const w=Math.max(1,ov.size.w), h=Math.max(1,ov.size.h);
+    return {x:cx-w/2, y:cy-h/2, w:w, h:h};
+  }
+
   // A normalized, kind-specific description of what a World-owned
   // object actually IS, for the Object Strip to render an accurate
   // thumbnail from (colour swatch / real image / real shape / real
@@ -2850,7 +2900,7 @@ const SlideRenderer=(()=>{
     // back to the full, unmodified panel rect — the true implicit-Place
     // case, unchanged.
     const _places=_activeLayoutPlaces(s);
-    const _place1Rect=_applyPlaceMoveOverride((_places && _places.length) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder');
+    const _place1Rect=_applyPlaceMoveOverride(_applyPlaceSizeOverride((_places && _places.length) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder'), s, 'image-holder');
     // Sprint 9.7 — "Each layout must define its own composition."
     // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
     // gallery wall with just a quote on it); 'right' keeps everything
@@ -3006,12 +3056,12 @@ const SlideRenderer=(()=>{
             // ('image-place-N'), deliberately distinct from the Place's
             // own compiled Builder id — see _placeByExternalId's own
             // comment for why the two id spaces are kept separate.
-            const _placeRect=_applyPlaceMoveOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId);
+            const _placeRect=_applyPlaceMoveOverride(_applyPlaceSizeOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId), s, _placeSelId);
             const _placeBorder=_resolveBorder(s,_placeSelId);
             const _placeContent=(s.metadata && s.metadata.placeContent && s.metadata.placeContent[_placeSelId])||null;
             const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
             const _placeView=(_placeContent && _placeContent.imageView)||null;
-            bbox=_drawPlaceExtra(s,t,opts,_placeRect,_placeBorder,_placeImg,_placeView,_chromeColor);
+            bbox=_drawPlaceExtra(s,t,opts,_placeRect,_placeBorder,_placeImg,_placeView,_chromeColor,_placeSelId);
             _thisPlaceRect=_placeRect;
           }
           // "Extend Experiences to Places" — paints any Experience Hosted
@@ -3041,6 +3091,7 @@ const SlideRenderer=(()=>{
             bbox.locked=!_perm.moveable;
             bbox.moveable=_perm.moveable;
             bbox.editable=_perm.editable;
+            bbox.resizable=_perm.resizable;
             _lastSceneElements.push(_sceneObject(bbox,'story'));
           }
         }else if(o.kind==='sticker'){
@@ -4128,17 +4179,21 @@ const SlideRenderer=(()=>{
   const HANDLE_RADIUS=18;
   function _supportsResize(el){
     if(!el || !el.type) return false;
+    // Guardrails — an Artwork Place (marked `isPlace`, distinguishing it
+    // from a real Cover/Hook/End Scene blueprint image-holder element,
+    // which keeps working exactly as below) gets its OWN independent
+    // `resizable` permission, checked BEFORE the generic Sprint 8.3
+    // `locked` gate below — a Place's `locked` flag only ever reflects
+    // its `moveable` permission (see the Place bbox-construction block
+    // in render()), so a Place can be resizable without being moveable,
+    // or moveable without being resizable; each Theme-Author permission
+    // stands alone. Absent `resizable` (every Place authored before this
+    // feature), this resolves false — byte-identical to before.
+    if(el.isPlace) return !!el.resizable;
     // Sprint 8.3 — Universal Object Consistency. Lock disables resize
     // (and drag) for ANY scene element type. Resize otherwise applies
     // to the Frame (image-holder), decorations, stickers, and text.
     if(el.locked) return false;
-    // Guardrails — an Artwork Place (marked `isPlace`, distinguishing it
-    // from a real Cover/Hook/End Scene blueprint image-holder element,
-    // which keeps working exactly as before) gets its own dedicated Move
-    // grab-handle instead of the generic 8-corner resize handles — no
-    // size-override read exists anywhere in _placePixelRectFor today, so
-    // showing resize handles here would silently do nothing useful.
-    if(el.isPlace) return false;
     // "honoring the story author can adjust this grid... finalize it
     // for any text object" — a World-owned Text Layer (Museum Caption-
     // style) was the one type excluded here even though Move already
@@ -4330,7 +4385,7 @@ const SlideRenderer=(()=>{
   // loaded Image + its own view bag), every line below reads those
   // instead, with no other change to this function's geometry/filter
   // logic.
-  function _drawImage(s,border,panelRect,imgOverride,viewOverride){
+  function _drawImage(s,border,panelRect,imgOverride,viewOverride,placeId){
     const rect=panelRect||{x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
     const insets=border ? _getDesignInsets(border) : {top:DEFAULT_IMG_PAD,right:DEFAULT_IMG_PAD,bottom:DEFAULT_IMG_PAD,left:DEFAULT_IMG_PAD};
     const pad=border ? border.padding : DEFAULT_IMG_PAD;
@@ -4404,11 +4459,31 @@ const SlideRenderer=(()=>{
     // the frame's corners. Inner radius = max(0, R - padding). Sprint
     // 6.5.1 — Cloud design clips the image to a cloud silhouette so the
     // picture really IS cloud-shaped.
+    //
+    // "change the size and shape of place if story author has allowed
+    // it" — a Place's own shape (rectangle/rounded/circle, Theme-
+    // authored or Story-Author-overridden, see _resolvePlaceShape) clips
+    // the ARTWORK IMAGE ITSELF, layered as one more fallback alongside
+    // the existing cloud/cornerRadius/rectangle branches — deliberately
+    // NOT a whole-Place clip mirroring Builder's own multi-band
+    // architecture (wall/border/mat/content), which is organically
+    // different from Studio's wall-tone/shadow system and too large/
+    // risky a change to safely regression-test here. `placeId` is
+    // omitted by every caller with no real Place concept (Cover/Hook/
+    // End's own image drawing, which never passes a 6th arg) — for
+    // those, placeShape stays the default 'rectangle' and this whole
+    // branch is a no-op, byte-identical to before this feature.
+    const placeShape=placeId ? _resolvePlaceShape(s,placeId) : 'rectangle';
     const innerRadius=border ? Math.max(0,(border.cornerRadius||0)-pad) : 0;
     if(border && border.design==='cloud'){
       _cloudPath(IMG_X,IMG_Y,IMG_W,IMG_H);
-    }else if(innerRadius>0){
-      _picturePath(IMG_X,IMG_Y,IMG_W,IMG_H,innerRadius);
+    }else if(placeShape==='circle'){
+      const r=Math.min(IMG_W,IMG_H)/2;
+      x.beginPath();
+      x.arc(IMG_X+IMG_W/2,IMG_Y+IMG_H/2,r,0,Math.PI*2);
+    }else if(innerRadius>0 || placeShape==='rounded'){
+      const r=placeShape==='rounded' ? Math.max(innerRadius,Math.min(IMG_W,IMG_H)*0.08) : innerRadius;
+      _picturePath(IMG_X,IMG_Y,IMG_W,IMG_H,r);
     }else{
       x.beginPath();
       x.rect(IMG_X,IMG_Y,IMG_W,IMG_H);
@@ -4474,11 +4549,11 @@ const SlideRenderer=(()=>{
   function getPlaceRects(s){
     const panelRect=_panelRectFor(s);
     const places=_activeLayoutPlaces(s);
-    if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(panelRect,s,'image-holder')}];
+    if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(_applyPlaceSizeOverride(panelRect,s,'image-holder'),s,'image-holder')}];
     return places.map(function(p,i){
       const id=i===0 ? 'image-holder' : ('image-place-'+(i+1));
       const rect=_placePixelRectFor(panelRect,p);
-      return { id:id, place:p, rect:_applyPlaceMoveOverride(rect,s,id) };
+      return { id:id, place:p, rect:_applyPlaceMoveOverride(_applyPlaceSizeOverride(rect,s,id),s,id) };
     });
   }
 
@@ -4947,7 +5022,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();
