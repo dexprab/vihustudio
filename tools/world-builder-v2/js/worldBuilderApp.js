@@ -508,11 +508,38 @@
         const glyphs = { common: '⚪', uncommon: '🟢', rare: '🔵', epic: '🟣', legendary: '🟡' };
         return glyphs[rarity] || '⚪';
     }
-    // A poker-card-ish 5:7 ratio at print-usable resolution (2.5in x
-    // 3.5in @ 280dpi) — the same intrinsic canvas pixels are what both
-    // the on-screen preview (scaled down via CSS) and the downloaded/
-    // printed PNG use, so "what you see is what prints."
+    // Real Trading Card Game (TCG) print standard -- the industry-
+    // standard "poker size" trim (2.5in x 3.5in, matching Magic: The
+    // Gathering / Pokemon / Yu-Gi-Oh) every real card-printing vendor
+    // (MakePlayingCards, DriveThruCards, etc.) builds to, their commonly-
+    // cited minimum accepted print resolution (300 DPI -- "true print
+    // quality," matching this codebase's own established Publish Quality
+    // precedent for exactly this threshold), and the standard 1/8in
+    // (0.125in) die-cut corner radius real card-cutting equipment uses.
+    // CARD_ART_W/CARD_ART_H stay the original design/logical drawing
+    // coordinate space (5:7 ratio, unchanged) every draw call below is
+    // already hand-tuned against; only the real <canvas> pixel buffer
+    // (CARD_PIXEL_W/CARD_PIXEL_H) and one uniform ctx.scale()
+    // (CARD_RENDER_SCALE) change, so the whole design renders identically,
+    // just at true 300 DPI native resolution instead of a lower-DPI image
+    // blurrily upscaled after the fact -- the same intrinsic canvas
+    // pixels are what both the on-screen preview (scaled down via CSS)
+    // and the downloaded/printed PNG use, so "what you see is what
+    // prints." Kept in lockstep by hand with the sibling Magic Card
+    // implementation (js/magicCardArt.js's own identical constants), per
+    // this codebase's own established "no cross-tool sharing, mirror
+    // instead" discipline for card art -- a future card type follows
+    // this identical pattern.
     const CARD_ART_W = 700, CARD_ART_H = 980;
+    const CARD_PRINT_DPI = 300;
+    const CARD_TRIM_IN_W = 2.5, CARD_TRIM_IN_H = 3.5;
+    const CARD_PIXEL_W = Math.round(CARD_TRIM_IN_W * CARD_PRINT_DPI);
+    const CARD_PIXEL_H = Math.round(CARD_TRIM_IN_H * CARD_PRINT_DPI);
+    const CARD_RENDER_SCALE = CARD_PIXEL_W / CARD_ART_W;
+    // The real, standard TCG die-cut corner radius (1/8in), expressed in
+    // the original design coordinate space so every existing draw call's
+    // own literal numbers keep working unchanged.
+    const CARD_CORNER_RADIUS = Math.round((0.125 / CARD_TRIM_IN_W) * CARD_ART_W);
 
     function _cardRoundRectPath(ctx, x, y, w, h, r) {
         ctx.beginPath();
@@ -539,13 +566,14 @@
     }
 
     function _drawCardFront(canvas, card, worldMeta) {
-        canvas.width = CARD_ART_W; canvas.height = CARD_ART_H;
+        canvas.width = CARD_PIXEL_W; canvas.height = CARD_PIXEL_H;
         const ctx = canvas.getContext('2d');
+        ctx.scale(CARD_RENDER_SCALE, CARD_RENDER_SCALE);
         const meta = CARD_RARITY_META[card.rarity] || CARD_RARITY_META.common;
 
         function paint(bgImage) {
             ctx.clearRect(0, 0, CARD_ART_W, CARD_ART_H);
-            _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+            _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, CARD_CORNER_RADIUS);
             ctx.save();
             ctx.clip();
 
@@ -634,7 +662,7 @@
             ctx.restore();
 
             // Card border, coloured per rarity.
-            _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, 34);
+            _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, CARD_CORNER_RADIUS - 2);
             ctx.lineWidth = 6;
             ctx.strokeStyle = meta.color;
             ctx.stroke();
@@ -656,10 +684,11 @@
     }
 
     function _drawCardBack(canvas, card) {
-        canvas.width = CARD_ART_W; canvas.height = CARD_ART_H;
+        canvas.width = CARD_PIXEL_W; canvas.height = CARD_PIXEL_H;
         const ctx = canvas.getContext('2d');
+        ctx.scale(CARD_RENDER_SCALE, CARD_RENDER_SCALE);
 
-        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, CARD_CORNER_RADIUS);
         const grad = ctx.createRadialGradient(CARD_ART_W * 0.35, CARD_ART_H * 0.22, 30, CARD_ART_W * 0.5, CARD_ART_H * 0.5, CARD_ART_H * 0.9);
         grad.addColorStop(0, '#2A2140');
         grad.addColorStop(1, '#120E1E');
@@ -667,7 +696,7 @@
         ctx.fill();
 
         ctx.save();
-        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, 36);
+        _cardRoundRectPath(ctx, 0, 0, CARD_ART_W, CARD_ART_H, CARD_CORNER_RADIUS);
         ctx.clip();
 
         // Simple gold corner flourishes — a Canvas-primitive stand-in
@@ -753,7 +782,7 @@
 
         ctx.restore();
 
-        _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, 34);
+        _cardRoundRectPath(ctx, 3, 3, CARD_ART_W - 6, CARD_ART_H - 6, CARD_CORNER_RADIUS - 2);
         ctx.lineWidth = 5;
         ctx.strokeStyle = '#E8C766';
         ctx.stroke();

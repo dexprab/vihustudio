@@ -41,7 +41,38 @@
 const MagicCardArt=(function(){
   'use strict';
 
+  // Real Trading Card Game (TCG) print standard -- the industry-
+  // standard "poker size" trim (2.5in x 3.5in, matching Magic: The
+  // Gathering / Pokemon / Yu-Gi-Oh) every real card-printing vendor
+  // (MakePlayingCards, DriveThruCards, etc.) builds to, their commonly-
+  // cited minimum accepted print resolution (300 DPI -- "true print
+  // quality," matching this codebase's own established Publish Quality
+  // precedent for exactly this threshold), and the standard 1/8in
+  // (0.125in) die-cut corner radius real card-cutting equipment uses.
+  // CARD_ART_W/CARD_ART_H stay the original design/logical drawing
+  // coordinate space (5:7 ratio, unchanged) every draw call below is
+  // already hand-tuned against; only the real <canvas> pixel buffer
+  // (CARD_PIXEL_W/CARD_PIXEL_H) and one uniform ctx.scale()
+  // (CARD_RENDER_SCALE) change, so the whole design renders identically,
+  // just at true 300 DPI native resolution instead of a lower-DPI image
+  // blurrily upscaled after the fact -- the same intrinsic canvas
+  // pixels are what both the on-screen preview (scaled down via CSS)
+  // and the downloaded/printed PNG use, so "what you see is what
+  // prints." Kept in lockstep by hand with the sibling World Card
+  // implementation (tools/world-builder-v2/js/worldBuilderApp.js's own
+  // identical constants), per this codebase's own established
+  // "no cross-tool sharing, mirror instead" discipline for card art --
+  // a future card type follows this identical pattern.
   const CARD_ART_W=700, CARD_ART_H=980;
+  const CARD_PRINT_DPI=300;
+  const CARD_TRIM_IN_W=2.5, CARD_TRIM_IN_H=3.5;
+  const CARD_PIXEL_W=Math.round(CARD_TRIM_IN_W*CARD_PRINT_DPI);
+  const CARD_PIXEL_H=Math.round(CARD_TRIM_IN_H*CARD_PRINT_DPI);
+  const CARD_RENDER_SCALE=CARD_PIXEL_W/CARD_ART_W;
+  // The real, standard TCG die-cut corner radius (1/8in), expressed in
+  // the original design coordinate space so every existing draw call's
+  // own literal numbers keep working unchanged.
+  const CARD_CORNER_RADIUS=Math.round((0.125/CARD_TRIM_IN_W)*CARD_ART_W);
   const GOLD='#FFCB45', CREAM='#fff6dd', INK='#eef1ff';
 
   function _roundRectPath(ctx,x,y,w,h,r){
@@ -204,10 +235,11 @@ const MagicCardArt=(function(){
   // ever opts.guardianPortrait's own fixed 'lumo' fetch.
   function drawFront(canvas,card,opts){
     opts=opts||{};
-    canvas.width=CARD_ART_W; canvas.height=CARD_ART_H;
+    canvas.width=CARD_PIXEL_W; canvas.height=CARD_PIXEL_H;
     const ctx=canvas.getContext('2d');
+    ctx.scale(CARD_RENDER_SCALE,CARD_RENDER_SCALE);
     ctx.clearRect(0,0,CARD_ART_W,CARD_ART_H);
-    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,36);
+    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,CARD_CORNER_RADIUS);
     ctx.save();
     ctx.clip();
 
@@ -392,10 +424,11 @@ const MagicCardArt=(function(){
   // ---------- Back: the real, permanent constellation ----------
   function drawBack(canvas,card,opts){
     opts=opts||{};
-    canvas.width=CARD_ART_W; canvas.height=CARD_ART_H;
+    canvas.width=CARD_PIXEL_W; canvas.height=CARD_PIXEL_H;
     const ctx=canvas.getContext('2d');
+    ctx.scale(CARD_RENDER_SCALE,CARD_RENDER_SCALE);
 
-    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,36);
+    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,CARD_CORNER_RADIUS);
     const grad=ctx.createRadialGradient(CARD_ART_W*0.35,CARD_ART_H*0.2,30,CARD_ART_W*0.5,CARD_ART_H*0.5,CARD_ART_H*0.9);
     grad.addColorStop(0,'#232d5c');
     grad.addColorStop(1,'#080a16');
@@ -403,7 +436,7 @@ const MagicCardArt=(function(){
     ctx.fill();
 
     ctx.save();
-    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,36);
+    _roundRectPath(ctx,0,0,CARD_ART_W,CARD_ART_H,CARD_CORNER_RADIUS);
     ctx.clip();
 
     ctx.textAlign='center';
