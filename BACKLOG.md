@@ -13,6 +13,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Color change swatch should be made available where ever colors are used. a standard rainbow color circle should be used for color picker
 - Draw your own functionality in builder should be same as draw your own feature in studio.
 - Performance : The studio starts to get glitchy , it slows down, moving object or choosing color becomes really difficult if there are over 20 objects on scene. This is critical. Performance needs to be ultra smooth with no glitches whatsoever.
+- Doodle drawn vs doodle shown has differences in line stroke thickness and space covered. also there is leakage from doodle sketch area to outside area.
 ## Feature Requests
 
 - Extend background-remover utility. Keep the same essence. replace the existing image editor during image upload in studio with this. when a image is uploaded in studio let it pass through Image Studio (renaming background-remover). It should allow user to crop, remove background, flip, rotate 
