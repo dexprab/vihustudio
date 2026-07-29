@@ -1921,6 +1921,59 @@ function _beginBoot(){
     const body=hasPages
       ? 'Continue working on “'+(info.title||'Untitled')+'” from your last session?'
       : 'Pick up where you left off on “'+(info.title||'Untitled')+'” — your project setup is saved.';
+    // Real, confirmed bug: "i was authoring a project in landscape mode.
+    // i hard refreshed the page and clicked on restore, the scene came
+    // back as portrait mode. when i clicked home, went into projects
+    // and reopened the project it came back as landscape as it was
+    // supposed to be." Root cause, traced end to end: an Official-
+    // Repository-backed (or World-Card-redeemed) Artwork Theme is only
+    // ever (re-)registered into ThemeRegistry via
+    // _refreshRepositoryWithTimeout()/ThemeRegistry.rehydrateRedeemed()
+    // — both of which run ONLY from inside _startCreationFlow(), never
+    // on this "valid saved session -> show the restore modal" path. A
+    // hard refresh wipes ThemeRegistry's entire in-memory catalog clean
+    // (module state doesn't survive a reload — only localStorage/
+    // IndexedDB do, and refreshFromRepository()'s own header comment
+    // confirms Personal-repository themes aren't even re-registered by
+    // it at all — Official only), so ThemeEngine.applyArtworkTheme()'s
+    // own ThemeRegistry.hasTheme(id) check — called from inside
+    // deserialize() — silently resolved to null the instant this
+    // project's own World hadn't been re-registered yet:
+    // AppState.project.artworkTheme dropped to null, renderer/
+    // slideRenderer.js's _layoutTheme(s) found no active World, and the
+    // Scene fell back to its default portrait viewport. "Home -> My
+    // Projects -> reopen" never hit this, because that whole navigation
+    // reloads through _startCreationFlow() first (the Home button's own
+    // discardSession()+reload(), landing on "Continue a Project"), which
+    // DOES call the repository refresh before the project is ever
+    // reopened — by the time a real human clicks through to a project
+    // card, the network round trip has very likely already settled.
+    //
+    // Fired here, in parallel with the modal appearing (never delaying
+    // its first paint), then explicitly awaited inside onPrimary right
+    // before restoreSession() actually resolves the theme — a slow or
+    // unreachable repository still only ever costs the same bounded
+    // ~4s timeout this function already uses for the Creation Flow
+    // path, and the modal itself is never held up by it.
+    //
+    // needsWorldRefresh — gated on the saved session actually carrying
+    // an artworkTheme: only THAT case has anything at risk of dropping
+    // to null on this path (a plain Story-Theme-only project has no
+    // World reference for a hard refresh to lose in the first place).
+    // Without this gate, every single Restore click would block on the
+    // same up-to-~4s network race regardless of whether it could ever
+    // matter — exactly the "jittery session" this whole codebase's own
+    // established convention (see _startCreationFlow()'s own comment
+    // just above, which deliberately runs this same refresh in the
+    // BACKGROUND rather than blocking first paint) works hard to avoid.
+    // Both refresh calls are still always FIRED unconditionally, in the
+    // background, regardless of this gate — a Story-only restore still
+    // benefits from a freshly-populated ThemeRegistry for anything it
+    // touches afterward; only whether onPrimary's own restore *waits*
+    // on them is gated.
+    const needsWorldRefresh=!!(info.data && info.data.project && info.data.project.artworkTheme);
+    const repoRefreshPromise=_refreshRepositoryWithTimeout();
+    try{ if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.rehydrateRedeemed==='function') ThemeRegistry.rehydrateRedeemed(); }catch(e){}
     showRestoreModal({
       title:'Restore Previous Project?',
       body:body,
@@ -1928,6 +1981,7 @@ function _beginBoot(){
       secondary:'Discard',
       onPrimary:async ()=>{
         try{
+          if(needsWorldRefresh) await repoRefreshPromise;
           await ProjectManager.restoreSession();
           setAutosaveStatus('saved');
           // Cloud-Primary Project Storage, Phase 5 — the moment a saved
