@@ -1159,7 +1159,121 @@ const CardDesigner=(function(){
   // from one another (a red head, a blue body, a green line for grass).
   const DOODLE_PAD_SIZE=260;
   const DOODLE_DEFAULT_SIZE=320;
+  // Coloring Kit -- three real drawing media, each pairing a distinct
+  // stroke-rendering style with its own curated palette, added directly
+  // on top of the original single flat colour/thickness picker per a
+  // direct product request ("wax colors, pastel colors and brush and
+  // crayons"). "Wax colors" and "crayons" are treated as one and the
+  // same medium here (crayons ARE wax) rather than two near-duplicate
+  // tools -- a disclosed reading, not silently assumed -- giving three
+  // genuinely distinct media: Crayon (bold, textured/grainy, opaque),
+  // Pastel (soft, chalky, translucent), and Brush (smooth, tapered,
+  // paintbrush-like). A stroke's own `medium` field decides which render
+  // path it takes (see _drawDoodleStrokeOnCtx below and its
+  // byte-identical-for-the-legacy-case twin in
+  // renderer/slideRenderer.js's _drawDoodleStrokes) -- an ABSENT medium
+  // (every doodle stroke ever saved before this feature shipped) always
+  // renders through the exact original plain algorithm, guaranteeing
+  // zero visual regression for already-authored content; only a stroke
+  // drawn after this shipped ever carries a real medium value.
   const DOODLE_PALETTE=['#E63946','#F4A300','#FFD23F','#2A9D8F','#3A86FF','#8338EC','#1D3457','#FFFFFF'];
+  const DOODLE_PASTEL_PALETTE=['#F6C6D2','#FDE2A7','#FFF3B0','#C9E4CA','#B5D8EB','#D6C6E1','#F4D9C6','#E8E4DC'];
+  const DOODLE_BRUSH_PALETTE=['#B23A48','#D97D3D','#3F7D5C','#2B5F8A','#5B3A8C','#8C4A2E','#1B2A4A','#2E2E2E'];
+  const DOODLE_MEDIA=[
+    {id:'crayon', icon:'🖍️', label:'Crayon', palette:DOODLE_PALETTE},
+    {id:'pastel', icon:'🎨', label:'Pastel', palette:DOODLE_PASTEL_PALETTE},
+    {id:'brush',  icon:'🖌️', label:'Brush',  palette:DOODLE_BRUSH_PALETTE}
+  ];
+  // Width fraction along a brush stroke's own length that the taper is
+  // still ramping (0.15 -> 15% in from each end) -- shared by the two
+  // hand-mirrored draw functions below so their tapers can never drift
+  // apart from one another.
+  function _doodleBrushTaper(t){
+    if(t<0.15) return 0.35+(t/0.15)*0.65;
+    if(t>0.85) return 0.35+((1-t)/0.15)*0.65;
+    return 1;
+  }
+  // The one real per-stroke drawing routine every Doodle surface in this
+  // file routes through (only the live pad today -- the committed-render
+  // twin in renderer/slideRenderer.js is a separately-maintained,
+  // hand-mirrored copy, matching this codebase's own established
+  // Shape-pad/real-renderer duplication discipline, since the two files
+  // have no shared module to route through). `mapPt` converts a stored,
+  // normalized 0..1 point into this caller's own pixel space; `points`
+  // is the stroke's raw array; `medium` is the stroke's own `medium`
+  // field (undefined for every pre-Coloring-Kit stroke). `g` must
+  // already have lineCap/lineJoin set to 'round' by the caller -- every
+  // branch below relies on that being carried through its own
+  // save()/restore() rather than re-setting it itself.
+  function _drawDoodleStrokeOnCtx(g,points,mapPt,color,width,medium,baseAlpha){
+    const col=color||'#24406B';
+    const w=typeof width==='number'?width:6;
+    if(medium==='pastel'){
+      // Soft, chalky, translucent -- a lower-alpha core stroke plus a
+      // same-colour shadow blur so the edge reads as bleeding chalk dust
+      // rather than a crisp line.
+      g.save();
+      g.globalAlpha=baseAlpha*0.55;
+      g.shadowColor=col;
+      g.shadowBlur=w*1.1;
+      g.strokeStyle=col;
+      g.lineWidth=Math.max(1,w*0.85);
+      g.beginPath();
+      points.forEach(function(p,i){ const m=mapPt(p); if(i===0) g.moveTo(m.x,m.y); else g.lineTo(m.x,m.y); });
+      g.stroke();
+      g.restore();
+    }else if(medium==='brush'){
+      // Smooth, tapered, paintbrush-like -- drawn as a run of short
+      // per-segment strokes whose own width follows _doodleBrushTaper's
+      // ease (thin at the very start/end of the stroke, full width
+      // through the middle), rather than one flat-width path.
+      g.save();
+      g.globalAlpha=baseAlpha;
+      g.strokeStyle=col;
+      const n=points.length;
+      for(let i=0;i<n-1;i++){
+        const t=i/Math.max(1,n-1);
+        g.lineWidth=Math.max(1,w*_doodleBrushTaper(t));
+        const p1=mapPt(points[i]), p2=mapPt(points[i+1]);
+        g.beginPath();
+        g.moveTo(p1.x,p1.y);
+        g.lineTo(p2.x,p2.y);
+        g.stroke();
+      }
+      g.restore();
+    }else if(medium==='crayon'){
+      // Bold, waxy, slightly grainy -- three deterministic (never
+      // Math.random-jittered, so it renders identically on every redraw)
+      // passes of the same path at a small fixed offset, shrinking width
+      // and alpha, layering into a textured edge and internal density
+      // variation a single flat stroke can't show.
+      g.save();
+      const passes=[{dx:0,dy:0,ws:1,as:0.55},{dx:1,dy:-1,ws:0.85,as:0.32},{dx:-1,dy:1,ws:0.7,as:0.28}];
+      passes.forEach(function(pass){
+        g.globalAlpha=baseAlpha*pass.as;
+        g.strokeStyle=col;
+        g.lineWidth=Math.max(1,w*pass.ws);
+        g.beginPath();
+        points.forEach(function(p,i){
+          const m=mapPt(p);
+          const px=m.x+pass.dx, py=m.y+pass.dy;
+          if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
+        });
+        g.stroke();
+      });
+      g.restore();
+    }else{
+      // Legacy/plain -- byte-identical to the original, pre-Coloring-Kit
+      // algorithm. Every doodle stroke saved before this feature shipped
+      // has no `medium` field at all and always takes this branch.
+      g.globalAlpha=baseAlpha;
+      g.beginPath();
+      points.forEach(function(p,i){ const m=mapPt(p); if(i===0) g.moveTo(m.x,m.y); else g.lineTo(m.x,m.y); });
+      g.lineWidth=w;
+      g.strokeStyle=col;
+      g.stroke();
+    }
+  }
   function _drawDoodlePad(canvas,strokes,liveStroke){
     const g=canvas.getContext('2d');
     g.clearRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
@@ -1167,17 +1281,13 @@ const CardDesigner=(function(){
     g.fillRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
     g.lineCap='round';
     g.lineJoin='round';
+    const scale=DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE;
+    const mapPt=function(p){ return {x:p.x*DOODLE_PAD_SIZE, y:p.y*DOODLE_PAD_SIZE}; };
     const all=(strokes||[]).concat(liveStroke?[liveStroke]:[]);
     all.forEach(function(s){
       if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-      g.beginPath();
-      s.points.forEach(function(p,i){
-        const px=p.x*DOODLE_PAD_SIZE, py=p.y*DOODLE_PAD_SIZE;
-        if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
-      });
-      g.lineWidth=Math.max(1,(typeof s.width==='number'?s.width:6)*(DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE));
-      g.strokeStyle=s.color||'#24406B';
-      g.stroke();
+      const w=Math.max(1,(typeof s.width==='number'?s.width:6)*scale);
+      _drawDoodleStrokeOnCtx(g,s.points,mapPt,s.color,w,s.medium,1);
     });
   }
 
@@ -1702,7 +1812,8 @@ const CardDesigner=(function(){
     doodleHint.textContent='Draw below with your mouse or finger. Lift to start a new line.';
     doodleGroup.appendChild(doodleHint);
 
-    let doodlePenColor=DOODLE_PALETTE[0];
+    let doodleMedium=DOODLE_MEDIA[0].id;
+    let doodlePenColor=DOODLE_MEDIA[0].palette[0];
     let doodlePenWidth=6;
 
     const doodlePadWrap=document.createElement('div');
@@ -1713,18 +1824,56 @@ const CardDesigner=(function(){
     doodlePadWrap.appendChild(doodleCanvas);
     doodleGroup.appendChild(doodlePadWrap);
 
+    // Coloring Kit -- a small tool row (Crayon/Pastel/Brush) picking which
+    // medium the NEXT stroke uses; switching medium swaps the swatch row
+    // right below it to that medium's own curated palette and resets the
+    // current pen colour to its first swatch, matching how picking up a
+    // different real tool naturally starts you on its own first colour.
+    const doodleMediaRow=document.createElement('div');
+    doodleMediaRow.className='doodle-media-row';
+    DOODLE_MEDIA.forEach(function(m){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='doodle-media-btn';
+      btn.setAttribute('data-medium',m.id);
+      btn.title=m.label;
+      const ic=document.createElement('span'); ic.className='doodle-media-icon'; ic.textContent=m.icon;
+      const lb=document.createElement('span'); lb.className='doodle-media-label'; lb.textContent=m.label;
+      btn.appendChild(ic); btn.appendChild(lb);
+      btn.addEventListener('click',function(){
+        if(doodleMedium===m.id) return;
+        doodleMedium=m.id;
+        doodlePenColor=m.palette[0];
+        _rebuildDoodleSwatches();
+        _syncDoodlePenUI();
+      });
+      doodleMediaRow.appendChild(btn);
+    });
+    doodleGroup.appendChild(doodleMediaRow);
+
     const penToolsRow=document.createElement('div');
     penToolsRow.className='doodle-pen-tools-row';
     const penSwatchRow=document.createElement('div');
     penSwatchRow.className='doodle-pen-swatch-row';
-    DOODLE_PALETTE.forEach(function(c){
-      const sw=document.createElement('button');
-      sw.type='button';
-      sw.className='doodle-pen-swatch';
-      sw.style.background=c;
-      sw.addEventListener('click',function(){ doodlePenColor=c; _syncDoodlePenUI(); });
-      penSwatchRow.appendChild(sw);
-    });
+    // Swatches are rebuilt per medium (each medium has its own curated
+    // palette) -- every swatch keeps its own original hex string on a
+    // data-color attribute rather than relying on el.style.background
+    // read back (a browser may re-serialize '#E63946' as an rgb(...)
+    // string, breaking a naive string-identity check).
+    function _rebuildDoodleSwatches(){
+      penSwatchRow.innerHTML='';
+      const media=DOODLE_MEDIA.find(function(m){ return m.id===doodleMedium; })||DOODLE_MEDIA[0];
+      media.palette.forEach(function(c){
+        const sw=document.createElement('button');
+        sw.type='button';
+        sw.className='doodle-pen-swatch';
+        sw.setAttribute('data-color',c);
+        sw.style.background=c;
+        sw.addEventListener('click',function(){ doodlePenColor=c; _syncDoodlePenUI(); });
+        penSwatchRow.appendChild(sw);
+      });
+    }
+    _rebuildDoodleSwatches();
     penToolsRow.appendChild(penSwatchRow);
 
     const penThicknessIcons=document.createElement('div');
@@ -1744,8 +1893,11 @@ const CardDesigner=(function(){
     doodleGroup.appendChild(penToolsRow);
 
     function _syncDoodlePenUI(){
-      Array.prototype.forEach.call(penSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el,i){
-        el.classList.toggle('active',DOODLE_PALETTE[i]===doodlePenColor);
+      Array.prototype.forEach.call(doodleMediaRow.querySelectorAll('.doodle-media-btn'),function(btn){
+        btn.classList.toggle('active',btn.getAttribute('data-medium')===doodleMedium);
+      });
+      Array.prototype.forEach.call(penSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el){
+        el.classList.toggle('active',el.getAttribute('data-color')===doodlePenColor);
       });
       Array.prototype.forEach.call(penThicknessIcons.querySelectorAll('.doodle-pen-thickness-btn'),function(btn){
         const w=({thin:3,medium:6,thick:12})[btn.getAttribute('data-thickness')];
@@ -1793,7 +1945,7 @@ const CardDesigner=(function(){
         doodleLivePoints.push(p);
         const st=_activeSticker();
         const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
-        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth});
+        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium});
       }
     });
     doodleCanvas.addEventListener('pointerup',function(){
@@ -1802,7 +1954,7 @@ const CardDesigner=(function(){
       if(doodleLivePoints.length>=2){
         const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
         const st=_activeSticker();
-        const strokes=((st&&st.strokes)||[]).concat([{points:norm,color:doodlePenColor,width:doodlePenWidth}]);
+        const strokes=((st&&st.strokes)||[]).concat([{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium}]);
         _stickerUpdate({strokes:strokes});
       }
       doodleLivePoints=[];

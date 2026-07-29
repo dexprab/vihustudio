@@ -3596,6 +3596,39 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   touch-action:none;
   background:#FFFFFF;
 }
+/* Coloring Kit -- a small Crayon/Pastel/Brush tool row sitting between
+   the pad and the pen swatches, matching the swatch/thickness row's own
+   compact-pill visual language. Real <button> elements, so the same
+   !important + flex-shrink:0 override discipline already documented
+   above for .doodle-pen-swatch/.doodle-pen-thickness-btn applies here
+   too (button{width:100%} would otherwise stretch these to a full-width
+   stack). */
+.doodle-media-row{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin-top:10px;
+}
+.doodle-media-btn{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:6px 10px !important;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--panel);
+  cursor:pointer;
+  flex-shrink:0;
+}
+.doodle-media-btn.active{
+  border-color:var(--gold, #C9A24A);
+  background:color-mix(in srgb, var(--gold, #C9A24A) 18%, var(--panel));
+}
+.doodle-media-icon{ font-size:14px; line-height:1; }
+.doodle-media-label{ font-size:11px; font-weight:600; color:var(--text); }
 .doodle-pen-tools-row{
   display:flex;
   align-items:center;

@@ -3774,22 +3774,83 @@ const SlideRenderer=(()=>{
   // "Draw Your Own" (a direct product decision) — Shape's own custom
   // path stays a single closed, fillable silhouette; Doodle is unclosed,
   // stroke-only, multi-stroke line art with its own Add Something entry.
+  // Coloring Kit -- Crayon/Pastel/Brush stroke rendering, hand-mirrored
+  // from js/cardDesigner.js's own _drawDoodleStrokeOnCtx/_doodleBrushTaper
+  // (the two files have no shared module to route through, matching this
+  // codebase's established Shape-pad/real-renderer duplication
+  // discipline). A stroke with no `medium` field (every doodle drawn
+  // before this feature shipped) always renders through the final
+  // `else` branch below, byte-identical to the original algorithm --
+  // guaranteeing zero visual regression for already-authored content.
+  function _doodleBrushTaper(t){
+    if(t<0.15) return 0.35+(t/0.15)*0.65;
+    if(t>0.85) return 0.35+((1-t)/0.15)*0.65;
+    return 1;
+  }
+  function _drawDoodleStrokeOnCtx(points,rect,color,width,medium,baseAlpha){
+    const mapPt=function(p){ return {x:rect.x+p.x*rect.w, y:rect.y+p.y*rect.h}; };
+    const col=color||'#24406B';
+    const w=typeof width==='number'?width:6;
+    if(medium==='pastel'){
+      x.save();
+      x.globalAlpha=baseAlpha*0.55;
+      x.shadowColor=col;
+      x.shadowBlur=w*1.1;
+      x.strokeStyle=col;
+      x.lineWidth=Math.max(1,w*0.85);
+      x.beginPath();
+      points.forEach(function(p,i){ const m=mapPt(p); if(i===0) x.moveTo(m.x,m.y); else x.lineTo(m.x,m.y); });
+      x.stroke();
+      x.restore();
+    }else if(medium==='brush'){
+      x.save();
+      x.globalAlpha=baseAlpha;
+      x.strokeStyle=col;
+      const n=points.length;
+      for(let i=0;i<n-1;i++){
+        const t=i/Math.max(1,n-1);
+        x.lineWidth=Math.max(1,w*_doodleBrushTaper(t));
+        const p1=mapPt(points[i]), p2=mapPt(points[i+1]);
+        x.beginPath();
+        x.moveTo(p1.x,p1.y);
+        x.lineTo(p2.x,p2.y);
+        x.stroke();
+      }
+      x.restore();
+    }else if(medium==='crayon'){
+      x.save();
+      const passes=[{dx:0,dy:0,ws:1,as:0.55},{dx:1,dy:-1,ws:0.85,as:0.32},{dx:-1,dy:1,ws:0.7,as:0.28}];
+      passes.forEach(function(pass){
+        x.globalAlpha=baseAlpha*pass.as;
+        x.strokeStyle=col;
+        x.lineWidth=Math.max(1,w*pass.ws);
+        x.beginPath();
+        points.forEach(function(p,i){
+          const m=mapPt(p);
+          const px=m.x+pass.dx, py=m.y+pass.dy;
+          if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
+        });
+        x.stroke();
+      });
+      x.restore();
+    }else{
+      x.globalAlpha=baseAlpha;
+      x.beginPath();
+      points.forEach(function(p,i){ const m=mapPt(p); if(i===0) x.moveTo(m.x,m.y); else x.lineTo(m.x,m.y); });
+      x.lineWidth=w;
+      x.strokeStyle=col;
+      x.stroke();
+    }
+  }
   function _drawDoodleStrokes(strokes,rect,alpha){
     if(!Array.isArray(strokes) || !strokes.length) return;
     x.save();
-    x.globalAlpha=(typeof alpha==='number')?Math.max(0,Math.min(1,alpha)):1;
     x.lineCap='round';
     x.lineJoin='round';
+    const a=(typeof alpha==='number')?Math.max(0,Math.min(1,alpha)):1;
     strokes.forEach(function(s){
       if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-      x.beginPath();
-      s.points.forEach(function(p,i){
-        const px=rect.x+p.x*rect.w, py=rect.y+p.y*rect.h;
-        if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
-      });
-      x.lineWidth=typeof s.width==='number'?s.width:6;
-      x.strokeStyle=s.color||'#24406B';
-      x.stroke();
+      _drawDoodleStrokeOnCtx(s.points,rect,s.color,s.width,s.medium,a);
     });
     x.restore();
   }
