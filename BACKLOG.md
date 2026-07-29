@@ -14,8 +14,8 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Draw your own functionality in builder should be same as draw your own feature in studio.
 ## Feature Requests
 
-- [ ]
+- Extend background-remover utility. Keep the same essence. replace the existing image editor during image upload in studio with this. when a image is uploaded in studio let it pass through Image Studio (renaming background-remover). It should allow user to crop, remove background, flip, rotate 
 
 ## Done
-
+.
 (Checked-off items move here once shipped, with a one-line pointer to the CLAUDE.md entry.)
