@@ -9,7 +9,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 
 ## Bugs
 
-- When restore is clicked in studio, the project looses its orignal orientation. i was authoring a project in landscape mode. i hard refreshed the page and on clicked on restore, the scene came back as a portrait mode.
+- When restore is clicked in studio, the project looses its orignal orientation. i was authoring a project in landscape mode. i hard refreshed the page and on clicked on restore, the scene came back as a portrait mode. when i clicked home went into projects and reopened the project it came back as landscape as it was supposed to be.
 - Color change swatch should be made available where ever colors are used. a standard rainbow color circle should be used for color picker
 - Draw your own functionality in builder should be same as draw your own feature in studio.
 ## Feature Requests
