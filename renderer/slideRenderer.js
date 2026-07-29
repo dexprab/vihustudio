@@ -357,7 +357,7 @@ const SlideRenderer=(()=>{
   // render()'s old fixed Place-N loop body.
   function _drawPlaceExtra(s,t,opts,placeRect,placeBorder,placeImg,placeView,_chromeColor){
     if(placeBorder){
-      _drawPictureFrameFill(placeRect,placeBorder,t);
+      _drawPictureFrameFill(placeRect,placeBorder,t,s);
       _drawArtworkPresentation(placeRect,placeBorder);
     }else{
       _drawPanel(t.panel.color,opts.panelStyle,placeRect);
@@ -718,7 +718,14 @@ const SlideRenderer=(()=>{
           lineWidth:(typeof pLine.width==='number')?pLine.width:2,
           lineColor:pLine.color||'#000000',
           shadowEnabled:!!pShadow.enabled,
-          shadowIntensity:(typeof pShadow.intensity==='number')?pShadow.intensity:0.4
+          shadowIntensity:(typeof pShadow.intensity==='number')?pShadow.intensity:0.4,
+          // Studio Frame Personalization — a Story Author's own uploaded
+          // Frame Picture ("Your Own Picture" in Frame Style's fill row).
+          // Only meaningful when fill==='image'; carried through unchanged
+          // otherwise so every pre-existing project (never setting either
+          // field) is byte-for-byte unaffected.
+          image:pb.image||null,
+          imageRotation:(typeof pb.imageRotation==='number')?pb.imageRotation:0
         };
       }
       // A real, user-reported bug found live: the Layout/Holder/Place
@@ -811,7 +818,11 @@ const SlideRenderer=(()=>{
       lineWidth:(typeof line.width==='number')?line.width:2,
       lineColor:line.color||'#000000',
       shadowEnabled:!!shadow.enabled,
-      shadowIntensity:(typeof shadow.intensity==='number')?shadow.intensity:0.4
+      shadowIntensity:(typeof shadow.intensity==='number')?shadow.intensity:0.4,
+      // Studio Frame Personalization — see the matching comment on the
+      // placeId branch above.
+      image:b.image||null,
+      imageRotation:(typeof b.imageRotation==='number')?b.imageRotation:0
     };
   }
 
@@ -922,11 +933,29 @@ const SlideRenderer=(()=>{
   // both painting a base colour first (a sensible fallback for a
   // transparent-PNG source) then layering the image on top when
   // authored, never the reverse.
-  function _drawPictureFrameFill(rect,border,theme){
+  //
+  // Studio Frame Personalization — a genuinely separate second image
+  // mechanism, `border.fill==='image'`+`border.image` (Frame Style's
+  // "Your Own Picture" chip, a Story Author's own upload). Mutually
+  // exclusive with the Feature-1 case above by construction: `border.
+  // _artwork` is only ever stashed by `_artworkBorder()`, a return path
+  // `_resolveBorder` never takes once `cardOverrides.border` is set at
+  // all — and `border.fill`/`.image` only ever come from that exact
+  // cardOverrides.border shape. Resolved via `_ensureDecorationImage`
+  // (the Draft-Asset-Architecture `vihu-asset:`/`data:` path, with the
+  // slide's own `recallOwnerId` fallback — the identical resolution a
+  // Story-Author-replaced World-owned object's image override already
+  // uses), never `ThemeRegistry.resolveAssetRef` (reserved for
+  // Theme-authored assets) — a Story Author's own upload isn't a Theme
+  // asset. `s` is optional (undefined at the one swatch-preview call
+  // site, `drawFrameSwatch`, which has no real slide in scope and never
+  // carries a Picture-Border image anyway).
+  function _drawPictureFrameFill(rect,border,theme,s){
     const fillColor=_resolveBorderFillColor(border,theme);
     const art=border._artwork;
     const hasImageBg=!!(art && art.background==='image' && art.frameImage);
-    if(!fillColor && !border.shadowEnabled && !hasImageBg) return;
+    const hasBorderImageBg=!!(border.fill==='image' && border.image);
+    if(!fillColor && !border.shadowEnabled && !hasImageBg && !hasBorderImageBg) return;
     x.save();
     if(border.shadowEnabled){
       x.shadowBlur=16+border.shadowIntensity*36;
@@ -965,6 +994,30 @@ const SlideRenderer=(()=>{
         // Always cover-fit ('fill') — a Frame's own background image is
         // meant to fully cover the frame area, cropping if needed, the
         // same fixed mode engineRuntime.js's own mat-band step uses.
+        const iw=img.width, ih=img.height;
+        const scale=Math.max(rect.w/iw,rect.h/ih);
+        const dw=iw*scale, dh=ih*scale;
+        x.drawImage(img,rcx-dw/2,rcy-dh/2,dw,dh);
+        x.restore();
+      }
+    }
+
+    if(hasBorderImageBg){
+      const img=_ensureDecorationImage(border.image, s && s.recallOwnerId);
+      if(img && img.__ready && img.width && img.height){
+        x.save();
+        _frameFillPath(rect,border);
+        x.clip();
+        const rotation=border.imageRotation||0;
+        const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
+        if(rotation){
+          x.translate(rcx,rcy);
+          x.rotate(rotation*Math.PI/180);
+          x.translate(-rcx,-rcy);
+        }
+        // Cover-fit, matching the Feature-1 image-background convention
+        // above exactly — a Frame Picture is meant to fully cover the
+        // frame area, cropping if needed.
         const iw=img.width, ih=img.height;
         const scale=Math.max(rect.w/iw,rect.h/ih);
         const dw=iw*scale, dh=ih*scale;
@@ -2892,7 +2945,7 @@ const SlideRenderer=(()=>{
       // scoped Layer Pack entries above (background fill/decorations)
       // are the only content a zero-Holder Scene ever declares.
     }else if(_border){
-      _drawPictureFrameFill(_place1Rect,_border,t);
+      _drawPictureFrameFill(_place1Rect,_border,t,s);
       _drawArtworkPresentation(_place1Rect,_border);
     }else{
       _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
@@ -3354,7 +3407,7 @@ const SlideRenderer=(()=>{
       h:Math.max(1,size.h-insets.top-insets.bottom)
     } : {x:rx, y:ry, w:size.w, h:size.h};
     if(border){
-      _drawPictureFrameFill(outerRect,border,_theme(s));
+      _drawPictureFrameFill(outerRect,border,_theme(s),s);
       _drawArtworkPresentation(outerRect,border);
     }
     // Resolve the view: user's s.imageView wins; blueprint `fit` seeds

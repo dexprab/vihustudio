@@ -2086,6 +2086,24 @@ button:active{
   padding:0;
 }
 
+/* Studio Frame Personalization — "Your Own Picture" chip + its own
+   Rotation/Remove controls, hidden unless that chip is active. */
+.border-fill-preview-image{
+  position:relative;
+  background:linear-gradient(135deg,#EDE7DA 0%,#C9BCA0 100%);
+}
+.border-fill-preview-image::after{
+  content:'🖼️';
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+}
+.border-image-controls{ margin-top:6px; }
+.border-image-controls.hidden{ display:none; }
+
 .border-toggle-row{ align-items:center; }
 .border-toggle{
   display:inline-flex;

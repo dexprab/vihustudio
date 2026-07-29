@@ -630,6 +630,31 @@ const CardDesigner=(function(){
     });
   }
 
+  // Studio Frame Personalization — the established per-module upload
+  // adapter (mirrored, not shared, from js/contextPanel.js's own
+  // identical helper): downscale a large picture, store it via
+  // AssetStore so it never bloats the saved project, and hand the
+  // caller a durable reference. Falls back to the raw data URI on any
+  // failure so an upload is never silently lost.
+  function _storeUploadedAsset(dataURL,onFile){
+    if(typeof window.AssetStore==='undefined' || typeof ProjectManager==='undefined' || typeof ProjectManager.ensureProjectId!=='function'){
+      onFile(dataURL); return;
+    }
+    const projectId=ProjectManager.ensureProjectId();
+    if(!projectId){ onFile(dataURL); return; }
+    const finish=function(finalDataURL){
+      window.AssetStore.put(finalDataURL,{surface:'creator',projectId:projectId}).then(function(ref){
+        onFile(ref);
+      }).catch(function(){ onFile(finalDataURL); });
+    };
+    const isImage=typeof dataURL==='string' && dataURL.indexOf('data:image/')===0;
+    if(isImage && dataURL.length>window.AssetStore.UPLOAD_DOWNSCALE_THRESHOLD_BYTES && typeof window.AssetStore.downscaleImageDataURL==='function'){
+      window.AssetStore.downscaleImageDataURL(dataURL).then(finish).catch(function(){ finish(dataURL); });
+    }else{
+      finish(dataURL);
+    }
+  }
+
   // Sprint 6.5 — Frame Style section (was "Picture Border" in the first
   // iteration; renamed so the child sees Frame Look + Frame Style as the
   // two ways the picture's frame can be customised).
@@ -723,8 +748,89 @@ const CardDesigner=(function(){
       if(e.target!==customColor) customColor.click();
     });
     chips.appendChild(customWrap);
+
+    // Studio Frame Personalization — "Your Own Picture" chip. A Story
+    // Author uploads their own image to use as the Frame's fill, the
+    // Studio-side counterpart to Builder's own image-typed Frame
+    // Variations. Fires a hidden file input; the read/downscale/store
+    // pipeline mirrors every other upload in this codebase.
+    const imageWrap=document.createElement('button');
+    imageWrap.type='button';
+    imageWrap.className='icon-card border-fill-btn border-fill-image-btn';
+    imageWrap.setAttribute('data-fill','image');
+    const imagePv=document.createElement('span');
+    imagePv.className='icon-preview border-fill-preview border-fill-preview-image';
+    imageWrap.appendChild(imagePv);
+    const imageFileInput=document.createElement('input');
+    imageFileInput.type='file';
+    imageFileInput.accept='image/*';
+    imageFileInput.className='border-fill-image-input';
+    imageFileInput.style.display='none';
+    imageFileInput.addEventListener('change',function(){
+      const file=imageFileInput.files && imageFileInput.files[0];
+      imageFileInput.value='';
+      if(!file) return;
+      const reader=new FileReader();
+      reader.onload=function(){
+        _storeUploadedAsset(String(reader.result),function(ref){
+          const b=_ensureBorder(_currentSlide(),_currentPlaceId());
+          if(!b) return;
+          b.fill='image';
+          b.image=ref;
+          _commitBorder();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    imageWrap.appendChild(imageFileInput);
+    const imageLbl=document.createElement('span');
+    imageLbl.className='icon-label';
+    imageLbl.textContent='Your Own Picture';
+    imageWrap.appendChild(imageLbl);
+    imageWrap.addEventListener('click',function(e){
+      if(e.target===imageFileInput) return;
+      imageFileInput.click();
+    });
+    chips.appendChild(imageWrap);
+
     colorRow.appendChild(chips);
     fillGroup.appendChild(colorRow);
+
+    // Studio Frame Personalization — Rotation + Remove, shown only while
+    // "Your Own Picture" is the active fill. Wrapped in a caller-owned
+    // div (unlike _makeImageSliderRow's other rows, which append
+    // directly to their parent with no return value) so _refreshBorder
+    // can toggle it as one unit.
+    const imageControls=document.createElement('div');
+    imageControls.className='border-image-controls hidden';
+    _makeImageSliderRow(imageControls,{
+      labelText:'Rotate',valueClass:'border-image-rotation-value',sliderClass:'border-image-rotation-slider',
+      min:0,max:359,step:1,
+      onInput:function(v){
+        const b=_ensureBorder(_currentSlide(),_currentPlaceId());
+        if(!b) return;
+        const n=Math.round(v);
+        if(n===0) delete b.imageRotation; else b.imageRotation=n;
+        _commitBorder();
+      }
+    });
+    const removeImageRow=document.createElement('div');
+    removeImageRow.className='picture-actions-row';
+    const removeImageBtn=document.createElement('button');
+    removeImageBtn.type='button';
+    removeImageBtn.className='picture-reset-btn border-remove-image-btn';
+    removeImageBtn.textContent='✕ Remove Picture';
+    removeImageBtn.addEventListener('click',function(){
+      const b=_ensureBorder(_currentSlide(),_currentPlaceId());
+      if(!b) return;
+      delete b.fill;
+      delete b.image;
+      delete b.imageRotation;
+      _commitBorder();
+    });
+    removeImageRow.appendChild(removeImageBtn);
+    imageControls.appendChild(removeImageRow);
+    fillGroup.appendChild(imageControls);
 
     // Round Corners — Square ↔ Round
     _makeImageSliderRow(radiusGroup,{
@@ -1047,6 +1153,20 @@ const CardDesigner=(function(){
       if(isCustom) customColorInput.value=_normalizeColor(fillSetting);
       customColorInput.disabled=locked;
     }
+
+    // Studio Frame Personalization — Rotation + Remove, shown only while
+    // "Your Own Picture" is the active fill.
+    const isImageFill=(fillSetting==='image');
+    const imageControls=mountedRoot.querySelector('.border-image-controls');
+    if(imageControls) imageControls.classList.toggle('hidden', !isImageFill);
+    const imageFillBtn=mountedRoot.querySelector('.border-fill-image-btn');
+    if(imageFillBtn) imageFillBtn.disabled=locked;
+    setSlider('.border-image-rotation-slider','.border-image-rotation-value',
+      (typeof b.imageRotation==='number')?b.imageRotation:0,
+      function(v){ return Math.round(v)+'°'; },
+      locked||!isImageFill);
+    const removeImageBtn=mountedRoot.querySelector('.border-remove-image-btn');
+    if(removeImageBtn) removeImageBtn.disabled=locked||!isImageFill;
   }
 
   // --- Sticker section (Sprint 6.6 — Object Designer for stickers) --------
