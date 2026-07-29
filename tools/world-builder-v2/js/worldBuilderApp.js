@@ -4445,7 +4445,7 @@
                     kind: 'text', text: props.textContent, font: props.textFont,
                     fontSize: Math.max(6, (props.textSize || 32) * zoom),
                     align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
-                    rotation: props.textRotation || 0
+                    rotation: props.textRotation || 0, shapeFill: !!props.textShapeFill
                 }, local);
                 window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
                 const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
@@ -7290,7 +7290,10 @@
         // Comic Sans MS silently rendered a different, unintended font here
         // while Studio's own equivalent control already had the fallback).
         { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans' },
-        { value: '"Palatino Linotype", Palatino, serif', label: 'Palatino' }
+        { value: '"Palatino Linotype", Palatino, serif', label: 'Palatino' },
+        // Hand-lettering/sketch-marker display face — self-hosted, see
+        // assets/fonts/fonts.css (loaded from this page's own index.html).
+        { value: '"Permanent Marker", "Comic Sans MS", cursive', label: 'Marker' }
     ];
 
     const TEXT_ALIGN_OPTIONS = [
@@ -8568,13 +8571,21 @@
     const TEXT_FONT_CHOICES = [
         { value: 'Georgia, serif', label: 'Georgia' }, { value: 'Arial, sans-serif', label: 'Arial' },
         // Fidelity fix — same "Chalkboard SE" fallback as TEXT_FONT_OPTIONS above.
-        { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans' }
+        { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans' },
+        { value: '"Permanent Marker", "Comic Sans MS", cursive', label: 'Marker' }
     ];
     const TEXT_ALIGN_CHOICES = [
         { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }
     ];
     const TEXT_WEIGHT_CHOICES = [
         { value: 'normal', label: 'Normal' }, { value: 'bold', label: 'Bold' }
+    ];
+    // Fill Style: 'solid' is ordinary flat-colour text (textColor); 'shapes' fills each
+    // glyph with a deterministic mosaic of small geometric shapes (the "stained-glass
+    // lettering" look) -- works for the full A-Z/0-9 alphabet and any typed content,
+    // rendered by _drawShapeMosaicTextBlock in engineRuntime.js / renderer/slideRenderer.js.
+    const TEXT_FILLSTYLE_CHOICES = [
+        { value: 'solid', label: 'Solid' }, { value: 'shapes', label: 'Shapes' }
     ];
     // 'stretch' -- a real, user-requested capability (a Theme Author
     // wanting an Experience image to exactly fill its whole Scene/rect
@@ -8969,7 +8980,10 @@
         textTransform.textContent = 'Transform';
         contextPanel.appendChild(textTransform);
         _contentTransformFields(props, 'textX', 'textY', 'textW', 'textH', onProp, exp.hostedBy);
-        contextPanel.appendChild(_buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))));
+        _fieldRow(
+            _buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))),
+            _buildFieldGroup('Fill Style', _select(TEXT_FILLSTYLE_CHOICES, props.textShapeFill ? 'shapes' : 'solid', function (v) { onProp('textShapeFill')(v === 'shapes'); }))
+        );
         contextPanel = outer;
     }
 

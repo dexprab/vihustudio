@@ -1627,6 +1627,14 @@ const SlideRenderer=(()=>{
       drawX+=ov.position.x-(natBx+maxLineWidth/2);
       drawY+=ov.position.y-(natBy+totalH/2);
     }
+    // Moved up from the end of the function (was computed after
+    // x.restore()) so the new Shapes Fill Style branch below — which
+    // needs the natural, untransformed text-block bbox to build its
+    // offscreen mosaic canvas — can use it before any drawing happens.
+    let bx=drawX-maxLineWidth/2;
+    if(hAlign==='left') bx=drawX; else if(hAlign==='right') bx=drawX-maxLineWidth;
+    let by=drawY-totalH/2;
+    if(vAlign==='top') by=drawY; else if(vAlign==='bottom') by=drawY-totalH;
     // Honor Grid follow-up — Rotation (Honor 2/Moveable, a spatial
     // transform living in the same bucket as Move/Resize) rotates around
     // the resolved (post-position-override) center; Opacity (Honor
@@ -1653,7 +1661,6 @@ const SlideRenderer=(()=>{
       x.rotate(rotation*Math.PI/180);
       x.translate(-drawX,-drawY);
     }
-    x.fillStyle=(ov && ov.color)||t.color||'#333333';
     x.textAlign=hAlign;
     // "why we dont have underline as a style, and strikethrough also" —
     // Canvas has no native text-decoration; the only way to render either
@@ -1663,46 +1670,52 @@ const SlideRenderer=(()=>{
     // never the shared maxLineWidth every line was wrapped against.
     const hasUnderline=!!(ov && ov.underline);
     const hasStrikethrough=!!(ov && ov.strikethrough);
-    lines.forEach(function(line,i){
-      let lineY;
-      if(vAlign==='top'){ x.textBaseline='top'; lineY=drawY+i*lineHeight; }
-      else if(vAlign==='bottom'){ x.textBaseline='bottom'; lineY=drawY-(lines.length-1-i)*lineHeight; }
-      else { x.textBaseline='middle'; lineY=drawY-totalH/2+(i+0.5)*lineHeight; }
-      x.fillText(line,drawX,lineY);
-      if(hasUnderline || hasStrikethrough){
-        const lw=x.measureText(line).width;
-        let lsx=drawX-lw/2, lex=drawX+lw/2;
-        if(hAlign==='left'){ lsx=drawX; lex=drawX+lw; }
-        else if(hAlign==='right'){ lsx=drawX-lw; lex=drawX; }
-        // `lineY` means something different per textBaseline mode set
-        // above — convert each back to an approximate true glyph
-        // baseline (ascent≈0.8×size above it, descent≈0.2×size below)
-        // since full font metrics aren't reliably available across
-        // browsers/fonts, then offset a small fraction of size for each
-        // decoration's own conventional position below/through the text.
-        let baselineY;
-        if(vAlign==='top') baselineY=lineY+size*0.8;
-        else if(vAlign==='bottom') baselineY=lineY-size*0.2;
-        else baselineY=lineY+size*0.3;
-        x.save();
-        x.strokeStyle=x.fillStyle;
-        x.lineWidth=Math.max(1,size*0.06);
-        if(hasUnderline){
-          const uy=baselineY+size*0.08;
-          x.beginPath(); x.moveTo(lsx,uy); x.lineTo(lex,uy); x.stroke();
-        }
-        if(hasStrikethrough){
-          const sy=baselineY-size*0.3;
-          x.beginPath(); x.moveTo(lsx,sy); x.lineTo(lex,sy); x.stroke();
-        }
-        x.restore();
+    // "what do we call this kind of fonts" — a real Fill Style choice,
+    // Solid (the original, unchanged behaviour below) vs. Shapes (a
+    // colorful geometric-mosaic fill clipped to the real glyph shapes
+    // via _drawShapeMosaicTextBlock, working for any text/any font with
+    // no per-glyph art). ov wins over a Theme-Author-authored base,
+    // matching the exact tri-state precedent rotation/opacity already
+    // use above — absent either, this is a plain false/Solid, so every
+    // existing theme renders byte-identically to before this feature.
+    const shapeFillOn=(ov && typeof ov.shapeFill==='boolean')?ov.shapeFill:!!t.shapeFill;
+    if(shapeFillOn){
+      const fontStr=x.font;
+      const drawTextFn=function(targetCtx,isStroke){
+        targetCtx.font=fontStr;
+        targetCtx.textAlign=hAlign;
+        lines.forEach(function(line,i){
+          const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
+          targetCtx.textBaseline=g.baseline;
+          if(isStroke){
+            targetCtx.strokeStyle='#FFFFFF';
+            targetCtx.lineWidth=Math.max(1.5,size*0.05);
+            targetCtx.strokeText(line,drawX,g.lineY);
+          } else {
+            targetCtx.fillStyle='#000000';
+            targetCtx.fillText(line,drawX,g.lineY);
+          }
+        });
+      };
+      _drawShapeMosaicTextBlock(x,bx,by,maxLineWidth,totalH,drawTextFn);
+      if(hasUnderline||hasStrikethrough){
+        lines.forEach(function(line,i){
+          const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
+          _drawTextLineDecoration(x,line,g.lineY,vAlign,hAlign,drawX,size,'#22252b',hasUnderline,hasStrikethrough);
+        });
       }
-    });
+    } else {
+      x.fillStyle=(ov && ov.color)||t.color||'#333333';
+      lines.forEach(function(line,i){
+        const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
+        x.textBaseline=g.baseline;
+        x.fillText(line,drawX,g.lineY);
+        if(hasUnderline||hasStrikethrough){
+          _drawTextLineDecoration(x,line,g.lineY,vAlign,hAlign,drawX,size,x.fillStyle,hasUnderline,hasStrikethrough);
+        }
+      });
+    }
     x.restore();
-    let bx=drawX-maxLineWidth/2;
-    if(hAlign==='left') bx=drawX; else if(hAlign==='right') bx=drawX-maxLineWidth;
-    let by=drawY-totalH/2;
-    if(vAlign==='top') by=drawY; else if(vAlign==='bottom') by=drawY-totalH;
     return {bx:bx,by:by,bw:maxLineWidth,bh:totalH+8};
   }
 
@@ -2631,6 +2644,146 @@ const SlideRenderer=(()=>{
     });
     return lines;
   }
+
+  // Shared by _layerDrawText (World-owned Layer Pack text) and
+  // _drawFreeformText (Story-owned freeform text stickers) — computes
+  // which vertical-alignment textBaseline a given wrapped line should use
+  // and its own y coordinate, so both callers (and the new "Shapes" Fill
+  // Style branch's own offscreen redraw pass, below) can never disagree
+  // about where a line actually lands.
+  function _textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign){
+    if(vAlign==='top') return {lineY:drawY+i*lineHeight,baseline:'top'};
+    if(vAlign==='bottom') return {lineY:drawY-(lines.length-1-i)*lineHeight,baseline:'bottom'};
+    return {lineY:drawY-totalH/2+(i+0.5)*lineHeight,baseline:'middle'};
+  }
+
+  // Shared underline/strikethrough stroke — extracted so both Fill Style
+  // branches (plain solid colour, and the new Shapes mosaic fill below)
+  // draw the identical decoration geometry, just in a different colour
+  // (the text's own fill colour for solid, a fixed neutral tone for
+  // Shapes, since a mosaic fill has no single colour of its own to
+  // reuse). Requires ctx.font to already be set to the line's real font
+  // (measureText depends on it).
+  function _drawTextLineDecoration(ctx,line,lineY,vAlign,hAlign,drawX,size,strokeColor,hasUnderline,hasStrikethrough){
+    const lw=ctx.measureText(line).width;
+    let lsx=drawX-lw/2, lex=drawX+lw/2;
+    if(hAlign==='left'){ lsx=drawX; lex=drawX+lw; }
+    else if(hAlign==='right'){ lsx=drawX-lw; lex=drawX; }
+    let baselineY;
+    if(vAlign==='top') baselineY=lineY+size*0.8;
+    else if(vAlign==='bottom') baselineY=lineY-size*0.2;
+    else baselineY=lineY+size*0.3;
+    ctx.save();
+    ctx.strokeStyle=strokeColor;
+    ctx.lineWidth=Math.max(1,size*0.06);
+    if(hasUnderline){ const uy=baselineY+size*0.08; ctx.beginPath(); ctx.moveTo(lsx,uy); ctx.lineTo(lex,uy); ctx.stroke(); }
+    if(hasStrikethrough){ const sy=baselineY-size*0.3; ctx.beginPath(); ctx.moveTo(lsx,sy); ctx.lineTo(lex,sy); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // "what do we call this kind of fonts" — a colorful, geometric-shape-
+  // filled letter style ("stained-glass"/faceted lettering, e.g. the
+  // "VIHAAN" reference image). Rendered as a real Fill Style option for
+  // ANY text object, in ANY font, working automatically for the full
+  // alphabet and every digit — never per-glyph authored art — via a
+  // canvas glyph-as-clip-mask technique: render the real text once to
+  // build a solid alpha mask, then use source-in compositing so a filled
+  // geometric pattern only shows through where the glyphs actually are,
+  // then stroke a white outline on top. Kept in lockstep, by hand, with
+  // tools/world-builder-v2/js/services/engineRuntime.js's own mirrored
+  // copy of this same technique — the two rendering engines share no
+  // drawing module, matching this codebase's established precedent.
+  const SHAPE_MOSAIC_PALETTE=['#FF3B6B','#FFC94D','#4FD1C5','#7C5CFC','#FF8A5B','#3DDC84'];
+
+  // One deterministic ("same input, same pixels" — this codebase's own
+  // established rule for any generative visual effect, e.g. the Spray
+  // Doodle medium) cell motif, cycled by row/column index, never
+  // Math.random — a redraw of the identical text always looks identical.
+  function _paintShapeMosaicCell(ctx,cx,cy,cell,colorA,colorB,variant){
+    const half=cell/2;
+    ctx.save();
+    ctx.translate(cx,cy);
+    const v=variant%3;
+    if(v===0){
+      ctx.fillStyle=colorA;
+      ctx.beginPath(); ctx.moveTo(-half,-half); ctx.lineTo(0,0); ctx.lineTo(-half,half); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=colorB;
+      ctx.beginPath(); ctx.moveTo(half,-half); ctx.lineTo(0,0); ctx.lineTo(half,half); ctx.closePath(); ctx.fill();
+    } else if(v===1){
+      ctx.fillStyle=colorA; ctx.fillRect(-half,-half,cell,cell);
+      ctx.fillStyle=colorB;
+      ctx.beginPath(); ctx.moveTo(0,-half); ctx.lineTo(half,0); ctx.lineTo(0,half); ctx.lineTo(-half,0); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle=colorA; ctx.fillRect(-half,-half,cell,cell);
+      ctx.fillStyle=colorB;
+      ctx.beginPath(); ctx.moveTo(-half,-half); ctx.lineTo(half,-half); ctx.lineTo(-half,half); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(half,-half); ctx.lineTo(half,half); ctx.lineTo(-half,half); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function _fillShapeMosaicPattern(ctx,w,h,cellSize){
+    const cols=Math.ceil(w/cellSize)+1;
+    const rows=Math.ceil(h/cellSize)+1;
+    for(let row=0;row<rows;row++){
+      for(let col=0;col<cols;col++){
+        const idxA=(row*7+col*3)%SHAPE_MOSAIC_PALETTE.length;
+        const idxB=(row*7+col*3+2+SHAPE_MOSAIC_PALETTE.length)%SHAPE_MOSAIC_PALETTE.length;
+        const variant=row*5+col*2;
+        _paintShapeMosaicCell(ctx,col*cellSize+cellSize/2,row*cellSize+cellSize/2,cellSize,SHAPE_MOSAIC_PALETTE[idxA],SHAPE_MOSAIC_PALETTE[idxB],variant);
+      }
+    }
+  }
+
+  // mainCtx: the real canvas context currently drawing (already
+  // transformed for rotation, if any — the final drawImage call below
+  // respects whatever transform is active, so this works transparently
+  // whether the caller rotated first or not). bx/by/bw/bh: the natural
+  // (untransformed) text-block bbox, in the exact same coordinate space
+  // drawTextFn's own fillText/strokeText calls use. drawTextFn(targetCtx,
+  // isStroke): replicates the caller's own per-line loop against
+  // whatever ctx it's handed — false builds the solid-black alpha mask,
+  // true draws the white outline pass — so the mosaic fill can never
+  // drift out of sync with what a plain solid fill would have drawn.
+  function _drawShapeMosaicTextBlock(mainCtx,bx,by,bw,bh,drawTextFn){
+    const pad=Math.max(4,Math.ceil(bh*0.2));
+    const w=Math.max(1,Math.ceil(bw+pad*2));
+    const h=Math.max(1,Math.ceil(bh+pad*2));
+    const off=document.createElement('canvas');
+    off.width=w; off.height=h;
+    const octx=off.getContext('2d');
+    octx.save();
+    octx.translate(-bx+pad,-by+pad);
+    drawTextFn(octx,false);
+    octx.restore();
+    // The mosaic pattern is built on its OWN, separate offscreen canvas
+    // first (plain source-over, so each cell's own two fill() calls never
+    // interfere with each other), then composited onto the glyph mask via
+    // exactly ONE drawImage call under source-in — a real bug found and
+    // fixed here, not assumed correct: source-in composites per DRAW CALL,
+    // not cumulatively, over the whole canvas. Looping several fill() calls
+    // directly under source-in (the original approach) let every later
+    // cell's fill erase every earlier cell's already-composited result — a
+    // pixel "untouched by this call" counts as fully transparent source,
+    // multiplied against dest alpha = 0, wiping out whatever was already
+    // painted there, regardless of the fact it had already composited
+    // correctly on a prior call. Confirmed via a decisive reproduction: the
+    // old code rendered only the final white outline stroke, zero mosaic
+    // colour, for any text with 2+ shape cells.
+    const pattern=document.createElement('canvas');
+    pattern.width=w; pattern.height=h;
+    const pctx=pattern.getContext('2d');
+    _fillShapeMosaicPattern(pctx,w,h,Math.max(18,Math.round(bh*0.4)));
+    octx.globalCompositeOperation='source-in';
+    octx.drawImage(pattern,0,0);
+    octx.globalCompositeOperation='source-over';
+    octx.save();
+    octx.translate(-bx+pad,-by+pad);
+    drawTextFn(octx,true);
+    octx.restore();
+    mainCtx.drawImage(off,bx-pad,by-pad);
+  }
+
   function _drawQuoteText(s,t,rect){
     const m=(s && s.metadata) || {};
     const quote=(typeof m.quoteText==='string') ? m.quoteText.trim() : '';
@@ -3808,29 +3961,71 @@ const SlideRenderer=(()=>{
     // its baseline approximation per vAlign; a freeform sticker only
     // ever centers vertically, so only that one case is needed here).
     const hasUnderline=!!st.underline, hasStrikethrough=!!st.strikethrough;
-    lines.forEach(function(line){
-      x.fillText(line,tx,ty);
-      if(hasUnderline || hasStrikethrough){
-        const lw=x.measureText(line).width;
-        let lsx=tx-lw/2, lex=tx+lw/2;
-        if(align==='left'){ lsx=tx; lex=tx+lw; }
-        else if(align==='right'){ lsx=tx-lw; lex=tx; }
-        const baselineY=ty+size*0.3;
-        x.save();
-        x.strokeStyle=x.fillStyle;
-        x.lineWidth=Math.max(1,size*0.06);
-        if(hasUnderline){
-          const uy=baselineY+size*0.08;
-          x.beginPath(); x.moveTo(lsx,uy); x.lineTo(lex,uy); x.stroke();
-        }
-        if(hasStrikethrough){
-          const sy=baselineY-size*0.3;
-          x.beginPath(); x.moveTo(lsx,sy); x.lineTo(lex,sy); x.stroke();
-        }
-        x.restore();
+    // "what do we call this kind of fonts" — the same Fill Style choice
+    // as a World-owned Text object (_layerDrawText), just a plain
+    // instance boolean here since a Story-owned sticker has no
+    // Theme-authored base to fall back to. Solid (the original, fully
+    // unchanged loop below) vs. Shapes (the shared geometric-mosaic
+    // fill, clipped to the real glyph shapes, reusing the exact
+    // _drawShapeMosaicTextBlock/_drawTextLineDecoration helpers
+    // _layerDrawText already established).
+    const shapeFillOn=!!st.shapeFill;
+    if(shapeFillOn){
+      let maxLineWidth=0;
+      lines.forEach(function(line){ const lw=x.measureText(line).width; if(lw>maxLineWidth) maxLineWidth=lw; });
+      let bx=tx-maxLineWidth/2;
+      if(align==='left') bx=tx; else if(align==='right') bx=tx-maxLineWidth;
+      const fontStr=x.font;
+      const drawTextFn=function(targetCtx,isStroke){
+        targetCtx.font=fontStr;
+        targetCtx.textAlign=align;
+        targetCtx.textBaseline='middle';
+        let localTy=-totalH/2+lineHeight/2;
+        lines.forEach(function(line){
+          if(isStroke){
+            targetCtx.strokeStyle='#FFFFFF';
+            targetCtx.lineWidth=Math.max(1.5,size*0.05);
+            targetCtx.strokeText(line,tx,localTy);
+          } else {
+            targetCtx.fillStyle='#000000';
+            targetCtx.fillText(line,tx,localTy);
+          }
+          localTy+=lineHeight;
+        });
+      };
+      _drawShapeMosaicTextBlock(x,bx,-totalH/2,maxLineWidth,totalH,drawTextFn);
+      if(hasUnderline||hasStrikethrough){
+        let localTy=-totalH/2+lineHeight/2;
+        lines.forEach(function(line){
+          _drawTextLineDecoration(x,line,localTy,'middle',align,tx,size,'#22252b',hasUnderline,hasStrikethrough);
+          localTy+=lineHeight;
+        });
       }
-      ty+=lineHeight;
-    });
+    } else {
+      lines.forEach(function(line){
+        x.fillText(line,tx,ty);
+        if(hasUnderline || hasStrikethrough){
+          const lw=x.measureText(line).width;
+          let lsx=tx-lw/2, lex=tx+lw/2;
+          if(align==='left'){ lsx=tx; lex=tx+lw; }
+          else if(align==='right'){ lsx=tx-lw; lex=tx; }
+          const baselineY=ty+size*0.3;
+          x.save();
+          x.strokeStyle=x.fillStyle;
+          x.lineWidth=Math.max(1,size*0.06);
+          if(hasUnderline){
+            const uy=baselineY+size*0.08;
+            x.beginPath(); x.moveTo(lsx,uy); x.lineTo(lex,uy); x.stroke();
+          }
+          if(hasStrikethrough){
+            const sy=baselineY-size*0.3;
+            x.beginPath(); x.moveTo(lsx,sy); x.lineTo(lex,sy); x.stroke();
+          }
+          x.restore();
+        }
+        ty+=lineHeight;
+      });
+    }
     x.restore();
   }
   function _textLineMetrics(st){

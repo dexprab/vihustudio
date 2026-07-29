@@ -441,7 +441,8 @@ const ContextPanel=(function(){
     {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
     {value:'"Courier New", Courier, monospace',label:'Courier'},
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
-    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'},
+    {value:'"Permanent Marker", "Comic Sans MS", cursive',label:'Marker'}
   ];
   // "weight is a very technical term, is that drop down even needed?" ->
   // "approved make the change" — the old 7-option Weight dropdown
@@ -702,15 +703,24 @@ const ContextPanel=(function(){
         container.appendChild(textarea);
 
         container.appendChild(_el('div','designer-sublabel','Typography'));
-        // Font Family now spans its own row alone — its old partner,
-        // Weight, no longer exists as a dropdown (folded into Style as a
-        // Bold toggle, right below); _pairRow's own cellB-is-null branch
-        // already handles "just append this one row," no new plumbing.
+        // Font Family's old partner, Weight, no longer exists as a dropdown
+        // (folded into Style as a Bold toggle, below) — Font Family is now
+        // paired instead with the newer Fill Style toggle right beside it.
         const familyCell=_makeSelectRow(null,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
           _afterQuickEditChange();
         });
-        _pairRow(container,familyCell,null);
+        // "geometric/faceted lettering" — a Fill Style toggle, Solid vs.
+        // Shapes (a deterministic geometric-mosaic pattern clipped to the
+        // real rendered glyph shapes, working for any typed text/any font
+        // — see renderer/slideRenderer.js's _drawShapeMosaicTextBlock).
+        // Paired with Font Family since both are foundational "how does
+        // this text render" choices, not a Typography sub-property.
+        const fillStyleCell=_makeIconChoiceRow(null,'Fill Style',[['solid','Solid'],['shapes','Shapes']],ov.shapeFill?'shapes':'solid',function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'shapeFill',val==='shapes'?true:null);
+          _afterQuickEditChange();
+        });
+        _pairRow(container,familyCell,fillStyleCell);
 
         // "why we dont have underline as a style, and strikethrough also" —
         // folded into this same Style row as independently-toggling
@@ -831,7 +841,8 @@ const ContextPanel=(function(){
     {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
     {value:'"Courier New", Courier, monospace',label:'Courier'},
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
-    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'},
+    {value:'"Permanent Marker", "Comic Sans MS", cursive',label:'Marker'}
   ];
   // "2 corrections for text object" — 1) a Delete option inside the
   // quick-edit popup ("under modify delete is also an option, add
@@ -855,9 +866,8 @@ const ContextPanel=(function(){
   // Text popup already made ("weight is a very technical term, is that
   // drop down even needed?") — Bold folds into the Style row as one more
   // _makeMultiToggleRow toggle, sharing the same fontWeight field the
-  // dropdown used to write ('700' on, '' off). Font Family now spans its
-  // own row alone (_pairRow's own cellB===null branch already handles a
-  // lone, full-width cell).
+  // dropdown used to write ('700' on, '' off). Font Family is paired with
+  // the newer Fill Style toggle instead (see below), not spanning alone.
   function _appendStickerTextEditControl(container,sceneObj){
     const slide=_currentSlide();
     if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.findSticker!=='function' || typeof SceneEngine.updateSticker!=='function') return false;
@@ -877,7 +887,14 @@ const ContextPanel=(function(){
 
     container.appendChild(_el('div','designer-sublabel','Typography'));
     const familyCell=_makeSelectRow(null,'Font',STICKER_TEXT_FONT_OPTIONS,st.fontFamily||'',function(val){ update({fontFamily:val}); });
-    _pairRow(container,familyCell,null);
+    // "geometric/faceted lettering" — the same Solid/Shapes Fill Style
+    // toggle the World-owned Text popup got, mirrored here for a
+    // Story-owned freeform text sticker; renderer/slideRenderer.js's
+    // _drawFreeformText already reads st.shapeFill directly (a plain
+    // instance field, no Engine Adapter/compile step involved for
+    // Story-owned content).
+    const fillStyleCell=_makeIconChoiceRow(null,'Fill Style',[['solid','Solid'],['shapes','Shapes']],st.shapeFill?'shapes':'solid',function(val){ update({shapeFill:val==='shapes'}); });
+    _pairRow(container,familyCell,fillStyleCell);
 
     // Bold/Italic/Underline/Strikethrough — a multi-select toggle row
     // (any combination can be active at once), mirroring the World-owned

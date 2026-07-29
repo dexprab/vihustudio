@@ -119,7 +119,8 @@ const ThemeEngine=(function(){
     {value:'Arial, Helvetica, sans-serif',label:'Arial'},
     {value:'"Courier New", Courier, monospace',label:'Courier'},
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
-    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'},
+    {value:'"Permanent Marker", "Comic Sans MS", cursive',label:'Marker'}
   ];
 
   // Sprint 9.5 — Theme Language v2. A Story Theme may now carry an

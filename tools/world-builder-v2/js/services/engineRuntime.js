@@ -772,6 +772,111 @@ const EngineV2Runtime = (function () {
         };
     }
 
+    // "what do we call this kind of fonts" — a colorful, geometric-shape-
+    // filled letter style ("stained-glass"/faceted lettering). Rendered as
+    // a real Fill Style option for ANY text object, in ANY font, working
+    // automatically for the full alphabet and every digit — never
+    // per-glyph authored art — via a canvas glyph-as-clip-mask technique:
+    // render the real text once to build a solid alpha mask, then use
+    // source-in compositing so a filled geometric pattern only shows
+    // through where the glyphs actually are, then stroke a white outline
+    // on top. Kept in lockstep, by hand, with renderer/slideRenderer.js's
+    // own mirrored copy of this same technique — the two rendering
+    // engines share no drawing module, matching this codebase's
+    // established precedent.
+    const SHAPE_MOSAIC_PALETTE = ['#FF3B6B', '#FFC94D', '#4FD1C5', '#7C5CFC', '#FF8A5B', '#3DDC84'];
+
+    // One deterministic ("same input, same pixels" — this codebase's own
+    // established rule for any generative visual effect, e.g. the Spray
+    // Doodle medium) cell motif, cycled by row/column index, never
+    // Math.random — a redraw of the identical text always looks identical.
+    function _paintShapeMosaicCell(ctx, cx, cy, cell, colorA, colorB, variant) {
+        const half = cell / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        const v = variant % 3;
+        if (v === 0) {
+            ctx.fillStyle = colorA;
+            ctx.beginPath(); ctx.moveTo(-half, -half); ctx.lineTo(0, 0); ctx.lineTo(-half, half); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = colorB;
+            ctx.beginPath(); ctx.moveTo(half, -half); ctx.lineTo(0, 0); ctx.lineTo(half, half); ctx.closePath(); ctx.fill();
+        } else if (v === 1) {
+            ctx.fillStyle = colorA; ctx.fillRect(-half, -half, cell, cell);
+            ctx.fillStyle = colorB;
+            ctx.beginPath(); ctx.moveTo(0, -half); ctx.lineTo(half, 0); ctx.lineTo(0, half); ctx.lineTo(-half, 0); ctx.closePath(); ctx.fill();
+        } else {
+            ctx.fillStyle = colorA; ctx.fillRect(-half, -half, cell, cell);
+            ctx.fillStyle = colorB;
+            ctx.beginPath(); ctx.moveTo(-half, -half); ctx.lineTo(half, -half); ctx.lineTo(-half, half); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(half, -half); ctx.lineTo(half, half); ctx.lineTo(-half, half); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function _fillShapeMosaicPattern(ctx, w, h, cellSize) {
+        const cols = Math.ceil(w / cellSize) + 1;
+        const rows = Math.ceil(h / cellSize) + 1;
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const idxA = (row * 7 + col * 3) % SHAPE_MOSAIC_PALETTE.length;
+                const idxB = (row * 7 + col * 3 + 2 + SHAPE_MOSAIC_PALETTE.length) % SHAPE_MOSAIC_PALETTE.length;
+                const variant = row * 5 + col * 2;
+                _paintShapeMosaicCell(ctx, col * cellSize + cellSize / 2, row * cellSize + cellSize / 2, cellSize, SHAPE_MOSAIC_PALETTE[idxA], SHAPE_MOSAIC_PALETTE[idxB], variant);
+            }
+        }
+    }
+
+    // mainCtx: the real canvas context currently drawing (already
+    // transformed for rotation, if any — the final drawImage call below
+    // respects whatever transform is active, so this works transparently
+    // whether the caller rotated first or not). bx/by/bw/bh: the natural
+    // (untransformed) text-block bbox, in the exact same coordinate space
+    // drawTextFn's own fillText/strokeText calls use. drawTextFn(targetCtx,
+    // isStroke): replicates the caller's own per-line loop against
+    // whatever ctx it's handed — false builds the solid-black alpha mask,
+    // true draws the white outline pass — so the mosaic fill can never
+    // drift out of sync with what a plain solid fill would have drawn.
+    function _drawShapeMosaicTextBlock(mainCtx, bx, by, bw, bh, drawTextFn) {
+        const pad = Math.max(4, Math.ceil(bh * 0.2));
+        const w = Math.max(1, Math.ceil(bw + pad * 2));
+        const h = Math.max(1, Math.ceil(bh + pad * 2));
+        const off = document.createElement('canvas');
+        off.width = w; off.height = h;
+        const octx = off.getContext('2d');
+        octx.save();
+        octx.translate(-bx + pad, -by + pad);
+        drawTextFn(octx, false);
+        octx.restore();
+        // The mosaic pattern is built on its OWN, separate offscreen canvas
+        // first (plain source-over, so each cell's own two fill() calls
+        // never interfere with each other), then composited onto the glyph
+        // mask via exactly ONE drawImage call under source-in — a real bug
+        // found and fixed here, not assumed correct: source-in composites
+        // per DRAW CALL, not cumulatively, over the whole canvas. Looping
+        // several fill() calls directly under source-in (the original
+        // approach) let every later cell's fill erase every earlier cell's
+        // already-composited result — a pixel "untouched by this call"
+        // counts as fully transparent source, multiplied against dest
+        // alpha = 0, wiping out whatever was already painted there,
+        // regardless of the fact it had already composited correctly on a
+        // prior call. Confirmed via a decisive reproduction: the old code
+        // rendered only the final white outline stroke, zero mosaic
+        // colour, for any text with 2+ shape cells. Kept in lockstep, by
+        // hand, with renderer/slideRenderer.js's own mirrored fix.
+        const pattern = document.createElement('canvas');
+        pattern.width = w; pattern.height = h;
+        const pctx = pattern.getContext('2d');
+        _fillShapeMosaicPattern(pctx, w, h, Math.max(18, Math.round(bh * 0.4)));
+        octx.globalCompositeOperation = 'source-in';
+        octx.drawImage(pattern, 0, 0);
+        octx.globalCompositeOperation = 'source-over';
+        octx.save();
+        octx.translate(-bx + pad, -by + pad);
+        drawTextFn(octx, true);
+        octx.restore();
+        mainCtx.drawImage(off, bx - pad, by - pad);
+    }
+
     // Paints a Scene Layer — a Decoration (`kind: 'fill' | 'decoration'`)
     // or Text (`kind: 'text'`), Scene Model §2's own vocabulary.
     //
@@ -828,12 +933,54 @@ const EngineV2Runtime = (function () {
                 ctx.rotate(textRotation * Math.PI / 180);
                 ctx.translate(-tcx, -tcy);
             }
-            ctx.fillStyle = layer.color || '#1D3457';
             ctx.font = (layer.fontSize || 48) + 'px ' + (layer.font || 'Georgia, serif');
             ctx.textAlign = layer.align || 'left';
             ctx.textBaseline = 'top';
             const tx = layer.align === 'center' ? rect.x + rect.w / 2 : (layer.align === 'right' ? rect.x + rect.w : rect.x);
-            _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
+            // "what do we call this kind of fonts" — layer.shapeFill is a
+            // real Fill Style choice, Solid (below, byte-identical to
+            // before this feature) vs. Shapes (a colorful geometric-mosaic
+            // fill clipped to the real glyph shapes, working for any text
+            // in any font with no per-glyph art) — mirrors root Studio's
+            // own _layerDrawText shapeFill branch exactly. Builder's Text
+            // Layers have no underline/strikethrough concept of their own
+            // (a Story-Author-only capability added later, on top of
+            // whatever Builder authored), so unlike the root Studio
+            // mirror, there's no decoration pass to draw here either way.
+            if (layer.shapeFill) {
+                const lineHeight = (layer.fontSize || 48) * 1.25;
+                const lines = _wrapLines(ctx, layer.text || '', rect.w);
+                const totalH = lines.length * lineHeight;
+                let maxLineWidth = 0;
+                lines.forEach(function (line) {
+                    const lw = ctx.measureText(line).width;
+                    if (lw > maxLineWidth) maxLineWidth = lw;
+                });
+                let bx = tx;
+                if (layer.align === 'center') bx = tx - maxLineWidth / 2;
+                else if (layer.align === 'right') bx = tx - maxLineWidth;
+                const fontStr = ctx.font;
+                const drawTextFn = function (targetCtx, isStroke) {
+                    targetCtx.font = fontStr;
+                    targetCtx.textAlign = layer.align || 'left';
+                    targetCtx.textBaseline = 'top';
+                    lines.forEach(function (line, i) {
+                        const ly = rect.y + i * lineHeight;
+                        if (isStroke) {
+                            targetCtx.strokeStyle = '#FFFFFF';
+                            targetCtx.lineWidth = Math.max(1.5, (layer.fontSize || 48) * 0.05);
+                            targetCtx.strokeText(line, tx, ly);
+                        } else {
+                            targetCtx.fillStyle = '#000000';
+                            targetCtx.fillText(line, tx, ly);
+                        }
+                    });
+                };
+                _drawShapeMosaicTextBlock(ctx, bx, rect.y, maxLineWidth, totalH, drawTextFn);
+            } else {
+                ctx.fillStyle = layer.color || '#1D3457';
+                _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
+            }
             ctx.restore();
         } else {
             // Decoration — a Universal Experience's Shape, Image, or

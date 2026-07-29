@@ -1949,6 +1949,30 @@ const CardDesigner=(function(){
     fontRow.appendChild(fontSel);
     textGroup.appendChild(fontRow);
 
+    // "geometric/faceted lettering" — Solid vs. Shapes Fill Style, mirroring
+    // the World-owned/Story-owned quick-edit popups' own identical toggle
+    // (js/contextPanel.js). Renders through renderer/slideRenderer.js's
+    // _drawFreeformText, which already reads st.shapeFill directly.
+    const fillStyleRow=document.createElement('div');
+    fillStyleRow.className='designer-row';
+    const fillStyleLbl=document.createElement('div');
+    fillStyleLbl.className='designer-row-label';
+    fillStyleLbl.textContent='Fill Style';
+    fillStyleRow.appendChild(fillStyleLbl);
+    const fillStyleIcons=document.createElement('div');
+    fillStyleIcons.className='icon-row sticker-text-fillstyle-row';
+    [['solid','Solid'],['shapes','Shapes']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-text-fillstyle-btn';
+      btn.setAttribute('data-fillstyle',t[0]);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[1]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){ _stickerUpdate({shapeFill:t[0]==='shapes'}); });
+      fillStyleIcons.appendChild(btn);
+    });
+    fillStyleRow.appendChild(fillStyleIcons);
+    textGroup.appendChild(fillStyleRow);
+
     _makeSliderRow(textGroup,{
       labelText:'Size',valueClass:'sticker-text-size-value',sliderClass:'sticker-text-size-slider',
       min:16,max:140,step:1,
@@ -2403,6 +2427,9 @@ const CardDesigner=(function(){
       section.querySelectorAll('.sticker-text-style-btn').forEach(function(b){
         b.classList.toggle('active',b.getAttribute('data-style')===(st.fontStyle||'normal'));
       });
+      section.querySelectorAll('.sticker-text-fillstyle-btn').forEach(function(b){
+        b.classList.toggle('active',b.getAttribute('data-fillstyle')===(st.shapeFill?'shapes':'solid'));
+      });
       const textColorKit=section.querySelector('.sticker-text-color-kit');
       if(textColorKit&&textColorKit.colourKitSync) textColorKit.colourKitSync(st.color||'#1D3457',false);
       section.querySelectorAll('.sticker-text-align-btn').forEach(function(b){
@@ -2831,7 +2858,8 @@ const CardDesigner=(function(){
     {value:'"Comic Sans MS", "Chalkboard SE", cursive',label:'Comic'},
     {value:'"Courier New", Courier, monospace',label:'Courier'},
     {value:'"Kalam", "Comic Sans MS", cursive',label:'Handwriting'},
-    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'}
+    {value:'"Nunito", "Trebuchet MS", sans-serif',label:'Kid Friendly'},
+    {value:'"Permanent Marker", "Comic Sans MS", cursive',label:'Marker'}
   ];
   const FONT_WEIGHT_OPTIONS=[
     {value:'',label:'World Default'},

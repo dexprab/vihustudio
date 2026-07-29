@@ -600,7 +600,15 @@ class BuildEngine {
                     // rotation through. Root Studio's renderer/
                     // slideRenderer.js's _layerDrawText reads this as
                     // t.rotation.
-                    rotation: layer.rotation || 0
+                    rotation: layer.rotation || 0,
+                    // "Shapes" Fill Style (geometric/faceted lettering) —
+                    // mirrors rotation's own carry-through convention
+                    // exactly. Root Studio's _layerDrawText reads this as
+                    // t.shapeFill; engineRuntime.js's own Working
+                    // View/Runtime Preview already honours the same
+                    // layer.shapeFill field directly (no compile step
+                    // needed there).
+                    shapeFill: !!layer.shapeFill
                 }
             });
         }
