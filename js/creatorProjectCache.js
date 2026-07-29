@@ -262,10 +262,35 @@
     // value) — while the real IndexedDB clear (both stores) and the
     // legacy localStorage key removal happen in the background,
     // mirroring every other write in this module.
-    function clearAll() {
+    //
+    // Task #490 — a real, confirmed gap found while re-diagnosing Task
+    // #475/#476's own "restore simply restores blank slate" complaint: the
+    // Gateway's own privacy wipe fires unconditionally the instant it
+    // identifies a first-time Traveller on a genuinely new browser
+    // session, BEFORE _beginBoot()'s own getSessionStatus() call ever
+    // runs — including for the exact case where the CURRENTLY ACTIVE
+    // session slot (js/projectManager.js's own 'vihustudio-session' key)
+    // still points at a real, in-progress project of THIS SAME Traveller's
+    // own, not a stranger's leftover on a shared device. Wiping the whole
+    // catalog in that moment destroys the very durable fallback Task #475
+    // built ("Continue a Project," the still-safe catalog copy) before it
+    // ever gets a chance to help. `opts.preserveIds` lets a caller name
+    // exactly the records that must survive the wipe — used by
+    // js/gatewaySequence.js to keep only the currently-active session's
+    // own project, so a genuinely unrelated previous Creator's catalog
+    // entries on a shared device are still wiped exactly as before, but a
+    // Traveller's own just-abandoned, still-in-progress work never is.
+    function clearAll(opts) {
+        opts = opts || {};
+        const preserveIds = Array.isArray(opts.preserveIds) ? opts.preserveIds : [];
+        const preserved = preserveIds.map(function (id) { return _map.get(id); }).filter(Boolean);
         _map.clear();
+        preserved.forEach(function (r) { _map.set(r.id, r); });
         if (_useFallback) {
-            try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+            try {
+                if (preserved.length) localStorage.setItem(LEGACY_KEY, JSON.stringify(preserved));
+                else localStorage.removeItem(LEGACY_KEY);
+            } catch (e) {}
             return Promise.resolve({ ok: true });
         }
         return _tx([PROJECT_STORE, PENDING_STORE], 'readwrite').then(function (tx) {
@@ -276,10 +301,24 @@
                 tx.onerror = function () { reject(tx.error || new Error('IndexedDB clear failed')); };
             });
         }).then(function () {
-            try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+            // Re-persist whatever was preserved into the now-cleared store
+            // — sequential, not Promise.all, so each write's own ordering
+            // guard (_persistOne's updatedAt compare-and-swap) sees a
+            // settled prior state rather than racing a sibling write.
+            return preserved.reduce(function (chain, r) {
+                return chain.then(function () { return _persistOne(r, { skipPendingRefresh: true }); });
+            }, Promise.resolve());
+        }).then(function () {
+            try {
+                if (preserved.length) localStorage.setItem(LEGACY_KEY, JSON.stringify(preserved));
+                else localStorage.removeItem(LEGACY_KEY);
+            } catch (e) {}
             return { ok: true };
         }).catch(function (e) {
-            try { localStorage.removeItem(LEGACY_KEY); } catch (e2) {}
+            try {
+                if (preserved.length) localStorage.setItem(LEGACY_KEY, JSON.stringify(preserved));
+                else localStorage.removeItem(LEGACY_KEY);
+            } catch (e2) {}
             return { ok: false, error: e };
         });
     }

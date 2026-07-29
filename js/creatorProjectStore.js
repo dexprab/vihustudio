@@ -135,8 +135,14 @@ const CreatorProjectStore=(function(){
   // Traveller (never for a Returning Creator) -- wipes the whole list
   // outright so a story a DIFFERENT anonymous Traveller left on a
   // shared device never surfaces in "My Projects" for the next one.
-  function clearAll(){
-    _cache().clearAll();
+  //
+  // Task #490 -- opts.preserveIds (an array of project ids) lets the one
+  // real caller keep the CURRENTLY ACTIVE session's own project record
+  // intact through the wipe -- see js/creatorProjectCache.js's own
+  // clearAll() comment for the full reasoning. Omitted/empty keeps this
+  // function's exact prior behaviour (a total wipe).
+  function clearAll(opts){
+    _cache().clearAll(opts);
     return {ok:true};
   }
 

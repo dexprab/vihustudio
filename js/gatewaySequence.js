@@ -686,11 +686,38 @@
       // signal needed; the marker is set unconditionally (both paths)
       // so a Returning Creator boot also correctly counts as "already
       // entered" for the rest of that tab session.
+      //
+      // Task #490 -- a real, confirmed gap: this wipe used to fire
+      // unconditionally for any first-time Traveller, with no way to
+      // tell "a stranger's leftover project on a shared device" (the
+      // wipe's own genuine purpose) apart from "this exact Traveller's
+      // own currently-active, still-in-progress session" -- since
+      // _beginBoot() (and its getSessionStatus() call, which Task #475
+      // taught to fall back to the far more durable
+      // CreatorProjectStore catalog record when the raw session slot has
+      // gone stale) only ever runs AFTER this wipe already fired, a
+      // Traveller reopening the app in a genuinely new browser session
+      // had their own safety net destroyed before it could ever help --
+      // reproducing the exact "restore simply restores blank slate"
+      // complaint. Fixed by reading whichever project id the raw session
+      // slot itself currently names (never trusting ANY OTHER catalog
+      // entry, so a stranger's own leftover project is still wiped
+      // exactly as before) and preserving only that one record through
+      // the wipe.
       try{
         const isNewSession=!sessionStorage.getItem(GATEWAY_SESSION_MARKER);
         sessionStorage.setItem(GATEWAY_SESSION_MARKER,'1');
         if(isNewSession&&!isReturning&&typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.clearAll){
-          CreatorProjectStore.clearAll();
+          let activeId=null;
+          try{
+            if(typeof ProjectManager!=='undefined'&&ProjectManager.getSessionStatus){
+              const info=ProjectManager.getSessionStatus();
+              if(info&&info.state==='valid'&&info.data&&info.data.project&&info.data.project.id){
+                activeId=info.data.project.id;
+              }
+            }
+          }catch(e){}
+          CreatorProjectStore.clearAll(activeId?{preserveIds:[activeId]}:undefined);
         }
       }catch(e){}
 

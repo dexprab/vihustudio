@@ -10,6 +10,10 @@ const ProjectManager=(function(){
   let autosaveTimer=null;
   let statusCallback=null;
   let suppressDirty=false;
+  // Task #475 — lazily registered on the first real save attempt (see
+  // _ensurePersistErrorListener below), avoiding any script-load-order
+  // dependency on CreatorProjectStore existing yet at module-init time.
+  let _persistErrorListenerRegistered=false;
 
   function setStatusCallback(cb){ statusCallback=cb; }
 
@@ -289,9 +293,22 @@ const ProjectManager=(function(){
         try{ ThemeEngine.applyArtworkTheme(AppState.project.artworkTheme,{silent:true}); }catch(e){}
       }
 
-      if(typeof window.renderList==='function') window.renderList();
-      if(typeof window.renderTimeline==='function') window.renderTimeline();
-      if(slides.length>0 && typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+      // Task #475 — every field AppState.project/.slides/.currentSlide
+      // needed has already been fully and correctly rebuilt by this
+      // point; a glitch in any one of these three render calls (a
+      // rendering/DOM edge case, not a data problem) must never be
+      // treated as "the restore itself failed" by a caller further up
+      // the chain (js/app.js's own restore-modal onPrimary handler used
+      // to auto-discard the saved session on ANY exception here, turning
+      // a possibly-transient rendering hiccup into permanent, irreversible
+      // data loss — see that handler's own updated comment). Matches the
+      // exact try/catch discipline the ThemeManager/ThemeEngine calls
+      // immediately above already use.
+      try{
+        if(typeof window.renderList==='function') window.renderList();
+        if(typeof window.renderTimeline==='function') window.renderTimeline();
+        if(slides.length>0 && typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+      }catch(e){}
     }finally{
       suppressDirty=false;
     }
@@ -457,21 +474,64 @@ const ProjectManager=(function(){
     }catch(e){}
   }
 
+  // Task #475 — a real, confirmed data-loss cause: this used to be one
+  // big try/catch around BOTH the raw legacy single-session-slot write
+  // (localStorage.setItem(STORAGE_KEY,...), a small, fixed-size key that
+  // CAN throw synchronously on quota) and _syncProjectStore(data) (the
+  // far more durable "My Projects" catalog write — see that function's
+  // own comment). A quota failure on the small slot aborted the whole
+  // function BEFORE _syncProjectStore ever ran — silently freezing the
+  // durable catalog entry at whatever the LAST successful save happened
+  // to be (often an early, near-blank snapshot) for the rest of the
+  // session, with every later edit lost the instant this one slot's
+  // write started failing. _scheduleAssetMigration() — the one thing
+  // that would shrink future payloads and fix this on its own — was
+  // ALSO skipped in that branch, a self-reinforcing failure loop.
+  // getSessionStatus() below now separately guards against restoring
+  // from that stale slot when a fresher, id-matched catalog record
+  // exists — but the fix has to start here, by giving the catalog write
+  // a real chance to run regardless of whether the small slot succeeds.
+  function _ensurePersistErrorListener(){
+    if(_persistErrorListenerRegistered) return;
+    if(typeof CreatorProjectStore==='undefined' || typeof CreatorProjectStore.onPersistError!=='function') return;
+    _persistErrorListenerRegistered=true;
+    // The genuinely rare backstop — CreatorProjectStore's own durable
+    // write (in-memory Map, synchronous; IndexedDB in the background;
+    // its own separate localStorage key only if IndexedDB itself fails)
+    // only ever reports failure this way, asynchronously, once BOTH of
+    // those paths have failed. Only then is data genuinely at risk —
+    // reflected honestly via the same save-status badge every other
+    // outcome already flows through, even though it may land a moment
+    // after _writeStorage() itself already reported 'saved'.
+    CreatorProjectStore.onPersistError(function(){ setStatus('failed'); });
+  }
+
   function _writeStorage(){
     setStatus('saving');
+    let data;
     try{
-      const data=serialize();
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-      _syncProjectStore(data);
-      setStatus('saved');
-      // Phase D — only a write that actually reached localStorage is
-      // worth walking the live slides for legacy data: fields to migrate.
-      _scheduleAssetMigration();
-      return true;
+      data=serialize();
     }catch(e){
       setStatus('failed');
       return false;
     }
+    _ensurePersistErrorListener();
+    // The durable write, first and unconditionally.
+    _syncProjectStore(data);
+    // The small, fixed-size legacy slot — genuinely capable of throwing
+    // on quota — no longer aborts the rest of the function if it does;
+    // the durable catalog copy above already has this save's real
+    // content regardless of whether this one succeeds.
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+    }catch(e){}
+    setStatus('saved');
+    // Phase D — always give migration a chance now, not only when the
+    // legacy slot write happened to succeed — it's what shrinks future
+    // payloads, and skipping it here was exactly the self-reinforcing
+    // failure loop named above.
+    _scheduleAssetMigration();
+    return true;
   }
 
   function saveToLocalStorage(){ return _writeStorage(); }
@@ -493,6 +553,33 @@ const ProjectManager=(function(){
     let data;
     try{ data=JSON.parse(raw); }catch(e){ return {state:'corrupt',reason:'parse'}; }
     try{ validatePayload(data); }catch(e){ return {state:'corrupt',reason:e.message}; }
+    // Task #475 — this raw legacy slot can go stale mid-session (see
+    // _writeStorage()'s own comment) and, being written on every autosave
+    // with no retry once it starts failing, silently freeze at an early,
+    // much emptier snapshot for the rest of the session — exactly
+    // "restore simply restores blank slate." Prefer whichever of the raw
+    // slot and the far more durable CreatorProjectStore catalog record is
+    // genuinely newer, but ONLY when there is positive id-matched
+    // evidence linking them as the same project — never a blanket "use
+    // the most recently touched catalog entry," which would risk
+    // resurrecting an unrelated or already-discarded project the instant
+    // this raw slot alone is missing/corrupt (both early returns above
+    // already correctly fall through with no catalog lookup at all, so
+    // an explicit Discard — which only ever removes this raw slot — can
+    // never be silently undone by this fallback).
+    const id=data.project && data.project.id;
+    if(id && typeof CreatorProjectStore!=='undefined'){
+      try{
+        const record=CreatorProjectStore.get(id);
+        if(record && record.data){
+          const rawModified=new Date((data.project&&data.project.modifiedDate)||0);
+          const catalogUpdated=new Date(record.updatedAt||0);
+          if(catalogUpdated>rawModified){
+            try{ validatePayload(record.data); data=record.data; }catch(e2){ /* keep the raw slot's own data */ }
+          }
+        }
+      }catch(e){}
+    }
     // Any parsed-and-validated session is restorable — even before the first
     // page is uploaded, partial state (theme, title, options) is real user
     // work that must survive a reload.

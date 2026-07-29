@@ -1937,7 +1937,27 @@ function _beginBoot(){
           // background check against the cloud is safe to run now.
           try{ checkStudioCloudFreshness(info.data.project && info.data.project.id); }catch(e){}
         }
-        catch(e){ ProjectManager.discardSession(); setAutosaveStatus('failed'); }
+        catch(e){
+          // Task #475 — a real, confirmed data-loss cause: this used to
+          // call ProjectManager.discardSession() on ANY exception here —
+          // including a plain rendering hiccup inside deserialize(), now
+          // separately guarded against its own destructive fallout (see
+          // that function's own updated comment) — permanently deleting a
+          // saved session the user never asked to delete, then leaving
+          // #app on whatever half-restored/blank DOM state the failed
+          // attempt left behind, since _startCreationFlow() was never
+          // called in this branch either. The ONLY thing that should ever
+          // remove a saved session is the explicit, deliberate Discard
+          // button below — never an exception. Recover into a real,
+          // working screen instead, landing on "Continue a Project" (the
+          // still-safe durable CreatorProjectStore catalog copy — see
+          // projectManager.js's own _writeStorage()/getSessionStatus()
+          // comments — is very likely fine even when this one in-memory
+          // restore attempt hit a snag) rather than a blank stranded #app.
+          setAutosaveStatus('failed');
+          _homeReturnPending=true;
+          _startCreationFlow();
+        }
       },
       onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); }
     });
@@ -2061,6 +2081,26 @@ function _hidePreloadGate(el){
     if(typeof LumoVoice!=='undefined'){
       LumoVoice.preload();
       tasks.push(LumoVoice.whenReady(null,4000));
+    }
+  }catch(e){}
+  // Task #489 — a real, confirmed gap: CreatorProjectCache.hydrate() was
+  // never called ANYWHERE in root Studio's boot sequence (unlike World
+  // Builder v2's own _checkIdentityGate(), which explicitly awaits
+  // ProjectCache.hydrate() before its first render) — every read of
+  // CreatorProjectStore.list()/.get() saw a permanently-empty in-memory
+  // Map for any project only persisted from a PREVIOUS page load (via
+  // IndexedDB or the legacy localStorage array), silently starving "My
+  // Projects" and the restore-modal's own freshness-preference logic
+  // (getSessionStatus()) of real data that genuinely exists. Threaded in
+  // here, alongside the existing AudioManager/LumoVoice readiness tasks,
+  // so _beginBoot()'s synchronous ProjectManager.getSessionStatus() call
+  // — and every screen _startCreationFlow() might open afterward — always
+  // sees a genuinely hydrated cache. hydrate() never rejects (it falls
+  // back to a direct legacy-localStorage read on any IndexedDB failure,
+  // per its own implementation), so this can never itself block boot.
+  try{
+    if(typeof CreatorProjectCache!=='undefined' && CreatorProjectCache.hydrate){
+      tasks.push(CreatorProjectCache.hydrate());
     }
   }catch(e){}
   const overallSafety=new Promise(function(resolve){ setTimeout(resolve,5000); });
