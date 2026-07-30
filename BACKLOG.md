@@ -22,7 +22,8 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 
 ## Feature Requests
 
-- Extend background-remover utility. Keep the same essence. replace the existing image editor during image upload in studio with this. when a image is uploaded in studio let it pass through Image Studio (renaming background-remover). It should allow user to crop, remove background, flip, rotate 
+- Extend background-remover utility. Keep the same essence. replace the existing image editor during image upload in studio with this. when a image is uploaded in studio let it pass through Image Studio (renaming background-remover). It should allow user to crop, remove background, flip, rotate
+- We need a tutorial or a starting instruction for the kids first visit. what to do , how to do , where to do, when to do.
 
 ## Done
 
