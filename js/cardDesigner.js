@@ -1547,21 +1547,291 @@ const CardDesigner=(function(){
       g.stroke();
     }
   }
-  function _drawDoodlePad(canvas,strokes,liveStroke){
+  function _drawDoodlePad(canvas,strokes,liveStroke,objectSize){
     const g=canvas.getContext('2d');
     g.clearRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
     g.fillStyle='#FFFFFF';
     g.fillRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
     g.lineCap='round';
     g.lineJoin='round';
-    const scale=DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE;
     const mapPt=function(p){ return {x:p.x*DOODLE_PAD_SIZE, y:p.y*DOODLE_PAD_SIZE}; };
     const all=(strokes||[]).concat(liveStroke?[liveStroke]:[]);
     all.forEach(function(s){
       if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-      const w=Math.max(1,(typeof s.width==='number'?s.width:6)*scale);
+      // _padStrokeWidth (defined below, hoisted) scales a stroke's own
+      // stored width against the OBJECT's real current size, not a
+      // fixed DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE ratio — the pad
+      // preview now matches what the real render will actually look
+      // like once the sticker returns to its authored size, instead of
+      // only ever agreeing at the one baked-in default size.
+      const w=_padStrokeWidth(s.width,DOODLE_PAD_SIZE,objectSize);
       _drawDoodleStrokeOnCtx(g,s.points,mapPt,s.color,w,s.medium,1);
     });
+  }
+
+  // "Paint Inside" — Real Vector Shapes gain the same multi-stroke/
+  // multi-colour/medium painting capability Doodle already has, per
+  // BACKLOG.md: "For all shapes user should be allowed to choose
+  // either solid colors or be allowed to manually color using brush
+  // strokes (similar to like doodle functionality)." A per-shape
+  // st.fillMode ('solid'|'paint', absent always meaning 'solid' — every
+  // existing Shape renders byte-identically) decides which fill
+  // mechanism is active; Outline (stroke) stays a separate,
+  // always-available control regardless of fillMode, per the shipped
+  // "Toggle: Solid Fill vs. Paint Inside" product decision.
+  //
+  // This pad hand-mirrors renderer/slideRenderer.js's own
+  // _layerDrawShape geometry (its own doc comment: "a Refine-panel
+  // preview never calls into the real renderer module, only mirrors
+  // its geometry by hand" — the same established discipline
+  // _drawCustomShapePad already follows for the Solid Fill draw pad)
+  // into a Path2D sized to this pad, then reuses _drawDoodleStrokeOnCtx
+  // directly for the actual stroke rendering — zero duplicated
+  // per-medium drawing logic.
+  function _shapePadLetterChar(kind){
+    if(typeof kind!=='string') return null;
+    if(kind.indexOf('letter-')===0) return kind.slice(7);
+    if(kind.indexOf('number-')===0) return kind.slice(7);
+    return null;
+  }
+  function _regularPolygonPadPathFor(path,cx,cy,rx,ry,sides){
+    const start=-Math.PI/2;
+    const step=(Math.PI*2)/sides;
+    path.moveTo(cx+Math.cos(start)*rx,cy+Math.sin(start)*ry);
+    for(let i=1;i<sides;i++){
+      const a=start+step*i;
+      path.lineTo(cx+Math.cos(a)*rx,cy+Math.sin(a)*ry);
+    }
+    path.closePath();
+  }
+  // Returns {kind:'path', path} for every plottable shape (the 15
+  // preset kinds + 'custom'), or {kind:'letter', ch} for the 36
+  // letter/number kinds — those have no plottable path at all, matching
+  // renderer/slideRenderer.js's own _layerDrawShape/_drawLetterShapePaint
+  // split exactly.
+  function _buildShapeSilhouettePath2D(shape,size,customStrokes){
+    const letterCh=_shapePadLetterChar(shape);
+    if(letterCh) return {kind:'letter',ch:letterCh};
+    const cx=size/2,cy=size/2,rx=size/2,ry=size/2;
+    const path=new Path2D();
+    if(shape==='circle'){
+      path.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+    }else if(shape==='rectangle'){
+      path.rect(0,0,size,size);
+    }else if(shape==='rounded-rectangle'){
+      const r=size*0.2;
+      path.moveTo(r,0);
+      path.arcTo(size,0,size,size,r);
+      path.arcTo(size,size,0,size,r);
+      path.arcTo(0,size,0,0,r);
+      path.arcTo(0,0,size,0,r);
+      path.closePath();
+    }else if(shape==='custom'){
+      if(Array.isArray(customStrokes) && customStrokes.length){
+        let lastEnd=null;
+        customStrokes.forEach(function(s){
+          if(!s||!s.p0||!s.p1) return;
+          const x0=s.p0.x*size, y0=s.p0.y*size;
+          const x1=s.p1.x*size, y1=s.p1.y*size;
+          if(s.type==='circle'){
+            const ccx=(x0+x1)/2, ccy=(y0+y1)/2;
+            const crx=Math.max(Math.abs(x1-x0)/2,0.5), cry=Math.max(Math.abs(y1-y0)/2,0.5);
+            path.moveTo(ccx+crx,ccy);
+            path.ellipse(ccx,ccy,crx,cry,0,0,Math.PI*2);
+            lastEnd=null;
+          }else{
+            const connects=lastEnd && Math.hypot(x0-lastEnd.x,y0-lastEnd.y)<6;
+            if(!connects) path.moveTo(x0,y0);
+            path.lineTo(x1,y1);
+            lastEnd={x:x1,y:y1};
+          }
+        });
+      }else{
+        path.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      }
+    }else if(shape==='triangle'){
+      _regularPolygonPadPathFor(path,cx,cy,rx,ry,3);
+    }else if(shape==='diamond'){
+      path.moveTo(cx,0);
+      path.lineTo(size,cy);
+      path.lineTo(cx,size);
+      path.lineTo(0,cy);
+      path.closePath();
+    }else if(shape==='pentagon'){
+      _regularPolygonPadPathFor(path,cx,cy,rx,ry,5);
+    }else if(shape==='hexagon'){
+      _regularPolygonPadPathFor(path,cx,cy,rx,ry,6);
+    }else if(shape==='octagon'){
+      _regularPolygonPadPathFor(path,cx,cy,rx,ry,8);
+    }else if(shape==='star'){
+      const spikes=5, outerRx=rx, outerRy=ry, innerRx=rx*0.42, innerRy=ry*0.42;
+      let rot=-Math.PI/2;
+      const step=Math.PI/spikes;
+      path.moveTo(cx+Math.cos(rot)*outerRx,cy+Math.sin(rot)*outerRy);
+      for(let i=0;i<spikes;i++){
+        rot+=step;
+        path.lineTo(cx+Math.cos(rot)*innerRx,cy+Math.sin(rot)*innerRy);
+        rot+=step;
+        path.lineTo(cx+Math.cos(rot)*outerRx,cy+Math.sin(rot)*outerRy);
+      }
+      path.closePath();
+    }else if(shape==='cross'){
+      const tw=size*0.34, th=size*0.34;
+      const cx1=(size-tw)/2, cx2=(size+tw)/2;
+      const cy1=(size-th)/2, cy2=(size+th)/2;
+      path.moveTo(cx1,0); path.lineTo(cx2,0); path.lineTo(cx2,cy1);
+      path.lineTo(size,cy1); path.lineTo(size,cy2); path.lineTo(cx2,cy2);
+      path.lineTo(cx2,size); path.lineTo(cx1,size); path.lineTo(cx1,cy2);
+      path.lineTo(0,cy2); path.lineTo(0,cy1); path.lineTo(cx1,cy1);
+      path.closePath();
+    }else if(shape==='trapezoid'){
+      path.moveTo(size*0.2,0);
+      path.lineTo(size*0.8,0);
+      path.lineTo(size,size);
+      path.lineTo(0,size);
+      path.closePath();
+    }else if(shape==='parallelogram'){
+      const skew=size*0.2;
+      path.moveTo(skew,0);
+      path.lineTo(size,0);
+      path.lineTo(size-skew,size);
+      path.lineTo(0,size);
+      path.closePath();
+    }else if(shape==='arrow'){
+      const shaftTop=cy-ry*0.28, shaftBottom=cy+ry*0.28, headX=size*0.62;
+      path.moveTo(0,shaftTop);
+      path.lineTo(headX,shaftTop);
+      path.lineTo(headX,cy-ry*0.62);
+      path.lineTo(size,cy);
+      path.lineTo(headX,cy+ry*0.62);
+      path.lineTo(headX,shaftBottom);
+      path.lineTo(0,shaftBottom);
+      path.closePath();
+    }else if(shape==='speech-bubble'){
+      const r=size*0.18, bodyBottom=size*0.78;
+      path.moveTo(r,0);
+      path.arcTo(size,0,size,bodyBottom,r);
+      path.arcTo(size,bodyBottom,0,bodyBottom,r);
+      path.arcTo(0,bodyBottom,0,0,r);
+      path.arcTo(0,0,size,0,r);
+      path.closePath();
+      path.moveTo(size*0.22,bodyBottom);
+      path.lineTo(size*0.12,size);
+      path.lineTo(size*0.38,bodyBottom);
+      path.closePath();
+    }else if(shape==='banner'){
+      const notch=size*0.14;
+      path.moveTo(0,0);
+      path.lineTo(size,0);
+      path.lineTo(size-notch,cy);
+      path.lineTo(size,size);
+      path.lineTo(0,size);
+      path.lineTo(notch,cy);
+      path.closePath();
+    }else{
+      path.rect(0,0,size,size);
+    }
+    return {kind:'path',path:path};
+  }
+
+  const SHAPE_PAINT_PAD_SIZE=220;
+  const SHAPE_DEFAULT_SIZE=240;
+  // Shared by this pad and (per the Doodle pad's own incidental width-
+  // scaling fix) _drawDoodlePad: a stored stroke width is an absolute
+  // pixel value against the object's own real, current size — scale it
+  // proportionally to whatever fixed pad size is actually being drawn
+  // at, rather than assuming one fixed default size, so the pad's own
+  // preview genuinely matches what the real render will look like once
+  // the object returns to its authored size.
+  function _padStrokeWidth(rawWidth,padSize,objectSize){
+    const w=typeof rawWidth==='number'?rawWidth:6;
+    const size=objectSize>0?objectSize:padSize;
+    return Math.max(1,w*(padSize/size));
+  }
+  function _drawShapePaintPad(canvas,shape,customStrokes,paintStrokes,liveStroke,style,objectSize){
+    const g=canvas.getContext('2d');
+    const size=SHAPE_PAINT_PAD_SIZE;
+    g.clearRect(0,0,size,size);
+    g.fillStyle='#F4F1EC';
+    g.fillRect(0,0,size,size);
+    style=style||{};
+    g.lineCap='round';
+    g.lineJoin='round';
+
+    const silhouette=_buildShapeSilhouettePath2D(shape,size,customStrokes);
+
+    // A faint boundary guide, always visible even before any stroke is
+    // drawn, so a child can see exactly where "inside" the shape is.
+    g.save();
+    g.globalAlpha=0.22;
+    g.strokeStyle='#24406B';
+    g.lineWidth=1.5;
+    if(silhouette.kind==='path'){
+      g.stroke(silhouette.path);
+    }else{
+      g.textAlign='center'; g.textBaseline='middle';
+      g.font='bold '+(size*0.72)+'px sans-serif';
+      g.strokeText(silhouette.ch,size/2,size/2);
+    }
+    g.restore();
+
+    const objSize=objectSize>0?objectSize:SHAPE_DEFAULT_SIZE;
+    const mapPt=function(p){ return {x:p.x*size, y:p.y*size}; };
+    const all=(paintStrokes||[]).concat(liveStroke?[liveStroke]:[]);
+
+    if(all.length){
+      if(silhouette.kind==='path'){
+        g.save();
+        g.clip(silhouette.path);
+        all.forEach(function(s){
+          if(!s || !Array.isArray(s.points) || s.points.length<2) return;
+          const w=_padStrokeWidth(s.width,size,objSize);
+          _drawDoodleStrokeOnCtx(g,s.points,mapPt,s.color,w,s.medium,1);
+        });
+        g.restore();
+      }else{
+        // Letter/number silhouette — mirrors renderer/slideRenderer.js's
+        // _drawLetterShapePaint alpha-mask-composite technique, hand-
+        // mirrored here since a text glyph has no plottable path for
+        // this pad to clip against directly.
+        const mask=document.createElement('canvas');
+        mask.width=size; mask.height=size;
+        const mctx=mask.getContext('2d');
+        mctx.textAlign='center'; mctx.textBaseline='middle';
+        mctx.font='bold '+(size*0.72)+'px sans-serif';
+        mctx.fillStyle='#000';
+        mctx.fillText(silhouette.ch,size/2,size/2);
+
+        const paint=document.createElement('canvas');
+        paint.width=size; paint.height=size;
+        const pg=paint.getContext('2d');
+        pg.lineCap='round'; pg.lineJoin='round';
+        all.forEach(function(s){
+          if(!s || !Array.isArray(s.points) || s.points.length<2) return;
+          const w=_padStrokeWidth(s.width,size,objSize);
+          _drawDoodleStrokeOnCtx(pg,s.points,mapPt,s.color,w,s.medium,1);
+        });
+        pg.globalCompositeOperation='destination-in';
+        pg.drawImage(mask,0,0);
+        g.drawImage(paint,0,0);
+      }
+    }
+
+    // The real Outline, drawn last and unclipped — matches "Outline
+    // stays separate, always-available" regardless of fillMode.
+    if(style.strokeWidth>0){
+      g.save();
+      g.strokeStyle=style.strokeColor||'#24406B';
+      g.lineWidth=Math.max(1,style.strokeWidth*(size/240));
+      if(silhouette.kind==='path'){
+        g.stroke(silhouette.path);
+      }else{
+        g.textAlign='center'; g.textBaseline='middle';
+        g.font='bold '+(size*0.72)+'px sans-serif';
+        g.strokeText(silhouette.ch,size/2,size/2);
+      }
+      g.restore();
+    }
   }
 
   function _buildStickerControls(body){
@@ -1744,6 +2014,38 @@ const CardDesigner=(function(){
     const shapeGroup=document.createElement('div');
     shapeGroup.className='sticker-shape-group hidden';
 
+    // Fill Mode toggle — "for all shapes user should be allowed to
+    // choose either solid colors or be allowed to manually color using
+    // brush strokes (similar to like doodle functionality)." Solid =
+    // the existing flat Fill Colour below; Paint Inside = the shape's
+    // own silhouette becomes a clipped canvas reusing Doodle's exact
+    // multi-stroke/multi-colour/medium mechanics. Outline stays a
+    // separate, always-available control regardless of which mode is
+    // active — never hidden/disabled by this toggle. paintStrokes is
+    // preserved (not cleared) when toggling back to Solid, so bouncing
+    // between modes never loses painted work.
+    const fillModeRow=document.createElement('div');
+    fillModeRow.className='icon-row sticker-shape-fillmode-row';
+    const fillModeBtns={};
+    [['solid','🎨','Solid Fill'],['paint','🖌️','Paint Inside']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card sticker-shape-fillmode-btn';
+      btn.setAttribute('data-mode',t[0]);
+      const pv=document.createElement('span'); pv.className='icon-preview';
+      const g=document.createElement('span'); g.className='sticker-shape-fillmode-glyph'; g.textContent=t[1]; pv.appendChild(g);
+      btn.appendChild(pv);
+      const lbl=document.createElement('span'); lbl.className='icon-label'; lbl.textContent=t[2]; btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        const st=_activeSticker();
+        const already=Array.isArray(st&&st.paintStrokes);
+        _stickerUpdate(Object.assign({fillMode:t[0]},(t[0]==='paint'&&!already)?{paintStrokes:[]}:{}));
+      });
+      fillModeBtns[t[0]]=btn;
+      fillModeRow.appendChild(btn);
+    });
+    shapeGroup.appendChild(fillModeRow);
+
     // "for all shapes give option of transparent fill color" — a
     // Transparent checkbox sits right beside the Fill Colour swatch,
     // mirroring the exact Colour-section pattern Universal Experience
@@ -1777,6 +2079,164 @@ const CardDesigner=(function(){
       });
     })();
     shapeGroup.appendChild(fillFieldsWrap);
+
+    // Paint Inside — shown only when fillMode==='paint'. Reuses Doodle's
+    // exact multi-stroke/multi-colour/medium mechanics (Crayon/Pastel/
+    // Brush/Spray, same DOODLE_MEDIA/palettes) against a pad that's
+    // pre-clipped to this shape's own silhouette (or, for a letter/
+    // number shape, its own glyph) — renderer/slideRenderer.js's
+    // _paintShapePathTail/_drawLetterShapePaint do the identical clip/
+    // composite on the real render; this pad hand-mirrors the same
+    // geometry (_buildShapeSilhouettePath2D) purely for a live preview,
+    // per this file's own established twin-render-and-pad discipline.
+    const shapePaintGroup=document.createElement('div');
+    shapePaintGroup.className='sticker-shape-paint-group hidden';
+
+    const shapePaintHint=document.createElement('p');
+    shapePaintHint.className='placeholder shape-paint-pad-hint';
+    shapePaintHint.textContent='Paint inside the shape below with your mouse or finger. Lift to start a new line.';
+    shapePaintGroup.appendChild(shapePaintHint);
+
+    let shapePaintMedium=DOODLE_MEDIA[0].id;
+    let shapePaintPenColor=DOODLE_MEDIA[0].palette[0];
+    let shapePaintPenWidth=6;
+
+    const shapePaintPadWrap=document.createElement('div');
+    shapePaintPadWrap.className='shape-paint-pad-wrap';
+    const shapePaintCanvas=document.createElement('canvas');
+    shapePaintCanvas.width=SHAPE_PAINT_PAD_SIZE; shapePaintCanvas.height=SHAPE_PAINT_PAD_SIZE;
+    shapePaintCanvas.className='shape-paint-pad-canvas';
+    shapePaintPadWrap.appendChild(shapePaintCanvas);
+    shapePaintGroup.appendChild(shapePaintPadWrap);
+
+    const shapePaintMediaRow=document.createElement('div');
+    shapePaintMediaRow.className='doodle-media-row shape-paint-media-row';
+    DOODLE_MEDIA.forEach(function(m){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='doodle-media-btn';
+      btn.setAttribute('data-medium',m.id);
+      btn.title=m.label;
+      const ic=document.createElement('span'); ic.className='doodle-media-icon'; ic.textContent=m.icon;
+      const lb=document.createElement('span'); lb.className='doodle-media-label'; lb.textContent=m.label;
+      btn.appendChild(ic); btn.appendChild(lb);
+      btn.addEventListener('click',function(){
+        if(shapePaintMedium===m.id) return;
+        shapePaintMedium=m.id;
+        shapePaintPenColor=m.palette[0];
+        _rebuildShapePaintSwatches();
+        _syncShapePaintPenUI();
+      });
+      shapePaintMediaRow.appendChild(btn);
+    });
+    shapePaintGroup.appendChild(shapePaintMediaRow);
+
+    const shapePaintPenToolsRow=document.createElement('div');
+    shapePaintPenToolsRow.className='doodle-pen-tools-row shape-paint-pen-tools-row';
+    const shapePaintPenSwatchRow=document.createElement('div');
+    shapePaintPenSwatchRow.className='doodle-pen-swatch-row shape-paint-pen-swatch-row';
+    function _rebuildShapePaintSwatches(){
+      shapePaintPenSwatchRow.innerHTML='';
+      const media=DOODLE_MEDIA.find(function(m){ return m.id===shapePaintMedium; })||DOODLE_MEDIA[0];
+      media.palette.forEach(function(c){
+        const sw=document.createElement('button');
+        sw.type='button';
+        sw.className='doodle-pen-swatch';
+        sw.setAttribute('data-color',c);
+        sw.style.background=c;
+        sw.addEventListener('click',function(){ shapePaintPenColor=c; _syncShapePaintPenUI(); });
+        shapePaintPenSwatchRow.appendChild(sw);
+      });
+    }
+    _rebuildShapePaintSwatches();
+    shapePaintPenToolsRow.appendChild(shapePaintPenSwatchRow);
+
+    const shapePaintPenThicknessIcons=document.createElement('div');
+    shapePaintPenThicknessIcons.className='doodle-pen-thickness-row shape-paint-pen-thickness-row';
+    [['thin',3,'Thin'],['medium',6,'Med'],['thick',12,'Thick']].forEach(function(t){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='doodle-pen-thickness-btn';
+      btn.setAttribute('data-thickness',t[0]);
+      btn.title=t[2];
+      const dot=document.createElement('span'); dot.className='doodle-pen-thickness-dot'; dot.style.width=(t[1]*1.6)+'px'; dot.style.height=(t[1]*1.6)+'px';
+      btn.appendChild(dot);
+      btn.addEventListener('click',function(){ shapePaintPenWidth=t[1]; _syncShapePaintPenUI(); });
+      shapePaintPenThicknessIcons.appendChild(btn);
+    });
+    shapePaintPenToolsRow.appendChild(shapePaintPenThicknessIcons);
+    shapePaintGroup.appendChild(shapePaintPenToolsRow);
+
+    function _syncShapePaintPenUI(){
+      Array.prototype.forEach.call(shapePaintMediaRow.querySelectorAll('.doodle-media-btn'),function(btn){
+        btn.classList.toggle('active',btn.getAttribute('data-medium')===shapePaintMedium);
+      });
+      Array.prototype.forEach.call(shapePaintPenSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el){
+        el.classList.toggle('active',el.getAttribute('data-color')===shapePaintPenColor);
+      });
+      Array.prototype.forEach.call(shapePaintPenThicknessIcons.querySelectorAll('.doodle-pen-thickness-btn'),function(btn){
+        const w=({thin:3,medium:6,thick:12})[btn.getAttribute('data-thickness')];
+        btn.classList.toggle('active',w===shapePaintPenWidth);
+      });
+    }
+    _syncShapePaintPenUI();
+
+    const shapePaintActionsRow=document.createElement('div');
+    shapePaintActionsRow.className='doodle-pad-actions-row shape-paint-pad-actions-row';
+    const shapePaintUndoBtn=document.createElement('button');
+    shapePaintUndoBtn.type='button';
+    shapePaintUndoBtn.className='text-small-btn doodle-undo-btn';
+    shapePaintUndoBtn.textContent='↩ Undo Last Line';
+    shapePaintUndoBtn.addEventListener('click',function(){
+      const st=_activeSticker();
+      if(!st) return;
+      _stickerUpdate({paintStrokes:(st.paintStrokes||[]).slice(0,-1)});
+    });
+    shapePaintActionsRow.appendChild(shapePaintUndoBtn);
+    const shapePaintClearBtn=document.createElement('button');
+    shapePaintClearBtn.type='button';
+    shapePaintClearBtn.className='text-small-btn doodle-clear-btn';
+    shapePaintClearBtn.textContent='↺ Clear All';
+    shapePaintClearBtn.addEventListener('click',function(){ _stickerUpdate({paintStrokes:[]}); });
+    shapePaintActionsRow.appendChild(shapePaintClearBtn);
+    shapePaintGroup.appendChild(shapePaintActionsRow);
+    shapeGroup.appendChild(shapePaintGroup);
+
+    let shapePaintDrawing=false, shapePaintLivePoints=[];
+    function _shapePaintPointFromEvent(e){
+      const r=shapePaintCanvas.getBoundingClientRect();
+      return {x:(e.clientX-r.left)*(SHAPE_PAINT_PAD_SIZE/r.width), y:(e.clientY-r.top)*(SHAPE_PAINT_PAD_SIZE/r.height)};
+    }
+    shapePaintCanvas.addEventListener('pointerdown',function(e){
+      shapePaintDrawing=true;
+      shapePaintLivePoints=[_shapePaintPointFromEvent(e)];
+      try{ shapePaintCanvas.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    shapePaintCanvas.addEventListener('pointermove',function(e){
+      if(!shapePaintDrawing) return;
+      const p=_shapePaintPointFromEvent(e);
+      const last=shapePaintLivePoints[shapePaintLivePoints.length-1];
+      if(!last || Math.hypot(p.x-last.x,p.y-last.y)>2){
+        shapePaintLivePoints.push(p);
+        const st=_activeSticker();
+        const norm=shapePaintLivePoints.map(function(pt){ return {x:pt.x/SHAPE_PAINT_PAD_SIZE,y:pt.y/SHAPE_PAINT_PAD_SIZE}; });
+        _drawShapePaintPad(shapePaintCanvas,(st&&st.shape)||'circle',(st&&st.customStrokes)||[],(st&&st.paintStrokes)||[],
+          {points:norm,color:shapePaintPenColor,width:shapePaintPenWidth,medium:shapePaintMedium},
+          {strokeColor:st&&st.strokeColor,strokeWidth:st&&st.strokeWidth},
+          st&&st.w);
+      }
+    });
+    shapePaintCanvas.addEventListener('pointerup',function(){
+      if(!shapePaintDrawing) return;
+      shapePaintDrawing=false;
+      if(shapePaintLivePoints.length>=2){
+        const norm=shapePaintLivePoints.map(function(pt){ return {x:pt.x/SHAPE_PAINT_PAD_SIZE,y:pt.y/SHAPE_PAINT_PAD_SIZE}; });
+        const st=_activeSticker();
+        const strokes=((st&&st.paintStrokes)||[]).concat([{points:norm,color:shapePaintPenColor,width:shapePaintPenWidth,medium:shapePaintMedium}]);
+        _stickerUpdate({paintStrokes:strokes});
+      }
+      shapePaintLivePoints=[];
+    });
 
     (function(){
       const row=document.createElement('div');
@@ -2216,7 +2676,7 @@ const CardDesigner=(function(){
         doodleLivePoints.push(p);
         const st=_activeSticker();
         const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
-        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium});
+        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium},st&&st.w);
       }
     });
     doodleCanvas.addEventListener('pointerup',function(){
@@ -2373,11 +2833,26 @@ const CardDesigner=(function(){
     if(isDoodleKind){
       const doodleCanvasEl=section.querySelector('.doodle-pad-canvas');
       if(doodleCanvasEl){
-        _drawDoodlePad(doodleCanvasEl, st.strokes||[], null);
+        _drawDoodlePad(doodleCanvasEl, st.strokes||[], null, st.w);
       }
     }
 
     if(isShapeKind){
+      const fillMode=st.fillMode==='paint'?'paint':'solid';
+      section.querySelectorAll('.sticker-shape-fillmode-btn').forEach(function(b){
+        b.classList.toggle('active',b.getAttribute('data-mode')===fillMode);
+      });
+      const fillFieldsWrapForMode=section.querySelector('.sticker-shape-fill-fields');
+      if(fillFieldsWrapForMode) fillFieldsWrapForMode.classList.toggle('hidden',fillMode==='paint');
+      const shapePaintGroupEl=section.querySelector('.sticker-shape-paint-group');
+      if(shapePaintGroupEl) shapePaintGroupEl.classList.toggle('hidden',fillMode!=='paint');
+      if(fillMode==='paint'){
+        const shapePaintCanvasEl=section.querySelector('.shape-paint-pad-canvas');
+        if(shapePaintCanvasEl){
+          _drawShapePaintPad(shapePaintCanvasEl,st.shape,st.customStrokes||[],st.paintStrokes||[],null,{strokeColor:st.strokeColor,strokeWidth:st.strokeWidth},st.w);
+        }
+      }
+
       const fillEnabled=st.fillEnabled!==false;
       const fillFieldsWrapEl=section.querySelector('.sticker-shape-fill-fields');
       if(fillFieldsWrapEl) fillFieldsWrapEl.classList.toggle('is-transparent',!fillEnabled);

@@ -13,7 +13,6 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Draw your own functionality in builder should be same as draw your own feature in studio.
 - Doodle drawn vs doodle shown has differences in line stroke thickness and space covered. also there is leakage from doodle sketch area to outside area.
 - Companion does not always load in studio it just shows blank circle.<img width="360" height="247" alt="image" src="https://github.com/user-attachments/assets/c0dd886f-2cd8-4e2b-8cd5-37641b17d6e2" />
-- For all shapes user should be allowed to choose either solid colors or be allowed to manually color using brush strokes (similar to like doodle functionality)
 
 ## Feature Requests
 
@@ -23,5 +22,6 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 
 - [x] Restore loses orientation (landscape→portrait) — CLAUDE.md: "BACKLOG.md — Restore Loses Orientation."
 - [x] Performance with 20+ objects on Scene — CLAUDE.md: "BACKLOG.md — Performance with 20+ Objects on Scene."
+- [x] For all shapes, choose either solid colors or manually color using brush strokes (Doodle-style) — CLAUDE.md: "BACKLOG.md — Shapes: 'Solid Fill' vs. 'Paint Inside' Toggle."
 
 (Checked-off items move here once shipped, with a one-line pointer to the CLAUDE.md entry.)

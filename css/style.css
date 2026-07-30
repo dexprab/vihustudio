@@ -3562,6 +3562,34 @@ body.dark-theme .sticker-card-fav.is-fav{ color:#FF8FA3; }
   justify-content:center;
   margin-top:8px;
 }
+
+/* Shapes: "Solid Fill" vs. "Paint Inside" toggle — BACKLOG.md: "For all
+   shapes user should be allowed to choose either solid colors or be
+   allowed to manually color using brush strokes (similar to like doodle
+   functionality)." Paint Inside reuses Doodle's own multi-stroke
+   pad/medium-row/pen-tools-row/actions-row mechanics wholesale — each
+   is built with a compound class list (e.g. "doodle-media-row
+   shape-paint-media-row") so it already inherits every .doodle-* rule
+   below with zero new CSS needed; only the genuinely new pieces (the
+   Fill Mode toggle itself, and the Paint pad's own hint/wrap/canvas)
+   get real rules here. */
+.sticker-shape-fillmode-row{ justify-content:center; margin-bottom:10px; }
+.sticker-shape-fillmode-glyph{ font-size:15px; font-weight:600; padding:1px 2px; }
+.sticker-shape-paint-group{ margin-top:4px; }
+.sticker-shape-paint-group.hidden{ display:none; }
+.shape-paint-pad-hint{ margin:0 0 8px; }
+.shape-paint-pad-wrap{ text-align:center; }
+.shape-paint-pad-canvas{
+  width:100%;
+  max-width:220px;
+  aspect-ratio:1;
+  border:1px solid var(--line);
+  border-radius:14px;
+  cursor:crosshair;
+  touch-action:none;
+  background:#FFFFFF;
+}
+
 .sticker-text-words-input{
   width:100%;
   min-height:60px;
