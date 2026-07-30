@@ -15,6 +15,8 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - In shapes for all letters add lowercase also.
 - For texts allow these curves <img width="510" height="145" alt="image" src="https://github.com/user-attachments/assets/4e921638-4a11-45fa-a91d-1dcc68a1985c" />
 - Color and Image can co-exist in background. color is always behind the image not in front. Rename Background color section to Background. The image uploaded need to pass through image studio and also need to support all options which other images objects have got.
+- +Experience button needs to be in scene stack also.
+- Graphics within experience in builder do not rotate on moving the rotation slider.
 
 
 ## Feature Requests
