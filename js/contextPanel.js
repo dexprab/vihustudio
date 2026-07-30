@@ -555,14 +555,27 @@ const ContextPanel=(function(){
     const row=_el('div','designer-row context-row');
     row.appendChild(_el('div','designer-row-label',labelText));
     const icons=_el('div','icon-row');
+    const btns=[];
     choices.forEach(function(c){
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='icon-card'+(currentValue===c[0]?' active':'');
       const lbl=_el('span','icon-label',c[1]);
       btn.appendChild(lbl);
-      btn.addEventListener('click',function(){ onChoose(c[0]); });
+      btn.addEventListener('click',function(){
+        // This popup is never rebuilt mid-edit (see _makeMultiToggleRow's
+        // own comment above), so a single-select row must keep its own
+        // "which button is active" state correct purely via DOM
+        // manipulation on click — previously this only ever called
+        // onChoose(), leaving every button frozen at whichever one was
+        // active when the popup first opened even though the model (and
+        // the object's own rendered effect) had already changed.
+        btns.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        onChoose(c[0]);
+      });
       icons.appendChild(btn);
+      btns.push(btn);
     });
     row.appendChild(icons);
     if(parent) parent.appendChild(row);
