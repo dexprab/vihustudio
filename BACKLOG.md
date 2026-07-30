@@ -17,6 +17,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Color and Image can co-exist in background. color is always behind the image not in front. Rename Background color section to Background. The image uploaded need to pass through image studio and also need to support all options which other images objects have got.
 - +Experience button needs to be in scene stack also.
 - Graphics within experience in builder do not rotate on moving the rotation slider.
+- Allow builder to add more places to the scene
 
 
 ## Feature Requests
