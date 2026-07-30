@@ -658,8 +658,52 @@ const SlideRenderer=(()=>{
   // Story Theme default -- a Story Author's own explicit choice for
   // THIS page, not a second global setting.
   function _slideBackgroundOverride(s){
-    const bg=s && s.metadata && s.metadata.cardOverrides && s.metadata.cardOverrides.background;
+    const co=s && s.metadata && s.metadata.cardOverrides;
+    // "Add image option also in background" — the two modes are mutually
+    // exclusive at read time: once a Story Author has switched Background
+    // Type to Image, the plain colour string (still authored/preserved
+    // verbatim in co.background for a quick switch back) must no longer
+    // win here, or the colour fill would paint over/underneath the image
+    // for no reason. See _slideBackgroundImageOverride below.
+    if(co && co.backgroundMode==='image') return null;
+    const bg=co && co.background;
     return (typeof bg==='string' && bg) ? bg : null;
+  }
+
+  // The Image-mode counterpart to _slideBackgroundOverride above —
+  // {ref, rotation} or null. co.backgroundImage is only ever set once a
+  // Story Author's own upload succeeds (js/contextPanel.js's
+  // _appendBackgroundImageControls), so a project/theme with no such
+  // upload is completely unaffected.
+  function _slideBackgroundImageOverride(s){
+    const co=s && s.metadata && s.metadata.cardOverrides;
+    if(!co || co.backgroundMode!=='image') return null;
+    const img=co.backgroundImage;
+    return (img && typeof img.ref==='string' && img.ref) ? img : null;
+  }
+
+  // Draws a Story Author's own uploaded picture as the page's full
+  // background — cover-fit ('fill') + optional rotation, reusing
+  // _layerDrawDecorationImage's already-established cover-fit/rotation
+  // math and _ensureDecorationImage's cache-and-redraw-on-load resolution
+  // (vihu-asset: refs and legacy data: URIs alike) rather than a second,
+  // duplicated image-drawing implementation. Passing a vihu-asset:/data:
+  // ref through as `d.image` with no override bag is safe:
+  // ThemeRegistry.resolveAssetRef (the one extra step
+  // _layerDrawDecorationImage takes when no override is present) returns
+  // any value that isn't a bare theme-relative asset path completely
+  // unchanged (confirmed: it early-returns for anything matching
+  // data:/https?: OR anything NOT ending in a known image/font
+  // extension — a vihu-asset: ref matches neither test either way, so
+  // this call is a guaranteed no-op regardless of whether an Artwork
+  // Theme is even active).
+  function _drawSlideBackgroundImage(s,bgImg){
+    _layerDrawDecorationImage(
+      {image:bgImg.ref, fit:'fill', rotation:(typeof bgImg.rotation==='number')?bgImg.rotation:0},
+      {x:0,y:0,w:_viewportW,h:_viewportH},
+      s,
+      null
+    );
   }
 
   // Sprint 9.7 — Museum Gallery Fidelity: wall tone is the gallery
@@ -3270,6 +3314,10 @@ const SlideRenderer=(()=>{
     // Frame
     const _wallTone=_resolveWallTone(s);
     const _bgOverride=_slideBackgroundOverride(s);
+    // "Add image option also in background" -- null for every page except
+    // one whose Story Author switched Background Type to Image and
+    // uploaded a picture (js/contextPanel.js's _appendBackgroundImageControls).
+    const _bgImageOverride=_slideBackgroundImageOverride(s);
     // Whichever colour actually paints the wall/background (a Story
     // Author's own override, when set, else the World's wall tone)
     // decides chrome-text legibility too -- a dark override still needs
@@ -3300,6 +3348,14 @@ const SlideRenderer=(()=>{
     }else{
       x.fillStyle=_bgOverride||_wallTone||_frameColor(t,opts);
       x.fillRect(0,0,_viewportW,_viewportH);
+    }
+    // A Story Author's own Background Type: Image picture (js/contextPanel.js's
+    // _appendBackgroundImageControls) draws on top of whichever fallback
+    // colour/clear just painted above -- the fallback stays visible for the
+    // one frame or two while _ensureDecorationImage is still resolving the
+    // real picture asynchronously, then this repaints once it's ready.
+    if(_bgImageOverride){
+      _drawSlideBackgroundImage(s,_bgImageOverride);
     }
     // When this page uses the merged pass, 'slide'-target layers are
     // deferred into it instead of being bulk-drawn here — see that

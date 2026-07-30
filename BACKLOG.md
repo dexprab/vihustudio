@@ -14,7 +14,6 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Doodle drawn vs doodle shown has differences in line stroke thickness and space covered. also there is leakage from doodle sketch area to outside area. the same is with shape when painted. <img width="921" height="467" alt="image" src="https://github.com/user-attachments/assets/b2eea384-3242-41a0-9949-4e17e21790ef" />
 
 - Companion does not always load in studio it just shows blank circle.<img width="360" height="247" alt="image" src="https://github.com/user-attachments/assets/c0dd886f-2cd8-4e2b-8cd5-37641b17d6e2" />
-- Add image option also in background .
 - In shapes for all letters add lowercase also.
 - For texts allow these curves <img width="510" height="145" alt="image" src="https://github.com/user-attachments/assets/4e921638-4a11-45fa-a91d-1dcc68a1985c" />
 
@@ -30,5 +29,6 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - [x] For all shapes, choose either solid colors or manually color using brush strokes (Doodle-style) — CLAUDE.md: "BACKLOG.md — Shapes: 'Solid Fill' vs. 'Paint Inside' Toggle."
 - [x] Fill style and alignment buttons don't visually update on click (effect applies, button state frozen) — CLAUDE.md: "BACKLOG.md — Fix Single-Select Icon-Row Buttons Not Visually Updating on Click."
 - [x] Default state of "Add Something" in the right pane should be open — CLAUDE.md: "BACKLOG.md — Add Something Default-Open Right Pane."
+- [x] Add image option also in background — CLAUDE.md: "BACKLOG.md — Add Image Option to Page Background (root Studio only)."
 
 (Checked-off items move here once shipped, with a one-line pointer to the CLAUDE.md entry.)

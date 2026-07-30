@@ -1467,25 +1467,113 @@ const ContextPanel=(function(){
       return;
     }
 
-    const row=_el('div','designer-row context-row');
-    row.appendChild(_el('div','designer-row-label','Background Colour'));
-    const existing=slide.metadata && slide.metadata.cardOverrides && slide.metadata.cardOverrides.background;
-    let fallback='#1D3461';
-    try{
-      if(typeof ThemeEngine!=='undefined'){
-        const opts=ThemeEngine.getOptions();
-        const theme=ThemeEngine.getActiveTheme();
-        fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
-      }
-    }catch(e){}
-    _appendColourKit(row,existing||fallback,function(val){
-      if(!slide.metadata) slide.metadata={};
-      if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
-      slide.metadata.cardOverrides.background=val;
-      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
-      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    const co=slide.metadata.cardOverrides;
+    const mode=(co.backgroundMode==='image')?'image':'color';
+
+    // "Add image option also in background" — a Colour/Image mode toggle,
+    // additive to the existing plain colour string (co.background stays a
+    // colour, meaning unchanged, so every legacy project/theme keeps
+    // rendering exactly as before) rather than overloading its shape.
+    // co.backgroundMode/co.backgroundImage are the two new, purely
+    // additive fields; renderer/slideRenderer.js's _slideBackgroundOverride
+    // returns null once mode==='image', so the two modes stay mutually
+    // exclusive at read time. Toggling calls refresh() — this section is
+    // already rebuilt fresh on every accordion-trigger refresh() cycle
+    // (see _buildBackgroundTile above), so this is the same, already-
+    // established "flip a value, rebuild the section" pattern, not a new
+    // rebuild-mid-edit risk.
+    _makeIconChoiceRow(container,'Background Type',[['color','🎨 Colour'],['image','🖼️ Image']],mode,function(newMode){
+      co.backgroundMode=newMode;
+      refresh();
     });
+
+    if(mode==='image'){
+      _appendBackgroundImageControls(container,co);
+    }else{
+      const row=_el('div','designer-row context-row');
+      row.appendChild(_el('div','designer-row-label','Background Colour'));
+      const existing=co.background;
+      let fallback='#1D3461';
+      try{
+        if(typeof ThemeEngine!=='undefined'){
+          const opts=ThemeEngine.getOptions();
+          const theme=ThemeEngine.getActiveTheme();
+          fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
+        }
+      }catch(e){}
+      _appendColourKit(row,existing||fallback,function(val){
+        co.background=val;
+        if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+        if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      });
+      container.appendChild(row);
+    }
+  }
+
+  // Image mode's own upload/rotation/remove controls — a genuinely new
+  // uploaded picture (via the same _storeUploadedAsset chain every other
+  // upload in this file already uses) covering the full page background,
+  // cover-fit + optional rotation, drawn by renderer/slideRenderer.js's
+  // new _slideBackgroundImageOverride/render() branch. co.backgroundImage
+  // is {ref, rotation} — absent entirely until a first upload succeeds.
+  function _appendBackgroundImageControls(container,co){
+    const bg=co.backgroundImage||null;
+
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label','Background Picture'));
+    const btn=_el('button','context-btn',bg&&bg.ref?'🖼️ Replace Picture':'🖼️ Upload Picture');
+    btn.type='button';
+    btn.addEventListener('click',function(){
+      const fileInput=document.createElement('input');
+      fileInput.type='file';
+      fileInput.accept='image/*';
+      fileInput.addEventListener('change',function(){
+        const file=fileInput.files && fileInput.files[0];
+        if(!file) return;
+        const reader=new FileReader();
+        reader.onload=function(){
+          _storeUploadedAsset(reader.result,function(finalRef){
+            co.backgroundImage={ref:finalRef,rotation:(bg&&typeof bg.rotation==='number')?bg.rotation:0};
+            if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+            if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+            refresh();
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+      fileInput.click();
+    });
+    row.appendChild(btn);
     container.appendChild(row);
+
+    if(bg&&bg.ref){
+      _makeRangeRow(container,{
+        labelText:'Rotation',min:0,max:359,step:1,
+        value:(typeof bg.rotation==='number')?bg.rotation:0,
+        format:function(v){ return Math.round(v)+'°'; },
+        onInput:function(v){
+          bg.rotation=v;
+          if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+          if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+        }
+      });
+
+      const removeRow=_el('div','designer-row context-row');
+      const removeBtn=_el('button','context-btn context-btn-danger','✕ Remove Picture');
+      removeBtn.type='button';
+      removeBtn.addEventListener('click',function(){
+        co.backgroundImage=null;
+        if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+        if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+        refresh();
+      });
+      removeRow.appendChild(removeBtn);
+      container.appendChild(removeRow);
+    }else{
+      container.appendChild(_el('div','context-nothing-selected-hint','Upload a picture to use as this page\'s full background.'));
+    }
   }
 
   function _showStickerStudio(){

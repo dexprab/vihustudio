@@ -6443,6 +6443,12 @@ body.dark-theme .context-rep-name{ color:var(--text); }
   border-color:transparent;
   box-shadow:0 3px 10px rgba(255,203,69,0.26);
 }
+/* "Add image option also in background" — the Background Type: Image
+   controls' own "✕ Remove Picture" button. Mirrors .selection-quick-
+   delete-btn's own red-tinted destructive-action styling exactly, on top
+   of .context-btn's already-correct width:auto/height:auto base. */
+.context-btn-danger{ color:#C0392B; border-color:rgba(192,57,43,0.3); }
+.context-btn-danger:hover{ background:rgba(192,57,43,0.08); border-color:rgba(192,57,43,0.45); }
 .context-row{ margin-bottom:12px; }
 
 /* Right Panel Redesign — Personalize ⇄ Refine. Rule 2's Status pill, Rule
