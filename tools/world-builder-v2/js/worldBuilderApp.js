@@ -654,10 +654,21 @@
             ctx.textBaseline = 'middle';
             ctx.fillText(rarityText, 34 + 16, CARD_ART_H - 48);
 
+            // BUG FIX: this used to print the raw admin-facing card.code
+            // ("BC-00125") -- missing the constellation prefix the real
+            // redeem_card() RPC's typed-code path requires
+            // (CONSTELLATION+serial, e.g. "ORION00125"). A player reading
+            // and retyping the Front face's own code could never redeem,
+            // since "BC00125" (after the RPC's dash/space-stripping
+            // normalization) never matches "ORION00125" -- while the Back
+            // face (line ~789) and Builder's own minted-card list (used for
+            // copy/paste) both already showed the correct _cardDisplayCode()
+            // form, which is why pasting worked but typing what the Front
+            // face showed never did. Use the same correct helper here.
             ctx.font = '600 20px "SF Mono", Consolas, monospace';
             ctx.fillStyle = 'rgba(255,253,247,0.85)';
             ctx.textAlign = 'right';
-            ctx.fillText(card.code || '', CARD_ART_W - 34, CARD_ART_H - 48);
+            ctx.fillText(_cardDisplayCode(card), CARD_ART_W - 34, CARD_ART_H - 48);
 
             ctx.restore();
 
