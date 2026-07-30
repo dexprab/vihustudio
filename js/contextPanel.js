@@ -101,8 +101,17 @@ const ContextPanel=(function(){
   // other. Both reset only when the selection itself actually changes
   // (tracked via _lastSelectionKey), never on a same-selection refresh()
   // triggered by toggling one of these very controls.
+  // BACKLOG.md: "Default state of add something should be open." —
+  // 'add' is the real default (not null) so every time the panel
+  // returns to its nothing-selected default state (a fresh boot, or
+  // deselecting after a genuine new selection), Add Something's own
+  // grid is already showing, with zero tap required — a Story Author
+  // still tapping the trigger to close it stays closed for the rest of
+  // that same selection (the existing "never reset on a same-selection
+  // refresh()" rule, unchanged), reopening only once a real new
+  // selection cycle brings this default back around.
   let personalizeExpanded=false;
-  let personalizeOpenSection=null;
+  let personalizeOpenSection='add';
   let _lastSelectionKey=null;
 
   // "2 corrections for text object" — a Story-owned freeform text
@@ -247,7 +256,10 @@ const ContextPanel=(function(){
         if(_selectionHistory.length>SELECTION_HISTORY_MAX) _selectionHistory.shift();
       }
       personalizeExpanded=false;
-      personalizeOpenSection=null;
+      // BACKLOG.md: "Default state of add something should be open." —
+      // resets back to 'add' (not null) on every genuine new selection
+      // cycle, matching the declaration-site default above.
+      personalizeOpenSection='add';
       // "2 corrections for text object" — computed here, exactly once
       // per genuine new selection, same reasoning as the reset above:
       // a same-selection refresh() (e.g. every keystroke while the
