@@ -14,6 +14,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Companion does not always load in studio it just shows blank circle.<img width="360" height="247" alt="image" src="https://github.com/user-attachments/assets/c0dd886f-2cd8-4e2b-8cd5-37641b17d6e2" />
 - In shapes for all letters add lowercase also.
 - For texts allow these curves <img width="510" height="145" alt="image" src="https://github.com/user-attachments/assets/4e921638-4a11-45fa-a91d-1dcc68a1985c" />
+- Color and Image can co-exist in background. color is always behind the image not in front. Rename Background color section to Background. The image uploaded need to pass through image studio and also need to support all options which other images objects have got.
 
 
 ## Feature Requests
