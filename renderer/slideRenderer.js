@@ -4429,14 +4429,26 @@ const SlideRenderer=(()=>{
     const rect={x:cx-w/2,y:cy-h/2,w:w,h:h};
     const rotation=(typeof st.rotation==='number')?st.rotation:0;
     const alpha=typeof st.opacity==='number'?Math.max(0,Math.min(1,st.opacity)):1;
+    // BACKLOG.md: "leakage from doodle sketch area to outside area" — a
+    // stroke's own pen width (especially a wide/round-capped one drawn
+    // near the object's own edge) can paint pixels outside the doodle's
+    // own bounding rect once it lands on the real, much-larger page
+    // canvas — unlike the small, dedicated pad canvas element on the
+    // Refine panel, which can never "leak" beyond its own element bounds
+    // (a browser fundamental), this real render has no such natural
+    // boundary. Clipped to a Path2D rect, inside the same rotation
+    // transform so the clip rotates along with the drawing — mirroring
+    // the exact x.save(); x.clip(path); ...; x.restore(); idiom already
+    // proven in _paintShapePathTail for Shape's own Paint Inside fill.
+    const clipPath=new Path2D();
+    clipPath.rect(rect.x,rect.y,rect.w,rect.h);
+    x.save();
     if(rotation){
-      x.save();
       x.translate(cx,cy); x.rotate(rotation*Math.PI/180); x.translate(-cx,-cy);
-      _drawDoodleStrokes(st.strokes,rect,alpha);
-      x.restore();
-    }else{
-      _drawDoodleStrokes(st.strokes,rect,alpha);
     }
+    x.clip(clipPath);
+    _drawDoodleStrokes(st.strokes,rect,alpha);
+    x.restore();
   }
   function _doodleBbox(st){
     const w=typeof st.w==='number'?st.w:320;

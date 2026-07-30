@@ -1547,24 +1547,75 @@ const CardDesigner=(function(){
       g.stroke();
     }
   }
-  function _drawDoodlePad(canvas,strokes,liveStroke,objectSize){
+  // BACKLOG.md: "Doodle drawn vs doodle shown has differences in line
+  // stroke thickness and space covered... the same is with shape when
+  // painted." Root cause: every pad below always mapped/built its own
+  // geometry against a FIXED SQUARE pad size using only the object's
+  // own width (st.w, never st.h) for scaling — so a sticker resized to
+  // a non-square w/h (side-handle drags allow this; corner-handle
+  // drags stay aspect-locked, see js/app.js's resize handler) rendered
+  // correctly proportioned on the pad but stretched/squashed once
+  // drawn for real onto its own true w x h rect
+  // (renderer/slideRenderer.js's _drawSceneDoodle/_drawSceneShape).
+  // _padActiveRect letterboxes a fixed-size square pad canvas down to
+  // a centered rectangle matching the object's real objectW:objectH
+  // aspect ratio — every stroke/silhouette point is then mapped
+  // against THAT rect instead of the full square, so the pad's own
+  // proportions genuinely match the real render's for any aspect
+  // ratio, not just the default square case. A missing/invalid object
+  // size falls back to treating the pad as a perfect square (aspect 1,
+  // scale 1) — a defensive default only reachable when the caller has
+  // no real sticker yet; every real call site below passes the
+  // selected sticker's actual st.w/st.h.
+  function _padActiveRect(padSize,objectW,objectH){
+    const ow=objectW>0?objectW:padSize;
+    const oh=objectH>0?objectH:padSize;
+    const aspect=ow/oh;
+    let w,h;
+    if(aspect>=1){ w=padSize; h=padSize/aspect; }
+    else{ h=padSize; w=padSize*aspect; }
+    const x=(padSize-w)/2, y=(padSize-h)/2;
+    const scale=padSize/Math.max(ow,oh);
+    return {x:x,y:y,w:w,h:h,scale:scale};
+  }
+  // Mirrors renderer/slideRenderer.js's _letterFont auto-fit formula
+  // exactly, but against plain w/h instead of a rect object — used by
+  // the Shape Paint-Inside pad's letter/number branch so a glyph's own
+  // proportions are never anisotropically stretched the way a
+  // plottable shape's silhouette is deliberately allowed to be,
+  // matching the real renderer's own "letter shapes stay uniform,
+  // never independently scaled per axis" behaviour exactly.
+  function _padLetterFont(ctx,ch,w,h){
+    let size=h*0.82;
+    ctx.font='bold '+size+'px sans-serif';
+    const measured=ctx.measureText(ch).width;
+    const maxW=w*0.86;
+    if(measured>maxW && measured>0){
+      size=size*(maxW/measured);
+      ctx.font='bold '+size+'px sans-serif';
+    }
+    return size;
+  }
+  function _drawDoodlePad(canvas,strokes,liveStroke,objectW,objectH){
     const g=canvas.getContext('2d');
     g.clearRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
     g.fillStyle='#FFFFFF';
     g.fillRect(0,0,DOODLE_PAD_SIZE,DOODLE_PAD_SIZE);
     g.lineCap='round';
     g.lineJoin='round';
-    const mapPt=function(p){ return {x:p.x*DOODLE_PAD_SIZE, y:p.y*DOODLE_PAD_SIZE}; };
+    const active=_padActiveRect(DOODLE_PAD_SIZE,objectW,objectH);
+    const mapPt=function(p){ return {x:active.x+p.x*active.w, y:active.y+p.y*active.h}; };
     const all=(strokes||[]).concat(liveStroke?[liveStroke]:[]);
     all.forEach(function(s){
       if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-      // _padStrokeWidth (defined below, hoisted) scales a stroke's own
-      // stored width against the OBJECT's real current size, not a
-      // fixed DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE ratio — the pad
-      // preview now matches what the real render will actually look
-      // like once the sticker returns to its authored size, instead of
-      // only ever agreeing at the one baked-in default size.
-      const w=_padStrokeWidth(s.width,DOODLE_PAD_SIZE,objectSize);
+      // _padStrokeWidth scales a stroke's own stored width by the
+      // active rect's own uniform scale factor (padSize/max(ow,oh)),
+      // not a fixed DOODLE_PAD_SIZE/DOODLE_DEFAULT_SIZE ratio — the
+      // pad preview now matches what the real render will actually
+      // look like once the sticker returns to its authored size,
+      // instead of only ever agreeing at the one baked-in default size
+      // or the one baked-in square-aspect case.
+      const w=_padStrokeWidth(s.width,active.scale);
       _drawDoodleStrokeOnCtx(g,s.points,mapPt,s.color,w,s.medium,1);
     });
   }
@@ -1739,16 +1790,17 @@ const CardDesigner=(function(){
   // Shared by this pad and (per the Doodle pad's own incidental width-
   // scaling fix) _drawDoodlePad: a stored stroke width is an absolute
   // pixel value against the object's own real, current size — scale it
-  // proportionally to whatever fixed pad size is actually being drawn
-  // at, rather than assuming one fixed default size, so the pad's own
+  // by the caller's own precomputed active-rect scale factor
+  // (_padActiveRect's `scale`, itself padSize/max(objectW,objectH))
+  // rather than a bare padSize/objectSize ratio, so the pad's own
   // preview genuinely matches what the real render will look like once
-  // the object returns to its authored size.
-  function _padStrokeWidth(rawWidth,padSize,objectSize){
+  // the object returns to its authored size, for ANY aspect ratio —
+  // not just the square case the old ratio silently assumed.
+  function _padStrokeWidth(rawWidth,scale){
     const w=typeof rawWidth==='number'?rawWidth:6;
-    const size=objectSize>0?objectSize:padSize;
-    return Math.max(1,w*(padSize/size));
+    return Math.max(1,w*scale);
   }
-  function _drawShapePaintPad(canvas,shape,customStrokes,paintStrokes,liveStroke,style,objectSize){
+  function _drawShapePaintPad(canvas,shape,customStrokes,paintStrokes,liveStroke,style,objectW,objectH){
     const g=canvas.getContext('2d');
     const size=SHAPE_PAINT_PAD_SIZE;
     g.clearRect(0,0,size,size);
@@ -1759,33 +1811,59 @@ const CardDesigner=(function(){
     g.lineJoin='round';
 
     const silhouette=_buildShapeSilhouettePath2D(shape,size,customStrokes);
+    const active=_padActiveRect(size,objectW,objectH);
+    const scaleX=active.w/size, scaleY=active.h/size;
 
     // A faint boundary guide, always visible even before any stroke is
-    // drawn, so a child can see exactly where "inside" the shape is.
+    // drawn, so a child can see exactly where "inside" the shape is —
+    // for a plottable path, drawn under a non-uniform translate+scale
+    // transform so its own proportions match the real, possibly
+    // non-square renderer output exactly (a genuinely accepted, minor
+    // cosmetic tradeoff on a strongly non-square object: this guide's
+    // own line WIDTH can render slightly elliptical under this
+    // transform, never the fill/paint content below, which always uses
+    // the uniform active.scale instead of this anisotropic pair).
     g.save();
     g.globalAlpha=0.22;
     g.strokeStyle='#24406B';
     g.lineWidth=1.5;
     if(silhouette.kind==='path'){
+      g.translate(active.x,active.y);
+      g.scale(scaleX,scaleY);
       g.stroke(silhouette.path);
     }else{
+      _padLetterFont(g,silhouette.ch,active.w,active.h);
       g.textAlign='center'; g.textBaseline='middle';
-      g.font='bold '+(size*0.72)+'px sans-serif';
-      g.strokeText(silhouette.ch,size/2,size/2);
+      g.strokeText(silhouette.ch,active.x+active.w/2,active.y+active.h/2);
     }
     g.restore();
 
-    const objSize=objectSize>0?objectSize:SHAPE_DEFAULT_SIZE;
-    const mapPt=function(p){ return {x:p.x*size, y:p.y*size}; };
     const all=(paintStrokes||[]).concat(liveStroke?[liveStroke]:[]);
 
     if(all.length){
       if(silhouette.kind==='path'){
+        // Clip under the aspect-correcting transform (so the clip
+        // region is computed correctly against the real, non-square
+        // silhouette shape), then reset the transform matrix back to
+        // identity WITHOUT undoing the already-applied clip — a clip
+        // region, once set via clip(), persists as device-space state
+        // through any later transform change until the next restore(),
+        // so setTransform() here only ever touches the transform
+        // matrix, never the clip — letting the freeform paint strokes
+        // below use the SAME simple active-rect-direct mapping and
+        // uniform active.scale width scaling Doodle already uses,
+        // rather than inheriting the shape outline's own non-uniform
+        // scale (which would otherwise distort stroke width
+        // anisotropically on a non-square object).
         g.save();
+        g.translate(active.x,active.y);
+        g.scale(scaleX,scaleY);
         g.clip(silhouette.path);
+        g.setTransform(1,0,0,1,0,0);
+        const mapPt=function(p){ return {x:active.x+p.x*active.w, y:active.y+p.y*active.h}; };
         all.forEach(function(s){
           if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-          const w=_padStrokeWidth(s.width,size,objSize);
+          const w=_padStrokeWidth(s.width,active.scale);
           _drawDoodleStrokeOnCtx(g,s.points,mapPt,s.color,w,s.medium,1);
         });
         g.restore();
@@ -1793,42 +1871,53 @@ const CardDesigner=(function(){
         // Letter/number silhouette — mirrors renderer/slideRenderer.js's
         // _drawLetterShapePaint alpha-mask-composite technique, hand-
         // mirrored here since a text glyph has no plottable path for
-        // this pad to clip against directly.
+        // this pad to clip against directly. Both offscreen canvases
+        // are sized to the letterboxed active rect (not the full
+        // square pad) and use LOCAL canvas-space coordinates (0,0
+        // origin) — the composited result is then drawn back onto the
+        // real pad offset at (active.x, active.y).
+        const aw=Math.max(1,Math.round(active.w)), ah=Math.max(1,Math.round(active.h));
         const mask=document.createElement('canvas');
-        mask.width=size; mask.height=size;
+        mask.width=aw; mask.height=ah;
         const mctx=mask.getContext('2d');
+        _padLetterFont(mctx,silhouette.ch,aw,ah);
         mctx.textAlign='center'; mctx.textBaseline='middle';
-        mctx.font='bold '+(size*0.72)+'px sans-serif';
         mctx.fillStyle='#000';
-        mctx.fillText(silhouette.ch,size/2,size/2);
+        mctx.fillText(silhouette.ch,aw/2,ah/2);
 
         const paint=document.createElement('canvas');
-        paint.width=size; paint.height=size;
+        paint.width=aw; paint.height=ah;
         const pg=paint.getContext('2d');
         pg.lineCap='round'; pg.lineJoin='round';
+        const localMapPt=function(p){ return {x:p.x*aw, y:p.y*ah}; };
         all.forEach(function(s){
           if(!s || !Array.isArray(s.points) || s.points.length<2) return;
-          const w=_padStrokeWidth(s.width,size,objSize);
-          _drawDoodleStrokeOnCtx(pg,s.points,mapPt,s.color,w,s.medium,1);
+          const w=_padStrokeWidth(s.width,active.scale);
+          _drawDoodleStrokeOnCtx(pg,s.points,localMapPt,s.color,w,s.medium,1);
         });
         pg.globalCompositeOperation='destination-in';
         pg.drawImage(mask,0,0);
-        g.drawImage(paint,0,0);
+        g.drawImage(paint,active.x,active.y);
       }
     }
 
     // The real Outline, drawn last and unclipped — matches "Outline
-    // stays separate, always-available" regardless of fillMode.
+    // stays separate, always-available" regardless of fillMode. Uses
+    // the shared _padStrokeWidth helper (active.scale) instead of the
+    // old bare size/240 ratio, so it too now matches the object's real
+    // current size, not just the one default-size case.
     if(style.strokeWidth>0){
       g.save();
       g.strokeStyle=style.strokeColor||'#24406B';
-      g.lineWidth=Math.max(1,style.strokeWidth*(size/240));
+      g.lineWidth=_padStrokeWidth(style.strokeWidth,active.scale);
       if(silhouette.kind==='path'){
+        g.translate(active.x,active.y);
+        g.scale(scaleX,scaleY);
         g.stroke(silhouette.path);
       }else{
+        _padLetterFont(g,silhouette.ch,active.w,active.h);
         g.textAlign='center'; g.textBaseline='middle';
-        g.font='bold '+(size*0.72)+'px sans-serif';
-        g.strokeText(silhouette.ch,size/2,size/2);
+        g.strokeText(silhouette.ch,active.x+active.w/2,active.y+active.h/2);
       }
       g.restore();
     }
@@ -2207,6 +2296,12 @@ const CardDesigner=(function(){
       const r=shapePaintCanvas.getBoundingClientRect();
       return {x:(e.clientX-r.left)*(SHAPE_PAINT_PAD_SIZE/r.width), y:(e.clientY-r.top)*(SHAPE_PAINT_PAD_SIZE/r.height)};
     }
+    function _shapePaintNormalizePoints(points,st){
+      const active=_padActiveRect(SHAPE_PAINT_PAD_SIZE,st&&st.w,st&&st.h);
+      return points.map(function(pt){
+        return {x:(pt.x-active.x)/active.w, y:(pt.y-active.y)/active.h};
+      });
+    }
     shapePaintCanvas.addEventListener('pointerdown',function(e){
       shapePaintDrawing=true;
       shapePaintLivePoints=[_shapePaintPointFromEvent(e)];
@@ -2219,19 +2314,19 @@ const CardDesigner=(function(){
       if(!last || Math.hypot(p.x-last.x,p.y-last.y)>2){
         shapePaintLivePoints.push(p);
         const st=_activeSticker();
-        const norm=shapePaintLivePoints.map(function(pt){ return {x:pt.x/SHAPE_PAINT_PAD_SIZE,y:pt.y/SHAPE_PAINT_PAD_SIZE}; });
+        const norm=_shapePaintNormalizePoints(shapePaintLivePoints,st);
         _drawShapePaintPad(shapePaintCanvas,(st&&st.shape)||'circle',(st&&st.customStrokes)||[],(st&&st.paintStrokes)||[],
           {points:norm,color:shapePaintPenColor,width:shapePaintPenWidth,medium:shapePaintMedium},
           {strokeColor:st&&st.strokeColor,strokeWidth:st&&st.strokeWidth},
-          st&&st.w);
+          st&&st.w, st&&st.h);
       }
     });
     shapePaintCanvas.addEventListener('pointerup',function(){
       if(!shapePaintDrawing) return;
       shapePaintDrawing=false;
       if(shapePaintLivePoints.length>=2){
-        const norm=shapePaintLivePoints.map(function(pt){ return {x:pt.x/SHAPE_PAINT_PAD_SIZE,y:pt.y/SHAPE_PAINT_PAD_SIZE}; });
         const st=_activeSticker();
+        const norm=_shapePaintNormalizePoints(shapePaintLivePoints,st);
         const strokes=((st&&st.paintStrokes)||[]).concat([{points:norm,color:shapePaintPenColor,width:shapePaintPenWidth,medium:shapePaintMedium}]);
         _stickerUpdate({paintStrokes:strokes});
       }
@@ -2663,6 +2758,18 @@ const CardDesigner=(function(){
       const r=doodleCanvas.getBoundingClientRect();
       return {x:(e.clientX-r.left)*(DOODLE_PAD_SIZE/r.width), y:(e.clientY-r.top)*(DOODLE_PAD_SIZE/r.height)};
     }
+    // Converts raw pad-pixel points (0..DOODLE_PAD_SIZE) into the same
+    // 0..1-of-the-object's-own-box fraction _drawDoodlePad/the real
+    // renderer both expect — the letterboxed active rect, not the bare
+    // full square — so what's captured here on pointer-down/move/up and
+    // what's later mapped back onto the pad (and the real canvas)
+    // always agree, for any aspect ratio, not just the default square.
+    function _doodleNormalizePoints(points,st){
+      const active=_padActiveRect(DOODLE_PAD_SIZE,st&&st.w,st&&st.h);
+      return points.map(function(pt){
+        return {x:(pt.x-active.x)/active.w, y:(pt.y-active.y)/active.h};
+      });
+    }
     doodleCanvas.addEventListener('pointerdown',function(e){
       doodleDrawing=true;
       doodleLivePoints=[_doodlePointFromEvent(e)];
@@ -2675,16 +2782,16 @@ const CardDesigner=(function(){
       if(!last || Math.hypot(p.x-last.x,p.y-last.y)>2){
         doodleLivePoints.push(p);
         const st=_activeSticker();
-        const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
-        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium},st&&st.w);
+        const norm=_doodleNormalizePoints(doodleLivePoints,st);
+        _drawDoodlePad(doodleCanvas,(st&&st.strokes)||[],{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium},st&&st.w,st&&st.h);
       }
     });
     doodleCanvas.addEventListener('pointerup',function(){
       if(!doodleDrawing) return;
       doodleDrawing=false;
       if(doodleLivePoints.length>=2){
-        const norm=doodleLivePoints.map(function(pt){ return {x:pt.x/DOODLE_PAD_SIZE,y:pt.y/DOODLE_PAD_SIZE}; });
         const st=_activeSticker();
+        const norm=_doodleNormalizePoints(doodleLivePoints,st);
         const strokes=((st&&st.strokes)||[]).concat([{points:norm,color:doodlePenColor,width:doodlePenWidth,medium:doodleMedium}]);
         _stickerUpdate({strokes:strokes});
       }
@@ -2833,7 +2940,7 @@ const CardDesigner=(function(){
     if(isDoodleKind){
       const doodleCanvasEl=section.querySelector('.doodle-pad-canvas');
       if(doodleCanvasEl){
-        _drawDoodlePad(doodleCanvasEl, st.strokes||[], null, st.w);
+        _drawDoodlePad(doodleCanvasEl, st.strokes||[], null, st.w, st.h);
       }
     }
 
@@ -2849,7 +2956,7 @@ const CardDesigner=(function(){
       if(fillMode==='paint'){
         const shapePaintCanvasEl=section.querySelector('.shape-paint-pad-canvas');
         if(shapePaintCanvasEl){
-          _drawShapePaintPad(shapePaintCanvasEl,st.shape,st.customStrokes||[],st.paintStrokes||[],null,{strokeColor:st.strokeColor,strokeWidth:st.strokeWidth},st.w);
+          _drawShapePaintPad(shapePaintCanvasEl,st.shape,st.customStrokes||[],st.paintStrokes||[],null,{strokeColor:st.strokeColor,strokeWidth:st.strokeWidth},st.w,st.h);
         }
       }
 
