@@ -19,6 +19,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Graphics within experience in builder do not rotate on moving the rotation slider.
 - Allow builder to add more places to the scene
 - Give rotation capability to places in builder and studio
+- Add image option in frame styles in builder 
 
 
 ## Feature Requests
