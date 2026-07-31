@@ -27,6 +27,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Extend background-remover utility. Keep the same essence. replace the existing image editor during image upload in studio with this. when a image is uploaded in studio let it pass through Image Studio (renaming background-remover). It should allow user to crop, remove background, flip, rotate
 - We need a tutorial or a starting instruction for the kids first visit. what to do , how to do , where to do, when to do.
 - Connect with one specific folder of either google drive or google photos so that kids can pick their photos from there and parents can upload pics there. this will make using orignal arts easy and smooth.
+- Printable story writing pages, color sheets , sketches. various book sizes.
 
 ## Done
 
