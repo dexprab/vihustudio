@@ -18,6 +18,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - +Experience button needs to be in scene stack also.
 - Graphics within experience in builder do not rotate on moving the rotation slider.
 - Allow builder to add more places to the scene
+- Give rotation capability to places in builder and studio
 
 
 ## Feature Requests
