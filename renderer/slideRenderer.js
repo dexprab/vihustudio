@@ -304,6 +304,22 @@ const SlideRenderer=(()=>{
     return (place && place.shape) || 'rectangle';
   }
 
+  // Story-Author override wins over the Theme-Author compiled base — but
+  // ONLY when the Theme Author explicitly opted in via `rotatable:true`,
+  // matching the exact resolution the render loop itself uses. A Place
+  // authored without `rotatable` still renders its Theme-Author-authored
+  // base rotation (if any); a Story Author simply can't change it, which
+  // is what Guardrails (Creator Governing Rule #2) requires.
+  function _resolvePlaceRotation(s,placeId){
+    const place=_placeByExternalId(s,placeId);
+    const perm=_resolvePlacePermissions(place);
+    const base=(place && typeof place.rotation==='number')?place.rotation:0;
+    if(!perm.rotatable) return base;
+    const ov=_layerOverride(s,placeId);
+    if(ov && typeof ov.rotation==='number') return ov.rotation;
+    return base;
+  }
+
   function _layoutCompositionFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.composition) || 'below';
@@ -342,7 +358,13 @@ const SlideRenderer=(()=>{
       visible: p.visible!==false,
       moveable: p.moveable===true,
       editable: p.editable!==false,
-      resizable: p.resizable===true
+      resizable: p.resizable===true,
+      // `rotatable` follows `resizable`'s exact "absent → closed"
+      // discipline — a brand-new capability with no compiled entry
+      // predating it, so every already-published Place stays permanently
+      // un-rotatable to a Story Author until a Theme Author explicitly
+      // opts in via Builder's own permission checkbox.
+      rotatable: p.rotatable===true
     };
   }
   // Exported so app.js's grab-handle hit-test and js/objectStrip.js's
@@ -3547,6 +3569,22 @@ const SlideRenderer=(()=>{
     // case, unchanged.
     const _places=_activeLayoutPlaces(s);
     const _place1Rect=_applyPlaceMoveOverride(_applyPlaceSizeOverride((_places && _places.length) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder'), s, 'image-holder');
+    // Whole-Place rotation for Place 1 must wrap BOTH the mat/fill/
+    // presentation draws further down (which happen BEFORE the reorderable
+    // loop, so a naive per-loop-iteration transform would only rotate the
+    // artwork/ornament/caption on top and leave the mat/wall/border pixels
+    // unrotated -- exactly the bug the rotation feature's verification
+    // caught). Compute the effective rotation once up front so the same
+    // value is applied by both the mat-fill wrap (below, when _border is
+    // present) and the reorderable loop's Place-1 branch (further down).
+    const _place1=(_places && _places.length)?_places[0]:null;
+    const _place1Perm=_resolvePlacePermissions(_place1);
+    const _place1BaseRot=(_place1 && typeof _place1.rotation==='number')?_place1.rotation:0;
+    const _place1Ov=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides['image-holder'])||null;
+    const _place1OvRot=(_place1Ov && typeof _place1Ov.rotation==='number' && _place1Perm.rotatable)?_place1Ov.rotation:null;
+    const _place1RotDeg=(_place1OvRot!==null)?_place1OvRot:_place1BaseRot;
+    const _place1Cx=_place1Rect.x+_place1Rect.w/2;
+    const _place1Cy=_place1Rect.y+_place1Rect.h/2;
     // Sprint 9.7 — "Each layout must define its own composition."
     // 'quote' suppresses the Frame/Holder/image pipeline entirely (a
     // gallery wall with just a quote on it); 'right' keeps everything
@@ -3657,10 +3695,30 @@ const SlideRenderer=(()=>{
       // scoped Layer Pack entries above (background fill/decorations)
       // are the only content a zero-Holder Scene ever declares.
     }else if(_border){
+      if(_place1RotDeg){
+        x.save();
+        x.translate(_place1Cx,_place1Cy);
+        x.rotate(_place1RotDeg*Math.PI/180);
+        x.translate(-_place1Cx,-_place1Cy);
+      }
       _drawPictureFrameFill(_place1Rect,_border,t,s);
       _drawArtworkPresentation(_place1Rect,_border);
+      if(_place1RotDeg) x.restore();
     }else{
+      // Fallback panel (no Artwork Theme border resolved) still needs the
+      // same rotation wrap for the same reason as the mat-fill branch
+      // above -- a Story-Author-rotated Place must show the WHOLE Place
+      // rotate around its own centre, panel included. Without this, the
+      // panel stays axis-aligned while the artwork inside _drawPlaceOne
+      // rotates, breaking "whole Place rotates as one unit".
+      if(_place1RotDeg){
+        x.save();
+        x.translate(_place1Cx,_place1Cy);
+        x.rotate(_place1RotDeg*Math.PI/180);
+        x.translate(-_place1Cx,-_place1Cy);
+      }
       _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
+      if(_place1RotDeg) x.restore();
     }
 
     // _hasScene is now computed earlier (before the bulk 'slide'-layer
@@ -3710,21 +3768,50 @@ const SlideRenderer=(()=>{
           const _perm=_resolvePlacePermissions(_place);
           let bbox;
           let _thisPlaceRect;
+          // Whole-Place rotation (Theme-Author base + Story-Author
+          // override — override wins when both are set, matching every
+          // other elementOverrides field). Applied as a ctx transform
+          // that wraps BOTH the Place's own chrome (image/border/ornament/
+          // caption + Place-1-only 'frame'/'holder'/'element' Layer Packs)
+          // AND every Place-hosted Layer beneath it, so the whole Place
+          // pivots as one unit around its own centre — a Frame's
+          // mat/border/ornament and every anchored decoration all follow
+          // together, never independently. `rotatable` gates whether the
+          // Story-Author-side override even reaches this branch (the
+          // Selection Action Strip's Rotation slider is hidden when
+          // false); the Theme-Author's base rotation always applies
+          // regardless. The bbox pushed below stays the un-rotated rect
+          // for hit-testing/reordering purposes — Selection Action Strip
+          // is the primary editor for rotation anyway.
+          const _placeBaseRot=(_place && typeof _place.rotation==='number')?_place.rotation:0;
+          const _placeOv=(s.metadata && s.metadata.elementOverrides && s.metadata.elementOverrides[_placeSelId])||null;
+          const _placeOvRot=(_placeOv && typeof _placeOv.rotation==='number' && _perm.rotatable)?_placeOv.rotation:null;
+          const _placeRotDeg=(_placeOvRot!==null)?_placeOvRot:_placeBaseRot;
           if(_placeIndex===0){
-            bbox=_drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition);
             _thisPlaceRect=_place1Rect;
           }else{
             // The storage/selection id for this Place is index-based
             // ('image-place-N'), deliberately distinct from the Place's
             // own compiled Builder id — see _placeByExternalId's own
             // comment for why the two id spaces are kept separate.
-            const _placeRect=_applyPlaceMoveOverride(_applyPlaceSizeOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId), s, _placeSelId);
+            _thisPlaceRect=_applyPlaceMoveOverride(_applyPlaceSizeOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId), s, _placeSelId);
+          }
+          if(_placeRotDeg){
+            const _pcx=_thisPlaceRect.x+_thisPlaceRect.w/2;
+            const _pcy=_thisPlaceRect.y+_thisPlaceRect.h/2;
+            x.save();
+            x.translate(_pcx,_pcy);
+            x.rotate(_placeRotDeg*Math.PI/180);
+            x.translate(-_pcx,-_pcy);
+          }
+          if(_placeIndex===0){
+            bbox=_drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition);
+          }else{
             const _placeBorder=_resolveBorder(s,_placeSelId);
             const _placeContent=(s.metadata && s.metadata.placeContent && s.metadata.placeContent[_placeSelId])||null;
             const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
             const _placeView=(_placeContent && _placeContent.imageView)||null;
-            bbox=_drawPlaceExtra(s,t,opts,_placeRect,_placeBorder,_placeImg,_placeView,_chromeColor,_placeSelId);
-            _thisPlaceRect=_placeRect;
+            bbox=_drawPlaceExtra(s,t,opts,_thisPlaceRect,_placeBorder,_placeImg,_placeView,_chromeColor,_placeSelId);
           }
           // "Extend Experiences to Places" — paints any Experience Hosted
           // By THIS specific Place (a compiled target:'place' Layer Pack
@@ -3744,6 +3831,7 @@ const SlideRenderer=(()=>{
               _layerObjectBboxes.splice(_beforeLen).forEach(function(o2){ _lastSceneElements.push(o2); });
             }
           }
+          if(_placeRotDeg) x.restore();
           if(bbox){
             bbox.id=_placeSelId;
             bbox.type='image-holder';
@@ -3754,6 +3842,8 @@ const SlideRenderer=(()=>{
             bbox.moveable=_perm.moveable;
             bbox.editable=_perm.editable;
             bbox.resizable=_perm.resizable;
+            bbox.rotatable=_perm.rotatable;
+            bbox.rotation=_placeRotDeg;
             _lastSceneElements.push(_sceneObject(bbox,'story'));
           }
         }else if(o.kind==='sticker'){
@@ -5834,7 +5924,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceRotation:_resolvePlaceRotation,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

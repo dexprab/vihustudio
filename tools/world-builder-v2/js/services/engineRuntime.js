@@ -200,15 +200,40 @@ const EngineV2Runtime = (function () {
 
         before.forEach(function (entry) { _paintLayer(ctx, entry.object, graph); });
         middle.forEach(function (entry) {
-            _paintHolder(ctx, entry.object, graph);
+            const holder = entry.object;
+            // Whole-Place rotation (Theme-Author-authored `holder.rotation`,
+            // degrees clockwise around the Place's own centre) applies as a
+            // ctx transform to the entire Place-paint unit — the Place's
+            // own chrome (_paintHolder) AND every Place-hosted Layer
+            // anchored to it — so a rotated Frame's mat/border/ornament and
+            // every decoration/text riding along with it all pivot together
+            // as one unit, never independently. Story-Author-side rotation
+            // (gated on `rotatable`, written via SceneEngine.setContentOverride
+            // in root Studio's Selection Action Strip) is layered on top of
+            // this same base via a matching wrap in the render caller once
+            // that half ships; for Builder's own preview this branch always
+            // sees the Theme-Author's authored value directly.
+            const rotDeg = (typeof holder.rotation === 'number') ? holder.rotation : 0;
+            const rect = rectFor(holder, graph);
+            const cx = rect.x + rect.w / 2;
+            const cy = rect.y + rect.h / 2;
+            if (rotDeg) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(rotDeg * Math.PI / 180);
+                ctx.translate(-cx, -cy);
+            }
+            _paintHolder(ctx, holder, graph);
             // A Place-hosted Layer never paints past a hidden Place —
             // content anchored to something not itself shown has
             // nothing to anchor to.
-            if (entry.object.permissions && entry.object.permissions.visible === false) return;
-            const placeLayers = placeLayersById[entry.object.id] || [];
-            placeLayers.forEach(function (layerEntry) {
-                _paintLayerAtPlace(ctx, layerEntry.object, entry.object, graph);
-            });
+            if (!(holder.permissions && holder.permissions.visible === false)) {
+                const placeLayers = placeLayersById[holder.id] || [];
+                placeLayers.forEach(function (layerEntry) {
+                    _paintLayerAtPlace(ctx, layerEntry.object, holder, graph);
+                });
+            }
+            if (rotDeg) ctx.restore();
         });
         after.forEach(function (entry) { _paintLayer(ctx, entry.object, graph); });
     }

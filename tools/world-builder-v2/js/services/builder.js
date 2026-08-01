@@ -397,6 +397,19 @@ class BuildEngine {
                 // governs for an already-compiled entry with no
                 // `resizable` key at all.
                 const resizable = !!(h.permissions && h.permissions.resizable === true);
+                // `rotatable` mirrors `resizable`'s exact discipline for
+                // the identical reason — a genuinely new, opt-in-only
+                // capability that must default CLOSED (absent → false) so
+                // every Place across every already-authored World stays
+                // exactly as compiled, never silently gaining a rotation
+                // handle the Theme Author never opted into.
+                // `rotation` itself is a plain numeric field (degrees
+                // clockwise around the Place's centre), defaulting to 0 —
+                // absent on every already-compiled Layout Pack too, so
+                // renderer/slideRenderer.js's own read-side must fall
+                // back to 0 the same way.
+                const rotatable = !!(h.permissions && h.permissions.rotatable === true);
+                const rotation = (typeof h.rotation === 'number') ? h.rotation : 0;
                 return {
                     id: h.id,
                     name: h.name || null,
@@ -409,7 +422,9 @@ class BuildEngine {
                     visible: visible,
                     moveable: moveable,
                     editable: editable,
-                    resizable: resizable
+                    resizable: resizable,
+                    rotatable: rotatable,
+                    rotation: rotation
                 };
             })
         });

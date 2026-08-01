@@ -734,6 +734,7 @@ const ProjectModel = (function () {
                 padding: 0,
                 fit: 'fit',
                 frame: null,
+                rotation: 0,
                 permissions: _defaultHolderPermissions()
             };
         });
@@ -749,6 +750,11 @@ const ProjectModel = (function () {
         if (!holder.shape) holder.shape = 'rectangle';
         if (holder.padding === undefined || holder.padding === null) holder.padding = 0;
         if (!holder.fit) holder.fit = 'fit';
+        // `rotation` is a plain numeric field (degrees, clockwise around the
+        // Place's own centre). Absent on every Holder authored before this
+        // ship — reconciled to 0 on read, so the render path never sees
+        // undefined and every legacy Place stays byte-identical.
+        if (holder.rotation === undefined || holder.rotation === null) holder.rotation = 0;
         return holder;
     }
 
@@ -861,6 +867,7 @@ const ProjectModel = (function () {
             padding: 0,
             fit: 'fit',
             frame: null,
+            rotation: 0,
             permissions: _defaultHolderPermissions()
         };
         scene.holders.push(holder);

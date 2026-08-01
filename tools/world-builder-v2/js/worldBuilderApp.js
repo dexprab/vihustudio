@@ -6724,6 +6724,20 @@
             _redrawSceneCanvases(scene.id);
         }), 'Inset between the Place’s edge and its content.');
 
+        // Whole-Place rotation (degrees, clockwise around the Place's own
+        // centre). Rotates the Place's chrome AND any Place-hosted
+        // Experience content together as one unit — the whole Place
+        // pivots, not just its picture — so a Frame's mat/border/ornament
+        // and any anchored decorations always follow. Story-Author-side
+        // rotation (gated on the new rotatable permission below) rides
+        // through elementOverrides[placeId].rotation on top of this
+        // Theme-Author-authored base.
+        _fieldGroup('Rotation', _range(0, 359, holder.rotation || 0, function (v) {
+            window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { rotation: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        }), 'Rotates the whole Place around its centre.');
+
         _renderFramePicker(scene, holder);
 
         // Simplify Place & Frame Authoring §6 -- Experience-as-Frame is a
@@ -6909,7 +6923,7 @@
         details.className = 'wb-state-intro';
         const summary = document.createElement('summary');
         summary.className = 'wb-state-intro-summary';
-        const isOpen = holder.permissions.moveable || holder.permissions.editable || holder.permissions.resizable;
+        const isOpen = holder.permissions.moveable || holder.permissions.editable || holder.permissions.resizable || holder.permissions.rotatable;
         summary.textContent = (isOpen ? '🔓 Story Author may adjust this' : '🔒 Locked for Story Authors') + '  [Change]';
         details.appendChild(summary);
 
@@ -6940,6 +6954,17 @@
         // apply on the reading side.
         body.appendChild(_permissionCheckbox('Can a Story Author change its size or shape?', holder.permissions.resizable, function (v) {
             holder.permissions.resizable = v;
+            _persist();
+        }));
+        // `rotatable` follows the exact same "opt-in only, absent means
+        // closed" discipline as `resizable` above — never seeded by
+        // _defaultHolderPermissions(), so every already-authored Place stays
+        // permanently un-rotatable to a Story Author until a Theme Author
+        // explicitly checks this box. Whole-Place rotation is a spatial
+        // transform (matches Guardrail #2 alongside moveable/resizable),
+        // deliberately independent of `editable` (content edits).
+        body.appendChild(_permissionCheckbox('Can a Story Author rotate this?', holder.permissions.rotatable, function (v) {
+            holder.permissions.rotatable = v;
             _persist();
         }));
         details.appendChild(body);
