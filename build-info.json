@@ -4,6 +4,6 @@
   "task": "Verified 36/36 via wb_paint_inside_verify.js -- schema (graphicFillMode + graphicPaintStrokes in PART_FIELD_KEYS.graphics), UI (Fill Style toggle + Paint pad group + medium switcher), model (switching to Paint sets fillMode + seeds paintStrokes:[]), paint (real pointer stroke persists with medium/color/width), preserve-across-toggle, and real compile step (decoration.fillMode:'paint' + decoration.paintStrokes reach the .vtheme package). Full regression: both goldenBuild.js suites PASS, shapes_paint_inside_verify.js 30/30 (Studio sibling, confirming zero regression to the original). Ship-order after this: #532 (Reopened Doodle/Shape fidelity: Scene-aware pad + resize cap).",
   "build": "0307",
   "buildDate": "2026-08-01",
-  "commit": "pending",
+  "commit": "0af73c5",
   "environment": "Release"
 }
