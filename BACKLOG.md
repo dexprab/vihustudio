@@ -10,8 +10,6 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 ## Bugs
 
 - Draw your own functionality in builder should be same as draw your own feature in studio.
-- Companion does not always load in studio it just shows blank circle.<img width="360" height="247" alt="image" src="https://github.com/user-attachments/assets/c0dd886f-2cd8-4e2b-8cd5-37641b17d6e2" />
-- For texts allow these curves <img width="510" height="145" alt="image" src="https://github.com/user-attachments/assets/4e921638-4a11-45fa-a91d-1dcc68a1985c" />
 - Allow builder to add more places to the scene
 - Give rotation capability to places in builder and studio
 - Add image option in frame styles in builder 
@@ -38,5 +36,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - [x] Color and Image can co-exist in background. color is always behind the image not in front. Rename Background color section to Background. The image uploaded need to pass through image studio and also need to support all options which other images objects have got — CLAUDE.md: "BACKLOG.md — Bugs 1, 4, 6 Shipped Together."
 - [x] +Experience button needs to be in scene stack also — CLAUDE.md: "BACKLOG.md Batch 1 — Bugs E + D."
 - [x] Graphics within experience in builder do not rotate on moving the rotation slider — CLAUDE.md: "BACKLOG.md Batch 1 — Bugs E + D."
+- [x] For texts allow these curves — CLAUDE.md: "BACKLOG.md — Batch 2 (Bug G): Curved Text End to End..."
+- [x] Companion does not always load in studio it just shows blank circle — Resolved by real Quill pose art uploaded (Companion Engine's existing graceful-degradation onerror-fallback correctly handles a missing pose file already; the blank circle only appeared because Quill's own pose files hadn't yet been supplied).
 
 (Checked-off items move here once shipped, with a one-line pointer to the CLAUDE.md entry.)
