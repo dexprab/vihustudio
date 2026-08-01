@@ -962,6 +962,13 @@ const CardDesigner=(function(){
   function buildColourKit(parent,opts){
     opts=opts||{};
     const palette=opts.palette||COLOUR_KIT_DEFAULT_PALETTE;
+    // _safeColorHex always lowercases its output (see above), while every
+    // palette array and every swatch's own data-color attribute in this
+    // codebase use uppercase hex digits — comparing them directly would
+    // never match, permanently misreporting a genuine palette colour as
+    // "custom". Compare against a lowercased copy instead of touching
+    // _safeColorHex itself, so every other caller of that helper is unaffected.
+    const paletteLower=palette.map(function(p){ return (p||'').toLowerCase(); });
     const root=document.createElement('div');
     root.className='colour-kit';
 
@@ -980,10 +987,11 @@ const CardDesigner=(function(){
 
     function _sync(){
       Array.prototype.forEach.call(swatchRow.querySelectorAll('.colour-kit-swatch'),function(el){
-        el.classList.toggle('active', !currentTransparent && el.getAttribute('data-color')===currentValue);
+        const swatchColor=(el.getAttribute('data-color')||'').toLowerCase();
+        el.classList.toggle('active', !currentTransparent && swatchColor===currentValue);
       });
       const customBtn=swatchRow.querySelector('.colour-kit-custom-btn');
-      const isCustom=palette.indexOf(currentValue)===-1;
+      const isCustom=paletteLower.indexOf(currentValue)===-1;
       if(customBtn) customBtn.classList.toggle('active', !currentTransparent && isCustom);
       customPreview.style.background=isCustom?currentValue:'';
       customInput.value=currentValue;
@@ -2224,17 +2232,16 @@ const CardDesigner=(function(){
     shapePaintPenToolsRow.className='doodle-pen-tools-row shape-paint-pen-tools-row';
     const shapePaintPenSwatchRow=document.createElement('div');
     shapePaintPenSwatchRow.className='doodle-pen-swatch-row shape-paint-pen-swatch-row';
+    // Same shared Colour Kit widget as the Doodle pad (see
+    // _rebuildDoodleSwatches above) -- rebuilt per medium against that
+    // medium's own curated palette.
     function _rebuildShapePaintSwatches(){
       shapePaintPenSwatchRow.innerHTML='';
       const media=DOODLE_MEDIA.find(function(m){ return m.id===shapePaintMedium; })||DOODLE_MEDIA[0];
-      media.palette.forEach(function(c){
-        const sw=document.createElement('button');
-        sw.type='button';
-        sw.className='doodle-pen-swatch';
-        sw.setAttribute('data-color',c);
-        sw.style.background=c;
-        sw.addEventListener('click',function(){ shapePaintPenColor=c; _syncShapePaintPenUI(); });
-        shapePaintPenSwatchRow.appendChild(sw);
+      buildColourKit(shapePaintPenSwatchRow,{
+        palette:media.palette,
+        value:shapePaintPenColor,
+        onChange:function(v){ shapePaintPenColor=v; }
       });
     }
     _rebuildShapePaintSwatches();
@@ -2260,9 +2267,8 @@ const CardDesigner=(function(){
       Array.prototype.forEach.call(shapePaintMediaRow.querySelectorAll('.doodle-media-btn'),function(btn){
         btn.classList.toggle('active',btn.getAttribute('data-medium')===shapePaintMedium);
       });
-      Array.prototype.forEach.call(shapePaintPenSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el){
-        el.classList.toggle('active',el.getAttribute('data-color')===shapePaintPenColor);
-      });
+      // Colour is owned by the Colour Kit widget, rebuilt per medium via
+      // _rebuildShapePaintSwatches -- no separate sync needed here.
       Array.prototype.forEach.call(shapePaintPenThicknessIcons.querySelectorAll('.doodle-pen-thickness-btn'),function(btn){
         const w=({thin:3,medium:6,thick:12})[btn.getAttribute('data-thickness')];
         btn.classList.toggle('active',w===shapePaintPenWidth);
@@ -2681,22 +2687,18 @@ const CardDesigner=(function(){
     penToolsRow.className='doodle-pen-tools-row';
     const penSwatchRow=document.createElement('div');
     penSwatchRow.className='doodle-pen-swatch-row';
-    // Swatches are rebuilt per medium (each medium has its own curated
-    // palette) -- every swatch keeps its own original hex string on a
-    // data-color attribute rather than relying on el.style.background
-    // read back (a browser may re-serialize '#E63946' as an rgb(...)
-    // string, breaking a naive string-identity check).
+    // The shared Colour Kit widget (curated swatches + a rainbow-wheel
+    // "Custom" native colour input) is rebuilt per medium -- each medium
+    // has its own curated palette, so switching medium tears down and
+    // rebuilds the whole widget against that medium's own palette rather
+    // than trying to swap a fixed swatch set's colours in place.
     function _rebuildDoodleSwatches(){
       penSwatchRow.innerHTML='';
       const media=DOODLE_MEDIA.find(function(m){ return m.id===doodleMedium; })||DOODLE_MEDIA[0];
-      media.palette.forEach(function(c){
-        const sw=document.createElement('button');
-        sw.type='button';
-        sw.className='doodle-pen-swatch';
-        sw.setAttribute('data-color',c);
-        sw.style.background=c;
-        sw.addEventListener('click',function(){ doodlePenColor=c; _syncDoodlePenUI(); });
-        penSwatchRow.appendChild(sw);
+      buildColourKit(penSwatchRow,{
+        palette:media.palette,
+        value:doodlePenColor,
+        onChange:function(v){ doodlePenColor=v; }
       });
     }
     _rebuildDoodleSwatches();
@@ -2722,9 +2724,9 @@ const CardDesigner=(function(){
       Array.prototype.forEach.call(doodleMediaRow.querySelectorAll('.doodle-media-btn'),function(btn){
         btn.classList.toggle('active',btn.getAttribute('data-medium')===doodleMedium);
       });
-      Array.prototype.forEach.call(penSwatchRow.querySelectorAll('.doodle-pen-swatch'),function(el){
-        el.classList.toggle('active',el.getAttribute('data-color')===doodlePenColor);
-      });
+      // Colour is now owned entirely by the Colour Kit widget (rebuilt
+      // fresh per medium via _rebuildDoodleSwatches, which already seeds
+      // it with the current doodlePenColor) -- no separate sync needed here.
       Array.prototype.forEach.call(penThicknessIcons.querySelectorAll('.doodle-pen-thickness-btn'),function(btn){
         const w=({thin:3,medium:6,thick:12})[btn.getAttribute('data-thickness')];
         btn.classList.toggle('active',w===doodlePenWidth);

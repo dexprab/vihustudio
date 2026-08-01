@@ -659,47 +659,61 @@ const SlideRenderer=(()=>{
   // THIS page, not a second global setting.
   function _slideBackgroundOverride(s){
     const co=s && s.metadata && s.metadata.cardOverrides;
-    // "Add image option also in background" — the two modes are mutually
-    // exclusive at read time: once a Story Author has switched Background
-    // Type to Image, the plain colour string (still authored/preserved
-    // verbatim in co.background for a quick switch back) must no longer
-    // win here, or the colour fill would paint over/underneath the image
-    // for no reason. See _slideBackgroundImageOverride below.
-    if(co && co.backgroundMode==='image') return null;
+    // BACKLOG Bug 6 — "Color and Image can co-exist in background. color
+    // is always behind the image not in front." Colour and Image used to
+    // be mutually exclusive here (gated on co.backgroundMode), which is
+    // exactly why a Story Author could never see both at once. Now this
+    // resolves purely on whether a colour was ever authored, completely
+    // independent of whether an image is *also* active — the render call
+    // site (this file's own render(s) function) already draws colour
+    // first and the image on top of it, so co.backgroundMode is no
+    // longer read anywhere and is left as a harmless, no-op legacy field
+    // on any already-saved project.
     const bg=co && co.background;
     return (typeof bg==='string' && bg) ? bg : null;
   }
 
-  // The Image-mode counterpart to _slideBackgroundOverride above —
-  // {ref, rotation} or null. co.backgroundImage is only ever set once a
-  // Story Author's own upload succeeds (js/contextPanel.js's
+  // The Image counterpart to _slideBackgroundOverride above — {ref,
+  // rotation, opacity} or null. co.backgroundImage is only ever set once
+  // a Story Author's own upload succeeds (js/contextPanel.js's
   // _appendBackgroundImageControls), so a project/theme with no such
-  // upload is completely unaffected.
+  // upload is completely unaffected. BACKLOG Bug 6 — no longer gated on
+  // co.backgroundMode; presence of a real ref is the only thing that
+  // decides whether the image shows, so it can render alongside a
+  // Background Colour, never only instead of one.
   function _slideBackgroundImageOverride(s){
     const co=s && s.metadata && s.metadata.cardOverrides;
-    if(!co || co.backgroundMode!=='image') return null;
-    const img=co.backgroundImage;
+    const img=co && co.backgroundImage;
     return (img && typeof img.ref==='string' && img.ref) ? img : null;
   }
 
   // Draws a Story Author's own uploaded picture as the page's full
-  // background — cover-fit ('fill') + optional rotation, reusing
-  // _layerDrawDecorationImage's already-established cover-fit/rotation
-  // math and _ensureDecorationImage's cache-and-redraw-on-load resolution
-  // (vihu-asset: refs and legacy data: URIs alike) rather than a second,
-  // duplicated image-drawing implementation. Passing a vihu-asset:/data:
-  // ref through as `d.image` with no override bag is safe:
-  // ThemeRegistry.resolveAssetRef (the one extra step
-  // _layerDrawDecorationImage takes when no override is present) returns
-  // any value that isn't a bare theme-relative asset path completely
-  // unchanged (confirmed: it early-returns for anything matching
-  // data:/https?: OR anything NOT ending in a known image/font
+  // background — cover-fit ('fill') + optional rotation + optional
+  // opacity, reusing _layerDrawDecorationImage's already-established
+  // cover-fit/rotation/alpha math and _ensureDecorationImage's cache-
+  // and-redraw-on-load resolution (vihu-asset: refs and legacy data:
+  // URIs alike) rather than a second, duplicated image-drawing
+  // implementation. Passing a vihu-asset:/data: ref through as `d.image`
+  // with no override bag is safe: ThemeRegistry.resolveAssetRef (the one
+  // extra step _layerDrawDecorationImage takes when no override is
+  // present) returns any value that isn't a bare theme-relative asset
+  // path completely unchanged (confirmed: it early-returns for anything
+  // matching data:/https?: OR anything NOT ending in a known image/font
   // extension — a vihu-asset: ref matches neither test either way, so
   // this call is a guaranteed no-op regardless of whether an Artwork
-  // Theme is even active).
+  // Theme is even active). alpha lets the colour underneath show through
+  // a semi-transparent image, per BACKLOG Bug 6's "colour is always
+  // behind the image" requirement — the colour fill/clearRect already
+  // painted moments earlier in render(s) is exactly what remains
+  // visible wherever this draw doesn't fully cover it.
   function _drawSlideBackgroundImage(s,bgImg){
     _layerDrawDecorationImage(
-      {image:bgImg.ref, fit:'fill', rotation:(typeof bgImg.rotation==='number')?bgImg.rotation:0},
+      {
+        image:bgImg.ref,
+        fit:'fill',
+        rotation:(typeof bgImg.rotation==='number')?bgImg.rotation:0,
+        alpha:(typeof bgImg.opacity==='number')?bgImg.opacity:1
+      },
       {x:0,y:0,w:_viewportW,h:_viewportH},
       s,
       null
@@ -3314,9 +3328,10 @@ const SlideRenderer=(()=>{
     // Frame
     const _wallTone=_resolveWallTone(s);
     const _bgOverride=_slideBackgroundOverride(s);
-    // "Add image option also in background" -- null for every page except
-    // one whose Story Author switched Background Type to Image and
-    // uploaded a picture (js/contextPanel.js's _appendBackgroundImageControls).
+    // BACKLOG Bug 6 — null for every page except one whose Story Author
+    // has uploaded a Background picture (js/contextPanel.js's
+    // _appendBackgroundImageControls). Independent of _bgOverride above —
+    // both can be set on the same page at once, colour behind image.
     const _bgImageOverride=_slideBackgroundImageOverride(s);
     // Whichever colour actually paints the wall/background (a Story
     // Author's own override, when set, else the World's wall tone)
@@ -3349,11 +3364,14 @@ const SlideRenderer=(()=>{
       x.fillStyle=_bgOverride||_wallTone||_frameColor(t,opts);
       x.fillRect(0,0,_viewportW,_viewportH);
     }
-    // A Story Author's own Background Type: Image picture (js/contextPanel.js's
-    // _appendBackgroundImageControls) draws on top of whichever fallback
-    // colour/clear just painted above -- the fallback stays visible for the
-    // one frame or two while _ensureDecorationImage is still resolving the
-    // real picture asynchronously, then this repaints once it's ready.
+    // A Story Author's own Background picture (js/contextPanel.js's
+    // _appendBackgroundImageControls) draws on top of whichever
+    // colour/clear/wall-tone fill just painted above -- that fill stays
+    // visible behind it (per Bug 6, colour is always BEHIND the image,
+    // never hidden entirely) and, for the one frame or two while
+    // _ensureDecorationImage is still resolving the real picture
+    // asynchronously, is all that's visible until this repaints once
+    // it's ready.
     if(_bgImageOverride){
       _drawSlideBackgroundImage(s,_bgImageOverride);
     }

@@ -258,6 +258,40 @@ const ExperienceSchema = (function () {
         { value: 'letter-X', label: 'Letter X', icon: 'X' },
         { value: 'letter-Y', label: 'Letter Y', icon: 'Y' },
         { value: 'letter-Z', label: 'Letter Z', icon: 'Z' },
+        // Lowercase letters — "In shapes for all letters add lowercase
+        // also." Distinct, case-sensitive values from the uppercase set
+        // above; kept byte-for-byte in lockstep with
+        // js/stickerLibrary.js's own copy (root Studio). No renderer
+        // change needed on either side — _shapeLetterChar's own
+        // kind.slice(7) already preserves whatever case the value
+        // carries, and _drawLetterShape already draws any single
+        // character via the browser's own font rendering.
+        { value: 'letter-a', label: 'Letter a', icon: 'a' },
+        { value: 'letter-b', label: 'Letter b', icon: 'b' },
+        { value: 'letter-c', label: 'Letter c', icon: 'c' },
+        { value: 'letter-d', label: 'Letter d', icon: 'd' },
+        { value: 'letter-e', label: 'Letter e', icon: 'e' },
+        { value: 'letter-f', label: 'Letter f', icon: 'f' },
+        { value: 'letter-g', label: 'Letter g', icon: 'g' },
+        { value: 'letter-h', label: 'Letter h', icon: 'h' },
+        { value: 'letter-i', label: 'Letter i', icon: 'i' },
+        { value: 'letter-j', label: 'Letter j', icon: 'j' },
+        { value: 'letter-k', label: 'Letter k', icon: 'k' },
+        { value: 'letter-l', label: 'Letter l', icon: 'l' },
+        { value: 'letter-m', label: 'Letter m', icon: 'm' },
+        { value: 'letter-n', label: 'Letter n', icon: 'n' },
+        { value: 'letter-o', label: 'Letter o', icon: 'o' },
+        { value: 'letter-p', label: 'Letter p', icon: 'p' },
+        { value: 'letter-q', label: 'Letter q', icon: 'q' },
+        { value: 'letter-r', label: 'Letter r', icon: 'r' },
+        { value: 'letter-s', label: 'Letter s', icon: 's' },
+        { value: 'letter-t', label: 'Letter t', icon: 't' },
+        { value: 'letter-u', label: 'Letter u', icon: 'u' },
+        { value: 'letter-v', label: 'Letter v', icon: 'v' },
+        { value: 'letter-w', label: 'Letter w', icon: 'w' },
+        { value: 'letter-x', label: 'Letter x', icon: 'x' },
+        { value: 'letter-y', label: 'Letter y', icon: 'y' },
+        { value: 'letter-z', label: 'Letter z', icon: 'z' },
         { value: 'number-0', label: 'Number 0', icon: '0' },
         { value: 'number-1', label: 'Number 1', icon: '1' },
         { value: 'number-2', label: 'Number 2', icon: '2' },

@@ -1470,83 +1470,113 @@ const ContextPanel=(function(){
     if(!slide.metadata) slide.metadata={};
     if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
     const co=slide.metadata.cardOverrides;
-    const mode=(co.backgroundMode==='image')?'image':'color';
 
-    // "Add image option also in background" — a Colour/Image mode toggle,
-    // additive to the existing plain colour string (co.background stays a
-    // colour, meaning unchanged, so every legacy project/theme keeps
-    // rendering exactly as before) rather than overloading its shape.
-    // co.backgroundMode/co.backgroundImage are the two new, purely
-    // additive fields; renderer/slideRenderer.js's _slideBackgroundOverride
-    // returns null once mode==='image', so the two modes stay mutually
-    // exclusive at read time. Toggling calls refresh() — this section is
-    // already rebuilt fresh on every accordion-trigger refresh() cycle
-    // (see _buildBackgroundTile above), so this is the same, already-
-    // established "flip a value, rebuild the section" pattern, not a new
-    // rebuild-mid-edit risk.
-    _makeIconChoiceRow(container,'Background Type',[['color','🎨 Colour'],['image','🖼️ Image']],mode,function(newMode){
-      co.backgroundMode=newMode;
-      refresh();
+    // BACKLOG Bug 6 — "Color and Image can co-exist in background. color
+    // is always behind the image not in front." Colour and Image are no
+    // longer a mutually-exclusive mode toggle — both controls always
+    // render together, and renderer/slideRenderer.js's render(s) already
+    // draws colour first, image on top of it (colour stays visible
+    // wherever the image doesn't fully cover it, e.g. a rotated or
+    // semi-transparent picture). co.backgroundMode is no longer written
+    // here at all — it's a harmless, dead legacy field on any
+    // already-saved project.
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label','Colour'));
+    const existing=co.background;
+    let fallback='#1D3461';
+    try{
+      if(typeof ThemeEngine!=='undefined'){
+        const opts=ThemeEngine.getOptions();
+        const theme=ThemeEngine.getActiveTheme();
+        fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
+      }
+    }catch(e){}
+    _appendColourKit(row,existing||fallback,function(val){
+      co.background=val;
+      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
     });
+    container.appendChild(row);
 
-    if(mode==='image'){
-      _appendBackgroundImageControls(container,co);
-    }else{
-      const row=_el('div','designer-row context-row');
-      row.appendChild(_el('div','designer-row-label','Background Colour'));
-      const existing=co.background;
-      let fallback='#1D3461';
-      try{
-        if(typeof ThemeEngine!=='undefined'){
-          const opts=ThemeEngine.getOptions();
-          const theme=ThemeEngine.getActiveTheme();
-          fallback=(opts.colours&&opts.colours.frame)||(theme&&theme.frame&&theme.frame.color)||fallback;
-        }
-      }catch(e){}
-      _appendColourKit(row,existing||fallback,function(val){
-        co.background=val;
-        if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
-        if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
-      });
-      container.appendChild(row);
-    }
+    _appendBackgroundImageControls(container,co);
   }
 
-  // Image mode's own upload/rotation/remove controls — a genuinely new
-  // uploaded picture (via the same _storeUploadedAsset chain every other
-  // upload in this file already uses) covering the full page background,
-  // cover-fit + optional rotation, drawn by renderer/slideRenderer.js's
-  // new _slideBackgroundImageOverride/render() branch. co.backgroundImage
-  // is {ref, rotation} — absent entirely until a first upload succeeds.
+  // Picture — a genuinely uploaded picture covering the full page
+  // background, cover-fit + optional rotation + optional opacity, drawn by
+  // renderer/slideRenderer.js's _slideBackgroundImageOverride/
+  // _drawSlideBackgroundImage. co.backgroundImage is {ref, rotation,
+  // opacity} — absent entirely until a first upload succeeds. BACKLOG
+  // Bug 6 — "the image uploaded need to pass through image studio and
+  // also need to support all options which other images objects have
+  // got": upload/replace and crop/rotate both now open the real Picture
+  // Studio tool (js/pictureStudio.js), mirroring _replaceArtwork/
+  // _cropRotateArtwork's own established pattern exactly, instead of a
+  // raw FileReader with no editing step at all; Opacity joins the
+  // existing Rotation slider, matching the Opacity control every other
+  // image-kind object in this app (a Sticker's own image content,
+  // World-owned Decoration images) already has.
+  function _applyBackgroundImageResult(result){
+    const slide=_currentSlide();
+    if(!slide || !result) return;
+    if(!slide.metadata) slide.metadata={};
+    if(!slide.metadata.cardOverrides) slide.metadata.cardOverrides={};
+    const co=slide.metadata.cardOverrides;
+    const prevBg=co.backgroundImage;
+    _storeUploadedAsset(result.dataURL,function(finalRef){
+      co.backgroundImage={
+        ref:finalRef,
+        rotation:(prevBg&&typeof prevBg.rotation==='number')?prevBg.rotation:0,
+        opacity:(prevBg&&typeof prevBg.opacity==='number')?prevBg.opacity:1
+      };
+      if(host){
+        if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+        if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      }
+      refresh();
+    });
+  }
+
   function _appendBackgroundImageControls(container,co){
     const bg=co.backgroundImage||null;
 
-    const row=_el('div','designer-row context-row');
-    row.appendChild(_el('div','designer-row-label','Background Picture'));
-    const btn=_el('button','context-btn',bg&&bg.ref?'🖼️ Replace Picture':'🖼️ Upload Picture');
-    btn.type='button';
-    btn.addEventListener('click',function(){
+    container.appendChild(_el('div','designer-row-label','Picture'));
+
+    // .context-action-row (not .designer-row, which is a flex COLUMN) —
+    // mirrors _renderArtworkActions' own established Replace/Crop-Rotate
+    // button-row precedent exactly, so Upload/Replace and Crop/Rotate sit
+    // side by side rather than stacking vertically.
+    const btnRow=_el('div','context-action-row');
+    const uploadBtn=_el('button','context-btn',bg&&bg.ref?'🖼️ Replace Picture':'🖼️ Upload Picture');
+    uploadBtn.type='button';
+    uploadBtn.addEventListener('click',function(){
       const fileInput=document.createElement('input');
       fileInput.type='file';
       fileInput.accept='image/*';
       fileInput.addEventListener('change',function(){
         const file=fileInput.files && fileInput.files[0];
-        if(!file) return;
-        const reader=new FileReader();
-        reader.onload=function(){
-          _storeUploadedAsset(reader.result,function(finalRef){
-            co.backgroundImage={ref:finalRef,rotation:(bg&&typeof bg.rotation==='number')?bg.rotation:0};
-            if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
-            if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
-            refresh();
-          });
-        };
-        reader.readAsDataURL(file);
+        if(!file || typeof PictureStudio==='undefined') return;
+        PictureStudio.open(file,{defaultMode:'fill',onApply:_applyBackgroundImageResult});
       });
       fileInput.click();
     });
-    row.appendChild(btn);
-    container.appendChild(row);
+    btnRow.appendChild(uploadBtn);
+
+    if(bg&&bg.ref){
+      const cropBtn=_el('button','context-btn','✂️ Crop / Rotate');
+      cropBtn.type='button';
+      cropBtn.addEventListener('click',function(){
+        if(typeof PictureStudio==='undefined') return;
+        const slide=_currentSlide();
+        // Mirrors _cropRotateArtwork's own established pattern exactly —
+        // bg.ref is an EXISTING reference (unlike Upload's fresh File,
+        // which has no owner concept at all), so it needs the same
+        // cross-owner recall fallback every other "re-open an already-
+        // uploaded picture" call site in this file already passes.
+        PictureStudio.open(bg.ref,{defaultMode:'fill',onApply:_applyBackgroundImageResult,fallbackOwnerId:slide&&slide.recallOwnerId});
+      });
+      btnRow.appendChild(cropBtn);
+    }
+    container.appendChild(btnRow);
 
     if(bg&&bg.ref){
       _makeRangeRow(container,{
@@ -1555,6 +1585,16 @@ const ContextPanel=(function(){
         format:function(v){ return Math.round(v)+'°'; },
         onInput:function(v){
           bg.rotation=v;
+          if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+          if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+        }
+      });
+      _makeRangeRow(container,{
+        labelText:'Opacity',min:0,max:100,step:1,
+        value:Math.round(((typeof bg.opacity==='number')?bg.opacity:1)*100),
+        format:function(v){ return Math.round(v)+'%'; },
+        onInput:function(v){
+          bg.opacity=v/100;
           if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
           if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
         }
@@ -1572,7 +1612,7 @@ const ContextPanel=(function(){
       removeRow.appendChild(removeBtn);
       container.appendChild(removeRow);
     }else{
-      container.appendChild(_el('div','context-nothing-selected-hint','Upload a picture to use as this page\'s full background.'));
+      container.appendChild(_el('div','context-nothing-selected-hint','Upload a picture to layer on top of the colour above.'));
     }
   }
 
@@ -1936,15 +1976,17 @@ const ContextPanel=(function(){
     return wrap;
   }
 
-  // Background Colour — reuses _appendBackground's own field-building
-  // body verbatim (unchanged internals, same per-page override), now
-  // only rendered while its own accordion body is open instead of
-  // always-rendered.
+  // Background — reuses _appendBackground's own field-building body
+  // verbatim (unchanged internals, same per-page override), now only
+  // rendered while its own accordion body is open instead of always-
+  // rendered. BACKLOG Bug 6 — renamed from "Background Colour" since
+  // Colour and Image now coexist in this one section, never one or the
+  // other.
   function _buildBackgroundTile(){
     const wrap=_el('div','context-set-tile');
     const trigger=_el('button','context-set-trigger');
     trigger.type='button';
-    trigger.appendChild(_el('span','context-set-trigger-label','🎨 Background Colour'));
+    trigger.appendChild(_el('span','context-set-trigger-label','🎨 Background'));
     trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='background'?'▴':'▾'));
     trigger.addEventListener('click',function(){
       personalizeOpenSection=(personalizeOpenSection==='background')?null:'background';
