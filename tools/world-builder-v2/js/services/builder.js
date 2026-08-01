@@ -618,7 +618,20 @@ class BuildEngine {
                     // this as t.curve, mirroring rotation's own
                     // Theme-Author-base vs. Story-Author-override
                     // precedence exactly.
-                    curve: layer.curve || 0
+                    curve: layer.curve || 0,
+                    // Bug G Rework — Curve Style picker (None/Arc/Wave/
+                    // Circle). Explicit style dispatches the renderer to
+                    // the right per-character deformation math; curve
+                    // above is the amount for Arc/Wave (Circle ignores
+                    // it, wrapping into a full 360°). Backward compat:
+                    // an already-compiled Layer with curve set but no
+                    // curveStyle is treated as 'arc' by the renderer,
+                    // matching the original Bug G behaviour byte-for-
+                    // byte. 'none' is the shipping default — a text
+                    // Layer authored with no curve at all still
+                    // resolves through the straight-baseline path
+                    // exactly as before.
+                    curveStyle: layer.curveStyle || 'none'
                 }
             });
         }

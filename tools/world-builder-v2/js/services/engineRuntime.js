@@ -766,6 +766,98 @@ const EngineV2Runtime = (function () {
         return true;
     }
 
+    // Bug G Rework — Wave style. Straight horizontal X progression along
+    // the baseline, Y follows a sine wave. amplitude = Math.abs(amount) *
+    // 0.3 in px (so a 0..180 amount slider maps to 0..54px amplitude,
+    // roughly matching Arc's own perceptual range at similar amount
+    // values); amount sign flips the wave's starting direction. period
+    // is derived as textWidth/2.5 so 2-3 full waves always show
+    // regardless of text length, reading unambiguously as wavy text.
+    // Character glyphs stay upright (unlike Arc, which rotates each
+    // glyph tangent to the arc) so the effect reads as text bouncing
+    // along a wavy baseline rather than glyphs tumbling. Kept in
+    // lockstep, by hand, with renderer/slideRenderer.js's own mirror.
+    function _drawWaveTextLine(ctx, line, anchorX, anchorY, amount, drawKind) {
+        if (!line || !amount) return false;
+        const totalW = ctx.measureText(line).width;
+        if (totalW <= 0) return false;
+        const amplitude = Math.abs(amount) * 0.3;
+        const sign = amount >= 0 ? 1 : -1;
+        const period = Math.max(60, totalW / 2.5);
+        const chars = Array.from(line);
+        const savedAlign = ctx.textAlign;
+        const startX = anchorX - totalW / 2;
+        let cumW = 0;
+        for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
+            const chW = ctx.measureText(ch).width;
+            const cx = startX + cumW + chW / 2;
+            const waveY = sign * Math.sin(((cx - startX) / period) * 2 * Math.PI) * amplitude;
+            ctx.save();
+            ctx.translate(cx, anchorY + waveY);
+            ctx.textAlign = 'center';
+            if (drawKind === 'stroke') ctx.strokeText(ch, 0, 0);
+            else ctx.fillText(ch, 0, 0);
+            ctx.restore();
+            cumW += chW;
+        }
+        ctx.textAlign = savedAlign;
+        return true;
+    }
+
+    // Bug G Rework — Circle style. Full 360° wrap; text closes back on
+    // itself into a real circle. Radius derived directly from text width
+    // (2πr = textWidth), so amount is deliberately unused (the UI
+    // disables the Amount slider whenever Circle is selected). Text
+    // starts at 12 o'clock and reads clockwise, matching how you'd
+    // naturally read a circular label on paper. Each glyph rotates
+    // tangent to the circle, exactly like Arc, so glyph orientation is
+    // consistent with the direction the eye is scanning. Kept in
+    // lockstep, by hand, with renderer/slideRenderer.js's own mirror.
+    function _drawCircleTextLine(ctx, line, anchorX, anchorY, drawKind) {
+        if (!line) return false;
+        const totalW = ctx.measureText(line).width;
+        if (totalW <= 0) return false;
+        const radius = totalW / (2 * Math.PI);
+        const chars = Array.from(line);
+        const savedAlign = ctx.textAlign;
+        let cumW = 0;
+        for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
+            const chW = ctx.measureText(ch).width;
+            const angle = ((cumW + chW / 2) / totalW) * 2 * Math.PI - Math.PI / 2;
+            const posX = anchorX + (radius + radius) * Math.cos(angle) * 0.5;
+            const posY = anchorY + radius + radius * Math.sin(angle);
+            const rot = angle + Math.PI / 2;
+            ctx.save();
+            ctx.translate(posX, posY);
+            ctx.rotate(rot);
+            ctx.textAlign = 'center';
+            if (drawKind === 'stroke') ctx.strokeText(ch, 0, 0);
+            else ctx.fillText(ch, 0, 0);
+            ctx.restore();
+            cumW += chW;
+        }
+        ctx.textAlign = savedAlign;
+        return true;
+    }
+
+    // Bug G Rework — unified dispatcher. Style-first routing so the
+    // renderer never has to care what "amount" means for a given style.
+    // Backward compat: an older Layer with `curve` set but no
+    // `curveStyle` (compiled before this rework existed) is treated as
+    // 'arc', matching the original Bug G behaviour byte-for-byte.
+    // Returns true iff a styled line was actually drawn; false when the
+    // style is 'none' / absent-and-no-legacy-amount, letting the caller
+    // fall through to a straight `_drawWrappedText` path.
+    function _drawStyledTextLine(ctx, line, anchorX, anchorY, curveStyle, amount, drawKind) {
+        const effectiveStyle = curveStyle && curveStyle !== 'none' ? curveStyle : (amount ? 'arc' : 'none');
+        if (effectiveStyle === 'arc') return _drawCurvedTextLine(ctx, line, anchorX, anchorY, amount, drawKind);
+        if (effectiveStyle === 'wave') return _drawWaveTextLine(ctx, line, anchorX, anchorY, amount, drawKind);
+        if (effectiveStyle === 'circle') return _drawCircleTextLine(ctx, line, anchorX, anchorY, drawKind);
+        return false;
+    }
+
     // AV-006/AV-010 — a text Layer's declared position/size box is only
     // ever a wrap-width and a creation-time placeholder height (Scene
     // Model §3 gives every Layer a generic fractional rect, but unlike a
@@ -988,58 +1080,106 @@ const EngineV2Runtime = (function () {
             // (a Story-Author-only capability added later, on top of
             // whatever Builder authored), so unlike the root Studio
             // mirror, there's no decoration pass to draw here either way.
-            if (layer.shapeFill) {
-                const lineHeight = (layer.fontSize || 48) * 1.25;
-                const lines = _wrapLines(ctx, layer.text || '', rect.w);
-                const totalH = lines.length * lineHeight;
-                let maxLineWidth = 0;
-                lines.forEach(function (line) {
-                    const lw = ctx.measureText(line).width;
-                    if (lw > maxLineWidth) maxLineWidth = lw;
-                });
-                let bx = tx;
-                if (layer.align === 'center') bx = tx - maxLineWidth / 2;
-                else if (layer.align === 'right') bx = tx - maxLineWidth;
-                const fontStr = ctx.font;
-                const drawTextFn = function (targetCtx, isStroke) {
-                    targetCtx.font = fontStr;
-                    targetCtx.textAlign = layer.align || 'left';
-                    targetCtx.textBaseline = 'top';
-                    lines.forEach(function (line, i) {
-                        const ly = rect.y + i * lineHeight;
-                        if (isStroke) {
-                            targetCtx.strokeStyle = '#FFFFFF';
-                            targetCtx.lineWidth = Math.max(1.5, (layer.fontSize || 48) * 0.05);
-                            targetCtx.strokeText(line, tx, ly);
-                        } else {
-                            targetCtx.fillStyle = '#000000';
-                            targetCtx.fillText(line, tx, ly);
-                        }
-                    });
-                };
-                _drawShapeMosaicTextBlock(ctx, bx, rect.y, maxLineWidth, totalH, drawTextFn);
-            } else {
-                ctx.fillStyle = layer.color || '#1D3457';
-                // Bug G — "For texts allow these curves." A nonzero
-                // layer.curve draws each wrapped line along an arc via
-                // _drawCurvedTextLine. Zero curve falls through to the
-                // existing straight _drawWrappedText path, byte-identical
-                // to before this feature.
-                const textCurve = typeof layer.curve === 'number' ? layer.curve : 0;
-                if (textCurve) {
-                    const lines = _wrapLines(ctx, layer.text || '', rect.w);
-                    const lineHeight = (layer.fontSize || 48) * 1.25;
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i];
-                        const lw = ctx.measureText(line).width;
-                        let cx = tx;
-                        if (layer.align === 'left' || !layer.align) cx = tx + lw / 2;
-                        else if (layer.align === 'right') cx = tx - lw / 2;
-                        _drawCurvedTextLine(ctx, line, cx, rect.y + i * lineHeight, textCurve, 'fill');
-                    }
+            // Bug G Rework — resolve Style/Amount once, upfront, so both
+            // the plain-colour and shape-mosaic paths dispatch through
+            // the same styled renderer. curveStyle='none' means always
+            // straight regardless of curve value; absent/undefined
+            // curveStyle with a nonzero curve amount is treated as 'arc'
+            // by _drawStyledTextLine (byte-identical to the original
+            // Bug G behaviour, so every already-compiled Layer renders
+            // exactly as before).
+            const curveStyle = layer.curveStyle || (layer.curve ? 'arc' : 'none');
+            const curveAmount = typeof layer.curve === 'number' ? layer.curve : 0;
+            const isCurved = curveStyle !== 'none' && (curveStyle === 'circle' || curveAmount !== 0);
+            const lineHeightPx = (layer.fontSize || 48) * 1.25;
+            const wrapped = _wrapLines(ctx, layer.text || '', rect.w);
+            let maxLW = 0;
+            wrapped.forEach(function (line) {
+                const lw = ctx.measureText(line).width;
+                if (lw > maxLW) maxLW = lw;
+            });
+            // Bug G Rework — one shared line-drawer that handles all four
+            // styles (None/Arc/Wave/Circle) plus fallback to straight
+            // _drawWrappedText for 'none'. Used by both the shape-mosaic
+            // drawTextFn (below) AND the plain-colour path, so the two
+            // can never disagree on how a curved line renders.
+            const drawLinesTo = function (targetCtx, isStroke, colorFillOverride) {
+                targetCtx.font = ctx.font;
+                targetCtx.textAlign = layer.align || 'left';
+                targetCtx.textBaseline = 'top';
+                if (isStroke) {
+                    targetCtx.strokeStyle = '#FFFFFF';
+                    targetCtx.lineWidth = Math.max(1.5, (layer.fontSize || 48) * 0.05);
+                } else if (colorFillOverride) {
+                    targetCtx.fillStyle = colorFillOverride;
                 } else {
-                    _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
+                    targetCtx.fillStyle = '#000000';
                 }
+                if (!isCurved) {
+                    if (isStroke) {
+                        wrapped.forEach(function (line, i) {
+                            targetCtx.strokeText(line, tx, rect.y + i * lineHeightPx);
+                        });
+                    } else {
+                        wrapped.forEach(function (line, i) {
+                            targetCtx.fillText(line, tx, rect.y + i * lineHeightPx);
+                        });
+                    }
+                    return;
+                }
+                for (let i = 0; i < wrapped.length; i++) {
+                    const line = wrapped[i];
+                    const lw = targetCtx.measureText(line).width;
+                    let cx = tx;
+                    if (layer.align === 'left' || !layer.align) cx = tx + lw / 2;
+                    else if (layer.align === 'right') cx = tx - lw / 2;
+                    _drawStyledTextLine(targetCtx, line, cx, rect.y + i * lineHeightPx, curveStyle, curveAmount, isStroke ? 'stroke' : 'fill');
+                }
+            };
+            if (layer.shapeFill) {
+                // Bug G Rework — Shape-Mosaic Fill Style must respect
+                // Curve Style too (the earlier ship shipped Curve for
+                // solid-fill text only, silently skipping it for
+                // shapeFill). The mask+composite mechanism doesn't care
+                // HOW glyphs are drawn onto the mask, only that they
+                // ARE — so drawLinesTo, which already knows how to
+                // dispatch through _drawStyledTextLine per line, is
+                // fed straight into _drawShapeMosaicTextBlock. Bbox is
+                // expanded to fit whatever curved reach the style
+                // produces (arc/wave add vertical amplitude; circle
+                // becomes roughly square at 2*radius), so a curved
+                // shape-fill glyph is never clipped by too small an
+                // offscreen mask canvas.
+                let bx = tx;
+                if (layer.align === 'center') bx = tx - maxLW / 2;
+                else if (layer.align === 'right') bx = tx - maxLW;
+                let by = rect.y;
+                let bw = maxLW;
+                let bh = wrapped.length * lineHeightPx;
+                if (isCurved) {
+                    if (curveStyle === 'arc') {
+                        const arcRad = Math.abs(curveAmount * Math.PI / 180);
+                        const radius = maxLW / Math.max(0.001, arcRad);
+                        const bulge = radius * (1 - Math.cos(arcRad / 2));
+                        bh += Math.abs(bulge) + (layer.fontSize || 48);
+                        if (curveAmount < 0) by -= Math.abs(bulge);
+                    } else if (curveStyle === 'wave') {
+                        const amp = Math.abs(curveAmount) * 0.3;
+                        bh += amp * 2 + (layer.fontSize || 48) * 0.3;
+                        by -= amp;
+                    } else if (curveStyle === 'circle') {
+                        const cr = maxLW / (2 * Math.PI);
+                        const diameter = 2 * cr + (layer.fontSize || 48) * 1.2;
+                        bx = tx - diameter / 2;
+                        by = rect.y;
+                        bw = diameter;
+                        bh = diameter;
+                    }
+                }
+                const drawTextFn = function (targetCtx, isStroke) { drawLinesTo(targetCtx, isStroke, null); };
+                _drawShapeMosaicTextBlock(ctx, bx, by, bw, bh, drawTextFn);
+            } else {
+                drawLinesTo(ctx, false, layer.color || '#1D3457');
             }
             ctx.restore();
         } else {

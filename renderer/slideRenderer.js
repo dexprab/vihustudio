@@ -1724,6 +1724,13 @@ const SlideRenderer=(()=>{
     // mirrors rotation/opacity/fontWeight exactly: Story-Author
     // ov.curve wins over Theme-Author-authored t.curve base.
     const textCurve=(ov && typeof ov.curve==='number')?ov.curve:(typeof t.curve==='number'?t.curve:0);
+    // Bug G Rework — Curve Style ('none'/'arc'/'wave'/'circle').
+    // Same tri-state precedence: ov wins over t. Backward compat: an
+    // older object with curve set but no curveStyle is treated as 'arc'
+    // by _drawStyledTextLine (the resolveEffective step there), matching
+    // the original Bug G behaviour byte-for-byte.
+    const curveStyle=(ov && typeof ov.curveStyle==='string')?ov.curveStyle:(typeof t.curveStyle==='string'?t.curveStyle:(textCurve?'arc':'none'));
+    const isCurvedActive = curveStyle && curveStyle!=='none' && (curveStyle==='circle' || textCurve!==0);
     x.textAlign=hAlign;
     // "why we dont have underline as a style, and strikethrough also" —
     // Canvas has no native text-decoration; the only way to render either
@@ -1742,6 +1749,30 @@ const SlideRenderer=(()=>{
     // use above — absent either, this is a plain false/Solid, so every
     // existing theme renders byte-identically to before this feature.
     const shapeFillOn=(ov && typeof ov.shapeFill==='boolean')?ov.shapeFill:!!t.shapeFill;
+    // Bug G Rework — shared line-draw dispatcher used by both the
+    // shape-mosaic drawTextFn (below) AND the plain-colour path, so
+    // Shape-Mosaic Fill now honours Curve Style too (the earlier Bug G
+    // ship shipped Curve for solid text only; the mask+composite path
+    // silently skipped it). isCurvedActive gates the choice between the
+    // styled per-line dispatcher and the straight fillText/strokeText
+    // fallback — absent curveStyle (or curveStyle==='none'), this is
+    // byte-identical to before.
+    const drawStyledLine=function(targetCtx,line,g,isStroke){
+      if(!isCurvedActive){
+        if(isStroke) targetCtx.strokeText(line,drawX,g.lineY);
+        else targetCtx.fillText(line,drawX,g.lineY);
+        return;
+      }
+      let cx=drawX;
+      const lw=targetCtx.measureText(line).width;
+      if(hAlign==='left') cx=drawX+lw/2;
+      else if(hAlign==='right') cx=drawX-lw/2;
+      const drew=_drawStyledTextLine(targetCtx,line,cx,g.lineY,curveStyle,textCurve,isStroke?'stroke':'fill');
+      if(!drew){
+        if(isStroke) targetCtx.strokeText(line,drawX,g.lineY);
+        else targetCtx.fillText(line,drawX,g.lineY);
+      }
+    };
     if(shapeFillOn){
       const fontStr=x.font;
       const drawTextFn=function(targetCtx,isStroke){
@@ -1753,14 +1784,39 @@ const SlideRenderer=(()=>{
           if(isStroke){
             targetCtx.strokeStyle='#FFFFFF';
             targetCtx.lineWidth=Math.max(1.5,size*0.05);
-            targetCtx.strokeText(line,drawX,g.lineY);
           } else {
             targetCtx.fillStyle='#000000';
-            targetCtx.fillText(line,drawX,g.lineY);
           }
+          drawStyledLine(targetCtx,line,g,isStroke);
         });
       };
-      _drawShapeMosaicTextBlock(x,bx,by,maxLineWidth,totalH,drawTextFn);
+      // Bug G Rework — expand the mask/pattern bbox generously when a
+      // curved style is active, so a curved glyph's real reach is never
+      // clipped by too small an offscreen canvas. Arc adds bulge from
+      // the arc's own sagitta; wave adds ±amplitude; circle becomes
+      // roughly a 2*radius square (radius = textWidth/2π).
+      let mbx=bx, mby=by, mbw=maxLineWidth, mbh=totalH;
+      if(isCurvedActive){
+        if(curveStyle==='arc'){
+          const arcRad=Math.abs((textCurve||0)*Math.PI/180);
+          const radius=maxLineWidth/Math.max(0.001,arcRad);
+          const bulge=Math.abs(radius*(1-Math.cos(arcRad/2)));
+          mbh+=bulge+size;
+          if((textCurve||0)<0) mby-=bulge;
+        } else if(curveStyle==='wave'){
+          const amp=Math.abs(textCurve||0)*0.3;
+          mbh+=amp*2+size*0.3;
+          mby-=amp;
+        } else if(curveStyle==='circle'){
+          const cr=maxLineWidth/(2*Math.PI);
+          const diameter=2*cr+size*1.2;
+          mbx=drawX-diameter/2;
+          mby=by;
+          mbw=diameter;
+          mbh=diameter;
+        }
+      }
+      _drawShapeMosaicTextBlock(x,mbx,mby,mbw,mbh,drawTextFn);
       if(hasUnderline||hasStrikethrough){
         lines.forEach(function(line,i){
           const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
@@ -1772,22 +1828,12 @@ const SlideRenderer=(()=>{
       lines.forEach(function(line,i){
         const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
         x.textBaseline=g.baseline;
-        // Bug G — a nonzero curve draws each line along an arc (each
-        // char translated + rotated tangent to the arc), the line's
-        // own horizontal center used as the arc's anchor. Zero curve
-        // falls through to the existing straight fillText path,
-        // byte-identical to before. Underline/strikethrough are
-        // deliberately drawn straight even when curved — a curved
-        // baseline decoration would need per-char stroke segments;
-        // disclosed as out of scope for this feature.
-        let didCurve=false;
-        if(textCurve){
-          let cx=drawX;
-          if(hAlign==='left') cx=drawX+x.measureText(line).width/2;
-          else if(hAlign==='right') cx=drawX-x.measureText(line).width/2;
-          didCurve=_drawCurvedTextLine(x,line,cx,g.lineY,textCurve,'fill');
-        }
-        if(!didCurve) x.fillText(line,drawX,g.lineY);
+        // Bug G Rework — one dispatch for all four styles (None/Arc/
+        // Wave/Circle). Underline/strikethrough deliberately draw
+        // straight even under curved text — a curved baseline
+        // decoration would need per-char stroke segments; disclosed as
+        // out of scope, matching Bug G's own original scope.
+        drawStyledLine(x,line,g,false);
         if(hasUnderline||hasStrikethrough){
           _drawTextLineDecoration(x,line,g.lineY,vAlign,hAlign,drawX,size,x.fillStyle,hasUnderline,hasStrikethrough);
         }
@@ -2954,6 +3000,82 @@ const SlideRenderer=(()=>{
     }
     ctx.textAlign=savedAlign;
     return true;
+  }
+
+  // Bug G Rework — Wave style, mirrored (by hand, no shared module) from
+  // tools/world-builder-v2/js/services/engineRuntime.js's own
+  // _drawWaveTextLine. amplitude = |amount|*0.3 in px, sign flips the
+  // starting direction; period auto-derived from text width so 2-3
+  // waves always show. Glyphs stay upright.
+  function _drawWaveTextLine(ctx,line,anchorX,anchorY,amount,drawKind){
+    if(!line || !amount) return false;
+    const totalW=ctx.measureText(line).width;
+    if(totalW<=0) return false;
+    const amplitude=Math.abs(amount)*0.3;
+    const sign=amount>=0?1:-1;
+    const period=Math.max(60, totalW/2.5);
+    const chars=Array.from(line);
+    const savedAlign=ctx.textAlign;
+    const startX=anchorX-totalW/2;
+    let cumW=0;
+    for(let i=0;i<chars.length;i++){
+      const ch=chars[i];
+      const chW=ctx.measureText(ch).width;
+      const cx=startX+cumW+chW/2;
+      const waveY=sign*Math.sin(((cx-startX)/period)*2*Math.PI)*amplitude;
+      ctx.save();
+      ctx.translate(cx, anchorY+waveY);
+      ctx.textAlign='center';
+      if(drawKind==='stroke') ctx.strokeText(ch,0,0);
+      else ctx.fillText(ch,0,0);
+      ctx.restore();
+      cumW+=chW;
+    }
+    ctx.textAlign=savedAlign;
+    return true;
+  }
+
+  // Bug G Rework — Circle style. Full 360° wrap, radius = textWidth/(2π).
+  // Amount is deliberately unused (Amount slider disabled in the UI).
+  // Text starts at 12 o'clock, reads clockwise; each glyph rotates
+  // tangent, matching Arc's convention.
+  function _drawCircleTextLine(ctx,line,anchorX,anchorY,drawKind){
+    if(!line) return false;
+    const totalW=ctx.measureText(line).width;
+    if(totalW<=0) return false;
+    const radius=totalW/(2*Math.PI);
+    const chars=Array.from(line);
+    const savedAlign=ctx.textAlign;
+    let cumW=0;
+    for(let i=0;i<chars.length;i++){
+      const ch=chars[i];
+      const chW=ctx.measureText(ch).width;
+      const angle=((cumW+chW/2)/totalW)*2*Math.PI - Math.PI/2;
+      const posX=anchorX+radius*Math.cos(angle);
+      const posY=anchorY+radius+radius*Math.sin(angle);
+      const rot=angle+Math.PI/2;
+      ctx.save();
+      ctx.translate(posX,posY);
+      ctx.rotate(rot);
+      ctx.textAlign='center';
+      if(drawKind==='stroke') ctx.strokeText(ch,0,0);
+      else ctx.fillText(ch,0,0);
+      ctx.restore();
+      cumW+=chW;
+    }
+    ctx.textAlign=savedAlign;
+    return true;
+  }
+
+  // Bug G Rework — unified dispatcher. Backward compat: an older Layer
+  // with `curve` set but no `curveStyle` is treated as 'arc'. Returns
+  // true iff a styled line was drawn; false lets caller fall through.
+  function _drawStyledTextLine(ctx,line,anchorX,anchorY,curveStyle,amount,drawKind){
+    const effectiveStyle = curveStyle && curveStyle!=='none' ? curveStyle : (amount ? 'arc' : 'none');
+    if(effectiveStyle==='arc') return _drawCurvedTextLine(ctx,line,anchorX,anchorY,amount,drawKind);
+    if(effectiveStyle==='wave') return _drawWaveTextLine(ctx,line,anchorX,anchorY,amount,drawKind);
+    if(effectiveStyle==='circle') return _drawCircleTextLine(ctx,line,anchorX,anchorY,drawKind);
+    return false;
   }
 
   // Shared underline/strikethrough stroke — extracted so both Fill Style
@@ -4288,6 +4410,35 @@ const SlideRenderer=(()=>{
     // _drawShapeMosaicTextBlock/_drawTextLineDecoration helpers
     // _layerDrawText already established).
     const shapeFillOn=!!st.shapeFill;
+    // Bug G Rework — Curve Style (None/Arc/Wave/Circle) + amount.
+    // Story-owned sticker reads its own top-level fields directly (no
+    // ov/t precedence — a sticker instance IS its own store). Backward
+    // compat: a legacy sticker authored before Curve Style existed but
+    // carrying a nonzero curve is treated as 'arc' by _drawStyledTextLine,
+    // matching the original Bug G behaviour byte-for-byte.
+    const textCurve=typeof st.curve==='number'?st.curve:0;
+    const curveStyle=(typeof st.curveStyle==='string')?st.curveStyle:(textCurve?'arc':'none');
+    const isCurvedActive = curveStyle && curveStyle!=='none' && (curveStyle==='circle' || textCurve!==0);
+    // Shared line-draw dispatcher used by both the shape-mosaic drawTextFn
+    // (below) AND the plain-fill else branch, so Shape-Mosaic Fill now
+    // honours Curve Style too (mirroring the same _layerDrawText fix
+    // this same rework applied to the World-owned Text path).
+    const drawStyledLine=function(targetCtx,line,lineY,isStroke){
+      if(!isCurvedActive){
+        if(isStroke) targetCtx.strokeText(line,tx,lineY);
+        else targetCtx.fillText(line,tx,lineY);
+        return;
+      }
+      let cxCurve=tx;
+      const lw=targetCtx.measureText(line).width;
+      if(align==='left') cxCurve=tx+lw/2;
+      else if(align==='right') cxCurve=tx-lw/2;
+      const drew=_drawStyledTextLine(targetCtx,line,cxCurve,lineY,curveStyle,textCurve,isStroke?'stroke':'fill');
+      if(!drew){
+        if(isStroke) targetCtx.strokeText(line,tx,lineY);
+        else targetCtx.fillText(line,tx,lineY);
+      }
+    };
     if(shapeFillOn){
       let maxLineWidth=0;
       lines.forEach(function(line){ const lw=x.measureText(line).width; if(lw>maxLineWidth) maxLineWidth=lw; });
@@ -4303,15 +4454,39 @@ const SlideRenderer=(()=>{
           if(isStroke){
             targetCtx.strokeStyle='#FFFFFF';
             targetCtx.lineWidth=Math.max(1.5,size*0.05);
-            targetCtx.strokeText(line,tx,localTy);
           } else {
             targetCtx.fillStyle='#000000';
-            targetCtx.fillText(line,tx,localTy);
           }
+          drawStyledLine(targetCtx,line,localTy,isStroke);
           localTy+=lineHeight;
         });
       };
-      _drawShapeMosaicTextBlock(x,bx,-totalH/2,maxLineWidth,totalH,drawTextFn);
+      // Bug G Rework — expand the mask/pattern bbox generously when a
+      // curved style is active (arc adds sagitta bulge; wave adds
+      // ±amplitude; circle becomes a 2*radius square). Same math as
+      // _layerDrawText's own equivalent expansion.
+      let mbx=bx, mby=-totalH/2, mbw=maxLineWidth, mbh=totalH;
+      if(isCurvedActive){
+        if(curveStyle==='arc'){
+          const arcRad=Math.abs((textCurve||0)*Math.PI/180);
+          const radius=maxLineWidth/Math.max(0.001,arcRad);
+          const bulge=Math.abs(radius*(1-Math.cos(arcRad/2)));
+          mbh+=bulge+size;
+          if((textCurve||0)<0) mby-=bulge;
+        } else if(curveStyle==='wave'){
+          const amp=Math.abs(textCurve||0)*0.3;
+          mbh+=amp*2+size*0.3;
+          mby-=amp;
+        } else if(curveStyle==='circle'){
+          const cr=maxLineWidth/(2*Math.PI);
+          const diameter=2*cr+size*1.2;
+          mbx=tx-diameter/2;
+          mby=-diameter/2;
+          mbw=diameter;
+          mbh=diameter;
+        }
+      }
+      _drawShapeMosaicTextBlock(x,mbx,mby,mbw,mbh,drawTextFn);
       if(hasUnderline||hasStrikethrough){
         let localTy=-totalH/2+lineHeight/2;
         lines.forEach(function(line){
@@ -4320,21 +4495,13 @@ const SlideRenderer=(()=>{
         });
       }
     } else {
-      // Bug G — a nonzero st.curve draws each line along an arc via
-      // _drawCurvedTextLine. Zero curve falls through to straight
-      // fillText, byte-identical to before this feature. Underline/
-      // strikethrough drawn straight even when curved (per-char stroke
-      // segments would be needed for a curved decoration; out of scope).
-      const textCurve=typeof st.curve==='number'?st.curve:0;
+      // Bug G Rework — one dispatch for all four styles (None/Arc/Wave/
+      // Circle). Underline/strikethrough drawn straight even when
+      // curved — a curved baseline decoration would need per-char
+      // stroke segments; disclosed as out of scope, matching Bug G's
+      // own original scope.
       lines.forEach(function(line){
-        let didCurve=false;
-        if(textCurve){
-          let cx=tx;
-          if(align==='left') cx=tx+x.measureText(line).width/2;
-          else if(align==='right') cx=tx-x.measureText(line).width/2;
-          didCurve=_drawCurvedTextLine(x,line,cx,ty,textCurve,'fill');
-        }
-        if(!didCurve) x.fillText(line,tx,ty);
+        drawStyledLine(x,line,ty,false);
         if(hasUnderline || hasStrikethrough){
           const lw=x.measureText(line).width;
           let lsx=tx-lw/2, lex=tx+lw/2;

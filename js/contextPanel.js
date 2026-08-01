@@ -845,18 +845,39 @@ const ContextPanel=(function(){
         });
         _pairRow(container,colorCell,rotationCell);
         rotationCell=null;
-        // Bug G — Curve is a rendering property (editable/Honor 3), not
-        // spatial like Rotation (moveable/Honor 2). Range −180…180°:
-        // 0 = flat/no curve (byte-identical default), positive = smile
-        // arc, negative = frown arc. Full-width row of its own since
-        // Rotation was already paired with Colour above.
-        const curveCell=_makeRangeRow(null,{
-          labelText:'Curve',min:-180,max:180,step:1,
-          value:(typeof ov.curve==='number')?ov.curve:0,
+        // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle)
+        // paired with Amount slider. Amount is disabled for None (nothing
+        // to shape) and Circle (radius is derived from text width, not
+        // amount). Both _layerDrawText and _drawFreeformText in
+        // renderer/slideRenderer.js dispatch through a shared
+        // _drawStyledTextLine so the picker's choice is honoured
+        // uniformly across Solid AND Shape-Mosaic Fill Style. Backward
+        // compat: an object with only curve set (no curveStyle) is
+        // treated as 'arc' by both engines' backward-compat resolution,
+        // so nothing already authored regresses.
+        const curveVal=(typeof ov.curve==='number')?ov.curve:0;
+        const curveStyleVal=(typeof ov.curveStyle==='string')?ov.curveStyle:(curveVal?'arc':'none');
+        const amountCell=_makeRangeRow(null,{
+          labelText:'Amount',min:-180,max:180,step:1,
+          value:curveVal,
           format:function(n){ return Math.round(n)+'°'; },
           onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'curve',n?n:null); _afterQuickEditChange(); }
         });
-        _pairRow(container,curveCell,null);
+        const amountSlider=amountCell.querySelector('input');
+        function syncAmountDisabled(styleVal){
+          const disabled=(styleVal==='none' || styleVal==='circle');
+          if(amountSlider) amountSlider.disabled=disabled;
+          amountCell.style.opacity=disabled?'0.5':'';
+        }
+        syncAmountDisabled(curveStyleVal);
+        const curveStyleCell=_makeIconChoiceRow(null,'Curve Style',[
+          ['none','None'],['arc','Arc'],['wave','Wave'],['circle','Circle']
+        ],curveStyleVal,function(val){
+          SceneEngine.setContentOverride(slide,sceneObj.id,'curveStyle',val==='none'?null:val);
+          syncAmountDisabled(val);
+          _afterQuickEditChange();
+        });
+        _pairRow(container,curveStyleCell,amountCell);
         mounted=true;
       }
     }
@@ -1035,13 +1056,35 @@ const ContextPanel=(function(){
       format:function(n){ return Math.round(n)+'°'; },
       onInput:function(n){ update({rotation:Math.round(n)}); }
     });
-    const curveCell=_makeRangeRow(null,{
-      labelText:'Curve',min:-180,max:180,step:1,
-      value:(typeof st.curve==='number')?st.curve:0,
+    // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle) +
+    // Amount slider. Same pattern as the World-owned Text popup
+    // above, adapted for a Story-owned freeform sticker (writes to
+    // st.curve/st.curveStyle via SceneEngine.updateSticker shallow-
+    // merge; no elementOverrides bag for a sticker's own top-level
+    // fields). Amount is disabled for None/Circle.
+    const stCurveVal=(typeof st.curve==='number')?st.curve:0;
+    const stCurveStyleVal=(typeof st.curveStyle==='string')?st.curveStyle:(stCurveVal?'arc':'none');
+    const stAmountCell=_makeRangeRow(null,{
+      labelText:'Amount',min:-180,max:180,step:1,
+      value:stCurveVal,
       format:function(n){ return Math.round(n)+'°'; },
       onInput:function(n){ update({curve:Math.round(n)}); }
     });
-    _pairRow(container,rotationCell,curveCell);
+    const stAmountSlider=stAmountCell.querySelector('input');
+    function syncStAmountDisabled(styleVal){
+      const disabled=(styleVal==='none' || styleVal==='circle');
+      if(stAmountSlider) stAmountSlider.disabled=disabled;
+      stAmountCell.style.opacity=disabled?'0.5':'';
+    }
+    syncStAmountDisabled(stCurveStyleVal);
+    const stCurveStyleCell=_makeIconChoiceRow(null,'Curve Style',[
+      ['none','None'],['arc','Arc'],['wave','Wave'],['circle','Circle']
+    ],stCurveStyleVal,function(val){
+      update({curveStyle:val==='none'?null:val});
+      syncStAmountDisabled(val);
+    });
+    _pairRow(container,rotationCell,stCurveStyleCell);
+    _pairRow(container,stAmountCell,null);
 
     const delBtn=document.createElement('button');
     delBtn.type='button';

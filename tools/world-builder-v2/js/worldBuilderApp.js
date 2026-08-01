@@ -8627,6 +8627,23 @@
     const TEXT_FILLSTYLE_CHOICES = [
         { value: 'solid', label: 'Solid' }, { value: 'shapes', label: 'Shapes' }
     ];
+    // Bug G Rework — Curve Style picker replacing the plain amount-only
+    // slider that shipped with Bug G's original round. None = flat text
+    // (Amount slider disabled). Arc = existing per-character bend along
+    // a circular arc, Amount degrees drives sweep (-180..180). Wave =
+    // sine wave, Amount drives amplitude (in pixels via *0.3 scale),
+    // sign flips direction; glyphs stay upright. Circle = 360° wrap
+    // starting at 12 o'clock, reading clockwise; radius derived from
+    // text width, Amount is deliberately ignored (disabled). Backward
+    // compat: a legacy Experience with only textCurve set is treated as
+    // 'arc' by _drawStyledTextLine in both engines, so nothing already
+    // authored regresses.
+    const TEXT_CURVE_STYLE_CHOICES = [
+        { value: 'none', label: 'None' },
+        { value: 'arc', label: 'Arc' },
+        { value: 'wave', label: 'Wave' },
+        { value: 'circle', label: 'Circle' }
+    ];
     // 'stretch' -- a real, user-requested capability (a Theme Author
     // wanting an Experience image to exactly fill its whole Scene/rect
     // with no gap and no crop, distinct from 'fill' which preserves
@@ -9024,12 +9041,31 @@
             _buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))),
             _buildFieldGroup('Fill Style', _select(TEXT_FILLSTYLE_CHOICES, props.textShapeFill ? 'shapes' : 'solid', function (v) { onProp('textShapeFill')(v === 'shapes'); }))
         );
-        // Bug G — "For texts allow these curves." A total arc-angle
-        // slider (−180…180°, 0 = flat/no curve, positive = smile arc,
-        // negative = frown arc), the exact vocabulary the render helper
-        // _drawCurvedTextLine (kept in lockstep between engineRuntime.js
-        // and root Studio's slideRenderer.js) already expects.
-        _fieldRow(_buildFieldGroup('Curve', _range(-180, 180, props.textCurve || 0, onProp('textCurve'))));
+        // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle)
+        // paired with the Amount slider (-180..180). Amount is disabled
+        // for None (nothing to shape) and Circle (radius is derived
+        // from text width, not amount). Kept in lockstep with
+        // engineRuntime.js's/renderer/slideRenderer.js's shared
+        // _drawStyledTextLine dispatcher. A legacy Experience with
+        // only textCurve set is treated as 'arc' by both engines'
+        // backward-compat resolution, so nothing already authored
+        // regresses on this UI change.
+        const _curveStyleVal = (typeof props.textCurveStyle === 'string') ? props.textCurveStyle : ((props.textCurve || 0) ? 'arc' : 'none');
+        const _curveAmountWrap = _range(-180, 180, props.textCurve || 0, onProp('textCurve'));
+        const _curveAmountInput = _curveAmountWrap.querySelector('input');
+        function _syncCurveAmountDisabled(styleVal) {
+            const disabled = (styleVal === 'none' || styleVal === 'circle');
+            if (_curveAmountInput) _curveAmountInput.disabled = disabled || currentProjectReadOnly;
+            _curveAmountWrap.style.opacity = disabled ? '0.5' : '';
+        }
+        _syncCurveAmountDisabled(_curveStyleVal);
+        _fieldRow(
+            _buildFieldGroup('Curve Style', _select(TEXT_CURVE_STYLE_CHOICES, _curveStyleVal, function (v) {
+                onProp('textCurveStyle')(v);
+                _syncCurveAmountDisabled(v);
+            })),
+            _buildFieldGroup('Amount', _curveAmountWrap)
+        );
         contextPanel = outer;
     }
 

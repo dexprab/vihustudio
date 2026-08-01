@@ -110,15 +110,23 @@ const ExperienceSchema = (function () {
             // this project's engineRuntime.js's own `_drawShapeMosaicTextBlock`
             // — the two are kept in lockstep by hand, no shared module).
             textShapeFill: false,
-            // Bug G — "For texts allow these curves." Curved-text
-            // rendering: an angle in degrees the whole line arcs across
-            // (0 = flat/default, byte-identical to before this feature).
-            // Positive = concave-down (smile arc); negative = concave-up
-            // (frown arc). Range clamped to [-180, 180] by the UI; a full
-            // 360 would fold a line back onto itself, unreadable. Rendered
-            // by _drawCurvedTextLine, hand-mirrored between root Studio's
-            // renderer/slideRenderer.js and this project's engineRuntime.js
-            // (no shared drawing module between the two).
+            // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle).
+            // textCurveStyle is the deformation kind; textCurve is its
+            // amount (only meaningful for Arc and Wave). None = straight
+            // text (byte-identical to before Bug G existed). Arc = the
+            // original Bug G behaviour, amount = arc angle in degrees,
+            // range -180..180 (positive smile, negative frown). Wave =
+            // per-character zigzag/triangular baseline, amount = amplitude
+            // in px (roughly a fraction of fontSize). Circle = full 360°
+            // wrap; text closes into a real circle (radius derived from
+            // text width, no amount needed — Circle deliberately ignores
+            // textCurve, and the UI disables the amount slider for it).
+            // Backward compat: an existing project with textCurve set but
+            // no textCurveStyle is treated as 'arc' by the renderers, so
+            // nothing already authored regresses. Hand-mirrored between
+            // root Studio's renderer/slideRenderer.js and this project's
+            // engineRuntime.js (no shared drawing module between them).
+            textCurveStyle: 'none',
             textCurve: 0,
             textX: fillBleed ? 0 : 0.1, textY: fillBleed ? 0 : 0.1, textW: fillBleed ? 1 : 0.6, textH: fillBleed ? 1 : 0.25,
             // Image
@@ -179,7 +187,7 @@ const ExperienceSchema = (function () {
     // it always derives from that one real source.
     const MAX_EXPERIENCE_PARTS = 5;
     const PART_FIELD_KEYS = {
-        text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textShapeFill', 'textCurve', 'textX', 'textY', 'textW', 'textH'],
+        text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textShapeFill', 'textCurveStyle', 'textCurve', 'textX', 'textY', 'textW', 'textH'],
         image: ['imageSrc', 'imageFit', 'imageOpacity', 'imageRotation', 'imageX', 'imageY', 'imageW', 'imageH'],
         graphics: ['graphicSrc', 'graphicOpacity', 'graphicX', 'graphicY', 'graphicW', 'graphicH', 'graphicShape', 'graphicFillColor', 'graphicFillOpacity', 'graphicStrokeColor', 'graphicStrokeOpacity', 'graphicStrokeWidth', 'graphicRotation', 'graphicCustomPath'],
         colour: ['colorValue', 'colorOpacity', 'colorTransparent']
