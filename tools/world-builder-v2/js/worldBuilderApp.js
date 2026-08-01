@@ -6226,6 +6226,34 @@
             }
         });
         experiencesPanel.appendChild(addBtn);
+
+        // Bug D fix: a second entry point into the same Experience-creation
+        // flow the Experience Library sidebar already offers. Mirrors that
+        // button's own navigate-to-Experience-Home approach (line ~6521),
+        // then also switches to the Nursery tab (where every new Experience
+        // begins per Canon Decision #4) and flips
+        // experienceCreateFormOpen=true so the Nursery renders straight
+        // into the create form rather than requiring a second click on its
+        // own "➕ New Experience" button. experienceHomeZone is required
+        // because the create form only renders inside the Nursery tab
+        // (_renderExperienceNursery line ~8349), never Gallery. Guardrails:
+        // read-only projects (View Mode for an Official Theme) correctly
+        // disabled, matching every other write-path button in this
+        // Workspace.
+        const addExpBtn = document.createElement('button');
+        addExpBtn.type = 'button';
+        addExpBtn.className = 'wb-workspace-btn';
+        addExpBtn.style.width = '100%';
+        addExpBtn.style.marginTop = '8px';
+        addExpBtn.textContent = '➕ Add Experience';
+        addExpBtn.disabled = currentProjectReadOnly;
+        addExpBtn.addEventListener('click', function () {
+            experienceHomeZone = 'nursery';
+            experienceCreateFormOpen = true;
+            currentNav = 'experiences';
+            _renderWorkspace();
+        });
+        experiencesPanel.appendChild(addExpBtn);
     }
 
     function _sceneStackHolderRow(scene, holder, index, total) {

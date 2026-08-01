@@ -1876,7 +1876,15 @@ const ProjectModel = (function () {
             // Graphics Layer, which `engineRuntime.js`'s `_paintLayer`
             // already defaults to 'fit' (contain).
             const fit = isImage ? (props.imageFit || 'fit') : undefined;
-            const rotation = isImage ? (props.imageRotation || 0) : (shapeKind ? (props.graphicRotation || 0) : 0);
+            // Bug E fix: Graphics section's Rotation slider (worldBuilderApp.js
+            // line ~9113) is ALWAYS shown for Graphics content — both uploaded
+            // image AND Shape — writing to props.graphicRotation. Previously
+            // this Engine Adapter only read graphicRotation when a Shape was
+            // set (`shapeKind ? ... : 0`), silently hardcoding 0 for a plain
+            // uploaded Graphics image so the Rotation slider persisted a value
+            // that never reached the mirrored Scene Layer. Now read
+            // graphicRotation for any graphic slot, image or Shape alike.
+            const rotation = isImage ? (props.imageRotation || 0) : (props.graphicRotation || 0);
             // `shape: null` in the non-shape branch is deliberate — it
             // clears a stale shape when an author switches a Graphics
             // section from a Shape back to an uploaded image on an
