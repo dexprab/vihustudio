@@ -5,6 +5,6 @@
   "slice": "Shipped as part of the combined root-Studio BACKLOG Bugs 1/4/6 batch (see root build-info.json 2.159.0 build 0301 for the full account) -- this is the one World Builder v2 file that batch touches. Verified via bug146_verify.js's static catalog checks (26 lowercase + 26 uppercase entries present and distinct on both surfaces) and both goldenBuild.js suites passing unchanged.",
   "build": "0143",
   "buildDate": "2026-08-01",
-  "commit": "7c22ebf5dddf60b7a0b9de24ec4aca7036bccf99",
+  "commit": "9426b412effd37223c8d57be4178283c2074417a",
   "environment": "Release"
 }
