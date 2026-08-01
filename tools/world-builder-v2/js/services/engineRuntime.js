@@ -310,7 +310,14 @@ const EngineV2Runtime = (function () {
         'wood': { cornerRadius: 6 },
         'polaroid': { cornerRadius: 0 },
         'tape': { cornerRadius: 0 },
-        'bulletin-board': { cornerRadius: 0 }
+        'bulletin-board': { cornerRadius: 0 },
+        // Bug 4 (BACKLOG.md) -- Frame Style = Image: the ornament is a
+        // Story-Author-authored picture drawn as an overlay onto the
+        // frame's own outer border band. No inherent corner rounding of
+        // its own (0), so a hard rectangular image reads as authored;
+        // a rounded picture is achieved via the image itself, not this
+        // preset.
+        'image': { cornerRadius: 0 }
     };
 
     // A small, purely-additive, decoration-only distinguishing cue per
@@ -322,10 +329,43 @@ const EngineV2Runtime = (function () {
     // on top of the already-painted bands. `matRect` may be null when
     // no mat band was drawn (matPx===0); every cue degrades gracefully
     // in that case, falling back to the frame's own outer `rect`.
-    function _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent) {
+    function _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent, graph) {
         const style = (fields && fields.frame) || 'none';
         const isBulletinBoard = style === 'bulletin-board' || (fields && fields.background === 'bulletin-board');
         if (style === 'none' || style === 'white-mat') return; // confirmed visually identical to real Studio too — correct parity, not a gap.
+
+        // Bug 4 -- Frame Style = Image: overlay a picture as the frame's
+        // own ornament, drawn on the border band (rect between marginPx
+        // and matInset). Rotated around that band's own centre, mirroring
+        // the identical convention frameImage above and every other
+        // Universal Content rotation control already uses. Resolved via
+        // graph.resolveLayerImage exactly like frameImage does, so a
+        // still-decoding image degrades to nothing rather than a broken
+        // glyph. Isolated in its own save/restore/clip so no downstream
+        // ornament draw can leak into it.
+        if (style === 'image' && fields.frameOrnamentImage && graph && typeof graph.resolveLayerImage === 'function') {
+            const ornImg = graph.resolveLayerImage(fields.frameOrnamentImage);
+            if (ornImg) {
+                const ornRect = { x: rect.x + insets.marginPx, y: rect.y + insets.marginPx,
+                                  w: Math.max(0, rect.w - insets.marginPx * 2), h: Math.max(0, rect.h - insets.marginPx * 2) };
+                if (ornRect.w > 0 && ornRect.h > 0) {
+                    const rot = fields.frameOrnamentImageRotation || 0;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(ornRect.x, ornRect.y, ornRect.w, ornRect.h);
+                    ctx.clip();
+                    if (rot) {
+                        const rcx = ornRect.x + ornRect.w / 2, rcy = ornRect.y + ornRect.h / 2;
+                        ctx.translate(rcx, rcy);
+                        ctx.rotate(rot * Math.PI / 180);
+                        ctx.translate(-rcx, -rcy);
+                    }
+                    _drawImageWithFit(ctx, ornImg, ornRect, 'fill');
+                    ctx.restore();
+                }
+            }
+            return; // Image ornament stands on its own -- no other cue layers on top.
+        }
 
         ctx.save();
         if (style === 'wood' && insets.thicknessPx > 0) {
@@ -556,7 +596,7 @@ const EngineV2Runtime = (function () {
         // `_paintFrameOrnament`'s own header comment. Painted after the
         // mat (so it sits on top of it, matching a real frame's own
         // wood-grain/tape/pin ornament) and before the content band.
-        _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent);
+        _paintFrameOrnament(ctx, rect, insets, fields, matRect, matIsTransparent, graph);
 
         // Content band — the Holder's own Padding (Engine Canon §6:
         // "inset between the Holder's edge and its content"), applied

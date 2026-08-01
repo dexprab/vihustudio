@@ -10387,8 +10387,9 @@
             { value: 'wood', label: 'Wood' },
             { value: 'polaroid', label: 'Polaroid' },
             { value: 'tape', label: 'Tape' },
-            { value: 'bulletin-board', label: 'Bulletin Board' }
-        ], f.frame, onFrameField('frame')));
+            { value: 'bulletin-board', label: 'Bulletin Board' },
+            { value: 'image', label: 'Image' }
+        ], f.frame, function (v) { onFrameField('frame')(v); _renderFramesPanel(); }));
         _fieldRow(backgroundGroup, frameStyleGroup);
 
         if (f.background === 'color') {
@@ -10429,6 +10430,33 @@
             // _paintLayer) so this reads as the same, established
             // capability rather than a one-off. Degrees, clockwise, 0-359.
             _fieldGroup('Rotation', _range(0, 359, f.frameImageRotation || 0, onFrameField('frameImageRotation')));
+        }
+
+        // Bug 4 -- Frame Style = Image: overlay a picture as the FRAME
+        // ORNAMENT itself (structurally distinct from Mat Surface =
+        // Image, which fills the mat/background band underneath). Both
+        // can coexist independently. Mirrors the exact
+        // f.background==='image' block above field-for-field
+        // (Collection picker + Rotation slider), swapping only the
+        // field names (frameOrnamentImage/frameOrnamentImageRotation).
+        if (f.frame === 'image') {
+            const ornamentWrap = document.createElement('div');
+            ornamentWrap.className = 'wb-field-group';
+            const setFrameOrnamentImage = onFrameField('frameOrnamentImage');
+            _renderCollectionPickerCore(ornamentWrap, {
+                kind: 'image',
+                currentRef: f.frameOrnamentImage,
+                iconFallback: '🖼️',
+                accept: 'image/*',
+                labelText: 'Frame Image',
+                onCommit: function (ref) {
+                    if (ref) window.ProjectModel.registerCollectionAsset(project, ref, { kind: 'image', name: frame.name });
+                    setFrameOrnamentImage(ref);
+                    _renderFramesPanel();
+                }
+            });
+            contextPanel.appendChild(ornamentWrap);
+            _fieldGroup('Rotation', _range(0, 359, f.frameOrnamentImageRotation || 0, onFrameField('frameOrnamentImageRotation')));
         }
 
         // Border Color now stands alone -- Corner Radius's own control is

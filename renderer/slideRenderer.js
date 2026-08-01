@@ -487,7 +487,13 @@ const SlideRenderer=(()=>{
     'wood':           {design:'wooden',   cornerRadius:6},
     'polaroid':       {design:'polaroid', cornerRadius:0},
     'tape':           {design:'tape',     cornerRadius:0},
-    'bulletin-board': {design:null,       cornerRadius:0}
+    'bulletin-board': {design:null,       cornerRadius:0},
+    // Bug 4 (BACKLOG.md) — Frame Style = Image: the ornament is a
+    // Theme-Author-authored picture overlay drawn onto the border
+    // band. Zero inherent corner rounding; the picture itself carries
+    // any rounding needed. `design:'image'` dispatches to
+    // _ornamentImage in _drawPictureFrameOrnament below.
+    'image':          {design:'image',    cornerRadius:0}
   };
   // shadow -> {enabled, intensity}. Deliberately subtle across the
   // board — "Keep shadows subtle" per the sprint spec.
@@ -1081,8 +1087,14 @@ const SlideRenderer=(()=>{
         // Always cover-fit ('fill') — a Frame's own background image is
         // meant to fully cover the frame area, cropping if needed, the
         // same fixed mode engineRuntime.js's own mat-band step uses.
+        // Cover scale must account for rotation: after rotating the
+        // canvas by θ, the target rect appears rotated by -θ in the
+        // image's frame, so the image needs to cover the rotated
+        // rect's own AABB, not the axis-aligned rect. Without this,
+        // rotation≠0 leaves the rect corners uncovered and exposes
+        // whatever was drawn beneath.
         const iw=img.width, ih=img.height;
-        const scale=Math.max(rect.w/iw,rect.h/ih);
+        const scale=_rotationCoverScale(rect.w,rect.h,iw,ih,bgRotation);
         const dw=iw*scale, dh=ih*scale;
         x.drawImage(img,rcx-dw/2,rcy-dh/2,dw,dh);
         x.restore();
@@ -1104,14 +1116,30 @@ const SlideRenderer=(()=>{
         }
         // Cover-fit, matching the Feature-1 image-background convention
         // above exactly — a Frame Picture is meant to fully cover the
-        // frame area, cropping if needed.
+        // frame area, cropping if needed. Rotation-aware scale so a
+        // rotated image still covers the rect corners.
         const iw=img.width, ih=img.height;
-        const scale=Math.max(rect.w/iw,rect.h/ih);
+        const scale=_rotationCoverScale(rect.w,rect.h,iw,ih,rotation);
         const dw=iw*scale, dh=ih*scale;
         x.drawImage(img,rcx-dw/2,rcy-dh/2,dw,dh);
         x.restore();
       }
     }
+  }
+
+  // Cover-fit scale that stays correct when the target rect is rotated.
+  // After rotating the canvas by θ, the target rect appears rotated by
+  // -θ in the image's own frame. To cover it, the image must scale to
+  // fit the rotated rect's axis-aligned bounding box, not the original
+  // axis-aligned rect. Bug 4 discovery: without this, rotation!=0
+  // silently leaves rect corners uncovered.
+  function _rotationCoverScale(rectW,rectH,iw,ih,rotationDeg){
+    if(!rotationDeg) return Math.max(rectW/iw,rectH/ih);
+    const rad=rotationDeg*Math.PI/180;
+    const c=Math.abs(Math.cos(rad)), sn=Math.abs(Math.sin(rad));
+    const w2=rectW*c+rectH*sn;
+    const h2=rectW*sn+rectH*c;
+    return Math.max(w2/iw,h2/ih);
   }
 
   // Sprint 6.5.1 — per-design ornament drawn after the image, under the
@@ -1127,8 +1155,52 @@ const SlideRenderer=(()=>{
       case 'magic':     return _ornamentMagic(rect);
       case 'vintage':   return _ornamentVintage(rect,border,theme);
       case 'tape':      return _ornamentTape(rect);
+      // Bug 4 (BACKLOG.md) — Frame Style = Image: a Theme-Author-authored
+      // picture overlays as the frame ornament itself. Distinct from
+      // border.image (mat-fill picture, Feature-1) and art.frameImage
+      // (mat-band background picture) — both can coexist; each renders
+      // in its own pipeline stage. Reads art.frameOrnamentImage /
+      // art.frameOrnamentImageRotation, which ride through
+      // _resolveArtworkFields' Object.assign(merged, variation.fields)
+      // automatically.
+      case 'image':     return _ornamentImage(rect,border);
       default: return;
     }
+  }
+
+  function _ornamentImage(rect,border){
+    // Bug 4 — Frame Style = Image: draw the Theme-Author-authored
+    // ornament picture across the frame area with cover-fit and
+    // rotation-around-rect-centre. Mirrors the exact
+    // ThemeRegistry.resolveAssetRef → _ensureDecorationImage pattern
+    // hasImageBg (mat-band) already uses right above, so the two
+    // image-bearing frame fields resolve identically. Ordered inside
+    // the ornament pipeline stage, so it correctly draws OVER the
+    // mat-band fill (either colour or frameImage) and UNDER the stroke.
+    const art=border && border._artwork;
+    if(!art || !art.frameOrnamentImage) return;
+    let src=art.frameOrnamentImage;
+    const themeId=art.id;
+    if(themeId && typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.resolveAssetRef==='function'){
+      try{ src=ThemeRegistry.resolveAssetRef(themeId,art.frameOrnamentImage)||art.frameOrnamentImage; }catch(e){}
+    }
+    const img=_ensureDecorationImage(src);
+    if(!img || !img.__ready || !img.width || !img.height) return;
+    x.save();
+    _frameFillPath(rect,border);
+    x.clip();
+    const rotation=art.frameOrnamentImageRotation||0;
+    const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
+    if(rotation){
+      x.translate(rcx,rcy);
+      x.rotate(rotation*Math.PI/180);
+      x.translate(-rcx,-rcy);
+    }
+    const iw=img.width, ih=img.height;
+    const scale=_rotationCoverScale(rect.w,rect.h,iw,ih,rotation);
+    const dw=iw*scale, dh=ih*scale;
+    x.drawImage(img,rcx-dw/2,rcy-dh/2,dw,dh);
+    x.restore();
   }
 
   function _ornamentStorybook(rect){

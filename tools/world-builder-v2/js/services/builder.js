@@ -850,21 +850,25 @@ class BuildEngine {
             if (entry && entry.ref) refToEntry[entry.ref] = entry;
         });
 
-        for (const frame of frameVariations) {
+        // Bug 4 -- extended to also externalize `frameOrnamentImage`
+        // (Frame Style = Image), following the identical Collection-
+        // dedup-first / defensive-per-Frame-relPath-fallback discipline
+        // `frameImage` already used. Both fields are independent, both
+        // can coexist on one Frame Variation, and both live under their
+        // own distinct fallback relPath so an unmatched pair never
+        // collides in package_.assets.
+        const _self = this;
+        async function externalizeField(fieldName, fallbackSuffix, frame) {
             const fields = frame && frame.fields;
-            if (!fields || !fields.frameImage) continue;
+            if (!fields || !fields[fieldName]) return;
 
-            const collectionEntry = refToEntry[fields.frameImage];
+            const collectionEntry = refToEntry[fields[fieldName]];
             if (collectionEntry) {
-                fields.frameImage = await this._embedCollectionEntry(collectionEntry, package_);
-                continue;
+                fields[fieldName] = await _self._embedCollectionEntry(collectionEntry, package_);
+                return;
             }
-
-            // Defensive fallback — mirrors externalizeSceneImage()'s own
-            // no-Collection-match branch, but at a Frame-specific relPath
-            // since a Frame Variation isn't a Scene Layer.
-            const relPath = 'frames/' + frame.id + '-image.png';
-            let src = fields.frameImage;
+            const relPath = 'frames/' + frame.id + fallbackSuffix + '.png';
+            let src = fields[fieldName];
             if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
                 src = (typeof window !== 'undefined' && window.AssetStore)
                     ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
@@ -873,7 +877,11 @@ class BuildEngine {
             if (typeof src === 'string' && src.indexOf('data:') === 0) {
                 package_.assets[relPath] = src;
             }
-            fields.frameImage = relPath;
+            fields[fieldName] = relPath;
+        }
+        for (const frame of frameVariations) {
+            await externalizeField('frameImage', '-image', frame);
+            await externalizeField('frameOrnamentImage', '-ornament', frame);
         }
     }
 

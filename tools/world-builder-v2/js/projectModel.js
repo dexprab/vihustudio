@@ -121,6 +121,20 @@ const ProjectModel = (function () {
         // Experience content) -- additive, defaults to 0 (no rotation),
         // so every Frame authored before this exists renders identically.
         if (f.frameImageRotation === undefined) f.frameImageRotation = 0;
+        // Bug 4 (BACKLOG.md) -- "add image option in frame styles in
+        // builder": Frame Style (the ornament choice: none/white-mat/
+        // floating/wood/polaroid/tape/bulletin-board) gains a new
+        // 'image' value backed by these two additive fields. Distinct
+        // from `frameImage` (which fills the mat/background band when
+        // Background = Image) -- `frameOrnamentImage` overlays a picture
+        // as the FRAME ORNAMENT itself when Frame Style = Image. Both
+        // can coexist independently. Additive fields ride through
+        // Object.assign(merged, variation.fields) in
+        // _resolveArtworkFields automatically, so no compile step or
+        // renderer knows they exist until this feature's own draw
+        // branches read them explicitly.
+        if (f.frameOrnamentImage === undefined) f.frameOrnamentImage = null;
+        if (f.frameOrnamentImageRotation === undefined) f.frameOrnamentImageRotation = 0;
         // `matColor` -- Simplify Place & Frame Authoring: a real "pick any
         // colour" mat option (Background='color'). Only meaningful once
         // that value is chosen; a reasonable default burgundy so a Frame
@@ -195,7 +209,8 @@ const ProjectModel = (function () {
             wallTone: '#F4F1EC', wallToneTransparent: true,
             matColor: '#8B2C3B', matColorTransparent: true,
             shadow: 'none',
-            frameImage: null, frameImageRotation: 0
+            frameImage: null, frameImageRotation: 0,
+            frameOrnamentImage: null, frameOrnamentImageRotation: 0
         };
     }
 
