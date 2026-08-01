@@ -5,6 +5,6 @@
   "slice": "This ship completes only Bug 4. Task queue after this: #551 Add more Places to a Scene (Builder v2, +Add Place button), #552 Place rotation (both surfaces), #553 Bug 2 Draw-Your-Own parity port (Studio's Paint-Inside stack into Builder v2). Bug B (companion blank circle) remains explicitly dropped per prior scope decision.",
   "build": "0147",
   "buildDate": "2026-08-01",
-  "commit": "TBD-BUG4",
+  "commit": "e496273",
   "environment": "Release"
 }
