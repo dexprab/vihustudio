@@ -4,6 +4,6 @@
   "task": "Renderer plumbing lives in renderer/slideRenderer.js (Place 1 mat/fill/panel wrap + reorderable-loop _drawPlaceOne wrap) and tools/world-builder-v2/js/services/engineRuntime.js (mirrored Builder Working View/Runtime Preview). Guardrails wired through tools/world-builder-v2/js/projectModel.js (holder.permissions.rotatable, default CLOSED via _resolvePlacePermissions -- matches resizable's own convention, opposite to editable/moveable/visible's OPEN default). Compile step in tools/world-builder-v2/js/services/builder.js carries the new rotatable Guardrail + placeRects[i].rotation. Authoring UI in tools/world-builder-v2/js/worldBuilderApp.js (a 'Can a Story Author rotate this?' checkbox in the Place permission block + a Theme-Author-authored Rotation slider on the Place editor); Story-Author-facing control in js/selectionActionStrip.js (gated on rotatable Guardrail, writes through SceneEngine.setContentOverride).",
   "build": "0306",
   "buildDate": "2026-08-01",
-  "commit": "0000000",
+  "commit": "0cf3c79",
   "environment": "Release"
 }

@@ -5,6 +5,6 @@
   "slice": "Verified 26/26 via place_rotation_verify.js: rotatable Guardrail genuinely opts in (non-rotatable Place shows zero slider), a real mouse-driven slider drag persists the override AND the render tree bbox visibly rotates in both engines (differCount 1/36 grid-sample pixel-diff proof against a distinctive 4-quadrant test image -- a uniform-colour fixture cannot distinguish rotation), Theme-Author-authored base rotation renders when no Story-Author override, override wins over base when both present, non-square Place at non-orthogonal 45deg angle prevents the square-lands-on-itself pitfall. Full regression: goldenBuild.js (v1 and v2) PASS, place_resize_shape_verify.js zero failures, place_guardrails_runtime_verify.js 10/0, museum_realfile_pixelhash.js byte-identical hash SHA-256 e7b2a905613dbef3d2f9064211103d84762d7039d3bee404df90f4d90899b390 confirming zero visual/rendering regression. Ship-order after this: #553 Bug 2 Draw-Your-Own parity port (Studio Paint-Inside stack -> Builder v2).",
   "build": "0148",
   "buildDate": "2026-08-01",
-  "commit": "0000000",
+  "commit": "0cf3c79",
   "environment": "Release"
 }
