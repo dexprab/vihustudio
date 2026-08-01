@@ -5,6 +5,6 @@
   "slice": "This ship completes only the Bug G Rework itself. Task queue after this: #550 Bug 4 (Image option in Frame Styles), #551 Add more Places to a Scene, #552 Place rotation, #553 Bug 2 Draw-Your-Own parity port. Bug B (companion blank circle) remains explicitly dropped per prior scope decision.",
   "build": "0146",
   "buildDate": "2026-08-01",
-  "commit": "aa301929ace1fa65b415f209f507f8ba53b68646",
+  "commit": "bc18c7fdd9aa03cc17c66f45b7b79c5d46b1ccbf",
   "environment": "Release"
 }
