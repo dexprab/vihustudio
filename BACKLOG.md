@@ -10,9 +10,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 ## Bugs
 
 - Draw your own functionality in builder should be same as draw your own feature in studio.
-- Allow builder to add more places to the scene
 - Give rotation capability to places in builder and studio
-- Add image option in frame styles in builder 
 
 
 ## Feature Requests
@@ -38,5 +36,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - [x] Graphics within experience in builder do not rotate on moving the rotation slider — CLAUDE.md: "BACKLOG.md Batch 1 — Bugs E + D."
 - [x] For texts allow these curves — CLAUDE.md: "BACKLOG.md — Batch 2 (Bug G): Curved Text End to End..."
 - [x] Companion does not always load in studio it just shows blank circle — Resolved by real Quill pose art uploaded (Companion Engine's existing graceful-degradation onerror-fallback correctly handles a missing pose file already; the blank circle only appeared because Quill's own pose files hadn't yet been supplied).
+- [x] Add image option in frame styles in builder — CLAUDE.md: "Bug 4 — Image option in Frame Styles (root Studio): a genuine rotation-aware cover-fit fix for all three image-cover call sites in renderer/slideRenderer.js's Frame-fill pipeline" and preceding "Image-Typed Frame Variations" sprints. Frame Style now accepts a real image option (frameOrnamentImage + frameOrnamentImageRotation), mat and border also support image via existing frameImage; every image-cover call site is rotation-aware.
+- [x] Allow builder to add more places to the scene — already fully implemented by the earlier "Multiple Artwork Places Per Page" sprint. Every Scene has an "+ Add a Place" button in both the Scene Stack sidebar and the Place activity panel; addHolder assigns unique ids and distinct positions; convergeScene compiles every Place with placeRects (position/size/shape/frame/Guardrails); both engines render every Place independently. Verified end to end via a real Playwright walkthrough (`bug551_uicheck.js`, 9/9): a 1-Place Scene grows to 2, then 3 Places on real button clicks, with correct names "Place, Place 2, Place 3".
 
 (Checked-off items move here once shipped, with a one-line pointer to the CLAUDE.md entry.)
