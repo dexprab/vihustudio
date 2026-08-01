@@ -695,7 +695,16 @@ class BuildEngine {
                     fillColor: layer.shapeFillColor, fillOpacity: layer.shapeFillOpacity,
                     strokeColor: layer.shapeStrokeColor, strokeOpacity: layer.shapeStrokeOpacity,
                     strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha,
-                    customPath: layer.customPath || null
+                    customPath: layer.customPath || null,
+                    // "Solid Fill" vs. "Paint Inside" (ported from root
+                    // Studio). Absent / 'solid' preserves today's flat
+                    // Fill Colour byte-for-byte for every already-
+                    // authored Shape; 'paint' triggers Studio's own
+                    // _paintShapePathTail Paint Inside branch (via
+                    // _drawDoodleStrokes) on the compiled Layer Pack
+                    // entry, matching Builder's own Working View exactly.
+                    fillMode: layer.fillMode || 'solid',
+                    paintStrokes: layer.paintStrokes || null
                 }
             });
         }

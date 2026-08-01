@@ -1924,8 +1924,13 @@ const ProjectModel = (function () {
                 shape: shapeKind, shapeFillColor: props.graphicFillColor,
                 shapeFillOpacity: props.graphicFillOpacity, shapeStrokeColor: props.graphicStrokeColor,
                 shapeStrokeOpacity: props.graphicStrokeOpacity, shapeStrokeWidth: props.graphicStrokeWidth,
-                customPath: props.graphicCustomPath
-            } : { shape: null, customPath: null };
+                customPath: props.graphicCustomPath,
+                // "Solid Fill" vs. "Paint Inside" (ported from root
+                // Studio). Absent means Solid, byte-identical to every
+                // Shape authored before this port existed.
+                fillMode: props.graphicFillMode || 'solid',
+                paintStrokes: props.graphicPaintStrokes || null
+            } : { shape: null, customPath: null, fillMode: 'solid', paintStrokes: null };
             if (layer) {
                 layer.partId = part.id;
                 layer.contentSlot = isImage ? 'image' : 'graphic';

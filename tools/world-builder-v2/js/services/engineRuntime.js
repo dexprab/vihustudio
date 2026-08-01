@@ -1271,7 +1271,7 @@ const EngineV2Runtime = (function () {
                 ctx.translate(-cx, -cy);
             }
             if (layer.shape) {
-                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth, layer.shapeFillOpacity, layer.shapeStrokeOpacity, layer.customPath);
+                _drawShape(ctx, layer.shape, rect, layer.shapeFillColor, layer.shapeStrokeColor, layer.shapeStrokeWidth, layer.shapeFillOpacity, layer.shapeStrokeOpacity, layer.customPath, layer.fillMode, layer.paintStrokes);
             } else {
                 const img = layer.image ? graph.resolveLayerImage(layer.image) : null;
                 if (img) {
@@ -1306,12 +1306,13 @@ const EngineV2Runtime = (function () {
         if (kind.indexOf('number-') === 0) return kind.slice(7);
         return null;
     }
-    function _drawLetterShape(ctx, ch, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity) {
-        // Auto-fit: start near the full rect height, shrink proportionally
-        // only if the glyph's own measured width would overflow the
-        // rect — most letters/numbers are taller than wide, so height is
-        // the natural starting constraint and width is the one that ever
-        // needs correcting.
+    // Shared by _drawLetterShape (Solid) and _drawLetterShapePaint (Paint
+    // Inside) so the two modes' auto-fit sizing can never drift apart —
+    // mutates ctx.font/.textAlign/.textBaseline as a side effect (both
+    // callers need them set before they measure/draw) and returns the
+    // resolved font size in px. Mirrors renderer/slideRenderer.js's own
+    // _letterFont exactly.
+    function _letterFont(ctx, ch, rect) {
         let fontSize = rect.h * 0.82;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1322,6 +1323,10 @@ const EngineV2Runtime = (function () {
             fontSize = fontSize * (maxW / measured);
             ctx.font = 'bold ' + fontSize + 'px sans-serif';
         }
+        return fontSize;
+    }
+    function _drawLetterShape(ctx, ch, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity) {
+        _letterFont(ctx, ch, rect);
         const baseAlpha = ctx.globalAlpha;
         const fillA = typeof fillOpacity === 'number' ? Math.max(0, Math.min(1, fillOpacity)) : 1;
         const strokeA = typeof strokeOpacity === 'number' ? Math.max(0, Math.min(1, strokeOpacity)) : 1;
@@ -1341,20 +1346,246 @@ const EngineV2Runtime = (function () {
         ctx.globalAlpha = baseAlpha;
     }
 
+    // Letter/Number Paint Inside — fillText/strokeText produce no plottable
+    // path to clip Doodle's own strokes against, so this mirrors the
+    // established offscreen-canvas-plus-compositing technique
+    // renderer/slideRenderer.js's own _drawLetterShapePaint uses (which
+    // itself mirrors _buildRecoloredStickerCanvas' "Colour This" pattern):
+    // a `mask` canvas holds the glyph's own opaque silhouette; a `paint`
+    // canvas holds the real, live-drawn strokes (via _drawDoodleStrokes,
+    // retargeting through explicit ctx params rather than a module-level
+    // shared context — this module is stateless, unlike Studio's own
+    // slideRenderer.js which relies on `x`/`c`); destination-in then
+    // composites the two so only the ink inside the glyph survives.
+    // Outline (strokeText) stays unconditional and unclipped, drawn
+    // straight onto the real ctx.
+    function _drawLetterShapePaint(ctx, ch, rect, cx, cy, style) {
+        const fontSize = _letterFont(ctx, ch, rect);
+        const baseAlpha = ctx.globalAlpha;
+        const fillA = typeof style.fillOpacity === 'number' ? Math.max(0, Math.min(1, style.fillOpacity)) : 1;
+        const strokeA = typeof style.strokeOpacity === 'number' ? Math.max(0, Math.min(1, style.strokeOpacity)) : 1;
+        if (Array.isArray(style.paintStrokes) && style.paintStrokes.length) {
+            const pad = Math.max(rect.w, rect.h) * 0.08;
+            const bx = rect.x - pad, by = rect.y - pad, bw = rect.w + pad * 2, bh = rect.h + pad * 2;
+            const scale = 2; // supersample for quality
+            const cw = Math.max(1, Math.round(bw * scale)), ch2 = Math.max(1, Math.round(bh * scale));
+
+            const mask = document.createElement('canvas');
+            mask.width = cw; mask.height = ch2;
+            const mctx = mask.getContext('2d');
+            mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+            mctx.font = 'bold ' + (fontSize * scale) + 'px sans-serif';
+            mctx.fillStyle = '#000';
+            mctx.fillText(ch, (cx - bx) * scale, (cy - by) * scale);
+
+            const paint = document.createElement('canvas');
+            paint.width = cw; paint.height = ch2;
+            const pctx = paint.getContext('2d');
+            pctx.setTransform(scale, 0, 0, scale, -bx * scale, -by * scale);
+            _drawDoodleStrokes(pctx, style.paintStrokes, rect, fillA);
+
+            // Clip the painted strokes to exactly the glyph's own ink.
+            pctx.setTransform(1, 0, 0, 1, 0, 0);
+            pctx.globalCompositeOperation = 'destination-in';
+            pctx.drawImage(mask, 0, 0);
+
+            ctx.drawImage(paint, bx, by, bw, bh);
+        }
+        if (style.strokeWidth > 0) {
+            ctx.lineWidth = style.strokeWidth;
+            ctx.strokeStyle = style.strokeColor || '#24406B';
+            ctx.globalAlpha = baseAlpha * strokeA;
+            ctx.strokeText(ch, cx, cy);
+        }
+        ctx.globalAlpha = baseAlpha;
+    }
+
+    // Coloring Kit — Crayon/Pastel/Brush/Spray stroke rendering,
+    // hand-mirrored from renderer/slideRenderer.js's own
+    // _drawDoodleStrokeOnCtx / _doodleBrushTaper / _sprayHash (which in
+    // turn mirror js/cardDesigner.js's own copies). The two rendering
+    // engines share no drawing module, matching this codebase's
+    // established Shape-pad/real-renderer duplication discipline. A
+    // stroke with no `medium` field (every doodle drawn before this
+    // feature shipped) always renders through the final `else` branch
+    // below, byte-identical to the original algorithm.
+    //
+    // Studio's version uses the module-level shared `x` context; this
+    // module is stateless and takes ctx as an explicit first parameter
+    // in every function — otherwise byte-identical logic.
+    function _doodleBrushTaper(t) {
+        if (t < 0.15) return 0.35 + (t / 0.15) * 0.65;
+        if (t > 0.85) return 0.35 + ((1 - t) / 0.15) * 0.65;
+        return 1;
+    }
+    // A deterministic (never Math.random — so a Spray stroke renders
+    // identically on every redraw) GLSL-style sine hash. Mirrors
+    // renderer/slideRenderer.js's own _sprayHash exactly.
+    function _sprayHash(i, k) {
+        const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+        return v - Math.floor(v);
+    }
+    function _drawDoodleStrokeOnCtx(ctx, points, rect, color, width, medium, baseAlpha) {
+        const mapPt = function (p) { return { x: rect.x + p.x * rect.w, y: rect.y + p.y * rect.h }; };
+        const col = color || '#24406B';
+        const w = typeof width === 'number' ? width : 6;
+        if (medium === 'pastel') {
+            ctx.save();
+            ctx.globalAlpha = baseAlpha * 0.55;
+            ctx.shadowColor = col;
+            ctx.shadowBlur = w * 1.1;
+            ctx.strokeStyle = col;
+            ctx.lineWidth = Math.max(1, w * 0.85);
+            ctx.beginPath();
+            points.forEach(function (p, i) { const m = mapPt(p); if (i === 0) ctx.moveTo(m.x, m.y); else ctx.lineTo(m.x, m.y); });
+            ctx.stroke();
+            ctx.restore();
+        } else if (medium === 'brush') {
+            ctx.save();
+            ctx.globalAlpha = baseAlpha;
+            ctx.strokeStyle = col;
+            const n = points.length;
+            for (let i = 0; i < n - 1; i++) {
+                const t = i / Math.max(1, n - 1);
+                ctx.lineWidth = Math.max(1, w * _doodleBrushTaper(t));
+                const p1 = mapPt(points[i]), p2 = mapPt(points[i + 1]);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        } else if (medium === 'crayon') {
+            ctx.save();
+            const passes = [{ dx: 0, dy: 0, ws: 1, as: 0.55 }, { dx: 1, dy: -1, ws: 0.85, as: 0.32 }, { dx: -1, dy: 1, ws: 0.7, as: 0.28 }];
+            passes.forEach(function (pass) {
+                ctx.globalAlpha = baseAlpha * pass.as;
+                ctx.strokeStyle = col;
+                ctx.lineWidth = Math.max(1, w * pass.ws);
+                ctx.beginPath();
+                points.forEach(function (p, i) {
+                    const m = mapPt(p);
+                    const px = m.x + pass.dx, py = m.y + pass.dy;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+            });
+            ctx.restore();
+        } else if (medium === 'spray') {
+            ctx.save();
+            ctx.fillStyle = col;
+            const dotsPerPoint = 5;
+            const radius = Math.max(4, w * 1.4);
+            points.forEach(function (p, i) {
+                const m = mapPt(p);
+                for (let k = 0; k < dotsPerPoint; k++) {
+                    const h1 = _sprayHash(i, k), h2 = _sprayHash(i + 1000, k);
+                    const angle = h1 * Math.PI * 2;
+                    const dist = h2 * radius;
+                    const dotR = Math.max(0.6, w * 0.09 * (0.5 + h1));
+                    ctx.globalAlpha = baseAlpha * (0.28 + 0.35 * h2);
+                    ctx.beginPath();
+                    ctx.arc(m.x + Math.cos(angle) * dist, m.y + Math.sin(angle) * dist, dotR, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            ctx.restore();
+        } else {
+            ctx.globalAlpha = baseAlpha;
+            ctx.beginPath();
+            points.forEach(function (p, i) { const m = mapPt(p); if (i === 0) ctx.moveTo(m.x, m.y); else ctx.lineTo(m.x, m.y); });
+            ctx.lineWidth = w;
+            ctx.strokeStyle = col;
+            ctx.stroke();
+        }
+    }
+    function _drawDoodleStrokes(ctx, strokes, rect, alpha) {
+        if (!Array.isArray(strokes) || !strokes.length) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const a = (typeof alpha === 'number') ? Math.max(0, Math.min(1, alpha)) : 1;
+        strokes.forEach(function (s) {
+            if (!s || !Array.isArray(s.points) || s.points.length < 2) return;
+            _drawDoodleStrokeOnCtx(ctx, s.points, rect, s.color, s.width, s.medium, a);
+        });
+        ctx.restore();
+    }
+
     // A regular N-sided polygon inscribed in the same rx/ry ellipse
     // `circle` already uses, point-up (matching `star`'s own starting
     // angle) — shared by every basic straight-edged polygon
     // (triangle/pentagon/hexagon/octagon) so each is one line of
     // geometry, not four near-duplicate hand-plotted paths.
-    function _regularPolygonPath(ctx, cx, cy, rx, ry, sides) {
+    //
+    // The Path2D variant used by _drawShape (Paint Inside requires the
+    // shape's own path to survive Doodle's own beginPath() calls per
+    // stroke — see _paintShapePathTail's own doc comment for why).
+    function _regularPolygonPathFor(path, cx, cy, rx, ry, sides) {
         const start = -Math.PI / 2;
         const step = (Math.PI * 2) / sides;
-        ctx.moveTo(cx + Math.cos(start) * rx, cy + Math.sin(start) * ry);
+        path.moveTo(cx + Math.cos(start) * rx, cy + Math.sin(start) * ry);
         for (let i = 1; i < sides; i++) {
             const a = start + step * i;
-            ctx.lineTo(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry);
+            path.lineTo(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry);
         }
-        ctx.closePath();
+        path.closePath();
+    }
+
+    // The shared fill/outline tail for every plotted-path Shape (every
+    // kind except letter/number, which paints via fillText/strokeText —
+    // see _drawLetterShape / _drawLetterShapePaint — and has no
+    // plottable path for this function to work with at all).
+    //
+    // "Solid Fill" (the default, style.fillMode!=='paint') is the
+    // original, unchanged flat fill(path) behaviour — every Shape
+    // authored before Paint Inside existed renders byte-identically
+    // forever, since fillMode is always undefined for it.
+    //
+    // "Paint Inside" (style.fillMode==='paint') reuses Doodle's own
+    // multi-stroke/multi-colour/medium renderer (_drawDoodleStrokes,
+    // which itself calls _drawDoodleStrokeOnCtx per stroke) directly —
+    // zero duplicated per-medium drawing logic — clipped to this
+    // shape's own real silhouette via the Path2D built by the caller
+    // (never a faked bounding-box clip). No strokes yet drawn (an
+    // empty/absent paintStrokes array) means nothing is filled at all,
+    // matching Doodle's own "blank until you draw" convention.
+    //
+    // Why Path2D and not the ctx's own "current path": Canvas 2D's
+    // current path is a single mutable object that lives outside the
+    // save/restore state stack. Building a shape's outline directly on
+    // ctx via beginPath()+moveTo()+lineTo()..., then calling
+    // _drawDoodleStrokes (which internally calls ctx.beginPath() per
+    // stroke), would clobber the shape's own path before the outline
+    // stroke needed it. Path2D objects are independent of the current
+    // path and support fill(path)/clip(path)/stroke(path).
+    //
+    // The outline (stroke(path)) is unconditional in both modes —
+    // Outline stays a separate, always-available control regardless of
+    // which fill mode is active, per the shipped product decision.
+    function _paintShapePathTail(ctx, path, rect, style) {
+        const baseAlpha = ctx.globalAlpha;
+        const fillA = (typeof style.fillOpacity === 'number') ? Math.max(0, Math.min(1, style.fillOpacity)) : 1;
+        const strokeA = (typeof style.strokeOpacity === 'number') ? Math.max(0, Math.min(1, style.strokeOpacity)) : 1;
+        if (style.fillMode === 'paint') {
+            if (Array.isArray(style.paintStrokes) && style.paintStrokes.length) {
+                ctx.save();
+                ctx.clip(path);
+                _drawDoodleStrokes(ctx, style.paintStrokes, rect, baseAlpha * fillA);
+                ctx.restore();
+            }
+        } else if (style.fillEnabled !== false) {
+            ctx.fillStyle = style.fillColor || '#F0B429';
+            ctx.globalAlpha = baseAlpha * fillA;
+            ctx.fill(path);
+        }
+        if (style.strokeWidth > 0) {
+            ctx.lineWidth = style.strokeWidth;
+            ctx.strokeStyle = style.strokeColor || '#24406B';
+            ctx.globalAlpha = baseAlpha * strokeA;
+            ctx.stroke(path);
+        }
+        ctx.globalAlpha = baseAlpha;
     }
 
     // Draws one of ExperienceSchema.SHAPE_KINDS as a real vector path
@@ -1377,130 +1608,155 @@ const EngineV2Runtime = (function () {
     // deliberately the same fractional-rect vocabulary every other
     // Shape/Holder/Layer already uses, so mapping it onto `rect` here
     // is the same placement math, not a new coordinate system.
-    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity, customPath) {
+    function _drawShape(ctx, kind, rect, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity, customPath, fillMode, paintStrokes) {
         const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
         const rx = rect.w / 2, ry = rect.h / 2;
+        // Pack every fill/outline field into one style object handed to
+        // both the letter path and the plotted-path tail, so the two
+        // never drift on how each field is interpreted.
+        const style = {
+            fillColor: fillColor,
+            strokeColor: strokeColor,
+            strokeWidth: strokeWidth,
+            fillOpacity: fillOpacity,
+            strokeOpacity: strokeOpacity,
+            fillMode: fillMode,
+            paintStrokes: paintStrokes
+        };
         // Letter/Number kinds bypass the shared path-based fill()/
         // stroke() tail entirely — fillText/strokeText already implement
         // their own fill+stroke. Rotation is unaffected either way: the
         // caller (_paintLayer) already applies it to ctx before this
-        // function ever runs, for every kind.
+        // function ever runs, for every kind. Paint Inside uses its own
+        // dedicated alpha-mask-composite function (_drawLetterShapePaint)
+        // rather than sharing _paintShapePathTail — see that function's
+        // own doc comment for why fillText has no plottable path to
+        // clip Doodle's own strokes against.
         const letterCh = _shapeLetterChar(kind);
         if (letterCh) {
-            _drawLetterShape(ctx, letterCh, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity);
+            if (fillMode === 'paint') {
+                _drawLetterShapePaint(ctx, letterCh, rect, cx, cy, style);
+            } else {
+                _drawLetterShape(ctx, letterCh, rect, cx, cy, fillColor, strokeColor, strokeWidth, fillOpacity, strokeOpacity);
+            }
             return;
         }
-        ctx.beginPath();
+        // Built onto an independent Path2D — see _paintShapePathTail's
+        // own doc comment for why this must never be built directly on
+        // ctx's own current path.
+        const path = new Path2D();
         if (kind === 'circle') {
-            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            path.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
         } else if (kind === 'rectangle') {
-            ctx.rect(rect.x, rect.y, rect.w, rect.h);
+            path.rect(rect.x, rect.y, rect.w, rect.h);
         } else if (kind === 'rounded-rectangle') {
-            _roundedRectPath(ctx, rect.x, rect.y, rect.w, rect.h, Math.min(rect.w, rect.h) * 0.2);
+            const r = Math.min(rect.w, rect.h) * 0.2;
+            path.moveTo(rect.x + r, rect.y);
+            path.arcTo(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h, r);
+            path.arcTo(rect.x + rect.w, rect.y + rect.h, rect.x, rect.y + rect.h, r);
+            path.arcTo(rect.x, rect.y + rect.h, rect.x, rect.y, r);
+            path.arcTo(rect.x, rect.y, rect.x + rect.w, rect.y, r);
+            path.closePath();
         } else if (kind === 'custom') {
             if (Array.isArray(customPath) && customPath.length >= 2) {
                 customPath.forEach(function (p, i) {
                     const px = rect.x + p.x * rect.w, py = rect.y + p.y * rect.h;
-                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                    if (i === 0) path.moveTo(px, py); else path.lineTo(px, py);
                 });
-                ctx.closePath();
+                path.closePath();
             } else {
                 // Nothing drawn yet — a plain circle placeholder so the
                 // Experience is never invisible the instant the tile is
                 // picked, exactly like every other shape's own default.
-                ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                path.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
             }
         } else if (kind === 'triangle') {
-            _regularPolygonPath(ctx, cx, cy, rx, ry, 3);
+            _regularPolygonPathFor(path, cx, cy, rx, ry, 3);
         } else if (kind === 'diamond') {
-            ctx.moveTo(cx, rect.y);
-            ctx.lineTo(rect.x + rect.w, cy);
-            ctx.lineTo(cx, rect.y + rect.h);
-            ctx.lineTo(rect.x, cy);
-            ctx.closePath();
+            path.moveTo(cx, rect.y);
+            path.lineTo(rect.x + rect.w, cy);
+            path.lineTo(cx, rect.y + rect.h);
+            path.lineTo(rect.x, cy);
+            path.closePath();
         } else if (kind === 'pentagon') {
-            _regularPolygonPath(ctx, cx, cy, rx, ry, 5);
+            _regularPolygonPathFor(path, cx, cy, rx, ry, 5);
         } else if (kind === 'hexagon') {
-            _regularPolygonPath(ctx, cx, cy, rx, ry, 6);
+            _regularPolygonPathFor(path, cx, cy, rx, ry, 6);
         } else if (kind === 'octagon') {
-            _regularPolygonPath(ctx, cx, cy, rx, ry, 8);
+            _regularPolygonPathFor(path, cx, cy, rx, ry, 8);
         } else if (kind === 'star') {
             const spikes = 5, outerRx = rx, outerRy = ry, innerRx = rx * 0.42, innerRy = ry * 0.42;
             let rot = -Math.PI / 2;
             const step = Math.PI / spikes;
-            ctx.moveTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+            path.moveTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
             for (let i = 0; i < spikes; i++) {
                 rot += step;
-                ctx.lineTo(cx + Math.cos(rot) * innerRx, cy + Math.sin(rot) * innerRy);
+                path.lineTo(cx + Math.cos(rot) * innerRx, cy + Math.sin(rot) * innerRy);
                 rot += step;
-                ctx.lineTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+                path.lineTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
             }
-            ctx.closePath();
+            path.closePath();
         } else if (kind === 'cross') {
             const tw = rect.w * 0.34, th = rect.h * 0.34;
             const x0 = rect.x, y0 = rect.y, w = rect.w, h = rect.h;
             const cx1 = x0 + (w - tw) / 2, cx2 = x0 + (w + tw) / 2;
             const cy1 = y0 + (h - th) / 2, cy2 = y0 + (h + th) / 2;
-            ctx.moveTo(cx1, y0); ctx.lineTo(cx2, y0); ctx.lineTo(cx2, cy1);
-            ctx.lineTo(x0 + w, cy1); ctx.lineTo(x0 + w, cy2); ctx.lineTo(cx2, cy2);
-            ctx.lineTo(cx2, y0 + h); ctx.lineTo(cx1, y0 + h); ctx.lineTo(cx1, cy2);
-            ctx.lineTo(x0, cy2); ctx.lineTo(x0, cy1); ctx.lineTo(cx1, cy1);
-            ctx.closePath();
+            path.moveTo(cx1, y0); path.lineTo(cx2, y0); path.lineTo(cx2, cy1);
+            path.lineTo(x0 + w, cy1); path.lineTo(x0 + w, cy2); path.lineTo(cx2, cy2);
+            path.lineTo(cx2, y0 + h); path.lineTo(cx1, y0 + h); path.lineTo(cx1, cy2);
+            path.lineTo(x0, cy2); path.lineTo(x0, cy1); path.lineTo(cx1, cy1);
+            path.closePath();
         } else if (kind === 'trapezoid') {
-            ctx.moveTo(rect.x + rect.w * 0.2, rect.y);
-            ctx.lineTo(rect.x + rect.w * 0.8, rect.y);
-            ctx.lineTo(rect.x + rect.w, rect.y + rect.h);
-            ctx.lineTo(rect.x, rect.y + rect.h);
-            ctx.closePath();
+            path.moveTo(rect.x + rect.w * 0.2, rect.y);
+            path.lineTo(rect.x + rect.w * 0.8, rect.y);
+            path.lineTo(rect.x + rect.w, rect.y + rect.h);
+            path.lineTo(rect.x, rect.y + rect.h);
+            path.closePath();
         } else if (kind === 'parallelogram') {
             const skew = rect.w * 0.2;
-            ctx.moveTo(rect.x + skew, rect.y);
-            ctx.lineTo(rect.x + rect.w, rect.y);
-            ctx.lineTo(rect.x + rect.w - skew, rect.y + rect.h);
-            ctx.lineTo(rect.x, rect.y + rect.h);
-            ctx.closePath();
+            path.moveTo(rect.x + skew, rect.y);
+            path.lineTo(rect.x + rect.w, rect.y);
+            path.lineTo(rect.x + rect.w - skew, rect.y + rect.h);
+            path.lineTo(rect.x, rect.y + rect.h);
+            path.closePath();
         } else if (kind === 'arrow') {
             const shaftTop = cy - ry * 0.28, shaftBottom = cy + ry * 0.28, headX = rect.x + rect.w * 0.62;
-            ctx.moveTo(rect.x, shaftTop);
-            ctx.lineTo(headX, shaftTop);
-            ctx.lineTo(headX, cy - ry * 0.62);
-            ctx.lineTo(rect.x + rect.w, cy);
-            ctx.lineTo(headX, cy + ry * 0.62);
-            ctx.lineTo(headX, shaftBottom);
-            ctx.lineTo(rect.x, shaftBottom);
-            ctx.closePath();
+            path.moveTo(rect.x, shaftTop);
+            path.lineTo(headX, shaftTop);
+            path.lineTo(headX, cy - ry * 0.62);
+            path.lineTo(rect.x + rect.w, cy);
+            path.lineTo(headX, cy + ry * 0.62);
+            path.lineTo(headX, shaftBottom);
+            path.lineTo(rect.x, shaftBottom);
+            path.closePath();
         } else if (kind === 'speech-bubble') {
-            const r = Math.min(rect.w, rect.h) * 0.18, bodyBottom = rect.y + rect.h * 0.78;
-            _roundedRectPath(ctx, rect.x, rect.y, rect.w, bodyBottom - rect.y, r);
-            ctx.moveTo(rect.x + rect.w * 0.22, bodyBottom);
-            ctx.lineTo(rect.x + rect.w * 0.12, rect.y + rect.h);
-            ctx.lineTo(rect.x + rect.w * 0.38, bodyBottom);
-            ctx.closePath();
+            // Two subpaths in one fill/stroke — the rounded body plus
+            // the tail triangle, matching renderer/slideRenderer.js's
+            // own Path2D construction exactly.
+            const r = Math.min(rect.w, rect.h) * 0.18, bodyBottom = rect.y + rect.h * 0.78, bh = bodyBottom - rect.y;
+            path.moveTo(rect.x + r, rect.y);
+            path.arcTo(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + bh, r);
+            path.arcTo(rect.x + rect.w, rect.y + bh, rect.x, rect.y + bh, r);
+            path.arcTo(rect.x, rect.y + bh, rect.x, rect.y, r);
+            path.arcTo(rect.x, rect.y, rect.x + rect.w, rect.y, r);
+            path.closePath();
+            path.moveTo(rect.x + rect.w * 0.22, bodyBottom);
+            path.lineTo(rect.x + rect.w * 0.12, rect.y + rect.h);
+            path.lineTo(rect.x + rect.w * 0.38, bodyBottom);
+            path.closePath();
         } else if (kind === 'banner') {
             const notch = rect.w * 0.14;
-            ctx.moveTo(rect.x, rect.y);
-            ctx.lineTo(rect.x + rect.w, rect.y);
-            ctx.lineTo(rect.x + rect.w - notch, cy);
-            ctx.lineTo(rect.x + rect.w, rect.y + rect.h);
-            ctx.lineTo(rect.x, rect.y + rect.h);
-            ctx.lineTo(rect.x + notch, cy);
-            ctx.closePath();
+            path.moveTo(rect.x, rect.y);
+            path.lineTo(rect.x + rect.w, rect.y);
+            path.lineTo(rect.x + rect.w - notch, cy);
+            path.lineTo(rect.x + rect.w, rect.y + rect.h);
+            path.lineTo(rect.x, rect.y + rect.h);
+            path.lineTo(rect.x + notch, cy);
+            path.closePath();
         } else {
-            ctx.rect(rect.x, rect.y, rect.w, rect.h);
+            path.rect(rect.x, rect.y, rect.w, rect.h);
         }
-        const baseAlpha = ctx.globalAlpha;
-        const fillA = typeof fillOpacity === 'number' ? Math.max(0, Math.min(1, fillOpacity)) : 1;
-        const strokeA = typeof strokeOpacity === 'number' ? Math.max(0, Math.min(1, strokeOpacity)) : 1;
-        ctx.fillStyle = fillColor || '#F0B429';
-        ctx.globalAlpha = baseAlpha * fillA;
-        ctx.fill();
-        if (strokeWidth > 0) {
-            ctx.lineWidth = strokeWidth;
-            ctx.strokeStyle = strokeColor || '#24406B';
-            ctx.globalAlpha = baseAlpha * strokeA;
-            ctx.stroke();
-        }
-        ctx.globalAlpha = baseAlpha;
+        _paintShapePathTail(ctx, path, rect, style);
     }
 
     return {

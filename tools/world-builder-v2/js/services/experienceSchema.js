@@ -160,6 +160,27 @@ const ExperienceSchema = (function () {
             // shape/image already uses). Null until the creator has
             // actually drawn something.
             graphicCustomPath: null,
+            // "Solid Fill" vs. "Paint Inside" — ported from root Studio
+            // (js/cardDesigner.js + renderer/slideRenderer.js). Absent /
+            // 'solid' is today's flat Fill Colour, byte-identical to
+            // every Shape authored before this port existed (undefined-is-
+            // the-legacy-default discipline). 'paint' turns the shape's
+            // own silhouette into a clipped canvas reusing Doodle's exact
+            // multi-stroke/multi-colour/medium mechanics (Crayon/Pastel/
+            // Brush/Spray). Outline (stroke) stays separate and always-
+            // available regardless of which fill mode is active. See
+            // Studio's own _paintShapePathTail for the invariant this
+            // pair of fields ultimately drives.
+            graphicFillMode: 'solid',
+            // Paint Inside strokes — an array of
+            // {points:[{x,y}], color, width, medium}, each point 0..1
+            // fractional within the shape's own w/h box. Exactly the
+            // same shape as a Doodle sticker's own st.strokes (no new
+            // stroke schema invented). Null / [] means nothing painted
+            // yet, matching Doodle's "blank until you draw" convention;
+            // preserved across a toggle back to Solid so a Theme Author
+            // bouncing between modes never loses painted work.
+            graphicPaintStrokes: null,
             // Colour — a fill behind whatever other content exists;
             // `colorTransparent` defaults true so a brand-new Experience
             // with only Text/Image/Graphics never paints an unwanted
@@ -189,7 +210,7 @@ const ExperienceSchema = (function () {
     const PART_FIELD_KEYS = {
         text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textShapeFill', 'textCurveStyle', 'textCurve', 'textX', 'textY', 'textW', 'textH'],
         image: ['imageSrc', 'imageFit', 'imageOpacity', 'imageRotation', 'imageX', 'imageY', 'imageW', 'imageH'],
-        graphics: ['graphicSrc', 'graphicOpacity', 'graphicX', 'graphicY', 'graphicW', 'graphicH', 'graphicShape', 'graphicFillColor', 'graphicFillOpacity', 'graphicStrokeColor', 'graphicStrokeOpacity', 'graphicStrokeWidth', 'graphicRotation', 'graphicCustomPath'],
+        graphics: ['graphicSrc', 'graphicOpacity', 'graphicX', 'graphicY', 'graphicW', 'graphicH', 'graphicShape', 'graphicFillColor', 'graphicFillOpacity', 'graphicStrokeColor', 'graphicStrokeOpacity', 'graphicStrokeWidth', 'graphicRotation', 'graphicCustomPath', 'graphicFillMode', 'graphicPaintStrokes'],
         colour: ['colorValue', 'colorOpacity', 'colorTransparent']
     };
     function defaultPartProps(kind, hostedBy) {

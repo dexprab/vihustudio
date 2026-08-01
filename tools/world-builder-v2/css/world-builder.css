@@ -3569,3 +3569,247 @@ html, body {
     .wb-templates-header { text-align: center; }
     .wb-back-btn { position: static; display: inline-block; margin-bottom: 8px; }
 }
+
+/* ---------- Shape Paint-Inside (Bug 2 Draw-Your-Own parity) ----------
+   Fill Style toggle (Solid Fill vs. Paint Inside) plus the Paint-Inside
+   pad + medium switcher + pen tools, ported from Studio's own already-
+   proven Paint-Inside stack. The two rendering engines share no drawing
+   module, so pad/pen visuals here are hand-mirrored per this codebase's
+   own established twin-engine precedent. */
+
+.wb-shape-fillmode-row {
+    display: flex;
+    gap: 8px;
+}
+
+.wb-shape-fillmode-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-paper);
+    color: var(--wb-text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s, border-color .12s, transform .06s;
+}
+
+.wb-shape-fillmode-btn:hover:not(:disabled) {
+    border-color: var(--wb-gold);
+    background: var(--wb-cream);
+}
+
+.wb-shape-fillmode-btn.active {
+    background: var(--wb-cream);
+    border-color: var(--wb-gold);
+    box-shadow: 0 0 0 2px rgba(255, 203, 69, .28) inset;
+}
+
+.wb-shape-fillmode-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.wb-shape-fillmode-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.wb-shape-fillmode-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wb-text-secondary);
+}
+
+.wb-shape-paint-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    background: var(--wb-paper);
+    margin-bottom: 13px;
+}
+
+.wb-shape-paint-hint {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+    line-height: 1.4;
+}
+
+.wb-shape-paint-pad-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.wb-shape-paint-pad-canvas {
+    border: 1px dashed var(--wb-border);
+    border-radius: 8px;
+    background: var(--wb-cream);
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+}
+
+.wb-doodle-media-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wb-doodle-media-btn {
+    flex: 1;
+    min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 4px;
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    background: var(--wb-paper);
+    color: var(--wb-text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s, border-color .12s;
+}
+
+.wb-doodle-media-btn:hover:not(:disabled) {
+    border-color: var(--wb-gold);
+    background: var(--wb-cream);
+}
+
+.wb-doodle-media-btn.active {
+    background: var(--wb-cream);
+    border-color: var(--wb-gold);
+    box-shadow: 0 0 0 2px rgba(255, 203, 69, .28) inset;
+}
+
+.wb-doodle-media-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.wb-doodle-media-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.wb-doodle-media-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--wb-text-secondary);
+}
+
+.wb-doodle-pen-tools-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wb-doodle-pen-swatch-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.wb-doodle-pen-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--wb-border);
+    cursor: pointer;
+    padding: 0;
+    background-clip: content-box;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+    transition: transform .06s, border-color .12s;
+}
+
+.wb-doodle-pen-swatch:hover:not(:disabled) {
+    border-color: var(--wb-gold);
+    transform: scale(1.1);
+}
+
+.wb-doodle-pen-swatch.active {
+    border-color: var(--wb-gold);
+    box-shadow: 0 0 0 2px rgba(255, 203, 69, .28), inset 0 0 0 1px rgba(255, 255, 255, .3);
+    transform: scale(1.1);
+}
+
+.wb-doodle-pen-swatch:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.wb-doodle-pen-thickness-row {
+    display: flex;
+    gap: 6px;
+}
+
+.wb-doodle-pen-thickness-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    background: var(--wb-paper);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+}
+
+.wb-doodle-pen-thickness-btn:hover:not(:disabled) {
+    border-color: var(--wb-gold);
+    background: var(--wb-cream);
+}
+
+.wb-doodle-pen-thickness-btn.active {
+    background: var(--wb-cream);
+    border-color: var(--wb-gold);
+    box-shadow: 0 0 0 2px rgba(255, 203, 69, .28) inset;
+}
+
+.wb-doodle-pen-thickness-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.wb-doodle-pen-thickness-dot {
+    display: block;
+    border-radius: 50%;
+    background: var(--wb-text);
+}
+
+.wb-shape-paint-actions-row {
+    display: flex;
+    gap: 6px;
+}
+
+.wb-shape-paint-actions-row button {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    background: var(--wb-paper);
+    color: var(--wb-text);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+}
+
+.wb-shape-paint-actions-row button:hover:not(:disabled) {
+    border-color: var(--wb-gold);
+    background: var(--wb-cream);
+}
+
+.wb-shape-paint-actions-row button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}

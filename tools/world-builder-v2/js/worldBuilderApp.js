@@ -4765,6 +4765,405 @@
         el.textContent = s ? s.icon : '◆';
     }
 
+    // ===== Paint Inside — hand-mirrored port from Studio's cardDesigner.js =====
+    // Task #553 Step 5. Studio ships all 4 Doodle media + full shape/letter
+    // silhouette Paint-Inside; port the SAME functions here (helpers only,
+    // UI further below) so a Builder Story-Author Graphics Shape gets the
+    // identical capability. Kept in lockstep by hand per this codebase's
+    // established "no cross-tool sharing, mirror instead" discipline —
+    // cardDesigner.js is not loaded by World Builder. `_wb*` prefix on
+    // every helper to avoid accidental global collision.
+    const WB_DOODLE_PALETTE = ['#E63946','#F4A300','#FFD23F','#2A9D8F','#3A86FF','#8338EC','#1D3457','#FFFFFF'];
+    const WB_DOODLE_PASTEL_PALETTE = ['#F6C6D2','#FDE2A7','#FFF3B0','#C9E4CA','#B5D8EB','#D6C6E1','#F4D9C6','#E8E4DC'];
+    const WB_DOODLE_BRUSH_PALETTE = ['#B23A48','#D97D3D','#3F7D5C','#2B5F8A','#5B3A8C','#8C4A2E','#1B2A4A','#2E2E2E'];
+    const WB_DOODLE_SPRAY_PALETTE = ['#FF3CAC','#00F5FF','#FFEA00','#7CFC00','#FF6B00','#9D00FF','#0047FF','#FF0054'];
+    const WB_DOODLE_MEDIA = [
+        { id: 'crayon', icon: '🖍️', label: 'Crayon', palette: WB_DOODLE_PALETTE },
+        { id: 'pastel', icon: '🎨', label: 'Pastel', palette: WB_DOODLE_PASTEL_PALETTE },
+        { id: 'brush',  icon: '🖌️', label: 'Brush',  palette: WB_DOODLE_BRUSH_PALETTE },
+        { id: 'spray',  icon: '💨', label: 'Spray',  palette: WB_DOODLE_SPRAY_PALETTE }
+    ];
+    const WB_SHAPE_PAINT_PAD_SIZE = 220;
+
+    function _wbDoodleBrushTaper(t) {
+        if (t < 0.15) return 0.35 + (t / 0.15) * 0.65;
+        if (t > 0.85) return 0.35 + ((1 - t) / 0.15) * 0.65;
+        return 1;
+    }
+    // Deterministic (never Math.random) GLSL-style sine hash — a Spray
+    // stroke renders identically on every redraw, matching Studio's
+    // same-input-same-pixels discipline exactly.
+    function _wbSprayHash(i, k) {
+        const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+        return x - Math.floor(x);
+    }
+    // The one per-stroke drawing routine every Paint-Inside surface
+    // routes through — mirrored verbatim from cardDesigner.js's
+    // _drawDoodleStrokeOnCtx, adapted from Studio's shared `g` context
+    // to an explicit ctx parameter. Caller sets lineCap/lineJoin
+    // 'round' once, every branch relies on that being carried through.
+    function _wbDrawDoodleStrokeOnCtx(ctx, points, mapPt, color, width, medium, baseAlpha) {
+        const col = color || '#24406B';
+        const w = typeof width === 'number' ? width : 6;
+        if (medium === 'pastel') {
+            ctx.save();
+            ctx.globalAlpha = baseAlpha * 0.55;
+            ctx.shadowColor = col;
+            ctx.shadowBlur = w * 1.1;
+            ctx.strokeStyle = col;
+            ctx.lineWidth = Math.max(1, w * 0.85);
+            ctx.beginPath();
+            points.forEach(function (p, i) { const m = mapPt(p); if (i === 0) ctx.moveTo(m.x, m.y); else ctx.lineTo(m.x, m.y); });
+            ctx.stroke();
+            ctx.restore();
+        } else if (medium === 'brush') {
+            ctx.save();
+            ctx.globalAlpha = baseAlpha;
+            ctx.strokeStyle = col;
+            const n = points.length;
+            for (let i = 0; i < n - 1; i++) {
+                const t = i / Math.max(1, n - 1);
+                ctx.lineWidth = Math.max(1, w * _wbDoodleBrushTaper(t));
+                const p1 = mapPt(points[i]), p2 = mapPt(points[i + 1]);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        } else if (medium === 'crayon') {
+            ctx.save();
+            const passes = [{ dx: 0, dy: 0, ws: 1, as: 0.55 }, { dx: 1, dy: -1, ws: 0.85, as: 0.32 }, { dx: -1, dy: 1, ws: 0.7, as: 0.28 }];
+            passes.forEach(function (pass) {
+                ctx.globalAlpha = baseAlpha * pass.as;
+                ctx.strokeStyle = col;
+                ctx.lineWidth = Math.max(1, w * pass.ws);
+                ctx.beginPath();
+                points.forEach(function (p, i) {
+                    const m = mapPt(p);
+                    const px = m.x + pass.dx, py = m.y + pass.dy;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+            });
+            ctx.restore();
+        } else if (medium === 'spray') {
+            ctx.save();
+            ctx.fillStyle = col;
+            const dotsPerPoint = 5;
+            const radius = Math.max(4, w * 1.4);
+            points.forEach(function (p, i) {
+                const m = mapPt(p);
+                for (let k = 0; k < dotsPerPoint; k++) {
+                    const h1 = _wbSprayHash(i, k), h2 = _wbSprayHash(i + 1000, k);
+                    const angle = h1 * Math.PI * 2;
+                    const dist = h2 * radius;
+                    const dotR = Math.max(0.6, w * 0.09 * (0.5 + h1));
+                    ctx.globalAlpha = baseAlpha * (0.28 + 0.35 * h2);
+                    ctx.beginPath();
+                    ctx.arc(m.x + Math.cos(angle) * dist, m.y + Math.sin(angle) * dist, dotR, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            ctx.restore();
+        } else {
+            // Legacy/plain — byte-identical to every pre-Coloring-Kit stroke.
+            ctx.globalAlpha = baseAlpha;
+            ctx.beginPath();
+            points.forEach(function (p, i) { const m = mapPt(p); if (i === 0) ctx.moveTo(m.x, m.y); else ctx.lineTo(m.x, m.y); });
+            ctx.lineWidth = w;
+            ctx.strokeStyle = col;
+            ctx.stroke();
+        }
+    }
+    // Letterboxes a fixed-size square pad down to a centered rect
+    // matching the object's real objectW:objectH aspect ratio — same
+    // pad-vs-real-render fidelity fix cardDesigner.js already ships.
+    function _wbPadActiveRect(padSize, objectW, objectH) {
+        const ow = objectW > 0 ? objectW : padSize;
+        const oh = objectH > 0 ? objectH : padSize;
+        const aspect = ow / oh;
+        let w, h;
+        if (aspect >= 1) { w = padSize; h = padSize / aspect; }
+        else { h = padSize; w = padSize * aspect; }
+        const x = (padSize - w) / 2, y = (padSize - h) / 2;
+        const scale = padSize / Math.max(ow, oh);
+        return { x: x, y: y, w: w, h: h, scale: scale };
+    }
+    function _wbPadLetterFont(ctx, ch, w, h) {
+        let size = h * 0.82;
+        ctx.font = 'bold ' + size + 'px sans-serif';
+        const measured = ctx.measureText(ch).width;
+        const maxW = w * 0.86;
+        if (measured > maxW && measured > 0) {
+            size = size * (maxW / measured);
+            ctx.font = 'bold ' + size + 'px sans-serif';
+        }
+        return size;
+    }
+    function _wbPadStrokeWidth(rawWidth, scale) {
+        const w = typeof rawWidth === 'number' ? rawWidth : 6;
+        return Math.max(1, w * scale);
+    }
+    function _wbShapePadLetterChar(kind) {
+        if (typeof kind !== 'string') return null;
+        if (kind.indexOf('letter-') === 0) return kind.slice(7);
+        if (kind.indexOf('number-') === 0) return kind.slice(7);
+        return null;
+    }
+    function _wbRegularPolygonPadPathFor(path, cx, cy, rx, ry, sides) {
+        const start = -Math.PI / 2;
+        const step = (Math.PI * 2) / sides;
+        path.moveTo(cx + Math.cos(start) * rx, cy + Math.sin(start) * ry);
+        for (let i = 1; i < sides; i++) {
+            const a = start + step * i;
+            path.lineTo(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry);
+        }
+        path.closePath();
+    }
+    // Returns {kind:'path', path} for every plottable shape, or
+    // {kind:'letter', ch} for the 36 letter/number kinds. Hand-mirrors
+    // renderer/slideRenderer.js's own _layerDrawShape geometry so the
+    // pad's clip region genuinely matches what the real render draws.
+    // For 'custom', reads the same graphicCustomPath the existing
+    // Solid-Fill draw pad above authors — one silhouette source of
+    // truth per shape, never a second "which shape am I painting
+    // inside of" mechanism.
+    function _wbBuildShapeSilhouettePath2D(shape, size, customPath) {
+        const letterCh = _wbShapePadLetterChar(shape);
+        if (letterCh) return { kind: 'letter', ch: letterCh };
+        const cx = size / 2, cy = size / 2, rx = size / 2, ry = size / 2;
+        const path = new Path2D();
+        if (shape === 'circle') {
+            path.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        } else if (shape === 'rectangle') {
+            path.rect(0, 0, size, size);
+        } else if (shape === 'rounded-rectangle') {
+            const r = size * 0.2;
+            path.moveTo(r, 0);
+            path.arcTo(size, 0, size, size, r);
+            path.arcTo(size, size, 0, size, r);
+            path.arcTo(0, size, 0, 0, r);
+            path.arcTo(0, 0, size, 0, r);
+            path.closePath();
+        } else if (shape === 'custom') {
+            // World Builder v2's Solid-Fill draw pad above stores a
+            // plain array of 0..1 fractional {x,y} points forming a
+            // single closed polygon — not the {p0,p1,type:'line'|'circle'}
+            // multi-stroke shape cardDesigner.js's own custom system
+            // uses. Trace the polygon here so Paint Inside clips
+            // against the exact silhouette Solid Fill would paint.
+            if (Array.isArray(customPath) && customPath.length >= 3) {
+                customPath.forEach(function (p, i) {
+                    const px = p.x * size, py = p.y * size;
+                    if (i === 0) path.moveTo(px, py); else path.lineTo(px, py);
+                });
+                path.closePath();
+            } else {
+                path.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            }
+        } else if (shape === 'triangle') {
+            _wbRegularPolygonPadPathFor(path, cx, cy, rx, ry, 3);
+        } else if (shape === 'diamond') {
+            path.moveTo(cx, 0);
+            path.lineTo(size, cy);
+            path.lineTo(cx, size);
+            path.lineTo(0, cy);
+            path.closePath();
+        } else if (shape === 'pentagon') {
+            _wbRegularPolygonPadPathFor(path, cx, cy, rx, ry, 5);
+        } else if (shape === 'hexagon') {
+            _wbRegularPolygonPadPathFor(path, cx, cy, rx, ry, 6);
+        } else if (shape === 'octagon') {
+            _wbRegularPolygonPadPathFor(path, cx, cy, rx, ry, 8);
+        } else if (shape === 'star') {
+            const spikes = 5, outerRx = rx, outerRy = ry, innerRx = rx * 0.42, innerRy = ry * 0.42;
+            let rot = -Math.PI / 2;
+            const step = Math.PI / spikes;
+            path.moveTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+            for (let i = 0; i < spikes; i++) {
+                rot += step;
+                path.lineTo(cx + Math.cos(rot) * innerRx, cy + Math.sin(rot) * innerRy);
+                rot += step;
+                path.lineTo(cx + Math.cos(rot) * outerRx, cy + Math.sin(rot) * outerRy);
+            }
+            path.closePath();
+        } else if (shape === 'cross') {
+            const tw = size * 0.34, th = size * 0.34;
+            const cx1 = (size - tw) / 2, cx2 = (size + tw) / 2;
+            const cy1 = (size - th) / 2, cy2 = (size + th) / 2;
+            path.moveTo(cx1, 0); path.lineTo(cx2, 0); path.lineTo(cx2, cy1);
+            path.lineTo(size, cy1); path.lineTo(size, cy2); path.lineTo(cx2, cy2);
+            path.lineTo(cx2, size); path.lineTo(cx1, size); path.lineTo(cx1, cy2);
+            path.lineTo(0, cy2); path.lineTo(0, cy1); path.lineTo(cx1, cy1);
+            path.closePath();
+        } else if (shape === 'trapezoid') {
+            path.moveTo(size * 0.2, 0);
+            path.lineTo(size * 0.8, 0);
+            path.lineTo(size, size);
+            path.lineTo(0, size);
+            path.closePath();
+        } else if (shape === 'parallelogram') {
+            const skew = size * 0.2;
+            path.moveTo(skew, 0);
+            path.lineTo(size, 0);
+            path.lineTo(size - skew, size);
+            path.lineTo(0, size);
+            path.closePath();
+        } else if (shape === 'arrow') {
+            const shaftTop = cy - ry * 0.28, shaftBottom = cy + ry * 0.28, headX = size * 0.62;
+            path.moveTo(0, shaftTop);
+            path.lineTo(headX, shaftTop);
+            path.lineTo(headX, cy - ry * 0.62);
+            path.lineTo(size, cy);
+            path.lineTo(headX, cy + ry * 0.62);
+            path.lineTo(headX, shaftBottom);
+            path.lineTo(0, shaftBottom);
+            path.closePath();
+        } else if (shape === 'speech-bubble') {
+            const r = size * 0.18, bodyBottom = size * 0.78;
+            path.moveTo(r, 0);
+            path.arcTo(size, 0, size, bodyBottom, r);
+            path.arcTo(size, bodyBottom, 0, bodyBottom, r);
+            path.arcTo(0, bodyBottom, 0, 0, r);
+            path.arcTo(0, 0, size, 0, r);
+            path.closePath();
+            path.moveTo(size * 0.22, bodyBottom);
+            path.lineTo(size * 0.12, size);
+            path.lineTo(size * 0.38, bodyBottom);
+            path.closePath();
+        } else if (shape === 'banner') {
+            const notch = size * 0.14;
+            path.moveTo(0, 0);
+            path.lineTo(size, 0);
+            path.lineTo(size - notch, cy);
+            path.lineTo(size, size);
+            path.lineTo(0, size);
+            path.lineTo(notch, cy);
+            path.closePath();
+        } else {
+            path.rect(0, 0, size, size);
+        }
+        return { kind: 'path', path: path };
+    }
+    // The pad itself — a faint silhouette guide, then either a
+    // plottable clip-and-paint pass (Path2D silhouette + reused
+    // _wbDrawDoodleStrokeOnCtx) or a letter alpha-mask composite
+    // (mask canvas + paint canvas + destination-in), then the outline
+    // drawn last unclipped. Byte-for-byte mirrors cardDesigner.js's
+    // _drawShapePaintPad, adapted to explicit ctx and the World
+    // Builder objectW/objectH aspect fix.
+    function _wbDrawShapePaintPad(canvas, shape, customPath, paintStrokes, liveStroke, style, objectW, objectH) {
+        const g = canvas.getContext('2d');
+        const size = WB_SHAPE_PAINT_PAD_SIZE;
+        g.clearRect(0, 0, size, size);
+        g.fillStyle = '#F4F1EC';
+        g.fillRect(0, 0, size, size);
+        style = style || {};
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
+
+        const silhouette = _wbBuildShapeSilhouettePath2D(shape, size, customPath);
+        const active = _wbPadActiveRect(size, objectW, objectH);
+        const scaleX = active.w / size, scaleY = active.h / size;
+
+        // A faint boundary guide, always visible.
+        g.save();
+        g.globalAlpha = 0.22;
+        g.strokeStyle = '#24406B';
+        g.lineWidth = 1.5;
+        if (silhouette.kind === 'path') {
+            g.translate(active.x, active.y);
+            g.scale(scaleX, scaleY);
+            g.stroke(silhouette.path);
+        } else {
+            _wbPadLetterFont(g, silhouette.ch, active.w, active.h);
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.strokeText(silhouette.ch, active.x + active.w / 2, active.y + active.h / 2);
+        }
+        g.restore();
+
+        const all = (paintStrokes || []).concat(liveStroke ? [liveStroke] : []);
+
+        if (all.length) {
+            if (silhouette.kind === 'path') {
+                // Clip under the aspect-correcting transform, then
+                // reset the transform matrix to identity WITHOUT
+                // undoing the already-applied clip — a clip region,
+                // once set via clip(), persists as device-space state
+                // through any later transform change until the next
+                // restore(), so setTransform() here only ever touches
+                // the transform matrix, never the clip. Freeform paint
+                // strokes then use the SAME simple active-rect-direct
+                // mapping and uniform active.scale width scaling
+                // Doodle already uses, rather than inheriting the
+                // shape outline's own non-uniform scale (which would
+                // distort stroke width anisotropically on a non-square
+                // object).
+                g.save();
+                g.translate(active.x, active.y);
+                g.scale(scaleX, scaleY);
+                g.clip(silhouette.path);
+                g.setTransform(1, 0, 0, 1, 0, 0);
+                const mapPt = function (p) { return { x: active.x + p.x * active.w, y: active.y + p.y * active.h }; };
+                all.forEach(function (s) {
+                    if (!s || !Array.isArray(s.points) || s.points.length < 2) return;
+                    const w = _wbPadStrokeWidth(s.width, active.scale);
+                    _wbDrawDoodleStrokeOnCtx(g, s.points, mapPt, s.color, w, s.medium, 1);
+                });
+                g.restore();
+            } else {
+                // Letter/number silhouette — mirrors renderer/
+                // slideRenderer.js's _drawLetterShapePaint alpha-mask
+                // technique, hand-mirrored here since a text glyph has
+                // no plottable path for this pad to clip against
+                // directly. Both offscreen canvases are sized to the
+                // letterboxed active rect (not the full square pad)
+                // and use LOCAL canvas-space coordinates.
+                const aw = Math.max(1, Math.round(active.w)), ah = Math.max(1, Math.round(active.h));
+                const mask = document.createElement('canvas');
+                mask.width = aw; mask.height = ah;
+                const mctx = mask.getContext('2d');
+                _wbPadLetterFont(mctx, silhouette.ch, aw, ah);
+                mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+                mctx.fillStyle = '#000';
+                mctx.fillText(silhouette.ch, aw / 2, ah / 2);
+
+                const paint = document.createElement('canvas');
+                paint.width = aw; paint.height = ah;
+                const pg = paint.getContext('2d');
+                pg.lineCap = 'round'; pg.lineJoin = 'round';
+                const localMapPt = function (p) { return { x: p.x * aw, y: p.y * ah }; };
+                all.forEach(function (s) {
+                    if (!s || !Array.isArray(s.points) || s.points.length < 2) return;
+                    const w = _wbPadStrokeWidth(s.width, active.scale);
+                    _wbDrawDoodleStrokeOnCtx(pg, s.points, localMapPt, s.color, w, s.medium, 1);
+                });
+                pg.globalCompositeOperation = 'destination-in';
+                pg.drawImage(mask, 0, 0);
+                g.drawImage(paint, active.x, active.y);
+            }
+        }
+
+        // Real Outline last, unclipped — "Outline stays separate,
+        // always-available" regardless of fillMode.
+        if (style.strokeWidth > 0) {
+            g.save();
+            g.strokeStyle = style.strokeColor || '#24406B';
+            g.lineWidth = _wbPadStrokeWidth(style.strokeWidth, active.scale);
+            if (silhouette.kind === 'path') {
+                g.translate(active.x, active.y);
+                g.scale(scaleX, scaleY);
+                g.stroke(silhouette.path);
+            } else {
+                _wbPadLetterFont(g, silhouette.ch, active.w, active.h);
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.strokeText(silhouette.ch, active.x + active.w / 2, active.y + active.h / 2);
+            }
+            g.restore();
+        }
+    }
+
     // A small freehand "Draw Your Own" pad for the Graphics section's
     // 'custom' Shape (see experienceSchema.js's graphicCustomPath) —
     // pointer-drawn outline captured as a plain array of 0..1
@@ -4878,6 +5277,211 @@
         wrap.appendChild(clearBtn);
 
         return wrap;
+    }
+
+    // The Paint Inside group builder — hand-mirrored from
+    // cardDesigner.js's own Paint Inside stack (lines ~2189-2340).
+    // Returns a self-contained DOM element (padWrap + media switcher +
+    // pen swatches + thickness + Undo/Clear + hint) whose interactions
+    // all commit through `updateStrokes(nextStrokes)` — a caller-
+    // supplied closure that writes props.graphicPaintStrokes via the
+    // canonical updateExperiencePartProperty path. `getShape` /
+    // `getCustomPath` / `getStrokeStyle` / `getObjectSize` are lazy
+    // getters so the pad always renders against the LIVE selected
+    // Experience's current state (a Story-Author who edits an unrelated
+    // field between two strokes must see the pad's own preview reflect
+    // that change immediately, without a full panel re-render).
+    function _shapePaintPadGroup(getShape, getCustomPath, getPaintStrokes, updateStrokes, getStrokeStyle, getObjectSize) {
+        const group = document.createElement('div');
+        group.className = 'wb-shape-paint-group';
+
+        const hint = document.createElement('p');
+        hint.className = 'wb-field-help';
+        hint.textContent = 'Paint inside the shape below with your mouse or finger. Lift to start a new line.';
+        group.appendChild(hint);
+
+        let medium = WB_DOODLE_MEDIA[0].id;
+        let penColor = WB_DOODLE_MEDIA[0].palette[0];
+        let penWidth = 6;
+
+        const padWrap = document.createElement('div');
+        padWrap.className = 'wb-shape-paint-pad-wrap';
+        const canvas = document.createElement('canvas');
+        canvas.width = WB_SHAPE_PAINT_PAD_SIZE;
+        canvas.height = WB_SHAPE_PAINT_PAD_SIZE;
+        canvas.className = 'wb-shape-paint-pad-canvas';
+        canvas.style.touchAction = 'none';
+        canvas.style.cursor = currentProjectReadOnly ? 'default' : 'crosshair';
+        padWrap.appendChild(canvas);
+        group.appendChild(padWrap);
+
+        function redraw(live) {
+            _wbDrawShapePaintPad(
+                canvas,
+                getShape() || 'circle',
+                getCustomPath(),
+                getPaintStrokes() || [],
+                live || null,
+                getStrokeStyle() || {},
+                getObjectSize().w,
+                getObjectSize().h
+            );
+        }
+        redraw(null);
+
+        const mediaRow = document.createElement('div');
+        mediaRow.className = 'wb-doodle-media-row';
+        const mediaBtns = {};
+        WB_DOODLE_MEDIA.forEach(function (m) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-doodle-media-btn';
+            btn.setAttribute('data-medium', m.id);
+            btn.title = m.label;
+            btn.disabled = currentProjectReadOnly;
+            const ic = document.createElement('span'); ic.className = 'wb-doodle-media-icon'; ic.textContent = m.icon;
+            const lb = document.createElement('span'); lb.className = 'wb-doodle-media-label'; lb.textContent = m.label;
+            btn.appendChild(ic); btn.appendChild(lb);
+            btn.addEventListener('click', function () {
+                if (medium === m.id) return;
+                medium = m.id;
+                penColor = m.palette[0];
+                _rebuildSwatches();
+                _syncPenUI();
+            });
+            mediaBtns[m.id] = btn;
+            mediaRow.appendChild(btn);
+        });
+        group.appendChild(mediaRow);
+
+        const penToolsRow = document.createElement('div');
+        penToolsRow.className = 'wb-doodle-pen-tools-row';
+
+        const swatchRow = document.createElement('div');
+        swatchRow.className = 'wb-doodle-pen-swatch-row';
+        function _rebuildSwatches() {
+            swatchRow.innerHTML = '';
+            const m = WB_DOODLE_MEDIA.find(function (x) { return x.id === medium; }) || WB_DOODLE_MEDIA[0];
+            m.palette.forEach(function (c) {
+                const s = document.createElement('button');
+                s.type = 'button';
+                s.className = 'wb-doodle-pen-swatch';
+                s.style.background = c;
+                s.setAttribute('data-color', c);
+                s.title = c;
+                s.disabled = currentProjectReadOnly;
+                s.addEventListener('click', function () { penColor = c; _syncPenUI(); });
+                swatchRow.appendChild(s);
+            });
+        }
+        _rebuildSwatches();
+        penToolsRow.appendChild(swatchRow);
+
+        const thicknessRow = document.createElement('div');
+        thicknessRow.className = 'wb-doodle-pen-thickness-row';
+        [['thin', 3, 'Thin'], ['medium', 6, 'Med'], ['thick', 12, 'Thick']].forEach(function (t) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-doodle-pen-thickness-btn';
+            btn.setAttribute('data-thickness', t[0]);
+            btn.title = t[2];
+            btn.disabled = currentProjectReadOnly;
+            const dot = document.createElement('span');
+            dot.className = 'wb-doodle-pen-thickness-dot';
+            dot.style.width = (t[1] * 1.6) + 'px';
+            dot.style.height = (t[1] * 1.6) + 'px';
+            btn.appendChild(dot);
+            btn.addEventListener('click', function () { penWidth = t[1]; _syncPenUI(); });
+            thicknessRow.appendChild(btn);
+        });
+        penToolsRow.appendChild(thicknessRow);
+        group.appendChild(penToolsRow);
+
+        function _syncPenUI() {
+            Array.prototype.forEach.call(mediaRow.querySelectorAll('.wb-doodle-media-btn'), function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-medium') === medium);
+            });
+            Array.prototype.forEach.call(swatchRow.querySelectorAll('.wb-doodle-pen-swatch'), function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-color') === penColor);
+            });
+            Array.prototype.forEach.call(thicknessRow.querySelectorAll('.wb-doodle-pen-thickness-btn'), function (btn) {
+                const w = ({ thin: 3, medium: 6, thick: 12 })[btn.getAttribute('data-thickness')];
+                btn.classList.toggle('active', w === penWidth);
+            });
+        }
+        _syncPenUI();
+
+        const actionsRow = document.createElement('div');
+        actionsRow.className = 'wb-shape-paint-actions-row';
+        const undoBtn = document.createElement('button');
+        undoBtn.type = 'button';
+        undoBtn.className = 'wb-small-btn';
+        undoBtn.textContent = '↩ Undo Last Line';
+        undoBtn.disabled = currentProjectReadOnly;
+        undoBtn.addEventListener('click', function () {
+            const cur = getPaintStrokes() || [];
+            updateStrokes(cur.slice(0, -1));
+        });
+        actionsRow.appendChild(undoBtn);
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'wb-small-btn';
+        clearBtn.textContent = '↺ Clear All';
+        clearBtn.disabled = currentProjectReadOnly;
+        clearBtn.addEventListener('click', function () { updateStrokes([]); });
+        actionsRow.appendChild(clearBtn);
+        group.appendChild(actionsRow);
+
+        // Pointer plumbing — mirrors cardDesigner.js's own
+        // shapePaintCanvas handlers, adapted to the caller-supplied
+        // getObjectSize/updateStrokes closures. Live points are drawn
+        // per-move (visual preview only, no model write) and committed
+        // as one array push on pointerup (matching Studio's own
+        // "one stroke = one model write, never per-frame" discipline).
+        let drawing = false, livePoints = [];
+        function pointFromEvent(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (WB_SHAPE_PAINT_PAD_SIZE / r.width), y: (e.clientY - r.top) * (WB_SHAPE_PAINT_PAD_SIZE / r.height) };
+        }
+        function normalizePoints(points) {
+            const os = getObjectSize();
+            const active = _wbPadActiveRect(WB_SHAPE_PAINT_PAD_SIZE, os.w, os.h);
+            return points.map(function (pt) {
+                return { x: (pt.x - active.x) / active.w, y: (pt.y - active.y) / active.h };
+            });
+        }
+        canvas.addEventListener('pointerdown', function (e) {
+            if (currentProjectReadOnly) return;
+            drawing = true;
+            livePoints = [pointFromEvent(e)];
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+        canvas.addEventListener('pointermove', function (e) {
+            if (!drawing) return;
+            const p = pointFromEvent(e);
+            const last = livePoints[livePoints.length - 1];
+            if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 2) {
+                livePoints.push(p);
+                const norm = normalizePoints(livePoints);
+                redraw({ points: norm, color: penColor, width: penWidth, medium: medium });
+            }
+        });
+        canvas.addEventListener('pointerup', function () {
+            if (!drawing) return;
+            drawing = false;
+            if (livePoints.length >= 2) {
+                const norm = normalizePoints(livePoints);
+                const cur = getPaintStrokes() || [];
+                updateStrokes(cur.concat([{ points: norm, color: penColor, width: penWidth, medium: medium }]));
+            } else {
+                // Redraw without the live stroke — a stray tap that
+                // didn't move enough to commit should visibly clear.
+                redraw(null);
+            }
+            livePoints = [];
+        });
+
+        return group;
     }
 
     // Authoring Convergence Sprint — the Universal Experience content
@@ -9188,10 +9792,80 @@
         }
 
         if (props.graphicShape) {
-            _fieldRow(
-                _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
-                _buildFieldGroup('Fill Opacity', _range(0, 100, Math.round((props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity) * 100), function (v) { onProp('graphicFillOpacity')(v / 100); }), '0% makes the fill fully see-through.')
-            );
+            // Fill Mode toggle — Solid Fill (default) vs. Paint Inside.
+            // Reuses the exact 2-button `icon-row`/`icon-card` pattern
+            // Draw Your Own's Line/Circle Tool picker already established
+            // rather than the boolean-checkbox `_buildToggleRow` shape
+            // (wrong shape for a 2-way named choice) or a new widget.
+            const fillMode = props.graphicFillMode || 'solid';
+            const fillModeGroup = document.createElement('div');
+            fillModeGroup.className = 'wb-field-group';
+            const fillModeLabel = document.createElement('div');
+            fillModeLabel.className = 'wb-field-label';
+            fillModeLabel.textContent = 'Fill Style';
+            fillModeGroup.appendChild(fillModeLabel);
+            const fillModeRow = document.createElement('div');
+            fillModeRow.className = 'wb-shape-fillmode-row';
+            [['solid', '🎨', 'Solid Fill'], ['paint', '🖌️', 'Paint Inside']].forEach(function (opt) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wb-shape-fillmode-btn' + (fillMode === opt[0] ? ' active' : '');
+                btn.disabled = currentProjectReadOnly;
+                const icon = document.createElement('span');
+                icon.className = 'wb-shape-fillmode-icon';
+                icon.textContent = opt[1];
+                const label = document.createElement('span');
+                label.className = 'wb-shape-fillmode-label';
+                label.textContent = opt[2];
+                btn.appendChild(icon);
+                btn.appendChild(label);
+                btn.addEventListener('click', function () {
+                    // paintStrokes is deliberately preserved across
+                    // toggles, never cleared — a child bouncing between
+                    // modes never loses painted work. Only seed an empty
+                    // array the very first time paint mode is entered.
+                    if (opt[0] === 'paint' && !Array.isArray(props.graphicPaintStrokes)) {
+                        window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicPaintStrokes', []);
+                    }
+                    onUploadProp('graphicFillMode')(opt[0]);
+                });
+                fillModeRow.appendChild(btn);
+            });
+            fillModeGroup.appendChild(fillModeRow);
+            contextPanel.appendChild(fillModeGroup);
+
+            if (fillMode === 'paint') {
+                // Paint Inside — the shape's silhouette becomes a clipped
+                // canvas reusing Doodle's multi-stroke/multi-medium mechanics
+                // (Crayon/Pastel/Brush/Spray). Lazy getters keep the pad
+                // rendering against LIVE current state without needing a full
+                // panel re-render on every stroke tick.
+                contextPanel.appendChild(_shapePaintPadGroup(
+                    function () { return props.graphicShape; },
+                    function () { return props.graphicCustomPath; },
+                    function () { return props.graphicPaintStrokes || []; },
+                    function (nextStrokes) {
+                        window.ProjectModel.updateExperiencePartProperty(currentProject, exp.id, part.id, 'graphicPaintStrokes', nextStrokes);
+                        _persist();
+                        _redrawSceneCanvasesForExperience(exp);
+                    },
+                    function () {
+                        return {
+                            strokeColor: props.graphicStrokeColor,
+                            strokeOpacity: props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity,
+                            strokeWidth: props.graphicStrokeWidth || 0
+                        };
+                    },
+                    function () { return { w: 200, h: 200 }; }
+                ));
+            } else {
+                _fieldRow(
+                    _buildFieldGroup('Fill Colour', _colorInput(props.graphicFillColor, onProp('graphicFillColor'))),
+                    _buildFieldGroup('Fill Opacity', _range(0, 100, Math.round((props.graphicFillOpacity == null ? 1 : props.graphicFillOpacity) * 100), function (v) { onProp('graphicFillOpacity')(v / 100); }), '0% makes the fill fully see-through.')
+                );
+            }
+
+            // Outline stays separate and always available regardless of fill mode.
             _fieldRow(
                 _buildFieldGroup('Outline Colour', _colorInput(props.graphicStrokeColor, onProp('graphicStrokeColor'))),
                 _buildFieldGroup('Outline Opacity', _range(0, 100, Math.round((props.graphicStrokeOpacity == null ? 1 : props.graphicStrokeOpacity) * 100), function (v) { onProp('graphicStrokeOpacity')(v / 100); }), '0% makes the outline fully see-through.')
