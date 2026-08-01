@@ -12,6 +12,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Draw your own functionality in builder should be same as draw your own feature in studio.
 - Give rotation capability to places in builder and studio
 - Frame style comes over the art.
+- reordering z axis within experience
 
 
 ## Feature Requests
