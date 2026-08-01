@@ -1719,6 +1719,11 @@ const SlideRenderer=(()=>{
       x.rotate(rotation*Math.PI/180);
       x.translate(-drawX,-drawY);
     }
+    // Bug G — "For texts allow these curves." Total arc-angle degrees
+    // (0 = flat, byte-identical to before this feature). Precedence
+    // mirrors rotation/opacity/fontWeight exactly: Story-Author
+    // ov.curve wins over Theme-Author-authored t.curve base.
+    const textCurve=(ov && typeof ov.curve==='number')?ov.curve:(typeof t.curve==='number'?t.curve:0);
     x.textAlign=hAlign;
     // "why we dont have underline as a style, and strikethrough also" —
     // Canvas has no native text-decoration; the only way to render either
@@ -1767,7 +1772,22 @@ const SlideRenderer=(()=>{
       lines.forEach(function(line,i){
         const g=_textLineGeometry(i,lines,drawY,lineHeight,totalH,vAlign);
         x.textBaseline=g.baseline;
-        x.fillText(line,drawX,g.lineY);
+        // Bug G — a nonzero curve draws each line along an arc (each
+        // char translated + rotated tangent to the arc), the line's
+        // own horizontal center used as the arc's anchor. Zero curve
+        // falls through to the existing straight fillText path,
+        // byte-identical to before. Underline/strikethrough are
+        // deliberately drawn straight even when curved — a curved
+        // baseline decoration would need per-char stroke segments;
+        // disclosed as out of scope for this feature.
+        let didCurve=false;
+        if(textCurve){
+          let cx=drawX;
+          if(hAlign==='left') cx=drawX+x.measureText(line).width/2;
+          else if(hAlign==='right') cx=drawX-x.measureText(line).width/2;
+          didCurve=_drawCurvedTextLine(x,line,cx,g.lineY,textCurve,'fill');
+        }
+        if(!didCurve) x.fillText(line,drawX,g.lineY);
         if(hasUnderline||hasStrikethrough){
           _drawTextLineDecoration(x,line,g.lineY,vAlign,hAlign,drawX,size,x.fillStyle,hasUnderline,hasStrikethrough);
         }
@@ -2889,6 +2909,51 @@ const SlideRenderer=(()=>{
     if(vAlign==='top') return {lineY:drawY+i*lineHeight,baseline:'top'};
     if(vAlign==='bottom') return {lineY:drawY-(lines.length-1-i)*lineHeight,baseline:'bottom'};
     return {lineY:drawY-totalH/2+(i+0.5)*lineHeight,baseline:'middle'};
+  }
+
+  // Bug G — "For texts allow these curves." Draws one line of text
+  // along an arc, character-by-character (each glyph translated to its
+  // position on the arc, then rotated so its baseline is tangent to
+  // the arc at that point). arcDeg is the total angular span the line
+  // arcs across (0 = flat, caller handles that; positive = concave
+  // down/smile arc; negative = concave up/frown arc). anchorX/anchorY
+  // is where the LINE's own centerpoint (mid-baseline) sits — the
+  // caller has already resolved this for its own align/vAlign. Requires
+  // ctx.font/ctx.fillStyle to already be set. drawKind is 'fill' or
+  // 'stroke'. Kept in lockstep, by hand, with tools/world-builder-v2/
+  // js/services/engineRuntime.js's own mirrored copy. Never used for
+  // decoration (underline/strikethrough) — a curved baseline would
+  // need per-char stroke segments; disclosed as out of scope.
+  function _drawCurvedTextLine(ctx,line,anchorX,anchorY,arcDeg,drawKind){
+    if(!line || !arcDeg) return false;
+    const arcRad=arcDeg*Math.PI/180;
+    const totalW=ctx.measureText(line).width;
+    if(totalW<=0) return false;
+    const absArc=Math.abs(arcRad);
+    const radius=totalW/absArc;
+    const sign=arcRad>0?1:-1;
+    const chars=Array.from(line);
+    const savedAlign=ctx.textAlign;
+    let cumW=0;
+    for(let i=0;i<chars.length;i++){
+      const ch=chars[i];
+      const chW=ctx.measureText(ch).width;
+      const angleFromCenter=((cumW+chW/2)-totalW/2)/radius;
+      const posX=anchorX+radius*Math.sin(angleFromCenter);
+      const posYOff=radius*(1-Math.cos(angleFromCenter));
+      const posY=anchorY-sign*posYOff;
+      const rot=sign*angleFromCenter;
+      ctx.save();
+      ctx.translate(posX,posY);
+      ctx.rotate(rot);
+      ctx.textAlign='center';
+      if(drawKind==='stroke') ctx.strokeText(ch,0,0);
+      else ctx.fillText(ch,0,0);
+      ctx.restore();
+      cumW+=chW;
+    }
+    ctx.textAlign=savedAlign;
+    return true;
   }
 
   // Shared underline/strikethrough stroke — extracted so both Fill Style
@@ -4255,8 +4320,21 @@ const SlideRenderer=(()=>{
         });
       }
     } else {
+      // Bug G — a nonzero st.curve draws each line along an arc via
+      // _drawCurvedTextLine. Zero curve falls through to straight
+      // fillText, byte-identical to before this feature. Underline/
+      // strikethrough drawn straight even when curved (per-char stroke
+      // segments would be needed for a curved decoration; out of scope).
+      const textCurve=typeof st.curve==='number'?st.curve:0;
       lines.forEach(function(line){
-        x.fillText(line,tx,ty);
+        let didCurve=false;
+        if(textCurve){
+          let cx=tx;
+          if(align==='left') cx=tx+x.measureText(line).width/2;
+          else if(align==='right') cx=tx-x.measureText(line).width/2;
+          didCurve=_drawCurvedTextLine(x,line,cx,ty,textCurve,'fill');
+        }
+        if(!didCurve) x.fillText(line,tx,ty);
         if(hasUnderline || hasStrikethrough){
           const lw=x.measureText(line).width;
           let lsx=tx-lw/2, lex=tx+lw/2;

@@ -725,6 +725,47 @@ const EngineV2Runtime = (function () {
         });
     }
 
+    // Bug G — "For texts allow these curves." One line of text drawn
+    // along an arc, character-by-character (each glyph translated to
+    // its position on the arc, then rotated so its baseline is tangent
+    // to the arc at that point). arcDeg = total angular span (0 = flat,
+    // caller falls through; positive = concave-down/smile arc; negative
+    // = concave-up/frown arc). anchorX/anchorY = the LINE's own
+    // centerpoint. Requires ctx.font/fillStyle already set. Kept in
+    // lockstep, by hand, with root Studio's renderer/slideRenderer.js
+    // own _drawCurvedTextLine.
+    function _drawCurvedTextLine(ctx, line, anchorX, anchorY, arcDeg, drawKind) {
+        if (!line || !arcDeg) return false;
+        const arcRad = arcDeg * Math.PI / 180;
+        const totalW = ctx.measureText(line).width;
+        if (totalW <= 0) return false;
+        const absArc = Math.abs(arcRad);
+        const radius = totalW / absArc;
+        const sign = arcRad > 0 ? 1 : -1;
+        const chars = Array.from(line);
+        const savedAlign = ctx.textAlign;
+        let cumW = 0;
+        for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
+            const chW = ctx.measureText(ch).width;
+            const angleFromCenter = ((cumW + chW / 2) - totalW / 2) / radius;
+            const posX = anchorX + radius * Math.sin(angleFromCenter);
+            const posYOff = radius * (1 - Math.cos(angleFromCenter));
+            const posY = anchorY - sign * posYOff;
+            const rot = sign * angleFromCenter;
+            ctx.save();
+            ctx.translate(posX, posY);
+            ctx.rotate(rot);
+            ctx.textAlign = 'center';
+            if (drawKind === 'stroke') ctx.strokeText(ch, 0, 0);
+            else ctx.fillText(ch, 0, 0);
+            ctx.restore();
+            cumW += chW;
+        }
+        ctx.textAlign = savedAlign;
+        return true;
+    }
+
     // AV-006/AV-010 — a text Layer's declared position/size box is only
     // ever a wrap-width and a creation-time placeholder height (Scene
     // Model §3 gives every Layer a generic fractional rect, but unlike a
@@ -979,7 +1020,26 @@ const EngineV2Runtime = (function () {
                 _drawShapeMosaicTextBlock(ctx, bx, rect.y, maxLineWidth, totalH, drawTextFn);
             } else {
                 ctx.fillStyle = layer.color || '#1D3457';
-                _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
+                // Bug G — "For texts allow these curves." A nonzero
+                // layer.curve draws each wrapped line along an arc via
+                // _drawCurvedTextLine. Zero curve falls through to the
+                // existing straight _drawWrappedText path, byte-identical
+                // to before this feature.
+                const textCurve = typeof layer.curve === 'number' ? layer.curve : 0;
+                if (textCurve) {
+                    const lines = _wrapLines(ctx, layer.text || '', rect.w);
+                    const lineHeight = (layer.fontSize || 48) * 1.25;
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        const lw = ctx.measureText(line).width;
+                        let cx = tx;
+                        if (layer.align === 'left' || !layer.align) cx = tx + lw / 2;
+                        else if (layer.align === 'right') cx = tx - lw / 2;
+                        _drawCurvedTextLine(ctx, line, cx, rect.y + i * lineHeight, textCurve, 'fill');
+                    }
+                } else {
+                    _drawWrappedText(ctx, layer.text || '', tx, rect.y, rect.w, (layer.fontSize || 48) * 1.25);
+                }
             }
             ctx.restore();
         } else {

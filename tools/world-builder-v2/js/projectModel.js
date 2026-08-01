@@ -1824,6 +1824,9 @@ const ProjectModel = (function () {
                         name: layerName, text: props.textContent, font: props.textFont, fontSize: props.textSize,
                         align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
                         rotation: props.textRotation || 0, shapeFill: !!props.textShapeFill,
+                        // Bug G — textCurve (degrees, 0 = flat, byte-identical
+                        // for every existing Layer with the field absent).
+                        curve: props.textCurve || 0,
                         position: { x: props.textX, y: props.textY }, size: { w: props.textW, h: props.textH },
                         hostedByScene: fillMode === 'scene', hostPlaceId: hostPlaceId
                     });
@@ -1836,6 +1839,7 @@ const ProjectModel = (function () {
                     created.opacity = props.textOpacity;
                     created.rotation = props.textRotation || 0;
                     created.shapeFill = !!props.textShapeFill;
+                    created.curve = props.textCurve || 0;
                     created.sourceExperienceId = experience.id;
                     created.contentSlot = 'text';
                     created.partId = part.id;

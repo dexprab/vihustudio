@@ -845,6 +845,18 @@ const ContextPanel=(function(){
         });
         _pairRow(container,colorCell,rotationCell);
         rotationCell=null;
+        // Bug G — Curve is a rendering property (editable/Honor 3), not
+        // spatial like Rotation (moveable/Honor 2). Range −180…180°:
+        // 0 = flat/no curve (byte-identical default), positive = smile
+        // arc, negative = frown arc. Full-width row of its own since
+        // Rotation was already paired with Colour above.
+        const curveCell=_makeRangeRow(null,{
+          labelText:'Curve',min:-180,max:180,step:1,
+          value:(typeof ov.curve==='number')?ov.curve:0,
+          format:function(n){ return Math.round(n)+'°'; },
+          onInput:function(n){ SceneEngine.setContentOverride(slide,sceneObj.id,'curve',n?n:null); _afterQuickEditChange(); }
+        });
+        _pairRow(container,curveCell,null);
         mounted=true;
       }
     }
@@ -1023,7 +1035,13 @@ const ContextPanel=(function(){
       format:function(n){ return Math.round(n)+'°'; },
       onInput:function(n){ update({rotation:Math.round(n)}); }
     });
-    _pairRow(container,rotationCell,null);
+    const curveCell=_makeRangeRow(null,{
+      labelText:'Curve',min:-180,max:180,step:1,
+      value:(typeof st.curve==='number')?st.curve:0,
+      format:function(n){ return Math.round(n)+'°'; },
+      onInput:function(n){ update({curve:Math.round(n)}); }
+    });
+    _pairRow(container,rotationCell,curveCell);
 
     const delBtn=document.createElement('button');
     delBtn.type='button';

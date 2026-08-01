@@ -110,6 +110,16 @@ const ExperienceSchema = (function () {
             // this project's engineRuntime.js's own `_drawShapeMosaicTextBlock`
             // — the two are kept in lockstep by hand, no shared module).
             textShapeFill: false,
+            // Bug G — "For texts allow these curves." Curved-text
+            // rendering: an angle in degrees the whole line arcs across
+            // (0 = flat/default, byte-identical to before this feature).
+            // Positive = concave-down (smile arc); negative = concave-up
+            // (frown arc). Range clamped to [-180, 180] by the UI; a full
+            // 360 would fold a line back onto itself, unreadable. Rendered
+            // by _drawCurvedTextLine, hand-mirrored between root Studio's
+            // renderer/slideRenderer.js and this project's engineRuntime.js
+            // (no shared drawing module between the two).
+            textCurve: 0,
             textX: fillBleed ? 0 : 0.1, textY: fillBleed ? 0 : 0.1, textW: fillBleed ? 1 : 0.6, textH: fillBleed ? 1 : 0.25,
             // Image
             imageSrc: null,
@@ -169,7 +179,7 @@ const ExperienceSchema = (function () {
     // it always derives from that one real source.
     const MAX_EXPERIENCE_PARTS = 5;
     const PART_FIELD_KEYS = {
-        text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textShapeFill', 'textX', 'textY', 'textW', 'textH'],
+        text: ['textContent', 'textFont', 'textSize', 'textWeight', 'textAlign', 'textColor', 'textOpacity', 'textRotation', 'textShapeFill', 'textCurve', 'textX', 'textY', 'textW', 'textH'],
         image: ['imageSrc', 'imageFit', 'imageOpacity', 'imageRotation', 'imageX', 'imageY', 'imageW', 'imageH'],
         graphics: ['graphicSrc', 'graphicOpacity', 'graphicX', 'graphicY', 'graphicW', 'graphicH', 'graphicShape', 'graphicFillColor', 'graphicFillOpacity', 'graphicStrokeColor', 'graphicStrokeOpacity', 'graphicStrokeWidth', 'graphicRotation', 'graphicCustomPath'],
         colour: ['colorValue', 'colorOpacity', 'colorTransparent']

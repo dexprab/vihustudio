@@ -4456,7 +4456,8 @@
                     kind: 'text', text: props.textContent, font: props.textFont,
                     fontSize: Math.max(6, (props.textSize || 32) * zoom),
                     align: props.textAlign, color: props.textColor, opacity: props.textOpacity,
-                    rotation: props.textRotation || 0, shapeFill: !!props.textShapeFill
+                    rotation: props.textRotation || 0, shapeFill: !!props.textShapeFill,
+                    curve: props.textCurve || 0
                 }, local);
                 window.EngineV2Runtime.paintLayer(ctx, textLayer, graph);
                 const footprint = window.EngineV2Runtime.textFootprint(ctx, textLayer, graph);
@@ -9023,6 +9024,12 @@
             _buildFieldGroup('Rotation', _range(0, 359, props.textRotation || 0, onProp('textRotation'))),
             _buildFieldGroup('Fill Style', _select(TEXT_FILLSTYLE_CHOICES, props.textShapeFill ? 'shapes' : 'solid', function (v) { onProp('textShapeFill')(v === 'shapes'); }))
         );
+        // Bug G — "For texts allow these curves." A total arc-angle
+        // slider (−180…180°, 0 = flat/no curve, positive = smile arc,
+        // negative = frown arc), the exact vocabulary the render helper
+        // _drawCurvedTextLine (kept in lockstep between engineRuntime.js
+        // and root Studio's slideRenderer.js) already expects.
+        _fieldRow(_buildFieldGroup('Curve', _range(-180, 180, props.textCurve || 0, onProp('textCurve'))));
         contextPanel = outer;
     }
 

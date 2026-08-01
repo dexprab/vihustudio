@@ -608,7 +608,17 @@ class BuildEngine {
                     // View/Runtime Preview already honours the same
                     // layer.shapeFill field directly (no compile step
                     // needed there).
-                    shapeFill: !!layer.shapeFill
+                    shapeFill: !!layer.shapeFill,
+                    // Bug G — "For texts allow these curves." Total arc
+                    // angle in degrees (0 = flat, byte-identical for
+                    // every existing compiled text Layer with no curve
+                    // authored; positive = concave-down/smile; negative
+                    // = concave-up/frown). Root Studio's own
+                    // renderer/slideRenderer.js's _layerDrawText reads
+                    // this as t.curve, mirroring rotation's own
+                    // Theme-Author-base vs. Story-Author-override
+                    // precedence exactly.
+                    curve: layer.curve || 0
                 }
             });
         }
