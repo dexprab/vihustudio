@@ -5,6 +5,6 @@
   "slice": "Root Studio (js/, renderer/) is untouched by this batch -- Bug E's rotation fix flows through the already-correct root Studio _layerDrawDecorationImage renderer (fixed by an earlier 'BUG: Studio drops rotation on image-kind Decorations' sprint), so the compiled package's own decoration.rotation now reaches its already-correct destination. Bugs 2 (Draw Your Own parity in v2) and 5 (Companion) remain deferred; Bug B (companion blank circle) explicitly dropped per prior scope decision. Next batches per plan: G, then F+A, then H, then C.",
   "build": "0144",
   "buildDate": "2026-08-01",
-  "commit": "PENDING",
+  "commit": "5c48e0c447b67e7154905a3c3c49c859bf455e4b",
   "environment": "Release"
 }
