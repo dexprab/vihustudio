@@ -13,6 +13,9 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Give rotation capability to places in builder and studio
 - Frame style comes over the art.
 - reordering z axis within experience
+- Studio scene <img width="451" height="367" alt="image" src="https://github.com/user-attachments/assets/2f5fe1ac-81fd-4bd3-b278-05ef48e50980" /> is not same as what was authored in builder <img width="292" height="300" alt="image" src="https://github.com/user-attachments/assets/65ac639d-ef51-4f71-85fc-593fa4f634c3" /> places shapes , places placeholder art, background transparency are few of the points which are in direct conflict.
+
+
 
 
 ## Feature Requests
