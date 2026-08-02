@@ -4,6 +4,6 @@
   "task": "Rewrote js/pictureStudio.js's modal structure to add DEFAULT_STATE.beforeAfterPct:100, wrap stage+result-view+edit-view in a new .picture-studio-body flex container appended to _root, moved editFooter to be a direct _root child, built the Before/After compare slider DOM (_baCompareWrap/_baSlider/_baHint) at the end of _buildBgSubPanel with the .hidden class initially, wired _refreshBgControls() to show/hide the wrap and reset _state.beforeAfterPct/_baSlider to 100 when there's no _bgRemovedImg, taught _undoBgRemoval() to reset the slider, and rewrote _render() to remove the black fill (transparent canvas so the .checkerboard stage shows through), with a new compareActive branch that uses ctx.clip() to paint _origImg on the left portion and the bg-removed img on the right portion with a hairline gold divider at pctX. css/style.css: retired the .picture-studio-stage's #1a1d24 fill and .picture-studio-canvas's #0e1015 fill, added .picture-studio-body row/column dispatch, added a shared .checkerboard class with dark-theme variant, made .picture-studio[data-view=\"edit\"] .picture-studio-edit-view a 320px right-side aside with border-left, made .picture-studio-edit-footer display:none by default and only visible in edit view, and added .picture-studio-ba-compare/-label/-slider/-hint styles. Cache-bust bumped from ?v=0308 to ?v=0309 across every script/link tag in root index.html.",
   "build": "0313",
   "buildDate": "2026-08-02",
-  "commit": "pending",
+  "commit": "eb2881bd550ffb153fb9bfe3f25e31a2004becbb",
   "environment": "Release"
 }
