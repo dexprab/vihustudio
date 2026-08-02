@@ -4132,86 +4132,153 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
 }
 .picture-studio-canvas:active{ cursor:grabbing; }
 
-.picture-studio-toolbar{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:flex-end;
-  gap:10px 16px;
-  padding:14px 20px;
-  border-top:1px solid var(--line);
-  background:var(--panel);
-}
-.picture-studio-tool-group{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.picture-studio-tool-group-label{
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:0.6px;
-  text-transform:uppercase;
-  color:var(--text-secondary);
-  opacity:0.85;
-}
-.picture-studio-tool-row{
-  display:flex;
-  gap:4px;
-}
-.picture-studio-tool-btn{
+/* Two-view flow — Result View shows on open with big Looks Great /
+   Make It Better CTAs; Edit View swaps in a tile toolbar + sub-panels.
+   Only one is visible at a time, driven purely by data-view on the
+   .picture-studio root. */
+.picture-studio-result-view,
+.picture-studio-edit-view{ display:none; }
+.picture-studio[data-view="result"] .picture-studio-result-view{
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:2px;
-  padding:6px 8px;
+  gap:14px;
+  padding:18px 20px 20px;
+  border-top:1px solid var(--line);
+  background:var(--panel);
+}
+.picture-studio[data-view="edit"] .picture-studio-edit-view{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px 20px 16px;
+  border-top:1px solid var(--line);
+  background:var(--panel);
+}
+
+/* Result view — headline + two big CTAs */
+.picture-studio-result-headline{
+  font-size:20px;
+  font-weight:700;
+  text-align:center;
+  color:var(--text);
+}
+.picture-studio-result-actions{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.picture-studio-cta-btn{
+  padding:12px 28px;
+  border-radius:24px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+  /* Override the global button:not(...) width/height/margin. */
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.picture-studio-cta-btn:hover{ background:rgba(0,0,0,0.04); }
+.picture-studio-cta-btn:active{ transform:translateY(1px); }
+.picture-studio-cta-primary{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--navy);
+  font-weight:700;
+}
+.picture-studio-cta-primary:hover{ background:#FFD466; }
+.picture-studio-cta-secondary{
+  /* Same base look as .picture-studio-cta-btn; explicit for clarity. */
+  background:var(--bg);
+}
+
+/* Edit view — hint + tile grid + sub-panels + footer */
+.picture-studio-edit-hint{
+  font-size:13px;
+  color:var(--text-secondary);
+  margin:0;
+  text-align:center;
+}
+.picture-studio-tool-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+  gap:10px;
+}
+.picture-studio-tile{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:14px 8px;
   background:var(--bg);
   border:1px solid var(--line);
-  border-radius:10px;
+  border-radius:14px;
   color:var(--text);
-  font-size:11px;
-  font-weight:500;
+  font-size:12px;
+  font-weight:600;
   cursor:pointer;
-  /* Override the global button:not(...) margin/width. */
+  min-height:78px;
   width:auto !important;
   height:auto !important;
   margin:0 !important;
   transition:background 0.12s, border-color 0.12s, transform 0.05s;
 }
-.picture-studio-tool-btn:hover{
+.picture-studio-tile:hover{
   background:rgba(255,203,69,0.12);
   border-color:rgba(255,203,69,0.45);
 }
-.picture-studio-tool-btn:active{
-  transform:translateY(1px);
-}
-.picture-studio-tool-btn.active{
+.picture-studio-tile:active{ transform:translateY(1px); }
+.picture-studio-tile.active{
   background:var(--gold);
   border-color:var(--gold);
   color:var(--navy);
 }
-.picture-studio-tool-glyph{ font-size:18px; line-height:1; }
-.picture-studio-tool-label{ font-size:11px; }
-/* Background-removal status line (Feature 1 Phase 2 · Image Studio) —
-   tiny muted text beneath the Background tool group, used to report
-   "Removing background…" / "Background removed." / a friendly error. */
-.picture-studio-tool-status{
-  margin-top:4px;
-  font-size:10px;
-  color:var(--text-dim, #888);
-  min-height:12px;
-  text-align:center;
-}
+.picture-studio-tile-icon{ font-size:24px; line-height:1; }
+.picture-studio-tile-label{ font-size:12px; text-align:center; }
 
-.picture-studio-footer{
+/* Sub-panels — one per tool, only the active one shows */
+.picture-studio-subpanels{
   display:flex;
-  justify-content:flex-end;
-  gap:10px;
-  padding:14px 20px;
-  border-top:1px solid var(--line);
+  flex-direction:column;
+  gap:8px;
+  min-height:64px;
 }
-.picture-studio-btn{
-  padding:10px 22px;
-  border-radius:24px;
+.picture-studio-subpanel{ display:none; }
+.picture-studio[data-active-tool="bg"] .picture-studio-subpanel[data-tool="bg"],
+.picture-studio[data-active-tool="flip"] .picture-studio-subpanel[data-tool="flip"],
+.picture-studio[data-active-tool="zoom"] .picture-studio-subpanel[data-tool="zoom"],
+.picture-studio[data-active-tool="reset"] .picture-studio-subpanel[data-tool="reset"]{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:12px 14px;
+  background:rgba(255,203,69,0.06);
+  border:1px solid rgba(255,203,69,0.28);
+  border-radius:12px;
+}
+.picture-studio-subpanel-hint{
+  margin:0;
+  font-size:12px;
+  color:var(--text-secondary);
+}
+.picture-studio-subpanel-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.picture-studio-subpanel-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 14px;
+  border-radius:20px;
   border:1px solid var(--line);
   background:var(--bg);
   color:var(--text);
@@ -4221,20 +4288,81 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
   width:auto !important;
   height:auto !important;
   margin:0 !important;
-  transition:background 0.15s, border-color 0.15s;
+  transition:background 0.12s, border-color 0.12s, transform 0.05s;
 }
-.picture-studio-btn:hover{ background:rgba(0,0,0,0.04); }
-.picture-studio-apply-btn{
+.picture-studio-subpanel-btn:hover:not(:disabled){
+  background:rgba(255,203,69,0.12);
+  border-color:rgba(255,203,69,0.45);
+}
+.picture-studio-subpanel-btn:active:not(:disabled){ transform:translateY(1px); }
+.picture-studio-subpanel-btn:disabled{
+  opacity:0.45;
+  cursor:not-allowed;
+}
+.picture-studio-subpanel-btn.active{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--navy);
+}
+.picture-studio-subpanel-btn-primary{
   background:var(--gold);
   border-color:var(--gold);
   color:var(--navy);
   font-weight:700;
 }
-.picture-studio-apply-btn:hover{ background:#FFD466; }
+.picture-studio-subpanel-btn-primary:hover:not(:disabled){ background:#FFD466; }
+.picture-studio-subpanel-btn-danger{
+  color:#C0392B;
+  border-color:rgba(192,57,43,0.4);
+}
+.picture-studio-subpanel-btn-danger:hover:not(:disabled){
+  background:rgba(192,57,43,0.08);
+  border-color:rgba(192,57,43,0.6);
+}
+.picture-studio-subpanel-btn-glyph{ font-size:16px; line-height:1; }
+.picture-studio-subpanel-status{
+  font-size:12px;
+  color:var(--text-dim, #888);
+  min-height:14px;
+}
+
+/* Edit footer — Back link + Save Picture */
+.picture-studio-edit-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-top:4px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+.picture-studio-back-link{
+  padding:8px 14px;
+  border-radius:18px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--text-secondary);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.12s, color 0.12s;
+}
+.picture-studio-back-link:hover{
+  background:rgba(0,0,0,0.04);
+  color:var(--text);
+}
+.picture-studio-save-btn{
+  padding:10px 24px;
+  font-size:14px;
+}
 
 body.dark-theme .picture-studio{ background:var(--panel); }
-body.dark-theme .picture-studio-tool-btn{ background:var(--panel); }
-body.dark-theme .picture-studio-btn{ background:var(--panel); }
+body.dark-theme .picture-studio-tile{ background:var(--panel); }
+body.dark-theme .picture-studio-cta-btn{ background:var(--panel); }
+body.dark-theme .picture-studio-subpanel-btn{ background:var(--panel); }
 
 /* ===========================
  * Sprint 8.1 — Publish Studio

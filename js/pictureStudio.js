@@ -60,20 +60,50 @@ const PictureStudio=(function(){
   let _state=Object.assign({},DEFAULT_STATE);
   let _onApply=null, _onCancel=null;
   let _drag=null;
+  // Redesign — two-view flow (Result / Edit) mirroring the standalone
+  // Image Studio tool's own kid-friendly UX. Result View shows on open
+  // with two big CTAs (Looks Great / Make It Better). Make It Better
+  // switches to Edit View, whose tile toolbar reveals a per-tool
+  // sub-panel when active. _view/_activeTool drive `data-view` and
+  // `data-active-tool` attributes on _root that CSS uses to swap
+  // visibility — the canvas element itself is persistent across both
+  // views, only the surrounding chrome changes.
+  let _view='result', _activeTool=null;
+  let _resultPanel=null, _editPanel=null;
+  let _tileButtons=null, _subPanels=null;
+  let _brightenTile=null;
 
   // Whichever image the rotate/flip/enhance/bake pipeline should treat
   // as its source. Background-removed if applied, else original.
   function _activeImg(){ return _bgRemovedImg||_origImg; }
 
   // -------- DOM build (lazy; reuses the same modal across opens) ----
+  //
+  // Two-view flow, mirroring the standalone Image Studio tool's own
+  // kid-friendly UX:
+  //   * Result View  — shown on open once the picture loads. A big
+  //     canvas + two big CTAs ("😊 Looks Great" / "✨ Make It Better").
+  //     If the picture is already good, one tap ships it.
+  //   * Edit View    — activated by "Make It Better". Same canvas, but
+  //     a tile toolbar beneath it (Remove Background / Turn or Flip /
+  //     Bigger or Smaller / Brighten / Peek Original / Start Over).
+  //     Selecting a tile reveals its own sub-panel; only one is visible
+  //     at a time. Save Picture at the bottom applies and closes.
+  //
+  // The `_stage`/`_canvas` DOM is persistent across both views — only
+  // the surrounding chrome swaps (via `data-view` on _root plus
+  // `data-active-tool` for the sub-panel dispatch). This means every
+  // pre-existing render/bake code path (_render/_bake/_wireStageInteractions)
+  // keeps working with zero change.
   function _buildModal(){
     _modal=document.createElement('div');
     _modal.className='picture-studio-modal hidden';
 
     _root=document.createElement('div');
     _root.className='picture-studio';
+    _root.setAttribute('data-view','result');
 
-    // Header
+    // Header — shared across both views
     const header=document.createElement('div');
     header.className='picture-studio-header';
     const title=document.createElement('div');
@@ -82,7 +112,7 @@ const PictureStudio=(function(){
     header.appendChild(title);
     const sub=document.createElement('div');
     sub.className='picture-studio-subtitle';
-    sub.textContent='Get your picture ready — crop, rotate, flip, enhance, or remove its background.';
+    sub.textContent="Let's make your picture just right!";
     header.appendChild(sub);
     const close=document.createElement('button');
     close.type='button';
@@ -93,7 +123,7 @@ const PictureStudio=(function(){
     header.appendChild(close);
     _root.appendChild(header);
 
-    // Stage (preview)
+    // Stage (canvas preview) — persistent across both views
     _stage=document.createElement('div');
     _stage.className='picture-studio-stage';
     _canvas=document.createElement('canvas');
@@ -104,85 +134,86 @@ const PictureStudio=(function(){
     _root.appendChild(_stage);
     _wireStageInteractions();
 
-    // Toolbar
-    const toolbar=document.createElement('div');
-    toolbar.className='picture-studio-toolbar';
+    // Result view — big CTAs beneath the canvas
+    _resultPanel=document.createElement('div');
+    _resultPanel.className='picture-studio-result-view';
+    const rHeadline=document.createElement('div');
+    rHeadline.className='picture-studio-result-headline';
+    rHeadline.textContent='🎉 Your picture is ready!';
+    _resultPanel.appendChild(rHeadline);
+    const rActions=document.createElement('div');
+    rActions.className='picture-studio-result-actions';
+    const looksGreat=document.createElement('button');
+    looksGreat.type='button';
+    looksGreat.className='picture-studio-cta-btn picture-studio-cta-primary';
+    looksGreat.textContent='😊 Looks Great';
+    looksGreat.addEventListener('click',_apply);
+    rActions.appendChild(looksGreat);
+    const makeBetter=document.createElement('button');
+    makeBetter.type='button';
+    makeBetter.className='picture-studio-cta-btn picture-studio-cta-secondary';
+    makeBetter.textContent='✨ Make It Better';
+    makeBetter.addEventListener('click',function(){ _setView('edit'); });
+    rActions.appendChild(makeBetter);
+    _resultPanel.appendChild(rActions);
+    _root.appendChild(_resultPanel);
 
-    _buildToolGroup(toolbar,'Crop',[
-      {label:'Zoom In',  glyph:'🔍+', click:function(){ _setZoom(_state.zoom*1.15); }},
-      {label:'Zoom Out', glyph:'🔍−', click:function(){ _setZoom(_state.zoom/1.15); }}
-    ]);
+    // Edit view — tile toolbar + sub-panels + save/back footer
+    _editPanel=document.createElement('div');
+    _editPanel.className='picture-studio-edit-view';
+    const editHint=document.createElement('p');
+    editHint.className='picture-studio-edit-hint';
+    editHint.textContent='Tap a tool below.';
+    _editPanel.appendChild(editHint);
 
-    _buildToolGroup(toolbar,'Rotate',[
-      {label:'Left',  glyph:'↺', click:function(){ _state.rotation=(_state.rotation+270)%360; _render(); }},
-      {label:'Right', glyph:'↻', click:function(){ _state.rotation=(_state.rotation+90)%360; _render(); }}
-    ]);
+    const toolGrid=document.createElement('div');
+    toolGrid.className='picture-studio-tool-grid';
+    _tileButtons={};
+    // Tools that open their own sub-panel
+    _tileButtons.bg=_buildTile(toolGrid,'✨','Remove Background',function(){ _toggleActiveTool('bg'); });
+    _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn or Flip',function(){ _toggleActiveTool('flip'); });
+    _tileButtons.zoom=_buildTile(toolGrid,'🔍','Bigger / Smaller',function(){ _toggleActiveTool('zoom'); });
+    // One-tap toggle — Brighten flips _state.enhance directly, no sub-panel.
+    _brightenTile=_buildTile(toolGrid,'✨','Brighten',function(){
+      _state.enhance=!_state.enhance;
+      _brightenTile.classList.toggle('active',!!_state.enhance);
+      _render();
+    });
+    _tileButtons.brighten=_brightenTile;
+    // Hold-to-peek — Peek Original is a press-and-hold tile, no sub-panel.
+    _tileButtons.peek=_buildTile(toolGrid,'👁️','Peek Original',null,{hold:true});
+    _tileButtons.reset=_buildTile(toolGrid,'↶','Start Over',function(){ _toggleActiveTool('reset'); });
+    _editPanel.appendChild(toolGrid);
 
-    _buildToolGroup(toolbar,'Flip',[
-      {label:'Flip', glyph:'↔', click:function(){ _state.flipH=!_state.flipH; _render(); }}
-    ]);
+    // Sub-panels area — one per tool, hidden by default
+    _subPanels={};
+    const subWrap=document.createElement('div');
+    subWrap.className='picture-studio-subpanels';
+    _subPanels.bg=_buildBgSubPanel();
+    _subPanels.flip=_buildFlipSubPanel();
+    _subPanels.zoom=_buildZoomSubPanel();
+    _subPanels.reset=_buildResetSubPanel();
+    Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
+    _editPanel.appendChild(subWrap);
 
-    _buildToolGroup(toolbar,'Improve',[
-      {label:'Auto Enhance', glyph:'✨', click:function(){ _state.enhance=!_state.enhance; _refreshToggles(); _render(); }, toggleKey:'enhance'},
-      {label:'Before / After', glyph:'👁', hold:true}
-    ]);
+    // Edit footer — Back to picture + Save
+    const editFooter=document.createElement('div');
+    editFooter.className='picture-studio-edit-footer';
+    const back=document.createElement('button');
+    back.type='button';
+    back.className='picture-studio-back-link';
+    back.textContent='← Back to picture';
+    back.addEventListener('click',function(){ _toggleActiveTool(null); _setView('result'); });
+    editFooter.appendChild(back);
+    const save=document.createElement('button');
+    save.type='button';
+    save.className='picture-studio-cta-btn picture-studio-cta-primary picture-studio-save-btn';
+    save.textContent='💾 Save Picture';
+    save.addEventListener('click',_apply);
+    editFooter.appendChild(save);
+    _editPanel.appendChild(editFooter);
 
-    // Background removal — the one genuinely new capability the
-    // standalone Image Studio tool (tools/background-remover/) already
-    // shipped and Phase 2 folds back into Studio. The Remove button
-    // ships the current source image (already respecting whatever
-    // rotate/flip the user has applied — see _bakeSourceForBg) to the
-    // tool's own ES module Worker, then swaps the result in as the new
-    // source for the rest of the rotate/flip/crop/enhance stack. Undo
-    // reverts to the pristine original.
-    const bgGroup=_buildToolGroup(toolbar,'Background',[
-      {label:'Remove', glyph:'🪄', click:_startBgRemoval},
-      {label:'Undo BG', glyph:'↩', click:_undoBgRemoval}
-    ]);
-    // Track the two buttons + a tiny status line so we can enable /
-    // disable / label them without re-querying the DOM each time.
-    const bgBtns=bgGroup?bgGroup.querySelectorAll('.picture-studio-tool-btn'):[];
-    if(bgBtns.length){
-      _bgRemoveBtn=bgBtns[0];
-      _bgUndoBtn=bgBtns[1];
-    }
-    _bgStatusEl=document.createElement('div');
-    _bgStatusEl.className='picture-studio-tool-status';
-    _bgStatusEl.textContent='';
-    if(bgGroup) bgGroup.appendChild(_bgStatusEl);
-    _refreshBgControls();
-
-    _buildToolGroup(toolbar,'Show',[
-      {label:'Fit',  glyph:'▭', click:function(){ _state.mode='fit'; _refreshToggles(); }, toggleKey:'mode:fit'},
-      {label:'Fill', glyph:'▣', click:function(){ _state.mode='fill'; _refreshToggles(); }, toggleKey:'mode:fill'}
-    ]);
-
-    _buildToolGroup(toolbar,'Reset',[
-      {label:'Reset', glyph:'🔄', click:function(){
-        const keepMode=_state.mode;
-        _state=Object.assign({},DEFAULT_STATE,{mode:keepMode});
-        _refreshToggles(); _render();
-      }}
-    ]);
-
-    _root.appendChild(toolbar);
-
-    // Footer (Apply / Cancel)
-    const footer=document.createElement('div');
-    footer.className='picture-studio-footer';
-    const cancel=document.createElement('button');
-    cancel.type='button';
-    cancel.className='picture-studio-btn picture-studio-cancel-btn';
-    cancel.textContent='Cancel';
-    cancel.addEventListener('click',_cancel);
-    footer.appendChild(cancel);
-    const apply=document.createElement('button');
-    apply.type='button';
-    apply.className='picture-studio-btn picture-studio-apply-btn';
-    apply.textContent='Apply';
-    apply.addEventListener('click',_apply);
-    footer.appendChild(apply);
-    _root.appendChild(footer);
+    _root.appendChild(_editPanel);
 
     _modal.appendChild(_root);
     _modal.addEventListener('click',function(e){
@@ -191,45 +222,180 @@ const PictureStudio=(function(){
       if(e.target===_modal) _cancel();
     });
     document.body.appendChild(_modal);
+    _refreshBgControls();
   }
 
-  function _buildToolGroup(parent,label,buttons){
-    const g=document.createElement('div');
-    g.className='picture-studio-tool-group';
-    const lbl=document.createElement('div');
-    lbl.className='picture-studio-tool-group-label';
-    lbl.textContent=label;
-    g.appendChild(lbl);
+  // Build one big tool tile — icon on top, label below, optional
+  // hold-to-preview behaviour for the Peek Original tile.
+  function _buildTile(parent,glyph,label,onClick,opts){
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='picture-studio-tile';
+    const g=document.createElement('span');
+    g.className='picture-studio-tile-icon';
+    g.textContent=glyph||'';
+    btn.appendChild(g);
+    const t=document.createElement('span');
+    t.className='picture-studio-tile-label';
+    t.textContent=label||'';
+    btn.appendChild(t);
+    if(opts && opts.hold){
+      // Press-and-hold to peek the pristine original.
+      btn.addEventListener('mousedown',function(){ _state.showOriginal=true; _render(); btn.classList.add('active'); });
+      const stop=function(){ if(_state.showOriginal){ _state.showOriginal=false; _render(); btn.classList.remove('active'); } };
+      btn.addEventListener('mouseup',stop);
+      btn.addEventListener('mouseleave',stop);
+      btn.addEventListener('touchstart',function(){ _state.showOriginal=true; _render(); btn.classList.add('active'); });
+      btn.addEventListener('touchend',stop);
+    }else if(typeof onClick==='function'){
+      btn.addEventListener('click',onClick);
+    }
+    parent.appendChild(btn);
+    return btn;
+  }
+
+  // -------- Sub-panels (one per tool) -------------------------------
+  function _buildBgSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','bg');
+    const intro=document.createElement('p');
+    intro.className='picture-studio-subpanel-hint';
+    intro.textContent="Tap Remove and I'll try to erase the background.";
+    p.appendChild(intro);
     const row=document.createElement('div');
-    row.className='picture-studio-tool-row';
-    buttons.forEach(function(b){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='picture-studio-tool-btn';
-      if(b.toggleKey) btn.setAttribute('data-toggle',b.toggleKey);
-      const glyph=document.createElement('span');
-      glyph.className='picture-studio-tool-glyph';
-      glyph.textContent=b.glyph||'';
-      btn.appendChild(glyph);
-      const text=document.createElement('span');
-      text.className='picture-studio-tool-label';
-      text.textContent=b.label||'';
-      btn.appendChild(text);
-      if(b.hold){
-        // Before / After — hold to peek the original.
-        btn.addEventListener('mousedown',function(){ _state.showOriginal=true; _render(); });
-        btn.addEventListener('mouseup',function(){ _state.showOriginal=false; _render(); });
-        btn.addEventListener('mouseleave',function(){ _state.showOriginal=false; _render(); });
-        btn.addEventListener('touchstart',function(){ _state.showOriginal=true; _render(); });
-        btn.addEventListener('touchend',function(){ _state.showOriginal=false; _render(); });
-      }else if(typeof b.click==='function'){
-        btn.addEventListener('click',b.click);
-      }
-      row.appendChild(btn);
+    row.className='picture-studio-subpanel-row';
+    _bgRemoveBtn=document.createElement('button');
+    _bgRemoveBtn.type='button';
+    _bgRemoveBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
+    _bgRemoveBtn.textContent='✨ Remove Background';
+    _bgRemoveBtn.addEventListener('click',_startBgRemoval);
+    row.appendChild(_bgRemoveBtn);
+    _bgUndoBtn=document.createElement('button');
+    _bgUndoBtn.type='button';
+    _bgUndoBtn.className='picture-studio-subpanel-btn';
+    _bgUndoBtn.textContent='↩ Undo';
+    _bgUndoBtn.addEventListener('click',_undoBgRemoval);
+    row.appendChild(_bgUndoBtn);
+    p.appendChild(row);
+    _bgStatusEl=document.createElement('div');
+    _bgStatusEl.className='picture-studio-subpanel-status';
+    _bgStatusEl.textContent='';
+    p.appendChild(_bgStatusEl);
+    return p;
+  }
+  function _buildFlipSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','flip');
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Turn or flip your picture.';
+    p.appendChild(hint);
+    const row=document.createElement('div');
+    row.className='picture-studio-subpanel-row';
+    const mk=function(label,glyph,onClick){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-subpanel-btn';
+      const g=document.createElement('span');
+      g.className='picture-studio-subpanel-btn-glyph';
+      g.textContent=glyph;
+      b.appendChild(g);
+      const t=document.createElement('span');
+      t.textContent=label;
+      b.appendChild(t);
+      b.addEventListener('click',onClick);
+      row.appendChild(b);
+    };
+    mk('Turn Left','↺',function(){ _state.rotation=(_state.rotation+270)%360; _render(); });
+    mk('Turn Right','↻',function(){ _state.rotation=(_state.rotation+90)%360; _render(); });
+    mk('Flip ↔','↔',function(){ _state.flipH=!_state.flipH; _render(); });
+    p.appendChild(row);
+    return p;
+  }
+  function _buildZoomSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','zoom');
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Make your picture bigger or smaller.';
+    p.appendChild(hint);
+    const row=document.createElement('div');
+    row.className='picture-studio-subpanel-row';
+    const mk=function(label,glyph,onClick){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-subpanel-btn';
+      const g=document.createElement('span');
+      g.className='picture-studio-subpanel-btn-glyph';
+      g.textContent=glyph;
+      b.appendChild(g);
+      const t=document.createElement('span');
+      t.textContent=label;
+      b.appendChild(t);
+      b.addEventListener('click',onClick);
+      row.appendChild(b);
+    };
+    mk('Bigger','🔍+',function(){ _setZoom(_state.zoom*1.15); });
+    mk('Smaller','🔍−',function(){ _setZoom(_state.zoom/1.15); });
+    mk('Fit','▭',function(){ _state.zoom=1; _state.panX=0; _state.panY=0; _render(); });
+    p.appendChild(row);
+    return p;
+  }
+  function _buildResetSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','reset');
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Undo every change and start over on this picture?';
+    p.appendChild(hint);
+    const row=document.createElement('div');
+    row.className='picture-studio-subpanel-row';
+    const yes=document.createElement('button');
+    yes.type='button';
+    yes.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-danger';
+    yes.textContent='Yes, start over';
+    yes.addEventListener('click',function(){
+      const keepMode=_state.mode;
+      _state=Object.assign({},DEFAULT_STATE,{mode:keepMode});
+      _bgRemovedImg=null;
+      _bgRemovedDataURL=null;
+      if(_bgStatusEl) _bgStatusEl.textContent='';
+      _refreshBgControls();
+      if(_brightenTile) _brightenTile.classList.remove('active');
+      _toggleActiveTool(null);
+      _render();
     });
-    g.appendChild(row);
-    parent.appendChild(g);
-    return g;
+    row.appendChild(yes);
+    p.appendChild(row);
+    return p;
+  }
+
+  // -------- View + active-tool state --------------------------------
+  function _setView(v){
+    _view=v;
+    if(_root) _root.setAttribute('data-view',v);
+    // Any active sub-panel closes when returning to result view.
+    if(v==='result') _toggleActiveTool(null);
+    // Re-render after CSS-driven layout change in case the stage size
+    // changed (the tile toolbar/sub-panels take real vertical room).
+    setTimeout(function(){ if(_origImg) _render(); },30);
+  }
+  // Click a tile to open its sub-panel; click the SAME tile again to
+  // close it; click a different tile to switch. `null` closes any open
+  // sub-panel and clears every tile's active state.
+  function _toggleActiveTool(tool){
+    if(_activeTool===tool) tool=null;
+    _activeTool=tool;
+    if(_root) _root.setAttribute('data-active-tool',tool||'');
+    if(_tileButtons){
+      ['bg','flip','zoom','reset'].forEach(function(k){
+        if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
+      });
+    }
   }
 
   function _setZoom(z){
@@ -548,6 +714,20 @@ const PictureStudio=(function(){
     _onCancel=options.onCancel||null;
     _state=Object.assign({},DEFAULT_STATE,{mode:options.defaultMode||'fit'});
     _refreshToggles();
+    // Always start on Result View for a fresh open, regardless of what
+    // the modal was on when it was last closed.
+    _view='result';
+    _activeTool=null;
+    if(_root){
+      _root.setAttribute('data-view','result');
+      _root.setAttribute('data-active-tool','');
+    }
+    if(_tileButtons){
+      Object.keys(_tileButtons).forEach(function(k){
+        if(_tileButtons[k]) _tileButtons[k].classList.remove('active');
+      });
+    }
+    if(_bgStatusEl) _bgStatusEl.textContent='';
     _modal.classList.remove('hidden');
     // Focus trap minimal — escape closes.
     document.addEventListener('keydown',_onKeyDown);
@@ -556,6 +736,7 @@ const PictureStudio=(function(){
     // durable vihu-asset: reference), (c) a File.
     if(input instanceof HTMLImageElement){
       _origImg=input;
+      _refreshBgControls();
       _render();
     }else if(typeof input==='string'){
       const loadImg=function(src){
@@ -569,7 +750,7 @@ const PictureStudio=(function(){
         // SecurityError. Harmless for the plain-string/data: fallback
         // path below, which also calls this same function.
         img.crossOrigin='anonymous';
-        img.onload=function(){ _origImg=img; _render(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
         img.src=src;
       };
       // Platform Hardening — Draft Asset Architecture, Phase C. `input`
@@ -591,7 +772,7 @@ const PictureStudio=(function(){
       const reader=new FileReader();
       reader.onload=function(ev){
         const img=new Image();
-        img.onload=function(){ _origImg=img; _render(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
         img.src=ev.target.result;
       };
       reader.readAsDataURL(input);
@@ -630,6 +811,21 @@ const PictureStudio=(function(){
     _bgRemovedDataURL=null;
     _bgBusy=false;
     _drag=null;
+    // Reset view/tool state so a re-open starts cleanly on Result View.
+    // Otherwise closing while a tile is active leaves stale .active
+    // classes and a lingering data-active-tool for the next open.
+    _view='result';
+    _activeTool=null;
+    if(_root){
+      _root.setAttribute('data-view','result');
+      _root.setAttribute('data-active-tool','');
+    }
+    if(_tileButtons){
+      Object.keys(_tileButtons).forEach(function(k){
+        if(_tileButtons[k]) _tileButtons[k].classList.remove('active');
+      });
+    }
+    if(_bgStatusEl) _bgStatusEl.textContent='';
     _refreshBgControls();
     document.removeEventListener('keydown',_onKeyDown);
   }
