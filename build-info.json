@@ -4,6 +4,6 @@
   "task": "Rebuilt js/pictureStudio.js's modal structure: new state variables (_view, _activeTool, _tileButtons, _subPanels), _buildModal now composes Result View (big canvas + .picture-studio-cta-btn primary/secondary CTAs) and Edit View (6 .picture-studio-tile buttons in a .picture-studio-tool-grid + 4 .picture-studio-subpanel elements — bg, flip, resize, brighten). _setView(v) sets data-view on the root; _toggleActiveTool(tool) sets data-active-tool + .active on the matching tile. Brighten is handled inline in the tile click handler (no sub-panel). Peek Original uses mousedown/mouseup listeners for the hold gesture. Start Over clears _brightenActive + data-active-tool + all tile .active states. Back link calls _setView('result'). Save Picture calls _bake() + onApply then _hide(). open() and _hide() both reset _view='result'/_activeTool=null. Added _refreshBgControls() calls after every _origImg=img assignment (3 sites) closing the reported disabled-button bug. Extensive new CSS in css/style.css lines 4057-4365 covering both views, all tiles, sub-panels, footer, and dark-theme overrides. Cache-bust bumped from ?v=0307 to ?v=0308 across every script/link tag in root index.html.",
   "build": "0312",
   "buildDate": "2026-08-02",
-  "commit": "pending",
+  "commit": "e54af2f",
   "environment": "Release"
 }
