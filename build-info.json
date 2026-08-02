@@ -4,6 +4,6 @@
   "task": "Verified via a targeted bug_frame_over_art_verify.js (6/6) sampling 9 interior points at 70px inset from the Place edge (well beyond any frame band pixel) -- all 9 confirmed magenta (artwork), 0 green (ornament); regression sanity: the frame corner still shows green, so the ornament still paints where it should. Feature-1 regression suite feature1_frameimage_verify.js (18/18) and Bug-4 suite bug4_frame_ornament_image_verify.js (24/24) pass unchanged, confirming the shipped Frame Style = Image feature is fully preserved. museum_realfile_pixelhash.js produces SHA-256 e7b2a905613dbef3d2f9064211103d84762d7039d3bee404df90f4d90899b390, byte-identical to project history. Both goldenBuild.js suites PASS unchanged.",
   "build": "0308",
   "buildDate": "2026-08-02",
-  "commit": "0af73c5",
+  "commit": "e25e307",
   "environment": "Release"
 }

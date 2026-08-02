@@ -5,6 +5,6 @@
   "slice": "Verified via bug_frame_over_art_verify.js (6/6) sampling 9 interior points at 70px inset from the Place edge -- all magenta (artwork), 0 green (ornament); regression: frame corner still shows green. feature1_frameimage_verify.js (18/18) and bug4_frame_ornament_image_verify.js (24/24) pass unchanged. Both goldenBuild.js suites PASS unchanged.",
   "build": "0150",
   "buildDate": "2026-08-02",
-  "commit": "0af73c5",
+  "commit": "e25e307",
   "environment": "Release"
 }
