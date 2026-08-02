@@ -35,7 +35,14 @@ const PictureStudio=(function(){
     panY:0,         // pan in stage pixels
     enhance:false,
     mode:'fit',     // 'fit' | 'fill' for downstream image holder
-    showOriginal:false
+    showOriginal:false,
+    // Redesign Ship A — Before/After slider position (0..100). When
+    // background removal is applied AND this slider is between 0 and
+    // 100 exclusive, _render() draws the original on the left portion
+    // and the background-removed result on the right portion, with a
+    // hairline divider at the split. At 0, shows only the original;
+    // at 100 (default), shows only the removed-background result.
+    beforeAfterPct:100
   };
 
   // Auto Enhance is intentionally subtle so the original always reads.
@@ -72,6 +79,14 @@ const PictureStudio=(function(){
   let _resultPanel=null, _editPanel=null;
   let _tileButtons=null, _subPanels=null;
   let _brightenTile=null;
+  // Redesign Ship A — Before / After comparison slider inside the Remove
+  // Background sub-panel. Appears the moment _bgRemovedImg is set (see
+  // _onBgResult). Two overlapping canvases + a range input drive a
+  // clip-path reveal, exactly mirroring the standalone
+  // tools/background-remover/'s own updateBeforeAfterClip() pattern.
+  let _baCompareWrap=null, _baStage=null;
+  let _baCanvasBefore=null, _baCanvasAfter=null;
+  let _baSlider=null, _baHint=null;
 
   // Whichever image the rotate/flip/enhance/bake pipeline should treat
   // as its source. Background-removed if applied, else original.
@@ -123,15 +138,28 @@ const PictureStudio=(function(){
     header.appendChild(close);
     _root.appendChild(header);
 
-    // Stage (canvas preview) — persistent across both views
+    // Body wrapper — column layout in Result view (stage on top,
+    // result CTAs beneath); row layout in Edit view (stage on left,
+    // tools aside on right). The .picture-studio[data-view=...] rule
+    // in style.css drives which direction it takes on any given open.
+    const body=document.createElement('div');
+    body.className='picture-studio-body';
+
+    // Stage (canvas preview) — persistent across both views.
+    // Redesign Ship A — the stage now carries a checkerboard pattern
+    // (via CSS .checkerboard) instead of a flat dark fill, so a
+    // background-removed picture visibly reads as transparent rather
+    // than opaque black. The canvas itself is made transparent in CSS
+    // so the checkerboard shows through wherever the drawn image has
+    // alpha < 1.
     _stage=document.createElement('div');
-    _stage.className='picture-studio-stage';
+    _stage.className='picture-studio-stage checkerboard';
     _canvas=document.createElement('canvas');
     _canvas.className='picture-studio-canvas';
     _ctx=_canvas.getContext('2d');
     try{ _ctx.imageSmoothingEnabled=true; _ctx.imageSmoothingQuality='high'; }catch(e){}
     _stage.appendChild(_canvas);
-    _root.appendChild(_stage);
+    body.appendChild(_stage);
     _wireStageInteractions();
 
     // Result view — big CTAs beneath the canvas
@@ -156,14 +184,21 @@ const PictureStudio=(function(){
     makeBetter.addEventListener('click',function(){ _setView('edit'); });
     rActions.appendChild(makeBetter);
     _resultPanel.appendChild(rActions);
-    _root.appendChild(_resultPanel);
+    body.appendChild(_resultPanel);
 
-    // Edit view — tile toolbar + sub-panels + save/back footer
+    // Edit view — right-side tools aside (tile toolbar + sub-panels).
+    // Redesign Ship A — laid out on the right of the stage in Edit
+    // view (parity with the standalone tools/background-remover/
+    // .controls-panel.kids-controls layout the user's own governing
+    // request cited), rather than beneath the canvas as before. The
+    // save/back footer moves OUT of this panel to sit at the very
+    // bottom of the modal so it stays visible regardless of how tall
+    // the tools aside grows.
     _editPanel=document.createElement('div');
     _editPanel.className='picture-studio-edit-view';
     const editHint=document.createElement('p');
     editHint.className='picture-studio-edit-hint';
-    editHint.textContent='Tap a tool below.';
+    editHint.textContent='Tap a tool.';
     _editPanel.appendChild(editHint);
 
     const toolGrid=document.createElement('div');
@@ -196,7 +231,16 @@ const PictureStudio=(function(){
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
     _editPanel.appendChild(subWrap);
 
-    // Edit footer — Back to picture + Save
+    // Edit view mounts inside body as the right-side aside beside the
+    // stage; body is what actually goes into _root. Footer is a sibling
+    // of body (see below), never a child of _editPanel — so it stays
+    // pinned at the bottom of the modal regardless of tools-aside height.
+    body.appendChild(_editPanel);
+    _root.appendChild(body);
+
+    // Edit footer — Back to picture + Save. Sits at modal bottom, shown
+    // only in Edit view via .picture-studio[data-view=result] .picture-
+    // studio-edit-footer { display:none } in style.css.
     const editFooter=document.createElement('div');
     editFooter.className='picture-studio-edit-footer';
     const back=document.createElement('button');
@@ -211,9 +255,7 @@ const PictureStudio=(function(){
     save.textContent='💾 Save Picture';
     save.addEventListener('click',_apply);
     editFooter.appendChild(save);
-    _editPanel.appendChild(editFooter);
-
-    _root.appendChild(_editPanel);
+    _root.appendChild(editFooter);
 
     _modal.appendChild(_root);
     _modal.addEventListener('click',function(e){
@@ -282,6 +324,34 @@ const PictureStudio=(function(){
     _bgStatusEl.className='picture-studio-subpanel-status';
     _bgStatusEl.textContent='';
     p.appendChild(_bgStatusEl);
+    // Before / After slider — mirrors the standalone tools/background-
+    // remover/'s own beforeAfter slider. Hidden until a background
+    // removal has actually landed (see _refreshBgControls); dragging
+    // it drives _state.beforeAfterPct which _render() reads to draw
+    // the original on the left and the bg-removed result on the right,
+    // separated by a hairline. At 100 (default), only the result shows.
+    _baCompareWrap=document.createElement('div');
+    _baCompareWrap.className='picture-studio-ba-compare hidden';
+    const baLabel=document.createElement('div');
+    baLabel.className='picture-studio-ba-label';
+    baLabel.textContent='Before ⇄ After';
+    _baCompareWrap.appendChild(baLabel);
+    _baSlider=document.createElement('input');
+    _baSlider.type='range';
+    _baSlider.min='0';
+    _baSlider.max='100';
+    _baSlider.value=String(_state.beforeAfterPct);
+    _baSlider.className='picture-studio-ba-slider';
+    _baSlider.addEventListener('input',function(){
+      _state.beforeAfterPct=parseInt(_baSlider.value,10);
+      _render();
+    });
+    _baCompareWrap.appendChild(_baSlider);
+    _baHint=document.createElement('div');
+    _baHint.className='picture-studio-ba-hint';
+    _baHint.textContent='Drag to compare.';
+    _baCompareWrap.appendChild(_baHint);
+    p.appendChild(_baCompareWrap);
     return p;
   }
   function _buildFlipSubPanel(){
@@ -547,6 +617,7 @@ const PictureStudio=(function(){
     _state.panX=0;
     _state.panY=0;
     _state.zoom=1;
+    _state.beforeAfterPct=100;
     if(_bgStatusEl) _bgStatusEl.textContent='';
     _refreshBgControls();
     _render();
@@ -558,6 +629,15 @@ const PictureStudio=(function(){
     }
     if(_bgUndoBtn){
       _bgUndoBtn.disabled=_bgBusy||!_bgRemovedImg;
+    }
+    // Before/After slider is only meaningful once a background removal
+    // has actually landed — otherwise there's nothing to compare against.
+    if(_baCompareWrap){
+      _baCompareWrap.classList.toggle('hidden',!_bgRemovedImg);
+      if(!_bgRemovedImg){
+        _state.beforeAfterPct=100;
+        if(_baSlider) _baSlider.value='100';
+      }
     }
   }
 
@@ -624,30 +704,71 @@ const PictureStudio=(function(){
       _canvas.height=Math.round(s.h);
     }
     const cw=_canvas.width, ch=_canvas.height;
-    _ctx.save();
+    // Redesign Ship A — the canvas is now transparent so the underlying
+    // .checkerboard stage pattern reads through wherever the drawn
+    // image itself has alpha < 1. No flat fill here; a pure clearRect
+    // is enough to reset between frames.
     _ctx.clearRect(0,0,cw,ch);
-    // Soft checker so transparent pictures still read.
-    _ctx.fillStyle='#1a1d24';
-    _ctx.fillRect(0,0,cw,ch);
 
     const fit=_fitScale();
     const z=fit*_state.zoom;
-    if(_state.enhance && !_state.showOriginal){
-      _ctx.filter=ENHANCE_FILTER;
+    // Before / After compare — when bg removal is applied AND the
+    // slider is anywhere between 0 and 100 exclusive, draw the ORIGINAL
+    // on the left portion (0..pct) and the RESULT on the right portion
+    // (pct..100). At 0 the user sees only the original; at 100 (the
+    // default) they see only the result. Uses ctx.clip() rects rather
+    // than compositing tricks so both halves share the same fit/pan/
+    // rotate/flip/enhance pipeline byte-for-byte with a plain render.
+    const compareActive=!!_bgRemovedImg && _state.beforeAfterPct>0 && _state.beforeAfterPct<100 && !_state.showOriginal;
+    const pctX=Math.round(cw*(_state.beforeAfterPct/100));
+
+    function _paintOne(sourceImg){
+      _ctx.save();
+      if(_state.enhance && !_state.showOriginal){
+        _ctx.filter=ENHANCE_FILTER;
+      }
+      _ctx.translate(cw/2+_state.panX, ch/2+_state.panY);
+      _ctx.rotate(_state.rotation*Math.PI/180);
+      if(_state.flipH && !_state.showOriginal) _ctx.scale(-1,1);
+      const iw=sourceImg.width, ih=sourceImg.height;
+      _ctx.drawImage(sourceImg, -iw*z/2, -ih*z/2, iw*z, ih*z);
+      _ctx.restore();
     }
-    _ctx.translate(cw/2+_state.panX, ch/2+_state.panY);
-    _ctx.rotate(_state.rotation*Math.PI/180);
-    if(_state.flipH && !_state.showOriginal) _ctx.scale(-1,1);
-    // While holding Before/After, always show the pristine original,
-    // even if background removal is currently applied. This is the one
-    // place the "peek what you started from" gesture must genuinely
-    // bypass every downstream transform, including bg removal. Sizing
-    // reads from whichever image will actually be drawn — bg removal
-    // may crop out empty margins, so img.width ≠ _origImg.width.
-    const drawImg=_state.showOriginal?_origImg:img;
-    const iw=drawImg.width, ih=drawImg.height;
-    _ctx.drawImage(drawImg, -iw*z/2, -ih*z/2, iw*z, ih*z);
-    _ctx.restore();
+
+    if(compareActive){
+      // Left portion — pristine original.
+      _ctx.save();
+      _ctx.beginPath();
+      _ctx.rect(0,0,pctX,ch);
+      _ctx.clip();
+      _paintOne(_origImg);
+      _ctx.restore();
+      // Right portion — background-removed result.
+      _ctx.save();
+      _ctx.beginPath();
+      _ctx.rect(pctX,0,cw-pctX,ch);
+      _ctx.clip();
+      _paintOne(img);
+      _ctx.restore();
+      // Hairline divider so the split is genuinely visible even when
+      // the two halves happen to render as very similar pixel content.
+      _ctx.save();
+      _ctx.strokeStyle='#FFCB45';
+      _ctx.lineWidth=2;
+      _ctx.beginPath();
+      _ctx.moveTo(pctX,0);
+      _ctx.lineTo(pctX,ch);
+      _ctx.stroke();
+      _ctx.restore();
+    }else{
+      // Plain render. While holding Before/After (peek gesture), always
+      // show the pristine original even if background removal is
+      // currently applied. Sizing reads from whichever image will
+      // actually be drawn — bg removal may crop empty margins, so
+      // img.width ≠ _origImg.width.
+      const drawImg=_state.showOriginal?_origImg:img;
+      _paintOne(drawImg);
+    }
 
     // Small hint badge while the user holds Before / After.
     if(_state.showOriginal){

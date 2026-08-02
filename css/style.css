@@ -4113,24 +4113,66 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
 }
 .picture-studio-close:hover{ background:rgba(0,0,0,0.08); }
 
+/* Redesign Ship A — body wraps the stage plus whichever view panel
+   (Result or Edit) is active. In Result mode body stacks vertically:
+   stage on top, result-view underneath. In Edit mode body flips to a
+   row: stage on the left, edit-view as a right-side aside — mirroring
+   tools/background-remover/'s own layout. */
+.picture-studio-body{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.picture-studio[data-view="edit"] .picture-studio-body{
+  flex-direction:row;
+}
+
 .picture-studio-stage{
   flex:1;
   min-height:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  background:#1a1d24;
   padding:16px;
+  /* Redesign Ship A — the stage background is now the checkerboard
+     pattern via the shared .checkerboard class on the stage element
+     itself (see below), so transparent pixels in the drawn image read
+     as transparency. No flat dark fill here. */
 }
 .picture-studio-canvas{
   width:100%;
   height:100%;
   cursor:grab;
   border-radius:8px;
-  background:#0e1015;
   display:block;
+  /* Transparent — the checkerboard pattern behind the canvas shows
+     through wherever the drawn image has alpha < 1. */
+  background:transparent;
 }
 .picture-studio-canvas:active{ cursor:grabbing; }
+
+/* Redesign Ship A — the classic transparency checkerboard, ported
+   directly from tools/background-remover/ so a Story Author instantly
+   recognises "this looks like the standalone background-remover I
+   already know." Two overlapping 45°/-45° gradients at 25%/75% stops
+   with a 20px tile and a 10px offset produce the interlocking pattern.
+   `--checker-a`/`--checker-b` fall back to sensible defaults so the
+   pattern renders even in a theme that never defined them. */
+.checkerboard{
+  --checker-a:#d8d5cc;
+  --checker-b:#eeece4;
+  background-color:var(--checker-b);
+  background-image:
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%, transparent 75%, var(--checker-a) 75%, var(--checker-a)),
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%, transparent 75%, var(--checker-a) 75%, var(--checker-a));
+  background-size:20px 20px;
+  background-position:0 0, 10px 10px;
+}
+body.dark-theme .checkerboard{
+  --checker-a:#35332c;
+  --checker-b:#1e1c17;
+}
 
 /* Two-view flow — Result View shows on open with big Looks Great /
    Make It Better CTAs; Edit View swaps in a tile toolbar + sub-panels.
@@ -4147,13 +4189,21 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
   border-top:1px solid var(--line);
   background:var(--panel);
 }
+/* Edit view sits as a right-side aside beside the stage — matching
+   tools/background-remover/'s own right-column layout. Fixed 320px
+   wide so a Story Author's controls stay in a predictable, familiar
+   spot regardless of the modal's own varying width. */
 .picture-studio[data-view="edit"] .picture-studio-edit-view{
   display:flex;
   flex-direction:column;
   gap:10px;
-  padding:12px 20px 16px;
-  border-top:1px solid var(--line);
+  padding:14px 16px;
+  border-left:1px solid var(--line);
   background:var(--panel);
+  width:320px;
+  flex:0 0 320px;
+  min-height:0;
+  overflow-y:auto;
 }
 
 /* Result view — headline + two big CTAs */
@@ -4326,15 +4376,52 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
   min-height:14px;
 }
 
-/* Edit footer — Back link + Save Picture */
+/* Edit footer — Back link + Save Picture. Sits at the very bottom of
+   the modal (outside body), so it stays anchored regardless of whether
+   the edit view is on the right (edit mode) or stacked below (would
+   never happen — footer only shows in edit mode). */
 .picture-studio-edit-footer{
-  display:flex;
+  display:none;
   justify-content:space-between;
   align-items:center;
   gap:10px;
-  margin-top:4px;
-  padding-top:10px;
+  padding:12px 20px;
   border-top:1px solid var(--line);
+  background:var(--panel);
+}
+.picture-studio[data-view="edit"] .picture-studio-edit-footer{
+  display:flex;
+}
+
+/* Redesign Ship A — Before/After compare slider. Sits inside the
+   Remove Background sub-panel, shown only after a real bg-removal has
+   completed (`.hidden` toggled off by _refreshBgControls). Drives
+   _state.beforeAfterPct which _render() reads to draw the original on
+   the left portion and the removed-background result on the right,
+   with a hairline gold divider at the split. */
+.picture-studio-ba-compare{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+  padding-top:10px;
+  border-top:1px dashed var(--line);
+}
+.picture-studio-ba-compare.hidden{ display:none; }
+.picture-studio-ba-label{
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-secondary);
+}
+.picture-studio-ba-slider{
+  width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:0;
+}
+.picture-studio-ba-hint{
+  font-size:11px;
+  color:var(--text-dim, #888);
 }
 .picture-studio-back-link{
   padding:8px 14px;
