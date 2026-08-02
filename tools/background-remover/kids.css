@@ -340,6 +340,40 @@ html, body {
 .brush-dot-medium { width: 16px; height: 16px; }
 .brush-dot-large { width: 24px; height: 24px; }
 
+/* Image Studio — Turn/Flip sub-panel. Mirrors .brush-size-choices'
+   layout for consistency; each choice is a momentary action button
+   (no active state — flipping/rotating always applies immediately),
+   so no is-active rule. */
+.turn-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.turn-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.turn-choice:hover {
+  background: var(--kid-accent);
+  border-color: var(--kid-accent);
+  color: #fff;
+}
+.turn-glyph {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
 .start-over-link {
   display: block;
   margin: 12px auto 0;

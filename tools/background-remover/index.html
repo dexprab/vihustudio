@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>✨ Drawing Magic</title>
+<title>✨ Image Studio</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="kids.css">
@@ -13,12 +13,12 @@
 <div class="app" id="app">
 
   <header class="app-header" id="appHeader">
-    <h1>✨ Drawing Magic</h1>
-    <p class="app-subtitle">Let's make your drawing come alive!</p>
+    <h1>✨ Image Studio</h1>
+    <p class="app-subtitle">Let's make your picture just right!</p>
   </header>
 
   <!-- ---- Welcome screen (visible until a picture is added) ---- -->
-  <section class="dropzone" id="dropzone" tabindex="0" aria-label="Add a picture of your drawing">
+  <section class="dropzone" id="dropzone" tabindex="0" aria-label="Add a picture">
     <div class="dropzone-inner">
       <svg class="dropzone-icon" width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 16V4M12 4L7 9M12 4L17 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -32,30 +32,30 @@
     </div>
   </section>
 
-  <!-- ---- Magic processing overlay (shown while the drawing comes alive) ---- -->
+  <!-- ---- Magic processing overlay (shown while the picture is prepared) ---- -->
   <div class="magic-overlay" id="magicOverlay" hidden>
     <div class="magic-sparkle" aria-hidden="true">✨</div>
-    <p class="magic-message" id="magicMessage">✨ Looking at your drawing...</p>
+    <p class="magic-message" id="magicMessage">✨ Looking at your picture...</p>
   </div>
 
   <!-- ---- Workspace (visible once a picture has been added) ---- -->
   <section class="workspace" id="workspace" hidden>
 
-    <button type="button" class="new-drawing-btn" id="resetBtn">🔄 New Drawing</button>
+    <button type="button" class="new-drawing-btn" id="resetBtn">🔄 New Picture</button>
 
     <!-- ---- Result screen: shown right after the magic finishes ---- -->
     <div class="result-view" id="resultView">
-      <h2 class="result-headline">🎉 Your drawing came to life!</h2>
+      <h2 class="result-headline">🎉 Your picture is ready!</h2>
 
       <div class="before-after" id="beforeAfter">
         <div class="before-after-stage checkerboard" id="beforeAfterStage">
           <canvas id="baCanvasBefore"></canvas>
           <canvas id="baCanvasAfter"></canvas>
-          <span class="ba-label ba-label-before">My Drawing</span>
-          <span class="ba-label ba-label-after">My Magic Drawing</span>
+          <span class="ba-label ba-label-before">Before</span>
+          <span class="ba-label ba-label-after">After</span>
         </div>
         <input type="range" id="baSlider" class="ba-slider" min="0" max="100" value="50" aria-label="Slide to compare">
-        <p class="ba-hint">👉 Slide to see the paper disappear!</p>
+        <p class="ba-hint">👉 Slide to see the background disappear!</p>
       </div>
 
       <div class="result-actions">
@@ -92,7 +92,7 @@
 
         <div class="preview-grid" id="previewGrid">
           <div class="preview-pane" id="originalPane">
-            <span class="preview-label">My Drawing</span>
+            <span class="preview-label">Original</span>
             <div class="preview-viewport" id="originalViewport">
               <div class="preview-zoom-target" id="originalZoomTarget">
                 <canvas id="originalCanvas"></canvas>
@@ -100,7 +100,7 @@
             </div>
           </div>
           <div class="preview-pane" id="processedPane">
-            <span class="preview-label">My Magic Drawing</span>
+            <span class="preview-label">Edited</span>
             <div class="preview-viewport checkerboard" id="processedViewport">
               <div class="preview-zoom-target" id="processedZoomTarget">
                 <canvas id="processedCanvas"></canvas>
@@ -138,6 +138,9 @@
           <button type="button" class="tool-btn" id="cropToggleBtn" aria-pressed="false">
             <span class="tool-icon">✂️</span><span class="tool-label">Trim Picture</span>
           </button>
+          <button type="button" class="tool-btn" id="turnToggleBtn" aria-pressed="false">
+            <span class="tool-icon">🔄</span><span class="tool-label">Turn / Flip</span>
+          </button>
           <button type="button" class="tool-btn" id="cleanupUndoBtn" disabled>
             <span class="tool-icon">↶</span><span class="tool-label">Oops!</span>
           </button>
@@ -162,6 +165,25 @@
           <button type="button" class="start-over-link" id="cleanupResetBtn">Start over on this picture</button>
         </div>
 
+        <!-- Shown while Turn / Flip is active -->
+        <div class="sub-panel" id="turnPanel" hidden>
+          <p class="sub-panel-label">Turn or flip your picture.</p>
+          <div class="turn-choices">
+            <button type="button" class="turn-choice" id="turnLeftBtn" aria-label="Turn left">
+              <span class="turn-glyph" aria-hidden="true">↺</span>Turn Left
+            </button>
+            <button type="button" class="turn-choice" id="turnRightBtn" aria-label="Turn right">
+              <span class="turn-glyph" aria-hidden="true">↻</span>Turn Right
+            </button>
+            <button type="button" class="turn-choice" id="flipHBtn" aria-label="Flip left–right">
+              <span class="turn-glyph" aria-hidden="true">↔</span>Flip ↔
+            </button>
+            <button type="button" class="turn-choice" id="flipVBtn" aria-label="Flip up–down">
+              <span class="turn-glyph" aria-hidden="true">↕</span>Flip ↕
+            </button>
+          </div>
+        </div>
+
         <!-- Shown while Trim Picture is active -->
         <div class="sub-panel" id="cropPanel" hidden>
           <p class="sub-panel-label">Drag a box around a part of your picture.</p>
@@ -172,7 +194,7 @@
           <button type="button" class="start-over-link" id="cropResetBtn" disabled>Undo Trim</button>
         </div>
 
-        <button type="button" class="btn btn-primary btn-big btn-save" id="downloadBtn">💾 Save My Drawing</button>
+        <button type="button" class="btn btn-primary btn-big btn-save" id="downloadBtn">💾 Save Picture</button>
 
         <!-- Kept in the DOM so the existing pipeline logic can still read
              them, but never shown to the child — see kids.css. -->
@@ -197,7 +219,7 @@
 </div>
 
 <!-- Build / release footer — populated at runtime by js/buildInfo.js. -->
-<footer id="buildInfoFooter" class="build-info-footer">Drawing Magic • Development</footer>
+<footer id="buildInfoFooter" class="build-info-footer">Image Studio • Development</footer>
 
 <script type="module" src="app.js"></script>
 <script src="js/buildInfo.js"></script>

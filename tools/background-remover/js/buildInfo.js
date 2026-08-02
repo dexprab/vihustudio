@@ -1,4 +1,4 @@
-// js/buildInfo.js — Background Remover dev build indicator.
+// js/buildInfo.js — Image Studio dev build indicator.
 //
 // Mirrors the root VihuStudio app's build-info.json + js/buildInfo.js
 // pattern (also used by tools/world-builder and tools/world-builder-v2):
@@ -12,7 +12,7 @@
 // module-loading requirements.
 
 (function () {
-  var TOOL_NAME = 'Background Remover';
+  var TOOL_NAME = 'Image Studio';
 
   function setFooterText(text) {
     try {

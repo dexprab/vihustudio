@@ -18,6 +18,7 @@ import { debounce, downloadBlob, formatBytes, formatDimensions, stripExtension }
 import { encodePixelBufferToPNG } from './js/pngEncoder.js';
 import { eraseCircle, restoreCircle, eraseRect } from './js/cleanupBrush.js';
 import { cropPixelBuffer } from './js/cropper.js';
+import { rotate90, rotate270, flipHorizontal, flipVertical } from './js/transform.js';
 import { drawOverlay, drawDifference } from './js/analysisView.js';
 
 var els = {
@@ -76,6 +77,14 @@ var els = {
   cropResetBtn: document.getElementById('cropResetBtn'),
   cropSelectionBox: document.getElementById('cropSelectionBox'),
   cropPanel: document.getElementById('cropPanel'),
+
+  // Image Studio — Turn/Flip sub-panel (Feature 1 Phase 1).
+  turnToggleBtn: document.getElementById('turnToggleBtn'),
+  turnPanel: document.getElementById('turnPanel'),
+  turnLeftBtn: document.getElementById('turnLeftBtn'),
+  turnRightBtn: document.getElementById('turnRightBtn'),
+  flipHBtn: document.getElementById('flipHBtn'),
+  flipVBtn: document.getElementById('flipVBtn'),
 
   downloadBtn: document.getElementById('downloadBtn'),
   resetBtn: document.getElementById('resetBtn'),
@@ -258,6 +267,7 @@ function init() {
 
   initCleanupBrush();
   initManualCrop();
+  initTurnFlip();
   initBrushSizeChoices();
   initScreenFlow();
   initKidZoomSlider();
@@ -854,6 +864,49 @@ function updateCropButtons() {
   els.cropResetBtn.disabled = !state.preCropSnapshot;
 }
 
+// ---- Turn / Flip -----------------------------------------------------
+//
+// Image Studio (Feature 1 Phase 1) — each button transforms the current
+// workingBuffer in place, mirroring how applyManualCrop mutates it. No
+// snapshot/undo stack: flip is self-inverse (click twice), and a 90°
+// rotation is undone by three more clicks (or by the opposite arrow).
+//
+// cleanupHistory is CLEARED, matching resetCleanup(): a rotation/flip
+// invalidates every pixel index the recorded strokes reference, so
+// keeping them around would let Oops! overwrite the wrong pixels of a
+// now-transformed buffer. This is the same reason a fresh automatic
+// run wipes manual edits (see handleWorkerMessage).
+
+function initTurnFlip() {
+  if (!els.turnToggleBtn) return;
+  els.turnToggleBtn.addEventListener('click', function () {
+    setActiveTool(state.activeTool === 'turn' ? 'pan' : 'turn');
+  });
+  if (els.turnLeftBtn)  els.turnLeftBtn.addEventListener('click',  function () { applyTransform(rotate270); });
+  if (els.turnRightBtn) els.turnRightBtn.addEventListener('click', function () { applyTransform(rotate90);  });
+  if (els.flipHBtn)     els.flipHBtn.addEventListener('click',     function () { applyTransform(flipHorizontal); });
+  if (els.flipVBtn)     els.flipVBtn.addEventListener('click',     function () { applyTransform(flipVertical); });
+}
+
+function applyTransform(fn) {
+  if (!state.workingBuffer) return;
+  state.workingBuffer = fn(state.workingBuffer);
+  // Any brush stroke / crop snapshot is now indexed against a buffer
+  // that no longer exists — reset both to keep the tool state
+  // consistent, matching resetCleanup()'s own contract.
+  state.cleanupHistory = [];
+  state.cleanupRedoStack = [];
+  state.strokeChanges = null;
+  state.preCropSnapshot = null;
+  updateCleanupButtons();
+  updateCropButtons();
+  drawPixelBuffer(els.processedCanvas, state.workingBuffer);
+  zoomProcessed.setContentSize(state.workingBuffer.width, state.workingBuffer.height);
+  zoomProcessed.fitToViewport();
+  if (state.lastMeta) updateMeta(state.lastMeta);
+  if (state.viewMode === 'overlay' || state.viewMode === 'difference') renderAnalysisView();
+}
+
 // ---- Tool switching (pan / brush / crop share one viewport) -----------
 
 function setActiveTool(tool) {
@@ -863,6 +916,7 @@ function setActiveTool(tool) {
   els.cleanupToggleBtn.setAttribute('aria-pressed', String(tool === 'brush'));
   els.restoreToggleBtn.setAttribute('aria-pressed', String(tool === 'restore'));
   els.cropToggleBtn.setAttribute('aria-pressed', String(tool === 'crop'));
+  if (els.turnToggleBtn) els.turnToggleBtn.setAttribute('aria-pressed', String(tool === 'turn'));
   els.processedViewport.classList.toggle('is-brush-active', isPaintTool);
   els.processedViewport.classList.toggle('is-restore-active', tool === 'restore');
   els.processedViewport.classList.toggle('is-crop-active', tool === 'crop');
@@ -886,6 +940,7 @@ function setActiveTool(tool) {
   // than assumed.
   if (els.brushSizePanel) els.brushSizePanel.hidden = !isPaintTool;
   if (els.cropPanel) els.cropPanel.hidden = tool !== 'crop';
+  if (els.turnPanel) els.turnPanel.hidden = tool !== 'turn';
 }
 
 // ---- Screen flow: Welcome -> Magic -> Result -> Make It Better --------
@@ -899,7 +954,7 @@ function setActiveTool(tool) {
 // single "magic" moment (rather than a repeating one) correct.
 
 var MAGIC_MESSAGES = [
-  '✨ Looking at your drawing...',
+  '✨ Looking at your picture...',
   '✨ Making the paper disappear...',
   '✨ Almost ready...'
 ];
