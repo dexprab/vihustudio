@@ -1,4 +1,4 @@
-// PictureStudio — Sprint 6.7.
+// PictureStudio — Sprint 6.7 · Feature 1 Phase 2 (Image Studio).
 //
 // A temporary preparation workspace that appears whenever a child
 // uploads a picture. Picture Studio is NOT a permanent tab; it is a
@@ -15,9 +15,17 @@
 //     bitmap on Apply so the existing renderer path stays unchanged.
 //   * The output is { dataURL, imageView:{mode} } — the caller writes
 //     these onto the active slide and switches to the Card Designer.
-//   * The architecture is ready for future AI cleanup / background
-//     removal / colour restoration / upscaling: each would be a new
-//     toolbar group that contributes to the bake.
+//   * Feature 1 Phase 2 (BACKLOG.md line 16): background removal is
+//     now a real, reachable toolbar group here — the identical Web
+//     Worker pipeline the standalone Image Studio tool
+//     (tools/background-remover/) already established, invoked as an
+//     ES module Worker directly against the tool's own worker.js so
+//     the pipeline is genuinely shared, not duplicated. Result is a
+//     new "source image" the existing rotate/flip/crop/enhance stack
+//     draws from unchanged; Undo BG reverts to the original. The
+//     public open() API is untouched, so every one of the ~7 existing
+//     call sites across app.js/contextPanel.js/pageDesigner.js works
+//     with zero change.
 const PictureStudio=(function(){
   const DEFAULT_STATE={
     rotation:0,     // 0 / 90 / 180 / 270
@@ -38,9 +46,24 @@ const PictureStudio=(function(){
   let _modal=null, _root=null;
   let _stage=null, _canvas=null, _ctx=null;
   let _origImg=null;
+  // Feature 1 Phase 2 — the background-removed image, if the user has
+  // applied Remove Background. When set, _render()/_bake() draw from
+  // it instead of _origImg; the original stays reachable via Undo BG.
+  // The rotate/flip/crop/enhance stack keeps working unchanged because
+  // it always reads whichever image _activeImg() reports.
+  let _bgRemovedImg=null;
+  let _bgRemovedDataURL=null;
+  let _bgWorker=null;
+  let _bgJobId=0;
+  let _bgBusy=false;
+  let _bgStatusEl=null, _bgRemoveBtn=null, _bgUndoBtn=null;
   let _state=Object.assign({},DEFAULT_STATE);
   let _onApply=null, _onCancel=null;
   let _drag=null;
+
+  // Whichever image the rotate/flip/enhance/bake pipeline should treat
+  // as its source. Background-removed if applied, else original.
+  function _activeImg(){ return _bgRemovedImg||_origImg; }
 
   // -------- DOM build (lazy; reuses the same modal across opens) ----
   function _buildModal(){
@@ -55,11 +78,11 @@ const PictureStudio=(function(){
     header.className='picture-studio-header';
     const title=document.createElement('div');
     title.className='picture-studio-title';
-    title.textContent='📸 Picture Studio';
+    title.textContent='🖼️ Image Studio';
     header.appendChild(title);
     const sub=document.createElement('div');
     sub.className='picture-studio-subtitle';
-    sub.textContent='Get your picture ready for the page.';
+    sub.textContent='Get your picture ready — crop, rotate, flip, enhance, or remove its background.';
     header.appendChild(sub);
     const close=document.createElement('button');
     close.type='button';
@@ -103,6 +126,31 @@ const PictureStudio=(function(){
       {label:'Auto Enhance', glyph:'✨', click:function(){ _state.enhance=!_state.enhance; _refreshToggles(); _render(); }, toggleKey:'enhance'},
       {label:'Before / After', glyph:'👁', hold:true}
     ]);
+
+    // Background removal — the one genuinely new capability the
+    // standalone Image Studio tool (tools/background-remover/) already
+    // shipped and Phase 2 folds back into Studio. The Remove button
+    // ships the current source image (already respecting whatever
+    // rotate/flip the user has applied — see _bakeSourceForBg) to the
+    // tool's own ES module Worker, then swaps the result in as the new
+    // source for the rest of the rotate/flip/crop/enhance stack. Undo
+    // reverts to the pristine original.
+    const bgGroup=_buildToolGroup(toolbar,'Background',[
+      {label:'Remove', glyph:'🪄', click:_startBgRemoval},
+      {label:'Undo BG', glyph:'↩', click:_undoBgRemoval}
+    ]);
+    // Track the two buttons + a tiny status line so we can enable /
+    // disable / label them without re-querying the DOM each time.
+    const bgBtns=bgGroup?bgGroup.querySelectorAll('.picture-studio-tool-btn'):[];
+    if(bgBtns.length){
+      _bgRemoveBtn=bgBtns[0];
+      _bgUndoBtn=bgBtns[1];
+    }
+    _bgStatusEl=document.createElement('div');
+    _bgStatusEl.className='picture-studio-tool-status';
+    _bgStatusEl.textContent='';
+    if(bgGroup) bgGroup.appendChild(_bgStatusEl);
+    _refreshBgControls();
 
     _buildToolGroup(toolbar,'Show',[
       {label:'Fit',  glyph:'▭', click:function(){ _state.mode='fit'; _refreshToggles(); }, toggleKey:'mode:fit'},
@@ -181,11 +229,170 @@ const PictureStudio=(function(){
     });
     g.appendChild(row);
     parent.appendChild(g);
+    return g;
   }
 
   function _setZoom(z){
     _state.zoom=Math.max(0.5,Math.min(4,z));
     _render();
+  }
+
+  // -------- Background removal (Feature 1 Phase 2) ------------------
+  // Runs the standalone Image Studio tool's own ES module Worker
+  // pipeline directly — the tool's worker.js composes background
+  // detection / removal / feathering / auto-crop from its own
+  // sub-modules, so there's exactly one canonical implementation
+  // of "how removal works" and Studio invokes it verbatim.
+  function _bgWorkerUrl(){
+    // Resolve relative to this script tag's own location so it works
+    // whether Studio is served from repo root or a nested path in a
+    // future dev/preview environment. Same technique themeRepositoryClient
+    // already uses for its config file.
+    try{
+      const scripts=document.getElementsByTagName('script');
+      for(let i=0;i<scripts.length;i++){
+        const src=scripts[i].getAttribute('src')||'';
+        // Match with or without the ?v= cache-bust query.
+        if(src.indexOf('js/pictureStudio.js')!==-1){
+          return new URL('../tools/background-remover/js/worker.js', new URL(scripts[i].src, document.baseURI)).href;
+        }
+      }
+    }catch(e){}
+    // Fallback: assume Studio is at the repo root.
+    return 'tools/background-remover/js/worker.js';
+  }
+  function _ensureBgWorker(){
+    if(_bgWorker) return _bgWorker;
+    try{
+      _bgWorker=new Worker(_bgWorkerUrl(),{type:'module'});
+      _bgWorker.onmessage=function(ev){
+        const msg=ev.data||{};
+        if(msg.type==='result') _onBgResult(msg);
+        else if(msg.type==='error') _onBgError(msg);
+      };
+      _bgWorker.onerror=function(){
+        _bgBusy=false;
+        if(_bgStatusEl) _bgStatusEl.textContent='Removal failed — try again.';
+        _refreshBgControls();
+      };
+    }catch(e){
+      _bgWorker=null;
+      if(_bgStatusEl) _bgStatusEl.textContent='Background removal is not available in this browser.';
+    }
+    return _bgWorker;
+  }
+  // Extract the CURRENT visible source (respecting rotation + flip so
+  // "remove the background of the picture I'm looking at" reads
+  // right) as a fresh RGBA pixel buffer for the worker. Zoom/pan are
+  // deliberately NOT baked in here — Crop happens after removal, so a
+  // user can pan around a removed cutout the same way they can pan an
+  // ordinary picture.
+  function _bakeSourceForBg(){
+    const img=_activeImg();
+    if(!img) return null;
+    const rot=_state.rotation;
+    const swap=(rot%180!==0);
+    const w=swap?img.height:img.width;
+    const h=swap?img.width:img.height;
+    const c=document.createElement('canvas');
+    c.width=w; c.height=h;
+    const cx=c.getContext('2d');
+    cx.save();
+    cx.translate(w/2,h/2);
+    cx.rotate(rot*Math.PI/180);
+    if(_state.flipH) cx.scale(-1,1);
+    cx.drawImage(img,-img.width/2,-img.height/2,img.width,img.height);
+    cx.restore();
+    let data;
+    try{ data=cx.getImageData(0,0,w,h); }
+    catch(e){ return null; } // tainted canvas — should be rare since AssetStore now sets crossOrigin
+    return {data:data.data, width:w, height:h};
+  }
+  function _startBgRemoval(){
+    if(_bgBusy||!_activeImg()) return;
+    const buf=_bakeSourceForBg();
+    if(!buf){
+      if(_bgStatusEl) _bgStatusEl.textContent='Could not read this picture.';
+      return;
+    }
+    const worker=_ensureBgWorker();
+    if(!worker) return;
+    _bgBusy=true;
+    _bgJobId++;
+    if(_bgStatusEl) _bgStatusEl.textContent='Removing background…';
+    _refreshBgControls();
+    // Transfer the pixel buffer's underlying ArrayBuffer so the main
+    // thread doesn't hold a duplicate copy — same discipline the
+    // standalone tool's app.js already established.
+    try{
+      worker.postMessage({
+        type:'process',
+        jobId:_bgJobId,
+        pixelBuffer:buf,
+        options:{strategy:'white-paper', autoCrop:true, featherRadius:1}
+      },[buf.data.buffer]);
+    }catch(e){
+      _bgBusy=false;
+      if(_bgStatusEl) _bgStatusEl.textContent='Removal failed — try again.';
+      _refreshBgControls();
+    }
+  }
+  function _onBgResult(msg){
+    if(msg.jobId!==_bgJobId){ _bgBusy=false; _refreshBgControls(); return; }
+    const pb=msg.pixelBuffer;
+    if(!pb){ _bgBusy=false; _refreshBgControls(); return; }
+    // Rebuild an HTMLImageElement from the processed buffer so the rest
+    // of the pipeline (which draws with drawImage) keeps working
+    // unchanged. Route through canvas.toDataURL() rather than the raw
+    // bytes so downstream Apply()/_bake() can still call toDataURL()
+    // on its own output canvas without surprises.
+    const c=document.createElement('canvas');
+    c.width=pb.width; c.height=pb.height;
+    const cx=c.getContext('2d');
+    cx.putImageData(new ImageData(new Uint8ClampedArray(pb.data),pb.width,pb.height),0,0);
+    const dataURL=c.toDataURL('image/png');
+    const img=new Image();
+    img.onload=function(){
+      _bgRemovedImg=img;
+      _bgRemovedDataURL=dataURL;
+      _bgBusy=false;
+      // Reset rotation/flip since _bakeSourceForBg already baked them
+      // into the new source — leaving them applied would double-rotate
+      // the result. Zoom/pan/mode preserved.
+      _state.rotation=0;
+      _state.flipH=false;
+      if(_bgStatusEl) _bgStatusEl.textContent='Background removed.';
+      _refreshBgControls();
+      _render();
+    };
+    img.src=dataURL;
+  }
+  function _onBgError(msg){
+    _bgBusy=false;
+    if(_bgStatusEl) _bgStatusEl.textContent='Removal failed — '+(msg.message||'try again')+'.';
+    _refreshBgControls();
+  }
+  function _undoBgRemoval(){
+    if(_bgBusy) return;
+    _bgRemovedImg=null;
+    _bgRemovedDataURL=null;
+    _state.rotation=0;
+    _state.flipH=false;
+    _state.panX=0;
+    _state.panY=0;
+    _state.zoom=1;
+    if(_bgStatusEl) _bgStatusEl.textContent='';
+    _refreshBgControls();
+    _render();
+  }
+  function _refreshBgControls(){
+    if(_bgRemoveBtn){
+      _bgRemoveBtn.disabled=_bgBusy||!_origImg;
+      _bgRemoveBtn.classList.toggle('active',!!_bgRemovedImg);
+    }
+    if(_bgUndoBtn){
+      _bgUndoBtn.disabled=_bgBusy||!_bgRemovedImg;
+    }
   }
 
   function _refreshToggles(){
@@ -222,9 +429,10 @@ const PictureStudio=(function(){
   // Effective image size after rotation. 90° / 270° swap w/h.
   function _effSize(){
     const rot=_state.rotation;
+    const img=_activeImg();
     return (rot%180!==0)
-      ? {w:_origImg.height,h:_origImg.width}
-      : {w:_origImg.width,h:_origImg.height};
+      ? {w:img.height,h:img.width}
+      : {w:img.width,h:img.height};
   }
   // Stage area allocated to the canvas. Uses the live element size so
   // the picture scales with the modal.
@@ -242,7 +450,8 @@ const PictureStudio=(function(){
 
   // -------- Render preview ------------------------------------------
   function _render(){
-    if(!_origImg||!_canvas||!_ctx) return;
+    const img=_activeImg();
+    if(!img||!_canvas||!_ctx) return;
     const s=_stageRect();
     if(_canvas.width!==Math.round(s.w) || _canvas.height!==Math.round(s.h)){
       _canvas.width=Math.round(s.w);
@@ -263,8 +472,15 @@ const PictureStudio=(function(){
     _ctx.translate(cw/2+_state.panX, ch/2+_state.panY);
     _ctx.rotate(_state.rotation*Math.PI/180);
     if(_state.flipH && !_state.showOriginal) _ctx.scale(-1,1);
-    const iw=_origImg.width, ih=_origImg.height;
-    _ctx.drawImage(_origImg, -iw*z/2, -ih*z/2, iw*z, ih*z);
+    // While holding Before/After, always show the pristine original,
+    // even if background removal is currently applied. This is the one
+    // place the "peek what you started from" gesture must genuinely
+    // bypass every downstream transform, including bg removal. Sizing
+    // reads from whichever image will actually be drawn — bg removal
+    // may crop out empty margins, so img.width ≠ _origImg.width.
+    const drawImg=_state.showOriginal?_origImg:img;
+    const iw=drawImg.width, ih=drawImg.height;
+    _ctx.drawImage(drawImg, -iw*z/2, -ih*z/2, iw*z, ih*z);
     _ctx.restore();
 
     // Small hint badge while the user holds Before / After.
@@ -310,8 +526,9 @@ const PictureStudio=(function(){
     oc.translate(outW/2+panX, outH/2+panY);
     oc.rotate(_state.rotation*Math.PI/180);
     if(_state.flipH) oc.scale(-1,1);
-    const iw=_origImg.width, ih=_origImg.height;
-    oc.drawImage(_origImg, -iw/2, -ih/2, iw, ih);
+    const src=_activeImg();
+    const iw=src.width, ih=src.height;
+    oc.drawImage(src, -iw/2, -ih/2, iw, ih);
 
     // Output as PNG (lossless). Children's projects are small and the
     // file format never re-encodes after this point.
@@ -409,7 +626,11 @@ const PictureStudio=(function(){
   function _hide(){
     if(_modal) _modal.classList.add('hidden');
     _origImg=null;
+    _bgRemovedImg=null;
+    _bgRemovedDataURL=null;
+    _bgBusy=false;
     _drag=null;
+    _refreshBgControls();
     document.removeEventListener('keydown',_onKeyDown);
   }
 

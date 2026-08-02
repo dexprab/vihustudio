@@ -4191,6 +4191,16 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
 }
 .picture-studio-tool-glyph{ font-size:18px; line-height:1; }
 .picture-studio-tool-label{ font-size:11px; }
+/* Background-removal status line (Feature 1 Phase 2 · Image Studio) —
+   tiny muted text beneath the Background tool group, used to report
+   "Removing background…" / "Background removed." / a friendly error. */
+.picture-studio-tool-status{
+  margin-top:4px;
+  font-size:10px;
+  color:var(--text-dim, #888);
+  min-height:12px;
+  text-align:center;
+}
 
 .picture-studio-footer{
   display:flex;
