@@ -4,6 +4,6 @@
   "task": "Fix A: builder.js shape compile branch now carries customStrokes + fillEnabled additive fields, matching every other shape-adjacent field's own compile pattern. Fix B: slideRenderer.js's _layerDrawShape custom branch checks d.customStrokes FIRST (dispatching to the existing _buildCustomStrokePath helper already proven correct for Story-owned Shape stickers via _drawSceneShape/_drawCustomStrokeShape), then falls through to d.customPath, then to the inscribed-ellipse placeholder. Absent fields resolve to their pre-fix defaults via existing gates, so every already-compiled Theme renders byte-identically. Verified 18/18 via bug_shape_render_divergence_verify.js (P1 12/12 compile-side, P2 6/6 render-side); full regression: both goldenBuild.js suites PASS unchanged; museum_realfile_pixelhash.js SHA-256 e7b2a905613dbef3d2f9064211103d84762d7039d3bee404df90f4d90899b390 byte-identical; shapes_paint_inside_verify.js 30/30 and wb_paint_inside_verify.js 36/36 unchanged. Disclosed, not yet investigated: 'places placeholder art' + 'background transparency' halves of the report deferred pending concrete reproduction.",
   "build": "0310",
   "buildDate": "2026-08-02",
-  "commit": "pending",
+  "commit": "77ade96",
   "environment": "Release"
 }

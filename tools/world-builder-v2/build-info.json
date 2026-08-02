@@ -5,6 +5,6 @@
   "slice": "Verified 18/18 via bug_shape_render_divergence_verify.js: P1 compile-side (12/12) hand-builds a real Scene Layer with customStrokes via ProjectStore.create('blank')+ProjectModel.addSceneLayer, runs real ProjectCompiler.runBuild(), confirms decoration.customStrokes array + decoration.fillEnabled land correctly; P2 render-side (6/6) mocks ThemeEngine with a synthetic Artwork Theme carrying 3 distinct compiled Layer Pack entries (multi-stroke green, legacy customPath magenta, no-strokes ellipse-fallback blue), calls real SlideRenderer.render(), pixel-samples all three render correctly. Three real test-methodology bugs found and fixed during verification (ProjectStore.create returns project directly not {project} wrapper; synthetic theme was missing frame.color/panel/storyText/footerText/watermark; layerEngine.js dispatches by layer.type so 'decoration' had to be added). Full regression: both goldenBuild.js suites PASS unchanged; museum_realfile_pixelhash.js SHA-256 e7b2a905613dbef3d2f9064211103d84762d7039d3bee404df90f4d90899b390 byte-identical; shapes_paint_inside_verify.js 30/30 and wb_paint_inside_verify.js 36/36 both pass unchanged. Disclosed, not yet investigated: 'places placeholder art' + 'background transparency' halves of the report deferred pending concrete reproduction.",
   "build": "0152",
   "buildDate": "2026-08-02",
-  "commit": "pending",
+  "commit": "77ade96",
   "environment": "Release"
 }
