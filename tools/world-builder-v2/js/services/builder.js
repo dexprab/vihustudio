@@ -696,6 +696,28 @@ class BuildEngine {
                     strokeColor: layer.shapeStrokeColor, strokeOpacity: layer.shapeStrokeOpacity,
                     strokeWidth: layer.shapeStrokeWidth, rotation: layer.rotation, alpha: alpha,
                     customPath: layer.customPath || null,
+                    // Multi-stroke "Draw Your Own" (Line/Circle Tool)
+                    // silhouette. Absent for every non-custom Shape;
+                    // for a custom Shape authored via the newer multi-
+                    // stroke tool (rather than the older single
+                    // freehand customPath), Studio's _layerDrawShape
+                    // now branches on this array first (mirroring
+                    // _drawSceneShape/_drawCustomStrokeShape for the
+                    // Story-owned sticker path already established) to
+                    // build the same composed silhouette Builder's own
+                    // Working View / Runtime Preview shows — otherwise
+                    // Studio silently fell back to an inscribed
+                    // ellipse and any Paint Inside strokes clipped to
+                    // that fallback shape rather than the authored one.
+                    customStrokes: layer.customStrokes || null,
+                    // fillEnabled (Transparent-fill Shape toggle) —
+                    // was silently dropped at compile time, so a Shape
+                    // authored with Fill Colour turned off rendered
+                    // filled in Studio anyway (Fidelity gap). Absent
+                    // resolves to true via _paintShapePathTail's own
+                    // `style.fillEnabled!==false` gate, so every pre-
+                    // fix compiled Theme still renders identically.
+                    fillEnabled: layer.fillEnabled !== false,
                     // "Solid Fill" vs. "Paint Inside" (ported from root
                     // Studio). Absent / 'solid' preserves today's flat
                     // Fill Colour byte-for-byte for every already-

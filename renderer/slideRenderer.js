@@ -2503,11 +2503,27 @@ const SlideRenderer=(()=>{
       path.arcTo(rect.x,rect.y,rect.x+rect.w,rect.y,r);
       path.closePath();
     }else if(kind==='custom'){
-      // A creator-drawn shape (Builder V3.1's Draw pad) — d.customPath
-      // is an array of {x,y} points, each 0..1 fractional within the
-      // pad the creator sketched on, mapped onto rect exactly like the
-      // Transform already places every other Shape/Layer.
-      if(Array.isArray(d.customPath) && d.customPath.length>=2){
+      // A creator-drawn shape. Two representations coexist by design:
+      //   (1) d.customStrokes — the newer multi-stroke Line/Circle Tool
+      //     silhouette (Sprint "Shapes 'Draw Your Own' — Multi-Stroke
+      //     Line/Circle Tool + Fill Shape Toggle"), an array of
+      //     {type:'line'|'circle', p0, p1} entries in 0..1 fractional
+      //     coordinates. Checked FIRST — mirrors _drawSceneShape's own
+      //     established convention for a Story-owned Shape sticker
+      //     (line ~4422), so a Theme-Author-authored World-owned
+      //     custom Shape composes identically to a Story-Author-
+      //     authored freeform sticker rather than silently falling
+      //     through to the plain single-freehand path or the ellipse
+      //     placeholder underneath — closes BACKLOG.md's own reported
+      //     Studio-vs-Builder rendering divergence (Frame Style /
+      //     Paint-Inside Custom shapes were invisible in Studio).
+      //   (2) d.customPath — the older single-freehand path (pre-Multi-
+      //     Stroke sprint), an array of {x,y} points. Preserved
+      //     unchanged for every legacy Custom shape authored before
+      //     Multi-Stroke shipped.
+      if(Array.isArray(d.customStrokes) && d.customStrokes.length){
+        _buildCustomStrokePath(path,d.customStrokes,rect);
+      }else if(Array.isArray(d.customPath) && d.customPath.length>=2){
         d.customPath.forEach(function(p,i){
           const px=rect.x+p.x*rect.w, py=rect.y+p.y*rect.h;
           if(i===0) path.moveTo(px,py); else path.lineTo(px,py);
