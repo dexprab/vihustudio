@@ -4,6 +4,6 @@
   "task": "Extended js/pictureStudio.js: new state (_bgRemovedImg/_bgRemovedDataURL/_bgWorker/_bgJobId/_bgBusy/_bgStatusEl/_bgRemoveBtn/_bgUndoBtn), _activeImg() helper (returns bg-removed image when set, else _origImg), _render/_bake/_effSize now route through _activeImg(), new Background tool group in toolbar (Remove/Undo BG buttons + status line), lazy _ensureBgWorker() spawning the tool's own worker.js via a _bgWorkerUrl() that resolves relative to this script's own tag location (matching themeRepositoryClient.js's own established config-path convention, so a nested serving path works), _bakeSourceForBg() extracting current source with rotation/flip pre-baked, _startBgRemoval() posting with transferable ArrayBuffer + options {strategy:'white-paper',autoCrop:true,featherRadius:1}, _onBgResult()/_onBgError() rebuilding an HTMLImageElement from the processed buffer via ImageData+putImageData+toDataURL and resetting rotation/flipH to 0 (already baked in), _undoBgRemoval() clearing bg state, _refreshBgControls() button disabled/active sync. Added .picture-studio-tool-status CSS rule. No API change, no schema change, no compile pipeline touched — every existing call site works unchanged. Cache-bust bumped to ?v=0307 across every script/link tag in root index.html.",
   "build": "0311",
   "buildDate": "2026-08-02",
-  "commit": "pending",
+  "commit": "f01d73d",
   "environment": "Release"
 }
