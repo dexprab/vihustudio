@@ -1409,6 +1409,70 @@ const ProjectModel = (function () {
         return part;
     }
 
+    // Reorder a part in-place within its own `parts[]` array, one
+    // slot at a time. `direction` is `'up'`/`'down'` (matching this
+    // file's own established `moveInStack('backward'/'forward')`
+    // vocabulary for the Scene Stack itself, deliberately renamed here
+    // to match the Inspector's own ↑/↓ affordance instead of z-order
+    // jargon a Theme Author never sees). Load-bearing: reordering
+    // `parts[]` alone would not change paint order, since `parts[]`
+    // and `scene.stack` are two independent, parallel orderings — the
+    // Engine Adapter only writes to `scene.stack` when it MINTS a new
+    // mirrored Layer, never when a Part's index in `parts[]` merely
+    // changes. So this also swaps the corresponding mirrored Layer
+    // entries in every attached Scene's own `scene.stack`, keeping
+    // paint order genuinely in step with the authored part order —
+    // matching the exact same "look up the mirrored Layer per attached
+    // Scene, act on it there" walk `_syncUniversalContent`/`_clearMirror`
+    // already established. Reordering the primary part (`parts[0]`)
+    // additionally re-syncs the top-level flat-field mirror, mirroring
+    // `removeExperiencePart`'s own established `parts[0]`-changed
+    // handling.
+    function moveExperiencePart(project, experienceId, partId, direction) {
+        const experience = findExperience(project, experienceId);
+        if (!experience) return false;
+        const parts = experience.properties.parts;
+        if (!Array.isArray(parts) || parts.length < 2) return false;
+        const idx = parts.findIndex(function (p) { return p.id === partId; });
+        if (idx === -1) return false;
+        const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapWith < 0 || swapWith >= parts.length) return false;
+        const primaryChanged = (idx === 0 || swapWith === 0);
+        // Swap in parts[].
+        const tmp = parts[idx];
+        parts[idx] = parts[swapWith];
+        parts[swapWith] = tmp;
+        experience.updatedAt = Date.now();
+        // Swap the corresponding mirrored Layer entries in every
+        // attached Scene's own `scene.stack` too — a Frame-type
+        // Experience Hosted By Place has no mirrored Scene Layer (it
+        // sets a `holder.frame` reference instead), so those
+        // attachments are naturally no-ops here.
+        (experience.attachments || []).forEach(function (a) {
+            const layerA = _findMirroredLayer(project, a.sceneId, experience.id, tmp.id);
+            const layerB = _findMirroredLayer(project, a.sceneId, experience.id, parts[idx].id);
+            if (!layerA || !layerB) return;
+            const scene = findScene(project, a.sceneId);
+            if (!scene) return;
+            _ensureStack(scene);
+            const iA = scene.stack.findIndex(function (e) { return e.type === 'layer' && e.id === layerA.id; });
+            const iB = scene.stack.findIndex(function (e) { return e.type === 'layer' && e.id === layerB.id; });
+            if (iA === -1 || iB === -1) return;
+            const t = scene.stack[iA];
+            scene.stack[iA] = scene.stack[iB];
+            scene.stack[iB] = t;
+        });
+        // If parts[0] changed, re-sync the top-level flat-field
+        // legacy mirror + contentKind (parts[0]'s role, see
+        // removeExperiencePart's own identical handling).
+        if (primaryChanged && parts[0]) {
+            Object.assign(experience.properties, parts[0].props);
+            experience.contentKind = parts[0].kind;
+        }
+        _syncExperienceAttachments(project, experience);
+        return true;
+    }
+
     // An Experience always keeps at least one part — refuses rather
     // than ever leaving `parts` empty, the same "never a degenerate
     // empty state" discipline this file already applies elsewhere
@@ -2258,6 +2322,7 @@ const ProjectModel = (function () {
         updateExperiencePartProperty: updateExperiencePartProperty,
         addExperiencePart: addExperiencePart,
         removeExperiencePart: removeExperiencePart,
+        moveExperiencePart: moveExperiencePart,
         // Multi-Asset Experience Parts (Phase 4) — the exact same kind
         // label _syncUniversalContent's own compiled Layer-name suffix
         // already uses, exported so the Inspector's card-title

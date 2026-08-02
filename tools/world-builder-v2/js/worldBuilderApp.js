@@ -9547,6 +9547,52 @@
         return btn;
     }
 
+    // Reorder ↑/↓ buttons + Remove, packaged as one card-header actions
+    // strip — mirrors `_partRemoveButton`'s shape and lifecycle exactly,
+    // with the ↑/↓ handlers calling `ProjectModel.moveExperiencePart`
+    // (which swaps in `parts[]` AND in each attached Scene's own
+    // `scene.stack` in one atomic action, so both authored order and
+    // real paint order stay in step). Each ↑/↓ button is disabled at
+    // its own array boundary; the model function additionally refuses
+    // out-of-range/single-part cases at the model layer, matching every
+    // other model-layer-first cap this file uses.
+    function _partHeaderActions(exp, part) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wb-row-controls';
+        const parts = exp.properties.parts || [];
+        const idx = parts.findIndex(function (p) { return p.id === part.id; });
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'wb-row-btn';
+        upBtn.title = 'Move up (paint below the part above)';
+        upBtn.textContent = '↑';
+        upBtn.disabled = currentProjectReadOnly || parts.length <= 1 || idx <= 0;
+        upBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveExperiencePart(currentProject, exp.id, part.id, 'up');
+            _persist();
+            _redrawSceneCanvasesForExperience(exp);
+            _renderContextPanel();
+        });
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'wb-row-btn';
+        downBtn.title = 'Move down (paint above the part below)';
+        downBtn.textContent = '↓';
+        downBtn.disabled = currentProjectReadOnly || parts.length <= 1 || idx >= parts.length - 1;
+        downBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.moveExperiencePart(currentProject, exp.id, part.id, 'down');
+            _persist();
+            _redrawSceneCanvasesForExperience(exp);
+            _renderContextPanel();
+        });
+        wrap.appendChild(upBtn);
+        wrap.appendChild(downBtn);
+        wrap.appendChild(_partRemoveButton(exp, part));
+        return wrap;
+    }
+
     function _renderExperienceProperties(exp) {
         const parts = exp.properties.parts || [];
         const ordinals = _partOrdinals(exp);
@@ -9641,7 +9687,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('📝', _partCardTitle('text', ordinal), _partRemoveButton(exp, part));
+        const outer = _openContentCard('📝', _partCardTitle('text', ordinal), _partHeaderActions(exp, part));
         // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
         // field already gets — carries over to the universal Text
         // section too, so this authoring path doesn't lose a capability
@@ -9708,7 +9754,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('🖼', _partCardTitle('image', ordinal), _partRemoveButton(exp, part));
+        const outer = _openContentCard('🖼', _partCardTitle('image', ordinal), _partHeaderActions(exp, part));
         _renderCollectionPicker(exp, part, 'imageSrc', '🖼️');
         _fieldRow(
             _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
@@ -9748,7 +9794,7 @@
                 _renderContextPanel();
             };
         }
-        const outer = _openContentCard('🎭', _partCardTitle('graphics', ordinal), _partRemoveButton(exp, part));
+        const outer = _openContentCard('🎭', _partCardTitle('graphics', ordinal), _partHeaderActions(exp, part));
         contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
         // _renderCollectionPicker's own commit() already clears
         // graphicShape unconditionally for the graphicSrc key —
@@ -9894,7 +9940,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('🎨', _partCardTitle('colour', ordinal), _partRemoveButton(exp, part));
+        const outer = _openContentCard('🎨', _partCardTitle('colour', ordinal), _partHeaderActions(exp, part));
         contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
         contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
         contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));

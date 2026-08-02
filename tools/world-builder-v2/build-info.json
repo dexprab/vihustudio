@@ -1,10 +1,10 @@
 {
-  "version": "3.78.0",
-  "phase": "BACKLOG.md bug fix -- 'Frame style comes over the art.' A full-cover Frame Style = Image ornament used to overpaint the interior artwork region as well as the frame band; both engines now clip the ornament image to the frame BAND only via an evenodd (outer-XOR-inner) clip, mirroring _ornamentWooden's established band-only technique.",
-  "milestone": "engineRuntime.js: _paintFrameOrnament's image branch rewritten to build a two-path clip (outer rect via insets.marginPx + inner content rect via insets.contentInset) and call ctx.clip('evenodd'), so the ornament image is structurally restricted to the frame band alone. Kept in lockstep by hand with root Studio's own renderer/slideRenderer.js _bandOnlyClip helper -- the two rendering engines share no drawing module, per this codebase's twin-file discipline.",
-  "slice": "Verified via bug_frame_over_art_verify.js (6/6) sampling 9 interior points at 70px inset from the Place edge -- all magenta (artwork), 0 green (ornament); regression: frame corner still shows green. feature1_frameimage_verify.js (18/18) and bug4_frame_ornament_image_verify.js (24/24) pass unchanged. Both goldenBuild.js suites PASS unchanged.",
-  "build": "0150",
+  "version": "3.79.0",
+  "phase": "BACKLOG.md bug fix -- 'reordering z axis within experience.' A multi-part Experience's parts now have real ↑/↓ reorder controls that swap BOTH the parts[] array order AND the corresponding mirrored Layer entries in scene.stack (on every attached Scene), so paint order genuinely changes on Working View, Runtime Preview, and a compiled/published Theme alike -- not just the Inspector's own visual order with the compiled result silently unchanged.",
+  "milestone": "New ProjectModel.moveExperiencePart(project,experienceId,partId,direction): swaps in parts[], walks experience.attachments and swaps the matching mirrored Layer entries in each attached scene.stack via a per-part _findMirroredLayer lookup, re-syncs primary-part flat fields (experience.properties + contentKind) when parts[0] changes -- mirroring removeExperiencePart's own established precedent -- and ends with _syncExperienceAttachments for any downstream re-sync. Frame-type Place-hosted Experiences (which use holder.frame reference, not mirrored Scene Layers) are naturally handled by the layerA/layerB null guard, no special-case needed.",
+  "slice": "New _partHeaderActions(exp,part) in worldBuilderApp.js: a .wb-row-controls block with ↑ + ↓ + the existing 🗑 Remove button, each ↑/↓ button disabled at its own array boundary and gated on read-only. All 4 _openContentCard call sites (text/image/graphics/colour part cards) now use _partHeaderActions instead of bare _partRemoveButton. Verified 38/38 via reorder_parts_verify.js: model correctness (parts+stack swap, primary re-sync, boundary refusals, bad-input rejects), full UI wiring (3 cards, correct ↑/↓/🗑 buttons, boundary disabled states, real-DOM-click reorder end-to-end). Full regression: both goldenBuild.js suites PASS unchanged; scene_dropdown_repro3.js 14/14 unchanged.",
+  "build": "0151",
   "buildDate": "2026-08-02",
-  "commit": "e25e307",
+  "commit": "e6dbca1",
   "environment": "Release"
 }
