@@ -1030,6 +1030,32 @@ const SlideRenderer=(()=>{
     _picturePath(rect.x,rect.y,rect.w,rect.h,border.cornerRadius);
   }
 
+  // BACKLOG.md — Frame style comes over the art: a shared band-only clip
+  // for any ornament that paints a picture/pattern across the frame area
+  // itself, so it can never bleed into the interior artwork region. Mirrors
+  // _ornamentWooden's already-correct evenodd technique (outer path XOR
+  // inner content path) — an ornament calling this then drawing with fill()
+  // or drawImage() is structurally restricted to the frame band alone,
+  // regardless of the drawing call's own coverage. Caller must have already
+  // done x.save(); pair with x.restore() after the ornament finishes.
+  function _bandOnlyClip(rect,border){
+    const insets=_getDesignInsets(border);
+    const innerRect={
+      x:rect.x+insets.left, y:rect.y+insets.top,
+      w:Math.max(1,rect.w-insets.left-insets.right),
+      h:Math.max(1,rect.h-insets.top-insets.bottom)
+    };
+    x.beginPath();
+    _frameFillPath(rect,border);
+    const innerR=Math.max(0,(border.cornerRadius||0)-border.padding);
+    if(innerR>0){
+      _picturePath(innerRect.x,innerRect.y,innerRect.w,innerRect.h,innerR);
+    }else{
+      x.rect(innerRect.x,innerRect.y,innerRect.w,innerRect.h);
+    }
+    try{ x.clip('evenodd'); }catch(e){ x.clip(); }
+  }
+
   // Picture-frame fill (with optional drop shadow). Drawn under the image.
   //
   // Feature 1 — Image-typed Frame Variations. `border._artwork` (stashed
@@ -1192,13 +1218,20 @@ const SlideRenderer=(()=>{
 
   function _ornamentImage(rect,border){
     // Bug 4 — Frame Style = Image: draw the Theme-Author-authored
-    // ornament picture across the frame area with cover-fit and
-    // rotation-around-rect-centre. Mirrors the exact
+    // ornament picture across the frame BAND (border/mat) — never the
+    // interior artwork region. Mirrors the exact
     // ThemeRegistry.resolveAssetRef → _ensureDecorationImage pattern
     // hasImageBg (mat-band) already uses right above, so the two
     // image-bearing frame fields resolve identically. Ordered inside
     // the ornament pipeline stage, so it correctly draws OVER the
     // mat-band fill (either colour or frameImage) and UNDER the stroke.
+    //
+    // BACKLOG.md — Frame style comes over the art: previously this
+    // used _frameFillPath's whole-rect clip, so a full-cover image
+    // painted across the interior artwork too. Now clipped to the
+    // frame band only via _bandOnlyClip (evenodd: outer XOR inner
+    // content), matching the technique _ornamentWooden already uses —
+    // structurally impossible for the ornament to touch the artwork.
     const art=border && border._artwork;
     if(!art || !art.frameOrnamentImage) return;
     let src=art.frameOrnamentImage;
@@ -1209,8 +1242,7 @@ const SlideRenderer=(()=>{
     const img=_ensureDecorationImage(src);
     if(!img || !img.__ready || !img.width || !img.height) return;
     x.save();
-    _frameFillPath(rect,border);
-    x.clip();
+    _bandOnlyClip(rect,border);
     const rotation=art.frameOrnamentImageRotation||0;
     const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
     if(rotation){

@@ -371,14 +371,28 @@ const EngineV2Runtime = (function () {
         if (style === 'image' && fields.frameOrnamentImage && graph && typeof graph.resolveLayerImage === 'function') {
             const ornImg = graph.resolveLayerImage(fields.frameOrnamentImage);
             if (ornImg) {
+                // BACKLOG.md -- Frame style comes over the art: clip the
+                // ornament picture to the frame BAND only (outer XOR
+                // interior content rect via evenodd), never the interior
+                // artwork region. Mirrors root Studio's _bandOnlyClip
+                // helper and slideRenderer.js's _ornamentWooden's own
+                // already-correct evenodd technique. `insets.marginPx`
+                // is the wall-band boundary; `insets.contentInset` is
+                // where interior artwork begins -- the band between
+                // them is what an image ornament may legitimately paint.
                 const ornRect = { x: rect.x + insets.marginPx, y: rect.y + insets.marginPx,
                                   w: Math.max(0, rect.w - insets.marginPx * 2), h: Math.max(0, rect.h - insets.marginPx * 2) };
+                const innerRect = { x: rect.x + insets.contentInset, y: rect.y + insets.contentInset,
+                                    w: Math.max(0, rect.w - insets.contentInset * 2), h: Math.max(0, rect.h - insets.contentInset * 2) };
                 if (ornRect.w > 0 && ornRect.h > 0) {
                     const rot = fields.frameOrnamentImageRotation || 0;
                     ctx.save();
                     ctx.beginPath();
                     ctx.rect(ornRect.x, ornRect.y, ornRect.w, ornRect.h);
-                    ctx.clip();
+                    if (innerRect.w > 0 && innerRect.h > 0) {
+                        ctx.rect(innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+                    }
+                    try { ctx.clip('evenodd'); } catch (e) { ctx.clip(); }
                     if (rot) {
                         const rcx = ornRect.x + ornRect.w / 2, rcy = ornRect.y + ornRect.h / 2;
                         ctx.translate(rcx, rcy);
