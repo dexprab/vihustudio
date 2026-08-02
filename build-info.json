@@ -4,6 +4,6 @@
   "task": "New ProjectModel.moveExperiencePart(project,experienceId,partId,direction): swaps in parts[], walks experience.attachments and swaps the matching mirrored Layer entries in each attached scene.stack via a per-part _findMirroredLayer lookup, re-syncs primary-part flat fields (experience.properties + contentKind) when parts[0] changes -- mirroring removeExperiencePart's own established precedent -- and ends with _syncExperienceAttachments for any downstream re-sync. New _partHeaderActions(exp,part) in worldBuilderApp.js: a .wb-row-controls block with ↑ + ↓ + the existing 🗑 Remove button, each ↑/↓ button disabled at its own array boundary and gated on read-only. All 4 _openContentCard call sites (text/image/graphics/colour part cards) now use _partHeaderActions instead of bare _partRemoveButton. Verified 38/38 via reorder_parts_verify.js: model correctness (parts+stack swap, primary re-sync, boundary refusals, bad-input rejects), full UI wiring (3 cards, correct ↑/↓/🗑 buttons, boundary disabled states, real-DOM-click reorder end-to-end). Full regression: both goldenBuild.js suites PASS unchanged; scene_dropdown_repro3.js 14/14 unchanged.",
   "build": "0309",
   "buildDate": "2026-08-02",
-  "commit": "e25e307",
+  "commit": "da2d26b",
   "environment": "Release"
 }
