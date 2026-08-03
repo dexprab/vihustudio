@@ -164,7 +164,7 @@ const PictureStudio=(function(){
   let _cropDrag=null;              // {sx,sy,x0,y0} while drawing selection
   let _cropBoxEl=null;             // DOM overlay showing the pending selection
   let _preCropSnapshot=null;       // {buffer, width, height} for Reset Crop
-  let _cropApplyBtn=null, _cropResetBtn=null;
+  let _cropApplyBtn=null, _cropResetBtn=null, _cropTrashBtn=null;
 
   // Ported from tools/background-remover/js/cleanupBrush.js. See that
   // module's own doc comment for the soft-edge falloff rationale — the
@@ -208,6 +208,27 @@ const PictureStudio=(function(){
       out.set(srcData.subarray(srcRowStart,srcRowStart+bounds.width*4),dstRowStart);
     }
     return {data:out,width:bounds.width,height:bounds.height};
+  }
+  // Dual of _cropPixelBuffer — keeps buffer dimensions unchanged and
+  // instead zeroes every RGBA channel of pixels INSIDE `bounds` to
+  // fully transparent, leaving everything OUTSIDE the box untouched.
+  // Used by Trash It, the sibling of Keep This: the two operate on the
+  // same selection box with opposite intents (keep-inside vs discard-
+  // inside). Since dimensions never change, pan/beforeAfter/BA-slider
+  // state stays valid — no recentering needed by the caller.
+  function _trashPixelsInBox(pb,bounds){
+    var out=new Uint8ClampedArray(pb.data);
+    var w=pb.width;
+    for(var row=0;row<bounds.height;row++){
+      var rowBase=((bounds.y+row)*w+bounds.x)*4;
+      for(var col=0;col<bounds.width;col++){
+        out[rowBase+col*4+0]=0;
+        out[rowBase+col*4+1]=0;
+        out[rowBase+col*4+2]=0;
+        out[rowBase+col*4+3]=0;
+      }
+    }
+    return {data:out,width:pb.width,height:pb.height};
   }
 
   // -------- DOM build (lazy; reuses the same modal across opens) ----
@@ -746,23 +767,41 @@ const PictureStudio=(function(){
     p.setAttribute('data-tool','crop');
     const hint=document.createElement('p');
     hint.className='picture-studio-subpanel-hint';
-    hint.textContent='Drag on the picture to pick a crop area, then Apply.';
+    // Rewritten to match the two-way action row below — a Story Author
+    // picks a box, then either keeps only what's inside it (Keep This)
+    // or throws only what's inside it away (Trash It). Both operate on
+    // the same box and both back off via Undo Trim.
+    hint.textContent='Drag a box around a part of your picture.';
     p.appendChild(hint);
     const row=document.createElement('div');
     row.className='picture-studio-subpanel-row';
+    // Trash It sits first (left) because "get rid of this part" is the
+    // more common gesture on a real photo — the coral pill matches its
+    // destructive semantics (removes content) vs. Keep This which is
+    // constructive (preserves the box, discards everything outside it).
+    // Both share _preCropSnapshot so Undo Trim works either way.
+    _cropTrashBtn=document.createElement('button');
+    _cropTrashBtn.type='button';
+    _cropTrashBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-danger';
+    _cropTrashBtn.textContent='🗑 Trash It';
+    _cropTrashBtn.addEventListener('click',_trashCropArea);
+    row.appendChild(_cropTrashBtn);
     _cropApplyBtn=document.createElement('button');
     _cropApplyBtn.type='button';
     _cropApplyBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
-    _cropApplyBtn.textContent='✂️ Apply Crop';
+    _cropApplyBtn.textContent='✓ Keep This';
     _cropApplyBtn.addEventListener('click',_applyCrop);
     row.appendChild(_cropApplyBtn);
+    p.appendChild(row);
     _cropResetBtn=document.createElement('button');
     _cropResetBtn.type='button';
-    _cropResetBtn.className='picture-studio-subpanel-btn';
-    _cropResetBtn.textContent='↩ Reset Crop';
+    _cropResetBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    // Reads as an action, matches the reference sheet's wording, and
+    // honestly describes what happens either way — the last Trash It
+    // or Keep This is reverted from _preCropSnapshot.
+    _cropResetBtn.textContent='↩ Undo Trim';
     _cropResetBtn.addEventListener('click',_resetCrop);
-    row.appendChild(_cropResetBtn);
-    p.appendChild(row);
+    p.appendChild(_cropResetBtn);
     const auto=document.createElement('button');
     auto.type='button';
     auto.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
@@ -1107,6 +1146,7 @@ const PictureStudio=(function(){
     if(_brushRedoBtn) _brushRedoBtn.disabled=!(_cleanupRedoStack&&_cleanupRedoStack.length);
     if(_cropTile) _cropTile.disabled=!_bgRemovedImg;
     if(_cropApplyBtn) _cropApplyBtn.disabled=!(_cropRect&&_bgRemovedImg);
+    if(_cropTrashBtn) _cropTrashBtn.disabled=!(_cropRect&&_bgRemovedImg);
     if(_cropResetBtn) _cropResetBtn.disabled=!_preCropSnapshot;
   }
 
@@ -1396,6 +1436,38 @@ const PictureStudio=(function(){
     _state.panX=0; _state.panY=0;
     _state.beforeAfterPct=100; // compare no longer meaningful vs. original
     if(_baSlider) _baSlider.value='100';
+    _syncBgCanvas();
+    _refreshBgControls();
+    _render();
+  }
+  // Dual of _applyCrop — keeps buffer dimensions unchanged and instead
+  // clears every pixel INSIDE the selected box to fully transparent,
+  // leaving everything outside untouched. Same _preCropSnapshot backing,
+  // so "Undo Trim" reverts either op. Since buffer size doesn't change,
+  // pan/beforeAfter/BA-slider all stay valid without a reset — the fit
+  // math never sees a new dimension. Stroke history IS cleared so a
+  // later undo can never restore a stroke that painted where content is
+  // now deliberately gone (matches Keep This's own clear-history rule).
+  function _trashCropArea(){
+    if(!_cropRect||!_workingBuffer) return;
+    const bounds={
+      x:Math.max(0,Math.min(_workingBuffer.width-1,_cropRect.x)),
+      y:Math.max(0,Math.min(_workingBuffer.height-1,_cropRect.y)),
+      width:Math.max(1,Math.min(_workingBuffer.width-_cropRect.x,_cropRect.width)),
+      height:Math.max(1,Math.min(_workingBuffer.height-_cropRect.y,_cropRect.height))
+    };
+    _preCropSnapshot={
+      data:new Uint8ClampedArray(_workingBuffer.data),
+      width:_workingBuffer.width,
+      height:_workingBuffer.height
+    };
+    _workingBuffer=_trashPixelsInBox(_workingBuffer,bounds);
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _cropRect=null;
+    _tearDownCropBox();
+    // Deliberately do NOT recenter or reset the BA slider — dimensions
+    // are unchanged, so any prior compare/pan state is still meaningful.
     _syncBgCanvas();
     _refreshBgControls();
     _render();

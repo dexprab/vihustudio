@@ -4457,13 +4457,21 @@ body.dark-theme .checkerboard{
   font-weight:700;
 }
 .picture-studio-subpanel-btn-primary:hover:not(:disabled){ background:#FFD466; }
+/* Danger — filled coral/pink pill matching the reference sheet's own
+   "🗑 Trash It" styling. Deliberately not a subtle outline (which the
+   older, unused variant used to be), since Trash It is a genuinely
+   destructive action a Story Author should read as heavier weight than
+   the sibling "✓ Keep This" gold CTA — the two share one action row
+   and their colours signal opposite intents. */
 .picture-studio-subpanel-btn-danger{
-  color:#C0392B;
-  border-color:rgba(192,57,43,0.4);
+  color:#FFFFFF;
+  background:#E67373;
+  border-color:#D96565;
+  font-weight:700;
 }
 .picture-studio-subpanel-btn-danger:hover:not(:disabled){
-  background:rgba(192,57,43,0.08);
-  border-color:rgba(192,57,43,0.6);
+  background:#DC6060;
+  border-color:#C85555;
 }
 .picture-studio-subpanel-btn-glyph{ font-size:16px; line-height:1; }
 /* Brush size chooser — three circular indicators (not text labels), each
