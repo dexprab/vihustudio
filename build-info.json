@@ -4,6 +4,6 @@
   "task": "Ship B refinements: js/pictureStudio.js gains ~15 concrete changes: _magicOverlay/_magicMessage DOM insertion inside _buildModal after the brush-cursor append; a new window mousemove listener wiring _brushCursor position on every mouse move while brush mode is active; _startBgRemoval reveals the magic overlay before the worker.postMessage; _onBgResult/_onBgError/_hide all hide it defensively; every _origImg-loading branch in open() (3 sites: HTMLImageElement, string→loadImg, File→FileReader) now auto-runs _startBgRemoval() immediately after _refreshBgControls()/_render(). css/style.css: .picture-studio-kid-zoom-row (flex row, kid-friendly small/big magnifier glyphs + a full-width range input with #FFCB45 accent-color), .picture-studio-brush-cursor (position:absolute, border-radius:50%, 2px gold ring on rgba(255,203,69,0.15) center, translate(-50%,-50%), z-index:5, pointer-events:none), .picture-studio-magic-overlay (position:absolute inset:0, flex column center, rgba(15,20,32,0.72) backdrop with backdrop-filter:blur(2px), z-index:10), .picture-studio-magic-sparkle (56px emoji, picture-studio-magic-pulse 1.4s ease-in-out infinite alternating scale 1→1.15), .picture-studio-magic-message (16px bold white centered with text-shadow); Ship B's data-active-tool subpanel dispatch selector updated from 'bg' to 'brush' plus 'crop' added. Cache-bust ?v=0311→?v=0312 uniformly across index.html.",
   "build": "0316",
   "buildDate": "2026-08-03",
-  "commit": "PENDING_SHA_PIN",
+  "commit": "30290dd",
   "environment": "Release"
 }
