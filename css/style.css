@@ -4305,9 +4305,9 @@ body.dark-theme .checkerboard{
   min-height:64px;
 }
 .picture-studio-subpanel{ display:none; }
-.picture-studio[data-active-tool="bg"] .picture-studio-subpanel[data-tool="bg"],
+.picture-studio[data-active-tool="brush"] .picture-studio-subpanel[data-tool="brush"],
+.picture-studio[data-active-tool="crop"] .picture-studio-subpanel[data-tool="crop"],
 .picture-studio[data-active-tool="flip"] .picture-studio-subpanel[data-tool="flip"],
-.picture-studio[data-active-tool="zoom"] .picture-studio-subpanel[data-tool="zoom"],
 .picture-studio[data-active-tool="reset"] .picture-studio-subpanel[data-tool="reset"]{
   display:flex;
   flex-direction:column;
@@ -4494,6 +4494,88 @@ body.dark-theme .checkerboard{
   box-shadow:0 0 0 1px rgba(0,0,0,0.35);
 }
 .picture-studio-crop-box.hidden{ display:none; }
+
+/* Redesign Ship B — Always-visible kid zoom slider (replaces the old
+   Bigger/Smaller tile + sub-panel). Small magnifier on the left, big on
+   the right, range input filling the middle. Sits above the stage,
+   inside the Edit view's body header area. Mirrors
+   tools/background-remover/'s own .kid-zoom-row. */
+.picture-studio-kid-zoom-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 16px;
+  border-bottom:1px solid var(--line);
+}
+.picture-studio-kid-zoom-glyph{
+  font-size:18px;
+  line-height:1;
+  user-select:none;
+  pointer-events:none;
+}
+.picture-studio-kid-zoom-glyph.big{ font-size:24px; }
+.picture-studio-kid-zoom-slider{
+  flex:1;
+  height:auto !important;
+  margin:0 !important;
+  accent-color:#FFCB45;
+  cursor:pointer;
+}
+
+/* Redesign Ship B — Circular brush cursor overlay. Follows the mouse
+   in Remove More / Bring It Back mode, sized to the current brush
+   radius scaled by the current zoom. Kid-friendly gold ring on a
+   translucent center. `pointer-events:none` so a mid-stroke can't get
+   intercepted by the overlay itself; the actual painting is captured
+   by the stage canvas's own listeners. */
+.picture-studio-brush-cursor{
+  position:absolute;
+  border:2px solid #FFCB45;
+  background:rgba(255,203,69,0.15);
+  border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 0 1px rgba(0,0,0,0.35);
+  z-index:5;
+}
+.picture-studio-brush-cursor.hidden{ display:none; }
+
+/* Redesign Ship B — Magic overlay shown during bg-removal, matching
+   the app's welcome-screen ✨ Looking at your picture... treatment.
+   Auto-shown by _startBgRemoval on image load; hidden by _onBgResult
+   / _onBgError / _hide. */
+.picture-studio-magic-overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  background:rgba(15,20,32,0.72);
+  backdrop-filter:blur(2px);
+  z-index:10;
+  border-radius:8px;
+}
+.picture-studio-magic-overlay.hidden{ display:none; }
+.picture-studio-magic-sparkle{
+  font-size:56px;
+  line-height:1;
+  animation:picture-studio-magic-pulse 1.4s ease-in-out infinite;
+}
+.picture-studio-magic-message{
+  margin:0;
+  font-size:16px;
+  font-weight:600;
+  color:#fff;
+  text-align:center;
+  text-shadow:0 1px 3px rgba(0,0,0,0.55);
+  padding:0 24px;
+}
+@keyframes picture-studio-magic-pulse{
+  0%,100%{ transform:scale(1); opacity:0.9; }
+  50%{ transform:scale(1.15); opacity:1; }
+}
 
 body.dark-theme .picture-studio{ background:var(--panel); }
 body.dark-theme .picture-studio-tile{ background:var(--panel); }

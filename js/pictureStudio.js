@@ -79,6 +79,16 @@ const PictureStudio=(function(){
   let _resultPanel=null, _editPanel=null;
   let _tileButtons=null, _subPanels=null;
   let _brightenTile=null;
+  // Ship B Refinements — always-visible kid zoom slider (🔍 [range] 🔎)
+  // above the tool grid; replaces the previous Bigger/Smaller tile +
+  // sub-panel entirely. Range is 5..400 (percent), mapped to _state.zoom
+  // via /100.
+  let _kidZoomSlider=null;
+  // Ship B Refinements — magic overlay ("✨ Making the paper disappear...")
+  // shown while auto-run background removal is in flight. Ported from
+  // tools/background-remover/'s .magic-overlay pattern. Sparkle glyph +
+  // message paragraph, absolutely positioned inside the modal.
+  let _magicOverlay=null, _magicMessage=null;
   // Redesign Ship A — Before / After comparison slider inside the Remove
   // Background sub-panel. Appears the moment _bgRemovedImg is set (see
   // _onBgResult). Two overlapping canvases + a range input drive a
@@ -236,6 +246,30 @@ const PictureStudio=(function(){
     _ctx=_canvas.getContext('2d');
     try{ _ctx.imageSmoothingEnabled=true; _ctx.imageSmoothingQuality='high'; }catch(e){}
     _stage.appendChild(_canvas);
+    // Ship B Refinements — circular brush cursor overlay. Follows the
+    // mouse whenever a brush mode (Remove More / Bring It Back) is
+    // active. `pointer-events:none` so it never intercepts the actual
+    // paint gesture (which flows through the canvas's own listeners).
+    // Sized live to `_brushRadius * effective_zoom` in CSS px.
+    _brushCursor=document.createElement('div');
+    _brushCursor.className='picture-studio-brush-cursor hidden';
+    _stage.appendChild(_brushCursor);
+    // Ship B Refinements — magic overlay shown while auto-run background
+    // removal is in flight. Ported from tools/background-remover/'s
+    // .magic-overlay pattern. Absolutely-positioned inside the stage so
+    // it covers the canvas + brush cursor together while removal runs.
+    _magicOverlay=document.createElement('div');
+    _magicOverlay.className='picture-studio-magic-overlay hidden';
+    const magicSparkle=document.createElement('div');
+    magicSparkle.className='picture-studio-magic-sparkle';
+    magicSparkle.setAttribute('aria-hidden','true');
+    magicSparkle.textContent='✨';
+    _magicOverlay.appendChild(magicSparkle);
+    _magicMessage=document.createElement('p');
+    _magicMessage.className='picture-studio-magic-message';
+    _magicMessage.textContent='✨ Making the paper disappear...';
+    _magicOverlay.appendChild(_magicMessage);
+    _stage.appendChild(_magicOverlay);
     body.appendChild(_stage);
     _wireStageInteractions();
 
@@ -275,39 +309,83 @@ const PictureStudio=(function(){
     _editPanel.className='picture-studio-edit-view';
     const editHint=document.createElement('p');
     editHint.className='picture-studio-edit-hint';
-    editHint.textContent='Tap a tool.';
+    editHint.textContent='Tap a tool, then touch your picture.';
     _editPanel.appendChild(editHint);
+
+    // Ship B Refinements — always-visible kid zoom slider row (🔍 [slider] 🔎),
+    // ported from tools/background-remover/'s own .kid-zoom-row pattern.
+    // Previously a Bigger/Smaller tile → sub-panel; now a single control
+    // sitting above the tool grid where it's reachable from any tool state.
+    // Value is 5..400 (percent); we map to _state.zoom via /100.
+    const zoomRow=document.createElement('div');
+    zoomRow.className='picture-studio-kid-zoom-row';
+    const zoomIconSmall=document.createElement('span');
+    zoomIconSmall.className='picture-studio-kid-zoom-glyph';
+    zoomIconSmall.setAttribute('aria-hidden','true');
+    zoomIconSmall.textContent='🔍';
+    zoomRow.appendChild(zoomIconSmall);
+    const zoomSlider=document.createElement('input');
+    zoomSlider.type='range';
+    zoomSlider.min='5';
+    zoomSlider.max='400';
+    zoomSlider.value='100';
+    zoomSlider.className='picture-studio-kid-zoom-slider';
+    zoomSlider.setAttribute('aria-label','Make the picture bigger or smaller');
+    zoomSlider.addEventListener('input',function(){
+      _setZoom(parseInt(zoomSlider.value,10)/100);
+    });
+    zoomRow.appendChild(zoomSlider);
+    const zoomIconBig=document.createElement('span');
+    zoomIconBig.className='picture-studio-kid-zoom-glyph';
+    zoomIconBig.setAttribute('aria-hidden','true');
+    zoomIconBig.textContent='🔎';
+    zoomRow.appendChild(zoomIconBig);
+    _editPanel.appendChild(zoomRow);
+    _kidZoomSlider=zoomSlider;
 
     const toolGrid=document.createElement('div');
     toolGrid.className='picture-studio-tool-grid';
     _tileButtons={};
-    // Tools that open their own sub-panel
-    _tileButtons.bg=_buildTile(toolGrid,'✨','Remove Background',function(){ _toggleActiveTool('bg'); });
-    _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn or Flip',function(){ _toggleActiveTool('flip'); });
-    _tileButtons.zoom=_buildTile(toolGrid,'🔍','Bigger / Smaller',function(){ _toggleActiveTool('zoom'); });
-    // Ship B — Crop tool. Gated on _bgRemovedImg via _refreshBgControls,
-    // since crop cuts the working buffer that only exists after bg removal.
-    _cropTile=_buildTile(toolGrid,'✂️','Crop',function(){ _toggleActiveTool('crop'); });
+    // Ship B Refinements — primary tiles match tools/background-remover/'s
+    // own kid-friendly toolbar exactly: Remove More / Bring It Back /
+    // Trim Picture / Turn-Flip / Oops (per-stroke undo). Background
+    // removal auto-runs on image load (see open()) with a magic overlay,
+    // so it is no longer a manual tile. Bigger/Smaller is the always-
+    // visible slider above, not a tile.
+    _tileButtons.removeMore=_buildTile(toolGrid,'✨','Remove More',function(){
+      _brushMode=(_brushMode==='erase')?null:'erase';
+      const want=_brushMode?'brush':null;
+      if(_activeTool!==want) _toggleActiveTool(want);
+      else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
+    });
+    _tileButtons.bringBack=_buildTile(toolGrid,'❤️','Bring It Back',function(){
+      _brushMode=(_brushMode==='restore')?null:'restore';
+      const want=_brushMode?'brush':null;
+      if(_activeTool!==want) _toggleActiveTool(want);
+      else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
+    });
+    _cropTile=_buildTile(toolGrid,'✂️','Trim Picture',function(){ _toggleActiveTool('crop'); });
     _tileButtons.crop=_cropTile;
-    // One-tap toggle — Brighten flips _state.enhance directly, no sub-panel.
-    _brightenTile=_buildTile(toolGrid,'✨','Brighten',function(){
+    _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn / Flip',function(){ _toggleActiveTool('flip'); });
+    _tileButtons.oops=_buildTile(toolGrid,'↶','Oops!',function(){ _undoBrushStroke(); });
+    _brightenTile=_buildTile(toolGrid,'💡','Brighten',function(){
       _state.enhance=!_state.enhance;
       _brightenTile.classList.toggle('active',!!_state.enhance);
       _render();
     });
     _tileButtons.brighten=_brightenTile;
-    // Hold-to-peek — Peek Original is a press-and-hold tile, no sub-panel.
     _tileButtons.peek=_buildTile(toolGrid,'👁️','Peek Original',null,{hold:true});
-    _tileButtons.reset=_buildTile(toolGrid,'↶','Start Over',function(){ _toggleActiveTool('reset'); });
+    _tileButtons.reset=_buildTile(toolGrid,'🔄','New Picture',function(){ _toggleActiveTool('reset'); });
     _editPanel.appendChild(toolGrid);
 
-    // Sub-panels area — one per tool, hidden by default
+    // Sub-panels area — one per tool, hidden by default. Ship B
+    // Refinements: 'brush' sub-panel (was inside 'bg') hosts size +
+    // Before/After compare. Bigger/Smaller sub-panel retired.
     _subPanels={};
     const subWrap=document.createElement('div');
     subWrap.className='picture-studio-subpanels';
-    _subPanels.bg=_buildBgSubPanel();
+    _subPanels.brush=_buildBrushSubPanel();
     _subPanels.flip=_buildFlipSubPanel();
-    _subPanels.zoom=_buildZoomSubPanel();
     _subPanels.crop=_buildCropSubPanel();
     _subPanels.reset=_buildResetSubPanel();
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
@@ -379,33 +457,21 @@ const PictureStudio=(function(){
   }
 
   // -------- Sub-panels (one per tool) -------------------------------
-  function _buildBgSubPanel(){
+  // Ship B Refinements — Brush sub-panel (was the "bg" sub-panel). Now
+  // that background removal auto-runs on picture load (see open() +
+  // _startBgRemoval + the magic overlay), this sub-panel no longer needs
+  // a top "Remove Background" button / undo / status line. It hosts only
+  // the Before/After compare slider + the brush size + Undo/Redo — the
+  // brush mode itself (erase / restore) is picked directly from the two
+  // primary tiles ("Remove More" / "Bring It Back") that dispatch here.
+  function _buildBrushSubPanel(){
     const p=document.createElement('div');
     p.className='picture-studio-subpanel';
-    p.setAttribute('data-tool','bg');
-    const intro=document.createElement('p');
-    intro.className='picture-studio-subpanel-hint';
-    intro.textContent="Tap Remove and I'll try to erase the background.";
-    p.appendChild(intro);
-    const row=document.createElement('div');
-    row.className='picture-studio-subpanel-row';
-    _bgRemoveBtn=document.createElement('button');
-    _bgRemoveBtn.type='button';
-    _bgRemoveBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
-    _bgRemoveBtn.textContent='✨ Remove Background';
-    _bgRemoveBtn.addEventListener('click',_startBgRemoval);
-    row.appendChild(_bgRemoveBtn);
-    _bgUndoBtn=document.createElement('button');
-    _bgUndoBtn.type='button';
-    _bgUndoBtn.className='picture-studio-subpanel-btn';
-    _bgUndoBtn.textContent='↩ Undo';
-    _bgUndoBtn.addEventListener('click',_undoBgRemoval);
-    row.appendChild(_bgUndoBtn);
-    p.appendChild(row);
-    _bgStatusEl=document.createElement('div');
-    _bgStatusEl.className='picture-studio-subpanel-status';
-    _bgStatusEl.textContent='';
-    p.appendChild(_bgStatusEl);
+    p.setAttribute('data-tool','brush');
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Pick a brush size, then paint on your picture.';
+    p.appendChild(hint);
     // Before / After slider — mirrors the standalone tools/background-
     // remover/'s own beforeAfter slider. Hidden until a background
     // removal has actually landed (see _refreshBgControls); dragging
@@ -434,53 +500,16 @@ const PictureStudio=(function(){
     _baHint.textContent='Drag to compare.';
     _baCompareWrap.appendChild(_baHint);
     p.appendChild(_baCompareWrap);
-    // Ship B — Remove More / Bring It Back brush controls, revealed only
-    // after a bg removal has landed. Ported from tools/background-remover/
-    // (cleanupBrush.js) — same soft-edge falloff, same alpha-only writes,
-    // same undo-stack shape (Map<pixelIndex,priorAlpha> per stroke).
+    // Brush controls — size + Undo/Redo. Revealed only once a bg
+    // removal has landed (auto-run at open time). Ported from
+    // tools/background-remover/ (cleanupBrush.js).
     _brushSubPanel=document.createElement('div');
     _brushSubPanel.className='picture-studio-brush-panel hidden';
-    const brushHint=document.createElement('p');
-    brushHint.className='picture-studio-subpanel-hint';
-    brushHint.textContent='Pick a brush, then paint on your picture.';
-    _brushSubPanel.appendChild(brushHint);
-    const modeRow=document.createElement('div');
-    modeRow.className='picture-studio-subpanel-row';
-    _brushRemoveBtn=document.createElement('button');
-    _brushRemoveBtn.type='button';
-    _brushRemoveBtn.className='picture-studio-subpanel-btn';
-    _brushRemoveBtn.textContent='🩹 Remove More';
-    _brushRemoveBtn.addEventListener('click',function(){
-      _brushMode=(_brushMode==='erase')?null:'erase';
-      // Only cross into/out of the brush pseudo-tool if we're actually
-      // transitioning across the brush/not-brush boundary. Switching
-      // between Remove More and Bring It Back stays within 'brush', so
-      // _toggleActiveTool's own "click same tool to close it" rule
-      // (correct for tile toolbar) must not fire mid-sub-switch.
-      const want=_brushMode?'brush':null;
-      if(_activeTool!==want) _toggleActiveTool(want);
-      _refreshBgControls();
-      _updateStageCursor();
-    });
-    modeRow.appendChild(_brushRemoveBtn);
-    _brushRestoreBtn=document.createElement('button');
-    _brushRestoreBtn.type='button';
-    _brushRestoreBtn.className='picture-studio-subpanel-btn';
-    _brushRestoreBtn.textContent='↩ Bring It Back';
-    _brushRestoreBtn.addEventListener('click',function(){
-      _brushMode=(_brushMode==='restore')?null:'restore';
-      const want=_brushMode?'brush':null;
-      if(_activeTool!==want) _toggleActiveTool(want);
-      _refreshBgControls();
-      _updateStageCursor();
-    });
-    modeRow.appendChild(_brushRestoreBtn);
-    _brushSubPanel.appendChild(modeRow);
     const sizeRow=document.createElement('div');
     sizeRow.className='picture-studio-subpanel-row';
     const sizeLabel=document.createElement('span');
     sizeLabel.className='picture-studio-subpanel-label';
-    sizeLabel.textContent='Size';
+    sizeLabel.textContent='How big?';
     sizeRow.appendChild(sizeLabel);
     _brushSizeBtns={};
     ['small','medium','large'].forEach(function(k){
@@ -492,6 +521,7 @@ const PictureStudio=(function(){
         _brushSizeKey=k;
         _brushRadius=BRUSH_SIZE_CHOICES[k];
         _refreshBgControls();
+        _updateBrushCursorSize();
       });
       sizeRow.appendChild(b);
       _brushSizeBtns[k]=b;
@@ -542,36 +572,6 @@ const PictureStudio=(function(){
     mk('Turn Left','↺',function(){ _state.rotation=(_state.rotation+270)%360; _render(); });
     mk('Turn Right','↻',function(){ _state.rotation=(_state.rotation+90)%360; _render(); });
     mk('Flip ↔','↔',function(){ _state.flipH=!_state.flipH; _render(); });
-    p.appendChild(row);
-    return p;
-  }
-  function _buildZoomSubPanel(){
-    const p=document.createElement('div');
-    p.className='picture-studio-subpanel';
-    p.setAttribute('data-tool','zoom');
-    const hint=document.createElement('p');
-    hint.className='picture-studio-subpanel-hint';
-    hint.textContent='Make your picture bigger or smaller.';
-    p.appendChild(hint);
-    const row=document.createElement('div');
-    row.className='picture-studio-subpanel-row';
-    const mk=function(label,glyph,onClick){
-      const b=document.createElement('button');
-      b.type='button';
-      b.className='picture-studio-subpanel-btn';
-      const g=document.createElement('span');
-      g.className='picture-studio-subpanel-btn-glyph';
-      g.textContent=glyph;
-      b.appendChild(g);
-      const t=document.createElement('span');
-      t.textContent=label;
-      b.appendChild(t);
-      b.addEventListener('click',onClick);
-      row.appendChild(b);
-    };
-    mk('Bigger','🔍+',function(){ _setZoom(_state.zoom*1.15); });
-    mk('Smaller','🔍−',function(){ _setZoom(_state.zoom/1.15); });
-    mk('Fit','▭',function(){ _state.zoom=1; _state.panX=0; _state.panY=0; _render(); });
     p.appendChild(row);
     return p;
   }
@@ -664,13 +664,30 @@ const PictureStudio=(function(){
     _activeTool=tool;
     if(_root) _root.setAttribute('data-active-tool',tool||'');
     if(_tileButtons){
-      ['bg','flip','zoom','crop','reset'].forEach(function(k){
+      // Ship B Refinements — tile-key set updated to match the new
+      // primary tile grid: removeMore/bringBack/crop/flip/oops/brighten/
+      // peek/reset. The 'crop'/'flip'/'reset' entries drive their own
+      // sub-panels (data-active-tool); the 'removeMore'/'bringBack'
+      // tiles instead toggle _brushMode + activate the shared 'brush'
+      // sub-panel via _toggleActiveTool('brush') from their own click
+      // handlers, so their .active class is driven by _refreshBgControls
+      // reading _brushMode, not by this list.
+      ['crop','flip','oops','brighten','peek','reset'].forEach(function(k){
         if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
       });
     }
     // Ship B — leaving brush mode: clear brush selection so a subsequent
-    // re-open of Remove Background doesn't inherit a stale brush.
-    if(tool!=='brush'){ _brushMode=null; _refreshBgControls(); }
+    // re-open of the brush sub-panel doesn't inherit a stale brush.
+    if(tool!=='brush'){
+      _brushMode=null;
+      _refreshBgControls();
+      _updateBrushCursorVisibility();
+    }else{
+      // Entering brush mode: size the circular cursor to match the
+      // current brush radius before the first mousemove ever fires.
+      _updateBrushCursorVisibility();
+      _updateBrushCursorSize();
+    }
     // Leaving crop mode: tear down the on-stage selection overlay if any.
     if(tool!=='crop'){ _tearDownCropBox(); }
     _updateStageCursor();
@@ -683,8 +700,53 @@ const PictureStudio=(function(){
   }
 
   function _setZoom(z){
-    _state.zoom=Math.max(0.5,Math.min(4,z));
+    _state.zoom=Math.max(0.05,Math.min(4,z));
     _render();
+    // Ship B Refinements — keep the always-visible kid zoom slider in
+    // sync with wheel-driven zoom changes so the two never disagree.
+    if(_kidZoomSlider){
+      const pct=Math.round(_state.zoom*100);
+      if(String(pct)!==_kidZoomSlider.value) _kidZoomSlider.value=String(pct);
+    }
+    // Live-resize the brush cursor to match the new effective radius on screen.
+    _updateBrushCursorSize();
+  }
+
+  // Ship B Refinements — show/hide the circular brush cursor overlay.
+  // Called from tile handlers whenever brush mode toggles on/off.
+  function _updateBrushCursorVisibility(){
+    if(!_brushCursor) return;
+    const on=(_brushMode==='erase'||_brushMode==='restore');
+    _brushCursor.classList.toggle('hidden',!on);
+  }
+
+  // Ship B Refinements — resize the circular brush cursor to match the
+  // brush's effective on-screen diameter. Called on brush size change,
+  // zoom change, and whenever the cursor is first shown.
+  function _updateBrushCursorSize(){
+    if(!_brushCursor||!_canvas) return;
+    const rect=_canvas.getBoundingClientRect();
+    // Fallback if the canvas hasn't laid out yet (fresh open before
+    // first render): compute against the stage's own rect.
+    if(!rect.width){
+      _brushCursor.style.width='0px';
+      _brushCursor.style.height='0px';
+      return;
+    }
+    const img=_activeImg();
+    if(!img){ return; }
+    // Match _screenToContent's own scale math but in reverse: image-px →
+    // logical canvas-px → CSS-px.
+    const eff=_effSize();
+    const s=_stageRect();
+    const fit=Math.min(s.w/eff.w,s.h/eff.h);
+    const z=fit*_state.zoom;                       // logical px per image px
+    const logicalToCss=rect.width/_canvas.width;   // CSS px per logical px
+    const diameterCss=_brushRadius*2*z*logicalToCss;
+    _brushCursor.style.width=diameterCss+'px';
+    _brushCursor.style.height=diameterCss+'px';
+    // Nudge the origin so `transform: translate(-50%, -50%)` in CSS
+    // centres the circle on the cursor position (see mousemove below).
   }
 
   // -------- Background removal (Feature 1 Phase 2) ------------------
@@ -770,6 +832,8 @@ const PictureStudio=(function(){
     _bgBusy=true;
     _bgJobId++;
     if(_bgStatusEl) _bgStatusEl.textContent='Removing background…';
+    // Ship B Refinements — show the magic overlay while removal runs.
+    if(_magicOverlay) _magicOverlay.classList.remove('hidden');
     _refreshBgControls();
     // Transfer the pixel buffer's underlying ArrayBuffer so the main
     // thread doesn't hold a duplicate copy — same discipline the
@@ -814,6 +878,8 @@ const PictureStudio=(function(){
     _state.rotation=0;
     _state.flipH=false;
     if(_bgStatusEl) _bgStatusEl.textContent='Background removed.';
+    // Ship B Refinements — hide the magic overlay once removal lands.
+    if(_magicOverlay) _magicOverlay.classList.add('hidden');
     _refreshBgControls();
     _render();
   }
@@ -833,6 +899,11 @@ const PictureStudio=(function(){
   function _onBgError(msg){
     _bgBusy=false;
     if(_bgStatusEl) _bgStatusEl.textContent='Removal failed — '+(msg.message||'try again')+'.';
+    // Ship B Refinements — hide the magic overlay on failure too. The
+    // failure leaves the original picture visible with no bg removed, so
+    // the user can still edit/save/cancel; the tile grid + always-visible
+    // zoom slider remain fully functional either way.
+    if(_magicOverlay) _magicOverlay.classList.add('hidden');
     _refreshBgControls();
   }
   function _undoBgRemoval(){
@@ -928,6 +999,15 @@ const PictureStudio=(function(){
       e.preventDefault();
     });
     window.addEventListener('mousemove',function(e){
+      // Ship B Refinements — always keep the circular brush cursor
+      // tracking the pointer whenever a brush mode is active, whether
+      // or not a paint gesture is in flight. CSS `translate(-50%,-50%)`
+      // centres the DIV on this exact point.
+      if((_brushMode==='erase'||_brushMode==='restore')&&_brushCursor&&_stage){
+        const stageRect=_stage.getBoundingClientRect();
+        _brushCursor.style.left=(e.clientX-stageRect.left)+'px';
+        _brushCursor.style.top=(e.clientY-stageRect.top)+'px';
+      }
       if(_brushPainting){
         _paintAt(e.clientX,e.clientY);
         return;
@@ -1392,6 +1472,10 @@ const PictureStudio=(function(){
       _origImg=input;
       _refreshBgControls();
       _render();
+      // Ship B Refinements — auto-run background removal on image load
+      // so the "✨ Making the paper disappear..." moment happens
+      // automatically, not behind a manual tile the user has to hunt for.
+      _startBgRemoval();
     }else if(typeof input==='string'){
       const loadImg=function(src){
         const img=new Image();
@@ -1404,7 +1488,7 @@ const PictureStudio=(function(){
         // SecurityError. Harmless for the plain-string/data: fallback
         // path below, which also calls this same function.
         img.crossOrigin='anonymous';
-        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); _startBgRemoval(); };
         img.src=src;
       };
       // Platform Hardening — Draft Asset Architecture, Phase C. `input`
@@ -1426,7 +1510,7 @@ const PictureStudio=(function(){
       const reader=new FileReader();
       reader.onload=function(ev){
         const img=new Image();
-        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); _startBgRemoval(); };
         img.src=ev.target.result;
       };
       reader.readAsDataURL(input);
@@ -1465,6 +1549,9 @@ const PictureStudio=(function(){
     _bgRemovedDataURL=null;
     _bgBusy=false;
     _drag=null;
+    // Ship B Refinements — hide the magic overlay if it was still up
+    // (e.g. cancel/close while bg removal was mid-flight).
+    if(_magicOverlay) _magicOverlay.classList.add('hidden');
     // Reset view/tool state so a re-open starts cleanly on Result View.
     // Otherwise closing while a tile is active leaves stale .active
     // classes and a lingering data-active-tool for the next open.
