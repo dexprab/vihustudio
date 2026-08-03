@@ -4336,14 +4336,15 @@ body.dark-theme .checkerboard{
 
 /* Contextual-collapse redesign — while a tool is active, hide every tile
    that doesn't belong to that tool. Uses `data-tile-key` attributes set
-   by _buildTile via its opts.key argument. Brush (Remove More / Bring It
-   Back / Oops) is the one tool whose active state (data-active-tool="brush")
-   keeps THREE tiles visible together, since those three form one logical
-   toolkit (erase / restore / undo-last-stroke). Every other tool keeps
-   just its own tile visible. The always-visible zoom slider above and
-   the always-visible ✓ Done button below both live outside .picture-studio-tool-grid
-   so this rule never touches them. */
-.picture-studio[data-active-tool="brush"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="removeMore"]):not([data-tile-key="bringBack"]):not([data-tile-key="oops"]){
+   by _buildTile via its opts.key argument. Brush (Remove More + Bring It
+   Back) is the one tool whose active state (data-active-tool="brush")
+   keeps TWO tiles visible together: Remove More activates erase mode,
+   Bring It Back is a one-shot per-stroke undo (the retired Oops tile's
+   old job, folded in). Every other tool keeps just its own tile visible.
+   The always-visible zoom slider above and the always-visible ✓ Done /
+   ← Back buttons below all live outside .picture-studio-tool-grid so
+   this rule never touches them. */
+.picture-studio[data-active-tool="brush"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="removeMore"]):not([data-tile-key="bringBack"]){
   display:none;
 }
 .picture-studio[data-active-tool="crop"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="crop"]){
@@ -4356,13 +4357,43 @@ body.dark-theme .checkerboard{
   display:none;
 }
 
-/* Contextual-collapse redesign — "✓ Done" button. Hidden by default
-   (no tool active), shown as a full-width gold pill only while a tool
-   is engaged, sits at the bottom of the right pane as the clear way
-   back to the full tile grid. */
-.picture-studio-edit-done-btn{
+/* Contextual-collapse redesign — "← Back" and "✓ Done" buttons live in
+   one row (.picture-studio-edit-actions-row) beneath every sub-panel.
+   Row is hidden by default (no tool active); both buttons show as a
+   two-cell 40/60 grid only while a tool is engaged. Back is the quieter
+   secondary action (paper tone, matching the sub-panel background so
+   it recedes visually), Done is the primary gold pill (matching Save
+   Picture's own CTA convention). Both call _toggleActiveTool(null). */
+.picture-studio-edit-actions-row{
   display:none;
+  gap:8px;
   align-self:stretch;
+}
+.picture-studio[data-active-tool="brush"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="crop"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="flip"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="reset"] .picture-studio-edit-actions-row{
+  display:flex;
+}
+.picture-studio-edit-back-btn{
+  flex:0 0 40%;
+  padding:12px 12px;
+  background:rgba(255,251,240,0.94);
+  border:1px solid rgba(255,203,69,0.55);
+  border-radius:12px;
+  color:var(--navy);
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.12s, transform 0.05s;
+}
+.picture-studio-edit-back-btn:hover{ background:#FFF8E5; }
+.picture-studio-edit-back-btn:active{ transform:translateY(1px); }
+.picture-studio-edit-done-btn{
+  flex:1 1 auto;
   padding:12px 16px;
   background:var(--gold);
   border:1px solid var(--gold);
@@ -4378,12 +4409,6 @@ body.dark-theme .checkerboard{
 }
 .picture-studio-edit-done-btn:hover{ background:#FFD466; }
 .picture-studio-edit-done-btn:active{ transform:translateY(1px); }
-.picture-studio[data-active-tool="brush"] .picture-studio-edit-done-btn,
-.picture-studio[data-active-tool="crop"] .picture-studio-edit-done-btn,
-.picture-studio[data-active-tool="flip"] .picture-studio-edit-done-btn,
-.picture-studio[data-active-tool="reset"] .picture-studio-edit-done-btn{
-  display:inline-block;
-}
 .picture-studio-subpanel-hint{
   margin:0;
   font-size:12px;
@@ -4441,6 +4466,25 @@ body.dark-theme .checkerboard{
   border-color:rgba(192,57,43,0.6);
 }
 .picture-studio-subpanel-btn-glyph{ font-size:16px; line-height:1; }
+/* Brush size chooser — three circular indicators (not text labels), each
+   proportional to its real brush radius. The dot itself IS the label; a
+   child can see at a glance which is small/medium/large without reading
+   any text. The button stays the same subpanel-btn pill shape for hover/
+   active/disabled parity with every other subpanel button. */
+.picture-studio-brush-size-btn{
+  padding:8px 10px;
+  justify-content:center;
+  min-width:36px;
+}
+.picture-studio-brush-size-dot{
+  display:block;
+  border-radius:50%;
+  background:var(--navy);
+  flex:0 0 auto;
+}
+.picture-studio-subpanel-btn.active .picture-studio-brush-size-dot{
+  background:var(--navy);
+}
 .picture-studio-subpanel-status{
   font-size:12px;
   color:var(--text-dim, #888);
@@ -4486,6 +4530,17 @@ body.dark-theme .checkerboard{
 }
 .picture-studio-ba-slider{
   width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:0;
+}
+/* Ship C — background-removal strength slider inside the brush sub-panel.
+   Sits beside its "How strong?" label on one row (flex:1 grows into the
+   remaining space); the ! important overrides escape the same global
+   input[type=range]{width:auto} cascade the ba-slider already fights. */
+.picture-studio-strength-slider{
+  flex:1 1 auto !important;
+  width:auto !important;
   height:auto !important;
   margin:0 !important;
   padding:0;
@@ -4606,6 +4661,22 @@ body.dark-theme .checkerboard{
   z-index:5;
 }
 .picture-studio-brush-cursor.hidden{ display:none; }
+
+/* Ship C — floating ✂️ scissors cursor overlay for crop mode. Mirrors
+   .picture-studio-brush-cursor's own DOM/positioning discipline (absolute
+   inside _stage, pointer-events:none, transform-centred on the exact
+   pointer coords). Sits above the canvas but below every modal chrome
+   element so the strip's own tiles stay clickable if the pointer strays. */
+.picture-studio-scissors-cursor{
+  position:absolute;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  font-size:26px;
+  line-height:1;
+  z-index:5;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));
+}
+.picture-studio-scissors-cursor.hidden{ display:none; }
 
 /* Redesign Ship B — Magic overlay shown during bg-removal, matching
    the app's welcome-screen ✨ Looking at your picture... treatment.

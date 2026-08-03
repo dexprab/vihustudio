@@ -64,6 +64,17 @@ const PictureStudio=(function(){
   let _bgJobId=0;
   let _bgBusy=false;
   let _bgStatusEl=null, _bgRemoveBtn=null, _bgUndoBtn=null;
+  // Ship C — background-removal strength slider. Null = auto-detect (worker's
+  // own detectBackground picks a tolerance based on the picture). A number
+  // overrides that. Higher tolerance = more pixels considered "background"
+  // = more aggressive removal. Slider lives inside the brush sub-panel
+  // (shown only once removal has landed); dragging it re-invokes
+  // _startBgRemoval with the override, which resets the working buffer
+  // (any in-progress brush strokes are discarded — the exact right
+  // trade, since strokes made against a different removal are no longer
+  // meaningful anyway).
+  let _bgStrengthSlider=null;
+  let _bgStrengthOverride=null;   // null = auto; number = tolerance override
   let _state=Object.assign({},DEFAULT_STATE);
   let _onApply=null, _onCancel=null;
   let _drag=null;
@@ -79,11 +90,14 @@ const PictureStudio=(function(){
   let _resultPanel=null, _editPanel=null;
   let _tileButtons=null, _subPanels=null;
   let _brightenTile=null;
-  // Contextual-collapse redesign — the edit-hint paragraph and the "✓ Done"
-  // button both live at module scope so _toggleActiveTool can retitle the
-  // hint per active tool ("Pick a brush size, then paint...") and toggle
-  // the Done button's visibility (shown only while a tool is engaged).
-  let _editHint=null, _editDoneBtn=null;
+  // Contextual-collapse redesign — the edit-hint paragraph and the "✓ Done" /
+  // "← Back" buttons all live at module scope so _toggleActiveTool can retitle
+  // the hint per active tool ("Pick a brush size, then paint...") and toggle
+  // both buttons' visibility (shown only while a tool is engaged). Back and
+  // Done route to the identical _toggleActiveTool(null); Back reads as the
+  // conventional "go back" affordance for touch, Done reads as "I'm finished
+  // with this tool" for keyboard/click users — same outcome, two doorways.
+  let _editHint=null, _editDoneBtn=null, _editBackBtn=null;
   // Ship B Refinements — always-visible kid zoom slider (🔍 [range] 🔎)
   // above the tool grid; replaces the previous Bigger/Smaller tile +
   // sub-panel entirely. Range is 5..400 (percent), mapped to _state.zoom
@@ -115,7 +129,11 @@ const PictureStudio=(function(){
   // stays a Canvas; on Apply, _bake reads _bgRemovedImg (Canvas) via
   // drawImage exactly like an Image, so downstream is unchanged.
   let _workingBuffer=null;
-  let _brushMode=null;             // 'erase' | 'restore' | null
+  // Brush mode: 'erase' | null. The old 'restore' mode was retired when
+  // Bring It Back was rewired to per-stroke undo (matching what the Oops
+  // tile used to do — Oops itself was removed in the same ship, since
+  // Bring It Back now does its job).
+  let _brushMode=null;             // 'erase' | null
   let _brushRadius=45;             // radius in image px; 45 = default 90 diameter
   const BRUSH_SIZE_CHOICES={small:15, medium:45, large:110}; // radii
   let _brushSizeKey='medium';
@@ -127,6 +145,14 @@ const PictureStudio=(function(){
   let _brushRemoveBtn=null, _brushRestoreBtn=null;
   let _brushSizeBtns=null, _brushUndoBtn=null, _brushRedoBtn=null;
   let _brushCursor=null;
+  // Ship C — floating scissors cursor overlay shown whenever the crop tool
+  // is active. Mirrors _brushCursor's own DOM/pointer-tracking discipline
+  // (position:absolute inside _stage, pointer-events:none) so it never
+  // intercepts the crop-selection drag gesture the canvas listeners own.
+  // Reads as ✂️ hovering at the pointer — a real, kid-friendly visual cue
+  // that "you're now trimming," rather than the ordinary crosshair the
+  // native cursor style would show alone.
+  let _scissorsCursor=null;
   // Crop state — the pending rect (in working-buffer pixel space) plus
   // a pre-crop snapshot so Reset Crop can restore. Crop is only reachable
   // once _bgRemovedImg exists (Ship B scope: the crop tool crops the
@@ -259,6 +285,15 @@ const PictureStudio=(function(){
     _brushCursor=document.createElement('div');
     _brushCursor.className='picture-studio-brush-cursor hidden';
     _stage.appendChild(_brushCursor);
+    // Ship C — floating ✂️ overlay for crop mode (see _scissorsCursor
+    // declaration comment). Hidden by default; _updateStageCursor toggles
+    // visibility whenever _activeTool==='crop', and the shared mousemove
+    // handler keeps its position tracking the pointer.
+    _scissorsCursor=document.createElement('div');
+    _scissorsCursor.className='picture-studio-scissors-cursor hidden';
+    _scissorsCursor.textContent='✂️';
+    _scissorsCursor.setAttribute('aria-hidden','true');
+    _stage.appendChild(_scissorsCursor);
     // Ship B Refinements — magic overlay shown while auto-run background
     // removal is in flight. Ported from tools/background-remover/'s
     // .magic-overlay pattern. Absolutely-positioned inside the stage so
@@ -363,16 +398,15 @@ const PictureStudio=(function(){
       if(_activeTool!==want) _toggleActiveTool(want);
       else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
     },{key:'removeMore'});
-    _tileButtons.bringBack=_buildTile(toolGrid,'❤️','Bring It Back',function(){
-      _brushMode=(_brushMode==='restore')?null:'restore';
-      const want=_brushMode?'brush':null;
-      if(_activeTool!==want) _toggleActiveTool(want);
-      else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
-    },{key:'bringBack'});
+    // Bring It Back is now per-stroke undo (it used to enter a 'restore'
+    // brush mode; the old Oops tile — which did per-stroke undo — is
+    // retired since Bring It Back now does its job in one tap, matching
+    // the affordance's own emotional read for a child ("bring back what
+    // I just accidentally removed").
+    _tileButtons.bringBack=_buildTile(toolGrid,'❤️','Bring It Back',function(){ _undoBrushStroke(); },{key:'bringBack'});
     _cropTile=_buildTile(toolGrid,'✂️','Trim Picture',function(){ _toggleActiveTool('crop'); },{key:'crop'});
     _tileButtons.crop=_cropTile;
     _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn / Flip',function(){ _toggleActiveTool('flip'); },{key:'flip'});
-    _tileButtons.oops=_buildTile(toolGrid,'↶','Oops!',function(){ _undoBrushStroke(); },{key:'oops'});
     _brightenTile=_buildTile(toolGrid,'💡','Brighten',function(){
       _state.enhance=!_state.enhance;
       _brightenTile.classList.toggle('active',!!_state.enhance);
@@ -409,16 +443,29 @@ const PictureStudio=(function(){
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
     _editPanel.appendChild(subWrap);
 
-    // Contextual-collapse redesign — "✓ Done" button, shown only while a
-    // tool is active (CSS hides it when `data-active-tool` is empty). Sits
-    // at the bottom of the right pane so a Story Author always has a
-    // clear, kid-friendly way back to the full tile grid.
+    // Contextual-collapse redesign — "← Back" and "✓ Done" buttons, shown
+    // only while a tool is active (CSS hides them both when `data-active-tool`
+    // is empty). Sit side-by-side at the bottom of the right pane so a Story
+    // Author always has a clear, kid-friendly way back to the full tile grid,
+    // reachable from every sub-panel uniformly. Both routes call
+    // _toggleActiveTool(null) — Back reads as the conventional touch-first
+    // "go back" affordance, Done reads as "I'm finished with this tool" for
+    // keyboard/mouse users. Same outcome, two doorways.
+    const editActionsRow=document.createElement('div');
+    editActionsRow.className='picture-studio-edit-actions-row';
+    _editBackBtn=document.createElement('button');
+    _editBackBtn.type='button';
+    _editBackBtn.className='picture-studio-edit-back-btn';
+    _editBackBtn.textContent='← Back';
+    _editBackBtn.addEventListener('click',function(){ _toggleActiveTool(null); });
+    editActionsRow.appendChild(_editBackBtn);
     _editDoneBtn=document.createElement('button');
     _editDoneBtn.type='button';
     _editDoneBtn.className='picture-studio-edit-done-btn';
     _editDoneBtn.textContent='✓ Done';
     _editDoneBtn.addEventListener('click',function(){ _toggleActiveTool(null); });
-    _editPanel.appendChild(_editDoneBtn);
+    editActionsRow.appendChild(_editDoneBtn);
+    _editPanel.appendChild(editActionsRow);
 
     // Edit view mounts inside body as the right-side aside beside the
     // stage; body is what actually goes into _root. Footer is a sibling
@@ -546,11 +593,26 @@ const PictureStudio=(function(){
     sizeLabel.textContent='How big?';
     sizeRow.appendChild(sizeLabel);
     _brushSizeBtns={};
+    // Visual size choice: each button shows a real circle sized
+    // proportionally to its brush radius (small=15/medium=45/large=110
+    // image px). The rendered circles use a fixed on-screen diameter
+    // scale of 10px/12px/22px — big enough to distinguish at a glance,
+    // small enough to fit three across the sub-panel row alongside the
+    // "How big?" label. A visual > text label — a child does not need
+    // to read "Medium" to know the middle circle is medium.
+    const SIZE_VISUAL_PX={small:10,medium:16,large:24};
+    const SIZE_ARIA={small:'Small brush',medium:'Medium brush',large:'Large brush'};
     ['small','medium','large'].forEach(function(k){
       const b=document.createElement('button');
       b.type='button';
-      b.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
-      b.textContent={small:'Small',medium:'Medium',large:'Large'}[k];
+      b.className='picture-studio-subpanel-btn picture-studio-brush-size-btn';
+      b.setAttribute('aria-label',SIZE_ARIA[k]);
+      b.setAttribute('title',SIZE_ARIA[k]);
+      const dot=document.createElement('span');
+      dot.className='picture-studio-brush-size-dot';
+      dot.style.width=SIZE_VISUAL_PX[k]+'px';
+      dot.style.height=SIZE_VISUAL_PX[k]+'px';
+      b.appendChild(dot);
       b.addEventListener('click',function(){
         _brushSizeKey=k;
         _brushRadius=BRUSH_SIZE_CHOICES[k];
@@ -561,6 +623,36 @@ const PictureStudio=(function(){
       _brushSizeBtns[k]=b;
     });
     _brushSubPanel.appendChild(sizeRow);
+    // Ship C — background-removal strength slider. Higher = more
+    // pixels considered background = more aggressive removal. Uses
+    // 'change' (release), not 'input' (drag tick), because re-running
+    // BG removal is a worker roundtrip and resets any in-progress
+    // brush strokes (see _onBgResult) — spamming it on every drag
+    // pixel would be slow AND destroy the user's current work
+    // dozens of times per drag. Slider value 0..100 maps to worker
+    // tolerance 0..100 directly; a value that never changes from the
+    // initial 50 leaves _bgStrengthOverride null so the worker keeps
+    // auto-detecting per picture (its own smarter default).
+    const strengthRow=document.createElement('div');
+    strengthRow.className='picture-studio-subpanel-row';
+    const strengthLabel=document.createElement('span');
+    strengthLabel.className='picture-studio-subpanel-label';
+    strengthLabel.textContent='How strong?';
+    strengthRow.appendChild(strengthLabel);
+    _bgStrengthSlider=document.createElement('input');
+    _bgStrengthSlider.type='range';
+    _bgStrengthSlider.min='0';
+    _bgStrengthSlider.max='100';
+    _bgStrengthSlider.value='50';
+    _bgStrengthSlider.className='picture-studio-strength-slider';
+    _bgStrengthSlider.setAttribute('aria-label','Background removal strength');
+    _bgStrengthSlider.addEventListener('change',function(){
+      const pct=parseInt(_bgStrengthSlider.value,10);
+      _bgStrengthOverride=pct;
+      _startBgRemoval();
+    });
+    strengthRow.appendChild(_bgStrengthSlider);
+    _brushSubPanel.appendChild(strengthRow);
     const undoRow=document.createElement('div');
     undoRow.className='picture-studio-subpanel-row';
     _brushUndoBtn=document.createElement('button');
@@ -713,15 +805,14 @@ const PictureStudio=(function(){
     if(_root) _root.setAttribute('data-active-tool',tool||'');
     if(_editHint) _editHint.textContent=_EDIT_HINTS[tool||'']||_EDIT_HINTS[''];
     if(_tileButtons){
-      // Ship B Refinements — tile-key set updated to match the new
-      // primary tile grid: removeMore/bringBack/crop/flip/oops/brighten/
-      // peek/reset. The 'crop'/'flip'/'reset' entries drive their own
-      // sub-panels (data-active-tool); the 'removeMore'/'bringBack'
-      // tiles instead toggle _brushMode + activate the shared 'brush'
-      // sub-panel via _toggleActiveTool('brush') from their own click
-      // handlers, so their .active class is driven by _refreshBgControls
-      // reading _brushMode, not by this list.
-      ['crop','flip','oops','brighten','peek','reset'].forEach(function(k){
+      // Primary tile grid: removeMore/bringBack/crop/flip/brighten/peek/
+      // reset. The 'crop'/'flip'/'reset' entries drive their own sub-panels
+      // (data-active-tool); 'removeMore' toggles _brushMode + activates the
+      // shared 'brush' sub-panel via _toggleActiveTool('brush') from its
+      // own click handler, so its .active class is driven by _refreshBgControls
+      // reading _brushMode, not by this list. 'bringBack' is a one-shot
+      // undo — never gets an active state at all.
+      ['crop','flip','brighten','peek','reset'].forEach(function(k){
         if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
       });
     }
@@ -743,9 +834,13 @@ const PictureStudio=(function(){
   }
   function _updateStageCursor(){
     if(!_stage) return;
-    if(_brushMode==='erase'||_brushMode==='restore') _stage.style.cursor='crosshair';
-    else if(_activeTool==='crop') _stage.style.cursor='crosshair';
+    if(_brushMode==='erase') _stage.style.cursor='crosshair';
+    else if(_activeTool==='crop') _stage.style.cursor='none';
     else _stage.style.cursor='';
+    // Ship C — the ✂️ scissors overlay stands in for the cursor while
+    // crop is active, so `cursor:none` hides the native pointer to let it
+    // read cleanly on its own.
+    if(_scissorsCursor) _scissorsCursor.classList.toggle('hidden',_activeTool!=='crop');
   }
 
   function _setZoom(z){
@@ -765,7 +860,7 @@ const PictureStudio=(function(){
   // Called from tile handlers whenever brush mode toggles on/off.
   function _updateBrushCursorVisibility(){
     if(!_brushCursor) return;
-    const on=(_brushMode==='erase'||_brushMode==='restore');
+    const on=(_brushMode==='erase');
     _brushCursor.classList.toggle('hidden',!on);
   }
 
@@ -888,11 +983,16 @@ const PictureStudio=(function(){
     // thread doesn't hold a duplicate copy — same discipline the
     // standalone tool's app.js already established.
     try{
+      const opts={strategy:'white-paper', autoCrop:true, featherRadius:1};
+      // Ship C — thread the strength-slider override in. Null passes through
+      // to the worker as-is (its own default: auto-detect). A number
+      // overrides tolerance directly (see worker.js:47).
+      if(_bgStrengthOverride!=null) opts.tolerance=_bgStrengthOverride;
       worker.postMessage({
         type:'process',
         jobId:_bgJobId,
         pixelBuffer:buf,
-        options:{strategy:'white-paper', autoCrop:true, featherRadius:1}
+        options:opts
       },[buf.data.buffer]);
     }catch(e){
       _bgBusy=false;
@@ -1052,10 +1152,18 @@ const PictureStudio=(function(){
       // tracking the pointer whenever a brush mode is active, whether
       // or not a paint gesture is in flight. CSS `translate(-50%,-50%)`
       // centres the DIV on this exact point.
-      if((_brushMode==='erase'||_brushMode==='restore')&&_brushCursor&&_stage){
+      if(_brushMode==='erase'&&_brushCursor&&_stage){
         const stageRect=_stage.getBoundingClientRect();
         _brushCursor.style.left=(e.clientX-stageRect.left)+'px';
         _brushCursor.style.top=(e.clientY-stageRect.top)+'px';
+      }
+      // Ship C — track the ✂️ scissors overlay to the pointer whenever
+      // the crop tool is active. Uses the same stage-relative coordinate
+      // conversion the brush cursor already uses.
+      if(_activeTool==='crop'&&_scissorsCursor&&_stage){
+        const stageRect2=_stage.getBoundingClientRect();
+        _scissorsCursor.style.left=(e.clientX-stageRect2.left)+'px';
+        _scissorsCursor.style.top=(e.clientY-stageRect2.top)+'px';
       }
       if(_brushPainting){
         _paintAt(e.clientX,e.clientY);
@@ -1598,6 +1706,12 @@ const PictureStudio=(function(){
     _bgRemovedDataURL=null;
     _bgBusy=false;
     _drag=null;
+    // Ship C — reset the BG strength override so the next picture opens
+    // with the worker's own auto-detected default rather than inheriting
+    // the previous session's tolerance. Slider defaults back to 50 in
+    // _refreshBgControls' sync pass on next open.
+    _bgStrengthOverride=null;
+    if(_bgStrengthSlider) _bgStrengthSlider.value='50';
     // Ship B Refinements — hide the magic overlay if it was still up
     // (e.g. cancel/close while bg removal was mid-flight).
     if(_magicOverlay) _magicOverlay.classList.add('hidden');
