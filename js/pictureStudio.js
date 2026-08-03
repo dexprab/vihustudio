@@ -79,6 +79,11 @@ const PictureStudio=(function(){
   let _resultPanel=null, _editPanel=null;
   let _tileButtons=null, _subPanels=null;
   let _brightenTile=null;
+  // Contextual-collapse redesign — the edit-hint paragraph and the "✓ Done"
+  // button both live at module scope so _toggleActiveTool can retitle the
+  // hint per active tool ("Pick a brush size, then paint...") and toggle
+  // the Done button's visibility (shown only while a tool is engaged).
+  let _editHint=null, _editDoneBtn=null;
   // Ship B Refinements — always-visible kid zoom slider (🔍 [range] 🔎)
   // above the tool grid; replaces the previous Bigger/Smaller tile +
   // sub-panel entirely. Range is 5..400 (percent), mapped to _state.zoom
@@ -307,10 +312,10 @@ const PictureStudio=(function(){
     // the tools aside grows.
     _editPanel=document.createElement('div');
     _editPanel.className='picture-studio-edit-view';
-    const editHint=document.createElement('p');
-    editHint.className='picture-studio-edit-hint';
-    editHint.textContent='Tap a tool, then touch your picture.';
-    _editPanel.appendChild(editHint);
+    _editHint=document.createElement('p');
+    _editHint.className='picture-studio-edit-hint';
+    _editHint.textContent='Tap a tool, then touch your picture.';
+    _editPanel.appendChild(_editHint);
 
     // Ship B Refinements — always-visible kid zoom slider row (🔍 [slider] 🔎),
     // ported from tools/background-remover/'s own .kid-zoom-row pattern.
@@ -357,46 +362,43 @@ const PictureStudio=(function(){
       const want=_brushMode?'brush':null;
       if(_activeTool!==want) _toggleActiveTool(want);
       else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
-    });
+    },{key:'removeMore'});
     _tileButtons.bringBack=_buildTile(toolGrid,'❤️','Bring It Back',function(){
       _brushMode=(_brushMode==='restore')?null:'restore';
       const want=_brushMode?'brush':null;
       if(_activeTool!==want) _toggleActiveTool(want);
       else{ _refreshBgControls(); _updateStageCursor(); _updateBrushCursorVisibility(); }
-    });
-    _cropTile=_buildTile(toolGrid,'✂️','Trim Picture',function(){ _toggleActiveTool('crop'); });
+    },{key:'bringBack'});
+    _cropTile=_buildTile(toolGrid,'✂️','Trim Picture',function(){ _toggleActiveTool('crop'); },{key:'crop'});
     _tileButtons.crop=_cropTile;
-    _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn / Flip',function(){ _toggleActiveTool('flip'); });
-    _tileButtons.oops=_buildTile(toolGrid,'↶','Oops!',function(){ _undoBrushStroke(); });
+    _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn / Flip',function(){ _toggleActiveTool('flip'); },{key:'flip'});
+    _tileButtons.oops=_buildTile(toolGrid,'↶','Oops!',function(){ _undoBrushStroke(); },{key:'oops'});
     _brightenTile=_buildTile(toolGrid,'💡','Brighten',function(){
       _state.enhance=!_state.enhance;
       _brightenTile.classList.toggle('active',!!_state.enhance);
       _render();
-    });
+    },{key:'brighten'});
     _tileButtons.brighten=_brightenTile;
-    _tileButtons.peek=_buildTile(toolGrid,'👁️','Peek Original',null,{hold:true});
-    _tileButtons.reset=_buildTile(toolGrid,'🔄','New Picture',function(){ _toggleActiveTool('reset'); });
+    _tileButtons.peek=_buildTile(toolGrid,'👁️','Peek Original',null,{hold:true,key:'peek'});
+    _tileButtons.reset=_buildTile(toolGrid,'🔄','New Picture',function(){ _toggleActiveTool('reset'); },{key:'reset'});
     _editPanel.appendChild(toolGrid);
 
     // Sub-panels area — one per tool, hidden by default. Ship B
     // Refinements: 'brush' sub-panel (was inside 'bg') hosts size +
     // Before/After compare. Bigger/Smaller sub-panel retired.
     //
-    // Ship B UX Refinement: sub-panels used to mount inside `_editPanel`
-    // (the 320px right-side aside) beneath the tile grid — but a Story
-    // Author tapping a tile then having to look sideways for its sub-
-    // options broke the "act right where you're looking" flow, AND the
-    // sub-panel's own height (Before/After compare + size chips +
-    // undo/redo) pushed the right pane past its budget and introduced a
-    // vertical scrollbar. Moved into `_stage` as an absolute-positioned
-    // bottom drawer overlaying the picture itself, so:
-    //   (a) the options appear right beside the picture the tool acts on,
-    //   (b) the right pane is left with only tiles + hint + zoom, which
-    //       comfortably fits at 320px×~680px without any scroll.
-    // `_stage` already has `position:relative` (see .picture-studio-stage
-    // CSS + existing use by _cropBoxEl/_brushCursor/_magicOverlay), so
-    // the absolute positioning has a natural containing block with no
-    // new stacking-context work needed.
+    // Contextual-collapse redesign — sub-panels live back inside `_editPanel`
+    // (a prior interim ship briefly moved them onto the stage as an
+    // absolute-positioned overlay to eliminate the right-pane scrollbar,
+    // but the overlay obscured the very canvas a Story Author was trying
+    // to paint on — traded one bad state for a worse one). The right fix
+    // is contextual collapse: when a tool is active, CSS hides every tile
+    // NOT relevant to that tool via the `data-tile-key` attribute filter
+    // (see .picture-studio[data-active-tool] rules in style.css), leaving
+    // just the active tool's tile + its sub-panel + a "✓ Done" button —
+    // one focused thing at a time, kid-friendly, no scroll structurally
+    // because there's simply less content in the pane once collapsed, and
+    // nothing ever overlaps the canvas.
     _subPanels={};
     const subWrap=document.createElement('div');
     subWrap.className='picture-studio-subpanels';
@@ -405,7 +407,18 @@ const PictureStudio=(function(){
     _subPanels.crop=_buildCropSubPanel();
     _subPanels.reset=_buildResetSubPanel();
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
-    _stage.appendChild(subWrap);
+    _editPanel.appendChild(subWrap);
+
+    // Contextual-collapse redesign — "✓ Done" button, shown only while a
+    // tool is active (CSS hides it when `data-active-tool` is empty). Sits
+    // at the bottom of the right pane so a Story Author always has a
+    // clear, kid-friendly way back to the full tile grid.
+    _editDoneBtn=document.createElement('button');
+    _editDoneBtn.type='button';
+    _editDoneBtn.className='picture-studio-edit-done-btn';
+    _editDoneBtn.textContent='✓ Done';
+    _editDoneBtn.addEventListener('click',function(){ _toggleActiveTool(null); });
+    _editPanel.appendChild(_editDoneBtn);
 
     // Edit view mounts inside body as the right-side aside beside the
     // stage; body is what actually goes into _root. Footer is a sibling
@@ -449,6 +462,11 @@ const PictureStudio=(function(){
     const btn=document.createElement('button');
     btn.type='button';
     btn.className='picture-studio-tile';
+    // Contextual right-pane redesign: a `data-tile-key` attribute lets CSS
+    // selectively hide every tile except the ones relevant to the currently
+    // active tool once one is engaged (see .picture-studio[data-active-tool]
+    // rules in style.css). Set by the caller via opts.key.
+    if(opts && opts.key) btn.setAttribute('data-tile-key',opts.key);
     const g=document.createElement('span');
     g.className='picture-studio-tile-icon';
     g.textContent=glyph||'';
@@ -675,10 +693,25 @@ const PictureStudio=(function(){
   // Click a tile to open its sub-panel; click the SAME tile again to
   // close it; click a different tile to switch. `null` closes any open
   // sub-panel and clears every tile's active state.
+  // Contextual-collapse redesign — per-tool hint text shown at the top of
+  // the right pane. The default (no tool active) reads as an invitation
+  // to explore; each active tool restates what the sub-controls beneath
+  // it are about to do, so a Story Author never has to guess what they
+  // just tapped. Kept as a data map rather than an if/else chain so a
+  // future tool can be added by extending exactly this one place.
+  const _EDIT_HINTS={
+    '': 'Tap a tool, then touch your picture.',
+    brush: 'Pick a brush size, then paint on your picture.',
+    crop: 'Drag on your picture to choose what to keep.',
+    flip: 'Turn or flip your picture.',
+    reset: 'Start over with a fresh picture?'
+  };
+
   function _toggleActiveTool(tool){
     if(_activeTool===tool) tool=null;
     _activeTool=tool;
     if(_root) _root.setAttribute('data-active-tool',tool||'');
+    if(_editHint) _editHint.textContent=_EDIT_HINTS[tool||'']||_EDIT_HINTS[''];
     if(_tileButtons){
       // Ship B Refinements — tile-key set updated to match the new
       // primary tile grid: removeMore/bringBack/crop/flip/oops/brighten/

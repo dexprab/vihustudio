@@ -4200,20 +4200,20 @@ body.dark-theme .checkerboard{
 .picture-studio[data-view="edit"] .picture-studio-edit-view{
   display:flex;
   flex-direction:column;
-  gap:10px;
-  padding:14px 16px;
+  gap:8px;
+  padding:12px 14px;
   border-left:1px solid var(--line);
   background:var(--panel);
   width:320px;
   flex:0 0 320px;
   min-height:0;
-  /* Ship B UX Refinement: sub-panels moved out of this pane and into
-     .picture-studio-stage as a floating overlay, so this pane now only
-     holds hint + zoom slider + tile grid — which comfortably fits at
-     320px × ~680px without needing to scroll. overflow-y stays as a
-     defensive last-resort (matching this codebase's own established
-     "keep the safety net, expect it never to trigger" discipline for
-     other formerly-overflowing surfaces). */
+  /* Contextual-collapse redesign: sub-panels live back inside this pane
+     (a prior overlay ship traded the scrollbar for something worse —
+     obstructing the very canvas being painted on). Once a tool is active,
+     CSS hides every tile not relevant to that tool via `data-tile-key`
+     (see rules further down), so the pane structurally has less content
+     when a tool is engaged and never overflows in practice. overflow-y
+     stays as a defensive last-resort at genuinely short viewports. */
   overflow-y:auto;
 }
 
@@ -4305,23 +4305,20 @@ body.dark-theme .checkerboard{
 .picture-studio-tile-label{ font-size:12px; text-align:center; }
 
 /* Sub-panels — one per tool, only the active one shows.
-   Ship B UX Refinement: mounted inside .picture-studio-stage as an
-   absolute-positioned bottom drawer overlaying the picture itself,
-   not stacked in the right pane. Only visible while a tool is active
-   (see the [data-active-tool] dispatch below); a tool-less state
-   leaves the wrap present but empty, and the container itself never
-   paints (no background/border/padding of its own), so it's not
-   even visible until an active sub-panel gives it real content. */
+   Contextual-collapse redesign: sub-panels live inside .picture-studio-edit-view
+   (the 320px right-side aside), stacked directly beneath the tool grid.
+   A prior interim ship briefly overlaid them on the canvas to avoid a
+   right-pane scrollbar; that traded a scrollbar for something worse
+   (obstructing the very artwork a Story Author was painting). The right
+   fix is contextual collapse — once a tool is active, CSS below hides
+   every tile NOT relevant to that tool (via `data-tile-key`), leaving
+   just the active tool's tile + its sub-panel + a "✓ Done" button, so
+   the right pane structurally has less content and never needs to scroll,
+   and nothing ever overlaps the canvas. */
 .picture-studio-subpanels{
-  position:absolute;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  z-index:9;
   display:flex;
   flex-direction:column;
   gap:8px;
-  pointer-events:none;
 }
 .picture-studio-subpanel{ display:none; }
 .picture-studio[data-active-tool="brush"] .picture-studio-subpanel[data-tool="brush"],
@@ -4330,20 +4327,62 @@ body.dark-theme .checkerboard{
 .picture-studio[data-active-tool="reset"] .picture-studio-subpanel[data-tool="reset"]{
   display:flex;
   flex-direction:column;
-  gap:8px;
-  padding:12px 14px;
-  /* Translucent panel with a real backdrop-blur so the picture stays
-     dimly visible behind it (matching the Magic Card / Publish Studio
-     precedent) rather than an opaque bar obscuring the artwork. */
+  gap:6px;
+  padding:10px 12px;
   background:rgba(255,251,240,0.94);
   border:1px solid rgba(255,203,69,0.55);
   border-radius:14px;
-  box-shadow:0 6px 20px rgba(0,0,0,0.15);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
-  /* Re-enable pointer events on the actual panel so its controls remain
-     interactive; the parent wrap deliberately passes clicks through. */
-  pointer-events:auto;
+}
+
+/* Contextual-collapse redesign — while a tool is active, hide every tile
+   that doesn't belong to that tool. Uses `data-tile-key` attributes set
+   by _buildTile via its opts.key argument. Brush (Remove More / Bring It
+   Back / Oops) is the one tool whose active state (data-active-tool="brush")
+   keeps THREE tiles visible together, since those three form one logical
+   toolkit (erase / restore / undo-last-stroke). Every other tool keeps
+   just its own tile visible. The always-visible zoom slider above and
+   the always-visible ✓ Done button below both live outside .picture-studio-tool-grid
+   so this rule never touches them. */
+.picture-studio[data-active-tool="brush"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="removeMore"]):not([data-tile-key="bringBack"]):not([data-tile-key="oops"]){
+  display:none;
+}
+.picture-studio[data-active-tool="crop"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="crop"]){
+  display:none;
+}
+.picture-studio[data-active-tool="flip"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="flip"]){
+  display:none;
+}
+.picture-studio[data-active-tool="reset"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="reset"]){
+  display:none;
+}
+
+/* Contextual-collapse redesign — "✓ Done" button. Hidden by default
+   (no tool active), shown as a full-width gold pill only while a tool
+   is engaged, sits at the bottom of the right pane as the clear way
+   back to the full tile grid. */
+.picture-studio-edit-done-btn{
+  display:none;
+  align-self:stretch;
+  padding:12px 16px;
+  background:var(--gold);
+  border:1px solid var(--gold);
+  border-radius:12px;
+  color:var(--navy);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.12s, transform 0.05s;
+}
+.picture-studio-edit-done-btn:hover{ background:#FFD466; }
+.picture-studio-edit-done-btn:active{ transform:translateY(1px); }
+.picture-studio[data-active-tool="brush"] .picture-studio-edit-done-btn,
+.picture-studio[data-active-tool="crop"] .picture-studio-edit-done-btn,
+.picture-studio[data-active-tool="flip"] .picture-studio-edit-done-btn,
+.picture-studio[data-active-tool="reset"] .picture-studio-edit-done-btn{
+  display:inline-block;
 }
 .picture-studio-subpanel-hint{
   margin:0;
