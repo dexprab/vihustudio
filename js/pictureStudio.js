@@ -92,6 +92,83 @@ const PictureStudio=(function(){
   // as its source. Background-removed if applied, else original.
   function _activeImg(){ return _bgRemovedImg||_origImg; }
 
+  // Ship B — brush painting + crop, ported from tools/background-remover/
+  // (cleanupBrush.js + cropper.js). The working buffer is the mutable
+  // truth once bg removal has landed; _bgRemovedImg is a Canvas that
+  // putImageData's from it after every stroke tick (no Image() roundtrip
+  // per tick, would be too slow at 60Hz). On brush activation, _bgRemovedImg
+  // stays a Canvas; on Apply, _bake reads _bgRemovedImg (Canvas) via
+  // drawImage exactly like an Image, so downstream is unchanged.
+  let _workingBuffer=null;
+  let _brushMode=null;             // 'erase' | 'restore' | null
+  let _brushRadius=45;             // radius in image px; 45 = default 90 diameter
+  const BRUSH_SIZE_CHOICES={small:15, medium:45, large:110}; // radii
+  let _brushSizeKey='medium';
+  let _cleanupHistory=[];          // [{changes: Map<pixelIndex, priorAlpha>}, ...]
+  let _cleanupRedoStack=[];
+  let _strokeChanges=null;         // Map filled during an in-progress drag
+  let _brushPainting=false;
+  let _brushSubPanel=null;
+  let _brushRemoveBtn=null, _brushRestoreBtn=null;
+  let _brushSizeBtns=null, _brushUndoBtn=null, _brushRedoBtn=null;
+  let _brushCursor=null;
+  // Crop state — the pending rect (in working-buffer pixel space) plus
+  // a pre-crop snapshot so Reset Crop can restore. Crop is only reachable
+  // once _bgRemovedImg exists (Ship B scope: the crop tool crops the
+  // bg-removed picture itself, so it can only meaningfully act on a
+  // buffer that exists).
+  let _cropTile=null;
+  let _cropSubPanel=null;
+  let _cropRect=null;              // {x,y,width,height} in working-buffer px
+  let _cropDrag=null;              // {sx,sy,x0,y0} while drawing selection
+  let _cropBoxEl=null;             // DOM overlay showing the pending selection
+  let _preCropSnapshot=null;       // {buffer, width, height} for Reset Crop
+  let _cropApplyBtn=null, _cropResetBtn=null;
+
+  // Ported from tools/background-remover/js/cleanupBrush.js. See that
+  // module's own doc comment for the soft-edge falloff rationale — the
+  // brush's inner 55% is full-strength, fading linearly out to zero at
+  // the outer edge. Only alpha is ever touched; RGB is preserved so a
+  // restore later gives back the exact original colour.
+  function _paintAlphaCircle(pb,cx,cy,radius,targetAlpha,onBeforeChange){
+    var width=pb.width, height=pb.height, data=pb.data;
+    var minX=Math.max(0,Math.floor(cx-radius));
+    var maxX=Math.min(width-1,Math.ceil(cx+radius));
+    var minY=Math.max(0,Math.floor(cy-radius));
+    var maxY=Math.min(height-1,Math.ceil(cy+radius));
+    if(minX>maxX||minY>maxY) return null;
+    var innerRadius=radius*0.55;
+    var falloffRange=Math.max(radius-innerRadius,0.0001);
+    for(var y=minY;y<=maxY;y++){
+      for(var x=minX;x<=maxX;x++){
+        var dx=x+0.5-cx, dy=y+0.5-cy;
+        var dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist>radius) continue;
+        var falloff=dist<=innerRadius?0:(dist-innerRadius)/falloffRange;
+        var pixelIndex=y*width+x;
+        var alphaOffset=pixelIndex*4+3;
+        var currentAlpha=data[alphaOffset];
+        var newAlpha=Math.round(currentAlpha*falloff+targetAlpha*(1-falloff));
+        if(newAlpha!==currentAlpha){
+          if(onBeforeChange) onBeforeChange(pixelIndex,currentAlpha);
+          data[alphaOffset]=newAlpha;
+        }
+      }
+    }
+    return {x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1};
+  }
+  // Ported from tools/background-remover/js/cropper.js.
+  function _cropPixelBuffer(pb,bounds){
+    var srcData=pb.data, srcWidth=pb.width;
+    var out=new Uint8ClampedArray(bounds.width*bounds.height*4);
+    for(var row=0;row<bounds.height;row++){
+      var srcRowStart=((bounds.y+row)*srcWidth+bounds.x)*4;
+      var dstRowStart=row*bounds.width*4;
+      out.set(srcData.subarray(srcRowStart,srcRowStart+bounds.width*4),dstRowStart);
+    }
+    return {data:out,width:bounds.width,height:bounds.height};
+  }
+
   // -------- DOM build (lazy; reuses the same modal across opens) ----
   //
   // Two-view flow, mirroring the standalone Image Studio tool's own
@@ -208,6 +285,10 @@ const PictureStudio=(function(){
     _tileButtons.bg=_buildTile(toolGrid,'✨','Remove Background',function(){ _toggleActiveTool('bg'); });
     _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn or Flip',function(){ _toggleActiveTool('flip'); });
     _tileButtons.zoom=_buildTile(toolGrid,'🔍','Bigger / Smaller',function(){ _toggleActiveTool('zoom'); });
+    // Ship B — Crop tool. Gated on _bgRemovedImg via _refreshBgControls,
+    // since crop cuts the working buffer that only exists after bg removal.
+    _cropTile=_buildTile(toolGrid,'✂️','Crop',function(){ _toggleActiveTool('crop'); });
+    _tileButtons.crop=_cropTile;
     // One-tap toggle — Brighten flips _state.enhance directly, no sub-panel.
     _brightenTile=_buildTile(toolGrid,'✨','Brighten',function(){
       _state.enhance=!_state.enhance;
@@ -227,6 +308,7 @@ const PictureStudio=(function(){
     _subPanels.bg=_buildBgSubPanel();
     _subPanels.flip=_buildFlipSubPanel();
     _subPanels.zoom=_buildZoomSubPanel();
+    _subPanels.crop=_buildCropSubPanel();
     _subPanels.reset=_buildResetSubPanel();
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
     _editPanel.appendChild(subWrap);
@@ -352,6 +434,85 @@ const PictureStudio=(function(){
     _baHint.textContent='Drag to compare.';
     _baCompareWrap.appendChild(_baHint);
     p.appendChild(_baCompareWrap);
+    // Ship B — Remove More / Bring It Back brush controls, revealed only
+    // after a bg removal has landed. Ported from tools/background-remover/
+    // (cleanupBrush.js) — same soft-edge falloff, same alpha-only writes,
+    // same undo-stack shape (Map<pixelIndex,priorAlpha> per stroke).
+    _brushSubPanel=document.createElement('div');
+    _brushSubPanel.className='picture-studio-brush-panel hidden';
+    const brushHint=document.createElement('p');
+    brushHint.className='picture-studio-subpanel-hint';
+    brushHint.textContent='Pick a brush, then paint on your picture.';
+    _brushSubPanel.appendChild(brushHint);
+    const modeRow=document.createElement('div');
+    modeRow.className='picture-studio-subpanel-row';
+    _brushRemoveBtn=document.createElement('button');
+    _brushRemoveBtn.type='button';
+    _brushRemoveBtn.className='picture-studio-subpanel-btn';
+    _brushRemoveBtn.textContent='🩹 Remove More';
+    _brushRemoveBtn.addEventListener('click',function(){
+      _brushMode=(_brushMode==='erase')?null:'erase';
+      // Only cross into/out of the brush pseudo-tool if we're actually
+      // transitioning across the brush/not-brush boundary. Switching
+      // between Remove More and Bring It Back stays within 'brush', so
+      // _toggleActiveTool's own "click same tool to close it" rule
+      // (correct for tile toolbar) must not fire mid-sub-switch.
+      const want=_brushMode?'brush':null;
+      if(_activeTool!==want) _toggleActiveTool(want);
+      _refreshBgControls();
+      _updateStageCursor();
+    });
+    modeRow.appendChild(_brushRemoveBtn);
+    _brushRestoreBtn=document.createElement('button');
+    _brushRestoreBtn.type='button';
+    _brushRestoreBtn.className='picture-studio-subpanel-btn';
+    _brushRestoreBtn.textContent='↩ Bring It Back';
+    _brushRestoreBtn.addEventListener('click',function(){
+      _brushMode=(_brushMode==='restore')?null:'restore';
+      const want=_brushMode?'brush':null;
+      if(_activeTool!==want) _toggleActiveTool(want);
+      _refreshBgControls();
+      _updateStageCursor();
+    });
+    modeRow.appendChild(_brushRestoreBtn);
+    _brushSubPanel.appendChild(modeRow);
+    const sizeRow=document.createElement('div');
+    sizeRow.className='picture-studio-subpanel-row';
+    const sizeLabel=document.createElement('span');
+    sizeLabel.className='picture-studio-subpanel-label';
+    sizeLabel.textContent='Size';
+    sizeRow.appendChild(sizeLabel);
+    _brushSizeBtns={};
+    ['small','medium','large'].forEach(function(k){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+      b.textContent={small:'Small',medium:'Medium',large:'Large'}[k];
+      b.addEventListener('click',function(){
+        _brushSizeKey=k;
+        _brushRadius=BRUSH_SIZE_CHOICES[k];
+        _refreshBgControls();
+      });
+      sizeRow.appendChild(b);
+      _brushSizeBtns[k]=b;
+    });
+    _brushSubPanel.appendChild(sizeRow);
+    const undoRow=document.createElement('div');
+    undoRow.className='picture-studio-subpanel-row';
+    _brushUndoBtn=document.createElement('button');
+    _brushUndoBtn.type='button';
+    _brushUndoBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _brushUndoBtn.textContent='↶ Undo';
+    _brushUndoBtn.addEventListener('click',_undoBrushStroke);
+    undoRow.appendChild(_brushUndoBtn);
+    _brushRedoBtn=document.createElement('button');
+    _brushRedoBtn.type='button';
+    _brushRedoBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _brushRedoBtn.textContent='↷ Redo';
+    _brushRedoBtn.addEventListener('click',_redoBrushStroke);
+    undoRow.appendChild(_brushRedoBtn);
+    _brushSubPanel.appendChild(undoRow);
+    p.appendChild(_brushSubPanel);
     return p;
   }
   function _buildFlipSubPanel(){
@@ -433,6 +594,12 @@ const PictureStudio=(function(){
       _state=Object.assign({},DEFAULT_STATE,{mode:keepMode});
       _bgRemovedImg=null;
       _bgRemovedDataURL=null;
+      _workingBuffer=null;
+      _cleanupHistory=[];
+      _cleanupRedoStack=[];
+      _brushMode=null;
+      _cropRect=null;
+      _preCropSnapshot=null;
       if(_bgStatusEl) _bgStatusEl.textContent='';
       _refreshBgControls();
       if(_brightenTile) _brightenTile.classList.remove('active');
@@ -441,6 +608,41 @@ const PictureStudio=(function(){
     });
     row.appendChild(yes);
     p.appendChild(row);
+    return p;
+  }
+  // Ship B — Crop sub-panel. Only meaningful once bg removal has landed
+  // (so there's a working buffer to crop). Selection is drawn on the
+  // stage via a floating overlay DIV positioned in screen coords, then
+  // converted to working-buffer coordinates on Apply.
+  function _buildCropSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','crop');
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Drag on the picture to pick a crop area, then Apply.';
+    p.appendChild(hint);
+    const row=document.createElement('div');
+    row.className='picture-studio-subpanel-row';
+    _cropApplyBtn=document.createElement('button');
+    _cropApplyBtn.type='button';
+    _cropApplyBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
+    _cropApplyBtn.textContent='✂️ Apply Crop';
+    _cropApplyBtn.addEventListener('click',_applyCrop);
+    row.appendChild(_cropApplyBtn);
+    _cropResetBtn=document.createElement('button');
+    _cropResetBtn.type='button';
+    _cropResetBtn.className='picture-studio-subpanel-btn';
+    _cropResetBtn.textContent='↩ Reset Crop';
+    _cropResetBtn.addEventListener('click',_resetCrop);
+    row.appendChild(_cropResetBtn);
+    p.appendChild(row);
+    const auto=document.createElement('button');
+    auto.type='button';
+    auto.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    auto.textContent='✨ Auto Crop to Content';
+    auto.addEventListener('click',_autoCrop);
+    p.appendChild(auto);
     return p;
   }
 
@@ -462,10 +664,22 @@ const PictureStudio=(function(){
     _activeTool=tool;
     if(_root) _root.setAttribute('data-active-tool',tool||'');
     if(_tileButtons){
-      ['bg','flip','zoom','reset'].forEach(function(k){
+      ['bg','flip','zoom','crop','reset'].forEach(function(k){
         if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
       });
     }
+    // Ship B — leaving brush mode: clear brush selection so a subsequent
+    // re-open of Remove Background doesn't inherit a stale brush.
+    if(tool!=='brush'){ _brushMode=null; _refreshBgControls(); }
+    // Leaving crop mode: tear down the on-stage selection overlay if any.
+    if(tool!=='crop'){ _tearDownCropBox(); }
+    _updateStageCursor();
+  }
+  function _updateStageCursor(){
+    if(!_stage) return;
+    if(_brushMode==='erase'||_brushMode==='restore') _stage.style.cursor='crosshair';
+    else if(_activeTool==='crop') _stage.style.cursor='crosshair';
+    else _stage.style.cursor='';
   }
 
   function _setZoom(z){
@@ -577,31 +791,44 @@ const PictureStudio=(function(){
     if(msg.jobId!==_bgJobId){ _bgBusy=false; _refreshBgControls(); return; }
     const pb=msg.pixelBuffer;
     if(!pb){ _bgBusy=false; _refreshBgControls(); return; }
-    // Rebuild an HTMLImageElement from the processed buffer so the rest
-    // of the pipeline (which draws with drawImage) keeps working
-    // unchanged. Route through canvas.toDataURL() rather than the raw
-    // bytes so downstream Apply()/_bake() can still call toDataURL()
-    // on its own output canvas without surprises.
+    // Ship B — keep the pixel buffer alive as the mutable source of
+    // truth. Brush strokes mutate its alpha in place, then _syncBgCanvas
+    // putImageData's the buffer back onto _bgRemovedImg (a Canvas, not
+    // an Image) so the visible preview updates without an async
+    // Image().onload roundtrip per mousemove tick. drawImage accepts a
+    // Canvas identically to an Image, so _render/_bake/_bakeSourceForBg
+    // all keep working unchanged.
+    _workingBuffer={data:new Uint8ClampedArray(pb.data),width:pb.width,height:pb.height};
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
     const c=document.createElement('canvas');
     c.width=pb.width; c.height=pb.height;
     const cx=c.getContext('2d');
-    cx.putImageData(new ImageData(new Uint8ClampedArray(pb.data),pb.width,pb.height),0,0);
-    const dataURL=c.toDataURL('image/png');
-    const img=new Image();
-    img.onload=function(){
-      _bgRemovedImg=img;
-      _bgRemovedDataURL=dataURL;
-      _bgBusy=false;
-      // Reset rotation/flip since _bakeSourceForBg already baked them
-      // into the new source — leaving them applied would double-rotate
-      // the result. Zoom/pan/mode preserved.
-      _state.rotation=0;
-      _state.flipH=false;
-      if(_bgStatusEl) _bgStatusEl.textContent='Background removed.';
-      _refreshBgControls();
-      _render();
-    };
-    img.src=dataURL;
+    cx.putImageData(new ImageData(new Uint8ClampedArray(_workingBuffer.data),pb.width,pb.height),0,0);
+    _bgRemovedImg=c;
+    _bgRemovedDataURL=null; // recomputed on demand from the live canvas
+    _bgBusy=false;
+    // Reset rotation/flip since _bakeSourceForBg already baked them
+    // into the new source — leaving them applied would double-rotate
+    // the result. Zoom/pan/mode preserved.
+    _state.rotation=0;
+    _state.flipH=false;
+    if(_bgStatusEl) _bgStatusEl.textContent='Background removed.';
+    _refreshBgControls();
+    _render();
+  }
+  // Push the working buffer's current pixels onto _bgRemovedImg (a
+  // Canvas). Called after every brush stroke tick so the visible preview
+  // stays in sync with the buffer without an Image() roundtrip.
+  function _syncBgCanvas(){
+    if(!_bgRemovedImg||!_workingBuffer) return;
+    // If a crop just changed the buffer's size, resize the canvas too.
+    if(_bgRemovedImg.width!==_workingBuffer.width||_bgRemovedImg.height!==_workingBuffer.height){
+      _bgRemovedImg.width=_workingBuffer.width;
+      _bgRemovedImg.height=_workingBuffer.height;
+    }
+    const cx=_bgRemovedImg.getContext('2d');
+    cx.putImageData(new ImageData(new Uint8ClampedArray(_workingBuffer.data),_workingBuffer.width,_workingBuffer.height),0,0);
   }
   function _onBgError(msg){
     _bgBusy=false;
@@ -612,6 +839,12 @@ const PictureStudio=(function(){
     if(_bgBusy) return;
     _bgRemovedImg=null;
     _bgRemovedDataURL=null;
+    _workingBuffer=null;
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _brushMode=null;
+    _cropRect=null;
+    _preCropSnapshot=null;
     _state.rotation=0;
     _state.flipH=false;
     _state.panX=0;
@@ -639,6 +872,22 @@ const PictureStudio=(function(){
         if(_baSlider) _baSlider.value='100';
       }
     }
+    // Ship B — brush + crop controls only make sense after a bg removal.
+    if(_brushSubPanel){
+      _brushSubPanel.classList.toggle('hidden',!_bgRemovedImg);
+    }
+    if(_brushRemoveBtn) _brushRemoveBtn.classList.toggle('active',_brushMode==='erase');
+    if(_brushRestoreBtn) _brushRestoreBtn.classList.toggle('active',_brushMode==='restore');
+    if(_brushSizeBtns){
+      Object.keys(_brushSizeBtns).forEach(function(k){
+        _brushSizeBtns[k].classList.toggle('active',_brushSizeKey===k);
+      });
+    }
+    if(_brushUndoBtn) _brushUndoBtn.disabled=!(_cleanupHistory&&_cleanupHistory.length);
+    if(_brushRedoBtn) _brushRedoBtn.disabled=!(_cleanupRedoStack&&_cleanupRedoStack.length);
+    if(_cropTile) _cropTile.disabled=!_bgRemovedImg;
+    if(_cropApplyBtn) _cropApplyBtn.disabled=!(_cropRect&&_bgRemovedImg);
+    if(_cropResetBtn) _cropResetBtn.disabled=!_preCropSnapshot;
   }
 
   function _refreshToggles(){
@@ -655,20 +904,304 @@ const PictureStudio=(function(){
 
   function _wireStageInteractions(){
     _canvas.addEventListener('mousedown',function(e){
+      // Ship B — mode-aware routing:
+      //   • Brush mode (Remove More / Bring It Back): each mousedown starts
+      //     a new stroke; paintAt handles the point + subsequent drags via
+      //     _brushPainting flag.
+      //   • Crop mode: mousedown starts a selection drag; the overlay DIV
+      //     tracks it in screen coords, finalized on mouseup into content
+      //     coords.
+      //   • Default: pan/zoom, as before.
+      if(_brushMode==='erase'||_brushMode==='restore'){
+        _brushPainting=true;
+        _strokeChanges=new Map();
+        _paintAt(e.clientX,e.clientY);
+        e.preventDefault();
+        return;
+      }
+      if(_activeTool==='crop'){
+        _startCropDrag(e.clientX,e.clientY);
+        e.preventDefault();
+        return;
+      }
       _drag={sx:e.clientX,sy:e.clientY,px:_state.panX,py:_state.panY};
       e.preventDefault();
     });
     window.addEventListener('mousemove',function(e){
+      if(_brushPainting){
+        _paintAt(e.clientX,e.clientY);
+        return;
+      }
+      if(_cropDrag){
+        _updateCropDrag(e.clientX,e.clientY);
+        return;
+      }
       if(!_drag) return;
       _state.panX=_drag.px+(e.clientX-_drag.sx);
       _state.panY=_drag.py+(e.clientY-_drag.sy);
       _render();
     });
-    window.addEventListener('mouseup',function(){ _drag=null; });
+    window.addEventListener('mouseup',function(){
+      if(_brushPainting){ _finishStroke(); }
+      if(_cropDrag){ _finishCropDrag(); }
+      _drag=null;
+    });
     _canvas.addEventListener('wheel',function(e){
+      // Wheel keeps meaning zoom, even in brush/crop mode — a Story Author
+      // will zoom in to paint precisely on small areas.
       e.preventDefault();
       _setZoom(_state.zoom*(e.deltaY<0?1.10:1/1.10));
     },{passive:false});
+  }
+
+  // ---------- Ship B: Brush painting -------------------------------
+  // Convert a client (screen) point into working-buffer coordinates,
+  // then call _paintAlphaCircle to mutate alpha in place. Only run while
+  // the bg-removed image exists (_workingBuffer set) and a brush mode
+  // is active. _syncBgCanvas repaints _bgRemovedImg after each tick.
+  function _paintAt(clientX,clientY){
+    if(!_workingBuffer||!_bgRemovedImg||!_canvas) return;
+    const contentPoint=_screenToContent(clientX,clientY,_bgRemovedImg.width,_bgRemovedImg.height);
+    if(!contentPoint) return;
+    const targetAlpha=(_brushMode==='erase')?0:255;
+    // Skip already-touched pixels so an undo stack entry never
+    // over-writes the true starting alpha (per cleanupBrush.js discipline).
+    const onBefore=function(pixelIndex,priorAlpha){
+      if(!_strokeChanges.has(pixelIndex)) _strokeChanges.set(pixelIndex,priorAlpha);
+    };
+    _paintAlphaCircle(_workingBuffer,contentPoint.x,contentPoint.y,_brushRadius,targetAlpha,onBefore);
+    _syncBgCanvas();
+    _render();
+  }
+  // Inverse of _paintOne's transform. Since bg removal resets rotation
+  // and flip to 0 (see _onBgResult), only pan + zoom apply here — the
+  // math simplifies to: content = (screen - canvasCenter - pan) / (fit*zoom)
+  // + imageCenter. If a future change lets brush painting run before bg
+  // removal, this needs to also invert rotate/flip.
+  function _screenToContent(clientX,clientY,imgW,imgH){
+    const rect=_canvas.getBoundingClientRect();
+    const cssToLogicalX=_canvas.width/rect.width;
+    const cssToLogicalY=_canvas.height/rect.height;
+    const sx=(clientX-rect.left)*cssToLogicalX;
+    const sy=(clientY-rect.top)*cssToLogicalY;
+    const cw=_canvas.width, ch=_canvas.height;
+    const eff={w:imgW,h:imgH};   // rotation is always 0 after bg removal
+    const s=_stageRect();
+    const fit=Math.min(s.w/eff.w,s.h/eff.h);
+    const z=fit*_state.zoom;
+    // Screen point → offset from canvas centre → subtract pan → divide
+    // by z → shift back to image top-left origin.
+    const cx=(sx-cw/2-_state.panX)/z + imgW/2;
+    const cy=(sy-ch/2-_state.panY)/z + imgH/2;
+    if(cx<0||cy<0||cx>=imgW||cy>=imgH) return null;
+    return {x:cx,y:cy};
+  }
+  function _finishStroke(){
+    _brushPainting=false;
+    if(_strokeChanges&&_strokeChanges.size){
+      _cleanupHistory.push({changes:_strokeChanges});
+      _cleanupRedoStack=[]; // any new stroke invalidates the redo trail
+    }
+    _strokeChanges=null;
+    _refreshBgControls();
+  }
+  function _undoBrushStroke(){
+    if(!_cleanupHistory.length||!_workingBuffer) return;
+    const entry=_cleanupHistory.pop();
+    const currentSnapshot=new Map();
+    entry.changes.forEach(function(priorAlpha,pixelIndex){
+      const alphaOffset=pixelIndex*4+3;
+      currentSnapshot.set(pixelIndex,_workingBuffer.data[alphaOffset]);
+      _workingBuffer.data[alphaOffset]=priorAlpha;
+    });
+    _cleanupRedoStack.push({changes:currentSnapshot});
+    _syncBgCanvas();
+    _render();
+    _refreshBgControls();
+  }
+  function _redoBrushStroke(){
+    if(!_cleanupRedoStack.length||!_workingBuffer) return;
+    const entry=_cleanupRedoStack.pop();
+    const inverse=new Map();
+    entry.changes.forEach(function(nextAlpha,pixelIndex){
+      const alphaOffset=pixelIndex*4+3;
+      inverse.set(pixelIndex,_workingBuffer.data[alphaOffset]);
+      _workingBuffer.data[alphaOffset]=nextAlpha;
+    });
+    _cleanupHistory.push({changes:inverse});
+    _syncBgCanvas();
+    _render();
+    _refreshBgControls();
+  }
+
+  // ---------- Ship B: Crop ----------------------------------------
+  // The crop selection lives as a DOM overlay positioned in screen
+  // coords over _stage; on Apply, its screen rect is converted to
+  // working-buffer coordinates via _screenToContent and passed to
+  // _cropPixelBuffer. _preCropSnapshot enables Reset Crop.
+  function _startCropDrag(clientX,clientY){
+    if(!_workingBuffer) return;
+    const stageRect=_stage.getBoundingClientRect();
+    _cropDrag={
+      sx:clientX,sy:clientY,
+      ox:stageRect.left,oy:stageRect.top
+    };
+    _ensureCropBox();
+    _cropBoxEl.style.left=(clientX-stageRect.left)+'px';
+    _cropBoxEl.style.top=(clientY-stageRect.top)+'px';
+    _cropBoxEl.style.width='0px';
+    _cropBoxEl.style.height='0px';
+    _cropBoxEl.classList.remove('hidden');
+  }
+  function _updateCropDrag(clientX,clientY){
+    if(!_cropDrag||!_cropBoxEl) return;
+    const x=Math.min(_cropDrag.sx,clientX)-_cropDrag.ox;
+    const y=Math.min(_cropDrag.sy,clientY)-_cropDrag.oy;
+    const w=Math.abs(clientX-_cropDrag.sx);
+    const h=Math.abs(clientY-_cropDrag.sy);
+    _cropBoxEl.style.left=x+'px';
+    _cropBoxEl.style.top=y+'px';
+    _cropBoxEl.style.width=w+'px';
+    _cropBoxEl.style.height=h+'px';
+  }
+  function _finishCropDrag(){
+    if(!_cropDrag) return;
+    const startX=Math.min(_cropDrag.sx,_lastMouseClientX());
+    // On mouseup we've already been fed the last mousemove; snapshot
+    // the box's current screen-rect and convert both corners.
+    const rect=_cropBoxEl.getBoundingClientRect();
+    _cropDrag=null;
+    if(rect.width<4||rect.height<4){
+      // Ignore tiny/accidental drags.
+      _tearDownCropBox();
+      _cropRect=null;
+      _refreshBgControls();
+      return;
+    }
+    const topLeft=_screenToContent(rect.left,rect.top,_bgRemovedImg.width,_bgRemovedImg.height);
+    const botRight=_screenToContent(rect.right,rect.bottom,_bgRemovedImg.width,_bgRemovedImg.height);
+    if(!topLeft||!botRight){
+      // Selection extends outside the image — clamp to image bounds so
+      // the crop is still a valid rectangle.
+      const clamp=function(p){
+        if(!p) return null;
+        return {
+          x:Math.max(0,Math.min(_bgRemovedImg.width-1,p.x)),
+          y:Math.max(0,Math.min(_bgRemovedImg.height-1,p.y))
+        };
+      };
+      const tl=clamp(topLeft||_screenToContent(rect.left,rect.top,_bgRemovedImg.width,_bgRemovedImg.height));
+      const br=clamp(botRight||_screenToContent(rect.right,rect.bottom,_bgRemovedImg.width,_bgRemovedImg.height));
+      // If either corner still couldn't be resolved (drag started well
+      // outside the image), fall back to (0,0)..(w,h) — treats the drag
+      // as "crop to full image", a safe no-op that never throws.
+      _cropRect={
+        x:tl?Math.round(tl.x):0,
+        y:tl?Math.round(tl.y):0,
+        width:Math.round((br?br.x:_bgRemovedImg.width)-(tl?tl.x:0)),
+        height:Math.round((br?br.y:_bgRemovedImg.height)-(tl?tl.y:0))
+      };
+    }else{
+      _cropRect={
+        x:Math.round(topLeft.x),
+        y:Math.round(topLeft.y),
+        width:Math.round(botRight.x-topLeft.x),
+        height:Math.round(botRight.y-topLeft.y)
+      };
+    }
+    _refreshBgControls();
+  }
+  // For _finishCropDrag: the last mousemove's client coord isn't tracked
+  // explicitly, so this reads the crop box's own current right edge
+  // (already updated by the most-recent _updateCropDrag).
+  function _lastMouseClientX(){
+    if(!_cropBoxEl) return 0;
+    const r=_cropBoxEl.getBoundingClientRect();
+    return r.right;
+  }
+  function _ensureCropBox(){
+    if(_cropBoxEl) return _cropBoxEl;
+    _cropBoxEl=document.createElement('div');
+    _cropBoxEl.className='picture-studio-crop-box hidden';
+    _stage.appendChild(_cropBoxEl);
+    return _cropBoxEl;
+  }
+  function _tearDownCropBox(){
+    if(_cropBoxEl){
+      _cropBoxEl.classList.add('hidden');
+      _cropBoxEl.style.width='0px';
+      _cropBoxEl.style.height='0px';
+    }
+  }
+  function _applyCrop(){
+    if(!_cropRect||!_workingBuffer) return;
+    // Clamp again defensively.
+    const bounds={
+      x:Math.max(0,Math.min(_workingBuffer.width-1,_cropRect.x)),
+      y:Math.max(0,Math.min(_workingBuffer.height-1,_cropRect.y)),
+      width:Math.max(1,Math.min(_workingBuffer.width-_cropRect.x,_cropRect.width)),
+      height:Math.max(1,Math.min(_workingBuffer.height-_cropRect.y,_cropRect.height))
+    };
+    _preCropSnapshot={
+      data:new Uint8ClampedArray(_workingBuffer.data),
+      width:_workingBuffer.width,
+      height:_workingBuffer.height
+    };
+    _workingBuffer=_cropPixelBuffer(_workingBuffer,bounds);
+    // Any cleanup history from the old (larger) buffer no longer maps
+    // onto the new pixel indices — clear so undo can never corrupt.
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _cropRect=null;
+    _tearDownCropBox();
+    // Recenter after crop — the fit-scale will change with the new,
+    // typically-smaller dimensions.
+    _state.panX=0; _state.panY=0;
+    _state.beforeAfterPct=100; // compare no longer meaningful vs. original
+    if(_baSlider) _baSlider.value='100';
+    _syncBgCanvas();
+    _refreshBgControls();
+    _render();
+  }
+  function _resetCrop(){
+    if(!_preCropSnapshot) return;
+    _workingBuffer={
+      data:new Uint8ClampedArray(_preCropSnapshot.data),
+      width:_preCropSnapshot.width,
+      height:_preCropSnapshot.height
+    };
+    _preCropSnapshot=null;
+    _cropRect=null;
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _state.panX=0; _state.panY=0;
+    _tearDownCropBox();
+    _syncBgCanvas();
+    _refreshBgControls();
+    _render();
+  }
+  // Auto Crop — reuses cleanupBrush's own findContentBounds equivalent
+  // (inline pixel scan) to pick the tightest rect containing every
+  // non-transparent pixel. If the whole image is transparent, no-op.
+  function _autoCrop(){
+    if(!_workingBuffer) return;
+    const data=_workingBuffer.data, w=_workingBuffer.width, h=_workingBuffer.height;
+    let minX=w,minY=h,maxX=-1,maxY=-1;
+    for(let y=0;y<h;y++){
+      const rowBase=y*w;
+      for(let x=0;x<w;x++){
+        const a=data[(rowBase+x)*4+3];
+        if(a>8){
+          if(x<minX) minX=x;
+          if(x>maxX) maxX=x;
+          if(y<minY) minY=y;
+          if(y>maxY) maxY=y;
+        }
+      }
+    }
+    if(maxX<minX||maxY<minY) return;
+    _cropRect={x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1};
+    _applyCrop();
   }
 
   // -------- Geometry helpers ----------------------------------------

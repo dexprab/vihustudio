@@ -4138,7 +4138,11 @@ body.dark-theme .theme-reset-btn{ background:var(--panel) !important; }
   /* Redesign Ship A — the stage background is now the checkerboard
      pattern via the shared .checkerboard class on the stage element
      itself (see below), so transparent pixels in the drawn image read
-     as transparency. No flat dark fill here. */
+     as transparency. No flat dark fill here.
+     Ship B — `position:relative` establishes the containing block for
+     the crop-box overlay (`.picture-studio-crop-box`), which uses
+     absolute positioning in stage-relative coordinates. */
+  position:relative;
 }
 .picture-studio-canvas{
   width:100%;
@@ -4445,6 +4449,51 @@ body.dark-theme .checkerboard{
   padding:10px 24px;
   font-size:14px;
 }
+
+/* Redesign Ship B — Brush painting sub-panel (Remove More / Bring It
+   Back) plus per-size buttons + Undo/Redo. Sits inside the Remove
+   Background sub-panel, shown only after a real bg-removal has landed
+   (`.hidden` toggled by _refreshBgControls). Small variant buttons for
+   the Size row; a plain inline label for the Size row's own leading
+   cell. */
+.picture-studio-brush-panel{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+  padding-top:10px;
+  border-top:1px dashed var(--line);
+}
+.picture-studio-brush-panel.hidden{ display:none; }
+.picture-studio-subpanel-btn-sm{
+  padding:5px 10px !important;
+  font-size:12px !important;
+  min-height:0 !important;
+  height:auto !important;
+}
+.picture-studio-subpanel-label{
+  align-self:center;
+  font-size:12px;
+  color:var(--text-secondary);
+  font-weight:600;
+  padding-right:4px;
+}
+
+/* Redesign Ship B — Crop box overlay. Sits on top of the stage's
+   canvas via absolute positioning (the stage carries the containing-
+   block-establishing `position:relative` above). `pointer-events:none`
+   so a still-active drag / brush stroke can't get intercepted by the
+   overlay even mid-draw; the actual selection is captured by the stage
+   canvas's own mousedown / mousemove / mouseup listeners. */
+.picture-studio-crop-box{
+  position:absolute;
+  border:2px dashed #FFCB45;
+  background:rgba(255,203,69,0.12);
+  pointer-events:none;
+  border-radius:4px;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.35);
+}
+.picture-studio-crop-box.hidden{ display:none; }
 
 body.dark-theme .picture-studio{ background:var(--panel); }
 body.dark-theme .picture-studio-tile{ background:var(--panel); }
