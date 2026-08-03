@@ -381,6 +381,22 @@ const PictureStudio=(function(){
     // Sub-panels area — one per tool, hidden by default. Ship B
     // Refinements: 'brush' sub-panel (was inside 'bg') hosts size +
     // Before/After compare. Bigger/Smaller sub-panel retired.
+    //
+    // Ship B UX Refinement: sub-panels used to mount inside `_editPanel`
+    // (the 320px right-side aside) beneath the tile grid — but a Story
+    // Author tapping a tile then having to look sideways for its sub-
+    // options broke the "act right where you're looking" flow, AND the
+    // sub-panel's own height (Before/After compare + size chips +
+    // undo/redo) pushed the right pane past its budget and introduced a
+    // vertical scrollbar. Moved into `_stage` as an absolute-positioned
+    // bottom drawer overlaying the picture itself, so:
+    //   (a) the options appear right beside the picture the tool acts on,
+    //   (b) the right pane is left with only tiles + hint + zoom, which
+    //       comfortably fits at 320px×~680px without any scroll.
+    // `_stage` already has `position:relative` (see .picture-studio-stage
+    // CSS + existing use by _cropBoxEl/_brushCursor/_magicOverlay), so
+    // the absolute positioning has a natural containing block with no
+    // new stacking-context work needed.
     _subPanels={};
     const subWrap=document.createElement('div');
     subWrap.className='picture-studio-subpanels';
@@ -389,7 +405,7 @@ const PictureStudio=(function(){
     _subPanels.crop=_buildCropSubPanel();
     _subPanels.reset=_buildResetSubPanel();
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
-    _editPanel.appendChild(subWrap);
+    _stage.appendChild(subWrap);
 
     // Edit view mounts inside body as the right-side aside beside the
     // stage; body is what actually goes into _root. Footer is a sibling

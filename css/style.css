@@ -4207,6 +4207,13 @@ body.dark-theme .checkerboard{
   width:320px;
   flex:0 0 320px;
   min-height:0;
+  /* Ship B UX Refinement: sub-panels moved out of this pane and into
+     .picture-studio-stage as a floating overlay, so this pane now only
+     holds hint + zoom slider + tile grid — which comfortably fits at
+     320px × ~680px without needing to scroll. overflow-y stays as a
+     defensive last-resort (matching this codebase's own established
+     "keep the safety net, expect it never to trigger" discipline for
+     other formerly-overflowing surfaces). */
   overflow-y:auto;
 }
 
@@ -4297,12 +4304,24 @@ body.dark-theme .checkerboard{
 .picture-studio-tile-icon{ font-size:24px; line-height:1; }
 .picture-studio-tile-label{ font-size:12px; text-align:center; }
 
-/* Sub-panels — one per tool, only the active one shows */
+/* Sub-panels — one per tool, only the active one shows.
+   Ship B UX Refinement: mounted inside .picture-studio-stage as an
+   absolute-positioned bottom drawer overlaying the picture itself,
+   not stacked in the right pane. Only visible while a tool is active
+   (see the [data-active-tool] dispatch below); a tool-less state
+   leaves the wrap present but empty, and the container itself never
+   paints (no background/border/padding of its own), so it's not
+   even visible until an active sub-panel gives it real content. */
 .picture-studio-subpanels{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  z-index:9;
   display:flex;
   flex-direction:column;
   gap:8px;
-  min-height:64px;
+  pointer-events:none;
 }
 .picture-studio-subpanel{ display:none; }
 .picture-studio[data-active-tool="brush"] .picture-studio-subpanel[data-tool="brush"],
@@ -4313,9 +4332,18 @@ body.dark-theme .checkerboard{
   flex-direction:column;
   gap:8px;
   padding:12px 14px;
-  background:rgba(255,203,69,0.06);
-  border:1px solid rgba(255,203,69,0.28);
-  border-radius:12px;
+  /* Translucent panel with a real backdrop-blur so the picture stays
+     dimly visible behind it (matching the Magic Card / Publish Studio
+     precedent) rather than an opaque bar obscuring the artwork. */
+  background:rgba(255,251,240,0.94);
+  border:1px solid rgba(255,203,69,0.55);
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.15);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  /* Re-enable pointer events on the actual panel so its controls remain
+     interactive; the parent wrap deliberately passes clicks through. */
+  pointer-events:auto;
 }
 .picture-studio-subpanel-hint{
   margin:0;
