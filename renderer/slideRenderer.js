@@ -248,19 +248,45 @@ const SlideRenderer=(()=>{
     return (preset && Array.isArray(preset.placeRects) && preset.placeRects.length) ? preset.placeRects : null;
   }
 
-  // Maps one Place's fractional rect onto the already-resolved single
-  // Layout/panel rect -- that rect is the "stage" a Place's own
-  // position/size subdivides, the same way Builder's own Scene canvas is
-  // subdivided by its Places.
-  function _placePixelRectFor(panelRect,place){
+  // Maps one Place's fractional (0..1) rect onto the given stage rect.
+  // Callers now pass the FULL Scene Canvas (`_sceneCanvasRect(s)`), not
+  // the inset legacy `panelRect` — matching Builder's own Scene canvas
+  // convention exactly: a Theme Author authors `holder.position`/`.size`
+  // as fractions of the Scene's own full canvas (1080x1080 for square,
+  // 1350x1080 for landscape, etc.), and Studio now honours those same
+  // fractions on the same canvas rather than silently rescaling them
+  // onto the pre-Multi-Place-era inset LAYOUT_RECT (which existed to
+  // reserve margins for legacy Story-Theme chrome — Handle/Footer/Page
+  // Number — none of which a Multi-Place-era Layout carries alongside
+  // its own authored Places). Applied uniformly to every LAYOUT_RECT
+  // aspect (portrait/landscape/square/wide/quote). Byte-identical for
+  // every theme with no `placeRects` at all (Museum Gallery, every
+  // legacy theme), since those still fall through to `panelRect` at the
+  // three call sites via the `_places && _places.length ? ... : ...`
+  // fallback — this function only ever runs for a Multi-Place-era Layout
+  // that authored real `placeRects`, which is exactly the case where
+  // Builder maps against the full canvas too.
+  function _placePixelRectFor(stageRect,place){
     const pos=(place && place.position) || {x:0,y:0};
     const size=(place && place.size) || {w:1,h:1};
     return {
-      x: panelRect.x + (pos.x||0)*panelRect.w,
-      y: panelRect.y + (pos.y||0)*panelRect.h,
-      w: Math.max(1,(size.w||0)*panelRect.w),
-      h: Math.max(1,(size.h||0)*panelRect.h)
+      x: stageRect.x + (pos.x||0)*stageRect.w,
+      y: stageRect.y + (pos.y||0)*stageRect.h,
+      w: Math.max(1,(size.w||0)*stageRect.w),
+      h: Math.max(1,(size.h||0)*stageRect.h)
     };
+  }
+
+  // The full Scene Canvas rect a Multi-Place Layout's `placeRects` are
+  // authored against in Builder — `_sceneViewportFor(s)` already resolves
+  // the real (per-aspect) canvas size a Slide occupies, so this is just
+  // that value origined at (0,0). Kept as its own tiny helper both so
+  // the intent at each call site reads clearly ("map Places onto the
+  // full Scene canvas, matching Builder") and so a future change to the
+  // Scene Canvas coordinate system only has one place to update.
+  function _sceneCanvasRect(s){
+    const vp=_sceneViewportFor(s);
+    return { x:0, y:0, w:vp.w, h:vp.h };
   }
 
   // Multiple Artwork Places Per Page — every place selection/storage id
@@ -3616,7 +3642,7 @@ const SlideRenderer=(()=>{
     // back to the full, unmodified panel rect — the true implicit-Place
     // case, unchanged.
     const _places=_activeLayoutPlaces(s);
-    const _place1Rect=_applyPlaceMoveOverride(_applyPlaceSizeOverride((_places && _places.length) ? _placePixelRectFor(_panelRect,_places[0]) : _panelRect, s, 'image-holder'), s, 'image-holder');
+    const _place1Rect=_applyPlaceMoveOverride(_applyPlaceSizeOverride((_places && _places.length) ? _placePixelRectFor(_sceneCanvasRect(s),_places[0]) : _panelRect, s, 'image-holder'), s, 'image-holder');
     // Whole-Place rotation for Place 1 must wrap BOTH the mat/fill/
     // presentation draws further down (which happen BEFORE the reorderable
     // loop, so a naive per-loop-iteration transform would only rotate the
@@ -3842,7 +3868,7 @@ const SlideRenderer=(()=>{
             // ('image-place-N'), deliberately distinct from the Place's
             // own compiled Builder id — see _placeByExternalId's own
             // comment for why the two id spaces are kept separate.
-            _thisPlaceRect=_applyPlaceMoveOverride(_applyPlaceSizeOverride(_placePixelRectFor(_panelRect,_place), s, _placeSelId), s, _placeSelId);
+            _thisPlaceRect=_applyPlaceMoveOverride(_applyPlaceSizeOverride(_placePixelRectFor(_sceneCanvasRect(s),_place), s, _placeSelId), s, _placeSelId);
           }
           if(_placeRotDeg){
             const _pcx=_thisPlaceRect.x+_thisPlaceRect.w/2;
@@ -5497,9 +5523,10 @@ const SlideRenderer=(()=>{
     const panelRect=_panelRectFor(s);
     const places=_activeLayoutPlaces(s);
     if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(_applyPlaceSizeOverride(panelRect,s,'image-holder'),s,'image-holder')}];
+    const sceneRect=_sceneCanvasRect(s);
     return places.map(function(p,i){
       const id=i===0 ? 'image-holder' : ('image-place-'+(i+1));
-      const rect=_placePixelRectFor(panelRect,p);
+      const rect=_placePixelRectFor(sceneRect,p);
       return { id:id, place:p, rect:_applyPlaceMoveOverride(_applyPlaceSizeOverride(rect,s,id),s,id) };
     });
   }
