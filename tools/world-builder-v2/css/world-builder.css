@@ -3813,3 +3813,150 @@ html, body {
     opacity: .5;
     cursor: not-allowed;
 }
+
+/* ---------- Place · Frame · Paper · Art Model V2 (Phase 2b) ----------
+   The V2 Layers block on the Place Inspector. Sits inside the existing
+   .wb-state-intro wrapper (cream/sky-blue callout) but adds indigo
+   accents (--lab, matching the design mockup) so the Experimental
+   nature reads at a glance without clashing with the gold/paper
+   palette. Every phase between here and Phase 7 preserves the legacy
+   Frame Variation rendering path byte-identically, so opting a Place
+   in (or out) is genuinely safe today. */
+
+.wb-v2-layers-block .wb-state-intro-summary {
+    color: #5B4F86;
+}
+
+.wb-v2-status {
+    font-size: 12px;
+    color: var(--wb-text-secondary);
+    font-style: italic;
+    background: rgba(91, 79, 134, 0.06);
+    border-left: 2px solid #5B4F86;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
+
+.wb-v2-paint-order {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+}
+.wb-v2-paint-label {
+    font-weight: 700;
+    color: var(--wb-navy);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.wb-v2-paint-chip {
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    color: var(--wb-navy);
+    font-weight: 600;
+}
+.wb-v2-paint-arrow {
+    color: var(--wb-text-secondary);
+    font-weight: 700;
+}
+
+.wb-v2-layer-card {
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+.wb-v2-layer-card[open] {
+    border-color: #5B4F86;
+}
+.wb-v2-layer-card-summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    user-select: none;
+    list-style: none;
+}
+.wb-v2-layer-card-summary::-webkit-details-marker { display: none; }
+.wb-v2-layer-card-summary::before {
+    content: '▸';
+    color: var(--wb-text-secondary);
+    font-size: 10px;
+    margin-right: 2px;
+}
+.wb-v2-layer-card[open] .wb-v2-layer-card-summary::before { content: '▾'; }
+.wb-v2-layer-glyph {
+    font-size: 16px;
+}
+.wb-v2-layer-title {
+    font-weight: 700;
+    color: var(--wb-navy);
+}
+.wb-v2-layer-meta {
+    font-size: 11px;
+    color: var(--wb-text-secondary);
+    margin-left: auto;
+}
+.wb-v2-layer-card-body {
+    padding: 8px 12px 12px 12px;
+    border-top: 1px dashed var(--wb-border);
+    background: var(--wb-cream);
+}
+.wb-v2-layer-card-body .wb-field-group {
+    margin-bottom: 8px;
+}
+
+.wb-v2-slot-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.wb-v2-slot-chip {
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--wb-text);
+    cursor: pointer;
+    font-weight: 600;
+    transition: border-color 0.15s, background 0.15s;
+}
+.wb-v2-slot-chip:hover {
+    border-color: #5B4F86;
+}
+.wb-v2-slot-chip.active {
+    border-color: #5B4F86;
+    background: rgba(91, 79, 134, 0.12);
+    color: #5B4F86;
+}
+.wb-v2-slot-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .wb-v2-status {
+        background: rgba(91, 79, 134, 0.15);
+    }
+    :root:not([data-theme="light"]) .wb-v2-slot-chip.active {
+        background: rgba(91, 79, 134, 0.25);
+        color: #C7BCE8;
+    }
+}
+:root[data-theme="dark"] .wb-v2-status {
+    background: rgba(91, 79, 134, 0.15);
+}
+:root[data-theme="dark"] .wb-v2-slot-chip.active {
+    background: rgba(91, 79, 134, 0.25);
+    color: #C7BCE8;
+}

@@ -7390,6 +7390,8 @@
             contextPanel.appendChild(details);
         })();
 
+        _renderV2LayersBlock(scene, holder);
+
         _renderHolderPermissionBlock(scene, holder);
 
         const removeBtn = document.createElement('button');
@@ -7514,6 +7516,282 @@
         _persist();
         _redrawSceneCanvases(scene.id);
         _renderContextPanel();
+    }
+
+    // Per-Place, per-layer open state for the V2 Layers cards — keeps a
+    // card expanded across the _renderContextPanel() re-render that
+    // every setHolderV2Layer call triggers, so a Theme Author twiddling
+    // Frame's geometry then Border doesn't have to keep re-expanding it.
+    // Keyed by holderId so switching Places starts fresh.
+    let _v2CardOpen = {};
+
+    // Place · Frame · Paper · Art Model V2 — Phase 2b Inspector UI.
+    // Opt-in per Place: OFF by default (holder.v2Layers null), which
+    // leaves the legacy Frame Variation picker above untouched — Phase
+    // 7 retires that; every phase in between keeps legacy behaviour
+    // byte-identical, so shipping this section carries zero rendering
+    // risk. Enable persists a default {frame, paper, art} skeleton via
+    // ProjectModel.enableHolderV2Layers; Disable clears it back to
+    // null (destructive by design, matching the single-source-of-truth
+    // discipline the model layer already established — see the model's
+    // own comment for the reasoning).
+    //
+    // Layers render top-to-bottom in Photoshop/Figma z-order convention:
+    // Frame at the top of the stack, then Art, then Paper — the
+    // opposite of DRAW_ORDER (paper → art → frame, back-to-front).
+    // A visual paint-order chip strip beneath the toggle keeps the
+    // difference obvious.
+    //
+    // Content slot pickers select a KIND only this phase (image / shape
+    // / color / experience). Actually attaching an image or resolving
+    // an Experience is Phase 3+ (compile) and 4/5 (render) work; here
+    // the picker persists the choice so a follow-up phase can build
+    // on top with zero data migration.
+    function _renderV2LayersBlock(scene, holder) {
+        const v2 = window.ProjectModel.getHolderV2Layers(holder);
+        const enabled = !!v2;
+
+        const details = document.createElement('details');
+        details.className = 'wb-state-intro wb-v2-layers-block';
+        // Open by default when V2 is on. Preserve the outer open-state
+        // across re-renders (per-Place) so an Enable → tweak → Disable
+        // sequence doesn't yank the whole section shut on the author.
+        const outerKey = holder.id + ':__outer';
+        if (enabled) {
+            details.open = _v2CardOpen[outerKey] !== false;
+        } else {
+            details.open = !!_v2CardOpen[outerKey];
+        }
+        details.addEventListener('toggle', function () {
+            _v2CardOpen[outerKey] = details.open;
+        });
+
+        const summary = document.createElement('summary');
+        summary.className = 'wb-state-intro-summary';
+        summary.textContent = enabled
+            ? '🧪 V2 Layers active (Experimental)'
+            : '🧪 V2 Layers (Experimental)';
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-state-intro-body';
+
+        if (!enabled) {
+            const p = document.createElement('div');
+            p.textContent = 'V2 splits a Place into three real layers you can style independently — a Frame (with its own border and geometry), a Paper behind the picture, and the Art itself. The legacy Frame Variation above stays in charge until you turn this on.';
+            p.style.marginBottom = '10px';
+            body.appendChild(p);
+
+            const enableBtn = document.createElement('button');
+            enableBtn.type = 'button';
+            enableBtn.className = 'wb-workspace-btn wb-workspace-btn-primary';
+            enableBtn.textContent = '✨ Enable V2 Layers';
+            enableBtn.disabled = currentProjectReadOnly;
+            enableBtn.addEventListener('click', function () {
+                window.ProjectModel.enableHolderV2Layers(currentProject, scene.id, holder.id);
+                _persist();
+                _renderContextPanel();
+            });
+            body.appendChild(enableBtn);
+        } else {
+            const status = document.createElement('div');
+            status.className = 'wb-v2-status';
+            status.textContent = '✓ V2 rendering is not wired yet — this authoring surface persists your choices for a follow-up phase to consume.';
+            status.style.marginBottom = '10px';
+            body.appendChild(status);
+
+            // Paint-order strip — back-to-front, matches
+            // PlaceFrameV2.DRAW_ORDER.
+            const strip = document.createElement('div');
+            strip.className = 'wb-v2-paint-order';
+            strip.innerHTML = '<span class="wb-v2-paint-label">Draw order:</span> <span class="wb-v2-paint-chip">Paper</span> <span class="wb-v2-paint-arrow">→</span> <span class="wb-v2-paint-chip">Art</span> <span class="wb-v2-paint-arrow">→</span> <span class="wb-v2-paint-chip">Frame</span>';
+            body.appendChild(strip);
+
+            // Layer cards — top-to-bottom = z-order top-to-bottom
+            // (Figma/Photoshop convention), the reverse of paint order.
+            body.appendChild(_renderV2LayerCard(scene, holder, 'frame', 'Frame', '🖼', v2.frame));
+            body.appendChild(_renderV2LayerCard(scene, holder, 'art',   'Art',   '🎨', v2.art));
+            body.appendChild(_renderV2LayerCard(scene, holder, 'paper', 'Paper', '📄', v2.paper));
+
+            const disableBtn = document.createElement('button');
+            disableBtn.type = 'button';
+            disableBtn.className = 'wb-workspace-btn';
+            disableBtn.style.marginTop = '10px';
+            disableBtn.textContent = '↩ Disable V2 (loses V2 field values)';
+            disableBtn.disabled = currentProjectReadOnly;
+            disableBtn.addEventListener('click', function () {
+                if (!window.confirm('Turn V2 Layers off for this Place? Your V2 field values will be cleared. This cannot be undone.')) return;
+                window.ProjectModel.disableHolderV2Layers(currentProject, scene.id, holder.id);
+                _persist();
+                _renderContextPanel();
+            });
+            body.appendChild(disableBtn);
+        }
+
+        details.appendChild(body);
+        contextPanel.appendChild(details);
+    }
+
+    function _renderV2LayerCard(scene, holder, layerKind, title, glyph, layer) {
+        const card = document.createElement('details');
+        card.className = 'wb-v2-layer-card';
+        const openKey = holder.id + ':' + layerKind;
+        if (_v2CardOpen[openKey]) card.open = true;
+        card.addEventListener('toggle', function () {
+            _v2CardOpen[openKey] = card.open;
+        });
+
+        const summary = document.createElement('summary');
+        summary.className = 'wb-v2-layer-card-summary';
+        summary.innerHTML = '<span class="wb-v2-layer-glyph">' + glyph + '</span> <span class="wb-v2-layer-title">' + title + '</span> <span class="wb-v2-layer-meta">' + _v2LayerMeta(layerKind, layer) + '</span>';
+        card.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'wb-v2-layer-card-body';
+
+        // Visible toggle — every layer.
+        const visRow = document.createElement('label');
+        visRow.className = 'wb-permission-row';
+        const visIn = document.createElement('input');
+        visIn.type = 'checkbox';
+        visIn.checked = layer.visible !== false;
+        visIn.disabled = currentProjectReadOnly;
+        visIn.addEventListener('change', function () {
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { visible: visIn.checked });
+            _persist();
+            _renderContextPanel();
+        });
+        visRow.appendChild(visIn);
+        visRow.appendChild(document.createTextNode('Visible'));
+        body.appendChild(visRow);
+
+        // Layer-kind-specific controls.
+        if (layerKind === 'frame') {
+            _appendV2FrameControls(body, scene, holder, layer);
+        } else {
+            _appendV2PaperArtControls(body, scene, holder, layerKind, layer);
+        }
+
+        // Content slot picker — Frame has no color slot per the V2 spec.
+        const slots = layerKind === 'frame'
+            ? [
+                { value: 'none',       label: 'None' },
+                { value: 'image',      label: 'Image' },
+                { value: 'shape',      label: 'Shape' },
+                { value: 'experience', label: 'Experience' }
+            ]
+            : [
+                { value: 'none',       label: 'None' },
+                { value: 'image',      label: 'Image' },
+                { value: 'color',      label: 'Colour' },
+                { value: 'shape',      label: 'Shape' },
+                { value: 'experience', label: 'Experience' }
+            ];
+        const currentSlot = (layer.content && layer.content.kind) || 'none';
+        body.appendChild(_buildFieldGroup('Content', _v2SlotPicker(slots, currentSlot, function (v) {
+            const next = v === 'none' ? null : { kind: v };
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { content: next });
+            _persist();
+            _renderContextPanel();
+        }), 'Content attachment (upload, colour, shape, Experience) lands in a follow-up phase — this phase persists the kind you pick.'));
+
+        card.appendChild(body);
+        return card;
+    }
+
+    function _v2LayerMeta(layerKind, layer) {
+        const bits = [];
+        if (layer.visible === false) bits.push('hidden');
+        if (layerKind === 'frame' && layer.geometry) bits.push(layer.geometry);
+        if (layerKind !== 'frame' && layer.fitMode) bits.push(layer.fitMode);
+        if (layer.content && layer.content.kind && layer.content.kind !== 'none') bits.push(layer.content.kind);
+        return bits.length ? '· ' + bits.join(' · ') : '';
+    }
+
+    function _appendV2FrameControls(body, scene, holder, layer) {
+        const geomOpts = [
+            { value: 'rectangle', label: 'Rectangle' },
+            { value: 'rounded',   label: 'Rounded' },
+            { value: 'circle',    label: 'Circle' }
+        ];
+        body.appendChild(_buildFieldGroup('Geometry', _select(geomOpts, layer.geometry || 'rectangle', function (v) {
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { geometry: v });
+            _persist();
+            _renderContextPanel();
+        })));
+
+        // Frame's own border — Paper/Art don't have one per the V2 spec.
+        const border = layer.border || null;
+        const hasBorder = !!border;
+        const borderToggle = document.createElement('label');
+        borderToggle.className = 'wb-permission-row';
+        const bIn = document.createElement('input');
+        bIn.type = 'checkbox';
+        bIn.checked = hasBorder;
+        bIn.disabled = currentProjectReadOnly;
+        bIn.addEventListener('change', function () {
+            const next = bIn.checked ? { color: '#333333', width: 4 } : null;
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: next });
+            _persist();
+            _renderContextPanel();
+        });
+        borderToggle.appendChild(bIn);
+        borderToggle.appendChild(document.createTextNode('Border'));
+        body.appendChild(borderToggle);
+
+        if (hasBorder) {
+            const colorGroup = _buildFieldGroup('Border colour', _colorInput(border.color || '#333333', function (v) {
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: { color: v, width: border.width || 4 } });
+                _persist();
+            }));
+            const widthGroup = _buildFieldGroup('Border width', _range(0, 40, border.width || 4, function (v) {
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: { color: border.color || '#333333', width: v } });
+                _persist();
+            }));
+            const row = document.createElement('div');
+            row.className = 'wb-field-row';
+            row.appendChild(colorGroup);
+            row.appendChild(widthGroup);
+            body.appendChild(row);
+        }
+    }
+
+    function _appendV2PaperArtControls(body, scene, holder, layerKind, layer) {
+        const fitOpts = layerKind === 'paper'
+            ? [
+                { value: 'fit-frame', label: 'Fit Frame' },
+                { value: 'fit-art',   label: 'Match Art' },
+                { value: 'original',  label: 'Original size' }
+            ]
+            : [
+                { value: 'fit-frame', label: 'Fit Frame' },
+                { value: 'fit-art',   label: 'Fit self' },
+                { value: 'original',  label: 'Original size' }
+            ];
+        body.appendChild(_buildFieldGroup('Fit', _select(fitOpts, layer.fitMode || 'fit-frame', function (v) {
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { fitMode: v });
+            _persist();
+            _renderContextPanel();
+        })));
+    }
+
+    function _v2SlotPicker(options, selected, onChange) {
+        // A small chip-row picker rather than a plain <select>, so the
+        // 4-5 slot options read as tappable equal peers — matches how
+        // the sibling Fill Style / Alignment / Curve Style rows already
+        // present a small closed vocabulary.
+        const row = document.createElement('div');
+        row.className = 'wb-v2-slot-row';
+        options.forEach(function (opt) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-v2-slot-chip' + (opt.value === selected ? ' active' : '');
+            btn.textContent = opt.label;
+            btn.disabled = currentProjectReadOnly;
+            btn.addEventListener('click', function () { onChange(opt.value); });
+            row.appendChild(btn);
+        });
+        return row;
     }
 
     // The Holder variant of the shared Story-Author-permission block
