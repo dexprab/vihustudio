@@ -424,19 +424,41 @@ const SlideRenderer=(()=>{
       ['v2FrameGeometry','geometry'],
       ['v2FrameVisible','visible'],
       ['v2FrameBorderColor','__borderColor'],
-      ['v2FrameBorderWidth','__borderWidth']
+      ['v2FrameBorderWidth','__borderWidth'],
+      // Phase 13 — the remaining V2 knobs become Story-Author-overridable.
+      ['v2FrameRotation','rotation'],
+      ['v2FramePadding','padding']
     ],
     paper:[
       ['v2PaperVisible','visible'],
       ['v2PaperContentColor','__contentColor'],
-      ['v2PaperContentKind','__contentKind']
+      ['v2PaperContentKind','__contentKind'],
+      ['v2PaperRotation','rotation'],
+      ['v2PaperBoundsW','__boundsW'],
+      ['v2PaperBoundsH','__boundsH']
     ],
     art:[
       ['v2ArtVisible','visible'],
       ['v2ArtContentColor','__contentColor'],
-      ['v2ArtContentKind','__contentKind']
+      ['v2ArtContentKind','__contentKind'],
+      ['v2ArtRotation','rotation'],
+      ['v2ArtBoundsW','__boundsW'],
+      ['v2ArtBoundsH','__boundsH']
     ]
   };
+  // Phase 13 — which permission ACTION an override target falls under,
+  // for read-side Guardrails gating (below): a Theme Author dropping a
+  // per-layer permission after a Story Author had already dialed an
+  // override in correctly falls back to the authored base, rather than
+  // silently preserving the now-un-authorized override — the exact
+  // discipline getPlaceRotation already established for legacy Place
+  // rotation.
+  function _v2ActionForTarget(targetKey){
+    if(targetKey==='rotation') return 'rotate';
+    if(targetKey==='padding' || targetKey==='__boundsW' || targetKey==='__boundsH') return 'resize';
+    if(targetKey==='visible') return 'visible';
+    return 'content';
+  }
   function _v2ResolveEffectiveLayers(place,s,placeId){
     if(!place || !place.v2Layers) return null;
     const ov=_layerOverride(s,placeId) || {};
@@ -448,7 +470,12 @@ const SlideRenderer=(()=>{
       if(!layer) return null;
       const c={};
       Object.keys(layer).forEach(function(k){
-        if(k==='border' || k==='content'){
+        // Phase 13 adds bounds (a {w,h} object a __boundsW/H override
+        // mutates per-field) to the nested-clone list — without this,
+        // writing an override would mutate the compiled theme object
+        // shared across every render. permissions is cloned too for
+        // the same defensive reason, though nothing writes to it here.
+        if(k==='border' || k==='content' || k==='bounds' || k==='permissions'){
           c[k]=layer[k] ? Object.assign({},layer[k]) : null;
         }else{
           c[k]=layer[k];
@@ -490,6 +517,12 @@ const SlideRenderer=(()=>{
       _V2_FIELD_MAP[layerKind].forEach(function(pair){
         const ovKey=pair[0], targetKey=pair[1];
         if(!(ovKey in ov)) return;
+        // Phase 13 Guardrails — an override only applies while the
+        // Theme Author's own per-layer permission (Phase 12, absent →
+        // inherit Place-wide) still allows its action category. The
+        // override stays stored (a re-granted permission brings it
+        // back), it just never wins the merge while denied.
+        if(!_v2LayerPermission(place,layerKind,_v2ActionForTarget(targetKey))) return;
         const val=ov[ovKey];
         if(targetKey==='__borderColor'){
           if(!layer.border) layer.border={};
@@ -503,6 +536,12 @@ const SlideRenderer=(()=>{
         }else if(targetKey==='__contentKind'){
           if(!layer.content) layer.content={};
           layer.content.kind=val;
+        }else if(targetKey==='__boundsW'){
+          if(!layer.bounds) layer.bounds={};
+          layer.bounds.w=val;
+        }else if(targetKey==='__boundsH'){
+          if(!layer.bounds) layer.bounds={};
+          layer.bounds.h=val;
         }else{
           layer[targetKey]=val;
         }
@@ -541,12 +580,18 @@ const SlideRenderer=(()=>{
   // Action Strip controls) and any future consumer read the SAME rule
   // rather than re-deriving the inheritance in two places — the exact
   // discipline getPlacePermissions itself already established.
-  function getPlaceV2LayerPermission(s,placeId,layerKind,action){
-    const place=_placeByExternalId(s,placeId);
+  function _v2LayerPermission(place,layerKind,action){
     if(!place || !place.v2Layers) return false;
+    if(layerKind!=='frame' && layerKind!=='paper' && layerKind!=='art') return false;
+    // A valid layer kind whose baseline is null (a Theme Author authored
+    // no Paper/Art at all) still resolves — it simply has no per-layer
+    // permissions object, so every action inherits the Place-wide flag.
+    // This is what lets a Story Author INTRODUCE content on an absent
+    // layer (the materialize-on-override branch in
+    // _v2ResolveEffectiveLayers) under the same rules that would govern
+    // an authored one.
     const layer=place.v2Layers[layerKind];
-    if(!layer) return false;
-    const lp=layer.permissions;
+    const lp=layer && layer.permissions;
     const pw=_resolvePlacePermissions(place);
     let key, fallback;
     if(action==='visible'){ key='visible'; fallback=pw.editable; }
@@ -556,6 +601,9 @@ const SlideRenderer=(()=>{
     else return false;
     if(lp && typeof lp[key]==='boolean') return lp[key];
     return fallback;
+  }
+  function getPlaceV2LayerPermission(s,placeId,layerKind,action){
+    return _v2LayerPermission(_placeByExternalId(s,placeId),layerKind,action);
   }
 
   // Guardrails / full cross-object reorder — Place 1's own atomic paint

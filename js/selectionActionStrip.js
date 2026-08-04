@@ -307,23 +307,35 @@ const SelectionActionStrip=(function(){
       if(perm.rotatable){
         if(_mountPlaceRotationSlider(editPanelEl,sel.sceneId)) mounted=true;
       }
-      // Place · Frame · Paper · Art Model V2 — Phase 6.
-      // A V2 Place (place.v2Layers set at compile time by the Theme
-      // Author) gets its own two dedicated authoring controls in
-      // addition to whatever legacy Shape/Rotation ones its own
-      // resizable/rotatable permissions opt in to — spec §2's own
-      // property grammar names Frame's geometry choice and Paper's
-      // colour as the two highest-leverage Story-Author knobs on a
-      // V2 Place. Gated on `editable` (matching how legacy Frame
-      // edits are already gated), so a Theme Author who marked a
-      // Place non-editable blocks these V2 edits exactly as it
-      // already blocks Frame Look/Frame Style on a legacy Place.
-      if(perm.editable && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.isPlaceV2==='function'){
+      // Place · Frame · Paper · Art Model V2 — Phase 6, regated per-layer
+      // in Phase 13. Every V2 control now gates on the Phase 12 per-layer
+      // permission resolver (getPlaceV2LayerPermission — absent per-layer
+      // permissions inherit the Place-wide flags, so a theme authored
+      // before Phase 12 behaves exactly as the old `perm.editable` gate
+      // did: content controls follow editable, transform controls follow
+      // rotatable/resizable). Phase 13 adds the remaining Story-Author
+      // knobs: per-layer rotation, Paper/Art size (bounds), and the
+      // Frame's mat gap (padding).
+      if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.isPlaceV2==='function'){
         try{
           const slide=cfg.getCurrentSlide();
           if(slide && SlideRenderer.isPlaceV2(slide,sel.sceneId)){
-            if(_mountV2FrameGeometryPicker(editPanelEl,sel.sceneId)) mounted=true;
-            if(_mountV2PaperColourControl(editPanelEl,sel.sceneId)) mounted=true;
+            const lp=function(lk,act){
+              try{ return SlideRenderer.getPlaceV2LayerPermission(slide,sel.sceneId,lk,act)===true; }catch(e){ return false; }
+            };
+            if(lp('frame','content')){
+              if(_mountV2FrameGeometryPicker(editPanelEl,sel.sceneId)) mounted=true;
+            }
+            if(lp('paper','content')){
+              if(_mountV2PaperColourControl(editPanelEl,sel.sceneId)) mounted=true;
+            }
+            [['frame','Frame'],['paper','Paper'],['art','Art']].forEach(function(pair){
+              if(lp(pair[0],'rotate') && _mountV2LayerRotation(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
+            });
+            if(lp('frame','resize') && _mountV2MatGapSlider(editPanelEl,sel.sceneId)) mounted=true;
+            [['paper','Paper'],['art','Art']].forEach(function(pair){
+              if(lp(pair[0],'resize') && _mountV2LayerSizeSliders(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
+            });
           }
         }catch(e){}
       }
@@ -601,6 +613,108 @@ const SelectionActionStrip=(function(){
     row.appendChild(tWrap);
 
     container.appendChild(row);
+    return true;
+  }
+
+  // Phase 13 — a shared slider-row builder for the new per-layer V2
+  // controls, mirroring _mountPlaceRotationSlider's own established
+  // .designer-row/.text-slider-label/.context-range-* class vocabulary
+  // exactly, so every new control styles identically to every other
+  // range control in the popup with zero new CSS.
+  function _v2SliderRow(container,labelStr,min,max,current,fmt,onInput){
+    const row=document.createElement('div');
+    row.className='designer-row context-row';
+    const label=document.createElement('div');
+    label.className='designer-row-label text-slider-label';
+    const labelText=document.createElement('span');
+    labelText.textContent=labelStr;
+    const valueSpan=document.createElement('span');
+    valueSpan.className='context-range-value';
+    valueSpan.textContent=fmt(current);
+    label.appendChild(labelText);
+    label.appendChild(valueSpan);
+    row.appendChild(label);
+    const input=document.createElement('input');
+    input.type='range';
+    input.min=String(min);
+    input.max=String(max);
+    input.step='1';
+    input.value=String(Math.round(current));
+    input.className='context-range-input';
+    input.addEventListener('input',function(){
+      const v=Number(input.value)||0;
+      valueSpan.textContent=fmt(v);
+      onInput(v);
+    });
+    row.appendChild(input);
+    container.appendChild(row);
+    return true;
+  }
+
+  // Per-layer rotation slider — writes the layer's own flat override
+  // key (v2FrameRotation / v2PaperRotation / v2ArtRotation); the render
+  // side's _v2ResolveEffectiveLayers merges it onto the effective layer,
+  // gated by the same permission that mounted this control, so a
+  // later-revoked permission stops both the control AND the stored
+  // override from applying.
+  function _mountV2LayerRotation(container,sceneId,layerKind,layerLabel){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let current=0;
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      const layer=layers && layers[layerKind];
+      if(layer && typeof layer.rotation==='number') current=layer.rotation;
+    }catch(e){}
+    const ovKey='v2'+layerLabel+'Rotation';
+    return _v2SliderRow(container,layerLabel+' Spin',0,359,current,function(v){ return v+'°'; },function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,ovKey,v); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+  }
+
+  // Frame mat-gap slider — writes v2FramePadding (a fraction of the
+  // Place rect's short edge, stored 0..0.40; shown as a %).
+  function _mountV2MatGapSlider(container,sceneId){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let current=0;
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      if(layers && layers.frame && typeof layers.frame.padding==='number') current=layers.frame.padding;
+    }catch(e){}
+    return _v2SliderRow(container,'Mat Gap',0,40,Math.round(current*100),function(v){ return v+'%'; },function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,'v2FramePadding',v/100); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+  }
+
+  // Paper/Art size sliders — two rows (Width %, Height %) writing the
+  // layer's own v2XBoundsW / v2XBoundsH override keys as fractions.
+  function _mountV2LayerSizeSliders(container,sceneId,layerKind,layerLabel){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let curW=1, curH=1;
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      const b=layers && layers[layerKind] && layers[layerKind].bounds;
+      if(b && typeof b.w==='number') curW=b.w;
+      if(b && typeof b.h==='number') curH=b.h;
+    }catch(e){}
+    const wKey='v2'+layerLabel+'BoundsW', hKey='v2'+layerLabel+'BoundsH';
+    const pct=function(v){ return v+'%'; };
+    _v2SliderRow(container,layerLabel+' Width',10,100,Math.round(curW*100),pct,function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,wKey,v/100); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+    _v2SliderRow(container,layerLabel+' Height',10,100,Math.round(curH*100),pct,function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,hKey,v/100); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
     return true;
   }
 
