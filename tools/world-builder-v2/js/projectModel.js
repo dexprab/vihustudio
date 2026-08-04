@@ -783,13 +783,19 @@ const ProjectModel = (function () {
         // parent" — Frame fills the Place, Paper/Art fill the Frame,
         // matching resolveLayerBounds()'s own null-proposed convention
         // in js/placeFrameV2.js).
+        // Phase 10 — every layer carries its own `rotation` (degrees,
+        // clockwise, around the layer's own centre; spec §4 transform
+        // stack). Frame's rotation carries Paper/Art with it (they are
+        // its children per spec §1.1 containment); Paper/Art rotation
+        // is additional, within the Frame clip.
         if (kind === 'frame') {
             return {
                 visible: true,
                 geometry: 'rectangle',
                 border: null,
                 content: null,
-                bounds: null
+                bounds: null,
+                rotation: 0
             };
         }
         // paper | art
@@ -797,7 +803,8 @@ const ProjectModel = (function () {
             visible: true,
             fitMode: 'fit-frame',
             content: null,
-            bounds: null
+            bounds: null,
+            rotation: 0
         };
     }
 

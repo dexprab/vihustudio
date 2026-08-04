@@ -546,12 +546,29 @@ const EngineV2Runtime = (function () {
         const paper = v2.paper || null;
         const art = v2.art || null;
         const frameVisible = frame.visible !== false;
+        // Phase 10 — per-layer rotation, mirroring Studio's own
+        // _drawPlaceV2 exactly: Frame's rotation wraps the whole stack
+        // (clip + border + both surface layers pivot together, per spec
+        // §1.1 containment); Paper/Art each add their own on top,
+        // inside the Frame clip, around the Place's own centre.
+        const v2cx = rect.x + rect.w / 2, v2cy = rect.y + rect.h / 2;
+        const frameRot = (typeof frame.rotation === 'number') ? frame.rotation : 0;
+        const paperRot = (paper && typeof paper.rotation === 'number') ? paper.rotation : 0;
+        const artRot = (art && typeof art.rotation === 'number') ? art.rotation : 0;
+        function v2Rotate(deg) {
+            if (!deg) return;
+            ctx.translate(v2cx, v2cy);
+            ctx.rotate(deg * Math.PI / 180);
+            ctx.translate(-v2cx, -v2cy);
+        }
+        if (frameRot) { ctx.save(); v2Rotate(frameRot); }
         const framePath = _v2FramePath(rect, frame.geometry || 'rectangle');
 
         // Paper (back).
         if (paper && paper.visible !== false) {
             ctx.save();
             ctx.clip(framePath);
+            v2Rotate(paperRot);
             _v2PaintContent(ctx, paper.content, rect, graph);
             ctx.restore();
         }
@@ -565,6 +582,7 @@ const EngineV2Runtime = (function () {
         if (art && art.visible !== false) {
             ctx.save();
             ctx.clip(framePath);
+            v2Rotate(artRot);
             if (hasArtContent) {
                 _v2PaintContent(ctx, art.content, rect, graph);
             } else if (graph.representativeImage) {
@@ -608,6 +626,7 @@ const EngineV2Runtime = (function () {
             }
             ctx.restore();
         }
+        if (frameRot) { ctx.restore(); }
     }
 
     // Frame geometry as a Path2D — same math as Studio's own

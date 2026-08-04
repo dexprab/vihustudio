@@ -616,6 +616,22 @@ const SlideRenderer=(()=>{
     const paper=eff.paper || null;
     const art  =eff.art   || null;
     const frameVisible=frame.visible!==false;
+    // Phase 10 — per-layer rotation (spec §4). Frame's rotation wraps
+    // the WHOLE V2 stack (Paper/Art are Frame's children per spec §1.1
+    // containment — the clip path, border, and both surface layers all
+    // pivot together); Paper/Art each add their own rotation on top,
+    // inside the Frame clip, around the Place's own centre.
+    const _v2cx=placeRect.x+placeRect.w/2, _v2cy=placeRect.y+placeRect.h/2;
+    const frameRot=(typeof frame.rotation==='number')?frame.rotation:0;
+    const paperRot=(paper && typeof paper.rotation==='number')?paper.rotation:0;
+    const artRot=(art && typeof art.rotation==='number')?art.rotation:0;
+    function _v2Rotate(deg){
+      if(!deg) return;
+      x.translate(_v2cx,_v2cy);
+      x.rotate(deg*Math.PI/180);
+      x.translate(-_v2cx,-_v2cy);
+    }
+    if(frameRot){ x.save(); _v2Rotate(frameRot); }
     // Build Frame geometry as a Path2D — the shared clip for
     // Paper/Art/Frame's own border stroke.
     const geom=frame.geometry || 'rectangle';
@@ -624,6 +640,7 @@ const SlideRenderer=(()=>{
     if(paper && paper.visible!==false){
       x.save();
       x.clip(framePath);
+      _v2Rotate(paperRot);
       _v2PaintSurfaceLayer(paper,placeRect,chromeColor,s);
       x.restore();
     }
@@ -636,6 +653,7 @@ const SlideRenderer=(()=>{
     if(art && art.visible!==false){
       x.save();
       x.clip(framePath);
+      _v2Rotate(artRot);
       if(hasArtContent){
         _v2PaintSurfaceLayer(art,placeRect,chromeColor,s);
       }else if(artImg && artImg.width){
@@ -691,6 +709,9 @@ const SlideRenderer=(()=>{
       // fc.kind==='experience' — Phase 6+.
       x.restore();
     }
+    if(frameRot){ x.restore(); }
+    // The hit-test bbox stays the unrotated placeRect — the identical
+    // convention whole-Place rotation already established upstream.
     return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
   }
 

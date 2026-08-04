@@ -1182,7 +1182,11 @@ function _compileV2Frame(f) {
         geometry: f.geometry || 'rectangle',
         border: f.border || null,
         content: _compileV2Content(f.content),
-        bounds: f.bounds || null
+        bounds: f.bounds || null,
+        // Phase 10 — per-layer rotation (degrees, clockwise, around the
+        // layer's own centre). Absent on anything authored before this
+        // phase → 0, byte-identical render.
+        rotation: (typeof f.rotation === 'number') ? f.rotation : 0
     };
     return compiled;
 }
@@ -1193,7 +1197,8 @@ function _compileV2SurfaceLayer(l) {
         visible: l.visible !== false,
         fitMode: l.fitMode || 'fit-frame',
         content: _compileV2Content(l.content),
-        bounds: l.bounds || null
+        bounds: l.bounds || null,
+        rotation: (typeof l.rotation === 'number') ? l.rotation : 0
     };
 }
 

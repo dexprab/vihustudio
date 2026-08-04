@@ -7675,6 +7675,17 @@
             _appendV2PaperArtControls(body, scene, holder, layerKind, layer);
         }
 
+        // Phase 10 — per-layer rotation (spec §4 transform stack).
+        // Labelled "Layer Rotation" to stay distinct from an Image
+        // content's own "Rotation" spin control inside the value
+        // editor below — the layer spins as a whole (Frame carries
+        // Paper/Art with it; Paper/Art spin within the Frame clip).
+        body.appendChild(_buildFieldGroup('Layer Rotation', _range(0, 359, (typeof layer.rotation === 'number') ? layer.rotation : 0, function (v) {
+            window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { rotation: v });
+            _persist();
+            _redrawSceneCanvases(scene.id);
+        })));
+
         // Content slot picker — Frame has no color slot per the V2 spec.
         //
         // Phase 8: 'experience' is no longer offered as a PRIMARY content
