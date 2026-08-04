@@ -808,6 +808,14 @@ const ProjectModel = (function () {
         // strength}: the receding edge — 'top'|'bottom'|'left'|'right'
         // — plus how far it recedes, 0..0.85; spec §4's vanishing-point
         // warp). null = none, byte-identical legacy.
+        // Phase 16 — every layer carries `experience` ({id} — a
+        // reference to a real Experience in this World). Spec §3/§6:
+        // Experience is ALWAYS additive — it composites on top of
+        // whatever the layer already holds (or on top of nothing) and
+        // never displaces the layer's own primary content. A separate
+        // field, deliberately NOT a content.kind value, so attaching an
+        // Experience can never clear/replace the primary slot. null =
+        // none, byte-identical legacy.
         if (kind === 'frame') {
             return {
                 visible: true,
@@ -818,6 +826,7 @@ const ProjectModel = (function () {
                 rotation: 0,
                 tilt: null,
                 perspective: null,
+                experience: null,
                 padding: 0,
                 permissions: null
             };
@@ -831,6 +840,7 @@ const ProjectModel = (function () {
             rotation: 0,
             tilt: null,
             perspective: null,
+            experience: null,
             permissions: null
         };
     }
@@ -884,6 +894,108 @@ const ProjectModel = (function () {
         if (!layer) return null;
         Object.assign(layer, patch);
         return layer;
+    }
+
+    // Phase 16 — Experience as a per-layer ADDITIVE overlay (spec §3,
+    // decision log §6: "Additive only... never displaces the layer's
+    // own primary content"). Converts an Experience's Universal Content
+    // parts (Multi-Asset Experience Parts — parts[] of {id,kind,props},
+    // field names per experienceSchema.js's defaultUniversalContent)
+    // into paint-ready V2 overlay parts: each `{rect, content}` where
+    // `rect` is {x,y,w,h} FRACTIONS OF THE V2 LAYER'S OWN RECT (null =
+    // the whole layer rect) and `content` is a V2-content-shaped object
+    // ({kind:'color'|'image'|'shape'|'text', ...}) the existing V2
+    // content painters consume directly. Both render engines and
+    // builder.js's compile step share this exact conversion — builder.js
+    // keeps its own lockstep copy (it deliberately never depends on
+    // ProjectModel; see projectCompiler.js's own boundary note), so the
+    // two must stay hand-mirrored like every other twin in this codebase.
+    function _experienceV2OverlayParts(exp) {
+        if (!exp) return [];
+        const rawParts = (exp.properties && Array.isArray(exp.properties.parts) && exp.properties.parts.length)
+            ? exp.properties.parts
+            // A never-reopened legacy Experience (pre-Multi-Asset-Parts)
+            // stores its one part's fields flat on properties, with
+            // contentKind naming the kind — the exact shape parts[0]
+            // mirrors. Synthesize the same single part.
+            : [{ id: 'part-legacy', kind: exp.contentKind || 'text', props: exp.properties || {} }];
+        const out = [];
+        rawParts.forEach(function (part) {
+            const p = part.props || {};
+            const kind = part.kind;
+            if (kind === 'colour') {
+                if (p.colorTransparent) return;
+                out.push({ rect: null, content: {
+                    kind: 'color', color: p.colorValue || '#F4F1EC',
+                    opacity: (typeof p.colorOpacity === 'number') ? p.colorOpacity : 1
+                } });
+            } else if (kind === 'image') {
+                if (!p.imageSrc) return;
+                out.push({ rect: { x: p.imageX || 0, y: p.imageY || 0, w: p.imageW || 1, h: p.imageH || 1 }, content: {
+                    kind: 'image', image: p.imageSrc, fit: p.imageFit || 'fit',
+                    opacity: (typeof p.imageOpacity === 'number') ? p.imageOpacity : 1,
+                    rotation: p.imageRotation || 0
+                } });
+            } else if (kind === 'graphics') {
+                const rect = { x: p.graphicX || 0, y: p.graphicY || 0, w: p.graphicW || 1, h: p.graphicH || 1 };
+                if (p.graphicShape) {
+                    out.push({ rect: rect, content: {
+                        kind: 'shape', shape: p.graphicShape,
+                        fillColor: p.graphicFillColor || '#F0B429',
+                        fillOpacity: (typeof p.graphicFillOpacity === 'number') ? p.graphicFillOpacity : 1,
+                        strokeColor: p.graphicStrokeColor || '#24406B',
+                        strokeOpacity: (typeof p.graphicStrokeOpacity === 'number') ? p.graphicStrokeOpacity : 1,
+                        strokeWidth: (typeof p.graphicStrokeWidth === 'number') ? p.graphicStrokeWidth : 0,
+                        opacity: (typeof p.graphicOpacity === 'number') ? p.graphicOpacity : 1,
+                        rotation: p.graphicRotation || 0,
+                        customPath: p.graphicCustomPath || null,
+                        fillMode: p.graphicFillMode || 'solid',
+                        paintStrokes: p.graphicPaintStrokes || null
+                    } });
+                } else if (p.graphicSrc) {
+                    out.push({ rect: rect, content: {
+                        kind: 'image', image: p.graphicSrc, fit: 'fit',
+                        opacity: (typeof p.graphicOpacity === 'number') ? p.graphicOpacity : 1,
+                        rotation: p.graphicRotation || 0
+                    } });
+                }
+            } else if (kind === 'text') {
+                if (!p.textContent) return;
+                out.push({ rect: { x: p.textX || 0, y: p.textY || 0, w: p.textW || 1, h: p.textH || 1 }, content: {
+                    kind: 'text', text: p.textContent,
+                    font: p.textFont || 'Georgia, serif',
+                    size: (typeof p.textSize === 'number') ? p.textSize : 32,
+                    weight: p.textWeight || 'normal',
+                    align: p.textAlign || 'left',
+                    color: p.textColor || '#1D3457',
+                    opacity: (typeof p.textOpacity === 'number') ? p.textOpacity : 1,
+                    rotation: p.textRotation || 0
+                } });
+            }
+        });
+        return out;
+    }
+
+    // The live-render resolver worldBuilderApp threads into
+    // EngineV2Runtime.load — resolves a layer.experience.id to
+    // {id, name, parts} or null (unknown id / nothing paintable).
+    function resolveV2ExperienceOverlay(project, experienceId) {
+        const exp = findExperience(project, experienceId);
+        if (!exp) return null;
+        const parts = _experienceV2OverlayParts(exp);
+        if (!parts.length) return null;
+        return { id: exp.id, name: exp.name || exp.id, parts: parts };
+    }
+
+    // What the Inspector's attach picker may list — honours the
+    // established Experience canon: Nurturing never attaches anywhere;
+    // Personal is permanently bound to its own scope Scene; Public
+    // attaches freely.
+    function eligibleV2OverlayExperiences(project, sceneId) {
+        return experiences(project).filter(function (e) {
+            if (e.lifecycle === 'public') return true;
+            return e.lifecycle === 'personal' && e.scopeSceneId === sceneId;
+        });
     }
 
     // Creates a Scene from an Engine Scene Template — never from a blank
@@ -2440,6 +2552,8 @@ const ProjectModel = (function () {
         enableHolderV2Layers: enableHolderV2Layers,
         disableHolderV2Layers: disableHolderV2Layers,
         setHolderV2Layer: setHolderV2Layer,
+        resolveV2ExperienceOverlay: resolveV2ExperienceOverlay,
+        eligibleV2OverlayExperiences: eligibleV2OverlayExperiences,
         sceneStack: sceneStack,
         findSceneLayer: findSceneLayer,
         updateSceneLayer: updateSceneLayer,

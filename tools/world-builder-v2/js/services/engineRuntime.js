@@ -52,7 +52,7 @@ const EngineV2Runtime = (function () {
     // is the host's concern (`worldBuilderApp.js`'s own image cache),
     // never this module's — this keeps `_paintLayer` synchronous and
     // this module free of any redraw-triggering side effect.
-    function load(scene, resolveFrame, representativeImage, resolveLayerImage) {
+    function load(scene, resolveFrame, representativeImage, resolveLayerImage, resolveV2Experience) {
         if (!scene || !scene.canvas) {
             throw new Error('EngineV2Runtime.load requires a Scene with a canvas (Engine Canon §4 — a Scene without a Canvas is not a Scene)');
         }
@@ -76,7 +76,14 @@ const EngineV2Runtime = (function () {
             stack: stack,
             resolveFrame: typeof resolveFrame === 'function' ? resolveFrame : function () { return null; },
             representativeImage: representativeImage || null,
-            resolveLayerImage: typeof resolveLayerImage === 'function' ? resolveLayerImage : function () { return null; }
+            resolveLayerImage: typeof resolveLayerImage === 'function' ? resolveLayerImage : function () { return null; },
+            // Phase 16 — resolves a V2 layer's `experience` {id}
+            // reference to a paint-ready {id, name, parts} overlay
+            // (the caller — worldBuilderApp — passes
+            // ProjectModel.resolveV2ExperienceOverlay, keeping this
+            // module pure of any Builder-global knowledge, the exact
+            // same injected-resolver contract resolveFrame set).
+            resolveV2Experience: typeof resolveV2Experience === 'function' ? resolveV2Experience : function () { return null; }
         };
     }
 
@@ -678,6 +685,7 @@ const EngineV2Runtime = (function () {
                 v2Rotate(paperRot);
                 v2Tilt(paperTilt);
                 _v2PaintContent(ctx, paper.content, v2LayerRect(paper), graph);
+                _v2PaintExperienceOverlay(ctx, paper, v2LayerRect(paper), graph);
             });
             ctx.restore();
         }
@@ -706,6 +714,11 @@ const EngineV2Runtime = (function () {
                     ctx.fillRect(artRect.x, artRect.y, artRect.w, artRect.h);
                     ctx.restore();
                 }
+                // Phase 16 — the layer's Experience overlay is ALWAYS
+                // additive, on top of whatever the layer itself holds
+                // (or the fallback artwork/wash): spec §3/§6, "never
+                // displaces the layer's own primary content."
+                _v2PaintExperienceOverlay(ctx, art, artRect, graph);
             });
             ctx.restore();
         }
@@ -737,6 +750,18 @@ const EngineV2Runtime = (function () {
             } else {
                 _v2PaintContent(ctx, fc, rect, graph);
             }
+            ctx.restore();
+        }
+
+        // Phase 16 — Frame's own Experience overlay, above everything
+        // (the Frame is the topmost layer, spec §1.2), still inside the
+        // Frame geometry clip. A separate block from the frame-content
+        // one above so an Experience attaches to a Frame with no
+        // primary content of its own ("works on nothing," spec §3).
+        if (frameVisible && frame.experience) {
+            ctx.save();
+            ctx.clip(framePath);
+            _v2PaintExperienceOverlay(ctx, frame, rect, graph);
             ctx.restore();
         }
         if (frameHasXform) { ctx.restore(); }
@@ -826,7 +851,84 @@ const EngineV2Runtime = (function () {
             );
             ctx.restore();
         }
-        // content.kind === 'experience' — Phase 16 (additive overlay).
+    }
+
+    // ---------------------------------------------------------------
+    // Phase 16 — Experience as a per-layer ADDITIVE overlay (spec §3,
+    // decision log §6). A V2 layer's `experience` field is a {id}
+    // reference (live authoring model, resolved via the injected
+    // graph.resolveV2Experience — ProjectModel.resolveV2ExperienceOverlay
+    // in Builder) or a pre-resolved {id, parts} (a compiled package,
+    // where builder.js already flattened the Experience registry away).
+    // Each part is {rect, content}: rect is {x,y,w,h} FRACTIONS OF THE
+    // LAYER'S OWN RECT (null = whole rect); content is a V2 content
+    // spec, painted through the exact same _v2PaintContent every other
+    // V2 draw already uses — plus 'text', which only overlays carry.
+    // Always painted AFTER the layer's own primary content, inside the
+    // same clip/transform stack: additive only, never a displacement.
+    function _v2ExperienceParts(layer, graph) {
+        const ref = layer && layer.experience;
+        if (!ref || typeof ref !== 'object') return null;
+        if (Array.isArray(ref.parts) && ref.parts.length) return ref.parts;
+        if (ref.id) {
+            const resolved = graph.resolveV2Experience(ref.id);
+            if (resolved && Array.isArray(resolved.parts) && resolved.parts.length) return resolved.parts;
+        }
+        return null;
+    }
+
+    function _v2PaintExperienceOverlay(ctx, layer, layerRect, graph) {
+        const parts = _v2ExperienceParts(layer, graph);
+        if (!parts) return;
+        parts.forEach(function (part) {
+            if (!part || !part.content) return;
+            const fr = part.rect;
+            const r = (fr && typeof fr === 'object')
+                ? {
+                    x: layerRect.x + (fr.x || 0) * layerRect.w,
+                    y: layerRect.y + (fr.y || 0) * layerRect.h,
+                    w: Math.max(0, (typeof fr.w === 'number' ? fr.w : 1)) * layerRect.w,
+                    h: Math.max(0, (typeof fr.h === 'number' ? fr.h : 1)) * layerRect.h
+                }
+                : layerRect;
+            if (r.w <= 0 || r.h <= 0) return;
+            if (part.content.kind === 'text') {
+                _v2PaintOverlayText(ctx, part.content, r);
+            } else {
+                _v2PaintContent(ctx, part.content, r, graph);
+            }
+        });
+    }
+
+    // Text is an overlay-only content kind (an Experience Text part) —
+    // the three primary V2 layers never hold text of their own, so the
+    // primary painter (_v2PaintContent) stays untouched. Simple wrapped
+    // fill via the same _wrapLines every other text draw here uses; the
+    // part's own size is in canvas-logical px (the same unit Experience
+    // Text parts already author), alignment resolves within the part
+    // rect, rotation pivots on the part rect's own centre.
+    function _v2PaintOverlayText(ctx, content, rect) {
+        if (!content.text) return;
+        ctx.save();
+        if (typeof content.opacity === 'number') ctx.globalAlpha = content.opacity;
+        if (content.rotation) {
+            const tcx = rect.x + rect.w / 2, tcy = rect.y + rect.h / 2;
+            ctx.translate(tcx, tcy);
+            ctx.rotate(content.rotation * Math.PI / 180);
+            ctx.translate(-tcx, -tcy);
+        }
+        const size = (typeof content.size === 'number' && content.size > 0) ? content.size : 32;
+        const weight = content.weight && content.weight !== 'normal' ? content.weight + ' ' : '';
+        ctx.font = weight + size + 'px ' + (content.font || 'Georgia, serif');
+        ctx.fillStyle = content.color || '#1D3457';
+        ctx.textAlign = content.align || 'left';
+        ctx.textBaseline = 'top';
+        const tx = content.align === 'center' ? rect.x + rect.w / 2
+            : (content.align === 'right' ? rect.x + rect.w : rect.x);
+        _wrapLines(ctx, content.text, rect.w).forEach(function (line, i) {
+            ctx.fillText(line, tx, rect.y + i * size * 1.25);
+        });
+        ctx.restore();
     }
 
     function _paintHolder(ctx, holder, graph) {

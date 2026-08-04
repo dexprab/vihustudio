@@ -879,6 +879,7 @@ const SlideRenderer=(()=>{
         _v2Rotate(paperRot);
         _v2Tilt(paperTilt);
         _v2PaintSurfaceLayer(paper,_v2LayerRect(paper),chromeColor,s);
+        _v2PaintExperienceOverlay(paper,_v2LayerRect(paper),s);
       });
       x.restore();
     }
@@ -911,6 +912,11 @@ const SlideRenderer=(()=>{
           // blank.
           _v2DrawPlaceholder(artRect,chromeColor);
         }
+        // Phase 16 — the layer's Experience overlay is ALWAYS additive,
+        // on top of whatever the layer itself holds (or the fallback
+        // picture/placeholder): spec §3/§6, "never displaces the
+        // layer's own primary content."
+        _v2PaintExperienceOverlay(art,artRect,s);
       });
       x.restore();
     }
@@ -933,8 +939,6 @@ const SlideRenderer=(()=>{
     // Colour keeps its Phase-4 15%-alpha subtle-tint semantics for
     // backward compat with the Phase 4 verify suite; a caller wanting
     // an opaque colour fill on Frame authors `content.opacity` instead.
-    // Experience is deferred (documented no-op) — needs Experience
-    // resolution semantics not yet designed for this phase.
     if(frameVisible && frame.content && frame.content.kind && frame.content.kind!=='none'){
       const fc=frame.content;
       x.save();
@@ -948,7 +952,17 @@ const SlideRenderer=(()=>{
       }else if(fc.kind==='shape' && fc.shape){
         _v2DrawShapeContent(fc,placeRect);
       }
-      // fc.kind==='experience' — Phase 6+.
+      x.restore();
+    }
+    // Phase 16 — Frame's own Experience overlay, above everything (the
+    // Frame is the topmost layer, spec §1.2), still inside the Frame
+    // geometry clip. A separate block from the frame-content one above
+    // so an Experience attaches to a Frame with no primary content of
+    // its own ("works on nothing," spec §3).
+    if(frameVisible && frame.experience){
+      x.save();
+      x.clip(framePath);
+      _v2PaintExperienceOverlay(frame,placeRect,s);
       x.restore();
     }
     if(frameHasXform){ x.restore(); }
@@ -994,10 +1008,9 @@ const SlideRenderer=(()=>{
   }
 
   // Paint a Paper/Art surface layer's own content — Phase 5 covers
-  // colour / image / shape. Experience is deferred (documented no-op)
-  // until the Experience-in-a-Place resolution semantics are designed
-  // in a later phase — an authored Experience content on Paper/Art
-  // simply paints nothing yet, never crashes. The caller has already
+  // colour / image / shape (an Experience is NOT a content kind — it
+  // is the layer's own separate additive `experience` field, painted
+  // by _v2PaintExperienceOverlay after this). The caller has already
   // established the Frame-geometry clip (Path2D), so image/shape are
   // free to draw straight to the full placeRect and the clip enforces
   // "nothing outgrows Frame" (spec §1.1) for free — no per-layer
@@ -1021,7 +1034,81 @@ const SlideRenderer=(()=>{
     }else if(content.kind==='shape' && content.shape){
       _v2DrawShapeContent(content,placeRect);
     }
-    // content.kind === 'experience' → deferred.
+  }
+
+  // Phase 16 — Experience as a per-layer ADDITIVE overlay (spec §3,
+  // decision log §6: "Additive only... never displaces the layer's own
+  // primary content"). In a compiled Theme a V2 layer's `experience`
+  // field is the pre-resolved {id, parts} builder.js compiled from the
+  // Builder's own Experience registry — a published package has no
+  // registry left to resolve against, so parts arrive inline. Each part
+  // is {rect, content}: rect is {x,y,w,h} FRACTIONS OF THE LAYER'S OWN
+  // RECT (null = the whole layer rect); content is a V2 content spec
+  // painted through the exact same adapters every other V2 draw already
+  // uses — plus 'text', an overlay-only kind (the three primary layers
+  // never hold text of their own). Always painted AFTER the layer's own
+  // primary content, inside the same clip/transform stack. Hand-mirrors
+  // engineRuntime.js's own _v2PaintExperienceOverlay per the
+  // established twin-engine discipline.
+  function _v2PaintExperienceOverlay(layer,layerRect,s){
+    const ref=layer && layer.experience;
+    if(!ref || typeof ref!=='object' || !Array.isArray(ref.parts) || !ref.parts.length) return;
+    ref.parts.forEach(function(part){
+      if(!part || !part.content) return;
+      const fr=part.rect;
+      const r=(fr && typeof fr==='object')
+        ? {
+            x:layerRect.x+(fr.x||0)*layerRect.w,
+            y:layerRect.y+(fr.y||0)*layerRect.h,
+            w:Math.max(0,(typeof fr.w==='number'?fr.w:1))*layerRect.w,
+            h:Math.max(0,(typeof fr.h==='number'?fr.h:1))*layerRect.h
+          }
+        : layerRect;
+      if(r.w<=0 || r.h<=0) return;
+      const content=part.content;
+      if(content.kind==='text'){
+        _v2PaintOverlayText(content,r);
+      }else if(content.kind==='color' && content.color){
+        x.save();
+        x.fillStyle=content.color;
+        if(typeof content.opacity==='number') x.globalAlpha=content.opacity;
+        x.fillRect(r.x,r.y,r.w,r.h);
+        x.restore();
+      }else if(content.kind==='image' && content.image){
+        _v2DrawImageContent(content,r,s);
+      }else if(content.kind==='shape' && content.shape){
+        _v2DrawShapeContent(content,r);
+      }
+    });
+  }
+
+  // Text is an overlay-only content kind (an Experience Text part).
+  // Simple wrapped fill via the same _wrapText every other text draw
+  // here uses; the part's own size is in canvas-logical px (the unit
+  // Experience Text parts already author), alignment resolves within
+  // the part rect, rotation pivots on the part rect's own centre.
+  function _v2PaintOverlayText(content,rect){
+    if(!content.text) return;
+    x.save();
+    if(typeof content.opacity==='number') x.globalAlpha=content.opacity;
+    if(content.rotation){
+      const tcx=rect.x+rect.w/2, tcy=rect.y+rect.h/2;
+      x.translate(tcx,tcy);
+      x.rotate(content.rotation*Math.PI/180);
+      x.translate(-tcx,-tcy);
+    }
+    const size=(typeof content.size==='number' && content.size>0)?content.size:32;
+    const weight=(content.weight && content.weight!=='normal')?content.weight+' ':'';
+    x.font=weight+size+'px '+(content.font||'Georgia, serif');
+    x.fillStyle=content.color||'#1D3457';
+    x.textAlign=content.align||'left';
+    x.textBaseline='top';
+    const tx=content.align==='center'?rect.x+rect.w/2
+      :(content.align==='right'?rect.x+rect.w:rect.x);
+    _wrapText(content.text,rect.w).forEach(function(line,i){
+      x.fillText(line,tx,rect.y+i*size*1.25);
+    });
+    x.restore();
   }
 
   // Adapters — build a Layer-Pack-Decoration-shaped `d` object from a

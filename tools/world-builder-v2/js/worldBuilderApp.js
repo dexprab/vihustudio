@@ -5678,6 +5678,12 @@
         const repImage = _representativeArtworkImage(currentProject, scene.id);
         const graph = window.EngineV2Runtime.load(scene, _holderFrameFields, repImage, function (dataURI) {
             return _resolveLayerImage(dataURI, scene.id);
+        }, function (experienceId) {
+            // Phase 16 — a V2 layer's `experience` field is a bare {id}
+            // reference in the live authoring model; the engine stays
+            // pure of ProjectModel knowledge, so the Builder injects the
+            // resolver (the exact same pattern _holderFrameFields set).
+            return window.ProjectModel.resolveV2ExperienceOverlay(currentProject, experienceId);
         });
         canvasEl.width = graph.width;
         canvasEl.height = graph.height;
@@ -7863,6 +7869,37 @@
         // field these controls write; only this UI was missing.
         _appendV2ContentValueEditor(body, scene, holder, layerKind, layer);
 
+        // Phase 16 — Experience as a per-layer ADDITIVE overlay (spec §3,
+        // decision log §6). A separate `layer.experience` {id} reference,
+        // never a content kind — it composites on top of whatever the
+        // layer's own Content slot above holds (or nothing), so the two
+        // controls are deliberately independent. The picker honours the
+        // established Experience canon (eligibleV2OverlayExperiences:
+        // Nurturing never attaches; Personal only within its own scope
+        // Scene; Public freely); 'None' round-trips to null so an
+        // untouched-then-restored layer compiles byte-identically.
+        (function () {
+            const eligible = window.ProjectModel.eligibleV2OverlayExperiences(currentProject, scene.id);
+            const curExpId = (layer.experience && layer.experience.id) || 'none';
+            const expOpts = [{ value: 'none', label: 'None' }].concat(eligible.map(function (e) {
+                return { value: e.id, label: e.name || e.id };
+            }));
+            // A stale reference (its Experience deleted / re-scoped away)
+            // still shows, honestly marked, so the author can see and
+            // clear it rather than it silently vanishing from the picker
+            // while still being stored.
+            if (curExpId !== 'none' && !eligible.some(function (e) { return e.id === curExpId; })) {
+                expOpts.push({ value: curExpId, label: curExpId + ' (unavailable)' });
+            }
+            body.appendChild(_buildFieldGroup('Experience Overlay', _select(expOpts, curExpId, function (v) {
+                const val = (v === 'none') ? null : { id: v };
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { experience: val });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+                _renderContextPanel();
+            })));
+        })();
+
         card.appendChild(body);
         return card;
     }
@@ -7873,6 +7910,7 @@
         if (layerKind === 'frame' && layer.geometry) bits.push(layer.geometry);
         if (layerKind !== 'frame' && layer.fitMode) bits.push(layer.fitMode);
         if (layer.content && layer.content.kind && layer.content.kind !== 'none') bits.push(layer.content.kind);
+        if (layer.experience) bits.push('✨ overlay');
         return bits.length ? '· ' + bits.join(' · ') : '';
     }
 

@@ -286,13 +286,27 @@ class BuildEngine {
             if (entry && entry.ref) refToEntry[entry.ref] = entry;
         });
 
+        // Place · Frame · Paper · Art Model V2 — Phase 16. A V2 layer's
+        // `experience` field is a {id} reference to a real Experience in
+        // this World; a compiled theme has no Experience registry to
+        // resolve against at runtime, so the compile step resolves each
+        // reference into a self-contained {id, parts} overlay right
+        // here. One id-keyed lookup, built once per build from the
+        // experiences/ folder (flows into projectLoader like every
+        // other folder), threaded down through convergeScene into
+        // _compileV2Layers — the same discipline refToEntry above uses.
+        const expById = {};
+        (await this.collectFolder('experiences')).forEach(function (e) {
+            if (e && e.id) expById[e.id] = e;
+        });
+
         const sceneRepresentations = [];
         for (const file of projectLoader.getFilesInFolder('scenes')) {
             if (!file.endsWith('.json')) continue;
             const content = await projectLoader.getFileContent(file);
             const scene = projectLoader.parseJSON(content);
             if (!scene || !scene.id) continue;
-            const rep = await this.convergeScene(scene, package_, refToEntry);
+            const rep = await this.convergeScene(scene, package_, refToEntry, expById);
             if (rep) sceneRepresentations.push(rep);
         }
         if (sceneRepresentations.length) {
@@ -324,7 +338,7 @@ class BuildEngine {
      * themselves aside) converges via convergeSceneLayer below, in
      * Scene Stack order so z-ordering survives the trip.
      */
-    async convergeScene(scene, package_, refToEntry) {
+    async convergeScene(scene, package_, refToEntry, expById) {
         const layoutId = 'scene-' + scene.id;
         const aspect = (scene.canvas && scene.canvas.aspectRatio) || 'portrait';
 
@@ -418,7 +432,7 @@ class BuildEngine {
                 // entirely — every existing Theme still compiles
                 // byte-identically. Phases 4/5 taught the Studio render
                 // engine to consume this when present.
-                const v2Layers = _compileV2Layers(h.v2Layers);
+                const v2Layers = _compileV2Layers(h.v2Layers, expById);
                 // Place · Frame · Paper · Art Model V2 — Phase 7.
                 // On a V2 Place (v2Layers present), the four legacy
                 // fields `frame`/`padding`/`fit`/`shape` are now
@@ -465,6 +479,15 @@ class BuildEngine {
                 return compiled;
             })
         });
+
+        // Phase 16 — externalize every V2 overlay part's image bytes
+        // into package_.assets (a vihu-asset: reference in a compiled
+        // theme would be owner-scoped and unresolvable for anyone else —
+        // the exact bug class externalizeSceneImage's own root-cause
+        // note documents), reusing the same Collection dedup +
+        // hydrateForExport discipline.
+        const pushedLayout = package_.layouts[package_.layouts.length - 1];
+        await this._externalizeV2OverlayImages(pushedLayout.placeRects, scene, package_, refToEntry);
 
         const representation = {
             id: layoutId,
@@ -859,6 +882,50 @@ class BuildEngine {
         return relPath;
     }
 
+    // Place · Frame · Paper · Art Model V2 — Phase 16. Walks every
+    // compiled placeRect's v2Layers and externalizes each overlay
+    // part's image into package_.assets, mirroring
+    // externalizeSceneImage's own steps exactly: a Collection-registered
+    // ref dedups onto its own stable `collection/<id>.png` key via the
+    // shared _embedCollectionEntry; anything else hydrates a
+    // vihu-asset: reference to real bytes via AssetStore.hydrateForExport
+    // and embeds at a per-part relPath. One deliberate, safer variant
+    // relative to the precedent: the part's image field is only ever
+    // rewritten to a relPath once bytes genuinely landed at it — a
+    // failed hydration leaves the original src in place rather than
+    // minting a dangling reference.
+    async _externalizeV2OverlayImages(placeRects, scene, package_, refToEntry) {
+        if (!Array.isArray(placeRects)) return;
+        for (const pr of placeRects) {
+            if (!pr || !pr.v2Layers) continue;
+            for (const layerKind of ['frame', 'paper', 'art']) {
+                const layer = pr.v2Layers[layerKind];
+                const parts = layer && layer.experience && layer.experience.parts;
+                if (!Array.isArray(parts)) continue;
+                for (let i = 0; i < parts.length; i++) {
+                    const content = parts[i] && parts[i].content;
+                    if (!content || content.kind !== 'image' || !content.image) continue;
+                    const collectionEntry = refToEntry ? refToEntry[content.image] : null;
+                    if (collectionEntry) {
+                        content.image = await this._embedCollectionEntry(collectionEntry, package_);
+                        continue;
+                    }
+                    let src = content.image;
+                    if (typeof src === 'string' && src.indexOf('vihu-asset:') === 0) {
+                        src = (typeof window !== 'undefined' && window.AssetStore)
+                            ? await window.AssetStore.hydrateForExport(src).catch(function () { return null; })
+                            : null;
+                    }
+                    if (typeof src === 'string' && src.indexOf('data:') === 0) {
+                        const relPath = 'v2exp/' + scene.id + '-' + pr.id + '-' + layerKind + '-' + i + '.png';
+                        package_.assets[relPath] = src;
+                        content.image = relPath;
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * Shared hydrate-and-embed step for a Collection entry
      * (id/name/kind/ref/availableToCreator, ProjectModel.collectionAssets()'s
@@ -1165,16 +1232,16 @@ class BuildEngine {
 // Inspector persists only `content.kind` today, so this function
 // currently passes that through unchanged and preserves any extra
 // keys a future authoring surface adds — extension without redesign.
-function _compileV2Layers(authored) {
+function _compileV2Layers(authored, expById) {
     if (!authored || typeof authored !== 'object') return null;
     const out = {};
-    if (authored.frame) out.frame = _compileV2Frame(authored.frame);
-    if (authored.paper) out.paper = _compileV2SurfaceLayer(authored.paper);
-    if (authored.art)   out.art   = _compileV2SurfaceLayer(authored.art);
+    if (authored.frame) out.frame = _compileV2Frame(authored.frame, expById);
+    if (authored.paper) out.paper = _compileV2SurfaceLayer(authored.paper, expById);
+    if (authored.art)   out.art   = _compileV2SurfaceLayer(authored.art, expById);
     return out;
 }
 
-function _compileV2Frame(f) {
+function _compileV2Frame(f, expById) {
     // Frame has its own border (Paper/Art don't per spec §2) and
     // declares geometry rather than a fit mode.
     const compiled = {
@@ -1183,6 +1250,12 @@ function _compileV2Frame(f) {
         border: f.border || null,
         content: _compileV2Content(f.content),
         bounds: f.bounds || null,
+        // Phase 16 — Experience additive overlay (spec §3/§6). The
+        // authored {id} reference resolves at compile time into a
+        // self-contained {id, parts} overlay, since a compiled theme
+        // has no Experience registry for Studio to resolve against.
+        // Absent/unresolvable → null, byte-identical legacy.
+        experience: _compileV2Experience(f.experience, expById),
         // Phase 10 — per-layer rotation (degrees, clockwise, around the
         // layer's own centre). Absent on anything authored before this
         // phase → 0, byte-identical render.
@@ -1207,7 +1280,7 @@ function _compileV2Frame(f) {
     return compiled;
 }
 
-function _compileV2SurfaceLayer(l) {
+function _compileV2SurfaceLayer(l, expById) {
     // Paper and Art share the same shape — a fitMode + content slot.
     return {
         visible: l.visible !== false,
@@ -1218,8 +1291,99 @@ function _compileV2SurfaceLayer(l) {
         tilt: (l.tilt && typeof l.tilt === 'object') ? { x: l.tilt.x || 0, y: l.tilt.y || 0 } : null,
         perspective: (l.perspective && typeof l.perspective === 'object' && l.perspective.anchor)
             ? { anchor: l.perspective.anchor, strength: l.perspective.strength || 0 } : null,
+        // Phase 16 — see _compileV2Frame's own note.
+        experience: _compileV2Experience(l.experience, expById),
         permissions: l.permissions || null
     };
+}
+
+// Phase 16 — resolve an authored layer.experience {id} reference into a
+// self-contained {id, parts} overlay. Returns null for absent/unknown
+// ids and for an Experience with nothing paintable, so the compiled
+// field is null in every legacy/no-op case (byte-identical). Image srcs
+// stay raw here — _externalizeV2OverlayImages (convergeScene) rewrites
+// them into package_.assets relPaths right after the layout is pushed.
+function _compileV2Experience(ref, expById) {
+    if (!ref || !ref.id || !expById) return null;
+    const exp = expById[ref.id];
+    if (!exp) return null;
+    const parts = _experienceV2OverlayParts(exp);
+    if (!parts.length) return null;
+    return { id: exp.id, parts: parts };
+}
+
+// Phase 16 — Experience → V2 overlay parts. HAND-MIRRORED from
+// ProjectModel._experienceV2OverlayParts (projectModel.js): builder.js
+// deliberately never depends on ProjectModel (see projectCompiler.js's
+// own boundary note — this service only ever sees project.files), so
+// the two copies must stay in lockstep like every other twin in this
+// codebase. Each part becomes {rect, content}: `rect` is {x,y,w,h}
+// fractions of the V2 layer's own rect (null = whole rect); `content`
+// is a V2-content-shaped object the render engines' existing painters
+// consume directly.
+function _experienceV2OverlayParts(exp) {
+    if (!exp) return [];
+    const rawParts = (exp.properties && Array.isArray(exp.properties.parts) && exp.properties.parts.length)
+        ? exp.properties.parts
+        // A never-reopened legacy Experience (pre-Multi-Asset-Parts)
+        // stores its one part's fields flat on properties, with
+        // contentKind naming the kind — synthesize the same single part.
+        : [{ id: 'part-legacy', kind: exp.contentKind || 'text', props: exp.properties || {} }];
+    const out = [];
+    rawParts.forEach(function (part) {
+        const p = part.props || {};
+        const kind = part.kind;
+        if (kind === 'colour') {
+            if (p.colorTransparent) return;
+            out.push({ rect: null, content: {
+                kind: 'color', color: p.colorValue || '#F4F1EC',
+                opacity: (typeof p.colorOpacity === 'number') ? p.colorOpacity : 1
+            } });
+        } else if (kind === 'image') {
+            if (!p.imageSrc) return;
+            out.push({ rect: { x: p.imageX || 0, y: p.imageY || 0, w: p.imageW || 1, h: p.imageH || 1 }, content: {
+                kind: 'image', image: p.imageSrc, fit: p.imageFit || 'fit',
+                opacity: (typeof p.imageOpacity === 'number') ? p.imageOpacity : 1,
+                rotation: p.imageRotation || 0
+            } });
+        } else if (kind === 'graphics') {
+            const rect = { x: p.graphicX || 0, y: p.graphicY || 0, w: p.graphicW || 1, h: p.graphicH || 1 };
+            if (p.graphicShape) {
+                out.push({ rect: rect, content: {
+                    kind: 'shape', shape: p.graphicShape,
+                    fillColor: p.graphicFillColor || '#F0B429',
+                    fillOpacity: (typeof p.graphicFillOpacity === 'number') ? p.graphicFillOpacity : 1,
+                    strokeColor: p.graphicStrokeColor || '#24406B',
+                    strokeOpacity: (typeof p.graphicStrokeOpacity === 'number') ? p.graphicStrokeOpacity : 1,
+                    strokeWidth: (typeof p.graphicStrokeWidth === 'number') ? p.graphicStrokeWidth : 0,
+                    opacity: (typeof p.graphicOpacity === 'number') ? p.graphicOpacity : 1,
+                    rotation: p.graphicRotation || 0,
+                    customPath: p.graphicCustomPath || null,
+                    fillMode: p.graphicFillMode || 'solid',
+                    paintStrokes: p.graphicPaintStrokes || null
+                } });
+            } else if (p.graphicSrc) {
+                out.push({ rect: rect, content: {
+                    kind: 'image', image: p.graphicSrc, fit: 'fit',
+                    opacity: (typeof p.graphicOpacity === 'number') ? p.graphicOpacity : 1,
+                    rotation: p.graphicRotation || 0
+                } });
+            }
+        } else if (kind === 'text') {
+            if (!p.textContent) return;
+            out.push({ rect: { x: p.textX || 0, y: p.textY || 0, w: p.textW || 1, h: p.textH || 1 }, content: {
+                kind: 'text', text: p.textContent,
+                font: p.textFont || 'Georgia, serif',
+                size: (typeof p.textSize === 'number') ? p.textSize : 32,
+                weight: p.textWeight || 'normal',
+                align: p.textAlign || 'left',
+                color: p.textColor || '#1D3457',
+                opacity: (typeof p.textOpacity === 'number') ? p.textOpacity : 1,
+                rotation: p.textRotation || 0
+            } });
+        }
+    });
+    return out;
 }
 
 function _compileV2Content(c) {
