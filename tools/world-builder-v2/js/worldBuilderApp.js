@@ -7276,7 +7276,18 @@
     // ---------- Place — a Place is selected: its full property panel ----------
 
     function _renderHolderPanel(scene, holder) {
-        _heading('Place — ' + holder.name, 'Position, size, shape, padding, fit, and Frame for this photo — plus what a Story Author is allowed to do with it.', ICONS.place);
+        // Once a Place uses V2 Layers, the legacy Shape/Fit/Padding/
+        // Rotation/Frame controls below are dead knobs — _paintHolderV2
+        // (and Studio's _drawPlaceV2) read only position/size/permissions
+        // and v2Layers.*, never those fields — so a V2 Place hides them
+        // outright ("these options have become outdated... we can remove
+        // them"). A legacy Place keeps every one: its render path still
+        // consumes them all, and removing its only editing surface would
+        // break every already-authored non-V2 Place.
+        const isV2Place = !!holder.v2Layers;
+        _heading('Place — ' + holder.name, isV2Place
+            ? 'Position and size for this photo — its look lives in the Frame · Paper · Art layers below.'
+            : 'Position, size, shape, padding, fit, and Frame for this photo — plus what a Story Author is allowed to do with it.', ICONS.place);
 
         contextPanel.appendChild(_buildFieldGroup('Place Name', _textInput(holder.name, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { name: v });
@@ -7307,6 +7318,7 @@
         }));
         _fieldRow(wGroup, hGroup);
 
+        if (!isV2Place) {
         const shapeGroup = _buildFieldGroup('Shape', _select(window.EngineSchema.HOLDER_SHAPES, holder.shape, function (v) {
             window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { shape: v });
             _persist();
@@ -7395,6 +7407,7 @@
             details.appendChild(body);
             contextPanel.appendChild(details);
         })();
+        } // end !isV2Place — legacy-only presentation controls
 
         _renderV2LayersBlock(scene, holder);
 
