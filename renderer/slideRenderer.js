@@ -856,8 +856,14 @@ const SlideRenderer=(()=>{
       if(!b || typeof b!=='object') return innerRect;
       const fw=(typeof b.w==='number' && b.w>0)?Math.min(b.w,1):1;
       const fh=(typeof b.h==='number' && b.h>0)?Math.min(b.h,1):1;
+      // Nudge offset — {ox,oy} fractions of the inner rect, applied
+      // AFTER centering, clamped ±0.5. Absent (every pre-nudge layer)
+      // → 0, byte-identical centered placement. Kept in lockstep with
+      // engineRuntime.js's own v2LayerRect (twin-engine discipline).
+      const ox=(typeof b.ox==='number')?Math.max(-0.5,Math.min(0.5,b.ox)):0;
+      const oy=(typeof b.oy==='number')?Math.max(-0.5,Math.min(0.5,b.oy)):0;
       const w=innerRect.w*fw, h=innerRect.h*fh;
-      return {x:innerRect.x+(innerRect.w-w)/2, y:innerRect.y+(innerRect.h-h)/2, w:w, h:h};
+      return {x:innerRect.x+(innerRect.w-w)/2+ox*innerRect.w, y:innerRect.y+(innerRect.h-h)/2+oy*innerRect.h, w:w, h:h};
     }
     // Phase 15 — the whole stack is a function so Frame's own
     // perspective (which warps clip + border + Paper/Art together, per

@@ -3944,6 +3944,49 @@ html, body {
     cursor: not-allowed;
 }
 
+/* 4-arrow nudge pad (V2 layer cards) — a compact 3×3 directional grid.
+   Buttons need explicit width/height/margin overrides to escape the
+   global button{width:100%;height:var(--button-height)} cascade rule
+   (the same recurring fix Object Strip cards / Doodle pen swatches /
+   the Publish close button all needed). */
+.wb-v2-nudge-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 34px);
+    gap: 4px;
+    justify-content: start;
+    padding: 2px 0;
+}
+.wb-v2-nudge-btn {
+    width: 34px !important;
+    height: 30px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0;
+    background: var(--wb-paper);
+    border: 1px solid var(--wb-border);
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--wb-text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.wb-v2-nudge-btn:hover {
+    border-color: #5B4F86;
+    background: rgba(91, 79, 134, 0.10);
+}
+.wb-v2-nudge-btn:active {
+    background: rgba(91, 79, 134, 0.20);
+}
+.wb-v2-nudge-btn.wb-v2-nudge-center {
+    font-size: 14px;
+    color: #5B4F86;
+}
+.wb-v2-nudge-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .wb-v2-status {
         background: rgba(91, 79, 134, 0.15);

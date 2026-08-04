@@ -7640,6 +7640,41 @@
         contextPanel.appendChild(details);
     }
 
+    // 4-arrow nudge pad — a small 3×3 directional grid (▲▼◀▶ plus a
+    // centre ⊙ reset) shared by every V2 layer card. `onNudge(dx,dy)`
+    // receives unit steps (-1/0/1 per axis); `onCenter()` resets. The
+    // caller decides what a step MEANS (Frame nudges the Place itself;
+    // Paper/Art nudge their own bounds offset within the inner rect),
+    // so this stays a dumb, reusable input surface.
+    function _v2NudgePad(onNudge, onCenter, centerTitle) {
+        const pad = document.createElement('div');
+        pad.className = 'wb-v2-nudge-pad';
+        const cells = [
+            null, ['▲', 0, -1, 'Nudge up'], null,
+            ['◀', -1, 0, 'Nudge left'], ['⊙', 0, 0, centerTitle || 'Reset to centre'], ['▶', 1, 0, 'Nudge right'],
+            null, ['▼', 0, 1, 'Nudge down'], null
+        ];
+        cells.forEach(function (cell) {
+            if (!cell) {
+                const spacer = document.createElement('span');
+                pad.appendChild(spacer);
+                return;
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wb-v2-nudge-btn' + (cell[1] === 0 && cell[2] === 0 ? ' wb-v2-nudge-center' : '');
+            btn.textContent = cell[0];
+            btn.title = cell[3];
+            btn.disabled = currentProjectReadOnly;
+            btn.addEventListener('click', function () {
+                if (cell[1] === 0 && cell[2] === 0) onCenter();
+                else onNudge(cell[1], cell[2]);
+            });
+            pad.appendChild(btn);
+        });
+        return pad;
+    }
+
     function _renderV2LayerCard(scene, holder, layerKind, title, glyph, layer) {
         const card = document.createElement('details');
         card.className = 'wb-v2-layer-card';
@@ -7763,18 +7798,47 @@
                 _persist();
                 _redrawSceneCanvases(scene.id);
             })));
+            // Nudge pad — Frame IS the Place's own rect (the outermost
+            // layer, spec §1.1), so nudging it means moving the Place
+            // itself on the Scene canvas: 1% of the canvas per click,
+            // clamped so the Place never leaves the canvas. Centre (⊙)
+            // recentres the Place on the canvas.
+            body.appendChild(_buildFieldGroup('Nudge Position', _v2NudgePad(function (dx, dy) {
+                const STEP = 0.01;
+                const pos = (holder.position && typeof holder.position === 'object') ? holder.position : { x: 0, y: 0 };
+                const size = (holder.size && typeof holder.size === 'object') ? holder.size : { w: 0.5, h: 0.5 };
+                const nx = Math.max(0, Math.min(1 - (size.w || 0), (pos.x || 0) + dx * STEP));
+                const ny = Math.max(0, Math.min(1 - (size.h || 0), (pos.y || 0) + dy * STEP));
+                window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, { position: { x: nx, y: ny } });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            }, function () {
+                const size = (holder.size && typeof holder.size === 'object') ? holder.size : { w: 0.5, h: 0.5 };
+                window.ProjectModel.updateHolder(currentProject, scene.id, holder.id, {
+                    position: { x: (1 - (size.w || 0)) / 2, y: (1 - (size.h || 0)) / 2 }
+                });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            }, 'Centre the Place on the canvas'), 'Moves the whole Place on the page — 1% per tap.'));
         } else {
             const b = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : null;
             const wPct = Math.round(((b && typeof b.w === 'number') ? b.w : 1) * 100);
             const hPct = Math.round(((b && typeof b.h === 'number') ? b.h : 1) * 100);
             function setBounds(patch) {
-                const cur = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : { w: 1, h: 1 };
-                const next = { w: cur.w, h: cur.h };
+                const cur = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : {};
+                const next = {
+                    w: (typeof cur.w === 'number') ? cur.w : 1,
+                    h: (typeof cur.h === 'number') ? cur.h : 1,
+                    ox: (typeof cur.ox === 'number') ? cur.ox : 0,
+                    oy: (typeof cur.oy === 'number') ? cur.oy : 0
+                };
                 Object.assign(next, patch);
-                // Both back at 100% → store null (the "fill" baseline), so
-                // an untouched-then-restored layer compiles byte-identically
-                // to one never resized at all.
-                const val = (next.w >= 1 && next.h >= 1) ? null : next;
+                next.ox = Math.max(-0.5, Math.min(0.5, next.ox));
+                next.oy = Math.max(-0.5, Math.min(0.5, next.oy));
+                // Everything back at the neutral baseline (full size,
+                // centered) → store null, so an untouched-then-restored
+                // layer compiles byte-identically to one never touched.
+                const val = (next.w >= 1 && next.h >= 1 && !next.ox && !next.oy) ? null : next;
                 window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { bounds: val });
                 _persist();
                 _redrawSceneCanvases(scene.id);
@@ -7785,6 +7849,21 @@
             body.appendChild(_buildFieldGroup('Layer Height %', _range(10, 100, hPct, function (v) {
                 setBounds({ h: v / 100 });
             })));
+            // Nudge pad — offsets this layer within the Frame's inner
+            // rect (bounds.ox/oy, fractions of the inner rect): 2% per
+            // click, clamped ±50%. Centre (⊙) resets to the centered
+            // baseline. This is exactly the control for aligning Art
+            // with a tilted/off-centre frame graphic.
+            body.appendChild(_buildFieldGroup('Nudge Position', _v2NudgePad(function (dx, dy) {
+                const STEP = 0.02;
+                const cur = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : {};
+                setBounds({
+                    ox: ((typeof cur.ox === 'number') ? cur.ox : 0) + dx * STEP,
+                    oy: ((typeof cur.oy === 'number') ? cur.oy : 0) + dy * STEP
+                });
+            }, function () {
+                setBounds({ ox: 0, oy: 0 });
+            }, 'Reset to centred'), 'Moves this layer within the Frame — 2% per tap.'));
         }
 
         // Phase 12 — per-layer Story-Author permissions (spec §2's
