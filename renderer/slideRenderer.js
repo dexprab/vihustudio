@@ -631,6 +631,27 @@ const SlideRenderer=(()=>{
       x.rotate(deg*Math.PI/180);
       x.translate(-_v2cx,-_v2cy);
     }
+    // Phase 11 — Frame internal padding (the mat gap) + per-layer
+    // bounds. `frame.padding` is a fraction of the Place rect's short
+    // edge; it insets an inner rect that Paper/Art resolve their own
+    // bounds against. A layer's `bounds` is {w,h} fractions of that
+    // inner rect, centered — null means "fill the inner rect", so a
+    // Place authored before this phase (padding 0, bounds null) renders
+    // byte-identically.
+    const _padFrac=(typeof frame.padding==='number' && frame.padding>0)?Math.min(frame.padding,0.45):0;
+    const _padPx=_padFrac*Math.min(placeRect.w,placeRect.h);
+    const innerRect={
+      x:placeRect.x+_padPx, y:placeRect.y+_padPx,
+      w:Math.max(0,placeRect.w-2*_padPx), h:Math.max(0,placeRect.h-2*_padPx)
+    };
+    function _v2LayerRect(layer){
+      const b=layer && layer.bounds;
+      if(!b || typeof b!=='object') return innerRect;
+      const fw=(typeof b.w==='number' && b.w>0)?Math.min(b.w,1):1;
+      const fh=(typeof b.h==='number' && b.h>0)?Math.min(b.h,1):1;
+      const w=innerRect.w*fw, h=innerRect.h*fh;
+      return {x:innerRect.x+(innerRect.w-w)/2, y:innerRect.y+(innerRect.h-h)/2, w:w, h:h};
+    }
     if(frameRot){ x.save(); _v2Rotate(frameRot); }
     // Build Frame geometry as a Path2D — the shared clip for
     // Paper/Art/Frame's own border stroke.
@@ -641,7 +662,7 @@ const SlideRenderer=(()=>{
       x.save();
       x.clip(framePath);
       _v2Rotate(paperRot);
-      _v2PaintSurfaceLayer(paper,placeRect,chromeColor,s);
+      _v2PaintSurfaceLayer(paper,_v2LayerRect(paper),chromeColor,s);
       x.restore();
     }
     // Art (middle) — clipped to Frame geometry, uses slide.image /
@@ -651,11 +672,12 @@ const SlideRenderer=(()=>{
     const artImg=placeImg || (s.image && s.image.width ? s.image : null);
     const hasArtContent=art && art.content && art.content.kind && art.content.kind!=='none';
     if(art && art.visible!==false){
+      const artRect=_v2LayerRect(art);
       x.save();
       x.clip(framePath);
       _v2Rotate(artRot);
       if(hasArtContent){
-        _v2PaintSurfaceLayer(art,placeRect,chromeColor,s);
+        _v2PaintSurfaceLayer(art,artRect,chromeColor,s);
       }else if(artImg && artImg.width){
         // Draw the slide's own picture through the existing
         // _drawImage pipeline — reuses every legacy crop/pan/zoom
@@ -663,12 +685,12 @@ const SlideRenderer=(()=>{
         // `border` is safe: _drawImage falls back to the panel rect
         // as its clip, and we've already established the Frame
         // geometry clip via the enclosing x.save/clip.
-        _drawImage(s,null,placeRect,artImg,placeView,placeId);
+        _drawImage(s,null,artRect,artImg,placeView,placeId);
       }else{
         // Nothing to show — draw a lightweight placeholder so the
         // Place remains discoverable on-canvas rather than looking
         // blank.
-        _v2DrawPlaceholder(placeRect,chromeColor);
+        _v2DrawPlaceholder(artRect,chromeColor);
       }
       x.restore();
     }

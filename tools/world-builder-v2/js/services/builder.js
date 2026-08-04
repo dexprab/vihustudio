@@ -1186,7 +1186,11 @@ function _compileV2Frame(f) {
         // Phase 10 — per-layer rotation (degrees, clockwise, around the
         // layer's own centre). Absent on anything authored before this
         // phase → 0, byte-identical render.
-        rotation: (typeof f.rotation === 'number') ? f.rotation : 0
+        rotation: (typeof f.rotation === 'number') ? f.rotation : 0,
+        // Phase 11 — Frame internal padding (the mat gap): a fraction of
+        // the Place rect's short edge that insets the inner rect Paper/
+        // Art resolve their bounds against. Absent → 0, byte-identical.
+        padding: (typeof f.padding === 'number') ? f.padding : 0
     };
     return compiled;
 }

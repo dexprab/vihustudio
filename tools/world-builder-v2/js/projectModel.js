@@ -788,6 +788,10 @@ const ProjectModel = (function () {
         // stack). Frame's rotation carries Paper/Art with it (they are
         // its children per spec §1.1 containment); Paper/Art rotation
         // is additional, within the Frame clip.
+        // Phase 11 — Frame carries `padding` (a fraction of the Place
+        // rect's short edge, 0 = flush): the mat gap. Paper/Art `bounds`
+        // become authorable as {w,h} fractions of the padded inner rect,
+        // centered; null keeps "fill the parent" exactly as before.
         if (kind === 'frame') {
             return {
                 visible: true,
@@ -795,7 +799,8 @@ const ProjectModel = (function () {
                 border: null,
                 content: null,
                 bounds: null,
-                rotation: 0
+                rotation: 0,
+                padding: 0
             };
         }
         // paper | art

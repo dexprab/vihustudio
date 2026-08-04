@@ -7686,6 +7686,42 @@
             _redrawSceneCanvases(scene.id);
         })));
 
+        // Phase 11 — bounds / mat gap (spec §2 Max/Min size + Resize).
+        // Frame authors `padding` (the mat gap): a % of the Place's short
+        // edge insetting the inner rect Paper/Art live within. Paper/Art
+        // author their own `bounds` {w,h} as a % of that inner rect,
+        // centered — 100% = fill, exactly the pre-Phase-11 behaviour.
+        if (layerKind === 'frame') {
+            const padPct = Math.round(((typeof layer.padding === 'number') ? layer.padding : 0) * 100);
+            body.appendChild(_buildFieldGroup('Mat Gap (Inner Padding %)', _range(0, 40, padPct, function (v) {
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { padding: v / 100 });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            })));
+        } else {
+            const b = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : null;
+            const wPct = Math.round(((b && typeof b.w === 'number') ? b.w : 1) * 100);
+            const hPct = Math.round(((b && typeof b.h === 'number') ? b.h : 1) * 100);
+            function setBounds(patch) {
+                const cur = (layer.bounds && typeof layer.bounds === 'object') ? layer.bounds : { w: 1, h: 1 };
+                const next = { w: cur.w, h: cur.h };
+                Object.assign(next, patch);
+                // Both back at 100% → store null (the "fill" baseline), so
+                // an untouched-then-restored layer compiles byte-identically
+                // to one never resized at all.
+                const val = (next.w >= 1 && next.h >= 1) ? null : next;
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { bounds: val });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            }
+            body.appendChild(_buildFieldGroup('Layer Width %', _range(10, 100, wPct, function (v) {
+                setBounds({ w: v / 100 });
+            })));
+            body.appendChild(_buildFieldGroup('Layer Height %', _range(10, 100, hPct, function (v) {
+                setBounds({ h: v / 100 });
+            })));
+        }
+
         // Content slot picker — Frame has no color slot per the V2 spec.
         //
         // Phase 8: 'experience' is no longer offered as a PRIMARY content

@@ -561,6 +561,25 @@ const EngineV2Runtime = (function () {
             ctx.rotate(deg * Math.PI / 180);
             ctx.translate(-v2cx, -v2cy);
         }
+        // Phase 11 — Frame internal padding (the mat gap) + per-layer
+        // bounds, mirroring Studio's own _drawPlaceV2 exactly: padding
+        // is a fraction of the Place rect's short edge insetting an
+        // inner rect; a layer's bounds {w,h} are fractions of that
+        // inner rect, centered; null = fill (byte-identical legacy).
+        const padFrac = (typeof frame.padding === 'number' && frame.padding > 0) ? Math.min(frame.padding, 0.45) : 0;
+        const padPx = padFrac * Math.min(rect.w, rect.h);
+        const innerRect = {
+            x: rect.x + padPx, y: rect.y + padPx,
+            w: Math.max(0, rect.w - 2 * padPx), h: Math.max(0, rect.h - 2 * padPx)
+        };
+        function v2LayerRect(layer) {
+            const b = layer && layer.bounds;
+            if (!b || typeof b !== 'object') return innerRect;
+            const fw = (typeof b.w === 'number' && b.w > 0) ? Math.min(b.w, 1) : 1;
+            const fh = (typeof b.h === 'number' && b.h > 0) ? Math.min(b.h, 1) : 1;
+            const w = innerRect.w * fw, h = innerRect.h * fh;
+            return { x: innerRect.x + (innerRect.w - w) / 2, y: innerRect.y + (innerRect.h - h) / 2, w: w, h: h };
+        }
         if (frameRot) { ctx.save(); v2Rotate(frameRot); }
         const framePath = _v2FramePath(rect, frame.geometry || 'rectangle');
 
@@ -569,7 +588,7 @@ const EngineV2Runtime = (function () {
             ctx.save();
             ctx.clip(framePath);
             v2Rotate(paperRot);
-            _v2PaintContent(ctx, paper.content, rect, graph);
+            _v2PaintContent(ctx, paper.content, v2LayerRect(paper), graph);
             ctx.restore();
         }
 
@@ -580,18 +599,19 @@ const EngineV2Runtime = (function () {
         // Place stays discoverable on-canvas.
         const hasArtContent = art && art.content && art.content.kind && art.content.kind !== 'none';
         if (art && art.visible !== false) {
+            const artRect = v2LayerRect(art);
             ctx.save();
             ctx.clip(framePath);
             v2Rotate(artRot);
             if (hasArtContent) {
-                _v2PaintContent(ctx, art.content, rect, graph);
+                _v2PaintContent(ctx, art.content, artRect, graph);
             } else if (graph.representativeImage) {
-                _drawImageWithFit(ctx, graph.representativeImage, rect, 'fill');
+                _drawImageWithFit(ctx, graph.representativeImage, artRect, 'fill');
             } else {
                 ctx.save();
                 ctx.globalAlpha = 0.06;
                 ctx.fillStyle = '#2C2A26';
-                ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+                ctx.fillRect(artRect.x, artRect.y, artRect.w, artRect.h);
                 ctx.restore();
             }
             ctx.restore();
