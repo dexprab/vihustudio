@@ -451,6 +451,159 @@ const SlideRenderer=(()=>{
     return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
   }
 
+  // Place · Frame · Paper · Art Model V2 — Phase 4: Studio Render
+  //
+  // A minimal V2 renderer, invoked only when a Place's compiled
+  // record actually carries `v2Layers` (a Theme Author explicitly
+  // opted the Place into V2 via Phase 2b's Enable button). A Place
+  // with no `v2Layers` falls through to the legacy _drawPlaceOne /
+  // _drawPlaceExtra path completely unchanged, so every existing
+  // Theme (Museum Gallery included) renders byte-identically.
+  //
+  // Paint order (spec §1.2, back → front): Paper → Art → Frame.
+  // Frame declares the geometry (rectangle / rounded / circle) and
+  // owns the only border. Paper/Art clip to Frame's geometry via a
+  // Path2D built once per render.
+  //
+  // Phase 4 scope, deliberately narrow: renders Frame border,
+  // Frame geometry as clip, and — if the slide has an image — the
+  // image inside Frame (Art layer). Content slots (per-layer
+  // image/color/shape/experience attachments) are Phase 6+ work and
+  // are stubbed here: a Paper/Art/Frame with a `content` entry set
+  // gets a minimal solid-color fill when kind==='color', and every
+  // other kind is a documented no-op this phase. Rotation/tilt/
+  // perspective wrap the whole Place upstream in render() itself.
+  function _drawPlaceV2(s,t,place,placeRect,chromeColor,placeId,placeImg,placeView){
+    const v2=place && place.v2Layers;
+    if(!v2) return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
+    const frame=v2.frame || {};
+    const paper=v2.paper || null;
+    const art  =v2.art   || null;
+    const frameVisible=frame.visible!==false;
+    // Build Frame geometry as a Path2D — the shared clip for
+    // Paper/Art/Frame's own border stroke.
+    const geom=frame.geometry || 'rectangle';
+    const framePath=_v2BuildFramePath(placeRect,geom);
+    // Paint order: Paper (back).
+    if(paper && paper.visible!==false){
+      x.save();
+      x.clip(framePath);
+      _v2PaintSurfaceLayer(paper,placeRect,chromeColor);
+      x.restore();
+    }
+    // Art (middle) — clipped to Frame geometry, uses slide.image /
+    // placeImg exactly like the legacy path does. This is what makes
+    // an ordinary Story-Author-uploaded picture visible on a V2
+    // Place with no explicit Art content authored.
+    const artImg=placeImg || (s.image && s.image.width ? s.image : null);
+    const hasArtContent=art && art.content && art.content.kind && art.content.kind!=='none';
+    if(art && art.visible!==false){
+      x.save();
+      x.clip(framePath);
+      if(hasArtContent){
+        _v2PaintSurfaceLayer(art,placeRect,chromeColor);
+      }else if(artImg && artImg.width){
+        // Draw the slide's own picture through the existing
+        // _drawImage pipeline — reuses every legacy crop/pan/zoom
+        // behaviour and border-radius handling. Passing a null
+        // `border` is safe: _drawImage falls back to the panel rect
+        // as its clip, and we've already established the Frame
+        // geometry clip via the enclosing x.save/clip.
+        _drawImage(s,null,placeRect,artImg,placeView,placeId);
+      }else{
+        // Nothing to show — draw a lightweight placeholder so the
+        // Place remains discoverable on-canvas rather than looking
+        // blank.
+        _v2DrawPlaceholder(placeRect,chromeColor);
+      }
+      x.restore();
+    }
+    // Frame (top) — border stroke on the geometry path.
+    if(frameVisible && frame.border){
+      const border=frame.border;
+      const strokeColor=border.color || border.borderColor || '#333333';
+      const strokeWidth=(typeof border.width==='number')?border.width:2;
+      if(strokeWidth>0){
+        x.save();
+        x.strokeStyle=strokeColor;
+        x.lineWidth=strokeWidth;
+        x.stroke(framePath);
+        x.restore();
+      }
+    }
+    // Frame content — Phase 6+ (image/shape/experience overlay on
+    // top of border). Colour is stubbed as a subtle fill only when
+    // authored.
+    if(frameVisible && frame.content && frame.content.kind==='color' && frame.content.color){
+      x.save();
+      x.clip(framePath);
+      x.fillStyle=frame.content.color;
+      x.globalAlpha=(typeof frame.content.opacity==='number')?frame.content.opacity:0.15;
+      x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
+      x.restore();
+    }
+    return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
+  }
+
+  // V2 helpers — kept private to the render module. Frame geometry
+  // path builder (rectangle / rounded / circle). Rounded uses a
+  // conservative 12% short-edge radius, mirroring the visual weight
+  // of the pre-existing Sprint 6.5 rounded frame default; a future
+  // phase can promote this to an authored field.
+  function _v2BuildFramePath(rect,geom){
+    const p=new Path2D();
+    if(geom==='circle'){
+      const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+      const r=Math.min(rect.w,rect.h)/2;
+      p.arc(cx,cy,r,0,Math.PI*2);
+      p.closePath();
+      return p;
+    }
+    if(geom==='rounded'){
+      const r=Math.max(0,Math.min(rect.w,rect.h)*0.12);
+      _v2AppendRoundRect(p,rect.x,rect.y,rect.w,rect.h,r);
+      return p;
+    }
+    // rectangle (default)
+    p.rect(rect.x,rect.y,rect.w,rect.h);
+    return p;
+  }
+
+  function _v2AppendRoundRect(p,rx,ry,rw,rh,r){
+    if(r<=0){ p.rect(rx,ry,rw,rh); return; }
+    p.moveTo(rx+r,ry);
+    p.arcTo(rx+rw,ry,rx+rw,ry+rh,r);
+    p.arcTo(rx+rw,ry+rh,rx,ry+rh,r);
+    p.arcTo(rx,ry+rh,rx,ry,r);
+    p.arcTo(rx,ry,rx+rw,ry,r);
+    p.closePath();
+  }
+
+  // Paint a Paper/Art surface layer's own content — Phase 4 handles
+  // colour only; image / shape / experience for these layers are
+  // Phase 6+ work and are documented no-ops.
+  function _v2PaintSurfaceLayer(layer,placeRect,chromeColor){
+    const content=layer.content;
+    if(!content || !content.kind || content.kind==='none') return;
+    if(content.kind==='color' && content.color){
+      x.save();
+      x.fillStyle=content.color;
+      if(typeof content.opacity==='number') x.globalAlpha=content.opacity;
+      x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
+      x.restore();
+    }
+    // content.kind === 'image' | 'shape' | 'experience' → Phase 6+.
+  }
+
+  function _v2DrawPlaceholder(placeRect,chromeColor){
+    const color=chromeColor||'#FFFFFF';
+    x.save();
+    x.globalAlpha=0.06;
+    x.fillStyle=color;
+    x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
+    x.restore();
+  }
+
   function _frameColor(theme,opts){
     if(typeof ThemeEngine!=='undefined' && theme && theme.variants){
       try{ return ThemeEngine.resolveFrameColor(theme,opts.variant); }catch(e){}
@@ -3878,7 +4031,22 @@ const SlideRenderer=(()=>{
             x.rotate(_placeRotDeg*Math.PI/180);
             x.translate(-_pcx,-_pcy);
           }
-          if(_placeIndex===0){
+          // Place · Frame · Paper · Art Model V2 — Phase 4 dispatch.
+          // A Place carrying compiled `v2Layers` (Phase 3 output from
+          // a Theme Author who opted the Place into V2 via Phase 2b's
+          // Enable) renders through the new V2 path. Every other Place
+          // — every existing Theme — falls through to the byte-
+          // identical legacy _drawPlaceOne / _drawPlaceExtra.
+          if(_place && _place.v2Layers){
+            if(_placeIndex===0){
+              bbox=_drawPlaceV2(s,t,_place,_place1Rect,_chromeColor,'image-holder',null,null);
+            }else{
+              const _placeContent=(s.metadata && s.metadata.placeContent && s.metadata.placeContent[_placeSelId])||null;
+              const _placeImg=(s.placeImages && s.placeImages[_placeSelId])||null;
+              const _placeView=(_placeContent && _placeContent.imageView)||null;
+              bbox=_drawPlaceV2(s,t,_place,_thisPlaceRect,_chromeColor,_placeSelId,_placeImg,_placeView);
+            }
+          }else if(_placeIndex===0){
             bbox=_drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition);
           }else{
             const _placeBorder=_resolveBorder(s,_placeSelId);
