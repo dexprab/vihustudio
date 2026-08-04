@@ -410,7 +410,17 @@ class BuildEngine {
                 // back to 0 the same way.
                 const rotatable = !!(h.permissions && h.permissions.rotatable === true);
                 const rotation = (typeof h.rotation === 'number') ? h.rotation : 0;
-                return {
+                // Place · Frame · Paper · Art Model V2 — Phase 3.
+                // Additive: when a Place has authored V2 layers, compile
+                // them onto the placeRects entry alongside the legacy
+                // fields. Absent (every Place before Phase 2b, and every
+                // Place that never opted in), the field is omitted
+                // entirely — every existing Theme still compiles
+                // byte-identically. Phases 4/5 will teach the render
+                // engines to consume this when present; Phase 7 retires
+                // the legacy `frame`/`padding`/`fit`/`shape` fields.
+                const v2Layers = _compileV2Layers(h.v2Layers);
+                const compiled = {
                     id: h.id,
                     name: h.name || null,
                     position: { x: (h.position && h.position.x) || 0, y: (h.position && h.position.y) || 0 },
@@ -426,6 +436,8 @@ class BuildEngine {
                     rotatable: rotatable,
                     rotation: rotation
                 };
+                if (v2Layers) compiled.v2Layers = v2Layers;
+                return compiled;
             })
         });
 
@@ -1106,6 +1118,69 @@ class BuildEngine {
         const lastValidation = validator.getLastResult();
         return lastValidation && lastValidation.isValid;
     }
+}
+
+// Place · Frame · Paper · Art Model V2 — Phase 3 compile helper.
+//
+// Normalizes an authored `holder.v2Layers` skeleton (built by
+// ProjectModel.enableHolderV2Layers, mutated by setHolderV2Layer)
+// into a stable, published-ready shape for the compiled placeRects
+// entry. Returns null when V2 is off — the caller then omits the
+// field entirely so every non-V2 Place compiles byte-identically to
+// before Phase 2b existed.
+//
+// Publish Fidelity discipline (Creator Governing Rule #5): whatever a
+// Theme Author authors here, this function must carry through faithfully
+// to the compiled package — the render engines (Phase 4 Studio, Phase 5
+// Builder) will consume this shape directly, so any silent transform
+// here is a Fidelity gap.
+//
+// Content attachment (image src, colour hex, shape id, experience id)
+// lands in Phases 4-6 as those UI surfaces are built. Phase 2b's
+// Inspector persists only `content.kind` today, so this function
+// currently passes that through unchanged and preserves any extra
+// keys a future authoring surface adds — extension without redesign.
+function _compileV2Layers(authored) {
+    if (!authored || typeof authored !== 'object') return null;
+    const out = {};
+    if (authored.frame) out.frame = _compileV2Frame(authored.frame);
+    if (authored.paper) out.paper = _compileV2SurfaceLayer(authored.paper);
+    if (authored.art)   out.art   = _compileV2SurfaceLayer(authored.art);
+    return out;
+}
+
+function _compileV2Frame(f) {
+    // Frame has its own border (Paper/Art don't per spec §2) and
+    // declares geometry rather than a fit mode.
+    const compiled = {
+        visible: f.visible !== false,
+        geometry: f.geometry || 'rectangle',
+        border: f.border || null,
+        content: _compileV2Content(f.content),
+        bounds: f.bounds || null
+    };
+    return compiled;
+}
+
+function _compileV2SurfaceLayer(l) {
+    // Paper and Art share the same shape — a fitMode + content slot.
+    return {
+        visible: l.visible !== false,
+        fitMode: l.fitMode || 'fit-frame',
+        content: _compileV2Content(l.content),
+        bounds: l.bounds || null
+    };
+}
+
+function _compileV2Content(c) {
+    if (!c || typeof c !== 'object' || !c.kind || c.kind === 'none') return null;
+    // Pass every key through — a future attachment field (image src,
+    // colour hex, shape id, experience id) rides through automatically
+    // without needing a compile-step change every time a new UI surface
+    // learns to author one.
+    const out = { kind: c.kind };
+    Object.keys(c).forEach(function (k) { if (k !== 'kind') out[k] = c[k]; });
+    return out;
 }
 
 // Create global build engine instance
