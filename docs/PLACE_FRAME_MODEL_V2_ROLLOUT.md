@@ -4,9 +4,11 @@ Companion to the frozen spec `docs/PLACE_FRAME_MODEL_V2.md`. This doc tracks **w
 
 Naming/pairing convention mirrors `docs/ENGINE_V2_SCENE_MODEL.md` + `docs/ENGINE_V2_PROMOTION_STRATEGY.md` — the spec stays frozen; this doc updates as phases land.
 
+**Status: the V2 rollout is COMPLETE.** All 16 phases are shipped. Nothing from the spec's approved scope remains pending.
+
 ---
 
-## Shipped (Phases 1–7)
+## Shipped (Phases 1–16)
 
 Every phase preserves Creator Governing Rule #1 (Fidelity) by keeping legacy Places byte-identical. Museum Gallery's canonical render hashes — landscape `1f54eb660f7beb53`, portrait `843e68f2cffb3c2e`, quote `969a67e5c984647b` — hold unchanged through the entire rollout.
 
@@ -15,121 +17,49 @@ Every phase preserves Creator Governing Rule #1 (Fidelity) by keeping legacy Pla
 | **Spec freeze** | `56c4109` | `docs/PLACE_FRAME_MODEL_V2.md` — the frozen product canon |
 | **1 — Foundation** | `037cf3b` | New `js/placeFrameV2.js` with the layer skeleton shape + defaults |
 | **2a — Model storage** | `cd740ca` | `ProjectModel.enableHolderV2Layers` / `.disableHolderV2Layers` / `.setHolderV2Layer` — Builder v2 can persist `holder.v2Layers` on a per-Place opt-in basis |
-| **2b — Inspector UI** | `ffc9da3` | Builder Inspector shows the V2 authoring panel: Visible checkbox, Frame geometry, Frame border, Paper/Art fitMode, **content-kind picker only** (concrete values deferred) |
-| **3 — Compile side** | `0adbd35` | `builder.js` carries `holder.v2Layers` through to compiled `placeRects[i].v2Layers`. Any future content field (image src, colour hex, shape id, experience id) rides through automatically |
+| **2b — Inspector UI** | `ffc9da3` | Builder Inspector shows the V2 authoring panel: Visible checkbox, Frame geometry, Frame border, Paper/Art fitMode, content-kind picker (concrete values came in Phase 8) |
+| **3 — Compile side** | `0adbd35` | `builder.js` carries `holder.v2Layers` through to compiled `placeRects[i].v2Layers`. Any future content field rides through automatically |
 | **4 — Studio render** | `8e82c22` | `renderer/slideRenderer.js`'s `_drawPlaceV2` — Paper → Art → Frame stack, Frame's geometry as the shared clip, Frame's own border. Dispatched on `_place.v2Layers` presence |
-| **5 — Per-layer content** | `459c92c` | Studio draws every content kind the spec §3 names: Paper/Art get Image/Color/Shape; Frame gets Image/Shape overlay + Color (as 15% tint from Phase 4). Experience deferred (no-op) |
+| **5 — Per-layer content** | `459c92c` | Studio draws every content kind the spec §3 names: Paper/Art get Image/Color/Shape; Frame gets Image/Shape overlay + Color (as 15% tint from Phase 4) |
 | **6 — Story-Author overrides** | `a497640` | Selection Action Strip's popup on a V2 Place: Frame geometry picker + Paper Colour Kit. `getPlaceV2Layers`/`isPlaceV2` accessors exposed. Overrides ride through `SceneEngine.setContentOverride` on flat `v2*` keys; can INTRODUCE content on a baseline-null layer, not just modify existing |
 | **7 — Retire legacy fields** | `1c065a9` | On a V2 Place, compile step drops `frame`/`padding`/`fit`/`shape`. Legacy Places keep all four. State-based (v2Layers presence), not history-based |
+| **8 — Content value editors** | `6d1de6b` | Builder Inspector authors the actual content VALUES: Paper/Art/Frame get Colour swatch (+ Transparent + Opacity), Collection image picker (+ Rotation + Fit), SHAPE_KINDS picker (+ fill/stroke styling). Reuses `_renderCollectionPickerCore` and the standard colour-swatch discipline |
+| **9 — Builder Working View V2 render** | `eb0d103` | `engineRuntime.js`'s `_paintHolderV2` — Builder's own Working View / Runtime Preview renders the V2 stack, hand-mirroring Studio's `_drawPlaceV2` per the twin-engine discipline. Closes the Builder-preview Fidelity gap |
+| **10 — Per-layer Rotation** | `fc392f9` | Rotation (2D Z) on Frame/Paper/Art. Frame's rotation carries the whole stack (clip included); Paper/Art spin within the clip. Both engines |
+| **11 — Bounds / resize / mat gap** | `cbe8eba` | Paper/Art `bounds.w/h` (Layer Width/Height %) + Frame internal padding (Mat Gap) — a Paper smaller than Frame produces the mat gap, the entire mat concept per spec §2 |
+| **12 — Per-layer permissions** | `709a96d` | The spec grammar's "Honor" cell: per-layer Story Author Permissions block in the Inspector (visibility / content-edit / transform per layer), compiled through and enforced in Studio |
+| **13 — Story-Author overrides, full surface** | `f8b7bee` | Selection Action Strip popup gains a control for every V2 knob the Theme Author can author — content swap (colour/image/shape), rotation, bounds — each gated on that layer's own Phase 12 permission end to end |
+| **14 — Tilt** | `26f0797` | 3D X/Y skew as an affine shear (`setTransform`), Frame/Paper/Art, both engines hand-mirrored |
+| **15 — Perspective** | `ba3a9e3` | Vanishing-point warp (receding-edge + strength) via a scanline-strip trapezoid mapper, both engines hand-mirrored |
+| **16 — Experience as per-layer additive overlay** | `e89c2e7` | Spec §3/§6: an Experience attaches to any V2 layer and composites additively ON TOP of that layer's own primary content. See the design note below — this is a separate `layer.experience` field, **not** a content kind |
 
-**Verified regression suites** (all in scratchpad, one per phase): `placefram_v2_phase{1,2a,2b,3,4,5,6,7}_verify.js`. All pass. Both `goldenBuild.js` suites (World Builder v1 and v2) pass unchanged. Museum Gallery real-file byte-identical throughout.
-
----
-
-## Pending — Theme-Author side (Builder v2)
-
-The biggest visible gap: Phase 2b's Inspector lets a Theme Author pick each layer's **content kind** but not the actual **content value**. Nothing renders in Studio until content values are authorable. This is what the "Content attachment... lands in a follow-up phase" blurb refers to.
-
-### 1. Content values (highest priority — blocks demo)
-
-Compile step and Studio renderer already consume these; only the Builder Inspector UI is missing.
-
-| Layer | Kind | Missing Builder control | Compiles to | Renderer reads |
-|---|---|---|---|---|
-| Paper | Colour | Colour swatch + Transparent checkbox | `paper.content.color` | ✅ Phase 5 |
-| Paper | Image | Collection picker + Rotation | `paper.content.image` | ✅ Phase 5 |
-| Paper | Shape | SHAPE_KINDS picker + fill/stroke | `paper.content.shape` (+ styling) | ✅ Phase 5 |
-| Art | Colour | Colour swatch | `art.content.color` | ✅ Phase 5 |
-| Art | Image | Collection picker + Rotation | `art.content.image` | ✅ Phase 5 |
-| Art | Shape | SHAPE_KINDS picker | `art.content.shape` | ✅ Phase 5 |
-| Frame | Image | Collection picker + Rotation | `frame.content.image` | ✅ Phase 5 |
-| Frame | Shape | SHAPE_KINDS picker | `frame.content.shape` | ✅ Phase 5 |
-| Any | Experience | Experience attach picker | `<layer>.content.experienceId` | ❌ (spec §3: additive overlay, unbuilt) |
-
-### 2. Transform stack (spec §4)
-
-Approved and in scope for V2; not yet in compile, model, or Inspector.
-
-| Transform | Layers | Status |
-|---|---|---|
-| Rotation (2D Z) | Frame/Paper/Art | Model + compile + Inspector + render — all missing |
-| Tilt (3D X/Y skew) | Frame/Paper/Art | Same; needs new draw pipeline (canvas `setTransform` affine) |
-| Perspective (vanishing point) | Frame/Paper/Art | Same; needs 4-point mapping or WebGL step |
-| Resize (w/h within layer max) | Frame/Paper/Art | Would produce mat gap via Paper smaller than Frame |
-
-### 3. Bounds & layout (§2 "Max size / Min size")
-
-| Missing | What it does |
-|---|---|
-| Paper `bounds.w/h` control | A Paper smaller than Frame creates the mat gap — the entire mat concept flows from this |
-| Art `bounds.w/h` control | Independent Art bounds within Frame |
-| Frame internal padding | Distance from Frame edge to Paper/Art bounds |
-
-### 4. Per-layer author permissions (§2 "Honor" cell)
-
-Builder still has ONE permission block for the whole Place (moveable/editable/visible/resizable/rotatable). Spec grammar's "Honor" cell wants permissions PER LAYER.
-
-| Missing | Example use |
-|---|---|
-| Per-layer visibility permission | Let Story Author hide Paper but not Frame |
-| Per-layer content-edit permission | Let them recolour Paper but not swap Frame's ornament |
-| Per-layer transform permission | Let them rotate Art but keep Frame straight |
+**Verified regression suites** (all in scratchpad, one per phase): `placeframe_v2_phase{1,2a,2b,3,4,5,6,7,8,9,10,11,12,13,14,15,16}_verify.js`. All pass. Both `goldenBuild.js` suites (World Builder v1 and v2) pass unchanged. Museum Gallery real-file byte-identical throughout.
 
 ---
 
-## Pending — Story-Author side (Studio Selection Action Strip)
+## Design note — Experience is `layer.experience`, never a content kind
 
-Phase 6 shipped only Frame geometry and Paper colour. Everything else the Theme Author eventually authors (from the table above) needs a matching Story-Author-facing override control if the layer's `editable` permission is on.
+An earlier draft of this doc listed Experience as a fourth content-kind value (`<layer>.content.experienceId`). That was a mislabel and does not match the frozen spec or the shipped implementation. Spec §3/§6 defines Experience as **additive**: "never displaces the layer's own primary content." A content kind would do exactly that — it would occupy the slot the primary colour/image/shape lives in.
 
-| Story-Author control | Currently in popup | Notes |
-|---|---|---|
-| Frame geometry | ✅ | Phase 6 |
-| Paper colour | ✅ | Phase 6 |
-| Art colour | ❌ | Trivial once Theme-Author side ships |
-| Paper/Art image swap | ❌ | Reuse Collection picker |
-| Paper/Art shape swap | ❌ | Reuse SHAPE_KINDS picker |
-| Paper/Art rotation | ❌ | Follows transform stack |
-| Frame border colour / width | ❌ | Trivial once controls are wired |
-| Frame content swap (image/shape) | ❌ | Reuse pickers |
+What actually shipped:
 
-Override storage uses flat `v2*` keys already established in Phase 6 (`v2FrameGeometry`, `v2PaperContentColor`, etc.) via `SceneEngine.setContentOverride`. `_v2ResolveEffectiveLayers` (Phase 6) already materializes a default layer when the compiled baseline is null but any override exists — so a Story Author can INTRODUCE content the Theme Author never authored, not just modify.
+- **Live authoring model**: a separate, additive `layer.experience` field on any of frame/paper/art, holding a bare reference `{ id }`. The layer's own `content` (color/image/shape) is untouched.
+- **Compiled form**: `builder.js` resolves the reference at Build time into a self-contained `{ id, parts }` — a published `.vtheme` has no Experience registry to resolve against, so the parts are inlined. Each part is `{ rect, content }`: `rect` is `{x,y,w,h}` in FRACTIONS OF THE LAYER'S OWN RECT (`null` = the whole rect); `content` is the same V2 content shape (`color`/`image`/`shape`), plus an overlay-only `text` kind (primary layers never hold text).
+- **Paint order**: the overlay always paints AFTER the layer's own primary content, inside the same clip/transform stack — so it inherits the Frame geometry clip, rotation, tilt, and perspective automatically. Additive by construction.
+- **Resolution**: Builder's live engine gets an injected resolver (`EngineV2Runtime.load(..., resolveV2Experience)` → `ProjectModel.resolveV2ExperienceOverlay`), keeping `engineRuntime.js` pure; Studio's renderer reads only the compiled inline `parts` and needs no resolver at all.
+- **Eligibility** (`ProjectModel.eligibleV2OverlayExperiences`): Public Experiences attach anywhere; Personal only within their own `scopeSceneId`; Nurturing never — the established Experience lifecycle canon, unchanged.
+- **Image externalization at compile**: overlay part images dedupe through Collection first (`collection/<id>.png`), else hydrate `vihu-asset:` refs, embedding at `v2exp/<sceneId>-<placeRectId>-<layerKind>-<i>.png`.
+- **Scope decision, disclosed**: there are NO Story-Author overrides for the overlay — attaching an Experience is a Theme-Author act. A future phase could add permission-gated overrides if ever wanted; nothing structural blocks it.
 
 ---
 
-## Pending — Both sides (deferred capabilities)
+## Deliberately out of scope (unchanged from the spec)
 
-These the spec explicitly approves but names as large, dedicated efforts. Each is its own multi-file phase:
+Nothing below is "pending" — these were never in the spec's approved V2 scope:
 
-- **Tilt** — 3D X/Y skew. Needs new draw pipeline in both `renderer/slideRenderer.js` (Studio) and `tools/world-builder-v2/js/services/engineRuntime.js` (Builder Working View), kept in lockstep by hand per the twin-engine discipline.
-- **Perspective** — vanishing-point warp. Needs 4-point mapping or a WebGL step. Larger than Tilt.
-- **Experience as additive overlay** — spec §3 says an Experience can attach to any V2 layer and composites additively on top of that layer's own primary content. Today's Experience system is a top-level object with parts; wiring it as a per-layer overlay is a real integration.
-
----
-
-## Not touched — Builder v2 Working View (`engineRuntime.js`)
-
-**Real, disclosed gap.** Phase 4 shipped V2 rendering in Studio (`renderer/slideRenderer.js`) but did NOT extend Builder's own Working View / Runtime Preview to render V2. Builder still renders V2 Places through the legacy `_paintHolder` code path — which reads `holder.frame`/`.padding`/`.fit`/`.shape` (untouched on the live editable object, unrelated to the compiled retirement) — so a Theme Author currently sees a default legacy render for a V2 Place in Builder, not the V2 stack.
-
-This is a genuine Fidelity gap between Builder's preview and Studio's real render. It's arguably the "Phase 4.5" that got skipped — extending `engineRuntime.js` to route V2 Places through a V2 draw path mirroring Studio's own `_drawPlaceV2`. Not blocking (Studio renders correctly for a published Theme), but Builder is currently a misleading preview for V2 authoring work.
-
----
-
-## Suggested next-ship order
-
-If picking one thing to ship next:
-
-1. **Paper Colour value + Paper Image + Art Colour + Art Image** in Builder Inspector — smallest meaningful surface, unblocks a demo Theme Author from producing anything visible. Reuses `_renderCollectionPickerCore` and standard colour-swatch discipline. Would be a natural **Phase 8**.
-2. **Frame Image + Frame Shape** in Builder Inspector — completes content-value authoring for all three layers.
-3. **Builder Working View V2 render** (`engineRuntime.js`) — closes the Builder-preview Fidelity gap so a Theme Author actually sees what they're authoring.
-4. **Per-layer Rotation** — reuses today's rotation pipeline; small.
-5. **Per-layer Story-Author overrides** to match every new Theme-Author control.
-6. **Per-layer permissions** — restructures the Inspector's permission block.
-7. **Bounds/Resize** — needs bounds visualization in Builder.
-8. **Tilt** — new draw pipeline.
-9. **Perspective** — new draw pipeline.
-10. **Experience as per-layer additive overlay** — integration effort.
-
-Each step above is independently shippable, verify-testable in the scratchpad, and preserves legacy byte-identical rendering by construction.
+- Story-Author authoring of Experience overlays (see the scope decision above).
+- WebGL/true-3D perspective (Phase 15's scanline mapper is the approved 2D-canvas approach).
+- V2 layers on anything other than a Place (Scene-level layers keep the existing Scene Layer system).
 
 ---
 
