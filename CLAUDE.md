@@ -737,3 +737,4 @@ Five permanent rules for Creator, stated by the product owner and binding on eve
 - Preserve backward compatibility.
 - Keep commits focused and atomic.
 - Update CLAUDE.md whenever a major architectural or product decision is approved.
+- After every push to the working branch, also push to `main` (`git push origin <branch>:main`) — standing instruction from the product owner ("push to main always"), so main always tracks the latest verified ship.
