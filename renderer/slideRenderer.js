@@ -488,7 +488,7 @@ const SlideRenderer=(()=>{
     if(paper && paper.visible!==false){
       x.save();
       x.clip(framePath);
-      _v2PaintSurfaceLayer(paper,placeRect,chromeColor);
+      _v2PaintSurfaceLayer(paper,placeRect,chromeColor,s);
       x.restore();
     }
     // Art (middle) — clipped to Frame geometry, uses slide.image /
@@ -501,7 +501,7 @@ const SlideRenderer=(()=>{
       x.save();
       x.clip(framePath);
       if(hasArtContent){
-        _v2PaintSurfaceLayer(art,placeRect,chromeColor);
+        _v2PaintSurfaceLayer(art,placeRect,chromeColor,s);
       }else if(artImg && artImg.width){
         // Draw the slide's own picture through the existing
         // _drawImage pipeline — reuses every legacy crop/pan/zoom
@@ -531,15 +531,28 @@ const SlideRenderer=(()=>{
         x.restore();
       }
     }
-    // Frame content — Phase 6+ (image/shape/experience overlay on
-    // top of border). Colour is stubbed as a subtle fill only when
-    // authored.
-    if(frameVisible && frame.content && frame.content.kind==='color' && frame.content.color){
+    // Frame content — Phase 5 handles image/shape/color overlay on top
+    // of the border (spec §1.2: Frame's Shape/Image content — tape, wood
+    // grain, ornament image — sits above Art and Paper regardless).
+    // Colour keeps its Phase-4 15%-alpha subtle-tint semantics for
+    // backward compat with the Phase 4 verify suite; a caller wanting
+    // an opaque colour fill on Frame authors `content.opacity` instead.
+    // Experience is deferred (documented no-op) — needs Experience
+    // resolution semantics not yet designed for this phase.
+    if(frameVisible && frame.content && frame.content.kind && frame.content.kind!=='none'){
+      const fc=frame.content;
       x.save();
       x.clip(framePath);
-      x.fillStyle=frame.content.color;
-      x.globalAlpha=(typeof frame.content.opacity==='number')?frame.content.opacity:0.15;
-      x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
+      if(fc.kind==='color' && fc.color){
+        x.fillStyle=fc.color;
+        x.globalAlpha=(typeof fc.opacity==='number')?fc.opacity:0.15;
+        x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
+      }else if(fc.kind==='image' && fc.image){
+        _v2DrawImageContent(fc,placeRect,s);
+      }else if(fc.kind==='shape' && fc.shape){
+        _v2DrawShapeContent(fc,placeRect);
+      }
+      // fc.kind==='experience' — Phase 6+.
       x.restore();
     }
     return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
@@ -579,10 +592,21 @@ const SlideRenderer=(()=>{
     p.closePath();
   }
 
-  // Paint a Paper/Art surface layer's own content — Phase 4 handles
-  // colour only; image / shape / experience for these layers are
-  // Phase 6+ work and are documented no-ops.
-  function _v2PaintSurfaceLayer(layer,placeRect,chromeColor){
+  // Paint a Paper/Art surface layer's own content — Phase 5 covers
+  // colour / image / shape. Experience is deferred (documented no-op)
+  // until the Experience-in-a-Place resolution semantics are designed
+  // in a later phase — an authored Experience content on Paper/Art
+  // simply paints nothing yet, never crashes. The caller has already
+  // established the Frame-geometry clip (Path2D), so image/shape are
+  // free to draw straight to the full placeRect and the clip enforces
+  // "nothing outgrows Frame" (spec §1.1) for free — no per-layer
+  // secondary rectangular clip needed here. Fit modes for Paper/Art
+  // (spec §2: fit-frame/fit-art/original) affect the layer's own
+  // BOUNDS, not the content within them — bounds resolution lands in
+  // a later phase when custom `bounds` authoring exists; today all
+  // layers fill their parent, matching resolveLayerBounds()'s own
+  // null-proposed convention in js/placeFrameV2.js.
+  function _v2PaintSurfaceLayer(layer,placeRect,chromeColor,s){
     const content=layer.content;
     if(!content || !content.kind || content.kind==='none') return;
     if(content.kind==='color' && content.color){
@@ -591,8 +615,50 @@ const SlideRenderer=(()=>{
       if(typeof content.opacity==='number') x.globalAlpha=content.opacity;
       x.fillRect(placeRect.x,placeRect.y,placeRect.w,placeRect.h);
       x.restore();
+    }else if(content.kind==='image' && content.image){
+      _v2DrawImageContent(content,placeRect,s);
+    }else if(content.kind==='shape' && content.shape){
+      _v2DrawShapeContent(content,placeRect);
     }
-    // content.kind === 'image' | 'shape' | 'experience' → Phase 6+.
+    // content.kind === 'experience' → deferred.
+  }
+
+  // Adapters — build a Layer-Pack-Decoration-shaped `d` object from a
+  // V2 content spec and delegate to the already-proven Layer Pack
+  // drawing routines (_layerDrawDecorationImage, _layerDrawShape). Zero
+  // second-implementation drift risk: whatever those routines already
+  // do for a Theme-Author-authored Layer Pack Decoration (Draft Asset
+  // resolution via _ensureDecorationImage + AssetStore.resolve, Theme-
+  // relative-path resolution via ThemeRegistry.resolveAssetRef, cover-
+  // fit rotation math, cross-owner Magic-Card-recall image fallback,
+  // multi-stroke Custom shape paths, letter/number shapes, Paint-Inside
+  // fill mode) is inherited here for free. Callers are responsible for
+  // establishing the Frame-geometry clip beforehand.
+  function _v2DrawImageContent(content,placeRect,s){
+    _layerDrawDecorationImage({
+      image:content.image,
+      fit:content.fit||'fill',
+      rotation:content.rotation||0,
+      alpha:(typeof content.opacity==='number')?content.opacity:1
+    },placeRect,s,null);
+  }
+
+  function _v2DrawShapeContent(content,placeRect){
+    _layerDrawShape({
+      shape:content.shape,
+      rotation:content.rotation||0,
+      alpha:(typeof content.opacity==='number')?content.opacity:1,
+      fillColor:content.fillColor||'#666666',
+      fillOpacity:(typeof content.fillOpacity==='number')?content.fillOpacity:1,
+      strokeColor:content.strokeColor||'#111111',
+      strokeOpacity:(typeof content.strokeOpacity==='number')?content.strokeOpacity:1,
+      strokeWidth:(typeof content.strokeWidth==='number')?content.strokeWidth:0,
+      fillMode:content.fillMode||'solid',
+      customPath:content.customPath||null,
+      customStrokes:content.customStrokes||null,
+      paintStrokes:content.paintStrokes||null,
+      fillEnabled:content.fillEnabled!==false
+    },placeRect);
   }
 
   function _v2DrawPlaceholder(placeRect,chromeColor){
