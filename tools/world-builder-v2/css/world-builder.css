@@ -3248,6 +3248,24 @@ html, body {
 
 .wb-scene-template-card:hover { border-color: var(--wb-gold); }
 .wb-scene-template-card.active { border-color: var(--wb-gold); background: var(--wb-sky); }
+
+/* Compact shape-picker variant — the SHAPE_KINDS tile grids (the V2
+   content value editor, Decorations' "Add a Shape" picker, and the
+   Graphics part inspector's "Or Pick a Shape" grid). A shape tile is
+   just an icon glyph, so the base grid's 150px-min template cards
+   wasted most of the Inspector column; a fixed 4-per-row grid of
+   small square tiles shows the whole catalog in a fraction of the
+   height. Scene/Frame template pickers keep the base grid untouched. */
+.wb-scene-template-grid.wb-shape-tile-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+.wb-shape-tile-grid .wb-scene-template-card {
+    padding: 6px 2px;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+}
 .wb-scene-template-icon { font-size: 22px; }
 .wb-scene-template-name { font-size: 13px; font-weight: 700; color: var(--wb-navy); }
 .wb-scene-template-desc { font-size: 11px; color: var(--wb-text-secondary); }
@@ -3944,27 +3962,40 @@ html, body {
     cursor: not-allowed;
 }
 
-/* 4-arrow nudge pad (V2 layer cards) — a compact 3×3 directional grid.
-   Buttons need explicit width/height/margin overrides to escape the
-   global button{width:100%;height:var(--button-height)} cascade rule
+/* Circular 8-way nudge pad (V2 layer cards) — a round D-pad: eight
+   direction buttons orbit a centre ⊙ reset inside a circular dish.
+   Button positions (left/top) are computed in JS (_v2NudgePad) so the
+   diagonals sit on the same orbit radius as the cardinals; the CSS
+   only supplies the dish + the round button chrome. Buttons need
+   explicit width/height/margin overrides to escape the global
+   button{width:100%;height:var(--button-height)} cascade rule
    (the same recurring fix Object Strip cards / Doodle pen swatches /
    the Publish close button all needed). */
 .wb-v2-nudge-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 34px);
-    gap: 4px;
-    justify-content: start;
-    padding: 2px 0;
+    position: relative;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: rgba(91, 79, 134, 0.06);
+    border: 1px solid var(--wb-border);
+    margin: 2px 0;
+    flex-shrink: 0;
 }
 .wb-v2-nudge-btn {
-    width: 34px !important;
+    position: absolute;
+    width: 30px !important;
     height: 30px !important;
     margin: 0 !important;
     padding: 0 !important;
     flex-shrink: 0;
     background: var(--wb-paper);
     border: 1px solid var(--wb-border);
-    border-radius: 8px;
+    border-radius: 50%;
+    /* Press-and-hold repeats — a long-press must never trigger the
+       browser's own text-selection/context-menu gestures instead. */
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
     font-size: 12px;
     line-height: 1;
     color: var(--wb-text);

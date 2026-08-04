@@ -1803,6 +1803,19 @@ const ProjectModel = (function () {
         return a.sceneId === b.sceneId && (a.placeId || null) === (b.placeId || null);
     }
 
+    // Local mirrors of ExperienceSchema.isPlaceHost/placeHostLayer —
+    // kept here too so attach/detach/sync never depend on load order
+    // (this file already only soft-depends on window.ExperienceSchema).
+    function _isPlaceHost(hostedBy) {
+        return hostedBy === 'place' || (typeof hostedBy === 'string' && hostedBy.indexOf('place-') === 0);
+    }
+    function _placeHostLayer(hostedBy) {
+        if (hostedBy === 'place-paper') return 'paper';
+        if (hostedBy === 'place-art') return 'art';
+        if (hostedBy === 'place-frame') return 'frame';
+        return null;
+    }
+
     function attachExperience(project, id, target) {
         const experience = findExperience(project, id);
         if (!experience || !target || !target.sceneId) return false;
@@ -1810,6 +1823,20 @@ const ProjectModel = (function () {
         if (experience.lifecycle === 'personal' && target.sceneId !== experience.scopeSceneId) return false;
         if (target.placeId && !findHolder(project, target.sceneId, target.placeId)) return false;
         if (!target.placeId && !findScene(project, target.sceneId)) return false;
+        // A layer-targeted place-* host (place-paper/art/frame) writes
+        // that V2 layer's own `experience` overlay — which only exists
+        // once the Place actually uses V2 Layers. Refuse cleanly rather
+        // than silently auto-enabling V2 (which would swap the Place's
+        // whole render path as a side effect of an attach). A
+        // `type:'frame'` Experience is exempt: it keeps the legacy
+        // `holder.frame` mirror, which works on any Place.
+        if (experience.type !== 'frame' && target.placeId) {
+            const targetLayer = _placeHostLayer(experience.hostedBy);
+            if (targetLayer) {
+                const holder = findHolder(project, target.sceneId, target.placeId);
+                if (!holder || !holder.v2Layers) return false;
+            }
+        }
 
         const entry = { sceneId: target.sceneId, placeId: target.placeId || null };
         if (!experience.attachments.some(function (a) { return _sameAttachment(a, entry); })) {
@@ -1867,14 +1894,32 @@ const ProjectModel = (function () {
                     _mirrorFrame(project, experience);
                     updateHolder(project, a.sceneId, a.placeId, { frame: experience.id });
                 } else {
-                    // "Extend Experiences to Places" — every other type
-                    // (decoration/text, the ones authors actually create
-                    // through any real flow today) now mirrors its own
-                    // Universal Content parts as ordinary Scene Layers,
-                    // exactly like Scene/Free hosting already do, just
-                    // tagged to paint alongside this specific Place
-                    // instead of the whole Scene/canvas.
-                    _syncUniversalContent(project, a.sceneId, experience, 'place', a.placeId);
+                    const targetLayer = _placeHostLayer(experience.hostedBy);
+                    if (targetLayer) {
+                        // Layer-targeted place hosting (place-paper /
+                        // place-art / place-frame) — attaches as that V2
+                        // layer's own additive `experience` overlay, the
+                        // exact mechanism the V2 Inspector's "Experience
+                        // Overlay" picker already writes; painted inside
+                        // the layer's own clip/transform stack, compiled
+                        // and rendered end to end since Phase 16 with
+                        // zero new engine/compile code. Written directly
+                        // (never via setHolderV2Layer) so a non-V2 Place
+                        // is a guarded no-op here rather than an
+                        // accidental V2 auto-enable — attachExperience
+                        // already refuses that case up front.
+                        const holder = findHolder(project, a.sceneId, a.placeId);
+                        if (holder && holder.v2Layers && holder.v2Layers[targetLayer]) {
+                            holder.v2Layers[targetLayer].experience = { id: experience.id };
+                        }
+                    } else {
+                        // Legacy 'place' — "Extend Experiences to
+                        // Places," unchanged: every other type
+                        // (decoration/text) mirrors its own Universal
+                        // Content parts as ordinary Scene Layers, tagged
+                        // to paint alongside this specific Place.
+                        _syncUniversalContent(project, a.sceneId, experience, 'place', a.placeId);
+                    }
                 }
             } else {
                 // Scene or Free — Builder V3.1 Universal Experience
@@ -2278,6 +2323,20 @@ const ProjectModel = (function () {
             const holder = findHolder(project, entry.sceneId, entry.placeId);
             if (holder && holder.frame === experience.id) updateHolder(project, entry.sceneId, entry.placeId, { frame: null });
         } else {
+            // Layer-targeted place hosting — clear the V2 layer's own
+            // `experience` overlay reference, but ONLY when it still
+            // points at this exact Experience (a Theme Author may have
+            // since re-pointed the overlay at a different Experience
+            // via the V2 Inspector's own picker; never clobber that).
+            const targetLayer = _placeHostLayer(experience.hostedBy);
+            if (targetLayer && entry.placeId) {
+                const holder = findHolder(project, entry.sceneId, entry.placeId);
+                if (holder && holder.v2Layers && holder.v2Layers[targetLayer]
+                    && holder.v2Layers[targetLayer].experience
+                    && holder.v2Layers[targetLayer].experience.id === experience.id) {
+                    holder.v2Layers[targetLayer].experience = null;
+                }
+            }
             // "Extend Experiences to Places" — a real, previously-latent
             // gap: this branch used to only run for Scene/Free hosting
             // (`!entry.placeId`), since Place-hosting only ever meant

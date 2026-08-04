@@ -7640,38 +7640,96 @@
         contextPanel.appendChild(details);
     }
 
-    // 4-arrow nudge pad — a small 3×3 directional grid (▲▼◀▶ plus a
-    // centre ⊙ reset) shared by every V2 layer card. `onNudge(dx,dy)`
-    // receives unit steps (-1/0/1 per axis); `onCenter()` resets. The
-    // caller decides what a step MEANS (Frame nudges the Place itself;
-    // Paper/Art nudge their own bounds offset within the inner rect),
-    // so this stays a dumb, reusable input surface.
+    // Circular 8-way nudge pad — eight direction buttons (cardinals +
+    // diagonals) arranged on a circle around a centre ⊙ reset, shared
+    // by every V2 layer card. `onNudge(dx,dy)` receives unit steps
+    // (-1/0/1 per axis; diagonals send both); `onCenter()` resets.
+    // Press-and-hold auto-repeats: the first step fires immediately on
+    // pointerdown, then repeats (~12 steps/sec after a short pause)
+    // until release, so an object keeps moving while a direction is
+    // held. The caller decides what a step MEANS (Frame nudges the
+    // Place itself; Paper/Art nudge their own bounds offset within the
+    // inner rect), so this stays a dumb, reusable input surface.
     function _v2NudgePad(onNudge, onCenter, centerTitle) {
+        const HOLD_DELAY_MS = 350;   // pause before auto-repeat kicks in
+        const HOLD_REPEAT_MS = 80;   // then ~12 steps/sec while held
+        const PAD = 118;             // pad diameter (px) — matches the CSS circle
+        const BTN = 30;              // direction-button diameter (px)
+        const R = PAD / 2 - BTN / 2 - 5; // orbit radius keeps buttons inside the rim
         const pad = document.createElement('div');
         pad.className = 'wb-v2-nudge-pad';
-        const cells = [
-            null, ['▲', 0, -1, 'Nudge up'], null,
-            ['◀', -1, 0, 'Nudge left'], ['⊙', 0, 0, centerTitle || 'Reset to centre'], ['▶', 1, 0, 'Nudge right'],
-            null, ['▼', 0, 1, 'Nudge down'], null
-        ];
-        cells.forEach(function (cell) {
-            if (!cell) {
-                const spacer = document.createElement('span');
-                pad.appendChild(spacer);
-                return;
+        // Press-and-hold driver. The first step fires synchronously on
+        // pointerdown (so a plain tap still nudges exactly once), then
+        // a delay + interval keeps firing while held. Pointer capture
+        // guarantees the matching pointerup/pointercancel always lands
+        // on this button, so the interval can never leak.
+        function wireHold(btn, fire) {
+            let delayT = null, repT = null;
+            function stop() {
+                if (delayT) { clearTimeout(delayT); delayT = null; }
+                if (repT) { clearInterval(repT); repT = null; }
             }
+            btn.addEventListener('pointerdown', function (e) {
+                if (btn.disabled) return;
+                e.preventDefault();
+                try { btn.setPointerCapture(e.pointerId); } catch (err) { /* older engines — repeat still stops on pointerup */ }
+                fire();
+                delayT = setTimeout(function () {
+                    repT = setInterval(fire, HOLD_REPEAT_MS);
+                }, HOLD_DELAY_MS);
+            });
+            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) {
+                btn.addEventListener(ev, stop);
+            });
+            // Keyboard activation (Enter/Space) arrives as a click with
+            // detail 0 and no pointer sequence — fire one step so the
+            // pad stays keyboard-reachable. A pointer-driven click has
+            // detail ≥ 1 and already fired on pointerdown, so it's
+            // ignored here (never a double step per tap).
+            btn.addEventListener('click', function (e) {
+                if (e.detail === 0 && !btn.disabled) fire();
+            });
+        }
+        const dirs = [
+            ['↖', -1, -1, 'Nudge up-left'],
+            ['↑', 0, -1, 'Nudge up'],
+            ['↗', 1, -1, 'Nudge up-right'],
+            ['←', -1, 0, 'Nudge left'],
+            ['→', 1, 0, 'Nudge right'],
+            ['↙', -1, 1, 'Nudge down-left'],
+            ['↓', 0, 1, 'Nudge down'],
+            ['↘', 1, 1, 'Nudge down-right']
+        ];
+        dirs.forEach(function (cell) {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'wb-v2-nudge-btn' + (cell[1] === 0 && cell[2] === 0 ? ' wb-v2-nudge-center' : '');
+            btn.className = 'wb-v2-nudge-btn';
             btn.textContent = cell[0];
-            btn.title = cell[3];
+            btn.title = cell[3] + ' — hold to keep moving';
             btn.disabled = currentProjectReadOnly;
-            btn.addEventListener('click', function () {
-                if (cell[1] === 0 && cell[2] === 0) onCenter();
-                else onNudge(cell[1], cell[2]);
-            });
+            // Position on the orbit circle: normalize (dx,dy) so the
+            // diagonals sit at the same distance from centre as the
+            // cardinals (a raw 3×3 grid would push them √2 out).
+            const len = Math.sqrt(cell[1] * cell[1] + cell[2] * cell[2]);
+            btn.style.left = (PAD / 2 + (cell[1] / len) * R - BTN / 2) + 'px';
+            btn.style.top = (PAD / 2 + (cell[2] / len) * R - BTN / 2) + 'px';
+            wireHold(btn, function () { onNudge(cell[1], cell[2]); });
             pad.appendChild(btn);
         });
+        const center = document.createElement('button');
+        center.type = 'button';
+        center.className = 'wb-v2-nudge-btn wb-v2-nudge-center';
+        center.textContent = '⊙';
+        center.title = centerTitle || 'Reset to centre';
+        center.disabled = currentProjectReadOnly;
+        center.style.left = (PAD / 2 - BTN / 2) + 'px';
+        center.style.top = (PAD / 2 - BTN / 2) + 'px';
+        // Centre is a one-shot reset — no hold-to-repeat (repeating a
+        // reset is meaningless), a plain click is the whole gesture.
+        center.addEventListener('click', function () {
+            if (!center.disabled) onCenter();
+        });
+        pad.appendChild(center);
         return pad;
     }
 
@@ -8150,7 +8208,7 @@
 
         if (kind === 'shape') {
             const shapeGrid = document.createElement('div');
-            shapeGrid.className = 'wb-scene-template-grid';
+            shapeGrid.className = 'wb-scene-template-grid wb-shape-tile-grid';
             (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
                 const card = document.createElement('button');
                 card.type = 'button';
@@ -8421,7 +8479,7 @@
         shapeWrap.appendChild(_fieldHelp('Pick a shape you can colour, outline and rotate.'));
 
         const shapeGrid = document.createElement('div');
-        shapeGrid.className = 'wb-scene-template-grid';
+        shapeGrid.className = 'wb-scene-template-grid wb-shape-tile-grid';
         (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
             const card = document.createElement('button');
             card.type = 'button';
@@ -8601,7 +8659,7 @@
     // real mirrored Layer (a Nurturing idea, or one not yet attached
     // to the open Scene, has no real object yet to set permissions on).
     function _renderExperiencePermissionBlock(exp) {
-        if (exp.hostedBy === 'place') return;
+        if (_isPlaceHost(exp.hostedBy)) return;
         if (!currentSceneId) return;
         const parts = (exp.properties && exp.properties.parts) || [];
         const layers = parts.map(function (part) {
@@ -9724,7 +9782,23 @@
     function _hostedByLabel(exp) {
         if (exp.hostedBy === 'scene') return 'Scene';
         if (exp.hostedBy === 'free') return 'Free';
+        if (exp.hostedBy === 'place-paper') return 'Place · Paper';
+        if (exp.hostedBy === 'place-art') return 'Place · Art';
+        if (exp.hostedBy === 'place-frame') return 'Place · Frame';
         return 'Place';
+    }
+
+    // Local mirrors of ExperienceSchema.isPlaceHost/placeHostLayer —
+    // "instead of place own make them place-paper owned, place-art
+    // owned, place-frame owned." Legacy 'place' stays recognized.
+    function _isPlaceHost(hostedBy) {
+        return hostedBy === 'place' || (typeof hostedBy === 'string' && hostedBy.indexOf('place-') === 0);
+    }
+    function _placeHostLayerOf(hostedBy) {
+        if (hostedBy === 'place-paper') return 'paper';
+        if (hostedBy === 'place-art') return 'art';
+        if (hostedBy === 'place-frame') return 'frame';
+        return null;
     }
 
     // Preview-first: a miniature composition, not a database row (Part
@@ -10021,8 +10095,18 @@
         // frame; Free-hosted → target:'overlay', in front), decided at
         // compile time in js/services/builder.js's convergeSceneLayer.
         if (hostedBy === 'place') {
+            // Legacy single-'place' host — unchanged pre-split behaviour.
             contextPanel.appendChild(_fieldHelp('Position and size are inherited from the Place — this content fills it completely.'));
             return;
+        }
+        // Layer-targeted place hosting (place-paper/art/frame) — the
+        // overlay part's own x/y/w/h are FRACTIONS OF THAT LAYER'S RECT
+        // (Phase 16's {rect, content} parts), so the sliders are real,
+        // meaningful controls here: full bleed (the seeded default)
+        // fills the layer exactly; anything smaller positions within it.
+        const hostLayer = _placeHostLayerOf(hostedBy);
+        if (hostLayer) {
+            contextPanel.appendChild(_fieldHelp('Fractions of the Place’s ' + hostLayer + ' layer — full bleed fills the layer exactly.'));
         }
         const xGroup = _buildFieldGroup('X %', _range(0, 100, Math.round((props[xKey] || 0) * 100), function (v) { onProp(xKey)(v / 100); }));
         const yGroup = _buildFieldGroup('Y %', _range(0, 100, Math.round((props[yKey] || 0) * 100), function (v) { onProp(yKey)(v / 100); }));
@@ -10037,11 +10121,11 @@
         // for Free-hosted, whose whole reason for existing is a specific
         // position and size in front of the picture; a Fill Scene there
         // would conflate the two modes.
-        if (hostedBy === 'scene') {
+        if (hostedBy === 'scene' || hostLayer) {
             const fillBtn = document.createElement('button');
             fillBtn.type = 'button';
             fillBtn.className = 'wb-inline-action';
-            fillBtn.textContent = '↔ Fill Scene';
+            fillBtn.textContent = hostLayer ? '↔ Fill Layer' : '↔ Fill Scene';
             fillBtn.disabled = currentProjectReadOnly;
             fillBtn.addEventListener('click', function () {
                 onProp(xKey)(0);
@@ -10370,8 +10454,15 @@
 
         _contentCardFoot(exp);
 
-        if (exp.hostedBy === 'place' && exp.type !== 'frame') {
-            contextPanel.appendChild(_fieldHelp('Text/Image/Graphics/Colour don’t render when hosted by a Place yet — try Scene or Free instead.'));
+        if (_placeHostLayerOf(exp.hostedBy) && exp.type !== 'frame') {
+            contextPanel.appendChild(_fieldHelp('Overlays the ' + _placeHostLayerOf(exp.hostedBy) + ' layer of whichever Place hosts it — the Place needs V2 Layers enabled.'));
+        } else if (exp.hostedBy === 'place' && exp.type !== 'frame'
+            && !window.ExperienceSchema.rendersWhenHosted(exp.type, 'place')) {
+            // Legacy 'place' host, a type the Engine Adapter genuinely
+            // can't paint at a Place (atmosphere/lighting/text-style) —
+            // decoration/text DO render there ("Extend Experiences to
+            // Places"), so the old blanket warning was stale for them.
+            contextPanel.appendChild(_fieldHelp('This type doesn’t render when hosted by a Place yet — try Scene or Free instead.'));
         }
     }
 
@@ -10508,7 +10599,7 @@
         shapeHeading.textContent = 'Or Pick a Shape';
         contextPanel.appendChild(shapeHeading);
         const shapeGrid = document.createElement('div');
-        shapeGrid.className = 'wb-scene-template-grid';
+        shapeGrid.className = 'wb-scene-template-grid wb-shape-tile-grid';
         (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
             const card = document.createElement('button');
             card.type = 'button';
@@ -10690,6 +10781,8 @@
 
         if (exp.hostedBy === 'scene') {
             contextPanel.appendChild(_fieldHelp('Sits at scene level, behind the picture frame — full bleed by default. Each section’s own Transform above sets its position and size; use ↔ Fill Scene there to snap back to full bleed.'));
+        } else if (_placeHostLayerOf(exp.hostedBy)) {
+            contextPanel.appendChild(_fieldHelp('Overlays the Place’s ' + _placeHostLayerOf(exp.hostedBy) + ' layer — each content section’s own Transform above positions it within that layer (full bleed by default).'));
         } else if (exp.hostedBy === 'place') {
             contextPanel.appendChild(_fieldHelp('Inherited from Place (read-only) — this Experience fills whichever Place hosts it.'));
         } else {
@@ -10840,7 +10933,7 @@
         // already-fully-hosted Personal Experience has nothing left to
         // *do* here, so it says so plainly instead of implying a
         // pointless action.
-        if (exp.hostedBy !== 'place' && scenes.length === 1) {
+        if (!_isPlaceHost(exp.hostedBy) && scenes.length === 1) {
             const usage = window.ProjectModel.usageOf(currentProject, exp.id);
             if (usage.some(function (u) { return u.sceneId === scenes[0].id; })) {
                 contextPanel.appendChild(_fieldHelp('Already hosted in ' + scenes[0].name + ' — nothing more to host here.'));
@@ -10848,11 +10941,17 @@
             }
         }
 
+        // A layer-targeted place-* host needs the target Place's V2
+        // Layers enabled (its layer's `experience` overlay is what the
+        // attach writes) — a `type:'frame'` Experience is exempt, since
+        // it keeps the legacy `holder.frame` mirror on any Place.
+        const requireV2 = !!_placeHostLayerOf(exp.hostedBy) && exp.type !== 'frame';
+
         let selectedSceneId = scenes[0].id;
         const sceneSelect = _select(scenes.map(function (s) { return { value: s.id, label: s.name }; }), selectedSceneId, function (v) {
             selectedSceneId = v;
             placeSelect.innerHTML = '';
-            _populatePlaceOptions(placeSelect, selectedSceneId);
+            _populatePlaceOptions(placeSelect, selectedSceneId, requireV2);
             _updateAttachButtonState();
         });
         contextPanel.appendChild(_buildFieldGroup('Scene', sceneSelect));
@@ -10860,8 +10959,8 @@
         const placeSelect = document.createElement('select');
         placeSelect.className = 'wb-field-select';
         placeSelect.addEventListener('change', _updateAttachButtonState);
-        _populatePlaceOptions(placeSelect, selectedSceneId);
-        if (exp.hostedBy === 'place') {
+        _populatePlaceOptions(placeSelect, selectedSceneId, requireV2);
+        if (_isPlaceHost(exp.hostedBy)) {
             contextPanel.appendChild(_buildFieldGroup('Place', placeSelect));
         }
 
@@ -10875,7 +10974,23 @@
         // that plainly instead of only discovering it via a redundant
         // click.
         function _updateAttachButtonState() {
-            const placeId = exp.hostedBy === 'place' ? placeSelect.value : null;
+            const placeId = _isPlaceHost(exp.hostedBy) ? placeSelect.value : null;
+            // A disabled option means "this Place hasn't enabled V2
+            // Layers" (only ever set when requireV2) — say so on the
+            // button itself instead of a dead-looking generic action.
+            // A browser never auto-selects a disabled option — when every
+            // Place in the Scene is disabled (all still on the legacy
+            // render path), selectedOptions comes back empty even though
+            // Places DO exist, so fall back to "does the list have any
+            // options at all" to keep the message honest.
+            const placeOpt = (placeSelect.selectedOptions && placeSelect.selectedOptions[0]) || null;
+            if (_isPlaceHost(exp.hostedBy) && (!placeOpt || placeOpt.disabled)) {
+                attachBtn.textContent = (placeOpt || placeSelect.options.length)
+                    ? 'Enable V2 Layers on this Place first' : 'No Place available';
+                attachBtn.disabled = true;
+                attachBtn.classList.remove('wb-workspace-btn-primary');
+                return;
+            }
             const usage = window.ProjectModel.usageOf(currentProject, exp.id);
             const already = usage.some(function (u) { return u.sceneId === selectedSceneId && (u.placeId || null) === (placeId || null); });
             attachBtn.textContent = already ? '✓ Already Hosted Here' : '📎 Host Here';
@@ -10885,7 +11000,7 @@
         _updateAttachButtonState();
 
         attachBtn.addEventListener('click', function () {
-            const placeId = exp.hostedBy === 'place' ? placeSelect.value : null;
+            const placeId = _isPlaceHost(exp.hostedBy) ? placeSelect.value : null;
             const ok = window.ProjectModel.attachExperience(currentProject, exp.id, { sceneId: selectedSceneId, placeId: placeId });
             if (!ok) { window.alert('Could not host here — check this Experience’s ownership scope.'); return; }
             _persist();
@@ -10909,13 +11024,21 @@
         contextPanel.appendChild(attachBtn);
     }
 
-    function _populatePlaceOptions(selectEl, sceneId) {
+    function _populatePlaceOptions(selectEl, sceneId, requireV2) {
         const scene = window.ProjectModel.findScene(currentProject, sceneId);
         const holders = scene ? scene.holders : [];
         holders.forEach(function (h) {
             const opt = document.createElement('option');
             opt.value = h.id;
             opt.textContent = h.name;
+            // Layer-targeted hosting (place-paper/art/frame) writes the
+            // Place's own V2 layer overlay — a Place still on the
+            // legacy render path has no such layer, so it's shown but
+            // honestly unpickable rather than silently failing later.
+            if (requireV2 && !h.v2Layers) {
+                opt.disabled = true;
+                opt.textContent = h.name + ' — enable V2 Layers first';
+            }
             selectEl.appendChild(opt);
         });
     }
@@ -11009,6 +11132,13 @@
             const exp = window.ProjectModel.addExperience(currentProject, {
                 name: name.trim() || opts.defaultName,
                 type: opts.compatibleType,
+                // Deliberately still the legacy 'place' value, not one of
+                // the layer-targeted place-* hosts: the only placeId
+                // call site is the Frame panel's own "Reuse this Frame
+                // as an Experience" (compatibleType:'frame'), and a
+                // frame-type Experience keeps the legacy `holder.frame`
+                // mirror regardless of host value — see
+                // _syncExperienceAttachments' own frame branch.
                 hostedBy: target.placeId ? 'place' : 'free'
             });
             window.ProjectModel.graduateToPersonal(currentProject, exp.id, scene.id);

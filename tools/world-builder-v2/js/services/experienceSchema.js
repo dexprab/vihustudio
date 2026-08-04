@@ -91,7 +91,7 @@ const ExperienceSchema = (function () {
     // (or omitted) keeps the small partial-rect defaults that a
     // Free-hosted Experience has always started with.
     function defaultUniversalContent(hostedBy) {
-        const fillBleed = hostedBy === 'scene' || hostedBy === 'place';
+        const fillBleed = hostedBy === 'scene' || isPlaceHost(hostedBy);
         return {
             // Text
             textContent: '',
@@ -225,11 +225,43 @@ const ExperienceSchema = (function () {
     // *intended* hosting, chosen at creation time, before any real
     // placement exists (Milestone 3), and later exercised for real by
     // Attach/Reuse Existing.
+    //
+    // "Place owned" split into per-layer ownership — "instead of place
+    // own make them place-paper owned, place-art owned, place-frame
+    // owned." Each place-* value targets ONE of a Place's own V2
+    // layers (Place · Frame · Paper · Art Model V2): hosting an
+    // Experience there attaches it as that layer's additive overlay
+    // (`v2Layers.<layer>.experience` — the same mechanism the V2
+    // Inspector's own "Experience Overlay" picker writes), painted
+    // inside the layer's own clip/transform stack so it inherits the
+    // Frame's geometry/rotation/tilt/perspective automatically. A
+    // `type:'frame'` Experience keeps the legacy `holder.frame`
+    // mirror regardless of which place-* value it carries (its whole
+    // identity IS the Frame fields, not paintable overlay parts).
+    // The old single 'place' value is retired from this picker but
+    // stays recognized everywhere (isPlaceHost/placeHostLayer below)
+    // so every already-authored Experience keeps its exact behaviour.
     const EXPERIENCE_HOSTS = [
-        { value: 'place', label: 'A Place — lives inside one Place' },
+        { value: 'place-paper', label: "A Place's Paper — on the paper layer, behind the art" },
+        { value: 'place-art', label: "A Place's Art — on the art layer, over the picture" },
+        { value: 'place-frame', label: "A Place's Frame — on the frame layer, in front" },
         { value: 'scene', label: 'A Scene — behind the picture frame, full bleed by default' },
         { value: 'free', label: 'Free — in front of the picture, position and size however you like' }
     ];
+
+    // True for legacy 'place' AND every layer-targeted place-* host.
+    function isPlaceHost(hostedBy) {
+        return hostedBy === 'place' || (typeof hostedBy === 'string' && hostedBy.indexOf('place-') === 0);
+    }
+
+    // Which V2 layer a place-* host targets — null for legacy 'place'
+    // (which keeps its own pre-split behaviour) and for scene/free.
+    function placeHostLayer(hostedBy) {
+        if (hostedBy === 'place-paper') return 'paper';
+        if (hostedBy === 'place-art') return 'art';
+        if (hostedBy === 'place-frame') return 'frame';
+        return null;
+    }
 
     // Author-drawable shapes for the Graphics section's "Pick a Shape"
     // mode — real vector primitives (filled, outlined, resized, rotated
@@ -401,7 +433,10 @@ const ExperienceSchema = (function () {
     // isn't uniformly true.
     function rendersWhenHosted(type, hostedBy) {
         const t = findType(type);
-        return !!(t.renders && t.renders[hostedBy]);
+        // A layer-targeted place-* host reads the same 'place' column —
+        // the renders map is keyed by the three original host families.
+        const key = isPlaceHost(hostedBy) ? 'place' : hostedBy;
+        return !!(t.renders && t.renders[key]);
     }
 
     return {
@@ -417,7 +452,9 @@ const ExperienceSchema = (function () {
         defaultProperties: defaultProperties,
         defaultUniversalContent: defaultUniversalContent,
         defaultPartProps: defaultPartProps,
-        rendersWhenHosted: rendersWhenHosted
+        rendersWhenHosted: rendersWhenHosted,
+        isPlaceHost: isPlaceHost,
+        placeHostLayer: placeHostLayer
     };
 })();
 try { window.ExperienceSchema = ExperienceSchema; } catch (e) {}
