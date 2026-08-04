@@ -1190,7 +1190,11 @@ function _compileV2Frame(f) {
         // Phase 11 — Frame internal padding (the mat gap): a fraction of
         // the Place rect's short edge that insets the inner rect Paper/
         // Art resolve their bounds against. Absent → 0, byte-identical.
-        padding: (typeof f.padding === 'number') ? f.padding : 0
+        padding: (typeof f.padding === 'number') ? f.padding : 0,
+        // Phase 12 — per-layer Story-Author permissions. Absent/null →
+        // inherit the Place-wide permission per action (the pre-Phase-12
+        // behaviour, so every already-authored layer compiles identically).
+        permissions: f.permissions || null
     };
     return compiled;
 }
@@ -1202,7 +1206,8 @@ function _compileV2SurfaceLayer(l) {
         fitMode: l.fitMode || 'fit-frame',
         content: _compileV2Content(l.content),
         bounds: l.bounds || null,
-        rotation: (typeof l.rotation === 'number') ? l.rotation : 0
+        rotation: (typeof l.rotation === 'number') ? l.rotation : 0,
+        permissions: l.permissions || null
     };
 }
 

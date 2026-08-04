@@ -7722,6 +7722,45 @@
             })));
         }
 
+        // Phase 12 — per-layer Story-Author permissions (spec §2's
+        // "Author permission: Honor" cell). Each action is tri-state:
+        // Inherit (absent — the Place-wide permission decides, exactly
+        // the pre-Phase-12 behaviour), Allow, or Deny. All-inherit
+        // stores null so an untouched layer compiles byte-identically.
+        const permDetails = document.createElement('details');
+        permDetails.className = 'wb-state-intro';
+        const permSummary = document.createElement('summary');
+        permSummary.textContent = '🛡 Story Author Permissions';
+        permDetails.appendChild(permSummary);
+        const permBody = document.createElement('div');
+        permBody.style.paddingTop = '6px';
+        const PERM_CHOICES = [
+            { value: 'inherit', label: 'Inherit from Place' },
+            { value: 'allow', label: 'Allow' },
+            { value: 'deny', label: 'Deny' }
+        ];
+        [
+            ['visible', 'Show / hide this layer'],
+            ['content', "Change this layer's content"],
+            ['transform', 'Rotate / resize this layer']
+        ].forEach(function (pair) {
+            const key = pair[0], label = pair[1];
+            const cur = (layer.permissions && typeof layer.permissions[key] === 'boolean')
+                ? (layer.permissions[key] ? 'allow' : 'deny')
+                : 'inherit';
+            permBody.appendChild(_buildFieldGroup(label, _select(PERM_CHOICES, cur, function (v) {
+                const next = (layer.permissions && typeof layer.permissions === 'object')
+                    ? Object.assign({}, layer.permissions) : {};
+                if (v === 'inherit') delete next[key];
+                else next[key] = (v === 'allow');
+                const val = Object.keys(next).length ? next : null;
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { permissions: val });
+                _persist();
+            })));
+        });
+        permDetails.appendChild(permBody);
+        body.appendChild(permDetails);
+
         // Content slot picker — Frame has no color slot per the V2 spec.
         //
         // Phase 8: 'experience' is no longer offered as a PRIMARY content

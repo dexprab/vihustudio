@@ -528,6 +528,35 @@ const SlideRenderer=(()=>{
     const place=_placeByExternalId(s,placeId);
     return !!(place && place.v2Layers);
   }
+  // Phase 12 — per-layer Story-Author permission resolution (spec §2's
+  // "Author permission: Honor" cell). A compiled V2 layer may carry its
+  // own `permissions` {visible, content, transform} booleans; any absent
+  // key inherits the Place-wide permission for that action — the exact
+  // pre-Phase-12 behaviour, so a layer authored before this phase (or
+  // one a Theme Author never touched) resolves identically to before:
+  //   visible / content → Place `editable` (absent → open),
+  //   rotate → Place `rotatable`, resize → Place `resizable` (both
+  //   absent → closed, their own established defaults).
+  // One resolver, exported, so the authoring UI (Phase 13's Selection
+  // Action Strip controls) and any future consumer read the SAME rule
+  // rather than re-deriving the inheritance in two places — the exact
+  // discipline getPlacePermissions itself already established.
+  function getPlaceV2LayerPermission(s,placeId,layerKind,action){
+    const place=_placeByExternalId(s,placeId);
+    if(!place || !place.v2Layers) return false;
+    const layer=place.v2Layers[layerKind];
+    if(!layer) return false;
+    const lp=layer.permissions;
+    const pw=_resolvePlacePermissions(place);
+    let key, fallback;
+    if(action==='visible'){ key='visible'; fallback=pw.editable; }
+    else if(action==='content'){ key='content'; fallback=pw.editable; }
+    else if(action==='rotate'){ key='transform'; fallback=pw.rotatable; }
+    else if(action==='resize'){ key='transform'; fallback=pw.resizable; }
+    else return false;
+    if(lp && typeof lp[key]==='boolean') return lp[key];
+    return fallback;
+  }
 
   // Guardrails / full cross-object reorder — Place 1's own atomic paint
   // step (image/placeholder, ornament/stroke, caption, and the Place-1-
@@ -6412,7 +6441,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceRotation:_resolvePlaceRotation,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts,getPlaceV2Layers,isPlaceV2};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceRotation:_resolvePlaceRotation,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts,getPlaceV2Layers,isPlaceV2,getPlaceV2LayerPermission};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

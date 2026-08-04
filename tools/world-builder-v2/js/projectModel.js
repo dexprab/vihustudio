@@ -792,6 +792,12 @@ const ProjectModel = (function () {
         // rect's short edge, 0 = flush): the mat gap. Paper/Art `bounds`
         // become authorable as {w,h} fractions of the padded inner rect,
         // centered; null keeps "fill the parent" exactly as before.
+        // Phase 12 — per-layer Story-Author permissions (spec §2's
+        // "Author permission: Honor" cell). `permissions` is null by
+        // default (= inherit the Place-wide permission for every action,
+        // exactly the pre-Phase-12 behaviour); a Theme Author may set
+        // any of {visible, content, transform} to an explicit boolean,
+        // overriding the Place-wide fallback for THAT layer alone.
         if (kind === 'frame') {
             return {
                 visible: true,
@@ -800,7 +806,8 @@ const ProjectModel = (function () {
                 content: null,
                 bounds: null,
                 rotation: 0,
-                padding: 0
+                padding: 0,
+                permissions: null
             };
         }
         // paper | art
@@ -809,7 +816,8 @@ const ProjectModel = (function () {
             fitMode: 'fit-frame',
             content: null,
             bounds: null,
-            rotation: 0
+            rotation: 0,
+            permissions: null
         };
     }
 
