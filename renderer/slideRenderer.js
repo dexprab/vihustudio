@@ -401,6 +401,134 @@ const SlideRenderer=(()=>{
     return _resolvePlacePermissions(_placeByExternalId(s,placeId));
   }
 
+  // Place · Frame · Paper · Art Model V2 — Phase 6 authoring bridge.
+  //
+  // Resolves the effective V2 layer set for a Place, applying any Story-
+  // Author overrides on top of the Theme-Author-authored `place.v2Layers`
+  // baseline. Overrides live in the exact same generic per-id
+  // elementOverrides bag every other Story-Author edit already uses
+  // (SceneEngine.setContentOverride), keyed by the Place's own selection
+  // id (e.g. 'image-holder', 'image-place-2'). Each field is a flat
+  // top-level override key — matching the already-established `shape`
+  // and `rotation` convention exactly — so the whole resolution is a
+  // per-field merge, not a nested object merge, and any future field
+  // added by later authoring UI rides through automatically without
+  // touching this function's own shape.
+  //
+  // Returns the same `{frame, paper, art}` shape place.v2Layers itself
+  // has, with each field merged from override (if set) → authored base
+  // → schema default. Callers (render side + authoring UI both) read
+  // this one function to stay in lockstep.
+  const _V2_FIELD_MAP={
+    frame:[
+      ['v2FrameGeometry','geometry'],
+      ['v2FrameVisible','visible'],
+      ['v2FrameBorderColor','__borderColor'],
+      ['v2FrameBorderWidth','__borderWidth']
+    ],
+    paper:[
+      ['v2PaperVisible','visible'],
+      ['v2PaperContentColor','__contentColor'],
+      ['v2PaperContentKind','__contentKind']
+    ],
+    art:[
+      ['v2ArtVisible','visible'],
+      ['v2ArtContentColor','__contentColor'],
+      ['v2ArtContentKind','__contentKind']
+    ]
+  };
+  function _v2ResolveEffectiveLayers(place,s,placeId){
+    if(!place || !place.v2Layers) return null;
+    const ov=_layerOverride(s,placeId) || {};
+    // Deep-ish clone the authored layer set so per-field overrides never
+    // mutate the compiled theme object (which is shared across every render
+    // of every slide using this theme). One level of nesting is enough —
+    // border and content are the only nested sub-objects each layer holds.
+    function cloneLayer(layer){
+      if(!layer) return null;
+      const c={};
+      Object.keys(layer).forEach(function(k){
+        if(k==='border' || k==='content'){
+          c[k]=layer[k] ? Object.assign({},layer[k]) : null;
+        }else{
+          c[k]=layer[k];
+        }
+      });
+      return c;
+    }
+    const out={
+      frame:cloneLayer(place.v2Layers.frame),
+      paper:cloneLayer(place.v2Layers.paper),
+      art:  cloneLayer(place.v2Layers.art)
+    };
+    // Apply overrides per layer. A __-prefixed target key is a virtual
+    // path into a nested sub-object (border.color, content.color,
+    // content.kind) — kept as a flat override key on the wire so
+    // SceneEngine.setContentOverride can mutate it individually, exactly
+    // like shape/rotation do.
+    ['frame','paper','art'].forEach(function(layerKind){
+      // If the compiled baseline for this layer is null (a Theme Author
+      // authored no Paper/Art at all), but a Story Author IS writing an
+      // override for one of its keys, materialize a default layer object
+      // first — matching js/placeFrameV2.js's own baseline defaults
+      // exactly, so the effective layer has a sane shape for the
+      // downstream render code (visible:true, fitMode:'fit-frame' for
+      // paper/art). This lets a Story Author INTRODUCE content that
+      // didn't exist in the compiled baseline, not just modify what was
+      // there — which is what "Creator can further refine objects through
+      // the right panel" (Creator Governing Rule #3) requires.
+      const hasOverrideForLayer=_V2_FIELD_MAP[layerKind].some(function(pair){ return pair[0] in ov; });
+      if(!out[layerKind] && hasOverrideForLayer){
+        if(layerKind==='frame'){
+          out[layerKind]={visible:true, geometry:'rectangle', border:null, content:null, bounds:null};
+        }else{
+          out[layerKind]={visible:true, fitMode:'fit-frame', content:null, bounds:null};
+        }
+      }
+      const layer=out[layerKind];
+      if(!layer) return;
+      _V2_FIELD_MAP[layerKind].forEach(function(pair){
+        const ovKey=pair[0], targetKey=pair[1];
+        if(!(ovKey in ov)) return;
+        const val=ov[ovKey];
+        if(targetKey==='__borderColor'){
+          if(!layer.border) layer.border={};
+          layer.border.color=val;
+        }else if(targetKey==='__borderWidth'){
+          if(!layer.border) layer.border={};
+          layer.border.width=val;
+        }else if(targetKey==='__contentColor'){
+          if(!layer.content) layer.content={kind:'color'};
+          layer.content.color=val;
+        }else if(targetKey==='__contentKind'){
+          if(!layer.content) layer.content={};
+          layer.content.kind=val;
+        }else{
+          layer[targetKey]=val;
+        }
+      });
+    });
+    return out;
+  }
+  // Exported for the authoring UI (js/selectionActionStrip.js) to read
+  // whichever effective value the render side actually uses — so a Story
+  // Author's popup control always seeds from the exact same source of
+  // truth the canvas paints from, not from the raw authored base with
+  // any override silently invisible.
+  function getPlaceV2Layers(s,placeId){
+    const place=_placeByExternalId(s,placeId);
+    return _v2ResolveEffectiveLayers(place,s,placeId);
+  }
+  // Cheap "is this Place a V2 Place?" check, used by the authoring UI
+  // to decide whether to mount V2-specific controls or fall through to
+  // the legacy Shape/Rotation pickers. Returns false for a Cover/Hook/
+  // End image-holder (no places array at all) too, matching how every
+  // other V2-aware read already gracefully returns null there.
+  function isPlaceV2(s,placeId){
+    const place=_placeByExternalId(s,placeId);
+    return !!(place && place.v2Layers);
+  }
+
   // Guardrails / full cross-object reorder — Place 1's own atomic paint
   // step (image/placeholder, ornament/stroke, caption, and the Place-1-
   // only 'frame'/'holder'/'element' Layer Pack draws), extracted
@@ -476,9 +604,17 @@ const SlideRenderer=(()=>{
   function _drawPlaceV2(s,t,place,placeRect,chromeColor,placeId,placeImg,placeView){
     const v2=place && place.v2Layers;
     if(!v2) return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};
-    const frame=v2.frame || {};
-    const paper=v2.paper || null;
-    const art  =v2.art   || null;
+    // Phase 6: resolve any Story-Author overrides against the compiled
+    // baseline before rendering — every field a control can write to lives
+    // in the exact same generic elementOverrides bag every other Story-
+    // Author edit already uses (Sprint 8.3 Universal Object Consistency
+    // discipline), keyed off this Place's own selection id. Falls back to
+    // the raw compiled v2Layers untouched when no override exists, so
+    // every already-authored theme renders byte-identically.
+    const eff=_v2ResolveEffectiveLayers(place,s,placeId) || v2;
+    const frame=eff.frame || {};
+    const paper=eff.paper || null;
+    const art  =eff.art   || null;
     const frameVisible=frame.visible!==false;
     // Build Frame geometry as a Path2D — the shared clip for
     // Paper/Art/Frame's own border stroke.
@@ -6233,7 +6369,7 @@ const SlideRenderer=(()=>{
     return _resolveBorder(payload,placeId);
   }
 
-  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceRotation:_resolvePlaceRotation,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts};
+  const api={init,render,buildPayload,getPanelRect,getPlaceRects,getPlacePermissions,getPlaceShape:_resolvePlaceShape,getPlaceRotation:_resolvePlaceRotation,getPlaceGrabHandleHitbox,getCaptionRect,getCanvasSize,getTextElements,getSceneElements,getResizeHandlesFor,getHandleRadius,drawFrameSwatch,drawObjectThumbnail,getReorderableIds,getReorderBucket,activeLayoutHolderCount:_activeLayoutHolders,debugResolveBorder,preloadFonts,getPlaceV2Layers,isPlaceV2};
   try{ window.SlideRenderer=api; }catch(e){}
   return api;
 })();

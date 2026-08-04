@@ -307,6 +307,26 @@ const SelectionActionStrip=(function(){
       if(perm.rotatable){
         if(_mountPlaceRotationSlider(editPanelEl,sel.sceneId)) mounted=true;
       }
+      // Place · Frame · Paper · Art Model V2 — Phase 6.
+      // A V2 Place (place.v2Layers set at compile time by the Theme
+      // Author) gets its own two dedicated authoring controls in
+      // addition to whatever legacy Shape/Rotation ones its own
+      // resizable/rotatable permissions opt in to — spec §2's own
+      // property grammar names Frame's geometry choice and Paper's
+      // colour as the two highest-leverage Story-Author knobs on a
+      // V2 Place. Gated on `editable` (matching how legacy Frame
+      // edits are already gated), so a Theme Author who marked a
+      // Place non-editable blocks these V2 edits exactly as it
+      // already blocks Frame Look/Frame Style on a legacy Place.
+      if(perm.editable && typeof SlideRenderer!=='undefined' && typeof SlideRenderer.isPlaceV2==='function'){
+        try{
+          const slide=cfg.getCurrentSlide();
+          if(slide && SlideRenderer.isPlaceV2(slide,sel.sceneId)){
+            if(_mountV2FrameGeometryPicker(editPanelEl,sel.sceneId)) mounted=true;
+            if(_mountV2PaperColourControl(editPanelEl,sel.sceneId)) mounted=true;
+          }
+        }catch(e){}
+      }
     }
     if(!mounted) _openPanelFallback();
     // _positionWidget() first — it's what fixes the popup's own final
@@ -429,6 +449,157 @@ const SelectionActionStrip=(function(){
       _afterPlaceEdit();
     });
     row.appendChild(input);
+    container.appendChild(row);
+    return true;
+  }
+
+  // Place · Frame · Paper · Art Model V2 — Phase 6 authoring controls.
+  //
+  // Frame Geometry picker for a V2 Place: rectangle / rounded / circle,
+  // spec §2's own Default Shape row for Frame. Writes through the exact
+  // same generic override-bag mutator every other Story-Author Place
+  // edit uses (SceneEngine.setContentOverride) — under a dedicated flat
+  // key `v2FrameGeometry`, matching the established convention every
+  // legacy override (shape, rotation) already follows. The renderer
+  // side (renderer/slideRenderer.js's _v2ResolveEffectiveLayers) reads
+  // this exact key and merges it into the effective Frame.
+  const V2_FRAME_GEOMETRY_CHOICES=[['rectangle','▭ Rectangle'],['rounded','▢ Rounded'],['circle','⬤ Circle']];
+  function _mountV2FrameGeometryPicker(container,sceneId){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let current='rectangle';
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      current=(layers && layers.frame && layers.frame.geometry) || 'rectangle';
+    }catch(e){}
+    const row=document.createElement('div');
+    row.className='designer-row context-row';
+    const label=document.createElement('div');
+    label.className='designer-row-label';
+    label.textContent='Frame Shape';
+    row.appendChild(label);
+    const icons=document.createElement('div');
+    icons.className='icon-row';
+    V2_FRAME_GEOMETRY_CHOICES.forEach(function(c){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card'+(current===c[0]?' active':'');
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=c[1];
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        if(current===c[0]) return;
+        if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+        try{ SceneEngine.setContentOverride(slide,sceneId,'v2FrameGeometry',c[0]); }catch(e){ return; }
+        _afterPlaceEdit();
+        _openEditPanel(); // rebuild the popup so the newly-picked geometry shows as .active
+      });
+      icons.appendChild(btn);
+    });
+    row.appendChild(icons);
+    container.appendChild(row);
+    return true;
+  }
+
+  // Paper Colour control — a real Colour Kit swatch (reusing the shared
+  // widget every other colour-editing surface in this codebase already
+  // uses, so the picker vocabulary reads identically here) plus a
+  // Transparent checkbox, matching the exact "Colour + Transparent"
+  // pattern this codebase's other colour editors (Background Colour,
+  // Frame Style Fill, Universal Text/Colour Experience) already
+  // established. Writes two flat keys: `v2PaperContentKind` (either
+  // 'color' when opaque or 'none' when transparent) and
+  // `v2PaperContentColor` (the picked hex).
+  function _mountV2PaperColourControl(container,sceneId){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let currentColor='#FFFFFF';
+    let currentKind='none';
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      const paper=layers && layers.paper;
+      if(paper && paper.content){
+        currentKind=paper.content.kind || 'none';
+        if(paper.content.color) currentColor=paper.content.color;
+      }
+    }catch(e){}
+    const row=document.createElement('div');
+    row.className='designer-row context-row';
+    const label=document.createElement('div');
+    label.className='designer-row-label';
+    label.textContent='Paper Colour';
+    row.appendChild(label);
+
+    // Colour Kit swatch row — reuse the shared widget when available so
+    // the popup shows the same swatches + native picker every other
+    // colour-editing surface in this app already does. Falls back to a
+    // plain <input type=color> only if the shared widget hasn't loaded
+    // (a defensive path that shouldn't be reachable in production, since
+    // every real boot loads js/cardDesigner.js which owns the export).
+    if(typeof CardDesigner!=='undefined' && typeof CardDesigner.buildColourKit==='function'){
+      try{
+        CardDesigner.buildColourKit(row,{
+          value:currentColor,
+          onInput:function(hex){
+            if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+            try{
+              SceneEngine.setContentOverride(slide,sceneId,'v2PaperContentColor',hex);
+              // Setting a colour also opts Paper's content INTO the 'color'
+              // kind — otherwise a Story Author picking a colour on a Paper
+              // whose current kind is 'none' or 'image' would silently do
+              // nothing visible until they also flipped the kind. This
+              // matches how the pre-existing Background Colour control on a
+              // page already infers the enclosing kind from the action.
+              SceneEngine.setContentOverride(slide,sceneId,'v2PaperContentKind','color');
+            }catch(e){ return; }
+            _afterPlaceEdit();
+          }
+        });
+      }catch(e){}
+    }else{
+      const inp=document.createElement('input');
+      inp.type='color';
+      inp.value=currentColor;
+      inp.addEventListener('input',function(){
+        if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+        try{
+          SceneEngine.setContentOverride(slide,sceneId,'v2PaperContentColor',inp.value);
+          SceneEngine.setContentOverride(slide,sceneId,'v2PaperContentKind','color');
+        }catch(e){ return; }
+        _afterPlaceEdit();
+      });
+      row.appendChild(inp);
+    }
+
+    // Transparent checkbox — sets the kind to 'none' (Paper renders
+    // through to the Scene beneath, per spec §1.1 "where Paper is
+    // absent, the Scene shows through"). Unchecking flips the kind
+    // back to 'color' using the last-picked colour, so a round trip
+    // never loses the swatch.
+    const tWrap=document.createElement('label');
+    tWrap.className='context-transparent-toggle';
+    tWrap.style.display='inline-flex';
+    tWrap.style.alignItems='center';
+    tWrap.style.gap='6px';
+    tWrap.style.marginLeft='8px';
+    tWrap.style.fontSize='13px';
+    const cb=document.createElement('input');
+    cb.type='checkbox';
+    cb.checked=(currentKind==='none');
+    cb.addEventListener('change',function(){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{
+        SceneEngine.setContentOverride(slide,sceneId,'v2PaperContentKind',cb.checked?'none':'color');
+      }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+    tWrap.appendChild(cb);
+    const cbLbl=document.createElement('span');
+    cbLbl.textContent='Transparent';
+    tWrap.appendChild(cbLbl);
+    row.appendChild(tWrap);
+
     container.appendChild(row);
     return true;
   }
