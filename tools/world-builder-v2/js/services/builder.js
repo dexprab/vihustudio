@@ -416,19 +416,34 @@ class BuildEngine {
                 // fields. Absent (every Place before Phase 2b, and every
                 // Place that never opted in), the field is omitted
                 // entirely — every existing Theme still compiles
-                // byte-identically. Phases 4/5 will teach the render
-                // engines to consume this when present; Phase 7 retires
-                // the legacy `frame`/`padding`/`fit`/`shape` fields.
+                // byte-identically. Phases 4/5 taught the Studio render
+                // engine to consume this when present.
                 const v2Layers = _compileV2Layers(h.v2Layers);
+                // Place · Frame · Paper · Art Model V2 — Phase 7.
+                // On a V2 Place (v2Layers present), the four legacy
+                // fields `frame`/`padding`/`fit`/`shape` are now
+                // redundant duplicates of information living inside the
+                // V2 layer skeleton (Frame Variation reference → Frame
+                // content/border; place padding → Frame internal
+                // padding; place fit → Art fitMode; place shape → Frame
+                // geometry). Retire them from the compiled shape so a
+                // V2 Place's compiled placeRects entry no longer
+                // carries a stale, no-longer-consumed copy — the
+                // Studio render pipeline (Phase 4) already gates all
+                // four legacy reads (`_resolvePlaceShape`,
+                // `frameVariationId` seeding at line ~1020) behind
+                // `!place.v2Layers` via _drawPlaceV2 dispatch at line
+                // ~4242, so nothing downstream reads them on a V2
+                // Place today. On a LEGACY Place (v2Layers absent),
+                // every field stays exactly as before — Museum
+                // Gallery and every already-published Theme compile
+                // byte-identically, confirmed via the standing
+                // museum_legacy_path_regression git-stash A/B.
                 const compiled = {
                     id: h.id,
                     name: h.name || null,
                     position: { x: (h.position && h.position.x) || 0, y: (h.position && h.position.y) || 0 },
                     size: { w: (h.size && h.size.w) || 0, h: (h.size && h.size.h) || 0 },
-                    shape: h.shape || 'rectangle',
-                    padding: (typeof h.padding === 'number') ? h.padding : 0,
-                    fit: h.fit || 'fit',
-                    frame: h.frame || null,
                     visible: visible,
                     moveable: moveable,
                     editable: editable,
@@ -436,7 +451,17 @@ class BuildEngine {
                     rotatable: rotatable,
                     rotation: rotation
                 };
-                if (v2Layers) compiled.v2Layers = v2Layers;
+                if (v2Layers) {
+                    compiled.v2Layers = v2Layers;
+                } else {
+                    // Legacy Place — carry the four retiring fields
+                    // through unchanged, preserving byte-identical
+                    // output for every Theme authored before V2.
+                    compiled.shape = h.shape || 'rectangle';
+                    compiled.padding = (typeof h.padding === 'number') ? h.padding : 0;
+                    compiled.fit = h.fit || 'fit';
+                    compiled.frame = h.frame || null;
+                }
                 return compiled;
             })
         });
