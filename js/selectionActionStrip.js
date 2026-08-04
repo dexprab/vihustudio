@@ -331,9 +331,11 @@ const SelectionActionStrip=(function(){
             }
             [['frame','Frame'],['paper','Paper'],['art','Art']].forEach(function(pair){
               if(lp(pair[0],'rotate') && _mountV2LayerRotation(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
-              // Phase 14 — tilt shares the rotate permission bucket
-              // (a rotate-class transform, per _v2ActionForTarget).
+              // Phase 14/15 — tilt and perspective share the rotate
+              // permission bucket (rotate-class transforms, per
+              // _v2ActionForTarget).
               if(lp(pair[0],'rotate') && _mountV2LayerTiltSliders(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
+              if(lp(pair[0],'rotate') && _mountV2LayerPerspectiveControls(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
             });
             if(lp('frame','resize') && _mountV2MatGapSlider(editPanelEl,sel.sceneId)) mounted=true;
             [['paper','Paper'],['art','Art']].forEach(function(pair){
@@ -719,6 +721,66 @@ const SelectionActionStrip=(function(){
     _v2SliderRow(container,layerLabel+' Tilt ↔',-45,45,Math.round(curY),deg,function(v){
       if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
       try{ SceneEngine.setContentOverride(slide,sceneId,yKey,v); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+    return true;
+  }
+
+  // Phase 15 — per-layer perspective: a receding-edge picker (None/Top/
+  // Bottom/Left/Right, the same .icon-row/.icon-card button vocabulary
+  // _mountV2FrameGeometryPicker already uses) plus a strength slider,
+  // writing the flat v2<Layer>PerspAnchor / v2<Layer>PerspStrength
+  // override keys. Same rotate-class permission bucket as Spin/Tilt.
+  function _mountV2LayerPerspectiveControls(container,sceneId,layerKind,layerLabel){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let curAnchor='none', curStrength=0;
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      const p=layers && layers[layerKind] && layers[layerKind].perspective;
+      if(p && p.anchor) curAnchor=p.anchor;
+      if(p && typeof p.strength==='number') curStrength=p.strength;
+    }catch(e){}
+    const anchorKey='v2'+layerLabel+'PerspAnchor', strengthKey='v2'+layerLabel+'PerspStrength';
+    const row=document.createElement('div');
+    row.className='designer-row context-row';
+    const label=document.createElement('div');
+    label.className='designer-row-label';
+    label.textContent=layerLabel+' Lean';
+    row.appendChild(label);
+    const icons=document.createElement('div');
+    icons.className='icon-row';
+    [['none','None'],['top','Top'],['bottom','Bottom'],['left','Left'],['right','Right']].forEach(function(c){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='icon-card'+(curAnchor===c[0]?' active':'');
+      const lbl=document.createElement('span');
+      lbl.className='icon-label';
+      lbl.textContent=c[1];
+      btn.appendChild(lbl);
+      btn.addEventListener('click',function(){
+        if(curAnchor===c[0]) return;
+        if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+        try{
+          if(c[0]==='none'){
+            // "None" clears both keys — SceneEngine.setContentOverride
+            // deletes an entry on null, so the authored base wins again.
+            SceneEngine.setContentOverride(slide,sceneId,anchorKey,null);
+            SceneEngine.setContentOverride(slide,sceneId,strengthKey,null);
+          }else{
+            SceneEngine.setContentOverride(slide,sceneId,anchorKey,c[0]);
+          }
+        }catch(e){ return; }
+        _afterPlaceEdit();
+        _openEditPanel(); // rebuild so the newly-picked edge shows as .active
+      });
+      icons.appendChild(btn);
+    });
+    row.appendChild(icons);
+    container.appendChild(row);
+    _v2SliderRow(container,layerLabel+' Lean Strength',0,85,Math.round(curStrength*100),function(v){ return v+'%'; },function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,strengthKey,v/100); }catch(e){ return; }
       _afterPlaceEdit();
     });
     return true;

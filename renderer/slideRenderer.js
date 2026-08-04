@@ -430,7 +430,10 @@ const SlideRenderer=(()=>{
       ['v2FramePadding','padding'],
       // Phase 14 — tilt (X/Y shear, degrees ±45).
       ['v2FrameTiltX','__tiltX'],
-      ['v2FrameTiltY','__tiltY']
+      ['v2FrameTiltY','__tiltY'],
+      // Phase 15 — perspective (anchor edge + strength 0..0.85).
+      ['v2FramePerspAnchor','__perspAnchor'],
+      ['v2FramePerspStrength','__perspStrength']
     ],
     paper:[
       ['v2PaperVisible','visible'],
@@ -440,7 +443,9 @@ const SlideRenderer=(()=>{
       ['v2PaperBoundsW','__boundsW'],
       ['v2PaperBoundsH','__boundsH'],
       ['v2PaperTiltX','__tiltX'],
-      ['v2PaperTiltY','__tiltY']
+      ['v2PaperTiltY','__tiltY'],
+      ['v2PaperPerspAnchor','__perspAnchor'],
+      ['v2PaperPerspStrength','__perspStrength']
     ],
     art:[
       ['v2ArtVisible','visible'],
@@ -450,7 +455,9 @@ const SlideRenderer=(()=>{
       ['v2ArtBoundsW','__boundsW'],
       ['v2ArtBoundsH','__boundsH'],
       ['v2ArtTiltX','__tiltX'],
-      ['v2ArtTiltY','__tiltY']
+      ['v2ArtTiltY','__tiltY'],
+      ['v2ArtPerspAnchor','__perspAnchor'],
+      ['v2ArtPerspStrength','__perspStrength']
     ]
   };
   // Phase 13 — which permission ACTION an override target falls under,
@@ -461,9 +468,11 @@ const SlideRenderer=(()=>{
   // discipline getPlaceRotation already established for legacy Place
   // rotation.
   function _v2ActionForTarget(targetKey){
-    // Phase 14: tilt is a rotate-class transform — same permission
-    // bucket per-layer `transform` / Place-wide `rotatable` govern.
-    if(targetKey==='rotation' || targetKey==='__tiltX' || targetKey==='__tiltY') return 'rotate';
+    // Phase 14/15: tilt and perspective are rotate-class transforms —
+    // same permission bucket per-layer `transform` / Place-wide
+    // `rotatable` govern.
+    if(targetKey==='rotation' || targetKey==='__tiltX' || targetKey==='__tiltY' ||
+       targetKey==='__perspAnchor' || targetKey==='__perspStrength') return 'rotate';
     if(targetKey==='padding' || targetKey==='__boundsW' || targetKey==='__boundsH') return 'resize';
     if(targetKey==='visible') return 'visible';
     return 'content';
@@ -484,8 +493,9 @@ const SlideRenderer=(()=>{
         // writing an override would mutate the compiled theme object
         // shared across every render. permissions is cloned too for
         // the same defensive reason, though nothing writes to it here.
-        // Phase 14 adds tilt ({x,y}, mutated per-field by __tiltX/Y).
-        if(k==='border' || k==='content' || k==='bounds' || k==='permissions' || k==='tilt'){
+        // Phase 14 adds tilt ({x,y}, mutated per-field by __tiltX/Y);
+        // Phase 15 adds perspective ({anchor,strength}) likewise.
+        if(k==='border' || k==='content' || k==='bounds' || k==='permissions' || k==='tilt' || k==='perspective'){
           c[k]=layer[k] ? Object.assign({},layer[k]) : null;
         }else{
           c[k]=layer[k];
@@ -558,6 +568,12 @@ const SlideRenderer=(()=>{
         }else if(targetKey==='__tiltY'){
           if(!layer.tilt) layer.tilt={};
           layer.tilt.y=val;
+        }else if(targetKey==='__perspAnchor'){
+          if(!layer.perspective) layer.perspective={};
+          layer.perspective.anchor=val;
+        }else if(targetKey==='__perspStrength'){
+          if(!layer.perspective) layer.perspective={};
+          layer.perspective.strength=val;
         }else{
           layer[targetKey]=val;
         }
@@ -748,6 +764,80 @@ const SlideRenderer=(()=>{
     }
     const _tiltActive=function(t){ return !!(t && ((t.x||0)!==0 || (t.y||0)!==0)); };
     const frameHasXform=!!frameRot || _tiltActive(frameTilt);
+    // Phase 15 — perspective (spec §4 step 3: vanishing-point warp,
+    // anchor + strength). Not expressible as a Canvas 2D affine
+    // transform (the spec's own "perspective needs a 4-point mapping"
+    // note), so an active layer paints into an offscreen canvas first
+    // and is composited back as N thin strips, each with its own affine
+    // scale about the Place centre — the classic keystone
+    // approximation. anchor names the RECEDING edge ('top' = the top
+    // edge shrinks toward a vanishing point); strength 0..0.85 is how
+    // far it recedes. Applied AFTER rotation+tilt per the spec's own
+    // transform-stack order: the layer's rotated/tilted output is what
+    // the offscreen holds, and the strips warp that. Frame's
+    // perspective warps the WHOLE stack (containment §1.1); Paper/Art
+    // warp only their own layer, composited back under the still-live
+    // Frame clip so the warp can never leak past the Frame geometry.
+    // null/absent (every pre-Phase-15 Place) skips the offscreen
+    // entirely — byte-identical legacy render, zero extra cost.
+    function _v2NormPerspective(p){
+      if(!p || typeof p!=='object') return null;
+      const a=p.anchor;
+      if(a!=='top' && a!=='bottom' && a!=='left' && a!=='right') return null;
+      const st=Math.max(0,Math.min(0.85,(typeof p.strength==='number')?p.strength:0));
+      if(!st) return null;
+      return {anchor:a,strength:st};
+    }
+    const framePersp=_v2NormPerspective(frame.perspective);
+    const paperPersp=paper?_v2NormPerspective(paper.perspective):null;
+    const artPersp=art?_v2NormPerspective(art.perspective):null;
+    function _v2WithPerspective(persp,drawFn){
+      if(!persp){ drawFn(); return; }
+      const off=document.createElement('canvas');
+      off.width=Math.max(1,Math.round(_viewportW*_dpr));
+      off.height=Math.max(1,Math.round(_viewportH*_dpr));
+      const offCtx=off.getContext('2d');
+      offCtx.setTransform(_dpr,0,0,_dpr,0,0);
+      // drawFrameSwatch's own established context-swap technique: every
+      // draw helper reads the module-level `x` live, so retargeting it
+      // reuses the whole paint pipeline against the offscreen with zero
+      // duplication. The composite below runs on the REAL context, so
+      // it inherits whatever ambient transform (an enclosing Frame
+      // rotation/tilt) and clip (the Frame geometry) are active there.
+      const saved=x;
+      x=offCtx;
+      try{ drawFn(); } finally { x=saved; }
+      const st=persp.strength, anchor=persp.anchor;
+      x.save();
+      x.imageSmoothingEnabled=true;
+      if(anchor==='top' || anchor==='bottom'){
+        // Horizontal strips, each scaled horizontally about the Place
+        // centre. Rows outside the Place rect clamp to the nearest
+        // edge's scale (content only reaches there via an enclosing
+        // rotation — an accepted approximation).
+        const t0=placeRect.y, hgt=Math.max(1,placeRect.h);
+        const steps=Math.max(24,Math.min(260,Math.round(hgt)));
+        for(let i=0;i<steps;i++){
+          const y0=_viewportH*i/steps, y1=_viewportH*(i+1)/steps;
+          const rel=Math.max(0,Math.min(1,((y0+y1)/2-t0)/hgt));
+          const sc=(anchor==='top')?(1-st*(1-rel)):(1-st*rel);
+          x.drawImage(off, 0, y0*_dpr, _viewportW*_dpr, Math.max(1,(y1-y0)*_dpr),
+            _v2cx+(0-_v2cx)*sc, y0, _viewportW*sc, (y1-y0));
+        }
+      }else{
+        // Vertical strips, scaled vertically about the Place centre.
+        const l0=placeRect.x, wid=Math.max(1,placeRect.w);
+        const steps=Math.max(24,Math.min(260,Math.round(wid)));
+        for(let i=0;i<steps;i++){
+          const x0=_viewportW*i/steps, x1=_viewportW*(i+1)/steps;
+          const rel=Math.max(0,Math.min(1,((x0+x1)/2-l0)/wid));
+          const sc=(anchor==='left')?(1-st*(1-rel)):(1-st*rel);
+          x.drawImage(off, x0*_dpr, 0, Math.max(1,(x1-x0)*_dpr), _viewportH*_dpr,
+            x0, _v2cy+(0-_v2cy)*sc, (x1-x0), _viewportH*sc);
+        }
+      }
+      x.restore();
+    }
     // Phase 11 — Frame internal padding (the mat gap) + per-layer
     // bounds. `frame.padding` is a fraction of the Place rect's short
     // edge; it insets an inner rect that Paper/Art resolve their own
@@ -769,6 +859,13 @@ const SlideRenderer=(()=>{
       const w=innerRect.w*fw, h=innerRect.h*fh;
       return {x:innerRect.x+(innerRect.w-w)/2, y:innerRect.y+(innerRect.h-h)/2, w:w, h:h};
     }
+    // Phase 15 — the whole stack is a function so Frame's own
+    // perspective (which warps clip + border + Paper/Art together, per
+    // containment §1.1) can route it through the offscreen keystone
+    // compositor above. With no Frame perspective (every pre-Phase-15
+    // Place) _v2WithPerspective calls it straight through — the exact
+    // pre-restructure control flow, byte-identical.
+    const _paintV2Stack=function(){
     if(frameHasXform){ x.save(); _v2Rotate(frameRot); _v2Tilt(frameTilt); }
     // Build Frame geometry as a Path2D — the shared clip for
     // Paper/Art/Frame's own border stroke.
@@ -778,9 +875,11 @@ const SlideRenderer=(()=>{
     if(paper && paper.visible!==false){
       x.save();
       x.clip(framePath);
-      _v2Rotate(paperRot);
-      _v2Tilt(paperTilt);
-      _v2PaintSurfaceLayer(paper,_v2LayerRect(paper),chromeColor,s);
+      _v2WithPerspective(paperPersp,function(){
+        _v2Rotate(paperRot);
+        _v2Tilt(paperTilt);
+        _v2PaintSurfaceLayer(paper,_v2LayerRect(paper),chromeColor,s);
+      });
       x.restore();
     }
     // Art (middle) — clipped to Frame geometry, uses slide.image /
@@ -793,24 +892,26 @@ const SlideRenderer=(()=>{
       const artRect=_v2LayerRect(art);
       x.save();
       x.clip(framePath);
-      _v2Rotate(artRot);
-      _v2Tilt(artTilt);
-      if(hasArtContent){
-        _v2PaintSurfaceLayer(art,artRect,chromeColor,s);
-      }else if(artImg && artImg.width){
-        // Draw the slide's own picture through the existing
-        // _drawImage pipeline — reuses every legacy crop/pan/zoom
-        // behaviour and border-radius handling. Passing a null
-        // `border` is safe: _drawImage falls back to the panel rect
-        // as its clip, and we've already established the Frame
-        // geometry clip via the enclosing x.save/clip.
-        _drawImage(s,null,artRect,artImg,placeView,placeId);
-      }else{
-        // Nothing to show — draw a lightweight placeholder so the
-        // Place remains discoverable on-canvas rather than looking
-        // blank.
-        _v2DrawPlaceholder(artRect,chromeColor);
-      }
+      _v2WithPerspective(artPersp,function(){
+        _v2Rotate(artRot);
+        _v2Tilt(artTilt);
+        if(hasArtContent){
+          _v2PaintSurfaceLayer(art,artRect,chromeColor,s);
+        }else if(artImg && artImg.width){
+          // Draw the slide's own picture through the existing
+          // _drawImage pipeline — reuses every legacy crop/pan/zoom
+          // behaviour and border-radius handling. Passing a null
+          // `border` is safe: _drawImage falls back to the panel rect
+          // as its clip, and we've already established the Frame
+          // geometry clip via the enclosing x.save/clip.
+          _drawImage(s,null,artRect,artImg,placeView,placeId);
+        }else{
+          // Nothing to show — draw a lightweight placeholder so the
+          // Place remains discoverable on-canvas rather than looking
+          // blank.
+          _v2DrawPlaceholder(artRect,chromeColor);
+        }
+      });
       x.restore();
     }
     // Frame (top) — border stroke on the geometry path.
@@ -851,6 +952,8 @@ const SlideRenderer=(()=>{
       x.restore();
     }
     if(frameHasXform){ x.restore(); }
+    };
+    _v2WithPerspective(framePersp,_paintV2Stack);
     // The hit-test bbox stays the unrotated placeRect — the identical
     // convention whole-Place rotation already established upstream.
     return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};

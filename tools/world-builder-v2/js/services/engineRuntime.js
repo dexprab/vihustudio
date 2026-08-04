@@ -582,6 +582,67 @@ const EngineV2Runtime = (function () {
         }
         const tiltActive = function (t) { return !!(t && ((t.x || 0) !== 0 || (t.y || 0) !== 0)); };
         const frameHasXform = !!frameRot || tiltActive(frameTilt);
+        // Phase 15 — perspective (vanishing-point warp), mirroring
+        // Studio's own _drawPlaceV2 exactly: not expressible as an
+        // affine ctx transform, so an active layer paints into an
+        // offscreen canvas and is composited back as N thin strips,
+        // each scaled about the Place centre (keystone approximation).
+        // anchor names the RECEDING edge; strength 0..0.85. Applied
+        // after rotation+tilt (spec §4 order). Frame's perspective
+        // warps the whole stack; Paper/Art warp their own layer under
+        // the still-live Frame clip. null → straight call, zero cost.
+        function normPersp(p) {
+            if (!p || typeof p !== 'object') return null;
+            const a = p.anchor;
+            if (a !== 'top' && a !== 'bottom' && a !== 'left' && a !== 'right') return null;
+            const st = Math.max(0, Math.min(0.85, (typeof p.strength === 'number') ? p.strength : 0));
+            if (!st) return null;
+            return { anchor: a, strength: st };
+        }
+        const framePersp = normPersp(frame.perspective);
+        const paperPersp = paper ? normPersp(paper.perspective) : null;
+        const artPersp = art ? normPersp(art.perspective) : null;
+        function withPerspective(persp, drawFn) {
+            if (!persp) { drawFn(); return; }
+            const off = document.createElement('canvas');
+            off.width = graph.width; off.height = graph.height;
+            const offCtx = off.getContext('2d');
+            // Studio's drawFrameSwatch context-swap technique, adapted:
+            // reassigning the `ctx` parameter retargets every closure
+            // (v2Rotate/v2Tilt and all the paint calls below read `ctx`
+            // live), so the whole pipeline reuses against the offscreen
+            // with zero duplication; the strip composite runs on the
+            // restored real context, inheriting its ambient transform
+            // (an enclosing Frame rotation/tilt) and clip.
+            const saved = ctx;
+            ctx = offCtx;
+            try { drawFn(); } finally { ctx = saved; }
+            const st = persp.strength, anchor = persp.anchor;
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            if (anchor === 'top' || anchor === 'bottom') {
+                const t0 = rect.y, hgt = Math.max(1, rect.h);
+                const steps = Math.max(24, Math.min(260, Math.round(hgt)));
+                for (let i = 0; i < steps; i++) {
+                    const y0 = graph.height * i / steps, y1 = graph.height * (i + 1) / steps;
+                    const rel = Math.max(0, Math.min(1, ((y0 + y1) / 2 - t0) / hgt));
+                    const sc = (anchor === 'top') ? (1 - st * (1 - rel)) : (1 - st * rel);
+                    ctx.drawImage(off, 0, y0, graph.width, Math.max(1, y1 - y0),
+                        v2cx + (0 - v2cx) * sc, y0, graph.width * sc, (y1 - y0));
+                }
+            } else {
+                const l0 = rect.x, wid = Math.max(1, rect.w);
+                const steps = Math.max(24, Math.min(260, Math.round(wid)));
+                for (let i = 0; i < steps; i++) {
+                    const x0 = graph.width * i / steps, x1 = graph.width * (i + 1) / steps;
+                    const rel = Math.max(0, Math.min(1, ((x0 + x1) / 2 - l0) / wid));
+                    const sc = (anchor === 'left') ? (1 - st * (1 - rel)) : (1 - st * rel);
+                    ctx.drawImage(off, x0, 0, Math.max(1, x1 - x0), graph.height,
+                        x0, v2cy + (0 - v2cy) * sc, (x1 - x0), graph.height * sc);
+                }
+            }
+            ctx.restore();
+        }
         // Phase 11 — Frame internal padding (the mat gap) + per-layer
         // bounds, mirroring Studio's own _drawPlaceV2 exactly: padding
         // is a fraction of the Place rect's short edge insetting an
@@ -601,6 +662,11 @@ const EngineV2Runtime = (function () {
             const w = innerRect.w * fw, h = innerRect.h * fh;
             return { x: innerRect.x + (innerRect.w - w) / 2, y: innerRect.y + (innerRect.h - h) / 2, w: w, h: h };
         }
+        // Phase 15 — the whole stack is a function so Frame's own
+        // perspective can route it through the keystone compositor;
+        // with none, withPerspective calls straight through
+        // (byte-identical pre-Phase-15 control flow).
+        const paintV2Stack = function () {
         if (frameHasXform) { ctx.save(); v2Rotate(frameRot); v2Tilt(frameTilt); }
         const framePath = _v2FramePath(rect, frame.geometry || 'rectangle');
 
@@ -608,9 +674,11 @@ const EngineV2Runtime = (function () {
         if (paper && paper.visible !== false) {
             ctx.save();
             ctx.clip(framePath);
-            v2Rotate(paperRot);
-            v2Tilt(paperTilt);
-            _v2PaintContent(ctx, paper.content, v2LayerRect(paper), graph);
+            withPerspective(paperPersp, function () {
+                v2Rotate(paperRot);
+                v2Tilt(paperTilt);
+                _v2PaintContent(ctx, paper.content, v2LayerRect(paper), graph);
+            });
             ctx.restore();
         }
 
@@ -624,19 +692,21 @@ const EngineV2Runtime = (function () {
             const artRect = v2LayerRect(art);
             ctx.save();
             ctx.clip(framePath);
-            v2Rotate(artRot);
-            v2Tilt(artTilt);
-            if (hasArtContent) {
-                _v2PaintContent(ctx, art.content, artRect, graph);
-            } else if (graph.representativeImage) {
-                _drawImageWithFit(ctx, graph.representativeImage, artRect, 'fill');
-            } else {
-                ctx.save();
-                ctx.globalAlpha = 0.06;
-                ctx.fillStyle = '#2C2A26';
-                ctx.fillRect(artRect.x, artRect.y, artRect.w, artRect.h);
-                ctx.restore();
-            }
+            withPerspective(artPersp, function () {
+                v2Rotate(artRot);
+                v2Tilt(artTilt);
+                if (hasArtContent) {
+                    _v2PaintContent(ctx, art.content, artRect, graph);
+                } else if (graph.representativeImage) {
+                    _drawImageWithFit(ctx, graph.representativeImage, artRect, 'fill');
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = 0.06;
+                    ctx.fillStyle = '#2C2A26';
+                    ctx.fillRect(artRect.x, artRect.y, artRect.w, artRect.h);
+                    ctx.restore();
+                }
+            });
             ctx.restore();
         }
 
@@ -670,6 +740,8 @@ const EngineV2Runtime = (function () {
             ctx.restore();
         }
         if (frameHasXform) { ctx.restore(); }
+        };
+        withPerspective(framePersp, paintV2Stack);
     }
 
     // Frame geometry as a Path2D — same math as Studio's own

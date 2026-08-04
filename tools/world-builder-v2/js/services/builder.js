@@ -1191,6 +1191,10 @@ function _compileV2Frame(f) {
         // Absent/null on anything authored before this phase → null,
         // byte-identical render.
         tilt: (f.tilt && typeof f.tilt === 'object') ? { x: f.tilt.x || 0, y: f.tilt.y || 0 } : null,
+        // Phase 15 — perspective ({anchor, strength}; spec §4's
+        // vanishing-point warp). Absent/null → null, byte-identical.
+        perspective: (f.perspective && typeof f.perspective === 'object' && f.perspective.anchor)
+            ? { anchor: f.perspective.anchor, strength: f.perspective.strength || 0 } : null,
         // Phase 11 — Frame internal padding (the mat gap): a fraction of
         // the Place rect's short edge that insets the inner rect Paper/
         // Art resolve their bounds against. Absent → 0, byte-identical.
@@ -1212,6 +1216,8 @@ function _compileV2SurfaceLayer(l) {
         bounds: l.bounds || null,
         rotation: (typeof l.rotation === 'number') ? l.rotation : 0,
         tilt: (l.tilt && typeof l.tilt === 'object') ? { x: l.tilt.x || 0, y: l.tilt.y || 0 } : null,
+        perspective: (l.perspective && typeof l.perspective === 'object' && l.perspective.anchor)
+            ? { anchor: l.perspective.anchor, strength: l.perspective.strength || 0 } : null,
         permissions: l.permissions || null
     };
 }

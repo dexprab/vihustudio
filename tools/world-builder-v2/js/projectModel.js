@@ -804,6 +804,10 @@ const ProjectModel = (function () {
         // pre-Phase-14 behaviour, so every already-authored layer
         // renders byte-identically. Frame's tilt carries Paper/Art
         // with it (containment §1.1), exactly like rotation.
+        // Phase 15 — every layer carries `perspective` ({anchor,
+        // strength}: the receding edge — 'top'|'bottom'|'left'|'right'
+        // — plus how far it recedes, 0..0.85; spec §4's vanishing-point
+        // warp). null = none, byte-identical legacy.
         if (kind === 'frame') {
             return {
                 visible: true,
@@ -813,6 +817,7 @@ const ProjectModel = (function () {
                 bounds: null,
                 rotation: 0,
                 tilt: null,
+                perspective: null,
                 padding: 0,
                 permissions: null
             };
@@ -825,6 +830,7 @@ const ProjectModel = (function () {
             bounds: null,
             rotation: 0,
             tilt: null,
+            perspective: null,
             permissions: null
         };
     }

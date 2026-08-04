@@ -7712,6 +7712,39 @@
             })));
         })();
 
+        // Phase 15 — perspective (spec §4's vanishing-point warp): a
+        // receding-edge picker plus a strength slider. Picking "None"
+        // stores null so an untouched-then-restored layer compiles
+        // byte-identically; picking an edge with strength still 0 keeps
+        // the anchor stored (renders as a no-op until strength moves),
+        // so the choice never silently vanishes mid-authoring.
+        (function () {
+            const pv = (layer.perspective && typeof layer.perspective === 'object') ? layer.perspective : null;
+            const curAnchor = (pv && pv.anchor) || 'none';
+            const curStrength = Math.round(((pv && typeof pv.strength === 'number') ? pv.strength : 0) * 100);
+            function setPersp(anchor, strengthPct) {
+                const val = (anchor === 'none' || !anchor) ? null : { anchor: anchor, strength: Math.max(0, Math.min(85, strengthPct)) / 100 };
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { perspective: val });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            }
+            let liveAnchor = curAnchor, liveStrength = curStrength;
+            body.appendChild(_buildFieldGroup('Perspective (Receding Edge)', _select([
+                { value: 'none', label: 'None' },
+                { value: 'top', label: 'Top' },
+                { value: 'bottom', label: 'Bottom' },
+                { value: 'left', label: 'Left' },
+                { value: 'right', label: 'Right' }
+            ], curAnchor, function (v) {
+                liveAnchor = v;
+                setPersp(liveAnchor, liveStrength);
+            })));
+            body.appendChild(_buildFieldGroup('Perspective Strength %', _range(0, 85, curStrength, function (v) {
+                liveStrength = v;
+                setPersp(liveAnchor, liveStrength);
+            })));
+        })();
+
         // Phase 11 — bounds / mat gap (spec §2 Max/Min size + Resize).
         // Frame authors `padding` (the mat gap): a % of the Place's short
         // edge insetting the inner rect Paper/Art live within. Paper/Art
