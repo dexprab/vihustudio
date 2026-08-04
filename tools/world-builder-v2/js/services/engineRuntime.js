@@ -223,7 +223,18 @@ const EngineV2Runtime = (function () {
                 ctx.rotate(rotDeg * Math.PI / 180);
                 ctx.translate(-cx, -cy);
             }
-            _paintHolder(ctx, holder, graph);
+            // Place · Frame · Paper · Art Model V2 — Phase 9: a Place
+            // that opted into V2 (live holder.v2Layers present) paints
+            // through the V2 stack so Builder's Working View / Runtime
+            // Preview finally show what Studio will actually render
+            // (closing the "Phase 4.5" preview-Fidelity gap the rollout
+            // doc disclosed). Every legacy Place falls through to
+            // _paintHolder byte-identically.
+            if (holder.v2Layers) {
+                _paintHolderV2(ctx, holder, graph);
+            } else {
+                _paintHolder(ctx, holder, graph);
+            }
             // A Place-hosted Layer never paints past a hidden Place —
             // content anchored to something not itself shown has
             // nothing to anchor to.
@@ -502,6 +513,186 @@ const EngineV2Runtime = (function () {
             matInset: marginPx + thicknessPx,
             contentInset: marginPx + thicknessPx + matPx + paddingPx
         };
+    }
+
+    // ---------------------------------------------------------------
+    // Place · Frame · Paper · Art Model V2 — Phase 9 (Builder Working
+    // View parity). Mirrors root Studio's own _drawPlaceV2
+    // (renderer/slideRenderer.js) by hand, per the established
+    // twin-engine discipline — the two files share no drawing module,
+    // so this stays in lockstep with Studio's V2 stack the same way
+    // every other paired draw routine here already does.
+    //
+    // Reads the LIVE editable holder.v2Layers authoring model directly
+    // (Builder previews the Project, not a compiled package — there
+    // are no Story-Author overrides on this side). Paint order per
+    // spec §1.2, back → front: Paper → Art → Frame; Frame's geometry
+    // (rectangle / rounded / circle) is the shared clip; Frame owns
+    // the only border. Content kinds (colour / image / shape) resolve
+    // through the same graph.resolveLayerImage host-resolves-module-
+    // draws pattern and the same _drawShape routine every other image/
+    // shape draw in this module already uses — no second
+    // implementation of either. Legacy Places (v2Layers absent) never
+    // reach this function; render()'s dispatch falls through to
+    // _paintHolder unchanged, so every existing Scene renders
+    // byte-identically.
+    function _paintHolderV2(ctx, holder, graph) {
+        if (holder.permissions && holder.permissions.visible === false) return;
+        const rect = rectFor(holder, graph);
+        if (rect.w <= 0 || rect.h <= 0) return;
+        const v2 = holder.v2Layers;
+        if (!v2) return;
+        const frame = v2.frame || {};
+        const paper = v2.paper || null;
+        const art = v2.art || null;
+        const frameVisible = frame.visible !== false;
+        const framePath = _v2FramePath(rect, frame.geometry || 'rectangle');
+
+        // Paper (back).
+        if (paper && paper.visible !== false) {
+            ctx.save();
+            ctx.clip(framePath);
+            _v2PaintContent(ctx, paper.content, rect, graph);
+            ctx.restore();
+        }
+
+        // Art (middle) — authored content wins; else the World's own
+        // representative artwork (EV-002's Hero-Image stand-in, the
+        // exact same fallback the legacy _paintHolder already shows)
+        // cover-fits the Frame; else a light placeholder wash so the
+        // Place stays discoverable on-canvas.
+        const hasArtContent = art && art.content && art.content.kind && art.content.kind !== 'none';
+        if (art && art.visible !== false) {
+            ctx.save();
+            ctx.clip(framePath);
+            if (hasArtContent) {
+                _v2PaintContent(ctx, art.content, rect, graph);
+            } else if (graph.representativeImage) {
+                _drawImageWithFit(ctx, graph.representativeImage, rect, 'fill');
+            } else {
+                ctx.save();
+                ctx.globalAlpha = 0.06;
+                ctx.fillStyle = '#2C2A26';
+                ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        // Frame (top) — its own border stroke on the geometry path.
+        if (frameVisible && frame.border) {
+            const strokeColor = frame.border.color || '#333333';
+            const strokeWidth = (typeof frame.border.width === 'number') ? frame.border.width : 2;
+            if (strokeWidth > 0) {
+                ctx.save();
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = strokeWidth;
+                ctx.stroke(framePath);
+                ctx.restore();
+            }
+        }
+
+        // Frame content overlay — sits above Art and Paper (spec §1.2).
+        // Colour keeps Studio's own 0.15-alpha subtle-tint default; an
+        // author wanting an opaque Frame colour authors content.opacity.
+        if (frameVisible && frame.content && frame.content.kind && frame.content.kind !== 'none') {
+            const fc = frame.content;
+            ctx.save();
+            ctx.clip(framePath);
+            if (fc.kind === 'color' && fc.color) {
+                ctx.fillStyle = fc.color;
+                ctx.globalAlpha = (typeof fc.opacity === 'number') ? fc.opacity : 0.15;
+                ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+            } else {
+                _v2PaintContent(ctx, fc, rect, graph);
+            }
+            ctx.restore();
+        }
+    }
+
+    // Frame geometry as a Path2D — same math as Studio's own
+    // _v2BuildFramePath (circle inscribed; rounded at a conservative
+    // 12% short-edge radius).
+    function _v2FramePath(rect, geom) {
+        const p = new Path2D();
+        if (geom === 'circle') {
+            const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+            p.arc(cx, cy, Math.min(rect.w, rect.h) / 2, 0, Math.PI * 2);
+            p.closePath();
+            return p;
+        }
+        if (geom === 'rounded') {
+            const r = Math.max(0, Math.min(rect.w, rect.h) * 0.12);
+            p.moveTo(rect.x + r, rect.y);
+            p.arcTo(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h, r);
+            p.arcTo(rect.x + rect.w, rect.y + rect.h, rect.x, rect.y + rect.h, r);
+            p.arcTo(rect.x, rect.y + rect.h, rect.x, rect.y, r);
+            p.arcTo(rect.x, rect.y, rect.x + rect.w, rect.y, r);
+            p.closePath();
+            return p;
+        }
+        p.rect(rect.x, rect.y, rect.w, rect.h);
+        return p;
+    }
+
+    // One V2 content spec (colour / image / shape) painted into `rect`.
+    // The caller has already established the Frame-geometry clip, so
+    // drawing straight to the full rect keeps "nothing outgrows Frame"
+    // (spec §1.1) enforced for free. Image rotation wraps around the
+    // rect's own centre — the identical convention the mat-band
+    // frameImage draw above already uses.
+    function _v2PaintContent(ctx, content, rect, graph) {
+        if (!content || !content.kind || content.kind === 'none') return;
+        if (content.kind === 'color' && content.color) {
+            ctx.save();
+            ctx.fillStyle = content.color;
+            if (typeof content.opacity === 'number') ctx.globalAlpha = content.opacity;
+            ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+            ctx.restore();
+            return;
+        }
+        if (content.kind === 'image' && content.image) {
+            const img = graph.resolveLayerImage(content.image);
+            if (!img) return; // still decoding — host redraws once ready
+            const rotation = content.rotation || 0;
+            ctx.save();
+            if (typeof content.opacity === 'number') ctx.globalAlpha = content.opacity;
+            if (rotation) {
+                const ccx = rect.x + rect.w / 2, ccy = rect.y + rect.h / 2;
+                ctx.translate(ccx, ccy);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.translate(-ccx, -ccy);
+            }
+            _drawImageWithFit(ctx, img, rect, content.fit || 'fill');
+            ctx.restore();
+            return;
+        }
+        if (content.kind === 'shape' && content.shape) {
+            const rotation = content.rotation || 0;
+            ctx.save();
+            if (typeof content.opacity === 'number') ctx.globalAlpha = content.opacity;
+            if (rotation) {
+                const scx = rect.x + rect.w / 2, scy = rect.y + rect.h / 2;
+                ctx.translate(scx, scy);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.translate(-scx, -scy);
+            }
+            _drawShape(
+                ctx,
+                content.shape,
+                rect,
+                content.fillColor || '#666666',
+                content.strokeColor || '#111111',
+                (typeof content.strokeWidth === 'number') ? content.strokeWidth : 0,
+                (typeof content.fillOpacity === 'number') ? content.fillOpacity : 1,
+                (typeof content.strokeOpacity === 'number') ? content.strokeOpacity : 1,
+                content.customPath || null,
+                content.fillMode || 'solid',
+                content.paintStrokes || null
+            );
+            ctx.restore();
+        }
+        // content.kind === 'experience' — Phase 16 (additive overlay).
     }
 
     function _paintHolder(ctx, holder, graph) {
