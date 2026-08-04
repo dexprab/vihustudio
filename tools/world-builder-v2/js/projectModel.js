@@ -755,7 +755,101 @@ const ProjectModel = (function () {
         // ship — reconciled to 0 on read, so the render path never sees
         // undefined and every legacy Place stays byte-identical.
         if (holder.rotation === undefined || holder.rotation === null) holder.rotation = 0;
+        // Place · Frame · Paper · Art Model V2 — Phase 2a (Model Storage).
+        // `v2Layers` is the opt-in V2 authoring surface: null (or absent)
+        // means "this Place uses the legacy Frame Variation model", exactly
+        // what every Place authored before this ship carries — so every
+        // existing Theme stays byte-identical. When set, it holds the three
+        // named layer models (Frame, Paper, Art) per the frozen spec
+        // (docs/PLACE_FRAME_MODEL_V2.md). Phase 2b adds the Inspector UI;
+        // Phase 3 wires the compile step; Phases 4/5 wire the two render
+        // engines. Absent here — nothing downstream reads this field yet.
+        if (holder.v2Layers === undefined) holder.v2Layers = null;
         return holder;
+    }
+
+    // ---------------------------------------------------------------
+    // Place · Frame · Paper · Art Model V2 — Phase 2a helpers.
+    // Nothing outside `_ensureHolderDefaults` (above) or the four exports
+    // at the bottom of this file references any of these functions yet.
+    // ---------------------------------------------------------------
+
+    function _defaultV2LayerModel(kind) {
+        // Per spec §2: Frame declares geometry + owns its own border;
+        // Paper/Art declare a fit mode instead and have no separate
+        // border of their own. `content` is null (no primary content
+        // yet — Phase 2b's Inspector will let a Theme Author pick a
+        // slot type and fill it in). `bounds` is null (means "fill the
+        // parent" — Frame fills the Place, Paper/Art fill the Frame,
+        // matching resolveLayerBounds()'s own null-proposed convention
+        // in js/placeFrameV2.js).
+        if (kind === 'frame') {
+            return {
+                visible: true,
+                geometry: 'rectangle',
+                border: null,
+                content: null,
+                bounds: null
+            };
+        }
+        // paper | art
+        return {
+            visible: true,
+            fitMode: 'fit-frame',
+            content: null,
+            bounds: null
+        };
+    }
+
+    function _defaultV2Layers() {
+        return {
+            frame: _defaultV2LayerModel('frame'),
+            paper: _defaultV2LayerModel('paper'),
+            art:   _defaultV2LayerModel('art')
+        };
+    }
+
+    function getHolderV2Layers(holder) {
+        if (!holder) return null;
+        _ensureHolderDefaults(holder);
+        return holder.v2Layers;
+    }
+
+    function enableHolderV2Layers(project, sceneId, holderId) {
+        const holder = findHolder(project, sceneId, holderId);
+        if (!holder) return null;
+        if (!holder.v2Layers) holder.v2Layers = _defaultV2Layers();
+        return holder.v2Layers;
+    }
+
+    function disableHolderV2Layers(project, sceneId, holderId) {
+        // Sets v2Layers back to null — the legacy Frame Variation
+        // resolution takes over again. Deliberately DELETES the
+        // authored V2 field data rather than preserving it under some
+        // "hidden" flag, matching this file's own established
+        // "single-source-of-truth" discipline: a Place either uses V2
+        // or it doesn't; there is no third "V2 disabled but still
+        // stored" state to reason about downstream.
+        const holder = findHolder(project, sceneId, holderId);
+        if (!holder) return;
+        holder.v2Layers = null;
+    }
+
+    function setHolderV2Layer(project, sceneId, holderId, layerKind, patch) {
+        // Merges `patch` onto the specified layer (frame|paper|art)
+        // via shallow assign, matching the same shape updateHolder /
+        // updateSceneLayer already use. Auto-enables V2 if not yet
+        // enabled — a caller writing a field implies they want V2.
+        // Refuses an unknown layer kind cleanly (returns null) so
+        // future phases can validate rather than crash.
+        if (layerKind !== 'frame' && layerKind !== 'paper' && layerKind !== 'art') return null;
+        const holder = findHolder(project, sceneId, holderId);
+        if (!holder) return null;
+        if (!holder.v2Layers) holder.v2Layers = _defaultV2Layers();
+        const layer = holder.v2Layers[layerKind];
+        if (!layer) return null;
+        Object.assign(layer, patch);
+        return layer;
     }
 
     // Creates a Scene from an Engine Scene Template — never from a blank
@@ -2305,6 +2399,13 @@ const ProjectModel = (function () {
         updateHolder: updateHolder,
         addHolder: addHolder,
         deleteHolder: deleteHolder,
+        // Place · Frame · Paper · Art Model V2 — Phase 2a. Nothing
+        // downstream reads any of these yet; Phase 2b's Inspector UI
+        // will be their first real caller.
+        getHolderV2Layers: getHolderV2Layers,
+        enableHolderV2Layers: enableHolderV2Layers,
+        disableHolderV2Layers: disableHolderV2Layers,
+        setHolderV2Layer: setHolderV2Layer,
         sceneStack: sceneStack,
         findSceneLayer: findSceneLayer,
         updateSceneLayer: updateSceneLayer,
