@@ -7590,13 +7590,14 @@
             enableBtn.addEventListener('click', function () {
                 window.ProjectModel.enableHolderV2Layers(currentProject, scene.id, holder.id);
                 _persist();
+                _redrawSceneCanvases(scene.id);
                 _renderContextPanel();
             });
             body.appendChild(enableBtn);
         } else {
             const status = document.createElement('div');
             status.className = 'wb-v2-status';
-            status.textContent = '✓ V2 rendering is not wired yet — this authoring surface persists your choices for a follow-up phase to consume.';
+            status.textContent = '✓ V2 Layers are live — Studio renders exactly what you author here.';
             status.style.marginBottom = '10px';
             body.appendChild(status);
 
@@ -7623,6 +7624,7 @@
                 if (!window.confirm('Turn V2 Layers off for this Place? Your V2 field values will be cleared. This cannot be undone.')) return;
                 window.ProjectModel.disableHolderV2Layers(currentProject, scene.id, holder.id);
                 _persist();
+                _redrawSceneCanvases(scene.id);
                 _renderContextPanel();
             });
             body.appendChild(disableBtn);
@@ -7659,6 +7661,7 @@
         visIn.addEventListener('change', function () {
             window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { visible: visIn.checked });
             _persist();
+            _redrawSceneCanvases(scene.id);
             _renderContextPanel();
         });
         visRow.appendChild(visIn);
@@ -7673,27 +7676,47 @@
         }
 
         // Content slot picker — Frame has no color slot per the V2 spec.
+        //
+        // Phase 8: 'experience' is no longer offered as a PRIMARY content
+        // kind. The frozen spec (§3 decision log) says an Experience is
+        // ALWAYS additive — "it composites on top of whatever the layer
+        // already holds... There is no replace mode" — so modelling it as
+        // one of the mutually-exclusive primary kinds (as Phase 2b's
+        // first cut did) contradicted the spec's own invariant, and
+        // js/placeFrameV2.js's experienceAugmentsLayer() already
+        // anticipated a SEPARATE `layer.experience` field. Phase 16 adds
+        // that separate additive Experience-overlay control; nothing in
+        // production ever persisted a {kind:'experience'} content (no
+        // published theme uses V2 yet), so dropping the chip is safe.
         const slots = layerKind === 'frame'
             ? [
-                { value: 'none',       label: 'None' },
-                { value: 'image',      label: 'Image' },
-                { value: 'shape',      label: 'Shape' },
-                { value: 'experience', label: 'Experience' }
+                { value: 'none',  label: 'None' },
+                { value: 'image', label: 'Image' },
+                { value: 'shape', label: 'Shape' }
             ]
             : [
-                { value: 'none',       label: 'None' },
-                { value: 'image',      label: 'Image' },
-                { value: 'color',      label: 'Colour' },
-                { value: 'shape',      label: 'Shape' },
-                { value: 'experience', label: 'Experience' }
+                { value: 'none',  label: 'None' },
+                { value: 'image', label: 'Image' },
+                { value: 'color', label: 'Colour' },
+                { value: 'shape', label: 'Shape' }
             ];
         const currentSlot = (layer.content && layer.content.kind) || 'none';
         body.appendChild(_buildFieldGroup('Content', _v2SlotPicker(slots, currentSlot, function (v) {
-            const next = v === 'none' ? null : { kind: v };
+            // Preserve any previously-authored value fields on a kind
+            // switch (colour, image ref, shape styling all survive a
+            // round trip through another kind) — only 'None' clears.
+            const next = v === 'none' ? null : Object.assign({}, layer.content || {}, { kind: v });
             window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { content: next });
             _persist();
+            _redrawSceneCanvases(scene.id);
             _renderContextPanel();
-        }), 'Content attachment (upload, colour, shape, Experience) lands in a follow-up phase — this phase persists the kind you pick.'));
+        })));
+
+        // Phase 8 — the actual content VALUE editor for whichever kind
+        // is picked. Compile (_compileV2Content, a deliberate pass-
+        // through) and Studio's renderer (Phase 5) already consume every
+        // field these controls write; only this UI was missing.
+        _appendV2ContentValueEditor(body, scene, holder, layerKind, layer);
 
         card.appendChild(body);
         return card;
@@ -7717,6 +7740,7 @@
         body.appendChild(_buildFieldGroup('Geometry', _select(geomOpts, layer.geometry || 'rectangle', function (v) {
             window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { geometry: v });
             _persist();
+            _redrawSceneCanvases(scene.id);
             _renderContextPanel();
         })));
 
@@ -7733,6 +7757,7 @@
             const next = bIn.checked ? { color: '#333333', width: 4 } : null;
             window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: next });
             _persist();
+            _redrawSceneCanvases(scene.id);
             _renderContextPanel();
         });
         borderToggle.appendChild(bIn);
@@ -7743,10 +7768,12 @@
             const colorGroup = _buildFieldGroup('Border colour', _colorInput(border.color || '#333333', function (v) {
                 window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: { color: v, width: border.width || 4 } });
                 _persist();
+                _redrawSceneCanvases(scene.id);
             }));
             const widthGroup = _buildFieldGroup('Border width', _range(0, 40, border.width || 4, function (v) {
                 window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, 'frame', { border: { color: border.color || '#333333', width: v } });
                 _persist();
+                _redrawSceneCanvases(scene.id);
             }));
             const row = document.createElement('div');
             row.className = 'wb-field-row';
@@ -7771,8 +7798,139 @@
         body.appendChild(_buildFieldGroup('Fit', _select(fitOpts, layer.fitMode || 'fit-frame', function (v) {
             window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { fitMode: v });
             _persist();
+            _redrawSceneCanvases(scene.id);
             _renderContextPanel();
         })));
+    }
+
+    // Phase 8 — read-modify-write a V2 layer's content object. Every
+    // content-value control funnels through here: merges `patch` onto
+    // the existing content (setHolderV2Layer's own Object.assign is
+    // shallow, so the caller must merge the nested content itself —
+    // see the model's own doc note), persists, and live-redraws.
+    function _v2SetContent(scene, holder, layerKind, layer, patch) {
+        const next = Object.assign({}, layer.content || {}, patch);
+        window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { content: next });
+        _persist();
+        _redrawSceneCanvases(scene.id);
+    }
+
+    // Phase 8 — the per-kind content VALUE editor. Reuses the exact
+    // established control set for each value type: Collection picker
+    // (reuse-or-upload, the same _renderCollectionPickerCore every
+    // image-bearing authoring surface already uses), SHAPE_KINDS tile
+    // grid (the Graphics part inspector's own pattern), colour swatch
+    // + opacity. "Transparent" for a Colour layer is the None chip —
+    // spec §5's own mapping ("Transparent = absent"), so no separate
+    // transparent checkbox is duplicated here.
+    function _appendV2ContentValueEditor(body, scene, holder, layerKind, layer) {
+        const content = layer.content || null;
+        const kind = (content && content.kind) || 'none';
+        if (kind === 'none') return;
+
+        if (kind === 'color') {
+            const colorGroup = _buildFieldGroup('Colour', _colorInput(content.color || '#FFFFFF', function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { color: v });
+            }));
+            const opGroup = _buildFieldGroup('Opacity %', _range(0, 100, Math.round(((typeof content.opacity === 'number') ? content.opacity : 1) * 100), function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { opacity: v / 100 });
+            }));
+            const row = document.createElement('div');
+            row.className = 'wb-field-row';
+            row.appendChild(colorGroup);
+            row.appendChild(opGroup);
+            body.appendChild(row);
+            return;
+        }
+
+        if (kind === 'image') {
+            const imageWrap = document.createElement('div');
+            imageWrap.className = 'wb-field-group';
+            _renderCollectionPickerCore(imageWrap, {
+                kind: 'image',
+                currentRef: content.image || null,
+                iconFallback: '🖼️',
+                accept: 'image/*',
+                labelText: 'Picture',
+                onCommit: function (ref) {
+                    // A fresh upload joins Collection exactly like the
+                    // Frame Variation frameImage picker's own commit —
+                    // one more producer of refs, nothing new.
+                    if (ref) window.ProjectModel.registerCollectionAsset(currentProject, ref, { kind: 'image', name: holder.name || 'Place' });
+                    _v2SetContent(scene, holder, layerKind, layer, { image: ref });
+                    _renderContextPanel();
+                }
+            });
+            body.appendChild(imageWrap);
+
+            const rotGroup = _buildFieldGroup('Rotation', _range(0, 359, content.rotation || 0, function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { rotation: v });
+            }));
+            const fitGroup = _buildFieldGroup('Fit', _select([
+                { value: 'fill',     label: 'Fill (crop)' },
+                { value: 'fit',      label: 'Fit (contain)' },
+                { value: 'stretch',  label: 'Stretch' },
+                { value: 'original', label: 'Original' }
+            ], content.fit || 'fill', function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { fit: v });
+            }));
+            const row = document.createElement('div');
+            row.className = 'wb-field-row';
+            row.appendChild(rotGroup);
+            row.appendChild(fitGroup);
+            body.appendChild(row);
+
+            body.appendChild(_buildFieldGroup('Opacity %', _range(0, 100, Math.round(((typeof content.opacity === 'number') ? content.opacity : 1) * 100), function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { opacity: v / 100 });
+            })));
+            return;
+        }
+
+        if (kind === 'shape') {
+            const shapeGrid = document.createElement('div');
+            shapeGrid.className = 'wb-scene-template-grid';
+            (window.ExperienceSchema.SHAPE_KINDS || []).forEach(function (s) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'wb-scene-template-card' + (content.shape === s.value ? ' active' : '');
+                card.disabled = currentProjectReadOnly;
+                card.style.fontSize = '22px';
+                card.style.textAlign = 'center';
+                card.textContent = s.icon;
+                card.title = s.label;
+                card.addEventListener('click', function () {
+                    _v2SetContent(scene, holder, layerKind, layer, { shape: s.value });
+                    _renderContextPanel();
+                });
+                shapeGrid.appendChild(card);
+            });
+            body.appendChild(_buildFieldGroup('Shape', shapeGrid));
+
+            const fillGroup = _buildFieldGroup('Fill colour', _colorInput(content.fillColor || '#666666', function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { fillColor: v });
+            }));
+            const strokeGroup = _buildFieldGroup('Outline colour', _colorInput(content.strokeColor || '#111111', function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { strokeColor: v });
+            }));
+            const row1 = document.createElement('div');
+            row1.className = 'wb-field-row';
+            row1.appendChild(fillGroup);
+            row1.appendChild(strokeGroup);
+            body.appendChild(row1);
+
+            const swGroup = _buildFieldGroup('Outline width', _range(0, 20, (typeof content.strokeWidth === 'number') ? content.strokeWidth : 0, function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { strokeWidth: v });
+            }));
+            const opGroup = _buildFieldGroup('Opacity %', _range(0, 100, Math.round(((typeof content.opacity === 'number') ? content.opacity : 1) * 100), function (v) {
+                _v2SetContent(scene, holder, layerKind, layer, { opacity: v / 100 });
+            }));
+            const row2 = document.createElement('div');
+            row2.className = 'wb-field-row';
+            row2.appendChild(swGroup);
+            row2.appendChild(opGroup);
+            body.appendChild(row2);
+            return;
+        }
     }
 
     function _v2SlotPicker(options, selected, onChange) {
