@@ -331,6 +331,9 @@ const SelectionActionStrip=(function(){
             }
             [['frame','Frame'],['paper','Paper'],['art','Art']].forEach(function(pair){
               if(lp(pair[0],'rotate') && _mountV2LayerRotation(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
+              // Phase 14 — tilt shares the rotate permission bucket
+              // (a rotate-class transform, per _v2ActionForTarget).
+              if(lp(pair[0],'rotate') && _mountV2LayerTiltSliders(editPanelEl,sel.sceneId,pair[0],pair[1])) mounted=true;
             });
             if(lp('frame','resize') && _mountV2MatGapSlider(editPanelEl,sel.sceneId)) mounted=true;
             [['paper','Paper'],['art','Art']].forEach(function(pair){
@@ -689,6 +692,36 @@ const SelectionActionStrip=(function(){
       try{ SceneEngine.setContentOverride(slide,sceneId,'v2FramePadding',v/100); }catch(e){ return; }
       _afterPlaceEdit();
     });
+  }
+
+  // Phase 14 — per-layer tilt sliders: two rows (Tilt ↕ = tilt.x, a
+  // vertical shear as the eye moves along X; Tilt ↔ = tilt.y, a
+  // horizontal shear), each ±45°, writing the layer's own flat
+  // v2<Layer>TiltX / v2<Layer>TiltY override keys. Same rotate-class
+  // permission bucket as the Spin slider (see _v2ActionForTarget).
+  function _mountV2LayerTiltSliders(container,sceneId,layerKind,layerLabel){
+    const slide=cfg.getCurrentSlide();
+    if(!slide || typeof SlideRenderer==='undefined' || typeof SlideRenderer.getPlaceV2Layers!=='function') return false;
+    let curX=0, curY=0;
+    try{
+      const layers=SlideRenderer.getPlaceV2Layers(slide,sceneId);
+      const t=layers && layers[layerKind] && layers[layerKind].tilt;
+      if(t && typeof t.x==='number') curX=t.x;
+      if(t && typeof t.y==='number') curY=t.y;
+    }catch(e){}
+    const xKey='v2'+layerLabel+'TiltX', yKey='v2'+layerLabel+'TiltY';
+    const deg=function(v){ return v+'°'; };
+    _v2SliderRow(container,layerLabel+' Tilt ↕',-45,45,Math.round(curX),deg,function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,xKey,v); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+    _v2SliderRow(container,layerLabel+' Tilt ↔',-45,45,Math.round(curY),deg,function(v){
+      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
+      try{ SceneEngine.setContentOverride(slide,sceneId,yKey,v); }catch(e){ return; }
+      _afterPlaceEdit();
+    });
+    return true;
   }
 
   // Paper/Art size sliders — two rows (Width %, Height %) writing the

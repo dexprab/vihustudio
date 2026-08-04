@@ -1187,6 +1187,10 @@ function _compileV2Frame(f) {
         // layer's own centre). Absent on anything authored before this
         // phase → 0, byte-identical render.
         rotation: (typeof f.rotation === 'number') ? f.rotation : 0,
+        // Phase 14 — per-layer tilt ({x,y} degrees, affine shear; spec §4).
+        // Absent/null on anything authored before this phase → null,
+        // byte-identical render.
+        tilt: (f.tilt && typeof f.tilt === 'object') ? { x: f.tilt.x || 0, y: f.tilt.y || 0 } : null,
         // Phase 11 — Frame internal padding (the mat gap): a fraction of
         // the Place rect's short edge that insets the inner rect Paper/
         // Art resolve their bounds against. Absent → 0, byte-identical.
@@ -1207,6 +1211,7 @@ function _compileV2SurfaceLayer(l) {
         content: _compileV2Content(l.content),
         bounds: l.bounds || null,
         rotation: (typeof l.rotation === 'number') ? l.rotation : 0,
+        tilt: (l.tilt && typeof l.tilt === 'object') ? { x: l.tilt.x || 0, y: l.tilt.y || 0 } : null,
         permissions: l.permissions || null
     };
 }

@@ -227,12 +227,28 @@
       ctx.rotate(transforms.rotation * Math.PI / 180);
       ctx.translate(-cx, -cy);
     }
-    // 2. Tilt — Phase 4 will implement (affine skew via setTransform).
-    //    Stub: no-op. Documented rather than silently omitted.
-    // if(transforms.tilt){ /* Phase 4 */ }
-    // 3. Perspective — Phase 4 will implement (4-point mapping or WebGL step).
-    //    Stub: no-op.
-    // if(transforms.perspective){ /* Phase 4 */ }
+    // 2. Tilt — 3D X/Y skew approximated as an affine shear (spec §4's
+    //    own "canvas setTransform covers affine skew"). tilt.x shears
+    //    vertically (y' = y + tan(x°)·dx — the top of the layer leans
+    //    toward/away like a card tipped on its horizontal axis) and
+    //    tilt.y shears horizontally, both anchored at centre, each
+    //    clamped ±45° so tan() stays ≤ 1 and the layer never smears
+    //    into a degenerate sliver.
+    if(transforms.tilt && typeof transforms.tilt === 'object'){
+      const tx = Math.max(-45, Math.min(45, (typeof transforms.tilt.x === 'number') ? transforms.tilt.x : 0));
+      const ty = Math.max(-45, Math.min(45, (typeof transforms.tilt.y === 'number') ? transforms.tilt.y : 0));
+      if(tx !== 0 || ty !== 0){
+        ctx.translate(cx, cy);
+        ctx.transform(1, Math.tan(tx * Math.PI / 180), Math.tan(ty * Math.PI / 180), 1, 0, 0);
+        ctx.translate(-cx, -cy);
+      }
+    }
+    // 3. Perspective — Phase 15 implements a strip-subdivision warp in
+    //    the render engines directly (a Canvas 2D context transform
+    //    cannot express a non-affine warp, so there is nothing for this
+    //    shared affine helper to apply). Documented rather than
+    //    silently omitted.
+    // if(transforms.perspective){ /* engines implement */ }
     // 4. Resize — width/height overrides. Applied as a scale around
     //    centre; caller has already clamped bounds via
     //    resolveLayerBounds so we don't re-clamp here.

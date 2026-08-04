@@ -427,7 +427,10 @@ const SlideRenderer=(()=>{
       ['v2FrameBorderWidth','__borderWidth'],
       // Phase 13 — the remaining V2 knobs become Story-Author-overridable.
       ['v2FrameRotation','rotation'],
-      ['v2FramePadding','padding']
+      ['v2FramePadding','padding'],
+      // Phase 14 — tilt (X/Y shear, degrees ±45).
+      ['v2FrameTiltX','__tiltX'],
+      ['v2FrameTiltY','__tiltY']
     ],
     paper:[
       ['v2PaperVisible','visible'],
@@ -435,7 +438,9 @@ const SlideRenderer=(()=>{
       ['v2PaperContentKind','__contentKind'],
       ['v2PaperRotation','rotation'],
       ['v2PaperBoundsW','__boundsW'],
-      ['v2PaperBoundsH','__boundsH']
+      ['v2PaperBoundsH','__boundsH'],
+      ['v2PaperTiltX','__tiltX'],
+      ['v2PaperTiltY','__tiltY']
     ],
     art:[
       ['v2ArtVisible','visible'],
@@ -443,7 +448,9 @@ const SlideRenderer=(()=>{
       ['v2ArtContentKind','__contentKind'],
       ['v2ArtRotation','rotation'],
       ['v2ArtBoundsW','__boundsW'],
-      ['v2ArtBoundsH','__boundsH']
+      ['v2ArtBoundsH','__boundsH'],
+      ['v2ArtTiltX','__tiltX'],
+      ['v2ArtTiltY','__tiltY']
     ]
   };
   // Phase 13 — which permission ACTION an override target falls under,
@@ -454,7 +461,9 @@ const SlideRenderer=(()=>{
   // discipline getPlaceRotation already established for legacy Place
   // rotation.
   function _v2ActionForTarget(targetKey){
-    if(targetKey==='rotation') return 'rotate';
+    // Phase 14: tilt is a rotate-class transform — same permission
+    // bucket per-layer `transform` / Place-wide `rotatable` govern.
+    if(targetKey==='rotation' || targetKey==='__tiltX' || targetKey==='__tiltY') return 'rotate';
     if(targetKey==='padding' || targetKey==='__boundsW' || targetKey==='__boundsH') return 'resize';
     if(targetKey==='visible') return 'visible';
     return 'content';
@@ -475,7 +484,8 @@ const SlideRenderer=(()=>{
         // writing an override would mutate the compiled theme object
         // shared across every render. permissions is cloned too for
         // the same defensive reason, though nothing writes to it here.
-        if(k==='border' || k==='content' || k==='bounds' || k==='permissions'){
+        // Phase 14 adds tilt ({x,y}, mutated per-field by __tiltX/Y).
+        if(k==='border' || k==='content' || k==='bounds' || k==='permissions' || k==='tilt'){
           c[k]=layer[k] ? Object.assign({},layer[k]) : null;
         }else{
           c[k]=layer[k];
@@ -542,6 +552,12 @@ const SlideRenderer=(()=>{
         }else if(targetKey==='__boundsH'){
           if(!layer.bounds) layer.bounds={};
           layer.bounds.h=val;
+        }else if(targetKey==='__tiltX'){
+          if(!layer.tilt) layer.tilt={};
+          layer.tilt.x=val;
+        }else if(targetKey==='__tiltY'){
+          if(!layer.tilt) layer.tilt={};
+          layer.tilt.y=val;
         }else{
           layer[targetKey]=val;
         }
@@ -708,6 +724,30 @@ const SlideRenderer=(()=>{
       x.rotate(deg*Math.PI/180);
       x.translate(-_v2cx,-_v2cy);
     }
+    // Phase 14 — per-layer tilt (spec §4's 3D X/Y skew, approximated as
+    // an affine shear — the same math js/placeFrameV2.js's own
+    // applyTransformStack documents). tilt.x shears vertically as the
+    // eye moves along X; tilt.y shears horizontally. Each axis clamps
+    // ±45°, anchored at the Place centre. Applied AFTER rotation per the
+    // spec's own transform-stack order (rotation → tilt → perspective →
+    // resize). Frame's tilt carries Paper/Art with it (containment
+    // §1.1), exactly like rotation; Paper/Art add their own on top,
+    // inside the Frame clip. A null/absent tilt is a no-op, so every
+    // pre-Phase-14 Place renders byte-identically.
+    const frameTilt=(frame.tilt && typeof frame.tilt==='object')?frame.tilt:null;
+    const paperTilt=(paper && paper.tilt && typeof paper.tilt==='object')?paper.tilt:null;
+    const artTilt=(art && art.tilt && typeof art.tilt==='object')?art.tilt:null;
+    function _v2Tilt(tilt){
+      if(!tilt) return;
+      const tx=Math.max(-45,Math.min(45,(typeof tilt.x==='number')?tilt.x:0));
+      const ty=Math.max(-45,Math.min(45,(typeof tilt.y==='number')?tilt.y:0));
+      if(!tx && !ty) return;
+      x.translate(_v2cx,_v2cy);
+      x.transform(1,Math.tan(tx*Math.PI/180),Math.tan(ty*Math.PI/180),1,0,0);
+      x.translate(-_v2cx,-_v2cy);
+    }
+    const _tiltActive=function(t){ return !!(t && ((t.x||0)!==0 || (t.y||0)!==0)); };
+    const frameHasXform=!!frameRot || _tiltActive(frameTilt);
     // Phase 11 — Frame internal padding (the mat gap) + per-layer
     // bounds. `frame.padding` is a fraction of the Place rect's short
     // edge; it insets an inner rect that Paper/Art resolve their own
@@ -729,7 +769,7 @@ const SlideRenderer=(()=>{
       const w=innerRect.w*fw, h=innerRect.h*fh;
       return {x:innerRect.x+(innerRect.w-w)/2, y:innerRect.y+(innerRect.h-h)/2, w:w, h:h};
     }
-    if(frameRot){ x.save(); _v2Rotate(frameRot); }
+    if(frameHasXform){ x.save(); _v2Rotate(frameRot); _v2Tilt(frameTilt); }
     // Build Frame geometry as a Path2D — the shared clip for
     // Paper/Art/Frame's own border stroke.
     const geom=frame.geometry || 'rectangle';
@@ -739,6 +779,7 @@ const SlideRenderer=(()=>{
       x.save();
       x.clip(framePath);
       _v2Rotate(paperRot);
+      _v2Tilt(paperTilt);
       _v2PaintSurfaceLayer(paper,_v2LayerRect(paper),chromeColor,s);
       x.restore();
     }
@@ -753,6 +794,7 @@ const SlideRenderer=(()=>{
       x.save();
       x.clip(framePath);
       _v2Rotate(artRot);
+      _v2Tilt(artTilt);
       if(hasArtContent){
         _v2PaintSurfaceLayer(art,artRect,chromeColor,s);
       }else if(artImg && artImg.width){
@@ -808,7 +850,7 @@ const SlideRenderer=(()=>{
       // fc.kind==='experience' — Phase 6+.
       x.restore();
     }
-    if(frameRot){ x.restore(); }
+    if(frameHasXform){ x.restore(); }
     // The hit-test bbox stays the unrotated placeRect — the identical
     // convention whole-Place rotation already established upstream.
     return {bx:placeRect.x,by:placeRect.y,bw:placeRect.w,bh:placeRect.h};

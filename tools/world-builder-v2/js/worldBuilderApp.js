@@ -7686,6 +7686,32 @@
             _redrawSceneCanvases(scene.id);
         })));
 
+        // Phase 14 — per-layer tilt (spec §4's 3D X/Y skew, rendered as
+        // an affine shear, each axis ±45°). Both axes back at 0 store
+        // null so an untouched-then-restored layer compiles
+        // byte-identically to one never tilted at all — the exact
+        // bounds-null discipline Phase 11 established below.
+        (function () {
+            const t = (layer.tilt && typeof layer.tilt === 'object') ? layer.tilt : null;
+            const tx = (t && typeof t.x === 'number') ? t.x : 0;
+            const ty = (t && typeof t.y === 'number') ? t.y : 0;
+            function setTilt(patch) {
+                const cur = (layer.tilt && typeof layer.tilt === 'object') ? layer.tilt : { x: 0, y: 0 };
+                const next = { x: cur.x || 0, y: cur.y || 0 };
+                Object.assign(next, patch);
+                const val = (next.x === 0 && next.y === 0) ? null : next;
+                window.ProjectModel.setHolderV2Layer(currentProject, scene.id, holder.id, layerKind, { tilt: val });
+                _persist();
+                _redrawSceneCanvases(scene.id);
+            }
+            body.appendChild(_buildFieldGroup('Tilt X (°)', _range(-45, 45, Math.round(tx), function (v) {
+                setTilt({ x: v });
+            })));
+            body.appendChild(_buildFieldGroup('Tilt Y (°)', _range(-45, 45, Math.round(ty), function (v) {
+                setTilt({ y: v });
+            })));
+        })();
+
         // Phase 11 — bounds / mat gap (spec §2 Max/Min size + Resize).
         // Frame authors `padding` (the mat gap): a % of the Place's short
         // edge insetting the inner rect Paper/Art live within. Paper/Art

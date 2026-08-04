@@ -798,6 +798,12 @@ const ProjectModel = (function () {
         // exactly the pre-Phase-12 behaviour); a Theme Author may set
         // any of {visible, content, transform} to an explicit boolean,
         // overriding the Place-wide fallback for THAT layer alone.
+        // Phase 14 — every layer carries `tilt` (a {x,y} degrees pair,
+        // each clamped ±45° at render time; spec §4's 3D X/Y skew,
+        // approximated as an affine shear). null = no tilt, the
+        // pre-Phase-14 behaviour, so every already-authored layer
+        // renders byte-identically. Frame's tilt carries Paper/Art
+        // with it (containment §1.1), exactly like rotation.
         if (kind === 'frame') {
             return {
                 visible: true,
@@ -806,6 +812,7 @@ const ProjectModel = (function () {
                 content: null,
                 bounds: null,
                 rotation: 0,
+                tilt: null,
                 padding: 0,
                 permissions: null
             };
@@ -817,6 +824,7 @@ const ProjectModel = (function () {
             content: null,
             bounds: null,
             rotation: 0,
+            tilt: null,
             permissions: null
         };
     }

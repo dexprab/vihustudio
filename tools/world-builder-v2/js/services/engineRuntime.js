@@ -561,6 +561,27 @@ const EngineV2Runtime = (function () {
             ctx.rotate(deg * Math.PI / 180);
             ctx.translate(-v2cx, -v2cy);
         }
+        // Phase 14 — per-layer tilt, mirroring Studio's own _drawPlaceV2
+        // exactly: spec §4's 3D X/Y skew as an affine shear (tilt.x
+        // shears vertically, tilt.y horizontally, each clamped ±45°,
+        // anchored at the Place centre, applied AFTER rotation per the
+        // spec's own transform-stack order). Frame's tilt carries
+        // Paper/Art (containment §1.1); Paper/Art add their own inside
+        // the Frame clip. null/absent → no-op, byte-identical legacy.
+        const frameTilt = (frame.tilt && typeof frame.tilt === 'object') ? frame.tilt : null;
+        const paperTilt = (paper && paper.tilt && typeof paper.tilt === 'object') ? paper.tilt : null;
+        const artTilt = (art && art.tilt && typeof art.tilt === 'object') ? art.tilt : null;
+        function v2Tilt(tilt) {
+            if (!tilt) return;
+            const tx = Math.max(-45, Math.min(45, (typeof tilt.x === 'number') ? tilt.x : 0));
+            const ty = Math.max(-45, Math.min(45, (typeof tilt.y === 'number') ? tilt.y : 0));
+            if (!tx && !ty) return;
+            ctx.translate(v2cx, v2cy);
+            ctx.transform(1, Math.tan(tx * Math.PI / 180), Math.tan(ty * Math.PI / 180), 1, 0, 0);
+            ctx.translate(-v2cx, -v2cy);
+        }
+        const tiltActive = function (t) { return !!(t && ((t.x || 0) !== 0 || (t.y || 0) !== 0)); };
+        const frameHasXform = !!frameRot || tiltActive(frameTilt);
         // Phase 11 — Frame internal padding (the mat gap) + per-layer
         // bounds, mirroring Studio's own _drawPlaceV2 exactly: padding
         // is a fraction of the Place rect's short edge insetting an
@@ -580,7 +601,7 @@ const EngineV2Runtime = (function () {
             const w = innerRect.w * fw, h = innerRect.h * fh;
             return { x: innerRect.x + (innerRect.w - w) / 2, y: innerRect.y + (innerRect.h - h) / 2, w: w, h: h };
         }
-        if (frameRot) { ctx.save(); v2Rotate(frameRot); }
+        if (frameHasXform) { ctx.save(); v2Rotate(frameRot); v2Tilt(frameTilt); }
         const framePath = _v2FramePath(rect, frame.geometry || 'rectangle');
 
         // Paper (back).
@@ -588,6 +609,7 @@ const EngineV2Runtime = (function () {
             ctx.save();
             ctx.clip(framePath);
             v2Rotate(paperRot);
+            v2Tilt(paperTilt);
             _v2PaintContent(ctx, paper.content, v2LayerRect(paper), graph);
             ctx.restore();
         }
@@ -603,6 +625,7 @@ const EngineV2Runtime = (function () {
             ctx.save();
             ctx.clip(framePath);
             v2Rotate(artRot);
+            v2Tilt(artTilt);
             if (hasArtContent) {
                 _v2PaintContent(ctx, art.content, artRect, graph);
             } else if (graph.representativeImage) {
@@ -646,7 +669,7 @@ const EngineV2Runtime = (function () {
             }
             ctx.restore();
         }
-        if (frameRot) { ctx.restore(); }
+        if (frameHasXform) { ctx.restore(); }
     }
 
     // Frame geometry as a Path2D — same math as Studio's own
