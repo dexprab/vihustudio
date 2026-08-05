@@ -93,6 +93,47 @@ const StoryDestinations=(function(){
   // an opaque backing (a transparent canvas pixel composites to BLACK
   // in a JPEG encode, not white) — `opts.transparent` lets each
   // destination choose which is correct for its own output format.
+  //
+  // A destination whose own frame is a very different shape from the
+  // Scene — Story Reel's 9:16 video frame around a 4:5 authored page —
+  // would otherwise show flat, empty letterbox bars, the "blank spaces
+  // on top and bottom" a real reel export made obvious. `opts.backdrop
+  // === 'blur'` fills the whole frame with a scaled-up, softened copy of
+  // the page itself and draws the sharp, correctly-proportioned render
+  // on top of it: every authored pixel stays visible and undistorted
+  // (Rule 1 — the Scene is never re-laid-out, stretched, or cropped to
+  // fit a platform's own frame shape), while the frame reads as
+  // deliberately composed rather than padded. This is the same treatment
+  // Reels/Shorts themselves apply to a non-9:16 upload.
+  const BACKDROP_TINY_W=64;         // pre-shrink width — the smear itself
+  const BACKDROP_BLUR_PX=36;        // extra softening where ctx.filter exists
+  const BACKDROP_OVERSCAN=1.14;     // push the blur's own soft edge off-frame
+  const BACKDROP_DIM='rgba(0,0,0,0.18)';
+  function _drawBlurredBackdrop(dctx, srcCanvas, dw, dh){
+    const sw=srcCanvas.width, sh=srcCanvas.height;
+    if(!sw || !sh) return;
+    // Pre-shrink onto a tiny canvas first: the browser's own smoothing
+    // does the pixel averaging, so the backdrop is genuinely soft even
+    // in an engine where `ctx.filter` isn't available at all.
+    const tw=Math.max(2, BACKDROP_TINY_W);
+    const th=Math.max(2, Math.round(BACKDROP_TINY_W*(sh/sw)));
+    const tiny=document.createElement('canvas');
+    tiny.width=tw; tiny.height=th;
+    const tctx=tiny.getContext('2d');
+    try{ tctx.imageSmoothingEnabled=true; tctx.imageSmoothingQuality='high'; }catch(e){}
+    tctx.drawImage(srcCanvas,0,0,sw,sh,0,0,tw,th);
+    const cover=Math.max(dw/tw, dh/th)*BACKDROP_OVERSCAN;
+    const bw=tw*cover, bh=th*cover;
+    dctx.save();
+    try{ dctx.imageSmoothingEnabled=true; dctx.imageSmoothingQuality='high'; }catch(e){}
+    try{ dctx.filter='blur('+BACKDROP_BLUR_PX+'px)'; }catch(e){}
+    dctx.drawImage(tiny,0,0,tw,th,(dw-bw)/2,(dh-bh)/2,bw,bh);
+    dctx.restore();
+    // A light scrim so the sharp page reads as the focal point rather
+    // than competing with its own blurred copy behind it.
+    dctx.fillStyle=BACKDROP_DIM;
+    dctx.fillRect(0,0,dw,dh);
+  }
   function _fitCompositeInto(destCanvas, srcCanvas, opts){
     const dctx=destCanvas.getContext('2d');
     const dw=destCanvas.width, dh=destCanvas.height;
@@ -110,11 +151,25 @@ const StoryDestinations=(function(){
       }catch(e){}
       dctx.fillStyle=bg;
       dctx.fillRect(0,0,dw,dh);
+      if(opts && opts.backdrop==='blur') _drawBlurredBackdrop(dctx, srcCanvas, dw, dh);
     }
     const scale=Math.min(dw/sw, dh/sh);
     const rw=sw*scale, rh=sh*scale;
     const rx=(dw-rw)/2, ry=(dh-rh)/2;
     try{ dctx.imageSmoothingEnabled=true; dctx.imageSmoothingQuality='high'; }catch(e){}
+    if(opts && opts.backdrop==='blur'){
+      // A soft drop shadow so the sharp page reads as sitting ON the
+      // blurred bed behind it, rather than as a flat colour band butted
+      // against it. Scoped to backdrop mode — every other destination's
+      // composite is byte-identical to before.
+      dctx.save();
+      dctx.shadowColor='rgba(0,0,0,0.35)';
+      dctx.shadowBlur=Math.round(Math.min(dw,dh)*0.035);
+      dctx.shadowOffsetY=Math.round(Math.min(dw,dh)*0.008);
+      dctx.drawImage(srcCanvas,0,0,sw,sh,rx,ry,rw,rh);
+      dctx.restore();
+      return;
+    }
     dctx.drawImage(srcCanvas,0,0,sw,sh,rx,ry,rw,rh);
   }
 
@@ -428,12 +483,14 @@ const StoryDestinations=(function(){
       return c;
     },
     renderPage:function(canvas, slide, ctx){
-      // No transparency — video has no meaningful alpha; the fit-
-      // composite's letterbox bars fill from the page's own
-      // background-colour proxy (top-left pixel), same as the PDF
-      // path. Scale 1: a portrait page contains into 1080×1920 by
-      // width, so the render is already 1:1 pixels.
-      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:1});
+      // No transparency — video has no meaningful alpha. A 4:5 page
+      // contains into this 9:16 frame by width, which would otherwise
+      // leave ~285px of flat, empty bar above and below it; `backdrop:
+      // 'blur'` fills that with a softened copy of the page itself
+      // instead, so the frame is full without the authored Scene being
+      // cropped or stretched to reach the edges (Rule 1). Scale 1: the
+      // contained render is already 1:1 pixels at this width.
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:1, backdrop:'blur'});
     },
     encodePage:function(canvas, format, ctx){
       // Returns a thenable payload when the page has narration —
