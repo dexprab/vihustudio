@@ -14,11 +14,11 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 ## Feature Requests
 
 - We need a tutorial or a starting instruction for the kids first visit. what to do , how to do , where to do, when to do.
-- Connect with one specific folder of either google drive or google photos so that kids can pick their photos from there and parents can upload pics there. this will make using orignal arts easy and smooth.
 - Printable story writing pages, color sheets , sketches. various book sizes.
 
 ## Done
 
+- [x] Connect with one specific folder of either google drive or google photos so that kids can pick their photos from there and parents can upload pics there — CLAUDE.md: "Family Photos — Shared Google Photos Albums in Studio (Phases 1-4)." Shipped as Option 1 (public shared Google Photos album + server-side scrape): a parent shares one or more PUBLIC albums (mobile photos sync to Google Photos, matching the real family workflow); the `family-album` Edge Function scrapes the album's photo list and proxies only the actually-picked image's bytes (browsing thumbnails load direct from lh3 for free — the owner's own live go/no-go verdict, GO proxy); album links are stored per-kid in the new `family_albums` table, fully modifiable via the parent-facing Manage Albums panel; the kid picks alongside the ordinary local picker, never replacing it; Creator-only — a Traveller sees a companion-framed nudge toward their first Publish instead. NOTE: supabase/schema.sql must be re-run once in the Supabase SQL editor (idempotent) to create the table + activate a cross-owner RLS fix this work also surfaced.
 - [x] Restore loses orientation (landscape→portrait) — CLAUDE.md: "BACKLOG.md — Restore Loses Orientation."
 - [x] Performance with 20+ objects on Scene — CLAUDE.md: "BACKLOG.md — Performance with 20+ Objects on Scene."
 - [x] For all shapes, choose either solid colors or manually color using brush strokes (Doodle-style) — CLAUDE.md: "BACKLOG.md — Shapes: 'Solid Fill' vs. 'Paint Inside' Toggle."
