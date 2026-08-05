@@ -13,6 +13,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 - Builder: I should be able to collapse, expand, and duplicate experience elements.
 - Builder: I should be able to duplicate scenes.
 - Builder: during publishing check, it should show me all the assets unused but on Supabase so that I can remove what is not required.
+- Studio: the "🎁 From This World" tile in Add Something should always be there — just grey it out when the active World has nothing to show (today it hides entirely when no Collection asset is flagged for Creators, which reads as the tile having disappeared).
 
 ## Feature Requests
 
