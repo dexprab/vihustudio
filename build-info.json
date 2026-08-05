@@ -1,9 +1,9 @@
 {
-  "version": "2.179.0",
-  "sprint": "Image Studio \u2014 background removal is no longer the default. Opening a picture in Image Studio now shows the ORIGINAL image on the Result view (Looks Great / Make It Better); the background-removal worker never auto-runs on open. Removal is on-demand only: the Edit view's sparkle tile (relabelled 'Remove Paper', matching the magic overlay's own 'Making the paper disappear...' language) kicks the removal on first tap \u2014 magic overlay and all \u2014 AND arms the erase brush, so once removal lands the child keeps refining by hand through the same tile. Brush strokes made while removal is still in flight are safe no-ops (the existing _workingBuffer guard). Applying straight from the Result view now hands back the untouched original.",
-  "task": "Every downstream consumer (Place fill, stickers, Family Photos picks, background image, crop/rotate re-edits) is unaffected in mechanism \u2014 only the default changed. Cache-bust ?v=0326 -> ?v=0327.",
-  "build": "0322",
+  "version": "2.180.0",
+  "sprint": "Family Photos — the album picker and Manage Albums now open in a real popup modal instead of the narrow right-sidebar strip. A wide (min(880px,94vw)) centered dialog with a multi-column photo grid (repeat(auto-fill,minmax(150px,1fr))) shows many photos at a glance instead of one-per-scroll; header carries a ✕ close, backdrop-click and Escape both close, and picking a photo closes the popup BEFORE Picture Studio opens so the two modals never stack. The right panel behind is never touched — closing lands the kid exactly where they were in Personalize.",
+  "task": "js/contextPanel.js: new _ensureFamilyModal/_openFamilyModal/_closeFamilyModal machinery; _showFamilyPhotosPicker and _showFamilyAlbumManager both render into the modal body; zero panelRoot writes remain in the family section. css/style.css: .family-photos-modal/-box/-header/-title/-close/-body/-grid block. Cache-bust ?v=0327 -> ?v=0328.",
+  "build": "0323",
   "buildDate": "2026-08-05",
-  "commit": "1ca2b3cc6555ec38c4a820070a53866f573051f2",
+  "commit": "PENDING",
   "environment": "Release"
 }

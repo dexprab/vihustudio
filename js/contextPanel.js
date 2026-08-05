@@ -1995,18 +1995,62 @@ const ContextPanel=(function(){
   function _isCreatorSession(){
     try{ return !!(typeof MagicCard!=='undefined' && MagicCard.getActive && MagicCard.getActive()); }catch(e){ return false; }
   }
+  // ---------- The Family Photos POPUP ----------
+  // Product decision ("the family photo needs to show the photos in a
+  // pop up UI. this will ensure we are able to show enough pics on the
+  // screen not just scroll after each pic"): the picker and the parent
+  // Manage Albums panel both render inside one shared popup modal, not
+  // the narrow right sidebar — a real multi-column grid shows a whole
+  // album at a glance. The right panel behind it is never touched, so
+  // closing the popup lands the kid exactly where they were. Z-layered
+  // below Picture Studio's own modal (200) — moot in practice, since a
+  // pick closes this popup BEFORE Picture Studio opens.
+  let _familyModal=null, _familyModalTitle=null, _familyModalBody=null;
+  function _ensureFamilyModal(){
+    if(_familyModal) return;
+    _familyModal=_el('div','family-photos-modal hidden');
+    const box=_el('div','family-photos-box');
+    const header=_el('div','family-photos-header');
+    _familyModalTitle=_el('div','family-photos-title','📷 Family Photos');
+    header.appendChild(_familyModalTitle);
+    const close=_el('button','family-photos-close','✕');
+    close.type='button';
+    close.setAttribute('aria-label','Close');
+    close.addEventListener('click',_closeFamilyModal);
+    header.appendChild(close);
+    box.appendChild(header);
+    _familyModalBody=_el('div','family-photos-body');
+    box.appendChild(_familyModalBody);
+    _familyModal.appendChild(box);
+    // Backdrop click closes; clicks inside the box never reach here.
+    _familyModal.addEventListener('mousedown',function(e){ if(e.target===_familyModal) _closeFamilyModal(); });
+    document.body.appendChild(_familyModal);
+  }
+  function _onFamilyModalKeyDown(e){ if(e.key==='Escape') _closeFamilyModal(); }
+  // Clears + returns the modal body as the mount point for a fresh
+  // render (picker or manager) — the isConnected guards below keep
+  // working since a re-render disconnects the previous body wholesale.
+  function _openFamilyModal(title){
+    _ensureFamilyModal();
+    _familyModalTitle.textContent=title;
+    _familyModalBody.innerHTML='';
+    _familyModal.classList.remove('hidden');
+    document.addEventListener('keydown',_onFamilyModalKeyDown);
+    return _familyModalBody;
+  }
+  function _closeFamilyModal(){
+    if(_familyModal) _familyModal.classList.add('hidden');
+    document.removeEventListener('keydown',_onFamilyModalKeyDown);
+  }
   function _familyDoneBtn(label){
-    const btn=_el('button','context-btn',label||'← Done Browsing');
+    const btn=_el('button','context-btn',label||'✕ Close');
     btn.type='button';
-    btn.addEventListener('click',function(){ refresh(); });
+    btn.addEventListener('click',function(){ _closeFamilyModal(); });
     return btn;
   }
 
   function _showFamilyPhotosPicker(opts){
-    stickerStudioOpen=true;
-    panelRoot.innerHTML='';
-    panelRoot.classList.remove('is-empty');
-    panelRoot.appendChild(_el('div','context-collection-picker-heading','📷 Family Photos'));
+    const mount=_openFamilyModal('📷 Family Photos');
 
     if(!_isCreatorSession()){
       // Traveller gate — the product decision's own framing, worded for
@@ -2016,22 +2060,22 @@ const ContextPanel=(function(){
       gate.appendChild(_el('div','context-family-gate-icon','🧭'));
       gate.appendChild(_el('div','context-family-gate-text',
         'You need a companion to guide you in the outside world! Publish your first adventure — your companion will arrive, and together you can bring in family photos.'));
-      panelRoot.appendChild(gate);
-      panelRoot.appendChild(_familyDoneBtn());
+      mount.appendChild(gate);
+      mount.appendChild(_familyDoneBtn());
       return;
     }
 
     const status=_el('div','context-family-status','Looking for your family albums…');
-    panelRoot.appendChild(status);
+    mount.appendChild(status);
     const body=_el('div','context-family-body');
-    panelRoot.appendChild(body);
+    mount.appendChild(body);
     const actions=_el('div','context-action-row');
     const manageBtn=_el('button','context-btn','⚙️ Manage Albums');
     manageBtn.type='button';
     manageBtn.addEventListener('click',function(){ _showFamilyAlbumManager(opts); });
     actions.appendChild(manageBtn);
     actions.appendChild(_familyDoneBtn());
-    panelRoot.appendChild(actions);
+    mount.appendChild(actions);
 
     FamilyAlbum.listAlbums().then(function(albums){
       if(!body.isConnected) return; // navigated away while loading
@@ -2070,7 +2114,10 @@ const ContextPanel=(function(){
           ? 'Showing saved copies — couldn\'t reach the album just now.'
           : (res.count===0 ? 'This album looks empty — add photos to it in Google Photos.' : 'Tap a photo to use it.');
         if(!res.count) return;
-        const grid=_el('div','context-collection-picker-grid');
+        // The popup's own wide multi-column grid (family-photos-grid),
+        // not the sidebar's narrow collection grid — the whole point of
+        // the popup is showing many photos at once.
+        const grid=_el('div','family-photos-grid');
         res.photos.forEach(function(p){
           grid.appendChild(_buildFamilyPhotoTile(p,opts));
         });
@@ -2112,6 +2159,10 @@ const ContextPanel=(function(){
   }
 
   function _routeFamilyPick(dataURL,opts){
+    // Close the popup BEFORE Picture Studio opens so the two modals are
+    // never stacked — the pick hands off cleanly into the same Picture
+    // Studio pass a local file pick already uses.
+    _closeFamilyModal();
     const artworkMode=!!(opts && opts.mode==='artwork');
     if(typeof PictureStudio==='undefined'){
       // Degraded path only — Picture Studio always exists in real Studio.
@@ -2160,15 +2211,12 @@ const ContextPanel=(function(){
   // ownership server-side). Deliberately plain and text-first: this is
   // the one Family Photos surface aimed at the PARENT, not the kid.
   function _showFamilyAlbumManager(pickerOpts){
-    stickerStudioOpen=true;
-    panelRoot.innerHTML='';
-    panelRoot.classList.remove('is-empty');
-    panelRoot.appendChild(_el('div','context-collection-picker-heading','⚙️ Family Albums'));
-    panelRoot.appendChild(_el('div','context-family-manager-hint',
+    const mount=_openFamilyModal('⚙️ Family Albums');
+    mount.appendChild(_el('div','context-family-manager-hint',
       'For parents: share a Google Photos album (Share → Create link), then paste the link here. Photos stay on Google — VihuStudio only remembers the link.'));
 
     const listWrap=_el('div','context-family-manager-list');
-    panelRoot.appendChild(listWrap);
+    mount.appendChild(listWrap);
 
     // Add form — real inputs (a pasted URL needs a field, not a prompt).
     const form=_el('div','context-family-manager-form');
@@ -2201,7 +2249,7 @@ const ContextPanel=(function(){
     form.appendChild(labelInput);
     form.appendChild(addBtn);
     form.appendChild(formStatus);
-    panelRoot.appendChild(form);
+    mount.appendChild(form);
 
     const actions=_el('div','context-action-row');
     const backBtn=_el('button','context-btn','← Back to Photos');
@@ -2209,7 +2257,7 @@ const ContextPanel=(function(){
     backBtn.addEventListener('click',function(){ _showFamilyPhotosPicker(pickerOpts); });
     actions.appendChild(backBtn);
     actions.appendChild(_familyDoneBtn('✕ Close'));
-    panelRoot.appendChild(actions);
+    mount.appendChild(actions);
 
     FamilyAlbum.listAlbums().then(function(albums){
       if(!listWrap.isConnected) return;
