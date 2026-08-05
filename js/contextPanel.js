@@ -2334,10 +2334,11 @@ const ContextPanel=(function(){
   // beside "From This World" (Collection Phase 6, a World's own
   // Theme-Author-flagged assets) so the two image-sourcing options read
   // as one category, per that request's own framing. "From This World"
-  // only appears when the active Theme actually has at least one
-  // availableToCreator Collection asset — never an empty, confusing
-  // picker, matching this codebase's own established discipline for a
-  // conditional row (e.g. the Caption tile's own actions-gated presence).
+  // is ALWAYS present but greyed out (disabled, no click) when the
+  // active Theme has zero availableToCreator Collection assets — per
+  // direct product decision ("the tile should always be there. just
+  // grey it out when there is nothing to show"), reversing the earlier
+  // hide-entirely behaviour, which read as the tile having vanished.
   // Voice has no supporting SceneEngine/renderer capability today (no
   // audio attachment) — stubbed honestly as Coming Soon rather than
   // faked.
@@ -2358,9 +2359,11 @@ const ContextPanel=(function(){
     if(_familyPhotosAvailable()){
       items.push({id:'family',icon:'📷',label:'Family Photos',onClick:function(){ _showFamilyPhotosPicker(); }});
     }
-    if(_activeCollectionAssets().length>0){
-      items.push({id:'fromWorld',icon:'🎁',label:'From This World',onClick:function(){ _showCollectionPicker(); }});
-    }
+    items.push({
+      id:'fromWorld',icon:'🎁',label:'From This World',
+      disabled:_activeCollectionAssets().length===0,
+      onClick:function(){ _showCollectionPicker(); }
+    });
     items.push({id:'voice',icon:'🎤',label:'Voice',comingSoon:true});
     return items;
   }
@@ -2393,6 +2396,14 @@ const ContextPanel=(function(){
         row.appendChild(_el('span','context-add-card-label',item.label));
         if(item.comingSoon){
           row.appendChild(_el('span','context-add-card-soon','Soon'));
+          row.disabled=true;
+        }else if(item.disabled){
+          // Greyed, not hidden — the capability exists, this World just
+          // has nothing to offer through it right now (From This World
+          // with zero Creator-flagged Collection assets). Same muted
+          // .is-coming-soon visual, deliberately no "Soon" pill since
+          // the message is "empty," not "unbuilt."
+          row.classList.add('is-coming-soon');
           row.disabled=true;
         }else{
           row.addEventListener('click',item.onClick);

@@ -1,9 +1,9 @@
 {
-  "version": "2.180.3",
-  "sprint": "Sidebar WORLD card (#leftThemeCard) removed, completing the sidebar cleanup ('have we removed the empty world space also'). The card rendered as an empty white pill for an Artwork-World project (only a Story Theme apply ever populated it via _renderLeftCard) and was redundant regardless: the header's own World readout (#headerContext) shows the current World AND opens the exact same World picker on click. Removed completely per the delete-completely convention: markup, CSS, click wiring, _renderLeftCard, buildLeftPaneCard, and its export/call site.",
-  "task": "index.html: WORLD section removed. css/style.css: .left-theme-card* block removed. js/app.js: leftThemeCardEl const + click wiring + buildLeftPaneCard bootstrap call removed. js/themeEngine.js: _renderLeftCard + buildLeftPaneCard + export removed. Cache-bust ?v=0330 -> ?v=0331.",
-  "build": "0326",
+  "version": "2.180.4",
+  "sprint": "BACKLOG bug — the Add Something 'From This World' tile is now ALWAYS present, greyed out (disabled, no click, no 'Soon' pill) when the active World has zero Creator-flagged Collection assets — per direct product decision ('the tile should always be there. just grey it out when there is nothing to show'), reversing the earlier hide-entirely behaviour which read as the tile having vanished.",
+  "task": "js/contextPanel.js: fromWorld item always pushed with disabled:_activeCollectionAssets().length===0; the card builder gained a generic disabled state (reuses .is-coming-soon grey, no Soon pill). Cache-bust ?v=0331 -> ?v=0332.",
+  "build": "0327",
   "buildDate": "2026-08-05",
-  "commit": "ca61784587ee6ebbb793dab2f318624006193432",
+  "commit": "PENDING",
   "environment": "Release"
 }
