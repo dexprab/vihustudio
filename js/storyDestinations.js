@@ -384,27 +384,102 @@ const StoryDestinations=(function(){
     }
   };
 
-  // ---------- Story Reel (architecture placeholder) ----------
-  // Reel rendering is a Sprint 9.1+ feature: MP4 encoding in the
-  // browser needs either MediaRecorder or WebCodecs plus a frame
-  // scheduler. Sprint 9.0.4 leaves the destination *interface* in
-  // place so a future sprint plugs it in without redesigning
-  // PublishStudio. Selecting Reel today shows a friendly "Coming
-  // Soon" state; no renderer runs, no partial file is emitted.
+  // ---------- Story Reel (Voice MVP Ship 3 — real, no longer a stub) ----------
+  // A narrated slideshow video: every page renders through the SAME
+  // SlideRenderer pipeline the editor / Book / Carousel already use
+  // (Rule 5 — Publish Fidelity), holds on screen for its own
+  // narration's real length (or a default beat when silent), and the
+  // narrations are stitched in as the audio track. Composition is
+  // fully client-side — canvas.captureStream + WebAudio +
+  // MediaRecorder via js/reelComposer.js — and records in REAL TIME,
+  // so PublishStudio shows this destination's own finishingMessage
+  // while finish() runs. finish() and encodePage() both return
+  // thenables — the first async hooks in the registry; PublishStudio
+  // awaits thenable hook results since this ship (BOOK/CAROUSEL stay
+  // synchronous, byte-identical).
+  const REEL_FPS=30;
+  const REEL_SILENT_HOLD_MS=3000;   // a page with no narration still gets a beat
+  const REEL_NARRATION_TAIL_MS=450; // breathing room after a clip ends
+  const REEL_MIN_HOLD_MS=1500;      // a narrated page never flashes by
   const REEL_FORMATS=[
-    {id:'square-reel', label:'Instagram Reel', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'coming-soon'}
+    {id:'square-reel', label:'Instagram Reel', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain'}
   ];
   const REEL={
     id:'reel',
     label:'Story Reel',
     glyph:'🎬',
     tagline:'Watch your story come alive.',
-    comingSoon:true,
     formats:REEL_FORMATS,
-    createCanvas:function(){ return null; },
-    renderPage:function(){ /* no-op */ },
-    encodePage:function(){ return null; },
-    finish:function(){ return null; }
+    // Optional per-destination presentation fields PublishStudio reads
+    // when present — additive contract, BOOK/CAROUSEL don't carry them.
+    publishMessages:[
+      'Painting your scenes…',
+      'Warming up the camera…',
+      'Filming your story…',
+      'Adding movie magic…',
+      'Almost ready…'
+    ],
+    finishingMessage:'Filming your story… this takes a minute 🎥',
+    progressNoun:'Scene',
+    createCanvas:function(format){
+      const c=document.createElement('canvas');
+      c.width=format.outW;
+      c.height=format.outH;
+      return c;
+    },
+    renderPage:function(canvas, slide, ctx){
+      // No transparency — video has no meaningful alpha; the fit-
+      // composite's letterbox bars fill from the page's own
+      // background-colour proxy (top-left pixel), same as the PDF
+      // path. Scale 1: a portrait page contains into 1080×1920 by
+      // width, so the render is already 1:1 pixels.
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:1});
+    },
+    encodePage:function(canvas, format, ctx){
+      // Returns a thenable payload when the page has narration —
+      // bytes resolve via AssetStore (a durable vihu-asset: ref,
+      // with the recalled-project owner fallback), then decode to a
+      // real AudioBuffer. The decoded buffer's own duration drives
+      // the page hold (narration.durationMs can legitimately be 0
+      // for an imported clip whose metadata probe failed), so the
+      // hold always fits the audio. The canvas itself IS the page
+      // bitmap — createCanvas mints a fresh one per page, so no copy
+      // is needed.
+      const slide=ctx?ctx.slide:null;
+      const narration=slide&&slide.metadata&&slide.metadata.narration;
+      const silent={ bitmap:canvas, narrationBuffer:null, holdMs:REEL_SILENT_HOLD_MS };
+      if(!narration||!narration.ref) return silent;
+      if(typeof AssetStore==='undefined'||typeof ReelComposer==='undefined') return silent;
+      const resolveOpts=slide.recallOwnerId?{ownerId:slide.recallOwnerId}:undefined;
+      return AssetStore.resolve(narration.ref, resolveOpts)
+        .then(function(url){ return url?fetch(url):null; })
+        .then(function(r){ return (r&&r.ok)?r.arrayBuffer():null; })
+        .then(function(buf){ return buf?ReelComposer.decodeAudio(buf):null; })
+        .then(function(audioBuffer){
+          if(!audioBuffer) return silent;
+          const holdMs=Math.max(REEL_MIN_HOLD_MS, Math.round(audioBuffer.duration*1000)+REEL_NARRATION_TAIL_MS);
+          return { bitmap:canvas, narrationBuffer:audioBuffer, holdMs:holdMs };
+        })
+        .catch(function(){ return silent; });
+    },
+    finish:function(payloads, format){
+      const pages=payloads.filter(function(p){ return p&&p.bitmap; });
+      if(pages.length===0) return null;
+      if(typeof ReelComposer==='undefined'||!ReelComposer.isSupported()) return null;
+      return ReelComposer.compose(pages,{width:format.outW,height:format.outH,fps:REEL_FPS})
+        .then(function(out){
+          if(!out||!out.blob||out.blob.size===0) return null;
+          const ext=(out.mime&&out.mime.indexOf('mp4')>=0)?'.mp4':'.webm';
+          return {
+            blob: out.blob,
+            mime: out.mime||'video/webm',
+            filename: _sanitise(_bookTitle())+'_reel'+ext,
+            celebrateLabel: 'Download My Reel',
+            celebrateGlyph: '🎬'
+          };
+        })
+        .catch(function(){ return null; });
+    }
   };
 
   const REGISTRY=[BOOK, CAROUSEL, REEL];

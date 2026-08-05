@@ -434,7 +434,10 @@ const PublishStudio=(function(){
 
     _destComingSoonMsg=document.createElement('div');
     _destComingSoonMsg.className='publish-destination-comingsoon hidden';
-    _destComingSoonMsg.textContent='Story Reel is coming soon — check back after we film it. 🎬';
+    // Voice MVP Ship 3 — Story Reel is real now, so no built-in
+    // destination is Coming Soon anymore. The banner machinery stays
+    // for any future register()-ed destination that ships inert.
+    _destComingSoonMsg.textContent='This one is coming soon — check back later! ✨';
     center.appendChild(_destComingSoonMsg);
 
     _destContinueBtn=document.createElement('button');
@@ -656,6 +659,16 @@ const PublishStudio=(function(){
     'Wrapping it with care…',
     'Almost ready…'
   ];
+  // Voice MVP Ship 3 — a destination may carry its own message set
+  // (Story Reel's "Filming your story…" beats a book-shaped
+  // "Binding your book…"). Optional, additive: destinations without
+  // one keep the classic list.
+  function _publishMessages(){
+    return (_publishDestination && Array.isArray(_publishDestination.publishMessages)
+            && _publishDestination.publishMessages.length>0)
+      ? _publishDestination.publishMessages
+      : PUBLISH_MESSAGES;
+  }
   // PDF page size — 7.5" × 9.375" at 144 DPI matches the editor's
   // native 1080×1350 canvas without resampling, so what the child saw
   // in the editor is what lands in the file. (PDF points: 72 per inch.)
@@ -756,7 +769,7 @@ const PublishStudio=(function(){
       return;
     }
     _updateProgress(0, slides.length);
-    _pubMessage.textContent=PUBLISH_MESSAGES[0];
+    _pubMessage.textContent=_publishMessages()[0];
     _renderNextPage(0, slides, []);
   }
 
@@ -764,11 +777,15 @@ const PublishStudio=(function(){
     if(!_pubBar) return;
     const pct=total>0 ? Math.round((done/total)*100) : 0;
     _pubBar.style.width=pct+'%';
-    _pubProgressText.textContent='Page '+done+' of '+total;
+    // "Page" for a book/carousel, "Scene" for a reel — the
+    // destination names its own unit (optional, additive).
+    const noun=(_publishDestination && _publishDestination.progressNoun) || 'Page';
+    _pubProgressText.textContent=noun+' '+done+' of '+total;
     // Rotate the playful message based on progress.
-    const stage=Math.min(PUBLISH_MESSAGES.length-1,
-      Math.floor((done/Math.max(1,total))*PUBLISH_MESSAGES.length));
-    _pubMessage.textContent=PUBLISH_MESSAGES[stage];
+    const msgs=_publishMessages();
+    const stage=Math.min(msgs.length-1,
+      Math.floor((done/Math.max(1,total))*msgs.length));
+    _pubMessage.textContent=msgs[stage];
   }
 
   function _renderNextPage(idx, slides, payloads){
@@ -782,22 +799,37 @@ const PublishStudio=(function(){
       _finalizePublish(payloads);
       return;
     }
-    // Render this slide through the chosen destination.
+    // Render this slide through the chosen destination. Voice MVP
+    // Ship 3 — ctx carries the slide itself too (additive; Book/
+    // Carousel ignore it) so an encode step can reach per-page data
+    // like slide.metadata.narration.
     const slide=slides[idx];
     const off=_publishDestination.createCanvas(_publishFormat);
-    const ctx={index:idx, total:slides.length, format:_publishFormat};
+    const ctx={index:idx, total:slides.length, format:_publishFormat, slide:slide};
+    let payload=null;
     try{
       _publishDestination.renderPage(off, slide, ctx);
-      const payload=_publishDestination.encodePage(off, _publishFormat, ctx);
+      payload=_publishDestination.encodePage(off, _publishFormat, ctx);
+    }catch(e){ payload=null; }
+
+    const advance=function(){
+      _updateProgress(idx+1, slides.length);
+      // Yield to the next frame so the bar / message can paint.
+      requestAnimationFrame(function(){
+        _renderNextPage(idx+1, slides, payloads);
+      });
+    };
+    // Voice MVP Ship 3 — a destination's encodePage may return a
+    // thenable (Story Reel resolves + decodes a page's narration
+    // asynchronously). Await it before moving on; the synchronous
+    // path (Book/Carousel) is byte-identical to before.
+    if(payload && typeof payload.then==='function'){
+      payload.then(function(p){ if(p) payloads.push(p); }, function(){})
+             .then(advance);
+    }else{
       if(payload) payloads.push(payload);
-    }catch(e){}
-
-    _updateProgress(idx+1, slides.length);
-
-    // Yield to the next frame so the bar / message can paint.
-    requestAnimationFrame(function(){
-      _renderNextPage(idx+1, slides, payloads);
-    });
+      advance();
+    }
   }
 
   function _finalizePublish(payloads){
@@ -809,6 +841,28 @@ const PublishStudio=(function(){
     try{
       out=_publishDestination.finish(payloads, _publishFormat);
     }catch(e){ out=null; }
+    // Voice MVP Ship 3 — a destination's finish may return a thenable
+    // (Story Reel stitches video + audio in REAL TIME here, so a reel
+    // with 30s of narration takes ~30s to film). Show the
+    // destination's own finishing message while it runs; cancel is
+    // still honored at completion — a cancelled publish never hands
+    // a file over.
+    if(out && typeof out.then==='function'){
+      if(_pubMessage){
+        _pubMessage.textContent=(_publishDestination && _publishDestination.finishingMessage)
+          || 'Wrapping it with care…';
+      }
+      out.then(function(o){ _completePublish(o); }, function(){ _completePublish(null); });
+      return;
+    }
+    _completePublish(out);
+  }
+
+  function _completePublish(out){
+    if(_publishCancelled){
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
     _publishOutputMeta=out;
     _publishOutputBlob=out ? out.blob : null;
     // Companion Engine Foundation (Sprint C1) — "Published".
@@ -977,6 +1031,8 @@ const PublishStudio=(function(){
     if(msgEl){
       if(dest && dest.id==='carousel'){
         msgEl.textContent='Your story is now a shareable carousel!';
+      }else if(dest && dest.id==='reel'){
+        msgEl.textContent='Your story is now a movie!';
       }else if(dest && dest.id==='book'){
         msgEl.textContent='Your story is now a real adventure!';
       }else{
@@ -987,6 +1043,8 @@ const PublishStudio=(function(){
     const readyGlyph='<span>✓</span> ';
     const readyMsg=(dest && dest.id==='carousel')
       ? readyGlyph+'Your images are ready. Download again any time.'
+      : (dest && dest.id==='reel')
+      ? readyGlyph+'Your reel is ready. Download again any time.'
       : readyGlyph+'Your adventure is ready. Download again any time.';
     _celebReadyMsg.innerHTML=readyMsg;
 
