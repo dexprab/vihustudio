@@ -768,6 +768,10 @@ const ContextPanel=(function(){
       btn.className='nudge-btn';
       btn.textContent=cell[0];
       btn.title=cell[3]+' — hold to keep moving';
+      // A bare arrow glyph announces as nothing useful; the dial next to
+      // it already carries role/aria-valuenow, so the pad names itself
+      // the same way rather than leaving one half of the pair unlabelled.
+      btn.setAttribute('aria-label',cell[3]);
       // Normalize (dx,dy) so the diagonals sit at the same distance
       // from centre as the cardinals (a raw 3×3 grid would push them
       // √2 out).
@@ -2487,18 +2491,56 @@ const ContextPanel=(function(){
   // the reference + measured length. Selecting the new note navigates
   // the panel to its Refine controls — the natural landing, exactly like
   // a fresh Photo pick.
+  // "there is no way to place it on slide" — a voice note used to spawn
+  // at SceneEngine.addSticker's own dead-centre default (540,675), which
+  // on a real page is squarely on top of the Artwork Place: the badge
+  // lands buried in the middle of the picture, and a second one lands
+  // exactly on the first. Spawn low-left instead — clear of a typical
+  // Place's content area — and cascade diagonally per note already on
+  // the page so several notes are each individually grabbable. Fractions
+  // of the page's OWN resolved size (never a hardcoded 1080×1350, which
+  // is only one of several aspects a Scene can declare).
+  function _voiceNoteSpawn(slide){
+    let w=1080, h=1350;
+    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getCanvasSize==='function'){
+      try{ const sz=SlideRenderer.getCanvasSize(slide); if(sz && sz.w && sz.h){ w=sz.w; h=sz.h; } }catch(e){}
+    }
+    const existing=(slide && slide.metadata && Array.isArray(slide.metadata.stickers))
+      ? slide.metadata.stickers.filter(function(s){ return s && s.kind==='voice'; }).length : 0;
+    const step=Math.round(Math.min(w,h)*0.07);
+    // Wrap the cascade before it can walk off the page — 5 steps up-and-
+    // right, then start a fresh column further right.
+    const col=Math.floor(existing/5), row=existing%5;
+    const x=Math.min(w-70, Math.round(w*0.18)+col*step*2+row*step);
+    const y=Math.max(70, Math.round(h*0.80)-row*step);
+    return {x:x,y:y};
+  }
+
   function _addVoiceNoteSticker(ref,durationMs){
     const slide=_currentSlide();
     if(!ref || !slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    const at=_voiceNoteSpawn(slide);
     const st=SceneEngine.addSticker(slide,{
       kind:'voice', stickerId:'voice.note',
       voiceRef:ref, voiceDurationMs:durationMs||0,
-      w:110, h:110
+      x:at.x, y:at.y, w:110, h:110
     });
     if(!st) return;
     if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    if(typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
     if(typeof window.setSelectedSceneElement==='function'){
       try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
+    // Land the kid on the Move pad + Spin dial straight away. The
+    // Refine panel a fresh note otherwise opens on carries Play/Size/
+    // Spin/See Through/Lock/Duplicate/Delete and no position control at
+    // all, so placement was only ever reachable by discovering the
+    // strip's own ✏️ — the literal "no way to place it". Deferred one
+    // frame so setSelectedSceneElement's own PageRuntime.notify() has
+    // already rebuilt the strip for THIS object before the popup opens
+    // against it.
+    if(typeof SelectionActionStrip!=='undefined' && typeof SelectionActionStrip.openEdit==='function'){
+      try{ window.requestAnimationFrame(function(){ try{ SelectionActionStrip.openEdit(); }catch(e){} }); }catch(e){}
     }
   }
 

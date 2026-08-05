@@ -832,6 +832,18 @@ const SelectionActionStrip=(function(){
     }
   }
 
-  return {configure:configure, init:init, refresh:refresh};
+  // "there is no way to place it on slide" — a freshly-created object
+  // whose whole point IS its position (a voice note badge) needs to land
+  // on the Move pad, not behind an unlabelled ✏️ the kid has to discover.
+  // Deliberately just the existing toggle's own open half, exported: the
+  // caller decides WHEN, this module still decides WHAT the popup holds.
+  function openEdit(){
+    if(!root || root.classList.contains('selection-action-strip-hidden')) return false;
+    if(_editOpen) return true;
+    _openEditPanel();
+    return true;
+  }
+
+  return {configure:configure, init:init, refresh:refresh, openEdit:openEdit};
 })();
 try{ window.SelectionActionStrip=SelectionActionStrip; }catch(e){}
