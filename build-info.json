@@ -4,6 +4,6 @@
   "task": "js/contextPanel.js: quick-edit image branch gains prepImage() (Picture Studio 'fit') used by both local + family sources. js/cardDesigner.js: frame chip routes through Picture Studio 'fill' before _storeUploadedAsset. Verified 22/22 (fa_replace_everywhere_verify.mjs — T1 rewritten to assert the Image Studio pass + no premature apply, new T5 covering the frame chip end to end via a real filechooser) + fa_ui_verify 35/35 + photo_via_studio 8/8 + both goldenBuilds PASS. Cache-bust ?v=0334 -> ?v=0335.",
   "build": "0330",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "904ed0462bffdeada32383c4c66571ed61e11de9",
   "environment": "Release"
 }
