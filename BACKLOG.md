@@ -10,6 +10,9 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 ## Bugs
 
 - Studio scene is not same as what was authored in builder: `places placeholder art` and `background transparency` halves of the original report — still open, pending concrete reproduction. (The `places shapes` half shipped, see Done below.)
+- Builder: I should be able to collapse, expand, and duplicate experience elements.
+- Builder: I should be able to duplicate scenes.
+- Builder: during publishing check, it should show me all the assets unused but on Supabase so that I can remove what is not required.
 
 ## Feature Requests
 
