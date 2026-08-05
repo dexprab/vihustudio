@@ -515,7 +515,46 @@ grant execute on function public.redeem_card(jsonb, text) to anon, authenticated
 -- above, since these definitions need to reference `cards`/
 -- `card_redemptions`, which don't exist until this section runs.
 -- Default behaviour for every non-redeemed row is unchanged — the
--- added clause is purely additive (`or exists (...)`).
+-- added clause is purely additive.
+--
+-- WHY A SECURITY DEFINER HELPER, NOT AN INLINE JOIN (a real, confirmed
+-- bug fixed during the Family Photos sprint): a policy's USING
+-- subquery executes with the QUERYING user's own privileges — and the
+-- referenced tables' own RLS applies to it. The original inline
+-- `exists (... join public.cards c ...)` clause therefore silently
+-- returned zero rows for any genuinely cross-owner redeemer: `cards`
+-- is deliberately owner-only SELECT (its pattern/code columns are the
+-- redemption credential), so the redeemer could see their own
+-- card_redemptions row but never the cards row it joins through — the
+-- whole grant was theater. This never surfaced live because Builder
+-- and Studio share one origin and one anonymous session, so every
+-- live redemption so far has been SELF-redemption, where the plain
+-- `owner_id = auth.uid()` leg already passes. Verified empirically
+-- against a real local Postgres 16 with two distinct uids.
+-- The fix is the same mechanism redeem_card() itself already uses:
+-- a SECURITY DEFINER function executes as the schema owner and
+-- bypasses RLS on the proof tables. It leaks nothing — it answers
+-- only "does the CALLING session hold a live redemption for this
+-- exact theme?", never any card/pattern content.
+create or replace function public.has_card_redemption_grant(p_theme_owner text, p_theme_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.card_redemptions r
+    join public.cards c on c.id = r.card_id
+    where c.target_theme_id = p_theme_id
+      and c.owner_id = p_theme_owner
+      and r.redeemer_id = auth.uid()::text
+      and (r.expires_at is null or r.expires_at > now())
+  );
+$$;
+
+grant execute on function public.has_card_redemption_grant(text, text) to anon, authenticated;
+
 drop policy if exists themes_personal_select on public.themes;
 create policy themes_personal_select
   on public.themes for select
@@ -523,14 +562,7 @@ create policy themes_personal_select
     repository = 'personal'
     and (
       owner_id = auth.uid()::text
-      or exists (
-        select 1 from public.card_redemptions r
-        join public.cards c on c.id = r.card_id
-        where c.target_theme_id = themes.theme_id
-          and c.owner_id = themes.owner_id
-          and r.redeemer_id = auth.uid()::text
-          and (r.expires_at is null or r.expires_at > now())
-      )
+      or public.has_card_redemption_grant(owner_id, theme_id)
     )
   );
 
@@ -542,13 +574,9 @@ create policy theme_assets_personal_read
     and (storage.foldername(name))[1] = 'personal'
     and (
       (storage.foldername(name))[2] = auth.uid()::text
-      or exists (
-        select 1 from public.card_redemptions r
-        join public.cards c on c.id = r.card_id
-        where c.target_theme_id = (storage.foldername(name))[3]
-          and c.owner_id = (storage.foldername(name))[2]
-          and r.redeemer_id = auth.uid()::text
-          and (r.expires_at is null or r.expires_at > now())
+      or public.has_card_redemption_grant(
+        (storage.foldername(name))[2],
+        (storage.foldername(name))[3]
       )
     )
   );
@@ -777,6 +805,35 @@ $$;
 grant execute on function public.recall_magic_card(jsonb, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------
+-- Helper: has_magic_recall_grant — the recall-proof check
+-- ---------------------------------------------------------------
+-- Same bug class and same fix as has_card_redemption_grant above: the
+-- cross-owner recall clauses (creator_projects_select, draft_assets_
+-- owner_read, family_albums_select) used to inline-join
+-- magic_card_recalls to magic_card_identities — but identities are
+-- owner-only SELECT under the recaller's own RLS, so the join was
+-- always empty for a genuinely cross-device recaller and the grant
+-- never actually granted anything. SECURITY DEFINER bypasses RLS on
+-- the two proof tables; answers only "does the CALLING session hold a
+-- recall grant for this owner?", never any identity/pattern content.
+create or replace function public.has_magic_recall_grant(p_owner text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.magic_card_recalls r
+    join public.magic_card_identities i on i.id = r.identity_id
+    where i.owner_id = p_owner
+      and r.recaller_id = auth.uid()::text
+  );
+$$;
+
+grant execute on function public.has_magic_recall_grant(text) to anon, authenticated;
+
+-- ---------------------------------------------------------------
 -- creator_projects — Creator's first-ever cloud project backup
 -- ---------------------------------------------------------------
 -- Mirrors builder_projects exactly for the owner-scoped CRUD (see
@@ -820,18 +877,87 @@ create policy creator_projects_delete
 -- RLS would silently block a cross-owner UPDATE anyway; this also
 -- keeps two devices genuinely independent working copies, matching
 -- the design document's own explicit non-goal of live shared editing.
+-- Recall proof goes through has_magic_recall_grant() (see above) —
+-- an inline join here would die under the recaller's own RLS on
+-- magic_card_identities.
 drop policy if exists creator_projects_select on public.creator_projects;
 create policy creator_projects_select
   on public.creator_projects for select
   using (
     owner_id = auth.uid()::text
-    or exists (
-      select 1 from public.magic_card_recalls r
-      join public.magic_card_identities i on i.id = r.identity_id
-      where i.owner_id = creator_projects.owner_id
-        and r.recaller_id = auth.uid()::text
-    )
+    or public.has_magic_recall_grant(owner_id)
   );
+
+-- ---------------------------------------------------------------
+-- family_albums — Family Photos: shared Google Photos album links
+-- ---------------------------------------------------------------
+-- The Family Photos feature (BACKLOG.md): a parent shares one or more
+-- PUBLIC Google Photos albums with the kid's Studio; the kid browses
+-- and picks photos from them alongside the ordinary local file picker.
+-- This table stores only the album LINKS (plus a friendly label and a
+-- display order) against the kid's identity — never any photo bytes;
+-- the photos themselves stay on Google's servers and are listed live
+-- through the family-album Edge Function (supabase/functions/
+-- family-album/) at browse time.
+--
+-- Creator-only by product decision: a Traveller who taps Family
+-- Photos sees a companion-framed "you need a companion to guide you
+-- in the outside world" gate client-side (js/familyAlbum.js /
+-- js/contextPanel.js). RLS here doesn't distinguish Traveller vs
+-- Creator (both are anonymous auth.uid() sessions) — it enforces
+-- ownership, exactly like creator_projects; the Creator gate is a
+-- client-side product rule, same as creator_projects' own "a
+-- Visitor's projects never reach Supabase at all" discipline.
+--
+-- Multiple albums per kid ("can we have more than 1 public folder?"
+-- — yes): one row per album, ordered by sort_order then updated_at.
+-- Modifiable ("it should also be modifiable in future"): full
+-- owner-scoped insert/update/delete below.
+create table if not exists public.family_albums (
+  id          text primary key,
+  owner_id    text not null,
+  album_url   text not null,
+  label       text,
+  sort_order  integer not null default 0,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.family_albums enable row level security;
+
+drop policy if exists family_albums_insert on public.family_albums;
+create policy family_albums_insert
+  on public.family_albums for insert
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists family_albums_update on public.family_albums;
+create policy family_albums_update
+  on public.family_albums for update
+  using (owner_id = auth.uid()::text)
+  with check (owner_id = auth.uid()::text);
+
+drop policy if exists family_albums_delete on public.family_albums;
+create policy family_albums_delete
+  on public.family_albums for delete
+  using (owner_id = auth.uid()::text);
+
+-- SELECT mirrors creator_projects_select exactly: a recalling session
+-- (a Creator who tapped their Magic Card's own sky on a new device,
+-- proven via magic_card_recalls) also sees the family's albums there
+-- — the parent set them up once, they should follow the kid across
+-- devices the same way their projects already do. SELECT-only for the
+-- recaller; editing the album list stays with the owning identity.
+drop policy if exists family_albums_select on public.family_albums;
+create policy family_albums_select
+  on public.family_albums for select
+  using (
+    owner_id = auth.uid()::text
+    or public.has_magic_recall_grant(owner_id)
+  );
+
+-- Supports family_albums_select's own cross-owner recall lookup at
+-- scale, same reasoning as the idx_magic_card_* indexes below.
+create index if not exists idx_family_albums_owner_id
+  on public.family_albums (owner_id);
 
 -- ---------------------------------------------------------------
 -- Storage bucket: draft-assets
@@ -884,12 +1010,7 @@ create policy draft_assets_owner_read
       (storage.foldername(name))[2] = auth.uid()::text
       or (
         (storage.foldername(name))[1] = 'creator'
-        and exists (
-          select 1 from public.magic_card_recalls r
-          join public.magic_card_identities i on i.id = r.identity_id
-          where i.owner_id = (storage.foldername(name))[2]
-            and r.recaller_id = auth.uid()::text
-        )
+        and public.has_magic_recall_grant((storage.foldername(name))[2])
       )
     )
   );
