@@ -12,7 +12,6 @@ const contextMenu=document.getElementById('contextMenu');
 const tabs=document.querySelectorAll('.tab-btn');
 const projectTitleEl=document.getElementById('projectTitle');
 const projectAuthorEl=document.getElementById('projectAuthorName');
-const leftThemeCardEl=document.getElementById('leftThemeCard');
 const themePickerModal=document.getElementById('themePickerModal');
 const themePickerClose=document.getElementById('themePickerClose');
 const themeToggleEl=document.getElementById('themeToggle');
@@ -61,7 +60,6 @@ if(window.ThumbnailEngine||typeof ThumbnailEngine!=='undefined'){
 
 // Theme Engine bootstrap
 if(typeof ThemeEngine!=='undefined'){
-  try{ ThemeEngine.buildLeftPaneCard(); }catch(e){}
   try{ ThemeEngine.buildDesigner(); }catch(e){}
 }
 
@@ -377,15 +375,11 @@ function _setSelectedSceneElement(id, elementType){
     if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
   }
 }
-if(leftThemeCardEl){
-  leftThemeCardEl.addEventListener('click',function(){
-    if(typeof ThemeEngine!=='undefined') ThemeEngine.openThemePicker();
-  });
-}
-// Creator V2 — the header World readout doubles as a second entry point
-// into the exact same World picker leftThemeCardEl already opens (no
-// new capability, no new picker); the chevron in _updateHeaderContext()
-// is the visual affordance for it.
+// Creator V2 — the header World readout is the World-picker entry point
+// (the old sidebar WORLD card, #leftThemeCard, was removed alongside the
+// MY BOOK importer — it rendered as an empty pill for an Artwork-World
+// project and duplicated exactly this); the chevron in
+// _updateHeaderContext() is the visual affordance for it.
 const headerContextEl=document.getElementById('headerContext');
 if(headerContextEl){
   headerContextEl.style.cursor='pointer';

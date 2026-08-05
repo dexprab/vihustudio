@@ -1,9 +1,9 @@
 {
-  "version": "2.180.2",
-  "sprint": "Sidebar 'MY BOOK — Upload Images' removed per direct product decision ('this is no more needed in studio'). The old bulk multi-page importer's whole chain is deleted with it — the #uploadBtn/#scanUpload markup, its CSS, js/app.js's own _storeUploadedAsset copy, _insertPreparedSlide, and the multi-file bulk-import loop — since every one of them existed only for that flow. Every picture path now goes through its own dedicated, Picture-Studio-routed entry point: the Artwork Place's Add/Replace Artwork, Personalize -> Add Something -> Photo, and Family Photos.",
-  "task": "index.html: MY BOOK section removed. css/style.css: #uploadBtn rules removed. js/app.js: the whole dead upload chain deleted. Cache-bust ?v=0329 -> ?v=0330.",
-  "build": "0325",
+  "version": "2.180.3",
+  "sprint": "Sidebar WORLD card (#leftThemeCard) removed, completing the sidebar cleanup ('have we removed the empty world space also'). The card rendered as an empty white pill for an Artwork-World project (only a Story Theme apply ever populated it via _renderLeftCard) and was redundant regardless: the header's own World readout (#headerContext) shows the current World AND opens the exact same World picker on click. Removed completely per the delete-completely convention: markup, CSS, click wiring, _renderLeftCard, buildLeftPaneCard, and its export/call site.",
+  "task": "index.html: WORLD section removed. css/style.css: .left-theme-card* block removed. js/app.js: leftThemeCardEl const + click wiring + buildLeftPaneCard bootstrap call removed. js/themeEngine.js: _renderLeftCard + buildLeftPaneCard + export removed. Cache-bust ?v=0330 -> ?v=0331.",
+  "build": "0326",
   "buildDate": "2026-08-05",
-  "commit": "639fc562fce76fcb9080fe54281d428c4002a39b",
+  "commit": "PENDING",
   "environment": "Release"
 }

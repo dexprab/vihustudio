@@ -362,34 +362,11 @@ const ThemeEngine=(function(){
     if(el) el.textContent=t.name;
   }
 
-  function _renderLeftCard(themeId){
-    const container=document.getElementById('leftThemeCard');
-    if(!container) return;
-    const t=getTheme(themeId);
-    container.innerHTML='';
-    const preview=document.createElement('div');
-    preview.className='left-theme-card-preview';
-    preview.style.background=t.frame.color;
-    const inner=document.createElement('div');
-    inner.className='left-theme-card-panel';
-    inner.style.background=t.panel.color;
-    preview.appendChild(inner);
-    container.appendChild(preview);
-    const info=document.createElement('div');
-    info.className='left-theme-card-info';
-    const name=document.createElement('div');
-    name.className='left-theme-card-name';
-    name.textContent=t.name;
-    info.appendChild(name);
-    const desc=document.createElement('div');
-    desc.className='left-theme-card-desc';
-    desc.textContent=t.description;
-    info.appendChild(desc);
-    container.appendChild(info);
-  }
+  // _renderLeftCard removed — the sidebar WORLD card (#leftThemeCard) is
+  // gone from index.html ("have we removed the empty world space also");
+  // the header's own World readout is the one World-picker entry point.
 
   function _syncControls(themeId){
-    _renderLeftCard(themeId);
     _renderCurrentThemeName(themeId);
     _renderVariants();
     _markActiveOptions();
@@ -664,9 +641,8 @@ const ThemeEngine=(function(){
     return resolvedTheme;
   }
 
-  function buildLeftPaneCard(){
-    _renderLeftCard(getActiveThemeId());
-  }
+  // buildLeftPaneCard removed along with _renderLeftCard — the sidebar
+  // WORLD card (#leftThemeCard) is gone from index.html.
 
   // Sprint 9.3 — a Story Theme card previews frame/panel colour, same
   // as always. An Artwork Theme has no frame/panel object (its
@@ -1168,7 +1144,6 @@ const ThemeEngine=(function(){
     getPageLayout:getPageLayout,
     applyTheme:applyTheme,
     registerTheme:registerTheme,
-    buildLeftPaneCard:buildLeftPaneCard,
     buildDesigner:buildDesigner,
     openThemePicker:openThemePicker,
     closeThemePicker:closeThemePicker,
