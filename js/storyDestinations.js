@@ -457,7 +457,10 @@ const StoryDestinations=(function(){
   const REEL_NARRATION_TAIL_MS=450; // breathing room after a clip ends
   const REEL_MIN_HOLD_MS=1500;      // a narrated page never flashes by
   const REEL_FORMATS=[
-    {id:'square-reel', label:'Instagram Reel', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain'}
+    // `transition` is declarative so the motion between pages can be
+    // changed (or switched off, with 'none') without touching the
+    // composer — ReelComposer reads it straight off compose()'s opts.
+    {id:'square-reel', label:'Instagram Reel', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'page-turn'}
   ];
   const REEL={
     id:'reel',
@@ -523,7 +526,10 @@ const StoryDestinations=(function(){
       const pages=payloads.filter(function(p){ return p&&p.bitmap; });
       if(pages.length===0) return null;
       if(typeof ReelComposer==='undefined'||!ReelComposer.isSupported()) return null;
-      return ReelComposer.compose(pages,{width:format.outW,height:format.outH,fps:REEL_FPS})
+      return ReelComposer.compose(pages,{
+          width:format.outW, height:format.outH, fps:REEL_FPS,
+          transition:format.transition||'page-turn'
+        })
         .then(function(out){
           if(!out||!out.blob||out.blob.size===0) return null;
           const ext=(out.mime&&out.mime.indexOf('mp4')>=0)?'.mp4':'.webm';
