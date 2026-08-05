@@ -4,6 +4,6 @@
   "task": "index.html: WORLD section removed. css/style.css: .left-theme-card* block removed. js/app.js: leftThemeCardEl const + click wiring + buildLeftPaneCard bootstrap call removed. js/themeEngine.js: _renderLeftCard + buildLeftPaneCard + export removed. Cache-bust ?v=0330 -> ?v=0331.",
   "build": "0326",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "ca61784587ee6ebbb793dab2f318624006193432",
   "environment": "Release"
 }
