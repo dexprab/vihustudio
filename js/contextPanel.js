@@ -752,6 +752,24 @@ const ContextPanel=(function(){
             _afterQuickEditChange();
           });
         };
+        // Standing rule: EVERY image, from any source, passes through
+        // Image Studio (Picture Studio) before it ever shows up on the
+        // scene — local file and Family pick alike. The degraded
+        // direct-apply path exists only for the theoretical case
+        // Picture Studio isn't loaded.
+        const prepImage=function(source){
+          if(!source) return;
+          if(typeof PictureStudio!=='undefined' && typeof PictureStudio.open==='function'){
+            PictureStudio.open(source,{defaultMode:'fit',onApply:function(result){
+              if(result && result.dataURL) applyImage(result.dataURL);
+            }});
+            return;
+          }
+          if(typeof source==='string'){ applyImage(source); return; }
+          const reader=new FileReader();
+          reader.onload=function(){ applyImage(reader.result); };
+          reader.readAsDataURL(source);
+        };
         const btn=_el('button','context-btn','🖼️ Replace Image');
         btn.type='button';
         btn.addEventListener('click',function(){
@@ -761,9 +779,7 @@ const ContextPanel=(function(){
           fileInput.addEventListener('change',function(){
             const file=fileInput.files && fileInput.files[0];
             if(!file) return;
-            const reader=new FileReader();
-            reader.onload=function(){ applyImage(reader.result); };
-            reader.readAsDataURL(file);
+            prepImage(file);
           });
           fileInput.click();
         });
@@ -776,7 +792,7 @@ const ContextPanel=(function(){
           const famBtn=_el('button','context-btn','📷 From Family Album');
           famBtn.type='button';
           famBtn.addEventListener('click',function(){
-            _showFamilyPhotosPicker({onPick:applyImage});
+            _showFamilyPhotosPicker({onPick:prepImage});
           });
           container.appendChild(famBtn);
         }

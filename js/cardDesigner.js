@@ -770,9 +770,15 @@ const CardDesigner=(function(){
       const file=imageFileInput.files && imageFileInput.files[0];
       imageFileInput.value='';
       if(!file) return;
-      const reader=new FileReader();
-      reader.onload=function(){
-        _storeUploadedAsset(String(reader.result),function(ref){
+      // Standing rule: EVERY image, from any source, passes through
+      // Image Studio (Picture Studio) before it ever shows up on the
+      // scene — the Frame's own picture included. 'fill' matches the
+      // frame band's cover-fit rendering. The raw FileReader path
+      // survives only as the degraded fallback for the theoretical
+      // case Picture Studio isn't loaded.
+      const applyFrameImage=function(dataURL){
+        if(!dataURL) return;
+        _storeUploadedAsset(String(dataURL),function(ref){
           const b=_ensureBorder(_currentSlide(),_currentPlaceId());
           if(!b) return;
           b.fill='image';
@@ -780,6 +786,14 @@ const CardDesigner=(function(){
           _commitBorder();
         });
       };
+      if(typeof PictureStudio!=='undefined' && typeof PictureStudio.open==='function'){
+        PictureStudio.open(file,{defaultMode:'fill',onApply:function(result){
+          if(result && result.dataURL) applyFrameImage(result.dataURL);
+        }});
+        return;
+      }
+      const reader=new FileReader();
+      reader.onload=function(){ applyFrameImage(reader.result); };
       reader.readAsDataURL(file);
     });
     imageWrap.appendChild(imageFileInput);
