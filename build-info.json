@@ -4,6 +4,6 @@
   "task": "js/contextPanel.js: _addImageObject routes through PictureStudio.open(file,{defaultMode:'fit',...}); shared sticker tail factored into _addImageStickerFromDataURL (reused by _familyAddImageObject). Cache-bust ?v=0328 -> ?v=0329.",
   "build": "0324",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "8b2f20f83b87896d65781b507c09038e022b57c5",
   "environment": "Release"
 }
