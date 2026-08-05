@@ -4,6 +4,6 @@
   "task": "js/contextPanel.js: _routeFamilyPick onPick path, family button in the quick-edit image branch + _appendBackgroundImageControls, two new exports. js/pageDesigner.js: _familyPhotosAvailable/_pickFromFamilyAlbum + buttons in both Image Manager states. js/themeEngine.js: _renderDecorations null guard. Verified 19/19 (fa_replace_everywhere_verify.mjs) + fa_ui_verify 35/35 + photo_via_studio 8/8 + both goldenBuilds PASS. Cache-bust ?v=0333 -> ?v=0334.",
   "build": "0329",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "53d0a225e3d4fba035c688951f896c07ae7470bb",
   "environment": "Release"
 }
