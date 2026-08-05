@@ -4,6 +4,6 @@
   "task": "Also fixes a real, systemic latent RLS bug found while validating the new policy against a real local Postgres 16: a policy USING subquery runs under the querying user's own RLS on the tables it references, so every shipped cross-owner grant (themes_personal_select redeemer clause, theme_assets_personal_read, creator_projects_select recall clause, draft_assets_owner_read) joined through an owner-only-SELECT table (cards / magic_card_identities) and silently returned zero rows for any genuinely cross-owner session — never surfaced live because Builder+Studio share one origin/anonymous session, so every live redemption so far was self-redemption. Fixed with two SECURITY DEFINER proof-check helpers (has_card_redemption_grant, has_magic_recall_grant); all five policies now call them. Verified: full schema applies clean + idempotent on local Postgres 16, three-uid functional RLS proof (recaller sees albums/projects, redeemer sees the redeemed theme — all three were 0 pre-fix; strangers/writes still blocked); parse.js 14/14 in Node; js/familyAlbum.js 32/32 via a mocked-Supabase Playwright suite. supabase/schema.sql must be re-run in the Supabase SQL editor (idempotent).",
   "build": "0321",
   "buildDate": "2026-08-05",
-  "commit": "1b7b6495c65bd6be550c5aa6d4256463e31c5d83",
+  "commit": "1ca1c9b826188b37e64130dbfba2cdf335749db4",
   "environment": "Release"
 }
