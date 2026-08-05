@@ -711,10 +711,23 @@ const ContextPanel=(function(){
   // text. So this is the first reachable "move it a precise step"
   // surface in Studio, not a restyle of an existing one.
 
+  // ONE widget, two gestures — the product owner asked for the Move pad
+  // and the Spin dial combined ("we can combine spin and move panel into
+  // one"), so the 8 direction buttons now ring a Spin disc nested at the
+  // widget's own centre rather than sitting in a separate row above it.
+  // Geometry is expressed in PERCENTAGES of the pad rather than fixed
+  // pixels: the Selection Action Strip sizes itself to whatever gutter
+  // room it finds (MIN_USABLE 160px, js/selectionActionStrip.js), so a
+  // fixed-px widget could overflow the narrowest popup. The pad caps at
+  // COMBO_PAD_PX but shrinks with the strip, and every child rides along.
   const NUDGE_HOLD_DELAY_MS=350;   // pause before auto-repeat kicks in
   const NUDGE_HOLD_REPEAT_MS=80;   // then ~12 steps/sec while held
-  const NUDGE_PAD_PX=118;          // pad diameter — matches the CSS circle
-  const NUDGE_BTN_PX=30;           // direction-button diameter
+  const COMBO_PAD_PX=150;          // widget diameter cap — matches the CSS
+  const NUDGE_BTN_PX=28;           // direction-button diameter
+  // Orbit radius as a fraction of the pad: half the pad, less half a
+  // button, less a 4px rim gap. Everything below is derived from it, so
+  // changing COMBO_PAD_PX/NUDGE_BTN_PX keeps the ring self-consistent.
+  const NUDGE_ORBIT_PCT=((COMBO_PAD_PX/2-NUDGE_BTN_PX/2-4)/COMBO_PAD_PX)*100;
   // One step, in absolute canvas pixels. Position everywhere in Studio
   // is an absolute canvas-pixel CENTRE point (unlike Builder, whose own
   // pad works in 0..1 fractions), so the step is a pixel count rather
@@ -731,9 +744,7 @@ const ContextPanel=(function(){
     ['↘',1,1,'Nudge down-right']
   ];
 
-  function _makeNudgePad(onNudge,onCenter,centerTitle){
-    // Orbit radius keeps every button inside the rim.
-    const R=NUDGE_PAD_PX/2-NUDGE_BTN_PX/2-5;
+  function _makeNudgePad(onNudge){
     const pad=_el('div','nudge-pad');
     // Press-and-hold driver. The first step fires synchronously on
     // pointerdown (so a plain tap still nudges exactly once), then a
@@ -776,34 +787,37 @@ const ContextPanel=(function(){
       // from centre as the cardinals (a raw 3×3 grid would push them
       // √2 out).
       const len=Math.sqrt(cell[1]*cell[1]+cell[2]*cell[2]);
-      btn.style.left=(NUDGE_PAD_PX/2+(cell[1]/len)*R-NUDGE_BTN_PX/2)+'px';
-      btn.style.top=(NUDGE_PAD_PX/2+(cell[2]/len)*R-NUDGE_BTN_PX/2)+'px';
+      // Percentage placement (with a -50%/-50% translate in CSS) so the
+      // ring scales with the pad instead of pinning to a fixed diameter.
+      btn.style.left=(50+(cell[1]/len)*NUDGE_ORBIT_PCT)+'%';
+      btn.style.top=(50+(cell[2]/len)*NUDGE_ORBIT_PCT)+'%';
       wireHold(btn,function(){ onNudge(cell[1],cell[2]); });
       pad.appendChild(btn);
     });
+    return pad;
+  }
+
+  function _makeCenterButton(onCenter,centerTitle){
     const center=document.createElement('button');
     center.type='button';
     center.className='nudge-btn nudge-center';
     center.textContent='⊙';
     center.title=centerTitle||'Put it back';
-    center.style.left=(NUDGE_PAD_PX/2-NUDGE_BTN_PX/2)+'px';
-    center.style.top=(NUDGE_PAD_PX/2-NUDGE_BTN_PX/2)+'px';
+    center.setAttribute('aria-label',centerTitle||'Put it back');
     // Centre is a one-shot reset — no hold-to-repeat (repeating a reset
-    // is meaningless), a plain click is the whole gesture.
-    center.addEventListener('click',function(){ onCenter(); });
-    pad.appendChild(center);
-    return pad;
+    // is meaningless), a plain click is the whole gesture. It sits ON the
+    // Spin disc now, so its own pointerdown must not also start a rotate
+    // drag; the dial's handler is on the dial itself, so stopping
+    // propagation here is the whole guard.
+    center.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+    center.addEventListener('click',function(e){ e.stopPropagation(); onCenter(); });
+    return center;
   }
 
-  function _makeNudgePadRow(parent,labelText,onNudge,onCenter,centerTitle){
-    const row=_el('div','designer-row context-row context-spatial-row');
-    row.appendChild(_el('div','designer-row-label',labelText));
-    row.appendChild(_makeNudgePad(onNudge,onCenter,centerTitle));
-    if(parent) parent.appendChild(row);
-    return row;
-  }
-
-  const DIAL_PX=104;
+  // Dial geometry, also as fractions of its own box. The dial nests
+  // inside the ring, so its diameter is whatever the buttons' inner
+  // edge leaves, less a small breathing gap.
+  const DIAL_PCT_OF_PAD=((COMBO_PAD_PX/2-NUDGE_BTN_PX-8)*2/COMBO_PAD_PX)*100;
   const DIAL_HANDLE_PX=18;
 
   // Every rotation write in Studio is plain degrees, but the existing
@@ -819,22 +833,18 @@ const ContextPanel=(function(){
     return Math.round(n);
   }
 
-  function _makeRotationDial(parent,opts){
-    // opts: {labelText, value, onInput(deg)}
-    const row=_el('div','designer-row context-row context-spatial-row');
-    const lbl=_el('div','designer-row-label text-slider-label');
-    lbl.appendChild(_el('span',null,opts.labelText||'Spin'));
-    const val=_el('span','context-range-value',_normDeg(opts.value)+'°');
-    lbl.appendChild(val);
-    row.appendChild(lbl);
-
+  // Builds the Spin disc alone (no row, no label) so it can be nested at
+  // the centre of the Move ring. Reports its own reading back through
+  // opts.onDisplay so the shared label above the widget stays in sync.
+  // opts: {value, onInput(deg), onDisplay(deg)}
+  function _makeDial(opts){
     const dial=_el('div','rot-dial');
     // Announced as a real slider so the dial is reachable and readable
     // without a pointer — the pad is keyboard-reachable too, so neither
     // control is pointer-only.
     dial.setAttribute('role','slider');
     dial.setAttribute('tabindex','0');
-    dial.setAttribute('aria-label',opts.labelText||'Spin');
+    dial.setAttribute('aria-label','Spin');
     dial.setAttribute('aria-valuemin','0');
     dial.setAttribute('aria-valuemax','359');
     const needle=_el('div','rot-dial-needle');
@@ -846,14 +856,16 @@ const ContextPanel=(function(){
     function place(){
       // 0° is up (12 o'clock) and grows clockwise — the same sense a
       // positive canvas rotate() turns, so the handle's position always
-      // matches which way the object actually ends up facing.
+      // matches which way the object actually ends up facing. Placed in
+      // percentages of the dial's own box, like the ring above it, so
+      // the whole widget scales as one.
       const rad=(cur-90)*Math.PI/180;
-      const r=DIAL_PX/2-DIAL_HANDLE_PX/2-4;
-      handle.style.left=(DIAL_PX/2+Math.cos(rad)*r-DIAL_HANDLE_PX/2)+'px';
-      handle.style.top=(DIAL_PX/2+Math.sin(rad)*r-DIAL_HANDLE_PX/2)+'px';
+      const rPct=50-((DIAL_HANDLE_PX/2+3)/(COMBO_PAD_PX*DIAL_PCT_OF_PAD/100))*100;
+      handle.style.left=(50+Math.cos(rad)*rPct)+'%';
+      handle.style.top=(50+Math.sin(rad)*rPct)+'%';
       needle.style.transform='rotate('+cur+'deg)';
-      val.textContent=cur+'°';
       dial.setAttribute('aria-valuenow',String(cur));
+      if(typeof opts.onDisplay==='function') opts.onDisplay(cur);
     }
     function commit(v){
       cur=_normDeg(v);
@@ -889,7 +901,48 @@ const ContextPanel=(function(){
       else if(e.key==='Home'){ e.preventDefault(); commit(0); }
     });
     place();
-    row.appendChild(dial);
+    return dial;
+  }
+
+  // The whole thing, assembled: a Move ring of 8 direction buttons with a
+  // Spin disc nested at its centre, and the "put it back" reset sitting
+  // on the disc's own hub. One widget, two gestures — tap or hold an
+  // arrow to move, drag around the middle to turn.
+  // opts: {onNudge(dx,dy), onCenter(), resetTitle, canRotate, rotValue,
+  //        onRot(deg)}
+  function _makeSpatialWidget(parent,opts){
+    const row=_el('div','designer-row context-row context-spatial-row');
+    const lbl=_el('div','designer-row-label text-slider-label');
+    lbl.appendChild(_el('span',null,opts.canRotate?'Move & Spin':'Move'));
+    const val=opts.canRotate?_el('span','context-range-value',_normDeg(opts.rotValue)+'°'):null;
+    if(val) lbl.appendChild(val);
+    row.appendChild(lbl);
+
+    const pad=_makeNudgePad(opts.onNudge);
+    const center=_makeCenterButton(opts.onCenter,opts.resetTitle);
+    if(opts.canRotate){
+      const dial=_makeDial({
+        value:opts.rotValue,
+        onInput:opts.onRot,
+        onDisplay:function(deg){ if(val) val.textContent=deg+'°'; }
+      });
+      // The hub lives on the disc so a kid's thumb lands on one place to
+      // reset, right where the turn gesture already centres.
+      dial.appendChild(center);
+      pad.appendChild(dial);
+    }else{
+      // Nothing to spin (a full-bleed colour fill has no orientation, a
+      // non-rotatable Place is guardrailed off) — the ring keeps its own
+      // hub and no disc is rendered at all.
+      pad.appendChild(center);
+    }
+    row.appendChild(pad);
+
+    const legend=_el('div','spatial-legend');
+    legend.appendChild(_el('span',null,'Tap the arrows to move'));
+    if(opts.canRotate) legend.appendChild(_el('span',null,'Drag around the middle to spin'));
+    row.appendChild(legend);
+
     if(parent) parent.appendChild(row);
     return row;
   }
@@ -1022,25 +1075,25 @@ const ContextPanel=(function(){
     const ad=_spatialAdapter(slide,sceneObj);
     if(!ad) return false;
     const cv=_canvasSize(slide);
-    _makeNudgePadRow(container,'Move',function(dx,dy){
-      const p=ad.getPos();
-      // Clamp the centre inside the page so a held direction can never
-      // walk an object completely off-canvas and out of reach.
-      const nx=Math.max(0,Math.min(cv.w,Math.round(p.x+dx*NUDGE_STEP_PX)));
-      const ny=Math.max(0,Math.min(cv.h,Math.round(p.y+dy*NUDGE_STEP_PX)));
-      ad.setPos(nx,ny);
-      _afterQuickEditChange();
-    },function(){
-      ad.resetPos();
-      _afterQuickEditChange();
-    },ad.resetTitle);
-    if(ad.canRotate){
-      _makeRotationDial(container,{
-        labelText:'Spin',
-        value:ad.getRot(),
-        onInput:function(v){ ad.setRot(v); _afterQuickEditChange(); }
-      });
-    }
+    _makeSpatialWidget(container,{
+      onNudge:function(dx,dy){
+        const p=ad.getPos();
+        // Clamp the centre inside the page so a held direction can never
+        // walk an object completely off-canvas and out of reach.
+        const nx=Math.max(0,Math.min(cv.w,Math.round(p.x+dx*NUDGE_STEP_PX)));
+        const ny=Math.max(0,Math.min(cv.h,Math.round(p.y+dy*NUDGE_STEP_PX)));
+        ad.setPos(nx,ny);
+        _afterQuickEditChange();
+      },
+      onCenter:function(){
+        ad.resetPos();
+        _afterQuickEditChange();
+      },
+      resetTitle:ad.resetTitle,
+      canRotate:ad.canRotate,
+      rotValue:ad.canRotate?ad.getRot():0,
+      onRot:function(v){ ad.setRot(v); _afterQuickEditChange(); }
+    });
     return true;
   }
 

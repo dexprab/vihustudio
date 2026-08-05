@@ -706,19 +706,31 @@ button:active{
   width:100%;
 }
 
+/* ONE widget, two gestures: the Move ring holds the 8 direction buttons
+ * and the Spin disc nests at its centre (js/contextPanel.js's
+ * _makeSpatialWidget). Sizes are a capped percentage rather than fixed px
+ * — the Selection Action Strip sizes itself to whatever gutter room it
+ * finds, so the widget has to shrink with it instead of overflowing.
+ * Every absolutely-placed child rides a translate(-50%,-50%) so its
+ * percentage left/top means "centre here", which is what lets the ring
+ * and the disc scale together. */
 .nudge-pad{
   position:relative;
-  width:118px;
-  height:118px;
+  width:min(150px, 100%);
+  aspect-ratio:1;
   border-radius:50%;
-  background:var(--panel);
+  /* A faint warm wash marks the Move ring as its own zone, so the Spin
+   * disc reads as a distinct thing sitting inside it rather than a
+   * near-invisible circle on a flat field. */
+  background:rgba(255,203,69,0.07);
   border:1px solid var(--line);
   flex-shrink:0;
 }
 .nudge-btn{
   position:absolute !important;
-  width:30px !important;
-  height:30px !important;
+  transform:translate(-50%,-50%);
+  width:28px !important;
+  height:28px !important;
   margin:0 !important;
   padding:0 !important;
   border-radius:50%;
@@ -737,25 +749,39 @@ button:active{
   transition:background 0.12s ease, transform 0.08s ease;
 }
 .nudge-btn:hover{ background:var(--gold-soft, rgba(255,203,69,0.18)); }
-.nudge-btn:active{ transform:scale(0.9); background:var(--gold); }
+/* The active transform has to restate the centring translate — a bare
+ * scale() would drop it and snap every pressed button a half-width up
+ * and left. */
+.nudge-btn:active{ transform:translate(-50%,-50%) scale(0.88); background:var(--gold); }
 .nudge-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
 .nudge-btn.nudge-center{
-  left:44px !important;
-  top:44px !important;
+  left:50% !important;
+  top:50% !important;
+  width:26px !important;
+  height:26px !important;
   font-size:13px;
-  opacity:0.7;
+  opacity:0.75;
+  /* Sits on the Spin disc's own hub, above the needle/handle. */
+  z-index:2;
 }
 .nudge-btn.nudge-center:hover{ opacity:1; }
 
 .rot-dial{
-  position:relative;
-  width:104px;
-  height:104px;
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  /* Kept in step with js/contextPanel.js's DIAL_PCT_OF_PAD, which derives
+   * the same 52% from the ring's own button size — the JS needs it to
+   * place the handle, the CSS needs it to size the disc. */
+  width:52%;
+  aspect-ratio:1;
   border-radius:50%;
   background:var(--panel);
-  border:2px solid var(--line);
+  /* A gold rim ties the disc to its own needle and handle, and makes the
+   * "drag around here" zone unmistakable inside the ring. */
+  border:2px solid rgba(255,203,69,0.7);
   cursor:grab;
-  flex-shrink:0;
   user-select:none;
   -webkit-user-select:none;
   touch-action:none;
@@ -765,12 +791,13 @@ button:active{
 .rot-dial-needle{
   position:absolute;
   left:50%;
-  top:8px;
+  top:9%;
   width:2px;
-  height:44px;
+  height:41%;
   margin-left:-1px;
-  /* Pivots on the dial's own centre — 8px top offset + 44px height puts
-   * the needle's base exactly at 52px, half of the 104px dial. */
+  /* 9% top + 41% height puts the needle's base at 50% — the dial's own
+   * centre — so it pivots on the hub at any widget size; the -1px margin
+   * lands its own 50%/100% origin exactly on that centre. */
   transform-origin:50% 100%;
   background:var(--gold);
   border-radius:1px;
@@ -778,6 +805,7 @@ button:active{
 }
 .rot-dial-handle{
   position:absolute;
+  transform:translate(-50%,-50%);
   width:18px;
   height:18px;
   border-radius:50%;
@@ -785,6 +813,16 @@ button:active{
   border:2px solid var(--bg);
   box-shadow:0 1px 4px rgba(0,0,0,0.25);
   pointer-events:none;
+}
+.spatial-legend{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1px;
+  font-size:10px;
+  color:var(--muted);
+  text-align:center;
+  line-height:1.3;
 }
 
 #previewCanvas{
