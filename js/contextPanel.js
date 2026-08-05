@@ -1801,43 +1801,57 @@ const ContextPanel=(function(){
   // a genuinely new, freestanding picture the Story Author uploads from
   // their OWN device, distinct from "From This World" below (which
   // sources art the Theme Author already flagged in the World's own
-  // Collection registry). Reuses the exact hidden-file-input/FileReader/
-  // _storeUploadedAsset chain _appendWorldObjectEditControl's own Replace
-  // Image control already established, so an upload here is durably
-  // stored (vihu-asset:) the identical way every other picture upload in
-  // this app already is. Lands on an ordinary kind:'image' sticker's
-  // Refine panel — Position/Size/Rotation/Opacity/Lock/Duplicate/Delete —
-  // exactly like a Collection-sourced picture's own panel, since the
-  // picture itself is real artwork with nothing further to configure.
+  // Collection registry). The picked file routes through the SAME
+  // Picture Studio pass every other picture upload in this app already
+  // takes (Place fills, Family Photos picks, the page background) —
+  // "when i choose image from +add something it does not goes through
+  // image studio" was a real, reported gap: this path used to hand the
+  // raw FileReader result straight to a sticker with no Picture Studio
+  // step at all. Applying from Picture Studio lands on an ordinary
+  // kind:'image' sticker's Refine panel — Position/Size/Rotation/
+  // Opacity/Lock/Duplicate/Delete — exactly like a Collection-sourced
+  // picture's own panel.
   function _addImageObject(){
-    const slide=_currentSlide();
-    if(!slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
     const fileInput=document.createElement('input');
     fileInput.type='file';
     fileInput.accept='image/*';
     fileInput.addEventListener('change',function(){
       const file=fileInput.files && fileInput.files[0];
       if(!file) return;
+      if(typeof PictureStudio!=='undefined' && typeof PictureStudio.open==='function'){
+        PictureStudio.open(file,{defaultMode:'fit',onApply:function(result){
+          _addImageStickerFromDataURL(result && result.dataURL,'image.upload');
+        }});
+        return;
+      }
+      // Degraded path only — Picture Studio always exists in real Studio.
       const reader=new FileReader();
-      reader.onload=function(){
-        _storeUploadedAsset(reader.result,function(finalRef){
-          // Same synthetic-stickerId reasoning as _addShapeObject/
-          // _addTextObject/_addDoodleObject above — a fixed literal is
-          // fine since instance identity comes from st.id, not stickerId,
-          // and several freestanding photos may coexist on one page.
-          const st=SceneEngine.addSticker(slide,{
-            kind:'image', image:finalRef, stickerId:'image.upload',
-            w:320, h:320
-          });
-          if(!st) return;
-          if(typeof window.setSelectedSceneElement==='function'){
-            try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
-          }
-        });
-      };
+      reader.onload=function(){ _addImageStickerFromDataURL(reader.result,'image.upload'); };
       reader.readAsDataURL(file);
     });
     fileInput.click();
+  }
+
+  // Shared tail for every "a picked/prepared picture becomes a
+  // freestanding kind:'image' sticker" path (Add Something's Photo card,
+  // Family Photos picks) — durably stored (vihu-asset:) via
+  // _storeUploadedAsset, then selected so the kid lands straight on its
+  // Refine panel. stickerId is a fixed synthetic literal per source
+  // (instance identity comes from st.id, not stickerId, so several
+  // photos may coexist on one page).
+  function _addImageStickerFromDataURL(dataURL,stickerId){
+    const slide=_currentSlide();
+    if(!dataURL || !slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    _storeUploadedAsset(dataURL,function(finalRef){
+      const st=SceneEngine.addSticker(slide,{
+        kind:'image', image:finalRef, stickerId:stickerId||'image.upload',
+        w:320, h:320
+      });
+      if(!st) return;
+      if(typeof window.setSelectedSceneElement==='function'){
+        try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+      }
+    });
   }
 
   // Collection ("From This World") — Collection Phase 6. A Theme Author
@@ -2188,22 +2202,10 @@ const ContextPanel=(function(){
     }
   }
 
-  // Same freestanding kind:'image' sticker _addImageObject/_addCollectionObject
-  // already create — durably stored (vihu-asset:) via _storeUploadedAsset,
-  // then selected so the kid lands straight on its Refine panel.
+  // Same freestanding kind:'image' sticker Add Something's Photo card
+  // creates — shared tail lives in _addImageStickerFromDataURL above.
   function _familyAddImageObject(dataURL){
-    const slide=_currentSlide();
-    if(!dataURL || !slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
-    _storeUploadedAsset(dataURL,function(finalRef){
-      const st=SceneEngine.addSticker(slide,{
-        kind:'image', image:finalRef, stickerId:'image.family',
-        w:320, h:320
-      });
-      if(!st) return;
-      if(typeof window.setSelectedSceneElement==='function'){
-        try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
-      }
-    });
+    _addImageStickerFromDataURL(dataURL,'image.family');
   }
 
   // Parent-facing album management — add / rename / replace link /
