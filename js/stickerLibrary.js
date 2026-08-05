@@ -518,6 +518,31 @@ const StickerLibrary=(function(){
     return null;
   }
 
+  // Voice-note badge looks. A kind:'voice' sticker (Voice MVP Ship 2) is
+  // a placeable badge whose real payload is audio — all a silent surface
+  // can show is the badge, so its LOOK is the only thing a kid can pick.
+  // Shipped originally as one fixed heavy coral disc, which read as
+  // overpowering against real artwork; these three are all deliberately
+  // lighter, and none of them is a solid backfill.
+  //   speaker — the plain glyph on a soft halo, so it reads on any
+  //             background without a disc behind it. The default.
+  //   bubble  — the glyph inside a drawn speech bubble: thin coral
+  //             outline, barely-there coral tint.
+  //   mic     — a microphone glyph inside a thin coral ring, no fill.
+  // The renderer (renderer/slideRenderer.js's _drawSceneVoice) and the
+  // Refine panel's picker both read THIS list, so a fourth look is one
+  // entry here plus one draw branch.
+  const VOICE_ICONS=[
+    {value:'speaker',label:'Speaker',glyph:'🔊'},
+    {value:'bubble', label:'Bubble', glyph:'🔊'},
+    {value:'mic',    label:'Mic',    glyph:'🎤'}
+  ];
+  const DEFAULT_VOICE_ICON='speaker';
+  function getVoiceIcon(id){
+    for(let i=0;i<VOICE_ICONS.length;i++){ if(VOICE_ICONS[i].value===id) return VOICE_ICONS[i]; }
+    return VOICE_ICONS[0];
+  }
+
   const api={
     CATEGORIES:CATEGORIES,
     getCategories:getCategories,
@@ -528,7 +553,10 @@ const StickerLibrary=(function(){
     search:search,
     getDataURL:getDataURL,
     SHAPE_KINDS:SHAPE_KINDS,
-    getShapeKind:getShapeKind
+    getShapeKind:getShapeKind,
+    VOICE_ICONS:VOICE_ICONS,
+    DEFAULT_VOICE_ICON:DEFAULT_VOICE_ICON,
+    getVoiceIcon:getVoiceIcon
   };
   try{ window.StickerLibrary=api; }catch(e){}
   return api;

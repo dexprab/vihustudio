@@ -2881,6 +2881,44 @@ const CardDesigner=(function(){
     voiceGroup.appendChild(voicePlayBtn);
     voiceGroup.appendChild(voiceStatus);
 
+    // Badge look — the one thing a kid can genuinely style on a voice
+    // note, since the payload itself is audio. Three looks, catalogued
+    // once in StickerLibrary.VOICE_ICONS and drawn by the renderer's own
+    // _drawSceneVoice; none of them is a solid backfill (Ship 2's single
+    // fixed coral disc read as overpowering against real artwork).
+    const voiceIconRow=document.createElement('div');
+    voiceIconRow.className='designer-row sticker-voice-icon-row';
+    const voiceIconLabel=document.createElement('div');
+    voiceIconLabel.className='designer-row-label';
+    voiceIconLabel.textContent='Badge';
+    voiceIconRow.appendChild(voiceIconLabel);
+    const voiceIconChoices=document.createElement('div');
+    voiceIconChoices.className='icon-row voice-icon-choices';
+    const voiceIconList=(typeof StickerLibrary!=='undefined' && StickerLibrary.VOICE_ICONS)
+      ? StickerLibrary.VOICE_ICONS : [];
+    voiceIconList.forEach(function(opt){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='icon-card voice-icon-card';
+      b.dataset.voiceIcon=opt.value;
+      const prev=document.createElement('span');
+      prev.className='icon-preview voice-icon-preview voice-icon-preview-'+opt.value;
+      prev.textContent=opt.glyph;
+      const lab=document.createElement('span');
+      lab.className='icon-label';
+      lab.textContent=opt.label;
+      b.appendChild(prev);
+      b.appendChild(lab);
+      b.addEventListener('click',function(){
+        const st=_activeSticker();
+        if(!st || st.kind!=='voice') return;
+        _stickerUpdate({voiceIcon:opt.value});
+      });
+      voiceIconChoices.appendChild(b);
+    });
+    voiceIconRow.appendChild(voiceIconChoices);
+    voiceGroup.appendChild(voiceIconRow);
+
     // Action row — Lock / Duplicate / Delete.
     const actionRow=document.createElement('div');
     actionRow.className='sticker-actions-row';
@@ -3016,6 +3054,13 @@ const CardDesigner=(function(){
           const ms=st.voiceDurationMs||0;
           playBtn.textContent=ms>0?('▶ Play ('+_fmtVoiceMs(ms)+')'):'▶ Play';
         }
+        // Absent voiceIcon resolves to the catalogue's own default, so a
+        // note placed before this picker existed shows the right card as
+        // active rather than none at all.
+        const curIcon=st.voiceIcon || ((typeof StickerLibrary!=='undefined' && StickerLibrary.DEFAULT_VOICE_ICON) || 'speaker');
+        voiceGroupEl.querySelectorAll('.voice-icon-card').forEach(function(b){
+          b.classList.toggle('active',b.dataset.voiceIcon===curIcon);
+        });
       }
     }
 

@@ -10038,3 +10038,29 @@ body.dark-theme .traveller-save-notice-dismiss{
 }
 .voice-note-play-btn:hover{ background:linear-gradient(135deg,#DC6060,#CE5252); }
 .sticker-voice-status{ min-height:0; }
+/* Badge-look picker (StickerLibrary.VOICE_ICONS). Reuses the shared
+   .icon-row/.icon-card/.icon-label vocabulary; only the preview swatch is
+   voice-specific, so each tile SHOWS the look it picks rather than three
+   identical glyphs in three identical boxes. Kept in step with
+   renderer/slideRenderer.js's _drawSceneVoice by hand. */
+.voice-icon-preview{
+  width:34px;
+  height:34px;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  font-size:17px;
+}
+.voice-icon-preview-speaker{ text-shadow:0 0 5px rgba(255,255,255,0.95); }
+.voice-icon-preview-bubble{
+  border:1.5px solid #E67373;
+  border-radius:9px;
+  background:rgba(230,115,115,0.14);
+  font-size:15px;
+}
+.voice-icon-preview-mic{
+  border:1.5px solid #E67373;
+  border-radius:50%;
+  background:transparent;
+  font-size:15px;
+}

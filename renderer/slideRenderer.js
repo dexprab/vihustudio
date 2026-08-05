@@ -5793,36 +5793,84 @@ const SlideRenderer=(()=>{
   }
 
   // Voice note — the fifth sticker kind (Voice MVP Ship 2): a placeable
-  // 🔊 badge whose real payload is audio (st.voiceRef, a durable
+  // badge whose real payload is audio (st.voiceRef, a durable
   // vihu-asset: reference; st.voiceDurationMs the wall-clock length).
-  // The badge is all a silent surface can show — a coral disc (matching
-  // the Voice panel's own record-button coral) with a white ring and a
-  // speaker glyph, so a reader can SEE there's something to tap. Paints
-  // in every render, Publish included (Creator Governing Rule #5 —
-  // Publish honours the center pane; a printed badge is an honest "this
-  // page has sound in Studio" marker, the same way the audio itself is
-  // disclosed as Studio-only until Story Reel).
+  // The badge is all a silent surface can show, so a reader can SEE
+  // there's something to tap. Paints in every render, Publish included
+  // (Creator Governing Rule #5 — Publish honours the center pane; a
+  // printed badge is an honest "this page has sound in Studio" marker,
+  // the same way the audio itself is disclosed as Studio-only until
+  // Story Reel).
+  //
+  // The look is the kid's own choice (st.voiceIcon, catalogued in
+  // js/stickerLibrary.js's VOICE_ICONS). Ship 2 drew one fixed solid
+  // coral disc, which read as overpowering against real artwork — every
+  // look here is lighter, and none is a solid backfill. An absent
+  // voiceIcon resolves to 'speaker', so an already-placed note picks up
+  // the lighter default rather than keeping the heavy disc.
+  const VOICE_CORAL='#E67373';
+  function _voiceIconDef(st){
+    if(typeof StickerLibrary!=='undefined' && typeof StickerLibrary.getVoiceIcon==='function'){
+      return StickerLibrary.getVoiceIcon(st.voiceIcon);
+    }
+    return {value:'speaker',glyph:'🔊'};
+  }
   function _drawSceneVoice(st){
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:110;
     const h=typeof st.h==='number'?st.h:110;
     const r=Math.min(w,h)/2;
+    const def=_voiceIconDef(st);
+    const look=def.value||'speaker';
     x.save();
     x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
     x.translate(cx,cy);
     if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
-    x.beginPath();
-    x.arc(0,0,r,0,Math.PI*2);
-    x.fillStyle='#E67373';
-    x.fill();
-    x.lineWidth=Math.max(3,r*0.1);
-    x.strokeStyle='#FFFFFF';
-    x.stroke();
-    x.font=Math.round(r)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    let glyphY=0;
+    let glyphSize=Math.round(r);
+    if(look==='bubble'){
+      // A drawn speech bubble — thin coral outline, barely-there tint,
+      // with a little tail so it reads as "someone is talking here".
+      const bw=r*1.7, bh=r*1.35, rad=Math.min(bw,bh)*0.3;
+      const bx=-bw/2, by=-bh/2-r*0.12;
+      x.beginPath();
+      x.moveTo(bx+rad,by);
+      x.arcTo(bx+bw,by,bx+bw,by+bh,rad);
+      x.arcTo(bx+bw,by+bh,bx,by+bh,rad);
+      x.lineTo(bx+bw*0.42,by+bh);
+      x.lineTo(bx+bw*0.30,by+bh+r*0.32);
+      x.lineTo(bx+bw*0.30,by+bh);
+      x.arcTo(bx,by+bh,bx,by,rad);
+      x.arcTo(bx,by,bx+bw,by,rad);
+      x.closePath();
+      x.fillStyle='rgba(230,115,115,0.14)';
+      x.fill();
+      x.lineWidth=Math.max(2,r*0.08);
+      x.strokeStyle=VOICE_CORAL;
+      x.stroke();
+      glyphSize=Math.round(r*0.78);
+      glyphY=-r*0.10;
+    }else if(look==='mic'){
+      // A thin coral ring, nothing inside it — the lightest of the three.
+      x.beginPath();
+      x.arc(0,0,r*0.9,0,Math.PI*2);
+      x.lineWidth=Math.max(2,r*0.09);
+      x.strokeStyle=VOICE_CORAL;
+      x.stroke();
+      glyphSize=Math.round(r*0.85);
+      glyphY=r*0.04;
+    }else{
+      // 'speaker' — the glyph alone on a soft white halo, so it stays
+      // legible over a dark photo without putting a disc behind it.
+      x.shadowColor='rgba(255,255,255,0.9)';
+      x.shadowBlur=Math.max(6,r*0.5);
+      glyphY=r*0.06;
+    }
+    x.font=glyphSize+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     x.textAlign='center';
     x.textBaseline='middle';
-    x.fillText('🔊',0,r*0.06);
+    x.fillText(def.glyph||'🔊',0,glyphY);
     x.restore();
   }
 
@@ -5883,8 +5931,9 @@ const SlideRenderer=(()=>{
     };
     if(st.kind==='voice'){
       // Object Strip renders {kind:'glyph'} as a plain text glyph already
-      // — zero ObjectStrip changes needed for the 🔊 card.
-      bbox.visual={kind:'glyph',glyph:'🔊'};
+      // — zero ObjectStrip changes needed for the card. The glyph follows
+      // whichever badge look the kid picked (VOICE_ICONS).
+      bbox.visual={kind:'glyph',glyph:_voiceIconDef(st).glyph||'🔊'};
       return bbox;
     }
     if(st.recolorEnabled){
