@@ -371,19 +371,8 @@ button:active{
   opacity:0.8;
 }
 
-#uploadBtn{
-  font-size:13px;
-  background:linear-gradient(135deg,#ffd668,var(--gold));
-  border-radius:20px;
-  box-shadow:0 3px 10px rgba(255,203,69,0.24);
-  margin-bottom:var(--section-gap);
-  transition:transform 0.15s, box-shadow 0.15s;
-}
-#uploadBtn:hover{ transform:translateY(-1px); box-shadow:0 5px 14px rgba(255,203,69,0.32); }
-
-/* Creator V2 — a plain, quiet "+ Add Page" pill (distinct from the
-   gold Upload Images CTA — adding a blank page is a lower-emphasis,
-   secondary action). */
+/* Creator V2 — a plain, quiet "+ Add Page" pill (adding a blank page
+   is a lower-emphasis, secondary action). */
 .add-page-btn{
   font-size:13px;
   font-weight:600;

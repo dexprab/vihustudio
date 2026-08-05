@@ -25,8 +25,8 @@
      stylesheets AND every script tag) on every ship that touches ANY
      JS or CSS file — not just the files that actually changed — the
      same manual ritual build-info.json's own version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0329'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0329'>
+<link rel='stylesheet' href='css/style.css?v=0330'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0330'>
 </head>
 <body class='light-theme creation-flow-active'>
 <!-- "under any circumstance, inner studio screen can never load before
@@ -181,11 +181,12 @@
 <div id='app' class='workspace'>
 <!-- Left sidebar -->
 <aside class='sidebar left-sidebar'>
-<section class='sidebar-section'>
-<h3>MY BOOK</h3>
-<button id='uploadBtn'>📂 Upload Images</button>
-<input id='scanUpload' type='file' accept='image/*' multiple hidden>
-</section>
+<!-- "MY BOOK — Upload Images" (the old sidebar bulk multi-page importer)
+     removed per direct product decision ("this is no more needed in
+     studio") — every picture path now goes through its own dedicated,
+     Picture-Studio-routed entry point instead: the Artwork Place's own
+     Add/Replace Artwork, Personalize -> Add Something -> Photo, and
+     Family Photos. -->
 
 <!-- Project metadata (Title, Author) preserved in AppState.project; hidden from editor per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
 <section class='sidebar-section' hidden>
@@ -591,6 +592,6 @@ Your <strong>World</strong> is the story's whole look and feel. Every change her
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js?v=0329'></script><script src='js/zipReader.js?v=0329'></script><script src='js/themePresets.js?v=0329'></script><script src='js/themeRegistry.js?v=0329'></script><script src='js/themeRepositoryClient.js?v=0329'></script><script src='js/assetStore.js?v=0329'></script><script src='js/familyAlbum.js?v=0329'></script><script src='js/placeFrameV2.js?v=0329'></script><script src='js/cardPlatform.js?v=0329'></script><script src='js/themeEngine.js?v=0329'></script><script src='js/workspaceBuilder.js?v=0329'></script><script src='js/sceneEngine.js?v=0329'></script><script src='js/imageViewEngine.js?v=0329'></script><script src='js/stickerLibrary.js?v=0329'></script><script src='js/layerEngine.js?v=0329'></script><script src='renderer/slideRenderer.js?v=0329'></script><script src='js/buildInfo.js?v=0329'></script><script src='js/thumbnails.js?v=0329'></script><script src='js/pageOps.js?v=0329'></script><script src='js/theme.js?v=0329'></script><script src='js/creatorProjectStore.js?v=0329'></script><script src='js/creatorProjectSync.js?v=0329'></script><script src='js/creatorProjectCache.js?v=0329'></script><script src='js/magicCardArt.js?v=0329'></script><script src='js/magicCard.js?v=0329'></script><script src='js/lumoVoice.js?v=0329'></script><script src='js/magicCardUI.js?v=0329'></script><script src='js/projectManager.js?v=0329'></script><script src='js/pictureStudio.js?v=0329'></script><script src='js/emojiPicker.js?v=0329'></script><script src='js/cardDesigner.js?v=0329'></script><script src='js/pageDesigner.js?v=0329'></script><script src='js/stickerStudio.js?v=0329'></script><script src='js/publishValidator.js?v=0329'></script><script src='js/pdfWriter.js?v=0329'></script><script src='js/zipWriter.js?v=0329'></script><script src='js/storyDestinations.js?v=0329'></script><script src='js/publishStudio.js?v=0329'></script><script src='js/creationFlow.js?v=0329'></script><script src='js/contextPanel.js?v=0329'></script><script src='js/objectStrip.js?v=0329'></script><script src='js/selectionActionStrip.js?v=0329'></script><script src='js/pageRuntime.js?v=0329'></script><script src='js/travellerSaveNotice.js?v=0329'></script><script src='js/companionEngine.js?v=0329'></script><script src='js/companionDirector.js?v=0329'></script><script src='js/audioManager.js?v=0329'></script><script src='js/gatewayAudio.js?v=0329'></script><script src='js/gatewaySequence.js?v=0329'></script><script src='js/app.js?v=0329'></script>
+<script src='js/state.js?v=0330'></script><script src='js/zipReader.js?v=0330'></script><script src='js/themePresets.js?v=0330'></script><script src='js/themeRegistry.js?v=0330'></script><script src='js/themeRepositoryClient.js?v=0330'></script><script src='js/assetStore.js?v=0330'></script><script src='js/familyAlbum.js?v=0330'></script><script src='js/placeFrameV2.js?v=0330'></script><script src='js/cardPlatform.js?v=0330'></script><script src='js/themeEngine.js?v=0330'></script><script src='js/workspaceBuilder.js?v=0330'></script><script src='js/sceneEngine.js?v=0330'></script><script src='js/imageViewEngine.js?v=0330'></script><script src='js/stickerLibrary.js?v=0330'></script><script src='js/layerEngine.js?v=0330'></script><script src='renderer/slideRenderer.js?v=0330'></script><script src='js/buildInfo.js?v=0330'></script><script src='js/thumbnails.js?v=0330'></script><script src='js/pageOps.js?v=0330'></script><script src='js/theme.js?v=0330'></script><script src='js/creatorProjectStore.js?v=0330'></script><script src='js/creatorProjectSync.js?v=0330'></script><script src='js/creatorProjectCache.js?v=0330'></script><script src='js/magicCardArt.js?v=0330'></script><script src='js/magicCard.js?v=0330'></script><script src='js/lumoVoice.js?v=0330'></script><script src='js/magicCardUI.js?v=0330'></script><script src='js/projectManager.js?v=0330'></script><script src='js/pictureStudio.js?v=0330'></script><script src='js/emojiPicker.js?v=0330'></script><script src='js/cardDesigner.js?v=0330'></script><script src='js/pageDesigner.js?v=0330'></script><script src='js/stickerStudio.js?v=0330'></script><script src='js/publishValidator.js?v=0330'></script><script src='js/pdfWriter.js?v=0330'></script><script src='js/zipWriter.js?v=0330'></script><script src='js/storyDestinations.js?v=0330'></script><script src='js/publishStudio.js?v=0330'></script><script src='js/creationFlow.js?v=0330'></script><script src='js/contextPanel.js?v=0330'></script><script src='js/objectStrip.js?v=0330'></script><script src='js/selectionActionStrip.js?v=0330'></script><script src='js/pageRuntime.js?v=0330'></script><script src='js/travellerSaveNotice.js?v=0330'></script><script src='js/companionEngine.js?v=0330'></script><script src='js/companionDirector.js?v=0330'></script><script src='js/audioManager.js?v=0330'></script><script src='js/gatewayAudio.js?v=0330'></script><script src='js/gatewaySequence.js?v=0330'></script><script src='js/app.js?v=0330'></script>
 </body>
 </html>

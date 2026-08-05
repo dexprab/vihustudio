@@ -1,6 +1,4 @@
 window.addEventListener('DOMContentLoaded',()=>{
-const uploadBtn=document.getElementById('uploadBtn');
-const upload=document.getElementById('scanUpload');
 const story=document.getElementById('storyBeat');
 const title=document.getElementById('bookTitle');
 const page=document.getElementById('pageNumber');
@@ -498,129 +496,15 @@ if(window.ProjectManager){
 }
 function markDirty(){ if(window.ProjectManager) ProjectManager.markDirty(); }
 
-uploadBtn.onclick=()=>upload.click();
-
-// Platform Hardening — Draft Asset Architecture, Phase C. Every real
-// upload in this file funnels through this one function before it ever
-// reaches AppState.slides — mirrors World Builder v2's own established
-// _storeUploadedAsset pattern exactly: downscale a large image first
-// (the same threshold/algorithm, shared via AssetStore's own
-// downscaleImageDataURL so the two surfaces never drift), then
-// AssetStore.put() it into a durable vihu-asset: reference. A missing
-// AssetStore/ProjectManager, or any put() failure, falls back to handing
-// the caller the raw data: URI unchanged — exactly today's pre-Phase-C
-// behaviour, never a silently lost upload.
-function _storeUploadedAsset(dataUrl,onFile){
-  if(typeof window.AssetStore==='undefined' || typeof ProjectManager==='undefined' || typeof ProjectManager.ensureProjectId!=='function'){
-    onFile(dataUrl); return;
-  }
-  const projectId=ProjectManager.ensureProjectId();
-  if(!projectId){ onFile(dataUrl); return; }
-  const finish=function(finalDataUrl){
-    window.AssetStore.put(finalDataUrl,{surface:'creator',projectId:projectId}).then(function(ref){
-      onFile(ref);
-    }).catch(function(){ onFile(finalDataUrl); });
-  };
-  const isImage=typeof dataUrl==='string' && dataUrl.indexOf('data:image/')===0;
-  if(isImage && dataUrl.length>window.AssetStore.UPLOAD_DOWNSCALE_THRESHOLD_BYTES && typeof window.AssetStore.downscaleImageDataURL==='function'){
-    window.AssetStore.downscaleImageDataURL(dataUrl).then(finish).catch(function(){ finish(dataUrl); });
-  }else{
-    finish(dataUrl);
-  }
-}
-
-// Sprint 6.7 — single-file uploads now route through Picture Studio so
-// the child can prepare the picture before it lands on the page.
-// Multi-file uploads keep the bulk-import flow (children importing a
-// whole scanned book shouldn't be stopped at every page).
-function _insertPreparedSlide(dataUrl, mode){
-  const img=new Image();
-  img.onload=function(){
-    _storeUploadedAsset(dataUrl,function(finalRef){
-      const slideObj={
-        id:Date.now(),
-        image:img,
-        _imageDataURL:finalRef,
-        storyBeat:'',
-        pageType:'story',
-        page:AppState.slides.length+1,
-        totalPages:0,
-        metadata:{
-          cardOverrides:{ image:{ mode:mode||'fit', fit:mode||'fit', scale:1, offsetX:0, offsetY:0 } }
-        }
-      };
-      AppState.slides.push(slideObj);
-      renderList();
-      renderTimeline();
-      const idx=AppState.slides.length-1;
-      showSlide(idx);
-      if(typeof ThumbnailEngine!=='undefined'){
-        try{ ThumbnailEngine.generate(slideObj).then(function(){
-          renderList(); renderTimeline();
-        }); }catch(e){}
-      }
-      markDirty();
-      // Route the right pane to the Card Designer so the child can keep
-      // editing the picture immediately.
-      const cardTabBtn=document.querySelector('.tab-btn[data-tab="card"]');
-      if(cardTabBtn && !cardTabBtn.classList.contains('active')) cardTabBtn.click();
-      if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
-    });
-  };
-  img.src=dataUrl;
-}
-
-upload.onchange=e=>{
- const files=[...e.target.files];
- e.target.value='';
- if(files.length===0) return;
- if(files.length===1 && typeof PictureStudio!=='undefined'){
-   PictureStudio.open(files[0],{
-     defaultMode:'fit',
-     onApply:function(result){
-       _insertPreparedSlide(result.dataURL, result.imageView && result.imageView.mode);
-     },
-     onCancel:function(){ /* child chose not to add the picture */ }
-   });
-   return;
- }
- // Bulk import — original Sprint 6.3 fidelity path. Each file's ORIGINAL
- // encoding (PNG → PNG, JPEG → JPEG) is the canonical source.
- const newSlides=[];
- let loaded=0;
- files.forEach((file,i)=>{
-   const reader=new FileReader();
-   reader.onload=ev=>{
-     const dataUrl=ev.target.result;
-     const img=new Image();
-     img.onload=()=>{
-       _storeUploadedAsset(dataUrl,function(finalRef){
-         const slideObj={id:Date.now()+i,image:img,_imageDataURL:finalRef,storyBeat:'',pageType:'story',page:AppState.slides.length+newSlides.length+1,totalPages:0};
-         newSlides.push(slideObj);
-         AppState.slides.push(slideObj);
-         loaded++;
-         renderList();
-         renderTimeline();
-         if(AppState.slides.length===1) showSlide(0);
-         if(loaded===files.length && newSlides.length>0){
-           try{ ThumbnailEngine.generateBatch(newSlides).then(()=>{
-              newSlides.forEach((s,idx)=>{
-                const el=document.querySelector('#slideList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
-                if(el && s.thumbnail) el.src=s.thumbnail;
-                const tEl=document.querySelector('#timelineList [data-index="'+(AppState.slides.indexOf(s))+'"] img');
-                if(tEl && s.thumbnail) tEl.src=s.thumbnail;
-              });
-              markDirty();
-           }); }catch(err){}
-         }
-         markDirty();
-       });
-     };
-     img.src=dataUrl;
-   };
-   reader.readAsDataURL(file);
- });
-};
+// "MY BOOK — Upload Images" (the old sidebar bulk multi-page importer,
+// Sprint 6.3/6.7 era) removed per direct product decision ("this is no
+// more needed in studio"). Its whole chain — the #uploadBtn/#scanUpload
+// wiring, this file's own _storeUploadedAsset copy, _insertPreparedSlide,
+// and the multi-file bulk-import loop — is deleted with it, since every
+// one of them existed only for that flow. Every picture path now goes
+// through its own dedicated, Picture-Studio-routed entry point instead:
+// the Artwork Place's own Add/Replace Artwork (js/contextPanel.js),
+// Personalize -> Add Something -> Photo, and Family Photos.
 
 // Sprint 8.1.1 — Publish button opens Publish Studio. The editor stays
 // exactly as it was underneath; closing the studio returns control with

@@ -1,9 +1,9 @@
 {
-  "version": "2.180.1",
-  "sprint": "Add Something → Photo now routes through Image Studio. The reported bug ('when i choose image from +add something it does not goes through image studio') was real: the Photo card's handler read the picked file via FileReader and created the sticker directly, skipping Picture Studio entirely — unlike every other picture path (Place fills, Family Photos picks, page background). The picked file now opens the same Picture Studio pass first; applying creates the freestanding kind:'image' sticker exactly as before.",
-  "task": "js/contextPanel.js: _addImageObject routes through PictureStudio.open(file,{defaultMode:'fit',...}); shared sticker tail factored into _addImageStickerFromDataURL (reused by _familyAddImageObject). Cache-bust ?v=0328 -> ?v=0329.",
-  "build": "0324",
+  "version": "2.180.2",
+  "sprint": "Sidebar 'MY BOOK — Upload Images' removed per direct product decision ('this is no more needed in studio'). The old bulk multi-page importer's whole chain is deleted with it — the #uploadBtn/#scanUpload markup, its CSS, js/app.js's own _storeUploadedAsset copy, _insertPreparedSlide, and the multi-file bulk-import loop — since every one of them existed only for that flow. Every picture path now goes through its own dedicated, Picture-Studio-routed entry point: the Artwork Place's Add/Replace Artwork, Personalize -> Add Something -> Photo, and Family Photos.",
+  "task": "index.html: MY BOOK section removed. css/style.css: #uploadBtn rules removed. js/app.js: the whole dead upload chain deleted. Cache-bust ?v=0329 -> ?v=0330.",
+  "build": "0325",
   "buildDate": "2026-08-05",
-  "commit": "8b2f20f83b87896d65781b507c09038e022b57c5",
+  "commit": "PENDING",
   "environment": "Release"
 }
