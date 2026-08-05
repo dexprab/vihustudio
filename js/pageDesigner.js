@@ -304,6 +304,34 @@ const PageDesigner=(function(){
     _commitContent();
     _renderEditor();
   }
+  // Family Photos as a second image source for this page's own picture —
+  // "wherever we have replace image or replace photo or replace art it
+  // should be able to replace from local as well as family photos". The
+  // picker itself lives in js/contextPanel.js (one shared popup + the
+  // Traveller gate); the picked photo then runs the IDENTICAL Picture
+  // Studio 'fit' pass _onImageSelected's local file pick already uses,
+  // landing via the same _applyPreparedPicture completion.
+  function _familyPhotosAvailable(){
+    try{
+      return !!(window.ContextPanel && typeof ContextPanel.familyPhotosAvailable==='function' && ContextPanel.familyPhotosAvailable());
+    }catch(e){ return false; }
+  }
+  function _pickFromFamilyAlbum(){
+    if(!window.ContextPanel || typeof ContextPanel.openFamilyPhotosPicker!=='function') return;
+    ContextPanel.openFamilyPhotosPicker({onPick:function(dataURL){
+      if(typeof PictureStudio!=='undefined'){
+        PictureStudio.open(dataURL,{
+          defaultMode:'fit',
+          onApply:function(result){ _applyPreparedPicture(result); },
+          onCancel:function(){ /* no-op — child chose not to use the photo */ }
+        });
+        return;
+      }
+      // Defensive fallback if Picture Studio isn't loaded — mirror
+      // _onImageSelected's own legacy direct-load path.
+      _applyPreparedPicture({dataURL:dataURL});
+    }});
+  }
   function _appendImageManager(body){
     body.appendChild(_makeLabel('Image'));
     const wrap=document.createElement('div');
@@ -329,6 +357,14 @@ const PageDesigner=(function(){
       replace.textContent='Replace Image';
       replace.addEventListener('click',_triggerImageUpload);
       actions.appendChild(replace);
+      if(_familyPhotosAvailable()){
+        const family=document.createElement('button');
+        family.type='button';
+        family.className='page-image-btn';
+        family.textContent='📷 From Family Album';
+        family.addEventListener('click',_pickFromFamilyAlbum);
+        actions.appendChild(family);
+      }
       const remove=document.createElement('button');
       remove.type='button';
       remove.className='page-image-btn page-image-btn-danger';
@@ -347,6 +383,14 @@ const PageDesigner=(function(){
       add.textContent='Add Image';
       add.addEventListener('click',_triggerImageUpload);
       wrap.appendChild(add);
+      if(_familyPhotosAvailable()){
+        const family=document.createElement('button');
+        family.type='button';
+        family.className='page-image-btn';
+        family.textContent='📷 From Family Album';
+        family.addEventListener('click',_pickFromFamilyAlbum);
+        wrap.appendChild(family);
+      }
     }
     body.appendChild(wrap);
   }

@@ -1,9 +1,9 @@
 {
-  "version": "2.180.5",
-  "sprint": "Shared repository client gains listAssetPaths/deleteAssets (js/themeRepositoryClient.js) — the two additive functions World Builder v2's new Publishing Check needs to diff/remove a Personal Theme's unused-but-on-Supabase Storage assets. Both build the canonical {repo}/{ownerSegment}/{themeId} prefix; listAssetPaths reuses the recursive _listAllObjectPaths and returns bare relPaths; deleteAssets removes re-prefixed full paths from the theme-assets bucket, with an empty-array clean early return. Zero root-Studio behaviour change — purely additive exports.",
-  "task": "See tools/world-builder-v2/build-info.json 3.81.0 for the full three-bug Builder batch this serves. Cache-bust ?v=0332 -> ?v=0333.",
-  "build": "0328",
+  "version": "2.181.0",
+  "sprint": "Family Photos at every replace-image surface — wherever Studio offers Replace Image / Replace Photo / Add Image, a '📷 From Family Album' button now sits beside the local file picker (never replacing it): (1) the World-owned object quick-edit popup's Replace Image (direct apply, no Picture Studio — parity with its own local path), (2) Background's Upload/Replace Picture (routes the family pick through Picture Studio 'fill', same as local), (3) pageDesigner's Cover/Hook/End Image Manager Add/Replace Image (Picture Studio 'fit', same as local). The Artwork Place already had it. One generic opts.onPick extension on the shared family picker (_showFamilyPhotosPicker/_routeFamilyPick) serves all three; ContextPanel exports familyPhotosAvailable/openFamilyPhotosPicker so pageDesigner reuses the picker cross-module. All buttons Creator-gated + hidden when unconfigured, exactly like the existing entry points. Also fixed a latent null-active-Story-Theme crash in ThemeEngine._renderDecorations (an Artwork-only World has no Story Theme at all; same guard class as _defaultOptionsFor/resolveTheme).",
+  "task": "js/contextPanel.js: _routeFamilyPick onPick path, family button in the quick-edit image branch + _appendBackgroundImageControls, two new exports. js/pageDesigner.js: _familyPhotosAvailable/_pickFromFamilyAlbum + buttons in both Image Manager states. js/themeEngine.js: _renderDecorations null guard. Verified 19/19 (fa_replace_everywhere_verify.mjs) + fa_ui_verify 35/35 + photo_via_studio 8/8 + both goldenBuilds PASS. Cache-bust ?v=0333 -> ?v=0334.",
+  "build": "0329",
   "buildDate": "2026-08-05",
-  "commit": "cea7053ba3021315b50febed52b6d008cbb5d2ec",
+  "commit": "PENDING",
   "environment": "Release"
 }

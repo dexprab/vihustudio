@@ -490,7 +490,11 @@ const ThemeEngine=(function(){
   function _renderDecorations(container){
     container=container||document.getElementById('decorationsList');
     if(!container) return;
-    const t=getActiveTheme();
+    // Null-safe: an Artwork-only World has no active Story Theme at all
+    // (Studio ships zero built-in Story Themes — Repository-only), and a
+    // null theme here means "no decorations", never a crash. Same class
+    // of fix as _defaultOptionsFor/resolveTheme's own null-theme guards.
+    const t=getActiveTheme()||{};
     const opts=getOptions();
     const allowed=t.decorations||[];
     container.innerHTML='';

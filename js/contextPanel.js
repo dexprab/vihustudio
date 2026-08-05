@@ -742,6 +742,16 @@ const ContextPanel=(function(){
         rotationCell=null;
         mounted=true;
       }else if(v.kind==='image'){
+        // Shared apply tail for BOTH sources (local file / Family
+        // Photos) — the picked bytes land identically either way, so
+        // downstream never knows which source they came from.
+        const applyImage=function(dataURL){
+          if(!dataURL) return;
+          _storeUploadedAsset(dataURL,function(finalRef){
+            SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
+            _afterQuickEditChange();
+          });
+        };
         const btn=_el('button','context-btn','🖼️ Replace Image');
         btn.type='button';
         btn.addEventListener('click',function(){
@@ -752,17 +762,24 @@ const ContextPanel=(function(){
             const file=fileInput.files && fileInput.files[0];
             if(!file) return;
             const reader=new FileReader();
-            reader.onload=function(){
-              _storeUploadedAsset(reader.result,function(finalRef){
-                SceneEngine.setContentOverride(slide,sceneObj.id,'image',finalRef);
-                _afterQuickEditChange();
-              });
-            };
+            reader.onload=function(){ applyImage(reader.result); };
             reader.readAsDataURL(file);
           });
           fileInput.click();
         });
         container.appendChild(btn);
+        // Family Photos — the second source, alongside (never replacing)
+        // the local picker; same conditional-presence rule as the
+        // Artwork panel's own From Family Album button, and the picker
+        // itself carries the Traveller gate.
+        if(_familyPhotosAvailable()){
+          const famBtn=_el('button','context-btn','📷 From Family Album');
+          famBtn.type='button';
+          famBtn.addEventListener('click',function(){
+            _showFamilyPhotosPicker({onPick:applyImage});
+          });
+          container.appendChild(famBtn);
+        }
         mounted=true;
       }else if(v.kind==='text'){
         container.appendChild(_el('div','designer-row-label','Words'));
@@ -1632,6 +1649,22 @@ const ContextPanel=(function(){
     });
     btnRow.appendChild(uploadBtn);
 
+    // Family Photos as a second background-picture source — the picked
+    // photo runs the identical Picture Studio 'fill' pass the local
+    // upload button above already uses, landing via the same
+    // _applyBackgroundImageResult completion.
+    if(_familyPhotosAvailable()){
+      const famBtn=_el('button','context-btn','📷 From Family Album');
+      famBtn.type='button';
+      famBtn.addEventListener('click',function(){
+        _showFamilyPhotosPicker({onPick:function(dataURL){
+          if(typeof PictureStudio==='undefined'){ _applyBackgroundImageResult({dataURL:dataURL}); return; }
+          PictureStudio.open(dataURL,{defaultMode:'fill',onApply:_applyBackgroundImageResult});
+        }});
+      });
+      btnRow.appendChild(famBtn);
+    }
+
     if(bg&&bg.ref){
       const cropBtn=_el('button','context-btn','✂️ Crop / Rotate');
       cropBtn.type='button';
@@ -1985,11 +2018,17 @@ const ContextPanel=(function(){
   // A parent shares one or more PUBLIC Google Photos albums (stored per-
   // kid in Supabase — js/familyAlbum.js is all the plumbing); the kid
   // browses and picks photos from them ALONGSIDE the ordinary local
-  // picker, never replacing it. Two entry points, one shared picker:
+  // picker, never replacing it. One shared picker, several entry points:
   //   - Add Something -> "📷 Family Photos" (lands as a freestanding
   //     kind:'image' sticker, exactly like "Photo"/"From This World")
   //   - the Artwork panel's "📷 From Family Album" (fills the selected
   //     Place, exactly like "Replace Artwork")
+  //   - every other replace-image surface, via opts.onPick (the
+  //     World-owned object quick-edit's Replace Image, Background's
+  //     Upload/Replace Picture, and — cross-module via the ContextPanel
+  //     export — pageDesigner's Cover/Hook/End Image Manager), per
+  //     "wherever we have replace image or replace photo or replace art
+  //     it should be able to replace from local as well as family photos"
   // Both route the picked photo through Picture Studio first, so a kid
   // can crop/adjust before it lands — the identical pipeline a local
   // file pick already uses; downstream code never knows the picture
@@ -2177,6 +2216,14 @@ const ContextPanel=(function(){
     // never stacked — the pick hands off cleanly into the same Picture
     // Studio pass a local file pick already uses.
     _closeFamilyModal();
+    // Generic callback mode — "wherever we have replace image or replace
+    // photo or replace art it should be able to replace from local as
+    // well as family photos": any replace-image surface can open this
+    // picker with its own onPick and route the picked bytes through the
+    // EXACT same pipeline its local file pick already uses (Picture
+    // Studio pass included or not, matching that site's own local path),
+    // so the two sources always behave identically per surface.
+    if(opts && typeof opts.onPick==='function'){ opts.onPick(dataURL); return; }
     const artworkMode=!!(opts && opts.mode==='artwork');
     if(typeof PictureStudio==='undefined'){
       // Degraded path only — Picture Studio always exists in real Studio.
@@ -2538,7 +2585,14 @@ const ContextPanel=(function(){
     configure:configure,
     init:init,
     refresh:refresh,
-    mountQuickEditControl:mountQuickEditControl
+    mountQuickEditControl:mountQuickEditControl,
+    // Family Photos, exposed for OTHER modules' own replace-image
+    // surfaces (js/pageDesigner.js's Cover/Hook/End Image Manager) —
+    // "wherever we have replace image ... it should be able to replace
+    // from local as well as family photos". availability = configured +
+    // FamilyAlbum loaded; the picker itself carries the Traveller gate.
+    familyPhotosAvailable:_familyPhotosAvailable,
+    openFamilyPhotosPicker:_showFamilyPhotosPicker
   };
 })();
 try{ window.ContextPanel=ContextPanel; }catch(e){}
