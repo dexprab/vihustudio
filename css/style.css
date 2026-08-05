@@ -679,6 +679,114 @@ button:active{
   margin-bottom:0;
 }
 
+/* ── Move pad + Spin dial ──────────────────────────────────────────────
+ * Product request: "whenever there is a moveable flag true with any
+ * object i need the 8 direction mover like we did in builder along with
+ * 360 degree rotation spinner." The pad is a faithful port of World
+ * Builder v2's own _v2NudgePad (tools/world-builder-v2/js/worldBuilderApp.js)
+ * — same 118px pad, 30px buttons, same 8 directions orbiting a centre
+ * reset — so the two surfaces genuinely look and feel like one control.
+ * The dial is new: Builder has no dial at all (rotation there is a plain
+ * range slider), and the product owner picked a real circular dial over
+ * reusing a slider, so this is authored fresh rather than ported.
+ *
+ * Every <button> here carries !important width/height/margin/padding to
+ * escape the global button{width:100%;height:var(--button-height)} rule
+ * — the same cascade escape every other small button in this codebase
+ * has needed. touch-action/user-select are load-bearing, not cosmetic:
+ * without them a press-and-hold on a touch device triggers native text
+ * selection and the context menu instead of repeating the nudge. */
+.context-spatial-row{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.context-spatial-row .designer-row-label{
+  width:100%;
+}
+
+.nudge-pad{
+  position:relative;
+  width:118px;
+  height:118px;
+  border-radius:50%;
+  background:var(--panel);
+  border:1px solid var(--line);
+  flex-shrink:0;
+}
+.nudge-btn{
+  position:absolute !important;
+  width:30px !important;
+  height:30px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:none;
+  transition:background 0.12s ease, transform 0.08s ease;
+}
+.nudge-btn:hover{ background:var(--gold-soft, rgba(255,203,69,0.18)); }
+.nudge-btn:active{ transform:scale(0.9); background:var(--gold); }
+.nudge-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+.nudge-btn.nudge-center{
+  left:44px !important;
+  top:44px !important;
+  font-size:13px;
+  opacity:0.7;
+}
+.nudge-btn.nudge-center:hover{ opacity:1; }
+
+.rot-dial{
+  position:relative;
+  width:104px;
+  height:104px;
+  border-radius:50%;
+  background:var(--panel);
+  border:2px solid var(--line);
+  cursor:grab;
+  flex-shrink:0;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:none;
+}
+.rot-dial:active{ cursor:grabbing; }
+.rot-dial:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+.rot-dial-needle{
+  position:absolute;
+  left:50%;
+  top:8px;
+  width:2px;
+  height:44px;
+  margin-left:-1px;
+  /* Pivots on the dial's own centre — 8px top offset + 44px height puts
+   * the needle's base exactly at 52px, half of the 104px dial. */
+  transform-origin:50% 100%;
+  background:var(--gold);
+  border-radius:1px;
+  pointer-events:none;
+}
+.rot-dial-handle{
+  position:absolute;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:var(--gold);
+  border:2px solid var(--bg);
+  box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  pointer-events:none;
+}
+
 #previewCanvas{
   /* Fluid sizing so the display expands to match the available
    * preview column, capped at native 1080 × 1350 CSS px. On a

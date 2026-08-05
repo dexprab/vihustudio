@@ -293,19 +293,14 @@ const SelectionActionStrip=(function(){
     // dragging its handles, never a popup slider; a non-resizable Place
     // (or one authored before this feature at all, absent → closed —
     // see _resolvePlacePerm above) falls through to the existing,
-    // unchanged plain fallback below. Rotation joins as the third
-    // in-place Place quick-edit control, gated independently on
-    // `rotatable` — a Place can be rotatable without being resizable, or
-    // resizable without being rotatable, each honor standing alone;
-    // BOTH mount when both are enabled, unlike a Scene Object where
-    // mountQuickEditControl returns a single-shot bool.
+    // unchanged plain fallback below. A rotatable Place's Rotation lives
+    // in mountQuickEditControl's own Spin dial now (called above), which
+    // covers every moveable object uniformly rather than needing a
+    // Place-specific slider here.
     if(isPlace){
       const perm=_resolvePlacePerm(sel.sceneId);
       if(perm.resizable){
         if(_mountPlaceShapePicker(editPanelEl,sel.sceneId)) mounted=true;
-      }
-      if(perm.rotatable){
-        if(_mountPlaceRotationSlider(editPanelEl,sel.sceneId)) mounted=true;
       }
       // Place · Frame · Paper · Art Model V2 — Phase 6, regated per-layer
       // in Phase 13. Every V2 control now gates on the Phase 12 per-layer
@@ -413,62 +408,12 @@ const SelectionActionStrip=(function(){
     return true;
   }
 
-  // Rotation slider for a rotatable Place — gated on the Theme Author's
-  // own `rotatable` permission via _resolvePlacePerm above. Writes
-  // through the exact same generic override-bag mutator every other
-  // Story-Author Place edit uses (SceneEngine.setContentOverride) —
-  // renderer/slideRenderer.js's own render loop reads the resolved
-  // rotation via SlideRenderer.getPlaceRotation (which honours the
-  // same rotatable gate on the read side, so a Theme Author dropping
-  // the permission after a Story Author had already dialed one in
-  // correctly falls back to the Theme-Author base without silently
-  // preserving the now-un-authorized override). Range is 0-359 degrees,
-  // matching the identical convention every other rotation field in
-  // this app already uses (World-owned Text rotation, Image Layer
-  // rotation, Shape rotation).
-  function _mountPlaceRotationSlider(container,sceneId){
-    const slide=cfg.getCurrentSlide();
-    if(!slide) return false;
-    let current=0;
-    if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRotation==='function'){
-      try{ current=SlideRenderer.getPlaceRotation(slide,sceneId)||0; }catch(e){}
-    }
-    // Mirrors js/contextPanel.js's own _makeRangeRow shape exactly —
-    // same class vocabulary (.designer-row/.designer-row-label
-    // .text-slider-label + a .context-range-value span + a
-    // .context-range-input slider) so the CSS this codebase already
-    // ships styles it identically to every other range control in the
-    // popup with zero new rules of its own.
-    const row=document.createElement('div');
-    row.className='designer-row context-row';
-    const label=document.createElement('div');
-    label.className='designer-row-label text-slider-label';
-    const labelText=document.createElement('span');
-    labelText.textContent='Rotation';
-    const valueSpan=document.createElement('span');
-    valueSpan.className='context-range-value';
-    valueSpan.textContent=Math.round(current)+'°';
-    label.appendChild(labelText);
-    label.appendChild(valueSpan);
-    row.appendChild(label);
-    const input=document.createElement('input');
-    input.type='range';
-    input.min='0';
-    input.max='359';
-    input.step='1';
-    input.value=String(Math.round(current));
-    input.className='context-range-input';
-    input.addEventListener('input',function(){
-      const v=Number(input.value)||0;
-      valueSpan.textContent=v+'°';
-      if(typeof SceneEngine==='undefined' || typeof SceneEngine.setContentOverride!=='function') return;
-      try{ SceneEngine.setContentOverride(slide,sceneId,'rotation',v); }catch(e){ return; }
-      _afterPlaceEdit();
-    });
-    row.appendChild(input);
-    container.appendChild(row);
-    return true;
-  }
+  // A rotatable Place's Rotation slider used to live here. It's gone:
+  // js/contextPanel.js's mountQuickEditControl (called just above, before
+  // any of these Place-specific mounts) now offers a real circular Spin
+  // dial for every moveable object, Places included — writing through the
+  // exact same SceneEngine.setContentOverride(...,'rotation',...) this
+  // slider did. A second control on the same field would be a duplicate.
 
   // Place · Frame · Paper · Art Model V2 — Phase 6 authoring controls.
   //
@@ -622,7 +567,7 @@ const SelectionActionStrip=(function(){
   }
 
   // Phase 13 — a shared slider-row builder for the new per-layer V2
-  // controls, mirroring _mountPlaceRotationSlider's own established
+  // controls, using the established
   // .designer-row/.text-slider-label/.context-range-* class vocabulary
   // exactly, so every new control styles identically to every other
   // range control in the popup with zero new CSS.

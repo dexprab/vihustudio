@@ -685,6 +685,361 @@ const ContextPanel=(function(){
     container.appendChild(row);
   }
 
+  // --- Spatial controls: 8-way nudge pad + 360° rotation dial -------
+  //
+  // "whenever there is a moveable flag true with any object i need the
+  // 8 direction mover like we did in builder along with 360 degree
+  // rotation spinner."
+  //
+  // THE PAD is a faithful port of World Builder v2's own _v2NudgePad
+  // (tools/world-builder-v2/js/worldBuilderApp.js) — same circular
+  // geometry, same press-and-hold repeat, and the same deliberate
+  // "dumb, reusable input surface" contract: it only ever emits (dx,dy)
+  // unit steps and the CALLER decides what a step means. Ported rather
+  // than shared, matching this codebase's own established Studio-vs-
+  // Builder twin-file discipline (the two have no common module, and
+  // Builder's own copy stays untouched).
+  //
+  // THE DIAL is genuinely new. Builder has no rotation dial at all —
+  // rotation there, and everywhere in Studio until now, is a plain
+  // range slider. A round dial pairs with the round pad and reads as
+  // one continuous turn of the object rather than a linear track.
+  //
+  // Until this, root Studio had NO position control of any kind: every
+  // object was drag-only (js/app.js's own move/resize gestures), with
+  // arrow-key nudge existing solely for Story stickers and Story Theme
+  // text. So this is the first reachable "move it a precise step"
+  // surface in Studio, not a restyle of an existing one.
+
+  const NUDGE_HOLD_DELAY_MS=350;   // pause before auto-repeat kicks in
+  const NUDGE_HOLD_REPEAT_MS=80;   // then ~12 steps/sec while held
+  const NUDGE_PAD_PX=118;          // pad diameter — matches the CSS circle
+  const NUDGE_BTN_PX=30;           // direction-button diameter
+  // One step, in absolute canvas pixels. Position everywhere in Studio
+  // is an absolute canvas-pixel CENTRE point (unlike Builder, whose own
+  // pad works in 0..1 fractions), so the step is a pixel count rather
+  // than a percentage. ~1% of the 1080-wide default canvas.
+  const NUDGE_STEP_PX=10;
+  const NUDGE_DIRS=[
+    ['↖',-1,-1,'Nudge up-left'],
+    ['↑',0,-1,'Nudge up'],
+    ['↗',1,-1,'Nudge up-right'],
+    ['←',-1,0,'Nudge left'],
+    ['→',1,0,'Nudge right'],
+    ['↙',-1,1,'Nudge down-left'],
+    ['↓',0,1,'Nudge down'],
+    ['↘',1,1,'Nudge down-right']
+  ];
+
+  function _makeNudgePad(onNudge,onCenter,centerTitle){
+    // Orbit radius keeps every button inside the rim.
+    const R=NUDGE_PAD_PX/2-NUDGE_BTN_PX/2-5;
+    const pad=_el('div','nudge-pad');
+    // Press-and-hold driver. The first step fires synchronously on
+    // pointerdown (so a plain tap still nudges exactly once), then a
+    // delay + interval keeps firing while held. Pointer capture
+    // guarantees the matching pointerup/pointercancel always lands on
+    // this button, so the interval can never leak.
+    function wireHold(btn,fire){
+      let delayT=null,repT=null;
+      function stop(){
+        if(delayT){ clearTimeout(delayT); delayT=null; }
+        if(repT){ clearInterval(repT); repT=null; }
+      }
+      btn.addEventListener('pointerdown',function(e){
+        e.preventDefault();
+        try{ btn.setPointerCapture(e.pointerId); }catch(err){ /* older engines — repeat still stops on pointerup */ }
+        fire();
+        delayT=setTimeout(function(){ repT=setInterval(fire,NUDGE_HOLD_REPEAT_MS); },NUDGE_HOLD_DELAY_MS);
+      });
+      ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){
+        btn.addEventListener(ev,stop);
+      });
+      // Keyboard activation (Enter/Space) arrives as a click with
+      // detail 0 and no pointer sequence — fire one step so the pad
+      // stays keyboard-reachable. A pointer-driven click has detail ≥ 1
+      // and already fired on pointerdown, so it's ignored here (never a
+      // double step per tap).
+      btn.addEventListener('click',function(e){ if(e.detail===0) fire(); });
+    }
+    NUDGE_DIRS.forEach(function(cell){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='nudge-btn';
+      btn.textContent=cell[0];
+      btn.title=cell[3]+' — hold to keep moving';
+      // Normalize (dx,dy) so the diagonals sit at the same distance
+      // from centre as the cardinals (a raw 3×3 grid would push them
+      // √2 out).
+      const len=Math.sqrt(cell[1]*cell[1]+cell[2]*cell[2]);
+      btn.style.left=(NUDGE_PAD_PX/2+(cell[1]/len)*R-NUDGE_BTN_PX/2)+'px';
+      btn.style.top=(NUDGE_PAD_PX/2+(cell[2]/len)*R-NUDGE_BTN_PX/2)+'px';
+      wireHold(btn,function(){ onNudge(cell[1],cell[2]); });
+      pad.appendChild(btn);
+    });
+    const center=document.createElement('button');
+    center.type='button';
+    center.className='nudge-btn nudge-center';
+    center.textContent='⊙';
+    center.title=centerTitle||'Put it back';
+    center.style.left=(NUDGE_PAD_PX/2-NUDGE_BTN_PX/2)+'px';
+    center.style.top=(NUDGE_PAD_PX/2-NUDGE_BTN_PX/2)+'px';
+    // Centre is a one-shot reset — no hold-to-repeat (repeating a reset
+    // is meaningless), a plain click is the whole gesture.
+    center.addEventListener('click',function(){ onCenter(); });
+    pad.appendChild(center);
+    return pad;
+  }
+
+  function _makeNudgePadRow(parent,labelText,onNudge,onCenter,centerTitle){
+    const row=_el('div','designer-row context-row context-spatial-row');
+    row.appendChild(_el('div','designer-row-label',labelText));
+    row.appendChild(_makeNudgePad(onNudge,onCenter,centerTitle));
+    if(parent) parent.appendChild(row);
+    return row;
+  }
+
+  const DIAL_PX=104;
+  const DIAL_HANDLE_PX=18;
+
+  // Every rotation write in Studio is plain degrees, but the existing
+  // controls disagree on range (−180..180 for World objects and Story
+  // stickers, 0..359 for Places and V2 layers). A dial has no ends, so
+  // it normalizes to 0..359 for display and writes the same — visually
+  // identical, since an angle is the same mod 360 (270° === −90°).
+  function _normDeg(v){
+    let n=Number(v);
+    if(!isFinite(n)) n=0;
+    n=n%360;
+    if(n<0) n+=360;
+    return Math.round(n);
+  }
+
+  function _makeRotationDial(parent,opts){
+    // opts: {labelText, value, onInput(deg)}
+    const row=_el('div','designer-row context-row context-spatial-row');
+    const lbl=_el('div','designer-row-label text-slider-label');
+    lbl.appendChild(_el('span',null,opts.labelText||'Spin'));
+    const val=_el('span','context-range-value',_normDeg(opts.value)+'°');
+    lbl.appendChild(val);
+    row.appendChild(lbl);
+
+    const dial=_el('div','rot-dial');
+    // Announced as a real slider so the dial is reachable and readable
+    // without a pointer — the pad is keyboard-reachable too, so neither
+    // control is pointer-only.
+    dial.setAttribute('role','slider');
+    dial.setAttribute('tabindex','0');
+    dial.setAttribute('aria-label',opts.labelText||'Spin');
+    dial.setAttribute('aria-valuemin','0');
+    dial.setAttribute('aria-valuemax','359');
+    const needle=_el('div','rot-dial-needle');
+    const handle=_el('div','rot-dial-handle');
+    dial.appendChild(needle);
+    dial.appendChild(handle);
+
+    let cur=_normDeg(opts.value);
+    function place(){
+      // 0° is up (12 o'clock) and grows clockwise — the same sense a
+      // positive canvas rotate() turns, so the handle's position always
+      // matches which way the object actually ends up facing.
+      const rad=(cur-90)*Math.PI/180;
+      const r=DIAL_PX/2-DIAL_HANDLE_PX/2-4;
+      handle.style.left=(DIAL_PX/2+Math.cos(rad)*r-DIAL_HANDLE_PX/2)+'px';
+      handle.style.top=(DIAL_PX/2+Math.sin(rad)*r-DIAL_HANDLE_PX/2)+'px';
+      needle.style.transform='rotate('+cur+'deg)';
+      val.textContent=cur+'°';
+      dial.setAttribute('aria-valuenow',String(cur));
+    }
+    function commit(v){
+      cur=_normDeg(v);
+      place();
+      if(typeof opts.onInput==='function') opts.onInput(cur);
+    }
+    function angleFromEvent(e){
+      const rect=dial.getBoundingClientRect();
+      const dx=e.clientX-(rect.left+rect.width/2);
+      const dy=e.clientY-(rect.top+rect.height/2);
+      // atan2 measures from the +x axis; +90 rotates the origin to 12
+      // o'clock so the reading matches the handle's own convention.
+      return _normDeg(Math.atan2(dy,dx)*180/Math.PI+90);
+    }
+    let dragging=false;
+    dial.addEventListener('pointerdown',function(e){
+      e.preventDefault();
+      dragging=true;
+      try{ dial.setPointerCapture(e.pointerId); }catch(err){ /* release still lands via pointerup */ }
+      commit(angleFromEvent(e));
+    });
+    dial.addEventListener('pointermove',function(e){
+      if(!dragging) return;
+      commit(angleFromEvent(e));
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){
+      dial.addEventListener(ev,function(){ dragging=false; });
+    });
+    dial.addEventListener('keydown',function(e){
+      const step=e.shiftKey?10:1;
+      if(e.key==='ArrowRight'||e.key==='ArrowUp'){ e.preventDefault(); commit(cur+step); }
+      else if(e.key==='ArrowLeft'||e.key==='ArrowDown'){ e.preventDefault(); commit(cur-step); }
+      else if(e.key==='Home'){ e.preventDefault(); commit(0); }
+    });
+    place();
+    row.appendChild(dial);
+    if(parent) parent.appendChild(row);
+    return row;
+  }
+
+  function _canvasSize(slide){
+    try{
+      if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getCanvasSize==='function'){
+        const sz=SlideRenderer.getCanvasSize(slide);
+        if(sz && sz.w && sz.h) return sz;
+      }
+    }catch(e){}
+    return {w:1080,h:1350};
+  }
+
+  // One adapter per object kind, because position and rotation live in
+  // genuinely different bags depending on who owns the object — this is
+  // the same dispatch js/app.js's own drag handler already makes
+  // (`elementType==='sticker'` → updateSticker, else setPosition), kept
+  // in one place here rather than re-derived per control.
+  //
+  //   Story sticker  → instance fields on slide.metadata.stickers[]
+  //                    (SceneEngine.updateSticker)
+  //   Everything else → slide.metadata.elementOverrides[id]
+  //                    (SceneEngine.setPosition / setRotation), except a
+  //                    Place's rotation, which uses setContentOverride
+  //                    (its own established 0..359 convention, and the
+  //                    one the renderer's permission-gated
+  //                    _resolvePlaceRotation reads back).
+  //
+  // Returns null when there is nothing to offer — the caller then mounts
+  // nothing rather than a dead control.
+  function _spatialAdapter(slide,sceneObj){
+    if(!slide || !sceneObj || !sceneObj.moveable) return null;
+    if(typeof SceneEngine==='undefined') return null;
+    const cv=_canvasSize(slide);
+    const isPlace=!!sceneObj.isPlace;
+    const isStorySticker=(!isPlace && sceneObj.owner!=='world' && sceneObj.type==='sticker');
+
+    if(isStorySticker){
+      if(typeof SceneEngine.findSticker!=='function' || typeof SceneEngine.updateSticker!=='function') return null;
+      const st=SceneEngine.findSticker(slide,sceneObj.id);
+      if(!st) return null;
+      return {
+        // Every Story-sticker draw path already reads st.rotation
+        // (glyph/shape/text/doodle/image/voice alike), so the dial is
+        // real for all of them.
+        canRotate:true,
+        getPos:function(){
+          return {x:(typeof st.x==='number')?st.x:cv.w/2, y:(typeof st.y==='number')?st.y:cv.h/2};
+        },
+        setPos:function(px,py){ SceneEngine.updateSticker(slide,sceneObj.id,{x:px,y:py}); },
+        // A Story-placed sticker has no "authored" home to return to —
+        // the middle of the page is the only meaningful reset.
+        resetPos:function(){ SceneEngine.updateSticker(slide,sceneObj.id,{x:Math.round(cv.w/2),y:Math.round(cv.h/2)}); },
+        resetTitle:'Put it back in the middle',
+        getRot:function(){ return (typeof st.rotation==='number')?st.rotation:0; },
+        setRot:function(v){ SceneEngine.updateSticker(slide,sceneObj.id,{rotation:v}); }
+      };
+    }
+
+    if(typeof SceneEngine.setPosition!=='function') return null;
+    const vKind=(sceneObj.visual && sceneObj.visual.kind)||null;
+    let canRotate;
+    if(isPlace){
+      // A Place's rotation is its own separate Theme-Author honor, and
+      // the renderer gates the READ on it too (_resolvePlaceRotation),
+      // so a dial without it would write a value nothing ever reads.
+      canRotate=!!sceneObj.rotatable && typeof SceneEngine.setContentOverride==='function';
+    }else if(sceneObj.owner==='world'){
+      // 'glyph' joins the list this ship — see renderer/slideRenderer.js
+      // (_layerDrawSticker now reads ov.rotation). 'color' stays out on
+      // purpose: a full-bleed fill has no meaningful orientation, and
+      // rotating one only ever exposes its own corners — the same call
+      // already made when the old slider shipped. A null visual
+      // (spotlight/paperTexture/shadowWash/museumCaption) has no
+      // rotation read at all, so it gets the pad but no dial.
+      canRotate=(vKind==='text'||vKind==='image'||vKind==='shape'||vKind==='glyph') && typeof SceneEngine.setRotation==='function';
+    }else{
+      // Story blueprint elements (Cover/Hook/End). Only the Frame has a
+      // proven rotation read (and its own long-standing Spin slider);
+      // blueprint decorations have never had one, and adding a dial
+      // there would be a dead control until the renderer reads it.
+      canRotate=(sceneObj.type==='image-holder') && typeof SceneEngine.setRotation==='function';
+    }
+    function ovBag(){
+      return (slide.metadata && slide.metadata.elementOverrides && slide.metadata.elementOverrides[sceneObj.id]) || {};
+    }
+    return {
+      canRotate:canRotate,
+      getPos:function(){
+        const ov=ovBag();
+        if(ov.position && typeof ov.position.x==='number' && typeof ov.position.y==='number'){
+          return {x:ov.position.x,y:ov.position.y};
+        }
+        // No override yet — the object's own rendered centre IS its
+        // current position, and the renderer applies an override as a
+        // translation from exactly that point, so starting here means
+        // the first nudge moves by one step rather than jumping.
+        return {x:sceneObj.bx+sceneObj.bw/2, y:sceneObj.by+sceneObj.bh/2};
+      },
+      setPos:function(px,py){ SceneEngine.setPosition(slide,sceneObj.id,{x:px,y:py}); },
+      // Dropping the override entirely is the honest reset here: it puts
+      // the object back exactly where the World author placed it, which
+      // is more useful than centring it on the page.
+      resetPos:function(){ SceneEngine.setPosition(slide,sceneObj.id,null); },
+      resetTitle:'Put it back where the World put it',
+      getRot:function(){
+        if(isPlace){
+          try{
+            if(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRotation==='function'){
+              return SlideRenderer.getPlaceRotation(slide,sceneObj.id)||0;
+            }
+          }catch(e){}
+        }
+        const ov=ovBag();
+        return (typeof ov.rotation==='number')?ov.rotation:0;
+      },
+      setRot:function(v){
+        if(isPlace) SceneEngine.setContentOverride(slide,sceneObj.id,'rotation',v);
+        else SceneEngine.setRotation(slide,sceneObj.id,v);
+      }
+    };
+  }
+
+  // Mounts the pad (always, when moveable) and the dial (when this kind
+  // genuinely rotates). Returns whether anything was mounted, so the
+  // caller can still fall back when there's nothing to show.
+  function _appendSpatialControls(container,sceneObj){
+    const slide=_currentSlide();
+    const ad=_spatialAdapter(slide,sceneObj);
+    if(!ad) return false;
+    const cv=_canvasSize(slide);
+    _makeNudgePadRow(container,'Move',function(dx,dy){
+      const p=ad.getPos();
+      // Clamp the centre inside the page so a held direction can never
+      // walk an object completely off-canvas and out of reach.
+      const nx=Math.max(0,Math.min(cv.w,Math.round(p.x+dx*NUDGE_STEP_PX)));
+      const ny=Math.max(0,Math.min(cv.h,Math.round(p.y+dy*NUDGE_STEP_PX)));
+      ad.setPos(nx,ny);
+      _afterQuickEditChange();
+    },function(){
+      ad.resetPos();
+      _afterQuickEditChange();
+    },ad.resetTitle);
+    if(ad.canRotate){
+      _makeRotationDial(container,{
+        labelText:'Spin',
+        value:ad.getRot(),
+        onInput:function(v){ ad.setRot(v); _afterQuickEditChange(); }
+      });
+    }
+    return true;
+  }
+
   // Kind-specific in-place edit control, built from the exact same
   // `visual` descriptor (renderer/slideRenderer.js's `_layerVisual`)
   // Object Strip's own thumbnail already reads — editing here and the
@@ -715,35 +1070,13 @@ const ContextPanel=(function(){
     // slideRenderer.js's own _layerOverride reads, directly.
     const ov=(slide.metadata && slide.metadata.elementOverrides && slide.metadata.elementOverrides[sceneObj.id]) || {};
 
-    // Built first, regardless of order below, so it can be paired onto
-    // Colour's own row when both are present (screenshot-reported: the
-    // popup was cramped enough to need a scrollbar with every field
-    // stacked one-per-line) — or stand alone, full-width, when Colour
-    // isn't shown at all (a moveable:true/editable:false object still
-    // needs a reachable Rotation control with nothing to pair it with).
-    //
-    // "world own image when marked as movable by author means not just
-    // repositioning but also rotation and resizable" — this used to be
-    // scoped to v.kind==='text' only, a boundary disclosed at the time
-    // because Image/Shape's rotation was a Builder-authored COMPILED
-    // field (`decoration.rotation`) that no Story-Author override could
-    // reach, so a slider here would have been a dead-end control.
-    // renderer/slideRenderer.js now reads `ov.rotation` with precedence
-    // over that compiled base for both kinds, so the slider is real —
-    // and the boundary is closed. Colour is deliberately still excluded:
-    // a full-bleed background fill has no meaningful orientation, and
-    // rotating one only ever exposes its own corners.
-    let rotationCell=null;
-    const _rotatableKind=(v.kind==='text' || v.kind==='image' || v.kind==='shape');
-    if(_rotatableKind && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
-      rotationCell=_makeRangeRow(null,{
-        labelText:'Rotation',min:-180,max:180,step:1,
-        value:(typeof ov.rotation==='number')?ov.rotation:0,
-        format:function(n){ return Math.round(n)+'°'; },
-        onInput:function(n){ SceneEngine.setRotation(slide,sceneObj.id,n); _afterQuickEditChange(); }
-      });
-      mounted=true;
-    }
+    // Rotation used to be a -180..180 range slider built right here, paired
+    // onto Colour's own row. It's gone: _appendSpatialControls now mounts a
+    // real circular Spin dial (plus the 8-direction Move pad) for EVERY
+    // moveable object, so a second rotation control on this one surface
+    // would be a duplicate of the same override bag. Colour keeps its own
+    // full-width row below, unpaired.
+    const rotationCell=null;
 
     if(sceneObj.editable){
       if(v.kind==='color' || v.kind==='shape'){
@@ -752,7 +1085,6 @@ const ContextPanel=(function(){
           _afterQuickEditChange();
         });
         _pairRow(container,colorCell,rotationCell);
-        rotationCell=null;
         mounted=true;
       }else if(v.kind==='image'){
         // Shared apply tail for BOTH sources (local file / Family
@@ -890,7 +1222,6 @@ const ContextPanel=(function(){
           _afterQuickEditChange();
         });
         _pairRow(container,colorCell,rotationCell);
-        rotationCell=null;
         // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle)
         // paired with Amount slider. Amount is disabled for None (nothing
         // to shape) and Circle (radius is derived from text width, not
@@ -927,11 +1258,6 @@ const ContextPanel=(function(){
         mounted=true;
       }
     }
-    // Only reached when Rotation was built but nothing above claimed it
-    // as a pairing partner (editable:false, or a color/shape/image kind
-    // that never builds a rotationCell in the first place) — its own
-    // full-width row rather than being silently dropped.
-    if(rotationCell) container.appendChild(rotationCell);
     return mounted;
   }
 
@@ -961,15 +1287,23 @@ const ContextPanel=(function(){
   // silently writing to the wrong one.
   function mountQuickEditControl(container,sceneObj){
     if(!container || !sceneObj) return false;
+    // Content controls and spatial controls are independent: an object can
+    // be moveable but not editable (Move/Spin, no content fields), editable
+    // but not moveable (content fields, no Move/Spin), or both. OR-ing the
+    // two results — rather than the old early-return-per-branch — is what
+    // lets a moveable-only object mount at all instead of falling through
+    // to the plain "open the right panel" hint.
+    let mounted=false;
     if(sceneObj.owner==='world'){
       const v=sceneObj.visual;
-      if(!v || !(v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')) return false;
-      return _appendWorldObjectEditControl(container,sceneObj,v);
+      if(v && (v.kind==='color'||v.kind==='shape'||v.kind==='image'||v.kind==='text')){
+        if(_appendWorldObjectEditControl(container,sceneObj,v)) mounted=true;
+      }
+    }else if(sceneObj.type==='sticker' && sceneObj.visual && sceneObj.visual.kind==='text'){
+      if(_appendStickerTextEditControl(container,sceneObj)) mounted=true;
     }
-    if(sceneObj.type==='sticker' && sceneObj.visual && sceneObj.visual.kind==='text'){
-      return _appendStickerTextEditControl(container,sceneObj);
-    }
-    return false;
+    if(_appendSpatialControls(container,sceneObj)) mounted=true;
+    return mounted;
   }
 
   // "2 corrections for text object" — mirrors js/cardDesigner.js's own
@@ -1096,12 +1430,11 @@ const ContextPanel=(function(){
     });
     _pairRow(container,colorCell,opacityCell);
 
-    const rotationCell=_makeRangeRow(null,{
-      labelText:'Spin',min:-180,max:180,step:1,
-      value:(typeof st.rotation==='number')?st.rotation:0,
-      format:function(n){ return Math.round(n)+'°'; },
-      onInput:function(n){ update({rotation:Math.round(n)}); }
-    });
+    // Spin used to be a -180..180 range slider here. It's gone:
+    // _appendSpatialControls mounts a real circular Spin dial (plus the
+    // 8-direction Move pad) for every moveable object, writing to the
+    // exact same st.rotation this slider did — a second control on the
+    // same field would just be a duplicate.
     // Bug G Rework — Curve Style picker (None/Arc/Wave/Circle) +
     // Amount slider. Same pattern as the World-owned Text popup
     // above, adapted for a Story-owned freeform sticker (writes to
@@ -1129,8 +1462,7 @@ const ContextPanel=(function(){
       update({curveStyle:val==='none'?null:val});
       syncStAmountDisabled(val);
     });
-    _pairRow(container,rotationCell,stCurveStyleCell);
-    _pairRow(container,stAmountCell,null);
+    _pairRow(container,stCurveStyleCell,stAmountCell);
 
     const delBtn=document.createElement('button');
     delBtn.type='button';

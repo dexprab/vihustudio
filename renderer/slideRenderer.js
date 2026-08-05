@@ -2848,6 +2848,20 @@ const SlideRenderer=(()=>{
     if(ov && ov.size && typeof ov.size.w==='number' && typeof ov.size.h==='number'){
       size=(ov.size.w+ov.size.h)/2;
     }
+    // A moveable Sticker Layer now gets the same circular Spin dial every
+    // other moveable object does, and that dial writes ov.rotation — which
+    // this draw path never read, so the dial would have been dead here.
+    // Rotating around the sticker's own centre (ax,ay), which is exactly
+    // where both the glyph and the circle fallback are already anchored,
+    // so no extra offset bookkeeping is needed. Absent an override this is
+    // byte-identical to before: no save/rotate/restore runs at all.
+    const rotDeg=(ov && typeof ov.rotation==='number')?ov.rotation:0;
+    if(rotDeg){
+      x.save();
+      x.translate(ax,ay);
+      x.rotate(rotDeg*Math.PI/180);
+      x.translate(-ax,-ay);
+    }
     if(glyph){
       x.save();
       x.font=size+'px sans-serif';
@@ -2855,6 +2869,7 @@ const SlideRenderer=(()=>{
       x.textBaseline='middle';
       x.fillText(glyph,ax,ay);
       x.restore();
+      if(rotDeg) x.restore();
       return {bx:ax-size/2,by:ay-size/2,bw:size,bh:size};
     }
     x.save();
@@ -2873,6 +2888,7 @@ const SlideRenderer=(()=>{
     x.lineWidth=2;
     x.beginPath(); x.arc(0,0,r*0.6,0,Math.PI*2); x.stroke();
     x.restore();
+    if(rotDeg) x.restore();
     return {bx:ax-r,by:ay-r,bw:r*2,bh:r*2};
   }
 
