@@ -4280,6 +4280,7 @@ body.dark-theme .checkerboard{
 }
 .picture-studio-subpanel{ display:none; }
 .picture-studio[data-active-tool="brush"] .picture-studio-subpanel[data-tool="brush"],
+.picture-studio[data-active-tool="draw"] .picture-studio-subpanel[data-tool="draw"],
 .picture-studio[data-active-tool="crop"] .picture-studio-subpanel[data-tool="crop"],
 .picture-studio[data-active-tool="flip"] .picture-studio-subpanel[data-tool="flip"],
 .picture-studio[data-active-tool="reset"] .picture-studio-subpanel[data-tool="reset"]{
@@ -4305,6 +4306,9 @@ body.dark-theme .checkerboard{
 .picture-studio[data-active-tool="brush"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="removeMore"]):not([data-tile-key="bringBack"]){
   display:none;
 }
+.picture-studio[data-active-tool="draw"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="draw"]){
+  display:none;
+}
 .picture-studio[data-active-tool="crop"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="crop"]){
   display:none;
 }
@@ -4328,11 +4332,106 @@ body.dark-theme .checkerboard{
   align-self:stretch;
 }
 .picture-studio[data-active-tool="brush"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="draw"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="crop"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="flip"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="reset"] .picture-studio-edit-actions-row{
   display:flex;
 }
+
+/* ---- Draw sub-panel (Studio's doodle stack, ported) ---------------
+   The drawing behaviours themselves are js/cardDesigner.js's own
+   already-shipped functions (four media, shape silhouettes, colour
+   kit) — this is only the control surface. Freehand and Shape groups
+   swap via `data-draw-mode` on the .picture-studio root, mirroring how
+   `data-active-tool` already drives every other contextual show/hide
+   here rather than introducing a second mechanism. Every button needs
+   the explicit !important width/height/margin overrides this codebase
+   has needed repeatedly to escape the global
+   `button{width:100%;height:var(--button-height)}` cascade rule. */
+.picture-studio-draw-mode-row,
+.picture-studio-draw-media-row,
+.picture-studio-draw-size-row{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.picture-studio-draw-mode-btn,
+.picture-studio-draw-media-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  flex:1 1 0;
+  min-width:52px;
+  padding:6px 4px;
+  border:1px solid rgba(29,52,87,0.18);
+  border-radius:10px;
+  background:rgba(255,255,255,0.7);
+  font-size:10px;
+  color:var(--navy);
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+}
+.picture-studio-draw-mode-btn.active,
+.picture-studio-draw-media-btn.active{
+  background:var(--gold);
+  border-color:var(--gold);
+  font-weight:700;
+}
+.picture-studio-draw-media-icon{ font-size:16px; line-height:1; }
+.picture-studio-draw-size-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:38px !important;
+  height:38px !important;
+  margin:0 !important;
+  padding:0;
+  border:1px solid rgba(29,52,87,0.18);
+  border-radius:50%;
+  background:rgba(255,255,255,0.7);
+  cursor:pointer;
+}
+.picture-studio-draw-size-btn.active{ background:var(--gold); border-color:var(--gold); }
+.picture-studio-draw-size-dot{ background:var(--navy); border-radius:50%; display:block; }
+.picture-studio-draw-sublabel{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  color:rgba(29,52,87,0.6);
+  margin-top:2px;
+}
+.picture-studio-shape-grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:4px;
+  max-height:132px;
+  overflow-y:auto;
+}
+.picture-studio-shape-tile{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:auto !important;
+  height:30px !important;
+  margin:0 !important;
+  padding:0;
+  font-size:15px;
+  border:1px solid rgba(29,52,87,0.14);
+  border-radius:8px;
+  background:rgba(255,255,255,0.7);
+  cursor:pointer;
+}
+.picture-studio-shape-tile.active{ background:var(--gold); border-color:var(--gold); }
+/* Freehand controls and Shape controls are mutually exclusive — only
+   the group matching the current draw mode is ever shown. */
+.picture-studio-draw-group{ display:none; flex-direction:column; gap:6px; }
+.picture-studio[data-draw-mode="freehand"] .picture-studio-draw-freehand,
+.picture-studio[data-draw-mode="shape"] .picture-studio-draw-shape{ display:flex; }
 .picture-studio-edit-back-btn{
   flex:0 0 40%;
   padding:12px 12px;

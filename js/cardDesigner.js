@@ -4187,6 +4187,21 @@ const CardDesigner=(function(){
     notifyImageViewChanged:notifyImageViewChanged,
     getSectionBody:getSectionBody,
     buildColourKit:buildColourKit,
+    // Image Studio doodle port — the product owner's own framing was
+    // "we already have a draw your own functionality in studio why cant
+    // we add that into image studio", i.e. REUSE this stack rather than
+    // author a second one. These four are the whole join surface:
+    // `drawDoodleStroke` is already pure (no module state, no AppState,
+    // deterministic — it only needs the caller to set lineCap/lineJoin
+    // to 'round' first and to supply its own `mapPt` normalized-point
+    // mapper), and the three shape helpers are likewise pure geometry.
+    // Nothing about this module's own pads/panels changes; Image Studio
+    // simply calls the same functions with its own coordinate space.
+    DOODLE_MEDIA:DOODLE_MEDIA,
+    drawDoodleStroke:_drawDoodleStrokeOnCtx,
+    buildShapeSilhouettePath:_buildShapeSilhouettePath2D,
+    shapeLetterChar:_shapePadLetterChar,
+    padLetterFont:_padLetterFont,
     // Voice MVP Ship 2 — exported so the canvas's own tap-to-play (a
     // clean click on a 🔊 voice-note badge, js/app.js) reuses THIS one
     // playback path rather than a second implementation; sharing the

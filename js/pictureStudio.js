@@ -164,6 +164,214 @@ const PictureStudio=(function(){
   let _cropDrag=null;              // {sx,sy,x0,y0} while drawing selection
   let _cropBoxEl=null;             // DOM overlay showing the pending selection
   let _preCropSnapshot=null;       // {buffer, width, height} for Reset Crop
+
+  // ---------- Doodle layer (ported from Studio's Draw Your Own) -----
+  // The product owner's own framing: "we already have a draw your own
+  // functionality in studio why cant we add that into image studio ?"
+  // — so this is a REUSE of js/cardDesigner.js's already-shipped doodle
+  // and shape stack (exported there as CardDesigner.drawDoodleStroke /
+  // .buildShapeSilhouettePath / .DOODLE_MEDIA / .shapeLetterChar /
+  // .padLetterFont), never a second implementation. Nothing about the
+  // stroke-rendering algorithms, the four media, or the shape geometry
+  // is re-authored here; only the coordinate space differs.
+  //
+  // The layer is stored as VECTOR data on `_state.doodle`, in
+  // coordinates FRACTIONAL to the source image (0..1 on each axis), so
+  // it is resolution-independent and survives zoom/pan freely. Two entry
+  // shapes:
+  //   {type:'stroke', points:[{x,y}…], color, width, medium}
+  //   {type:'shape',  shape, x, y, w, h, fill, fillOn, stroke, strokeOn, strokeW}
+  // A stroke's `width` (and a shape's `strokeW`) is an ABSOLUTE pixel
+  // value against the SOURCE image's own dimensions — the exact same
+  // convention Studio's own doodle stickers use against their object box
+  // — so the one shared painter just multiplies by whatever scale it is
+  // drawing at.
+  //
+  // Composition point: _paintDoodleLayer is called immediately after the
+  // `drawImage(source, …)` call in BOTH _paintOne (preview) and _bake
+  // (output), INSIDE the same already-applied translate/rotate/flip
+  // transform — so the drawing inherits pan, zoom, rotation, flip and
+  // fit-scaling automatically in both places, with no second transform
+  // to keep in sync and no way for preview and output to disagree.
+  const DOODLE_SIZE_FRACTIONS={small:0.008, medium:0.018, large:0.038};
+  let _doodleLive=null;            // in-flight freehand stroke
+  let _doodleShapeDrag=null;       // in-flight shape placement drag
+  let _doodleMode='freehand';      // 'freehand' | 'shape'
+  let _doodleMedium='crayon';
+  let _doodleColor='#E63946';
+  let _doodleSize='medium';
+  let _doodleShape='circle';
+  let _doodleShapeFill='#F4A300';
+  let _doodleShapeFillOn=true;
+  let _doodleShapeStroke='#1D3457';
+  let _doodleShapeStrokeOn=false;
+  let _doodleShapeStrokeSize='medium';
+  let _doodleColourKit=null;
+  let _doodleColourKitHost=null;
+  let _doodleShapeFillKit=null;
+  let _doodleShapeStrokeKit=null;
+  let _doodleUndoBtn=null;
+  let _doodleClearBtn=null;
+  let _doodleShapeGrid=null;
+  let _doodleMediumBtns=null;
+  let _doodleSizeBtns=null;
+
+  function _cd(){ try{ return window.CardDesigner||null; }catch(e){ return null; } }
+
+  // A stroke/outline width in SOURCE-IMAGE pixels for the chosen size
+  // key, derived from the picture's own smaller dimension so "Medium"
+  // reads the same relative weight on a small snapshot and a big photo
+  // alike rather than being a fixed pixel count that vanishes on one and
+  // overwhelms the other.
+  function _doodleWidthPx(sizeKey){
+    const img=_activeImg();
+    const minDim=img?Math.min(img.width,img.height):320;
+    const frac=DOODLE_SIZE_FRACTIONS[sizeKey]||DOODLE_SIZE_FRACTIONS.medium;
+    return Math.max(2,Math.round(minDim*frac));
+  }
+
+  // Paint the whole doodle layer into `g`, mapping fractional coords
+  // onto the rect (dx,dy,dw,dh) the source image was just drawn at.
+  // `srcW` is the source image's own natural width, used only to scale
+  // stored absolute stroke widths into this caller's pixel space.
+  function _paintDoodleLayer(g,dx,dy,dw,dh,srcW){
+    const items=_state.doodle;
+    const live=_doodleLive;
+    const shapeDrag=_doodleShapeDrag;
+    if((!items||!items.length) && !live && !shapeDrag) return;
+    const scale=dw/Math.max(1,srcW);
+    g.save();
+    // Enhance's own colour filter belongs to the photograph, not to the
+    // child's drawing on top of it — a picked red must stay that red.
+    try{ g.filter='none'; }catch(e){}
+    // Clip to the picture itself so a stroke (or a shape placed near an
+    // edge, or anything left partly outside by a later crop) can never
+    // paint onto the surrounding stage.
+    g.beginPath();
+    g.rect(dx,dy,dw,dh);
+    g.clip();
+    const mapPt=function(p){ return {x:dx+p.x*dw, y:dy+p.y*dh}; };
+    const paintStroke=function(it){
+      const CD=_cd();
+      if(!CD||typeof CD.drawDoodleStroke!=='function') return;
+      if(!it.points||it.points.length<2) return;
+      g.save();
+      g.globalAlpha=1;
+      g.lineCap='round';
+      g.lineJoin='round';
+      CD.drawDoodleStroke(g,it.points,mapPt,it.color,Math.max(1,(it.width||6)*scale),it.medium,1);
+      g.restore();
+    };
+    (items||[]).forEach(function(it){
+      if(it && it.type==='shape') _paintDoodleShape(g,it,dx,dy,dw,dh,scale);
+      else if(it) paintStroke(it);
+    });
+    if(live) paintStroke(live);
+    if(shapeDrag && shapeDrag.preview) _paintDoodleShape(g,shapeDrag.preview,dx,dy,dw,dh,scale);
+    g.restore();
+  }
+
+  function _paintDoodleShape(g,it,dx,dy,dw,dh,scale){
+    const CD=_cd();
+    if(!CD||typeof CD.buildShapeSilhouettePath!=='function') return;
+    const x=dx+it.x*dw, y=dy+it.y*dh;
+    const w=Math.max(1,it.w*dw), h=Math.max(1,it.h*dh);
+    const strokeW=it.strokeOn?Math.max(1,(it.strokeW||4)*scale):0;
+    const built=CD.buildShapeSilhouettePath(it.shape,1000,it.customStrokes);
+    g.save();
+    g.globalAlpha=1;
+    if(built && built.kind==='letter'){
+      // Letters/numbers have no plottable path — draw the glyph itself,
+      // sized to fit via the very same helper the Studio pads use so a
+      // letter's own proportions never get anisotropically stretched.
+      g.textAlign='center';
+      g.textBaseline='middle';
+      if(typeof CD.padLetterFont==='function') CD.padLetterFont(g,built.ch,w,h);
+      else g.font='bold '+(h*0.82)+'px sans-serif';
+      if(it.fillOn!==false){ g.fillStyle=it.fill||'#E63946'; g.fillText(built.ch,x+w/2,y+h/2); }
+      if(strokeW>0){ g.lineWidth=strokeW; g.strokeStyle=it.stroke||'#1D3457'; g.strokeText(built.ch,x+w/2,y+h/2); }
+    }else if(built && built.path){
+      // Transform the unit-1000 silhouette into place via DOMMatrix so
+      // the OUTLINE keeps a uniform width — scaling the context instead
+      // would stretch the stroke anisotropically for a non-square shape.
+      let placed=null;
+      try{
+        placed=new Path2D();
+        placed.addPath(built.path,new DOMMatrix().translate(x,y).scale(w/1000,h/1000));
+      }catch(e){ placed=null; }
+      if(placed){
+        if(it.fillOn!==false){ g.fillStyle=it.fill||'#E63946'; g.fill(placed); }
+        if(strokeW>0){ g.lineWidth=strokeW; g.strokeStyle=it.stroke||'#1D3457'; g.stroke(placed); }
+      }else{
+        // Fallback for any engine without DOMMatrix-aware addPath: scale
+        // the context instead. Fill stays exact; the outline's width is
+        // approximated, disclosed rather than silently wrong.
+        g.translate(x,y);
+        g.scale(w/1000,h/1000);
+        if(it.fillOn!==false){ g.fillStyle=it.fill||'#E63946'; g.fill(built.path); }
+        if(strokeW>0){ g.lineWidth=strokeW*(1000/Math.max(w,h)); g.strokeStyle=it.stroke||'#1D3457'; g.stroke(built.path); }
+      }
+    }
+    g.restore();
+  }
+
+  function _cloneDoodleLayer(items){
+    return (items||[]).map(function(it){
+      const copy=Object.assign({},it);
+      if(Array.isArray(it.points)) copy.points=it.points.map(function(p){ return {x:p.x,y:p.y}; });
+      return copy;
+    });
+  }
+
+  // Keep This (crop) shrinks the picture, so every fraction stored
+  // against the OLD frame has to be re-expressed against the new one.
+  // Anything that falls outside simply lands outside — _paintDoodleLayer
+  // clips to the picture rect, so a stroke half-inside the kept area
+  // still shows its kept half and nothing more.
+  function _remapDoodleForCrop(bounds,oldW,oldH){
+    const items=_state.doodle;
+    if(!items||!items.length) return;
+    const bx=bounds.x/oldW, by=bounds.y/oldH;
+    const bw=bounds.width/oldW, bh=bounds.height/oldH;
+    if(!(bw>0)||!(bh>0)) return;
+    const remapX=function(x){ return (x-bx)/bw; };
+    const remapY=function(y){ return (y-by)/bh; };
+    items.forEach(function(it){
+      if(it.type==='shape'){
+        const x2=remapX(it.x), y2=remapY(it.y);
+        it.w=it.w/bw; it.h=it.h/bh;
+        it.x=x2; it.y=y2;
+      }else if(Array.isArray(it.points)){
+        it.points=it.points.map(function(p){ return {x:remapX(p.x), y:remapY(p.y)}; });
+      }
+    });
+  }
+
+  // Inverse of _paintOne's full transform — screen point to a 0..1
+  // fraction of the source image. Unlike _screenToContent (which only
+  // ever runs after background removal has reset rotation/flip to 0 and
+  // so deliberately ignores both), drawing is available at ANY time, so
+  // this one genuinely undoes translate → rotate → flip in order.
+  function _screenToImageFraction(clientX,clientY){
+    const img=_activeImg();
+    if(!img||!_canvas) return null;
+    const rect=_canvas.getBoundingClientRect();
+    if(!rect.width||!rect.height) return null;
+    const sx=(clientX-rect.left)*(_canvas.width/rect.width);
+    const sy=(clientY-rect.top)*(_canvas.height/rect.height);
+    const eff=_effSize();
+    const s=_stageRect();
+    const fit=Math.min(s.w/eff.w,s.h/eff.h);
+    const z=fit*_state.zoom;
+    let ux=sx-(_canvas.width/2+_state.panX);
+    let uy=sy-(_canvas.height/2+_state.panY);
+    const a=-_state.rotation*Math.PI/180;
+    const rx=ux*Math.cos(a)-uy*Math.sin(a);
+    const ry=ux*Math.sin(a)+uy*Math.cos(a);
+    const fx2=_state.flipH?-rx:rx;
+    const iw=img.width*z, ih=img.height*z;
+    return {x:(fx2+iw/2)/iw, y:(ry+ih/2)/ih};
+  }
   let _cropApplyBtn=null, _cropResetBtn=null, _cropTrashBtn=null;
 
   // Ported from tools/background-remover/js/cleanupBrush.js. See that
@@ -435,6 +643,11 @@ const PictureStudio=(function(){
     // the affordance's own emotional read for a child ("bring back what
     // I just accidentally removed").
     _tileButtons.bringBack=_buildTile(toolGrid,'❤️','Bring It Back',function(){ _undoBrushStroke(); },{key:'bringBack'});
+    // Draw — the full Studio doodle stack (four media, colour kits,
+    // thicknesses, shapes with fill + outline), reusing
+    // js/cardDesigner.js's own already-shipped drawing/geometry
+    // functions rather than a second implementation.
+    _tileButtons.draw=_buildTile(toolGrid,'🎨','Draw',function(){ _toggleActiveTool('draw'); },{key:'draw'});
     _cropTile=_buildTile(toolGrid,'✂️','Trim Picture',function(){ _toggleActiveTool('crop'); },{key:'crop'});
     _tileButtons.crop=_cropTile;
     _tileButtons.flip=_buildTile(toolGrid,'🔄','Turn / Flip',function(){ _toggleActiveTool('flip'); },{key:'flip'});
@@ -468,6 +681,7 @@ const PictureStudio=(function(){
     const subWrap=document.createElement('div');
     subWrap.className='picture-studio-subpanels';
     _subPanels.brush=_buildBrushSubPanel();
+    _subPanels.draw=_buildDrawSubPanel();
     _subPanels.flip=_buildFlipSubPanel();
     _subPanels.crop=_buildCropSubPanel();
     _subPanels.reset=_buildResetSubPanel();
@@ -843,6 +1057,7 @@ const PictureStudio=(function(){
   const _EDIT_HINTS={
     '': 'Tap a tool, then touch your picture.',
     brush: 'Pick a brush size, then paint on your picture.',
+    draw: 'Pick a colour, then draw right on your picture.',
     crop: 'Drag on your picture to choose what to keep.',
     flip: 'Turn or flip your picture.',
     reset: 'Start over with a fresh picture?'
@@ -861,7 +1076,7 @@ const PictureStudio=(function(){
       // own click handler, so its .active class is driven by _refreshBgControls
       // reading _brushMode, not by this list. 'bringBack' is a one-shot
       // undo — never gets an active state at all.
-      ['crop','flip','brighten','peek','reset'].forEach(function(k){
+      ['draw','crop','flip','brighten','peek','reset'].forEach(function(k){
         if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
       });
     }
@@ -879,11 +1094,16 @@ const PictureStudio=(function(){
     }
     // Leaving crop mode: tear down the on-stage selection overlay if any.
     if(tool!=='crop'){ _tearDownCropBox(); }
+    // Leaving draw mode: drop any in-flight gesture so a half-drawn
+    // stroke can never be committed by a later, unrelated mouseup.
+    if(tool!=='draw'){ _doodleLive=null; _doodleShapeDrag=null; }
+    else _refreshDrawControls();
     _updateStageCursor();
   }
   function _updateStageCursor(){
     if(!_stage) return;
     if(_brushMode==='erase') _stage.style.cursor='crosshair';
+    else if(_activeTool==='draw') _stage.style.cursor='crosshair';
     else if(_activeTool==='crop') _stage.style.cursor='none';
     else _stage.style.cursor='';
     // Ship C — the ✂️ scissors overlay stands in for the cursor while
@@ -1172,6 +1392,289 @@ const PictureStudio=(function(){
     });
   }
 
+  // ---------- Doodle gestures ---------------------------------------
+  function _startDoodleGesture(clientX,clientY){
+    const f=_screenToImageFraction(clientX,clientY);
+    if(!f) return;
+    if(_doodleMode==='shape'){
+      _doodleShapeDrag={ox:f.x,oy:f.y,preview:null};
+      _updateShapeDragPreview(f.x,f.y);
+    }else{
+      _doodleLive={
+        type:'stroke',
+        points:[{x:f.x,y:f.y}],
+        color:_doodleColor,
+        width:_doodleWidthPx(_doodleSize),
+        medium:_doodleMedium
+      };
+    }
+    _render();
+  }
+  function _moveDoodleGesture(clientX,clientY){
+    const f=_screenToImageFraction(clientX,clientY);
+    if(!f) return;
+    if(_doodleShapeDrag){
+      _updateShapeDragPreview(f.x,f.y);
+    }else if(_doodleLive){
+      const pts=_doodleLive.points;
+      const last=pts[pts.length-1];
+      // Same 2px point-thinning threshold Studio's own doodle pad uses,
+      // expressed here in source-image pixels so it means the same thing
+      // regardless of how far the picture is zoomed in.
+      const img=_activeImg();
+      const minDim=img?Math.min(img.width,img.height):320;
+      const dx=(f.x-last.x)*minDim, dy=(f.y-last.y)*minDim;
+      if(dx*dx+dy*dy<4) return;
+      pts.push({x:f.x,y:f.y});
+    }
+    _render();
+  }
+  function _updateShapeDragPreview(x,y){
+    const d=_doodleShapeDrag;
+    if(!d) return;
+    d.preview={
+      type:'shape',
+      shape:_doodleShape,
+      x:Math.min(d.ox,x), y:Math.min(d.oy,y),
+      w:Math.abs(x-d.ox), h:Math.abs(y-d.oy),
+      fill:_doodleShapeFill, fillOn:_doodleShapeFillOn,
+      stroke:_doodleShapeStroke, strokeOn:_doodleShapeStrokeOn,
+      strokeW:_doodleWidthPx(_doodleShapeStrokeSize)
+    };
+  }
+  function _endDoodleGesture(){
+    if(_doodleShapeDrag){
+      const p=_doodleShapeDrag.preview;
+      _doodleShapeDrag=null;
+      if(p){
+        // A plain tap (no real drag) stamps a comfortable default-sized
+        // shape centred on the tap rather than a zero-area nothing —
+        // a child shouldn't have to know they were supposed to drag.
+        if(p.w<0.02||p.h<0.02){
+          const cxf=p.x+p.w/2, cyf=p.y+p.h/2;
+          p.w=0.25; p.h=0.25; p.x=cxf-0.125; p.y=cyf-0.125;
+        }
+        _state.doodle.push(p);
+      }
+    }else if(_doodleLive){
+      if(_doodleLive.points.length>=2) _state.doodle.push(_doodleLive);
+      _doodleLive=null;
+    }
+    _refreshDrawControls();
+    _render();
+  }
+  function _undoDoodle(){
+    if(!_state.doodle||!_state.doodle.length) return;
+    _state.doodle.pop();
+    _refreshDrawControls();
+    _render();
+  }
+  function _clearDoodle(){
+    if(!_state.doodle||!_state.doodle.length) return;
+    _state.doodle=[];
+    _refreshDrawControls();
+    _render();
+  }
+  function _refreshDrawControls(){
+    const count=(_state.doodle||[]).length;
+    if(_doodleUndoBtn) _doodleUndoBtn.disabled=!count;
+    if(_doodleClearBtn) _doodleClearBtn.disabled=!count;
+    if(_root) _root.setAttribute('data-draw-mode',_doodleMode);
+    if(_doodleMediumBtns){
+      Object.keys(_doodleMediumBtns).forEach(function(k){
+        _doodleMediumBtns[k].classList.toggle('active',k===_doodleMedium);
+      });
+    }
+    if(_doodleSizeBtns){
+      Object.keys(_doodleSizeBtns).forEach(function(k){
+        _doodleSizeBtns[k].classList.toggle('active',k===_doodleSize);
+      });
+    }
+    if(_doodleShapeGrid){
+      Array.prototype.forEach.call(_doodleShapeGrid.querySelectorAll('.picture-studio-shape-tile'),function(b){
+        b.classList.toggle('active',b.getAttribute('data-shape')===_doodleShape);
+      });
+    }
+  }
+
+  // The Draw sub-panel — freehand (four media, colour, thickness) and
+  // shapes (silhouette picker, fill, outline), plus Undo/Clear. Every
+  // drawing behaviour behind it is CardDesigner's own; this is only the
+  // control surface.
+  function _buildDrawSubPanel(){
+    const CD=_cd();
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','draw');
+
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Pick a colour, then draw right on your picture.';
+    p.appendChild(hint);
+
+    // Mode: Freehand vs. Shape.
+    const modeRow=document.createElement('div');
+    modeRow.className='picture-studio-draw-mode-row';
+    const modeBtns={};
+    [['freehand','✏️','Draw'],['shape','🔷','Shapes']].forEach(function(m){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-draw-mode-btn';
+      b.innerHTML='<span aria-hidden="true">'+m[1]+'</span><span>'+m[2]+'</span>';
+      b.addEventListener('click',function(){
+        _doodleMode=m[0];
+        Object.keys(modeBtns).forEach(function(k){ modeBtns[k].classList.toggle('active',k===_doodleMode); });
+        _refreshDrawControls();
+      });
+      modeBtns[m[0]]=b;
+      modeRow.appendChild(b);
+    });
+    modeBtns.freehand.classList.add('active');
+    p.appendChild(modeRow);
+
+    // ---- Freehand group ----
+    const freeGroup=document.createElement('div');
+    freeGroup.className='picture-studio-draw-group picture-studio-draw-freehand';
+
+    const media=(CD&&CD.DOODLE_MEDIA)||[];
+    const mediumRow=document.createElement('div');
+    mediumRow.className='picture-studio-draw-media-row';
+    _doodleMediumBtns={};
+    media.forEach(function(m){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-draw-media-btn';
+      b.title=m.label;
+      b.innerHTML='<span class="picture-studio-draw-media-icon" aria-hidden="true">'+m.icon+'</span><span class="picture-studio-draw-media-label">'+m.label+'</span>';
+      b.addEventListener('click',function(){
+        _doodleMedium=m.id;
+        // Each medium carries its own curated palette (Studio's own
+        // design), so switching medium rebuilds the swatches and lands
+        // the pen on that palette's first colour rather than leaving a
+        // stale colour that doesn't belong to it.
+        _doodleColor=(m.palette&&m.palette[0])||_doodleColor;
+        _rebuildDoodleColourKit();
+        _refreshDrawControls();
+      });
+      _doodleMediumBtns[m.id]=b;
+      mediumRow.appendChild(b);
+    });
+    freeGroup.appendChild(mediumRow);
+    if(media.length && media[0].palette) _doodleColor=media[0].palette[0];
+
+    _doodleColourKitHost=document.createElement('div');
+    _doodleColourKitHost.className='picture-studio-draw-colour-host';
+    freeGroup.appendChild(_doodleColourKitHost);
+
+    const sizeRow=document.createElement('div');
+    sizeRow.className='picture-studio-draw-size-row';
+    _doodleSizeBtns={};
+    [['small',10],['medium',16],['large',24]].forEach(function(s){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-draw-size-btn';
+      b.title=s[0];
+      const dot=document.createElement('span');
+      dot.className='picture-studio-draw-size-dot';
+      dot.style.width=s[1]+'px';
+      dot.style.height=s[1]+'px';
+      b.appendChild(dot);
+      b.addEventListener('click',function(){ _doodleSize=s[0]; _refreshDrawControls(); });
+      _doodleSizeBtns[s[0]]=b;
+      sizeRow.appendChild(b);
+    });
+    freeGroup.appendChild(sizeRow);
+    p.appendChild(freeGroup);
+
+    // ---- Shape group ----
+    const shapeGroup=document.createElement('div');
+    shapeGroup.className='picture-studio-draw-group picture-studio-draw-shape';
+
+    _doodleShapeGrid=document.createElement('div');
+    _doodleShapeGrid.className='picture-studio-shape-grid';
+    let kinds=[];
+    try{ kinds=(window.StickerLibrary&&window.StickerLibrary.SHAPE_KINDS)||[]; }catch(e){ kinds=[]; }
+    kinds.forEach(function(k){
+      // 'custom' is Studio's own draw-your-own-silhouette shape, which
+      // needs its own separate drawing pad to author — out of scope here
+      // (Image Studio's freehand mode already covers "draw any line you
+      // like"), so it is deliberately not offered rather than shown as a
+      // tile that would stamp an empty silhouette.
+      if(k.value==='custom') return;
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-shape-tile';
+      b.setAttribute('data-shape',k.value);
+      b.title=k.label||k.value;
+      b.textContent=k.icon||'▢';
+      b.addEventListener('click',function(){ _doodleShape=k.value; _refreshDrawControls(); });
+      _doodleShapeGrid.appendChild(b);
+    });
+    shapeGroup.appendChild(_doodleShapeGrid);
+
+    const fillLbl=document.createElement('div');
+    fillLbl.className='picture-studio-draw-sublabel';
+    fillLbl.textContent='Inside colour';
+    shapeGroup.appendChild(fillLbl);
+    if(CD&&typeof CD.buildColourKit==='function'){
+      _doodleShapeFillKit=CD.buildColourKit(shapeGroup,{
+        value:_doodleShapeFill,
+        showTransparent:true,
+        transparent:!_doodleShapeFillOn,
+        onChange:function(v){ _doodleShapeFill=v; _doodleShapeFillOn=true; },
+        onTransparentChange:function(t){ _doodleShapeFillOn=!t; }
+      });
+    }
+
+    const outLbl=document.createElement('div');
+    outLbl.className='picture-studio-draw-sublabel';
+    outLbl.textContent='Outline colour';
+    shapeGroup.appendChild(outLbl);
+    if(CD&&typeof CD.buildColourKit==='function'){
+      _doodleShapeStrokeKit=CD.buildColourKit(shapeGroup,{
+        value:_doodleShapeStroke,
+        showTransparent:true,
+        transparent:!_doodleShapeStrokeOn,
+        onChange:function(v){ _doodleShapeStroke=v; _doodleShapeStrokeOn=true; },
+        onTransparentChange:function(t){ _doodleShapeStrokeOn=!t; }
+      });
+    }
+    p.appendChild(shapeGroup);
+
+    // ---- Undo / Clear (shared by both modes) ----
+    const actions=document.createElement('div');
+    actions.className='picture-studio-subpanel-row';
+    _doodleUndoBtn=document.createElement('button');
+    _doodleUndoBtn.type='button';
+    _doodleUndoBtn.className='picture-studio-subpanel-btn';
+    _doodleUndoBtn.textContent='↩ Undo';
+    _doodleUndoBtn.addEventListener('click',_undoDoodle);
+    actions.appendChild(_doodleUndoBtn);
+    _doodleClearBtn=document.createElement('button');
+    _doodleClearBtn.type='button';
+    _doodleClearBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-danger';
+    _doodleClearBtn.textContent='🗑 Clear All';
+    _doodleClearBtn.addEventListener('click',_clearDoodle);
+    actions.appendChild(_doodleClearBtn);
+    p.appendChild(actions);
+
+    _rebuildDoodleColourKit();
+    _refreshDrawControls();
+    return p;
+  }
+  function _rebuildDoodleColourKit(){
+    const CD=_cd();
+    if(!_doodleColourKitHost||!CD||typeof CD.buildColourKit!=='function') return;
+    _doodleColourKitHost.innerHTML='';
+    let palette=null;
+    ((CD.DOODLE_MEDIA)||[]).forEach(function(m){ if(m.id===_doodleMedium) palette=m.palette; });
+    _doodleColourKit=CD.buildColourKit(_doodleColourKitHost,{
+      palette:palette||undefined,
+      value:_doodleColor,
+      onChange:function(v){ _doodleColor=v; }
+    });
+  }
+
   function _wireStageInteractions(){
     _canvas.addEventListener('mousedown',function(e){
       // Ship B — mode-aware routing:
@@ -1186,6 +1689,11 @@ const PictureStudio=(function(){
         _brushPainting=true;
         _strokeChanges=new Map();
         _paintAt(e.clientX,e.clientY);
+        e.preventDefault();
+        return;
+      }
+      if(_activeTool==='draw'){
+        _startDoodleGesture(e.clientX,e.clientY);
         e.preventDefault();
         return;
       }
@@ -1215,6 +1723,10 @@ const PictureStudio=(function(){
         _scissorsCursor.style.left=(e.clientX-stageRect2.left)+'px';
         _scissorsCursor.style.top=(e.clientY-stageRect2.top)+'px';
       }
+      if(_doodleLive||_doodleShapeDrag){
+        _moveDoodleGesture(e.clientX,e.clientY);
+        return;
+      }
       if(_brushPainting){
         _paintAt(e.clientX,e.clientY);
         return;
@@ -1229,6 +1741,7 @@ const PictureStudio=(function(){
       _render();
     });
     window.addEventListener('mouseup',function(){
+      if(_doodleLive||_doodleShapeDrag){ _endDoodleGesture(); }
       if(_brushPainting){ _finishStroke(); }
       if(_cropDrag){ _finishCropDrag(); }
       _drag=null;
@@ -1432,8 +1945,14 @@ const PictureStudio=(function(){
     _preCropSnapshot={
       data:new Uint8ClampedArray(_workingBuffer.data),
       width:_workingBuffer.width,
-      height:_workingBuffer.height
+      height:_workingBuffer.height,
+      // Keep This changes the picture's own dimensions, so every
+      // fractional doodle coordinate has to be re-expressed against the
+      // new, smaller frame (below). Snapshot the layer as it was so Undo
+      // Trim genuinely restores the drawing too, not just the pixels.
+      doodle:_cloneDoodleLayer(_state.doodle)
     };
+    _remapDoodleForCrop(bounds,_workingBuffer.width,_workingBuffer.height);
     _workingBuffer=_cropPixelBuffer(_workingBuffer,bounds);
     // Any cleanup history from the old (larger) buffer no longer maps
     // onto the new pixel indices — clear so undo can never corrupt.
@@ -1489,6 +2008,10 @@ const PictureStudio=(function(){
       width:_preCropSnapshot.width,
       height:_preCropSnapshot.height
     };
+    // Only Keep This ever remaps the doodle layer (it is the one op that
+    // changes the picture's dimensions); Trash It leaves it untouched
+    // and therefore snapshots nothing to restore here.
+    if(_preCropSnapshot.doodle) _state.doodle=_cloneDoodleLayer(_preCropSnapshot.doodle);
     _preCropSnapshot=null;
     _cropRect=null;
     _cleanupHistory=[];
@@ -1584,6 +2107,12 @@ const PictureStudio=(function(){
       if(_state.flipH && !_state.showOriginal) _ctx.scale(-1,1);
       const iw=sourceImg.width, ih=sourceImg.height;
       _ctx.drawImage(sourceImg, -iw*z/2, -ih*z/2, iw*z, ih*z);
+      // Doodle layer — composited INSIDE the same transform, right on
+      // top of the picture it was drawn on, so pan/zoom/rotate/flip all
+      // apply to it exactly as they do to the photograph. Skipped while
+      // peeking the pristine original (that tile means "show me what I
+      // started with", drawing included).
+      if(!_state.showOriginal) _paintDoodleLayer(_ctx,-iw*z/2,-ih*z/2,iw*z,ih*z,iw);
       _ctx.restore();
     }
 
@@ -1668,6 +2197,11 @@ const PictureStudio=(function(){
     const src=_activeImg();
     const iw=src.width, ih=src.height;
     oc.drawImage(src, -iw/2, -ih/2, iw, ih);
+    // Same call, same transform, same fractional data as the preview's
+    // own _paintOne — ONE shared painter is what guarantees "what you
+    // see is what you get" here, rather than two implementations kept in
+    // sync by hand.
+    _paintDoodleLayer(oc,-iw/2,-ih/2,iw,ih,iw);
 
     // Output as PNG (lossless). Children's projects are small and the
     // file format never re-encodes after this point.
@@ -1686,6 +2220,14 @@ const PictureStudio=(function(){
     _onApply=options.onApply||null;
     _onCancel=options.onCancel||null;
     _state=Object.assign({},DEFAULT_STATE,{mode:options.defaultMode||'fit'});
+    // Doodle layer — deliberately assigned here rather than sitting in
+    // DEFAULT_STATE, because Object.assign copies an array by REFERENCE:
+    // a `doodle:[]` in DEFAULT_STATE would be the SAME array for every
+    // session, so a previous picture's drawing would bleed into the next
+    // one. A fresh literal per open is the whole fix.
+    _state.doodle=[];
+    _doodleLive=null;
+    _doodleShapeDrag=null;
     _refreshToggles();
     // Always start on Result View for a fresh open, regardless of what
     // the modal was on when it was last closed.
