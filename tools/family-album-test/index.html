@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Album — Go/No-Go Test</title>
+<!--
+  Family Photos feasibility test (developer utility, like tools/platform-status/).
+  Run this in a real browser AFTER deploying the family-album Edge Function.
+  It answers the two questions the sandboxed dev environment cannot
+  (Google hosts are egress-blocked there):
+    1. Does the shared-album scrape work live, on a real album?
+    2. Do lh3.googleusercontent images load CORS-clean (canvas-safe),
+       or do we need the Edge Function's ?img= byte-proxy fallback?
+-->
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: #F4F1EC; color: #2B2B2B; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #6B675F; font-size: 13px; margin: 0 0 22px; }
+  .card { background: #fff; border: 1px solid #E2DCCE; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #6B675F; margin-bottom: 4px; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #CFC8B8; border-radius: 8px; font-size: 14px; }
+  button { padding: 9px 18px; border: 0; border-radius: 8px; background: #FFCB45; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 10px; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #log { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+  #log .ok { color: #1E7B34; }
+  #log .warn { color: #A66A00; }
+  #log .bad { color: #B3261E; }
+  #grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  #grid img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #E2DCCE; }
+  #verdict { font-size: 16px; font-weight: 800; padding: 14px 16px; border-radius: 10px; display: none; margin-bottom: 16px; }
+  #verdict.go { display: block; background: #DFF2E2; color: #1E7B34; }
+  #verdict.goproxy { display: block; background: #FFF3D6; color: #A66A00; }
+  #verdict.nogo { display: block; background: #FBE3E1; color: #B3261E; }
+  code { background: #EFEAE0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  ol { font-size: 13px; color: #514D45; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📷 Family Album — Go/No-Go Test</h1>
+  <p class="sub">Feasibility check for the Family Photos feature (shared Google Photos album + Edge Function scrape).</p>
+
+  <div class="card">
+    <h2>Before you start (one-time)</h2>
+    <ol>
+      <li>Deploy the Edge Function — from the repo root: <code>supabase functions deploy family-album --project-ref &lt;your-project-ref&gt;</code> (needs the Supabase CLI + <code>supabase login</code>).</li>
+      <li>In Google Photos: create a small test album with a few photos → Share → <b>Create link</b> → copy it (looks like <code>https://photos.app.goo.gl/…</code>).</li>
+      <li>Make sure <code>supabase-config.json</code> exists at the site root (same one Studio already uses).</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Test</h2>
+    <label for="album">Shared album link</label>
+    <input type="text" id="album" placeholder="https://photos.app.goo.gl/XXXXXXXX">
+    <button id="run">Run Test</button>
+  </div>
+
+  <div id="verdict"></div>
+
+  <div class="card">
+    <h2>Report</h2>
+    <div id="log">Waiting…</div>
+    <div id="grid"></div>
+  </div>
+</div>
+<script src="js/test.js"></script>
+</body>
+</html>
