@@ -4,6 +4,6 @@
   "task": "renderer/slideRenderer.js: _drawSceneVoice (coral disc + white ring + 🔊 glyph, paints in every render incl. Publish per Rule 5) + render-tree bbox with a glyph visual so Object Strip shows the card with zero ObjectStrip changes. js/contextPanel.js: the Voice panel's capture flow parameterized (commit decides where a clip lands — page narration or a voice-note sticker), a new '🔊 Voice Notes' section (Add + Import), _addVoiceNoteSticker mirrors the Photo-pick create-and-auto-select shape. js/cardDesigner.js: 'Voice Note' Refine group (▶ Play with duration) + a shared playback path exported for the canvas's own tap-to-play. js/app.js: a clean tap (no drag) on a 🔊 badge plays it — wasMoved gates it so dragging never plays. js/projectManager.js: sticker-borne refs (voiceRef + image) hydrate for a portable .vihu, closing the previously-disclosed image-sticker export gap too. Verified 22/22 (voice_note_verify.mjs — real fake-mic suite, no mocks in the recording pipeline) + voice_verify 16/16 + fromworld_tile 13/13 + fa_ui 35/35 + photo_via_studio 8/8 + both goldenBuilds PASS. Cache-bust ?v=0336 -> ?v=0337.",
   "build": "0332",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "df6131d37bfe2281ae0af4133cb712f350690d02",
   "environment": "Release"
 }
