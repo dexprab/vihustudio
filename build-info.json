@@ -4,6 +4,6 @@
   "task": "index.html: MY BOOK section removed. css/style.css: #uploadBtn rules removed. js/app.js: the whole dead upload chain deleted. Cache-bust ?v=0329 -> ?v=0330.",
   "build": "0325",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "639fc562fce76fcb9080fe54281d428c4002a39b",
   "environment": "Release"
 }
