@@ -104,7 +104,7 @@ const PictureStudio=(function(){
   // via /100.
   let _kidZoomSlider=null;
   // Ship B Refinements — magic overlay ("✨ Making the paper disappear...")
-  // shown while auto-run background removal is in flight. Ported from
+  // shown while on-demand background removal is in flight. Ported from
   // tools/background-remover/'s .magic-overlay pattern. Sparkle glyph +
   // message paragraph, absolutely positioned inside the modal.
   let _magicOverlay=null, _magicMessage=null;
@@ -315,7 +315,7 @@ const PictureStudio=(function(){
     _scissorsCursor.textContent='✂️';
     _scissorsCursor.setAttribute('aria-hidden','true');
     _stage.appendChild(_scissorsCursor);
-    // Ship B Refinements — magic overlay shown while auto-run background
+    // Ship B Refinements — magic overlay shown while on-demand background
     // removal is in flight. Ported from tools/background-remover/'s
     // .magic-overlay pattern. Absolutely-positioned inside the stage so
     // it covers the canvas + brush cursor together while removal runs.
@@ -408,12 +408,22 @@ const PictureStudio=(function(){
     toolGrid.className='picture-studio-tool-grid';
     _tileButtons={};
     // Ship B Refinements — primary tiles match tools/background-remover/'s
-    // own kid-friendly toolbar exactly: Remove More / Bring It Back /
-    // Trim Picture / Turn-Flip / Oops (per-stroke undo). Background
-    // removal auto-runs on image load (see open()) with a magic overlay,
-    // so it is no longer a manual tile. Bigger/Smaller is the always-
-    // visible slider above, not a tile.
-    _tileButtons.removeMore=_buildTile(toolGrid,'✨','Remove More',function(){
+    // own kid-friendly toolbar exactly: Remove Paper / Bring It Back /
+    // Trim Picture / Turn-Flip / Oops (per-stroke undo). Bigger/Smaller
+    // is the always-visible slider above, not a tile.
+    //
+    // Product decision — background removal is ON-DEMAND, never a
+    // default: open() shows the ORIGINAL picture on the Result view and
+    // never auto-runs the worker. The first tap here kicks the removal
+    // itself (the "✨ Making the paper disappear..." magic overlay shows
+    // while it runs) AND arms the erase brush, so once removal lands the
+    // child can keep refining by hand — one tile, both jobs. Brush
+    // strokes made while removal is still in flight are safely no-ops
+    // (_paintAt guards on _workingBuffer). Label is "Remove Paper"
+    // (matching the overlay's own language) since pre-removal there is
+    // nothing yet to remove "more" of.
+    _tileButtons.removeMore=_buildTile(toolGrid,'✨','Remove Paper',function(){
+      if(!_bgRemovedImg && !_bgBusy) _startBgRemoval();
       _brushMode=(_brushMode==='erase')?null:'erase';
       const want=_brushMode?'brush':null;
       if(_activeTool!==want) _toggleActiveTool(want);
@@ -559,9 +569,9 @@ const PictureStudio=(function(){
   }
 
   // -------- Sub-panels (one per tool) -------------------------------
-  // Ship B Refinements — Brush sub-panel (was the "bg" sub-panel). Now
-  // that background removal auto-runs on picture load (see open() +
-  // _startBgRemoval + the magic overlay), this sub-panel no longer needs
+  // Ship B Refinements — Brush sub-panel (was the "bg" sub-panel).
+  // Background removal is on-demand (the ✨ Remove Paper tile kicks
+  // _startBgRemoval + the magic overlay), so this sub-panel needs no
   // a top "Remove Background" button / undo / status line. It hosts only
   // the Before/After compare slider + the brush size + Undo/Redo — the
   // brush mode itself (erase / restore) is picked directly from the two
@@ -603,7 +613,7 @@ const PictureStudio=(function(){
     _baCompareWrap.appendChild(_baHint);
     p.appendChild(_baCompareWrap);
     // Brush controls — size + Undo/Redo. Revealed only once a bg
-    // removal has landed (auto-run at open time). Ported from
+    // removal has landed (kicked on demand by the ✨ tile). Ported from
     // tools/background-remover/ (cleanupBrush.js).
     _brushSubPanel=document.createElement('div');
     _brushSubPanel.className='picture-studio-brush-panel hidden';
@@ -1700,11 +1710,12 @@ const PictureStudio=(function(){
     if(input instanceof HTMLImageElement){
       _origImg=input;
       _refreshBgControls();
+      // Product decision — the Result view (Looks Great / Make It
+      // Better) shows the ORIGINAL picture; background removal never
+      // auto-runs on open. It is on-demand only, via the ✨ Remove
+      // Paper tile in the Edit view (which shows the same magic
+      // overlay while it runs).
       _render();
-      // Ship B Refinements — auto-run background removal on image load
-      // so the "✨ Making the paper disappear..." moment happens
-      // automatically, not behind a manual tile the user has to hunt for.
-      _startBgRemoval();
     }else if(typeof input==='string'){
       const loadImg=function(src){
         const img=new Image();
@@ -1717,7 +1728,7 @@ const PictureStudio=(function(){
         // SecurityError. Harmless for the plain-string/data: fallback
         // path below, which also calls this same function.
         img.crossOrigin='anonymous';
-        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); _startBgRemoval(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
         img.src=src;
       };
       // Platform Hardening — Draft Asset Architecture, Phase C. `input`
@@ -1739,7 +1750,7 @@ const PictureStudio=(function(){
       const reader=new FileReader();
       reader.onload=function(ev){
         const img=new Image();
-        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); _startBgRemoval(); };
+        img.onload=function(){ _origImg=img; _refreshBgControls(); _render(); };
         img.src=ev.target.result;
       };
       reader.readAsDataURL(input);
