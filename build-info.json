@@ -4,6 +4,6 @@
   "task": "See tools/world-builder-v2/build-info.json 3.81.0 for the full three-bug Builder batch this serves. Cache-bust ?v=0332 -> ?v=0333.",
   "build": "0328",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "cea7053ba3021315b50febed52b6d008cbb5d2ec",
   "environment": "Release"
 }

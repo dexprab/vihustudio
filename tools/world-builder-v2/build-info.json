@@ -5,6 +5,6 @@
   "slice": "Verified via builder_dup_verify.js (33/33 -- scene dup UI/order/name/opens-copy, public adoption + edit propagation to the copy's mirror, personal flattening with source untouched, whole-experience dup born nurturing in the Nursery, part dup after-source/fresh-id/own-mirror-per-part, collapse survives re-render, 5-part cap disables buttons AND model refuses a 6th) + publishing_check_verify.js (19/19 -- real module surface + empty-array early return, not-configured branch, empty-remote hint, all-clean pass, exact orphan diff, decline-never-deletes, accept calls deleteAssets with exact relPaths and the automatic re-check reads the genuinely mutated store). Regression: goldenBuild v1+v2 PASS unchanged, placeframe_v2_phase16_verify 36/36 unchanged.",
   "build": "0153",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "cea7053",
   "environment": "Release"
 }
