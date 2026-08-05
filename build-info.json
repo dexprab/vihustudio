@@ -4,6 +4,6 @@
   "task": "Every downstream consumer (Place fill, stickers, Family Photos picks, background image, crop/rotate re-edits) is unaffected in mechanism \u2014 only the default changed. Cache-bust ?v=0326 -> ?v=0327.",
   "build": "0322",
   "buildDate": "2026-08-05",
-  "commit": "1ca1c9b826188b37e64130dbfba2cdf335749db4",
+  "commit": "1ca2b3cc6555ec38c4a820070a53866f573051f2",
   "environment": "Release"
 }
