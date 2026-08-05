@@ -2985,7 +2985,20 @@ const SlideRenderer=(()=>{
     }else if(kind==='image'){
       _layerDrawDecorationImage(d,r,s,ov);
     }else if(kind==='shape'){
-      _layerDrawShape((ov && ov.fillColor)?Object.assign({},d,{fillColor:ov.fillColor}):d,r);
+      // Same Guardrails fix as the image branch above — a Story-Author
+      // fillColor and/or rotation override wins over the Theme-Author's
+      // own compiled base. Only builds a merged copy when an override
+      // genuinely exists, so `d` is passed through untouched (and this
+      // is byte-identical to before) for every theme with neither.
+      const _ovFill=(ov && ov.fillColor);
+      const _ovRot=(ov && typeof ov.rotation==='number');
+      let _sd=d;
+      if(_ovFill || _ovRot){
+        _sd=Object.assign({},d);
+        if(_ovFill) _sd.fillColor=ov.fillColor;
+        if(_ovRot) _sd.rotation=ov.rotation;
+      }
+      _layerDrawShape(_sd,r);
     }
     return {bx:r.x,by:r.y,bw:r.w,bh:r.h};
   }
@@ -3511,10 +3524,22 @@ const SlideRenderer=(()=>{
     // Layer Pack) is honoured here exactly as it already is for shapes,
     // rather than being silently dropped. Absent d.rotation (every
     // existing theme today), this is a byte-identical no-op.
+    //
+    // Guardrails — "world own image when marked as movable by author
+    // means not just repositioning but also rotation and resizable".
+    // A Story-Author rotation override (SceneEngine.setRotation, written
+    // by the quick-edit popup's own Rotation slider, gated on the same
+    // moveable:true permission Move/Resize already use) takes precedence
+    // over the Theme-Author's own compiled `d.rotation` base — the exact
+    // tri-state ov-beats-compiled precedence every other overridable
+    // field on this object already follows. Absent an override, this is
+    // byte-identical to before for every existing theme.
     const fit=d.fit||'fit';
     x.save();
     x.globalAlpha=(typeof d.alpha==='number')?Math.max(0,Math.min(1,d.alpha)):1;
-    const rotation=(typeof d.rotation==='number')?d.rotation:0;
+    const rotation=(ov && typeof ov.rotation==='number')
+      ? ov.rotation
+      : ((typeof d.rotation==='number')?d.rotation:0);
     if(rotation){
       const rcx=rect.x+rect.w/2, rcy=rect.y+rect.h/2;
       x.translate(rcx,rcy); x.rotate(rotation*Math.PI/180); x.translate(-rcx,-rcy);

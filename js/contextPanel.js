@@ -721,8 +721,21 @@ const ContextPanel=(function(){
     // stacked one-per-line) — or stand alone, full-width, when Colour
     // isn't shown at all (a moveable:true/editable:false object still
     // needs a reachable Rotation control with nothing to pair it with).
+    //
+    // "world own image when marked as movable by author means not just
+    // repositioning but also rotation and resizable" — this used to be
+    // scoped to v.kind==='text' only, a boundary disclosed at the time
+    // because Image/Shape's rotation was a Builder-authored COMPILED
+    // field (`decoration.rotation`) that no Story-Author override could
+    // reach, so a slider here would have been a dead-end control.
+    // renderer/slideRenderer.js now reads `ov.rotation` with precedence
+    // over that compiled base for both kinds, so the slider is real —
+    // and the boundary is closed. Colour is deliberately still excluded:
+    // a full-bleed background fill has no meaningful orientation, and
+    // rotating one only ever exposes its own corners.
     let rotationCell=null;
-    if(v.kind==='text' && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
+    const _rotatableKind=(v.kind==='text' || v.kind==='image' || v.kind==='shape');
+    if(_rotatableKind && sceneObj.moveable && typeof SceneEngine.setRotation==='function'){
       rotationCell=_makeRangeRow(null,{
         labelText:'Rotation',min:-180,max:180,step:1,
         value:(typeof ov.rotation==='number')?ov.rotation:0,

@@ -985,6 +985,19 @@ contextItems.forEach(item=>{
   if(!el) return;
   el.addEventListener('input',markDirty);
 });
+// "Allow creator to name their project" — #bookTitle is now a visible
+// header field, so its value can change at any moment. serialize() already
+// prefers the DOM over AppState, and markDirty is already wired above, so
+// PERSISTENCE was never the gap; the gap is every in-memory reader
+// (js/pageDesigner.js, js/publishStudio.js, js/publishValidator.js) that
+// reads AppState.project.bookTitle directly and would otherwise show a
+// stale name until the next deserialize. Mirroring here keeps the one
+// name genuinely single-sourced while it is being typed.
+if(title){
+  title.addEventListener('input',function(){
+    try{ if(typeof AppState!=='undefined' && AppState.project) AppState.project.bookTitle=title.value; }catch(e){}
+  });
+}
 if(themeToggleEl){ themeToggleEl.addEventListener('click',()=>setTimeout(markDirty,0)); }
 
 // --- Canvas pan (Sprint 4.2) ---------------------------------------------

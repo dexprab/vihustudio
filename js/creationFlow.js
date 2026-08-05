@@ -78,14 +78,20 @@ const CreationFlow=(function(){
   // icons transcribed from the canonical storyboard. supportedCreationTypes
   // stays theme-owned data (Sprint 10.1); a type with zero compatible
   // themes simply renders an empty Vihu Worlds row and an Add New World
-  // card with no special-casing needed for 'card'/'more'.
+  // card with no special-casing needed for 'card'.
   const CREATION_TYPES=[
     {id:'story',   title:'Tell a Story',           desc:'Build your own story page by page.',    icon:'📖', accent:'sand'},
     {id:'artwork', title:'Showcase My Artwork',     desc:'Display your art in beautiful layouts.', icon:'🖼️', accent:'amber'},
     {id:'quote',   title:'Create Quotes',           desc:'Design inspiring quotes.',               icon:'💬', accent:'sky'},
     {id:'poem',    title:'Write a Poem',            desc:'Bring your words to life.',              icon:'🖋️', accent:'sand'},
     {id:'card',    title:'Make a Greeting Card',    desc:'Create cards for special moments.',      icon:'❤️', accent:'rose'},
-    {id:'more',    title:'More Ideas',              desc:'Explore more ways to create.',           icon:'✨', accent:'lilac'}
+    // "Change new idea story world category to start something new in
+    // which a blank page with no world association is started." — this
+    // replaces the old 'more' ("More Ideas") tile, which had no themes
+    // of its own and only ever led to an empty World screen. `blank:true`
+    // is the ONE branch on Screen 1: the card skips Screen 2 entirely
+    // and lands straight in the editor on a page with no World at all.
+    {id:'blank',   title:'Start Something New',     desc:'A blank page — no world, just your ideas.', icon:'✨', accent:'lilac', blank:true}
   ];
 
   let overlay=null, content=null;
@@ -239,7 +245,15 @@ const CreationFlow=(function(){
     _header('Your Projects',_renderTypeScreen);
     content.appendChild(_el('h1','creation-flow-question','Continue a Project'));
     content.appendChild(_el('p','creation-flow-subtitle','Pick up right where you left off.'));
-    const grid=_el('div','creation-flow-grid creation-flow-project-grid');
+    // "The project view shows very big placeholder for any project. its
+    // not beautiful." -- root cause was a CSS cascade-order bug, not a
+    // sizing choice: this element used to carry BOTH classes, and
+    // `.creation-flow-grid` is defined LATER in style.css at equal
+    // specificity, so its `repeat(auto-fill,minmax(200px,1fr))` + flat
+    // 20px gap silently won and `.creation-flow-project-grid`'s own
+    // intended 4-column + clamp() gaps were dead code. Dropping the
+    // generic class lets the project grid's own rule apply.
+    const grid=_el('div','creation-flow-project-grid');
     _myProjects().forEach(function(record){ grid.appendChild(_projectCard(record)); });
     content.appendChild(grid);
   }
@@ -664,7 +678,11 @@ const CreationFlow=(function(){
       card.appendChild(_el('div','creation-flow-card-desc',t.desc));
       card.addEventListener('click',function(){
         _selectedThemeId=null;
-        _renderWorldScreen(t);
+        // "Start Something New" is the only type with no World to choose
+        // — it skips Screen 2 outright rather than showing an empty
+        // World grid.
+        if(t.blank) _finishBlank(t);
+        else _renderWorldScreen(t);
       });
       grid.appendChild(card);
     });
@@ -1498,6 +1516,43 @@ const CreationFlow=(function(){
       else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
     }catch(e){}
     // Companion Engine Foundation (Sprint C1) — "User starts creating".
+    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('story-started'); }catch(e){}
+  }
+
+  // "Start Something New" — a page with no World association at all.
+  //
+  // Deliberately NOT `_finish(type, someTheme, null)`: that path always
+  // applies a Theme, and ThemeEngine.applyTheme(null) is not a clear —
+  // getTheme(null) substitutes DEFAULT_THEME_ID, so calling it would
+  // silently INSTALL storybook-classic, the exact opposite of "no world
+  // association". applyArtworkTheme(null) IS a genuine, supported clear
+  // (it resolves an absent/unknown id to null by design), so it's used
+  // here purely for its side effects — thumbnail invalidation, UI
+  // refresh, and stopping any World ambience already playing.
+  //
+  // Rendering with no Theme at all is safe and already exercised:
+  // renderer/slideRenderer.js carries FALLBACK_THEME/FALLBACK_OPTIONS and
+  // js/themeEngine.js carries its own _NO_THEME_FALLBACK precisely
+  // because a Repository-only Studio boots with zero registered Story
+  // Themes (see the Real Museum Trace sprint) — a blank page is that
+  // same already-handled state, reached on purpose.
+  function _finishBlank(type){
+    if(typeof PageOps!=='undefined' && AppState.slides.length===0){
+      PageOps.addBefore(0);
+    }
+    AppState.project.creationType=type.id;
+    AppState.project.representationId=null;
+    AppState.project.theme=null;
+    AppState.project.artworkTheme=null;
+    if(typeof ThemeEngine!=='undefined'){
+      try{ ThemeEngine.applyArtworkTheme(null,{silent:true}); }catch(e){}
+    }
+    try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    _closeOverlay();
+    try{
+      if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
+      else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+    }catch(e){}
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('story-started'); }catch(e){}
   }
 
