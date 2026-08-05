@@ -5751,12 +5751,47 @@ const SlideRenderer=(()=>{
     x.restore();
   }
 
+  // Voice note — the fifth sticker kind (Voice MVP Ship 2): a placeable
+  // 🔊 badge whose real payload is audio (st.voiceRef, a durable
+  // vihu-asset: reference; st.voiceDurationMs the wall-clock length).
+  // The badge is all a silent surface can show — a coral disc (matching
+  // the Voice panel's own record-button coral) with a white ring and a
+  // speaker glyph, so a reader can SEE there's something to tap. Paints
+  // in every render, Publish included (Creator Governing Rule #5 —
+  // Publish honours the center pane; a printed badge is an honest "this
+  // page has sound in Studio" marker, the same way the audio itself is
+  // disclosed as Studio-only until Story Reel).
+  function _drawSceneVoice(st){
+    const cx=typeof st.x==='number'?st.x:_viewportW/2;
+    const cy=typeof st.y==='number'?st.y:_viewportH/2;
+    const w=typeof st.w==='number'?st.w:110;
+    const h=typeof st.h==='number'?st.h:110;
+    const r=Math.min(w,h)/2;
+    x.save();
+    x.globalAlpha=typeof st.opacity==='number' ? Math.max(0,Math.min(1,st.opacity)) : 1;
+    x.translate(cx,cy);
+    if(st.rotation) x.rotate((st.rotation||0)*Math.PI/180);
+    x.beginPath();
+    x.arc(0,0,r,0,Math.PI*2);
+    x.fillStyle='#E67373';
+    x.fill();
+    x.lineWidth=Math.max(3,r*0.1);
+    x.strokeStyle='#FFFFFF';
+    x.stroke();
+    x.font=Math.round(r)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    x.textAlign='center';
+    x.textBaseline='middle';
+    x.fillText('🔊',0,r*0.06);
+    x.restore();
+  }
+
   function _drawSceneSticker(st,s){
     if(!st) return;
     if(st.kind==='shape'){ _drawSceneShape(st); return; }
     if(st.kind==='text'){ _drawFreeformText(st); return; }
     if(st.kind==='doodle'){ _drawSceneDoodle(st); return; }
     if(st.kind==='image'){ _drawStickerImage(st,s); return; }
+    if(st.kind==='voice'){ _drawSceneVoice(st); return; }
     const cx=typeof st.x==='number'?st.x:_viewportW/2;
     const cy=typeof st.y==='number'?st.y:_viewportH/2;
     const w=typeof st.w==='number'?st.w:260;
@@ -5800,11 +5835,17 @@ const SlideRenderer=(()=>{
       id:st.id,
       type:'sticker',
       stickerId:st.stickerId,
-      label:st.kind==='image'?'Picture':'Sticker',
+      label:st.kind==='image'?'Picture':(st.kind==='voice'?'Voice Note':'Sticker'),
       bx:cx-w/2, by:cy-h/2, bw:w, bh:h,
       visible:true,
       locked:!!st.locked
     };
+    if(st.kind==='voice'){
+      // Object Strip renders {kind:'glyph'} as a plain text glyph already
+      // — zero ObjectStrip changes needed for the 🔊 card.
+      bbox.visual={kind:'glyph',glyph:'🔊'};
+      return bbox;
+    }
     if(st.recolorEnabled){
       const url=_recoloredStickerDataURL(st);
       if(url) bbox.visual={kind:'image',src:url};

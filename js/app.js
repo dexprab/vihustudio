@@ -1514,6 +1514,8 @@ document.addEventListener('mouseup',function(){
   // Sprint 6.1 — Scene drag end
   if(_sceneDragState){
     const wasMoved=_sceneDragState.moved;
+    const tappedId=_sceneDragState.elementId;
+    const tappedType=_sceneDragState.elementType;
     _sceneDragState=null;
     previewCanvas.classList.remove('canvas-text-dragging');
     if(wasMoved){
@@ -1523,6 +1525,19 @@ document.addEventListener('mouseup',function(){
         try{ ThumbnailEngine.generate(s).then(function(){ if(typeof renderList==='function') renderList(); if(typeof renderTimeline==='function') renderTimeline(); }); }catch(e){}
       }
       if(typeof PageDesigner!=='undefined'){ try{ PageDesigner.refresh(); }catch(e){} }
+    }else if(tappedType==='sticker'){
+      // Voice MVP Ship 2 — a CLEAN tap (no drag) on a 🔊 voice-note
+      // badge plays its clip right here on the canvas; selection already
+      // fired on mousedown, so this only adds sound, never rerouting.
+      // Playback goes through CardDesigner's own shared path so the
+      // canvas tap and the Refine panel's Play button stop each other.
+      const s=AppState.slides[AppState.currentSlide];
+      const st=(s && typeof SceneEngine!=='undefined' && typeof SceneEngine.findSticker==='function')
+        ? SceneEngine.findSticker(s,tappedId) : null;
+      if(st && st.kind==='voice' && st.voiceRef &&
+         typeof CardDesigner!=='undefined' && typeof CardDesigner.playVoiceNote==='function'){
+        try{ CardDesigner.playVoiceNote(st,null); }catch(e){}
+      }
     }
     return;
   }

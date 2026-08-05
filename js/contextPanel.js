@@ -2103,7 +2103,10 @@ const ContextPanel=(function(){
       });
     });
   }
-  function _importVoiceFile(afterStored){
+  // commit(ref,durationMs) decides where the stored clip LANDS — page
+  // narration (_setNarration) or a canvas voice-note sticker
+  // (_addVoiceNoteSticker) — so one import path serves both (Ship 2).
+  function _importVoiceFile(commit,afterStored){
     const input=document.createElement('input');
     input.type='file';
     input.accept='audio/*';
@@ -2117,7 +2120,7 @@ const ContextPanel=(function(){
       const finish=function(durationMs){
         try{ URL.revokeObjectURL(url); }catch(e){}
         _storeVoiceBlob(file,function(ref){
-          if(ref){ _setNarration(ref,durationMs); }
+          if(ref){ commit(ref,durationMs); }
           afterStored(!!ref);
         });
       };
@@ -2129,6 +2132,29 @@ const ContextPanel=(function(){
       probe.src=url;
     });
     input.click();
+  }
+
+  // Voice MVP Ship 2 — a voice-note OBJECT: a placeable 🔊 badge sticker
+  // (kind:'voice') a kid drops anywhere on the page, several per page,
+  // tap-to-play on the canvas. Mirrors _addImageStickerFromDataURL's own
+  // create-and-auto-select shape; the clip is already durably stored
+  // (vihu-asset:) by the time this runs, so the instance just carries
+  // the reference + measured length. Selecting the new note navigates
+  // the panel to its Refine controls — the natural landing, exactly like
+  // a fresh Photo pick.
+  function _addVoiceNoteSticker(ref,durationMs){
+    const slide=_currentSlide();
+    if(!ref || !slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    const st=SceneEngine.addSticker(slide,{
+      kind:'voice', stickerId:'voice.note',
+      voiceRef:ref, voiceDurationMs:durationMs||0,
+      w:110, h:110
+    });
+    if(!st) return;
+    if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    if(typeof window.setSelectedSceneElement==='function'){
+      try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+    }
   }
 
   function _showVoicePanel(){
@@ -2171,6 +2197,12 @@ const ContextPanel=(function(){
 
     const supported=(typeof VoiceRecorder!=='undefined' && VoiceRecorder.isSupported());
 
+    // Where a finished clip LANDS: page narration, or (Ship 2) a
+    // placeable voice-note sticker on the canvas. Same record/import
+    // machinery either way — only the commit differs.
+    const commitNarration=function(ref,durationMs){ _setNarration(ref,durationMs); };
+    const commitVoiceNote=function(ref,durationMs){ _addVoiceNoteSticker(ref,durationMs); };
+
     function renderIdle(){
       _clearVoicePreview();
       body.innerHTML='';
@@ -2187,12 +2219,12 @@ const ContextPanel=(function(){
         if(supported){
           const again=_el('button','context-btn','🎤 Record Again');
           again.type='button';
-          again.addEventListener('click',startRecording);
+          again.addEventListener('click',function(){ startRecording(commitNarration); });
           body.appendChild(again);
         }
         const imp=_el('button','context-btn','📁 Import Audio');
         imp.type='button';
-        imp.addEventListener('click',function(){ _importVoiceFile(function(){ renderIdle(); }); });
+        imp.addEventListener('click',function(){ _importVoiceFile(commitNarration,function(){ renderIdle(); }); });
         body.appendChild(imp);
         const rm=_el('button','context-btn voice-remove-btn','🗑 Remove Voice');
         rm.type='button';
@@ -2203,20 +2235,46 @@ const ContextPanel=(function(){
         if(supported){
           const rec=_el('button','voice-record-btn','🎤 Start Recording');
           rec.type='button';
-          rec.addEventListener('click',startRecording);
+          rec.addEventListener('click',function(){ startRecording(commitNarration); });
           body.appendChild(rec);
         }else{
           body.appendChild(_el('div','voice-status','Recording isn’t available on this device — you can still import an audio file.'));
         }
         const imp=_el('button','context-btn','📁 Import Audio');
         imp.type='button';
-        imp.addEventListener('click',function(){ _importVoiceFile(function(){ renderIdle(); }); });
+        imp.addEventListener('click',function(){ _importVoiceFile(commitNarration,function(){ renderIdle(); }); });
         body.appendChild(imp);
       }
       body.appendChild(status);
+
+      // ---- Voice Notes (Ship 2): little 🔊 badges dropped anywhere on
+      // the page — several per page, each its own clip, tap-to-play on
+      // the canvas. A fresh note auto-selects (the commit navigates the
+      // panel to the new note's Refine controls, exactly like a fresh
+      // Photo pick — renderIdle after that runs on a disconnected body,
+      // harmless per the established isConnected discipline).
+      body.appendChild(_el('div','voice-section-divider'));
+      body.appendChild(_el('div','context-collection-group-label','🔊 Voice Notes'));
+      const notes=(slide && slide.metadata && Array.isArray(slide.metadata.stickers))
+        ? slide.metadata.stickers.filter(function(s){ return s && s.kind==='voice'; }) : [];
+      body.appendChild(_el('div','voice-hint',
+        notes.length
+          ? (notes.length===1 ? 'This page has 1 voice note — tap its 🔊 badge to hear it.'
+                              : 'This page has '+notes.length+' voice notes — tap any 🔊 badge to hear it.')
+          : 'Drop little voice bubbles anywhere on the page!'));
+      if(supported){
+        const addNote=_el('button','context-btn','➕ Add a Voice Note');
+        addNote.type='button';
+        addNote.addEventListener('click',function(){ startRecording(commitVoiceNote); });
+        body.appendChild(addNote);
+      }
+      const impNote=_el('button','context-btn','📁 Import a Voice Note');
+      impNote.type='button';
+      impNote.addEventListener('click',function(){ _importVoiceFile(commitVoiceNote,function(){ renderIdle(); }); });
+      body.appendChild(impNote);
     }
 
-    function startRecording(){
+    function startRecording(commit){
       _stopVoicePlayback();
       _clearVoicePreview();
       body.innerHTML='';
@@ -2237,7 +2295,7 @@ const ContextPanel=(function(){
 
       const finishToPreview=function(){
         VoiceRecorder.stop().then(function(clip){
-          renderPreview(clip);
+          renderPreview(clip,commit);
         }).catch(function(){ renderIdle(); });
       };
       stopBtn.addEventListener('click',finishToPreview);
@@ -2264,7 +2322,7 @@ const ContextPanel=(function(){
       });
     }
 
-    function renderPreview(clip){
+    function renderPreview(clip,commit){
       _clearVoicePreview();
       _voicePreview={blob:clip.blob,durationMs:clip.durationMs,url:URL.createObjectURL(clip.blob)};
       body.innerHTML='';
@@ -2288,13 +2346,13 @@ const ContextPanel=(function(){
             keep.disabled=false;
             return;
           }
-          _setNarration(ref,_voicePreview.durationMs);
+          commit(ref,_voicePreview.durationMs);
           renderIdle();
         });
       });
       const again=_el('button','context-btn','↩ Try Again');
       again.type='button';
-      again.addEventListener('click',startRecording);
+      again.addEventListener('click',function(){ startRecording(commit); });
       body.appendChild(play);
       body.appendChild(keep);
       body.appendChild(again);

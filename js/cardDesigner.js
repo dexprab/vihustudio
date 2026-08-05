@@ -1355,6 +1355,42 @@ const CardDesigner=(function(){
     _commitSticker();
   }
 
+  // Voice MVP Ship 2 — voice-note sticker playback. One shared Audio
+  // element per module so tapping Play twice (or tapping another note)
+  // stops the previous clip instead of overlapping two voices. The ref
+  // resolves through AssetStore with the recallOwnerId fallback so a
+  // Magic-Card-recalled project's notes play correctly on a new device —
+  // the identical resolution the Voice panel's narration playback uses.
+  let _voiceNoteAudio=null;
+  function _fmtVoiceMs(ms){
+    const total=Math.round(ms/1000);
+    const m=Math.floor(total/60), s=total%60;
+    return m+':'+String(s).padStart(2,'0');
+  }
+  function _playVoiceNote(st,statusEl){
+    if(!st || !st.voiceRef) return;
+    if(_voiceNoteAudio){ try{ _voiceNoteAudio.pause(); }catch(e){} _voiceNoteAudio=null; }
+    const slide=_currentSlide();
+    const ownerId=slide&&slide.recallOwnerId?slide.recallOwnerId:undefined;
+    const fallback='😕 That voice note couldn’t play right now.';
+    if(typeof AssetStore==='undefined' || typeof AssetStore.resolve!=='function'){
+      if(statusEl) statusEl.textContent=fallback;
+      return;
+    }
+    AssetStore.resolve(st.voiceRef, ownerId?{ownerId:ownerId}:undefined).then(function(url){
+      if(!url){ if(statusEl) statusEl.textContent=fallback; return; }
+      const audio=new Audio(url);
+      _voiceNoteAudio=audio;
+      audio.onended=function(){ if(_voiceNoteAudio===audio) _voiceNoteAudio=null; };
+      audio.play().catch(function(){
+        if(statusEl) statusEl.textContent=fallback;
+        if(_voiceNoteAudio===audio) _voiceNoteAudio=null;
+      });
+    }).catch(function(){
+      if(statusEl) statusEl.textContent=fallback;
+    });
+  }
+
   // Real Vector Shapes — the "Draw Your Own" pad's own drawing routine,
   // module-level (not a _buildStickerControls closure) so both the live
   // pointermove preview and _refreshSticker's on-select sync can call it
@@ -2820,6 +2856,31 @@ const CardDesigner=(function(){
     // SlideRenderer.getReorderableIds()/SceneEngine.setLayerOrder() are
     // unchanged and still power that one, real reorder control.
 
+    // Voice note (Voice MVP Ship 2) — the kind-specific group for a
+    // kind:'voice' sticker: a big ▶ Play button plus the clip length.
+    // The audio ref lives on the instance (st.voiceRef, a durable
+    // vihu-asset: reference); playback resolves it through AssetStore
+    // with the recallOwnerId fallback, exactly like narration playback
+    // in the Voice panel. No re-record here — a kid re-does a note by
+    // deleting it and dropping a fresh one (Delete/Duplicate below are
+    // already generic).
+    const voiceGroup=document.createElement('div');
+    voiceGroup.className='sticker-voice-group hidden';
+    const voicePlayBtn=document.createElement('button');
+    voicePlayBtn.type='button';
+    voicePlayBtn.className='voice-note-play-btn';
+    voicePlayBtn.textContent='▶ Play';
+    const voiceStatus=document.createElement('div');
+    voiceStatus.className='voice-status sticker-voice-status';
+    voicePlayBtn.addEventListener('click',function(){
+      const st=_activeSticker();
+      if(!st || st.kind!=='voice' || !st.voiceRef) return;
+      voiceStatus.textContent='';
+      _playVoiceNote(st,voiceStatus);
+    });
+    voiceGroup.appendChild(voicePlayBtn);
+    voiceGroup.appendChild(voiceStatus);
+
     // Action row — Lock / Duplicate / Delete.
     const actionRow=document.createElement('div');
     actionRow.className='sticker-actions-row';
@@ -2884,7 +2945,7 @@ const CardDesigner=(function(){
     // of them read from/depend on another group's element), so the whole
     // visible sequence is decided here, in one place, rather than by
     // moving each group's construction code around in the file.
-    [selectedLabel, doodleGroup, colorGroup, sizeRow, shapeGroup, rotRow, opRow, flipRow, textGroup, actionRow, stickerWorkspace].forEach(function(el){
+    [selectedLabel, voiceGroup, doodleGroup, colorGroup, sizeRow, shapeGroup, rotRow, opRow, flipRow, textGroup, actionRow, stickerWorkspace].forEach(function(el){
       editor.appendChild(el);
     });
 
@@ -2933,6 +2994,11 @@ const CardDesigner=(function(){
     // "no new Creator-side mechanism beyond what art does the new object
     // start with" scope this phase was built to.
     const isImageKind=kind==='image';
+    // Voice MVP Ship 2 — a sixth sticker kind: a placeable 🔊 voice-note
+    // badge. Kind-specific group is just Play + status; everything else
+    // (move/resize/rotate/opacity/lock/duplicate/delete/Object Strip)
+    // rides the shared sticker machinery untouched.
+    const isVoiceKind=kind==='voice';
     section.querySelectorAll('.sticker-glyph-only').forEach(function(el){ el.classList.toggle('hidden',!isGlyphKind); });
     section.querySelectorAll('.sticker-hide-for-text').forEach(function(el){ el.classList.toggle('hidden',isTextKind); });
     const shapeGroupEl=section.querySelector('.sticker-shape-group');
@@ -2941,6 +3007,17 @@ const CardDesigner=(function(){
     if(textGroupEl) textGroupEl.classList.toggle('hidden',!isTextKind);
     const doodleGroupEl=section.querySelector('.sticker-doodle-group');
     if(doodleGroupEl) doodleGroupEl.classList.toggle('hidden',!isDoodleKind);
+    const voiceGroupEl=section.querySelector('.sticker-voice-group');
+    if(voiceGroupEl){
+      voiceGroupEl.classList.toggle('hidden',!isVoiceKind);
+      if(isVoiceKind){
+        const playBtn=voiceGroupEl.querySelector('.voice-note-play-btn');
+        if(playBtn){
+          const ms=st.voiceDurationMs||0;
+          playBtn.textContent=ms>0?('▶ Play ('+_fmtVoiceMs(ms)+')'):'▶ Play';
+        }
+      }
+    }
 
     const cat=(typeof StickerLibrary!=='undefined' && isGlyphKind) ? StickerLibrary.getById(st.stickerId) : null;
     const shapeKindInfo=(typeof StickerLibrary!=='undefined' && isShapeKind && typeof StickerLibrary.getShapeKind==='function') ? StickerLibrary.getShapeKind(st.shape) : null;
@@ -2950,6 +3027,7 @@ const CardDesigner=(function(){
       else if(isTextKind) labelEl.textContent='Text';
       else if(isDoodleKind) labelEl.textContent='Doodle';
       else if(isImageKind) labelEl.textContent='Picture';
+      else if(isVoiceKind) labelEl.textContent='Voice Note';
       else labelEl.textContent='Sticker: '+(cat?cat.name:'Sticker');
     }
 
@@ -4108,7 +4186,13 @@ const CardDesigner=(function(){
     getActiveImageView:getActiveImageView,
     notifyImageViewChanged:notifyImageViewChanged,
     getSectionBody:getSectionBody,
-    buildColourKit:buildColourKit
+    buildColourKit:buildColourKit,
+    // Voice MVP Ship 2 — exported so the canvas's own tap-to-play (a
+    // clean click on a 🔊 voice-note badge, js/app.js) reuses THIS one
+    // playback path rather than a second implementation; sharing the
+    // module-level Audio element also means a canvas tap and the Refine
+    // panel's Play button stop each other instead of overlapping.
+    playVoiceNote:_playVoiceNote
   };
   try{ window.CardDesigner=api; }catch(e){}
   return api;

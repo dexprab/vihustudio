@@ -9727,3 +9727,30 @@ body.dark-theme .traveller-save-notice-dismiss{
 @media (prefers-reduced-motion:reduce){
   .voice-pulse-dot{ animation:none; }
 }
+
+/* Voice MVP Ship 2 — voice-note OBJECTS. A thin divider between the
+   page-narration half of the Voice panel and the Voice Notes half, plus
+   the Refine panel's own Play control for a selected 🔊 note
+   (js/cardDesigner.js's .sticker-voice-group). The Play button carries
+   the same explicit cascade-escape overrides as every other real button. */
+.voice-section-divider{
+  height:1px; background:var(--border);
+  margin:6px 0 2px;
+}
+.sticker-voice-group{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.sticker-voice-group.hidden{ display:none; }
+.voice-note-play-btn{
+  width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(230,115,115,0.55);
+  background:linear-gradient(135deg,#E67373,#D95F5F);
+  color:#FFFFFF;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+}
+.voice-note-play-btn:hover{ background:linear-gradient(135deg,#DC6060,#CE5252); }
+.sticker-voice-status{ min-height:0; }

@@ -638,6 +638,18 @@ const ProjectManager=(function(){
       if(md && md.narration && typeof md.narration.ref!=='undefined'){
         jobs.push({ get:function(){ return md.narration.ref; }, set:function(v){ md.narration.ref=v; } });
       }
+      // Sticker-borne asset refs (Voice MVP Ship 2) — a voice-note
+      // sticker's own clip (st.voiceRef), plus an image-kind sticker's
+      // own picture (st.image — uploads/Family picks produce vihu-asset:
+      // refs here too; this closes the previously-disclosed gap where
+      // image stickers shipped un-hydrated in a portable .vihu file).
+      if(md && Array.isArray(md.stickers)){
+        md.stickers.forEach(function(st){
+          if(!st) return;
+          if(typeof st.voiceRef!=='undefined') jobs.push({ get:function(){ return st.voiceRef; }, set:function(v){ st.voiceRef=v; } });
+          if(typeof st.image!=='undefined') jobs.push({ get:function(){ return st.image; }, set:function(v){ st.image=v; } });
+        });
+      }
     });
     return jobs;
   }
