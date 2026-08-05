@@ -15,6 +15,7 @@ A place to drop bugs and feature requests as you find/think of them, at any pace
 
 - We need a tutorial or a starting instruction for the kids first visit. what to do , how to do , where to do, when to do.
 - Printable story writing pages, color sheets , sketches. various book sizes.
+- **Voice atmosphere — an authored soundtrack for a page, not just one narration.** A page can hold several voice notes; the author should be able to decide which ones play, in what order, and at what time, either alongside the page's narration or instead of it. That authored arrangement is what a Reel export should film — single page or multiple pages. Whenever a voice note plays, its 🔊 badge should animate in the reel itself, so a viewer can see which voice is speaking. (Today: Reel's audio track is the per-page narration only; the badges render as static art and never sound. Ship 3's own scope line — noted there as a clean extension of the same compose pipeline, not a gap.) Design questions worth settling before building: does a note play at an absolute time on the page's timeline or in a sequence relative to the others; does the page's hold time stretch to fit the whole arrangement; and can a note deliberately overlap the narration or only sit between beats.
 
 ## Done
 
