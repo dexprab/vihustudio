@@ -9679,3 +9679,51 @@ body.dark-theme .traveller-save-notice{
 body.dark-theme .traveller-save-notice-dismiss{
   background:rgba(255,255,255,0.12) !important;
 }
+
+/* ---------- Voice (per-page narration) — the 🎤 Voice panel ----------
+   Record/import UI for Locked Product Decision #4's Audio Studio MVP;
+   the panel itself is built by js/contextPanel.js's _showVoicePanel.
+   Every real <button> here carries the explicit !important size
+   overrides this codebase needs to escape the global
+   button{width:100%;height:var(--button-height)} cascade — the same
+   recurring fix Object Strip cards / Doodle pen swatches needed. */
+.voice-panel-body{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+.voice-hint{ font-size:13px; color:var(--muted); line-height:1.45; }
+.voice-status{ font-size:12px; color:var(--muted); min-height:14px; }
+.voice-record-btn{
+  width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(230,115,115,0.55);
+  background:linear-gradient(135deg,#E67373,#D95F5F);
+  color:#FFFFFF;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+}
+.voice-record-btn:hover{ background:linear-gradient(135deg,#DC6060,#CE5252); }
+.voice-record-btn.is-recording{
+  background:linear-gradient(135deg,#B23A3A,#992F2F);
+  border-color:rgba(178,58,58,0.7);
+}
+.voice-recording-row{ display:flex; align-items:center; gap:10px; }
+.voice-pulse-dot{
+  width:14px; height:14px; border-radius:50%;
+  background:#E63946; flex-shrink:0;
+  animation:voicePulse 1.1s ease-in-out infinite;
+}
+@keyframes voicePulse{
+  0%,100%{ transform:scale(1);   opacity:1; }
+  50%    { transform:scale(1.35); opacity:0.55; }
+}
+.voice-timer{
+  font-variant-numeric:tabular-nums;
+  font-weight:700; font-size:15px; color:var(--text);
+}
+.voice-timer-ending{ color:#C0392B; }
+.voice-remove-btn{ color:#C0392B; }
+@media (prefers-reduced-motion:reduce){
+  .voice-pulse-dot{ animation:none; }
+}

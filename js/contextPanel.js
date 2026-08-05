@@ -2030,6 +2030,280 @@ const ContextPanel=(function(){
     }
   }
 
+  // ---------- Voice (per-page narration) ----------
+  // Locked Product Decision #4 (Audio Studio) MVP: one narration clip
+  // per page — the kid tells THIS page's story in their own voice —
+  // stored at slide.metadata.narration = {ref, durationMs} (metadata
+  // rides serialize() wholesale, so save/restore/cloud-sync need zero
+  // persistence changes). Record (js/voiceRecorder.js, 60s cap with a
+  // countdown) or import an audio file; the clip lands in AssetStore
+  // exactly like every picture (durable vihu-asset: ref + background
+  // cloud upload). Creator-only by product decision — a Traveller sees
+  // the companion-framed nudge toward their first Publish, same
+  // discipline as Family Photos. Playback is Studio-only for now
+  // (PDF/PNG structurally can't carry audio — narrated exports stay
+  // the "foundation for" future Decision #4 already anticipates).
+  // Voice-note OBJECTS on the canvas are the agreed follow-up ship,
+  // not part of this MVP.
+  let _voiceAudioEl=null;   // live playback element, one at a time
+  let _voicePreview=null;   // {blob,durationMs,url} between Stop and Keep It
+
+  function _fmtVoiceTime(ms){
+    const total=Math.max(0,Math.round(ms/1000));
+    const m=Math.floor(total/60), s=total%60;
+    return m+':'+(s<10?'0':'')+s;
+  }
+  function _stopVoicePlayback(){
+    if(_voiceAudioEl){ try{ _voiceAudioEl.pause(); }catch(e){} }
+    _voiceAudioEl=null;
+  }
+  function _clearVoicePreview(){
+    if(_voicePreview && _voicePreview.url){ try{ URL.revokeObjectURL(_voicePreview.url); }catch(e){} }
+    _voicePreview=null;
+  }
+  // Mirrors _storeUploadedAsset's shape for a Blob (no downscale step —
+  // audio has nothing to downscale; AssetStore.put is MIME-agnostic).
+  function _storeVoiceBlob(blob,onDone){
+    if(typeof window.AssetStore==='undefined' || typeof ProjectManager==='undefined' || typeof ProjectManager.ensureProjectId!=='function'){
+      onDone(null); return;
+    }
+    const projectId=ProjectManager.ensureProjectId();
+    if(!projectId){ onDone(null); return; }
+    window.AssetStore.put(blob,{surface:'creator',projectId:projectId}).then(function(ref){
+      onDone(typeof ref==='string' && ref.indexOf('vihu-asset:')===0 ? ref : null);
+    }).catch(function(){ onDone(null); });
+  }
+  function _setNarration(ref,durationMs){
+    const slide=_currentSlide();
+    if(!slide) return;
+    if(!slide.metadata) slide.metadata={};
+    slide.metadata.narration={ref:ref, durationMs:durationMs||0};
+    if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+  }
+  function _removeNarration(){
+    const slide=_currentSlide();
+    if(slide && slide.metadata && slide.metadata.narration){
+      delete slide.metadata.narration;
+      if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    }
+  }
+  function _playNarration(statusEl){
+    const slide=_currentSlide();
+    const n=slide && slide.metadata && slide.metadata.narration;
+    if(!n || !n.ref){ return; }
+    _stopVoicePlayback();
+    const opts=slide && slide.recallOwnerId ? {ownerId:slide.recallOwnerId} : undefined;
+    const resolveP=(typeof window.AssetStore!=='undefined' && typeof window.AssetStore.resolve==='function')
+      ? window.AssetStore.resolve(n.ref,opts) : Promise.resolve(n.ref);
+    resolveP.then(function(url){
+      if(!url){ if(statusEl) statusEl.textContent='Hmm — this voice couldn’t load right now.'; return; }
+      _voiceAudioEl=new Audio(url);
+      _voiceAudioEl.play().catch(function(){
+        if(statusEl) statusEl.textContent='Hmm — this voice couldn’t play right now.';
+      });
+    });
+  }
+  function _importVoiceFile(afterStored){
+    const input=document.createElement('input');
+    input.type='file';
+    input.accept='audio/*';
+    input.addEventListener('change',function(){
+      const file=input.files && input.files[0];
+      if(!file) return;
+      // Duration from metadata, best-effort — a webm/opus import can
+      // legitimately report Infinity; 0 then just means "no time shown".
+      const url=URL.createObjectURL(file);
+      const probe=new Audio();
+      const finish=function(durationMs){
+        try{ URL.revokeObjectURL(url); }catch(e){}
+        _storeVoiceBlob(file,function(ref){
+          if(ref){ _setNarration(ref,durationMs); }
+          afterStored(!!ref);
+        });
+      };
+      probe.onloadedmetadata=function(){
+        const d=probe.duration;
+        finish(isFinite(d) && d>0 ? Math.round(d*1000) : 0);
+      };
+      probe.onerror=function(){ finish(0); };
+      probe.src=url;
+    });
+    input.click();
+  }
+
+  function _showVoicePanel(){
+    stickerStudioOpen=true;
+    _stopVoicePlayback();
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','🎤 Your Voice'));
+
+    const leave=function(){
+      _stopVoicePlayback();
+      _clearVoicePreview();
+      if(typeof VoiceRecorder!=='undefined'){ try{ VoiceRecorder.cancel(); }catch(e){} }
+      refresh();
+    };
+    const doneBtn=function(){
+      const b=_el('button','context-btn','← Done');
+      b.type='button';
+      b.addEventListener('click',leave);
+      return b;
+    };
+
+    // Creator-only — same companion-framed gate discipline as Family
+    // Photos: a child's recorded voice is personal data, and the gate
+    // points at the real path (first Publish → companion) rather than
+    // just refusing.
+    if(!_isCreatorSession()){
+      const gate=_el('div','context-family-gate');
+      gate.appendChild(_el('div','context-family-gate-icon','🧭'));
+      gate.appendChild(_el('div','context-family-gate-text',
+        'You need a companion before you can leave your voice on a page! Publish your first adventure — your companion will arrive, and together you can tell every page’s story out loud.'));
+      panelRoot.appendChild(gate);
+      panelRoot.appendChild(doneBtn());
+      return;
+    }
+
+    const body=_el('div','voice-panel-body');
+    panelRoot.appendChild(body);
+    panelRoot.appendChild(doneBtn());
+
+    const supported=(typeof VoiceRecorder!=='undefined' && VoiceRecorder.isSupported());
+
+    function renderIdle(){
+      _clearVoicePreview();
+      body.innerHTML='';
+      const slide=_currentSlide();
+      const n=slide && slide.metadata && slide.metadata.narration;
+      const status=_el('div','voice-status','');
+      if(n && n.ref){
+        body.appendChild(_el('div','voice-hint',
+          'This page has your voice on it'+(n.durationMs?' ('+_fmtVoiceTime(n.durationMs)+')':'')+'.'));
+        const listen=_el('button','context-btn','▶ Listen');
+        listen.type='button';
+        listen.addEventListener('click',function(){ _playNarration(status); });
+        body.appendChild(listen);
+        if(supported){
+          const again=_el('button','context-btn','🎤 Record Again');
+          again.type='button';
+          again.addEventListener('click',startRecording);
+          body.appendChild(again);
+        }
+        const imp=_el('button','context-btn','📁 Import Audio');
+        imp.type='button';
+        imp.addEventListener('click',function(){ _importVoiceFile(function(){ renderIdle(); }); });
+        body.appendChild(imp);
+        const rm=_el('button','context-btn voice-remove-btn','🗑 Remove Voice');
+        rm.type='button';
+        rm.addEventListener('click',function(){ _stopVoicePlayback(); _removeNarration(); renderIdle(); });
+        body.appendChild(rm);
+      }else{
+        body.appendChild(_el('div','voice-hint','Tell this page’s story in your own voice!'));
+        if(supported){
+          const rec=_el('button','voice-record-btn','🎤 Start Recording');
+          rec.type='button';
+          rec.addEventListener('click',startRecording);
+          body.appendChild(rec);
+        }else{
+          body.appendChild(_el('div','voice-status','Recording isn’t available on this device — you can still import an audio file.'));
+        }
+        const imp=_el('button','context-btn','📁 Import Audio');
+        imp.type='button';
+        imp.addEventListener('click',function(){ _importVoiceFile(function(){ renderIdle(); }); });
+        body.appendChild(imp);
+      }
+      body.appendChild(status);
+    }
+
+    function startRecording(){
+      _stopVoicePlayback();
+      _clearVoicePreview();
+      body.innerHTML='';
+      const maxMs=VoiceRecorder.DEFAULT_MAX_MS;
+      const pulse=_el('div','voice-pulse-dot');
+      const timer=_el('div','voice-timer','0:00 / '+_fmtVoiceTime(maxMs));
+      const row=_el('div','voice-recording-row');
+      row.appendChild(pulse);
+      row.appendChild(timer);
+      body.appendChild(_el('div','voice-hint','I’m listening…'));
+      body.appendChild(row);
+      const stopBtn=_el('button','voice-record-btn is-recording','⏹ Stop');
+      stopBtn.type='button';
+      const cancelBtn=_el('button','context-btn','✕ Cancel');
+      cancelBtn.type='button';
+      body.appendChild(stopBtn);
+      body.appendChild(cancelBtn);
+
+      const finishToPreview=function(){
+        VoiceRecorder.stop().then(function(clip){
+          renderPreview(clip);
+        }).catch(function(){ renderIdle(); });
+      };
+      stopBtn.addEventListener('click',finishToPreview);
+      cancelBtn.addEventListener('click',function(){ VoiceRecorder.cancel(); renderIdle(); });
+
+      VoiceRecorder.start({
+        maxMs:maxMs,
+        onTick:function(elapsed,cap){
+          if(!timer.isConnected) return;
+          timer.textContent=_fmtVoiceTime(Math.min(elapsed,cap))+' / '+_fmtVoiceTime(cap);
+          if(cap-elapsed<=10000) timer.classList.add('voice-timer-ending');
+        },
+        onAutoStop:finishToPreview
+      }).catch(function(err){
+        body.innerHTML='';
+        const msg=(err && err.reason==='denied')
+          ? '😕 I couldn’t hear you — check your microphone and try again.'
+          : '😕 Recording didn’t start — check your microphone and try again.';
+        body.appendChild(_el('div','voice-status',msg));
+        const back=_el('button','context-btn','↩ Back');
+        back.type='button';
+        back.addEventListener('click',renderIdle);
+        body.appendChild(back);
+      });
+    }
+
+    function renderPreview(clip){
+      _clearVoicePreview();
+      _voicePreview={blob:clip.blob,durationMs:clip.durationMs,url:URL.createObjectURL(clip.blob)};
+      body.innerHTML='';
+      body.appendChild(_el('div','voice-hint','Here’s what you said ('+_fmtVoiceTime(clip.durationMs)+') — keep it?'));
+      const status=_el('div','voice-status','');
+      const play=_el('button','context-btn','▶ Play');
+      play.type='button';
+      play.addEventListener('click',function(){
+        _stopVoicePlayback();
+        _voiceAudioEl=new Audio(_voicePreview.url);
+        _voiceAudioEl.play().catch(function(){ status.textContent='Hmm — playback didn’t start.'; });
+      });
+      const keep=_el('button','voice-record-btn','✓ Keep It');
+      keep.type='button';
+      keep.addEventListener('click',function(){
+        keep.disabled=true;
+        status.textContent='Saving your voice…';
+        _storeVoiceBlob(_voicePreview.blob,function(ref){
+          if(!ref){
+            status.textContent='😕 Saving didn’t work — try again.';
+            keep.disabled=false;
+            return;
+          }
+          _setNarration(ref,_voicePreview.durationMs);
+          renderIdle();
+        });
+      });
+      const again=_el('button','context-btn','↩ Try Again');
+      again.type='button';
+      again.addEventListener('click',startRecording);
+      body.appendChild(play);
+      body.appendChild(keep);
+      body.appendChild(again);
+      body.appendChild(status);
+    }
+
+    renderIdle();
+  }
+
   // ---------- Family Photos (shared Google Photos albums) ----------
   // A parent shares one or more PUBLIC Google Photos albums (stored per-
   // kid in Supabase — js/familyAlbum.js is all the plumbing); the kid
@@ -2402,9 +2676,9 @@ const ContextPanel=(function(){
   // direct product decision ("the tile should always be there. just
   // grey it out when there is nothing to show"), reversing the earlier
   // hide-entirely behaviour, which read as the tile having vanished.
-  // Voice has no supporting SceneEngine/renderer capability today (no
-  // audio attachment) — stubbed honestly as Coming Soon rather than
-  // faked.
+  // Voice is real now — per-page narration (record/import, Creator-only,
+  // see _showVoicePanel above); voice-note OBJECTS on the canvas remain
+  // the agreed follow-up ship.
   function _addSomethingItems(){
     const items=[
       {id:'stickers',icon:'😀',label:'Emojis',onClick:function(){ _showStickerStudio(); }},
@@ -2427,7 +2701,7 @@ const ContextPanel=(function(){
       disabled:_activeCollectionAssets().length===0,
       onClick:function(){ _showCollectionPicker(); }
     });
-    items.push({id:'voice',icon:'🎤',label:'Voice',comingSoon:true});
+    items.push({id:'voice',icon:'🎤',label:'Voice',onClick:function(){ _showVoicePanel(); }});
     return items;
   }
 

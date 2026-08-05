@@ -631,6 +631,13 @@ const ProjectManager=(function(){
           if(entry && typeof entry.image!=='undefined') jobs.push({ get:function(){ return entry.image; }, set:function(v){ entry.image=v; } });
         });
       }
+      // Per-page narration (Voice MVP) — the clip ref hydrates into a
+      // real data: URI for a portable .vihu file exactly like every
+      // picture ref (AssetStore.hydrateForExport round-trips audio
+      // losslessly; it is MIME-agnostic by design).
+      if(md && md.narration && typeof md.narration.ref!=='undefined'){
+        jobs.push({ get:function(){ return md.narration.ref; }, set:function(v){ md.narration.ref=v; } });
+      }
     });
     return jobs;
   }
