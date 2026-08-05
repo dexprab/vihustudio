@@ -1354,6 +1354,16 @@ const ContextPanel=(function(){
     replaceBtn.type='button';
     replaceBtn.addEventListener('click',_replaceArtwork);
     row.appendChild(replaceBtn);
+    // Family Photos — the second source for a Place's picture, ALONGSIDE
+    // the local picker above, never replacing it. Same conditional-
+    // presence rule as the Add Something row; the picker itself carries
+    // the Traveller gate, so this stays one plain button either way.
+    if(_familyPhotosAvailable()){
+      const familyBtn=_el('button','context-btn','📷 From Family Album');
+      familyBtn.type='button';
+      familyBtn.addEventListener('click',function(){ _showFamilyPhotosPicker({mode:'artwork'}); });
+      row.appendChild(familyBtn);
+    }
     if(hasImage){
       const cropBtn=_el('button','context-btn','✂️ Crop / Rotate');
       cropBtn.type='button';
@@ -1957,6 +1967,304 @@ const ContextPanel=(function(){
     }
   }
 
+  // ---------- Family Photos (shared Google Photos albums) ----------
+  // A parent shares one or more PUBLIC Google Photos albums (stored per-
+  // kid in Supabase — js/familyAlbum.js is all the plumbing); the kid
+  // browses and picks photos from them ALONGSIDE the ordinary local
+  // picker, never replacing it. Two entry points, one shared picker:
+  //   - Add Something -> "📷 Family Photos" (lands as a freestanding
+  //     kind:'image' sticker, exactly like "Photo"/"From This World")
+  //   - the Artwork panel's "📷 From Family Album" (fills the selected
+  //     Place, exactly like "Replace Artwork")
+  // Both route the picked photo through Picture Studio first, so a kid
+  // can crop/adjust before it lands — the identical pipeline a local
+  // file pick already uses; downstream code never knows the picture
+  // came from Google Photos at all.
+  //
+  // Creator-only by product decision ("functionality not needed for
+  // traveller. infact we can show you need to have companion to guide
+  // you in external world") — a Traveller who taps in sees a companion-
+  // framed nudge toward their first Publish instead of the picker.
+  let _familyPickerAlbumId=null; // remembered chip choice across re-renders
+
+  function _familyPhotosAvailable(){
+    try{ return !!(window.FamilyAlbum && FamilyAlbum.isAvailable()); }catch(e){ return false; }
+  }
+  // Creator = a claimed Magic Card is active on this device. Same
+  // gate _scheduleCloudProjectSync/the sync charm already key off.
+  function _isCreatorSession(){
+    try{ return !!(typeof MagicCard!=='undefined' && MagicCard.getActive && MagicCard.getActive()); }catch(e){ return false; }
+  }
+  function _familyDoneBtn(label){
+    const btn=_el('button','context-btn',label||'← Done Browsing');
+    btn.type='button';
+    btn.addEventListener('click',function(){ refresh(); });
+    return btn;
+  }
+
+  function _showFamilyPhotosPicker(opts){
+    stickerStudioOpen=true;
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','📷 Family Photos'));
+
+    if(!_isCreatorSession()){
+      // Traveller gate — the product decision's own framing, worded for
+      // a kid: the outside world needs a companion as a guide, and a
+      // companion arrives with the first Publish (the Awakening).
+      const gate=_el('div','context-family-gate');
+      gate.appendChild(_el('div','context-family-gate-icon','🧭'));
+      gate.appendChild(_el('div','context-family-gate-text',
+        'You need a companion to guide you in the outside world! Publish your first adventure — your companion will arrive, and together you can bring in family photos.'));
+      panelRoot.appendChild(gate);
+      panelRoot.appendChild(_familyDoneBtn());
+      return;
+    }
+
+    const status=_el('div','context-family-status','Looking for your family albums…');
+    panelRoot.appendChild(status);
+    const body=_el('div','context-family-body');
+    panelRoot.appendChild(body);
+    const actions=_el('div','context-action-row');
+    const manageBtn=_el('button','context-btn','⚙️ Manage Albums');
+    manageBtn.type='button';
+    manageBtn.addEventListener('click',function(){ _showFamilyAlbumManager(opts); });
+    actions.appendChild(manageBtn);
+    actions.appendChild(_familyDoneBtn());
+    panelRoot.appendChild(actions);
+
+    FamilyAlbum.listAlbums().then(function(albums){
+      if(!body.isConnected) return; // navigated away while loading
+      if(!albums.length){
+        status.textContent='';
+        const empty=_el('div','context-family-gate');
+        empty.appendChild(_el('div','context-family-gate-icon','👨‍👩‍👧'));
+        empty.appendChild(_el('div','context-family-gate-text',
+          'No family albums connected yet. Ask a parent to add a shared Google Photos album link in Manage Albums — then everyone\'s photos show up right here.'));
+        body.appendChild(empty);
+        return;
+      }
+      let active=albums.find(function(a){ return a.id===_familyPickerAlbumId; })||albums[0];
+      _familyPickerAlbumId=active.id;
+      if(albums.length>1){
+        const chips=_el('div','context-family-chips');
+        albums.forEach(function(a,i){
+          const chip=_el('button','context-family-chip'+(a.id===active.id?' is-active':''),a.label||('Album '+(i+1)));
+          chip.type='button';
+          chip.addEventListener('click',function(){
+            _familyPickerAlbumId=a.id;
+            _showFamilyPhotosPicker(opts);
+          });
+          chips.appendChild(chip);
+        });
+        body.appendChild(chips);
+      }
+      status.textContent='Opening “'+(active.label||'your album')+'”…';
+      FamilyAlbum.getPhotos(active.albumUrl).then(function(res){
+        if(!body.isConnected) return;
+        if(!res.ok){
+          status.textContent='Couldn\'t reach this album right now — check the link in Manage Albums, or try again in a moment.';
+          return;
+        }
+        status.textContent=res.fromCache==='stale'
+          ? 'Showing saved copies — couldn\'t reach the album just now.'
+          : (res.count===0 ? 'This album looks empty — add photos to it in Google Photos.' : 'Tap a photo to use it.');
+        if(!res.count) return;
+        const grid=_el('div','context-collection-picker-grid');
+        res.photos.forEach(function(p){
+          grid.appendChild(_buildFamilyPhotoTile(p,opts));
+        });
+        body.appendChild(grid);
+      });
+    });
+  }
+
+  function _buildFamilyPhotoTile(photo,opts){
+    const tile=_el('button','context-collection-tile context-family-tile');
+    tile.type='button';
+    const thumb=_el('span','context-collection-tile-thumb');
+    const img=document.createElement('img');
+    // Direct lh3 thumbnail — a plain <img>, no crossOrigin, no canvas,
+    // so browsing costs zero Supabase egress (the GO-proxy verdict only
+    // applies to the pick itself below).
+    img.src=FamilyAlbum.thumbUrl(photo);
+    img.alt='family photo';
+    img.loading='lazy';
+    thumb.appendChild(img);
+    tile.appendChild(thumb);
+    tile.addEventListener('click',function(){
+      if(tile.classList.contains('is-loading')) return;
+      tile.classList.add('is-loading');
+      // The one proxied fetch per pick (canvas-safe bytes via the Edge
+      // Function — direct lh3 loads carry no CORS headers and would
+      // taint the canvas, per the go/no-go test's own verdict).
+      FamilyAlbum.fetchPhotoAsDataURL(photo).then(function(res){
+        tile.classList.remove('is-loading');
+        if(!res.ok){
+          tile.classList.add('is-error');
+          setTimeout(function(){ tile.classList.remove('is-error'); },1600);
+          return;
+        }
+        _routeFamilyPick(res.dataURL,opts);
+      });
+    });
+    return tile;
+  }
+
+  function _routeFamilyPick(dataURL,opts){
+    const artworkMode=!!(opts && opts.mode==='artwork');
+    if(typeof PictureStudio==='undefined'){
+      // Degraded path only — Picture Studio always exists in real Studio.
+      if(artworkMode){ _applyImageResult({dataURL:dataURL}); }
+      else{ _familyAddImageObject(dataURL); }
+      return;
+    }
+    if(artworkMode){
+      // Fills the selected Place — the identical completion the local
+      // "Replace Artwork" flow already uses, including the Place's own
+      // authored fit as Picture Studio's starting mode.
+      const places=(typeof SlideRenderer!=='undefined' && typeof SlideRenderer.getPlaceRects==='function')
+        ? SlideRenderer.getPlaceRects(_currentSlide())
+        : null;
+      const placeId=_currentPlaceId();
+      const place=places && places.find(function(p){ return p.id===placeId; });
+      const defaultMode=(place && place.place && place.place.fit)||'fit';
+      PictureStudio.open(dataURL,{defaultMode:defaultMode,onApply:_applyImageResult});
+    }else{
+      PictureStudio.open(dataURL,{defaultMode:'fit',onApply:function(result){
+        _familyAddImageObject(result && result.dataURL);
+      }});
+    }
+  }
+
+  // Same freestanding kind:'image' sticker _addImageObject/_addCollectionObject
+  // already create — durably stored (vihu-asset:) via _storeUploadedAsset,
+  // then selected so the kid lands straight on its Refine panel.
+  function _familyAddImageObject(dataURL){
+    const slide=_currentSlide();
+    if(!dataURL || !slide || typeof SceneEngine==='undefined' || typeof SceneEngine.addSticker!=='function') return;
+    _storeUploadedAsset(dataURL,function(finalRef){
+      const st=SceneEngine.addSticker(slide,{
+        kind:'image', image:finalRef, stickerId:'image.family',
+        w:320, h:320
+      });
+      if(!st) return;
+      if(typeof window.setSelectedSceneElement==='function'){
+        try{ window.setSelectedSceneElement(st.id,'sticker'); }catch(e){}
+      }
+    });
+  }
+
+  // Parent-facing album management — add / rename / replace link /
+  // remove, all through js/familyAlbum.js's own CRUD (RLS enforces
+  // ownership server-side). Deliberately plain and text-first: this is
+  // the one Family Photos surface aimed at the PARENT, not the kid.
+  function _showFamilyAlbumManager(pickerOpts){
+    stickerStudioOpen=true;
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','⚙️ Family Albums'));
+    panelRoot.appendChild(_el('div','context-family-manager-hint',
+      'For parents: share a Google Photos album (Share → Create link), then paste the link here. Photos stay on Google — VihuStudio only remembers the link.'));
+
+    const listWrap=_el('div','context-family-manager-list');
+    panelRoot.appendChild(listWrap);
+
+    // Add form — real inputs (a pasted URL needs a field, not a prompt).
+    const form=_el('div','context-family-manager-form');
+    const urlInput=document.createElement('input');
+    urlInput.type='text';
+    urlInput.className='context-family-input';
+    urlInput.placeholder='https://photos.app.goo.gl/…';
+    const labelInput=document.createElement('input');
+    labelInput.type='text';
+    labelInput.className='context-family-input';
+    labelInput.placeholder='Album name (like “Holidays”)';
+    const addBtn=_el('button','context-btn context-btn-primary','➕ Add Album');
+    addBtn.type='button';
+    const formStatus=_el('div','context-family-status','');
+    addBtn.addEventListener('click',function(){
+      const url=(urlInput.value||'').trim();
+      if(!FamilyAlbum.isValidAlbumUrl(url)){
+        formStatus.textContent='That doesn\'t look like a Google Photos share link — it should start with https://photos.app.goo.gl/…';
+        return;
+      }
+      addBtn.disabled=true;
+      formStatus.textContent='Adding…';
+      FamilyAlbum.addAlbum(url,(labelInput.value||'').trim()).then(function(res){
+        addBtn.disabled=false;
+        if(!res.ok){ formStatus.textContent='Couldn\'t add that album ('+res.error+') — try again.'; return; }
+        _showFamilyAlbumManager(pickerOpts);
+      });
+    });
+    form.appendChild(urlInput);
+    form.appendChild(labelInput);
+    form.appendChild(addBtn);
+    form.appendChild(formStatus);
+    panelRoot.appendChild(form);
+
+    const actions=_el('div','context-action-row');
+    const backBtn=_el('button','context-btn','← Back to Photos');
+    backBtn.type='button';
+    backBtn.addEventListener('click',function(){ _showFamilyPhotosPicker(pickerOpts); });
+    actions.appendChild(backBtn);
+    actions.appendChild(_familyDoneBtn('✕ Close'));
+    panelRoot.appendChild(actions);
+
+    FamilyAlbum.listAlbums().then(function(albums){
+      if(!listWrap.isConnected) return;
+      if(!albums.length){
+        listWrap.appendChild(_el('div','context-family-status','No albums yet — add the first one below.'));
+        return;
+      }
+      albums.forEach(function(a){
+        listWrap.appendChild(_buildFamilyAlbumRow(a,pickerOpts));
+      });
+    });
+  }
+
+  function _buildFamilyAlbumRow(album,pickerOpts){
+    const row=_el('div','context-family-album-row');
+    const nameInput=document.createElement('input');
+    nameInput.type='text';
+    nameInput.className='context-family-input';
+    nameInput.value=album.label||'';
+    nameInput.placeholder='Album name';
+    nameInput.addEventListener('change',function(){
+      FamilyAlbum.updateAlbum(album.id,{label:(nameInput.value||'').trim()});
+    });
+    row.appendChild(nameInput);
+    row.appendChild(_el('div','context-family-album-url',album.albumUrl));
+    const btns=_el('div','context-family-album-btns');
+    const relinkBtn=_el('button','context-btn','🔗 Replace Link');
+    relinkBtn.type='button';
+    relinkBtn.addEventListener('click',function(){
+      const next=window.prompt('Paste the new shared album link:',album.albumUrl);
+      if(next==null) return;
+      FamilyAlbum.updateAlbum(album.id,{albumUrl:next.trim()}).then(function(res){
+        if(!res.ok){ window.alert('That link didn\'t work ('+res.error+') — it should start with https://photos.app.goo.gl/…'); return; }
+        try{ FamilyAlbum.clearPhotoCache(album.albumUrl); }catch(e){}
+        _showFamilyAlbumManager(pickerOpts);
+      });
+    });
+    const removeBtn=_el('button','context-btn context-btn-danger','🗑 Remove');
+    removeBtn.type='button';
+    removeBtn.addEventListener('click',function(){
+      if(!window.confirm('Remove “'+(album.label||album.albumUrl)+'” from Family Photos? The album itself stays untouched in Google Photos.')) return;
+      FamilyAlbum.removeAlbum(album.id).then(function(res){
+        if(res.ok){
+          try{ FamilyAlbum.clearPhotoCache(album.albumUrl); }catch(e){}
+          if(_familyPickerAlbumId===album.id) _familyPickerAlbumId=null;
+        }
+        _showFamilyAlbumManager(pickerOpts);
+      });
+    });
+    btns.appendChild(relinkBtn);
+    btns.appendChild(removeBtn);
+    row.appendChild(btns);
+    return row;
+  }
+
   // ---------- Right Panel Redesign — Personalize zone ----------
 
   // "+ Add Something"'s rows. Stickers/Decorations are, today, the exact
@@ -1991,6 +2299,15 @@ const ContextPanel=(function(){
       {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
       {id:'photo',icon:'🖼️',label:'Photo',onClick:function(){ _addImageObject(); }}
     ];
+    // Family Photos — shown whenever the repository layer is configured
+    // at all (an unconfigured deployment can never have albums, so the
+    // row would be a dead end there — same conditional-presence
+    // discipline as "From This World" below). A Traveller DOES see the
+    // row: tapping it shows the companion-framed gate, the product's
+    // own deliberate nudge toward a first Publish.
+    if(_familyPhotosAvailable()){
+      items.push({id:'family',icon:'📷',label:'Family Photos',onClick:function(){ _showFamilyPhotosPicker(); }});
+    }
     if(_activeCollectionAssets().length>0){
       items.push({id:'fromWorld',icon:'🎁',label:'From This World',onClick:function(){ _showCollectionPicker(); }});
     }

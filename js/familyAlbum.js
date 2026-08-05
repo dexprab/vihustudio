@@ -53,12 +53,22 @@
   })();
 
   var _cfgPromise = null;
+  // Synchronous mirror of whether the config resolved with real
+  // credentials — null until the (fast, same-origin, module-load-time)
+  // fetch below settles, then a plain boolean. isAvailable() needs a
+  // SYNC answer (js/contextPanel.js decides whether to even render the
+  // Family Photos row with it), and the repository client's own
+  // isConfigured() is a Promise — a truthy-check on that would be
+  // always-true, silently defeating the "unconfigured deployments hide
+  // the row" gate (a real bug caught by the Phase 3 verification suite).
+  var _configOk = null;
   function _loadConfig() {
     if (_cfgPromise) return _cfgPromise;
     _cfgPromise = fetch(CONFIG_URL, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) { return (cfg && cfg.url && cfg.anonKey) ? cfg : null; })
-      .catch(function () { return null; });
+      .catch(function () { return null; })
+      .then(function (cfg) { _configOk = !!cfg; return cfg; });
     return _cfgPromise;
   }
 
@@ -73,11 +83,14 @@
     return (typeof window !== 'undefined' && window.ThemeRepositoryClient) || null;
   }
 
-  // True when the repository layer is configured and this module can work
-  // at all. Cheap/synchronous — session establishment happens lazily.
+  // True when the repository layer + this module's own config are both
+  // usable. Cheap/synchronous — session establishment happens lazily.
+  // Reads the sync _configOk mirror (never repo.isConfigured(), which
+  // returns a Promise — always truthy, see _loadConfig's own comment);
+  // both read the same supabase-config.json, so they can't disagree.
   function isAvailable() {
     var repo = _repo();
-    return !!(repo && typeof repo.isConfigured === 'function' && repo.isConfigured() &&
+    return !!(repo && _configOk === true &&
       typeof repo.getClient === 'function' && typeof repo.getSession === 'function');
   }
 
@@ -318,4 +331,10 @@
   };
 
   try { window.FamilyAlbum = api; } catch (e) { /* non-browser context */ }
+
+  // Kick the config fetch off at module load so isAvailable()'s sync
+  // _configOk mirror is settled long before any UI ever asks (the
+  // Context Panel first reads it when the Workspace opens, well after
+  // boot). Memoized — every later _loadConfig() call reuses this.
+  try { _loadConfig(); } catch (e) { /* never blocks load */ }
 })();
