@@ -4,6 +4,6 @@
   "task": "New js/voiceRecorder.js (pure MediaRecorder engine, no UI — wall-clock duration since Chrome's webm reports Infinity; mime preference webm/opus -> webm -> mp4). js/contextPanel.js: the full Voice panel (idle/recording/preview state machine) + the real Voice tile; narration stored at slide.metadata.narration {ref, durationMs} via AssetStore.put (durable vihu-asset ref, rides serialize() wholesale — zero persistence changes needed). js/projectManager.js: narration ref added to the export-hydration accessors so a portable .vihu file stays self-contained. Verified 16/16 (voice_verify.mjs — a REAL fake-mic Playwright suite: genuine recording through Chromium's fake audio device, no mocks in the pipeline) + fromworld_tile 13/13 + fa_replace_everywhere 22/22 + fa_ui 35/35 + photo_via_studio 8/8 + both goldenBuilds PASS. Cache-bust ?v=0335 -> ?v=0336.",
   "build": "0331",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "8ee9bff61d1d1a7eded445fe4de3bffa3c9589b5",
   "environment": "Release"
 }
