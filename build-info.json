@@ -4,6 +4,6 @@
   "task": "js/contextPanel.js: new _ensureFamilyModal/_openFamilyModal/_closeFamilyModal machinery; _showFamilyPhotosPicker and _showFamilyAlbumManager both render into the modal body; zero panelRoot writes remain in the family section. css/style.css: .family-photos-modal/-box/-header/-title/-close/-body/-grid block. Cache-bust ?v=0327 -> ?v=0328.",
   "build": "0323",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "9dfb2d842451a9c747dd31d1dfbbeeb27239d24b",
   "environment": "Release"
 }
