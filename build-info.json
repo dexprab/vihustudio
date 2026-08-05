@@ -4,6 +4,6 @@
   "task": "js/storyDestinations.js: new _drawBlurredBackdrop() pre-shrinks the page onto a tiny canvas (the browser's own smoothing does the averaging, so the bed is soft even where ctx.filter is unavailable), draws it back up past cover with overscan so the blur's own soft edge falls off-frame, and lays a light scrim over it so the sharp page stays the focal point; _fitCompositeInto gains an additive opts.backdrop==='blur' branch that paints that bed and then draws the contained page with a soft drop shadow. REEL's renderPage passes backdrop:'blur'; Story Book and Story Carousel never pass it and their composite is byte-identical. Verified 10/10 (reel_backdrop_verify.mjs — real 1080x1920 render, bar/page pixels sampled to prove the bed carries the page's colour through the scrim rather than a flat copy, the page area itself untouched, the shadow measurable at the page edge, corners fully opaque) + reel 15/15 + voice_note 22/22 + voice 16/16 + both goldenBuilds PASS. Cache-bust ?v=0338 -> ?v=0339.",
   "build": "0334",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "1f2d09ce057313eae2d4595f71e6fa212c2c0979",
   "environment": "Release"
 }
