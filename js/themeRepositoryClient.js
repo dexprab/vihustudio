@@ -570,6 +570,49 @@ const ThemeRepositoryClient = (function () {
     });
   }
 
+  // BACKLOG feature — "during publishing check, it should show me all
+  // the assets unused but on Supabase so that I can remove what is not
+  // required." publish() only ever upserts (never lists, never removes),
+  // so renaming/deleting an asset in a Project leaves the old Storage
+  // object under the theme's prefix forever — these two functions are
+  // the diff-and-clean pair World Builder's Publishing Check drives.
+  // listAssetPaths returns RELATIVE paths (the same key shape the
+  // compiled package's own assets map uses), so the caller's diff is a
+  // plain `!(rel in pkg.assets)`.
+  function listAssetPaths(repositoryId, themeId) {
+    return _getClient().then(function (client) {
+      return _authIfPersonal(repositoryId).then(function (session) {
+        const ownerSegment = _ownerSegmentFor(repositoryId, session);
+        const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
+        return _listAllObjectPaths(client, prefix).then(function (paths) {
+          return paths.map(function (p) { return p.slice(prefix.length + 1); });
+        });
+      });
+    });
+  }
+
+  // Removes exactly the named relative paths under the theme's own
+  // prefix — the same storage.remove() call reset()/deleteTheme()
+  // already use, scoped to a caller-chosen subset instead of the whole
+  // prefix. `.remove()` resolves the genuinely-deleted objects, so
+  // `deleted` reports what actually happened, never the request size.
+  function deleteAssets(repositoryId, themeId, relPaths) {
+    if (!Array.isArray(relPaths) || !relPaths.length) {
+      return Promise.resolve({ ok: true, deleted: 0 });
+    }
+    return _getClient().then(function (client) {
+      return _authIfPersonal(repositoryId).then(function (session) {
+        const ownerSegment = _ownerSegmentFor(repositoryId, session);
+        const prefix = repositoryId + '/' + ownerSegment + '/' + themeId;
+        const paths = relPaths.map(function (rel) { return prefix + '/' + rel; });
+        return client.storage.from(ASSET_BUCKET).remove(paths).then(function (res) {
+          if (res.error) throw res.error;
+          return { ok: true, deleted: (res.data || []).length };
+        });
+      });
+    });
+  }
+
   const api = {
     isConfigured: isConfigured,
     discover: discover,
@@ -581,6 +624,8 @@ const ThemeRepositoryClient = (function () {
     getStats: getStats,
     reset: reset,
     deleteTheme: deleteTheme,
+    listAssetPaths: listAssetPaths,
+    deleteAssets: deleteAssets,
     signIn: signIn,
     signUp: signUp,
     signOut: signOut,

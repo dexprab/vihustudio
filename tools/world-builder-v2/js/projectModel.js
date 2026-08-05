@@ -1037,6 +1037,59 @@ const ProjectModel = (function () {
         copy.id = newId;
         copy.name = source.name + ' Copy';
         setScene(project, copy);
+        // Land the copy right beside its source in the display order —
+        // _ordered's lazy reconciliation would otherwise append it at the
+        // very end of the strip, far from what was just duplicated.
+        if (Array.isArray(project.sceneOrder)) {
+            const at = project.sceneOrder.indexOf(id);
+            if (at !== -1) project.sceneOrder.splice(at + 1, 0, newId);
+        }
+        // Experience linkage — a blind deep clone alone leaves every
+        // Experience-mirrored layer in the copy a frozen orphan: the
+        // owning Experience's attachments[] has no entry for the new
+        // sceneId, so _syncExperienceAttachments never visits the copy,
+        // later Experience edits silently update only the original, and
+        // usageOf under-reports. Repaired per lifecycle:
+        //  - PUBLIC: attach for real — clone every source-scene
+        //    attachment entry onto the new sceneId (holder ids are
+        //    copied verbatim, so placeId stays valid) and re-sync;
+        //    _findMirroredLayer keys on (sourceExperienceId, partId)
+        //    within a scene, so the copied layers are adopted in place,
+        //    never duplicated.
+        //  - PERSONAL: permanently scoped to its ONE source scene
+        //    (attachExperience refuses any other sceneId, by canon), so
+        //    a real attachment is impossible — instead the copy's
+        //    mirrored layers are flattened into plain, independent
+        //    Scene Layers (mirror tags stripped): they keep rendering
+        //    exactly as the source looked, but no longer claim a
+        //    linkage that couldn't be honoured. A Personal FRAME
+        //    Experience's holder.frame reference (a real frames/*.json
+        //    record) and a V2 layer's own experience overlay reference
+        //    are left as-is — both still render correctly; usage
+        //    bookkeeping for those two simply doesn't cover the copy, a
+        //    disclosed limitation of Personal's own one-scene scope.
+        experiences(project).forEach(function (exp) {
+            const entries = (exp.attachments || []).filter(function (a) { return a.sceneId === id; });
+            if (!entries.length) return;
+            if (exp.lifecycle === 'public') {
+                entries.forEach(function (a) {
+                    const entry = { sceneId: newId, placeId: a.placeId || null };
+                    if (!exp.attachments.some(function (x) { return _sameAttachment(x, entry); })) {
+                        exp.attachments.push(entry);
+                    }
+                });
+                _syncExperienceAttachments(project, exp);
+            } else {
+                (copy.layers || []).forEach(function (l) {
+                    if (l.sourceExperienceId === exp.id) {
+                        delete l.sourceExperienceId;
+                        delete l.partId;
+                        delete l.contentSlot;
+                    }
+                });
+                setScene(project, copy);
+            }
+        });
         return copy;
     }
 
@@ -1736,6 +1789,69 @@ const ProjectModel = (function () {
         // Scene Layer (Phase 2).
         _syncExperienceAttachments(project, experience);
         return true;
+    }
+
+    // BACKLOG bug — "collapse, expand, duplicate experience elements."
+    // Duplicate one part in place: a deep clone with a FRESH id (so
+    // _findMirroredLayer never matches and _syncPartLayer mints the
+    // copy its own mirrored Scene Layer on every attached Scene),
+    // inserted directly AFTER its source — never at index 0, so
+    // parts[0] (the primary part whose flat fields the top-level
+    // properties mirror) can never change out from under the
+    // flat-field mirror. Same MAX_EXPERIENCE_PARTS cap as
+    // addExperiencePart, enforced at the model layer. The copy's
+    // mirrored layers append at the top of each Scene's own stack (the
+    // same place any new part's do) — the existing ↑/↓ reorder moves
+    // them wherever they belong.
+    function duplicateExperiencePart(project, experienceId, partId) {
+        const experience = findExperience(project, experienceId);
+        if (!experience) return null;
+        const parts = experience.properties.parts;
+        const schema = window.ExperienceSchema;
+        const max = (schema && schema.MAX_EXPERIENCE_PARTS) || 5;
+        if (!Array.isArray(parts) || parts.length >= max) return null;
+        const idx = parts.findIndex(function (p) { return p.id === partId; });
+        if (idx === -1) return null;
+        const source = parts[idx];
+        const existingIds = parts.map(function (p) { return p.id; });
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.id = _uniqueId(existingIds, (source.kind || 'part') + '-part');
+        parts.splice(idx + 1, 0, copy);
+        experience.updatedAt = Date.now();
+        _syncExperienceAttachments(project, experience);
+        return copy;
+    }
+
+    // Duplicate a whole Experience — a deep clone of its properties/
+    // parts under a fresh id, always born NURTURING (every Experience
+    // is created Nurturing, by canon) with zero attachments and no
+    // scope: a duplicate is a template to grow from, never an
+    // auto-placed twin. Part ids are kept verbatim — they only ever
+    // need uniqueness within their own Experience, and mirrored-layer
+    // identity keys on (sourceExperienceId, partId), so the new
+    // Experience id alone guarantees no collision. Lands right after
+    // its source in the display order.
+    function duplicateExperience(project, id) {
+        const source = findExperience(project, id);
+        if (!source) return null;
+        const existingIds = experiences(project).map(function (e) { return e.id; });
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.id = _uniqueId(existingIds, _slug(source.name + ' Copy') || 'experience-copy');
+        copy.name = source.name + ' Copy';
+        copy.lifecycle = 'nurturing';
+        copy.scopeSceneId = null;
+        copy.attachments = [];
+        copy.createdAt = Date.now();
+        copy.updatedAt = Date.now();
+        setExperience(project, copy);
+        if (Array.isArray(project.experienceOrder)) {
+            const at = project.experienceOrder.indexOf(id);
+            if (at !== -1) {
+                project.experienceOrder = project.experienceOrder.filter(function (x) { return x !== copy.id; });
+                project.experienceOrder.splice(at + 1, 0, copy.id);
+            }
+        }
+        return copy;
     }
 
     // Delete exists only for Nurturing Experiences (Canon Decision #9)
@@ -2631,6 +2747,8 @@ const ProjectModel = (function () {
         addExperiencePart: addExperiencePart,
         removeExperiencePart: removeExperiencePart,
         moveExperiencePart: moveExperiencePart,
+        duplicateExperiencePart: duplicateExperiencePart,
+        duplicateExperience: duplicateExperience,
         // Multi-Asset Experience Parts (Phase 4) — the exact same kind
         // label _syncUniversalContent's own compiled Layer-name suffix
         // already uses, exported so the Inspector's card-title

@@ -3374,6 +3374,47 @@ html, body {
     margin-bottom: 14px;
 }
 
+/* Collapse/expand — "collapse, expand, duplicate experience elements."
+   A collapsed part card renders header-only: the card element itself IS
+   the field mount (_openContentCard swaps contextPanel onto it), so
+   there is no separate body wrapper to hide — every non-header child
+   hides instead. The header's title strip doubles as the toggle. */
+.wb-content-section-card.wb-collapsed > :not(.wb-content-section-card-header) {
+    display: none;
+}
+
+.wb-content-section-card.wb-collapsed > .wb-content-section-card-header {
+    margin-bottom: 0;
+}
+
+.wb-content-section-card-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.wb-content-section-card-chevron {
+    font-size: 11px;
+    color: var(--wb-ink-soft, #8a8177);
+    margin-left: 2px;
+}
+
+/* Publishing Check — the orphaned-asset list (relPaths of remote Storage
+   objects this Build no longer uses). Compact, code-flavoured rows. */
+.wb-orphan-list {
+    margin: 8px 0 10px;
+    padding-left: 18px;
+    font-size: 11px;
+    font-family: "SF Mono", "Cascadia Code", Menlo, monospace;
+    color: var(--wb-ink-soft, #8a8177);
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.wb-orphan-list li {
+    margin-bottom: 2px;
+    word-break: break-all;
+}
+
 .wb-content-section-card-header {
     display: flex;
     align-items: center;

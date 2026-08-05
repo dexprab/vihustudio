@@ -8946,6 +8946,26 @@
             _renderScenesStrip();
         })));
         contextPanel.appendChild(_fieldHelp('This Scene is ' + window.EngineSchema.aspectInfo(scene.canvas.aspectRatio).label + ' with a ' + scene.canvas.safeArea + '. Change the shape any time from the dropdown at the top of the screen.'));
+        // BACKLOG bug — "I should be able to duplicate scenes." The old
+        // Scene Library grid's own Duplicate button became unreachable
+        // dead code once the bottom Scenes strip replaced the grid; this
+        // panel (the Scene's own selected state) is the live per-Scene
+        // action home now. duplicateScene lands the copy right after its
+        // source in the strip and repairs Experience linkage (see
+        // projectModel.js) rather than leaving frozen orphan mirrors.
+        const dupBtn = document.createElement('button');
+        dupBtn.type = 'button';
+        dupBtn.className = 'wb-workspace-btn';
+        dupBtn.style.marginTop = '14px';
+        dupBtn.textContent = '⧉ Duplicate This Scene';
+        dupBtn.disabled = currentProjectReadOnly;
+        dupBtn.addEventListener('click', function () {
+            const copy = window.ProjectModel.duplicateScene(currentProject, scene.id);
+            if (!copy) return;
+            _persist();
+            _openScene(copy.id);
+        });
+        contextPanel.appendChild(dupBtn);
     }
 
     function _heading(title, sub, iconSvg) {
@@ -9936,9 +9956,27 @@
             card.appendChild(tags);
         }
 
+        // BACKLOG bug — "duplicate experience elements": every card
+        // (Gallery and Nursery alike) gets a ⧉ Duplicate — the clone is
+        // always born Nurturing with zero attachments (a template to
+        // grow from, never an auto-placed twin — see duplicateExperience
+        // in projectModel.js), so it lands in the Nursery regardless of
+        // which domain its source lives in.
+        const controls = document.createElement('div');
+        controls.className = 'wb-scene-card-controls';
+        const dupBtn = document.createElement('button');
+        dupBtn.type = 'button';
+        dupBtn.textContent = '⧉ Duplicate';
+        dupBtn.disabled = currentProjectReadOnly;
+        dupBtn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            const copy = window.ProjectModel.duplicateExperience(currentProject, exp.id);
+            if (!copy) return;
+            _persist();
+            _renderContextPanel();
+        });
+        controls.appendChild(dupBtn);
         if (domain === 'nursery') {
-            const controls = document.createElement('div');
-            controls.className = 'wb-scene-card-controls';
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.textContent = '🗑 Delete';
@@ -9950,8 +9988,8 @@
                 _renderContextPanel();
             });
             controls.appendChild(delBtn);
-            card.appendChild(controls);
         }
+        card.appendChild(controls);
 
         return card;
     }
@@ -10174,7 +10212,16 @@
     // right edge of the header, opposite the icon+title; every
     // pre-existing 2-arg call site is unaffected, since an omitted
     // third argument is simply falsy and nothing is appended.
-    function _openContentCard(icon, title, headerActionEl) {
+    // BACKLOG bug — "collapse, expand ... experience elements." A part
+    // card whose collapseKey is in this Set renders header-only (every
+    // non-header child hidden via CSS); clicking the header title
+    // toggles it. Keyed exp.id+'/'+part.id, module-level so the state
+    // survives every _renderContextPanel rebuild within a session —
+    // deliberately NOT persisted to the Project (a workspace
+    // preference, not World data, same reasoning as the workspace
+    // layout sashes). Default: expanded.
+    const collapsedContentCards = new Set();
+    function _openContentCard(icon, title, headerActionEl, collapseKey) {
         const outer = contextPanel;
         const card = document.createElement('div');
         card.className = 'wb-content-section-card';
@@ -10190,6 +10237,32 @@
         titleEl.textContent = title;
         titleWrap.appendChild(iconEl);
         titleWrap.appendChild(titleEl);
+        if (collapseKey) {
+            const chevron = document.createElement('span');
+            chevron.className = 'wb-content-section-card-chevron';
+            const sync = function () {
+                const collapsed = collapsedContentCards.has(collapseKey);
+                chevron.textContent = collapsed ? '▸' : '▾';
+                card.classList.toggle('wb-collapsed', collapsed);
+            };
+            titleWrap.appendChild(chevron);
+            titleWrap.classList.add('wb-content-section-card-toggle');
+            titleWrap.setAttribute('role', 'button');
+            titleWrap.setAttribute('tabindex', '0');
+            // Toggles style directly (no _renderContextPanel) so an
+            // open field's focus/scroll is never lost by collapsing a
+            // SIBLING card.
+            const toggle = function () {
+                if (collapsedContentCards.has(collapseKey)) collapsedContentCards.delete(collapseKey);
+                else collapsedContentCards.add(collapseKey);
+                sync();
+            };
+            titleWrap.addEventListener('click', toggle);
+            titleWrap.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+            });
+            sync();
+        }
         header.appendChild(titleWrap);
         if (headerActionEl) header.appendChild(headerActionEl);
         card.appendChild(header);
@@ -10382,8 +10455,27 @@
             _redrawSceneCanvasesForExperience(exp);
             _renderContextPanel();
         });
+        // BACKLOG bug — "duplicate experience elements": clone this part
+        // in place (fresh id, lands right after its source — see
+        // duplicateExperiencePart). Disabled at the same 5-part cap the
+        // "+ Add a Part" row already honours.
+        const dupBtn = document.createElement('button');
+        dupBtn.type = 'button';
+        dupBtn.className = 'wb-row-btn';
+        dupBtn.title = 'Duplicate this part';
+        dupBtn.textContent = '⧉';
+        const atCap = parts.length >= ((window.ExperienceSchema && window.ExperienceSchema.MAX_EXPERIENCE_PARTS) || 5);
+        dupBtn.disabled = currentProjectReadOnly || atCap;
+        dupBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.ProjectModel.duplicateExperiencePart(currentProject, exp.id, part.id);
+            _persist();
+            _redrawSceneCanvasesForExperience(exp);
+            _renderContextPanel();
+        });
         wrap.appendChild(upBtn);
         wrap.appendChild(downBtn);
+        wrap.appendChild(dupBtn);
         wrap.appendChild(_partRemoveButton(exp, part));
         return wrap;
     }
@@ -10489,7 +10581,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('📝', _partCardTitle('text', ordinal), _partHeaderActions(exp, part));
+        const outer = _openContentCard('📝', _partCardTitle('text', ordinal), _partHeaderActions(exp, part), exp.id + '/' + part.id);
         // AV-011's EmojiPicker (👍) — the same reusable wrap every Text
         // field already gets — carries over to the universal Text
         // section too, so this authoring path doesn't lose a capability
@@ -10556,7 +10648,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('🖼', _partCardTitle('image', ordinal), _partHeaderActions(exp, part));
+        const outer = _openContentCard('🖼', _partCardTitle('image', ordinal), _partHeaderActions(exp, part), exp.id + '/' + part.id);
         _renderCollectionPicker(exp, part, 'imageSrc', '🖼️');
         _fieldRow(
             _buildFieldGroup('Fit', _select(IMAGE_FIT_CHOICES, props.imageFit || 'fit', onProp('imageFit'))),
@@ -10596,7 +10688,7 @@
                 _renderContextPanel();
             };
         }
-        const outer = _openContentCard('🎭', _partCardTitle('graphics', ordinal), _partHeaderActions(exp, part));
+        const outer = _openContentCard('🎭', _partCardTitle('graphics', ordinal), _partHeaderActions(exp, part), exp.id + '/' + part.id);
         contextPanel.appendChild(_fieldHelp('A reusable visual asset — upload your own icon or sticker, or pick a shape and style it.'));
         // _renderCollectionPicker's own commit() already clears
         // graphicShape unconditionally for the graphicSrc key —
@@ -10742,7 +10834,7 @@
                 _redrawSceneCanvasesForExperience(exp);
             };
         }
-        const outer = _openContentCard('🎨', _partCardTitle('colour', ordinal), _partHeaderActions(exp, part));
+        const outer = _openContentCard('🎨', _partCardTitle('colour', ordinal), _partHeaderActions(exp, part), exp.id + '/' + part.id);
         contextPanel.appendChild(_buildFieldGroup('Colour Picker', _colorInput(props.colorValue, onProp('colorValue'))));
         contextPanel.appendChild(_buildFieldGroup('Opacity', _range(0, 100, Math.round((props.colorOpacity == null ? 1 : props.colorOpacity) * 100), function (v) { onProp('colorOpacity')(v / 100); })));
         contextPanel.appendChild(_checkboxField('Transparent (no colour fill)', !!props.colorTransparent, onProp('colorTransparent')));
@@ -13039,6 +13131,110 @@
                 '<span class="wb-publish-note">' + opt.note + '</span></span>';
             if (opt.action) card.addEventListener('click', opt.action);
             return card;
+        }
+
+        // BACKLOG feature — Publishing Check. publish() only ever upserts
+        // (never lists, never removes), so renaming/deleting an asset in
+        // the Project leaves the old Storage object under the Theme's
+        // prefix forever — this pre-flight step diffs what THIS Build
+        // actually uses (the compiled package's own assets keys, the
+        // exact relPaths publish() uploads) against what's genuinely
+        // stored under the Theme in the Personal Repository, and lets
+        // the author remove the leftovers. Personal-only by design:
+        // Official is self-healing — every Promote clears its prefix
+        // wholesale before copying.
+        const checkHeading = document.createElement('h3');
+        checkHeading.className = 'wb-context-heading';
+        checkHeading.style.marginTop = '4px';
+        checkHeading.style.fontSize = '13px';
+        checkHeading.textContent = 'Publishing Check';
+        contextPanel.appendChild(checkHeading);
+
+        const checkGrid = document.createElement('div');
+        checkGrid.className = 'wb-publish-grid';
+        checkGrid.appendChild(_publishCard({
+            icon: '🔍', title: 'Check Remote Assets',
+            note: 'Lists every asset stored for this Theme in your Personal Repository and flags the ones this Build no longer uses, so leftovers from older publishes can be removed.',
+            action: _runPublishingCheck
+        }));
+        contextPanel.appendChild(checkGrid);
+
+        const checkBox = document.createElement('div');
+        contextPanel.appendChild(checkBox);
+
+        function _showCheck(cls, text) {
+            checkBox.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'wb-validation-status ' + cls;
+            div.textContent = text;
+            checkBox.appendChild(div);
+        }
+
+        async function _runPublishingCheck() {
+            if (typeof window.ThemeRepositoryClient === 'undefined' || !window.ThemeRepositoryClient.listAssetPaths) {
+                _showCheck('fail', '⚠️ The repository client is not available in this environment.');
+                return;
+            }
+            const configured = await window.ThemeRepositoryClient.isConfigured();
+            if (!configured) {
+                _showCheck('fail', '⚠️ Supabase is not configured — see supabase-config.example.json.');
+                return;
+            }
+            _showCheck('pending', 'Checking your Personal Repository…');
+            try {
+                const pkg = await _lastBuiltPackage(project);
+                const remote = await window.ThemeRepositoryClient.listAssetPaths('personal', pkg.manifest.id);
+                const used = pkg.assets || {};
+                const orphans = remote.filter(function (rel) { return !(rel in used); });
+                checkBox.innerHTML = '';
+                checkBox.appendChild(_statCardGrid([
+                    ['On Supabase', String(remote.length)],
+                    ['Used by this Build', String(Object.keys(used).length)],
+                    ['Unused', String(orphans.length)]
+                ]));
+                if (!remote.length) {
+                    const hint = document.createElement('p');
+                    hint.className = 'wb-field-hint';
+                    hint.textContent = 'Nothing is stored for this Theme in your Personal Repository yet — publish it first, then check again.';
+                    checkBox.appendChild(hint);
+                    return;
+                }
+                if (!orphans.length) {
+                    const ok = document.createElement('div');
+                    ok.className = 'wb-validation-status pass';
+                    ok.textContent = '✓ All clean — every stored asset is one this Build actually uses.';
+                    checkBox.appendChild(ok);
+                    return;
+                }
+                const list = document.createElement('ul');
+                list.className = 'wb-orphan-list';
+                orphans.forEach(function (rel) {
+                    const li = document.createElement('li');
+                    li.textContent = rel;
+                    list.appendChild(li);
+                });
+                checkBox.appendChild(list);
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'wb-workspace-btn';
+                removeBtn.textContent = '🧹 Remove ' + orphans.length + ' unused asset' + (orphans.length === 1 ? '' : 's');
+                removeBtn.addEventListener('click', async function () {
+                    if (!window.confirm('Remove ' + orphans.length + ' unused asset(s) from your Personal Repository? Anything still loading them in Studio stops working the moment they\'re gone. This cannot be undone.')) return;
+                    _showCheck('pending', 'Removing…');
+                    try {
+                        await window.ThemeRepositoryClient.deleteAssets('personal', pkg.manifest.id, orphans);
+                        // Re-run the whole check — the fresh stats (Unused
+                        // 0, "All clean") ARE the confirmation, read from
+                        // Storage itself rather than assumed.
+                        await _runPublishingCheck();
+                    } catch (e2) {
+                        _showCheck('fail', '⚠️ Remove failed: ' + ((e2 && e2.message) || 'unknown error'));
+                    }
+                });
+                checkBox.appendChild(removeBtn);
+            } catch (e) {
+                _showCheck('fail', '⚠️ Check failed: ' + ((e && e.message) || 'unknown error'));
+            }
         }
 
         // Publish — installs into the Personal Repository, the primary
