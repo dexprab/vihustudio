@@ -4,6 +4,6 @@
   "task": "js/contextPanel.js: fromWorld item always pushed with disabled:_activeCollectionAssets().length===0; the card builder gained a generic disabled state (reuses .is-coming-soon grey, no Soon pill). Cache-bust ?v=0331 -> ?v=0332.",
   "build": "0327",
   "buildDate": "2026-08-05",
-  "commit": "PENDING",
+  "commit": "bf55f04e740170ceb306e7c3d84b19520bc93611",
   "environment": "Release"
 }
