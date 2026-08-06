@@ -59,6 +59,14 @@ const PictureStudio=(function(){
   // The rotate/flip/crop/enhance stack keeps working unchanged because
   // it always reads whichever image _activeImg() reports.
   let _bgRemovedImg=null;
+  // _bgRemovedImg is the CANVAS currently being displayed and edited — it
+  // is set either by a real background removal OR (since the removal
+  // became opt-in) lazily by _ensureWorkingBuffer when a pixel tool such
+  // as Trim needs something to operate on. _bgRemovalDone is the separate,
+  // narrower question "did the worker actually run?", which is what the
+  // Remove Paper tile, the Before/After compare and the erase brush key
+  // off — none of those mean anything without a genuine removal.
+  let _bgRemovalDone=false;
   let _bgRemovedDataURL=null;
   let _bgWorker=null;
   let _bgJobId=0;
@@ -630,8 +638,12 @@ const PictureStudio=(function(){
     // (_paintAt guards on _workingBuffer). Label is "Remove Paper"
     // (matching the overlay's own language) since pre-removal there is
     // nothing yet to remove "more" of.
+    // Gate on _bgRemovalDone, not _bgRemovedImg: since Trim can now
+    // materialize a working buffer of its own, _bgRemovedImg may already
+    // exist without the worker ever having run — and the child would
+    // still be waiting on their paper to disappear.
     _tileButtons.removeMore=_buildTile(toolGrid,'✨','Remove Paper',function(){
-      if(!_bgRemovedImg && !_bgBusy) _startBgRemoval();
+      if(!_bgRemovalDone && !_bgBusy) _startBgRemoval();
       _brushMode=(_brushMode==='erase')?null:'erase';
       const want=_brushMode?'brush':null;
       if(_activeTool!==want) _toggleActiveTool(want);
@@ -964,6 +976,7 @@ const PictureStudio=(function(){
       const keepMode=_state.mode;
       _state=Object.assign({},DEFAULT_STATE,{mode:keepMode});
       _bgRemovedImg=null;
+      _bgRemovalDone=false;
       _bgRemovedDataURL=null;
       _workingBuffer=null;
       _cleanupHistory=[];
@@ -1093,7 +1106,11 @@ const PictureStudio=(function(){
       _updateBrushCursorSize();
     }
     // Leaving crop mode: tear down the on-stage selection overlay if any.
+    // Entering it: materialize the pixel buffer up front (rather than on
+    // the first drag) so rotation/flip are baked before the child starts
+    // dragging — the picture must not visibly change mid-gesture.
     if(tool!=='crop'){ _tearDownCropBox(); }
+    else if(_ensureWorkingBuffer()){ _render(); }
     // Leaving draw mode: drop any in-flight gesture so a half-drawn
     // stroke can never be committed by a later, unrelated mouseup.
     if(tool!=='draw'){ _doodleLive=null; _doodleShapeDrag=null; }
@@ -1288,6 +1305,7 @@ const PictureStudio=(function(){
     const cx=c.getContext('2d');
     cx.putImageData(new ImageData(new Uint8ClampedArray(_workingBuffer.data),pb.width,pb.height),0,0);
     _bgRemovedImg=c;
+    _bgRemovalDone=true;
     _bgRemovedDataURL=null; // recomputed on demand from the live canvas
     _bgBusy=false;
     // Reset rotation/flip since _bakeSourceForBg already baked them
@@ -1301,6 +1319,43 @@ const PictureStudio=(function(){
     _refreshBgControls();
     _render();
   }
+  // Materialize a mutable pixel buffer for the picture as it is right
+  // now, WITHOUT running the background worker. Trimming a photo has
+  // nothing to do with removing its paper, so a pixel tool must not be
+  // held hostage to a removal the child never asked for.
+  //
+  // Rotate/flip ARE baked in here, exactly as _startBgRemoval already
+  // bakes them, because _screenToContent (which converts a drag box into
+  // buffer pixels) has always assumed an un-rotated buffer. Baking is
+  // what makes "what you see is what you trim" exact. The doodle layer is
+  // deliberately NOT baked — it stays a separate vector layer drawn on
+  // top, matching every other path through this module.
+  function _ensureWorkingBuffer(){
+    if(_workingBuffer) return true;
+    if(!_origImg) return false;
+    const buf=_bakeSourceForBg();
+    if(!buf) return false;
+    _workingBuffer={
+      data:new Uint8ClampedArray(buf.data),
+      width:buf.width,
+      height:buf.height
+    };
+    const c=document.createElement('canvas');
+    c.width=buf.width; c.height=buf.height;
+    c.getContext('2d').putImageData(
+      new ImageData(new Uint8ClampedArray(_workingBuffer.data),buf.width,buf.height),0,0
+    );
+    _bgRemovedImg=c;
+    _bgRemovedDataURL=null;
+    // The bake consumed rotation/flip; leaving them applied would
+    // double-transform on the next render (same reset _onBgResult does).
+    _state.rotation=0;
+    _state.flipH=false;
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    return true;
+  }
+
   // Push the working buffer's current pixels onto _bgRemovedImg (a
   // Canvas). Called after every brush stroke tick so the visible preview
   // stays in sync with the buffer without an Image() roundtrip.
@@ -1327,6 +1382,7 @@ const PictureStudio=(function(){
   function _undoBgRemoval(){
     if(_bgBusy) return;
     _bgRemovedImg=null;
+    _bgRemovalDone=false;
     _bgRemovedDataURL=null;
     _workingBuffer=null;
     _cleanupHistory=[];
@@ -1347,23 +1403,26 @@ const PictureStudio=(function(){
   function _refreshBgControls(){
     if(_bgRemoveBtn){
       _bgRemoveBtn.disabled=_bgBusy||!_origImg;
-      _bgRemoveBtn.classList.toggle('active',!!_bgRemovedImg);
+      _bgRemoveBtn.classList.toggle('active',_bgRemovalDone);
     }
     if(_bgUndoBtn){
-      _bgUndoBtn.disabled=_bgBusy||!_bgRemovedImg;
+      _bgUndoBtn.disabled=_bgBusy||!_bgRemovalDone;
     }
     // Before/After slider is only meaningful once a background removal
     // has actually landed — otherwise there's nothing to compare against.
+    // (_bgRemovedImg alone would un-hide it after a plain Trim, where
+    // "before" and "after" are the same picture.)
     if(_baCompareWrap){
-      _baCompareWrap.classList.toggle('hidden',!_bgRemovedImg);
-      if(!_bgRemovedImg){
+      _baCompareWrap.classList.toggle('hidden',!_bgRemovalDone);
+      if(!_bgRemovalDone){
         _state.beforeAfterPct=100;
         if(_baSlider) _baSlider.value='100';
       }
     }
-    // Ship B — brush + crop controls only make sense after a bg removal.
+    // The erase brush edits alpha the removal produced, so it likewise
+    // only makes sense once the worker has genuinely run.
     if(_brushSubPanel){
-      _brushSubPanel.classList.toggle('hidden',!_bgRemovedImg);
+      _brushSubPanel.classList.toggle('hidden',!_bgRemovalDone);
     }
     if(_brushRemoveBtn) _brushRemoveBtn.classList.toggle('active',_brushMode==='erase');
     if(_brushRestoreBtn) _brushRestoreBtn.classList.toggle('active',_brushMode==='restore');
@@ -1374,9 +1433,13 @@ const PictureStudio=(function(){
     }
     if(_brushUndoBtn) _brushUndoBtn.disabled=!(_cleanupHistory&&_cleanupHistory.length);
     if(_brushRedoBtn) _brushRedoBtn.disabled=!(_cleanupRedoStack&&_cleanupRedoStack.length);
-    if(_cropTile) _cropTile.disabled=!_bgRemovedImg;
-    if(_cropApplyBtn) _cropApplyBtn.disabled=!(_cropRect&&_bgRemovedImg);
-    if(_cropTrashBtn) _cropTrashBtn.disabled=!(_cropRect&&_bgRemovedImg);
+    // Trimming has nothing to do with removing paper — it only needs a
+    // picture. The working buffer is materialized lazily when the tool is
+    // actually entered (_ensureWorkingBuffer), so the gate here is simply
+    // "is there a picture at all".
+    if(_cropTile) _cropTile.disabled=!_origImg;
+    if(_cropApplyBtn) _cropApplyBtn.disabled=!(_cropRect&&_workingBuffer);
+    if(_cropTrashBtn) _cropTrashBtn.disabled=!(_cropRect&&_workingBuffer);
     if(_cropResetBtn) _cropResetBtn.disabled=!_preCropSnapshot;
   }
 
@@ -1840,7 +1903,7 @@ const PictureStudio=(function(){
   // working-buffer coordinates via _screenToContent and passed to
   // _cropPixelBuffer. _preCropSnapshot enables Reset Crop.
   function _startCropDrag(clientX,clientY){
-    if(!_workingBuffer) return;
+    if(!_ensureWorkingBuffer()) return;
     const stageRect=_stage.getBoundingClientRect();
     _cropDrag={
       sx:clientX,sy:clientY,
@@ -1878,28 +1941,34 @@ const PictureStudio=(function(){
       _refreshBgControls();
       return;
     }
-    const topLeft=_screenToContent(rect.left,rect.top,_bgRemovedImg.width,_bgRemovedImg.height);
-    const botRight=_screenToContent(rect.right,rect.bottom,_bgRemovedImg.width,_bgRemovedImg.height);
+    // Coordinates resolve against the WORKING BUFFER, which is the space
+    // _cropPixelBuffer actually operates in. (_bgRemovedImg is drawn from
+    // that same buffer so the dimensions match, but the buffer is the
+    // source of truth and is what stays correct if the two ever diverge.)
+    if(!_workingBuffer){ _tearDownCropBox(); _cropRect=null; _refreshBgControls(); return; }
+    const bw=_workingBuffer.width, bh=_workingBuffer.height;
+    const topLeft=_screenToContent(rect.left,rect.top,bw,bh);
+    const botRight=_screenToContent(rect.right,rect.bottom,bw,bh);
     if(!topLeft||!botRight){
       // Selection extends outside the image — clamp to image bounds so
       // the crop is still a valid rectangle.
       const clamp=function(p){
         if(!p) return null;
         return {
-          x:Math.max(0,Math.min(_bgRemovedImg.width-1,p.x)),
-          y:Math.max(0,Math.min(_bgRemovedImg.height-1,p.y))
+          x:Math.max(0,Math.min(bw-1,p.x)),
+          y:Math.max(0,Math.min(bh-1,p.y))
         };
       };
-      const tl=clamp(topLeft||_screenToContent(rect.left,rect.top,_bgRemovedImg.width,_bgRemovedImg.height));
-      const br=clamp(botRight||_screenToContent(rect.right,rect.bottom,_bgRemovedImg.width,_bgRemovedImg.height));
+      const tl=clamp(topLeft);
+      const br=clamp(botRight);
       // If either corner still couldn't be resolved (drag started well
       // outside the image), fall back to (0,0)..(w,h) — treats the drag
       // as "crop to full image", a safe no-op that never throws.
       _cropRect={
         x:tl?Math.round(tl.x):0,
         y:tl?Math.round(tl.y):0,
-        width:Math.round((br?br.x:_bgRemovedImg.width)-(tl?tl.x:0)),
-        height:Math.round((br?br.y:_bgRemovedImg.height)-(tl?tl.y:0))
+        width:Math.round((br?br.x:bw)-(tl?tl.x:0)),
+        height:Math.round((br?br.y:bh)-(tl?tl.y:0))
       };
     }else{
       _cropRect={
@@ -2026,7 +2095,7 @@ const PictureStudio=(function(){
   // (inline pixel scan) to pick the tightest rect containing every
   // non-transparent pixel. If the whole image is transparent, no-op.
   function _autoCrop(){
-    if(!_workingBuffer) return;
+    if(!_ensureWorkingBuffer()) return;
     const data=_workingBuffer.data, w=_workingBuffer.width, h=_workingBuffer.height;
     let minX=w,minY=h,maxX=-1,maxY=-1;
     for(let y=0;y<h;y++){
@@ -2328,6 +2397,7 @@ const PictureStudio=(function(){
     if(_modal) _modal.classList.add('hidden');
     _origImg=null;
     _bgRemovedImg=null;
+    _bgRemovalDone=false;
     _bgRemovedDataURL=null;
     _bgBusy=false;
     _drag=null;
