@@ -565,18 +565,27 @@ const StoryDestinations=(function(){
   // — it treats a payload as opaque and hands the array straight to
   // finish().
   //
-  // SPRINT STATUS — M1 ships the plumbing: revealStages() returns a
-  // single Finished stage, so this composes one frame per page and
-  // produces a real (deliberately non-magical) video. M2 fills in
-  // the real stages, M3 renders them off-screen, M4 animates them
-  // — each behind this same shape, with no changes here.
+  // SPRINT STATUS — M1 shipped the plumbing, M2 the real stages, and
+  // M3 (here) renders each stage off-screen so every one of them has
+  // its own bitmap. The reveal now genuinely builds up on screen.
+  // M4 animates the arrivals (crossfade, rise, settle); the payload
+  // shape does not change again.
   //
   // Audio is deliberately absent until M7 (narration → ambient →
   // silence). ReelComposer feeds its own silent track for the whole
   // recording, so a soundless reveal composes correctly today.
   const MAGIC_FPS=30;
+  // `transition:'none'` deliberately, and only until M4. ReelComposer
+  // turns between every consecutive entry in the list it is handed —
+  // which was right in M1, when a page contributed exactly one frame,
+  // and is wrong the moment a page contributes several: a page-turn
+  // between "Blank" and "The World" of the SAME page reads as flipping
+  // to a new page when the page is actually assembling in front of
+  // you. M4 ("New transition mode") is where the reveal gets its real
+  // language — crossfade and rise within a page, a turn between pages.
+  // Until then a hard cut is the honest cut.
   const MAGIC_FORMATS=[
-    {id:'vertical', label:'Magic Video', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'page-turn'}
+    {id:'vertical', label:'Magic Video', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'none'}
   ];
   const MAGIC={
     id:'magic',
@@ -609,10 +618,15 @@ const StoryDestinations=(function(){
     },
     encodePage:function(canvas, format, ctx){
       // One payload per page carrying that page's own reveal frames.
-      // M1: revealStages() yields the single Finished stage, so the
-      // already-rendered canvas IS the frame and no extra rendering
-      // happens. M3 replaces this branch with a real off-screen
-      // render per stage — the payload shape does not change.
+      // Every stage gets a real bitmap of its own, drawn through the
+      // SAME _renderSlideInto the finished page just used — one
+      // renderer, never a second one (roadmap M3: "Reuse existing
+      // rendering. Do not build a second renderer.").
+      //
+      // Only the finished stage skips that work: renderPage has
+      // already drawn it into the canvas the pipeline handed us, and
+      // that canvas is freshly minted per page by createCanvas, so
+      // holding a reference to it can't collide with another page.
       const slide=ctx?ctx.slide:null;
       if(!slide) return null;
       const stages=(typeof MagicReveal!=='undefined')
@@ -622,12 +636,28 @@ const StoryDestinations=(function(){
       const frames=[];
       for(let i=0;i<stages.length;i++){
         const st=stages[i];
-        // Until M3 renders each stage on its own canvas, only the
-        // finished stage has a bitmap to show — anything else would
-        // silently repeat the finished frame and read as a stutter.
+        if(!st||!st.slide) continue;
         const isFinished=(i===stages.length-1);
-        if(!isFinished) continue;
-        frames.push({ bitmap:canvas, holdMs:st.holdMs });
+        let bitmap;
+        if(isFinished){
+          bitmap=canvas;
+        }else{
+          const off=document.createElement('canvas');
+          off.width=canvas.width;
+          off.height=canvas.height;
+          // Same treatment as the finished page — including the
+          // blurred backdrop, so an earlier stage and the finished
+          // frame share one frame composition and the bars never
+          // pop between them.
+          _renderSlideInto(off, st.slide, ctx.index, ctx.total, {scale:1, backdrop:'blur'});
+          // Tagged so finish() knows which canvases are OURS to
+          // release. The finished frame's canvas belongs to the
+          // pipeline (PublishStudio minted it via createCanvas and
+          // may still want it), so it is deliberately never tagged.
+          off.__magicOwned=true;
+          bitmap=off;
+        }
+        frames.push({ bitmap:bitmap, holdMs:st.holdMs });
       }
       if(frames.length===0) return null;
       return { frames:frames };
@@ -648,11 +678,28 @@ const StoryDestinations=(function(){
       }
       if(pages.length===0) return null;
       if(typeof ReelComposer==='undefined'||!ReelComposer.isSupported()) return null;
+      // Memory cleanup (roadmap M3). A reveal holds every stage of
+      // every page in memory at once, and at 1080 × 1920 each canvas
+      // is ~8 MB of backing store — a four-page story with five
+      // stages each retains ~160 MB until GC happens to notice.
+      // Setting width/height releases the backing store immediately
+      // and deterministically, which is the one reliable way to hand
+      // canvas memory back in a browser. Only OUR canvases are
+      // released; the pipeline's own per-page canvas is left alone.
+      // This runs on both the success and the failure path, because
+      // a compose that throws still leaves every frame allocated.
+      const release=function(){
+        for(let i=0;i<pages.length;i++){
+          const b=pages[i].bitmap;
+          if(b&&b.__magicOwned){ b.width=0; b.height=0; }
+        }
+      };
       return ReelComposer.compose(pages,{
           width:format.outW, height:format.outH, fps:MAGIC_FPS,
           transition:format.transition||'page-turn'
         })
         .then(function(out){
+          release();
           if(!out||!out.blob||out.blob.size===0) return null;
           const ext=(out.mime&&out.mime.indexOf('mp4')>=0)?'.mp4':'.webm';
           return {
@@ -663,7 +710,7 @@ const StoryDestinations=(function(){
             celebrateGlyph: '✨'
           };
         })
-        .catch(function(){ return null; });
+        .catch(function(){ release(); return null; });
     }
   };
 
