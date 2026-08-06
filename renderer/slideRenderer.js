@@ -650,7 +650,7 @@ const SlideRenderer=(()=>{
   function _drawPlaceOne(s,t,_border,_place1Rect,_chromeColor,_layerPack,_composition){
     if(s.image && s.image.width){
       _drawImage(s,_border,_place1Rect,null,null,'image-holder');
-    }else if(_border){
+    }else if(_border && !s.magicSuppressPlaceholders){
       _drawArtworkPlaceholder(_place1Rect,_border,_chromeColor);
     }
     if(_border){
@@ -678,7 +678,7 @@ const SlideRenderer=(()=>{
     }
     if(placeImg && placeImg.width){
       _drawImage(s,placeBorder,placeRect,placeImg,placeView,placeId);
-    }else if(placeBorder){
+    }else if(placeBorder && !s.magicSuppressPlaceholders){
       _drawArtworkPlaceholder(placeRect,placeBorder,_chromeColor);
     }
     if(placeBorder){
@@ -912,10 +912,12 @@ const SlideRenderer=(()=>{
           // as its clip, and we've already established the Frame
           // geometry clip via the enclosing x.save/clip.
           _drawImage(s,null,artRect,artImg,placeView,placeId);
-        }else{
+        }else if(!s.magicSuppressPlaceholders){
           // Nothing to show — draw a lightweight placeholder so the
           // Place remains discoverable on-canvas rather than looking
-          // blank.
+          // blank. (A Magic Publish reveal stage suppresses it: the
+          // stage hasn't reached its Artwork beat yet, and authoring
+          // chrome must never appear in a Magic Creation.)
           _v2DrawPlaceholder(artRect,chromeColor);
         }
         // Phase 16 — the layer's Experience overlay is ALWAYS additive,
@@ -2413,6 +2415,14 @@ const SlideRenderer=(()=>{
   }
 
   function _activeLayerPack(s){
+    // Magic Publish (M2) — a reveal stage that hasn't reached the
+    // "The World" beat yet hides the World's own furniture (captions,
+    // seals, spotlights). A marker rather than a filtered theme
+    // because the resolved theme is shared ThemeEngine state a Magic
+    // stage must never reach into. Set only by js/magicReveal.js; an
+    // ordinary payload never carries it, so this is a no-op for every
+    // existing render path.
+    if(s && s.magicHideLayerPack) return null;
     const theme=_layoutTheme(s);
     const pack=(theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
     if(!pack) return null;
@@ -6748,7 +6758,18 @@ const SlideRenderer=(()=>{
       imageView: imageView,
       overrides: cardOverrides,
       pageType: slide.pageType,
-      metadata: slide.metadata
+      metadata: slide.metadata,
+      // Magic Publish (M2) — two markers a reveal stage sets on its
+      // own CLONE of the finished page (js/magicReveal.js). They exist
+      // because neither strip can be expressed on the slide alone: the
+      // World's own Layer Pack lives on the resolved theme, which this
+      // function reads from ThemeEngine rather than from the slide, and
+      // the "Tap to add your artwork" placeholder is drawn precisely
+      // BECAUSE the picture was stripped. An ordinary slide carries
+      // neither, so both resolve false and every existing render is
+      // byte-identical.
+      magicHideLayerPack: !!slide._magicHideLayerPack,
+      magicSuppressPlaceholders: !!slide._magicSuppressPlaceholders
     };
   }
 
