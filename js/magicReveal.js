@@ -365,8 +365,37 @@ const MagicReveal=(function(){
     return stages;
   }
 
+  // Trim a reveal down to a frame budget (M8).
+  //
+  // Every stage is a real full-size canvas, and the publish pipeline
+  // holds ALL of a story's frames at once, so a long book's reveal has
+  // to be allowed to get simpler — otherwise a 12-page story mints 144
+  // canvases (~1.1 GB, measured) and films for 74 seconds, which is
+  // both a memory ceiling and, per the architecture's own pacing note,
+  // a reveal that is endured rather than rewatched.
+  //
+  // The first stage (the blank page) and the last (the finished page)
+  // are ALWAYS kept — they are the two frames the reveal is actually
+  // about — and the middle is sampled evenly, so a trimmed reveal is
+  // a brisker version of the same story rather than a truncated one.
+  // A page is never dropped: this only ever thins one page's stages.
+  function fitToBudget(stages,maxFrames){
+    if(!stages||!stages.length) return [];
+    const n=stages.length;
+    const max=Math.floor(maxFrames);
+    if(!(max>0)) return [stages[n-1]];
+    if(max>=n) return stages;
+    if(max===1) return [stages[n-1]];
+    const out=[];
+    for(let i=0;i<max;i++){
+      out.push(stages[Math.round(i*(n-1)/(max-1))]);
+    }
+    return out;
+  }
+
   const api={
     revealStages:revealStages,
+    fitToBudget:fitToBudget,
     FINISHED_HOLD_MS:FINISHED_HOLD_MS,
     STAGE_HOLD_MS:STAGE_HOLD_MS,
     WORD_HOLD_MS:WORD_HOLD_MS,

@@ -615,6 +615,36 @@ const StoryDestinations=(function(){
   // texture (air / wind / forest) or an effect (magic). One constant
   // to change if a listen says otherwise.
   const MAGIC_AMBIENT_FILE='harmony.mp3';
+  // ---- Story budget (M8) ----
+  // Measured, not estimated: a page's reveal is up to 12 stages, every
+  // one a real 1080 × 1920 canvas (~7.9 MB), and finish() holds every
+  // page's frames at once. Left unbounded that is ~95 MB and ~6 s of
+  // film PER PAGE — a 12-page book reached 1.1 GB and 74 s, which is
+  // both a memory ceiling a tablet will not survive and, by §5's own
+  // pacing note, a reveal that is endured rather than rewatched.
+  //
+  // So the whole STORY gets a budget rather than each page getting a
+  // fixed allowance. A short story is unaffected (a 4-page story's
+  // natural 48 frames is exactly the cap); a long book's reveal gets
+  // brisker, never shorter — no page is ever dropped.
+  const MAGIC_MAX_FRAMES=48;
+  // The irreducible reveal: the blank page, and the finished page.
+  const MAGIC_MIN_FRAMES_PER_PAGE=2;
+  // What the whole reveal should RUN FOR — every frame's hold, every
+  // transition between them, and the closing card. Transitions are
+  // counted deliberately: they are running time, and a long book's 48
+  // frames spend about ten seconds in them, so a holds-only budget
+  // would quietly miss a third of the reel again. The number is the
+  // four-page reference story's own real length — that story is the
+  // shape §5 was written around, so it stays untouched by definition,
+  // and everything longer is paced back to it.
+  const MAGIC_TARGET_TOTAL_MS=40000;
+  // No frame is squeezed below this, however long the book — under
+  // about a quarter-second an arrival stops reading as an arrival.
+  // A frame already SHORTER than this (a word step is deliberately
+  // 140 ms) is left at its own length rather than inflated to meet
+  // the floor, which would make the reveal longer, not brisker.
+  const MAGIC_MIN_HOLD_MS=260;
   // The reel-wide default, which in practice only ever applies to the
   // very first frame of the story: every frame this destination emits
   // carries its own transition, and a page's own request wins. Kept as
@@ -802,10 +832,18 @@ const StoryDestinations=(function(){
       // holding a reference to it can't collide with another page.
       const slide=ctx?ctx.slide:null;
       if(!slide) return null;
-      const stages=(typeof MagicReveal!=='undefined')
+      let stages=(typeof MagicReveal!=='undefined')
         ? MagicReveal.revealStages(slide)
         : [{slide:slide, label:'Finished', holdMs:2200}];
       if(!stages||stages.length===0) return null;
+      // Spend the story's frame budget evenly across its pages (M8).
+      const total=(ctx&&ctx.total)||1;
+      if(typeof MagicReveal!=='undefined'&&MagicReveal.fitToBudget){
+        stages=MagicReveal.fitToBudget(
+          stages,
+          Math.max(MAGIC_MIN_FRAMES_PER_PAGE, Math.floor(MAGIC_MAX_FRAMES/total))
+        );
+      }
       const frames=[];
       for(let i=0;i<stages.length;i++){
         const st=stages[i];
@@ -882,6 +920,91 @@ const StoryDestinations=(function(){
         .catch(function(){ return payload; });
     },
     finish:function(payloads, format){
+      // Pace the whole reveal to the story budget (M8). Trimming frames
+      // bounds the memory; this bounds the RUNNING TIME, which is the
+      // other half of the same problem — a long book with fewer frames
+      // each still films for a minute at the natural per-stage holds.
+      //
+      // A page that carries narration is never squeezed: its holds are
+      // already sized to the child's own voice, and speeding that up
+      // would cut a sentence off. So a heavily narrated book is allowed
+      // to run long — that is the honest trade, since the voice is the
+      // point and the reveal is the frame around it.
+      (function paceToBudget(){
+        // What a transition itself costs. ReelComposer owns these
+        // numbers and already exports them, so they are asked for
+        // rather than copied — one place to change, and no chance of
+        // the budget drifting out of step with what actually films.
+        function transitionMs(kind){
+          if(typeof ReelComposer==='undefined') return 0;
+          if(kind==='page-turn') return ReelComposer.TURN_MS||0;
+          if(kind==='wash')      return ReelComposer.WASH_MS||0;
+          if(kind==='rise')      return ReelComposer.RISE_MS||0;
+          if(kind==='draw')      return ReelComposer.DRAW_MS||0;
+          return 0;
+        }
+        // Everything that cannot be paced: every transition, every
+        // narrated page's holds, and the closing card (which is
+        // appended below, after this runs, at its own fixed hold and
+        // its own wash in).
+        let fixedMs=MAGIC_CLOSING_HOLD_MS+transitionMs('wash');
+        // Every frame that CAN be paced, with the shortest it may
+        // become. A frame already under the floor keeps its own
+        // length: pushing a 140 ms word step up to 260 would make
+        // the reveal longer, which is the opposite of the point.
+        const items=[];
+        for(let i=0;i<payloads.length;i++){
+          const p=payloads[i];
+          if(!p||!p.frames) continue;
+          let narrated=false;
+          for(let j=0;j<p.frames.length;j++){
+            if(p.frames[j]&&p.frames[j].narrationBuffer) narrated=true;
+          }
+          for(let j=0;j<p.frames.length;j++){
+            const f=p.frames[j];
+            if(!f||!f.bitmap) continue;
+            const hold=f.holdMs||0;
+            fixedMs+=transitionMs(f.transition);
+            if(narrated) fixedMs+=hold;
+            else items.push({f:f, orig:hold, floor:Math.min(MAGIC_MIN_HOLD_MS,hold)});
+          }
+        }
+        if(!items.length) return;
+        let scalable=0;
+        for(let k=0;k<items.length;k++) scalable+=items[k].orig;
+        const room=MAGIC_TARGET_TOTAL_MS-fixedMs;
+        if(scalable<=0||room<=0||scalable<=room) return;
+        // Spend the room on the frames that can still give. Each pass
+        // pins whatever the current rate would push under its own
+        // floor and shares what is left among the rest, so a reveal
+        // full of already-short word steps still lands on the budget
+        // instead of overshooting it by however much they were pinned.
+        for(let pass=0; pass<8; pass++){
+          let free=0, pinnedMs=0;
+          for(let k=0;k<items.length;k++){
+            if(items[k].pinned) pinnedMs+=items[k].out;
+            else free+=items[k].orig;
+          }
+          if(free<=0) break;
+          const rate=(room-pinnedMs)/free;
+          let pinnedAny=false;
+          for(let k=0;k<items.length;k++){
+            const it=items[k];
+            if(it.pinned) continue;
+            if(it.orig*rate<=it.floor){ it.pinned=true; it.out=it.floor; pinnedAny=true; }
+          }
+          if(pinnedAny) continue;
+          for(let k=0;k<items.length;k++){
+            const it=items[k];
+            if(!it.pinned) it.out=Math.round(it.orig*rate);
+          }
+          break;
+        }
+        for(let k=0;k<items.length;k++){
+          const it=items[k];
+          if(typeof it.out==='number') it.f.holdMs=it.out;
+        }
+      })();
       // Flatten every page's frames into the one ordered list
       // ReelComposer takes.
       const pages=[];
