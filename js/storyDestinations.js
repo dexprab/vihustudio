@@ -69,6 +69,20 @@
 // ===========================================================
 const StoryDestinations=(function(){
 
+  // Resolved against THIS script's own location rather than the
+  // page's, so an asset path can't quietly 404 for a page served
+  // from a deeper folder — the same fix js/audioManager.js and
+  // js/themeRepositoryClient.js already carry, and the same class of
+  // bug that once made a correctly-configured project report itself
+  // as unconfigured.
+  const _SCRIPT_SRC=(function(){
+    try{ return (document.currentScript&&document.currentScript.src)||''; }catch(e){ return ''; }
+  })();
+  function _assetURL(rel){
+    try{ if(_SCRIPT_SRC) return new URL('../'+rel, _SCRIPT_SRC).href; }catch(e){}
+    return rel;
+  }
+
   // ---------- Destination helpers (shared) ----------
   function _bookTitle(){
     try{
@@ -567,14 +581,40 @@ const StoryDestinations=(function(){
   //
   // SPRINT STATUS — M1 shipped the plumbing, M2 the real stages, M3
   // rendered each stage off-screen so every one of them has its own
-  // bitmap, and M4 (here) gives each frame the animation it arrives
-  // with. The payload shape does not change again: a frame simply
-  // carries a `transition` alongside its bitmap and hold.
+  // bitmap, M4 gave each frame the animation it arrives with, and M7
+  // (here) adds the sound and the closing card. The payload shape did
+  // not change again: a frame simply carries a `transition` and now an
+  // optional `narrationBuffer` alongside its bitmap and hold.
   //
-  // Audio is deliberately absent until M7 (narration → ambient →
-  // silence). ReelComposer feeds its own silent track for the whole
-  // recording, so a soundless reveal composes correctly today.
+  // AUDIO (M7) — architecture §5.5's three tiers, in priority order.
+  // The tier is chosen ONCE for the whole story, not per page:
+  //
+  //   1. The child's own narration, if ANY page carries it. A story
+  //      with a voice gets NO ambient bed at all — "priority order"
+  //      read literally, and the reason is the child: a bed under a
+  //      quiet voice competes with it, and the voice is the point.
+  //      A page without a clip is simply quiet while its neighbour
+  //      speaks, which is how a read-aloud book actually sounds.
+  //   2. An ambient bed, if no page speaks — one Foundation loop,
+  //      looped under the whole reel at a low level.
+  //   3. Silence, correctly handled — ReelComposer feeds its own
+  //      silent track from start to stop regardless, which is what
+  //      keeps a wordless reel from composing to zero bytes.
   const MAGIC_FPS=30;
+  // Tail added past the end of a clip so a page never cuts on the
+  // last syllable — the same figure and reasoning as the Reel's own.
+  const MAGIC_NARRATION_TAIL_MS=450;
+  // §5.4: "Closing card — 2.5s".
+  const MAGIC_CLOSING_HOLD_MS=2500;
+  // Which Foundation loop plays as the bed. Chosen by name — these
+  // are 30s loops shipped for AudioManager's always-on composite,
+  // where their levels are tuned to sit under each other rather than
+  // to stand alone (magic.mp3 sits at literally 0 there), so their
+  // mix values say nothing about which works solo. `harmony` is the
+  // one whose name denotes music rather than an environmental
+  // texture (air / wind / forest) or an effect (magic). One constant
+  // to change if a listen says otherwise.
+  const MAGIC_AMBIENT_FILE='harmony.mp3';
   // The reel-wide default, which in practice only ever applies to the
   // very first frame of the story: every frame this destination emits
   // carries its own transition, and a page's own request wins. Kept as
@@ -601,6 +641,125 @@ const StoryDestinations=(function(){
     if(frameIndex===0) return (pageIndex===0) ? 'wash' : 'page-turn';
     return (stage && stage.kind==='text') ? 'draw' : 'rise';
   }
+  // Fetched and decoded at most once per page load, then reused —
+  // the loop is ~700KB and every publish would otherwise re-fetch
+  // and re-decode it. Resolves null on any failure, in which case
+  // the reel is simply silent (tier 3), never broken.
+  let _magicAmbientPromise=null;
+  function _magicAmbientBuffer(){
+    if(_magicAmbientPromise) return _magicAmbientPromise;
+    if(typeof ReelComposer==='undefined'){ return Promise.resolve(null); }
+    _magicAmbientPromise=fetch(_assetURL('assets/audio/foundation/'+MAGIC_AMBIENT_FILE))
+      .then(function(r){ return r.ok?r.arrayBuffer():null; })
+      .then(function(buf){ return buf?ReelComposer.decodeAudio(buf):null; })
+      .catch(function(){ return null; });
+    return _magicAmbientPromise;
+  }
+
+  // ---------- The closing card (M7 / architecture §5.6) ----------
+  // "Held for 2.5s, after the art, over a clean background. A child's
+  // page is never covered." So it is its own frame appended after the
+  // last page, not an overlay — the whole reason it exists as a card.
+  //
+  // The palette is deliberately js/magicStrip.js's own FILM_BG /
+  // BRAND_FG, so the two halves of Magic Publish (the video and the
+  // printable strip) close on one look rather than two.
+  const MAGIC_CARD_BG='#1E1A17';
+  const MAGIC_CARD_GOLD='#FFCB45';
+  const MAGIC_CARD_TITLE='#F5F0E6';
+
+  function _magicWrap(g, text, maxW){
+    const words=String(text||'').split(/\s+/).filter(Boolean);
+    const lines=[];
+    let cur='';
+    for(let i=0;i<words.length;i++){
+      const test=cur?(cur+' '+words[i]):words[i];
+      if(!cur || g.measureText(test).width<=maxW){ cur=test; }
+      else{ lines.push(cur); cur=words[i]; }
+    }
+    if(cur) lines.push(cur);
+    return lines.length?lines:[''];
+  }
+
+  // The creator's own bonded Story Companion, if they have one. Canon
+  // -correct (a Story Companion belongs to that Creator) and free —
+  // the art already ships. A Traveller has no bonded companion and
+  // simply gets the card without one: no gate, no prompt, no
+  // missing-asset gap. Never rejects.
+  function _magicCompanionPortrait(){
+    try{
+      if(typeof MagicCard==='undefined'||typeof MagicCardArt==='undefined') return Promise.resolve(null);
+      const card=MagicCard.getActive();
+      if(!card||!card.companionId) return Promise.resolve(null);
+      return MagicCardArt.resolveCompanionPortrait(card.companionId)
+        .catch(function(){ return null; });
+    }catch(e){ return Promise.resolve(null); }
+  }
+
+  function _paintMagicClosingCard(W, H, title, portrait){
+    const c=document.createElement('canvas');
+    c.width=W; c.height=H;
+    const g=c.getContext('2d');
+    if(!g) return null;
+
+    g.fillStyle=MAGIC_CARD_BG;
+    g.fillRect(0,0,W,H);
+    try{
+      const gr=g.createRadialGradient(W/2, H*0.46, 0, W/2, H*0.46, Math.max(W,H)*0.55);
+      gr.addColorStop(0,'rgba(255,203,69,0.13)');
+      gr.addColorStop(1,'rgba(255,203,69,0)');
+      g.fillStyle=gr;
+      g.fillRect(0,0,W,H);
+    }catch(e){}
+
+    // Everything scales off the frame width, so the card is correct
+    // at any output size rather than tuned to one.
+    const unit=W/1080;
+    const box=Math.round(340*unit);          // companion, contain-fit
+    const titleSize=Math.round(74*unit);
+    const brandSize=Math.round(40*unit);
+    const gap=Math.round(46*unit);
+
+    g.textAlign='center';
+    g.textBaseline='top';
+    g.font='700 '+titleSize+'px Georgia, "Times New Roman", serif';
+    const lines=_magicWrap(g, title, W-Math.round(180*unit));
+    const lineH=Math.round(titleSize*1.22);
+
+    let blockH=lines.length*lineH + gap + brandSize;
+    if(portrait) blockH+=box+gap;
+    let y=Math.round((H-blockH)/2);
+
+    if(portrait){
+      // Contain, never cover: a companion is a character with its own
+      // transparent margins, and cropping one would cut its head off.
+      const iw=portrait.naturalWidth||portrait.width||1;
+      const ih=portrait.naturalHeight||portrait.height||1;
+      const s=Math.min(box/iw, box/ih);
+      const dw=iw*s, dh=ih*s;
+      try{ g.drawImage(portrait, Math.round(W/2-dw/2), Math.round(y+(box-dh)/2), Math.round(dw), Math.round(dh)); }catch(e){}
+      y+=box+gap;
+    }
+
+    g.fillStyle=MAGIC_CARD_TITLE;
+    for(let i=0;i<lines.length;i++){
+      g.fillText(lines[i], W/2, y+i*lineH);
+    }
+    y+=lines.length*lineH+gap;
+
+    g.fillStyle=MAGIC_CARD_GOLD;
+    g.font='600 '+brandSize+'px Georgia, "Times New Roman", serif';
+    g.fillText('✨ Created in VihuPlanet ✨', W/2, y);
+
+    return c;
+  }
+
+  function _magicClosingCard(format){
+    return _magicCompanionPortrait().then(function(portrait){
+      return _paintMagicClosingCard(format.outW, format.outH, _bookTitle(), portrait);
+    }).catch(function(){ return null; });
+  }
+
   const MAGIC={
     id:'magic',
     label:'Magic Creation',
@@ -680,13 +839,53 @@ const StoryDestinations=(function(){
         });
       }
       if(frames.length===0) return null;
-      return { frames:frames };
+      const payload={ frames:frames };
+
+      // ---- Narration (M7) ----
+      // The clip belongs to the PAGE, so it starts on that page's
+      // FIRST frame and runs underneath the whole assembly — the
+      // child's voice describes the finished picture while it is
+      // still being built, which is exactly the effect wanted.
+      const narration=slide.metadata&&slide.metadata.narration;
+      if(!narration||!narration.ref) return payload;
+      if(typeof AssetStore==='undefined'||typeof ReelComposer==='undefined') return payload;
+      // Same resolve chain the Reel already uses, including the
+      // cross-owner fallback a Magic-Card-recalled project needs.
+      const resolveOpts=slide.recallOwnerId?{ownerId:slide.recallOwnerId}:undefined;
+      return AssetStore.resolve(narration.ref, resolveOpts)
+        .then(function(url){ return url?fetch(url):null; })
+        .then(function(r){ return (r&&r.ok)?r.arrayBuffer():null; })
+        .then(function(buf){ return buf?ReelComposer.decodeAudio(buf):null; })
+        .then(function(audioBuffer){
+          if(!audioBuffer) return payload;
+          frames[0].narrationBuffer=audioBuffer;
+          // The page must last at least as long as the voice, or the
+          // clip is cut off by the next page turning. Any shortfall
+          // is added to the LAST frame — the finished picture is the
+          // right thing to be looking at while a sentence lands, and
+          // it means the reveal's own pacing is never stretched.
+          // The decoded buffer's duration is the honest source (an
+          // imported clip's metadata probe can legitimately report 0).
+          //
+          // Transition time is deliberately not counted, which can
+          // only make the page slightly longer than strictly needed —
+          // the safe direction.
+          const need=Math.round(audioBuffer.duration*1000)+MAGIC_NARRATION_TAIL_MS;
+          let total=0;
+          for(let i=0;i<frames.length;i++) total+=(frames[i].holdMs||0);
+          if(need>total){
+            const last=frames[frames.length-1];
+            last.holdMs=(last.holdMs||0)+(need-total);
+          }
+          return payload;
+        })
+        .catch(function(){ return payload; });
     },
     finish:function(payloads, format){
       // Flatten every page's frames into the one ordered list
-      // ReelComposer takes. narrationBuffer stays null across the
-      // board until M7 wires audio in.
+      // ReelComposer takes.
       const pages=[];
+      let hasNarration=false;
       for(let i=0;i<payloads.length;i++){
         const p=payloads[i];
         if(!p||!p.frames) continue;
@@ -697,9 +896,10 @@ const StoryDestinations=(function(){
           // read correctly: ReelComposer applies a page's own request
           // over the reel-wide default, so one reel turns between
           // pages and washes, rises or draws within them.
+          if(f.narrationBuffer) hasNarration=true;
           pages.push({
             bitmap:f.bitmap,
-            narrationBuffer:null,
+            narrationBuffer:f.narrationBuffer||null,
             holdMs:f.holdMs,
             transition:f.transition||null
           });
@@ -723,9 +923,36 @@ const StoryDestinations=(function(){
           if(b&&b.__magicOwned){ b.width=0; b.height=0; }
         }
       };
-      return ReelComposer.compose(pages,{
-          width:format.outW, height:format.outH, fps:MAGIC_FPS,
-          transition:format.transition||'page-turn'
+      // The closing card and the ambient bed are both resolved before
+      // filming starts — the card because it becomes a real frame,
+      // the bed because ReelComposer starts it with the recording.
+      // Tier 1 (any page speaks) takes NO bed; tier 2 (nobody speaks)
+      // takes one; tier 3 is what a null bed already is.
+      return Promise.all([
+          _magicClosingCard(format),
+          hasNarration?Promise.resolve(null):_magicAmbientBuffer()
+        ])
+        .then(function(res){
+          const card=res[0], ambient=res[1];
+          if(card){
+            // Ours to release, exactly like every earlier stage's
+            // canvas — the release() closure above already walks
+            // `pages`, so pushing it here is enough.
+            card.__magicOwned=true;
+            pages.push({
+              bitmap:card,
+              narrationBuffer:null,
+              holdMs:MAGIC_CLOSING_HOLD_MS,
+              // Washes in rather than turning: it is not a page of
+              // the story, it is the story closing.
+              transition:'wash'
+            });
+          }
+          return ReelComposer.compose(pages,{
+            width:format.outW, height:format.outH, fps:MAGIC_FPS,
+            transition:format.transition||'page-turn',
+            ambientBuffer:ambient||null
+          });
         })
         .then(function(out){
           release();

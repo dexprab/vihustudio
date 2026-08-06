@@ -14,7 +14,9 @@
 //   AudioContext +
 //   createMediaStreamDestination() → the audio track. Each page's
 //                                narration is an AudioBufferSourceNode
-//                                started the moment its page appears.
+//                                started the moment its page appears;
+//                                an optional ambient bed loops under
+//                                the whole reel at a low level.
 //   MediaRecorder              → stitches both tracks into webm
 //                                (mp4 only as a Safari-shaped
 //                                fallback preference).
@@ -96,6 +98,10 @@ const ReelComposer=(function(){
   // 300 (Story Reel's own floor is 1500), so this is inert for them.
   const MIN_FRAME_MS=60;
   const VIDEO_BPS=6000000;   // 6 Mbps — generous for 1080×1920@30
+  // Default level for an ambient bed. Low on purpose: a bed is
+  // atmosphere under a child's artwork, never the thing being
+  // listened to. A caller can override per compose.
+  const AMBIENT_GAIN=0.22;
 
   // ---------- Animation language (roadmap M4) ----------
   // Background → wash in · Objects → fade + rise · Text → draw
@@ -238,7 +244,8 @@ const ReelComposer=(function(){
 
   // pages: [{bitmap:<canvas|image>, narrationBuffer:<AudioBuffer|null>, holdMs:<number>,
   //          transition?:'page-turn'|'wash'|'rise'|'draw'|'none', transitionMs?:<number>}]
-  // opts:  {width, height, fps, transition, transitionMs, risePx}
+  // opts:  {width, height, fps, transition, transitionMs, risePx,
+  //         ambientBuffer, ambientGain}
   //        `transition`/`transitionMs` are the DEFAULT for every page;
   //        a page's own fields win. That is what lets one reel turn
   //        between pages and wash, rise or draw within them.
@@ -304,11 +311,43 @@ const ReelComposer=(function(){
           silence.start();
         }catch(e){ silence=null; }
       }
-      function stopSilence(){
-        if(!silence) return;
-        try{ silence.stop(); }catch(e){}
-        try{ silence.disconnect(); }catch(e){}
-        silence=null;
+
+      // An optional ambient bed, looped under the whole reel at a low
+      // level. This is a WHOLE-REEL layer, not a per-page one: the
+      // caller decides whether a bed belongs at all (a story carrying
+      // the child's own narration deliberately gets none, so a quiet
+      // voice is never competed with), and once it does, it simply
+      // runs from first frame to last. Absent `ambientBuffer` nothing
+      // here allocates, so every existing caller is untouched.
+      let ambient=null, ambientGain=null;
+      if(actx&&audioDest&&opts&&opts.ambientBuffer){
+        try{
+          ambient=actx.createBufferSource();
+          ambient.buffer=opts.ambientBuffer;
+          ambient.loop=true;
+          ambientGain=actx.createGain();
+          ambientGain.gain.value=(typeof opts.ambientGain==='number')?opts.ambientGain:AMBIENT_GAIN;
+          ambient.connect(ambientGain);
+          ambientGain.connect(audioDest);
+          ambient.start();
+        }catch(e){ ambient=null; ambientGain=null; }
+      }
+
+      function stopAudio(){
+        if(silence){
+          try{ silence.stop(); }catch(e){}
+          try{ silence.disconnect(); }catch(e){}
+          silence=null;
+        }
+        if(ambient){
+          try{ ambient.stop(); }catch(e){}
+          try{ ambient.disconnect(); }catch(e){}
+          ambient=null;
+        }
+        if(ambientGain){
+          try{ ambientGain.disconnect(); }catch(e){}
+          ambientGain=null;
+        }
       }
 
       let stream=null;
@@ -335,7 +374,7 @@ const ReelComposer=(function(){
       rec.onerror=function(e){
         if(done) return; done=true;
         try{ cancelAnimationFrame(raf); }catch(err){}
-        stopSilence();
+        stopAudio();
         reject((e&&e.error)||new Error('reel-recorder-error'));
       };
       rec.onstop=function(){
@@ -343,7 +382,7 @@ const ReelComposer=(function(){
         // every chunk has landed by the time this runs.
         if(done) return; done=true;
         try{ cancelAnimationFrame(raf); }catch(err){}
-        stopSilence();
+        stopAudio();
         const type=(rec.mimeType||mime||'video/webm').split(';')[0];
         resolve({ blob:new Blob(chunks,{type:type}), mime:type });
       };
@@ -417,7 +456,8 @@ const ReelComposer=(function(){
     paintPageTurn:paintPageTurn, paintWash:paintWash, paintRise:paintRise,
     // Timings, exposed so the reveal can reason about total runtime
     // and so verification can drive a painter without guessing.
-    TURN_MS:TURN_MS, WASH_MS:WASH_MS, RISE_MS:RISE_MS, DRAW_MS:DRAW_MS, RISE_PX:RISE_PX
+    TURN_MS:TURN_MS, WASH_MS:WASH_MS, RISE_MS:RISE_MS, DRAW_MS:DRAW_MS, RISE_PX:RISE_PX,
+    AMBIENT_GAIN:AMBIENT_GAIN
   };
   try{ window.ReelComposer=api; }catch(e){}
   return api;
