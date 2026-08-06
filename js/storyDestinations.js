@@ -545,7 +545,129 @@ const StoryDestinations=(function(){
     }
   };
 
-  const REGISTRY=[BOOK, CAROUSEL, REEL];
+  // ---------- Magic Creation (Magic Publish, Sprint M1) ----------
+  // A story that assembles itself: every page arrives layer by
+  // layer — paper, world, picture, decorations, words — rather than
+  // cutting in whole. The stages come from js/magicReveal.js, which
+  // derives them from the FINAL saved page (no history, no
+  // timeline); every frame renders through the SAME SlideRenderer
+  // pipeline the editor / Book / Carousel / Reel already use
+  // (Rule 5 — Publish Fidelity), so the reveal can never show
+  // authoring chrome: the editor is not involved at any point.
+  //
+  // The one place this destination departs from its siblings: the
+  // pipeline calls createCanvas / renderPage / encodePage once per
+  // PAGE, but a reveal is many FRAMES per page. renderPage honours
+  // the contract (it draws the finished page into the supplied
+  // canvas); encodePage returns {frames:[…]} instead of one bitmap,
+  // and finish() flattens every page's frames into one list for
+  // ReelComposer. Nothing in PublishStudio needed changing for that
+  // — it treats a payload as opaque and hands the array straight to
+  // finish().
+  //
+  // SPRINT STATUS — M1 ships the plumbing: revealStages() returns a
+  // single Finished stage, so this composes one frame per page and
+  // produces a real (deliberately non-magical) video. M2 fills in
+  // the real stages, M3 renders them off-screen, M4 animates them
+  // — each behind this same shape, with no changes here.
+  //
+  // Audio is deliberately absent until M7 (narration → ambient →
+  // silence). ReelComposer feeds its own silent track for the whole
+  // recording, so a soundless reveal composes correctly today.
+  const MAGIC_FPS=30;
+  const MAGIC_FORMATS=[
+    {id:'vertical', label:'Magic Video', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'page-turn'}
+  ];
+  const MAGIC={
+    id:'magic',
+    label:'Magic Creation',
+    glyph:'✨',
+    tagline:'Watch your story come together.',
+    formats:MAGIC_FORMATS,
+    publishMessages:[
+      'Turning to a blank page…',
+      'Bringing in your world…',
+      'Adding your picture…',
+      'Sprinkling the magic…',
+      'Almost ready…'
+    ],
+    finishingMessage:'Making the magic… this takes a minute ✨',
+    progressNoun:'Scene',
+    createCanvas:function(format){
+      const c=document.createElement('canvas');
+      c.width=format.outW;
+      c.height=format.outH;
+      return c;
+    },
+    renderPage:function(canvas, slide, ctx){
+      // Same treatment as the Reel: no transparency (video has no
+      // meaningful alpha), and `backdrop:'blur'` fills the bars a
+      // 4:5 page leaves in a 9:16 frame with a softened copy of the
+      // page rather than cropping or stretching the authored Scene
+      // to reach the edges (Rule 1).
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:1, backdrop:'blur'});
+    },
+    encodePage:function(canvas, format, ctx){
+      // One payload per page carrying that page's own reveal frames.
+      // M1: revealStages() yields the single Finished stage, so the
+      // already-rendered canvas IS the frame and no extra rendering
+      // happens. M3 replaces this branch with a real off-screen
+      // render per stage — the payload shape does not change.
+      const slide=ctx?ctx.slide:null;
+      if(!slide) return null;
+      const stages=(typeof MagicReveal!=='undefined')
+        ? MagicReveal.revealStages(slide)
+        : [{slide:slide, label:'Finished', holdMs:2200}];
+      if(!stages||stages.length===0) return null;
+      const frames=[];
+      for(let i=0;i<stages.length;i++){
+        const st=stages[i];
+        // Until M3 renders each stage on its own canvas, only the
+        // finished stage has a bitmap to show — anything else would
+        // silently repeat the finished frame and read as a stutter.
+        const isFinished=(i===stages.length-1);
+        if(!isFinished) continue;
+        frames.push({ bitmap:canvas, holdMs:st.holdMs });
+      }
+      if(frames.length===0) return null;
+      return { frames:frames };
+    },
+    finish:function(payloads, format){
+      // Flatten every page's frames into the one ordered list
+      // ReelComposer takes. narrationBuffer stays null across the
+      // board until M7 wires audio in.
+      const pages=[];
+      for(let i=0;i<payloads.length;i++){
+        const p=payloads[i];
+        if(!p||!p.frames) continue;
+        for(let j=0;j<p.frames.length;j++){
+          const f=p.frames[j];
+          if(!f||!f.bitmap) continue;
+          pages.push({ bitmap:f.bitmap, narrationBuffer:null, holdMs:f.holdMs });
+        }
+      }
+      if(pages.length===0) return null;
+      if(typeof ReelComposer==='undefined'||!ReelComposer.isSupported()) return null;
+      return ReelComposer.compose(pages,{
+          width:format.outW, height:format.outH, fps:MAGIC_FPS,
+          transition:format.transition||'page-turn'
+        })
+        .then(function(out){
+          if(!out||!out.blob||out.blob.size===0) return null;
+          const ext=(out.mime&&out.mime.indexOf('mp4')>=0)?'.mp4':'.webm';
+          return {
+            blob: out.blob,
+            mime: out.mime||'video/webm',
+            filename: _sanitise(_bookTitle())+'_magic'+ext,
+            celebrateLabel: 'Watch The Magic',
+            celebrateGlyph: '✨'
+          };
+        })
+        .catch(function(){ return null; });
+    }
+  };
+
+  const REGISTRY=[BOOK, CAROUSEL, REEL, MAGIC];
   function list(){ return REGISTRY.slice(); }
   function find(id){
     for(let i=0;i<REGISTRY.length;i++){
