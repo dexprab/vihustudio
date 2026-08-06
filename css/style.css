@@ -5537,6 +5537,35 @@ body.dark-theme .publish-destination-card-chip{ color:#FFCB45; }
   font-weight:600;
   color:var(--text);
 }
+/* Magic Publish M6 — one row per bundled artifact. Each row is one
+   task in two states: the active label while it runs, the done label
+   once it lands. Hidden entirely on a single-destination publish,
+   where there is nothing to check off. */
+.publish-checklist{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  align-items:center;
+}
+.publish-checklist.hidden{ display:none; }
+.publish-checklist-row{
+  font-size:14px;
+  font-weight:600;
+  color:var(--text-secondary);
+  opacity:0.45;
+  transition:opacity 0.25s ease, color 0.25s ease;
+}
+.publish-checklist-row.is-active{
+  opacity:1;
+  color:var(--text);
+}
+.publish-checklist-row.is-done{
+  opacity:1;
+  color:var(--gold);
+}
 .publish-publishing-barwrap{
   width:100%;
   height:10px;
@@ -5694,6 +5723,20 @@ body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.
   box-shadow:0 4px 0 -1px rgba(0,0,0,0.20) inset,
              4px 0 0 -1px rgba(0,0,0,0.10) inset;
 }
+.publish-celebration-cover.hidden{ display:none; }
+
+/* Magic Publish M6 — the Magic Creation plays in the same stand the
+   still cover otherwise occupies, so the celebration keeps its shape
+   whether or not the bundle produced a video. */
+.publish-celebration-video{
+  width:100%;
+  height:100%;
+  display:block;
+  border-radius:var(--card-radius);
+  background:#000;
+  object-fit:contain;
+}
+.publish-celebration-video.hidden{ display:none; }
 
 .publish-celebration-title{
   font-size:18px;
@@ -5740,6 +5783,48 @@ body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.
   gap:6px;
 }
 .publish-celebration-ready.hidden{ display:none; }
+
+/* Magic Publish M6 — "Downloads remain available" (roadmap M6 scope).
+   The big gold button hands over the primary artifact; these quieter
+   pills hand over everything else the bundle produced. Explicit
+   !important sizing for the same reason .publish-celebration-secondary-btn
+   needs it: the global button{width:100%;height:var(--button-height)}
+   rule would otherwise stretch each one across the whole celebration. */
+.publish-celebration-keeps{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin-top:4px;
+}
+.publish-celebration-keeps.hidden{ display:none; }
+.publish-celebration-keep-btn{
+  background:var(--panel);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  padding:8px 14px !important;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  transition:background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.publish-celebration-keep-btn:hover{
+  background:var(--bg);
+  border-color:var(--gold);
+  transform:translateY(-1px);
+}
+.publish-celebration-keep-btn:active{ transform:translateY(0); }
+.publish-celebration-keep-btn.is-given{
+  border-color:var(--gold);
+  color:var(--text-secondary);
+}
 
 .publish-celebration-secondary{
   display:flex;

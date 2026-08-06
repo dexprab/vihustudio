@@ -355,12 +355,16 @@ const PublishStudio=(function(){
     _almostPublishBtn=document.createElement('button');
     _almostPublishBtn.type='button';
     _almostPublishBtn.className='publish-primary-btn';
-    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">📖</span><span class="publish-primary-label">Choose Story Destination</span>';
-    // Sprint 9.0.3 — the primary action no longer jumps straight to
-    // publishing. It lands the child in the destination picker so
-    // they choose HOW they want to enjoy their story before software
-    // picks the file format.
-    _almostPublishBtn.addEventListener('click',function(){ _setStage(STAGES.DESTINATION); });
+    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">✨</span><span class="publish-primary-label">Publish My Adventure</span>';
+    // Magic Publish M6 — "The default path has no fork in it at all"
+    // (architecture §7.2). Pressing this publishes the whole bundle;
+    // the destination picker is still there for a creator who wants a
+    // Carousel or a Reel, now reachable as "Other formats" from
+    // Celebration rather than sitting in everybody's way.
+    _almostPublishBtn.addEventListener('click',function(){
+      _publishMode='bundle';
+      _setStage(STAGES.PUBLISHING);
+    });
     center.appendChild(_almostPublishBtn);
 
     body.appendChild(center);
@@ -403,6 +407,9 @@ const PublishStudio=(function(){
   let _destComingSoonMsg=null;
   let _chosenDestinationId=null;
   let _chosenFormatId=null;
+  // Magic Publish M6 — the picker is now reachable from two places, so
+  // Back has to return where it came from.
+  let _destBackTarget=STAGES.ALMOST_READY;
 
   function _buildDestinationBody(){
     _destBody=document.createElement('section');
@@ -412,7 +419,7 @@ const PublishStudio=(function(){
     back.type='button';
     back.className='publish-back-link';
     back.innerHTML='<span class="publish-back-arrow">←</span> Back';
-    back.addEventListener('click',function(){ _setStage(STAGES.ALMOST_READY); });
+    back.addEventListener('click',function(){ _setStage(_destBackTarget||STAGES.ALMOST_READY); });
     _destBody.appendChild(back);
 
     const center=document.createElement('div');
@@ -555,6 +562,9 @@ const PublishStudio=(function(){
   }
   function _confirmDestination(){
     if(!_chosenDestinationId || !_chosenFormatId) return;
+    // Magic Publish M6 — reaching Publishing THROUGH the picker always
+    // means "just this one", whichever way the picker was reached.
+    _publishMode='single';
     _setStage(STAGES.PUBLISHING);
   }
 
@@ -683,6 +693,8 @@ const PublishStudio=(function(){
   let _pubBar=null;
   let _pubProgressText=null;
   let _pubCancelBtn=null;
+  let _pubChecklist=null;
+  let _pubChecklistRows=[];
   let _publishCancelled=false;
   let _publishOutputBlob=null;
 
@@ -702,6 +714,13 @@ const PublishStudio=(function(){
     _pubMessage.className='publish-publishing-message';
     _pubMessage.textContent='Painting your pages…';
     center.appendChild(_pubMessage);
+
+    // Magic Publish M6 — one row per bundled artifact, each row a single
+    // task in two states (active -> done). Empty in single-destination
+    // mode, where one line of copy already says everything there is.
+    _pubChecklist=document.createElement('ul');
+    _pubChecklist.className='publish-checklist hidden';
+    center.appendChild(_pubChecklist);
 
     const barWrap=document.createElement('div');
     barWrap.className='publish-publishing-barwrap';
@@ -728,6 +747,40 @@ const PublishStudio=(function(){
     return _pubBody;
   }
 
+  // Magic Publish M6 — rebuild the checklist for whatever the current
+  // publish is actually going to produce. A single-destination publish
+  // has nothing to check off, so the list stays hidden entirely rather
+  // than showing one lonely row.
+  function _renderChecklist(){
+    if(!_pubChecklist) return;
+    _pubChecklist.innerHTML='';
+    _pubChecklistRows=[];
+    if(_publishMode!=='bundle' || _bundleTasks.length<2){
+      _pubChecklist.classList.add('hidden');
+      return;
+    }
+    _pubChecklist.classList.remove('hidden');
+    for(let i=0;i<_bundleTasks.length;i++){
+      const row=document.createElement('li');
+      row.className='publish-checklist-row is-pending';
+      row.setAttribute('data-destination-id',_bundleTasks[i].destinationId);
+      row.textContent=_bundleTasks[i].activeLabel;
+      _pubChecklist.appendChild(row);
+      _pubChecklistRows.push(row);
+    }
+  }
+
+  // 'pending' | 'active' | 'done'. Only the label swaps between the
+  // task's own two states; the class carries the visual weight.
+  function _setChecklistState(i, state){
+    const row=_pubChecklistRows[i];
+    const task=_bundleTasks[i];
+    if(!row || !task) return;
+    row.classList.remove('is-pending','is-active','is-done');
+    row.classList.add('is-'+state);
+    row.textContent=(state==='done') ? task.doneLabel : task.activeLabel;
+  }
+
   // Sprint 9.0.3 — the Publishing stage now dispatches through
   // StoryDestinations. The state machine still runs the same
   // per-page render loop (one page per requestAnimationFrame,
@@ -738,36 +791,93 @@ const PublishStudio=(function(){
   let _publishDestination=null;
   let _publishFormat=null;
 
+  // Magic Publish M6 — the default path publishes a BUNDLE rather than
+  // one chosen file. Pressing Publish once produces the book, the Magic
+  // Creation and the Magic Strip together, so Celebration has something
+  // playing rather than a download button (roadmap M6; architecture §7.2
+  // "Celebration presents four things to keep" — the fourth, the cover,
+  // is already rendered live from the slide and costs nothing).
+  //
+  // The active/done copy is the roadmap's own, verbatim, for the two
+  // artifacts it names; the Strip follows the same shape. Each row is
+  // one task in two states, which is what the roadmap's four lines
+  // actually describe.
+  const PUBLISH_BUNDLE=[
+    {destinationId:'book',  formatId:'digital',  activeLabel:'✨ Preparing Story',  doneLabel:'✓ Book Ready'},
+    {destinationId:'magic', formatId:'vertical', activeLabel:'✨ Creating Magic',   doneLabel:'✓ Magic Ready'},
+    {destinationId:'strip', formatId:'strip',    activeLabel:'✨ Printing the Strip', doneLabel:'✓ Strip Ready'}
+  ];
+  // 'bundle' — the default, fork-free path from Almost Ready.
+  // 'single' — the classic one-destination path, still reachable via
+  //            "Other formats" on Celebration (and by any caller that
+  //            drives the DESTINATION stage directly).
+  let _publishMode='bundle';
+  let _bundleTasks=[];
+  let _bundleIndex=0;
+  let _bundleResults={};   // destinationId -> finish() output
+
+  function _bundleTasksFor(mode){
+    if(mode!=='bundle'){
+      return [{destinationId:_chosenDestinationId, formatId:_chosenFormatId,
+               activeLabel:'✨ Preparing Story', doneLabel:'✓ Ready'}];
+    }
+    // A destination that isn't registered in this build simply drops
+    // out of the bundle rather than failing the whole publish.
+    return PUBLISH_BUNDLE.filter(function(t){
+      return !!StoryDestinations.find(t.destinationId);
+    });
+  }
+
   function _enterPublishing(){
     _publishCancelled=false;
     _publishOutputBlob=null;
     _publishOutputMeta=null;
+    _bundleResults={};
     const slides=_slides();
     if(slides.length===0){
       _setStage(STAGES.ALMOST_READY);
       return;
     }
-    // Resolve the chosen destination + format. Fallback to Book /
-    // Digital PDF if the child somehow skipped the destination
-    // picker (backwards-compat with the legacy shell entry).
     if(typeof StoryDestinations==='undefined'){
       _setStage(STAGES.ALMOST_READY);
       return;
     }
-    _publishDestination=StoryDestinations.find(_chosenDestinationId)
+    _bundleTasks=_bundleTasksFor(_publishMode);
+    if(_bundleTasks.length===0){
+      _setStage(_publishMode==='bundle' ? STAGES.ALMOST_READY : STAGES.DESTINATION);
+      return;
+    }
+    _renderChecklist();
+    _bundleIndex=0;
+    _runBundleTask(0);
+  }
+
+  // Run one destination end to end: resolve it, render every page
+  // through it, then finish. Advancing happens in _taskComplete.
+  function _runBundleTask(i){
+    if(_publishCancelled){
+      _setStage(STAGES.ALMOST_READY);
+      return;
+    }
+    const task=_bundleTasks[i];
+    // Resolve the destination + format. Fallback to Book / Digital PDF
+    // if a caller somehow reached Publishing without a choice
+    // (backwards-compat with the legacy shell entry).
+    _publishDestination=StoryDestinations.find(task.destinationId)
                      || StoryDestinations.find('book');
     _publishFormat=StoryDestinations.findFormat(
       _publishDestination.id,
-      _chosenFormatId
+      task.formatId
     ) || _publishDestination.formats[0];
-    // Reel + any other Coming-Soon destination must not enter
-    // Publishing — the destination picker's continue button already
-    // guards this, but this second gate keeps the state machine
-    // honest.
+    // A Coming-Soon destination must not enter Publishing — the
+    // destination picker's continue button already guards this, but
+    // this second gate keeps the state machine honest.
     if(_publishDestination.comingSoon){
       _setStage(STAGES.DESTINATION);
       return;
     }
+    _setChecklistState(i,'active');
+    const slides=_slides();
     _updateProgress(0, slides.length);
     _pubMessage.textContent=_publishMessages()[0];
     _renderNextPage(0, slides, []);
@@ -852,19 +962,56 @@ const PublishStudio=(function(){
         _pubMessage.textContent=(_publishDestination && _publishDestination.finishingMessage)
           || 'Wrapping it with care…';
       }
-      out.then(function(o){ _completePublish(o); }, function(){ _completePublish(null); });
+      out.then(function(o){ _taskComplete(o); }, function(){ _taskComplete(null); });
       return;
     }
-    _completePublish(out);
+    _taskComplete(out);
   }
 
-  function _completePublish(out){
+  // Magic Publish M6 — one bundled task finished. Record it, check it
+  // off, and either start the next one or wrap the whole publish up.
+  // A task that failed outright (out === null) still advances: §7.3's
+  // "never block Celebration on it" — if the Magic Creation fails to
+  // film, the child still gets a book and never sees an error about a
+  // thing they did not ask for.
+  function _taskComplete(out){
     if(_publishCancelled){
       _setStage(STAGES.ALMOST_READY);
       return;
     }
+    if(_publishDestination) _bundleResults[_publishDestination.id]=out;
+    _setChecklistState(_bundleIndex,'done');
+    _bundleIndex++;
+    if(_bundleIndex<_bundleTasks.length){
+      _runBundleTask(_bundleIndex);
+      return;
+    }
+    _completeBundle();
+  }
+
+  // The PRIMARY artifact is whatever the first task produced — the book
+  // in bundle mode, the chosen destination in single mode. Everything
+  // that already reads _publishedBlob()/_publishedFilename() keeps
+  // getting exactly what it always got.
+  function _completeBundle(){
+    const primaryId=_bundleTasks[0] ? _bundleTasks[0].destinationId : null;
+    const out=(primaryId && _bundleResults[primaryId]) || null;
     _publishOutputMeta=out;
     _publishOutputBlob=out ? out.blob : null;
+    // Celebration's own destination-aware copy reads _publishDestination,
+    // which right now still points at whichever task ran LAST. Point it
+    // back at the primary so the big button and the headline describe
+    // the artifact that button actually hands over.
+    try{
+      if(primaryId){
+        const prim=StoryDestinations.find(primaryId);
+        if(prim){
+          _publishDestination=prim;
+          const fmtId=_bundleTasks[0].formatId;
+          _publishFormat=StoryDestinations.findFormat(prim.id, fmtId) || prim.formats[0];
+        }
+      }
+    }catch(e){}
     // Companion Engine Foundation (Sprint C1) — "Published".
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
     try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
@@ -895,17 +1042,22 @@ const PublishStudio=(function(){
     const safe=String(t).replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'')||'my-story';
     return safe+'.pdf';
   }
-  function _downloadPublished(){
-    if(!_publishOutputBlob) return false;
-    const url=URL.createObjectURL(_publishOutputBlob);
+  // Magic Publish M6 — factored out so a bundled artifact downloads
+  // exactly the same way the primary one always has.
+  function _downloadBlob(blob, filename){
+    if(!blob) return false;
+    const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=_publishedFilename();
+    a.download=filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
     return true;
+  }
+  function _downloadPublished(){
+    return _downloadBlob(_publishOutputBlob, _publishedFilename());
   }
   // --- Stage 4 · Celebration ----------------------------------------
   // The five-second emotional payoff. Confetti rains, the cover sits
@@ -919,6 +1071,9 @@ const PublishStudio=(function(){
   let _celebSubtitle=null;
   let _celebDownloadBtn=null;
   let _celebReadyMsg=null;
+  let _celebVideo=null;
+  let _celebKeeps=null;
+  let _celebVideoURL=null;
 
   function _buildCelebrationBody(){
     _celebBody=document.createElement('section');
@@ -956,6 +1111,22 @@ const PublishStudio=(function(){
     _celebCoverCanvas.height=1350;
     _celebCoverCanvas.className='publish-celebration-cover';
     book.appendChild(_celebCoverCanvas);
+    // Magic Publish M6 — "Not a download button — a playing video"
+    // (architecture §7.2). When the bundle produced a Magic Creation
+    // this replaces the still cover in the same stand; when it didn't
+    // (single-destination publish, or filming failed), the cover
+    // stays exactly as it always was.
+    //
+    // `controls` is deliberately on: the Publish click gives the page
+    // sticky user activation so .play() normally succeeds, but if a
+    // browser refuses autoplay anyway the child still has a real play
+    // button rather than a frozen first frame.
+    _celebVideo=document.createElement('video');
+    _celebVideo.className='publish-celebration-video hidden';
+    _celebVideo.setAttribute('playsinline','');
+    _celebVideo.setAttribute('controls','');
+    _celebVideo.loop=false;
+    book.appendChild(_celebVideo);
     stand.appendChild(book);
     center.appendChild(stand);
 
@@ -986,6 +1157,14 @@ const PublishStudio=(function(){
     _celebReadyMsg.innerHTML='<span>✓</span> Your adventure is ready. Download again any time.';
     center.appendChild(_celebReadyMsg);
 
+    // Magic Publish M6 — the rest of the bundle. "Downloads remain
+    // available" (roadmap M6): the book keeps the big primary button
+    // above, and everything else the publish produced sits here, one
+    // quiet button each. Populated in _enterCelebration.
+    _celebKeeps=document.createElement('div');
+    _celebKeeps.className='publish-celebration-keeps hidden';
+    center.appendChild(_celebKeeps);
+
     // Secondary actions.
     const secondary=document.createElement('div');
     secondary.className='publish-celebration-secondary';
@@ -1001,10 +1180,71 @@ const PublishStudio=(function(){
     another.innerHTML='<span>📖</span> Make Another Story';
     another.addEventListener('click',function(){ _makeAnotherStory(); });
     secondary.appendChild(another);
+    // Magic Publish M6 — "Choose Story Destination becomes optional,
+    // reachable as 'Other formats' from Celebration for a creator who
+    // specifically wants a Carousel or a Reel" (architecture §7.2).
+    // Nothing shipped is removed; it simply stops standing in the
+    // default path's way.
+    const other=document.createElement('button');
+    other.type='button';
+    other.className='publish-celebration-secondary-btn publish-celebration-other';
+    other.innerHTML='<span>🎨</span> Other formats →';
+    other.addEventListener('click',function(){
+      _destBackTarget=STAGES.CELEBRATION;
+      _setStage(STAGES.DESTINATION);
+    });
+    secondary.appendChild(other);
     center.appendChild(secondary);
 
     _celebBody.appendChild(center);
     return _celebBody;
+  }
+
+  // One object URL at a time — a second celebration in the same
+  // session must not leak the first one's video.
+  function _celebRevokeVideo(){
+    if(_celebVideo){
+      try{ _celebVideo.pause(); }catch(e){}
+      try{ _celebVideo.removeAttribute('src'); _celebVideo.load(); }catch(e){}
+    }
+    if(_celebVideoURL){
+      try{ URL.revokeObjectURL(_celebVideoURL); }catch(e){}
+      _celebVideoURL=null;
+    }
+  }
+
+  // Everything the bundle produced apart from the primary artifact,
+  // which already has the big button above.
+  const KEEP_LABELS={
+    magic:{glyph:'✨', label:'Save the Magic Creation'},
+    strip:{glyph:'🎞️', label:'Save the Magic Strip'},
+    book:{glyph:'📖', label:'Save the Book'},
+    carousel:{glyph:'🖼️', label:'Save the Images'},
+    reel:{glyph:'🎬', label:'Save the Reel'}
+  };
+  function _renderCelebrationKeeps(){
+    if(!_celebKeeps) return;
+    _celebKeeps.innerHTML='';
+    const primaryId=_bundleTasks[0] ? _bundleTasks[0].destinationId : null;
+    let shown=0;
+    Object.keys(_bundleResults).forEach(function(id){
+      if(id===primaryId) return;
+      const out=_bundleResults[id];
+      if(!out || !out.blob) return;
+      const meta=KEEP_LABELS[id] || {glyph:'📥', label:'Save it'};
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='publish-celebration-keep-btn';
+      btn.setAttribute('data-keep-id',id);
+      btn.innerHTML='<span>'+meta.glyph+'</span><span>'+meta.label+'</span>';
+      btn.addEventListener('click',function(){
+        _downloadBlob(out.blob, out.filename||('my-story-'+id));
+        btn.classList.add('is-given');
+      });
+      _celebKeeps.appendChild(btn);
+      shown++;
+    });
+    _celebKeeps.classList.toggle('hidden', shown===0);
   }
 
   function _enterCelebration(){
@@ -1029,7 +1269,12 @@ const PublishStudio=(function(){
     // with per-destination branches.
     const msgEl=_celebBody.querySelector('.publish-celebration-message-generic');
     if(msgEl){
-      if(dest && dest.id==='carousel'){
+      if(_publishMode==='bundle' && _bundleResults['magic'] && _bundleResults['magic'].blob){
+        // The Magic Creation is playing right above this line, so the
+        // copy should be about what they're watching rather than about
+        // a file.
+        msgEl.textContent='Watch how your story came to life!';
+      }else if(dest && dest.id==='carousel'){
         msgEl.textContent='Your story is now a shareable carousel!';
       }else if(dest && dest.id==='reel'){
         msgEl.textContent='Your story is now a movie!';
@@ -1063,10 +1308,37 @@ const PublishStudio=(function(){
       _celebConfetti.appendChild(p);
     }
 
+    // Magic Publish M6 — the Magic Creation, already playing.
+    const magic=_bundleResults['magic'];
+    const magicBlob=(magic && magic.blob) || null;
+    _celebRevokeVideo();
+    if(magicBlob && _celebVideo){
+      try{
+        _celebVideoURL=URL.createObjectURL(magicBlob);
+        _celebVideo.src=_celebVideoURL;
+        _celebVideo.classList.remove('hidden');
+        _celebCoverCanvas.classList.add('hidden');
+        const stand=_celebCoverCanvas.parentElement;
+        if(stand) stand.style.aspectRatio='1080 / 1920';
+        // Autoplay. The Publish press gives the page sticky activation,
+        // so this normally just works; a browser that refuses leaves
+        // the visible controls as the honest fallback.
+        const p=_celebVideo.play();
+        if(p && typeof p.catch==='function') p.catch(function(){});
+      }catch(e){}
+    }else if(_celebVideo){
+      _celebVideo.classList.add('hidden');
+      _celebCoverCanvas.classList.remove('hidden');
+    }
+
+    // Magic Publish M6 — the rest of the bundle, one button each.
+    _renderCelebrationKeeps();
+
     // Render the cover into the celebration canvas via the canonical
     // path — children see their real book on the celebration screen.
+    // Skipped entirely when the Magic Creation is playing in its place.
     const slides=_slides();
-    if(slides.length>0){
+    if(!magicBlob && slides.length>0){
       let cover=slides.find(function(s){ return s && s.pageType==='cover'; });
       if(!cover) cover=slides[0];
       const editorCanvas=document.getElementById('previewCanvas');
@@ -1179,6 +1451,11 @@ const PublishStudio=(function(){
       }
     }catch(e){}
 
+    // Magic Publish M6 — every fresh open starts on the fork-free
+    // bundle path, whatever the last publish in this session chose.
+    _publishMode='bundle';
+    _destBackTarget=STAGES.ALMOST_READY;
+
     _state={ stage:STAGES.READ };
     _setStage(STAGES.READ);
     _modal.classList.remove('hidden');
@@ -1190,6 +1467,9 @@ const PublishStudio=(function(){
 
   function _close(){
     if(!_modal) return;
+    // Magic Publish M6 — stop the Magic Creation and hand its object
+    // URL back rather than leaving it playing behind a hidden modal.
+    _celebRevokeVideo();
     _modal.classList.add('hidden');
     _opened=false;
     document.removeEventListener('keydown',_onKeyDown);
@@ -1218,7 +1498,18 @@ const PublishStudio=(function(){
     _setStage:_setStage,
     _publishedBlob:_publishedBlob,
     _publishedFilename:_publishedFilename,
-    _downloadPublished:_downloadPublished
+    _downloadPublished:_downloadPublished,
+    // Magic Publish M6 — a plain, serializable view of everything the
+    // bundle produced, so a harness can assert on it without reaching
+    // into module state or holding a Blob across the page boundary.
+    _bundleArtifacts:function(){
+      const out={};
+      Object.keys(_bundleResults).forEach(function(id){
+        const r=_bundleResults[id];
+        out[id]=r&&r.blob ? {size:r.blob.size, type:r.blob.type, filename:r.filename||''} : null;
+      });
+      return out;
+    }
   };
   try{ window.PublishStudio=api; }catch(e){}
   return api;
