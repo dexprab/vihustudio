@@ -743,7 +743,130 @@ const StoryDestinations=(function(){
     }
   };
 
-  const REGISTRY=[BOOK, CAROUSEL, REEL, MAGIC];
+  // ---------- Magic Strip (roadmap M5) ----------
+  // The still-image half of Magic Publish: one printable picture of how
+  // a page was made, laid out as a film strip. It shares EVERYTHING
+  // with Magic Creation except the output — the same MagicReveal
+  // stages, the same _renderSlideInto path (Rule 5 — Publish Fidelity,
+  // one renderer, never a second one) — and differs only in that it
+  // composites those frames into a sheet instead of filming them.
+  //
+  // Two differences from MAGIC, both deliberate:
+  //
+  //   • ONE frame per beat, not one per stage. M4 expanded the Words
+  //     beat into up to eight word steps; a strip wants the finished
+  //     sentence, not "Once". MagicStrip.selectFrames takes the last
+  //     stage of each kind, and since revealStages always ends on the
+  //     caller's own slide, the last cell IS the finished page.
+  //
+  //   • Cells are rendered at the page's OWN size and released one at
+  //     a time as they are drawn into the sheet, so peak memory is a
+  //     single page-sized canvas rather than every stage at once. A
+  //     video has to hold all its frames; a still image does not.
+  //
+  // Multi-page stories follow the Carousel's proven shape: one PNG per
+  // page, zipped when there is more than one. A young child's
+  // single-page story therefore hands back a plain printable PNG.
+  const STRIP_FORMATS=[
+    {id:'strip', label:'Film Strip', description:'One wide row · sharing and banners', layout:'strip', frameH:540},
+    {id:'grid',  label:'Photo Grid', description:'Two columns · printing and fridges',  layout:'grid',  frameH:540}
+  ];
+  const STRIP={
+    id:'strip',
+    label:'Magic Strip',
+    glyph:'🎞️',
+    tagline:'A printable picture of how it came together.',
+    formats:STRIP_FORMATS,
+    publishMessages:[
+      'Laying out the film…',
+      'Punching the sprockets…',
+      'Printing your strip…'
+    ],
+    progressNoun:'Strip',
+    createCanvas:function(){
+      // The pipeline's per-page canvas. This destination composes its
+      // own sheet in encodePage from cells it renders itself, so this
+      // canvas only ever holds the finished page renderPage draws into
+      // it — kept at the editor's own native size so that render is a
+      // straight, unscaled one.
+      const c=document.createElement('canvas');
+      c.width=1080; c.height=1350;
+      return c;
+    },
+    renderPage:function(canvas, slide, ctx){
+      // Honour the contract (draw the finished page into the supplied
+      // canvas) even though encodePage renders its own cells: a future
+      // caller may reasonably expect the canvas to hold the page.
+      _renderSlideInto(canvas, slide, ctx.index, ctx.total, {scale:1});
+    },
+    encodePage:function(canvas, format, ctx){
+      const slide=ctx?ctx.slide:null;
+      if(!slide) return null;
+      if(typeof MagicStrip==='undefined'||typeof MagicReveal==='undefined') return null;
+      const stages=MagicReveal.revealStages(slide);
+      const beats=MagicStrip.selectFrames(stages);
+      if(!beats||beats.length===0) return null;
+
+      // Cells at the page's own aspect, so nothing is cropped or
+      // letterboxed. Rendering at the page's exact logical size hits
+      // _renderSlideInto's fast byte-identical path; MagicStrip then
+      // scales each cell down into the sheet.
+      let size={w:1080,h:1350};
+      try{ if(typeof SlideRenderer!=='undefined') size=SlideRenderer.getCanvasSize(slide)||size; }catch(e){}
+
+      const cells=[];
+      for(let i=0;i<beats.length;i++){
+        const off=document.createElement('canvas');
+        off.width=size.w; off.height=size.h;
+        _renderSlideInto(off, beats[i].slide, ctx.index, ctx.total, {scale:1});
+        cells.push({bitmap:off, label:beats[i].label});
+      }
+      const sheet=MagicStrip.compose(cells,{
+        layout:format.layout,
+        frameH:format.frameH,
+        cellW:size.w, cellH:size.h,
+        title:_bookTitle()
+      });
+      // Hand every cell's backing store back the moment the sheet has
+      // them — the same deterministic release M3 established, and the
+      // reason peak memory here is one page-sized canvas, not N.
+      for(let i=0;i<cells.length;i++){ cells[i].bitmap.width=0; cells[i].bitmap.height=0; }
+      if(!sheet) return null;
+
+      let url=null;
+      try{ url=sheet.toDataURL('image/png'); }catch(e){}
+      sheet.width=0; sheet.height=0;
+      if(!url) return null;
+      return {
+        name:'strip-'+String(ctx.index+1).padStart(2,'0')+'.png',
+        bytes:ZipWriter.dataURLToBytes(url)
+      };
+    },
+    finish:function(payloads, format){
+      const entries=payloads.filter(function(p){ return p; });
+      if(entries.length===0) return null;
+      const base=_sanitise(_bookTitle())+'_magic_'+format.id;
+      if(entries.length===1){
+        return {
+          blob: new Blob([entries[0].bytes],{type:'image/png'}),
+          mime: 'image/png',
+          filename: base+'.png',
+          celebrateLabel: 'Get My Strip',
+          celebrateGlyph: '🎞️'
+        };
+      }
+      const zip=ZipWriter.build(entries);
+      return {
+        blob: zip,
+        mime: 'application/zip',
+        filename: base+'.zip',
+        celebrateLabel: 'Get My Strips',
+        celebrateGlyph: '🎞️'
+      };
+    }
+  };
+
+  const REGISTRY=[BOOK, CAROUSEL, REEL, MAGIC, STRIP];
   function list(){ return REGISTRY.slice(); }
   function find(id){
     for(let i=0;i<REGISTRY.length;i++){
