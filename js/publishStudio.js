@@ -1450,6 +1450,13 @@ const PublishStudio=(function(){
         _slides().forEach(function(s){ SlideRenderer.preloadFonts(s); });
       }
     }catch(e){}
+    // M9 — the same race, for Magic Publish's own chrome: the Magic
+    // Strip's captions and both halves' brand line draw in Nunito, and
+    // nothing else on the page asks for that family, so on a fresh
+    // session it was genuinely un-loaded when the strip composed.
+    try{
+      if(typeof MagicStrip!=='undefined' && typeof MagicStrip.ensureFonts==='function') MagicStrip.ensureFonts();
+    }catch(e){}
 
     // Magic Publish M6 — every fresh open starts on the fork-free
     // bundle path, whatever the last publish in this session chose.

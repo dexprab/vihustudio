@@ -36,6 +36,22 @@ const MagicStrip=(function(){
   const FOOTER_FG='#F3ECE0';
   const BRAND_FG='#FFCB45';
 
+  // M9 — one brand line and one typeface for BOTH halves of Magic
+  // Publish. The video's closing card said "✨ Created in VihuPlanet ✨"
+  // while this strip said "Made in VihuPlanet": two wordings on a
+  // feature that already deliberately shares FILM_BG/BRAND_FG so it
+  // "closes on one look rather than two". Exported so the card reads
+  // them from here rather than keeping a second copy that can drift.
+  //
+  // Nunito is self-hosted (assets/fonts/) and part of VihuStudio's own
+  // identity. The card used `Georgia, "Times New Roman", serif` — none
+  // of which VihuStudio ships, so on a machine without Georgia every
+  // one of those families (including a deliberately bogus one) measures
+  // identically: the one frame carrying the brand rendered in whatever
+  // fallback that machine happened to have.
+  const BRAND_LINE='✨ Created in VihuPlanet';
+  const FONT_STACK='"Nunito", "Segoe UI", system-ui, sans-serif';
+
   // One place for every measurement, so a layout change is arithmetic
   // rather than a hunt through drawing code. All values are in output
   // pixels at the default frame height; a caller asking for a taller
@@ -135,7 +151,31 @@ const MagicStrip=(function(){
     }
   }
 
-  function _font(px,weight){ return (weight||600)+' '+px+'px "Nunito", "Segoe UI", system-ui, sans-serif'; }
+  function _font(px,weight){ return (weight||600)+' '+px+'px '+FONT_STACK; }
+
+  // M9 — canvas fillText draws in whatever face is resolved AT THAT
+  // MOMENT, and document.fonts.load() is async, so a one-shot export
+  // can silently draw in a fallback. Nunito is genuinely not loaded on
+  // a fresh page (nothing else on it asks for the family), so every
+  // caption and the brand line were drawing in the fallback face.
+  //
+  // Same shape as SlideRenderer.preloadFonts(), which js/publishStudio.js
+  // already awaits on open() for exactly this reason: kick it once, up
+  // front, rather than making the synchronous compose() async.
+  let _fontsPromise=null;
+  function ensureFonts(){
+    if(_fontsPromise) return _fontsPromise;
+    _fontsPromise=(function(){
+      try{
+        if(typeof document==='undefined'||!document.fonts) return Promise.resolve();
+        return Promise.all([
+          document.fonts.load('600 40px "Nunito"'),
+          document.fonts.load('700 40px "Nunito"')
+        ]).then(function(){}).catch(function(){});
+      }catch(e){ return Promise.resolve(); }
+    })();
+    return _fontsPromise;
+  }
 
   function _fitText(g,text,maxW,startPx,weight){
     let px=startPx;
@@ -235,7 +275,7 @@ const MagicStrip=(function(){
     g.fillRect(0,footY,W,C.footer);
     g.textBaseline='middle';
     const midY=footY+C.footer/2;
-    const brand=o.brand||'Made in VihuPlanet';
+    const brand=o.brand||BRAND_LINE;
     g.textAlign='right';
     g.fillStyle=BRAND_FG;
     const brandPx=_fitText(g,brand,Math.round(W*0.45),Math.round(C.footer*0.34),700);
@@ -254,7 +294,7 @@ const MagicStrip=(function(){
     return canvas;
   }
 
-  const api={ compose, selectFrames, planRows, LAYOUTS, BASE };
+  const api={ compose, selectFrames, planRows, ensureFonts, LAYOUTS, BASE, BRAND_LINE, FONT_STACK };
   if(typeof window!=='undefined') window.MagicStrip=api;
   return api;
 })();

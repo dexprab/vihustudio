@@ -698,6 +698,19 @@ const StoryDestinations=(function(){
   const MAGIC_CARD_GOLD='#FFCB45';
   const MAGIC_CARD_TITLE='#F5F0E6';
 
+  // M9 — the brand line and the typeface come from MagicStrip so the
+  // video and the printable strip say the same thing in the same face.
+  // Defensive-optional, like every other cross-module read in this
+  // file: the fallbacks are the same literals MagicStrip declares.
+  function _magicBrandLine(){
+    try{ if(typeof MagicStrip!=='undefined'&&MagicStrip.BRAND_LINE) return MagicStrip.BRAND_LINE; }catch(e){}
+    return '✨ Created in VihuPlanet';
+  }
+  function _magicFontStack(){
+    try{ if(typeof MagicStrip!=='undefined'&&MagicStrip.FONT_STACK) return MagicStrip.FONT_STACK; }catch(e){}
+    return '"Nunito", "Segoe UI", system-ui, sans-serif';
+  }
+
   function _magicWrap(g, text, maxW){
     const words=String(text||'').split(/\s+/).filter(Boolean);
     const lines=[];
@@ -734,9 +747,14 @@ const StoryDestinations=(function(){
 
     g.fillStyle=MAGIC_CARD_BG;
     g.fillRect(0,0,W,H);
+    // M9 — the glow was 0.13 alpha, which on a 1080x1920 frame is
+    // barely perceptible: the card read as flat brown-black rather
+    // than a warm sky. Lifted, and centred on the block rather than
+    // the frame so the companion sits inside the light.
     try{
-      const gr=g.createRadialGradient(W/2, H*0.46, 0, W/2, H*0.46, Math.max(W,H)*0.55);
-      gr.addColorStop(0,'rgba(255,203,69,0.13)');
+      const gr=g.createRadialGradient(W/2, H*0.44, 0, W/2, H*0.44, Math.max(W,H)*0.58);
+      gr.addColorStop(0,'rgba(255,203,69,0.24)');
+      gr.addColorStop(0.55,'rgba(255,203,69,0.06)');
       gr.addColorStop(1,'rgba(255,203,69,0)');
       g.fillStyle=gr;
       g.fillRect(0,0,W,H);
@@ -744,19 +762,25 @@ const StoryDestinations=(function(){
 
     // Everything scales off the frame width, so the card is correct
     // at any output size rather than tuned to one.
+    //
+    // M9 sizing: at 340px the companion was 31% of frame width, which
+    // on a phone-watched 9:16 video left the whole block floating in
+    // ~35% dead space above and below. Enlarged so the card reads as
+    // composed rather than as text dropped onto a dark rectangle.
     const unit=W/1080;
-    const box=Math.round(340*unit);          // companion, contain-fit
-    const titleSize=Math.round(74*unit);
-    const brandSize=Math.round(40*unit);
-    const gap=Math.round(46*unit);
+    const box=Math.round(520*unit);          // companion, contain-fit
+    const titleSize=Math.round(92*unit);
+    const brandSize=Math.round(48*unit);
+    const gap=Math.round(52*unit);
+    const ruleW=Math.round(220*unit);
 
     g.textAlign='center';
     g.textBaseline='top';
-    g.font='700 '+titleSize+'px Georgia, "Times New Roman", serif';
+    g.font='700 '+titleSize+'px '+_magicFontStack();
     const lines=_magicWrap(g, title, W-Math.round(180*unit));
     const lineH=Math.round(titleSize*1.22);
 
-    let blockH=lines.length*lineH + gap + brandSize;
+    let blockH=lines.length*lineH + gap + brandSize + gap;
     if(portrait) blockH+=box+gap;
     let y=Math.round((H-blockH)/2);
 
@@ -777,15 +801,28 @@ const StoryDestinations=(function(){
     }
     y+=lines.length*lineH+gap;
 
+    // A quiet gold hairline between the story and the brand, so the
+    // two read as separate beats rather than one stack of centred text.
+    try{
+      g.fillStyle='rgba(255,203,69,0.42)';
+      g.fillRect(Math.round(W/2-ruleW/2), Math.round(y), ruleW, Math.max(1,Math.round(2*unit)));
+    }catch(e){}
+    y+=gap;
+
     g.fillStyle=MAGIC_CARD_GOLD;
-    g.font='600 '+brandSize+'px Georgia, "Times New Roman", serif';
-    g.fillText('✨ Created in VihuPlanet ✨', W/2, y);
+    g.font='700 '+brandSize+'px '+_magicFontStack();
+    g.fillText(_magicBrandLine(), W/2, y);
 
     return c;
   }
 
   function _magicClosingCard(format){
-    return _magicCompanionPortrait().then(function(portrait){
+    // Await the face before painting — this is the one frame that
+    // carries the brand, so it gets the guarantee rather than only the
+    // head start publishStudio.js's open() already gives it.
+    let fonts=Promise.resolve();
+    try{ if(typeof MagicStrip!=='undefined'&&MagicStrip.ensureFonts) fonts=MagicStrip.ensureFonts(); }catch(e){}
+    return fonts.then(function(){ return _magicCompanionPortrait(); }).then(function(portrait){
       return _paintMagicClosingCard(format.outW, format.outH, _bookTitle(), portrait);
     }).catch(function(){ return null; });
   }
