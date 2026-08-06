@@ -16,7 +16,7 @@
 //
 // Contract (stable across the whole M1-M9 roadmap):
 //
-//   revealStages(slide) → [{slide, label, holdMs, kind}, …]
+//   revealStages(slide) → [{slide, label, holdMs, kind, arrivalId}, …]
 //
 // Every entry carries a slide the renderer can draw as-is, so the
 // caller never needs to know how a stage was built. The list is
@@ -27,6 +27,14 @@
 // 'artwork' | 'decorations' | 'text'), so the caller can choose an
 // animation for it without re-deriving the beat. It is the only
 // thing M4 needed from this module beyond the stages themselves.
+//
+// `arrivalId` names WHICH object arrived, when exactly one did. It
+// is the id that object carries in SlideRenderer's own render tree,
+// so the caller can look up where it landed and animate that region
+// alone rather than crossfading the whole frame. `null` means the
+// frame is not about a single object (the blank page, the World's
+// furniture, a grouped remainder), and the caller falls back to the
+// whole-frame crossfade — which is the honest reading.
 //
 // A stage's `slide` may be the caller's own object (the final
 // stage always is) or a clone. This module NEVER mutates the slide
@@ -68,6 +76,18 @@ const MagicReveal=(function(){
   // frame at 1080×1920), so a wordy page must not be allowed to
   // mint forty of them. Eight already reads as writing.
   const MAX_WORD_STEPS=8;
+
+  // How many steps a beat may take bringing its objects in one at a
+  // time. Two pictures should arrive as two moments, not one — that
+  // is the whole point of per-object staging — but a page with twenty
+  // stickers must not mint twenty full-size canvases (M3's own memory
+  // budget). Four already reads as "these were placed one by one";
+  // anything past it arrives together in the beat's last step, and
+  // M8's frame budget can thin the result further on a long book.
+  //
+  // A beat therefore takes exactly min(objectCount, 4) steps, and
+  // never a step where nothing new arrives.
+  const MAX_ARRIVALS_PER_GROUP=4;
 
   // The reveal, back to front. Each group is a beat that only
   // happens when the finished page actually has something for it,
@@ -131,6 +151,66 @@ const MagicReveal=(function(){
   // voice badge) arrives with the Decorations.
   function _stickerGroup(st){
     return (st && st.kind==='text') ? 'text' : 'decorations';
+  }
+
+  // A story-owned sticker's identity for staging. Every sticker
+  // SceneEngine creates carries an id; the index fallback only ever
+  // matters for a hand-built object, and keeping the two enumerations
+  // (arrival list and stage filter) on one function is what stops
+  // them drifting apart.
+  function _stickerKey(st,i){
+    return (st && st.id) ? st.id : ('#'+i);
+  }
+
+  // Place selection ids are index-based ('image-holder' for Place 1,
+  // then 'image-place-N'), so sort by that trailing number to bring
+  // the pictures in the order the Theme Author laid the Places out.
+  function _placeIndex(id){
+    const m=/(\d+)$/.exec(String(id||''));
+    return m ? parseInt(m[1],10) : 0;
+  }
+
+  // Every picture this page's Artwork beat brings in, in the order it
+  // should arrive, keyed by the id each one carries in SlideRenderer's
+  // own render tree.
+  //
+  // A Scene blueprint page (Cover / Hook / End) is enumerated by its
+  // image-holder ELEMENTS: on those pages the picture IS the holder,
+  // so hiding the element hides the picture, and counting Places as
+  // well would double-count the same thing.
+  function _artworkArrivals(slide){
+    const holders=_sceneElements(slide).filter(function(el){
+      return el && el.visible!==false && el.type==='image-holder';
+    });
+    if(holders.length){
+      return holders.map(function(el){ return {id:el.id,scene:true}; });
+    }
+    const out=[];
+    if(slide.image && slide.image.width) out.push({id:'image-holder'});
+    const pi=slide._placeImages;
+    if(pi){
+      Object.keys(pi).filter(function(k){ return !!pi[k]; }).sort(function(a,b){
+        return _placeIndex(a)-_placeIndex(b);
+      }).forEach(function(k){ out.push({id:k}); });
+    }
+    return out;
+  }
+
+  // Everything the Decorations beat brings in, in paint order: the
+  // page's own blueprint decorations first, then the stickers the
+  // child placed on top.
+  function _decorationArrivals(slide){
+    const out=[];
+    _sceneElements(slide).forEach(function(el){
+      if(!el || el.visible===false) return;
+      if(SCENE_TYPE_GROUP[el.type]!=='decorations') return;
+      out.push({id:el.id,scene:true});
+    });
+    _stickers(slide).forEach(function(st,i){
+      if(_stickerGroup(st)!=='decorations') return;
+      out.push({id:_stickerKey(st,i)});
+    });
+    return out;
   }
 
   function _hasArtwork(slide){
@@ -212,10 +292,73 @@ const MagicReveal=(function(){
     });
   }
 
+  // Hide every picture on the page except the ones whose arrival ids
+  // are in `shownSet`. `null` means the whole beat has arrived.
+  function _applyArtwork(clone,slide,shownSet){
+    if(shownSet===null) return;
+
+    if(shownSet.size===0){
+      clone.image=null;
+      clone._imageDataURL=null;
+      clone._placeImages=null;
+      // Stripping the picture is precisely what makes the renderer
+      // fall through to its "Tap to add your artwork" dashed
+      // placeholder — real authoring chrome, and the one thing a
+      // Magic Creation must never show (product acceptance test 3).
+      clone._magicSuppressPlaceholders=true;
+      _hideSceneGroup(clone,'artwork');
+      return;
+    }
+
+    const arrivals=_artworkArrivals(slide);
+    const missing=arrivals.filter(function(a){ return !shownSet.has(a.id); });
+    if(!missing.length) return;
+
+    // Some Places are still waiting, so the placeholder guard applies
+    // to a partial stage exactly as it does to an empty one.
+    clone._magicSuppressPlaceholders=true;
+    let placeMap=null;
+    missing.forEach(function(a){
+      if(a.scene){ try{ SceneEngine.setVisibility(clone,a.id,false); }catch(e){} return; }
+      if(a.id==='image-holder'){ clone.image=null; clone._imageDataURL=null; return; }
+      // _cloneSlide is a shallow copy, so clone._placeImages is still
+      // the CALLER's own object — deleting a key from it would mutate
+      // their slide. Build a fresh one instead.
+      if(placeMap===null) placeMap=Object.assign({},slide._placeImages||{});
+      delete placeMap[a.id];
+    });
+    if(placeMap!==null) clone._placeImages=placeMap;
+  }
+
+  // The same, for the page's blueprint decorations. Stickers are
+  // filtered separately (they live in an array the stage rewrites
+  // wholesale), using the same shown set.
+  function _applyDecorations(clone,slide,shownSet){
+    if(shownSet===null) return;
+    if(shownSet.size===0){ _hideSceneGroup(clone,'decorations'); return; }
+    _decorationArrivals(slide).forEach(function(a){
+      if(shownSet.has(a.id) || !a.scene) return;
+      try{ SceneEngine.setVisibility(clone,a.id,false); }catch(e){}
+    });
+  }
+
   // Build the page as it looks once `on` (a set of group ids) have
   // arrived and nothing else has.
-  function _stageSlide(slide,on){
+  //
+  // `shown` optionally narrows a beat that is only PART way through:
+  // shown[group] is the set of arrival ids visible so far. A group
+  // absent from `shown` behaves as before — wholly there or wholly
+  // gone, according to `on`.
+  function _stageSlide(slide,on,shown){
     const clone=_cloneSlide(slide);
+    shown=shown||{};
+
+    function setFor(group){
+      if(!on[group]) return new Set();
+      return (shown[group]!==undefined) ? shown[group] : null;
+    }
+    const artSet=setFor('artwork');
+    const decSet=setFor('decorations');
 
     if(!on.world){
       // The World's own Layer Pack furniture. Set as a marker rather
@@ -226,19 +369,8 @@ const MagicReveal=(function(){
       clone._magicHideLayerPack=true;
     }
 
-    if(!on.artwork){
-      clone.image=null;
-      clone._imageDataURL=null;
-      clone._placeImages=null;
-      // Stripping the picture is precisely what makes the renderer
-      // fall through to its "Tap to add your artwork" dashed
-      // placeholder — real authoring chrome, and the one thing a
-      // Magic Creation must never show (product acceptance test 3).
-      clone._magicSuppressPlaceholders=true;
-      _hideSceneGroup(clone,'artwork');
-    }
-
-    if(!on.decorations) _hideSceneGroup(clone,'decorations');
+    _applyArtwork(clone,slide,artSet);
+    _applyDecorations(clone,slide,decSet);
 
     if(!on.text){
       clone.storyBeat='';
@@ -247,7 +379,12 @@ const MagicReveal=(function(){
 
     const sts=_stickers(slide);
     if(sts.length){
-      clone.metadata.stickers=sts.filter(function(st){ return !!on[_stickerGroup(st)]; });
+      clone.metadata.stickers=sts.filter(function(st,i){
+        const g=_stickerGroup(st);
+        if(!on[g]) return false;
+        if(g==='decorations' && decSet && !decSet.has(_stickerKey(st,i))) return false;
+        return true;
+      });
     }
 
     return clone;
@@ -306,9 +443,37 @@ const MagicReveal=(function(){
     return clone;
   }
 
+  // ---------- per-object staging ----------
+
+  // Split a beat's objects into the steps it should take. Each step
+  // carries the full set of arrival ids visible by the END of it, and
+  // the single id that arrived DURING it (null when several did).
+  //
+  // A beat takes min(objectCount, MAX_ARRIVALS_PER_GROUP) steps and
+  // never a step where nothing new arrives: past the cap, everything
+  // still waiting comes in together in the last one.
+  function _arrivalSteps(arrivals){
+    const n=arrivals.length;
+    if(!n) return [];
+    const ids=arrivals.map(function(a){ return a.id; });
+    if(n===1) return [{ids:ids,arrivalId:ids[0]}];
+
+    const steps=[];
+    const cap=Math.min(n,MAX_ARRIVALS_PER_GROUP);
+    for(let i=0;i<cap-1;i++){
+      steps.push({ids:ids.slice(0,i+1),arrivalId:ids[i]});
+    }
+    // The last step brings in whatever is left. When that is a single
+    // object it keeps its own arrival motion; when several land at
+    // once the caller falls back to the whole-frame crossfade.
+    const remaining=n-(cap-1);
+    steps.push({ids:ids,arrivalId:(remaining===1)?ids[n-1]:null});
+    return steps;
+  }
+
   // ---------- the contract ----------
 
-  // revealStages(slide) → [{slide, label, holdMs, kind}, …]
+  // revealStages(slide) → [{slide, label, holdMs, kind, arrivalId}, …]
   //
   // `label` is a short, kid-facing name for the stage. It is not
   // drawn anywhere today; it exists so the Magic Strip (M5) can
@@ -325,15 +490,22 @@ const MagicReveal=(function(){
   // frames rather than one, and the last of those is the finished
   // page. Because GROUP_ORDER puts text last, those word steps are
   // always the tail of the reveal.
+  //
+  // The Artwork and Decorations beats stage PER OBJECT: two pictures
+  // are two moments, not one, which is what makes the reveal read as
+  // a page being built rather than a page fading in. The World beat
+  // deliberately stays whole — that is the Theme Author's furniture,
+  // and assembling it piece by piece would be showing off the World
+  // rather than the child's story.
   function revealStages(slide){
     if(!slide) return [];
 
     const groups=_activeGroups(slide);
     if(groups.length===0){
-      return [{slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:'blank'}];
+      return [{slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:'blank',arrivalId:null}];
     }
 
-    const stages=[{slide:_stageSlide(slide,{}),label:BLANK_LABEL,holdMs:STAGE_HOLD_MS,kind:'blank'}];
+    const stages=[{slide:_stageSlide(slide,{}),label:BLANK_LABEL,holdMs:STAGE_HOLD_MS,kind:'blank',arrivalId:null}];
     for(let i=0;i<groups.length;i++){
       const g=groups[i];
       const isLast=(i===groups.length-1);
@@ -350,17 +522,39 @@ const MagicReveal=(function(){
             slide:(done&&isLast)?slide:_wordStageSlide(slide,on,srcs,k/steps),
             label:(done&&isLast)?FINISHED_LABEL:GROUP_LABELS.text,
             holdMs:(done&&isLast)?FINISHED_HOLD_MS:WORD_HOLD_MS,
-            kind:'text'
+            kind:'text',
+            arrivalId:null
           });
         }
         continue;
       }
 
-      if(isLast){
-        stages.push({slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:g});
-      }else{
-        stages.push({slide:_stageSlide(slide,on),label:GROUP_LABELS[g],holdMs:STAGE_HOLD_MS,kind:g});
+      const arrivals=(g==='artwork') ? _artworkArrivals(slide)
+                   : (g==='decorations') ? _decorationArrivals(slide)
+                   : [];
+      const steps=_arrivalSteps(arrivals);
+
+      if(!steps.length){
+        // The World beat, or a beat whose objects this module cannot
+        // name individually — one stage, exactly as before.
+        stages.push(isLast
+          ? {slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:g,arrivalId:null}
+          : {slide:_stageSlide(slide,on),label:GROUP_LABELS[g],holdMs:STAGE_HOLD_MS,kind:g,arrivalId:null});
+        continue;
       }
+
+      steps.forEach(function(step,k){
+        const done=(k===steps.length-1);
+        const shown={};
+        shown[g]=new Set(step.ids);
+        stages.push({
+          slide:(done&&isLast)?slide:_stageSlide(slide,on,shown),
+          label:(done&&isLast)?FINISHED_LABEL:GROUP_LABELS[g],
+          holdMs:(done&&isLast)?FINISHED_HOLD_MS:STAGE_HOLD_MS,
+          kind:g,
+          arrivalId:step.arrivalId
+        });
+      });
     }
     return stages;
   }
@@ -387,8 +581,24 @@ const MagicReveal=(function(){
     if(max>=n) return stages;
     if(max===1) return [stages[n-1]];
     const out=[];
+    let prev=-1;
     for(let i=0;i<max;i++){
-      out.push(stages[Math.round(i*(n-1)/(max-1))]);
+      const idx=Math.round(i*(n-1)/(max-1));
+      const st=stages[idx];
+      // Dropping a stage widens the gap the NEXT kept frame has to
+      // cover, so that frame no longer brings one object — it brings
+      // everything the dropped stages would have. `arrivalId` names a
+      // single arrival, so it stops being true the moment that
+      // happens, and the caller falls back to the whole-frame
+      // crossfade, which is the honest reading of "several things
+      // appeared at once". Copied rather than edited in place: these
+      // are the caller's own stage objects.
+      if(prev>=0 && idx-prev>1 && st && st.arrivalId){
+        out.push(Object.assign({},st,{arrivalId:null}));
+      }else{
+        out.push(st);
+      }
+      prev=idx;
     }
     return out;
   }
@@ -400,9 +610,13 @@ const MagicReveal=(function(){
     STAGE_HOLD_MS:STAGE_HOLD_MS,
     WORD_HOLD_MS:WORD_HOLD_MS,
     MAX_WORD_STEPS:MAX_WORD_STEPS,
+    MAX_ARRIVALS_PER_GROUP:MAX_ARRIVALS_PER_GROUP,
     // Exposed for verification only — the reveal's own beat list for
-    // a page, without building any clones.
-    _activeGroups:_activeGroups
+    // a page, and the objects each staged beat brings in, without
+    // building any clones.
+    _activeGroups:_activeGroups,
+    _artworkArrivals:_artworkArrivals,
+    _decorationArrivals:_decorationArrivals
   };
   try{ window.MagicReveal=api; }catch(e){}
   return api;

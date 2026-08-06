@@ -667,9 +667,51 @@ const StoryDestinations=(function(){
   //
   // The very first frame of the story washes up out of black rather
   // than turning, because there is no page behind it to turn away.
-  function _magicTransition(stage, frameIndex, pageIndex){
+  //
+  // AMENDED: when the stage names exactly which object arrived AND we
+  // could work out where it landed, the frame gets the real arrival
+  // motion instead — a lift and an overshoot on that object alone,
+  // with every other pixel on the page held perfectly still. 'rise'
+  // remains the honest fallback for a frame that brought several
+  // things at once, or one we could not locate.
+  function _magicTransition(stage, frameIndex, pageIndex, hasRect){
     if(frameIndex===0) return (pageIndex===0) ? 'wash' : 'page-turn';
-    return (stage && stage.kind==='text') ? 'draw' : 'rise';
+    if(stage && stage.kind==='text') return 'draw';
+    return hasRect ? 'arrival' : 'rise';
+  }
+
+  // ---------- Where an arriving object landed ----------
+  // MagicReveal names WHICH object arrived; SlideRenderer's own render
+  // tree knows WHERE it is, in the slide's own logical pixels. These
+  // two turn that into a rectangle in the output frame's pixels.
+  //
+  // The mapping is _fitCompositeInto's own arithmetic: contain-fit,
+  // centred. It also produces the right answer for the fast path
+  // (when the slide's logical size already matches the frame, the
+  // scale is 1 and both offsets are 0), so there is no branch here.
+  function _magicFrameMap(slide, canvas){
+    let lw=1080, lh=1350;
+    try{
+      const cs=SlideRenderer.getCanvasSize(slide);
+      if(cs&&cs.w>0&&cs.h>0){ lw=cs.w; lh=cs.h; }
+    }catch(e){}
+    const s=Math.min(canvas.width/lw, canvas.height/lh);
+    return { s:s, x:(canvas.width-lw*s)/2, y:(canvas.height-lh*s)/2 };
+  }
+
+  function _magicArrivalRect(arrivalId, els, slide, canvas){
+    if(!arrivalId||!els||!els.length) return null;
+    let hit=null;
+    for(let i=0;i<els.length;i++){
+      if(els[i]&&els[i].id===arrivalId){ hit=els[i]; break; }
+    }
+    if(!hit||!(hit.bw>0)||!(hit.bh>0)) return null;
+    const m=_magicFrameMap(slide, canvas);
+    return { x:m.x+hit.bx*m.s, y:m.y+hit.by*m.s, w:hit.bw*m.s, h:hit.bh*m.s };
+  }
+
+  function _magicSceneElements(){
+    try{ return SlideRenderer.getSceneElements()||[]; }catch(e){ return []; }
   }
   // Fetched and decoded at most once per page load, then reused —
   // the loop is ~700KB and every publish would otherwise re-fetch
@@ -869,6 +911,14 @@ const StoryDestinations=(function(){
       // holding a reference to it can't collide with another page.
       const slide=ctx?ctx.slide:null;
       if(!slide) return null;
+      // Snapshot the render tree BEFORE any stage is drawn. renderPage
+      // has just rendered the FULL page into this canvas and nothing
+      // ran in between (PublishStudio goes createCanvas → renderPage →
+      // encodePage), so what SlideRenderer is holding right now is the
+      // finished page's own tree — which is exactly the one the
+      // finished frame needs, and the one moment it is free. Every
+      // other stage refreshes it after its own render below.
+      const finishedEls=_magicSceneElements();
       let stages=(typeof MagicReveal!=='undefined')
         ? MagicReveal.revealStages(slide)
         : [{slide:slide, label:'Finished', holdMs:2200}];
@@ -887,8 +937,10 @@ const StoryDestinations=(function(){
         if(!st||!st.slide) continue;
         const isFinished=(i===stages.length-1);
         let bitmap;
+        let els;
         if(isFinished){
           bitmap=canvas;
+          els=finishedEls;
         }else{
           const off=document.createElement('canvas');
           off.width=canvas.width;
@@ -898,6 +950,10 @@ const StoryDestinations=(function(){
           // frame share one frame composition and the bars never
           // pop between them.
           _renderSlideInto(off, st.slide, ctx.index, ctx.total, {scale:1, backdrop:'blur'});
+          // Read straight after that render, so the tree describes
+          // THIS stage — where the object that just arrived actually
+          // landed on this frame, not on some other one.
+          els=_magicSceneElements();
           // Tagged so finish() knows which canvases are OURS to
           // release. The finished frame's canvas belongs to the
           // pipeline (PublishStudio minted it via createCanvas and
@@ -905,12 +961,14 @@ const StoryDestinations=(function(){
           off.__magicOwned=true;
           bitmap=off;
         }
+        const rect=_magicArrivalRect(st.arrivalId, els, st.slide, canvas);
         frames.push({
           bitmap:bitmap,
           holdMs:st.holdMs,
           // frames.length, not i: a stage without a slide is skipped
           // above, so the stage index and the frame index can drift.
-          transition:_magicTransition(st, frames.length, ctx.index)
+          transition:_magicTransition(st, frames.length, ctx.index, !!rect),
+          arrivalRect:rect
         });
       }
       if(frames.length===0) return null;

@@ -124,6 +124,26 @@ const ReelComposer=(function(){
   // visible double image, and by the time it is legible it has landed.
   const RISE_SETTLE=0.45;
 
+  // ---------- Arrival ----------
+  // The motion the architecture asked for and M4 could not deliver:
+  // "fade + ~2% rise + overshoot-and-settle on scale (1.04 → 1.00) …
+  // the overshoot is what makes it feel PLACED BY HAND rather than
+  // switched on." A whole-frame crossfade cannot scale one object, so
+  // paintRise shipped with fade plus an undersized lift and no pop.
+  //
+  // paintArrival takes the one extra piece of knowledge that unlocks
+  // it — WHERE the object landed — and splits the frame in two: an
+  // ordinary crossfade everywhere else, real motion inside that
+  // rectangle alone. Because unchanged pixels never move, the lift no
+  // longer has to be spent early to hide a double image, so it can be
+  // both big enough to read and slow enough to feel deliberate.
+  const ARRIVAL_MS=560;            // one object, start to settled
+  const ARRIVAL_RISE_PX=38;        // ~2% of a 1920-tall frame — the spec's own figure
+  const ARRIVAL_START_SCALE=0.94;  // a touch small, so it grows into place
+  const ARRIVAL_OVERSHOOT=1.04;    // the pop past its own size
+  const ARRIVAL_PEAK_AT=0.62;      // where that pop lands, in progress
+  const ARRIVAL_CLIP_PAD=0.08;     // clip margin, so the peak cannot crop the object
+
   // ---------- Page turn ----------
   // A storybook leaf sweeping right-to-left off the spine, uncovering
   // the next page beneath it. Deliberately a 2D illusion assembled
@@ -147,6 +167,19 @@ const ReelComposer=(function(){
   function _easeInOutSine(t){ return 0.5-0.5*Math.cos(Math.PI*t); }
   function _easeOutCubic(t){ return 1-Math.pow(1-t,3); }
   function _clamp01(t){ return Math.max(0, Math.min(1, t)); }
+
+  // Grow, overshoot, settle. Takes RAW progress — the easing is inside,
+  // so a caller cannot accidentally double-ease it and flatten the pop.
+  function _arrivalScale(p){
+    if(p>=1) return 1;
+    if(p<=0) return ARRIVAL_START_SCALE;
+    if(p<ARRIVAL_PEAK_AT){
+      const u=_easeOutCubic(p/ARRIVAL_PEAK_AT);
+      return ARRIVAL_START_SCALE+(ARRIVAL_OVERSHOOT-ARRIVAL_START_SCALE)*u;
+    }
+    const u=_easeOutCubic((p-ARRIVAL_PEAK_AT)/(1-ARRIVAL_PEAK_AT));
+    return ARRIVAL_OVERSHOOT+(1-ARRIVAL_OVERSHOOT)*u;
+  }
 
   // Paints one frame of the turn. `raw` is linear 0..1 progress; the
   // easing lives here so every caller gets the same motion. Pure — no
@@ -232,6 +265,72 @@ const ReelComposer=(function(){
     g.globalAlpha=1;
   }
 
+  // Arrival — ONE object being set down, rather than a whole page
+  // fading. `rect` is where that object landed, in this frame's own
+  // pixels. Outside it the incoming frame crossfades exactly as a wash
+  // would; inside it, the frame is lifted and scaled about the rect's
+  // own centre, so the object grows into place and settles out of a
+  // slight overshoot while every other pixel on the page holds
+  // perfectly still.
+  //
+  // The clip is padded past the rect, because a 1.04 peak would
+  // otherwise crop the object at its own edge. That padding ring shows
+  // background pixels scaled by up to 4% — a real, bounded cost of not
+  // having the object on a layer of its own, and small enough at 8%
+  // padding to read as a soft breath around the thing arriving.
+  //
+  // Falls back to paintRise when there is no usable rect, which is the
+  // honest reading of "something arrived, but not where".
+  function paintArrival(g, from, to, raw, W, H, risePx, rect){
+    if(!rect||!(rect.w>0)||!(rect.h>0)||!from||!to){
+      paintRise(g, from, to, raw, W, H, risePx);
+      return;
+    }
+    const p=_clamp01(raw);
+    const t=_easeOutCubic(p);
+    g.globalAlpha=1;
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    try{ g.drawImage(from,0,0,W,H); }catch(e){}
+
+    const padX=rect.w*ARRIVAL_CLIP_PAD, padY=rect.h*ARRIVAL_CLIP_PAD;
+    const rx=rect.x-padX, ry=rect.y-padY;
+    const rw=rect.w+padX*2, rh=rect.h+padY*2;
+
+    // Everywhere else: an ordinary crossfade. Nothing here is expected
+    // to change, but a stage boundary can quietly resolve something
+    // else (an authoring placeholder switching off, say), and blending
+    // is the honest way to carry that rather than freezing it.
+    try{
+      g.save();
+      g.beginPath();
+      g.rect(0,0,W,H);
+      g.rect(rx,ry,rw,rh);
+      g.clip('evenodd');
+      g.globalAlpha=t;
+      g.drawImage(to,0,0,W,H);
+      g.restore();
+    }catch(e){ try{ g.restore(); }catch(e2){} }
+
+    // The object itself.
+    try{
+      g.save();
+      g.beginPath();
+      g.rect(rx,ry,rw,rh);
+      g.clip();
+      const s=_arrivalScale(p);
+      const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+      const lift=(typeof risePx==='number')?risePx:ARRIVAL_RISE_PX;
+      g.translate(cx,cy);
+      g.scale(s,s);
+      g.translate(-cx,-cy);
+      g.globalAlpha=t;
+      g.drawImage(to,0,lift*(1-t),W,H);
+      g.restore();
+    }catch(e){ try{ g.restore(); }catch(e2){} }
+
+    g.globalAlpha=1;
+  }
+
   // Which painter a named transition uses, and how long it runs by
   // default. 'draw' is a wash on a short fuse: a word group should
   // appear, not fade in.
@@ -239,11 +338,17 @@ const ReelComposer=(function(){
     'page-turn':{paint:paintPageTurn, ms:TURN_MS},
     'wash':{paint:paintWash, ms:WASH_MS},
     'rise':{paint:paintRise, ms:RISE_MS},
+    'arrival':{paint:paintArrival, ms:ARRIVAL_MS},
     'draw':{paint:paintWash, ms:DRAW_MS}
   };
 
   // pages: [{bitmap:<canvas|image>, narrationBuffer:<AudioBuffer|null>, holdMs:<number>,
-  //          transition?:'page-turn'|'wash'|'rise'|'draw'|'none', transitionMs?:<number>}]
+  //          transition?:'page-turn'|'wash'|'rise'|'arrival'|'draw'|'none', transitionMs?:<number>,
+  //          arrivalRect?:{x,y,w,h}}]
+  //        `arrivalRect` is read only by the 'arrival' transition, and
+  //        is in this frame's own pixels: where the object that just
+  //        arrived actually landed. Without it, 'arrival' degrades to
+  //        a whole-frame rise.
   // opts:  {width, height, fps, transition, transitionMs, risePx,
   //         ambientBuffer, ambientGain}
   //        `transition`/`transitionMs` are the DEFAULT for every page;
@@ -261,7 +366,12 @@ const ReelComposer=(function(){
       const fps=(opts&&opts.fps)||30;
       const defaultKind=(opts&&opts.transition)||'page-turn';
       const defaultMs=(opts&&typeof opts.transitionMs==='number')?opts.transitionMs:null;
-      const risePx=(opts&&typeof opts.risePx==='number')?opts.risePx:RISE_PX;
+      // Deliberately null rather than RISE_PX: each painter then falls
+      // back to its OWN lift. paintRise keeps its conservative 14px
+      // (its offset moves the whole frame, so it still has to be small
+      // and spent early); paintArrival gets the spec's ~2%, which it
+      // can afford because unchanged pixels never move under it.
+      const risePx=(opts&&typeof opts.risePx==='number')?opts.risePx:null;
 
       // What plays on the way INTO this page, and for how long. A
       // page's own request wins over the reel-wide default; an
@@ -392,13 +502,13 @@ const ReelComposer=(function(){
       // of a slideshow). It also owns the turn's own progress, read
       // from the same clock the sequencer's timer uses, so the two can
       // never disagree about what should be on screen.
-      let trans=null;   // {paint, from, to, startedAt, durMs}
+      let trans=null;   // {paint, from, to, startedAt, durMs, rect}
       function draw(){
         if(done) return;
         if(trans){
           const el=(_nowMs()-trans.startedAt)/trans.durMs;
           if(el<1){
-            trans.paint(g, trans.from, trans.to, el, width, height, risePx);
+            trans.paint(g, trans.from, trans.to, el, width, height, risePx, trans.rect);
             raf=requestAnimationFrame(draw);
             return;
           }
@@ -438,7 +548,7 @@ const ReelComposer=(function(){
         // A wash can start from nothing — that is how page one rises
         // out of black. Everything else needs a frame to come from.
         if(tr&&(prev||tr.paint===paintWash)){
-          trans={ paint:tr.paint, from:prev, to:p.bitmap, startedAt:_nowMs(), durMs:tr.durMs };
+          trans={ paint:tr.paint, from:prev, to:p.bitmap, startedAt:_nowMs(), durMs:tr.durMs, rect:p.arrivalRect||null };
           setTimeout(function(){ settlePage(p); }, tr.durMs);
           return;
         }
@@ -454,9 +564,13 @@ const ReelComposer=(function(){
   const api={
     isSupported:isSupported, decodeAudio:decodeAudio, compose:compose,
     paintPageTurn:paintPageTurn, paintWash:paintWash, paintRise:paintRise,
+    paintArrival:paintArrival,
     // Timings, exposed so the reveal can reason about total runtime
     // and so verification can drive a painter without guessing.
     TURN_MS:TURN_MS, WASH_MS:WASH_MS, RISE_MS:RISE_MS, DRAW_MS:DRAW_MS, RISE_PX:RISE_PX,
+    ARRIVAL_MS:ARRIVAL_MS, ARRIVAL_RISE_PX:ARRIVAL_RISE_PX,
+    ARRIVAL_START_SCALE:ARRIVAL_START_SCALE, ARRIVAL_OVERSHOOT:ARRIVAL_OVERSHOOT,
+    ARRIVAL_PEAK_AT:ARRIVAL_PEAK_AT, ARRIVAL_CLIP_PAD:ARRIVAL_CLIP_PAD,
     AMBIENT_GAIN:AMBIENT_GAIN
   };
   try{ window.ReelComposer=api; }catch(e){}
