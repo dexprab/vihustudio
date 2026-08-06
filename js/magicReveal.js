@@ -16,12 +16,17 @@
 //
 // Contract (stable across the whole M1-M9 roadmap):
 //
-//   revealStages(slide) → [{slide, label, holdMs}, …]
+//   revealStages(slide) → [{slide, label, holdMs, kind}, …]
 //
 // Every entry carries a slide the renderer can draw as-is, so the
 // caller never needs to know how a stage was built. The list is
 // ordered, always ends on the finished page, and is never empty
 // for a real slide.
+//
+// `kind` names WHAT arrives in that frame ('blank' | 'world' |
+// 'artwork' | 'decorations' | 'text'), so the caller can choose an
+// animation for it without re-deriving the beat. It is the only
+// thing M4 needed from this module beyond the stages themselves.
 //
 // A stage's `slide` may be the caller's own object (the final
 // stage always is) or a clone. This module NEVER mutates the slide
@@ -30,8 +35,11 @@
 //
 // SPRINT STATUS — M2 (Layer Decomposition) implements the real
 // stages. M3 (Frame Rendering) draws each stage's slide to a
-// bitmap; until then js/storyDestinations.js still encodes only
-// the final stage, so Magic Publish's own output is unchanged.
+// bitmap. M4 (Magic Animation) adds `kind` and splits the Words
+// beat into word-by-word steps, which is the one part of the
+// roadmap's animation language that cannot live in the composer:
+// a crossfade between "no text" and "all the text" has no way to
+// produce the words in between, so the frames have to exist.
 // =============================================================
 
 const MagicReveal=(function(){
@@ -49,6 +57,17 @@ const MagicReveal=(function(){
   // curve; this is the hold the frame rests at once it has
   // arrived.
   const STAGE_HOLD_MS=750;
+
+  // One step of the Words beat. Deliberately brief — words should
+  // look written, not presented one slide at a time.
+  const WORD_HOLD_MS=140;
+
+  // How many steps the Words beat is allowed to take. A cap rather
+  // than a word-per-frame rate, because every step is a real
+  // full-size canvas: M3 owns a genuine memory budget (~8 MB per
+  // frame at 1080×1920), so a wordy page must not be allowed to
+  // mint forty of them. Eight already reads as writing.
+  const MAX_WORD_STEPS=8;
 
   // The reveal, back to front. Each group is a beat that only
   // happens when the finished page actually has something for it,
@@ -234,9 +253,62 @@ const MagicReveal=(function(){
     return clone;
   }
 
+  // ---------- the Words beat, word by word ----------
+
+  function _words(s){
+    if(typeof s!=='string') return [];
+    const t=s.trim();
+    return t ? t.split(/\s+/) : [];
+  }
+
+  // Everything on this page that the Words beat writes out: the
+  // story beat, plus every story-owned text sticker.
+  //
+  // Scene blueprint text-holders (Cover / Hook / End pages) are
+  // NOT truncated — their content is resolved through SceneEngine's
+  // own text sources rather than sitting on the element, so they
+  // arrive whole with the first word step. A disclosed limitation
+  // rather than an oversight: those pages carry a title, not prose,
+  // and a title appearing at once is the right reading anyway.
+  function _textSources(slide){
+    const out=[];
+    const beat=_words(slide.storyBeat);
+    if(beat.length) out.push({key:'beat',words:beat});
+    _stickers(slide).forEach(function(st,i){
+      if(!st || st.kind!=='text') return;
+      const w=_words(st.text);
+      if(w.length) out.push({key:'sticker',index:i,words:w});
+    });
+    return out;
+  }
+
+  // The page with every text source filled in to `frac` of its own
+  // words. Sources fill together rather than one after another: on
+  // the common single-block page the two are identical, and on a
+  // page with several blocks "the words are appearing" reads better
+  // than one block finishing before the next starts.
+  function _wordStageSlide(slide,on,srcs,frac){
+    const clone=_stageSlide(slide,on);
+    const originals=_stickers(slide);
+    srcs.forEach(function(src){
+      const n=Math.max(1,Math.ceil(src.words.length*frac));
+      const shown=src.words.slice(0,n).join(' ');
+      if(src.key==='beat'){ clone.storyBeat=shown; return; }
+      const sts=clone.metadata.stickers;
+      if(!Array.isArray(sts)) return;
+      // The stage clone's sticker array is a FILTERED copy of the
+      // caller's, so positions don't line up — find by identity.
+      const orig=originals[src.index];
+      const at=sts.indexOf(orig);
+      if(at<0) return;
+      sts[at]=Object.assign({},orig,{text:shown});
+    });
+    return clone;
+  }
+
   // ---------- the contract ----------
 
-  // revealStages(slide) → [{slide, label, holdMs}, …]
+  // revealStages(slide) → [{slide, label, holdMs, kind}, …]
   //
   // `label` is a short, kid-facing name for the stage. It is not
   // drawn anywhere today; it exists so the Magic Strip (M5) can
@@ -248,22 +320,46 @@ const MagicReveal=(function(){
   // it. The last arriving group never gets a stage of its own —
   // that frame IS the finished page, and showing it twice under two
   // labels would be a beat where nothing happens.
+  //
+  // The Words beat is the one exception: it arrives over several
+  // frames rather than one, and the last of those is the finished
+  // page. Because GROUP_ORDER puts text last, those word steps are
+  // always the tail of the reveal.
   function revealStages(slide){
     if(!slide) return [];
 
     const groups=_activeGroups(slide);
     if(groups.length===0){
-      return [{slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS}];
+      return [{slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:'blank'}];
     }
 
-    const stages=[{slide:_stageSlide(slide,{}),label:BLANK_LABEL,holdMs:STAGE_HOLD_MS}];
+    const stages=[{slide:_stageSlide(slide,{}),label:BLANK_LABEL,holdMs:STAGE_HOLD_MS,kind:'blank'}];
     for(let i=0;i<groups.length;i++){
-      if(i===groups.length-1){
-        stages.push({slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS});
+      const g=groups[i];
+      const isLast=(i===groups.length-1);
+      const on={};
+      for(let j=0;j<=i;j++) on[groups[j]]=true;
+
+      if(g==='text'){
+        const srcs=_textSources(slide);
+        const most=srcs.reduce(function(n,s){ return Math.max(n,s.words.length); },0);
+        const steps=Math.max(1,Math.min(MAX_WORD_STEPS,most));
+        for(let k=1;k<=steps;k++){
+          const done=(k===steps);
+          stages.push({
+            slide:(done&&isLast)?slide:_wordStageSlide(slide,on,srcs,k/steps),
+            label:(done&&isLast)?FINISHED_LABEL:GROUP_LABELS.text,
+            holdMs:(done&&isLast)?FINISHED_HOLD_MS:WORD_HOLD_MS,
+            kind:'text'
+          });
+        }
+        continue;
+      }
+
+      if(isLast){
+        stages.push({slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:g});
       }else{
-        const on={};
-        for(let j=0;j<=i;j++) on[groups[j]]=true;
-        stages.push({slide:_stageSlide(slide,on),label:GROUP_LABELS[groups[i]],holdMs:STAGE_HOLD_MS});
+        stages.push({slide:_stageSlide(slide,on),label:GROUP_LABELS[g],holdMs:STAGE_HOLD_MS,kind:g});
       }
     }
     return stages;
@@ -273,6 +369,8 @@ const MagicReveal=(function(){
     revealStages:revealStages,
     FINISHED_HOLD_MS:FINISHED_HOLD_MS,
     STAGE_HOLD_MS:STAGE_HOLD_MS,
+    WORD_HOLD_MS:WORD_HOLD_MS,
+    MAX_WORD_STEPS:MAX_WORD_STEPS,
     // Exposed for verification only — the reveal's own beat list for
     // a page, without building any clones.
     _activeGroups:_activeGroups

@@ -90,8 +90,33 @@ const ReelComposer=(function(){
 
   const START_LEAD_MS=150;   // let the recorder spin up before page 1
   const END_TAIL_MS=350;     // hold the last frame briefly before stop
-  const MIN_PAGE_HOLD_MS=300;
+  // A floor, not a policy — it exists so a frame with no hold at all
+  // never flashes past. Lowered from 300ms in M4 because a word frame
+  // is deliberately brief; no existing caller ever asked for less than
+  // 300 (Story Reel's own floor is 1500), so this is inert for them.
+  const MIN_FRAME_MS=60;
   const VIDEO_BPS=6000000;   // 6 Mbps — generous for 1080×1920@30
+
+  // ---------- Animation language (roadmap M4) ----------
+  // Background → wash in · Objects → fade + rise · Text → draw
+  // word-by-word · Final page → pause. All four are transitions
+  // BETWEEN two already-rendered frames, which is what makes them
+  // cheap: the reveal hands over bitmaps that differ only in what has
+  // just arrived, so a plain crossfade already reads as "only the new
+  // thing appeared" — every unchanged pixel blends to itself and does
+  // not move. That is the whole trick, and it costs nothing: no
+  // masking pass, no diffing, no extra canvases on top of the ones
+  // M3 already accounts for.
+  const WASH_MS=620;   // a page settling in — slow, pure crossfade
+  const RISE_MS=460;   // an object arriving — crossfade plus a lift
+  const DRAW_MS=110;   // one word group appearing
+  const RISE_PX=14;    // how far below its place an arriving object starts
+  // The lift is spent early, on purpose. Drawing the incoming frame
+  // offset means the parts that did NOT change are briefly doubled
+  // against themselves; keeping the offset alive only while the
+  // incoming frame is faint turns that into a soft halo rather than a
+  // visible double image, and by the time it is legible it has landed.
+  const RISE_SETTLE=0.45;
 
   // ---------- Page turn ----------
   // A storybook leaf sweeping right-to-left off the spine, uncovering
@@ -114,6 +139,8 @@ const ReelComposer=(function(){
     return Date.now();
   }
   function _easeInOutSine(t){ return 0.5-0.5*Math.cos(Math.PI*t); }
+  function _easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+  function _clamp01(t){ return Math.max(0, Math.min(1, t)); }
 
   // Paints one frame of the turn. `raw` is linear 0..1 progress; the
   // easing lives here so every caller gets the same motion. Pure — no
@@ -167,8 +194,54 @@ const ReelComposer=(function(){
     }catch(e){}
   }
 
-  // pages: [{bitmap:<canvas|image>, narrationBuffer:<AudioBuffer|null>, holdMs:<number>}]
-  // opts:  {width, height, fps, transition:'page-turn'|'none', transitionMs}
+  // Wash — a straight crossfade. `from` may be null, in which case the
+  // frame rises out of black, which is how the very first page of a
+  // story arrives. Because consecutive reveal frames are identical
+  // except for what has just arrived, this reads as the new thing
+  // fading up while everything already on the page holds perfectly
+  // still. Pure, like paintPageTurn, so it can be driven directly.
+  function paintWash(g, from, to, raw, W, H){
+    const t=_easeInOutSine(_clamp01(raw));
+    g.globalAlpha=1;
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    if(from){ try{ g.drawImage(from,0,0,W,H); }catch(e){} }
+    if(to){
+      try{ g.globalAlpha=t; g.drawImage(to,0,0,W,H); }catch(e){}
+    }
+    g.globalAlpha=1;
+  }
+
+  // Rise — the same crossfade, with the incoming frame starting a
+  // little low and lifting into place. An object arriving should feel
+  // set down rather than switched on.
+  function paintRise(g, from, to, raw, W, H, risePx){
+    const t=_easeOutCubic(_clamp01(raw));
+    g.globalAlpha=1;
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    if(from){ try{ g.drawImage(from,0,0,W,H); }catch(e){} }
+    if(!to){ g.globalAlpha=1; return; }
+    const settle=Math.min(1, t/RISE_SETTLE);
+    const dy=(typeof risePx==='number'?risePx:RISE_PX)*(1-settle);
+    try{ g.globalAlpha=t; g.drawImage(to,0,dy,W,H); }catch(e){}
+    g.globalAlpha=1;
+  }
+
+  // Which painter a named transition uses, and how long it runs by
+  // default. 'draw' is a wash on a short fuse: a word group should
+  // appear, not fade in.
+  const TRANSITIONS={
+    'page-turn':{paint:paintPageTurn, ms:TURN_MS},
+    'wash':{paint:paintWash, ms:WASH_MS},
+    'rise':{paint:paintRise, ms:RISE_MS},
+    'draw':{paint:paintWash, ms:DRAW_MS}
+  };
+
+  // pages: [{bitmap:<canvas|image>, narrationBuffer:<AudioBuffer|null>, holdMs:<number>,
+  //          transition?:'page-turn'|'wash'|'rise'|'draw'|'none', transitionMs?:<number>}]
+  // opts:  {width, height, fps, transition, transitionMs, risePx}
+  //        `transition`/`transitionMs` are the DEFAULT for every page;
+  //        a page's own fields win. That is what lets one reel turn
+  //        between pages and wash, rise or draw within them.
   // → Promise<{blob, mime}> — rejects only on a structural failure
   //   (unsupported browser, recorder refused to start); a silent or
   //   undecodable clip never rejects.
@@ -179,8 +252,22 @@ const ReelComposer=(function(){
       const width=(opts&&opts.width)||1080;
       const height=(opts&&opts.height)||1920;
       const fps=(opts&&opts.fps)||30;
-      const turnMs=(opts&&typeof opts.transitionMs==='number')?opts.transitionMs:TURN_MS;
-      const useTurn=!(opts&&opts.transition==='none')&&turnMs>0;
+      const defaultKind=(opts&&opts.transition)||'page-turn';
+      const defaultMs=(opts&&typeof opts.transitionMs==='number')?opts.transitionMs:null;
+      const risePx=(opts&&typeof opts.risePx==='number')?opts.risePx:RISE_PX;
+
+      // What plays on the way INTO this page, and for how long. A
+      // page's own request wins over the reel-wide default; an
+      // unknown name, or one with no time to run in, is a hard cut.
+      function _transitionFor(p){
+        const kind=(p&&p.transition)||defaultKind;
+        const def=TRANSITIONS[kind];
+        if(!def) return null;
+        let ms=(p&&typeof p.transitionMs==='number')?p.transitionMs
+              :(defaultMs!==null?defaultMs:def.ms);
+        if(!(ms>0)) return null;
+        return {paint:def.paint, durMs:ms, kind:kind};
+      }
 
       const canvas=document.createElement('canvas');
       canvas.width=width; canvas.height=height;
@@ -266,17 +353,17 @@ const ReelComposer=(function(){
       // of a slideshow). It also owns the turn's own progress, read
       // from the same clock the sequencer's timer uses, so the two can
       // never disagree about what should be on screen.
-      let turn=null;   // {from, to, startedAt, durMs}
+      let trans=null;   // {paint, from, to, startedAt, durMs}
       function draw(){
         if(done) return;
-        if(turn){
-          const el=(_nowMs()-turn.startedAt)/turn.durMs;
+        if(trans){
+          const el=(_nowMs()-trans.startedAt)/trans.durMs;
           if(el<1){
-            paintPageTurn(g, turn.from, turn.to, el, width, height);
+            trans.paint(g, trans.from, trans.to, el, width, height, risePx);
             raf=requestAnimationFrame(draw);
             return;
           }
-          turn=null;
+          trans=null;
         }
         g.fillStyle='#000'; g.fillRect(0,0,width,height);
         if(currentBitmap){ try{ g.drawImage(currentBitmap,0,0,width,height); }catch(e){} }
@@ -298,7 +385,7 @@ const ReelComposer=(function(){
             src.start();
           }catch(e){}
         }
-        setTimeout(nextPage, Math.max(MIN_PAGE_HOLD_MS, p.holdMs||3000));
+        setTimeout(nextPage, Math.max(MIN_FRAME_MS, p.holdMs||3000));
       }
       function nextPage(){
         if(done) return;
@@ -308,10 +395,12 @@ const ReelComposer=(function(){
         }
         const p=pages[i++]||{};
         const prev=currentBitmap;
-        // The first page simply appears; every page after it turns in.
-        if(useTurn&&prev&&p.bitmap){
-          turn={ from:prev, to:p.bitmap, startedAt:_nowMs(), durMs:turnMs };
-          setTimeout(function(){ settlePage(p); }, turnMs);
+        const tr=p.bitmap?_transitionFor(p):null;
+        // A wash can start from nothing — that is how page one rises
+        // out of black. Everything else needs a frame to come from.
+        if(tr&&(prev||tr.paint===paintWash)){
+          trans={ paint:tr.paint, from:prev, to:p.bitmap, startedAt:_nowMs(), durMs:tr.durMs };
+          setTimeout(function(){ settlePage(p); }, tr.durMs);
           return;
         }
         settlePage(p);
@@ -323,7 +412,13 @@ const ReelComposer=(function(){
     });
   }
 
-  const api={ isSupported:isSupported, decodeAudio:decodeAudio, compose:compose, paintPageTurn:paintPageTurn };
+  const api={
+    isSupported:isSupported, decodeAudio:decodeAudio, compose:compose,
+    paintPageTurn:paintPageTurn, paintWash:paintWash, paintRise:paintRise,
+    // Timings, exposed so the reveal can reason about total runtime
+    // and so verification can drive a painter without guessing.
+    TURN_MS:TURN_MS, WASH_MS:WASH_MS, RISE_MS:RISE_MS, DRAW_MS:DRAW_MS, RISE_PX:RISE_PX
+  };
   try{ window.ReelComposer=api; }catch(e){}
   return api;
 })();

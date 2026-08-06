@@ -565,28 +565,42 @@ const StoryDestinations=(function(){
   // — it treats a payload as opaque and hands the array straight to
   // finish().
   //
-  // SPRINT STATUS — M1 shipped the plumbing, M2 the real stages, and
-  // M3 (here) renders each stage off-screen so every one of them has
-  // its own bitmap. The reveal now genuinely builds up on screen.
-  // M4 animates the arrivals (crossfade, rise, settle); the payload
-  // shape does not change again.
+  // SPRINT STATUS — M1 shipped the plumbing, M2 the real stages, M3
+  // rendered each stage off-screen so every one of them has its own
+  // bitmap, and M4 (here) gives each frame the animation it arrives
+  // with. The payload shape does not change again: a frame simply
+  // carries a `transition` alongside its bitmap and hold.
   //
   // Audio is deliberately absent until M7 (narration → ambient →
   // silence). ReelComposer feeds its own silent track for the whole
   // recording, so a soundless reveal composes correctly today.
   const MAGIC_FPS=30;
-  // `transition:'none'` deliberately, and only until M4. ReelComposer
-  // turns between every consecutive entry in the list it is handed —
-  // which was right in M1, when a page contributed exactly one frame,
-  // and is wrong the moment a page contributes several: a page-turn
-  // between "Blank" and "The World" of the SAME page reads as flipping
-  // to a new page when the page is actually assembling in front of
-  // you. M4 ("New transition mode") is where the reveal gets its real
-  // language — crossfade and rise within a page, a turn between pages.
-  // Until then a hard cut is the honest cut.
+  // The reel-wide default, which in practice only ever applies to the
+  // very first frame of the story: every frame this destination emits
+  // carries its own transition, and a page's own request wins. Kept as
+  // `page-turn` so a frame that somehow arrives untagged still reads
+  // as "a new page", which is the safe reading.
   const MAGIC_FORMATS=[
-    {id:'vertical', label:'Magic Video', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'none'}
+    {id:'vertical', label:'Magic Video', description:'1080 × 1920 · Vertical video', outW:1080, outH:1920, mode:'contain', transition:'page-turn'}
   ];
+
+  // The roadmap's animation language (M4), in one place:
+  //
+  //   Background → wash in      the blank page arriving
+  //   Objects    → fade + rise  the World, the picture, decorations
+  //   Text       → draw         one word group at a time
+  //   Final page → pause        the finished frame's own long hold
+  //
+  // Between PAGES it stays a page-turn, because that is genuinely what
+  // is happening. Within a page nothing turns: the page is assembling
+  // in front of you, so the arrivals crossfade and lift instead.
+  //
+  // The very first frame of the story washes up out of black rather
+  // than turning, because there is no page behind it to turn away.
+  function _magicTransition(stage, frameIndex, pageIndex){
+    if(frameIndex===0) return (pageIndex===0) ? 'wash' : 'page-turn';
+    return (stage && stage.kind==='text') ? 'draw' : 'rise';
+  }
   const MAGIC={
     id:'magic',
     label:'Magic Creation',
@@ -657,7 +671,13 @@ const StoryDestinations=(function(){
           off.__magicOwned=true;
           bitmap=off;
         }
-        frames.push({ bitmap:bitmap, holdMs:st.holdMs });
+        frames.push({
+          bitmap:bitmap,
+          holdMs:st.holdMs,
+          // frames.length, not i: a stage without a slide is skipped
+          // above, so the stage index and the frame index can drift.
+          transition:_magicTransition(st, frames.length, ctx.index)
+        });
       }
       if(frames.length===0) return null;
       return { frames:frames };
@@ -673,7 +693,16 @@ const StoryDestinations=(function(){
         for(let j=0;j<p.frames.length;j++){
           const f=p.frames[j];
           if(!f||!f.bitmap) continue;
-          pages.push({ bitmap:f.bitmap, narrationBuffer:null, holdMs:f.holdMs });
+          // The per-frame transition is what makes the whole reveal
+          // read correctly: ReelComposer applies a page's own request
+          // over the reel-wide default, so one reel turns between
+          // pages and washes, rises or draws within them.
+          pages.push({
+            bitmap:f.bitmap,
+            narrationBuffer:null,
+            holdMs:f.holdMs,
+            transition:f.transition||null
+          });
         }
       }
       if(pages.length===0) return null;
