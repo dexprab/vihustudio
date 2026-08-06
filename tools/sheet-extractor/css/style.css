@@ -101,9 +101,13 @@ body {
     flex-wrap: wrap;
 }
 
+/* The frame is a positioning context for the crop overlay, and its
+   overflow:hidden is what lets that overlay dim everything around the
+   selection with a single huge box-shadow rather than four filler divs. */
 .se-preview-frame {
+    position: relative;
     flex: 0 0 auto;
-    max-width: 260px;
+    max-width: 360px;
     border: 1px solid var(--se-border);
     border-radius: var(--se-radius);
     overflow: hidden;
@@ -113,14 +117,42 @@ body {
         linear-gradient(45deg, transparent 75%, #e9e6de 75%) -8px 0/16px 16px,
         linear-gradient(-45deg, transparent 75%, #e9e6de 75%) -8px 0/16px 16px,
         #fff;
+    cursor: crosshair;
+    touch-action: none;      /* a crop drag must not also scroll the page */
+    user-select: none;
 }
 
 .se-preview-frame img {
     display: block;
-    max-width: 260px;
-    max-height: 260px;
+    max-width: 360px;
+    max-height: 360px;
     width: auto;
     height: auto;
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.se-crop-box {
+    position: absolute;
+    border: 1.5px solid var(--se-accent);
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
+    pointer-events: none;
+}
+
+.se-crop-box[hidden] { display: none; }
+
+.se-crop-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    max-width: 360px;
+}
+
+.se-crop-status {
+    font-size: 11.5px;
+    color: var(--se-muted);
 }
 
 .se-preview-meta {
@@ -136,11 +168,44 @@ body {
 
 /* --- Controls --- */
 
+.se-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 8px 18px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    background: var(--se-bg);
+    border: 1px solid var(--se-border);
+    border-radius: var(--se-radius);
+}
+
+.se-mode-label {
+    font-weight: 600;
+    font-size: 12.5px;
+}
+
+.se-mode-choice {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--se-muted);
+    cursor: pointer;
+}
+
+.se-mode-choice strong { color: var(--se-text); }
+.se-mode-choice input { margin: 0; }
+
 .se-controls-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 16px 20px;
 }
+
+/* Each mode shows only the fields that actually do something in it. */
+.se-controls-grid[data-mode="sheet"] .se-field[data-only="scan"] { display: none; }
+.se-controls-grid[data-mode="scan"] .se-field[data-only="sheet"] { display: none; }
 
 .se-field label {
     display: block;
@@ -203,6 +268,14 @@ body {
 
 .se-btn:hover { border-color: var(--se-accent); }
 .se-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.se-btn-sm {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.se-btn-sm[hidden] { display: none; }
 
 .se-btn-primary {
     background: var(--se-accent);
@@ -291,6 +364,61 @@ body {
 
 .se-compress-summary.se-compress-busy::before {
     content: "⏳ ";
+}
+
+/* --- Traced-ink mask preview (Scan mode only) ---
+   Deliberately shaped like .se-compress-row above it, so the two diagnostic
+   panels above the results grid read as one family. */
+
+.se-mask-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    background: var(--se-bg);
+    border: 1px solid var(--se-border);
+    border-radius: var(--se-radius);
+}
+
+.se-mask-row[hidden] { display: none; }
+
+/* The mask is drawn black-on-white, so this frame stays white in both
+   colour schemes rather than inheriting the panel background. */
+.se-mask-frame {
+    flex: 0 0 auto;
+    max-width: 260px;
+    border: 1px solid var(--se-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    line-height: 0;
+}
+
+.se-mask-frame img {
+    display: block;
+    max-width: 260px;
+    max-height: 260px;
+    width: auto;
+    height: auto;
+}
+
+.se-mask-note {
+    flex: 1 1 240px;
+}
+
+.se-mask-note strong {
+    display: block;
+    font-size: 12.5px;
+    margin-bottom: 4px;
+}
+
+.se-mask-note .se-field-help {
+    display: block;
+    font-weight: 400;
+    color: var(--se-muted);
+    font-size: 11.5px;
 }
 
 .se-results-grid {

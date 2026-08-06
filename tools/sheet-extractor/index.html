@@ -10,40 +10,93 @@
 <body>
     <!-- Sheet Extractor — a developer/creator utility, deliberately NOT a
          Builder or Studio feature: no product styling, no Creation Flow,
-         no Workspace. Takes a real reference image (a moodboard, sprite
-         sheet, or a photographed/scanned flat-lay of stickers/objects) and
-         cuts each visually distinct object into its own transparent PNG,
-         using real pixels from the source — not illustration. See
-         README.md for how it works and what it was verified against. -->
+         no Workspace. Takes a real reference image and cuts each visually
+         distinct object into its own transparent PNG.
+
+         Two modes, because the two jobs genuinely want opposite endings:
+           * Sheet — a moodboard/sprite sheet/flat-lay of stickers. Keeps the
+             real source pixels, so the cutout IS the original object.
+           * Scan — a photographed page of pencil/pen line art. Traces the
+             shape by LOCAL contrast (a phone photo's lighting gradient
+             defeats any single global threshold) and re-renders it as solid
+             ink at a colour you choose, with anti-aliasing generated fresh.
+             Keeping the original pixels is exactly what makes a photographed
+             pencil line come out blurred, thin, or — pushed harder — too
+             black. See README.md for the full, verified account. -->
     <div id="se-root">
         <header class="se-header">
             <h1>🖼️ Sheet Extractor</h1>
-            <p>Upload a flat-lay reference image — a moodboard, sprite sheet, or a photographed/scanned sheet of stickers — and cut out every visually distinct object into its own real, transparent PNG.</p>
+            <p>Cut every distinct object out of a reference image into its own real, transparent PNG. Use <strong>Sheet</strong> for a moodboard or sticker flat-lay, or <strong>Scan</strong> for a photographed page of line art.</p>
         </header>
 
         <section class="se-section">
             <h2>1. Upload a reference image</h2>
             <div class="se-dropzone" id="se-dropzone">
                 <p><strong>Click to choose a file</strong>, or drag and drop it here.</p>
-                <p>PNG or JPEG. Works best on a clean, roughly-uniform background with real gaps between objects.</p>
+                <p>PNG or JPEG. Sheet mode wants a clean, roughly-uniform background with real gaps between objects. Scan mode wants a photo of a drawn page.</p>
                 <input type="file" id="se-file-input" accept="image/*">
             </div>
             <div class="se-preview-row" id="se-preview-row" hidden>
-                <div class="se-preview-frame"><img id="se-preview-img" alt="Uploaded reference sheet"></div>
+                <div>
+                    <div class="se-preview-frame" id="se-preview-frame">
+                        <img id="se-preview-img" alt="Uploaded reference sheet">
+                        <div class="se-crop-box" id="se-crop-box" hidden></div>
+                    </div>
+                    <div class="se-crop-row">
+                        <span class="se-crop-status" id="se-crop-status">Drag on the picture to use only part of it.</span>
+                        <button class="se-btn se-btn-sm" id="se-crop-clear" hidden>Clear crop</button>
+                    </div>
+                </div>
                 <dl class="se-preview-meta" id="se-preview-meta"></dl>
             </div>
         </section>
 
         <section class="se-section">
-            <h2>2. Options <small>defaults work well for most sheets — only adjust if results look off</small></h2>
-            <div class="se-controls-grid">
-                <div class="se-field">
+            <h2>2. Options <small>defaults work well — only adjust if results look off</small></h2>
+            <div class="se-mode-row">
+                <span class="se-mode-label">Mode</span>
+                <label class="se-mode-choice"><input type="radio" name="se-mode" value="sheet" checked> <span><strong>Sheet</strong> — keep the real pixels (moodboard, stickers, sprite sheet)</span></label>
+                <label class="se-mode-choice"><input type="radio" name="se-mode" value="scan"> <span><strong>Scan</strong> — trace line art and redraw it as solid ink (photographed drawing)</span></label>
+            </div>
+            <div class="se-controls-grid" id="se-controls-grid" data-mode="sheet">
+                <div class="se-field" data-only="sheet">
                     <label for="se-threshold">Color Threshold</label>
                     <div class="se-field-inline">
                         <input type="range" id="se-threshold" min="4" max="80" step="1" value="24">
                         <output id="se-threshold-out">24</output>
                     </div>
                     <span class="se-field-help">How different a pixel must be from the background to count as part of an object. Lower = catches subtle/near-background colors; higher = more tolerant of background texture.</span>
+                </div>
+                <div class="se-field" data-only="scan">
+                    <label for="se-inkdelta">Ink Sensitivity</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-inkdelta" min="4" max="90" step="1" value="18">
+                        <output id="se-inkdelta-out">18</output>
+                    </div>
+                    <span class="se-field-help">How much darker than the paper around it a pixel must be to count as ink. Lower catches faint pencil; raise it to drop bleed-through from the previous page and paper texture.</span>
+                </div>
+                <div class="se-field" data-only="scan">
+                    <label for="se-inkblur">Paper Radius</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-inkblur" min="0.005" max="0.10" step="0.005" value="0.03">
+                        <output id="se-inkblur-out">3%</output>
+                    </div>
+                    <span class="se-field-help">How far out to look when working out what "the paper right here" is. This is what lets one setting span a lit corner and a shaded one. Too small and thick strokes hollow out; too large and it behaves like a global threshold again.</span>
+                </div>
+                <div class="se-field" data-only="scan">
+                    <label for="se-inkweight">Ink Weight</label>
+                    <div class="se-field-inline">
+                        <input type="range" id="se-inkweight" min="0" max="4" step="1" value="1">
+                        <output id="se-inkweight-out">1</output>
+                    </div>
+                    <span class="se-field-help">Thickens the traced line before it's drawn. A pencil stroke photographed at an angle is often only a pixel or two of real darkness, which reads as thin and broken once redrawn.</span>
+                </div>
+                <div class="se-field" data-only="scan">
+                    <label for="se-inkcolor">Ink Colour</label>
+                    <div class="se-field-inline">
+                        <input type="color" id="se-inkcolor" value="#000000">
+                        <span class="se-field-help" style="margin-top:0;">Every cutout is drawn in this colour. None of the photo's own greys survive, so this is free to be anything.</span>
+                    </div>
                 </div>
                 <div class="se-field">
                     <label for="se-pad">Padding</label>
@@ -64,17 +117,17 @@
                 <div class="se-field">
                     <label for="se-dilate">Gap Bridging</label>
                     <div class="se-field-inline">
-                        <input type="range" id="se-dilate" min="0" max="8" step="1" value="2">
+                        <input type="range" id="se-dilate" min="0" max="24" step="1" value="2">
                         <output id="se-dilate-out">2</output>
                     </div>
-                    <span class="se-field-help">Bridges tiny anti-aliasing/compression gaps so one object isn't split into pieces. Never affects what's actually cropped.</span>
+                    <span class="se-field-help">Bridges gaps so one object isn't split into pieces. Never affects what's actually cropped. Scan mode wants this much higher — it's what pulls separate pen strokes into one drawing, or letters into one word.</span>
                 </div>
                 <div class="se-field">
                     <label for="se-prefix">Filename Prefix</label>
                     <input type="text" id="se-prefix" value="asset">
                     <span class="se-field-help">Output files are named &lt;prefix&gt;-001.png, -002.png, etc.</span>
                 </div>
-                <div class="se-field">
+                <div class="se-field" data-only="sheet">
                     <label for="se-bg-mode">Background</label>
                     <select id="se-bg-mode" class="se-field-help" style="width:100%;padding:7px 9px;border:1px solid var(--se-border);border-radius:6px;background:#fffdf9;color:var(--se-text);">
                         <option value="auto" selected>Auto-detect (sample the corners)</option>
@@ -108,11 +161,18 @@
                 </div>
                 <div class="se-compress-summary" id="se-compress-summary"></div>
             </div>
+            <div class="se-mask-row" id="se-mask-row" hidden>
+                <div class="se-mask-frame"><img id="se-mask-img" alt="What was traced as ink"></div>
+                <div class="se-mask-note">
+                    <strong>What was traced</strong>
+                    <span class="se-field-help">Black is what counted as ink. If your drawing is broken up, lower Ink Sensitivity or raise Ink Weight; if the paper itself is showing up, raise Ink Sensitivity.</span>
+                </div>
+            </div>
             <div class="se-results-grid" id="se-results-grid"></div>
         </section>
 
         <p class="se-footnote">
-            Color-distance / connected-component segmentation, not semantic object detection — it will merge two objects that visually touch with no gap, and it needs a reasonably clean background. See <a href="README.md">README.md</a> for the full, verified account of what this was tested against and its real, disclosed limitations. Runs entirely in your browser — nothing is uploaded anywhere.
+            Pixel segmentation, not semantic object detection — either mode will merge two objects that visually touch with no gap. Sheet mode also needs a reasonably clean background; Scan mode reads local contrast instead, but does <em>not</em> dewarp a curved or angled page. See <a href="README.md">README.md</a> for the full, verified account of what this was tested against and its real, disclosed limitations. Runs entirely in your browser — nothing is uploaded anywhere.
         </p>
     </div>
 

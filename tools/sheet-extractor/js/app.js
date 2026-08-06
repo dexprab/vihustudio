@@ -4,6 +4,12 @@
 // runs it through extractor.js's validated segmentation pipeline, and
 // shows each cutout with a real transparency-checked thumbnail, an
 // individual download link, and a "download all" ZIP.
+//
+// Two modes, and they want genuinely different defaults: Sheet mode is
+// looking at objects with real gaps between them, Scan mode is looking at
+// pen strokes that need pulling back together. So each mode remembers its
+// own Gap Bridging / Min Object Size / Padding rather than carrying one
+// mode's tuning into the other.
 (function () {
     'use strict';
 
@@ -13,6 +19,23 @@
     var lastPrefix = 'asset';
     var currentCompressLevel = 0;  // index into PngCompressor.LEVELS
     var compressDebounceTimer = null;
+    var currentMode = 'sheet';
+    var sourceSize = null;         // { w, h } natural size of the loaded image
+    var crop = null;               // { x, y, w, h } in SOURCE pixels, or null
+    var maskPreviewUrl = null;
+
+    // The three shared sliders that genuinely want different values per mode.
+    var MODE_DEFAULTS = {
+        sheet: { dilate: 2, minarea: 0.00015, pad: 0.08 },
+        scan:  { dilate: 8, minarea: 0.0004,  pad: 0.10 }
+    };
+    var modeState = {
+        sheet: Object.assign({}, MODE_DEFAULTS.sheet),
+        scan:  Object.assign({}, MODE_DEFAULTS.scan)
+    };
+
+    // A drag shorter than this (in SOURCE pixels) is a click, not a crop.
+    var CROP_MIN_SOURCE_PX = 8;
 
     function $(id) { return document.getElementById(id); }
 
@@ -44,8 +67,26 @@
         els.bgMode = $('se-bg-mode');
         els.bgColor = $('se-bg-color');
 
+        els.controlsGrid = $('se-controls-grid');
+        els.inkDelta = $('se-inkdelta');
+        els.inkDeltaOut = $('se-inkdelta-out');
+        els.inkBlur = $('se-inkblur');
+        els.inkBlurOut = $('se-inkblur-out');
+        els.inkWeight = $('se-inkweight');
+        els.inkWeightOut = $('se-inkweight-out');
+        els.inkColor = $('se-inkcolor');
+
+        els.previewFrame = $('se-preview-frame');
+        els.cropBox = $('se-crop-box');
+        els.cropStatus = $('se-crop-status');
+        els.cropClear = $('se-crop-clear');
+        els.maskRow = $('se-mask-row');
+        els.maskImg = $('se-mask-img');
+
         wireDropzone();
         wireSliders();
+        wireModeSelector();
+        wireCrop();
         els.extractBtn.addEventListener('click', runExtraction);
         els.downloadAllBtn.addEventListener('click', downloadAllAsZip);
         els.bgMode.addEventListener('change', function () {
@@ -101,12 +142,158 @@
         bindSlider(els.pad, els.padOut, function (v) { return Math.round(v * 100) + '%'; });
         bindSlider(els.minarea, els.minareaOut, function (v) { return (v * 100).toFixed(3) + '%'; });
         bindSlider(els.dilate, els.dilateOut, function (v) { return v; });
+        bindSlider(els.inkDelta, els.inkDeltaOut, function (v) { return v; });
+        bindSlider(els.inkBlur, els.inkBlurOut, function (v) { return Math.round(v * 100) + '%'; });
+        bindSlider(els.inkWeight, els.inkWeightOut, function (v) { return v; });
     }
 
     function bindSlider(input, output, formatter) {
         function update() { output.textContent = formatter(parseFloat(input.value)); }
         input.addEventListener('input', update);
         update();
+    }
+
+    // --- Mode ------------------------------------------------------------
+
+    function wireModeSelector() {
+        var radios = document.querySelectorAll('input[name="se-mode"]');
+        Array.prototype.forEach.call(radios, function (radio) {
+            radio.addEventListener('change', function () {
+                if (!radio.checked) return;
+                switchMode(radio.value);
+            });
+        });
+        applyModeState(currentMode);
+    }
+
+    // Saves whatever the outgoing mode was last set to, then restores the
+    // incoming mode's own remembered values. The CSS does the showing and
+    // hiding off `data-mode`, so this only has to move numbers.
+    function switchMode(next) {
+        if (next === currentMode) return;
+        rememberModeState(currentMode);
+        currentMode = next;
+        els.controlsGrid.setAttribute('data-mode', next);
+        applyModeState(next);
+    }
+
+    function rememberModeState(mode) {
+        var s = modeState[mode];
+        if (!s) return;
+        s.dilate = parseInt(els.dilate.value, 10);
+        s.minarea = parseFloat(els.minarea.value);
+        s.pad = parseFloat(els.pad.value);
+    }
+
+    function applyModeState(mode) {
+        var s = modeState[mode];
+        if (!s) return;
+        els.dilate.value = String(s.dilate);
+        els.minarea.value = String(s.minarea);
+        els.pad.value = String(s.pad);
+        // The outputs are bound to 'input', which a programmatic value set
+        // does not fire -- so nudge each one directly.
+        els.dilate.dispatchEvent(new Event('input'));
+        els.minarea.dispatchEvent(new Event('input'));
+        els.pad.dispatchEvent(new Event('input'));
+    }
+
+    // --- Crop ------------------------------------------------------------
+
+    // Maps a pointer event to the source image's own pixel space. The
+    // preview <img> is laid out to fit its frame, so the display-to-source
+    // ratio is whatever the browser actually settled on -- read live rather
+    // than assumed, since it changes with the window.
+    function eventToSource(e) {
+        var rect = els.previewImg.getBoundingClientRect();
+        if (!rect.width || !rect.height || !sourceSize) return null;
+        var sx = sourceSize.w / rect.width;
+        var sy = sourceSize.h / rect.height;
+        var x = (e.clientX - rect.left) * sx;
+        var y = (e.clientY - rect.top) * sy;
+        return {
+            x: Math.max(0, Math.min(sourceSize.w, x)),
+            y: Math.max(0, Math.min(sourceSize.h, y))
+        };
+    }
+
+    function wireCrop() {
+        var dragStart = null;
+
+        els.previewFrame.addEventListener('pointerdown', function (e) {
+            if (!sourceSize) return;
+            e.preventDefault();
+            dragStart = eventToSource(e);
+            if (!dragStart) return;
+            try { els.previewFrame.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety, not a requirement */ }
+        });
+
+        els.previewFrame.addEventListener('pointermove', function (e) {
+            if (!dragStart) return;
+            var now = eventToSource(e);
+            if (!now) return;
+            drawCropBox(rectFrom(dragStart, now));
+        });
+
+        function finish(e) {
+            if (!dragStart) return;
+            var now = eventToSource(e) || dragStart;
+            var r = rectFrom(dragStart, now);
+            dragStart = null;
+            // A tap (or a drag so small it was almost certainly a tap)
+            // clears the crop rather than setting a useless sliver.
+            if (r.w < CROP_MIN_SOURCE_PX || r.h < CROP_MIN_SOURCE_PX) {
+                setCrop(null);
+                return;
+            }
+            setCrop(r);
+        }
+        els.previewFrame.addEventListener('pointerup', finish);
+        els.previewFrame.addEventListener('pointercancel', finish);
+        els.previewFrame.addEventListener('lostpointercapture', finish);
+
+        els.cropClear.addEventListener('click', function () { setCrop(null); });
+    }
+
+    function rectFrom(a, b) {
+        var x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+        return {
+            x: Math.round(x),
+            y: Math.round(y),
+            w: Math.round(Math.abs(b.x - a.x)),
+            h: Math.round(Math.abs(b.y - a.y))
+        };
+    }
+
+    function setCrop(r) {
+        crop = r;
+        drawCropBox(r);
+        if (r) {
+            els.cropStatus.textContent = 'Using ' + r.w + ' × ' + r.h + 'px of the picture.';
+            els.cropClear.hidden = false;
+        } else {
+            els.cropStatus.textContent = 'Drag on the picture to use only part of it.';
+            els.cropClear.hidden = true;
+        }
+    }
+
+    // Positions the overlay in the DISPLAYED image's own coordinates, which
+    // is why it is drawn from the source rect rather than from the raw
+    // pointer positions -- the two agree, and only one of them survives a
+    // window resize.
+    function drawCropBox(r) {
+        if (!r || !sourceSize) { els.cropBox.hidden = true; return; }
+        var imgRect = els.previewImg.getBoundingClientRect();
+        var frameRect = els.previewFrame.getBoundingClientRect();
+        var kx = imgRect.width / sourceSize.w;
+        var ky = imgRect.height / sourceSize.h;
+        var offX = imgRect.left - frameRect.left;
+        var offY = imgRect.top - frameRect.top;
+        els.cropBox.style.left = (offX + r.x * kx) + 'px';
+        els.cropBox.style.top = (offY + r.y * ky) + 'px';
+        els.cropBox.style.width = (r.w * kx) + 'px';
+        els.cropBox.style.height = (r.h * ky) + 'px';
+        els.cropBox.hidden = false;
     }
 
     function loadFile(file) {
@@ -121,6 +308,8 @@
 
         var img = new Image();
         img.onload = function () {
+            sourceSize = { w: img.naturalWidth, h: img.naturalHeight };
+            setCrop(null);
             els.previewImg.src = currentObjectUrl;
             els.previewRow.hidden = false;
             els.previewMeta.innerHTML =
@@ -143,12 +332,20 @@
         clearResults();
 
         var opts = {
+            mode: currentMode,
             threshold: parseFloat(els.threshold.value),
             padFrac: parseFloat(els.pad.value),
             minAreaFrac: parseFloat(els.minarea.value),
             dilateRadius: parseInt(els.dilate.value, 10)
         };
-        if (els.bgMode.value === 'manual') {
+        if (crop) opts.crop = crop;
+        if (currentMode === 'scan') {
+            opts.inkDelta = parseFloat(els.inkDelta.value);
+            opts.inkBlurFrac = parseFloat(els.inkBlur.value);
+            opts.inkWeight = parseInt(els.inkWeight.value, 10);
+            opts.inkColor = hexToRgb(els.inkColor.value) || [0, 0, 0];
+            opts.wantMaskPreview = true;
+        } else if (els.bgMode.value === 'manual') {
             opts.bg = hexToRgb(els.bgColor.value);
         }
 
@@ -156,7 +353,16 @@
             currentResults = result;
             els.extractBtn.disabled = false;
             if (!result.items.length) {
-                showStatus('No objects were found. Try lowering the Color Threshold, or check that the background is reasonably clean/uniform.', true);
+                showStatus(
+                    currentMode === 'scan'
+                        ? 'Nothing was traced. Try lowering Ink Sensitivity, or raising Ink Weight if the drawing is faint.'
+                        : 'No objects were found. Try lowering the Color Threshold, or check that the background is reasonably clean/uniform.',
+                    true
+                );
+                // Finding nothing is exactly when seeing what WAS traced
+                // matters most, so the mask panel still opens.
+                els.resultsHeader.textContent = 'nothing found';
+                showMaskPreview(result.maskPreviewUrl);
                 return;
             }
             var skipped = result.componentCountBeforeFilter - result.items.length;
@@ -172,8 +378,21 @@
         });
     }
 
+    // Shows the traced-ink mask (scan mode only -- sheet mode passes no
+    // preview, so this hides the panel). Opens the results section itself,
+    // because "nothing was found" is exactly when this is worth seeing.
+    function showMaskPreview(url) {
+        if (maskPreviewUrl) { URL.revokeObjectURL(maskPreviewUrl); maskPreviewUrl = null; }
+        if (!url) { els.maskRow.hidden = true; els.maskImg.removeAttribute('src'); return; }
+        maskPreviewUrl = url;
+        els.maskImg.src = url;
+        els.maskRow.hidden = false;
+        els.resultsSection.hidden = false;
+    }
+
     function renderResults(result) {
         var prefix = (els.prefix.value || 'asset').trim() || 'asset';
+        showMaskPreview(result.maskPreviewUrl);
         els.resultsGrid.innerHTML = '';
         result.items.forEach(function (item) {
             var name = prefix + '-' + String(item.index + 1).padStart(3, '0') + '.png';
@@ -313,6 +532,7 @@
         els.resultsGrid.innerHTML = '';
         els.resultsSection.hidden = true;
         els.compressSummary.textContent = '';
+        showMaskPreview(null);
     }
 
     function downloadAllAsZip() {
