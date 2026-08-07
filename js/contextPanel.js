@@ -2490,18 +2490,29 @@ const ContextPanel=(function(){
       onDone(typeof ref==='string' && ref.indexOf('vihu-asset:')===0 ? ref : null);
     }).catch(function(){ onDone(null); });
   }
+  // Both page strips show a 🔊 badge on a page carrying narration, so
+  // setting or clearing one has to repaint them. host.markDirty() only
+  // flags the project dirty — it does not re-render — and PageRuntime.notify()
+  // would be wrong here: it calls ContextPanel.refresh(), which would rebuild
+  // the Voice panel out from under the flow the child is in.
+  function _refreshPageStrips(){
+    try{ if(typeof window.renderList==='function') window.renderList(); }catch(e){}
+    try{ if(typeof window.renderTimeline==='function') window.renderTimeline(); }catch(e){}
+  }
   function _setNarration(ref,durationMs){
     const slide=_currentSlide();
     if(!slide) return;
     if(!slide.metadata) slide.metadata={};
     slide.metadata.narration={ref:ref, durationMs:durationMs||0};
     if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+    _refreshPageStrips();
   }
   function _removeNarration(){
     const slide=_currentSlide();
     if(slide && slide.metadata && slide.metadata.narration){
       delete slide.metadata.narration;
       if(typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      _refreshPageStrips();
     }
   }
   function _playNarration(statusEl){

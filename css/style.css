@@ -1040,6 +1040,31 @@ button:active{
 .thumb:hover{ background:rgba(255,203,69,0.10); }
 .thumb.selected{ background:rgba(255,203,69,0.14); box-shadow:0 0 0 2px var(--gold); }
 
+/* A page carrying voice narration shows a small badge on its own card in
+   both page strips, so a child can see which pages have their voice on
+   them without opening the Voice panel on each one. pointer-events:none
+   is load-bearing rather than tidy: the sidebar thumb is itself the click
+   target (showSlide) AND the drag handle for reorder, so a badge that
+   could receive a pointer would eat both. */
+.thumb-voice-badge,
+.timeline-voice-badge{
+  position:absolute;
+  font-size:11px;
+  line-height:1;
+  padding:3px 5px;
+  border-radius:999px;
+  background:rgba(255,203,69,0.92);
+  box-shadow:0 1px 3px rgba(0,0,0,0.22);
+  pointer-events:none;
+  z-index:6;
+}
+.thumb-voice-badge{ left:52px; bottom:6px; }
+.timeline-voice-badge{ right:3px; bottom:3px; }
+/* .timeline-thumb has overflow:hidden and no positioning of its own; it
+   has no other positioned children, so establishing a containing block
+   here changes nothing else. The badge is inset so nothing clips. */
+.timeline-thumb{ position:relative; }
+
 /* Creator UI Convergence Sprint — the Object Strip (new). A calm,
    horizontally scrolling readout of every object on the current page —
    see js/objectStrip.js for the population logic and the child-facing

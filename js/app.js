@@ -572,6 +572,13 @@ document.querySelectorAll('[data-section] [data-collapsible-toggle]').forEach(bt
   });
 });
 
+// Voice MVP Ship 1 stores per-page narration at slide.metadata.narration
+// = {ref, durationMs}. Both page strips read it through this one predicate
+// so they can never disagree about which pages carry a clip.
+function _hasNarration(s){
+  return !!(s && s.metadata && s.metadata.narration && s.metadata.narration.ref);
+}
+
 window.renderList=function(){
  const list=document.getElementById('slideList');
  list.innerHTML='';
@@ -608,6 +615,20 @@ window.renderList=function(){
    const lbl=document.createElement('div'); lbl.className='page-label';
    lbl.textContent=(s && typeof s.name==='string' && s.name) ? s.name : ('Page '+(i+1));
    d.appendChild(lbl);
+
+   // A page carrying narration says so on its own card, so a child can see
+   // at a glance which pages have their voice on them without opening the
+   // Voice panel on each one. Deliberately DOM chrome over the thumb rather
+   // than something drawn onto the canvas: Creator Governing Rule #5 means
+   // anything on the canvas also lands in the published book/reel/strip,
+   // and narration is a page property, not a rendered one.
+   if(_hasNarration(s)){
+     const vb=document.createElement('div');
+     vb.className='thumb-voice-badge';
+     vb.textContent='🔊';
+     vb.title='This page has your voice on it';
+     d.appendChild(vb);
+   }
 
    d.onclick=()=>showSlide(i);
    if(i===AppState.currentSlide) d.classList.add('selected');
@@ -756,6 +777,15 @@ window.renderTimeline=function(){
    }else{
      const ph=document.createElement('div'); ph.className='placeholder'; ph.textContent='Page '+(i+1);
      t.appendChild(ph);
+   }
+
+   // Same hint as the sidebar strip — see renderList() above.
+   if(_hasNarration(s)){
+     const vb=document.createElement('div');
+     vb.className='timeline-voice-badge';
+     vb.textContent='🔊';
+     vb.title='This page has your voice on it';
+     t.appendChild(vb);
    }
 
    if(i===AppState.currentSlide) t.classList.add('active');
