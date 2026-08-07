@@ -674,9 +674,15 @@ const StoryDestinations=(function(){
   // with every other pixel on the page held perfectly still. 'rise'
   // remains the honest fallback for a frame that brought several
   // things at once, or one we could not locate.
-  function _magicTransition(stage, frameIndex, pageIndex, hasRect){
+  //
+  // One object is deliberately exempt: a full-bleed backdrop. Its rect
+  // IS the page, so 'arrival' would scale and lift the entire frame —
+  // which is not an object arriving, it is the camera moving. The
+  // table above already says a background washes in, so it does.
+  function _magicTransition(stage, frameIndex, pageIndex, hasRect, isFullBleed){
     if(frameIndex===0) return (pageIndex===0) ? 'wash' : 'page-turn';
     if(stage && stage.kind==='text') return 'draw';
+    if(isFullBleed) return 'wash';
     return hasRect ? 'arrival' : 'rise';
   }
 
@@ -708,6 +714,20 @@ const StoryDestinations=(function(){
     if(!hit||!(hit.bw>0)||!(hit.bh>0)) return null;
     const m=_magicFrameMap(slide, canvas);
     return { x:m.x+hit.bx*m.s, y:m.y+hit.by*m.s, w:hit.bw*m.s, h:hit.bh*m.s };
+  }
+
+  // Does this rect cover (near enough) the whole PAGE? Measured against
+  // the page's own mapped extents rather than the canvas, because a 4:5
+  // page inside a 9:16 frame is letterboxed — a genuinely full-bleed
+  // layer fills the page and leaves the bars alone, and comparing it to
+  // the canvas would say "no" for exactly the case this is looking for.
+  function _magicRectIsFullBleed(rect, slide, canvas){
+    if(!rect) return false;
+    const m=_magicFrameMap(slide, canvas);
+    const pageW=canvas.width-2*m.x;
+    const pageH=canvas.height-2*m.y;
+    if(!(pageW>0)||!(pageH>0)) return false;
+    return rect.w>=pageW*0.9 && rect.h>=pageH*0.9;
   }
 
   function _magicSceneElements(){
@@ -962,13 +982,17 @@ const StoryDestinations=(function(){
           bitmap=off;
         }
         const rect=_magicArrivalRect(st.arrivalId, els, st.slide, canvas);
+        const fullBleed=_magicRectIsFullBleed(rect, st.slide, canvas);
         frames.push({
           bitmap:bitmap,
           holdMs:st.holdMs,
           // frames.length, not i: a stage without a slide is skipped
           // above, so the stage index and the frame index can drift.
-          transition:_magicTransition(st, frames.length, ctx.index, !!rect),
-          arrivalRect:rect
+          transition:_magicTransition(st, frames.length, ctx.index, !!rect, fullBleed),
+          // A full-bleed backdrop washes rather than arrives, so it has
+          // no region to animate — handing paintWash a rect it ignores
+          // would only invite a later reader to think it mattered.
+          arrivalRect:fullBleed?null:rect
         });
       }
       if(frames.length===0) return null;

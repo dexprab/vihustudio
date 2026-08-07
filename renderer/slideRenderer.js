@@ -2427,7 +2427,17 @@ const SlideRenderer=(()=>{
     const pack=(theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
     if(!pack) return null;
     const chosenLayoutId=(s && s.metadata && s.metadata.layout) || null;
-    return pack.filter(function(l){ return !l || !l.scope || l.scope===chosenLayoutId; });
+    const scoped=pack.filter(function(l){ return !l || !l.scope || l.scope===chosenLayoutId; });
+    // ...and a stage part way THROUGH that beat shows only the layers
+    // named so far. Indices are into THIS array — the same scope-
+    // filtered list js/magicReveal.js enumerates — so the two files
+    // never have to agree on a keying scheme. Same marker discipline:
+    // set only by js/magicReveal.js, absent on every ordinary payload.
+    if(s && Array.isArray(s.magicLayerPackShown)){
+      const shown=s.magicLayerPackShown;
+      return scoped.filter(function(l,i){ return shown.indexOf(i)>=0; });
+    }
+    return scoped;
   }
 
   // Real, user-requested "set the background colour as transparent" —
@@ -6759,16 +6769,19 @@ const SlideRenderer=(()=>{
       overrides: cardOverrides,
       pageType: slide.pageType,
       metadata: slide.metadata,
-      // Magic Publish (M2) — two markers a reveal stage sets on its
-      // own CLONE of the finished page (js/magicReveal.js). They exist
+      // Magic Publish (M2) — markers a reveal stage sets on its own
+      // CLONE of the finished page (js/magicReveal.js). They exist
       // because neither strip can be expressed on the slide alone: the
       // World's own Layer Pack lives on the resolved theme, which this
       // function reads from ThemeEngine rather than from the slide, and
       // the "Tap to add your artwork" placeholder is drawn precisely
-      // BECAUSE the picture was stripped. An ordinary slide carries
-      // neither, so both resolve false and every existing render is
-      // byte-identical.
+      // BECAUSE the picture was stripped. `magicLayerPackShown` is the
+      // partial case — a list of indices into the scope-filtered pack,
+      // for a stage part way through the World beat. An ordinary slide
+      // carries none of them, so they resolve false/null and every
+      // existing render is byte-identical.
       magicHideLayerPack: !!slide._magicHideLayerPack,
+      magicLayerPackShown: slide._magicLayerPackShown || null,
       magicSuppressPlaceholders: !!slide._magicSuppressPlaceholders
     };
   }

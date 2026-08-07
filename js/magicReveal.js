@@ -32,9 +32,9 @@
 // is the id that object carries in SlideRenderer's own render tree,
 // so the caller can look up where it landed and animate that region
 // alone rather than crossfading the whole frame. `null` means the
-// frame is not about a single object (the blank page, the World's
-// furniture, a grouped remainder), and the caller falls back to the
-// whole-frame crossfade — which is the honest reading.
+// frame is not about a single object (the blank page, a grouped
+// remainder, a layer with no id of its own), and the caller falls
+// back to the whole-frame crossfade — which is the honest reading.
 //
 // A stage's `slide` may be the caller's own object (the final
 // stage always is) or a clone. This module NEVER mutates the slide
@@ -220,11 +220,12 @@ const MagicReveal=(function(){
     return false;
   }
 
-  // Does the active World actually place any furniture on THIS page?
-  // Mirrors renderer/slideRenderer.js's own _activeLayerPack scope
-  // filter, so the beat only appears when something would genuinely
-  // arrive during it.
-  function _hasWorldFurniture(slide){
+  // The active World's own Layer Pack for THIS page, scope-filtered
+  // exactly the way renderer/slideRenderer.js's _activeLayerPack
+  // builds it — same source, same filter, same order. Keeping the two
+  // in step matters because a partial World stage identifies its
+  // layers by their INDEX into this array (see _worldArrivals).
+  function _worldLayers(slide){
     let theme=null;
     try{
       if(typeof ThemeEngine!=='undefined'){
@@ -233,11 +234,40 @@ const MagicReveal=(function(){
       }
     }catch(e){}
     const pack=(theme && Array.isArray(theme.layerPack)) ? theme.layerPack : null;
-    if(!pack || !pack.length) return false;
+    if(!pack || !pack.length) return [];
     const layoutId=(slide.metadata && slide.metadata.layout) || null;
-    return pack.some(function(l){
-      return l && l.visible!==false && (!l.scope || l.scope===layoutId);
+    return pack.filter(function(l){ return !l || !l.scope || l.scope===layoutId; });
+  }
+
+  // Everything the World beat brings in, in the pack's own order —
+  // which IS paint order, so a full-bleed background arrives first
+  // and the furniture standing on it follows.
+  //
+  // Each arrival carries BOTH keys it needs, because they are not the
+  // same thing: `id` is what the layer carries in SlideRenderer's own
+  // render tree (so the caller can find where it landed), and `index`
+  // is its position in the scope-filtered pack (so a partial stage can
+  // name it without this module and the renderer having to agree on a
+  // keying scheme). An entry with no id of its own still stages
+  // correctly by index; it simply never gets the arrival motion,
+  // exactly as a keyless sticker already doesn't.
+  //
+  // An invisible layer is skipped: it would be a step where nothing
+  // arrives, which this module never produces.
+  function _worldArrivals(slide){
+    const out=[];
+    _worldLayers(slide).forEach(function(l,i){
+      if(!l || l.visible===false) return;
+      out.push({id:(l.id||('#'+i)), index:i});
     });
+    return out;
+  }
+
+  // Does the active World actually place any furniture on THIS page?
+  // One enumeration, so the beat can never appear without arrivals to
+  // fill it, or vice versa.
+  function _hasWorldFurniture(slide){
+    return _worldArrivals(slide).length>0;
   }
 
   // Which beats this page actually has something for, in order.
@@ -359,14 +389,23 @@ const MagicReveal=(function(){
     }
     const artSet=setFor('artwork');
     const decSet=setFor('decorations');
+    const worldSet=setFor('world');
 
-    if(!on.world){
-      // The World's own Layer Pack furniture. Set as a marker rather
-      // than by filtering the theme: the resolved theme is shared
-      // module state inside ThemeEngine, and a Magic stage must never
-      // reach into it. renderer/slideRenderer.js's _activeLayerPack
-      // honours this on the payload and is a no-op without it.
+    // The World's own Layer Pack furniture. Set as markers rather than
+    // by filtering the theme: the resolved theme is shared module state
+    // inside ThemeEngine, and a Magic stage must never reach into it.
+    // renderer/slideRenderer.js's _activeLayerPack honours both and is
+    // a no-op without them.
+    //
+    // A partial stage names its layers by INDEX into the scope-filtered
+    // pack rather than by id, so this module and the renderer never
+    // have to agree on a keying scheme — see _worldArrivals.
+    if(worldSet && worldSet.size===0){
       clone._magicHideLayerPack=true;
+    }else if(worldSet){
+      clone._magicLayerPackShown=_worldArrivals(slide)
+        .filter(function(a){ return worldSet.has(a.id); })
+        .map(function(a){ return a.index; });
     }
 
     _applyArtwork(clone,slide,artSet);
@@ -491,12 +530,13 @@ const MagicReveal=(function(){
   // page. Because GROUP_ORDER puts text last, those word steps are
   // always the tail of the reveal.
   //
-  // The Artwork and Decorations beats stage PER OBJECT: two pictures
-  // are two moments, not one, which is what makes the reveal read as
-  // a page being built rather than a page fading in. The World beat
-  // deliberately stays whole — that is the Theme Author's furniture,
-  // and assembling it piece by piece would be showing off the World
-  // rather than the child's story.
+  // The World, Artwork and Decorations beats all stage PER OBJECT:
+  // two pictures are two moments, not one, which is what makes the
+  // reveal read as a page being built rather than a page fading in.
+  // The World's own furniture stages the same way — the wall arrives,
+  // then the frame that hangs on it — because the page a child sees
+  // was assembled that way too, and a backdrop that snaps in whole
+  // reads as a slide template rather than as a place.
   function revealStages(slide){
     if(!slide) return [];
 
@@ -531,12 +571,13 @@ const MagicReveal=(function(){
 
       const arrivals=(g==='artwork') ? _artworkArrivals(slide)
                    : (g==='decorations') ? _decorationArrivals(slide)
+                   : (g==='world') ? _worldArrivals(slide)
                    : [];
       const steps=_arrivalSteps(arrivals);
 
       if(!steps.length){
-        // The World beat, or a beat whose objects this module cannot
-        // name individually — one stage, exactly as before.
+        // A beat whose objects this module cannot name individually —
+        // one stage, exactly as before.
         stages.push(isLast
           ? {slide:slide,label:FINISHED_LABEL,holdMs:FINISHED_HOLD_MS,kind:g,arrivalId:null}
           : {slide:_stageSlide(slide,on),label:GROUP_LABELS[g],holdMs:STAGE_HOLD_MS,kind:g,arrivalId:null});
@@ -616,7 +657,8 @@ const MagicReveal=(function(){
     // building any clones.
     _activeGroups:_activeGroups,
     _artworkArrivals:_artworkArrivals,
-    _decorationArrivals:_decorationArrivals
+    _decorationArrivals:_decorationArrivals,
+    _worldArrivals:_worldArrivals
   };
   try{ window.MagicReveal=api; }catch(e){}
   return api;
