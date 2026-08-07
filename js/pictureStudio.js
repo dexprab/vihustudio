@@ -85,6 +85,12 @@ const PictureStudio=(function(){
   let _bgStrengthOverride=null;   // null = auto; number = tolerance override
   let _state=Object.assign({},DEFAULT_STATE);
   let _onApply=null, _onCancel=null;
+  // Optional multi-picture handler. A caller that can place several
+  // pictures at once (Add Something → Photo, today) opts in by passing
+  // options.onApplyMany; every existing caller passes only onApply and
+  // is completely unaffected, which is why extraction could be added
+  // without touching any of the eleven open() call sites.
+  let _onApplyMany=null;
   let _drag=null;
   // Redesign — two-view flow (Result / Edit) mirroring the standalone
   // Image Studio tool's own kid-friendly UX. Result View shows on open
@@ -224,7 +230,137 @@ const PictureStudio=(function(){
   let _doodleMediumBtns=null;
   let _doodleSizeBtns=null;
 
+  // ---------- Cut Out Objects / Outline / Colour Fill -----------------
+  // The product owner's own framing: "i like the sheet extractor
+  // implementation. i would like to add it into image studio" — so these
+  // three tools REUSE tools/sheet-extractor's already-shipped, already-
+  // verified engines (window.extractSheet, window.TileEditor) rather than
+  // re-authoring any of the detection, tracing, ink-fill or per-op pixel
+  // maths here. Both modules are loaded by index.html and were confirmed
+  // free of module-level DOM side effects; TileEditor's own modal and its
+  // .se-te-* CSS are deliberately NOT used — only its seven pure ops,
+  // and only the two Image Studio genuinely lacks.
+  //
+  // Five of the seven Sheet Extractor tile tools already exist natively
+  // here and are deliberately not rebuilt (crop → ✂️ Trim Picture, eraser
+  // → ✨ Remove Paper's alpha brush, rotate + flip → 🔄 Turn / Flip, shape
+  // draw → 🎨 Draw's shape mode). Genuinely missing, and added here:
+  // colour OUTLINE and bucket colour FILL — plus EXTRACTION, absent
+  // entirely, which is the headline of the request.
+  let _extractTile=null;
+  let _extractSubPanel=null;
+  let _extractBusy=false;
+  let _extractItems=null;          // [{objectUrl,pixelBuffer,…}] from extractSheet
+  let _extractGrid=null;
+  let _extractStatusEl=null;
+  let _extractRunBtn=null;
+  let _extractUseAllBtn=null;
+  let _extractMode='sheet';        // 'sheet' | 'scan' — detection axis
+  let _extractInk=false;           // render axis: copy pixels vs. redraw as ink
+  let _extractInkColor='#000000';
+  // Detection sensitivity is TWO different knobs on two different scales,
+  // because the two detectors measure genuinely different things: sheet
+  // mode is a Euclidean colour distance from ONE sampled background,
+  // scan mode is a per-pixel delta against the paper's own local mean.
+  // Keeping them separate is what lets a creator flip modes back and
+  // forth without having their tuning silently reinterpreted.
+  let _extractThreshold=24;        // sheet mode
+  let _extractInkDelta=18;         // scan mode
+  let _extractThresholdRow=null;
+  let _extractInkDeltaRow=null;
+  let _extractInkColorRow=null;
+  let _extractModeBtns=null;
+  let _extractInkToggle=null;
+
+  let _outlineTile=null;
+  let _outlineSubPanel=null;
+  let _outlineWidth=6;
+  let _outlineColor='#1D3457';
+  let _outlineApplyBtn=null;
+  let _outlineUndoBtn=null;
+  let _outlineSnapshot=null;       // {data,width,height,doodle} for Undo
+
+  let _fillTile=null;
+  let _fillSubPanel=null;
+  let _fillColor='#F4A300';
+  let _fillTolerance=32;
+  let _fillUndoBtn=null;
+  let _fillSnapshot=null;          // {data,width,height} for Undo
+
   function _cd(){ try{ return window.CardDesigner||null; }catch(e){ return null; } }
+
+  // The two Sheet Extractor engines, read defensively at the point of
+  // use — exactly the `typeof X!=='undefined'` shape every other
+  // cross-module read in Studio uses, so a deployment that somehow ships
+  // without them degrades to the tool simply staying disabled rather
+  // than throwing on open().
+  function _tileEditor(){ try{ return window.TileEditor||null; }catch(e){ return null; } }
+  function _extractFn(){
+    try{ return (typeof window.extractSheet==='function')?window.extractSheet:null; }
+    catch(e){ return null; }
+  }
+
+  // #RRGGBB → [r,g,b]. Both engines take plain RGB triples.
+  function _hexToRgb(hex){
+    const m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));
+    if(!m) return [0,0,0];
+    const n=parseInt(m[1],16);
+    return [(n>>16)&255,(n>>8)&255,n&255];
+  }
+
+  // The one shared tail for any operation that swaps _workingBuffer for a
+  // new one. _syncBgCanvas already resizes _bgRemovedImg when the buffer's
+  // dimensions change (added for crop), so an op that grows the buffer —
+  // TileEditor.outline grows it by `width` on every side — needs no extra
+  // plumbing at all.
+  //
+  // Clearing the cleanup history whenever dimensions change is not
+  // optional: those entries are pixel INDICES into the old buffer, so
+  // replaying one against a differently-sized buffer would corrupt it.
+  // Recentring follows _applyCrop / _trashCropArea's own established
+  // rule — only when the dimensions actually moved.
+  function _swapWorkingBuffer(next){
+    if(!next||!_workingBuffer) return;
+    const resized=(next.width!==_workingBuffer.width||next.height!==_workingBuffer.height);
+    _workingBuffer=next;
+    if(resized){
+      _cleanupHistory=[];
+      _cleanupRedoStack=[];
+      _state.panX=0; _state.panY=0;
+      _state.beforeAfterPct=100;
+      if(_baSlider) _baSlider.value='100';
+    }
+    _syncBgCanvas();
+    _refreshBgControls();
+    _render();
+  }
+
+  function _snapshotBuffer(withDoodle){
+    if(!_workingBuffer) return null;
+    const snap={
+      data:new Uint8ClampedArray(_workingBuffer.data),
+      width:_workingBuffer.width,
+      height:_workingBuffer.height
+    };
+    if(withDoodle) snap.doodle=_cloneDoodleLayer(_state.doodle);
+    return snap;
+  }
+
+  function _restoreSnapshot(snap){
+    if(!snap) return;
+    _workingBuffer={
+      data:new Uint8ClampedArray(snap.data),
+      width:snap.width,
+      height:snap.height
+    };
+    if(snap.doodle) _state.doodle=_cloneDoodleLayer(snap.doodle);
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _state.panX=0; _state.panY=0;
+    _syncBgCanvas();
+    _refreshBgControls();
+    _render();
+  }
 
   // A stroke/outline width in SOURCE-IMAGE pixels for the chosen size
   // key, derived from the picture's own smaller dimension so "Medium"
@@ -670,6 +806,18 @@ const PictureStudio=(function(){
     },{key:'brighten'});
     _tileButtons.brighten=_brightenTile;
     _tileButtons.peek=_buildTile(toolGrid,'👁️','Peek Original',null,{hold:true,key:'peek'});
+    // The three Sheet Extractor tools. Cut Out Objects is the headline —
+    // it finds every separate drawing on one photographed sheet. Outline
+    // and Colour Fill are the two of Sheet Extractor's seven per-tile
+    // tools Image Studio genuinely lacked; the other five already exist
+    // above (crop → Trim Picture, eraser → Remove Paper's alpha brush,
+    // rotate + flip → Turn / Flip, shape draw → Draw).
+    _extractTile=_buildTile(toolGrid,'✂️','Cut Out Objects',function(){ _toggleActiveTool('extract'); },{key:'extract'});
+    _tileButtons.extract=_extractTile;
+    _outlineTile=_buildTile(toolGrid,'🖊','Outline',function(){ _toggleActiveTool('outline'); },{key:'outline'});
+    _tileButtons.outline=_outlineTile;
+    _fillTile=_buildTile(toolGrid,'🪣','Colour Fill',function(){ _toggleActiveTool('fill'); },{key:'fill'});
+    _tileButtons.fill=_fillTile;
     _tileButtons.reset=_buildTile(toolGrid,'🔄','New Picture',function(){ _toggleActiveTool('reset'); },{key:'reset'});
     _editPanel.appendChild(toolGrid);
 
@@ -696,6 +844,9 @@ const PictureStudio=(function(){
     _subPanels.draw=_buildDrawSubPanel();
     _subPanels.flip=_buildFlipSubPanel();
     _subPanels.crop=_buildCropSubPanel();
+    _subPanels.extract=_buildExtractSubPanel();
+    _subPanels.outline=_buildOutlineSubPanel();
+    _subPanels.fill=_buildFillSubPanel();
     _subPanels.reset=_buildResetSubPanel();
     Object.keys(_subPanels).forEach(function(k){ subWrap.appendChild(_subPanels[k]); });
     _editPanel.appendChild(subWrap);
@@ -984,6 +1135,16 @@ const PictureStudio=(function(){
       _brushMode=null;
       _cropRect=null;
       _preCropSnapshot=null;
+      // The Sheet Extractor tools all describe the picture that just went
+      // away: cutouts of it, and undo snapshots sized to it. Restoring one
+      // of those against a fresh picture would be meaningless at best and
+      // wrong-sized at worst, so they go with it.
+      _clearExtractResults();
+      _extractBusy=false;
+      _outlineSnapshot=null;
+      _fillSnapshot=null;
+      if(_extractStatusEl) _extractStatusEl.textContent='';
+      _refreshExtractControls();
       if(_bgStatusEl) _bgStatusEl.textContent='';
       _refreshBgControls();
       if(_brightenTile) _brightenTile.classList.remove('active');
@@ -1048,6 +1209,480 @@ const PictureStudio=(function(){
     return p;
   }
 
+  // -------- Cut Out Objects sub-panel -------------------------------
+  // Runs tools/sheet-extractor's own extractSheet over the picture and
+  // shows every separate object it found. Tapping one swaps it in as the
+  // picture being edited; "Use All" hands every cutout back at once via
+  // the optional onApplyMany contract (see open()).
+  //
+  // The two axes are exposed exactly as Sheet Extractor names them:
+  // detection (Objects on a background / Drawing on paper) decides HOW
+  // things are found, ink fill decides how each one is DRAWN. All four
+  // combinations are valid, which is why they're two controls and not
+  // one mode switch.
+  function _buildExtractSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','extract');
+    _extractSubPanel=p;
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Find every separate thing in your picture.';
+    p.appendChild(hint);
+
+    // Detection axis.
+    const modeRow=document.createElement('div');
+    modeRow.className='picture-studio-subpanel-row';
+    _extractModeBtns={};
+    [['sheet','🎨','Cut-outs'],['scan','✏️','Drawing']].forEach(function(m){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-subpanel-btn';
+      const g=document.createElement('span');
+      g.className='picture-studio-subpanel-btn-glyph';
+      g.textContent=m[1];
+      b.appendChild(g);
+      const t=document.createElement('span');
+      t.textContent=m[2];
+      b.appendChild(t);
+      b.addEventListener('click',function(){
+        _extractMode=m[0];
+        // Ink fill follows the mode's own sensible default the moment the
+        // mode changes — a drawing wants redrawing as clean ink, a sheet
+        // of coloured cut-outs wants its real colours kept. Either can
+        // still be flipped afterwards; this only sets the starting point.
+        _extractInk=(m[0]==='scan');
+        _refreshExtractControls();
+      });
+      _extractModeBtns[m[0]]=b;
+      modeRow.appendChild(b);
+    });
+    p.appendChild(modeRow);
+
+    // Render axis.
+    const inkRow=document.createElement('div');
+    inkRow.className='picture-studio-subpanel-row';
+    _extractInkToggle=document.createElement('button');
+    _extractInkToggle.type='button';
+    _extractInkToggle.className='picture-studio-subpanel-btn';
+    _extractInkToggle.addEventListener('click',function(){
+      _extractInk=!_extractInk;
+      _refreshExtractControls();
+    });
+    inkRow.appendChild(_extractInkToggle);
+    p.appendChild(inkRow);
+
+    // Sheet-mode sensitivity: how far a pixel's colour must sit from the
+    // sampled background before it counts as part of an object.
+    _extractThresholdRow=document.createElement('div');
+    _extractThresholdRow.className='picture-studio-subpanel-row';
+    const thLabel=document.createElement('span');
+    thLabel.className='picture-studio-subpanel-label';
+    thLabel.textContent='Sensitivity';
+    _extractThresholdRow.appendChild(thLabel);
+    const thSlider=document.createElement('input');
+    thSlider.type='range';
+    thSlider.min='6';
+    thSlider.max='90';
+    thSlider.value=String(_extractThreshold);
+    thSlider.className='picture-studio-strength-slider';
+    thSlider.setAttribute('aria-label','How different from the background');
+    thSlider.addEventListener('input',function(){
+      _extractThreshold=parseInt(thSlider.value,10)||24;
+    });
+    _extractThresholdRow.appendChild(thSlider);
+    p.appendChild(_extractThresholdRow);
+
+    // Scan-mode sensitivity: how much darker than the paper right there
+    // a pixel must be. A different scale measuring a different thing, so
+    // deliberately its own control (see the state block's own note).
+    _extractInkDeltaRow=document.createElement('div');
+    _extractInkDeltaRow.className='picture-studio-subpanel-row';
+    const idLabel=document.createElement('span');
+    idLabel.className='picture-studio-subpanel-label';
+    idLabel.textContent='Sensitivity';
+    _extractInkDeltaRow.appendChild(idLabel);
+    const idSlider=document.createElement('input');
+    idSlider.type='range';
+    idSlider.min='4';
+    idSlider.max='60';
+    idSlider.value=String(_extractInkDelta);
+    idSlider.className='picture-studio-strength-slider';
+    idSlider.setAttribute('aria-label','How dark a line must be');
+    idSlider.addEventListener('input',function(){
+      _extractInkDelta=parseInt(idSlider.value,10)||18;
+    });
+    _extractInkDeltaRow.appendChild(idSlider);
+    p.appendChild(_extractInkDeltaRow);
+
+    // Ink colour — only meaningful when ink fill is on.
+    _extractInkColorRow=document.createElement('div');
+    _extractInkColorRow.className='picture-studio-subpanel-row';
+    const icLabel=document.createElement('span');
+    icLabel.className='picture-studio-subpanel-label';
+    icLabel.textContent='Ink colour';
+    _extractInkColorRow.appendChild(icLabel);
+    const icInput=document.createElement('input');
+    icInput.type='color';
+    icInput.value=_extractInkColor;
+    icInput.className='picture-studio-color-input';
+    icInput.setAttribute('aria-label','Ink colour');
+    icInput.addEventListener('input',function(){ _extractInkColor=icInput.value; });
+    _extractInkColorRow.appendChild(icInput);
+    p.appendChild(_extractInkColorRow);
+
+    _extractRunBtn=document.createElement('button');
+    _extractRunBtn.type='button';
+    _extractRunBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
+    _extractRunBtn.textContent='✂️ Find Objects';
+    _extractRunBtn.addEventListener('click',_runExtract);
+    p.appendChild(_extractRunBtn);
+
+    _extractStatusEl=document.createElement('p');
+    _extractStatusEl.className='picture-studio-subpanel-status';
+    p.appendChild(_extractStatusEl);
+
+    _extractGrid=document.createElement('div');
+    _extractGrid.className='picture-studio-extract-grid';
+    p.appendChild(_extractGrid);
+
+    _extractUseAllBtn=document.createElement('button');
+    _extractUseAllBtn.type='button';
+    _extractUseAllBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _extractUseAllBtn.textContent='✓ Use All';
+    _extractUseAllBtn.addEventListener('click',_applyAllExtracted);
+    p.appendChild(_extractUseAllBtn);
+
+    _refreshExtractControls();
+    return p;
+  }
+
+  // -------- Outline sub-panel ---------------------------------------
+  // TileEditor.outline traces the picture's own edge and stamps a band of
+  // colour around it, GROWING the buffer by `width` on every side so the
+  // new outline has somewhere to live. _swapWorkingBuffer handles the
+  // resize (via _syncBgCanvas) with no extra plumbing.
+  function _buildOutlineSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','outline');
+    _outlineSubPanel=p;
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Draw a coloured edge all the way around your picture.';
+    p.appendChild(hint);
+
+    const wRow=document.createElement('div');
+    wRow.className='picture-studio-subpanel-row';
+    const wLabel=document.createElement('span');
+    wLabel.className='picture-studio-subpanel-label';
+    wLabel.textContent='How thick';
+    wRow.appendChild(wLabel);
+    const wSlider=document.createElement('input');
+    wSlider.type='range';
+    wSlider.min='1';
+    wSlider.max='24';
+    wSlider.value=String(_outlineWidth);
+    wSlider.className='picture-studio-strength-slider';
+    wSlider.setAttribute('aria-label','Outline thickness');
+    wSlider.addEventListener('input',function(){
+      _outlineWidth=parseInt(wSlider.value,10)||6;
+    });
+    wRow.appendChild(wSlider);
+    p.appendChild(wRow);
+
+    const cRow=document.createElement('div');
+    cRow.className='picture-studio-subpanel-row';
+    const cLabel=document.createElement('span');
+    cLabel.className='picture-studio-subpanel-label';
+    cLabel.textContent='Colour';
+    cRow.appendChild(cLabel);
+    const cInput=document.createElement('input');
+    cInput.type='color';
+    cInput.value=_outlineColor;
+    cInput.className='picture-studio-color-input';
+    cInput.setAttribute('aria-label','Outline colour');
+    cInput.addEventListener('input',function(){ _outlineColor=cInput.value; });
+    cRow.appendChild(cInput);
+    p.appendChild(cRow);
+
+    _outlineApplyBtn=document.createElement('button');
+    _outlineApplyBtn.type='button';
+    _outlineApplyBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
+    _outlineApplyBtn.textContent='🖊 Add Outline';
+    _outlineApplyBtn.addEventListener('click',_applyOutline);
+    p.appendChild(_outlineApplyBtn);
+
+    _outlineUndoBtn=document.createElement('button');
+    _outlineUndoBtn.type='button';
+    _outlineUndoBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _outlineUndoBtn.textContent='↩ Undo Outline';
+    _outlineUndoBtn.addEventListener('click',function(){
+      if(!_outlineSnapshot) return;
+      _restoreSnapshot(_outlineSnapshot);
+      _outlineSnapshot=null;
+      _refreshBgControls();
+    });
+    p.appendChild(_outlineUndoBtn);
+    return p;
+  }
+
+  // -------- Colour Fill sub-panel -----------------------------------
+  // The tap itself lands on the canvas (see _wireStageInteractions), so
+  // this panel only carries the colour, the tolerance and the undo.
+  function _buildFillSubPanel(){
+    const p=document.createElement('div');
+    p.className='picture-studio-subpanel';
+    p.setAttribute('data-tool','fill');
+    _fillSubPanel=p;
+    const hint=document.createElement('p');
+    hint.className='picture-studio-subpanel-hint';
+    hint.textContent='Pick a colour, then tap a part of your picture to fill it.';
+    p.appendChild(hint);
+
+    const cRow=document.createElement('div');
+    cRow.className='picture-studio-subpanel-row';
+    const cLabel=document.createElement('span');
+    cLabel.className='picture-studio-subpanel-label';
+    cLabel.textContent='Colour';
+    cRow.appendChild(cLabel);
+    const cInput=document.createElement('input');
+    cInput.type='color';
+    cInput.value=_fillColor;
+    cInput.className='picture-studio-color-input';
+    cInput.setAttribute('aria-label','Fill colour');
+    cInput.addEventListener('input',function(){ _fillColor=cInput.value; });
+    cRow.appendChild(cInput);
+    p.appendChild(cRow);
+
+    const tRow=document.createElement('div');
+    tRow.className='picture-studio-subpanel-row';
+    const tLabel=document.createElement('span');
+    tLabel.className='picture-studio-subpanel-label';
+    tLabel.textContent='How far it spreads';
+    tRow.appendChild(tLabel);
+    const tSlider=document.createElement('input');
+    tSlider.type='range';
+    tSlider.min='0';
+    tSlider.max='120';
+    tSlider.value=String(_fillTolerance);
+    tSlider.className='picture-studio-strength-slider';
+    tSlider.setAttribute('aria-label','Fill spread');
+    tSlider.addEventListener('input',function(){
+      _fillTolerance=parseInt(tSlider.value,10)||0;
+    });
+    tRow.appendChild(tSlider);
+    p.appendChild(tRow);
+
+    _fillUndoBtn=document.createElement('button');
+    _fillUndoBtn.type='button';
+    _fillUndoBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _fillUndoBtn.textContent='↩ Undo Fill';
+    _fillUndoBtn.addEventListener('click',function(){
+      if(!_fillSnapshot) return;
+      _restoreSnapshot(_fillSnapshot);
+      _fillSnapshot=null;
+      _refreshBgControls();
+    });
+    p.appendChild(_fillUndoBtn);
+    return p;
+  }
+
+  // -------- Cut Out Objects behaviour -------------------------------
+  function _refreshExtractControls(){
+    if(_extractModeBtns){
+      Object.keys(_extractModeBtns).forEach(function(k){
+        _extractModeBtns[k].classList.toggle('active',_extractMode===k);
+      });
+    }
+    if(_extractInkToggle){
+      _extractInkToggle.textContent=_extractInk?'🖍 Redraw as ink':'🎨 Keep real colours';
+      _extractInkToggle.classList.toggle('active',!!_extractInk);
+    }
+    // The two sensitivity sliders measure genuinely different things, so
+    // only the one belonging to the active detector is ever shown.
+    if(_extractThresholdRow) _extractThresholdRow.classList.toggle('hidden',_extractMode!=='sheet');
+    if(_extractInkDeltaRow) _extractInkDeltaRow.classList.toggle('hidden',_extractMode!=='scan');
+    if(_extractInkColorRow) _extractInkColorRow.classList.toggle('hidden',!_extractInk);
+    if(_extractRunBtn){
+      _extractRunBtn.disabled=(_extractBusy||!_origImg||!_extractFn());
+      _extractRunBtn.textContent=_extractBusy?'✂️ Finding…':'✂️ Find Objects';
+    }
+    const n=(_extractItems&&_extractItems.length)||0;
+    if(_extractUseAllBtn){
+      _extractUseAllBtn.classList.toggle('hidden',n<2);
+      _extractUseAllBtn.textContent='✓ Use All '+n;
+    }
+  }
+
+  function _clearExtractResults(){
+    if(_extractItems){
+      _extractItems.forEach(function(it){
+        try{ if(it&&it.objectUrl) URL.revokeObjectURL(it.objectUrl); }catch(e){}
+      });
+    }
+    _extractItems=null;
+    if(_extractGrid) _extractGrid.innerHTML='';
+  }
+
+  function _runExtract(){
+    const fn=_extractFn();
+    if(!fn||_extractBusy) return;
+    if(!_ensureWorkingBuffer()) return;
+    // extractSheet loads its input with `new Image()`, so it needs a URL
+    // rather than a canvas or a buffer. The displayed canvas already IS
+    // the current picture (bg removal, crops, doodle-free) so exporting
+    // it is both correct and the smallest possible bridge — no change to
+    // the shipped, verified extractor.
+    let src=null;
+    try{ src=_bgRemovedImg?_bgRemovedImg.toDataURL('image/png'):null; }catch(e){ src=null; }
+    if(!src){
+      if(_extractStatusEl) _extractStatusEl.textContent='Couldn’t read this picture.';
+      return;
+    }
+    _clearExtractResults();
+    _extractBusy=true;
+    if(_extractStatusEl) _extractStatusEl.textContent='Looking for objects…';
+    _refreshExtractControls();
+    const opts={
+      mode:_extractMode,
+      inkFill:_extractInk,
+      threshold:_extractThreshold,
+      inkDelta:_extractInkDelta,
+      inkColor:_hexToRgb(_extractInkColor)
+    };
+    Promise.resolve(fn(src,opts)).then(function(res){
+      _extractBusy=false;
+      const items=(res&&res.objects)||[];
+      _extractItems=items.length?items:null;
+      _renderExtractGrid();
+      if(_extractStatusEl){
+        _extractStatusEl.textContent=items.length
+          ?('Found '+items.length+(items.length===1?' thing. Tap it to use it.':' things. Tap one to use it.'))
+          :'Nothing found — try moving the slider.';
+      }
+      _refreshExtractControls();
+    }).catch(function(){
+      _extractBusy=false;
+      _clearExtractResults();
+      if(_extractStatusEl) _extractStatusEl.textContent='Couldn’t find anything this time.';
+      _refreshExtractControls();
+    });
+  }
+
+  function _renderExtractGrid(){
+    if(!_extractGrid) return;
+    _extractGrid.innerHTML='';
+    if(!_extractItems) return;
+    _extractItems.forEach(function(it,i){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-extract-tile';
+      b.setAttribute('aria-label','Use object '+(i+1));
+      const img=document.createElement('img');
+      img.src=it.objectUrl;
+      img.alt='';
+      b.appendChild(img);
+      b.addEventListener('click',function(){ _useExtracted(it); });
+      _extractGrid.appendChild(b);
+    });
+  }
+
+  // Tapping a cutout makes it the picture being edited — every other
+  // tool (Draw, Outline, Colour Fill, Trim) then applies to it, which is
+  // the whole point of bringing extraction in here rather than leaving
+  // it as a separate download-and-re-upload trip.
+  function _useExtracted(item){
+    if(!item||!item.pixelBuffer) return;
+    const pb=item.pixelBuffer;
+    _swapWorkingBuffer({
+      data:new Uint8ClampedArray(pb.data),
+      width:pb.width,
+      height:pb.height
+    });
+    // A cutout is a fresh picture: the doodle layer and the outline/fill
+    // undo snapshots all describe the OLD one and would be meaningless
+    // (and, for the snapshots, wrong-sized) against this one.
+    _state.doodle=[];
+    _outlineSnapshot=null;
+    _fillSnapshot=null;
+    _clearExtractResults();
+    if(_extractStatusEl) _extractStatusEl.textContent='';
+    _refreshExtractControls();
+    _toggleActiveTool(null);
+  }
+
+  // "Use All" hands every cutout back at once. Only a caller that opted
+  // in with options.onApplyMany can receive several pictures, so without
+  // one this degrades to taking the first cutout as the picture being
+  // edited — which is still a useful outcome, never a dead button.
+  //
+  // Each cutout is read from its OWN PngEncoder blob rather than being
+  // re-drawn through a <canvas>: a canvas backing store is premultiplied
+  // and round-tripping through one corrupts partial alpha, which is the
+  // exact discipline the Sheet Extractor's own encoder exists to keep.
+  function _applyAllExtracted(){
+    const items=_extractItems||[];
+    if(!items.length) return;
+    if(typeof _onApplyMany!=='function'){
+      _useExtracted(items[0]);
+      return;
+    }
+    const mode=_state.mode;
+    Promise.all(items.map(function(it){
+      return new Promise(function(resolve){
+        const pb=it.pixelBuffer||{};
+        const done=function(dataURL){
+          resolve(dataURL?{
+            dataURL:dataURL,
+            width:pb.width||0,
+            height:pb.height||0,
+            imageView:{ mode:mode, fit:mode }
+          }:null);
+        };
+        if(!it.blob){ done(null); return; }
+        const reader=new FileReader();
+        reader.onload=function(){ done(reader.result); };
+        reader.onerror=function(){ done(null); };
+        try{ reader.readAsDataURL(it.blob); }catch(e){ done(null); }
+      });
+    })).then(function(results){
+      const out=results.filter(Boolean);
+      if(!out.length) return;
+      _hide();
+      try{ _onApplyMany(out); }catch(e){}
+    });
+  }
+
+  // -------- Outline + Colour Fill behaviour -------------------------
+  function _applyOutline(){
+    const te=_tileEditor();
+    if(!te||typeof te.outline!=='function') return;
+    if(!_ensureWorkingBuffer()) return;
+    _outlineSnapshot=_snapshotBuffer(true);
+    const next=te.outline(_workingBuffer,_outlineWidth,_hexToRgb(_outlineColor));
+    if(!next) return;
+    _swapWorkingBuffer(next);
+  }
+
+  function _fillAt(clientX,clientY){
+    const te=_tileEditor();
+    if(!te||typeof te.bucketFill!=='function') return;
+    if(!_ensureWorkingBuffer()) return;
+    const pt=_screenToContent(clientX,clientY,_workingBuffer.width,_workingBuffer.height);
+    if(!pt) return;
+    _fillSnapshot=_snapshotBuffer(false);
+    const next=te.bucketFill(
+      _workingBuffer,
+      Math.floor(pt.x),
+      Math.floor(pt.y),
+      _hexToRgb(_fillColor),
+      _fillTolerance
+    );
+    if(!next) return;
+    _swapWorkingBuffer(next);
+  }
+
   // -------- View + active-tool state --------------------------------
   function _setView(v){
     _view=v;
@@ -1073,6 +1708,9 @@ const PictureStudio=(function(){
     draw: 'Pick a colour, then draw right on your picture.',
     crop: 'Drag on your picture to choose what to keep.',
     flip: 'Turn or flip your picture.',
+    extract: 'Find every separate thing in your picture.',
+    outline: 'Draw a line all the way around your picture.',
+    fill: 'Pick a colour, then tap a part of your picture.',
     reset: 'Start over with a fresh picture?'
   };
 
@@ -1089,7 +1727,7 @@ const PictureStudio=(function(){
       // own click handler, so its .active class is driven by _refreshBgControls
       // reading _brushMode, not by this list. 'bringBack' is a one-shot
       // undo — never gets an active state at all.
-      ['draw','crop','flip','brighten','peek','reset'].forEach(function(k){
+      ['draw','crop','flip','brighten','peek','extract','outline','fill','reset'].forEach(function(k){
         if(_tileButtons[k]) _tileButtons[k].classList.toggle('active',_activeTool===k);
       });
     }
@@ -1111,6 +1749,16 @@ const PictureStudio=(function(){
     // dragging — the picture must not visibly change mid-gesture.
     if(tool!=='crop'){ _tearDownCropBox(); }
     else if(_ensureWorkingBuffer()){ _render(); }
+    // The three Sheet Extractor tools all operate on the pixel buffer, so
+    // each materializes it on entry for the same reason crop does: rotation
+    // and flip get baked before the child acts, never mid-gesture. Leaving
+    // Cut Out Objects also drops any results still on screen, so re-opening
+    // it never shows cutouts of a picture that has since been edited.
+    if(tool==='extract'||tool==='outline'||tool==='fill'){
+      if(_ensureWorkingBuffer()) _render();
+    }
+    if(tool==='extract') _refreshExtractControls();
+    else _clearExtractResults();
     // Leaving draw mode: drop any in-flight gesture so a half-drawn
     // stroke can never be committed by a later, unrelated mouseup.
     if(tool!=='draw'){ _doodleLive=null; _doodleShapeDrag=null; }
@@ -1121,6 +1769,7 @@ const PictureStudio=(function(){
     if(!_stage) return;
     if(_brushMode==='erase') _stage.style.cursor='crosshair';
     else if(_activeTool==='draw') _stage.style.cursor='crosshair';
+    else if(_activeTool==='fill') _stage.style.cursor='crosshair';
     else if(_activeTool==='crop') _stage.style.cursor='none';
     else _stage.style.cursor='';
     // Ship C — the ✂️ scissors overlay stands in for the cursor while
@@ -1441,6 +2090,15 @@ const PictureStudio=(function(){
     if(_cropApplyBtn) _cropApplyBtn.disabled=!(_cropRect&&_workingBuffer);
     if(_cropTrashBtn) _cropTrashBtn.disabled=!(_cropRect&&_workingBuffer);
     if(_cropResetBtn) _cropResetBtn.disabled=!_preCropSnapshot;
+    // The three Sheet Extractor tools gate exactly like Trim does — they
+    // need a picture, nothing more, since each materializes the working
+    // buffer itself on entry. Their two undo buttons gate on whether a
+    // snapshot actually exists, which is the only honest answer.
+    if(_extractTile) _extractTile.disabled=!_origImg;
+    if(_outlineTile) _outlineTile.disabled=!_origImg;
+    if(_fillTile) _fillTile.disabled=!_origImg;
+    if(_outlineUndoBtn) _outlineUndoBtn.disabled=!_outlineSnapshot;
+    if(_fillUndoBtn) _fillUndoBtn.disabled=!_fillSnapshot;
   }
 
   function _refreshToggles(){
@@ -1762,6 +2420,13 @@ const PictureStudio=(function(){
       }
       if(_activeTool==='crop'){
         _startCropDrag(e.clientX,e.clientY);
+        e.preventDefault();
+        return;
+      }
+      // Colour Fill is a tap, not a drag — one flood fill per press, so it
+      // never installs a _drag and never pans.
+      if(_activeTool==='fill'){
+        _fillAt(e.clientX,e.clientY);
         e.preventDefault();
         return;
       }
@@ -2287,6 +2952,9 @@ const PictureStudio=(function(){
     if(!_modal) _buildModal();
     options=options||{};
     _onApply=options.onApply||null;
+    // Optional, and every existing caller omits it — which is exactly why
+    // extraction could be added without touching a single open() call site.
+    _onApplyMany=options.onApplyMany||null;
     _onCancel=options.onCancel||null;
     _state=Object.assign({},DEFAULT_STATE,{mode:options.defaultMode||'fit'});
     // Doodle layer — deliberately assigned here rather than sitting in
@@ -2425,6 +3093,16 @@ const PictureStudio=(function(){
       });
     }
     if(_bgStatusEl) _bgStatusEl.textContent='';
+    // Sheet Extractor tools — drop every cutout (revoking its object URL,
+    // since _clearExtractResults owns that) and both undo snapshots, so a
+    // re-open can never offer an undo that would restore a completely
+    // different picture, nor show cutouts of one.
+    _clearExtractResults();
+    _extractBusy=false;
+    _outlineSnapshot=null;
+    _fillSnapshot=null;
+    _onApplyMany=null;
+    if(_extractStatusEl) _extractStatusEl.textContent='';
     _refreshBgControls();
     document.removeEventListener('keydown',_onKeyDown);
   }

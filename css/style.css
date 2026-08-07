@@ -4429,6 +4429,9 @@ body.dark-theme .checkerboard{
 .picture-studio[data-active-tool="draw"] .picture-studio-subpanel[data-tool="draw"],
 .picture-studio[data-active-tool="crop"] .picture-studio-subpanel[data-tool="crop"],
 .picture-studio[data-active-tool="flip"] .picture-studio-subpanel[data-tool="flip"],
+.picture-studio[data-active-tool="extract"] .picture-studio-subpanel[data-tool="extract"],
+.picture-studio[data-active-tool="outline"] .picture-studio-subpanel[data-tool="outline"],
+.picture-studio[data-active-tool="fill"] .picture-studio-subpanel[data-tool="fill"],
 .picture-studio[data-active-tool="reset"] .picture-studio-subpanel[data-tool="reset"]{
   display:flex;
   flex-direction:column;
@@ -4461,6 +4464,15 @@ body.dark-theme .checkerboard{
 .picture-studio[data-active-tool="flip"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="flip"]){
   display:none;
 }
+.picture-studio[data-active-tool="extract"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="extract"]){
+  display:none;
+}
+.picture-studio[data-active-tool="outline"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="outline"]){
+  display:none;
+}
+.picture-studio[data-active-tool="fill"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="fill"]){
+  display:none;
+}
 .picture-studio[data-active-tool="reset"] .picture-studio-tool-grid .picture-studio-tile:not([data-tile-key="reset"]){
   display:none;
 }
@@ -4481,6 +4493,9 @@ body.dark-theme .checkerboard{
 .picture-studio[data-active-tool="draw"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="crop"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="flip"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="extract"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="outline"] .picture-studio-edit-actions-row,
+.picture-studio[data-active-tool="fill"] .picture-studio-edit-actions-row,
 .picture-studio[data-active-tool="reset"] .picture-studio-edit-actions-row{
   display:flex;
 }
@@ -4827,6 +4842,71 @@ body.dark-theme .checkerboard{
   box-shadow:0 0 0 1px rgba(0,0,0,0.35);
 }
 .picture-studio-crop-box.hidden{ display:none; }
+
+/* Sheet Extractor in Image Studio — Cut Out Objects / Outline / Colour
+   Fill. Three notes on why this looks the way it does:
+
+   1. Every `.hidden` rule below is SCOPED to its own element, because
+      this stylesheet has no global `.hidden{display:none}` utility —
+      `.picture-studio-ba-compare`, `.picture-studio-brush-panel` and
+      `.picture-studio-crop-box` above each declare their own for the
+      same reason. A toggle without a matching rule silently does
+      nothing (the exact bug `.text-empty` once shipped with).
+   2. The tile and colour inputs carry `width/height/margin` overrides
+      to escape the global `button{width:100%;height:var(--button-height)}`
+      and `input{width:100%}` cascade rules — the same discipline every
+      other button in this modal already needs.
+   3. The results grid is auto-fill rather than a fixed column count, so
+      one cutout and a dozen both lay out sensibly in the narrow right
+      pane without the pane ever needing its own scrollbar. */
+.picture-studio-extract-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
+  gap:6px;
+  max-height:180px;
+  overflow-y:auto;
+}
+.picture-studio-extract-grid:empty{ display:none; }
+.picture-studio-extract-tile{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:4px !important;
+  min-height:0 !important;
+  aspect-ratio:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(255,203,69,0.55);
+  border-radius:10px;
+  background:var(--panel);
+  cursor:pointer;
+  overflow:hidden;
+  transition:border-color 0.12s, transform 0.12s;
+}
+.picture-studio-extract-tile:hover{
+  border-color:#FFCB45;
+  transform:translateY(-1px);
+}
+.picture-studio-extract-tile img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  pointer-events:none;
+}
+.picture-studio-color-input{
+  width:34px !important;
+  height:28px !important;
+  margin:0 !important;
+  padding:2px !important;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  cursor:pointer;
+  flex:0 0 auto;
+}
+.picture-studio-subpanel-row.hidden{ display:none; }
+.picture-studio-subpanel-btn.hidden{ display:none; }
 
 /* Redesign Ship B — Always-visible kid zoom slider (replaces the old
    Bigger/Smaller tile + sub-panel). Small magnifier on the left, big on

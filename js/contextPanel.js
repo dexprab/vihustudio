@@ -2270,9 +2270,24 @@ const ContextPanel=(function(){
       const file=fileInput.files && fileInput.files[0];
       if(!file) return;
       if(typeof PictureStudio!=='undefined' && typeof PictureStudio.open==='function'){
-        PictureStudio.open(file,{defaultMode:'fit',onApply:function(result){
-          _addImageStickerFromDataURL(result && result.dataURL,'image.upload');
-        }});
+        PictureStudio.open(file,{
+          defaultMode:'fit',
+          onApply:function(result){
+            _addImageStickerFromDataURL(result && result.dataURL,'image.upload');
+          },
+          // Opting in to the multi-picture return. Image Studio's Cut Out
+          // Objects tool can find several separate drawings on one
+          // photographed sheet, and this is the one place today that can
+          // genuinely place them all — each becomes its own freestanding
+          // sticker the kid can move, resize and colour independently.
+          // Every other PictureStudio.open call site omits this and is
+          // completely unaffected.
+          onApplyMany:function(results){
+            (results||[]).forEach(function(r){
+              _addImageStickerFromDataURL(r && r.dataURL,'image.upload');
+            });
+          }
+        });
         return;
       }
       // Degraded path only — Picture Studio always exists in real Studio.
