@@ -5,10 +5,15 @@
 // shows each cutout with a real transparency-checked thumbnail, an
 // individual download link, and a "download all" ZIP.
 //
-// Two modes, and they want genuinely different defaults: Sheet mode is
-// looking at objects with real gaps between them, Scan mode is looking at
-// pen strokes that need pulling back together. So each mode remembers its
-// own Gap Bridging / Min Object Size / Padding rather than carrying one
+// Two independent switches, not one: the MODE decides how objects are found
+// (global colour distance vs. local contrast), and the ink toggle decides how
+// each one is drawn (real source pixels vs. redrawn as solid ink). Either
+// combination is legitimate, so neither is nested inside the other.
+//
+// The two modes want genuinely different tuning: Sheet mode is looking at
+// objects with real gaps between them, Scan mode is looking at pen strokes
+// that need pulling back together. So each mode remembers its own Gap
+// Bridging / Min Object Size / Padding / ink setting rather than carrying one
 // mode's tuning into the other.
 (function () {
     'use strict';
@@ -24,10 +29,14 @@
     var crop = null;               // { x, y, w, h } in SOURCE pixels, or null
     var maskPreviewUrl = null;
 
-    // The three shared sliders that genuinely want different values per mode.
+    // The shared controls that genuinely want different values per mode.
+    // `ink` is remembered here alongside the sliders for the same reason they
+    // are: a Sheet user who turns ink on shouldn't lose it by glancing at Scan
+    // and back. The defaults keep the obvious pairing (Scan inks, Sheet
+    // doesn't) without locking either mode to it.
     var MODE_DEFAULTS = {
-        sheet: { dilate: 2, minarea: 0.00015, pad: 0.08 },
-        scan:  { dilate: 8, minarea: 0.0004,  pad: 0.10 }
+        sheet: { dilate: 2, minarea: 0.00015, pad: 0.08, ink: false },
+        scan:  { dilate: 8, minarea: 0.0004,  pad: 0.10, ink: true }
     };
     var modeState = {
         sheet: Object.assign({}, MODE_DEFAULTS.sheet),
@@ -75,6 +84,7 @@
         els.inkWeight = $('se-inkweight');
         els.inkWeightOut = $('se-inkweight-out');
         els.inkColor = $('se-inkcolor');
+        els.inkFill = $('se-inkfill');
 
         els.previewFrame = $('se-preview-frame');
         els.cropBox = $('se-crop-box');
@@ -86,6 +96,7 @@
         wireDropzone();
         wireSliders();
         wireModeSelector();
+        wireInkFill();
         wireCrop();
         els.extractBtn.addEventListener('click', runExtraction);
         els.downloadAllBtn.addEventListener('click', downloadAllAsZip);
@@ -166,6 +177,19 @@
         applyModeState(currentMode);
     }
 
+    // The ink switch owns nothing but a CSS attribute -- the fields it shows
+    // and hides are declared in the markup as `data-ink-only`, so there is
+    // nothing here to keep in step with them. Its remembered value rides
+    // along in modeState, which is why there is no separate storage below.
+    function wireInkFill() {
+        els.inkFill.addEventListener('change', syncInkAttr);
+        syncInkAttr();
+    }
+
+    function syncInkAttr() {
+        els.controlsGrid.setAttribute('data-ink', els.inkFill.checked ? 'on' : 'off');
+    }
+
     // Saves whatever the outgoing mode was last set to, then restores the
     // incoming mode's own remembered values. The CSS does the showing and
     // hiding off `data-mode`, so this only has to move numbers.
@@ -183,6 +207,7 @@
         s.dilate = parseInt(els.dilate.value, 10);
         s.minarea = parseFloat(els.minarea.value);
         s.pad = parseFloat(els.pad.value);
+        s.ink = els.inkFill.checked;
     }
 
     function applyModeState(mode) {
@@ -196,6 +221,11 @@
         els.dilate.dispatchEvent(new Event('input'));
         els.minarea.dispatchEvent(new Event('input'));
         els.pad.dispatchEvent(new Event('input'));
+        // The ink checkbox has no output to nudge, but it does drive the
+        // grid's data-ink attribute -- so set that here rather than relying
+        // on a 'change' event a programmatic assignment never fires.
+        els.inkFill.checked = !!s.ink;
+        syncInkAttr();
     }
 
     // --- Crop ------------------------------------------------------------
@@ -331,22 +361,34 @@
         showStatus('Extracting…', false, true);
         clearResults();
 
+        var inkFill = els.inkFill.checked;
         var opts = {
             mode: currentMode,
+            inkFill: inkFill,
             threshold: parseFloat(els.threshold.value),
             padFrac: parseFloat(els.pad.value),
             minAreaFrac: parseFloat(els.minarea.value),
             dilateRadius: parseInt(els.dilate.value, 10)
         };
         if (crop) opts.crop = crop;
+        // How objects are FOUND -- so this branches on the mode.
         if (currentMode === 'scan') {
             opts.inkDelta = parseFloat(els.inkDelta.value);
             opts.inkBlurFrac = parseFloat(els.inkBlur.value);
-            opts.inkWeight = parseInt(els.inkWeight.value, 10);
-            opts.inkColor = hexToRgb(els.inkColor.value) || [0, 0, 0];
+            // The mask preview is a local-contrast diagnostic, so it belongs
+            // to Scan mode rather than to ink: it answers "did tracing find
+            // the drawing", which is only ever the question here.
             opts.wantMaskPreview = true;
         } else if (els.bgMode.value === 'manual') {
             opts.bg = hexToRgb(els.bgColor.value);
+        }
+        // How each object is DRAWN -- valid in either mode, which is exactly
+        // why it can't live inside the branch above. Folding it in there is
+        // what would have made sheet+ink silently drop the manual background
+        // override, or scan+no-ink still pay for an ink colour it ignores.
+        if (inkFill) {
+            opts.inkWeight = parseInt(els.inkWeight.value, 10);
+            opts.inkColor = hexToRgb(els.inkColor.value) || [0, 0, 0];
         }
 
         extractSheet(currentObjectUrl, opts).then(function (result) {
@@ -354,8 +396,12 @@
             els.extractBtn.disabled = false;
             if (!result.items.length) {
                 showStatus(
+                    // Deliberately does NOT suggest Ink Weight: that thickens
+                    // a shape after it has been traced, so it cannot affect
+                    // whether anything is found -- and it is hidden entirely
+                    // when ink fill is off.
                     currentMode === 'scan'
-                        ? 'Nothing was traced. Try lowering Ink Sensitivity, or raising Ink Weight if the drawing is faint.'
+                        ? 'Nothing was traced. Try lowering Ink Sensitivity, or raising Paper Radius if the page is unevenly lit.'
                         : 'No objects were found. Try lowering the Color Threshold, or check that the background is reasonably clean/uniform.',
                     true
                 );

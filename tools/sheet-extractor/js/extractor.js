@@ -1,26 +1,40 @@
-// extractor.js — sheet segmentation & extraction, in two modes.
+// extractor.js — sheet segmentation & extraction.
 //
-// SHEET MODE (the original) — given an image where distinct objects sit on
-// a roughly uniform background (a moodboard, sprite sheet, scanned collage,
-// or photographed sheet of stickers), this finds each visually separate
-// object via connected-component labeling on a background/foreground mask,
-// crops it with padding, and produces a real per-pixel alpha cutout — no
-// illustration, no guessing: every output pixel is copied directly from the
-// source image.
+// One shared middle (connected-component labeling, min-area filtering,
+// tight boxes, reading order), with two independent choices at either end:
 //
-// SCAN MODE (additive, for photographed line art) — the same segmentation
-// middle, but with two different ends:
-//   * the mask is built by LOCAL contrast rather than distance from one
-//     global background colour, because a phone photo of a notebook page
-//     has a lighting gradient no single threshold can span; and
-//   * each object is re-rendered as SOLID INK at a chosen colour with
-//     anti-aliasing generated fresh from the traced shape, rather than
-//     keeping the original pixels.
-// That second half is the whole point: keeping original pixels is exactly
-// what makes a photographed pencil line come out blurred (soft camera
-// edges), thin (mid-grey graphite, not black) and — if you push a global
-// threshold hard enough to fix that — too black (it starts catching
-// shadowed paper, paper tooth and bleed-through as well).
+// HOW OBJECTS ARE FOUND — `mode`
+//   'sheet' (the original): distance from ONE sampled background colour.
+//     Right when distinct objects sit on a roughly uniform background — a
+//     moodboard, sprite sheet, scanned collage, photographed sticker sheet.
+//   'scan': LOCAL contrast against the paper's own brightness right there.
+//     Right for a phone photo of a notebook page, whose lighting gradient
+//     no single global threshold can span — a threshold low enough to catch
+//     the shadowed corner has already swallowed the lit one.
+//
+// HOW OBJECTS ARE DRAWN — `inkFill`
+//   false: copy the real source pixels, softening only the outermost ring's
+//     alpha. A photo stays a photo.
+//   true: throw the pixel VALUES away, keep only the traced shape, and
+//     redraw it as solid ink at a chosen colour with anti-aliasing generated
+//     fresh from that shape.
+//
+// The two are genuinely orthogonal, which is why they are two switches and
+// not one. Ink fill is what fixes photographed line art — keeping original
+// pixels is exactly what makes a pencil line come out blurred (soft camera
+// edges), thin (mid-grey graphite, not black) and, if you push a threshold
+// hard enough to fix that, too black (it starts catching shadowed paper,
+// paper tooth and bleed-through as well). But that fix is just as useful on
+// a clean sheet of flat-colour shapes someone wants recoloured, and local
+// contrast is just as useful when the goal is to keep the real pixels of a
+// badly-lit photograph. Defaults preserve the obvious pairing (scan inks,
+// sheet doesn't) without locking either one to it.
+//
+// A further payoff of ink fill: because the output is a clean single-colour
+// mask rather than photographic pixels, recolouring it downstream is nearly
+// free (fillStyle + source-in) instead of needing the tone-mapping that
+// Studio's own Auto Duotone exists to work around precisely because it is
+// stuck with original pixel values.
 //
 // Limitations, stated plainly: both modes are pixel segmentation, not
 // semantic object detection. Neither will correctly separate two objects
@@ -244,8 +258,15 @@ function isBoundary(labels, w, h, x, y, id) {
   return false;
 }
 
-// Sheet mode's per-object render: copy the real source pixels, softening
-// only the outermost ring's alpha so the cutout edge isn't jagged.
+// The "keep the real pixels" render: copy the source pixels, softening only
+// the outermost ring's alpha so the cutout edge isn't jagged.
+//
+// The softening measures a boundary pixel against the KNOWN background
+// colour, which only Sheet detection produces. Scan detection has no single
+// background — that is its whole point — so with ink off it renders here
+// with `bg` null and keeps each boundary pixel's own source alpha instead.
+// A hard edge is the honest answer when there is nothing to measure against;
+// inventing a softening factor would just be a guess wearing a number.
 function renderSheetObject(ctx) {
   var data = ctx.data, labels = ctx.labels, w = ctx.w, h = ctx.h;
   var id = ctx.id, x0 = ctx.x0, y0 = ctx.y0, ow = ctx.ow, oh = ctx.oh;
@@ -260,7 +281,7 @@ function renderSheetObject(ctx) {
       if (labels[sp] === id) {
         od[di] = data[si]; od[di + 1] = data[si + 1]; od[di + 2] = data[si + 2];
         var srcAlpha = data[si + 3];
-        if (isBoundary(labels, w, h, sx, sy, id)) {
+        if (bg && isBoundary(labels, w, h, sx, sy, id)) {
           // soft edge: blend alpha down based on how close to
           // background this boundary pixel's own color is
           var d = colorDist(data[si], data[si + 1], data[si + 2], bg[0], bg[1], bg[2]);
@@ -285,11 +306,17 @@ function renderSheetObject(ctx) {
 // from the camera's own soft, uneven edges.
 var AA_GAIN = 1.35;
 
-// Scan mode's per-object render: trace the shape, then draw it as solid
-// ink. None of the source pixel VALUES survive — only the shape does,
-// which is precisely why the result is neither blurred nor thin, and why
-// the ink colour is free to be anything.
-function renderScanObject(ctx) {
+// The ink render: trace the shape, then draw it as solid ink. None of the
+// source pixel VALUES survive — only the shape does, which is precisely why
+// the result is neither blurred nor thin, and why the ink colour is free to
+// be anything.
+//
+// Nothing in here is mode-specific: it reads only the label map, the
+// undilated mask, and the two ink settings, all of which both detection
+// modes already produce identically. That is why ink fill is a separate
+// switch from the mode rather than a property of Scan mode — the two are
+// genuinely orthogonal (HOW an object is found vs. HOW it is drawn).
+function renderInkObject(ctx) {
   var labels = ctx.labels, origMask = ctx.origMask, w = ctx.w;
   var id = ctx.id, x0 = ctx.x0, y0 = ctx.y0, ow = ctx.ow, oh = ctx.oh;
   var inkWeight = ctx.inkWeight, ink = ctx.ink;
@@ -349,7 +376,7 @@ function buildMaskPreview(mask, w, h, maxDim) {
 }
 
 // extractSheet(imgSrc, opts) -> Promise<{
-//   mode, sourceWidth, sourceHeight, crop, background, threshold,
+//   mode, inkFill, sourceWidth, sourceHeight, crop, background, threshold,
 //   componentCountBeforeFilter, maskPreviewUrl,
 //   items: [{ index, pixelCount, bboxOriginal, bboxPadded, blob, objectUrl,
 //            pixelBuffer }]
@@ -365,13 +392,29 @@ function buildMaskPreview(mask, w, h, maxDim) {
 //
 // imgSrc: a URL/object URL/data URI the browser's Image element can load.
 //
-// opts.mode: 'sheet' (default) | 'scan'
-//   shared    — padFrac, minAreaFrac, dilateRadius, crop
-//   sheet only — threshold, bg
-//   scan only  — inkDelta, inkBlurFrac, inkWeight, inkColor
+// Two independent axes, deliberately not one switch:
+//
+//   opts.mode — how objects are FOUND.
+//     'sheet' (default): one global colour distance from a sampled
+//       background. Right for a clean flat-lay with real gaps.
+//     'scan': local contrast against the paper's own brightness right
+//       there. Right for a photographed page where the lighting falls off.
+//
+//   opts.inkFill — how each object is DRAWN.
+//     false: keep the real source pixels (a photo stays a photo).
+//     true: throw the values away and redraw the traced shape as solid
+//       inkColor with fresh anti-aliasing.
+//     Defaults to true in scan mode and false in sheet mode, so a caller
+//     that only sets `mode` behaves exactly as it always did.
+//
+//   shared      — padFrac, minAreaFrac, dilateRadius, crop
+//   mode:sheet  — threshold, bg
+//   mode:scan   — inkDelta, inkBlurFrac
+//   inkFill     — inkWeight, inkColor
 function extractSheet(imgSrc, opts) {
   opts = opts || {};
   var mode = opts.mode === 'scan' ? 'scan' : 'sheet';
+  var inkFill = opts.inkFill != null ? !!opts.inkFill : (mode === 'scan');
   var threshold = opts.threshold != null ? opts.threshold : 24;
   var padFrac = opts.padFrac != null ? opts.padFrac : 0.08;
   var minAreaFrac = opts.minAreaFrac != null ? opts.minAreaFrac : 0.00015; // ~0.015% of image area
@@ -436,11 +479,12 @@ function extractSheet(imgSrc, opts) {
           return a.minX - b.minX;
         });
 
-        // Scan mode thickens the traced line, so its crop box needs real
+        // Ink fill thickens the traced shape, so its crop box needs real
         // room even on an object whose own box is only a few pixels tall —
-        // a percentage of "3px" is zero. Sheet mode keeps a floor of 0, so
-        // its padding arithmetic is unchanged.
-        var minPad = mode === 'scan' ? inkWeight + 2 : 0;
+        // a percentage of "3px" is zero. Keyed on inkFill rather than on the
+        // mode, because Ink Weight dilates in either mode; with ink off this
+        // is still 0, so the original padding arithmetic is unchanged.
+        var minPad = inkFill ? inkWeight + 2 : 0;
 
         var itemPromises = comps.map(function (c, idx) {
           var tb = tightBoxes[c.id];
@@ -460,7 +504,7 @@ function extractSheet(imgSrc, opts) {
             bg: bg, threshold: threshold,
             inkWeight: inkWeight, ink: inkColor
           };
-          var od = mode === 'scan' ? renderScanObject(rctx) : renderSheetObject(rctx);
+          var od = inkFill ? renderInkObject(rctx) : renderSheetObject(rctx);
 
           return PngEncoder.encode({ data: od, width: ow, height: oh }).then(function (blob) {
             return {
@@ -485,6 +529,7 @@ function extractSheet(imgSrc, opts) {
         Promise.all([Promise.all(itemPromises), maskPromise]).then(function (both) {
           resolve({
             mode: mode,
+            inkFill: inkFill,
             sourceWidth: w, sourceHeight: h,
             crop: crop ? { x: cx, y: cy, w: w, h: h } : null,
             background: bg,

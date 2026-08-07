@@ -203,9 +203,14 @@ body {
     gap: 16px 20px;
 }
 
-/* Each mode shows only the fields that actually do something in it. */
+/* Each mode shows only the fields that actually do something in it.
+   `data-only` is about HOW OBJECTS ARE FOUND (the mode); `data-ink-only` is
+   about HOW THEY ARE DRAWN (the ink switch) — two independent axes, so two
+   independent rules rather than one combined one. An ink field is valid in
+   either mode, which is exactly why it can't hang off data-mode. */
 .se-controls-grid[data-mode="sheet"] .se-field[data-only="scan"] { display: none; }
 .se-controls-grid[data-mode="scan"] .se-field[data-only="sheet"] { display: none; }
+.se-controls-grid[data-ink="off"] .se-field[data-ink-only] { display: none; }
 
 .se-field label {
     display: block;

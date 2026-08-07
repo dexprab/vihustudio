@@ -11,7 +11,7 @@
          change can be invisible to a returning browser even after a deploy
          genuinely succeeded. Same ritual root index.html and world-builder-v2
          already carry; this tool went without one until it bit. -->
-    <link rel="stylesheet" href="css/style.css?v=0001">
+    <link rel="stylesheet" href="css/style.css?v=0002">
 </head>
 <body>
     <!-- Sheet Extractor — a developer/creator utility, deliberately NOT a
@@ -19,20 +19,30 @@
          no Workspace. Takes a real reference image and cuts each visually
          distinct object into its own transparent PNG.
 
-         Two modes, because the two jobs genuinely want opposite endings:
-           * Sheet — a moodboard/sprite sheet/flat-lay of stickers. Keeps the
-             real source pixels, so the cutout IS the original object.
-           * Scan — a photographed page of pencil/pen line art. Traces the
-             shape by LOCAL contrast (a phone photo's lighting gradient
-             defeats any single global threshold) and re-renders it as solid
-             ink at a colour you choose, with anti-aliasing generated fresh.
-             Keeping the original pixels is exactly what makes a photographed
-             pencil line come out blurred, thin, or — pushed harder — too
-             black. See README.md for the full, verified account. -->
+         Two independent choices, deliberately not one switch:
+
+         MODE — how objects are FOUND.
+           * Sheet — one global colour distance from a sampled background.
+             Right for a moodboard/sprite sheet/flat-lay with real gaps.
+           * Scan — LOCAL contrast against the paper's own brightness right
+             there. Right for a phone photo of a page, whose lighting
+             gradient defeats any single global threshold.
+
+         REDRAW AS SOLID INK — how each object is DRAWN.
+           * off — keep the real source pixels. A photo stays a photo.
+           * on  — throw the pixel values away, keep only the traced shape,
+             redraw it in one colour with anti-aliasing generated fresh.
+
+         Ink is what fixes photographed line art (keeping original pixels is
+         exactly what makes a pencil line come out blurred, thin, or — pushed
+         harder — too black), but it is just as useful on a clean sheet of
+         flat-colour shapes someone wants recoloured, so it is offered in
+         both modes. Defaults keep the obvious pairing: Scan inks, Sheet
+         doesn't. See README.md for the full, verified account. -->
     <div id="se-root">
         <header class="se-header">
             <h1>🖼️ Sheet Extractor</h1>
-            <p>Cut every distinct object out of a reference image into its own real, transparent PNG. Use <strong>Sheet</strong> for a moodboard or sticker flat-lay, or <strong>Scan</strong> for a photographed page of line art.</p>
+            <p>Cut every distinct object out of a reference image into its own real, transparent PNG. Find them with <strong>Sheet</strong> (a moodboard or sticker flat-lay) or <strong>Scan</strong> (a photographed page), then draw each one as-is or <strong>redraw it as solid ink</strong>.</p>
         </header>
 
         <section class="se-section">
@@ -59,12 +69,22 @@
 
         <section class="se-section">
             <h2>2. Options <small>defaults work well — only adjust if results look off</small></h2>
+            <!-- Two independent axes: how objects are FOUND (mode) and how
+                 each one is DRAWN (ink fill). Kept as two rows rather than
+                 one switch because they genuinely are two questions — local
+                 contrast is just as useful when you want to keep the real
+                 pixels of a badly-lit photo, and solid ink is just as useful
+                 on a clean flat-lay someone wants recoloured. -->
             <div class="se-mode-row">
-                <span class="se-mode-label">Mode</span>
-                <label class="se-mode-choice"><input type="radio" name="se-mode" value="sheet" checked> <span><strong>Sheet</strong> — keep the real pixels (moodboard, stickers, sprite sheet)</span></label>
-                <label class="se-mode-choice"><input type="radio" name="se-mode" value="scan"> <span><strong>Scan</strong> — trace line art and redraw it as solid ink (photographed drawing)</span></label>
+                <span class="se-mode-label">Find objects by</span>
+                <label class="se-mode-choice"><input type="radio" name="se-mode" value="sheet" checked> <span><strong>Sheet</strong> — colour against a clean background (moodboard, stickers, sprite sheet)</span></label>
+                <label class="se-mode-choice"><input type="radio" name="se-mode" value="scan"> <span><strong>Scan</strong> — local contrast against the paper (photographed drawing)</span></label>
             </div>
-            <div class="se-controls-grid" id="se-controls-grid" data-mode="sheet">
+            <div class="se-mode-row">
+                <span class="se-mode-label">Draw each one</span>
+                <label class="se-mode-choice"><input type="checkbox" id="se-inkfill"> <span><strong>Redraw as solid ink</strong> — keep only the traced shape and draw it in one colour, with fresh anti-aliasing. Fixes blurred or thin line art, and makes any cutout easy to recolour later. Leave off to keep the real source pixels.</span></label>
+            </div>
+            <div class="se-controls-grid" id="se-controls-grid" data-mode="sheet" data-ink="off">
                 <div class="se-field" data-only="sheet">
                     <label for="se-threshold">Color Threshold</label>
                     <div class="se-field-inline">
@@ -89,7 +109,11 @@
                     </div>
                     <span class="se-field-help">How far out to look when working out what "the paper right here" is. This is what lets one setting span a lit corner and a shaded one. Too small and thick strokes hollow out; too large and it behaves like a global threshold again.</span>
                 </div>
-                <div class="se-field" data-only="scan">
+                <!-- Ink Weight and Ink Colour describe how a shape is DRAWN,
+                     so they belong to the ink switch rather than to a mode —
+                     unlike Ink Sensitivity and Paper Radius above, which are
+                     how Scan mode FINDS a shape in the first place. -->
+                <div class="se-field" data-ink-only>
                     <label for="se-inkweight">Ink Weight</label>
                     <div class="se-field-inline">
                         <input type="range" id="se-inkweight" min="0" max="4" step="1" value="1">
@@ -97,7 +121,7 @@
                     </div>
                     <span class="se-field-help">Thickens the traced line before it's drawn. A pencil stroke photographed at an angle is often only a pixel or two of real darkness, which reads as thin and broken once redrawn.</span>
                 </div>
-                <div class="se-field" data-only="scan">
+                <div class="se-field" data-ink-only>
                     <label for="se-inkcolor">Ink Colour</label>
                     <div class="se-field-inline">
                         <input type="color" id="se-inkcolor" value="#000000">
@@ -171,7 +195,7 @@
                 <div class="se-mask-frame"><img id="se-mask-img" alt="What was traced as ink"></div>
                 <div class="se-mask-note">
                     <strong>What was traced</strong>
-                    <span class="se-field-help">Black is what counted as ink. If your drawing is broken up, lower Ink Sensitivity or raise Ink Weight; if the paper itself is showing up, raise Ink Sensitivity.</span>
+                    <span class="se-field-help">Black is what counted as ink. This is what tracing <em>found</em>, so it is unaffected by the ink colour or Ink Weight. If your drawing is broken up, lower Ink Sensitivity; if the paper itself is showing up, raise it.</span>
                 </div>
             </div>
             <div class="se-results-grid" id="se-results-grid"></div>
@@ -182,10 +206,10 @@
         </p>
     </div>
 
-    <script src="js/pngEncoder.js?v=0001"></script>
-    <script src="js/pngCompressor.js?v=0001"></script>
-    <script src="js/zipWriter.js?v=0001"></script>
-    <script src="js/extractor.js?v=0001"></script>
-    <script src="js/app.js?v=0001"></script>
+    <script src="js/pngEncoder.js?v=0002"></script>
+    <script src="js/pngCompressor.js?v=0002"></script>
+    <script src="js/zipWriter.js?v=0002"></script>
+    <script src="js/extractor.js?v=0002"></script>
+    <script src="js/app.js?v=0002"></script>
 </body>
 </html>

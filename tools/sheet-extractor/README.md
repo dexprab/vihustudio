@@ -4,26 +4,43 @@ A standalone, dependency-free browser tool that takes a real reference
 image and cuts out every visually distinct object into its own transparent
 PNG. Runs entirely in your browser; nothing is uploaded anywhere.
 
-It has **two modes**, because the two jobs it gets asked to do genuinely
-want opposite endings:
+It offers **two independent choices**, deliberately not one switch,
+because they genuinely are two separate questions:
 
-- **Sheet** — a moodboard, sprite sheet, scanned collage, or flat-lay of
-  stickers. Keeps the **real pixels from the source image**, so the cutout
+**Mode — how objects are FOUND.**
+
+- **Sheet** — one global colour distance from a sampled background. Right
+  for a moodboard, sprite sheet, scanned collage, or flat-lay of stickers:
+  something with a clean, roughly-uniform background and real gaps between
+  objects.
+- **Scan** — **local** contrast against the paper's own brightness right
+  there. Right for a phone photo of a drawn page, whose lighting gradient
+  defeats any single global threshold. See "Scan mode" below for the four
+  separate ways a photographed page breaks the sheet approach.
+
+**Redraw as solid ink — how each object is DRAWN.**
+
+- **off** — keep the **real pixels from the source image**, so the cutout
   *is* the original object. This is real image segmentation on a photo or
   scan you provide, producing true per-pixel alpha cutouts of what's
   actually there — genuinely different from illustrating a matching asset
   pack by hand.
-- **Scan** — a phone photo of a page of pencil or pen line art. Traces the
-  shape by **local** contrast and re-renders it as solid ink at a colour
-  you choose, with anti-aliasing generated fresh. Here, keeping the
-  original pixels is exactly what goes wrong: a photographed pencil line
-  comes out blurred, thin, or — pushed harder — too black. See "Scan mode"
-  below for why.
+- **on** — throw the pixel values away, keep only the traced shape, and
+  redraw it in one colour with anti-aliasing generated fresh.
+
+Ink is what fixes photographed line art — keeping the original pixels is
+exactly what makes a pencil line come out blurred, thin, or (pushed
+harder) too black — but it is just as useful on a clean sheet of
+flat-colour shapes someone wants recoloured, so it is offered in **both**
+modes. The defaults keep the obvious pairing: Scan inks, Sheet doesn't.
+Either can be flipped.
 
 ## Using it
 
-Open `index.html`. Upload (or drag-and-drop) an image, pick the mode,
-adjust the options if the defaults don't fit, click **Extract Objects**,
+Open `index.html`. Upload (or drag-and-drop) an image, pick the mode and
+whether to redraw as solid ink (the defaults pair them the obvious way, so
+usually just the mode), adjust the options if the defaults don't fit, click
+**Extract Objects**,
 then download individual PNGs or **Download All as ZIP**. A **Compression**
 slider above the results lets you trade file size for color count on the
 extracted PNGs — see "Compressing extracted images" below.
@@ -42,11 +59,13 @@ The whole pipeline runs on Canvas 2D for *reading* the source image, but
 **never** for writing the output — see "A real bug, found and fixed"
 below for why that distinction matters.
 
-Both modes share the same middle: build a binary mask of what counts as
+Everything shares the same middle: build a binary mask of what counts as
 "object", group the mask into connected components, discard the small ones,
 compute each survivor's tight bounding box, and encode one PNG per object.
-What differs is how the mask is built at the front, and what gets drawn at
-the back.
+What differs is at the two ends — how the mask is built at the front (the
+**mode**) and what gets drawn at the back (the **ink** switch). Those are
+genuinely independent, so they're described separately below; any of the
+four combinations is valid.
 
 ### Shared: grouping pixels into objects
 
@@ -67,23 +86,18 @@ the back.
 8. Each object's raw pixel buffer is encoded straight to PNG bytes by
    `js/pngEncoder.js` — no `<canvas>` involved in this step at all.
 
-### Sheet mode: keep the real pixels
+### Finding objects: Sheet mode (one global colour distance)
 
-- **Mask:** sample the four corners to estimate the background colour, then
-  classify every pixel by Euclidean colour distance from it against a single
-  global threshold.
-- **Render:** copy that region's real source pixels into the output buffer,
-  with anything that isn't this object's own pixels (background, or a
-  different neighbouring object) forced fully transparent — even where two
-  objects' padded crop boxes geometrically overlap. Boundary pixels get a
-  soft alpha based on how close their colour is to the background, instead
-  of a hard, jagged cutout edge.
+Sample the four corners to estimate the background colour, then classify
+every pixel by Euclidean colour distance from it against a single global
+threshold. Simple, fast, and exactly right when the background genuinely
+is one colour.
 
-### Scan mode: trace the shape, redraw the ink
+### Finding objects: Scan mode (local contrast)
 
-A phone photo of a drawn page defeats sheet mode in four separate ways at
-once, and each one is worth naming because each one drove a specific part
-of this mode:
+A phone photo of a drawn page defeats the global approach in four separate
+ways at once, and each one is worth naming because each one drove a
+specific part of this mode:
 
 - The four corners are the *table*, not the paper, so the sampled
   "background" is wrong before anything else happens.
@@ -96,36 +110,51 @@ of this mode:
 - The previous page bleeds through, and that bleed-through is *genuine*
   contrast — it isn't noise you can filter away by area.
 
-So scan mode changes both ends:
-
-- **Mask (local, not global).** Convert to perceptual grayscale, then take a
-  separable box blur to get a per-pixel **local mean** — "what is the paper
-  right *here*". A pixel is ink when it is darker than its own local mean by
-  more than **Ink Sensitivity**. That one change is what lets a single
-  setting span a lit corner and a shaded one, and it's why the bleed-through
-  control is the same knob: bleed-through is faint *relative to its own
-  local paper*, so raising the sensitivity drops it while leaving real
-  strokes alone. The blur is a sliding-window sum, so it costs the same at a
-  90px radius as at a 3px one — a phone photo wants a large radius.
-- **Render (discard the values, keep the shape).** The traced shape is
-  optionally thickened by **Ink Weight**, then filled with your chosen
-  **Ink Colour** — none of the photo's own greys survive at all. The
-  anti-aliased edge is generated *fresh*, by blurring the **coverage** (the
-  binary mask) rather than the colour, so the interior stays solid and the
-  edge is genuinely soft rather than merely a faded copy of a blurry
-  photograph.
-
-That last point is the whole reason this mode exists. Background *removal*
-preserves original pixels and softens the boundary; line art wants the
-opposite. And because the output is a clean single-colour mask rather than
-photographic pixels, recolouring it later is nearly free — a `fillStyle`
-plus `source-in` — rather than needing the tone-mapping tricks you'd
-otherwise be stuck with.
+So the mask goes local. Convert to perceptual grayscale, then take a
+separable box blur to get a per-pixel **local mean** — "what is the paper
+right *here*". A pixel is ink when it is darker than its own local mean by
+more than **Ink Sensitivity**. That one change is what lets a single
+setting span a lit corner and a shaded one, and it's why the bleed-through
+control is the same knob: bleed-through is faint *relative to its own local
+paper*, so raising the sensitivity drops it while leaving real strokes
+alone. The blur is a sliding-window sum, so it costs the same at a 90px
+radius as at a 3px one — a phone photo wants a large radius.
 
 A **What was traced** preview appears above the results in scan mode,
 showing the mask itself in black-on-white. If the drawing is coming out
 broken, that's where you can see it, and whether to reach for Ink
 Sensitivity or Ink Weight.
+
+### Drawing each object: ink off (keep the real pixels)
+
+Copy that region's real source pixels into the output buffer, with anything
+that isn't this object's own pixels (background, or a different
+neighbouring object) forced fully transparent — even where two objects'
+padded crop boxes geometrically overlap.
+
+The cutout edge is softened by measuring each boundary pixel against the
+**known background colour**, so it fades out instead of ending in a hard,
+jagged step. That measurement only exists in Sheet mode: Scan detection has
+no single background — that's its whole point — so **scan + ink off keeps
+each boundary pixel's own source alpha and gives a hard edge**. A hard edge
+is the honest answer when there's nothing to measure against; inventing a
+softening factor would just be a guess wearing a number.
+
+### Drawing each object: ink on (redraw the traced shape)
+
+Throw the pixel values away and keep only the shape. It is optionally
+thickened by **Ink Weight**, then filled with your chosen **Ink Colour** —
+none of the source's own colours survive at all. The anti-aliased edge is
+generated *fresh*, by blurring the **coverage** (the binary mask) rather
+than the colour, so the interior stays solid and the edge is genuinely soft
+rather than merely a faded copy of a blurry photograph.
+
+That last point is the whole reason ink exists. Background *removal*
+preserves original pixels and softens the boundary; line art wants the
+opposite. And because the output is a clean single-colour mask rather than
+photographic pixels, recolouring it later is nearly free — a `fillStyle`
+plus `source-in` — rather than needing the tone-mapping tricks you'd
+otherwise be stuck with.
 
 ## Options
 
@@ -151,8 +180,14 @@ Scan mode only:
 |---|---|---|
 | Ink Sensitivity | `18` | How much darker than the paper *around it* a pixel must be to count as ink. Lower catches faint pencil; raise it to drop bleed-through from the previous page and paper texture. |
 | Paper Radius | `3%` | How far out to look when working out what "the paper right here" is. This is what lets one setting span a lit corner and a shaded one. Too small and thick strokes hollow out (the middle of a fat stroke *is* its own local mean); too large and it behaves like a global threshold again. |
-| Ink Weight | `1` | Thickens the traced line before it's drawn. A pencil stroke photographed at an angle is often only a pixel or two of real darkness, which reads as thin and broken once redrawn. |
-| Ink Colour | black | Every cutout is drawn in this colour. None of the photo's own greys survive, so this is free to be anything. |
+
+Ink fill only (either mode) — hidden entirely when **Redraw as solid ink**
+is off:
+
+| Control | Default | Meaning |
+|---|---|---|
+| Ink Weight | `1` | Thickens the traced shape before it's drawn. A pencil stroke photographed at an angle is often only a pixel or two of real darkness, which reads as thin and broken once redrawn. Applied *after* tracing, so it can never change what gets found. |
+| Ink Colour | black | Every cutout is drawn in this colour. None of the source's own colours survive, so this is free to be anything. |
 
 ## Compressing extracted images
 
@@ -356,6 +391,33 @@ half — deliberately placed so no single global threshold can reach both.
   throwing, and still hands back a mask so you can see why; zero page
   errors throughout.
 
+### Both axes, all four combinations
+
+32 assertions, all passing, alongside the 47 above and the 12 covering ink
+colour end to end — all three still green after the split.
+
+- **The two switches really are independent** — the mode radio flips only
+  the detection fields (Ink Sensitivity and Paper Radius appear, Color
+  Threshold and Background disappear), the ink checkbox flips only the
+  render fields (Ink Weight and Ink Colour appear and disappear), and Ink
+  Colour is reachable in *Sheet* mode, which is the whole point.
+- **Sheet + ink off is unchanged** — the two fixture shapes come back
+  carrying their own real source colours, `(200,30,30)` and `(30,94,200)`,
+  neither leaking into the other's crop.
+- **Sheet + ink on genuinely redraws** — every fully-opaque pixel across
+  every cutout is exactly the chosen magenta, and none of the fixture's own
+  red or blue survives anywhere.
+- **Sheet + ink still honours the sheet-only background override** — a
+  manual background colour is applied, and reported back, exactly as it is
+  with ink off.
+- **Scan + ink off keeps the real photographed pixels** — the previously
+  unreachable combination now returns real mid-grey strokes rather than a
+  redraw, and doesn't crash (it did, before; see below).
+- **The API stayed backward compatible** — a call with no `inkFill` at all
+  still inks in scan mode and doesn't in sheet mode, and the resolve
+  payload reports both `mode` and `inkFill` so a caller can tell what it
+  got.
+
 ## Real, disclosed limitations
 
 This is threshold / connected-component segmentation, **not** semantic or
@@ -377,7 +439,7 @@ Both modes:
   everywhere already; an already-transparent input PNG isn't the intended
   use case and isn't specifically protected against.
 
-Sheet mode:
+Sheet detection:
 
 - **It needs a reasonably clean, roughly-uniform background.** A busy
   photographic background (wood grain, fabric texture, a patterned
@@ -386,12 +448,28 @@ Sheet mode:
   itself into spurious "objects." It works best on a flat-lay sheet shot
   against a plain surface, or a digital moodboard/collage with a clean
   background. If you're hitting this on a *photo of a drawn page*, that's
-  the case scan mode exists for.
+  the case scan detection exists for.
+
+Ink off (keep the real pixels):
+
 - **Every output pixel is a direct copy of the source image.** Nothing is
   redrawn, upscaled, or hallucinated — if the source photo is low
   resolution or blurry, the cutout will be too.
+- **With scan detection, the cutout edge is hard, not soft.** The soft
+  edge is measured against a known background colour, and scan detection
+  deliberately never establishes one. Turning ink on gives a soft edge in
+  either mode, because it generates that edge fresh from the traced shape
+  rather than measuring against anything.
+- **A cutout can carry a thin opaque halo of background.** Which pixels
+  belong to an object is decided on the *dilated* mask (that's what Gap
+  Bridging does), while only the outermost ring gets its alpha softened —
+  so at the default Gap Bridging of 2 there's an inner ring that stays
+  fully opaque. The crop *box* is unaffected (it's recomputed from the
+  undilated mask), and ink fill doesn't have this at all, because it reads
+  the undilated mask directly. Pre-existing and deliberately left alone:
+  changing it would change every existing sheet cutout's edges.
 
-Scan mode:
+Scan detection:
 
 - **It does not dewarp.** A page photographed at an angle, or bowed near
   the spine of a bound notebook, comes out at that angle and that bow.
@@ -409,26 +487,32 @@ Scan mode:
   separate them in principle, only in practice, on a given page. The **What
   was traced** preview is there precisely because this is the setting most
   likely to need a look rather than a guess.
-- **It throws the original pixels away, on purpose.** Shading, tonal
-  variation, coloured pencil, anything painted — none of it survives; you
-  get a single-colour silhouette of the traced shape. For line art that's
-  the point; for anything with real tone in it, use sheet mode.
 - **The verification fixture is synthetic.** It was built to carry the
   hazards a real phone photo has (lighting falloff, grain, a non-paper
   edge, bleed-through), and it does — but a synthetic page is not a real
   one. Whether *your* page comes out right is still your own eyes to judge.
 
+Ink on (redraw the traced shape):
+
+- **It throws the original pixels away, on purpose.** Shading, tonal
+  variation, coloured pencil, anything painted — none of it survives; you
+  get a single-colour silhouette of the traced shape. For line art that's
+  the point; for anything with real tone in it, turn ink off.
+
 ## Files
 
 - `index.html` / `css/style.css` / `js/app.js` — the page itself and its
-  UI wiring (upload, mode switch, crop overlay, options, mask preview,
-  results grid, downloads). Each mode remembers its own settings for the
-  three shared controls that want different defaults, so switching back and
-  forth doesn't lose what you'd already dialled in.
-- `js/extractor.js` — both modes' segmentation (`window.extractSheet`):
-  the shared component-labelling core, sheet mode's global colour-distance
-  mask and real-pixel render, and scan mode's local-mean ink mask,
-  fresh-anti-aliased render, and mask preview.
+  UI wiring (upload, mode switch, ink switch, crop overlay, options, mask
+  preview, results grid, downloads). Each mode remembers its own settings
+  for the shared controls that want different defaults — including whether
+  ink was on — so switching back and forth doesn't lose what you'd already
+  dialled in.
+- `js/extractor.js` — segmentation (`window.extractSheet`): the shared
+  component-labelling core; the two detection masks (sheet's global
+  colour-distance one, scan's local-mean one, plus scan's mask preview);
+  and the two renders (the real-pixel copy and the fresh-anti-aliased ink
+  redraw). Detection and render are selected independently, so any of the
+  four combinations is reachable.
 - `js/pngEncoder.js` — the canvas-free PNG writer (`window.PngEncoder`),
   including the per-scanline filter selection both `encode`/`encodeIndexed`
   share, and the indexed-PNG (palette + `tRNS`) writer the Compressor uses.
