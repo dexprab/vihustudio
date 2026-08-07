@@ -1553,7 +1553,9 @@ const PictureStudio=(function(){
     };
     Promise.resolve(fn(src,opts)).then(function(res){
       _extractBusy=false;
-      const items=(res&&res.objects)||[];
+      // extractSheet resolves { ..., items: [...] } — one entry per object
+      // it found, each carrying its own objectUrl and pixelBuffer.
+      const items=(res&&res.items)||[];
       _extractItems=items.length?items:null;
       _renderExtractGrid();
       if(_extractStatusEl){
@@ -1649,8 +1651,14 @@ const PictureStudio=(function(){
     })).then(function(results){
       const out=results.filter(Boolean);
       if(!out.length) return;
+      // Capture the callback BEFORE tearing down: _hide() nulls
+      // _onApplyMany (it does not null _onApply, which is why the
+      // single-picture _apply() path never hit this), so reading it after
+      // _hide() threw "not a function" straight into the catch below and
+      // silently dropped every cutout on the floor.
+      const done=_onApplyMany;
       _hide();
-      try{ _onApplyMany(out); }catch(e){}
+      try{ done(out); }catch(e){}
     });
   }
 
@@ -3069,6 +3077,24 @@ const PictureStudio=(function(){
     _bgRemovedDataURL=null;
     _bgBusy=false;
     _drag=null;
+    // _workingBuffer and _bgRemovedImg are a matched pair: _ensureWorkingBuffer
+    // materializes them together, and _syncCanvasFromBuffer requires both.
+    // Dropping one without the other left the module in a state its own
+    // invariant forbids — _ensureWorkingBuffer would early-return on the stale
+    // buffer and never re-mint _bgRemovedImg, so on a re-open EVERY pixel tool
+    // (extract, crop, outline, fill, erase) silently operated on the previous
+    // picture's pixels and painted nothing. The other two reset sites
+    // (_undoBgRemoval, "Yes, start over") already null the pair together; this
+    // one didn't. The rest below is the same "drop everything that describes
+    // the picture that just went away" reasoning the extractor comment further
+    // down already states — a re-open must never offer an Undo Trim that would
+    // restore a completely different picture.
+    _workingBuffer=null;
+    _cleanupHistory=[];
+    _cleanupRedoStack=[];
+    _brushMode=null;
+    _cropRect=null;
+    _preCropSnapshot=null;
     // Ship C — reset the BG strength override so the next picture opens
     // with the worker's own auto-detected default rather than inheriting
     // the previous session's tolerance. Slider defaults back to 50 in
