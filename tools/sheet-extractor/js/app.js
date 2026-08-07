@@ -468,18 +468,32 @@
             var sizeEl = document.createElement('div');
             sizeEl.className = 'se-result-size';
             sizeEl.textContent = 'Original: ' + formatBytes(item.blob.size);
+            var actions = document.createElement('div');
+            actions.className = 'se-result-actions';
+            var edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'se-btn se-btn-sm se-result-edit';
+            edit.textContent = '✏️ Edit';
+            edit.addEventListener('click', function () {
+                if (typeof TileEditor === 'undefined') return;
+                TileEditor.open(item, function (buf) {
+                    if (buf) applyItemEdit(item, buf);
+                });
+            });
             var dl = document.createElement('a');
             dl.className = 'se-result-download';
             dl.href = item.objectUrl;
             dl.download = name;
             dl.textContent = '⬇ Download PNG';
+            actions.appendChild(edit);
+            actions.appendChild(dl);
             info.appendChild(nameEl);
             info.appendChild(dimsEl);
             info.appendChild(sizeEl);
-            info.appendChild(dl);
+            info.appendChild(actions);
             card.appendChild(info);
 
-            item._els = { thumbImg: img, sizeEl: sizeEl, dl: dl };
+            item._els = { thumbImg: img, sizeEl: sizeEl, dimsEl: dimsEl, dl: dl };
             els.resultsGrid.appendChild(card);
         });
 
@@ -564,6 +578,50 @@
             updateCompressSummary(results);
         }).finally(function () {
             els.compressSummary.classList.remove('se-compress-busy');
+        });
+    }
+
+    function countOpaque(buf) {
+        var n = 0;
+        for (var i = 3; i < buf.data.length; i += 4) if (buf.data[i] > 0) n++;
+        return n;
+    }
+
+    // Takes an edited pixel buffer back from the tile editor and makes it the
+    // item's own truth.
+    //
+    // Re-encoding here is NOT optional. PngCompressor.compress() short-circuits
+    // at the lossless level and hands back the ORIGINAL blob untouched, so an
+    // edit that only updated `pixelBuffer` would show up at every compression
+    // level except the default one -- a bug that hides itself. Encoding through
+    // PngEncoder keeps the picture off a <canvas> on its way to bytes, which is
+    // the same premultiplied-alpha discipline the rest of this tool follows.
+    function applyItemEdit(item, buf) {
+        return PngEncoder.encode(buf).then(function (blob) {
+            if (item._activeUrl && item._activeUrl !== item.objectUrl) URL.revokeObjectURL(item._activeUrl);
+            if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
+
+            item.pixelBuffer = buf;
+            item.blob = blob;
+            item.objectUrl = URL.createObjectURL(blob);
+            item.activeBlob = blob;
+            item._activeUrl = item.objectUrl;
+
+            // Crop, outline and rotate all change the picture's size, and an
+            // eraser changes how much of it is actually drawn, so neither number
+            // on the card survives an edit -- both are recomputed rather than
+            // left describing the picture as it arrived.
+            item.bboxPadded = { x: item.bboxPadded.x, y: item.bboxPadded.y, w: buf.width, h: buf.height };
+            item.pixelCount = countOpaque(buf);
+            if (item._els) {
+                item._els.dimsEl.textContent = buf.width + '×' + buf.height + 'px · ' +
+                    item.pixelCount.toLocaleString() + 'px object';
+            }
+
+            // Re-run the whole set rather than this one item: the summary line
+            // is an aggregate, so it has to be recomputed anyway, and at the
+            // lossless level every other item's compress() call is a no-op.
+            applyCompression(currentCompressLevel);
         });
     }
 

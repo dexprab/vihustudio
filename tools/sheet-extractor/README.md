@@ -53,6 +53,10 @@ the reported source size — is relative to the crop, because that's what
 you're actually looking at and what the cutouts are actually of. **Clear
 crop** puts it back.
 
+**Editing one cutout.** Every result card carries an **✏️ Edit** button that
+opens that one asset in its own editor — crop, erase, outline, draw a shape,
+flood fill, rotate, flip. See "Editing an individual asset" below.
+
 ## How it works
 
 The whole pipeline runs on Canvas 2D for *reading* the source image, but
@@ -242,6 +246,57 @@ individual "Download PNG" links, "Download All as ZIP", and even
 re-running Extract on the same file (the selected level is remembered and
 automatically re-applied, not reset to Lossless).
 
+## Editing an individual asset
+
+Extraction is a global decision — one background sample, one threshold, one
+set of options applied to the whole sheet. But the fix a *single* cutout
+needs is usually local: this one has a stray speck, that one wants an
+outline so it reads against a busy background, this one came out sideways.
+Re-running extraction with different settings to fix one asset means
+changing every other asset too.
+
+So each result card has an **✏️ Edit** button opening that asset — and only
+that asset — in its own editor. Seven tools:
+
+| Tool | What it does |
+|---|---|
+| **Crop** | Drag a box; **Apply crop** trims to it. Clamps to the picture rather than refusing an out-of-bounds drag. |
+| **Erase** | Paint transparency. A round brush with a soft rim, so an erased edge doesn't come out jagged. |
+| **Outline** | Adds a border of the chosen colour and width *around the existing shape*. The picture grows by that width on every side, so an outline is never clipped by the frame it's drawn in. |
+| **Shape** | Drag out a rectangle, ellipse, or line. Fill colour, stroke colour, and stroke width are separate — a line is stroke-only and is never filled. |
+| **Fill** | Flood fill from where you click, with a tolerance. Fully-transparent pixels are treated as one connected region, so clicking the background floods the background. |
+| **Rotate** | 90° clockwise or anti-clockwise. Dimensions swap on an odd number of turns; four turns come back exactly where they started. |
+| **Flip** | Across (mirror x) or down (mirror y). |
+
+**Undo** steps back through the last 20 operations. **Cancel** discards
+everything and leaves the asset exactly as extraction produced it;
+**Save Changes** makes the edit the asset's own truth — the card's
+dimensions, pixel count, thumbnail, and download all update, and the
+edited bytes are what "Download All as ZIP" packs.
+
+### Two things this deliberately does *not* do
+
+**It does not re-run extraction.** An edit operates on the asset's own
+pixel buffer and re-encodes it. Extraction is global; the edit is local;
+mixing them would mean one asset's fix silently reshuffling every other
+asset on the sheet.
+
+**It does not go through `<canvas>` on the way to bytes.** Saving re-encodes
+through `PngEncoder`, the same canvas-free path everything else here uses,
+for the same reason (see the section immediately below).
+
+### A subtle bug this shape avoids, worth knowing about
+
+`PngCompressor.compress()` short-circuits at the **lossless** level and
+hands back the *original* blob untouched — it only re-encodes when there's
+a colour cap to apply. So an edit that updated only the pixel buffer and
+leaned on the compressor to produce new bytes would appear to work at every
+compression level *except the default one*, which is the level almost
+everyone is on. Saving therefore encodes through `PngEncoder` itself
+rather than relying on the compressor to notice. There's a dedicated
+regression check for exactly this ("the downloadable bytes actually
+changed at the lossless level").
+
 ## A real bug, found and fixed: canvas export can silently corrupt RGB at partial alpha
 
 `tools/background-remover/` — a sibling tool in this repo — already found
@@ -418,6 +473,46 @@ colour end to end — all three still green after the split.
   payload reports both `mode` and `inkFill` so a caller can tell what it
   got.
 
+### The per-asset editor
+
+38 assertions, all passing, in two halves — deliberately split so a failure
+tells you *which* half is wrong.
+
+**The seven operations, exercised directly as pure functions** (22
+assertions, no browser UI involved): crop trims to its rect, keeps the right
+pixels, leaves the source untouched, and clamps an out-of-bounds rect rather
+than refusing it. Erase clears under the brush, leaves a pixel outside it
+fully opaque, and doesn't mutate its input. Outline grows the buffer by its
+width on every side, paints the chosen colour, leaves the interior alone,
+and doesn't fill the corners. Shape fills with its colour and stays inside
+its rect, and a **line is stroke-only, never filled**. Fill floods the
+clicked region and stops at the ink. Rotate swaps the dimensions, moves a
+known pixel the right way, and **four turns come back exactly to the
+start**. Flip mirrors x and y respectively.
+
+**A real round trip through the real UI** (15 assertions, on a two-object
+fixture): both squares extract as their own cutouts, every card carries its
+Edit button, the editor opens on the card it was launched from and offers
+all seven tools, a rotate visibly turns the working picture, Save closes the
+editor, and then — the part that matters — **the card reports the new
+dimensions, the compression level is still the default lossless one, and the
+downloadable bytes actually changed anyway** (this is the check that would
+have caught the `PngCompressor` short-circuit described above), a fresh
+object URL was minted, the thumbnail points at the new bytes, and the
+encoded PNG's own header carries the rotated size. Then: **the other card is
+untouched** (compared against a measured before-value, not a predicted one),
+**Cancel discards the edit entirely**, and **saving with no changes is a
+genuine no-op**. Plus zero page errors.
+
+One assertion in that suite was originally written on a wrong premise of
+mine and is worth recording, because the arithmetic is not obvious: the
+erase brush measures from pixel *centres* and its coverage is
+`radius + 0.5 - distance`, so at radius 2 it reaches 2.5px. The fixture's
+4×4 square has corners only √(1.5²+1.5²) = 2.12px from its own middle — so a
+brush centred there covers the *entire* square and leaves nothing opaque to
+compare against. The check now erases off-centre, where the far corner is a
+genuine 4.24px away.
+
 ## Real, disclosed limitations
 
 This is threshold / connected-component segmentation, **not** semantic or
@@ -513,6 +608,11 @@ Ink on (redraw the traced shape):
   and the two renders (the real-pixel copy and the fresh-anti-aliased ink
   redraw). Detection and render are selected independently, so any of the
   four combinations is reachable.
+- `js/tileEditor.js` — the per-asset editor (`window.TileEditor`): the
+  modal itself, plus the seven operations as **pure functions** taking a
+  pixel buffer and returning a new one, never mutating their input. They're
+  exported individually so each can be exercised on its own, without a
+  browser or a modal.
 - `js/pngEncoder.js` — the canvas-free PNG writer (`window.PngEncoder`),
   including the per-scanline filter selection both `encode`/`encodeIndexed`
   share, and the indexed-PNG (palette + `tRNS`) writer the Compressor uses.
