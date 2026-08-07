@@ -4886,13 +4886,24 @@ body.dark-theme .checkerboard{
       pane without the pane ever needing its own scrollbar. */
 .picture-studio-extract-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));
-  gap:6px;
-  max-height:180px;
+  grid-template-columns:repeat(auto-fill,minmax(84px,1fr));
+  gap:8px;
+  max-height:260px;
   overflow-y:auto;
 }
 .picture-studio-extract-grid:empty{ display:none; }
+/* Each result is a card: the picture button on top, its real pixel size
+   underneath. The size readout is what makes a stray obvious at a glance —
+   a 6x6 speck reads as a speck without having to squint at the thumbnail. */
+.picture-studio-extract-card{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:3px;
+  min-width:0;
+}
 .picture-studio-extract-tile{
+  position:relative;
   width:auto !important;
   height:auto !important;
   margin:0 !important;
@@ -4918,6 +4929,58 @@ body.dark-theme .checkerboard{
   max-height:100%;
   object-fit:contain;
   pointer-events:none;
+}
+/* The number makes the reading order the extractor already sorts by
+   actually visible, so "the third one" is a thing you can say out loud.
+   pointer-events:none so it never eats the tile's own tap. */
+.picture-studio-extract-num{
+  position:absolute;
+  top:2px;
+  left:4px;
+  font-size:9px;
+  font-weight:700;
+  line-height:1;
+  color:#FFCB45;
+  text-shadow:0 1px 2px rgba(0,0,0,0.65);
+  pointer-events:none;
+}
+/* The tick is its own button nested inside the tile button, so it needs the
+   full width/height/margin escape from the global button cascade as well as
+   its own hit area — its click handler calls stopPropagation, so tapping it
+   means "leave this one out" and never "use just this one". */
+.picture-studio-extract-pick{
+  position:absolute;
+  top:2px;
+  right:2px;
+  width:18px !important;
+  height:18px !important;
+  margin:0 !important;
+  padding:0 !important;
+  min-height:0 !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  color:#2b2b2b;
+  border:1px solid rgba(255,203,69,0.7);
+  border-radius:5px;
+  background:rgba(255,255,255,0.82);
+  cursor:pointer;
+}
+.picture-studio-extract-pick.active{
+  background:#FFCB45;
+  border-color:#FFCB45;
+}
+.picture-studio-extract-size{
+  font-size:9px;
+  line-height:1.2;
+  text-align:center;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .picture-studio-color-input{
   width:34px !important;

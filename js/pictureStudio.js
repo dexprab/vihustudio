@@ -271,6 +271,21 @@ const PictureStudio=(function(){
   let _extractInkColorRow=null;
   let _extractModeBtns=null;
   let _extractInkToggle=null;
+  // The search area, in working-buffer pixels. Deliberately its OWN
+  // variable rather than reusing _cropRect: _refreshBgControls arms the
+  // destructive Keep This / Trash It pair off _cropRect, and marking out
+  // where to LOOK for objects must never arm a control that TRIMS the
+  // picture. extractSheet already accepts opts.crop in source pixels, so
+  // this needs no extractor change at all — only somewhere to put the box.
+  let _extractArea=null;           // {x,y,width,height} | null = whole picture
+  let _extractAreaBtn=null;
+  let _extractAreaHintEl=null;
+  // A cutout is "picked" by default, so ✓ Use All keeps returning
+  // everything and 🧩 Make One Picture has something to work from the
+  // moment objects appear. Unticking is how a stray gets dropped — the
+  // second line of defence behind marking out a search area.
+  let _extractPicked=null;         // Set of indices into _extractItems
+  let _extractComposeBtn=null;
 
   let _outlineTile=null;
   let _outlineSubPanel=null;
@@ -1230,6 +1245,26 @@ const PictureStudio=(function(){
     hint.textContent='Find every separate thing in your picture.';
     p.appendChild(hint);
 
+    // Search area. Dragging a box on the picture tells the finder where to
+    // LOOK, so whatever sits outside it is never found in the first place —
+    // a cleaner answer to stray objects than finding them and unticking
+    // them afterwards. extractSheet already takes opts.crop, so this is a
+    // marker plus one passed option and nothing more.
+    _extractAreaHintEl=document.createElement('p');
+    _extractAreaHintEl.className='picture-studio-subpanel-hint';
+    p.appendChild(_extractAreaHintEl);
+
+    _extractAreaBtn=document.createElement('button');
+    _extractAreaBtn.type='button';
+    _extractAreaBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
+    _extractAreaBtn.textContent='↺ Search whole picture';
+    _extractAreaBtn.addEventListener('click',function(){
+      _extractArea=null;
+      _tearDownCropBox();
+      _refreshExtractControls();
+    });
+    p.appendChild(_extractAreaBtn);
+
     // Detection axis.
     const modeRow=document.createElement('div');
     modeRow.className='picture-studio-subpanel-row';
@@ -1352,6 +1387,17 @@ const PictureStudio=(function(){
     _extractUseAllBtn.textContent='✓ Use All';
     _extractUseAllBtn.addEventListener('click',_applyAllExtracted);
     p.appendChild(_extractUseAllBtn);
+
+    // Compose: lay the ticked cutouts out side by side as ONE new picture,
+    // which then simply becomes the picture being edited — so every other
+    // tool works on it and the ordinary Apply path hands it back. Distinct
+    // from Use All, which returns each cutout as its own separate picture.
+    _extractComposeBtn=document.createElement('button');
+    _extractComposeBtn.type='button';
+    _extractComposeBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-primary';
+    _extractComposeBtn.textContent='🧩 Make One Picture';
+    _extractComposeBtn.addEventListener('click',_composeExtracted);
+    p.appendChild(_extractComposeBtn);
 
     _refreshExtractControls();
     return p;
@@ -1508,11 +1554,31 @@ const PictureStudio=(function(){
       _extractRunBtn.disabled=(_extractBusy||!_origImg||!_extractFn());
       _extractRunBtn.textContent=_extractBusy?'✂️ Finding…':'✂️ Find Objects';
     }
+    // Search area: the hint always says which of the two states we're in,
+    // and the reset button only exists while there is something to reset.
+    if(_extractAreaHintEl){
+      _extractAreaHintEl.textContent=_extractArea
+        ?'Looking inside your marked area only.'
+        :'Drag a box on the picture to search just that part.';
+    }
+    if(_extractAreaBtn) _extractAreaBtn.classList.toggle('hidden',!_extractArea);
     const n=(_extractItems&&_extractItems.length)||0;
+    const picked=_extractPickedCount();
     if(_extractUseAllBtn){
       _extractUseAllBtn.classList.toggle('hidden',n<2);
       _extractUseAllBtn.textContent='✓ Use All '+n;
     }
+    if(_extractComposeBtn){
+      // Composing one picture out of a single cutout would just be a
+      // slower "tap it", so the button only appears once there are at
+      // least two ticked things to actually put together.
+      _extractComposeBtn.classList.toggle('hidden',picked<2);
+      _extractComposeBtn.textContent='🧩 Make One Picture ('+picked+')';
+    }
+  }
+
+  function _extractPickedCount(){
+    return _extractPicked?_extractPicked.size:0;
   }
 
   function _clearExtractResults(){
@@ -1522,6 +1588,7 @@ const PictureStudio=(function(){
       });
     }
     _extractItems=null;
+    _extractPicked=null;
     if(_extractGrid) _extractGrid.innerHTML='';
   }
 
@@ -1551,12 +1618,31 @@ const PictureStudio=(function(){
       inkDelta:_extractInkDelta,
       inkColor:_hexToRgb(_extractInkColor)
     };
+    // extractSheet already accepts a crop in source pixels and clamps it
+    // to the image, so marking out a search area needs nothing more than
+    // handing it over. Anything outside is never looked at, which is a
+    // cleaner answer to strays than finding them and unticking them.
+    if(_extractArea){
+      opts.crop={
+        x:_extractArea.x,
+        y:_extractArea.y,
+        w:_extractArea.width,
+        h:_extractArea.height
+      };
+    }
     Promise.resolve(fn(src,opts)).then(function(res){
       _extractBusy=false;
       // extractSheet resolves { ..., items: [...] } — one entry per object
       // it found, each carrying its own objectUrl and pixelBuffer.
       const items=(res&&res.items)||[];
       _extractItems=items.length?items:null;
+      // Everything starts ticked, so ✓ Use All keeps returning all of it
+      // and 🧩 Make One Picture has something to work from immediately.
+      _extractPicked=null;
+      if(_extractItems){
+        _extractPicked=new Set();
+        _extractItems.forEach(function(_,i){ _extractPicked.add(i); });
+      }
       _renderExtractGrid();
       if(_extractStatusEl){
         _extractStatusEl.textContent=items.length
@@ -1572,11 +1658,21 @@ const PictureStudio=(function(){
     });
   }
 
+  // Each result gets its own card: a numbered badge (so the reading order
+  // the extractor already sorts by is actually visible), a real pixel-size
+  // readout (a 6x6 speck is instantly recognisable as a stray) and a tick
+  // for keeping it out of Use All / Make One Picture. The picture itself
+  // stays its own button whose click means "just use this one", so the
+  // long-standing tap-a-tile behaviour is untouched.
   function _renderExtractGrid(){
     if(!_extractGrid) return;
     _extractGrid.innerHTML='';
     if(!_extractItems) return;
     _extractItems.forEach(function(it,i){
+      const pb=it.pixelBuffer||{};
+      const card=document.createElement('div');
+      card.className='picture-studio-extract-card';
+
       const b=document.createElement('button');
       b.type='button';
       b.className='picture-studio-extract-tile';
@@ -1586,7 +1682,42 @@ const PictureStudio=(function(){
       img.alt='';
       b.appendChild(img);
       b.addEventListener('click',function(){ _useExtracted(it); });
-      _extractGrid.appendChild(b);
+
+      const num=document.createElement('span');
+      num.className='picture-studio-extract-num';
+      num.textContent=String(i+1);
+      b.appendChild(num);
+
+      const tick=document.createElement('button');
+      tick.type='button';
+      tick.className='picture-studio-extract-pick';
+      const syncTick=function(){
+        const on=!!(_extractPicked&&_extractPicked.has(i));
+        tick.classList.toggle('active',on);
+        tick.textContent=on?'✓':'';
+        tick.setAttribute('aria-pressed',on?'true':'false');
+        tick.setAttribute('aria-label',(on?'Leave out object ':'Include object ')+(i+1));
+      };
+      tick.addEventListener('click',function(e){
+        // The tick sits on top of the picture button, so without this the
+        // same tap would also mean "use just this one" and close the grid.
+        e.stopPropagation();
+        if(!_extractPicked) _extractPicked=new Set();
+        if(_extractPicked.has(i)) _extractPicked.delete(i);
+        else _extractPicked.add(i);
+        syncTick();
+        _refreshExtractControls();
+      });
+      syncTick();
+      b.appendChild(tick);
+      card.appendChild(b);
+
+      const size=document.createElement('span');
+      size.className='picture-studio-extract-size';
+      size.textContent=(pb.width||0)+'×'+(pb.height||0);
+      card.appendChild(size);
+
+      _extractGrid.appendChild(card);
     });
   }
 
@@ -1605,6 +1736,111 @@ const PictureStudio=(function(){
     // A cutout is a fresh picture: the doodle layer and the outline/fill
     // undo snapshots all describe the OLD one and would be meaningless
     // (and, for the snapshots, wrong-sized) against this one.
+    _state.doodle=[];
+    _outlineSnapshot=null;
+    _fillSnapshot=null;
+    _clearExtractResults();
+    if(_extractStatusEl) _extractStatusEl.textContent='';
+    _refreshExtractControls();
+    _toggleActiveTool(null);
+  }
+
+  // Lay the ticked cutouts out side by side as ONE new picture, which
+  // then simply becomes the picture being edited — so Draw, Outline,
+  // Colour Fill and Trim all apply to the arrangement, and the ordinary
+  // Apply path hands it back as a single image. Distinct from Use All,
+  // which returns each cutout as its own separate picture.
+  //
+  // Compositing is done by hand into a raw Uint8ClampedArray rather than
+  // through a <canvas>: a canvas backing store is premultiplied, so
+  // round-tripping partial alpha through one corrupts it — the same
+  // discipline that keeps the Sheet Extractor's own encoder off canvas.
+  function _composeExtracted(){
+    const items=_extractItems||[];
+    if(!items.length||!_extractPicked) return;
+    const picked=[];
+    items.forEach(function(it,i){
+      if(_extractPicked.has(i)&&it&&it.pixelBuffer&&it.pixelBuffer.width>0&&it.pixelBuffer.height>0){
+        picked.push(it.pixelBuffer);
+      }
+    });
+    if(picked.length<2) return;
+
+    const GAP=12;
+    const PAD=12;
+    // Shelf packing at native pixel size: nothing is scaled, so every
+    // cutout keeps exactly the detail it was traced with. The target row
+    // width aims at a roughly square sheet, but never narrower than the
+    // widest single object, which would make it impossible to place.
+    let widest=0;
+    let area=0;
+    picked.forEach(function(pb){
+      if(pb.width>widest) widest=pb.width;
+      area+=pb.width*pb.height;
+    });
+    const target=Math.max(widest,Math.round(Math.sqrt(area)*1.3));
+
+    const placed=[];
+    let rowX=0;
+    let rowY=0;
+    let rowH=0;
+    let sheetW=0;
+    picked.forEach(function(pb){
+      if(rowX>0&&(rowX+GAP+pb.width)>target){
+        rowY+=rowH+GAP;
+        rowX=0;
+        rowH=0;
+      }
+      const x=rowX===0?0:(rowX+GAP);
+      placed.push({pb:pb,x:x,y:rowY});
+      rowX=x+pb.width;
+      if(pb.height>rowH) rowH=pb.height;
+      if(rowX>sheetW) sheetW=rowX;
+    });
+    const sheetH=rowY+rowH;
+    if(sheetW<=0||sheetH<=0) return;
+
+    const outW=sheetW+PAD*2;
+    const outH=sheetH+PAD*2;
+    const out=new Uint8ClampedArray(outW*outH*4); // transparent
+    placed.forEach(function(p){
+      const pb=p.pb;
+      const src=pb.data;
+      for(let y=0;y<pb.height;y++){
+        const dy=p.y+y+PAD;
+        if(dy<0||dy>=outH) continue;
+        let si=(y*pb.width)*4;
+        let di=(dy*outW+p.x+PAD)*4;
+        for(let x=0;x<pb.width;x++,si+=4,di+=4){
+          const sa=src[si+3];
+          if(!sa) continue;
+          if(sa===255){
+            out[di]=src[si];
+            out[di+1]=src[si+1];
+            out[di+2]=src[si+2];
+            out[di+3]=255;
+            continue;
+          }
+          // Source-over in straight (non-premultiplied) alpha. Cutouts
+          // never overlap under shelf packing, so in practice this only
+          // ever runs against transparent destination — but writing the
+          // real composite keeps it correct if placement ever changes.
+          const a=sa/255;
+          const da=out[di+3]/255;
+          const oa=a+da*(1-a);
+          if(oa<=0){ out[di+3]=0; continue; }
+          out[di]=(src[si]*a+out[di]*da*(1-a))/oa;
+          out[di+1]=(src[si+1]*a+out[di+1]*da*(1-a))/oa;
+          out[di+2]=(src[si+2]*a+out[di+2]*da*(1-a))/oa;
+          out[di+3]=oa*255;
+        }
+      }
+    });
+
+    _swapWorkingBuffer({data:out,width:outW,height:outH});
+    // The composed sheet is a fresh picture, exactly like a single cutout:
+    // the doodle layer and the outline/fill undo snapshots all describe
+    // the old one and would be wrong-sized against this one.
     _state.doodle=[];
     _outlineSnapshot=null;
     _fillSnapshot=null;
@@ -1755,8 +1991,12 @@ const PictureStudio=(function(){
     // Entering it: materialize the pixel buffer up front (rather than on
     // the first drag) so rotation/flip are baked before the child starts
     // dragging — the picture must not visibly change mid-gesture.
-    if(tool!=='crop'){ _tearDownCropBox(); }
-    else if(_ensureWorkingBuffer()){ _render(); }
+    //
+    // Cut Out Objects borrows the very same on-stage box to mark out where
+    // to LOOK for objects, so it has to be spared here too — otherwise
+    // entering the tool would destroy the box the moment it was drawn.
+    if(tool!=='crop'&&tool!=='extract'){ _tearDownCropBox(); }
+    else if(tool==='crop'&&_ensureWorkingBuffer()){ _render(); }
     // The three Sheet Extractor tools all operate on the pixel buffer, so
     // each materializes it on entry for the same reason crop does: rotation
     // and flip get baked before the child acts, never mid-gesture. Leaving
@@ -1766,7 +2006,13 @@ const PictureStudio=(function(){
       if(_ensureWorkingBuffer()) _render();
     }
     if(tool==='extract') _refreshExtractControls();
-    else _clearExtractResults();
+    else {
+      _clearExtractResults();
+      // The marked area and the box on screen are one thing, so they are
+      // dropped together — a hint reading "Looking inside your marked area
+      // only." with no box visible would simply be untrue.
+      _extractArea=null;
+    }
     // Leaving draw mode: drop any in-flight gesture so a half-drawn
     // stroke can never be committed by a later, unrelated mouseup.
     if(tool!=='draw'){ _doodleLive=null; _doodleShapeDrag=null; }
@@ -2426,7 +2672,11 @@ const PictureStudio=(function(){
         e.preventDefault();
         return;
       }
-      if(_activeTool==='crop'){
+      // Crop draws a box to TRIM to; Cut Out Objects draws one to SEARCH
+      // inside. The gesture is identical — a screen-coord box over the
+      // stage — so it is the same drag either way, and only _finishCropDrag
+      // decides which of the two it becomes.
+      if(_activeTool==='crop'||_activeTool==='extract'){
         _startCropDrag(e.clientX,e.clientY);
         e.preventDefault();
         return;
@@ -2602,23 +2852,40 @@ const PictureStudio=(function(){
   }
   function _finishCropDrag(){
     if(!_cropDrag) return;
-    const startX=Math.min(_cropDrag.sx,_lastMouseClientX());
+    // Two tools draw the very same box: Trim Picture draws one to TRIM to,
+    // Cut Out Objects draws one to SEARCH inside. Only this function tells
+    // them apart — the box is resolved once and then committed to whichever
+    // of the two it actually meant. They are kept as separate variables on
+    // purpose: _refreshBgControls arms the destructive Keep This / Trash It
+    // pair off _cropRect, and marking out where to LOOK must never arm a
+    // control that TRIMS.
+    const forExtract=(_activeTool==='extract');
+    const commit=function(box){
+      if(forExtract){
+        _extractArea=box;
+        _refreshExtractControls();
+      }else{
+        _cropRect=box;
+        _refreshBgControls();
+      }
+    };
     // On mouseup we've already been fed the last mousemove; snapshot
     // the box's current screen-rect and convert both corners.
     const rect=_cropBoxEl.getBoundingClientRect();
     _cropDrag=null;
     if(rect.width<4||rect.height<4){
-      // Ignore tiny/accidental drags.
+      // Ignore tiny/accidental drags. For Cut Out Objects that also means a
+      // stray tap clears whatever area was marked, so the panel's hint can
+      // never claim a marked area with no box left on screen.
       _tearDownCropBox();
-      _cropRect=null;
-      _refreshBgControls();
+      commit(null);
       return;
     }
     // Coordinates resolve against the WORKING BUFFER, which is the space
     // _cropPixelBuffer actually operates in. (_bgRemovedImg is drawn from
     // that same buffer so the dimensions match, but the buffer is the
     // source of truth and is what stays correct if the two ever diverge.)
-    if(!_workingBuffer){ _tearDownCropBox(); _cropRect=null; _refreshBgControls(); return; }
+    if(!_workingBuffer){ _tearDownCropBox(); commit(null); return; }
     const bw=_workingBuffer.width, bh=_workingBuffer.height;
     const topLeft=_screenToContent(rect.left,rect.top,bw,bh);
     const botRight=_screenToContent(rect.right,rect.bottom,bw,bh);
@@ -2637,29 +2904,20 @@ const PictureStudio=(function(){
       // If either corner still couldn't be resolved (drag started well
       // outside the image), fall back to (0,0)..(w,h) — treats the drag
       // as "crop to full image", a safe no-op that never throws.
-      _cropRect={
+      commit({
         x:tl?Math.round(tl.x):0,
         y:tl?Math.round(tl.y):0,
         width:Math.round((br?br.x:bw)-(tl?tl.x:0)),
         height:Math.round((br?br.y:bh)-(tl?tl.y:0))
-      };
+      });
     }else{
-      _cropRect={
+      commit({
         x:Math.round(topLeft.x),
         y:Math.round(topLeft.y),
         width:Math.round(botRight.x-topLeft.x),
         height:Math.round(botRight.y-topLeft.y)
-      };
+      });
     }
-    _refreshBgControls();
-  }
-  // For _finishCropDrag: the last mousemove's client coord isn't tracked
-  // explicitly, so this reads the crop box's own current right edge
-  // (already updated by the most-recent _updateCropDrag).
-  function _lastMouseClientX(){
-    if(!_cropBoxEl) return 0;
-    const r=_cropBoxEl.getBoundingClientRect();
-    return r.right;
   }
   function _ensureCropBox(){
     if(_cropBoxEl) return _cropBoxEl;
