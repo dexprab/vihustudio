@@ -4868,6 +4868,40 @@ body.dark-theme .checkerboard{
 }
 .picture-studio-crop-box.hidden{ display:none; }
 
+/* Cut Out Objects — search-area markers. An SVG overlay filling the
+   stage (same containing block as the crop box above), so rectangle,
+   circle AND freehand shapes share one drawing surface instead of one
+   absolutely-positioned div per shape kind. `pointer-events:none` for
+   the same reason as the crop box / brush cursor: the stage canvas's
+   own mouse listeners capture the drag, and the overlay must never
+   intercept it mid-draw. */
+.picture-studio-area-svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:4;
+  overflow:visible;
+}
+.picture-studio-area-svg.hidden{ display:none; }
+/* A committed marker: gold outline, faint wash — visually the same
+   family as the crop box so "marked out on the picture" reads as one
+   language, but solid rather than dashed since a committed area is a
+   settled fact, not an in-flight selection. */
+.picture-studio-area-shape{
+  fill:rgba(255,203,69,0.10);
+  stroke:#FFCB45;
+  stroke-width:2;
+  vector-effect:non-scaling-stroke;
+}
+/* The marker still being dragged out: dashed, like the crop box's own
+   in-flight look. */
+.picture-studio-area-shape-drafting{
+  stroke-dasharray:6 4;
+  fill:rgba(255,203,69,0.06);
+}
+
 /* Sheet Extractor in Image Studio — Cut Out Objects / Outline / Colour
    Fill. Three notes on why this looks the way it does:
 

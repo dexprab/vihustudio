@@ -271,19 +271,33 @@ const PictureStudio=(function(){
   let _extractInkColorRow=null;
   let _extractModeBtns=null;
   let _extractInkToggle=null;
-  // The search area, in working-buffer pixels. Deliberately its OWN
-  // variable rather than reusing _cropRect: _refreshBgControls arms the
+  // Search areas, in working-buffer pixels. Deliberately their OWN
+  // storage rather than reusing _cropRect: _refreshBgControls arms the
   // destructive Keep This / Trash It pair off _cropRect, and marking out
   // where to LOOK for objects must never arm a control that TRIMS the
-  // picture. extractSheet already accepts opts.crop in source pixels, so
-  // this needs no extractor change at all — only somewhere to put the box.
-  let _extractArea=null;           // {x,y,width,height} | null = whole picture
+  // picture. A creator can mark SEVERAL areas — each becomes its own
+  // extractSheet pass cropped to that area's bounding box, and the
+  // results merge into one grid (_runExtractPasses). Shapes: rectangle,
+  // circle, freehand. A non-rectangular shape still crops to its own
+  // BOUNDING BOX for detection — pre-masking the source to the shape was
+  // rejected, because sampleBackground reads the four bbox corners and
+  // for any non-rect shape all four lie outside it, handing every pass a
+  // fabricated white background. Instead objects whose CENTRE falls
+  // outside the shape are dropped after detection (_pointInArea). The
+  // marked shape says "look here", never "cut along this line".
+  let _extractAreas=[];            // [{kind:'rect'|'circle'|'free', bbox:{x,y,width,height}, points?}]
+  let _areaDrag=null;              // in-flight marking gesture {kind,sx,sy,points?}
+  let _areaShape='rect';           // which marker the next drag draws
+  let _extractAreaSvg=null;        // the on-stage overlay the areas render into
+  let _areaShapeBtns=null;
   let _extractAreaBtn=null;
   let _extractAreaHintEl=null;
-  // A cutout is "picked" by default, so ✓ Use All keeps returning
-  // everything and 🧩 Make One Picture has something to work from the
-  // moment objects appear. Unticking is how a stray gets dropped — the
-  // second line of defence behind marking out a search area.
+  // Nothing is picked by default — the product owner's own report was
+  // "all tiles are selected by default", and an all-ticked grid makes
+  // 🧩 Make One Picture grab every stray before the creator has chosen
+  // anything. Ticking is now the deliberate act. ✓ Use All is unaffected:
+  // _applyAllExtracted iterates _extractItems directly and never reads
+  // this set, so "all" still genuinely means all.
   let _extractPicked=null;         // Set of indices into _extractItems
   let _extractComposeBtn=null;
 
@@ -1245,22 +1259,48 @@ const PictureStudio=(function(){
     hint.textContent='Find every separate thing in your picture.';
     p.appendChild(hint);
 
-    // Search area. Dragging a box on the picture tells the finder where to
-    // LOOK, so whatever sits outside it is never found in the first place —
-    // a cleaner answer to stray objects than finding them and unticking
-    // them afterwards. extractSheet already takes opts.crop, so this is a
-    // marker plus one passed option and nothing more.
+    // Search areas. Marking a shape on the picture tells the finder where
+    // to LOOK, so whatever sits outside it is never found in the first
+    // place — a cleaner answer to stray objects than finding them and
+    // unticking them afterwards. Several areas can be marked, each running
+    // as its own extractSheet pass (_runExtractPasses); the shape picker
+    // below decides what the next drag draws.
     _extractAreaHintEl=document.createElement('p');
     _extractAreaHintEl.className='picture-studio-subpanel-hint';
     p.appendChild(_extractAreaHintEl);
+
+    // Marker shape: rectangle, circle, freehand.
+    const shapeRow=document.createElement('div');
+    shapeRow.className='picture-studio-subpanel-row';
+    _areaShapeBtns={};
+    [['rect','▭','Box'],['circle','◯','Circle'],['free','✎','Draw']].forEach(function(m){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='picture-studio-subpanel-btn picture-studio-area-shape-btn';
+      const g=document.createElement('span');
+      g.className='picture-studio-subpanel-btn-glyph';
+      g.textContent=m[1];
+      b.appendChild(g);
+      const t=document.createElement('span');
+      t.textContent=m[2];
+      b.appendChild(t);
+      b.addEventListener('click',function(){
+        _areaShape=m[0];
+        _refreshExtractControls();
+      });
+      _areaShapeBtns[m[0]]=b;
+      shapeRow.appendChild(b);
+    });
+    p.appendChild(shapeRow);
 
     _extractAreaBtn=document.createElement('button');
     _extractAreaBtn.type='button';
     _extractAreaBtn.className='picture-studio-subpanel-btn picture-studio-subpanel-btn-sm';
     _extractAreaBtn.textContent='↺ Search whole picture';
     _extractAreaBtn.addEventListener('click',function(){
-      _extractArea=null;
-      _tearDownCropBox();
+      _extractAreas=[];
+      _areaDrag=null;
+      _syncAreaSvg();
       _refreshExtractControls();
     });
     p.appendChild(_extractAreaBtn);
@@ -1554,14 +1594,24 @@ const PictureStudio=(function(){
       _extractRunBtn.disabled=(_extractBusy||!_origImg||!_extractFn());
       _extractRunBtn.textContent=_extractBusy?'✂️ Finding…':'✂️ Find Objects';
     }
-    // Search area: the hint always says which of the two states we're in,
-    // and the reset button only exists while there is something to reset.
-    if(_extractAreaHintEl){
-      _extractAreaHintEl.textContent=_extractArea
-        ?'Looking inside your marked area only.'
-        :'Drag a box on the picture to search just that part.';
+    // Shape picker: highlight whichever marker the next drag will draw.
+    if(_areaShapeBtns){
+      Object.keys(_areaShapeBtns).forEach(function(k){
+        _areaShapeBtns[k].classList.toggle('active',_areaShape===k);
+      });
     }
-    if(_extractAreaBtn) _extractAreaBtn.classList.toggle('hidden',!_extractArea);
+    // Search areas: the hint always says which state we're in (none, one,
+    // several), and the reset button only exists while there is something
+    // to reset.
+    if(_extractAreaHintEl){
+      const na=_extractAreas.length;
+      _extractAreaHintEl.textContent=na===0
+        ?'Mark out part of the picture to search just there. Mark several!'
+        :(na===1
+          ?'Looking inside your marked area only.'
+          :('Looking inside your '+na+' marked areas only.'));
+    }
+    if(_extractAreaBtn) _extractAreaBtn.classList.toggle('hidden',_extractAreas.length===0);
     const n=(_extractItems&&_extractItems.length)||0;
     const picked=_extractPickedCount();
     if(_extractUseAllBtn){
@@ -1618,31 +1668,22 @@ const PictureStudio=(function(){
       inkDelta:_extractInkDelta,
       inkColor:_hexToRgb(_extractInkColor)
     };
-    // extractSheet already accepts a crop in source pixels and clamps it
-    // to the image, so marking out a search area needs nothing more than
-    // handing it over. Anything outside is never looked at, which is a
-    // cleaner answer to strays than finding them and unticking them.
-    if(_extractArea){
-      opts.crop={
-        x:_extractArea.x,
-        y:_extractArea.y,
-        w:_extractArea.width,
-        h:_extractArea.height
-      };
-    }
-    Promise.resolve(fn(src,opts)).then(function(res){
+    // One pass per marked area (or one whole-picture pass when nothing is
+    // marked). extractSheet itself is never modified — each area's own
+    // bounding box goes through the extractor's existing `crop` option,
+    // and a circle/freehand shape then drops anything whose centre falls
+    // outside the shape. Pre-masking the source to the shape was rejected:
+    // sampleBackground reads the four crop-corner pixels, and for any
+    // non-rectangular shape all four corners lie outside it, so a masked
+    // source would hand every pass a fabricated white background.
+    _runExtractPasses(fn,src,opts,_extractAreas.slice()).then(function(items){
       _extractBusy=false;
-      // extractSheet resolves { ..., items: [...] } — one entry per object
-      // it found, each carrying its own objectUrl and pixelBuffer.
-      const items=(res&&res.items)||[];
       _extractItems=items.length?items:null;
-      // Everything starts ticked, so ✓ Use All keeps returning all of it
-      // and 🧩 Make One Picture has something to work from immediately.
-      _extractPicked=null;
-      if(_extractItems){
-        _extractPicked=new Set();
-        _extractItems.forEach(function(_,i){ _extractPicked.add(i); });
-      }
+      // Nothing is picked by default (Ask C) — the product owner's own
+      // report was "all tiles are selected by default". ✓ Use All is
+      // unaffected: _applyAllExtracted iterates _extractItems directly
+      // and never reads this set.
+      _extractPicked=_extractItems?new Set():null;
       _renderExtractGrid();
       if(_extractStatusEl){
         _extractStatusEl.textContent=items.length
@@ -1656,6 +1697,95 @@ const PictureStudio=(function(){
       if(_extractStatusEl) _extractStatusEl.textContent='Couldn’t find anything this time.';
       _refreshExtractControls();
     });
+  }
+
+  // Runs one extractSheet pass per marked area and merges the results.
+  // Sequential rather than parallel — each pass decodes the same source
+  // image, and running them one at a time keeps peak memory at a single
+  // decode. Per-area failures are swallowed (one bad area must not lose
+  // the others' finds); rejected and duplicate items get their object
+  // URLs revoked so nothing leaks.
+  function _runExtractPasses(fn,src,baseOpts,areas){
+    if(!areas.length){
+      return Promise.resolve(fn(src,baseOpts)).then(function(res){
+        return (res&&res.items)||[];
+      });
+    }
+    const merged=[];
+    let chain=Promise.resolve();
+    areas.forEach(function(area){
+      chain=chain.then(function(){
+        const opts=Object.assign({},baseOpts,{
+          crop:{
+            x:area.bbox.x,
+            y:area.bbox.y,
+            w:area.bbox.width,
+            h:area.bbox.height
+          }
+        });
+        return Promise.resolve(fn(src,opts)).then(function(res){
+          const items=(res&&res.items)||[];
+          // The extractor reports boxes relative to the crop it was given
+          // and echoes the clamped crop back, so converting to source
+          // coordinates is one addition per axis.
+          const ox=(res&&res.crop&&res.crop.x)||0;
+          const oy=(res&&res.crop&&res.crop.y)||0;
+          items.forEach(function(it){
+            // The extractor's items carry bboxOriginal {x,y,w,h} (the tight
+            // box recomputed from the undilated mask) — there is no "box"
+            // field, and the fields are w/h, never width/height.
+            const box=it.bboxOriginal||{x:0,y:0,w:0,h:0};
+            const sx=box.x+ox, sy=box.y+oy;
+            const cx=sx+box.w/2, cy=sy+box.h/2;
+            // A circle/freehand area keeps only objects whose CENTRE is
+            // inside the shape — "look here", not "cut along this line".
+            // For a rectangle this is a no-op (the crop already was the
+            // rectangle), so shipped behaviour is unchanged there.
+            if(!_pointInArea(cx,cy,area)){
+              try{ if(it.objectUrl) URL.revokeObjectURL(it.objectUrl); }catch(e){}
+              return;
+            }
+            // De-dup across overlapping areas: the same physical object
+            // found twice has near-identical source-space centre and size.
+            const dup=merged.some(function(m){
+              return Math.abs(m._srcCx-cx)<4&&Math.abs(m._srcCy-cy)<4&&
+                     Math.abs(m._srcW-box.w)<4&&Math.abs(m._srcH-box.h)<4;
+            });
+            if(dup){
+              try{ if(it.objectUrl) URL.revokeObjectURL(it.objectUrl); }catch(e){}
+              return;
+            }
+            it._srcCx=cx; it._srcCy=cy; it._srcW=box.w; it._srcH=box.h;
+            merged.push(it);
+          });
+        }).catch(function(){ /* keep the other areas' finds */ });
+      });
+    });
+    return chain.then(function(){ return merged; });
+  }
+
+  // Is a source-pixel point inside a marked area's own shape?
+  function _pointInArea(px,py,area){
+    const b=area.bbox;
+    if(px<b.x||py<b.y||px>b.x+b.width||py>b.y+b.height) return false;
+    if(area.kind==='circle'){
+      // The stored bbox IS the ellipse's bounding box.
+      const rx=b.width/2, ry=b.height/2;
+      if(rx<1||ry<1) return true;
+      const dx=(px-(b.x+rx))/rx, dy=(py-(b.y+ry))/ry;
+      return dx*dx+dy*dy<=1;
+    }
+    if(area.kind==='free'&&area.points&&area.points.length>=3){
+      // Ray casting over the traced polygon.
+      let inside=false;
+      const pts=area.points;
+      for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+        const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y;
+        if((yi>py)!==(yj>py)&&px<(xj-xi)*(py-yi)/(yj-yi)+xi) inside=true;
+      }
+      return inside;
+    }
+    return true;
   }
 
   // Each result gets its own card: a numbered badge (so the reading order
@@ -1992,11 +2122,11 @@ const PictureStudio=(function(){
     // the first drag) so rotation/flip are baked before the child starts
     // dragging — the picture must not visibly change mid-gesture.
     //
-    // Cut Out Objects borrows the very same on-stage box to mark out where
-    // to LOOK for objects, so it has to be spared here too — otherwise
-    // entering the tool would destroy the box the moment it was drawn.
-    if(tool!=='crop'&&tool!=='extract'){ _tearDownCropBox(); }
-    else if(tool==='crop'&&_ensureWorkingBuffer()){ _render(); }
+    // (Cut Out Objects no longer borrows this box — its search areas draw
+    // through their own SVG overlay, _syncAreaSvg, so the crop box is
+    // exclusively Trim Picture's again.)
+    if(tool!=='crop'){ _tearDownCropBox(); }
+    else if(_ensureWorkingBuffer()){ _render(); }
     // The three Sheet Extractor tools all operate on the pixel buffer, so
     // each materializes it on entry for the same reason crop does: rotation
     // and flip get baked before the child acts, never mid-gesture. Leaving
@@ -2008,10 +2138,12 @@ const PictureStudio=(function(){
     if(tool==='extract') _refreshExtractControls();
     else {
       _clearExtractResults();
-      // The marked area and the box on screen are one thing, so they are
-      // dropped together — a hint reading "Looking inside your marked area
-      // only." with no box visible would simply be untrue.
-      _extractArea=null;
+      // The marked areas and the shapes on screen are one thing, so they
+      // are dropped together — a hint reading "Looking inside your marked
+      // area only." with no shape visible would simply be untrue.
+      _extractAreas=[];
+      _areaDrag=null;
+      _syncAreaSvg();
     }
     // Leaving draw mode: drop any in-flight gesture so a half-drawn
     // stroke can never be committed by a later, unrelated mouseup.
@@ -2024,6 +2156,7 @@ const PictureStudio=(function(){
     if(_brushMode==='erase') _stage.style.cursor='crosshair';
     else if(_activeTool==='draw') _stage.style.cursor='crosshair';
     else if(_activeTool==='fill') _stage.style.cursor='crosshair';
+    else if(_activeTool==='extract') _stage.style.cursor='crosshair';
     else if(_activeTool==='crop') _stage.style.cursor='none';
     else _stage.style.cursor='';
     // Ship C — the ✂️ scissors overlay stands in for the cursor while
@@ -2672,12 +2805,17 @@ const PictureStudio=(function(){
         e.preventDefault();
         return;
       }
-      // Crop draws a box to TRIM to; Cut Out Objects draws one to SEARCH
-      // inside. The gesture is identical — a screen-coord box over the
-      // stage — so it is the same drag either way, and only _finishCropDrag
-      // decides which of the two it becomes.
-      if(_activeTool==='crop'||_activeTool==='extract'){
+      // Crop draws a box to TRIM to. Cut Out Objects marks out where to
+      // SEARCH — a rectangle, circle or freehand shape, so it has its own
+      // gesture (_startAreaDrag) drawing into its own SVG overlay rather
+      // than borrowing the crop box.
+      if(_activeTool==='crop'){
         _startCropDrag(e.clientX,e.clientY);
+        e.preventDefault();
+        return;
+      }
+      if(_activeTool==='extract'){
+        _startAreaDrag(e.clientX,e.clientY);
         e.preventDefault();
         return;
       }
@@ -2721,6 +2859,10 @@ const PictureStudio=(function(){
         _updateCropDrag(e.clientX,e.clientY);
         return;
       }
+      if(_areaDrag){
+        _updateAreaDrag(e.clientX,e.clientY);
+        return;
+      }
       if(!_drag) return;
       _state.panX=_drag.px+(e.clientX-_drag.sx);
       _state.panY=_drag.py+(e.clientY-_drag.sy);
@@ -2730,6 +2872,7 @@ const PictureStudio=(function(){
       if(_doodleLive||_doodleShapeDrag){ _endDoodleGesture(); }
       if(_brushPainting){ _finishStroke(); }
       if(_cropDrag){ _finishCropDrag(); }
+      if(_areaDrag){ _finishAreaDrag(); }
       _drag=null;
     });
     _canvas.addEventListener('wheel',function(e){
@@ -2852,22 +2995,12 @@ const PictureStudio=(function(){
   }
   function _finishCropDrag(){
     if(!_cropDrag) return;
-    // Two tools draw the very same box: Trim Picture draws one to TRIM to,
-    // Cut Out Objects draws one to SEARCH inside. Only this function tells
-    // them apart — the box is resolved once and then committed to whichever
-    // of the two it actually meant. They are kept as separate variables on
-    // purpose: _refreshBgControls arms the destructive Keep This / Trash It
-    // pair off _cropRect, and marking out where to LOOK must never arm a
-    // control that TRIMS.
-    const forExtract=(_activeTool==='extract');
+    // Trim Picture only — Cut Out Objects' search areas draw through their
+    // own SVG overlay (_startAreaDrag and friends), never this box, so
+    // marking out where to LOOK can never arm a control that TRIMS.
     const commit=function(box){
-      if(forExtract){
-        _extractArea=box;
-        _refreshExtractControls();
-      }else{
-        _cropRect=box;
-        _refreshBgControls();
-      }
+      _cropRect=box;
+      _refreshBgControls();
     };
     // On mouseup we've already been fed the last mousemove; snapshot
     // the box's current screen-rect and convert both corners.
@@ -2933,6 +3066,185 @@ const PictureStudio=(function(){
       _cropBoxEl.style.height='0px';
     }
   }
+
+  // ---------- Cut Out Objects: search areas ------------------------
+  // The child marks out where to LOOK — a rectangle, a circle, or a
+  // freehand shape — and extraction runs one pass per marked area
+  // (_runExtractPasses). Each area is stored in WORKING-BUFFER pixels
+  // ({kind,bbox,points?}) so it survives zoom/pan, and is drawn back to
+  // the stage through its own SVG overlay (_syncAreaSvg) rather than
+  // borrowing Trim Picture's crop box.
+  //
+  // A note on why coordinates clamp rather than drop: _screenToContent
+  // returns null for a point outside the image, but a freehand trace
+  // that wanders off the edge must stay a CLOSED shape — dropping the
+  // out-of-bounds points would tear a hole in the outline, so the
+  // caller clamps to the image bounds instead.
+  function _areaPointFromScreen(clientX,clientY){
+    if(!_workingBuffer) return null;
+    const bw=_workingBuffer.width, bh=_workingBuffer.height;
+    const p=_screenToContent(clientX,clientY,bw,bh);
+    if(p) return {x:p.x,y:p.y};
+    // Out of bounds — recompute the unclamped point by probing the
+    // stage geometry directly (same math as _screenToContent, minus
+    // the bounds check), then clamp.
+    const rect=_canvas.getBoundingClientRect();
+    if(!rect.width||!rect.height) return null;
+    const sx=(clientX-rect.left)*(_canvas.width/rect.width);
+    const sy=(clientY-rect.top)*(_canvas.height/rect.height);
+    const s=_stageRect();
+    const fit=Math.min(s.w/bw,s.h/bh);
+    const z=fit*_state.zoom;
+    if(!z) return null;
+    const cx=(sx-_canvas.width/2-_state.panX)/z + bw/2;
+    const cy=(sy-_canvas.height/2-_state.panY)/z + bh/2;
+    return {
+      x:Math.max(0,Math.min(bw-1,cx)),
+      y:Math.max(0,Math.min(bh-1,cy))
+    };
+  }
+  function _startAreaDrag(clientX,clientY){
+    if(!_ensureWorkingBuffer()) return;
+    const p=_areaPointFromScreen(clientX,clientY);
+    if(!p) return;
+    _areaDrag={kind:_areaShape,sx:p.x,sy:p.y,cx:p.x,cy:p.y};
+    if(_areaShape==='free') _areaDrag.points=[{x:p.x,y:p.y}];
+    _syncAreaSvg();
+  }
+  function _updateAreaDrag(clientX,clientY){
+    if(!_areaDrag) return;
+    const p=_areaPointFromScreen(clientX,clientY);
+    if(!p) return;
+    _areaDrag.cx=p.x;
+    _areaDrag.cy=p.y;
+    if(_areaDrag.kind==='free') _areaDrag.points.push({x:p.x,y:p.y});
+    _syncAreaSvg();
+  }
+  function _finishAreaDrag(){
+    if(!_areaDrag) return;
+    const d=_areaDrag;
+    _areaDrag=null;
+    let bbox;
+    if(d.kind==='free'){
+      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+      (d.points||[]).forEach(function(p){
+        if(p.x<minX) minX=p.x;
+        if(p.y<minY) minY=p.y;
+        if(p.x>maxX) maxX=p.x;
+        if(p.y>maxY) maxY=p.y;
+      });
+      bbox={x:minX,y:minY,width:maxX-minX,height:maxY-minY};
+    }else{
+      bbox={
+        x:Math.min(d.sx,d.cx),
+        y:Math.min(d.sy,d.cy),
+        width:Math.abs(d.cx-d.sx),
+        height:Math.abs(d.cy-d.sy)
+      };
+    }
+    // Ignore tiny/accidental drags — same 4px rule the crop box uses,
+    // except here it means "keep whatever was already marked" rather
+    // than clearing anything.
+    if(!isFinite(bbox.x)||bbox.width<4||bbox.height<4){
+      _syncAreaSvg();
+      _refreshExtractControls();
+      return;
+    }
+    bbox={
+      x:Math.round(bbox.x),y:Math.round(bbox.y),
+      width:Math.round(bbox.width),height:Math.round(bbox.height)
+    };
+    const area={kind:d.kind,bbox:bbox};
+    if(d.kind==='free'){
+      area.points=d.points.map(function(p){
+        return {x:Math.round(p.x),y:Math.round(p.y)};
+      });
+    }
+    _extractAreas.push(area);
+    _syncAreaSvg();
+    _refreshExtractControls();
+  }
+  // Working-buffer pixel -> CSS px relative to _stage. The exact
+  // inverse of _screenToContent (see there for the forward math);
+  // the same image-px -> logical canvas-px -> CSS-px chain
+  // _updateBrushCursorSize already walks for the brush circle.
+  function _bufferToStage(bx,by){
+    if(!_workingBuffer||!_canvas||!_stage) return null;
+    const rect=_canvas.getBoundingClientRect();
+    const stageRect=_stage.getBoundingClientRect();
+    if(!rect.width||!rect.height) return null;
+    const bw=_workingBuffer.width, bh=_workingBuffer.height;
+    const s=_stageRect();
+    const fit=Math.min(s.w/bw,s.h/bh);
+    const z=fit*_state.zoom;
+    const sx=(bx-bw/2)*z + _canvas.width/2  + _state.panX;
+    const sy=(by-bh/2)*z + _canvas.height/2 + _state.panY;
+    return {
+      x:sx*(rect.width/_canvas.width) + rect.left - stageRect.left,
+      y:sy*(rect.height/_canvas.height) + rect.top - stageRect.top
+    };
+  }
+  function _syncAreaSvg(){
+    if(!_stage) return;
+    const anything=_extractAreas.length>0||!!_areaDrag;
+    if(!_extractAreaSvg){
+      if(!anything) return;   // nothing to show, nothing to build
+      _extractAreaSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      _extractAreaSvg.setAttribute('class','picture-studio-area-svg');
+      _stage.appendChild(_extractAreaSvg);
+    }
+    while(_extractAreaSvg.firstChild) _extractAreaSvg.removeChild(_extractAreaSvg.firstChild);
+    if(!anything){
+      _extractAreaSvg.classList.add('hidden');
+      return;
+    }
+    _extractAreaSvg.classList.remove('hidden');
+    const NS='http://www.w3.org/2000/svg';
+    const drawOne=function(kind,bbox,points,inFlight){
+      let el=null;
+      if(kind==='free'){
+        if(!points||points.length<2) return;
+        el=document.createElementNS(NS,'polyline');
+        el.setAttribute('points',points.map(function(p){
+          const q=_bufferToStage(p.x,p.y);
+          return q?(q.x.toFixed(1)+','+q.y.toFixed(1)):'';
+        }).filter(Boolean).join(' '));
+      }else{
+        const tl=_bufferToStage(bbox.x,bbox.y);
+        const br=_bufferToStage(bbox.x+bbox.width,bbox.y+bbox.height);
+        if(!tl||!br) return;
+        if(kind==='circle'){
+          el=document.createElementNS(NS,'ellipse');
+          el.setAttribute('cx',((tl.x+br.x)/2).toFixed(1));
+          el.setAttribute('cy',((tl.y+br.y)/2).toFixed(1));
+          el.setAttribute('rx',(Math.abs(br.x-tl.x)/2).toFixed(1));
+          el.setAttribute('ry',(Math.abs(br.y-tl.y)/2).toFixed(1));
+        }else{
+          el=document.createElementNS(NS,'rect');
+          el.setAttribute('x',Math.min(tl.x,br.x).toFixed(1));
+          el.setAttribute('y',Math.min(tl.y,br.y).toFixed(1));
+          el.setAttribute('width',Math.abs(br.x-tl.x).toFixed(1));
+          el.setAttribute('height',Math.abs(br.y-tl.y).toFixed(1));
+        }
+      }
+      if(!el) return;
+      el.setAttribute('class','picture-studio-area-shape'+(inFlight?' picture-studio-area-shape-drafting':''));
+      _extractAreaSvg.appendChild(el);
+    };
+    _extractAreas.forEach(function(a){ drawOne(a.kind,a.bbox,a.points,false); });
+    if(_areaDrag){
+      const d=_areaDrag;
+      if(d.kind==='free'){
+        drawOne('free',null,d.points,true);
+      }else{
+        drawOne(d.kind,{
+          x:Math.min(d.sx,d.cx),y:Math.min(d.sy,d.cy),
+          width:Math.abs(d.cx-d.sx),height:Math.abs(d.cy-d.sy)
+        },null,true);
+      }
+    }
+  }
+
   function _applyCrop(){
     if(!_cropRect||!_workingBuffer) return;
     // Clamp again defensively.
@@ -3386,6 +3698,14 @@ const PictureStudio=(function(){
     _outlineSnapshot=null;
     _fillSnapshot=null;
     _onApplyMany=null;
+    // Search areas are in working-buffer pixels of the picture that just went
+    // away, so they go with it — a re-open must never say "Looking inside your
+    // marked area only." about areas traced on a different picture. _areaShape
+    // deliberately survives: it's a tool preference (like _extractInk), not
+    // picture state.
+    _extractAreas=[];
+    _areaDrag=null;
+    _syncAreaSvg();
     if(_extractStatusEl) _extractStatusEl.textContent='';
     _refreshBgControls();
     document.removeEventListener('keydown',_onKeyDown);
