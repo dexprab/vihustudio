@@ -313,6 +313,20 @@
     _canvas.addEventListener('pointercancel', endDrag);
   }
 
+  /* TileEditor.bucketFill wants [r,g,b], not a hex string — it indexes
+     col[0..2] straight into the output buffer, so handing it '#ff00ff'
+     would write the CHARACTERS '#','f','f', each coerced to NaN and then
+     stored as 0 by the clamped array: every fill would come out pure
+     black. hexToRgb lives in tileEditor.js but is not on its export list,
+     so this is our own copy — the same per-module adapter convention
+     js/pictureStudio.js already follows for exactly this call. */
+  function _hexToRgb(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return [0, 0, 0];
+    var n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
   /* Fill works on a COPY of the tile's pixel buffer, never in place. The
      buffers handed to open() are the extractor's own — the results grid still
      holds them, and Cancel has to leave every one of them exactly as it found
@@ -334,7 +348,7 @@
     var color = (_fillColorInput && _fillColorInput.value) || '#e63946';
     var next;
     try {
-      next = _tileEditor.bucketFill(t.pb, sx, sy, color, FILL_TOLERANCE);
+      next = _tileEditor.bucketFill(t.pb, sx, sy, _hexToRgb(color), FILL_TOLERANCE);
     } catch (e) {
       return;
     }
