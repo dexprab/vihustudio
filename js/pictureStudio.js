@@ -914,15 +914,14 @@ const PictureStudio=(function(){
     // body, so a child arranges the pieces BESIDE the picture rather than on
     // top of it, and the original edit is never lost while they work. Its
     // dependencies are handed over here rather than reached for from inside
-    // the panel, so composePanel.js never touches this closure. PngEncoder is
-    // a bare global (never window.PngEncoder — see the sheet extractor's own
-    // call sites), so it needs the typeof guard: a missing script tag would
-    // otherwise be a silent ReferenceError at call time.
+    // the panel, so composePanel.js never touches this closure. Deliberately
+    // no PngEncoder: the bake hands back a raw pixel buffer and
+    // _applyComposedPicture takes it straight into _swapWorkingBuffer, so
+    // encoding a PNG would be work thrown away a line later.
     if(typeof ComposePanel!=='undefined'){
       ComposePanel.configure({
         mount:body,
         tileEditor:_tileEditor(),
-        pngEncoder:(typeof PngEncoder!=='undefined'?PngEncoder:null),
         onUsePicture:_applyComposedPicture
       });
     }

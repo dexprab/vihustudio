@@ -17,11 +17,13 @@
    Classic script, no build step — window.ComposePanel is the API.
 
    Pixel discipline (this tool's founding rule): the final bake
-   composites by hand in a raw Uint8ClampedArray and encodes via
-   PngEncoder — never through a <canvas> readback, because canvas
-   backing stores are premultiplied and corrupt RGB at partial
-   alpha. The on-screen compose canvas is DRAW-only (no readback),
-   which is safe.
+   composites by hand in a raw Uint8ClampedArray — never through a
+   <canvas> readback, because canvas backing stores are premultiplied
+   and corrupt RGB at partial alpha. The on-screen compose canvas is
+   DRAW-only (no readback), which is safe. Nothing here encodes a PNG:
+   pictureStudio's own _applyComposedPicture takes the raw buffer
+   straight into _swapWorkingBuffer, so encoding would be work thrown
+   away a line later.
    ============================================================ */
 (function () {
   'use strict';
@@ -39,7 +41,6 @@
   /* Host bindings, handed in once via configure(). */
   var _mount = null;         /* element the panel DOM lives in     */
   var _tileEditor = null;    /* TileEditor (pure ops)              */
-  var _pngEncoder = null;    /* PngEncoder (buffer -> PNG blob)    */
   var _onUsePicture = null;  /* function(payload) — the final bake */
 
   /* Panel DOM (built lazily, once). */
@@ -283,7 +284,7 @@
       if (hit == null) { _paint(); return; }
 
       e.preventDefault();
-      if (_state.mode === 'fill') { _fillTile(hit); return; }
+      if (_state.mode === 'fill') { _fillTile(hit, pt); return; }
 
       var t = _state.tiles[hit];
       _state.drag = { index: hit, dx: pt.x - t.x, dy: pt.y - t.y };
@@ -312,18 +313,127 @@
     _canvas.addEventListener('pointercancel', endDrag);
   }
 
-  /* Stage 5 fills this in. */
-  function _fillTile(index) {
-    void index;
+  /* Fill works on a COPY of the tile's pixel buffer, never in place. The
+     buffers handed to open() are the extractor's own — the results grid still
+     holds them, and Cancel has to leave every one of them exactly as it found
+     them. TileEditor.bucketFill is already pure (returns a new buffer), so the
+     copy is only about not swapping the tile's reference for something the
+     grid no longer recognises... which it would be, since the tile's own pb
+     object is the Map key _tileCanvas() caches on. Replacing pb wholesale
+     means the next _paint() uploads the filled pixels fresh, which is exactly
+     what we want, and the stale entry is dropped with the rest on close(). */
+  function _fillTile(index, pt) {
+    if (!_state || !_tileEditor || !_tileEditor.bucketFill) return;
+    var t = _state.tiles[index];
+    if (!t || !pt) return;
+    var r = _tileRect(t);
+    /* pt is in canvas space; bucketFill wants source pixels. */
+    var sx = Math.floor((pt.x - r.x) / t.scale);
+    var sy = Math.floor((pt.y - r.y) / t.scale);
+    if (sx < 0 || sy < 0 || sx >= t.pb.width || sy >= t.pb.height) return;
+    var color = (_fillColorInput && _fillColorInput.value) || '#e63946';
+    var next;
+    try {
+      next = _tileEditor.bucketFill(t.pb, sx, sy, color, FILL_TOLERANCE);
+    } catch (e) {
+      return;
+    }
+    if (!next || !next.data) return;
+    /* Drop just this tile's cached upload — the key is the old pb object. */
+    if (_tileCanvases) _tileCanvases.delete(t.pb);
+    t.pb = next;
+    _paint();
   }
 
-  /* Stage 4 fills this in. */
+  /* Bigger / Smaller act on whichever tile is currently picked. Scaling
+     anchors at the tile's existing top-left, which is the same corner
+     _tileRect() measures from and _surfaceSize() grows around — so a tile
+     that grows simply pushes the surface out, and x/y stay non-negative
+     with no extra clamping. Scaling about the tile's centre would feel a
+     little more natural but would need x/y adjusted and re-clamped to
+     zero, for no real gain on a small arrangement canvas. */
   function _scaleSelected(factor) {
-    void factor;
+    if (!_state || _state.selected === null) return;
+    var t = _state.tiles[_state.selected];
+    if (!t) return;
+    var next = t.scale * factor;
+    if (next < MIN_SCALE) next = MIN_SCALE;
+    if (next > MAX_SCALE) next = MAX_SCALE;
+    if (next === t.scale) return;
+    t.scale = next;
+    _paint();
   }
 
-  /* Stage 6 fills this in — the hand-composite bake. */
+  /* The bake — the only destructive step in the whole panel, and the
+     only one that ever leaves it.
+
+     Composited by hand in a raw Uint8ClampedArray rather than by
+     drawing the tiles onto a canvas and reading it back: a canvas
+     backing store is premultiplied, so a readback mangles RGB wherever
+     alpha is partial — exactly the fringe pixels a cutout is made of.
+     That is this tool family's founding rule and the reason the
+     extractor's own PngEncoder keeps a canvas out of its write path.
+
+     Sampling is nearest-neighbour on purpose. Bilinear would invent
+     partial alpha along every edge, softening the very cutouts the
+     extractor worked to give clean boundaries. At the default scale of
+     1 the mapping is exactly 1:1 (r.w === sw, so sx === dx) and no
+     resampling happens at all. The consequence, disclosed rather than
+     hidden: the on-screen preview uses drawImage and so looks slightly
+     smoother than the bake at non-1 scales.
+
+     No close() here — pictureStudio's _applyComposedPicture ends on
+     _toggleActiveTool(null), whose own hook closes the panel. */
   function _usePicture() {
+    if (!_state || !_state.tiles.length || !_onUsePicture) return;
+
+    var size = _surfaceSize();
+    var W = size.w, H = size.h;
+    var out = new Uint8ClampedArray(W * H * 4); /* zero-filled = transparent */
+
+    for (var i = 0; i < _state.tiles.length; i++) {
+      var t = _state.tiles[i];
+      var src = t.pb;
+      var sd = src.data, sw = src.width, sh = src.height;
+      var r = _tileRect(t);
+
+      for (var dy = 0; dy < r.h; dy++) {
+        var oy = r.y + dy;
+        if (oy < 0 || oy >= H) continue;
+        var sy = Math.min(sh - 1, Math.floor(dy * sh / r.h));
+
+        for (var dx = 0; dx < r.w; dx++) {
+          var ox = r.x + dx;
+          if (ox < 0 || ox >= W) continue;
+          var sx = Math.min(sw - 1, Math.floor(dx * sw / r.w));
+
+          var si = (sy * sw + sx) * 4;
+          var sa = sd[si + 3];
+          if (!sa) continue;
+
+          var di = (oy * W + ox) * 4;
+          if (sa === 255) {
+            out[di] = sd[si];
+            out[di + 1] = sd[si + 1];
+            out[di + 2] = sd[si + 2];
+            out[di + 3] = 255;
+            continue;
+          }
+
+          /* Straight (non-premultiplied) source-over. */
+          var a = sa / 255;
+          var da = out[di + 3] / 255;
+          var oa = a + da * (1 - a);
+          if (oa <= 0) continue;
+          out[di] = (sd[si] * a + out[di] * da * (1 - a)) / oa;
+          out[di + 1] = (sd[si + 1] * a + out[di + 1] * da * (1 - a)) / oa;
+          out[di + 2] = (sd[si + 2] * a + out[di + 2] * da * (1 - a)) / oa;
+          out[di + 3] = oa * 255;
+        }
+      }
+    }
+
+    _onUsePicture({ data: out, width: W, height: H });
   }
 
   /* ---------------------------------------------------------- */
@@ -334,7 +444,6 @@
     opts = opts || {};
     if (opts.mount) _mount = opts.mount;
     if (opts.tileEditor) _tileEditor = opts.tileEditor;
-    if (opts.pngEncoder) _pngEncoder = opts.pngEncoder;
     if (typeof opts.onUsePicture === 'function') _onUsePicture = opts.onUsePicture;
   }
 
