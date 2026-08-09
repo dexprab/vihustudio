@@ -909,6 +909,24 @@ const PictureStudio=(function(){
     // of body (see below), never a child of _editPanel — so it stays
     // pinned at the bottom of the modal regardless of tools-aside height.
     body.appendChild(_editPanel);
+
+    // Ask B — the compose panel mounts as a flex sibling of the stage inside
+    // body, so a child arranges the pieces BESIDE the picture rather than on
+    // top of it, and the original edit is never lost while they work. Its
+    // dependencies are handed over here rather than reached for from inside
+    // the panel, so composePanel.js never touches this closure. PngEncoder is
+    // a bare global (never window.PngEncoder — see the sheet extractor's own
+    // call sites), so it needs the typeof guard: a missing script tag would
+    // otherwise be a silent ReferenceError at call time.
+    if(typeof ComposePanel!=='undefined'){
+      ComposePanel.configure({
+        mount:body,
+        tileEditor:_tileEditor(),
+        pngEncoder:(typeof PngEncoder!=='undefined'?PngEncoder:null),
+        onUsePicture:_applyComposedPicture
+      });
+    }
+
     _root.appendChild(body);
 
     // Edit footer — Back to picture + Save. Sits at modal bottom, shown
@@ -1875,16 +1893,12 @@ const PictureStudio=(function(){
     _toggleActiveTool(null);
   }
 
-  // Lay the ticked cutouts out side by side as ONE new picture, which
-  // then simply becomes the picture being edited — so Draw, Outline,
-  // Colour Fill and Trim all apply to the arrangement, and the ordinary
+  // Hand the ticked cutouts to the compose panel, which lays them out as
+  // ONE new picture the child can arrange. Only once they tap "Use This
+  // Picture" does the arrangement become the picture being edited — so
+  // Draw, Outline, Colour Fill and Trim all apply to it, and the ordinary
   // Apply path hands it back as a single image. Distinct from Use All,
   // which returns each cutout as its own separate picture.
-  //
-  // Compositing is done by hand into a raw Uint8ClampedArray rather than
-  // through a <canvas>: a canvas backing store is premultiplied, so
-  // round-tripping partial alpha through one corrupts it — the same
-  // discipline that keeps the Sheet Extractor's own encoder off canvas.
   function _composeExtracted(){
     const items=_extractItems||[];
     if(!items.length||!_extractPicked) return;
@@ -1895,82 +1909,24 @@ const PictureStudio=(function(){
       }
     });
     if(picked.length<2) return;
+    // Ask B: composing happens in a side panel BESIDE the picture, so the
+    // original edit is never lost while the child arranges the pieces.
+    // The destructive apply (the old shelf-pack-into-_swapWorkingBuffer
+    // path) now runs only from the onUsePicture callback configured at
+    // boot — the panel itself never touches the working buffer.
+    if(typeof ComposePanel!=='undefined'&&ComposePanel.open(picked)){
+      if(_extractStatusEl) _extractStatusEl.textContent='Arrange your pieces in the side panel, then tap “Use This Picture.”';
+    }
+  }
 
-    const GAP=12;
-    const PAD=12;
-    // Shelf packing at native pixel size: nothing is scaled, so every
-    // cutout keeps exactly the detail it was traced with. The target row
-    // width aims at a roughly square sheet, but never narrower than the
-    // widest single object, which would make it impossible to place.
-    let widest=0;
-    let area=0;
-    picked.forEach(function(pb){
-      if(pb.width>widest) widest=pb.width;
-      area+=pb.width*pb.height;
-    });
-    const target=Math.max(widest,Math.round(Math.sqrt(area)*1.3));
-
-    const placed=[];
-    let rowX=0;
-    let rowY=0;
-    let rowH=0;
-    let sheetW=0;
-    picked.forEach(function(pb){
-      if(rowX>0&&(rowX+GAP+pb.width)>target){
-        rowY+=rowH+GAP;
-        rowX=0;
-        rowH=0;
-      }
-      const x=rowX===0?0:(rowX+GAP);
-      placed.push({pb:pb,x:x,y:rowY});
-      rowX=x+pb.width;
-      if(pb.height>rowH) rowH=pb.height;
-      if(rowX>sheetW) sheetW=rowX;
-    });
-    const sheetH=rowY+rowH;
-    if(sheetW<=0||sheetH<=0) return;
-
-    const outW=sheetW+PAD*2;
-    const outH=sheetH+PAD*2;
-    const out=new Uint8ClampedArray(outW*outH*4); // transparent
-    placed.forEach(function(p){
-      const pb=p.pb;
-      const src=pb.data;
-      for(let y=0;y<pb.height;y++){
-        const dy=p.y+y+PAD;
-        if(dy<0||dy>=outH) continue;
-        let si=(y*pb.width)*4;
-        let di=(dy*outW+p.x+PAD)*4;
-        for(let x=0;x<pb.width;x++,si+=4,di+=4){
-          const sa=src[si+3];
-          if(!sa) continue;
-          if(sa===255){
-            out[di]=src[si];
-            out[di+1]=src[si+1];
-            out[di+2]=src[si+2];
-            out[di+3]=255;
-            continue;
-          }
-          // Source-over in straight (non-premultiplied) alpha. Cutouts
-          // never overlap under shelf packing, so in practice this only
-          // ever runs against transparent destination — but writing the
-          // real composite keeps it correct if placement ever changes.
-          const a=sa/255;
-          const da=out[di+3]/255;
-          const oa=a+da*(1-a);
-          if(oa<=0){ out[di+3]=0; continue; }
-          out[di]=(src[si]*a+out[di]*da*(1-a))/oa;
-          out[di+1]=(src[si+1]*a+out[di+1]*da*(1-a))/oa;
-          out[di+2]=(src[si+2]*a+out[di+2]*da*(1-a))/oa;
-          out[di+3]=oa*255;
-        }
-      }
-    });
-
-    _swapWorkingBuffer({data:out,width:outW,height:outH});
-    // The composed sheet is a fresh picture, exactly like a single cutout:
-    // the doodle layer and the outline/fill undo snapshots all describe
-    // the old one and would be wrong-sized against this one.
+  // The destructive half of composing: ComposePanel bakes the arranged
+  // sheet into one picture and hands it here (via configure() at boot).
+  // Same reset discipline as any fresh picture — the doodle layer and the
+  // outline/fill undo snapshots all describe the old one and would be
+  // wrong-sized against this one.
+  function _applyComposedPicture(pb){
+    if(!pb||!pb.data||!(pb.width>0)||!(pb.height>0)) return;
+    _swapWorkingBuffer({data:pb.data,width:pb.width,height:pb.height});
     _state.doodle=[];
     _outlineSnapshot=null;
     _fillSnapshot=null;
@@ -2144,6 +2100,13 @@ const PictureStudio=(function(){
       _extractAreas=[];
       _areaDrag=null;
       _syncAreaSvg();
+      // Ask B — the compose panel holds pieces cut from results we have just
+      // dropped, so it goes with them. This one hook covers the _setView
+      // ('result') path too, since that calls _toggleActiveTool(null) itself,
+      // and it is what closes the panel after a successful bake (the apply
+      // callback ends on the same call). close() is idempotent, so a later
+      // explicit close can never double-fire into anything.
+      if(typeof ComposePanel!=='undefined') ComposePanel.close();
     }
     // Leaving draw mode: drop any in-flight gesture so a half-drawn
     // stroke can never be committed by a later, unrelated mouseup.
@@ -3641,6 +3604,11 @@ const PictureStudio=(function(){
 
   function _hide(){
     if(_modal) _modal.classList.add('hidden');
+    // Ask B — a modal dismissal never routes through _toggleActiveTool, so the
+    // compose panel needs its own hook here. It holds pieces cut from results
+    // that are about to be dropped, so it goes with them. close() is
+    // idempotent, so overlapping with the _toggleActiveTool hook is harmless.
+    if(typeof ComposePanel!=='undefined') ComposePanel.close();
     _origImg=null;
     _bgRemovedImg=null;
     _bgRemovalDone=false;
