@@ -45,9 +45,16 @@
   /* Panel DOM (built lazily, once). */
   var _panel = null;
   var _canvas = null;
+  var _ctx = null;
   var _statusEl = null;
   var _fillColorInput = null;
   var _modeBtns = {};
+
+  /* One reusable offscreen canvas per tile, keyed by the tile's own
+     pixel buffer. A raw Uint8ClampedArray cannot be drawn directly —
+     it has to go through putImageData first — so caching the scratch
+     canvas keeps a drag from re-uploading every tile on every frame. */
+  var _tileCanvases = null;
 
   /* Compose state — nothing here touches the real picture.
      tiles: [{ pb:{data,width,height}, x, y, scale }]
@@ -86,10 +93,12 @@
     _panel.appendChild(head);
 
     /* The compose surface. Checkerboard = transparency, same as
-       the stage. Painting/interaction arrive in Stage 3. */
+       the stage. */
     var canvasWrap = _el('div', 'compose-panel-canvas-wrap checkerboard');
     _canvas = document.createElement('canvas');
     _canvas.className = 'compose-panel-canvas';
+    _ctx = _canvas.getContext('2d');
+    _wireCanvas();
     canvasWrap.appendChild(_canvas);
     _panel.appendChild(canvasWrap);
 
@@ -161,6 +170,151 @@
     _statusEl.textContent = mode === 'fill'
       ? 'Pick a colour, then tap a piece to fill it.'
       : 'Tap a piece to pick it, then move it around.';
+    _paint();
+  }
+
+  /* ---------------------------------------------------------- */
+  /* Painting                                                    */
+  /* ---------------------------------------------------------- */
+
+  /* A tile's pixels live in a raw Uint8ClampedArray, which drawImage
+     cannot take — it has to become an ImageData on a canvas first.
+     That upload is the expensive part, so each buffer keeps its own
+     scratch canvas and a drag just re-draws the cached ones. */
+  function _tileCanvas(pb) {
+    if (!_tileCanvases) _tileCanvases = new Map();
+    var c = _tileCanvases.get(pb);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = pb.width;
+    c.height = pb.height;
+    var g = c.getContext('2d');
+    var img = g.createImageData(pb.width, pb.height);
+    img.data.set(pb.data);
+    g.putImageData(img, 0, 0);
+    _tileCanvases.set(pb, c);
+    return c;
+  }
+
+  /* Where a tile sits on the compose surface, at its current scale. */
+  function _tileRect(t) {
+    return {
+      x: t.x,
+      y: t.y,
+      w: Math.max(1, Math.round(t.pb.width * t.scale)),
+      h: Math.max(1, Math.round(t.pb.height * t.scale))
+    };
+  }
+
+  /* The surface grows to hold whatever the child has arranged, so
+     dragging a piece out to the right doesn't clip it. */
+  function _surfaceSize() {
+    var w = 1, h = 1, i, r;
+    for (i = 0; i < _state.tiles.length; i++) {
+      r = _tileRect(_state.tiles[i]);
+      w = Math.max(w, r.x + r.w);
+      h = Math.max(h, r.y + r.h);
+    }
+    return { w: w + PAD, h: h + PAD };
+  }
+
+  function _paint() {
+    if (!_state || !_ctx) return;
+    var size = _surfaceSize();
+    if (_canvas.width !== size.w) _canvas.width = size.w;
+    if (_canvas.height !== size.h) _canvas.height = size.h;
+
+    _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    for (var i = 0; i < _state.tiles.length; i++) {
+      var t = _state.tiles[i];
+      var r = _tileRect(t);
+      _ctx.drawImage(_tileCanvas(t.pb), r.x, r.y, r.w, r.h);
+    }
+
+    /* Selection ring, drawn last so it sits over every tile. */
+    if (_state.selected != null && _state.tiles[_state.selected]) {
+      var sr = _tileRect(_state.tiles[_state.selected]);
+      _ctx.save();
+      _ctx.strokeStyle = '#FFCB45';
+      _ctx.lineWidth = 2;
+      _ctx.setLineDash([6, 4]);
+      _ctx.strokeRect(sr.x - 1, sr.y - 1, sr.w + 2, sr.h + 2);
+      _ctx.restore();
+    }
+  }
+
+  /* ---------------------------------------------------------- */
+  /* Interaction                                                 */
+  /* ---------------------------------------------------------- */
+
+  /* The canvas is laid out at width:100%, so a pointer's client
+     coords have to be scaled back into canvas pixels before they
+     mean anything. */
+  function _canvasPoint(e) {
+    var box = _canvas.getBoundingClientRect();
+    if (!box.width || !box.height) return { x: 0, y: 0 };
+    return {
+      x: (e.clientX - box.left) * (_canvas.width / box.width),
+      y: (e.clientY - box.top) * (_canvas.height / box.height)
+    };
+  }
+
+  /* Topmost first, and transparent pixels don't count — tapping the
+     gap inside a ring shape should reach whatever is behind it
+     rather than grabbing the ring's bounding box. */
+  function _hitTile(pt) {
+    for (var i = _state.tiles.length - 1; i >= 0; i--) {
+      var t = _state.tiles[i];
+      var r = _tileRect(t);
+      if (pt.x < r.x || pt.y < r.y || pt.x >= r.x + r.w || pt.y >= r.y + r.h) continue;
+      var sx = Math.min(t.pb.width - 1, Math.floor((pt.x - r.x) / t.scale));
+      var sy = Math.min(t.pb.height - 1, Math.floor((pt.y - r.y) / t.scale));
+      if (t.pb.data[(sy * t.pb.width + sx) * 4 + 3] > 8) return i;
+    }
+    return null;
+  }
+
+  function _wireCanvas() {
+    _canvas.addEventListener('pointerdown', function (e) {
+      if (!_state) return;
+      var pt = _canvasPoint(e);
+      var hit = _hitTile(pt);
+      _state.selected = hit;
+      if (hit == null) { _paint(); return; }
+
+      e.preventDefault();
+      if (_state.mode === 'fill') { _fillTile(hit); return; }
+
+      var t = _state.tiles[hit];
+      _state.drag = { index: hit, dx: pt.x - t.x, dy: pt.y - t.y };
+      try { _canvas.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+      _paint();
+    });
+
+    _canvas.addEventListener('pointermove', function (e) {
+      if (!_state || !_state.drag) return;
+      e.preventDefault();
+      var pt = _canvasPoint(e);
+      var t = _state.tiles[_state.drag.index];
+      /* Never below zero — the surface only grows down and right,
+         so a negative origin would slide the tile out of frame. */
+      t.x = Math.max(0, Math.round(pt.x - _state.drag.dx));
+      t.y = Math.max(0, Math.round(pt.y - _state.drag.dy));
+      _paint();
+    });
+
+    function endDrag(e) {
+      if (!_state || !_state.drag) return;
+      _state.drag = null;
+      try { _canvas.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
+    }
+    _canvas.addEventListener('pointerup', endDrag);
+    _canvas.addEventListener('pointercancel', endDrag);
+  }
+
+  /* Stage 5 fills this in. */
+  function _fillTile(index) {
+    void index;
   }
 
   /* Stage 4 fills this in. */
@@ -190,6 +344,11 @@
   function open(pixelBuffers) {
     if (!_mount || !pixelBuffers || pixelBuffers.length < 2) return false;
     _ensureDom();
+    /* Drop the previous session's upload cache. Keys are pixel-buffer
+       object identities, so a stale entry could never be MIS-read — but
+       every one of those offscreen canvases is real memory nobody can
+       reach again. */
+    _tileCanvases = null;
     _state = {
       tiles: _initialLayout(pixelBuffers),
       mode: 'move',
@@ -198,11 +357,17 @@
     };
     _setMode('move');
     _panel.classList.remove('hidden');
+    /* _setMode paints, but it does so while the panel is still hidden.
+       That works (painting is pure canvas-space arithmetic), so this is
+       for the reader rather than the pixels: the panel is visible now,
+       and the last thing open() does is draw it. */
+    _paint();
     return true;
   }
 
   function close() {
     _state = null;
+    _tileCanvases = null;
     if (_panel) _panel.classList.add('hidden');
   }
 
