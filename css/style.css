@@ -5030,6 +5030,94 @@ body.dark-theme .checkerboard{
 .picture-studio-subpanel-row.hidden{ display:none; }
 .picture-studio-subpanel-btn.hidden{ display:none; }
 
+/* Compose Panel (Ask B of Cut Out Objects) — a side panel that lives
+   beside the picture while a child arranges their picked cutouts into
+   one new picture. Non-destructive until "Use This Picture": the stage
+   keeps showing the untouched original the whole time.
+   No global .hidden utility exists in this codebase, so the panel and
+   its children each carry their own scoped display:none rules. */
+.picture-studio-compose-panel{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  max-width:280px;
+  flex:0 0 auto;
+}
+.picture-studio-compose-panel.hidden{ display:none; }
+.picture-studio-compose-panel .hidden{ display:none; }
+.compose-panel-head{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.compose-panel-title{
+  font-size:13px;
+  font-weight:700;
+}
+.compose-panel-canvas-wrap{
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  /* The checkerboard class supplies the transparency background. */
+}
+.compose-panel-canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  /* Drag-to-move lives here (Stage 3); stop touch scrolling from
+     eating the gesture. */
+  touch-action:none;
+  cursor:pointer;
+}
+.compose-panel-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+/* Every button needs explicit sizing to escape the global
+   button{width:100%;height:var(--button-height)} cascade — the same
+   recurring fix as Object Strip cards / Doodle pen swatches. */
+.compose-panel-mode-btn,
+.compose-panel-size-btn,
+.compose-panel-close-btn{
+  width:auto !important;
+  height:30px !important;
+  margin:0 !important;
+  padding:0 10px !important;
+  flex:1 1 auto;
+  font-size:12px;
+  font-weight:600;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--bg);
+  color:var(--text);
+  cursor:pointer;
+}
+.compose-panel-mode-btn.active{
+  background:var(--gold, #FFCB45);
+  border-color:var(--gold, #FFCB45);
+  color:#5B4300;
+}
+.compose-panel-use-btn{
+  width:auto !important;
+  height:32px !important;
+  margin:0 !important;
+  padding:0 12px !important;
+  flex:2 1 auto;
+  font-size:12px;
+  font-weight:700;
+  border:1px solid var(--gold, #FFCB45);
+  border-radius:10px;
+  background:var(--gold, #FFCB45);
+  color:#5B4300;
+  cursor:pointer;
+}
+.compose-panel-fill-color{ flex:0 0 auto; }
+
 /* Redesign Ship B — Always-visible kid zoom slider (replaces the old
    Bigger/Smaller tile + sub-panel). Small magnifier on the left, big on
    the right, range input filling the middle. Sits above the stage,
