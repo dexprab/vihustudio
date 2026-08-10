@@ -84,10 +84,69 @@ const StudioRite=(function(){
      durationMs:4600}
   ];
 
+  // Act II opens on the same full-screen stage as Act I, and ends on
+  // the one tap that takes the child into the Studio — "a single,
+  // unmissable way forward. No choice of type, no World to pick, no
+  // settings."
+  const ACT_II_STAGE=[
+    {lumo:'talk', egg:'curious',
+     line:{title:'Everyone who finds their way here is a Traveller.',
+           subtitle:'You are a Traveller. You just arrived.'},
+     durationMs:4600},
+    {lumo:'curious', egg:'curious',
+     line:{title:'Travellers who make something become Creators.',
+           subtitle:"That's the only difference. Making something."},
+     durationMs:4800},
+    {lumo:'wave', egg:'excited',
+     line:{title:'Would you like to make something?'},
+     choice:'Yes'}
+  ];
+
+  // Everything from here plays as a quiet band over the LIVE Studio —
+  // the child is in the real editor, not a tutorial copy of one
+  // (Decision 3: "Reuse the existing editor. Do not build tutorial-only
+  // editors."). `await` beats wait on the child's own action,
+  // indefinitely: no timeout, no skip, no auto-advance.
+  const ACT_II_BAND=[
+    {lumo:'celebrate', egg:'excited',
+     line:{title:'There. Your first page.',
+           subtitle:"It's empty on purpose. Empty is where everything starts."},
+     durationMs:4400}
+  ];
+
+  const ACT_III=[
+    {lumo:'talk', egg:'thinking',
+     line:{title:'A story needs someone in it.',
+           subtitle:"Choose whoever you like. It's your story."},
+     await:'sticker-added'},
+    {lumo:'celebrate', egg:'excited',
+     line:{title:'Oh — hello.', subtitle:"They're yours now."},
+     durationMs:3400},
+
+    {lumo:'talk', egg:'curious',
+     line:{title:"They don't have to stay there.",
+           subtitle:'Put them wherever the story needs them.'},
+     await:'sticker-moved'},
+    {lumo:'curious', egg:'curious',
+     line:{title:"That's it. Nothing here is stuck."},
+     durationMs:3000},
+
+    {lumo:'talk', egg:'thinking',
+     line:{title:'Big things feel close. Small things feel far away.',
+           subtitle:'How close is this one?'},
+     await:'sticker-resized'},
+    {lumo:'celebrate', egg:'excited',
+     line:{title:"You're deciding how it feels.",
+           subtitle:"That's the whole job."},
+     durationMs:3600}
+  ];
+
   const ASSETS_BASE='assets/';
+  const IDLE_DRIFT_MS=20000;  // the Egg drifts to sleep, and wakes on activity
   let _els=null;              // {overlay,bubble,lumoImg,eggImg,particles}
   let _packs={};              // role -> {basePath,pkg}
   let _timer=null;
+  let _unobserve=null;
 
   function _el(tag,cls){
     const e=document.createElement(tag);
@@ -182,15 +241,109 @@ const StudioRite=(function(){
     catch(e){ return false; }
   }
 
-  // Plays one beat and resolves when it is done. A beat with
-  // `awaitAction` (phase R3) will resolve on the child's own action
-  // instead of a timer; today every beat is timed.
+  // ---------- Watching the child's own work ----------
+  // Reads the live page rather than tracking our own copy of it, so the
+  // Rite can never disagree with what the editor actually did.
+  function _stickers(){
+    try{
+      const page=PageRuntime.getActivePage();
+      return (page&&page.metadata&&page.metadata.stickers)||[];
+    }catch(e){ return []; }
+  }
+
+  function _stickerSnapshot(){
+    return _stickers().map(function(s){
+      return s.id+':'+s.x+','+s.y+':'+s.w+'x'+s.h;
+    }).join('|');
+  }
+
+  function _conditionMet(kind,baseline){
+    const list=_stickers();
+    if(kind==='sticker-added') return list.length>0;
+    if(!list.length) return false;
+    if(kind==='sticker-moved'){
+      return list.some(function(s){
+        const b=baseline[s.id];
+        return b && (s.x!==b.x || s.y!==b.y);
+      });
+    }
+    if(kind==='sticker-resized'){
+      return list.some(function(s){
+        const b=baseline[s.id];
+        return b && (s.w!==b.w || s.h!==b.h);
+      });
+    }
+    return true;
+  }
+
+  function _baseline(){
+    const map={};
+    _stickers().forEach(function(s){ map[s.id]={x:s.x,y:s.y,w:s.w,h:s.h}; });
+    return map;
+  }
+
+  // Plays one beat and resolves when it is done. A beat with `await`
+  // resolves on the child's own action instead of a timer, and waits
+  // indefinitely — the Rite is mandatory, so it must never be possible
+  // to be rushed through it OR to get stuck in it.
   function _playBeat(beat){
     return new Promise(function(resolve){
+      if(!_els){ resolve(); return; }
       _setPose(_els.lumoImg,_packs.guardian,beat.lumo);
       _setPose(_els.eggImg,_packs.traveller,beat.egg);
       _els.overlay.setAttribute('data-rite-effect',beat.effect||'');
       _showLine(_els.bubble,beat.line);
+
+      // A beat the child completes by tapping (Act II's one way forward).
+      if(beat.choice){
+        const btn=_el('button','studio-rite-choice');
+        btn.type='button';
+        btn.textContent=beat.choice;
+        btn.addEventListener('click',function(){
+          try{ if(btn.parentNode) btn.parentNode.removeChild(btn); }catch(e){}
+          resolve();
+        },{once:true});
+        _els.panel.appendChild(btn);
+        return;
+      }
+
+      // A beat the child completes by making something.
+      if(beat.await){
+        const baseline=_baseline();
+        let idleTimer=null;
+        const rearmIdle=function(){
+          if(idleTimer) clearTimeout(idleTimer);
+          idleTimer=setTimeout(function(){
+            // Canon 1 — pose only. The Egg gets sleepy; it never nags,
+            // and Lumo never repeats himself.
+            _setPose(_els&&_els.eggImg,_packs.traveller,'sleep');
+          },IDLE_DRIFT_MS);
+        };
+        const check=function(){
+          _setPose(_els&&_els.eggImg,_packs.traveller,beat.egg); // woken by activity
+          rearmIdle();
+          if(!_conditionMet(beat.await,baseline)) return;
+          if(idleTimer) clearTimeout(idleTimer);
+          if(_unobserve){ _unobserve(); _unobserve=null; }
+          resolve();
+        };
+        rearmIdle();
+        try{
+          if(typeof PageRuntime!=='undefined' && PageRuntime.observe){
+            _unobserve=PageRuntime.observe(check);
+          }else{
+            // No observer seam at all — the Rite must still be
+            // completable, so fall back to a slow poll rather than
+            // trapping the child on a beat that can never resolve.
+            const poll=setInterval(function(){
+              if(_conditionMet(beat.await,baseline)){ clearInterval(poll); resolve(); }
+            },600);
+          }
+        }catch(e){ resolve(); }
+        check();
+        return;
+      }
+
       const ms=_reducedMotion()?900:(beat.durationMs||3000);
       _timer=setTimeout(resolve,ms);
     });
@@ -204,29 +357,46 @@ const StudioRite=(function(){
 
   function _teardown(){
     if(_timer){ clearTimeout(_timer); _timer=null; }
+    if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
     // Canon 2 — Lumo appears only at a threshold and is torn down when
     // it ends. He must never persist into the Studio widget, which
-    // js/app.js's own CompanionDirector.init() mounts moments later
-    // with the correct Traveller entity.
+    // js/app.js's own CompanionDirector.init() mounts with the correct
+    // Traveller entity.
     try{ if(_els&&_els.overlay&&_els.overlay.parentNode) _els.overlay.parentNode.removeChild(_els.overlay); }catch(e){}
     _els=null; _packs={};
   }
 
-  // Phase R2: Act I only — "Where am I?". Acts II–IV (the creation
-  // beats) land in R3/R4; until then the Rite plays its opening and
-  // hands off WITHOUT marking completion, so an in-progress build never
-  // permanently flags a child as having done a Rite they haven't.
+  // The Rite's second half plays over the LIVE Studio, so the
+  // full-screen stage becomes a quiet band along the bottom. Same DOM,
+  // same Lumo, same bubble — only the styling changes, so the child
+  // never experiences a scene cut between "being told" and "making".
+  function _toBandMode(){
+    if(!_els) return;
+    _els.overlay.classList.add('studio-rite-band');
+  }
+
+  // Phase R3: Acts I–III. Act IV, completion and the unlock land in R4,
+  // so this still hands off WITHOUT marking completion — an
+  // in-progress build never permanently flags a child as having done a
+  // Rite they haven't.
   function run(next){
     if(typeof window.CompanionEngine==='undefined' || !window.CompanionEngine.loadRegistry){
       next(); return;
     }
-    let finished=false;
-    const finish=function(){
-      if(finished) return;
-      finished=true;
-      _teardown();
-      next();
+    // next() boots the Studio. It happens PART WAY through the Rite —
+    // at the moment the child says yes — because Acts III onward need
+    // the real editor underneath. Guarded so it fires exactly once no
+    // matter which path gets there, including every failure path.
+    let handedOff=false;
+    const handOff=function(){
+      if(handedOff) return;
+      handedOff=true;
+      try{ next(); }catch(e){}
     };
+    // Any failure after hand-off must still clear the Rite's own UI,
+    // never leave a child looking at a half-played chapter.
+    const abandon=function(){ _teardown(); handOff(); };
+
     try{
       _els=_buildStage();
       requestAnimationFrame(function(){ if(_els) _els.overlay.classList.add('studio-rite-in'); });
@@ -237,10 +407,23 @@ const StudioRite=(function(){
         // No Lumo package at all means no guide — the Rite cannot be
         // performed, so hand straight off rather than showing a child
         // an empty stage.
-        if(!_packs.guardian){ finish(); return; }
-        return _playBeats(ACT_I).then(finish);
-      }).catch(finish);
-    }catch(e){ finish(); }
+        if(!_packs.guardian){ abandon(); return null; }
+        return _playBeats(ACT_I.concat(ACT_II_STAGE)).then(function(){
+          // The child said yes. Boot the Studio underneath, then open a
+          // blank page directly — no type screen, no World picker, and
+          // no Theme Repository dependency (the Rite is mandatory and
+          // must work on a first launch with no network).
+          handOff();
+          try{
+            if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
+          }catch(e){}
+          _toBandMode();
+          return _playBeats(ACT_II_BAND.concat(ACT_III));
+        }).then(function(){
+          _teardown();
+        });
+      }).catch(abandon);
+    }catch(e){ abandon(); }
   }
 
   // The one entry point js/app.js calls. Never throws, never leaves the

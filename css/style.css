@@ -10502,3 +10502,57 @@ body.dark-theme .traveller-save-notice-dismiss{
 @media (prefers-reduced-motion: reduce){
   .studio-rite-overlay,.studio-rite-egg-img{ transition:none; }
 }
+
+/* Studio Rite — band mode. Acts II(tail) and III play over the LIVE
+   Studio, so the full-screen stage becomes a quiet strip along the
+   bottom: same DOM, same Lumo, same bubble, no scene cut. The band must
+   never intercept a tap meant for the editor — the child is really
+   working in there — so it is pointer-events:none apart from its own
+   controls. */
+.studio-rite-overlay.studio-rite-band{
+  background:none;
+  align-items:flex-end;
+  pointer-events:none;
+  z-index:1400; /* under modals/pickers the child needs, over the canvas */
+}
+.studio-rite-overlay.studio-rite-band .studio-rite-panel{
+  flex-direction:row;
+  align-items:flex-end;
+  justify-content:flex-start;
+  gap:18px;
+  padding:0 22px 18px;
+  background:linear-gradient(0deg,rgba(23,16,52,.92) 0%,rgba(23,16,52,.72) 55%,rgba(23,16,52,0) 100%);
+}
+.studio-rite-overlay.studio-rite-band .studio-rite-cast{
+  min-height:0;
+  align-items:flex-end;
+  gap:10px;
+  flex:0 0 auto;
+}
+.studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:clamp(72px,9vw,120px); }
+.studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:clamp(40px,5vw,64px); }
+.studio-rite-overlay.studio-rite-band .gateway-greeting-bubble{
+  margin:0 0 10px;
+  padding:0;
+  text-align:left;
+  font-size:clamp(15px,1.7vw,22px);
+  max-width:none;
+  flex:1 1 auto;
+}
+/* Act II's single way forward. The one thing in the Rite a child taps. */
+.studio-rite-choice{
+  margin-top:26px;
+  padding:14px 44px;
+  font-family:'Cinzel',"Iowan Old Style",Palatino,Georgia,serif;
+  font-size:clamp(18px,2.2vw,26px);
+  letter-spacing:.06em;
+  color:#2a1c05;
+  background:linear-gradient(180deg,#ffd977 0%,#f0b437 100%);
+  border:none;
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 24px rgba(255,203,69,.5);
+  pointer-events:auto;
+}
+.studio-rite-choice:hover{ filter:brightness(1.06); }
+.studio-rite-choice:focus-visible{ outline:3px solid #fff; outline-offset:3px; }

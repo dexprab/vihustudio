@@ -122,6 +122,23 @@ const PageRuntime=(function(){
   // subset of "redraw + refresh every panel" (previously two divergent
   // sequences existed — the selection setters' 4-call tail and
   // showSlide's own 6-call tail).
+  // Additive observer list, for consumers that need to KNOW a mutation
+  // happened without being one of the fixed panels above — Studio Rite
+  // (docs/COMPANION_CANON.md → Canon 6) watches for the child's own
+  // actions this way rather than intercepting input or polling. Kept
+  // deliberately dumb: no event object, no filtering, no ordering
+  // guarantees. An observer that throws can never break the panel
+  // refresh sequence, which runs first and unconditionally.
+  const observers=[];
+  function observe(fn){
+    if(typeof fn!=='function') return function(){};
+    observers.push(fn);
+    return function(){
+      const i=observers.indexOf(fn);
+      if(i!==-1) observers.splice(i,1);
+    };
+  }
+
   function notify(){
     host.redrawPreview();
     if(typeof CardDesigner!=='undefined'){ try{ CardDesigner.refresh(); }catch(e){} }
@@ -129,10 +146,12 @@ const PageRuntime=(function(){
     if(typeof ObjectStrip!=='undefined'){ try{ ObjectStrip.refresh(); }catch(e){} }
     if(typeof TravellerSaveNotice!=='undefined'){ try{ TravellerSaveNotice.refresh(); }catch(e){} }
     if(typeof SelectionActionStrip!=='undefined'){ try{ SelectionActionStrip.refresh(); }catch(e){} }
+    for(let i=0;i<observers.length;i++){ try{ observers[i](); }catch(e){} }
   }
 
   return {
     configure:configure,
+    observe:observe,
     getActivePage:getActivePage,
     getRenderedObjects:getRenderedObjects,
     getSelection:getSelection,

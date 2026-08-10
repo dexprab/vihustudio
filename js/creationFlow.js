@@ -1679,8 +1679,28 @@ const CreationFlow=(function(){
     }
   }
 
+  // Starts a blank project directly, skipping Screen 1 entirely — the
+  // exact same _finishBlank() the 'Start Something New' card already
+  // calls, exposed rather than duplicated so the two can never drift.
+  // Studio Rite (docs/COMPANION_CANON.md → Canon 6) needs this because
+  // the Rite offers a child "a single, unmissable way forward" with no
+  // type to pick and no World to choose, and because a blank page is
+  // the one creation path with no Theme Repository dependency at all —
+  // the Rite is mandatory and must work on a first launch with no
+  // network. No existing call site changes behaviour.
+  function startBlank(){
+    const type=CREATION_TYPES.find(function(t){ return t.blank; });
+    if(!type) return false;
+    _ensureDom();
+    _mode='new';
+    _selectedThemeId=null;
+    _finishBlank(type);
+    return true;
+  }
+
   return {
     start:start,
+    startBlank:startBlank,
     changeRepresentation:changeRepresentation,
     currentRepresentations:currentRepresentations
   };
