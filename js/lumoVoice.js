@@ -63,6 +63,23 @@
     riteS1L2:{file:'lumo-rites-audio.mp3',from:10.72,to:20.80,ms:10080},
     riteS1L3:{file:'lumo-rites-audio.mp3',from:22.84,to:30.43,ms:7590},
 
+    // Screens 2-4, same one-take-per-screen shape. Screen 1's split was
+    // unambiguous (two pauses over 2s, nothing else above 1.1s); these
+    // takes are more evenly paced, so boundaries were chosen from gap
+    // POSITION against each line's expected length and then cross-checked
+    // by speaking rate — all seven segments land between 2.08 and 2.74
+    // words/second, which a misplaced boundary would break by making one
+    // segment implausibly fast and its neighbour implausibly slow.
+    riteS2L1:{file:'lumo-rites-screen2-audio.mp3',from:0.00, to:6.94, ms:6940},
+    riteS2L2:{file:'lumo-rites-screen2-audio.mp3',from:7.98, to:15.76,ms:7780},
+    riteS2L3:{file:'lumo-rites-screen2-audio.mp3',from:16.80,to:25.39,ms:8590},
+
+    riteS3L1:{file:'lumo-rites-screen3-audio.mp3',from:0.00, to:7.48, ms:7480},
+    riteS3L2:{file:'lumo-rites-screen3-audio.mp3',from:8.60, to:14.52,ms:5920},
+
+    riteS4L1:{file:'lumo-rites-screen4-audio.mp3',from:0.00, to:3.58, ms:3580},
+    riteS4L2:{file:'lumo-rites-screen4-audio.mp3',from:4.54, to:9.48, ms:4940},
+
     // Traveller Gateway greeting -- title then subtitle, one real clip
     // each, played back to back (see playSequence()) while both lines of
     // text are already visible together in one bubble.

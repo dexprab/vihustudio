@@ -1144,3 +1144,29 @@ stops L3 at exactly 30.43; screen 1's lines appear at 0.3s/7.0s/17.7s, matching
 the clip durations; full e2e still completes with zero page errors. **Deployment
 note: segment playback requires the host to serve HTTP Range** — without it the
 browser cannot seek and every segment would play from 0.
+
+## Studio Rite — Voice for Screens 2, 3 and 4
+
+Three more one-take-per-screen recordings (25.39s / 14.52s / 9.48s), registered
+as seven more offset segments — ten in total, covering the first four screens
+(10 of the Rite's 19 lines). Unlike Screen 1, these takes are evenly paced with
+no gap over 1.64s, so the boundaries could not be read off pause length alone:
+they were chosen from gap POSITION against each line's expected length, then
+**cross-checked by speaking rate**, which lands every one of the seven segments
+between **2.08 and 2.74 words/second** — a misplaced boundary would break that
+by making one segment implausibly fast and its neighbour implausibly slow.
+Verified by instrumenting the running Rite rather than by unit-poking clips:
+each line starts exactly its own segment (0.67/10.97/23.04 · 1.11/8.16/16.83 ·
+1.11/8.74 · 0.87/4.66 against intended 0/10.72/22.84 · 0/7.98/16.80 · 0/8.60 ·
+0/4.54). **That integration test caught a real bug the per-clip tests could
+not**: a screen's last line has no gap timer, so a child tapping the button
+while Lumo was still speaking carried the clip into the next screen and played
+two Lumos at once — observed directly as `audio@24.53` overlapping
+`screen2@1.11`. Fixed by tracking the speaking clip and silencing it before the
+next line and on every screen change. Two harness traps were also worth
+recording: a `pkill` pattern that matched the running shell and silently
+discarded a heredoc, and a probe that counted *all* playing audio (the
+Atmosphere ambience layers are always running), which produced ten false
+FAILUREs. Full e2e still completes with the flag written once, ceremony intact,
+Story Egg in the widget, zero page errors; the 10 gate checks pass. Remaining
+unvoiced: screens 5–8 (9 lines), of which screen 8's three are superseded.

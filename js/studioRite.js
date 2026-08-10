@@ -108,13 +108,13 @@ const StudioRite=(function(){
 
     // ---- Act II — Who am I? Ends on the one unmissable way forward.
     {lines:[
-      {lumo:'talk', egg:'curious',
+      {lumo:'talk', egg:'curious', voiceId:'riteS2L1',
        line:{title:'Everyone who arrives here is a Traveller.',
              subtitle:'Today, your journey begins.'}},
-      {lumo:'curious', egg:'curious',
+      {lumo:'curious', egg:'curious', voiceId:'riteS2L2',
        line:{title:'Travellers create stories.',
              subtitle:'Every story you create nurtures your Egg and helps it grow.'}},
-      {lumo:'wave', egg:'excited',
+      {lumo:'wave', egg:'excited', voiceId:'riteS2L3',
        line:{title:'Nobody knows what is inside a Story Egg.',
              subtitle:'Not even Lumo. It depends entirely on the story you make.'}}
      ], end:{choice:'Start My First Story'}, opensStudio:true},
@@ -124,18 +124,18 @@ const StudioRite=(function(){
     // the next thing he wonders about, and ends on the child's own
     // making rather than a button.
     {band:true, lines:[
-      {lumo:'celebrate', egg:'excited',
+      {lumo:'celebrate', egg:'excited', voiceId:'riteS3L1',
        line:{title:'There. Your first page.',
              subtitle:"It's empty on purpose. Empty is where everything starts."}},
-      {lumo:'talk', egg:'thinking',
+      {lumo:'talk', egg:'thinking', voiceId:'riteS3L2',
        line:{title:'A story needs someone in it.',
              subtitle:"Choose whoever you like. It's your story."}}
      ], end:{await:'sticker-added'}, nudgeDelay:0},
 
     {band:true, lines:[
-      {lumo:'celebrate', egg:'excited',
+      {lumo:'celebrate', egg:'excited', voiceId:'riteS4L1',
        line:{title:'Oh — hello.', subtitle:"They're yours now."}},
-      {lumo:'talk', egg:'curious',
+      {lumo:'talk', egg:'curious', voiceId:'riteS4L2',
        line:{title:"They don't have to stay there.",
              subtitle:'Put them wherever the story needs them.'}}
      ], end:{await:'sticker-moved'}, nudgeDelay:4000},
@@ -190,6 +190,7 @@ const StudioRite=(function(){
   let _timer=null;
   let _unobserve=null;
   let _running=false;
+  let _voiceId=null;   // the clip currently speaking, so it can be silenced
 
   function _el(tag,cls){
     const e=document.createElement(tag);
@@ -603,12 +604,33 @@ const StudioRite=(function(){
     _setPose(_els.eggImg,_packs.traveller,entry.egg);
     _els.overlay.setAttribute('data-rite-effect',entry.effect||'');
     _appendLine(entry.line);
-    // Lumo's own recorded voice, where one exists. Guarded the same way
-    // every other optional module is: a missing LumoVoice, or a line
-    // with no recording yet, simply plays nothing.
+    _speak(entry.voiceId);
+  }
+
+  // Lumo's own recorded voice, where one exists. Guarded the same way
+  // every other optional module is: a missing LumoVoice, or a line with
+  // no recording yet, simply plays nothing.
+  //
+  // Stopping the previous clip first is a real bug fix, not tidiness. A
+  // screen's last line has no gap timer (the screen's end takes over),
+  // so a child who taps the button while Lumo is still speaking used to
+  // carry that clip into the next screen and hear TWO Lumos at once.
+  // Caught in a real run: Screen 2's first line played over Screen 1's
+  // third.
+  function _speak(voiceId){
     try{
-      if(entry.voiceId && typeof LumoVoice!=='undefined' && LumoVoice.play) LumoVoice.play(entry.voiceId);
+      if(typeof LumoVoice==='undefined' || !LumoVoice.play) return;
+      if(_voiceId && _voiceId!==voiceId){ try{ LumoVoice.stop(_voiceId); }catch(e){} }
+      _voiceId=voiceId||null;
+      if(voiceId) LumoVoice.play(voiceId);
     }catch(e){}
+  }
+
+  function _hush(){
+    try{
+      if(_voiceId && typeof LumoVoice!=='undefined' && LumoVoice.stop) LumoVoice.stop(_voiceId);
+    }catch(e){}
+    _voiceId=null;
   }
 
   // A spoken line stays up until Lumo has finished saying it; an unvoiced
@@ -698,6 +720,7 @@ const StudioRite=(function(){
 
   function _playScreen(screen){
     if(screen.band) _toBandMode();
+    _hush();          // never let the previous screen's voice bleed in
     _clearConvo();
     return _playLines(screen.lines).then(function(){
       return _playEnd(screen.end,screen.nudgeDelay);
@@ -707,11 +730,7 @@ const StudioRite=(function(){
   function _teardown(){
     _running=false;
     _clearNudge();
-    try{
-      if(typeof LumoVoice!=='undefined' && LumoVoice.stop){
-        ['riteS1L1','riteS1L2','riteS1L3'].forEach(function(id){ LumoVoice.stop(id); });
-      }
-    }catch(e){}
+    _hush();
     if(_timer){ clearTimeout(_timer); _timer=null; }
     if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
     // Canon 2 — Lumo appears only at a threshold and is torn down when
