@@ -1197,3 +1197,27 @@ nothing was changed. Verified end to end: all 17 makings, 3 pages, flag written
 once, `shouldOfferAwakening()` still true, Story Egg in the widget, zero page
 errors. Screens 3–20 are unvoiced by agreement; voice comes once the script is
 final.
+
+## Studio Rite — Lumo Rewritten for a 6–9 Year Old
+
+Product owner set a hard rule for every line Lumo speaks: one instruction, one
+new idea, concrete language, no metaphors needing interpretation, and the child
+must know what to do the moment the line ends — *"if a child could reasonably ask
+'What do you mean?', rewrite the sentence."* Applied to all 30 lines. The old
+copy failed it repeatedly and in the same way: **it never actually told the
+child what to do.** *"Put it up there"* named nothing to put; *"Is it close to us,
+or very far away?"* asked a question whose answer was a resize; *"Falling things
+turn as they fall. Show me how it tumbles"* is a metaphor plus a vague request;
+*"entrusted"* and *"nurtures"* are not 6-year-old words. Now each beat states the
+thing and then asks for it once — *"We are going to make a story about a star. /
+Add a star to your page."* The rule also forced a **structural** change:
+*"They stayed all night. Make it morning."* was one line demanding two actions (a
+new page **and** a colour), so it split into two beats and the compound
+`morning` condition was deleted — 20 screens became 21, 17 makings became 18.
+**All voiceIds were removed**: the ten recorded segments for screens 1–4 no
+longer match a single line of the new copy, and playing audio that says
+different words than the screen is worse than silence. Also re-applied the
+background lockout fix (`_bgTouched`), which had been lost in an earlier
+rewrite — caught by grepping for it rather than assuming it survived. Verified:
+18/18 makings, 3 pages, flag written once, ceremony intact, Story Egg in the
+widget, zero page errors, 10 gate checks passing.

@@ -91,165 +91,159 @@ const StudioRite=(function(){
   // excited | sleep. `hatching`/`magic` belong exclusively to the
   // Creator Ceremony and must never appear here.
   const SCREENS=[
-    // ---- Act I — Where am I? (full-screen stage)
-    // The glow lands on the line about the Egg itself — Canon 1 allows
-    // the Egg pose, glow and magical effects, and nothing else.
+    // ---- Act I — Where am I?
     {lines:[
-      {lumo:'wave', egg:'idle', voiceId:'riteS1L1',
+      {lumo:'wave', egg:'idle',
        line:{title:'Welcome to VihuStudio.',
-             subtitle:'Every story in VihuPlanet begins here.'}},
-      {lumo:'talk', egg:'curious', effect:'glow', voiceId:'riteS1L2',
-       line:{title:'This Story Egg has been entrusted to you.',
-             subtitle:'It has been waiting a long time for a story of its own.'}},
-      {lumo:'curious', egg:'idle', voiceId:'riteS1L3',
-       line:{title:'It will stay beside you while you make one.',
-             subtitle:'Story Eggs know when something is about to happen.'}}
+             subtitle:'This is where you make stories.'}},
+      {lumo:'talk', egg:'curious', effect:'glow',
+       line:{title:'This is your Story Egg.',
+             subtitle:'It is yours to look after.'}},
+      {lumo:'curious', egg:'idle',
+       line:{title:'It will stay with you while you make your story.'}}
      ], end:{move:"Let's Begin"}},
 
-    // ---- Act II — Who am I? Ends on the one unmissable way forward.
+    // ---- Act II — Who am I?
     {lines:[
-      {lumo:'talk', egg:'curious', voiceId:'riteS2L1',
-       line:{title:'Everyone who arrives here is a Traveller.',
-             subtitle:'Today, your journey begins.'}},
-      {lumo:'curious', egg:'curious', voiceId:'riteS2L2',
-       line:{title:'Travellers create stories.',
-             subtitle:'Every story you create nurtures your Egg and helps it grow.'}},
-      {lumo:'wave', egg:'excited', voiceId:'riteS2L3',
+      {lumo:'talk', egg:'curious',
+       line:{title:'Everyone who comes here is called a Traveller.',
+             subtitle:'That is you.'}},
+      {lumo:'curious', egg:'curious',
+       line:{title:'Travellers make stories.',
+             subtitle:'You are going to make one now.'}},
+      {lumo:'wave', egg:'excited',
        line:{title:'Nobody knows what is inside a Story Egg.',
-             subtitle:'Not even Lumo. It depends entirely on the story you make.'}}
+             subtitle:'Not even me.'}}
      ], end:{choice:'Start My First Story'}, opensStudio:true},
 
     // ---- The Starter Story: "The Night a Star Came Down"
-    // (docs/STUDIO_RITE_STARTER_STORY.md). Three pages, 24 lines, 17
-    // makings. Every screen ends on something the CHILD does, never a
-    // button, except the very last. Replaces the one-page placeholder
-    // that stood here while the story was being designed.
-    //
-    // Page 1 — The Falling · discover. Every control met for the first
-    // time, so the nudge glows immediately (nudgeDelay 0).
-
+    // Page 1 — The Falling. Every line: one instruction, one new idea,
+    // and the child knows what to do the moment it ends.
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
-       line:{title:'Every story starts somewhere. This one starts with something falling.',
-             subtitle:'Put it up there.'}}
+       line:{title:'We are going to make a story about a star.',
+             subtitle:'Add a star to your page.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
-       line:{title:"You can't see a star in the daytime.",
-             subtitle:'What colour is the sky when the stars come out?'}}
+       line:{title:'Stars are hard to see in the daytime.',
+             subtitle:'Make the sky dark.'}}
      ], end:{await:'bg-set'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'curious', egg:'curious',
-       line:{title:'There it is.',
-             subtitle:'Is it close to us, or very far away?'}}
+       line:{title:'Your star is far away up in the sky.',
+             subtitle:'Make your star smaller.'}}
      ], end:{await:'sticker-resized'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'Falling things turn as they fall.',
-             subtitle:'Show me how it tumbles.'}}
+       line:{title:'Now the star starts to fall.',
+             subtitle:'Turn your star a little.'}}
      ], end:{await:'sticker-rotated'}, nudgeDelay:0},
 
-    // Page 2 — The Finding · apply. Same controls, new purpose. The
-    // nudge now waits a beat before offering itself.
+    // Page 2 — The Finding.
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
-       line:{title:'Down it comes.'}},
+       line:{title:'The star falls down and down.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'It has to land somewhere.',
-             subtitle:"Let's make the place where it lands."}}
+       line:{title:'It needs somewhere to land.',
+             subtitle:'Add a new page.'}}
      ], end:{await:'page-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
-       line:{title:'This is the ground now, not the sky.',
-             subtitle:'What colour is it down here?'}}
+       line:{title:'This new page is the ground.',
+             subtitle:'Choose a colour for the ground.'}}
      ], end:{await:'bg-set'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'idle',
-       line:{title:'Somewhere to land, and something to land under.'}}
+       line:{title:'A tree grows here.',
+             subtitle:'Add a tree.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'Trees are tall. Is that one tall enough?'}}
+       line:{title:'Make your tree bigger.'}}
      ], end:{await:'sticker-resized'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'Now the star is here, and it is very small, and it is alone.',
-             subtitle:'Somebody is about to find it. Who?'}}
+       line:{title:'Someone comes to find the star.',
+             subtitle:'Add a person or an animal.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
-       line:{title:'Oh — them. Good. I like them already.',
-             subtitle:'Bring them over. Nobody helps from far away.'}}
+       line:{title:'Good choice.',
+             subtitle:'Move them next to the star.'}}
      ], end:{await:'sticker-moved'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'They found it. They are the first thing this star has ever met.',
-             subtitle:'What do they say to it?'}}
+       line:{title:'They want to say something to the star.',
+             subtitle:'Add some words.'}}
      ], end:{await:'text-added'}, nudgeDelay:4000},
 
-    // Page 3 — The Going Home · own. Lumo stops offering; every beat is
-    // something the child has already done, asked for in one line. The
-    // nudge holds back longest here — the child leads, the net remains.
+    // Page 3 — The Going Home. "Make it morning" used to ask for a new
+    // page AND a colour in one line; split in two, one instruction each.
     {band:true, lines:[
       {lumo:'curious', egg:'excited',
-       line:{title:'Nobody told them to be kind. They just were.'}},
+       line:{title:'They stayed with the star all night.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'They stayed all night.',
-             subtitle:'Make it morning.'}}
-     ], end:{await:'morning'}, nudgeDelay:12000},
+       line:{title:'Now it is morning.',
+             subtitle:'Add a new page.'}}
+     ], end:{await:'page-added'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Make this sky light.'}}
+     ], end:{await:'bg-set'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'The star is stronger now. Take it home.'}}
+       line:{title:'The star is strong again.',
+             subtitle:'Move your star up high.'}}
      ], end:{await:'sticker-moved'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'excited',
-       line:{title:"Further. It's a long way up."}}
+       line:{title:'The star is going home.',
+             subtitle:'Make your star very small.'}}
      ], end:{await:'sticker-resized'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'idle',
-       line:{title:'Far away again. Where it belongs.'}},
+       line:{title:'Your star is home now.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'How does your friend feel, watching it go?'}}
+       line:{title:'Your friend is happy.',
+             subtitle:'Add a heart or a smiley face.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
-       line:{title:'Every story needs somebody telling it, too.',
-             subtitle:'Tell us how it ends.'}}
+       line:{title:'Now tell us how the story ends.',
+             subtitle:'Add some words.'}}
      ], end:{await:'text-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
-      {lumo:'curious', egg:'idle',
-       line:{title:'You made something small, and you looked after it, and then you let it go.',
-             subtitle:'Every story does that.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'Stories need names, the way stars do.',
-             subtitle:'What is this one called?'}}
+       line:{title:'Every story needs a name.',
+             subtitle:'Give your story a name.'}}
      ], end:{await:'story-named'}, nudgeDelay:12000},
 
-    // The close. Confidence, not completion — Lumo removes himself and
-    // points the child at their own next story. The sharing beat
-    // (Decision 7) will be inserted after this, and is not built yet.
+    // The close.
     {band:true, lines:[
       {lumo:'curious', egg:'excited', effect:'glow',
-       line:{title:'You made that.',
-             subtitle:"It didn't exist, and now it does."}},
+       line:{title:'You made this story.',
+             subtitle:'It was not here before today.'}},
       {lumo:'talk', egg:'idle',
-       line:{title:'And you did all of it. I only asked questions.'}},
+       line:{title:'You did all of it yourself.',
+             subtitle:'I only asked the questions.'}},
       {lumo:'wave', egg:'idle',
-       line:{title:'Whatever you want to make next — you already know how to start.'}}
+       line:{title:'Now you know how to make a story.'}}
      ], end:{move:'Into the Studio'}}
   ];
 
@@ -261,6 +255,7 @@ const StudioRite=(function(){
   let _unobserve=null;
   let _running=false;
   let _voiceId=null;   // the clip currently speaking, so it can be silenced
+  let _bgTouched=false; // the child actually used the background control
 
   function _el(tag,cls){
     const e=document.createElement(tag);
@@ -482,17 +477,6 @@ const StudioRite=(function(){
       find:function(){ return document.getElementById('addPageBtn'); },
       hint:'A new page waits on the left.'
     },
-    'morning':{
-      // Two actions, so point at whichever is still outstanding.
-      find:function(){
-        const bg=document.getElementById('addPageBtn');
-        try{
-          if(_pageCount()>0 && document.querySelector('.studio-rite-overlay')){ /* no-op */ }
-        }catch(e){}
-        return bg;
-      },
-      hint:'A new page first — then give it a morning colour.'
-    },
     'text-added':{
       find:function(){
         const card=_byLabel('.context-add-card-label','text');
@@ -661,16 +645,15 @@ const StudioRite=(function(){
     // never against zero, which would let an object made on page 1
     // satisfy a page-2 beat.
     if(kind==='page-added') return _pageCount()>(baseline&&baseline.__pages||0);
+    // A duplicated page arrives carrying the previous page's colour, and
+    // a child may simply re-pick the colour they already had. Requiring
+    // the VALUE to change would strand them on a beat they cannot pass,
+    // so a real touch of the background control counts too — recorded by
+    // the same delegated input listener the beat already runs.
     if(kind==='bg-set'){
       const bg=_bgNow();
-      return !!bg && bg!==(baseline&&baseline.__bg);
-    }
-    // "They stayed all night. Make it morning." is one instruction that
-    // takes two actions, exactly as the script writes it: a new page AND
-    // a colour on it. Checking the colour alone would pass instantly,
-    // because a fresh page starts with no background at all.
-    if(kind==='morning'){
-      return _pageCount()>(baseline&&baseline.__pages||0) && !!_bgNow();
+      if(!bg) return false;
+      return bg!==(baseline&&baseline.__bg) || _bgTouched;
     }
     if(kind==='text-added') return _textCount()>(baseline&&baseline.__texts||0);
     const list=_stickers();
@@ -828,6 +811,7 @@ const StudioRite=(function(){
   function _awaitAction(kind,nudgeDelay){
     return new Promise(function(resolve){
       const baseline=_baseline();
+      _bgTouched=false;
       _startNudge(kind,nudgeDelay);
       let idleTimer=null, onInput=null, poll=null;
       const rearmIdle=function(){
@@ -861,7 +845,13 @@ const StudioRite=(function(){
         // capture-phase 'input' listener (the same shape
         // js/companionDirector.js already uses for typing) is the
         // second signal.
-        onInput=function(){ check(); };
+        onInput=function(ev){
+          try{
+            const t=ev&&ev.target;
+            if(t&&t.closest&&t.closest('.context-set-tile')) _bgTouched=true;
+          }catch(e){}
+          check();
+        };
         document.addEventListener('input',onInput,true);
         // Last-resort safety net: a beat must never be able to trap a
         // child in a mandatory Rite because a signal was missed.
