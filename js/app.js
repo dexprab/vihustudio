@@ -1850,6 +1850,21 @@ function _beginBoot(){
   // Traveller/Creator decision correct rather than a stale snapshot from
   // the moment the page merely loaded.
   try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.init(); }catch(e){}
+  // Studio Rite is mid-flight (docs/COMPANION_CANON.md → Canon 6). It
+  // boots the Studio underneath itself at the moment the child says
+  // yes, and then opens its own blank page via CreationFlow.startBlank()
+  // — so neither the restore-session modal nor the normal creation flow
+  // belongs here. A real, reported case: a Traveller who abandons the
+  // Rite part way and comes back has BOTH a saved session and an
+  // unfinished Rite, and got "Restore Previous Project?" thrown over
+  // the top of their own first chapter. The Rite owns the screen until
+  // it is finished; boot stops here and lets it.
+  try{
+    if(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning()){
+      setAutosaveStatus('saved');
+      return;
+    }
+  }catch(e){}
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){

@@ -890,14 +890,19 @@
       // whole-overlay skip-click.
       showBeginGate(function(){
         wireSkip(done);
-        // "hide tap to skip. it breaks the journey." — the '✦ tap to
-        // skip ✦' hint is no longer offered. Arrival is now the first
-        // half of one continuous journey that runs straight on into
-        // Studio Rite (docs/COMPANION_CANON.md → Canon 6), and inviting
-        // a child to skip the opening of their own first chapter works
-        // against that. showTapHint() itself is left intact and unused
-        // rather than deleted, so restoring the invitation is a
-        // one-line change if it is ever wanted back.
+        // The skip lands on Studio Rite, not past it. `done` calls this
+        // begin()'s own onComplete, which js/app.js binds to
+        // _riteThenBoot() -> StudioRite.gate() — so a tap here skips the
+        // Gateway's CINEMATIC and hands straight to the first chapter
+        // (docs/COMPANION_CANON.md → Canon 6). The Rite itself has no
+        // skip of its own and ignores stray taps entirely, so the
+        // journey cannot be tapped away; only the arrival can be
+        // shortened. Verified in a real browser, both halves.
+        //
+        // Once a user has completed the Rite, the same tap lands on
+        // Studio Home instead — the Rite runs exactly once, so the
+        // destination follows the lifecycle rather than the hint.
+        after(reduced?800:TAP_HINT_DELAY_MS,showTapHint);
 
         if(isReturning){
           runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});

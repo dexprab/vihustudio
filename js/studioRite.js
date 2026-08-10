@@ -56,6 +56,12 @@ const StudioRite=(function(){
 
   function isComplete(){ return _flagSet()||_isCreator(); }
 
+  // True from the moment the Rite starts until it has fully finished.
+  // js/app.js's _beginBoot() reads this so it never throws the
+  // restore-session modal or the normal creation flow over the top of a
+  // chapter still in progress — the Rite owns the screen until it ends.
+  function isRunning(){ return _running; }
+
   function markComplete(){
     try{ localStorage.setItem(FLAG,'1'); }catch(e){}
   }
@@ -176,6 +182,7 @@ const StudioRite=(function(){
   let _packs={};              // role -> {basePath,pkg}
   let _timer=null;
   let _unobserve=null;
+  let _running=false;
 
   function _el(tag,cls){
     const e=document.createElement(tag);
@@ -470,6 +477,7 @@ const StudioRite=(function(){
   }
 
   function _teardown(){
+    _running=false;
     if(_timer){ clearTimeout(_timer); _timer=null; }
     if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
     // Canon 2 — Lumo appears only at a threshold and is torn down when
@@ -496,6 +504,7 @@ const StudioRite=(function(){
     if(typeof window.CompanionEngine==='undefined' || !window.CompanionEngine.loadRegistry){
       next(); return;
     }
+    _running=true;
     // next() boots the Studio. It happens PART WAY through the Rite —
     // at the moment the child says yes — because Acts III onward need
     // the real editor underneath. Guarded so it fires exactly once no
@@ -566,6 +575,7 @@ const StudioRite=(function(){
 
   return {
     isComplete:isComplete,
+    isRunning:isRunning,
     markComplete:markComplete,
     gate:gate
   };

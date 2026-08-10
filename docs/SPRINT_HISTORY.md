@@ -948,3 +948,30 @@ one line. Note the underlying `wireSkip()` tap-to-skip still works; only the
 invitation is hidden. Verified: hint never appears, the Gateway still reaches
 the Rite, full e2e run completes with the flag written once, ceremony intact,
 Story Egg in the widget, zero page errors.
+
+## Studio Rite — Scroll, Skip Destination, and the Restore Modal
+
+Three product-feedback fixes. **Invisible scroll**: the conversation used
+`overflow:hidden`, which silently clipped the earliest line off the top. Now
+`overflow-y:auto` with the scrollbar furniture removed (`scrollbar-width:none`,
+zero-width `::-webkit-scrollbar`) and a 20px top mask so scrolled-past text
+fades rather than being cut. Two real defects surfaced while verifying:
+`justify-content:flex-end` makes overflowing flex content spill above the
+container and become **unreachable by scrolling** — replaced with
+`margin-top:auto` on the first line, which bottom-aligns a short screen without
+breaking a tall one; and the mask originally faded into the first line, so it
+was shortened to match the padding. Measured at a deliberately short viewport:
+286px of content in a 190px box, scrollbar width 0, auto-pinned to newest,
+scrollable back to a fully legible first line, cast fixed at top=16 throughout.
+**Skip destination**: the Gateway's `wireSkip(done)` calls `done()` ->
+`onComplete()`, which R1 bound to `_riteThenBoot()` — so tap-to-skip already
+landed on the Rite, not past it, and the Rite itself ignores stray taps.
+Verified both halves in a browser, so the `'✦ tap to skip ✦'` hint was restored
+rather than left hidden; note the destination follows lifecycle (a returning
+user's skip lands on Studio Home, since the Rite runs once). **Restore modal**:
+a Traveller who abandons the Rite part way has both a saved session and an
+unfinished Rite, and got "Restore Previous Project?" thrown over their own first
+chapter. Added `StudioRite.isRunning()`; `_beginBoot()` now returns early while
+the Rite is in flight, since the Rite opens its own blank page. Proven in both
+directions with a genuine captured session: modal still shows on a normal boot,
+never over the Rite.

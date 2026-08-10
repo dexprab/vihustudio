@@ -10532,14 +10532,39 @@ body.dark-theme .traveller-save-notice-dismiss{
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:flex-start;   /* fills downward from a fixed top edge */
+  /* NOT justify-content:flex-end — with overflow that makes the first
+     items spill above the container and become unreachable by
+     scrolling. margin-top:auto on the first line (below) bottom-aligns
+     a short screen while keeping a tall one fully scrollable. */
+  justify-content:flex-start;
   gap:12px;
   width:100%;
   height:100%;
-  overflow:hidden;              /* a screen never holds more than fits */
-  padding:18px 8px 0;
+  padding:20px 8px 0;
   box-sizing:border-box;
+  /* Scrollable so a child can go back and re-read what Lumo said, but
+     with NO visible scrollbar — a scrollbar in the middle of a
+     storybook reads as a browser chrome artifact, and the first version
+     used overflow:hidden instead, which silently CLIPPED the earliest
+     line off the top. Scroll is real here; only its furniture is gone. */
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;         /* Firefox */
+  -ms-overflow-style:none;      /* old Edge */
+  /* Anything scrolled above the box fades out rather than being cut on
+     a hard edge, so "there is more up there" is legible without a bar. */
+  /* Fade matches the 20px top padding, so at the very top of the
+     conversation the fade lands on padding and the first line is fully
+     legible; only genuinely scrolled-past text softens. */
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 20px,#000 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 20px,#000 100%);
 }
+.studio-rite-convo::-webkit-scrollbar{ width:0; height:0; }
+.studio-rite-convo::-webkit-scrollbar-thumb{ background:transparent; }
+/* Bottom-align a screen that fits, without breaking scrolling when it
+   doesn't. This is the safe alternative to justify-content:flex-end. */
+.studio-rite-line:first-child{ margin-top:auto; }
 .studio-rite-line{
   opacity:0;
   transform:translateY(8px);
@@ -10586,8 +10611,9 @@ body.dark-theme .traveller-save-notice-dismiss{
 .studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:clamp(72px,9vw,120px); }
 .studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:clamp(40px,5vw,64px); }
 .studio-rite-overlay.studio-rite-band .studio-rite-convo{
-  height:auto; min-height:96px; align-items:flex-start;
-  justify-content:flex-end; padding:0 0 8px; gap:6px;
+  height:auto; max-height:22vh; min-height:96px; align-items:flex-start;
+  justify-content:flex-start; padding:0 0 8px; gap:6px;
+  pointer-events:auto;          /* the band is inert except this, so it can be scrolled back */
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-line{ text-align:left; }
 .studio-rite-overlay.studio-rite-band .gateway-greeting-title{ font-size:clamp(15px,1.7vw,22px); }
