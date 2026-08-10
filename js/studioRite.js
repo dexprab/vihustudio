@@ -886,6 +886,7 @@ const StudioRite=(function(){
 
   function _teardown(){
     _running=false;
+    try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
     _clearNudge();
     _hush();
     if(_timer){ clearTimeout(_timer); _timer=null; }
@@ -905,6 +906,43 @@ const StudioRite=(function(){
   function _toBandMode(){
     if(!_els) return;
     _els.overlay.classList.add('studio-rite-band');
+    _liftBandClearOfStrip();
+  }
+
+  // The Object Strip sits at the very bottom of the editor and is the
+  // only DOM affordance a child has for selecting an object on a canvas
+  // page — the nudge points at it. The band also wants the bottom of the
+  // screen. Both cannot have it, so the band is lifted to sit directly
+  // above the Strip, measured live rather than hardcoded.
+  function _liftBandClearOfStrip(){
+    try{
+      const strip=document.querySelector('.object-strip');
+      let lift=0;
+      if(strip){
+        const r=strip.getBoundingClientRect();
+        // Lift by exactly enough for the band's bottom edge to land on
+        // the Strip's top edge. Keyed off where the Strip actually is,
+        // not its height — it does not sit flush to the viewport bottom.
+        if(r.height>0 && r.bottom>window.innerHeight*0.6){
+          lift=Math.max(0,Math.round(window.innerHeight-r.top));
+        }
+      }
+      _els.overlay.style.setProperty('--rite-band-lift',lift+'px');
+      // Keep the band out of the right panel entirely. It spans the full
+      // width otherwise, dimming the very controls the nudge points at.
+      let inset=0;
+      try{
+        const panel=document.querySelector('.context-zone-personalize')
+                 || document.querySelector('.context-panel-root');
+        if(panel){
+          const pr=panel.getBoundingClientRect();
+          if(pr.width>0 && pr.right>window.innerWidth*0.6){
+            inset=Math.max(0,Math.round(window.innerWidth-pr.left+8));
+          }
+        }
+      }catch(e){}
+      _els.overlay.style.setProperty('--rite-band-inset',inset+'px');
+    }catch(e){}
   }
 
   // The whole Rite: Act I (Where am I?) - Act II (Who am I?) -
@@ -930,6 +968,7 @@ const StudioRite=(function(){
     const abandon=function(){ _teardown(); handOff(); };
 
     try{
+      try{ document.body.classList.add('studio-rite-running'); }catch(e){}
       _els=_buildStage();
       requestAnimationFrame(function(){ if(_els) _els.overlay.classList.add('studio-rite-in'); });
       window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(regList){

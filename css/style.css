@@ -10579,6 +10579,12 @@ body.dark-theme .traveller-save-notice-dismiss{
 .studio-rite-line .gateway-greeting-subtitle{
   text-shadow:0 0 24px rgba(255,203,69,.45), 0 2px 12px rgba(0,0,0,.7);
 }
+/* The gold lived on .gateway-greeting-bubble, which the conversation
+   replaced — so the TITLE inherited the page's near-black body colour
+   and rendered unreadable over the band (measured: rgb(26,26,26)). The
+   subtitle has its own colour rule and was always fine, which is
+   exactly why this was easy to miss. */
+.studio-rite-line .gateway-greeting-title{ color:var(--gw-gold); }
 .studio-rite-line .gateway-greeting-title{ font-size:clamp(19px,2.6vw,32px); }
 .studio-rite-line .gateway-greeting-subtitle{ font-size:clamp(15px,1.9vw,23px); }
 /* Reserved whether or not a button is present, so the button appearing
@@ -10603,16 +10609,30 @@ body.dark-theme .traveller-save-notice-dismiss{
   grid-template-columns:auto minmax(0,1fr) auto;
   align-items:end;
   max-width:none;
-  gap:18px;
-  padding:0 22px 18px;
-  background:linear-gradient(0deg,rgba(23,16,52,.94) 0%,rgba(23,16,52,.78) 60%,rgba(23,16,52,0) 100%);
+  gap:14px;
+  padding:0 18px 10px;
+  /* Lifted clear of the Object Strip, which lives at the very bottom of
+     the editor and would otherwise sit underneath the band. Both cannot
+     own the bottom of the screen, and the Strip is the DOM way a child
+     selects an object — so it has to stay reachable. The lift is
+     measured live in _toBandMode(); 0 when there is no Strip. */
+  margin-bottom:var(--rite-band-lift,0px);
+  /* And clear of the right panel, which is where most nudge targets
+     live — a full-width band dims the very control it is pointing at. */
+  margin-right:var(--rite-band-inset,0px);
+  background:linear-gradient(0deg,rgba(23,16,52,.96) 0%,rgba(23,16,52,.86) 55%,rgba(23,16,52,0) 100%);
 }
-.studio-rite-overlay.studio-rite-band .studio-rite-cast{ height:auto; gap:10px; }
-.studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:clamp(72px,9vw,120px); }
-.studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:clamp(40px,5vw,64px); }
+/* min-height:clamp(160px,30vh,320px) from the base rule was pinning the
+   band's cast to 179px on a 596px viewport regardless of how small the
+   art got — capping the image height alone did nothing. */
+.studio-rite-overlay.studio-rite-band .studio-rite-cast{ height:auto; min-height:0; gap:10px; }
+/* Height, not width, is what makes the band tall — the art is portrait,
+   so capping width alone left it at 179px. */
+.studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:auto; height:clamp(56px,11vh,96px); }
+.studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:auto; height:clamp(30px,6vh,52px); }
 .studio-rite-overlay.studio-rite-band .studio-rite-convo{
-  height:auto; max-height:22vh; min-height:96px; align-items:flex-start;
-  justify-content:flex-start; padding:0 0 8px; gap:6px;
+  height:auto; max-height:17vh; min-height:0; align-items:flex-start;
+  justify-content:flex-start; padding:0 0 4px; gap:4px;
   pointer-events:auto;          /* the band is inert except this, so it can be scrolled back */
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-line{ text-align:left; }
@@ -10679,3 +10699,10 @@ body.dark-theme .traveller-save-notice-dismiss{
 @media (prefers-reduced-motion: reduce){
   .studio-rite-nudge{ animation:none; box-shadow:0 0 0 6px rgba(255,203,69,.35); }
 }
+
+/* One Egg, not two. The Rite hands off to the Studio part way through,
+   so _beginBoot() mounts the standing companion widget while the Rite is
+   still on screen — a second Story Egg in the corner beside the one
+   already in the band's cast. Hidden for the duration; the class comes
+   off at teardown and the widget is the Studio's again. */
+body.studio-rite-running .companion-widget{ display:none !important; }
