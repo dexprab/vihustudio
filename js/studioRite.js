@@ -75,16 +75,13 @@ const StudioRite=(function(){
   const ACT_I=[
     {lumo:'wave', egg:'idle',
      line:{title:'This is VihuStudio.',
-           subtitle:'Every story in VihuPlanet begins in a place like this.'},
-     durationMs:4200},
+           subtitle:'Every story in VihuPlanet begins in a place like this.'}},
     {lumo:'talk', egg:'curious',
      line:{title:'Stories are how we keep the things we love.',
-           subtitle:'A day, a friend, a dragon you invented — a story keeps it real.'},
-     durationMs:5200},
+           subtitle:'A day, a friend, a dragon you invented — a story keeps it real.'}},
     {lumo:'curious', egg:'idle', effect:'glow',
      line:{title:'Someone brought this Egg here for you.',
-           subtitle:'It has been waiting.'},
-     durationMs:4600}
+           subtitle:'It has been waiting.'}}
   ];
 
   // Act II opens on the same full-screen stage as Act I, and ends on
@@ -94,12 +91,10 @@ const StudioRite=(function(){
   const ACT_II_STAGE=[
     {lumo:'talk', egg:'curious',
      line:{title:'Everyone who finds their way here is a Traveller.',
-           subtitle:'You are a Traveller. You just arrived.'},
-     durationMs:4600},
+           subtitle:'You are a Traveller. You just arrived.'}},
     {lumo:'curious', egg:'curious',
      line:{title:'Travellers who make something become Creators.',
-           subtitle:"That's the only difference. Making something."},
-     durationMs:4800},
+           subtitle:"That's the only difference. Making something."}},
     {lumo:'wave', egg:'excited',
      line:{title:'Would you like to make something?'},
      choice:'Yes'}
@@ -113,8 +108,7 @@ const StudioRite=(function(){
   const ACT_II_BAND=[
     {lumo:'celebrate', egg:'excited',
      line:{title:'There. Your first page.',
-           subtitle:"It's empty on purpose. Empty is where everything starts."},
-     durationMs:4400}
+           subtitle:"It's empty on purpose. Empty is where everything starts."}}
   ];
 
   const ACT_III=[
@@ -123,16 +117,14 @@ const StudioRite=(function(){
            subtitle:"Choose whoever you like. It's your story."},
      await:'sticker-added'},
     {lumo:'celebrate', egg:'excited',
-     line:{title:'Oh — hello.', subtitle:"They're yours now."},
-     durationMs:3400},
+     line:{title:'Oh — hello.', subtitle:"They're yours now."}},
 
     {lumo:'talk', egg:'curious',
      line:{title:"They don't have to stay there.",
            subtitle:'Put them wherever the story needs them.'},
      await:'sticker-moved'},
     {lumo:'curious', egg:'curious',
-     line:{title:"That's it. Nothing here is stuck."},
-     durationMs:3000},
+     line:{title:"That's it. Nothing here is stuck."}},
 
     {lumo:'talk', egg:'thinking',
      line:{title:'Big things feel close. Small things feel far away.',
@@ -140,8 +132,7 @@ const StudioRite=(function(){
      await:'sticker-resized'},
     {lumo:'celebrate', egg:'excited',
      line:{title:"You're deciding how it feels.",
-           subtitle:"That's the whole job."},
-     durationMs:3600}
+           subtitle:"That's the whole job."}}
   ];
 
   // Act IV — "Why do stories matter?". The peak of the Rite: the child
@@ -154,12 +145,10 @@ const StudioRite=(function(){
      await:'story-named'},
     {lumo:'curious', egg:'excited', effect:'glow',
      line:{title:'You made that.',
-           subtitle:"It didn't exist, and now it does."},
-     durationMs:4200},
+           subtitle:"It didn't exist, and now it does."}},
     {lumo:'talk', egg:'idle',
      line:{title:"That's why we keep stories.",
-           subtitle:'Because someone made them, and then they were real.'},
-     durationMs:4600}
+           subtitle:'Because someone made them, and then they were real.'}}
   ];
 
   // Completion. Lumo leaves; the Egg does not — it follows the child
@@ -170,16 +159,13 @@ const StudioRite=(function(){
   const COMPLETION=[
     {lumo:'celebrate', egg:'excited',
      line:{title:"You're not a Traveller any more.",
-           subtitle:'You made something. That makes you a Creator.'},
-     durationMs:4400},
+           subtitle:'You made something. That makes you a Creator.'}},
     {lumo:'talk', egg:'idle',
      line:{title:'One day this Egg will hatch, and someone will choose you.',
-           subtitle:'Not today. Today you just made your first story.'},
-     durationMs:5000},
+           subtitle:'Not today. Today you just made your first story.'}},
     {lumo:'wave', egg:'idle',
      line:{title:'The Studio is yours now.',
-           subtitle:'Go and see what else is in it.'},
-     durationMs:4200}
+           subtitle:'Go and see what else is in it.'}}
   ];
 
   const ASSETS_BASE='assets/';
@@ -223,12 +209,19 @@ const StudioRite=(function(){
     cast.appendChild(eggWrap);
     cast.appendChild(lumoWrap);
 
-    const bubble=_el('div','gateway-greeting-bubble');
+    // A conversation, not a teleprompter. Lines ACCUMULATE — nothing
+    // Lumo says is ever taken away — so a child who reads slowly, or is
+    // being read to, can look back at what was said instead of racing a
+    // timer. Advancing is always the child's own click.
+    const convo=_el('div','studio-rite-convo');
+    const controls=_el('div','studio-rite-controls');
     panel.appendChild(cast);
-    panel.appendChild(bubble);
+    panel.appendChild(convo);
+    panel.appendChild(controls);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
-    return {overlay:overlay,panel:panel,bubble:bubble,lumoImg:lumoImg,eggImg:eggImg,particles:particles};
+    return {overlay:overlay,panel:panel,convo:convo,controls:controls,
+            lumoImg:lumoImg,eggImg:eggImg,particles:particles};
   }
 
   function _fetchJSON(url){
@@ -260,26 +253,46 @@ const StudioRite=(function(){
     imgEl.setAttribute('src',src);
   }
 
-  function _showLine(bubble,line){
-    if(!bubble) return;
-    bubble.classList.remove('gateway-greeting-in');
-    bubble.textContent='';
-    if(!line) return;
+  // Appends one line to the running conversation. Earlier lines stay,
+  // dimmed, so the newest is obviously the newest without the others
+  // being lost. Reuses the Gateway's own title/subtitle typography so
+  // Lumo sounds and looks like the same character throughout.
+  function _appendLine(line){
+    if(!_els||!_els.convo||!line) return;
+    const prev=_els.convo.querySelectorAll('.studio-rite-line');
+    for(let i=0;i<prev.length;i++) prev[i].classList.add('studio-rite-line-past');
+    const row=_el('div','studio-rite-line');
     const title=_el('div','gateway-greeting-title');
     title.textContent=line.title;
-    bubble.appendChild(title);
+    row.appendChild(title);
     if(line.subtitle){
       const sub=_el('div','gateway-greeting-subtitle');
       sub.textContent=line.subtitle;
-      bubble.appendChild(sub);
+      row.appendChild(sub);
     }
-    // One frame later so the transition actually runs.
-    requestAnimationFrame(function(){ bubble.classList.add('gateway-greeting-in'); });
+    _els.convo.appendChild(row);
+    requestAnimationFrame(function(){
+      row.classList.add('studio-rite-line-in');
+      try{ _els.convo.scrollTop=_els.convo.scrollHeight; }catch(e){}
+    });
   }
 
-  function _reducedMotion(){
-    try{ return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
-    catch(e){ return false; }
+  // The one control that moves the Rite forward. Every narrative beat
+  // waits on it, so nothing is ever taken off screen before the child
+  // has said they are ready.
+  function _awaitClick(label,cls){
+    return new Promise(function(resolve){
+      if(!_els){ resolve(); return; }
+      const btn=_el('button','studio-rite-choice'+(cls?(' '+cls):''));
+      btn.type='button';
+      btn.textContent=label;
+      btn.addEventListener('click',function(){
+        try{ if(btn.parentNode) btn.parentNode.removeChild(btn); }catch(e){}
+        resolve();
+      },{once:true});
+      _els.controls.appendChild(btn);
+      try{ btn.focus({preventScroll:true}); }catch(e){}
+    });
   }
 
   // ---------- Watching the child's own work ----------
@@ -362,18 +375,11 @@ const StudioRite=(function(){
       _setPose(_els.lumoImg,_packs.guardian,beat.lumo);
       _setPose(_els.eggImg,_packs.traveller,beat.egg);
       _els.overlay.setAttribute('data-rite-effect',beat.effect||'');
-      _showLine(_els.bubble,beat.line);
+      _appendLine(beat.line);
 
       // A beat the child completes by tapping (Act II's one way forward).
       if(beat.choice){
-        const btn=_el('button','studio-rite-choice');
-        btn.type='button';
-        btn.textContent=beat.choice;
-        btn.addEventListener('click',function(){
-          try{ if(btn.parentNode) btn.parentNode.removeChild(btn); }catch(e){}
-          resolve();
-        },{once:true});
-        _els.panel.appendChild(btn);
+        _awaitClick(beat.choice,'studio-rite-choice-primary').then(resolve);
         return;
       }
 
@@ -425,8 +431,12 @@ const StudioRite=(function(){
         return;
       }
 
-      const ms=_reducedMotion()?900:(beat.durationMs||3000);
-      _timer=setTimeout(resolve,ms);
+      // Every narrative beat waits for the child. Nothing is timed and
+      // nothing auto-advances: testing showed timed lines moved too
+      // fast, and a timer is the wrong instrument regardless — it makes
+      // the Rite something to keep up with rather than something to
+      // read. The line stays on screen, joined by whatever comes next.
+      _awaitClick('Move ahead').then(resolve);
     });
   }
 

@@ -211,9 +211,22 @@ is the handoff: Lumo guided the threshold, the Egg is the companion.
 
 **18 Lumo lines. 5 blocking child actions. 5 Egg poses, all with real art.**
 
-Every blocking beat waits indefinitely. `sleep` on idle, `curious` on
-re-engagement. No timeouts, no skips, no auto-advance — D1 makes the Rite
-mandatory, so it must never be possible to get stuck *or* to be rushed.
+**Nothing in the Rite is timed.** Lumo's lines accumulate as a *conversation* —
+each new line joins the ones before it rather than replacing them — and the
+child clicks **Move ahead** to continue. Earlier lines stay on screen, dimmed
+and scrollable, so a child who reads slowly, or who is being read to, can look
+back at anything already said.
+
+This replaced a first version whose lines were on timers. Testing reported it
+moved too fast, and the fix was not a longer timer: a timer makes the Rite
+something to *keep up with* rather than something to read. The pace is the
+child's now, in both directions — they can dwell as long as they like, and a
+confident reader is never made to wait.
+
+Blocking beats wait indefinitely on the child's own making. `sleep` on idle,
+`curious` on re-engagement. No timeouts, no skips, no auto-advance — D1 makes
+the Rite mandatory, so it must never be possible to get stuck *or* to be
+rushed.
 
 ---
 

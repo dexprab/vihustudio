@@ -10503,12 +10503,46 @@ body.dark-theme .traveller-save-notice-dismiss{
   .studio-rite-overlay,.studio-rite-egg-img{ transition:none; }
 }
 
-/* Studio Rite — band mode. Acts II(tail) and III play over the LIVE
-   Studio, so the full-screen stage becomes a quiet strip along the
-   bottom: same DOM, same Lumo, same bubble, no scene cut. The band must
-   never intercept a tap meant for the editor — the child is really
-   working in there — so it is pointer-events:none apart from its own
-   controls. */
+/* Studio Rite — the conversation. Lumo's lines ACCUMULATE rather than
+   replacing one another, and the child clicks to move on. Testing
+   reported the first version's timed lines moved too fast; a timer was
+   the wrong instrument anyway, because it makes the Rite something to
+   keep up with instead of something to read. Nothing here auto-advances. */
+.studio-rite-convo{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  max-width:760px;
+  max-height:46vh;
+  overflow-y:auto;
+  margin-top:22px;
+  padding:0 8px;
+  scrollbar-width:thin;
+}
+.studio-rite-line{
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .5s ease, transform .5s ease;
+  text-align:center;
+}
+.studio-rite-line.studio-rite-line-in{ opacity:1; transform:none; }
+/* Everything Lumo has already said stays readable, just quieter, so the
+   newest line is obviously the newest without the others being lost. */
+.studio-rite-line.studio-rite-line-past{ opacity:.42; }
+.studio-rite-line.studio-rite-line-past .gateway-greeting-title{
+  font-size:clamp(17px,2.1vw,24px);
+}
+.studio-rite-line .gateway-greeting-title,
+.studio-rite-line .gateway-greeting-subtitle{ text-shadow:0 0 24px rgba(255,203,69,.45), 0 2px 12px rgba(0,0,0,.7); }
+.studio-rite-controls{ display:flex; justify-content:center; min-height:64px; margin-top:8px; }
+
+/* Studio Rite — band mode. Acts II(tail) onward play over the LIVE
+   Studio, so the stage becomes a strip along the bottom: same DOM, same
+   Lumo, same conversation, no scene cut. The band must never intercept
+   a tap meant for the editor — the child is really working in there —
+   so it is pointer-events:none apart from its own button. */
 .studio-rite-overlay.studio-rite-band{
   background:none;
   align-items:flex-end;
@@ -10521,30 +10555,27 @@ body.dark-theme .traveller-save-notice-dismiss{
   justify-content:flex-start;
   gap:18px;
   padding:0 22px 18px;
-  background:linear-gradient(0deg,rgba(23,16,52,.92) 0%,rgba(23,16,52,.72) 55%,rgba(23,16,52,0) 100%);
+  background:linear-gradient(0deg,rgba(23,16,52,.94) 0%,rgba(23,16,52,.78) 60%,rgba(23,16,52,0) 100%);
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-cast{
-  min-height:0;
-  align-items:flex-end;
-  gap:10px;
-  flex:0 0 auto;
+  min-height:0; align-items:flex-end; gap:10px; flex:0 0 auto;
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:clamp(72px,9vw,120px); }
 .studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:clamp(40px,5vw,64px); }
-.studio-rite-overlay.studio-rite-band .gateway-greeting-bubble{
-  margin:0 0 10px;
-  padding:0;
-  text-align:left;
-  font-size:clamp(15px,1.7vw,22px);
-  max-width:none;
-  flex:1 1 auto;
+.studio-rite-overlay.studio-rite-band .studio-rite-convo{
+  margin:0 0 8px; max-width:none; max-height:23vh; align-items:flex-start;
+  text-align:left; flex:1 1 auto; pointer-events:auto; /* scrollable, to re-read */
 }
-/* Act II's single way forward. The one thing in the Rite a child taps. */
+.studio-rite-overlay.studio-rite-band .studio-rite-line{ text-align:left; }
+.studio-rite-overlay.studio-rite-band .gateway-greeting-title{ font-size:clamp(15px,1.7vw,22px); }
+.studio-rite-overlay.studio-rite-band .gateway-greeting-subtitle{ font-size:clamp(13px,1.4vw,18px); }
+.studio-rite-overlay.studio-rite-band .studio-rite-controls{ min-height:0; flex:0 0 auto; margin:0 0 10px; }
+
+/* The one control that moves the Rite forward. */
 .studio-rite-choice{
-  margin-top:26px;
-  padding:14px 44px;
+  padding:12px 34px;
   font-family:'Cinzel',"Iowan Old Style",Palatino,Georgia,serif;
-  font-size:clamp(18px,2.2vw,26px);
+  font-size:clamp(15px,1.8vw,21px);
   letter-spacing:.06em;
   color:#2a1c05;
   background:linear-gradient(180deg,#ffd977 0%,#f0b437 100%);
@@ -10554,5 +10585,14 @@ body.dark-theme .traveller-save-notice-dismiss{
   box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 24px rgba(255,203,69,.5);
   pointer-events:auto;
 }
+/* Act II's "Yes" — the single unmissable way forward, deliberately
+   larger than the ordinary "Move ahead". */
+.studio-rite-choice.studio-rite-choice-primary{
+  padding:16px 56px;
+  font-size:clamp(19px,2.4vw,28px);
+}
 .studio-rite-choice:hover{ filter:brightness(1.06); }
 .studio-rite-choice:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-line{ transition:none; }
+}

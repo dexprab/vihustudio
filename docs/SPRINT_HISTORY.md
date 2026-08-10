@@ -906,3 +906,24 @@ satisfied; re-run waiting for the prompt to render first. Final run: all 18
 beats in order, completion written once, second launch skips the Rite, and
 `shouldOfferAwakening()` still true afterwards — the Creator Ceremony was not
 consumed. Zero page errors.
+
+## Studio Rite — Conversation Pacing (product feedback)
+
+Testing reported "the prompts are moving too fast." Investigation found two
+faults, one worse than the complaint: beat durations were hand-picked constants
+of 3–5s regardless of length, so a 23-word beat and a 6-word beat got nearly
+the same time on screen; and `_reducedMotion()?900` collapsed **every** beat to
+900ms, so anyone with `prefers-reduced-motion` set had the entire Rite flashed
+past unreadably — an accessibility defect, not a pacing preference. A first fix
+derived each beat's duration from its own word count and added tap-to-continue.
+The product owner then gave a better direction: *don't remove the prompts —
+show them as a conversation, and let the user click to move ahead so they can
+re-read what came before.* Rebuilt on that model: lines now **accumulate**,
+earlier ones dimmed and scrollable, advanced only by an explicit **Move ahead**
+click. **All timing was deleted** — no durations, no auto-advance, no
+reading-speed estimate, and the reduced-motion defect disappears with it, since
+motion preference now affects only transitions. Verified: waiting 9s without
+clicking leaves the line count unchanged; clicking accumulates and dims prior
+lines; a full click-through run completes with the flag written once, the
+Creator Ceremony still un-consumed, the Story Egg (not Lumo) in the widget
+afterwards, and a second launch skipping the Rite. Zero page errors.
