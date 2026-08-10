@@ -12,6 +12,15 @@ canon. **All three are now answered** — Decision 5 (Lumo guides), Decision 7
 (the Rite ends before Publish), and Decision 4's own word list (Traveller, not
 Visitor). Part I records how each decision lands; Part II is the architecture.
 
+> **Decision 7 has since been rewritten.** The Rite no longer stops short of
+> Publish: it now ends with the child choosing to let their first story become
+> part of VihuPlanet, and that choice opens the Creator Ceremony. The
+> child-facing word "Publish" is gone from the Rite entirely
+> (`docs/COMPANION_CANON.md` → Canon 7). The Publish architecture is
+> unchanged — no service, module or API is renamed. Wherever this document
+> still says "the Rite ends before Publish", read it as the superseded
+> revision; §R4 below is the part that needs implementation work.
+
 ---
 
 ## Part I — Canon alignment
@@ -28,7 +37,7 @@ worth stating precisely (D6).
 | **D4** Establishes Traveller · Creator · Story · Companion | Resolves the vocabulary split — the platform says **Traveller**. `COMPANION_CANON.md` and `KID_JOURNEY.md` updated to match the product, the Gateway, the registry and the code |
 | **D5** Lumo guides; Story Egg unchanged | **Canon 1 untouched.** Canon 2 gains one widened clause: Lumo appears at *the two thresholds* rather than only the Creator Ceremony |
 | **D6** The Egg accompanies and reacts through animation | No conflict, with one real constraint — see below |
-| **D7** Rite ends before Publish; never triggers the Ceremony | **Canon 4 preserved exactly.** One clarifying sentence added: "first" means first *real* Publish |
+| **D7** *(rewritten)* Rite ends by sharing the first story with VihuPlanet | Canon 4 now reached **through** the Rite. Canon 7 added for the language. See "Decision 7, rewritten" below |
 | **D8** Rite extends the Gateway, one continuous journey | No conflict, and it removes a change the earlier revision had proposed — see below |
 | **D9** Existing Creators grandfathered by existing mechanisms | No conflict. `MagicCard.list().length > 0` already answers this |
 | **D10** Companion assumes the Rite is complete | No conflict. Narrows `docs/COMPANION_V1_PROPOSAL.md` §3.2 scope only |

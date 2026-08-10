@@ -16,7 +16,7 @@ the approved direction. Implementation realises this script faithfully.
 | The Egg reacts only through `idle` · `curious` · `thinking` · `excited` · `sleep` | D6, Canon 1 |
 | No line explains a button, menu or tool | D3 |
 | Every concept is introduced by being *used*, never defined | D4 |
-| The Rite never reaches Publish, never hatches the Egg | D7 |
+| The Rite never says "Publish" to a child; it ends by **sharing** the story with VihuPlanet | D7 *(rewritten)*, Canon 7 |
 | It opens mid-breath from the Gateway, in the same voice | D2 |
 
 **Lumo's voice**, matched to his existing Gateway lines
@@ -93,13 +93,34 @@ Traveller does, then immediately offers the child the doing of it. The word
 "Creator" is never applied to the child by announcement — they will simply have
 become one by Act IV.
 
-**Open against canon, flagged not silently resolved.** This screen promises
-that the Egg grows over *many* stories and hatches "when the time is right",
-but `COMPANION_CANON.md` Canon 4 hatches it at the **first** Publish — which
-may be minutes later. It also promises a Companion that will "learn, grow and
-mature with you", which is Canon 5's *Memory* tier, listed as **not started**
-and explicitly out of scope for Companion v1. Either the copy softens or the
-canon moves; both are product decisions, and neither has been made here.
+**⚠ This copy now contradicts the Rite's own ending, and needs a decision.**
+Decision 7's rewrite puts the Creator Ceremony at the *end of this same Rite* —
+roughly six minutes after these lines are read. So:
+
+- *"One day it will be ready"* → it is ready today.
+- *"Until then, it will quietly travel beside you on every adventure"* → there
+  are no other adventures; there is one story.
+- *"When the time is right..."* → the time is right almost immediately.
+
+A child will feel this. It is the only place in the Rite that makes a promise
+the next five minutes break.
+
+**Proposed replacement**, keeping the entrusting and dropping the long wait:
+
+| Line | From | To |
+|---|---|---|
+| I.2 | Every story you create helps it grow a little stronger. | *It has been waiting a long time for a story of its own.* |
+| I.3 | One day it will be ready. / Until then, it will quietly travel beside you on every adventure. | *It will stay beside you while you make one.* / *Story Eggs know when something is about to happen.* |
+| II.3 | When the time is right... / Your Egg will become a lifelong Companion, and every story after that will help your Companion learn, grow and mature with you. | *Nobody knows what is inside a Story Egg.* / *Not even Lumo. It depends entirely on the story you make.* |
+
+This keeps every promise the platform actually keeps, and turns the
+foreshadowing into anticipation rather than a schedule. **Not applied — the
+copy is the product owner's.** The alternative is to move the hatch back out of
+the Rite, which would undo Decision 7's rewrite.
+
+Separately, *"learn, grow and mature with you"* remains Canon 5's **Memory**
+tier — still listed as not started and out of scope for Companion v1 — so it
+promises a capability with no roadmap regardless of which option is chosen.
 
 **Vocabulary introduced:** **Traveller**, **Creator**.
 
@@ -180,30 +201,50 @@ exist, and Lumo names what happened.
 
 ---
 
-## Completion
+## Completion — sharing the story with VihuPlanet
 
-> **LUMO:** You're not a Traveller any more.
-> *You made something. That makes you a Creator.*
+*Rewritten under the new Decision 7. The Rite no longer stops short; it ends
+with the child deciding what happens to what they made.*
+
+> **LUMO:** You made a story. It's real now.
+> *It didn't exist this morning.*
 
 `[EGG: excited]` → `idle`
 
-> **LUMO:** One day this Egg will hatch, and someone will choose you.
-> *Not today. Today you just made your first story.*
+> **LUMO:** Stories don't have to stay in here with us.
+> *VihuPlanet is made of the stories people give it.*
 
-`[BEAT]`
+`[EGG: curious]` — the Egg turns toward the child.
 
-> **LUMO:** The Studio is yours now.
+> **LUMO:** Would you like yours to become part of VihuPlanet?
+> *You don't have to. It's yours either way.*
+
+`[CHILD: chooses]`
+
+→ **Share It With VihuPlanet**  ·  *keep it just for me*
+
+**If they share** — the Creator Ceremony begins (Canon 4, unchanged). Lumo is
+already on stage, so it continues rather than starts: the Magic Card awakens,
+Lumo blesses the Story Egg, it hatches, and a Story Companion chooses them.
+
+**If they decline** — nothing is lost and nothing is withheld. The story stays
+theirs, the Studio unlocks exactly the same, and the Ceremony waits for
+whichever story they do share one day.
+
+> **LUMO:** *(either way)* The Studio is yours now.
 > *Go and see what else is in it.*
-
-*Lumo leaves — the same departure the Gateway already uses. The Egg does not
-leave. It follows the child into the Studio and stays.*
 
 **→ Studio Home. The Rite is complete and never runs again.**
 
-**Emotional beat:** *earned entry, and a promise kept for later.* The hatch is
-named so the child knows it is coming, and explicitly deferred so D7 is honoured
-in the fiction as well as in the code. The Egg walking into the Studio with them
-is the handoff: Lumo guided the threshold, the Egg is the companion.
+**Emotional beat:** *giving, and what giving returns.* The child is not
+rewarded for finishing an onboarding — they are answered. They made something,
+they chose to let the world have it, and the world answered by giving them a
+Companion. That causal order is the whole point of the rewrite, and it only
+works because declining is genuinely allowed: a choice with one option is not a
+choice, and a Ceremony that arrives regardless would be a prize for compliance.
+
+**Language:** the word *Publish* never appears. Internally this is the existing
+Publish path, unchanged (Canon 7).
 
 ---
 

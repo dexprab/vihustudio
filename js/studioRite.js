@@ -3,9 +3,13 @@
 // The creator's first chapter inside VihuPlanet: a mandatory experience
 // every user completes exactly once, before Studio Home is reachable.
 // Lumo guides it; the Story Egg accompanies through animation only and
-// never speaks (Canon 1, unchanged). It never reaches Publish, never
-// triggers the Creator Ceremony, and never hatches the Egg — the first
-// real Publish stays sacred (Canon 4).
+// never speaks (Canon 1, unchanged). Under the rewritten Decision 7 it
+// ends by asking whether the child would like their first story to
+// become part of VihuPlanet; saying yes is what opens the Creator
+// Ceremony (Canon 4). The child-facing word "Publish" never appears
+// here — internally the existing Publish path is used, unchanged
+// (Canon 7). NOTE: the sharing beat is designed, not yet built; the
+// current COMPLETION screen still ends the Rite without it.
 //
 // The script this realises is docs/STUDIO_RITE_SCRIPT.md; the phase
 // plan is docs/STUDIO_RITE_PROPOSAL.md Part III.

@@ -20,7 +20,10 @@
 >   responsibility is to help children successfully use the platform."*
 > - **Canon 6 — Studio Rite** (Studio Rite Product Decision): a
 >   mandatory first chapter before Studio Home, guided by Lumo, ending
->   before Publish.
+>   with the child sharing their first story with VihuPlanet.
+> - **Canon 7 — Sharing a Story with VihuPlanet** (Decision 7 rewrite):
+>   "Publish" is implementation language and never appears child-facing
+>   inside the Rite. The Publish architecture itself is unchanged.
 > - **"Visitor" → "Traveller"** throughout. This document and
 >   `docs/KID_JOURNEY.md` were the last two places using the older word;
 >   the product, the Gateway, `assets/registry.json` and the code have
@@ -160,12 +163,18 @@ birth sequence (Canon 4) — a Story Companion never re-hatches.
 
 ## Canon 4 — Creator Ceremony (the official onboarding flow)
 
-The first successful Publish is the **Creator Ceremony**, not merely a
-publish action. "First" means the first *real* Publish of the Creator's
-own story: Studio Rite (Canon 6) never reaches Publish, so it can never
-consume this moment. The Ceremony fires at most once, ever
-(`MagicCard.shouldOfferAwakening()`), and it is reserved for a story the
-child actually meant to make:
+The first time a Creator shares a story with VihuPlanet is the **Creator
+Ceremony**, not merely a publish action. It fires at most once, ever
+(`MagicCard.shouldOfferAwakening()`).
+
+For most Creators that moment now arrives at the **end of Studio Rite**
+(Canon 6, Canon 7): the Rite ends with the child choosing to let their
+first story become part of VihuPlanet, and the Ceremony is the
+consequence of that choice. It is never a reward for finishing
+onboarding — the child earns it by making something and then giving it
+to the world. A child who declines simply reaches the Ceremony later, on
+whichever story they do choose to share. The sequence itself is
+unchanged:
 
 ```
 Traveller
@@ -294,9 +303,12 @@ Studio Rite Product Decision, and are resolved below.
    through animation alone, exactly as Canon 1 and Traveller Behaviour
    already state. Lumo's remit widens by one clause (Canon 2) to cover
    **both thresholds**. Nothing in Canon 1 changes.
-2. **The Rite ends before Publish.** It never reaches Publish, never
-   triggers the Creator Ceremony, and never awakens the Story Egg. The
-   first real Publish remains sacred (Canon 4).
+2. **The Rite ends by sharing the first story with VihuPlanet**
+   (rewritten — see Canon 7). The Rite's last act is the child's own
+   choice to let their first story become part of VihuPlanet, and that
+   choice is what opens the Creator Ceremony (Canon 4). An earlier
+   revision of this canon ended the Rite *before* Publish; that is
+   superseded.
 3. **The platform says Traveller.** This document and
    `docs/KID_JOURNEY.md` were the only two places still saying
    "Visitor"; both now match the product, the Gateway,
@@ -325,6 +337,42 @@ Studio Rite **extends** the Traveller Gateway; it does not replace it.
 Lumo already opens the Gateway and introduces himself there, so the
 Gateway's arrival and the Rite's first chapter are one continuous
 journey with one guide. The Gateway is not redesigned.
+
+## Canon 7 — Sharing a Story with VihuPlanet
+
+Frozen as the child-facing language of the platform.
+
+**"Publish" is implementation language.** Children do not make stories in
+order to publish them; they make stories so their stories become part of
+VihuPlanet. The child-facing experience must never expose implementation
+terminology where a real VihuPlanet concept exists.
+
+**The concept.** A story that a Creator shares **becomes part of
+VihuPlanet**. It belongs to the world now, not only to the child who
+made it. This is the answer to *"what happens to my story now?"*
+
+**The vocabulary**
+
+| Say | Never say |
+|---|---|
+| share it with VihuPlanet | publish it |
+| let it become part of VihuPlanet | save it · upload it |
+| your story is part of VihuPlanet now | post it · submit it · export it |
+| keep it just for me *(declining)* | cancel · not now · skip |
+
+**Scope.** This is language and experience only. `js/publishStudio.js`,
+Magic Publish, the Publish stages, every service, module and API keep
+their names and their behaviour. Nothing about the Publish architecture
+is redesigned; the Rite simply speaks about it the way VihuPlanet does.
+
+**Sharing is a real choice.** "Conscious decision" means the child may
+decline. Declining keeps the story theirs, still unlocks the Studio, and
+leaves the Creator Ceremony waiting for whichever story they do share
+later — no child is stranded without a Companion, and no child is forced
+to give away their first story to get through the door.
+
+**Outside the Rite**, Publish Studio's own established wording is not
+in scope for this canon and is unchanged.
 
 ## Companion Versions
 

@@ -123,7 +123,8 @@ Locked by the product owner in the Studio Rite Vision Update, after user testing
 - The vocabulary it establishes is **Traveller · Creator · Story · Companion**, introduced by being used, never defined. The canonical term is **Traveller**, not Visitor.
 - Companion v1 assumes the Rite is complete, which narrows its scope but does not change its architecture.
 - **Lumo guides the Rite.** The Story Egg is unchanged — it never speaks, teaches or guides, and accompanies through animation only. Lumo now appears at *two* thresholds: the Rite and the Creator Ceremony.
-- **The Rite ends before Publish.** It never triggers the Creator Ceremony and never awakens the Story Egg. The first real Publish stays sacred.
+- **The Rite ends by sharing the first story with VihuPlanet** (Decision 7, rewritten). The child's own choice to let their story become part of VihuPlanet is what opens the Creator Ceremony — the Ceremony is the consequence of sharing a story, never a reward for finishing onboarding. Declining is allowed: the story stays theirs, the Studio still unlocks, and the Ceremony waits for whichever story they do share.
+- **Child-facing language never says "Publish" inside the Rite** (`docs/COMPANION_CANON.md` → Canon 7). Internally the existing Publish capability is used unchanged — no service, module or API is renamed.
 - **The Rite extends the Traveller Gateway** as one continuous journey; the Gateway is not redesigned or modified.
 - **Existing Creators are grandfathered** by their claimed Magic Card — no migration system.
 - The platform says **Traveller**, not Visitor. `COMPANION_CANON.md` and `KID_JOURNEY.md` were corrected to match the product, Gateway, registry and code.

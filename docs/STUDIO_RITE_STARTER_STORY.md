@@ -26,9 +26,11 @@ mandatory gate. The story therefore builds its settings from **background
 colour + stickers**, which are local and offline.
 
 **"Reading the finished story" is unavailable.** Reading a finished story means
-Publish (Story Book), and Decision 7 forbids the Rite reaching Publish. The
-story ends on the child's own final page instead — which is also where the
-emotional beat wants to land.
+Story Book, a Publish destination. The rewritten Decision 7 does let the Rite
+reach the sharing moment, but sharing is a *giving*, not a *reading* — the
+child chooses to let the story become part of VihuPlanet and the Creator
+Ceremony follows immediately. Sitting them down to read it back first would
+put a lull exactly where the ceremony belongs.
 
 **Layer ordering is deliberately excluded.** It exists, but only as
 drag-to-reorder inside the Object Strip (`SceneEngine.setLayerOrder`) — the

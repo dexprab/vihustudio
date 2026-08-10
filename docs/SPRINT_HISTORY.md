@@ -996,3 +996,28 @@ which no beat genuinely needs. The brief's 3–5 minute target does not hold for
 supplied that reaches ~5 minutes while keeping all three pages, the character
 choice, the words and the ending. Design supersedes the current Acts III–IV
 placeholder interactions. `docs/STUDIO_RITE_STARTER_STORY.md`. No code.
+
+## Studio Rite — Decision 7 Rewritten: Sharing with VihuPlanet (docs only)
+
+Product owner reversed Decision 7. The Rite no longer stops short of Publish:
+it now ends with the child's own conscious choice to let their first story
+**become part of VihuPlanet**, and that choice is what opens the Creator
+Ceremony — the Ceremony is the consequence of sharing a story, never a reward
+for finishing onboarding. Added **Canon 7 — Sharing a Story with VihuPlanet**,
+which freezes the child-facing vocabulary ("share it with VihuPlanet", "keep it
+just for me" for declining) and bans "Publish", "Save", "Upload", "Post",
+"Submit" and "Export" from Rite copy; the Publish architecture, services, modules
+and APIs are untouched by design. Canon 4 rewritten so the Ceremony is reached
+*through* the Rite; Canon 6's old "ends before Publish" bullet superseded.
+Recommended and recorded that **declining must be genuinely allowed** — a choice
+with one option is not a choice, and a Ceremony that arrives regardless is a
+prize for compliance — so a child who declines keeps the story, still unlocks
+the Studio, and reaches the Ceremony on whichever story they later share.
+Propagated to `CLAUDE.md`, `KID_JOURNEY.md` Stage 0, `STUDIO_RITE_PROPOSAL.md`,
+`STUDIO_RITE_STARTER_STORY.md` and the `js/studioRite.js` header. **Flagged for
+decision:** the Screen 1–2 copy now contradicts the Rite's own ending — it
+promises "one day it will be ready" and "every adventure" when the Egg now
+hatches roughly six minutes later — so replacement copy is proposed in the
+script but deliberately not applied, since the copy is the product owner's. The
+sharing beat is designed, not implemented; the shipped Rite still ends without
+it. Docs only.

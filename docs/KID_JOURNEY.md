@@ -62,9 +62,12 @@ actually make a tiny story, and it introduces the words this document uses
 throughout — Traveller, Creator, Story, Companion.
 
 The Story Egg accompanies the child through the Rite but never speaks, teaches
-or guides; it reacts through animation only. **The Rite never reaches Publish
-and never triggers the Creator Ceremony** — Stage 10 stays exactly as
-documented below, reserved for the child's first real Publish.
+or guides; it reacts through animation only. The Rite ends with the child
+choosing to let their first story **become part of VihuPlanet** — and that
+choice is what opens Stage 10, the Creator Ceremony, which is otherwise
+unchanged. A child who declines keeps the story to themselves, still unlocks
+the Studio, and reaches Stage 10 later on whichever story they do share.
+Child-facing copy inside the Rite never says "Publish" (Canon 7).
 
 Existing Creators never see the Rite: a claimed Magic Card grandfathers them.
 
