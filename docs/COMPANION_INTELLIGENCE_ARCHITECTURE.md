@@ -2,6 +2,18 @@
 
 **Status: proposal only. No code was written for this document.**
 
+> **Superseded in scope for the near term, not in content.** The product
+> owner has since made *platform guidance* the Companion priority
+> (`docs/COMPANION_CANON.md` → Canon 5, added in Canon V3).
+> `docs/COMPANION_V1_PROPOSAL.md` is the executable slice of this
+> document — it maps onto Phases 0–2 below, adds the one thing this
+> document lacks (a way for a child to *ask* something), and defers
+> Phases 3–4 behind the gates this document already named. Read this
+> document for the long-range architecture, knowledge tiers, action
+> gates and AI boundary; read that one for what is being built now.
+> The two must not diverge: if a recommendation here changes, change it
+> here and let the v1 proposal cite it.
+
 This follows the precedent of `docs/ENGINE_V2_PROMOTION_STRATEGY.md` and
 `docs/SCENE_ADAPTER_ARCHITECTURE_ANALYSIS.md` — investigation-and-design
 documents produced *before* any implementation, gated behind this project's

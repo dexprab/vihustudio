@@ -1,4 +1,4 @@
-# VihuPlanet Companion Canon (frozen — V2)
+# VihuPlanet Companion Canon (frozen — V3)
 
 > Sprint: Companion Canon V2 (Guardian & Creator Bond), superseding the
 > earlier "Companion Canon Freeze & Asset Integration" sprint's own
@@ -11,6 +11,15 @@
 > and Studio's mode-driven integration — lives in
 > `docs/COMPANION_ENGINE.md`; this document is the "why" and "what,"
 > that one is the "how."
+>
+> **V3 (Companion v1 Foundation)** adds exactly one thing: Canon 5, the
+> **Guide responsibility**, stated by the product owner as *"Companion is
+> the creator's guide inside VihuStudio. Its responsibility is to help
+> children successfully use the platform."* Nothing in V2 is removed,
+> weakened, or reinterpreted — the Story Egg, Lumo, Story Companions,
+> the Creator Ceremony, and the Magic Card bond are all unchanged. V3
+> also records the Companion version roadmap, so later versions extend
+> this canon rather than replacing it.
 
 ## Product Philosophy
 
@@ -18,6 +27,16 @@ A companion is not an assistant, a chatbot, a teacher, or an AI tutor.
 A companion is a **creative friend**, whose purpose is to encourage
 imagination, celebrate creativity, and make the Studio feel alive. A
 companion never critiques or scores a child's work.
+
+**A friend who knows the place.** V3 does not soften the sentence above
+— it names what was always implicit in it. A friend who watches a child
+struggle with a door they cannot open, and says nothing, is not being a
+good friend. Helping a child work the Studio is *friendship inside a
+place both of them live in*; it is not tutoring, and it is not
+assistance in the productivity sense. The line the canon draws has never
+been "the companion must not be useful." It is **the companion must
+never take over the creating.** Canon 5 states exactly where that line
+falls.
 
 **Every Visitor enters VihuPlanet with potential.** That potential is
 represented by the **Story Egg**. The Story Egg belongs to nobody. It
@@ -166,6 +185,70 @@ Story Egg (idle) → **Glow** (Story Egg, `magic` pose) → **Cracks**
 updates, now permanently bonded → Creator Home. The sequence is pure
 data — reusable for any future companion with zero code change.
 
+## Canon 5 — The Guide Responsibility (added in V3)
+
+Frozen as the Companion's second responsibility, alongside presence.
+
+A Story Companion has two jobs. The first, from V2, is **to be there** —
+pose, glow, greet, celebrate. The second, new here, is **to help its
+Creator successfully use VihuStudio**.
+
+**Properties**
+
+- The Companion answers questions about **VihuStudio before it answers
+  questions about the world.** Platform guidance is the responsibility;
+  everything else is a later version or nothing at all.
+- The Companion is **the creator's guide inside VihuStudio** — it knows
+  where things are, what a control does, why something is locked, and
+  what is worth doing next.
+- The Companion **explains and points. It does not create.** It may show
+  a child where the button is; it never presses it on the child's
+  behalf without the child asking for exactly that, and never at all for
+  anything that cannot be undone.
+- The Companion is **honest about the Guardrails**. When a Theme Author
+  has marked an object un-moveable, the Companion says so kindly and
+  truthfully. It never tells a child to try something the platform will
+  refuse — that teaches a child the app is broken.
+- The Companion **must work with no network and no AI.** Every question
+  in the Guide responsibility is answered from VihuStudio's own live
+  state and its own authored knowledge. An external model may only ever
+  make an answer *warmer* — never *possible*.
+- **Silence remains the default.** The Guide responsibility is
+  answering, not volunteering. The Companion earns each thing it says.
+- **The Story Egg is exempt.** A Traveller's Story Egg never speaks
+  (Visitor Behaviour, below) and therefore never guides. The Guide
+  responsibility belongs to a bonded Story Companion, and to Lumo only
+  within a Creator Ceremony.
+
+**The line, stated once**
+
+| The Companion may | The Companion may not |
+|---|---|
+| Say where a control is | Decide what the story should say |
+| Explain what a button does | Write, rewrite, or continue a story |
+| Explain why something is locked | Override or work around a Guardrail |
+| Say what is missing before publishing | Score, grade, rank, or critique |
+| Offer to take the child to a control | Perform an unrepeatable change unasked |
+| Notice a hidden or off-page object | Remember the child across sessions |
+
+## Companion Versions
+
+The canon grows by version; each version adds responsibility without
+removing any earlier one.
+
+| Version | Responsibility | Status |
+|---|---|---|
+| V1 — Presence | Story Egg, Lumo, Story Companions, Creator Ceremony, the Magic Card bond | Shipped (Canon V2 above) |
+| V1 — Guide | Platform guidance: where things are, what controls do, why something is locked, what to do next | **Next** (Canon 5) |
+| Later — Voice | Warmer, per-companion phrasing of answers the platform already computes | Not started |
+| Later — Curiosity | Educational and world questions; requires an external model | Not started |
+| Later — Memory | Anything remembered across sessions | Not started |
+| Later — Story Journey | Replay of how a story was made | **Out of scope. Do not implement.** |
+
+Explicitly **not** Companion responsibilities at any version currently
+planned: AI storytelling, creative writing, story continuation,
+internet search, and creator memory.
+
 ## Magic Card — the permanent record of the Creator Bond
 
 Every claimed Magic Card must contain the bonded Story Companion — the
@@ -248,3 +331,16 @@ art replaces this disclosed gap.
   hardcoded id.
 
 See `docs/COMPANION_ENGINE.md` for the full technical account.
+
+## Where the rest lives
+
+| Document | Answers |
+|---|---|
+| This file | *Why* and *what* — product philosophy, entities, responsibilities, boundaries |
+| `docs/COMPANION_ENGINE.md` | *How* the runtime, package contract and Studio integration work today |
+| `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` | The long-range intelligence architecture — context/brain/actions/gateway, knowledge tiers, AI boundary |
+| `docs/COMPANION_V1_PROPOSAL.md` | The Companion v1 (Guide) implementation proposal — the near-term slice of the above, plus the ask surface |
+
+Canon 5 is the product decision. `docs/COMPANION_V1_PROPOSAL.md` is the
+proposed implementation of it, and is still subject to `CLAUDE.md`'s
+standing rule that architecture changes require explicit approval.
