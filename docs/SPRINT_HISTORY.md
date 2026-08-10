@@ -824,3 +824,32 @@ needs no backfill and no schema change. `detectMode()` already implements
 "the guide depends on lifecycle". Docs only; no implementation code. Canon 6
 records the locked decision and names the three open questions rather than
 resolving them silently. `CLAUDE.md` gained Locked Product Decision 8.
+
+## Studio Rite — Product Decisions Locked, Canon Aligned (docs only)
+
+Product owner answered the three questions the prior sprint left open, all
+three matching the recommendation: **Lumo guides** (Decision 5), **the Rite
+ends before Publish** (Decision 7), and Decision 4's own word list settled
+**Traveller, not Visitor**. Canon 6 rewritten from "locked decision, three open
+questions" to resolved. Canon 2 gained exactly one widened clause — Lumo
+appears at *the two thresholds*, the Studio Rite and the Creator Ceremony, set
+closed at two — and Canon 4 gained one clarifying sentence that "first" means
+the first *real* Publish. **Canon 1 and Canon 3 were not touched.** "Visitor" →
+"Traveller" across `COMPANION_CANON.md` and `KID_JOURNEY.md`, the last two
+places still using the older word; Asset Registration's `role:"visitor"` was
+additionally a factual error against `assets/registry.json` (which has always
+said `traveller`) and was corrected. `KID_JOURNEY.md` gained Stage 0, marked
+not-yet-implemented so a doc of real screenshots stays honest. Two findings
+came out of aligning to the decisions: Decision 6 (the Egg reacts emotionally
+through animation) resolves against Canon 1's ban on emotional poses to
+**exactly five usable poses** — `idle`, `curious`, `thinking`, `excited`,
+`sleep` — since `hatching`/`magic` are Ceremony-only and `hero` has no art,
+verified against `assets/story-egg/` on disk; and Decision 8 **removes** the
+Gateway copy change the prior sprint had recommended, because with the Rite
+continuing immediately in Lumo's own voice, `'Welcome, Traveller.'` becomes the
+moment the word is introduced rather than asserted — so `js/gatewaySequence.js`
+is not modified at all. Architecture unchanged and confirmed minimal: one new
+IIFE plus two wrapped call sites in `js/app.js`; unlock is one localStorage flag
+OR'd with `MagicCard.list().length > 0`. Roadmap restructured around Decision
+2's three questions (Where am I? / Who am I? / What do I do here?). Docs only;
+no implementation code.

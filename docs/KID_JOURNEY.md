@@ -1,11 +1,11 @@
-# The Kid's Journey — First Screen to Publishing, Visitor and Creator
+# The Kid's Journey — First Screen to Publishing, Traveller and Creator
 
 **Status:** Canonical. A living reference doc, not a sprint note — update it screen
 by screen as the product changes, per the process at the bottom of this file.
 **Scope:** Every screen a child actually sees in Creator, from the very first
 tap through publishing a finished story — with real screenshots, not
 wireframes, captured by driving the live app. Told twice where the product
-genuinely forks: once as a **Visitor** (never claims a Magic Card), once as a
+genuinely forks: once as a **Traveller** (never claims a Magic Card), once as a
 **Creator** (claims one). Everywhere else, the journey is identical for both,
 and this doc says so rather than duplicating screenshots that would be
 pixel-identical.
@@ -26,13 +26,13 @@ family sees; only the specific World names/art are stand-ins.
 
 ---
 
-## Who's a Visitor, who's a Creator?
+## Who's a Traveller, who's a Creator?
 
 There is no sign-in, sign-up, email, or password anywhere in Creator. The
 **only** identity distinction the product makes is whether a child has ever
 tapped **Claim It** on their own Magic Card:
 
-- **Visitor** — hasn't claimed a card yet (or has actively said "not now").
+- **Traveller** — hasn't claimed a card yet (or has actively said "not now").
   Everything works. Nothing is held back. Their project lives safely in this
   browser's local storage, same as it always has.
 - **Creator** — has claimed a Magic Card. Gets a small header badge, a
@@ -46,10 +46,38 @@ decides whether to claim it. See §7 below.
 
 ---
 
+## Stage 0 — Studio Rite (locked, not yet implemented)
+
+**Status: product decision recorded, no code shipped.** Every other stage in
+this document is a real screenshot of a shipped screen; this one is here so
+the journey doc stays true to the decided product rather than silently
+starting at Stage 1. Replace this section with real screenshots once the Rite
+ships.
+
+Before Studio Home is ever reachable, a first-time child completes **Studio
+Rite** exactly once — the creator's first chapter inside VihuPlanet, guided by
+**Lumo**, extending the Traveller Gateway as one continuous journey. It
+answers *Where am I? · Who am I? · What do I do here?* by helping the child
+actually make a tiny story, and it introduces the words this document uses
+throughout — Traveller, Creator, Story, Companion.
+
+The Story Egg accompanies the child through the Rite but never speaks, teaches
+or guides; it reacts through animation only. **The Rite never reaches Publish
+and never triggers the Creator Ceremony** — Stage 10 stays exactly as
+documented below, reserved for the child's first real Publish.
+
+Existing Creators never see the Rite: a claimed Magic Card grandfathers them.
+
+Canon: `docs/COMPANION_CANON.md` → Canon 6. Architecture:
+`docs/STUDIO_RITE_PROPOSAL.md`.
+
+---
+
 ## Stage 1 — Screen 1: What Shall We Create Today?
 
-The very first thing every child sees, Visitor or Creator, on a fresh boot
-with nothing in progress.
+The first thing a child sees once the Studio is unlocked — Traveller or
+Creator — on a fresh boot with nothing in progress. (Before the Rite is
+complete, Stage 0 comes first.)
 
 ![Screen 1 — Choose What To Create](journey/01-screen1-choose-what-to-create.png)
 
@@ -60,7 +88,7 @@ and reacting to a tap or hover rather than sitting static. The "?" top-right
 is a real, tap-to-open popover (not a hover-only tooltip, which never fires
 on a touch device) with a one-line orientation. Two option cards — grouped
 under one "Already have something?" heading, each with its own icon circle
-and accent tint — sit at the bottom for a **returning** Visitor or Creator on
+and accent tint — sit at the bottom for a **returning** Traveller or Creator on
 a **new device** with nothing local yet: "Have a World Card? Redeem it here" (a
 World Card — someone shared a World with them) and "My Magic Card? Tap to
 come home" (their own identity/projects, recalled from the cloud). Both are
@@ -186,7 +214,7 @@ new thing happens next: **the Awakening**.
 
 ---
 
-## Stage 10 — The Awakening (where Visitor and Creator fork)
+## Stage 10 — The Awakening (where Traveller and Creator fork)
 
 The instant the first real Publish completes, before the usual Celebration
 screen, a Magic Card wakes up.
@@ -200,7 +228,7 @@ actual choice — this is the one screen where a child decides which role they'l
 ![The Awakening — Claim It / Maybe Later / Just Exploring for Now](journey/13-awakening-claim-choice.png)
 
 - **Claim It** → becomes a **Creator** (§10a below).
-- **Maybe Later** or **Just Exploring for Now** → stays a **Visitor** (§10b
+- **Maybe Later** or **Just Exploring for Now** → stays a **Traveller** (§10b
   below) — both decline identically; the only difference is tone, and neither
   is ever asked again (`MagicCard.shouldOfferAwakening()` fires at most once
   per browser).
@@ -249,19 +277,19 @@ their own recent stories.
 
 ---
 
-### Stage 10b — Visitor path: staying a Visitor
+### Stage 10b — Traveller path: staying a Traveller
 
 Tapping **Maybe Later** or **Just Exploring for Now** skips straight to the
 same Celebration screen — visually and functionally identical to the Creator
 one, because it is the same screen:
 
-![Publish — Celebration, as a Visitor (no card claimed)](journey/24-publish-celebration-visitor.png)
+![Publish — Celebration, as a Traveller (no card claimed)](journey/24-publish-celebration-visitor.png)
 
 Nothing else about this session changed. No badge, no card, no cloud sync —
 this browser's project is exactly as local and exactly as safe as it always
 was. Reboot and it's obvious nothing was held back:
 
-![Reboot as a Visitor — no Identity Gate, no header badge](journey/25-visitor-reboot-no-gate-no-badge.png)
+![Reboot as a Traveller — no Identity Gate, no header badge](journey/25-visitor-reboot-no-gate-no-badge.png)
 
 Straight back to the ordinary "Restore Previous Project?" prompt this app has
 always shown — no Magic Card screen ever intercepts it.
@@ -270,7 +298,7 @@ always shown — no Magic Card screen ever intercepts it.
 
 ## Stage 11 — My Projects (both roles, works identically)
 
-Reachable from Screen 1 the moment any real local project exists — Visitor
+Reachable from Screen 1 the moment any real local project exists — Traveller
 or Creator alike, since `CreatorProjectStore` is `localStorage`-based and
 has nothing to do with whether a Magic Card is claimed.
 
@@ -286,7 +314,7 @@ X ago" — tapping one opens it directly, bypassing Screen 1/2 entirely.
 ## Stage 12 — Reboot as a returning Creator: the Identity Gate
 
 A Creator's *next* reboot (any session after the one they claimed on) is the
-one place their journey diverges structurally from a Visitor's.
+one place their journey diverges structurally from a Traveller's.
 
 ![Reboot — Welcome back, by name](journey/22-identity-gate-welcome-back.png)
 
@@ -298,7 +326,7 @@ with more than one claimed card:
 ![Reboot — Shared Device picker, two children's cards](journey/23-identity-gate-shared-device-picker.png)
 
 One tile per claimed card (each showing its own decorative sky, never the
-real pattern), plus **🌱 Begin Exploring** (proceed as a plain Visitor for
+real pattern), plus **🌱 Begin Exploring** (proceed as a plain Traveller for
 this session, no claiming) and **✨ Recall a different card** (a real,
 different identity, cloud-recalled onto *this* device via its own tap-the-
 stars or typed-code flow — the same widget Screen 1's own "Already have a

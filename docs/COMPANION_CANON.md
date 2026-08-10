@@ -12,14 +12,25 @@
 > `docs/COMPANION_ENGINE.md`; this document is the "why" and "what,"
 > that one is the "how."
 >
-> **V3 (Companion v1 Foundation)** adds exactly one thing: Canon 5, the
-> **Guide responsibility**, stated by the product owner as *"Companion is
-> the creator's guide inside VihuStudio. Its responsibility is to help
-> children successfully use the platform."* Nothing in V2 is removed,
-> weakened, or reinterpreted — the Story Egg, Lumo, Story Companions,
-> the Creator Ceremony, and the Magic Card bond are all unchanged. V3
-> also records the Companion version roadmap, so later versions extend
-> this canon rather than replacing it.
+> **V3** adds two canon sections and one vocabulary correction, all from
+> locked product decisions:
+>
+> - **Canon 5 — the Guide responsibility** (Companion v1 Foundation):
+>   *"Companion is the creator's guide inside VihuStudio. Its
+>   responsibility is to help children successfully use the platform."*
+> - **Canon 6 — Studio Rite** (Studio Rite Product Decision): a
+>   mandatory first chapter before Studio Home, guided by Lumo, ending
+>   before Publish.
+> - **"Visitor" → "Traveller"** throughout. This document and
+>   `docs/KID_JOURNEY.md` were the last two places using the older word;
+>   the product, the Gateway, `assets/registry.json` and the code have
+>   always said Traveller.
+>
+> Nothing in V2 is removed, weakened, or reinterpreted — the Story Egg,
+> Lumo, Story Companions, the Creator Ceremony, and the Magic Card bond
+> are all unchanged. Canon 2 gained exactly one widened clause (Lumo
+> appears at two thresholds rather than one); **Canon 1 was not touched
+> at all.**
 
 ## Product Philosophy
 
@@ -38,9 +49,9 @@ been "the companion must not be useful." It is **the companion must
 never take over the creating.** Canon 5 states exactly where that line
 falls.
 
-**Every Visitor enters VihuPlanet with potential.** That potential is
+**Every Traveller enters VihuPlanet with potential.** That potential is
 represented by the **Story Egg**. The Story Egg belongs to nobody. It
-quietly accompanies the Visitor during creation. The Story Egg is not a
+quietly accompanies the Traveller during creation. The Story Egg is not a
 companion. It is waiting for a Creator.
 
 **Lumo is not the user's companion — Lumo never bonds with any Creator.**
@@ -64,8 +75,8 @@ Frozen as an official platform entity.
 
 **Properties**
 
-- Represents every Visitor.
-- Appears only in Visitor mode.
+- Represents every Traveller.
+- Appears only in Traveller mode.
 - Has no face.
 - Has no limbs.
 - Never speaks.
@@ -91,9 +102,13 @@ Frozen as the official mascot of VihuPlanet.
 - Role: **Guardian of Story Companions** — keeper of Creator Ceremonies.
 - Owner: VihuPlanet.
 - Cannot be claimed by users. Never bonds with any Creator.
-- Appears **only** during Creator Ceremonies — Lumo is not a
-  standing "Creator's companion" in the ongoing widget the way earlier
-  canon revisions treated it.
+- Appears **only at the two thresholds** — the **Studio Rite** (Canon 6)
+  and the **Creator Ceremony** (Canon 4). Widened from "only during
+  Creator Ceremonies" when Studio Rite was locked; the principle is
+  unchanged, and the set of thresholds is closed at two. Lumo is still
+  not a standing "Creator's companion" in the ongoing widget the way
+  earlier canon revisions treated it, and is still torn down when a
+  threshold ends.
 - Never appears on a Magic Card.
 - Introduces the concept of Story Companions and blesses the Story Egg
   during the ceremony.
@@ -146,10 +161,14 @@ birth sequence (Canon 4) — a Story Companion never re-hatches.
 ## Canon 4 — Creator Ceremony (the official onboarding flow)
 
 The first successful Publish is the **Creator Ceremony**, not merely a
-publish action:
+publish action. "First" means the first *real* Publish of the Creator's
+own story: Studio Rite (Canon 6) never reaches Publish, so it can never
+consume this moment. The Ceremony fires at most once, ever
+(`MagicCard.shouldOfferAwakening()`), and it is reserved for a story the
+child actually meant to make:
 
 ```
-Visitor
+Traveller
   ↓
 Story Egg
   ↓
@@ -216,7 +235,7 @@ Creator successfully use VihuStudio**.
 - **Silence remains the default.** The Guide responsibility is
   answering, not volunteering. The Companion earns each thing it says.
 - **The Story Egg is exempt.** A Traveller's Story Egg never speaks
-  (Visitor Behaviour, below) and therefore never guides. The Guide
+  (Traveller Behaviour, below) and therefore never guides. The Guide
   responsibility belongs to a bonded Story Companion, and to Lumo only
   within a Creator Ceremony.
 
@@ -231,12 +250,13 @@ Creator successfully use VihuStudio**.
 | Offer to take the child to a control | Perform an unrepeatable change unasked |
 | Notice a hidden or off-page object | Remember the child across sessions |
 
-## Canon 6 — Studio Rite (locked decision, three open questions)
+## Canon 6 — Studio Rite
 
-Frozen as a platform entity. **Its guide is not yet decided — see the open
-questions below. Do not implement until they are answered.**
+Frozen as an official platform capability. The three questions this
+section previously left open were answered by the product owner in the
+Studio Rite Product Decision, and are resolved below.
 
-**What is locked** (product owner, Studio Rite Vision Update):
+**What is locked**:
 
 - Studio Home is no longer the first thing a user reaches. A mandatory
   **Studio Rite** precedes it.
@@ -258,30 +278,44 @@ questions below. Do not implement until they are answered.**
 - Completion permanently unlocks the Studio. Afterwards the Companion may
   assume the user holds the shared vocabulary.
 
-**What is NOT yet decided.** These three are recorded openly rather than
-resolved silently, because each conflicts with something already frozen
-above. Full analysis in `docs/STUDIO_RITE_PROPOSAL.md` Part I.
+**The three questions, answered**
 
-1. **Who guides a first-time user.** The vision names *"Story Egg /
-   Lumo."* Canon 1 states the Story Egg **has no face, has no limbs, and
-   never speaks**, and Visitor Behaviour forbids *"speech bubbles,
-   onboarding dialogue, or tutorial"* outright. The Story Egg therefore
-   cannot guide without deleting three frozen Canon 1 properties.
-   *Recommendation: **Lumo guides; the Story Egg accompanies in
-   silence.*** That needs only one clause widened in Canon 2 — Lumo
-   appears at **the two thresholds**, the Studio Rite and the Creator
-   Ceremony — and leaves Canon 1 completely intact.
-2. **Whether the Rite publishes.** It must not. The first publish is the
-   Creator Ceremony (Canon 4) and fires at most once, ever. A Rite that
-   publishes would spend a child's Companion bonding on a practice
-   story. *Recommendation: the Rite ends before Publish.*
-3. **Traveller or Visitor.** This document says Visitor; the product,
-   the Gateway's first line, `assets/registry.json`'s role, and the code
-   all say Traveller. A Rite whose job is introducing vocabulary cannot
-   start until the platform has one word. *Recommendation: Traveller.*
+1. **Lumo guides the Rite.** The Story Egg is unchanged and unchallenged
+   — it never speaks, never teaches, never guides, and expresses itself
+   through animation alone, exactly as Canon 1 and Traveller Behaviour
+   already state. Lumo's remit widens by one clause (Canon 2) to cover
+   **both thresholds**. Nothing in Canon 1 changes.
+2. **The Rite ends before Publish.** It never reaches Publish, never
+   triggers the Creator Ceremony, and never awakens the Story Egg. The
+   first real Publish remains sacred (Canon 4).
+3. **The platform says Traveller.** This document and
+   `docs/KID_JOURNEY.md` were the only two places still saying
+   "Visitor"; both now match the product, the Gateway,
+   `assets/registry.json` and the code. Asset Registration's
+   `role:"visitor"` was additionally a factual error — the registry has
+   always said `traveller` — and is corrected here.
 
-Until questions 1–3 are answered, **nothing in Canon 1, 2, 3 or 4
-changes**, and no Studio Rite code should be written.
+**The Story Egg during the Rite**
+
+Lumo guides, but the Story Egg **accompanies** — the Rite is meant to
+strengthen the child's bond with the Egg, not to sideline it while
+someone else talks. The Egg reacts through animation only.
+
+Its reactions are drawn from the canonical Traveller pose set, and two
+of those are unavailable to the Rite by construction: `hatching` and
+`magic` belong exclusively to the Creator Ceremony (Canon 4), which the
+Rite never triggers. `hero` has no art yet (disclosed under Asset
+Registration). **The Rite's Egg vocabulary is therefore exactly five
+real poses — `idle`, `curious`, `thinking`, `excited`, `sleep`** — and
+it needs no others. The Egg still never receives an emotional pose such
+as `happy`/`sad`; Canon 1 is untouched.
+
+**Relationship to the Gateway**
+
+Studio Rite **extends** the Traveller Gateway; it does not replace it.
+Lumo already opens the Gateway and introduces himself there, so the
+Gateway's arrival and the Rite's first chapter are one continuous
+journey with one guide. The Gateway is not redesigned.
 
 ## Companion Versions
 
@@ -310,9 +344,9 @@ Name, Species, Creator Since, Stories Created, Worlds Created
 (Achievements are reserved for a future sprint, not built yet). **Lumo
 never appears on the Magic Card** — only the bonded Story Companion.
 
-## Visitor Behaviour
+## Traveller Behaviour
 
-During Visitor mode, quiet accompaniment only — **no speech bubbles, no
+During Traveller mode, quiet accompaniment only — **no speech bubbles, no
 onboarding dialogue, no tutorial.**
 
 | Studio Event | Story Egg Pose |
@@ -344,7 +378,7 @@ hardcoded paths. Real, uploaded canonical art lives directly under
 ```
 assets/
   registry.json
-  story-egg/    role:"visitor"   — 6 of 8 poses real; hero.png + magic.png disclosed pending
+  story-egg/    role:"traveller"   — 6 of 8 poses real; hero.png + magic.png disclosed pending
   lumo/         role:"guardian"  — 8 real poses (a superset of Canon 2's 7)
   nimbus/       role:"companion" — Dream Sprite; declared, ALL 12 poses pending upload (disclosed)
   quill/        role:"companion" — Ink Spirit; declared, ALL 12 poses pending upload (disclosed)

@@ -1,249 +1,123 @@
-# Studio Rite — Architecture Proposal & Canon Review
+# Studio Rite — Architecture & Implementation Plan
 
-**Status: proposal only. No implementation code has been written.**
+**Status: architecture aligned to locked product decisions. No implementation
+code has been written.**
 
-The product owner asked for two things: an architecture for inserting Studio
-Rite before Studio Home, and a genuine challenge of the vision against
-existing VihuPlanet canon — *"Do not silently change behaviour."*
+Studio Rite is approved product direction (Studio Rite Product Decision,
+Decisions 1–10). This document realises it within the existing architecture,
+preserves VihuPlanet canon, and keeps implementation impact minimal. The canon
+itself is `docs/COMPANION_CANON.md` → **Canon 6**.
 
-The challenge comes first, because **three of its findings change what should
-be built**, and one of them cannot be resolved without a product decision.
-
----
-
-## Part I — Canon Review (the challenge)
-
-### C1. The Story Egg cannot guide the Rite — canon forbids it three ways
-
-**This is the central conflict, and it is head-on.**
-
-The brief states: *"First-time user — Guide: Story Egg / Lumo. The Story Egg
-introduces the child to VihuStudio and guides them through the Rite. The Egg
-should feel alive and encouraging."*
-
-`docs/COMPANION_CANON.md` → **Canon 1 — Story Egg** (frozen):
-
-> - Has no face.
-> - Has no limbs.
-> - **Never speaks.**
-> - Expresses itself only through pose, glow, and magical effects.
-
-And **Visitor Behaviour** (frozen):
-
-> During Visitor mode, quiet accompaniment only — **no speech bubbles, no
-> onboarding dialogue, no tutorial.**
-
-A guide that introduces, explains and encourages is speech, dialogue and
-tutorial — the three things the Story Egg is specifically defined *not* to do.
-This is not a technicality. The Story Egg's silence is load-bearing: it is
-what makes it "potential waiting for a Creator" rather than a character. An
-Egg that talks is just a companion the child hasn't bonded with, and the
-Creator Ceremony's hatching beat loses its meaning.
-
-**Recommendation: Lumo guides the Rite. The Story Egg accompanies it,
-silently.**
-
-This costs almost nothing in canon, because Lumo is *already* the right
-character:
-
-| Canon 2 — Lumo (frozen) | Fit for the Rite |
-|---|---|
-| "Guardian of Story Companions — **keeper of Creator Ceremonies**" | The Rite is a ceremony |
-| "Introduces the concept of Story Companions" | Exactly the Rite's vocabulary job |
-| Speaks; has `wave`, `talk`, `celebrate`, `curious`, `think` poses | Can actually guide |
-| Owned by VihuPlanet, never bonded, never on a Magic Card | Correctly impersonal for a threshold |
-
-Lumo **already introduces himself in the Gateway today** (`js/gatewaySequence.js:163-166`):
-
-```
-'Welcome, Traveller.'          / "You've found the Gateway."
-'I am Lumo.'                   / "It's wonderful to meet you."
-'Guardian of Story Companions.'/ 'I help stories come to life.'
-'Every Creator begins here.'   / 'And every story begins with a spark of imagination.'
-```
-
-The only canon change needed is one clause in Canon 2: Lumo's appearances
-widen from *"only during Creator Ceremonies"* to **the two thresholds — the
-Studio Rite and the Creator Ceremony.** That is one sentence, and it is
-consistent with everything else Lumo already is.
-
-The brief's own phrasing — *"Story Egg / Lumo"*, with a slash — suggests this
-may already be the intent. It needs to be said explicitly, because building it
-the other way would require deleting three frozen Canon 1 properties.
-
-### C2. The Rite must not publish — or it consumes the Creator Ceremony
-
-The suggested progression ends *"9. Complete a tiny story. 10. Unlock the
-Studio."*
-
-If "complete" means publish, this fires:
-
-```
-js/publishStudio.js:1031  MagicCard.shouldOfferAwakening()  →  MagicCardUI.showAwakening()
-```
-
-which is the **Creator Ceremony** — `docs/COMPANION_CANON.md` Canon 4, the
-single most important moment in the entire product: the Magic Card awakens,
-Lumo blesses the Story Egg, it hatches, and a Story Companion chooses the
-child forever. It fires **at most once per browser, ever**
-(`shouldOfferAwakening`'s own gate).
-
-Spending it on a tutorial story would be an unrecoverable product mistake. The
-child's first bonded companion would arrive attached to a throwaway exercise
-rather than to the first story they actually meant to make.
-
-**Recommendation: the Rite ends before Publish.** "Complete a tiny story"
-means the child finishes making it and sees it — not that they publish it.
-The first *real* publish stays the Creator Ceremony. Canon 4 is untouched.
-
-This also keeps the Rite short, which matters (§R3).
-
-### C3. "Traveller" and "Visitor" are two words for the same person
-
-The user test asked *"Who is a Traveller?"*. The word appears in the product's
-literal first line — `'Welcome, Traveller.'` — and the platform never defines
-it. But it is worse than undefined; **it is inconsistent**:
-
-| Source | Word used |
-|---|---|
-| `js/gatewaySequence.js` (first line the child ever sees) | **Traveller** |
-| `assets/registry.json` — Story Egg's role | `"traveller"` |
-| `js/companionDirector.js` — `MODES` | `traveller` |
-| Code throughout (`TravellerSaveNotice`, Traveller gate) | **Traveller** |
-| `docs/COMPANION_CANON.md` | **Visitor** ×8, Traveller ×1 |
-| `docs/KID_JOURNEY.md` | **Visitor** ×14, Traveller ×0 |
-
-The canon documents and the running product disagree on what to call the
-child. A Rite whose stated job is *"introduce terms naturally"* cannot proceed
-until the platform decides which term it is introducing.
-
-**Recommendation: standardise on "Traveller."** It is what the product, the
-Gateway, the registry and the code all already say; "Visitor" survives only in
-two docs. Changing the docs is a find-and-replace; changing the product is a
-migration. Then update `docs/COMPANION_CANON.md` and `docs/KID_JOURNEY.md` to
-match.
-
-*(If the product owner prefers "Visitor", that is fine — but it is then a code
-change across the Gateway, the registry role, `MODES`, and
-`TravellerSaveNotice`, and should be scoped as such rather than assumed.)*
-
-### C4. The Gateway already violates the Rite's own language rule
-
-The brief states terms *"should not appear unexplained elsewhere in the
-product before the Rite is complete."*
-
-The Gateway says **"Welcome, Traveller."** as its opening line, on every
-launch, before anything else. Under the new rule, the product breaks its own
-constraint in its first four words — and that line is very likely the direct
-cause of the user-test finding.
-
-This forces a real ordering decision, and there are only two coherent answers:
-
-- **(a) Rite after the Gateway** *(recommended)* — the Gateway stays the
-  arrival, and the Rite is the first chapter *inside*. Scene 1's copy changes
-  from `'Welcome, Traveller.'` to something that assumes nothing
-  (`'Welcome.'` / `"You've found the Gateway."`), and the word "Traveller" is
-  then introduced properly during the Rite. **One copy line changes.**
-- **(b) Rite before the Gateway** — the child meets the Rite cold, with no
-  arrival, and the Gateway becomes a mid-flow interlude. This inverts an
-  entire frozen experience for no gain.
-
-### C5. The premise "Studio Home is the first experience" is not quite right
-
-Studio Home is not first today. The boot order is:
-
-```
-bootWithPreloadGate()  →  _runBootstrap()  →  GatewaySequence.begin()  →  _beginBoot()  →  _startCreationFlow()
-```
-
-The **Traveller Gateway** is first, on every launch, and it already does part
-of the Rite's job — Lumo introduces himself and the concept of Story
-Companions. The Rite is therefore not filling an empty slot; it is *extending
-an entry experience that already exists*. That makes it smaller than the brief
-assumes, and it means the Rite should be designed as the Gateway's second
-half, not as a competing front door.
-
-### C6. "The Studio remains locked" needs a precise reading
-
-Steps 4–9 (*create a page, add a character, move it, resize it, add a title*)
-**require the real editor**. So "locked" cannot mean the editor is
-unreachable.
-
-**Recommendation: "locked" means Studio Home — the creation flow and My
-Projects — is unreachable until the Rite completes.** The Rite itself runs
-*inside* the real canvas on a real project. This is the reading that makes
-"teaches through creation" literally true, and it is the only one that is
-buildable.
-
-### C7. Forcing existing Creators through the Rite contradicts their Ceremony
-
-*"Every user must complete Studio Rite exactly once"* would send a Creator who
-already has a bonded Companion, a claimed Magic Card and published stories
-back through *"create your first page."*
-
-Someone who completed a Creator Ceremony has, by definition, published a story
-and been chosen by a Companion. They demonstrably hold the vocabulary. The
-brief's own *"if required"* leaves room for this.
-
-**Recommendation: grandfather every existing Creator.** A claimed Magic Card
-is proof of completion. Zero migration work, zero insult (§7).
-
-### Summary of the challenge
-
-| # | Conflict | Severity | Recommendation |
-|---|---|---|---|
-| C1 | Story Egg cannot speak/guide (Canon 1, Visitor Behaviour) | **Blocking** | Lumo guides; Egg accompanies silently |
-| C2 | Rite ending in publish consumes the Creator Ceremony (Canon 4) | **Blocking** | Rite ends before Publish |
-| C3 | "Traveller" vs "Visitor" — canon and product disagree | **Blocking** | Standardise on "Traveller" |
-| C4 | Gateway says "Welcome, Traveller" unexplained | High | Rite after Gateway; change one copy line |
-| C5 | Studio Home isn't first today — the Gateway is | Medium | Design the Rite as the Gateway's second half |
-| C6 | "Locked" must mean Studio Home, not the editor | Medium | Gate Studio Home; run the Rite in the real canvas |
-| C7 | Existing Creators forced to re-onboard | High | Grandfather anyone with a claimed Magic Card |
-
-**C1, C2 and C3 should be resolved before implementation begins.** The rest
-are recommendations that can be adjusted during build.
+An earlier revision of this file recorded three open questions against frozen
+canon. **All three are now answered** — Decision 5 (Lumo guides), Decision 7
+(the Rite ends before Publish), and Decision 4's own word list (Traveller, not
+Visitor). Part I records how each decision lands; Part II is the architecture.
 
 ---
 
-## Part II — Architecture Proposal
+## Part I — Canon alignment
 
-Everything below assumes the recommended resolutions above.
+Every decision checked against frozen canon. **No decision is technically
+impossible, and none contradicts frozen canon.** One carries a constraint
+worth stating precisely (D6).
 
-### 1. Studio Rite architecture
-
-One new module, following the platform's existing shape exactly — a classic
-IIFE attached to `window`, loaded by a `<script>` tag in `index.html`'s single
-57-script block. No build step, no framework, no new dependency.
-
-| Module | File | Role | Owns |
-|---|---|---|---|
-| Rite | `js/studioRite.js` | The gate, the step script, the completion flag | A step index and a localStorage flag |
-
-It reuses, and does not reimplement:
-
-| Need | Existing mechanism reused |
+| Decision | Canon status |
 |---|---|
-| Staging Lumo on a big centred stage | `js/magicCardUI.js`'s Creator Ceremony stage — the exact same pattern, already proven |
+| **D1** Studio Rite exists, mandatory, once | New capability. Recorded as Canon 6. No conflict |
+| **D2** Answers *Where am I? · Who am I? · What do I do here?* | No conflict. Becomes the Rite's three-act structure (§2) |
+| **D3** Teach through creation, never explain tools | No conflict. Constrains the step design (§5) |
+| **D4** Establishes Traveller · Creator · Story · Companion | Resolves the vocabulary split — the platform says **Traveller**. `COMPANION_CANON.md` and `KID_JOURNEY.md` updated to match the product, the Gateway, the registry and the code |
+| **D5** Lumo guides; Story Egg unchanged | **Canon 1 untouched.** Canon 2 gains one widened clause: Lumo appears at *the two thresholds* rather than only the Creator Ceremony |
+| **D6** The Egg accompanies and reacts through animation | No conflict, with one real constraint — see below |
+| **D7** Rite ends before Publish; never triggers the Ceremony | **Canon 4 preserved exactly.** One clarifying sentence added: "first" means first *real* Publish |
+| **D8** Rite extends the Gateway, one continuous journey | No conflict, and it removes a change the earlier revision had proposed — see below |
+| **D9** Existing Creators grandfathered by existing mechanisms | No conflict. `MagicCard.list().length > 0` already answers this |
+| **D10** Companion assumes the Rite is complete | No conflict. Narrows `docs/COMPANION_V1_PROPOSAL.md` §3.2 scope only |
+
+### D6 — the Egg's reaction vocabulary is exactly five poses
+
+Decision 6 asks the Egg to react emotionally through animation. Canon 1 says
+it *"never receives emotional poses such as `happy`/`sad`."* Both hold
+simultaneously, and the resulting set is small and worth naming so the Rite is
+authored against it rather than discovering it late:
+
+| Canonical Traveller pose | Available to the Rite? |
+|---|---|
+| `idle` · `curious` · `thinking` · `excited` · `sleep` | **Yes** — real art shipped, all five |
+| `hatching` | **No** — Creator Ceremony only (D7 forbids it outright) |
+| `magic` | **No** — Ceremony's Glow beat; also no art yet |
+| `hero` | No art yet (disclosed under Asset Registration) |
+
+**Five real poses**, verified against `assets/story-egg/` on disk. That is
+enough for a warm, reactive presence — `curious` when Lumo asks something,
+`thinking` while the child works, `excited` when something lands, `idle`
+between, `sleep` if they pause — and it needs no new art and no canon change.
+
+### D8 — the Gateway needs no change at all
+
+The earlier revision recommended editing the Gateway's opening line, because
+`'Welcome, Traveller.'` names the child a Traveller without explaining it —
+very likely the direct cause of the user-test finding.
+
+**Decision 8 resolves this better, and without touching the Gateway.** The
+Gateway's existing Lumo script (`js/gatewaySequence.js:163-166`) already runs:
+
+```
+'Welcome, Traveller.'           / "You've found the Gateway."
+'I am Lumo.'                    / "It's wonderful to meet you."
+'Guardian of Story Companions.' / 'I help stories come to life.'
+'Every Creator begins here.'    / 'And every story begins with a spark of imagination.'
+```
+
+The word is not unexplained — it was merely *unfinished*, because the Gateway
+handed straight off to Studio Home. With the Rite continuing immediately, in
+the same voice, from the same guide, "Welcome, Traveller" becomes the moment
+the word is **introduced** and the Rite becomes the moment it is **answered**.
+One continuous journey, exactly as Decision 8 specifies.
+
+**`js/gatewaySequence.js` is not modified.** Nor is the Gateway redesigned.
+
+---
+
+## Part II — Architecture
+
+### 1. The smallest implementation
+
+One new module and two changed lines.
+
+| Item | File | Note |
+|---|---|---|
+| The Rite | `js/studioRite.js` *(new)* | Classic IIFE on `window`, one `<script>` tag in `index.html`'s existing block. No build step, no framework, no dependency |
+| The gate | `js/app.js` | Two call sites wrapped |
+| Canon | `docs/COMPANION_CANON.md` | Canon 6; done |
+
+Reused rather than rebuilt:
+
+| Need | Existing mechanism |
+|---|---|
+| Staging Lumo on a centred stage | `js/magicCardUI.js`'s Creator Ceremony stage — same pattern, already proven |
 | Beat sequencing | `CompanionDirector.getCeremonySequence()`'s data-driven beat shape |
-| Companion mounting | `CompanionEngine` + `loadRegistry()`; `_resolveEntityIdByRole(list,'guardian')` |
-| Creating the Rite's project | `CreationFlow` / `ProjectManager` — the normal path, with a fixed theme |
-| Page/object operations for steps 4–8 | `PageOps`, `SceneEngine`, `PageRuntime` — untouched |
-| Knowing whether the user is a Creator | `MagicCard.getActive()` / `MagicCard.list()` |
+| Mounting Lumo / the Egg | `CompanionEngine` + `loadRegistry()` + `_resolveEntityIdByRole(list,'guardian')` |
+| The Rite's project | `CreationFlow` / `ProjectManager`, normal path, fixed theme |
+| Page and object work | `PageOps`, `SceneEngine`, `PageRuntime` — untouched |
+| Creator detection | `MagicCard.list()` / `MagicCard.getActive()` |
+| Traveller vs Creator guide | `CompanionDirector.detectMode()` — **already implements "the guide depends on lifecycle"** |
 
-**The guide-selection logic the brief asks for already exists.**
-`js/companionDirector.js:299`:
+### 2. The Rite's structure — Decision 2's three questions
 
-```js
-function detectMode(){
-  if(MagicCard.getActive()) return 'creator';
-  return 'traveller';
-}
-```
+Decision 2 gives the Rite its acts, and Decision 3 gives each act its method:
+the answer is never told, it is produced by making something.
 
-That is precisely *"the guide depends on the user's lifecycle."* No new
-lifecycle model is needed — only a call.
+| Act | Question | Answered by | Vocabulary introduced |
+|---|---|---|---|
+| I | **Where am I?** | Lumo continues straight out of the Gateway; the child sees the place they have arrived in | Traveller, Story |
+| II | **Who am I?** | The child makes their first page and puts a character on it — they are the one who makes things here | Creator |
+| III | **What do I do here?** | Move it, size it, name it, finish it — the rhythm of creation, performed | Companion (via the Egg's presence) |
 
-### 2. Updated user entry flow
+The Rite ends when the tiny story is finished (D7): celebrated, kept, **not
+published.**
+
+### 3. Entry flow
 
 **Today**
 
@@ -255,10 +129,10 @@ preload gate → Traveller Gateway → _beginBoot() → restore-session? → Stu
 
 ```
 preload gate
-   → Traveller Gateway            (Scene 1 copy loses the unexplained "Traveller")
-   → StudioRite.gate()            ←  NEW: complete? pass through : run the Rite
+   → Traveller Gateway              (unchanged — D8)
+   → StudioRite.gate()              ←  NEW
         ├── complete → straight through, zero delay
-        └── incomplete → Lumo stages the Rite → real canvas, steps 4–9 → unlock
+        └── incomplete → Lumo continues → real canvas → tiny story → unlock
    → _beginBoot()
    → Studio Home
 ```
@@ -266,24 +140,9 @@ preload gate
 For every existing Creator and every returning user, this adds **one
 synchronous flag check** to boot and nothing else.
 
-### 3. Required lifecycle changes
+### 4. Routing changes
 
-**None to any existing lifecycle.** That is the point of the design.
-
-| Lifecycle | Change |
-|---|---|
-| Authentication / identity | None. The Gateway's Scene 3 and `MagicCardUI.beginCreatorSignature()` are untouched |
-| Story Egg | None. Still silent, still Visitor-only, still vanishes at the Ceremony |
-| Creator | None. `MagicCard.claim()` still happens at the Awakening |
-| First publish | None. `shouldOfferAwakening()` still fires on the first *real* publish (C2) |
-| Companion initialization | None to `CompanionDirector.init()`. The Rite stages Lumo on its own transient stage and tears it down before `_beginBoot()` runs, so Studio still mounts the correct persistent companion via the existing `detectMode()` path |
-
-One **additive** state: Rite completion (§6).
-
-### 4. Required routing changes
-
-The entire routing change is **two call sites in `js/app.js`**, both in
-`_runBootstrap()` / `_afterGateway()`:
+Two call sites in `js/app.js`, in `_runBootstrap()` and `_afterGateway()`:
 
 ```js
 // today
@@ -293,187 +152,166 @@ GatewaySequence.begin(_beginBoot);
 GatewaySequence.begin(function(){ StudioRite.gate(_beginBoot); });
 ```
 
-and the same wrap on `_afterGateway()`'s fallback, so a broken
-`GatewaySequence` still reaches the Rite.
+`StudioRite.gate(next)` — if complete, call `next()` immediately; otherwise run
+the Rite and call `next()` when it finishes.
 
-`StudioRite.gate(next)` is: *if complete, call `next()` immediately; otherwise
-run the Rite and call `next()` when it finishes.*
+Three properties:
 
-Three properties worth noting:
-
-- **`HOME_RETURN_FLAG` is already handled.** A Home-button reload skips the
-  Gateway today and would skip the Rite the same way — correct, since a
-  mid-session return is not a first arrival.
+- **`HOME_RETURN_FLAG` already works.** A Home-button reload skips the Gateway
+  today and will skip the Rite the same way — correct, since a mid-session
+  return is not a first arrival.
 - **Fail-open, per platform convention.** A missing or broken
-  `js/studioRite.js` must fall straight through to `_beginBoot()` — guarded
-  with the codebase's standard `try{ if(typeof StudioRite!=='undefined') }`
-  pattern, exactly as `GatewaySequence` already is.
-- **The Rite is not skippable.** The Gateway's `wireSkip()` /
-  `onSkipClick()` lets a tap skip ahead; the Rite deliberately does not wire
-  it, since the decision is that the Rite is mandatory. This is a *different*
-  interaction contract living in an adjacent boot slot, and should be an
-  explicit, disclosed difference rather than an accident.
+  `js/studioRite.js` falls straight through to `_beginBoot()`, guarded with
+  the codebase's standard `try{ if(typeof StudioRite!=='undefined') }`, exactly
+  as `GatewaySequence` already is.
+- **The Rite is not skippable.** The Gateway wires `onSkipClick()` so a tap
+  advances; the Rite deliberately does not, because D1 makes it mandatory.
+  A disclosed, intentional difference between two adjacent boot slots — not an
+  oversight.
 
-### 5. Story Egg and Companion responsibilities during the Rite
+### 5. Lifecycle changes
 
-| User | Guide | Story Egg | Companion |
-|---|---|---|---|
-| First-time Traveller | **Lumo**, on a ceremony-style stage (C1) | Present, silent, reacting by pose only — exactly its frozen Visitor Behaviour | Does not exist yet |
-| Returning Creator (not grandfathered) | **Their bonded Story Companion** | Gone forever (Canon: never reappears post-Ceremony) | Guides, per the brief |
+**None to any existing lifecycle.** That is the design's whole point.
 
-**Lumo is torn down when the Rite ends.** He must not persist into Studio —
-Canon 2 keeps him out of the ongoing widget. After the Rite, `_beginBoot()`'s
-existing `CompanionDirector.init()` mounts the Story Egg (Traveller) or the
-bonded Companion (Creator) exactly as it does today.
+| Lifecycle | Change |
+|---|---|
+| Authentication / identity | None. Gateway Scene 3 and `MagicCardUI.beginCreatorSignature()` untouched |
+| Story Egg | None. Silent, Traveller-only, still vanishes at the Ceremony (D5) |
+| Creator | None. `MagicCard.claim()` still happens at the Awakening |
+| First publish | None. `shouldOfferAwakening()` still fires on the first real publish (D7) |
+| Companion init | None to `CompanionDirector.init()`. The Rite stages Lumo transiently and tears him down before `_beginBoot()` runs, so Studio still mounts the right persistent companion through the existing `detectMode()` path |
+| Gateway | None (D8) |
 
-The Story Egg's role during the Rite is unchanged from canon: it accompanies,
-poses, glows, and never says a word. The Rite's script may direct its poses —
-`idle`, `curious`, `excited` — through the existing `setState()`, which is
-pose data, not speech.
+One **additive** state: Rite completion (§7).
 
-### 6. Unlock mechanism
+### 6. Guide responsibilities during the Rite
 
-Deliberately the smallest thing that works.
+| User | Guide | Story Egg |
+|---|---|---|
+| First-time Traveller | **Lumo**, continuing from the Gateway | Present, accompanying, animation only — five poses (§D6) |
+| Returning Creator | Never sees the Rite (D9) | — |
+
+**Lumo is torn down when the Rite ends.** Canon 2 keeps him out of the ongoing
+widget; after the Rite, `_beginBoot()`'s existing `CompanionDirector.init()`
+mounts the Story Egg exactly as it does today.
+
+Decision 6 is a real design requirement, not decoration: the Rite must
+*strengthen* the child's bond with the Egg. The Egg is the constant presence
+across the whole Rite, reacting to the child's own actions — Lumo speaks, but
+the Egg is the one who is *with them*.
+
+### 7. Unlock mechanism
 
 ```js
-// device-scoped, one key
 localStorage['vihu.studioRite.v1'] = '1'
 ```
 
 `StudioRite.isComplete()` returns true if **either**:
 
 1. the flag is set, **or**
-2. `MagicCard.list().length > 0` — the grandfather clause (§7).
+2. `MagicCard.list().length > 0` — the grandfather clause.
 
-Written only when the Rite genuinely finishes. Never written on skip, because
-there is no skip.
+Written only when the Rite genuinely finishes. There is no skip, so there is
+no path that writes it otherwise.
 
-**Why not cloud-persist it?** Because the only users for whom a device change
-matters are Creators, and Creators are grandfathered by their Magic Card,
-which already survives device changes through the existing identity flow. A
-Traveller who clears storage repeats the Rite — acceptable, and the same thing
-already happens to their local projects (`js/projectManager.js`'s "100% local
-forever" guarantee). Adding a Supabase column for this would be new
-infrastructure for a case that cannot occur.
+### 8. Migration for existing Creators (D9)
 
-### 7. Migration strategy for existing creators
-
-**Grandfather everyone with a claimed Magic Card. No data migration, no
-backfill, no schema change.**
-
+**No migration system. No backfill. No schema change.** Decision 9 asks for
+existing mechanisms, and one already answers the question exactly:
 `MagicCard.list().length > 0` is already true for every existing Creator and
-already false for every Traveller. It is checked at boot, synchronously, from
-data that is already loaded.
+already false for every Traveller, and it is already loaded at boot.
 
-| Existing user | Experience after this ships |
+| Existing user | Experience |
 |---|---|
 | Creator with a claimed card | Unchanged. Never sees the Rite |
-| Traveller with local projects, never published | Sees the Rite once, then continues; **their projects are untouched** |
-| Brand-new user | Gateway → Rite → Studio |
+| Traveller with local projects, never published | Sees the Rite once; **their projects are untouched** |
+| New user | Gateway → Rite → Studio |
 
-The middle row is the only behaviour change for an existing user, and it is
-the one the brief actually intends: someone who has not published has not been
-through the Ceremony and does not yet hold the vocabulary.
+The middle row is the only behaviour change, and it is intended: someone who
+has not published has not been through the Ceremony and does not yet hold the
+vocabulary.
 
-**The Rite's own project is kept, not discarded.** The design principle is
-*"Users should finish having successfully created something."* Keeping their
-tiny story in My Projects is the literal fulfilment of that. It should be a
-normal project with a normal name the child chose during step 8 — not a
-special-cased tutorial artifact.
+**The Rite's project is kept, not discarded** — a normal project, named by the
+child in Act III, appearing in My Projects like any other. D3 says the child
+should finish having successfully created something; keeping it is what makes
+that true.
 
-### 8. Implementation roadmap
-
-**R0 — Canon resolution (docs only). Gate.**
-Resolve C1 (who guides), C2 (does the Rite publish), C3 (Traveller vs
-Visitor). Nothing else starts until these three are answered.
-*Ships:* a settled canon. *Risk:* none.
+### 9. Implementation roadmap
 
 **R1 — The gate and the unlock.**
-`js/studioRite.js` with `gate()` / `isComplete()` / `markComplete()` only, the
-two `js/app.js` call sites, and the grandfather clause. The Rite itself is a
-stub that completes immediately.
-*Ships:* nothing visible — and that is the point. Verifies that every existing
-user's boot is byte-for-byte unchanged before any experience is built on top.
-*Risk:* low, and fully reversible.
+`js/studioRite.js` with `gate()` / `isComplete()` / `markComplete()`, the two
+`js/app.js` call sites, the grandfather clause. The Rite itself is a stub that
+completes immediately.
+*Ships:* nothing visible — deliberately. Proves every existing user's boot is
+unchanged before any experience is built on it.
+*Risk:* low, fully reversible.
 
-**R2 — The Rite shell: steps 1–3.**
-Lumo staged on the ceremony-pattern stage, the welcome beats, and the natural
-introduction of Traveller and Creator. Ends by handing off to Studio.
-*Ships:* a complete, coherent entry narrative, even before the creation steps
-exist. Already fixes the user-test finding.
+**R2 — Act I: Where am I?**
+Lumo staged on the ceremony-pattern stage, continuing straight out of the
+Gateway, with the Egg present and reacting. Ends by handing off to Studio.
+*Ships:* a continuous, coherent arrival. Addresses the user-test finding on
+its own, before any creation step exists.
 *Risk:* low — additive, no editor involvement.
 
-**R3 — The creation steps 4–8.**
-The Rite creates a real project on a fixed theme and step-gates through: first
-page → add a character → move it → resize it → add a title. Uses `PageOps`,
-`SceneEngine` and `PageRuntime` as-is.
-*Ships:* "teaches through creation" for real.
-*Risk:* medium — this is the only milestone that touches the editor, and it
-needs the step gating not to fight the existing selection and Context Panel
-behaviour.
+**R3 — Acts II & III: Who am I? / What do I do here?**
+The Rite creates a real project on a fixed theme; the child makes a page, adds
+a character, moves it, sizes it, names it. Uses `PageOps`, `SceneEngine` and
+`PageRuntime` as-is. No menu tours, no tool explanations (D3) — Lumo asks for
+something and the making teaches it.
+*Ships:* teach-through-creation for real.
+*Risk:* medium — the only milestone touching the editor. The step gating must
+not fight existing selection or Context Panel behaviour.
 
 **R4 — Completion and unlock.**
-Step 9 (the tiny story is finished and celebrated, **not published** — C2),
-step 10 (flag written, Studio Home unlocked, project kept).
+The tiny story is finished and celebrated, **not published** (D7); the flag is
+written; Studio Home unlocks; the project is kept.
 *Ships:* the full Rite.
 *Risk:* low.
 
-**Deferred, with gates named**
+### 10. Risks
 
-| Deferred | Gate |
+| Risk | Mitigation |
 |---|---|
-| Gateway Scene 1 copy change (C4) | Bundle with R2 — one line, but it is frozen-experience copy |
-| Vocabulary standardisation across docs (C3) | R0 |
-| Any Story Journey capability | **Out of scope. Do not implement.** |
+| **Time to first creation.** Gateway + Rite back to back could be long for a child | Acts are short and creation starts in Act II; R2 ships separately so the length is measurable before R3 lands |
+| **Mandatory + unskippable** is a strong constraint if any step can wedge | Every step needs a guaranteed-completable path; the gate must fail open on any error rather than trap a child before Studio |
+| **The Rite's project polluting My Projects** | It is a real project the child made and named — treat it as one, not as a special-cased artifact |
+| **Clearing storage repeats the Rite for a Traveller** | Accepted; identical to how local projects already behave. Creators are protected by the Magic Card |
+| **Lumo leaking into Studio** | Explicit teardown before `_beginBoot()`; Canon 2 forbids the standing widget |
+| **Drift from Companion v1** | D10 narrows `docs/COMPANION_V1_PROPOSAL.md` §3.2 only; ship the Rite first if both are queued |
 
 ---
 
-## Part III — Effects on adjacent initiatives
+## Effects on adjacent initiatives
 
-### Companion v1
+**Companion v1** — scope reduction, not an architecture change.
+`docs/COMPANION_V1_PROPOSAL.md` stands as written; only `vocabulary.json` gets
+smaller, since the Rite establishes Traveller, Creator, Story and Companion
+(D10).
 
-The brief is right that this simplifies Companion, and it is worth being
-precise about how much: it is a **scope reduction, not an architecture
-change.** `docs/COMPANION_V1_PROPOSAL.md` stands as written. The only effect
-is on §3.2's `vocabulary.json`, which no longer needs to define Traveller,
-Creator, World or Companion from nothing — the Rite establishes them, and the
-corpus can assume them.
+**Motion Publishing** — no effect, confirmed rather than assumed. The Rite
+touches boot routing and the editor, and never reaches `js/publishStudio.js`,
+Magic Publish, or any Publish stage. That is not incidental; it is D7.
 
-Companion v1's G-milestones and the Rite's R-milestones are independent and
-can proceed in either order. **The Rite should ship first** if both are
-queued, since Companion v1 explicitly assumes the shared vocabulary exists.
-
-### Motion Publishing
-
-**No effect, confirmed rather than assumed.** The Rite touches boot routing
-and the editor; it does not touch `js/publishStudio.js`, Magic Publish, the
-reel/strip modules, or any Publish stage — with one exception that is a
-*non*-change: the Rite must not reach Publish at all (C2).
-
-### Story Journey
-
-Nothing here builds toward it. No recording, no timeline, no replay, no
-storage model, no event model.
+**Story Journey** — nothing here builds toward it. No recording, no timeline,
+no replay, no storage model, no event model.
 
 ---
 
-## Required canon updates (smallest set)
+## Canon updates applied
 
-| Document | Change | Why |
-|---|---|---|
-| `docs/COMPANION_CANON.md` — Canon 2 | Widen Lumo's appearances from *"only during Creator Ceremonies"* to **the two thresholds: the Studio Rite and the Creator Ceremony** | C1 |
-| `docs/COMPANION_CANON.md` — new Canon 6 | Record Studio Rite as a platform entity, and state explicitly that the Story Egg's silence is unchanged | C1, and the locked decision |
-| `docs/COMPANION_CANON.md` — Canon 4 | One clarifying sentence: the Creator Ceremony is the first **real** publish; the Rite never publishes | C2 |
-| `docs/COMPANION_CANON.md`, `docs/KID_JOURNEY.md` | "Visitor" → "Traveller" throughout | C3 |
-| `docs/KID_JOURNEY.md` | New Stage 0 — Studio Rite | Keeps the journey doc true |
-| `CLAUDE.md` | Locked Product Decision 8 | Standing rule: record approved product decisions |
+| Document | Change |
+|---|---|
+| `docs/COMPANION_CANON.md` → Canon 6 | Studio Rite recorded, with the three questions answered |
+| `docs/COMPANION_CANON.md` → Canon 2 | Lumo appears at **the two thresholds**; set closed at two |
+| `docs/COMPANION_CANON.md` → Canon 4 | "First" means first *real* Publish; the Rite can never consume it |
+| `docs/COMPANION_CANON.md`, `docs/KID_JOURNEY.md` | "Visitor" → "Traveller"; `role:"visitor"` corrected to `role:"traveller"` to match the registry |
+| `docs/KID_JOURNEY.md` | New Stage 0 — Studio Rite, marked not-yet-implemented |
+| `CLAUDE.md` | Locked Product Decision 8 |
 
-**Nothing in Canon 1 (Story Egg) or Canon 3 (Story Companions) changes**, and
-Canon 4's ceremony sequence is untouched.
+**Canon 1 (Story Egg) and Canon 3 (Story Companions) were not touched.**
 
 ---
 
-*No implementation has begun. This document is a proposal awaiting approval
-under `CLAUDE.md`'s standing rule that architecture changes require explicit
-sign-off. C1, C2 and C3 are open product questions, deliberately left
-unresolved here rather than answered silently.*
+*No implementation has begun. This document is the approved product direction
+realised as architecture, awaiting build sign-off under `CLAUDE.md`'s standing
+rule.*
