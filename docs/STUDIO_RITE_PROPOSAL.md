@@ -1,7 +1,6 @@
 # Studio Rite — Architecture & Implementation Plan
 
-**Status: architecture aligned to locked product decisions. No implementation
-code has been written.**
+**Status: implemented and verified. All four phases (R1–R4) shipped.**
 
 Studio Rite is approved product direction (Studio Rite Product Decision,
 Decisions 1–10). This document realises it within the existing architecture,
@@ -103,19 +102,20 @@ Reused rather than rebuilt:
 | Creator detection | `MagicCard.list()` / `MagicCard.getActive()` |
 | Traveller vs Creator guide | `CompanionDirector.detectMode()` — **already implements "the guide depends on lifecycle"** |
 
-### 2. The Rite's structure — Decision 2's three questions
+### 2. The Rite's structure — Decision 2's four questions
 
 Decision 2 gives the Rite its acts, and Decision 3 gives each act its method:
 the answer is never told, it is produced by making something.
 
 | Act | Question | Answered by | Vocabulary introduced |
 |---|---|---|---|
-| I | **Where am I?** | Lumo continues straight out of the Gateway; the child sees the place they have arrived in | Traveller, Story |
-| II | **Who am I?** | The child makes their first page and puts a character on it — they are the one who makes things here | Creator |
-| III | **What do I do here?** | Move it, size it, name it, finish it — the rhythm of creation, performed | Companion (via the Egg's presence) |
+| I | **Where am I?** | Lumo continues straight out of the Gateway; the child sees the place they have arrived in | Story |
+| II | **Who am I?** | Lumo defines Traveller and Creator by the act that separates them, then offers the child that act | Traveller, Creator |
+| III | **What do I do here?** | Place someone, move them, size them — each framed as a decision about the story, never as an operation on an object | — |
+| IV | **Why do stories matter?** | The child names what they made, and Lumo names what just happened | Companion (via the Egg's presence) |
 
 The Rite ends when the tiny story is finished (D7): celebrated, kept, **not
-published.**
+published.** The full screenplay is `docs/STUDIO_RITE_SCRIPT.md`.
 
 ### 3. Entry flow
 
@@ -477,7 +477,36 @@ revertable.**
 
 ---
 
-*No implementation has begun. This document and
-`docs/STUDIO_RITE_SCRIPT.md` are the approved product direction realised as
-architecture and screenplay, awaiting build sign-off under `CLAUDE.md`'s
-standing rule.*
+---
+
+## Build status — all four phases shipped
+
+| Phase | Status | Commit |
+|---|---|---|
+| R1 — gate and unlock | shipped | boot routing, grandfather clause |
+| R2 — Act I and the Lumo stage | shipped | full-screen stage, 3 beats |
+| R3 — Acts II & III | shipped | band mode, real editor, `await` beats |
+| R4 — Act IV, completion, unlock | shipped | title beat, flag written once |
+
+**Two seams were added to existing modules**, both additive, neither changing
+any existing call site's behaviour:
+
+- `PageRuntime.observe(fn)` — the Rite is the sixth subscriber, as designed.
+- `CreationFlow.startBlank()` — exposes the existing `_finishBlank()` the
+  "Start Something New" card already calls, rather than duplicating it.
+
+**Verified end to end in headless Chromium**, driving the whole Rite: all 18
+beats in order, each `await` beat rendering its prompt and then resolving on a
+real mutation, completion written exactly once, and a second launch skipping
+the Rite entirely. `MagicCard.shouldOfferAwakening()` is **still true after the
+Rite** — the Creator Ceremony was not consumed (D7). The standing widget
+afterwards is `assets/story-egg/*`, never Lumo (Canon 2).
+
+**One real bug was caught by that verification and fixed before shipping.**
+`js/state.js` seeds `bookTitle:'My Adventure'` and `#bookTitle` ships it as a
+value attribute, so a project is born already named. The first implementation
+tested "the story has a name", which was true before the child touched
+anything — Act IV's *"What is this one called?"* was being skipped every single
+run, silently deleting the emotional peak of the Rite. The condition is now
+"the child changed it from what it said when the beat began, and left something
+behind."*

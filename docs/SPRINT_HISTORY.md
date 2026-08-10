@@ -877,3 +877,32 @@ without re-exploring the codebase, and the three largest files in the repo
 (`slideRenderer.js`, `cardDesigner.js`, `contextPanel.js`) are touched by no
 phase. The Rite observes `PageRuntime.notify()` as a sixth subscriber rather
 than driving the editor. Docs only; no implementation code.
+
+## Studio Rite — Implemented (R1–R4)
+
+Built the Rite in four reviewable phases against the approved plan and script.
+**R1** added `js/studioRite.js` as a thin gate plus `_riteThenBoot()` at the
+three post-Gateway continuations in `js/app.js`; unlock is one localStorage flag
+OR'd with `MagicCard.list().length > 0`, so existing Creators are grandfathered
+with no migration. **R2** played Act I on a full-screen stage reusing the
+Gateway's literal `.gateway-greeting-bubble` vocabulary — the ceremony's own
+beat player is module-private to `magicCardUI.js` and is a poor fit anyway
+(the Rite blocks on child actions, not timers), so the pattern was reused
+rather than the internals exported, and `js/gatewaySequence.js` was never
+touched. **R3** hands off to the Studio part way through — at the moment the
+child says yes — because Acts III–IV need the real editor; the stage becomes a
+pointer-events:none band over the live canvas. Two additive seams were needed:
+`PageRuntime.observe(fn)` (the Rite as a sixth subscriber, observers wrapped so
+one that throws can't break the panel refreshes) and `CreationFlow.startBlank()`
+(exposing the existing `_finishBlank()` rather than duplicating it). **R4**
+added Act IV, completion, and the single place the flag is ever written.
+Verification in headless Chromium caught a real bug before ship: `js/state.js`
+seeds `bookTitle:'My Adventure'`, so "the story has a name" was true before the
+child typed anything and Act IV's *"What is this one called?"* was being skipped
+every run — deleting the emotional peak of the Rite. The condition became "the
+child changed it from what it said when the beat began." An earlier R3 test
+also passed while silently skipping a prompt whose condition was already
+satisfied; re-run waiting for the prompt to render first. Final run: all 18
+beats in order, completion written once, second launch skips the Rite, and
+`shouldOfferAwakening()` still true afterwards — the Creator Ceremony was not
+consumed. Zero page errors.

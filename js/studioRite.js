@@ -16,11 +16,14 @@
 // owning boot itself — the Rite simply sits between the Gateway handing
 // off and _beginBoot() being called.
 //
-// Phase R1 ships the gate only. run() passes straight through WITHOUT
-// marking completion, so nobody who boots an R1 build is permanently
-// flagged as having done a Rite that does not exist yet — the flag is
-// only ever written by a genuine completion (see markComplete's own
-// callers in later phases).
+// The Rite hands off to the Studio PART WAY through — at the moment the
+// child says yes — because Acts III and IV happen in the real editor,
+// not a tutorial copy of one. Everything after that plays as a quiet
+// band along the bottom of the live Studio.
+//
+// Completion is written in exactly one place: the end of a genuine full
+// run, after the child has actually made and named a story. No partial,
+// abandoned or failed Rite ever unlocks the Studio.
 const StudioRite=(function(){
   // Device-scoped. Deliberately NOT cloud-persisted: the only users for
   // whom a device change matters are Creators, and a Creator is already
@@ -141,6 +144,44 @@ const StudioRite=(function(){
      durationMs:3600}
   ];
 
+  // Act IV — "Why do stories matter?". The peak of the Rite: the child
+  // names what they made, and Lumo names what just happened. Nothing
+  // after this adds; it only closes.
+  const ACT_IV=[
+    {lumo:'talk', egg:'curious',
+     line:{title:'Every story has a name.',
+           subtitle:'What is this one called?'},
+     await:'story-named'},
+    {lumo:'curious', egg:'excited', effect:'glow',
+     line:{title:'You made that.',
+           subtitle:"It didn't exist, and now it does."},
+     durationMs:4200},
+    {lumo:'talk', egg:'idle',
+     line:{title:"That's why we keep stories.",
+           subtitle:'Because someone made them, and then they were real.'},
+     durationMs:4600}
+  ];
+
+  // Completion. Lumo leaves; the Egg does not — it follows the child
+  // into the Studio and stays, which is the handoff from guide to
+  // companion. The Egg is NOT hatched here and never will be by the
+  // Rite: that belongs to the Creator Ceremony (Canon 4), and is named
+  // aloud precisely so the child knows it is still coming.
+  const COMPLETION=[
+    {lumo:'celebrate', egg:'excited',
+     line:{title:"You're not a Traveller any more.",
+           subtitle:'You made something. That makes you a Creator.'},
+     durationMs:4400},
+    {lumo:'talk', egg:'idle',
+     line:{title:'One day this Egg will hatch, and someone will choose you.',
+           subtitle:'Not today. Today you just made your first story.'},
+     durationMs:5000},
+    {lumo:'wave', egg:'idle',
+     line:{title:'The Studio is yours now.',
+           subtitle:'Go and see what else is in it.'},
+     durationMs:4200}
+  ];
+
   const ASSETS_BASE='assets/';
   const IDLE_DRIFT_MS=20000;  // the Egg drifts to sleep, and wakes on activity
   let _els=null;              // {overlay,bubble,lumoImg,eggImg,particles}
@@ -258,6 +299,21 @@ const StudioRite=(function(){
   }
 
   function _conditionMet(kind,baseline){
+    // The child naming their story. Reads the same
+    // AppState.project.bookTitle that #bookTitle's own input handler
+    // writes (js/app.js), so the Rite sees exactly what the project
+    // sees — no second source of truth, no separate Rite-only field.
+    // A project is BORN with a name — js/state.js seeds
+    // bookTitle:'My Adventure', and #bookTitle ships that as its value
+    // attribute. So "the story has a name" is true before the child
+    // touches anything, and testing for non-empty would skip Act IV's
+    // ask entirely — silently deleting the emotional peak of the whole
+    // Rite. The real condition is that the child CHANGED it from
+    // whatever it said when the beat began, and left something behind.
+    if(kind==='story-named'){
+      const now=_titleNow();
+      return now.length>0 && now!==(baseline&&baseline.__title);
+    }
     const list=_stickers();
     if(kind==='sticker-added') return list.length>0;
     if(!list.length) return false;
@@ -276,9 +332,23 @@ const StudioRite=(function(){
     return true;
   }
 
+  // Reads the live field first and AppState second — #bookTitle's own
+  // handler mirrors one into the other while it is being typed, and
+  // serialize() already prefers the DOM, so this matches what the
+  // project itself considers the name.
+  function _titleNow(){
+    try{
+      const el=document.getElementById('bookTitle');
+      if(el && typeof el.value==='string') return el.value.trim();
+    }catch(e){}
+    try{ return String((AppState&&AppState.project&&AppState.project.bookTitle)||'').trim(); }
+    catch(e){ return ''; }
+  }
+
   function _baseline(){
     const map={};
     _stickers().forEach(function(s){ map[s.id]={x:s.x,y:s.y,w:s.w,h:s.h}; });
+    map.__title=_titleNow();
     return map;
   }
 
@@ -319,27 +389,38 @@ const StudioRite=(function(){
             _setPose(_els&&_els.eggImg,_packs.traveller,'sleep');
           },IDLE_DRIFT_MS);
         };
+        let onInput=null, poll=null;
+        const cleanup=function(){
+          if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
+          if(poll){ clearInterval(poll); poll=null; }
+          if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
+          if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
+        };
         const check=function(){
           _setPose(_els&&_els.eggImg,_packs.traveller,beat.egg); // woken by activity
           rearmIdle();
           if(!_conditionMet(beat.await,baseline)) return;
-          if(idleTimer) clearTimeout(idleTimer);
-          if(_unobserve){ _unobserve(); _unobserve=null; }
+          cleanup();
           resolve();
         };
         rearmIdle();
         try{
           if(typeof PageRuntime!=='undefined' && PageRuntime.observe){
             _unobserve=PageRuntime.observe(check);
-          }else{
-            // No observer seam at all — the Rite must still be
-            // completable, so fall back to a slow poll rather than
-            // trapping the child on a beat that can never resolve.
-            const poll=setInterval(function(){
-              if(_conditionMet(beat.await,baseline)){ clearInterval(poll); resolve(); }
-            },600);
           }
-        }catch(e){ resolve(); }
+          // Typing the story's name never routes through
+          // PageRuntime.notify() — #bookTitle's handler only writes
+          // AppState and marks the project dirty. A delegated
+          // capture-phase 'input' listener (the same shape
+          // js/companionDirector.js already uses for typing) is the
+          // second signal, so Act IV resolves on the child's own
+          // keystrokes rather than on a poll.
+          onInput=function(){ check(); };
+          document.addEventListener('input',onInput,true);
+          // Last-resort safety net: a beat must never be able to trap a
+          // child in a mandatory Rite because a signal was missed.
+          poll=setInterval(check,1200);
+        }catch(e){ cleanup(); resolve(); }
         check();
         return;
       }
@@ -375,10 +456,9 @@ const StudioRite=(function(){
     _els.overlay.classList.add('studio-rite-band');
   }
 
-  // Phase R3: Acts I–III. Act IV, completion and the unlock land in R4,
-  // so this still hands off WITHOUT marking completion — an
-  // in-progress build never permanently flags a child as having done a
-  // Rite they haven't.
+  // The whole Rite: Act I (Where am I?) - Act II (Who am I?) -
+  // Act III (What do I do here?) - Act IV (Why do stories matter?) -
+  // Completion. Marks completion only on a genuine full run.
   function run(next){
     if(typeof window.CompanionEngine==='undefined' || !window.CompanionEngine.loadRegistry){
       next(); return;
@@ -418,8 +498,13 @@ const StudioRite=(function(){
             if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
           }catch(e){}
           _toBandMode();
-          return _playBeats(ACT_II_BAND.concat(ACT_III));
+          return _playBeats(ACT_II_BAND.concat(ACT_III,ACT_IV,COMPLETION));
         }).then(function(){
+          // The one place the flag is ever written: a genuine, complete
+          // run. Reached only after the child has actually made and
+          // named a story, so no partial or abandoned Rite can unlock
+          // the Studio.
+          markComplete();
           _teardown();
         });
       }).catch(abandon);
