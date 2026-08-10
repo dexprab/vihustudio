@@ -853,3 +853,27 @@ IIFE plus two wrapped call sites in `js/app.js`; unlock is one localStorage flag
 OR'd with `MagicCard.list().length > 0`. Roadmap restructured around Decision
 2's three questions (Where am I? / Who am I? / What do I do here?). Docs only;
 no implementation code.
+
+## Studio Rite — Script & Phase Plan (docs only)
+
+Approved direction restated with two additions: a fourth question (*Why do
+stories matter?*) and Decision 10's scope lock. Nothing contradicted frozen
+canon, so no stop-and-report was needed. Wrote `docs/STUDIO_RITE_SCRIPT.md` —
+the screenplay, before code, as directed: four acts plus completion, **18 Lumo
+lines, 5 blocking child actions, 5 Egg poses**, every beat waiting indefinitely
+with no timeout, skip or auto-advance. One real blocker was found and removed
+during the technical design: Studio ships with **zero built-in Worlds**
+(Repository-only), so a Rite requiring a World would hard-fail on a first
+offline launch — on a mandatory gate that blocks the Studio. `CREATION_TYPES`
+already ships `{id:'blank', blank:true}`, documented as the one branch that
+"skips Screen 2 entirely and lands straight in the editor on a page with no
+World at all", and `StickerLibrary`'s `characters` category is built-in emoji
+glyphs — so the Rite reuses a shipped, offline, World-free path and needs no new
+content pipeline. Also caught a stale Canon 6 bullet that still described a
+Companion-guided variant for returning Creators; that case cannot occur under
+Decision 8 (grandfathering) and was withdrawn. Phase plan R1–R4 written with
+per-phase file/anchor lists so each phase is implementable in a fresh session
+without re-exploring the codebase, and the three largest files in the repo
+(`slideRenderer.js`, `cardDesigner.js`, `contextPanel.js`) are touched by no
+phase. The Rite observes `PageRuntime.notify()` as a sixth subscriber rather
+than driving the editor. Docs only; no implementation code.

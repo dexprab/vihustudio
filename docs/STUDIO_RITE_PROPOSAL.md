@@ -312,6 +312,172 @@ no replay, no storage model, no event model.
 
 ---
 
-*No implementation has begun. This document is the approved product direction
-realised as architecture, awaiting build sign-off under `CLAUDE.md`'s standing
-rule.*
+---
+
+# Part III — Phase-by-phase technical design
+
+**Script:** `docs/STUDIO_RITE_SCRIPT.md` — 18 Lumo lines, 5 blocking child
+actions, 5 Egg poses. The phases below realise it.
+
+Each phase names **exactly which files to open and which anchors to read**, so
+it can be implemented in a fresh session without re-exploring the codebase.
+Anything not listed under "Open" should not be read.
+
+## The content dependency, and how it is removed
+
+The Rite needs the child to make something real. Two facts decide how:
+
+1. **Studio ships with zero built-in Worlds** — Repository-only
+   (`js/themeRegistry.js`'s own disclosure; also noted in
+   `docs/KID_JOURNEY.md`). A Rite that required a World would fail on a first
+   launch with no network — on a **mandatory gate that blocks the Studio.**
+   That would be a hard failure, not a degraded experience.
+2. **`CREATION_TYPES` already has `{id:'blank', blank:true}`** —
+   *"A blank page — no world, just your ideas"*, which
+   `js/creationFlow.js:82-94` documents as *"the ONE branch on Screen 1: the
+   card skips Screen 2 entirely and lands straight in the editor on a page
+   with no World at all."*
+
+**The Rite uses the `blank` path.** No World, no Repository, no network, no new
+content pipeline — and it is the existing, shipped code path, not a special
+case built for the Rite. The character in Act III is an emoji-glyph sticker
+from `StickerLibrary`'s built-in `characters` category, which is local and
+offline too.
+
+This removes the only hard dependency the Rite had.
+
+## Phase R1 — Gate and unlock
+
+*Ships: nothing visible. Proves boot is unchanged before anything is built on
+it.*
+
+**Create** `js/studioRite.js` — IIFE on `window`, mirroring
+`js/pageRuntime.js`'s module shape.
+
+```js
+StudioRite.isComplete()   // localStorage flag  ||  MagicCard.list().length>0
+StudioRite.markComplete() // writes the flag, once, only on real completion
+StudioRite.gate(next)     // complete ? next() : run(next)
+```
+
+**Edit** `js/app.js` — two call sites, both wrapping the same expression:
+
+| Anchor | Change |
+|---|---|
+| `_runBootstrap()`, the `GatewaySequence.begin(_beginBoot)` call | wrap: `GatewaySequence.begin(function(){ StudioRite.gate(_beginBoot); })` |
+| `_afterGateway()`, both `_beginBoot()` exits | wrap the same way, so a broken Gateway still reaches the Rite |
+
+**Edit** `index.html` — one `<script>` tag before `js/app.js`, plus the `?v=`
+bump across the block (currently `0363`).
+
+**Open:** `js/app.js` `_runBootstrap` / `_afterGateway` only ·
+`js/pageRuntime.js` (147 lines, the module-shape reference) · `index.html`
+script block.
+**Do not open:** the editor, renderer, Companion, or Gateway internals.
+
+**Verify:** with the stub completing immediately, an existing Creator's boot is
+byte-for-byte unchanged; `HOME_RETURN_FLAG` still skips; deleting
+`js/studioRite.js` still boots.
+
+**Risk:** low, fully reversible.
+
+## Phase R2 — Act I and the Lumo stage
+
+*Ships: a continuous arrival. Addresses the user-test finding on its own.*
+
+**Reuse, do not rebuild:** the Creator Ceremony's centred stage in
+`js/magicCardUI.js`, and the data-driven beat shape of
+`CompanionDirector.getCeremonySequence()`. The Rite's script becomes the same
+kind of beat array — data, not control flow.
+
+Mount Lumo via `CompanionEngine` + `loadRegistry()` +
+`_resolveEntityIdByRole(list,'guardian')`. Mount the Egg alongside, pose-only.
+**Tear Lumo down before calling `next()`** — Canon 2 keeps him out of the
+standing widget.
+
+**Open:** `js/companionDirector.js` `getCeremonySequence` / `_mountEntity` /
+`_resolveEntityIdByRole` · `js/magicCardUI.js` ceremony-stage section only ·
+`js/companionEngine.js` public API (`setState`/`speak`/`load`/`destroy`).
+
+**Verify:** Gateway → Rite reads as one journey with no seam; Lumo is gone and
+the Egg is mounted correctly by the time Studio Home renders.
+
+**Risk:** low — additive, no editor involvement.
+
+## Phase R3 — Acts II and III
+
+*Ships: teach-through-creation.*
+
+Create the project through the existing `blank` path
+(`CreationFlow` / `ProjectManager`), then gate five beats on real editor
+events. The Rite **observes**; it never drives the editor.
+
+| Beat | Waits for | Existing mechanism |
+|---|---|---|
+| begins | project created | `CreationFlow` |
+| place character | a sticker exists on the page | `SceneEngine.addSticker` → `PageRuntime.notify()` |
+| move | its position changed | `SceneEngine.setPosition` → same |
+| resize | its size changed | `SceneEngine.setSize` → same |
+
+`PageRuntime.notify()` already fires on every mutation and already dispatches
+to five subscribers (`js/pageRuntime.js:125-132`). The Rite becomes a sixth.
+**No polling, no new event model, no editor changes.**
+
+**Open:** `js/pageRuntime.js` (whole, 147 lines) · `js/sceneEngine.js`
+`addSticker`/`setPosition`/`setSize` signatures only · `js/creationFlow.js`
+`CREATION_TYPES` + `start()` only.
+**Do not open:** `renderer/slideRenderer.js`, `js/cardDesigner.js`,
+`js/contextPanel.js` — the Rite reads outcomes, not rendering.
+
+**Verify:** every beat completes by a child's own action; nothing auto-advances;
+pausing mid-beat drifts the Egg to `sleep` and recovers.
+
+**Risk:** medium — the only phase touching editor flow. The gating must not
+fight existing selection or Context Panel behaviour, which is why it observes
+`notify()` rather than intercepting input.
+
+## Phase R4 — Act IV, completion, unlock
+
+*Ships: the full Rite.*
+
+The title beat writes `#bookTitle` — the existing, visible project-name field
+(`CLAUDE.md` → Locked Product Decision 1, as amended). Completion calls
+`markComplete()`, tears down the stage, and hands to `_beginBoot()`. The
+project is **kept** as a normal project.
+
+**Never call:** `PublishStudio`, `MagicCard.claim()`,
+`MagicCard.shouldOfferAwakening()`, or any `hatching`/`magic` pose. D7 is
+enforced by never importing the path, not by a runtime check.
+
+**Open:** `js/studioRite.js` (own) · the `#bookTitle` binding in `js/app.js`.
+
+**Verify:** the flag is written only on genuine completion; a second launch
+goes straight to Studio Home; `shouldOfferAwakening()` is still untouched and
+fires on the child's first real publish afterwards.
+
+**Risk:** low.
+
+## Milestone boundaries
+
+R1 ↔ R2 is the important one: R1 changes routing with no experience attached,
+so a regression there is unambiguous. R2 ships a complete narrative with no
+editor coupling. R3 is the only phase that touches creation flow. R4 is
+closure. **Each phase is independently reviewable and independently
+revertable.**
+
+## Keeping implementation cheap
+
+- The script is **data** (a beat array), so R2–R4 add lines to a JSON-shaped
+  constant rather than logic.
+- The Rite **observes `PageRuntime.notify()`**; it never re-implements
+  selection, hit-testing or rendering, so no large file needs to be read.
+- The three largest files in the repo — `renderer/slideRenderer.js` (344 KB),
+  `js/cardDesigner.js` (194 KB), `js/contextPanel.js` (172 KB) — are **not
+  touched in any phase.**
+
+---
+
+*No implementation has begun. This document and
+`docs/STUDIO_RITE_SCRIPT.md` are the approved product direction realised as
+architecture and screenplay, awaiting build sign-off under `CLAUDE.md`'s
+standing rule.*

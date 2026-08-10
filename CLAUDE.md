@@ -119,15 +119,16 @@ Locked by the product owner in the Studio Rite Vision Update, after user testing
 
 - A mandatory **Studio Rite** precedes Studio Home. Every user completes it exactly once; the Studio stays locked until they do. Permanent.
 - It is **not** a tutorial or walkthrough — it is the creator's first chapter, and it **teaches through creation, not explanation.**
-- Platform vocabulary (Traveller, Creator, Companion, Story Egg, World, Place, Experience) is introduced during the Rite and must not appear unexplained before it.
-- The Rite is identical for everyone; only the guide changes with lifecycle.
+- It answers four questions before the Studio unlocks: *Where am I? · Who am I? · What do I do here? · Why do stories matter?*
+- The vocabulary it establishes is **Traveller · Creator · Story · Companion**, introduced by being used, never defined. The canonical term is **Traveller**, not Visitor.
 - Companion v1 assumes the Rite is complete, which narrows its scope but does not change its architecture.
 - **Lumo guides the Rite.** The Story Egg is unchanged — it never speaks, teaches or guides, and accompanies through animation only. Lumo now appears at *two* thresholds: the Rite and the Creator Ceremony.
 - **The Rite ends before Publish.** It never triggers the Creator Ceremony and never awakens the Story Egg. The first real Publish stays sacred.
 - **The Rite extends the Traveller Gateway** as one continuous journey; the Gateway is not redesigned or modified.
 - **Existing Creators are grandfathered** by their claimed Magic Card — no migration system.
 - The platform says **Traveller**, not Visitor. `COMPANION_CANON.md` and `KID_JOURNEY.md` were corrected to match the product, Gateway, registry and code.
-- Product decision: `docs/COMPANION_CANON.md` → Canon 6. Architecture: `docs/STUDIO_RITE_PROPOSAL.md`.
+- **Scope is closed** (Decision 10): introduce the world, teach creation through experience, unlock the Studio. Adding anything to the Rite is a canon change, not a feature.
+- Product decision: `docs/COMPANION_CANON.md` → Canon 6. Architecture and phase plan: `docs/STUDIO_RITE_PROPOSAL.md`. Screenplay: `docs/STUDIO_RITE_SCRIPT.md`.
 
 ## Roadmap
 

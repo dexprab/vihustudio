@@ -263,20 +263,29 @@ Studio Rite Product Decision, and are resolved below.
 - Every user completes the Rite **exactly once**. Studio Home stays
   locked until it is complete. This is permanent.
 - The Rite is **not** a tutorial, feature onboarding, or a product
-  walkthrough. It is the creator's **first chapter inside VihuPlanet**,
-  establishing what VihuStudio is, why it exists, who the user is, what
-  they are about to create, and the rhythm of creation.
+  walkthrough. It is the creator's **first chapter inside VihuPlanet**.
+- It answers **four questions**, and the Studio unlocks only once they
+  are answered: *Where am I? · Who am I? · What do I do here? · Why do
+  stories matter?*
 - **It teaches through creation, not explanation.** A user finishes the
-  Rite having made something, not having read something.
-- Platform vocabulary — Traveller, Creator, Companion, Story Egg, World,
-  Place, Experience — is **introduced during the Rite** and must not
-  appear unexplained before it.
-- The Rite always has a guide, and the guide depends on lifecycle: a
-  first-time user is guided differently from a returning Creator, who is
-  guided by their own bonded Companion. **The Rite itself is identical
-  either way; only the guide changes.**
+  Rite having made something, not having read something. It reuses the
+  real editor; there is no tutorial-only editor.
+- The vocabulary it establishes is **Traveller · Creator · Story ·
+  Companion** — introduced by being used, never defined, and never
+  assumed by the Studio beforehand.
+- **Lumo guides the whole Rite** (see the three answers below). Because
+  existing Creators are grandfathered and never see it, the Rite has
+  exactly one guide — an earlier revision of this section anticipated a
+  Companion-guided variant for returning Creators; that case cannot
+  occur and is withdrawn.
 - Completion permanently unlocks the Studio. Afterwards the Companion may
-  assume the user holds the shared vocabulary.
+  assume the user holds the shared vocabulary, and must never re-explain
+  what the Rite established.
+- **Scope is closed.** The Rite has exactly one responsibility: introduce
+  the world, teach creation through experience, unlock the Studio. It
+  must never become a product tour, feature showcase, settings
+  walkthrough, publish tutorial, or marketplace introduction. **Adding
+  anything to the Rite is a canon change, not a feature.**
 
 **The three questions, answered**
 
