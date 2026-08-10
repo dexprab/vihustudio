@@ -119,67 +119,137 @@ const StudioRite=(function(){
              subtitle:'Not even Lumo. It depends entirely on the story you make.'}}
      ], end:{choice:'Start My First Story'}, opensStudio:true},
 
-    // ---- Act III — What do I do here? (band, over the live editor)
-    // Each screen pairs Lumo's reaction to what the child just did with
-    // the next thing he wonders about, and ends on the child's own
-    // making rather than a button.
+    // ---- The Starter Story: "The Night a Star Came Down"
+    // (docs/STUDIO_RITE_STARTER_STORY.md). Three pages, 24 lines, 17
+    // makings. Every screen ends on something the CHILD does, never a
+    // button, except the very last. Replaces the one-page placeholder
+    // that stood here while the story was being designed.
+    //
+    // Page 1 — The Falling · discover. Every control met for the first
+    // time, so the nudge glows immediately (nudgeDelay 0).
+
     {band:true, lines:[
-      {lumo:'celebrate', egg:'excited', voiceId:'riteS3L1',
-       line:{title:'There. Your first page.',
-             subtitle:"It's empty on purpose. Empty is where everything starts."}},
-      {lumo:'talk', egg:'thinking', voiceId:'riteS3L2',
-       line:{title:'A story needs someone in it.',
-             subtitle:"Choose whoever you like. It's your story."}}
+      {lumo:'talk', egg:'curious',
+       line:{title:'Every story starts somewhere. This one starts with something falling.',
+             subtitle:'Put it up there.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:0},
 
     {band:true, lines:[
-      {lumo:'celebrate', egg:'excited', voiceId:'riteS4L1',
-       line:{title:'Oh — hello.', subtitle:"They're yours now."}},
-      {lumo:'talk', egg:'curious', voiceId:'riteS4L2',
-       line:{title:"They don't have to stay there.",
-             subtitle:'Put them wherever the story needs them.'}}
-     ], end:{await:'sticker-moved'}, nudgeDelay:4000},
+      {lumo:'celebrate', egg:'excited',
+       line:{title:"You can't see a star in the daytime.",
+             subtitle:'What colour is the sky when the stars come out?'}}
+     ], end:{await:'bg-set'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'curious', egg:'curious',
-       line:{title:"That's it. Nothing here is stuck."}},
-      {lumo:'talk', egg:'thinking',
-       line:{title:'Big things feel close. Small things feel far away.',
-             subtitle:'How close is this one?'}}
-     ], end:{await:'sticker-resized'}, nudgeDelay:12000},
+       line:{title:'There it is.',
+             subtitle:'Is it close to us, or very far away?'}}
+     ], end:{await:'sticker-resized'}, nudgeDelay:0},
 
-    // ---- Act IV — Why do stories matter?
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Falling things turn as they fall.',
+             subtitle:'Show me how it tumbles.'}}
+     ], end:{await:'sticker-rotated'}, nudgeDelay:0},
+
+    // Page 2 — The Finding · apply. Same controls, new purpose. The
+    // nudge now waits a beat before offering itself.
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
-       line:{title:"You're deciding how it feels.",
-             subtitle:"That's the whole job."}},
+       line:{title:'Down it comes.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'Every story has a name.',
+       line:{title:'It has to land somewhere.',
+             subtitle:"Let's make the place where it lands."}}
+     ], end:{await:'page-added'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'This is the ground now, not the sky.',
+             subtitle:'What colour is it down here?'}}
+     ], end:{await:'bg-set'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'idle',
+       line:{title:'Somewhere to land, and something to land under.'}}
+     ], end:{await:'sticker-added'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Trees are tall. Is that one tall enough?'}}
+     ], end:{await:'sticker-resized'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Now the star is here, and it is very small, and it is alone.',
+             subtitle:'Somebody is about to find it. Who?'}}
+     ], end:{await:'sticker-added'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'Oh — them. Good. I like them already.',
+             subtitle:'Bring them over. Nobody helps from far away.'}}
+     ], end:{await:'sticker-moved'}, nudgeDelay:4000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'They found it. They are the first thing this star has ever met.',
+             subtitle:'What do they say to it?'}}
+     ], end:{await:'text-added'}, nudgeDelay:4000},
+
+    // Page 3 — The Going Home · own. Lumo stops offering; every beat is
+    // something the child has already done, asked for in one line. The
+    // nudge holds back longest here — the child leads, the net remains.
+    {band:true, lines:[
+      {lumo:'curious', egg:'excited',
+       line:{title:'Nobody told them to be kind. They just were.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'They stayed all night.',
+             subtitle:'Make it morning.'}}
+     ], end:{await:'morning'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'The star is stronger now. Take it home.'}}
+     ], end:{await:'sticker-moved'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'excited',
+       line:{title:"Further. It's a long way up."}}
+     ], end:{await:'sticker-resized'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'idle',
+       line:{title:'Far away again. Where it belongs.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'How does your friend feel, watching it go?'}}
+     ], end:{await:'sticker-added'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Every story needs somebody telling it, too.',
+             subtitle:'Tell us how it ends.'}}
+     ], end:{await:'text-added'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'idle',
+       line:{title:'You made something small, and you looked after it, and then you let it go.',
+             subtitle:'Every story does that.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Stories need names, the way stars do.',
              subtitle:'What is this one called?'}}
      ], end:{await:'story-named'}, nudgeDelay:12000},
 
+    // The close. Confidence, not completion — Lumo removes himself and
+    // points the child at their own next story. The sharing beat
+    // (Decision 7) will be inserted after this, and is not built yet.
     {band:true, lines:[
       {lumo:'curious', egg:'excited', effect:'glow',
        line:{title:'You made that.',
              subtitle:"It didn't exist, and now it does."}},
       {lumo:'talk', egg:'idle',
-       line:{title:"That's why we keep stories.",
-             subtitle:'Because someone made them, and then they were real.'}}
-     ], end:{move:'Move ahead'}},
-
-    // ---- Completion. The Egg is NOT hatched here and never will be by
-    // the Rite: that belongs to the Creator Ceremony (Canon 4), named
-    // aloud precisely so the child knows it is still coming.
-    {band:true, lines:[
-      {lumo:'celebrate', egg:'excited',
-       line:{title:"You're not a Traveller any more.",
-             subtitle:'You made something. That makes you a Creator.'}},
-      {lumo:'talk', egg:'idle',
-       line:{title:'One day this Egg will hatch, and someone will choose you.',
-             subtitle:'Not today. Today you just made your first story.'}},
+       line:{title:'And you did all of it. I only asked questions.'}},
       {lumo:'wave', egg:'idle',
-       line:{title:'The Studio is yours now.',
-             subtitle:'Go and see what else is in it.'}}
+       line:{title:'Whatever you want to make next — you already know how to start.'}}
      ], end:{move:'Into the Studio'}}
   ];
 
@@ -400,6 +470,48 @@ const StudioRite=(function(){
     'story-named':{
       find:function(){ return document.getElementById('bookTitle'); },
       hint:"It's up at the very top."
+    },
+    // The page's own colour. Two steps again: the tile, then whatever it
+    // opens.
+    'bg-set':{
+      find:function(){ return _byLabel('.context-set-trigger-label','🎨 background','.context-set-tile')
+                           || _byLabel('.context-set-trigger-label','background','.context-set-tile'); },
+      hint:"The page's own colour lives on the right."
+    },
+    'page-added':{
+      find:function(){ return document.getElementById('addPageBtn'); },
+      hint:'A new page waits on the left.'
+    },
+    'morning':{
+      // Two actions, so point at whichever is still outstanding.
+      find:function(){
+        const bg=document.getElementById('addPageBtn');
+        try{
+          if(_pageCount()>0 && document.querySelector('.studio-rite-overlay')){ /* no-op */ }
+        }catch(e){}
+        return bg;
+      },
+      hint:'A new page first — then give it a morning colour.'
+    },
+    'text-added':{
+      find:function(){
+        const card=_byLabel('.context-add-card-label','text');
+        if(card) return card.parentElement||card;
+        return document.querySelector('.context-add-trigger');
+      },
+      hint:'Words live with the other things you can add.'
+    },
+    'sticker-rotated':{
+      find:function(){
+        return _hasSelection()
+          ? _byLabel('.designer-row-label','spin','.designer-row')
+          : document.getElementById('objectStripList');
+      },
+      hint:function(){
+        return _hasSelection()
+          ? 'There is a spin control on the right.'
+          : "Tap it first — it's in the row under your page.";
+      }
     }
   };
 
@@ -544,8 +656,25 @@ const StudioRite=(function(){
       const now=_titleNow();
       return now.length>0 && now!==(baseline&&baseline.__title);
     }
+    // A new page resets the page's own object count, so "add something"
+    // is always measured against what was there when the beat started —
+    // never against zero, which would let an object made on page 1
+    // satisfy a page-2 beat.
+    if(kind==='page-added') return _pageCount()>(baseline&&baseline.__pages||0);
+    if(kind==='bg-set'){
+      const bg=_bgNow();
+      return !!bg && bg!==(baseline&&baseline.__bg);
+    }
+    // "They stayed all night. Make it morning." is one instruction that
+    // takes two actions, exactly as the script writes it: a new page AND
+    // a colour on it. Checking the colour alone would pass instantly,
+    // because a fresh page starts with no background at all.
+    if(kind==='morning'){
+      return _pageCount()>(baseline&&baseline.__pages||0) && !!_bgNow();
+    }
+    if(kind==='text-added') return _textCount()>(baseline&&baseline.__texts||0);
     const list=_stickers();
-    if(kind==='sticker-added') return list.length>0;
+    if(kind==='sticker-added') return list.length>(baseline&&baseline.__count||0);
     if(!list.length) return false;
     if(kind==='sticker-moved'){
       return list.some(function(s){
@@ -557,6 +686,12 @@ const StudioRite=(function(){
       return list.some(function(s){
         const b=baseline[s.id];
         return b && (s.w!==b.w || s.h!==b.h);
+      });
+    }
+    if(kind==='sticker-rotated'){
+      return list.some(function(s){
+        const b=baseline[s.id];
+        return b && ((s.rotation||0)!==b.rotation);
       });
     }
     return true;
@@ -575,10 +710,32 @@ const StudioRite=(function(){
     catch(e){ return ''; }
   }
 
+  function _bgNow(){
+    try{
+      const p=PageRuntime.getActivePage();
+      return (p&&p.metadata&&p.metadata.cardOverrides&&p.metadata.cardOverrides.background)||'';
+    }catch(e){ return ''; }
+  }
+  function _pageCount(){
+    try{ return (AppState&&AppState.slides&&AppState.slides.length)||0; }catch(e){ return 0; }
+  }
+  function _textCount(){
+    return _stickers().filter(function(s){ return s.kind==='text'; }).length;
+  }
+
+  // Everything a beat might be waiting on, sampled at the moment the
+  // beat begins. Counts are per-PAGE, so adding a page resets them —
+  // which is what makes "add something" work again on page 2 and 3.
   function _baseline(){
     const map={};
-    _stickers().forEach(function(s){ map[s.id]={x:s.x,y:s.y,w:s.w,h:s.h}; });
+    _stickers().forEach(function(s){
+      map[s.id]={x:s.x,y:s.y,w:s.w,h:s.h,rotation:s.rotation||0};
+    });
     map.__title=_titleNow();
+    map.__bg=_bgNow();
+    map.__pages=_pageCount();
+    map.__count=_stickers().length;
+    map.__texts=_textCount();
     return map;
   }
 

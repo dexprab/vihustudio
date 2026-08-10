@@ -1170,3 +1170,30 @@ Atmosphere ambience layers are always running), which produced ten false
 FAILUREs. Full e2e still completes with the flag written once, ceremony intact,
 Story Egg in the widget, zero page errors; the 10 gate checks pass. Remaining
 unvoiced: screens 5–8 (9 lines), of which screen 8's three are superseded.
+
+## Studio Rite — The Starter Story, Built
+
+Replaced the one-page placeholder (screens 3–8) with the approved three-page
+Starter Story: **20 screens, 30 lines** (screens 1–2's six stable voiced lines
+plus the story's 24), **17 makings**. Added the signals the new workflow needs —
+`bg-set` (`cardOverrides.background`), `page-added`, `text-added` (a sticker with
+`kind:'text'`), `sticker-rotated`, and a compound `morning` (a new page **and** a
+colour on it, because the script's *"They stayed all night. Make it morning."* is
+one instruction taking two actions) — plus nudge targets for the Background
+tile, `#addPageBtn`, the Text card and the Spin row. Baseline counts are now
+per-page, so adding a page correctly resets "add something" rather than letting
+a page-1 object satisfy a page-2 beat. **Two real defects came out of driving
+the whole story rather than reasoning about it.** First, a genuine lockout:
+`bg-set` required the colour VALUE to change, but a duplicated page arrives
+carrying the previous colour and a child may simply re-pick it — now a real
+touch of the background control counts, via the delegated input listener the
+beat already ran. Second, an open design gap recorded but deliberately not
+resolved: the story assumes pages carry content forward (*"Now the star is
+here"*, *"Take it home"*) while `+ Add Page` creates an empty page, so page 3's
+beat can never be satisfied and the mandatory Rite stalls; the full run only
+completes with `duplicatePage`. Recommended fix is to teach **duplicate** rather
+than add — two lines of approved copy — but that is the product owner's call and
+nothing was changed. Verified end to end: all 17 makings, 3 pages, flag written
+once, `shouldOfferAwakening()` still true, Story Egg in the widget, zero page
+errors. Screens 3–20 are unvoiced by agreement; voice comes once the script is
+final.

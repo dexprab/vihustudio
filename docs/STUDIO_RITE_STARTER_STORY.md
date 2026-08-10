@@ -243,6 +243,35 @@ already used, asked for in one line without a hint.*
 
 **17 interactions · 8 capabilities · 6 of them used two or more times.**
 
+### ⚠ Pages must carry their content forward — open decision
+
+Found while building, not while designing. The story assumes continuity that a
+blank page does not give it:
+
+- Page 2 says *"Now the star is here, and it is very small, and it is alone."*
+- Page 3 says *"The star is stronger now. Take it home."*
+
+But `+ Add Page` creates an **empty** page. On page 3 there is no star to take
+home, so that beat can never be satisfied — and because the Rite is mandatory
+and every beat waits indefinitely, that is a **lockout**, not a rough edge.
+Verified: the full 17-making run only completes when the pages are created with
+`PageOps.duplicatePage`; with a blank page it stalls at "Take it home".
+
+Two ways out, and it is a product decision:
+
+1. **Teach duplicate instead of add** *(recommended)*. A storybook page that
+   continues the previous scene is the honest authoring move, the story already
+   depends on it, and `duplicatePage` exists. Cost: two lines of approved copy
+   change — *"It has to land somewhere"* and *"Make it morning"* become
+   invitations to make **another page like this one** — and the coverage table's
+   "Add page" becomes "Duplicate page".
+2. **Add beats that re-place the star** on pages 2 and 3. Keeps the copy, but
+   adds two interactions and asks the child to rebuild what they just made,
+   which reads as busywork rather than storytelling.
+
+Nothing has been changed either way. The code accepts any increase in page
+count, so both work mechanically; only option 1 makes the *story* work.
+
 ### Why the star comes first
 
 The original order asked for the **background colour** as the child's very
