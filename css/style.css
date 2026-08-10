@@ -10628,11 +10628,11 @@ body.dark-theme .traveller-save-notice-dismiss{
 .studio-rite-overlay.studio-rite-band .studio-rite-cast{ height:auto; min-height:0; gap:10px; }
 /* Height, not width, is what makes the band tall — the art is portrait,
    so capping width alone left it at 179px. */
-.studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:auto; height:clamp(56px,11vh,96px); }
-.studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:auto; height:clamp(30px,6vh,52px); }
+.studio-rite-overlay.studio-rite-band .studio-rite-lumo-img{ width:auto; height:clamp(46px,8.5vh,76px); }
+.studio-rite-overlay.studio-rite-band .studio-rite-egg-img{ width:auto; height:clamp(24px,4.6vh,40px); }
 .studio-rite-overlay.studio-rite-band .studio-rite-convo{
-  height:auto; max-height:17vh; min-height:0; align-items:flex-start;
-  justify-content:flex-start; padding:0 0 4px; gap:4px;
+  height:auto; max-height:13vh; min-height:0; align-items:flex-start;
+  justify-content:flex-start; padding:0 0 2px; gap:2px;
   pointer-events:auto;          /* the band is inert except this, so it can be scrolled back */
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-line{ text-align:left; }
@@ -10706,3 +10706,20 @@ body.dark-theme .traveller-save-notice-dismiss{
    already in the band's cast. Hidden for the duration; the class comes
    off at teardown and the widget is the Studio's again. */
 body.studio-rite-running .companion-widget{ display:none !important; }
+
+/* The nudge's spoken hint. Deliberately NOT a conversation line — as one
+   it dimmed the real instruction to .5 opacity and became the brightest
+   thing on screen, which is exactly backwards. Quiet, secondary, and it
+   only ever appears when nothing could be pointed at. */
+.studio-rite-hint{
+  font-family:'Cinzel',"Iowan Old Style",Palatino,Georgia,serif;
+  font-size:clamp(12px,1.3vw,15px);
+  letter-spacing:.04em;
+  color:rgba(255,241,214,.62);
+  margin:2px 0 0;
+  text-align:left;
+  animation:studio-rite-hint-in .4s ease both;
+}
+@keyframes studio-rite-hint-in{ from{opacity:0} to{opacity:1} }
+.studio-rite-overlay:not(.studio-rite-band) .studio-rite-hint{ text-align:center; }
+@media (prefers-reduced-motion: reduce){ .studio-rite-hint{ animation:none; } }

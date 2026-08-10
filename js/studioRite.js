@@ -543,6 +543,10 @@ const StudioRite=(function(){
   function _clearNudge(){
     _nudgeTimers.forEach(function(t){ clearTimeout(t); });
     _nudgeTimers=[];
+    try{
+      const row=_els&&_els.panel.querySelector('.studio-rite-hint');
+      if(row&&row.parentNode) row.parentNode.removeChild(row);
+    }catch(e){}
     if(_nudgeEl){
       try{ _nudgeEl.classList.remove('studio-rite-nudge','studio-rite-nudge-strong'); }catch(e){}
       _nudgeEl=null;
@@ -580,10 +584,23 @@ const StudioRite=(function(){
     const spec=NUDGE[kind];
     if(!spec) return;
     let painted=false, spoke=false, misses=0, shownAt=0;
+    // The hint is NOT a conversation line. Appending it dimmed the real
+    // instruction to "past" and made the hint the brightest thing on
+    // screen — backwards. It gets its own quiet row instead, under the
+    // conversation, and the instruction stays the brightest thing.
     const speak=function(){
       if(spoke||!_els) return;
       spoke=true;
-      _appendLine({title:(typeof spec.hint==='function')?spec.hint():spec.hint});
+      try{
+        const txt=(typeof spec.hint==='function')?spec.hint():spec.hint;
+        if(!txt) return;
+        let row=_els.panel.querySelector('.studio-rite-hint');
+        if(!row){
+          row=_el('div','studio-rite-hint');
+          _els.convo.parentNode.insertBefore(row,_els.controls);
+        }
+        row.textContent=txt;
+      }catch(e){}
     };
     const tick=function(){
       if(!_els) return;
@@ -604,8 +621,6 @@ const StudioRite=(function(){
       _nudgeTimers.push(setTimeout(tick,700));
     };
     _nudgeTimers.push(setTimeout(tick,Math.max(0,delay||0)));
-    // Even when the glow is showing, a long silence earns one line.
-    _nudgeTimers.push(setTimeout(speak,Math.max(0,delay||0)+18000));
   }
 
   // ---------- Watching the child's own work ----------
