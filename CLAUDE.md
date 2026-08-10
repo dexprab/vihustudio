@@ -113,6 +113,18 @@ Locked by the product owner in the Companion v1 Foundation brief.
 - **Story Journey is intentionally postponed.** It is scoped conceptually only. Do not implement it: no recording systems, no timeline infrastructure, no replay engines, no storage models, no event models. It will later get its own `STORY_JOURNEY_CANON.md`.
 - **Companion v1 (Guide) is the next major capability**, and proceeds independently of Motion Publishing — neither blocks the other. Its product decision is `docs/COMPANION_CANON.md` → Canon 5; its implementation proposal is `docs/COMPANION_V1_PROPOSAL.md`.
 
+### 8. Studio Rite
+
+Locked by the product owner in the Studio Rite Vision Update, after user testing found children's first question was *"Who is a Traveller?"* rather than any usability question.
+
+- A mandatory **Studio Rite** precedes Studio Home. Every user completes it exactly once; the Studio stays locked until they do. Permanent.
+- It is **not** a tutorial or walkthrough — it is the creator's first chapter, and it **teaches through creation, not explanation.**
+- Platform vocabulary (Traveller, Creator, Companion, Story Egg, World, Place, Experience) is introduced during the Rite and must not appear unexplained before it.
+- The Rite is identical for everyone; only the guide changes with lifecycle.
+- Companion v1 assumes the Rite is complete, which narrows its scope but does not change its architecture.
+- Product decision: `docs/COMPANION_CANON.md` → Canon 6. Proposal and canon review: `docs/STUDIO_RITE_PROPOSAL.md`.
+- **Three questions are open and block implementation** — who guides a first-time user (the Story Egg cannot speak, per Canon 1), whether the Rite publishes (it must not, or it consumes the Creator Ceremony), and whether the platform says Traveller or Visitor.
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -231,6 +231,58 @@ Creator successfully use VihuStudio**.
 | Offer to take the child to a control | Perform an unrepeatable change unasked |
 | Notice a hidden or off-page object | Remember the child across sessions |
 
+## Canon 6 — Studio Rite (locked decision, three open questions)
+
+Frozen as a platform entity. **Its guide is not yet decided — see the open
+questions below. Do not implement until they are answered.**
+
+**What is locked** (product owner, Studio Rite Vision Update):
+
+- Studio Home is no longer the first thing a user reaches. A mandatory
+  **Studio Rite** precedes it.
+- Every user completes the Rite **exactly once**. Studio Home stays
+  locked until it is complete. This is permanent.
+- The Rite is **not** a tutorial, feature onboarding, or a product
+  walkthrough. It is the creator's **first chapter inside VihuPlanet**,
+  establishing what VihuStudio is, why it exists, who the user is, what
+  they are about to create, and the rhythm of creation.
+- **It teaches through creation, not explanation.** A user finishes the
+  Rite having made something, not having read something.
+- Platform vocabulary — Traveller, Creator, Companion, Story Egg, World,
+  Place, Experience — is **introduced during the Rite** and must not
+  appear unexplained before it.
+- The Rite always has a guide, and the guide depends on lifecycle: a
+  first-time user is guided differently from a returning Creator, who is
+  guided by their own bonded Companion. **The Rite itself is identical
+  either way; only the guide changes.**
+- Completion permanently unlocks the Studio. Afterwards the Companion may
+  assume the user holds the shared vocabulary.
+
+**What is NOT yet decided.** These three are recorded openly rather than
+resolved silently, because each conflicts with something already frozen
+above. Full analysis in `docs/STUDIO_RITE_PROPOSAL.md` Part I.
+
+1. **Who guides a first-time user.** The vision names *"Story Egg /
+   Lumo."* Canon 1 states the Story Egg **has no face, has no limbs, and
+   never speaks**, and Visitor Behaviour forbids *"speech bubbles,
+   onboarding dialogue, or tutorial"* outright. The Story Egg therefore
+   cannot guide without deleting three frozen Canon 1 properties.
+   *Recommendation: **Lumo guides; the Story Egg accompanies in
+   silence.*** That needs only one clause widened in Canon 2 — Lumo
+   appears at **the two thresholds**, the Studio Rite and the Creator
+   Ceremony — and leaves Canon 1 completely intact.
+2. **Whether the Rite publishes.** It must not. The first publish is the
+   Creator Ceremony (Canon 4) and fires at most once, ever. A Rite that
+   publishes would spend a child's Companion bonding on a practice
+   story. *Recommendation: the Rite ends before Publish.*
+3. **Traveller or Visitor.** This document says Visitor; the product,
+   the Gateway's first line, `assets/registry.json`'s role, and the code
+   all say Traveller. A Rite whose job is introducing vocabulary cannot
+   start until the platform has one word. *Recommendation: Traveller.*
+
+Until questions 1–3 are answered, **nothing in Canon 1, 2, 3 or 4
+changes**, and no Studio Rite code should be written.
+
 ## Companion Versions
 
 The canon grows by version; each version adds responsibility without

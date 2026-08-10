@@ -791,3 +791,36 @@ for NLU), and the two commands — *add another page*, *duplicate this* — ship
 **Offers that point at existing controls, not Performs**, delivering the goals
 with no global-undo prerequisite and nothing mutated. Docs only; no
 implementation code. `CLAUDE.md` gained Locked Product Decision 7.
+
+## Studio Rite — Vision Challenge & Architecture Proposal (docs only)
+
+User testing found children's first question inside VihuStudio was *"Who is a
+Traveller?"*, not "how do I resize this" — an entry-experience gap, not a
+usability one. Product owner locked a mandatory **Studio Rite** before Studio
+Home and explicitly asked for the vision to be challenged against canon rather
+than implemented straight. Seven conflicts found, three of them blocking.
+**The Story Egg cannot guide the Rite**: Canon 1 states it has no face, no
+limbs and *never speaks*, and Visitor Behaviour forbids speech bubbles,
+onboarding dialogue and tutorials outright — so the brief's "Story Egg / Lumo"
+resolves to **Lumo guides, the Egg accompanies in silence**, costing one
+widened clause in Canon 2 (Lumo appears at *the two thresholds*) and leaving
+Canon 1 intact. **The Rite must not publish**: `shouldOfferAwakening()` fires
+at most once ever, so a Rite ending in publish would spend the child's Creator
+Ceremony — their permanent Companion bonding — on a practice story. **The
+platform has two words for the same person**: the Gateway's literal first line
+is `'Welcome, Traveller.'` and the code/registry agree, but `COMPANION_CANON.md`
+says Visitor ×8 and `KID_JOURNEY.md` says Visitor ×14 — the word that broke user
+testing is one the canon docs do not even use. Also found: the Gateway already
+does part of the Rite's job (Lumo already introduces himself and Story
+Companions), so the Rite extends an existing entry experience rather than
+filling an empty slot; "locked" must mean Studio Home is gated, not the editor,
+since steps 4–9 need the real canvas; and existing Creators should be
+grandfathered by their claimed Magic Card. The architecture is deliberately
+tiny — one new IIFE (`js/studioRite.js`) and **two call sites in `js/app.js`**,
+wrapping `GatewaySequence.begin(_beginBoot)` as
+`GatewaySequence.begin(function(){ StudioRite.gate(_beginBoot); })`; unlock is
+one localStorage flag OR'd with `MagicCard.list().length > 0`, so migration
+needs no backfill and no schema change. `detectMode()` already implements
+"the guide depends on lifecycle". Docs only; no implementation code. Canon 6
+records the locked decision and names the three open questions rather than
+resolving them silently. `CLAUDE.md` gained Locked Product Decision 8.
