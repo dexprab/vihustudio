@@ -42,12 +42,12 @@ is the next breath.*
 `[EGG: curious]` — the Egg glows softly as it is named, then settles.
 
 > **LUMO:** This Story Egg has been entrusted to you.
-> *Every story you create helps it grow a little stronger.*
+> *It has been waiting a long time for a story of its own.*
 
 `[EGG: idle]`
 
-> **LUMO:** One day it will be ready.
-> *Until then, it will quietly travel beside you on every adventure.*
+> **LUMO:** It will stay beside you while you make one.
+> *Story Eggs know when something is about to happen.*
 
 → **Let's Begin**
 
@@ -71,9 +71,8 @@ theirs to look after.
 
 `[EGG: excited]`
 
-> **LUMO:** When the time is right...
-> *Your Egg will become a lifelong Companion, and every story after that will
-> help your Companion learn, grow and mature with you.*
+> **LUMO:** Nobody knows what is inside a Story Egg.
+> *Not even Lumo. It depends entirely on the story you make.*
 
 → **Start My First Story**
 
@@ -93,34 +92,26 @@ Traveller does, then immediately offers the child the doing of it. The word
 "Creator" is never applied to the child by announcement — they will simply have
 become one by Act IV.
 
-**⚠ This copy now contradicts the Rite's own ending, and needs a decision.**
-Decision 7's rewrite puts the Creator Ceremony at the *end of this same Rite* —
-roughly six minutes after these lines are read. So:
+**Foreshadowing, not a schedule.** An earlier draft of these lines promised
+*"One day it will be ready"*, *"every adventure"* and *"when the time is
+right"*. Decision 7's rewrite puts the Creator Ceremony at the end of this same
+Rite — roughly six minutes later — so those lines made a promise the next five
+minutes broke, and a child would have felt it. They were replaced.
 
-- *"One day it will be ready"* → it is ready today.
-- *"Until then, it will quietly travel beside you on every adventure"* → there
-  are no other adventures; there is one story.
-- *"When the time is right..."* → the time is right almost immediately.
+The replacements keep the entrusting and the mystery while promising only what
+the platform actually delivers: the Egg has waited, it stays beside them while
+they make **one** story, and nobody knows what is inside. Anticipation with no
+timetable, which is exactly what the ending then pays off.
 
-A child will feel this. It is the only place in the Rite that makes a promise
-the next five minutes break.
+They also drop *"learn, grow and mature with you"* — that was Canon 5's
+**Memory** tier, still listed as not started and out of scope for Companion v1,
+so it promised a capability with no roadmap behind it.
 
-**Proposed replacement**, keeping the entrusting and dropping the long wait:
-
-| Line | From | To |
-|---|---|---|
-| I.2 | Every story you create helps it grow a little stronger. | *It has been waiting a long time for a story of its own.* |
-| I.3 | One day it will be ready. / Until then, it will quietly travel beside you on every adventure. | *It will stay beside you while you make one.* / *Story Eggs know when something is about to happen.* |
-| II.3 | When the time is right... / Your Egg will become a lifelong Companion, and every story after that will help your Companion learn, grow and mature with you. | *Nobody knows what is inside a Story Egg.* / *Not even Lumo. It depends entirely on the story you make.* |
-
-This keeps every promise the platform actually keeps, and turns the
-foreshadowing into anticipation rather than a schedule. **Not applied — the
-copy is the product owner's.** The alternative is to move the hatch back out of
-the Rite, which would undo Decision 7's rewrite.
-
-Separately, *"learn, grow and mature with you"* remains Canon 5's **Memory**
-tier — still listed as not started and out of scope for Companion v1 — so it
-promises a capability with no roadmap regardless of which option is chosen.
+**One line still leans on gradual growth:** II.2's *"Every story you create
+nurtures your Egg and helps it grow."* It is far milder — every story does
+nurture it, and the first one turning out to be enough is a fine surprise — but
+if the hatch is meant to feel sudden rather than earned-over-time, this is the
+next line to look at.
 
 **Vocabulary introduced:** **Traveller**, **Creator**.
 

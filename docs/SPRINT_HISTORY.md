@@ -1021,3 +1021,20 @@ hatches roughly six minutes later — so replacement copy is proposed in the
 script but deliberately not applied, since the copy is the product owner's. The
 sharing beat is designed, not implemented; the shipped Rite still ends without
 it. Docs only.
+
+## Studio Rite — Foreshadowing Copy, Not a Schedule
+
+Applied the replacement copy for the three Act I/II lines that Decision 7's
+rewrite had broken. With the Creator Ceremony now landing at the end of the same
+Rite, *"One day it will be ready"*, *"every adventure"* and *"When the time is
+right..."* made a promise the next five minutes broke. Replaced with lines that
+keep the entrusting and the mystery while promising only what the platform
+delivers: the Egg has waited a long time for a story of its own, it stays beside
+the child while they make **one**, and *"Nobody knows what is inside a Story Egg
+— not even Lumo."* This also drops *"learn, grow and mature with you"*, which was
+Canon 5's Memory tier — not started and out of scope for Companion v1 — so it
+promised a capability with no roadmap. Anticipation without a timetable, which
+is what the sharing ending then pays off. One milder line remains flagged rather
+than changed: II.2's *"Every story you create nurtures your Egg and helps it
+grow."* Verified in a browser: both screens render the new copy, buttons intact,
+scrollbar width 0, cast fixed, no page errors.

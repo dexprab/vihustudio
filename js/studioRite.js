@@ -100,10 +100,10 @@ const StudioRite=(function(){
              subtitle:'Every story in VihuPlanet begins here.'}},
       {lumo:'talk', egg:'curious', effect:'glow',
        line:{title:'This Story Egg has been entrusted to you.',
-             subtitle:'Every story you create helps it grow a little stronger.'}},
+             subtitle:'It has been waiting a long time for a story of its own.'}},
       {lumo:'curious', egg:'idle',
-       line:{title:'One day it will be ready.',
-             subtitle:'Until then, it will quietly travel beside you on every adventure.'}}
+       line:{title:'It will stay beside you while you make one.',
+             subtitle:'Story Eggs know when something is about to happen.'}}
      ], end:{move:"Let's Begin"}},
 
     // ---- Act II — Who am I? Ends on the one unmissable way forward.
@@ -115,8 +115,8 @@ const StudioRite=(function(){
        line:{title:'Travellers create stories.',
              subtitle:'Every story you create nurtures your Egg and helps it grow.'}},
       {lumo:'wave', egg:'excited',
-       line:{title:'When the time is right...',
-             subtitle:'Your Egg will become a lifelong Companion, and every story after that will help your Companion learn, grow and mature with you.'}}
+       line:{title:'Nobody knows what is inside a Story Egg.',
+             subtitle:'Not even Lumo. It depends entirely on the story you make.'}}
      ], end:{choice:'Start My First Story'}, opensStudio:true},
 
     // ---- Act III — What do I do here? (band, over the live editor)
