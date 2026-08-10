@@ -63,109 +63,111 @@ const StudioRite=(function(){
   // ---------- The script (docs/STUDIO_RITE_SCRIPT.md) ----------
   // Pure data, deliberately — the same discipline
   // CompanionDirector.getCeremonySequence() already uses for the Creator
-  // Ceremony. Adding a beat is editing this array, never writing
-  // control flow. `line` matches the Gateway's own {title,subtitle}
-  // shape so the two read as one continuous voice.
+  // Ceremony. `line` matches the Gateway's own {title,subtitle} shape so
+  // the two read as one continuous voice.
+  //
+  // A SCREEN is a group of lines that appear together, one after
+  // another, on their own. The child never clicks to hear the next
+  // line — they click (or make something) only to leave the screen.
+  // That was direct product feedback: the accumulating conversation
+  // should be automatic, and "Move ahead" should appear only after the
+  // last line of a screen and take you to the next one.
+  //
+  // Each screen's lines are cleared when it ends, so the conversation
+  // never grows without bound and the stage never reflows.
   //
   // `egg` is always one of the five poses the Rite is allowed
-  // (docs/COMPANION_CANON.md → Canon 6): idle · curious · thinking ·
-  // excited · sleep. `hatching`/`magic` belong exclusively to the
-  // Creator Ceremony and must never appear here — the Rite never
-  // hatches the Egg.
-  const ACT_I=[
-    {lumo:'wave', egg:'idle',
-     line:{title:'This is VihuStudio.',
-           subtitle:'Every story in VihuPlanet begins in a place like this.'}},
-    {lumo:'talk', egg:'curious',
-     line:{title:'Stories are how we keep the things we love.',
-           subtitle:'A day, a friend, a dragon you invented — a story keeps it real.'}},
-    {lumo:'curious', egg:'idle', effect:'glow',
-     line:{title:'Someone brought this Egg here for you.',
-           subtitle:'It has been waiting.'}}
-  ];
+  // (docs/COMPANION_CANON.md -> Canon 6): idle | curious | thinking |
+  // excited | sleep. `hatching`/`magic` belong exclusively to the
+  // Creator Ceremony and must never appear here.
+  const SCREENS=[
+    // ---- Act I — Where am I? (full-screen stage)
+    {lines:[
+      {lumo:'wave', egg:'idle',
+       line:{title:'This is VihuStudio.',
+             subtitle:'Every story in VihuPlanet begins in a place like this.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Stories are how we keep the things we love.',
+             subtitle:'A day, a friend, a dragon you invented — a story keeps it real.'}},
+      {lumo:'curious', egg:'idle', effect:'glow',
+       line:{title:'Someone brought this Egg here for you.',
+             subtitle:'It has been waiting.'}}
+     ], end:{move:'Move ahead'}},
 
-  // Act II opens on the same full-screen stage as Act I, and ends on
-  // the one tap that takes the child into the Studio — "a single,
-  // unmissable way forward. No choice of type, no World to pick, no
-  // settings."
-  const ACT_II_STAGE=[
-    {lumo:'talk', egg:'curious',
-     line:{title:'Everyone who finds their way here is a Traveller.',
-           subtitle:'You are a Traveller. You just arrived.'}},
-    {lumo:'curious', egg:'curious',
-     line:{title:'Travellers who make something become Creators.',
-           subtitle:"That's the only difference. Making something."}},
-    {lumo:'wave', egg:'excited',
-     line:{title:'Would you like to make something?'},
-     choice:'Yes'}
-  ];
+    // ---- Act II — Who am I? Ends on the one unmissable way forward.
+    {lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Everyone who finds their way here is a Traveller.',
+             subtitle:'You are a Traveller. You just arrived.'}},
+      {lumo:'curious', egg:'curious',
+       line:{title:'Travellers who make something become Creators.',
+             subtitle:"That's the only difference. Making something."}},
+      {lumo:'wave', egg:'excited',
+       line:{title:'Would you like to make something?'}}
+     ], end:{choice:'Yes'}, opensStudio:true},
 
-  // Everything from here plays as a quiet band over the LIVE Studio —
-  // the child is in the real editor, not a tutorial copy of one
-  // (Decision 3: "Reuse the existing editor. Do not build tutorial-only
-  // editors."). `await` beats wait on the child's own action,
-  // indefinitely: no timeout, no skip, no auto-advance.
-  const ACT_II_BAND=[
-    {lumo:'celebrate', egg:'excited',
-     line:{title:'There. Your first page.',
-           subtitle:"It's empty on purpose. Empty is where everything starts."}}
-  ];
+    // ---- Act III — What do I do here? (band, over the live editor)
+    // Each screen pairs Lumo's reaction to what the child just did with
+    // the next thing he wonders about, and ends on the child's own
+    // making rather than a button.
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'There. Your first page.',
+             subtitle:"It's empty on purpose. Empty is where everything starts."}},
+      {lumo:'talk', egg:'thinking',
+       line:{title:'A story needs someone in it.',
+             subtitle:"Choose whoever you like. It's your story."}}
+     ], end:{await:'sticker-added'}},
 
-  const ACT_III=[
-    {lumo:'talk', egg:'thinking',
-     line:{title:'A story needs someone in it.',
-           subtitle:"Choose whoever you like. It's your story."},
-     await:'sticker-added'},
-    {lumo:'celebrate', egg:'excited',
-     line:{title:'Oh — hello.', subtitle:"They're yours now."}},
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'Oh — hello.', subtitle:"They're yours now."}},
+      {lumo:'talk', egg:'curious',
+       line:{title:"They don't have to stay there.",
+             subtitle:'Put them wherever the story needs them.'}}
+     ], end:{await:'sticker-moved'}},
 
-    {lumo:'talk', egg:'curious',
-     line:{title:"They don't have to stay there.",
-           subtitle:'Put them wherever the story needs them.'},
-     await:'sticker-moved'},
-    {lumo:'curious', egg:'curious',
-     line:{title:"That's it. Nothing here is stuck."}},
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:"That's it. Nothing here is stuck."}},
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Big things feel close. Small things feel far away.',
+             subtitle:'How close is this one?'}}
+     ], end:{await:'sticker-resized'}},
 
-    {lumo:'talk', egg:'thinking',
-     line:{title:'Big things feel close. Small things feel far away.',
-           subtitle:'How close is this one?'},
-     await:'sticker-resized'},
-    {lumo:'celebrate', egg:'excited',
-     line:{title:"You're deciding how it feels.",
-           subtitle:"That's the whole job."}}
-  ];
+    // ---- Act IV — Why do stories matter?
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:"You're deciding how it feels.",
+             subtitle:"That's the whole job."}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Every story has a name.',
+             subtitle:'What is this one called?'}}
+     ], end:{await:'story-named'}},
 
-  // Act IV — "Why do stories matter?". The peak of the Rite: the child
-  // names what they made, and Lumo names what just happened. Nothing
-  // after this adds; it only closes.
-  const ACT_IV=[
-    {lumo:'talk', egg:'curious',
-     line:{title:'Every story has a name.',
-           subtitle:'What is this one called?'},
-     await:'story-named'},
-    {lumo:'curious', egg:'excited', effect:'glow',
-     line:{title:'You made that.',
-           subtitle:"It didn't exist, and now it does."}},
-    {lumo:'talk', egg:'idle',
-     line:{title:"That's why we keep stories.",
-           subtitle:'Because someone made them, and then they were real.'}}
-  ];
+    {band:true, lines:[
+      {lumo:'curious', egg:'excited', effect:'glow',
+       line:{title:'You made that.',
+             subtitle:"It didn't exist, and now it does."}},
+      {lumo:'talk', egg:'idle',
+       line:{title:"That's why we keep stories.",
+             subtitle:'Because someone made them, and then they were real.'}}
+     ], end:{move:'Move ahead'}},
 
-  // Completion. Lumo leaves; the Egg does not — it follows the child
-  // into the Studio and stays, which is the handoff from guide to
-  // companion. The Egg is NOT hatched here and never will be by the
-  // Rite: that belongs to the Creator Ceremony (Canon 4), and is named
-  // aloud precisely so the child knows it is still coming.
-  const COMPLETION=[
-    {lumo:'celebrate', egg:'excited',
-     line:{title:"You're not a Traveller any more.",
-           subtitle:'You made something. That makes you a Creator.'}},
-    {lumo:'talk', egg:'idle',
-     line:{title:'One day this Egg will hatch, and someone will choose you.',
-           subtitle:'Not today. Today you just made your first story.'}},
-    {lumo:'wave', egg:'idle',
-     line:{title:'The Studio is yours now.',
-           subtitle:'Go and see what else is in it.'}}
+    // ---- Completion. The Egg is NOT hatched here and never will be by
+    // the Rite: that belongs to the Creator Ceremony (Canon 4), named
+    // aloud precisely so the child knows it is still coming.
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:"You're not a Traveller any more.",
+             subtitle:'You made something. That makes you a Creator.'}},
+      {lumo:'talk', egg:'idle',
+       line:{title:'One day this Egg will hatch, and someone will choose you.',
+             subtitle:'Not today. Today you just made your first story.'}},
+      {lumo:'wave', egg:'idle',
+       line:{title:'The Studio is yours now.',
+             subtitle:'Go and see what else is in it.'}}
+     ], end:{move:'Into the Studio'}}
   ];
 
   const ASSETS_BASE='assets/';
@@ -369,81 +371,102 @@ const StudioRite=(function(){
   // resolves on the child's own action instead of a timer, and waits
   // indefinitely — the Rite is mandatory, so it must never be possible
   // to be rushed through it OR to get stuck in it.
-  function _playBeat(beat){
+  // How long before the NEXT line of the same screen appears. Derived
+  // from how much there is to read rather than a flat constant — the
+  // first version used fixed 3-5s durations, which gave a 23-word line
+  // and a 6-word line nearly the same time and read far too fast.
+  // Lines stay on screen once shown, so this only sets the rhythm.
+  function _lineGapMs(line){
+    if(!line) return 2600;
+    const words=((line.title||'')+' '+(line.subtitle||''))
+      .trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(2600,Math.min(9000,900+words*430));
+  }
+
+  function _showLine(entry){
+    if(!_els) return;
+    _setPose(_els.lumoImg,_packs.guardian,entry.lumo);
+    _setPose(_els.eggImg,_packs.traveller,entry.egg);
+    _els.overlay.setAttribute('data-rite-effect',entry.effect||'');
+    _appendLine(entry.line);
+  }
+
+  // Every line of a screen appears on its own, one after another. The
+  // child is never asked to click to hear the next thing Lumo says.
+  function _playLines(lines){
+    return lines.reduce(function(chain,entry,i){
+      return chain.then(function(){
+        _showLine(entry);
+        if(i===lines.length-1) return;   // last line: the screen's end takes over
+        return new Promise(function(r){ _timer=setTimeout(r,_lineGapMs(entry.line)); });
+      });
+    },Promise.resolve());
+  }
+
+  // A screen ends in exactly one of three ways: a button, the one
+  // "Yes", or something the child makes.
+  function _playEnd(end){
+    if(end.move) return _awaitClick(end.move);
+    if(end.choice) return _awaitClick(end.choice,'studio-rite-choice-primary');
+    if(end.await) return _awaitAction(end.await);
+    return Promise.resolve();
+  }
+
+  // A beat the child completes by making something. Waits indefinitely.
+  function _awaitAction(kind){
     return new Promise(function(resolve){
-      if(!_els){ resolve(); return; }
-      _setPose(_els.lumoImg,_packs.guardian,beat.lumo);
-      _setPose(_els.eggImg,_packs.traveller,beat.egg);
-      _els.overlay.setAttribute('data-rite-effect',beat.effect||'');
-      _appendLine(beat.line);
-
-      // A beat the child completes by tapping (Act II's one way forward).
-      if(beat.choice){
-        _awaitClick(beat.choice,'studio-rite-choice-primary').then(resolve);
-        return;
-      }
-
-      // A beat the child completes by making something.
-      if(beat.await){
-        const baseline=_baseline();
-        let idleTimer=null;
-        const rearmIdle=function(){
-          if(idleTimer) clearTimeout(idleTimer);
-          idleTimer=setTimeout(function(){
-            // Canon 1 — pose only. The Egg gets sleepy; it never nags,
-            // and Lumo never repeats himself.
-            _setPose(_els&&_els.eggImg,_packs.traveller,'sleep');
-          },IDLE_DRIFT_MS);
-        };
-        let onInput=null, poll=null;
-        const cleanup=function(){
-          if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
-          if(poll){ clearInterval(poll); poll=null; }
-          if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
-          if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
-        };
-        const check=function(){
-          _setPose(_els&&_els.eggImg,_packs.traveller,beat.egg); // woken by activity
-          rearmIdle();
-          if(!_conditionMet(beat.await,baseline)) return;
-          cleanup();
-          resolve();
-        };
-        rearmIdle();
-        try{
-          if(typeof PageRuntime!=='undefined' && PageRuntime.observe){
-            _unobserve=PageRuntime.observe(check);
-          }
-          // Typing the story's name never routes through
-          // PageRuntime.notify() — #bookTitle's handler only writes
-          // AppState and marks the project dirty. A delegated
-          // capture-phase 'input' listener (the same shape
-          // js/companionDirector.js already uses for typing) is the
-          // second signal, so Act IV resolves on the child's own
-          // keystrokes rather than on a poll.
-          onInput=function(){ check(); };
-          document.addEventListener('input',onInput,true);
-          // Last-resort safety net: a beat must never be able to trap a
-          // child in a mandatory Rite because a signal was missed.
-          poll=setInterval(check,1200);
-        }catch(e){ cleanup(); resolve(); }
-        check();
-        return;
-      }
-
-      // Every narrative beat waits for the child. Nothing is timed and
-      // nothing auto-advances: testing showed timed lines moved too
-      // fast, and a timer is the wrong instrument regardless — it makes
-      // the Rite something to keep up with rather than something to
-      // read. The line stays on screen, joined by whatever comes next.
-      _awaitClick('Move ahead').then(resolve);
+      const baseline=_baseline();
+      let idleTimer=null, onInput=null, poll=null;
+      const rearmIdle=function(){
+        if(idleTimer) clearTimeout(idleTimer);
+        idleTimer=setTimeout(function(){
+          // Canon 1 — pose only. The Egg gets sleepy; it never nags,
+          // and Lumo never repeats himself.
+          _setPose(_els&&_els.eggImg,_packs.traveller,'sleep');
+        },IDLE_DRIFT_MS);
+      };
+      const cleanup=function(){
+        if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
+        if(poll){ clearInterval(poll); poll=null; }
+        if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
+        if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
+      };
+      const check=function(){
+        if(!_conditionMet(kind,baseline)){ rearmIdle(); return; }
+        cleanup();
+        resolve();
+      };
+      rearmIdle();
+      try{
+        if(typeof PageRuntime!=='undefined' && PageRuntime.observe){
+          _unobserve=PageRuntime.observe(check);
+        }
+        // Typing the story's name never routes through
+        // PageRuntime.notify() — #bookTitle's handler only writes
+        // AppState and marks the project dirty. A delegated
+        // capture-phase 'input' listener (the same shape
+        // js/companionDirector.js already uses for typing) is the
+        // second signal.
+        onInput=function(){ check(); };
+        document.addEventListener('input',onInput,true);
+        // Last-resort safety net: a beat must never be able to trap a
+        // child in a mandatory Rite because a signal was missed.
+        poll=setInterval(check,1200);
+      }catch(e){ cleanup(); resolve(); }
+      check();
     });
   }
 
-  function _playBeats(beats){
-    return beats.reduce(function(chain,beat){
-      return chain.then(function(){ return _playBeat(beat); });
-    },Promise.resolve());
+  function _clearConvo(){
+    if(_els&&_els.convo) _els.convo.innerHTML='';
+  }
+
+  function _playScreen(screen){
+    if(screen.band) _toBandMode();
+    _clearConvo();
+    return _playLines(screen.lines).then(function(){
+      return _playEnd(screen.end);
+    });
   }
 
   function _teardown(){
@@ -498,18 +521,22 @@ const StudioRite=(function(){
         // performed, so hand straight off rather than showing a child
         // an empty stage.
         if(!_packs.guardian){ abandon(); return null; }
-        return _playBeats(ACT_I.concat(ACT_II_STAGE)).then(function(){
-          // The child said yes. Boot the Studio underneath, then open a
-          // blank page directly — no type screen, no World picker, and
-          // no Theme Repository dependency (the Rite is mandatory and
-          // must work on a first launch with no network).
-          handOff();
-          try{
-            if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
-          }catch(e){}
-          _toBandMode();
-          return _playBeats(ACT_II_BAND.concat(ACT_III,ACT_IV,COMPLETION));
-        }).then(function(){
+        return SCREENS.reduce(function(chain,screen){
+          return chain.then(function(){
+            return _playScreen(screen).then(function(){
+              // The screen the child says "Yes" on is the one that opens
+              // the Studio: boot it underneath, then open a blank page
+              // directly — no type screen, no World picker, and no Theme
+              // Repository dependency (the Rite is mandatory and must
+              // work on a first launch with no network).
+              if(!screen.opensStudio) return;
+              handOff();
+              try{
+                if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
+              }catch(e){}
+            });
+          });
+        },Promise.resolve()).then(function(){
           // The one place the flag is ever written: a genuine, complete
           // run. Reached only after the child has actually made and
           // named a story, so no partial or abandoned Rite can unlock

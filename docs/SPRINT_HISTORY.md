@@ -927,3 +927,24 @@ clicking leaves the line count unchanged; clicking accumulates and dims prior
 lines; a full click-through run completes with the flag written once, the
 Creator Ceremony still un-consumed, the Story Egg (not Lumo) in the widget
 afterwards, and a second launch skipping the Rite. Zero page errors.
+
+## Studio Rite — Screens, and the Gateway skip hint (product feedback)
+
+Two rounds of testing feedback. First: the click-per-line conversation made the
+column grow, so Lumo drifted upward as lines arrived and a scrollbar appeared —
+the guide moving because his own dialogue arrived. Rebuilt around **screens**: a
+screen's lines now auto-append one after another, the **Move ahead** button
+appears only after a screen's last line and takes the child to the next screen,
+and moving on clears the conversation so it never grows. The stage became a
+fixed CSS grid (`44vh` cast / `34vh` conversation / `88px` controls) with the
+control row reserving its height whether or not a button is in it, so nothing
+reflows — verified by sampling the cast's bounding box across a whole screen and
+finding exactly one distinct position. Eight screens, still 18 lines. Second:
+`'✦ tap to skip ✦'` in the Gateway "breaks the journey" — the hint is no longer
+scheduled, since arrival is now the first half of one continuous journey into
+the Rite and inviting a child to skip the opening of their own first chapter
+works against that. `showTapHint()` is left intact but unused so restoring it is
+one line. Note the underlying `wireSkip()` tap-to-skip still works; only the
+invitation is hidden. Verified: hint never appears, the Gateway still reaches
+the Rite, full e2e run completes with the flag written once, ceremony intact,
+Story Egg in the widget, zero page errors.

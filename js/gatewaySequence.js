@@ -890,7 +890,14 @@
       // whole-overlay skip-click.
       showBeginGate(function(){
         wireSkip(done);
-        after(reduced?800:TAP_HINT_DELAY_MS,showTapHint);
+        // "hide tap to skip. it breaks the journey." — the '✦ tap to
+        // skip ✦' hint is no longer offered. Arrival is now the first
+        // half of one continuous journey that runs straight on into
+        // Studio Rite (docs/COMPANION_CANON.md → Canon 6), and inviting
+        // a child to skip the opening of their own first chapter works
+        // against that. showTapHint() itself is left intact and unused
+        // rather than deleted, so restoring the invitation is a
+        // one-line change if it is ever wanted back.
 
         if(isReturning){
           runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});

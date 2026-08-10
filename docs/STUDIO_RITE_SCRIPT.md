@@ -211,17 +211,27 @@ is the handoff: Lumo guided the threshold, the Egg is the companion.
 
 **18 Lumo lines. 5 blocking child actions. 5 Egg poses, all with real art.**
 
-**Nothing in the Rite is timed.** Lumo's lines accumulate as a *conversation* —
-each new line joins the ones before it rather than replacing them — and the
-child clicks **Move ahead** to continue. Earlier lines stay on screen, dimmed
-and scrollable, so a child who reads slowly, or who is being read to, can look
-back at anything already said.
+**The Rite is a sequence of SCREENS.** A screen's lines appear one after
+another *on their own* — the child never clicks to hear the next thing Lumo
+says. Earlier lines of the same screen stay on show, dimmed, so nothing that
+was said is taken away while it is still being read.
 
-This replaced a first version whose lines were on timers. Testing reported it
-moved too fast, and the fix was not a longer timer: a timer makes the Rite
-something to *keep up with* rather than something to read. The pace is the
-child's now, in both directions — they can dwell as long as they like, and a
-confident reader is never made to wait.
+A screen ends in exactly one of three ways, and only then:
+
+| Ending | Used by |
+|---|---|
+| **Move ahead** button | Act I, Act IV's reflection, and the closing screen (*Into the Studio*) |
+| **Yes** — the one unmissable way forward | Act II, which opens the Studio |
+| Something the child **makes** | every Act III screen, and Act IV's naming |
+
+Moving to the next screen clears the conversation, so it never grows without
+bound and the stage never reflows.
+
+This replaced two earlier attempts, both corrected from testing. The first put
+every line on a timer and moved far too fast. The second let the child click
+through line by line, which turned out to be worse in a different way: the
+column grew, Lumo drifted upward as it did, and a scrollbar appeared — the
+guide should never move because his own dialogue arrived.
 
 Blocking beats wait indefinitely on the child's own making. `sleep` on idle,
 `curious` on re-engagement. No timeouts, no skips, no auto-advance — D1 makes
