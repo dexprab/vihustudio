@@ -49,6 +49,20 @@
     // runs the exact same length as its placeholder.
     tapgrid:{file:'lumo-01-tapgrid.mp3',ms:3866},
 
+    // Studio Rite, Screen 1 — recorded as ONE continuous take
+    // (lumo-rites-audio.mp3, 30.43s) rather than a clip per line, so
+    // these three entries carry `from`/`to` offsets into that single
+    // file instead of each owning their own. Boundaries were measured,
+    // not guessed: the take's two performed pauses ("[long pause]
+    // [clears throat]" at 6.46-10.72 and "[long pause][sigh]" at
+    // 20.80-22.84) are the only silences longer than 1.1s in the whole
+    // recording, which makes the split unambiguous. Playing the file
+    // straight through would sit the child in front of 4.26s of dead
+    // air after the first line; per-segment playback skips it.
+    riteS1L1:{file:'lumo-rites-audio.mp3',from:0.00, to:6.46, ms:6460},
+    riteS1L2:{file:'lumo-rites-audio.mp3',from:10.72,to:20.80,ms:10080},
+    riteS1L3:{file:'lumo-rites-audio.mp3',from:22.84,to:30.43,ms:7590},
+
     // Traveller Gateway greeting -- title then subtitle, one real clip
     // each, played back to back (see playSequence()) while both lines of
     // text are already visible together in one bubble.
@@ -116,8 +130,38 @@
   // always, may be its initialization and load time lag," exactly. If the
   // element genuinely wasn't ready yet, wait for it to actually become
   // playable and try exactly once more instead of silently giving up.
-  function _playWithRetry(audio,onSettle){
-    audio.currentTime=0;
+  // currentTime cannot be set before metadata exists, so defer if the
+  // element has not loaded far enough yet.
+  function _seek(audio,t){
+    try{
+      if(audio.readyState>=1){ audio.currentTime=t; return; }
+      audio.addEventListener('loadedmetadata',function once(){
+        try{ audio.currentTime=t; }catch(e){}
+      },{once:true});
+    }catch(e){}
+  }
+
+  // Stops a clip at its segment end and fires a real 'ended' event, so
+  // playSequence()'s existing chaining keeps working unchanged for
+  // offset-based entries.
+  function _armSegmentEnd(audio,to){
+    if(!(to>0)) return;
+    if(audio.__vhSegGuard){ audio.removeEventListener('timeupdate',audio.__vhSegGuard); }
+    const guard=function(){
+      if(audio.currentTime>=to){
+        audio.removeEventListener('timeupdate',guard);
+        audio.__vhSegGuard=null;
+        try{ audio.pause(); }catch(e){}
+        try{ audio.dispatchEvent(new Event('ended')); }catch(e){}
+      }
+    };
+    audio.__vhSegGuard=guard;
+    audio.addEventListener('timeupdate',guard);
+  }
+
+  function _playWithRetry(audio,onSettle,seg){
+    _seek(audio,(seg&&seg.from)||0);
+    _armSegmentEnd(audio,seg&&seg.to);
     let played=false;
     const p=audio.play();
     if(p && typeof p.then==='function'){
@@ -126,6 +170,7 @@
         if(audio.readyState<2){ // below HAVE_CURRENT_DATA -- the load-lag case
           const retry=function(){
             audio.removeEventListener('canplay',retry);
+            _seek(audio,(seg&&seg.from)||0);
             audio.play().then(function(){ if(onSettle) onSettle(); })
               .catch(function(){ if(onSettle) onSettle(); });
           };
@@ -145,8 +190,11 @@
     try{
       const audio=_audioFor(id);
       if(!audio) return;
-      audio.loop=!!(opts&&opts.loop);
-      _playWithRetry(audio);
+      const entry=LINES[id];
+      // An offset entry must never loop — looping would replay the whole
+      // file, not the segment.
+      audio.loop=!!(opts&&opts.loop)&&!(entry&&entry.to);
+      _playWithRetry(audio,null,entry);
     }catch(e){}
   }
 

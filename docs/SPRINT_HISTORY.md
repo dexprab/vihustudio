@@ -1116,3 +1116,31 @@ top is on screen. Verified: full end-to-end run still completes with the flag
 written once, ceremony intact, Story Egg in the widget, zero page errors; the
 10 gate unit checks still pass. Stage 3 of the design ("Lumo looks") is not
 built and is disclosed as such.
+
+## Studio Rite — Screen 1 Voice
+
+Product owner recorded Screen 1 as **one continuous 30.43s take**
+(`assets/lumo/voice/lumo-rites-audio.mp3`), not a clip per line, which the
+existing `LumoVoice` contract (`{file, ms}`, `currentTime=0`, whole file) could
+not play. Boundaries were **measured rather than guessed**: decoding the file
+through Web Audio and scanning 20ms RMS windows found the two performed pauses
+("[long pause] [clears throat]" at 6.46–10.72s and "[long pause][sigh]" at
+20.80–22.84s) to be the only silences over 1.1s in the recording, making the
+three-way split unambiguous. Added optional `from`/`to` offsets to `LumoVoice` —
+additive, ~25 lines, no re-encode and no new files — with a `timeupdate` guard
+that pauses at the segment end and dispatches a real `ended` event so the
+existing `playSequence()` chaining keeps working. Playing the file straight
+through would have sat a child in front of **4.26s of dead air** after line 1;
+per-segment playback skips it. `_gapFor()` now paces each line from its clip
+duration (+450ms breath) and falls back to the word-count estimate for unvoiced
+lines, so a spoken line stays up exactly as long as Lumo is speaking. Two
+verification traps caught along the way, both mine: Python's `http.server` does
+not support HTTP **Range**, which silently breaks media seeking and made
+segments look broken until a Range-capable test server was used; and
+`LumoVoice.preload()` creates a **separate Audio element per id**, so three
+elements share this one URL and the probe was inspecting the wrong one.
+Verified on a Range server: L1/L2/L3 start at 0.00/10.72/22.84 and the guard
+stops L3 at exactly 30.43; screen 1's lines appear at 0.3s/7.0s/17.7s, matching
+the clip durations; full e2e still completes with zero page errors. **Deployment
+note: segment playback requires the host to serve HTTP Range** — without it the
+browser cannot seek and every segment would play from 0.

@@ -95,13 +95,13 @@ const StudioRite=(function(){
     // The glow lands on the line about the Egg itself — Canon 1 allows
     // the Egg pose, glow and magical effects, and nothing else.
     {lines:[
-      {lumo:'wave', egg:'idle',
+      {lumo:'wave', egg:'idle', voiceId:'riteS1L1',
        line:{title:'Welcome to VihuStudio.',
              subtitle:'Every story in VihuPlanet begins here.'}},
-      {lumo:'talk', egg:'curious', effect:'glow',
+      {lumo:'talk', egg:'curious', effect:'glow', voiceId:'riteS1L2',
        line:{title:'This Story Egg has been entrusted to you.',
              subtitle:'It has been waiting a long time for a story of its own.'}},
-      {lumo:'curious', egg:'idle',
+      {lumo:'curious', egg:'idle', voiceId:'riteS1L3',
        line:{title:'It will stay beside you while you make one.',
              subtitle:'Story Eggs know when something is about to happen.'}}
      ], end:{move:"Let's Begin"}},
@@ -603,6 +603,25 @@ const StudioRite=(function(){
     _setPose(_els.eggImg,_packs.traveller,entry.egg);
     _els.overlay.setAttribute('data-rite-effect',entry.effect||'');
     _appendLine(entry.line);
+    // Lumo's own recorded voice, where one exists. Guarded the same way
+    // every other optional module is: a missing LumoVoice, or a line
+    // with no recording yet, simply plays nothing.
+    try{
+      if(entry.voiceId && typeof LumoVoice!=='undefined' && LumoVoice.play) LumoVoice.play(entry.voiceId);
+    }catch(e){}
+  }
+
+  // A spoken line stays up until Lumo has finished saying it; an unvoiced
+  // one falls back to the reading-speed estimate. This is why the gap is
+  // read per line rather than being one constant.
+  function _gapFor(entry){
+    try{
+      if(entry.voiceId && typeof LumoVoice!=='undefined' && LumoVoice.durationMs){
+        const ms=LumoVoice.durationMs(entry.voiceId);
+        if(ms>0) return ms+450;   // a short breath after the line lands
+      }
+    }catch(e){}
+    return _lineGapMs(entry.line);
   }
 
   // Every line of a screen appears on its own, one after another. The
@@ -612,7 +631,7 @@ const StudioRite=(function(){
       return chain.then(function(){
         _showLine(entry);
         if(i===lines.length-1) return;   // last line: the screen's end takes over
-        return new Promise(function(r){ _timer=setTimeout(r,_lineGapMs(entry.line)); });
+        return new Promise(function(r){ _timer=setTimeout(r,_gapFor(entry)); });
       });
     },Promise.resolve());
   }
@@ -688,6 +707,11 @@ const StudioRite=(function(){
   function _teardown(){
     _running=false;
     _clearNudge();
+    try{
+      if(typeof LumoVoice!=='undefined' && LumoVoice.stop){
+        ['riteS1L1','riteS1L2','riteS1L3'].forEach(function(id){ LumoVoice.stop(id); });
+      }
+    }catch(e){}
     if(_timer){ clearTimeout(_timer); _timer=null; }
     if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
     // Canon 2 — Lumo appears only at a threshold and is torn down when
