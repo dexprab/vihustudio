@@ -121,7 +121,7 @@ const StudioRite=(function(){
     // and the child knows what to do the moment it ends.
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
-       line:{title:'We are going to make a story about a star.',
+       line:{title:'We are going to make a story about a star that falls out of the sky.',
              subtitle:'Add a star to your page.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:0},
 
@@ -234,6 +234,16 @@ const StudioRite=(function(){
              subtitle:'Give your story a name.'}}
      ], end:{await:'story-named'}, nudgeDelay:12000},
 
+    // Story Play. The child watches their own three pages turn, before
+    // any decision about sharing. Not a demonstration of the canonical
+    // story — that would make them copy, and would make the closing
+    // line ("you did all of it yourself") untrue. This is theirs.
+    {band:true, play:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'Your story is finished.',
+             subtitle:'Watch it from the beginning.'}}
+     ], end:{move:'That is my story'}},
+
     // The close.
     {band:true, lines:[
       {lumo:'curious', egg:'excited', effect:'glow',
@@ -246,6 +256,12 @@ const StudioRite=(function(){
        line:{title:'Now you know how to make a story.'}}
      ], end:{move:'Into the Studio'}}
   ];
+
+  // The mission, held on screen for the whole story so a child never
+  // loses the thread of what they are making. Deliberately a reference,
+  // not an instruction — it never competes with the line Lumo is
+  // speaking, and it never changes.
+  const MISSION='Our story: a star falls from the sky, and someone helps it home.';
 
   const ASSETS_BASE='assets/';
   const IDLE_DRIFT_MS=20000;  // the Egg drifts to sleep, and wakes on activity
@@ -295,15 +311,18 @@ const StudioRite=(function(){
     // Lumo says is ever taken away — so a child who reads slowly, or is
     // being read to, can look back at what was said instead of racing a
     // timer. Advancing is always the child's own click.
+    const mission=_el('div','studio-rite-mission');
+    mission.textContent=MISSION;
     const convo=_el('div','studio-rite-convo');
     const controls=_el('div','studio-rite-controls');
     panel.appendChild(cast);
+    panel.appendChild(mission);
     panel.appendChild(convo);
     panel.appendChild(controls);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
     return {overlay:overlay,panel:panel,convo:convo,controls:controls,
-            lumoImg:lumoImg,eggImg:eggImg,particles:particles};
+            mission:mission,lumoImg:lumoImg,eggImg:eggImg,particles:particles};
   }
 
   function _fetchJSON(url){
@@ -880,11 +899,37 @@ const StudioRite=(function(){
     if(_els&&_els.convo) _els.convo.innerHTML='';
   }
 
+  // Turns the child's own pages, one at a time, using the Runtime's
+  // existing openPage — no viewer, no new rendering path.
+  function _playPages(){
+    return new Promise(function(resolve){
+      let n=0;
+      try{ n=(AppState&&AppState.slides&&AppState.slides.length)||0; }catch(e){}
+      if(!n||typeof PageRuntime==='undefined'||!PageRuntime.openPage){ resolve(); return; }
+      let i=0;
+      try{ if(_els) _els.overlay.classList.add('studio-rite-playing'); }catch(e){}
+      const done=function(){
+        try{ if(_els) _els.overlay.classList.remove('studio-rite-playing'); }catch(e){}
+        resolve();
+      };
+      const step=function(){
+        if(!_els){ done(); return; }
+        try{ PageRuntime.openPage(i); }catch(e){}
+        i++;
+        if(i>=n){ _timer=setTimeout(done,2000); return; }
+        _timer=setTimeout(step,2600);
+      };
+      step();
+    });
+  }
+
   function _playScreen(screen){
     if(screen.band) _toBandMode();
     _hush();          // never let the previous screen's voice bleed in
     _clearConvo();
     return _playLines(screen.lines).then(function(){
+      return screen.play ? _playPages() : null;
+    }).then(function(){
       return _playEnd(screen.end,screen.nudgeDelay);
     });
   }
@@ -911,6 +956,7 @@ const StudioRite=(function(){
   function _toBandMode(){
     if(!_els) return;
     _els.overlay.classList.add('studio-rite-band');
+    _els.overlay.classList.add('studio-rite-has-mission');
     _liftBandClearOfStrip();
   }
 

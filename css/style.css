@@ -10723,3 +10723,42 @@ body.studio-rite-running .companion-widget{ display:none !important; }
 @keyframes studio-rite-hint-in{ from{opacity:0} to{opacity:1} }
 .studio-rite-overlay:not(.studio-rite-band) .studio-rite-hint{ text-align:center; }
 @media (prefers-reduced-motion: reduce){ .studio-rite-hint{ animation:none; } }
+
+/* The mission. Held on screen for the whole story so a child never loses
+   the thread of what they are making. Deliberately quieter than the line
+   Lumo is speaking — a reference, never a competing instruction. Hidden
+   until the story actually starts, so it never sits over the arrival. */
+.studio-rite-mission{
+  display:none;
+  font-family:'Cinzel',"Iowan Old Style",Palatino,Georgia,serif;
+  font-size:clamp(11px,1.15vw,14px);
+  letter-spacing:.05em;
+  color:rgba(255,241,214,.66);
+  padding:2px 0 4px;
+  text-align:left;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.studio-rite-overlay.studio-rite-has-mission.studio-rite-band .studio-rite-mission{ display:block; }
+/* In band mode the panel is a row: cast | mission+conversation | button.
+   The mission shares the middle column, stacked above the conversation. */
+.studio-rite-overlay.studio-rite-band .studio-rite-panel{
+  grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-areas:'cast body controls';
+}
+.studio-rite-overlay.studio-rite-band .studio-rite-cast{ grid-area:cast; }
+.studio-rite-overlay.studio-rite-band .studio-rite-controls{ grid-area:controls; }
+.studio-rite-overlay.studio-rite-band .studio-rite-mission,
+.studio-rite-overlay.studio-rite-band .studio-rite-convo{ grid-area:body; }
+.studio-rite-overlay.studio-rite-band .studio-rite-mission{ align-self:start; }
+.studio-rite-overlay.studio-rite-band .studio-rite-convo{ align-self:end; }
+
+/* Story Play — the child watches their own pages turn. The band steps
+   back so the pages are what they are looking at. */
+.studio-rite-overlay.studio-rite-playing .studio-rite-convo,
+.studio-rite-overlay.studio-rite-playing .studio-rite-controls{ opacity:.35; transition:opacity .4s ease; }
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-overlay.studio-rite-playing .studio-rite-convo,
+  .studio-rite-overlay.studio-rite-playing .studio-rite-controls{ transition:none; }
+}
