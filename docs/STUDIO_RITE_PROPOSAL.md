@@ -323,6 +323,103 @@ no replay, no storage model, no event model.
 
 ---
 
+# Part IV — The Nudge (guidance layer)
+
+**Status: designed, not built.** Added after testing raised the question the
+Rite could not answer on its own: *when Lumo says "what colour is your sky?",
+are we assuming a child can find the Background control?*
+
+We were. That was wrong.
+
+## The rule
+
+Decision 3 forbids explaining tools, and it should. But two different things
+had been collapsed into one prohibition:
+
+| | Allowed? |
+|---|---|
+| **Explaining a tool** — "this is the size control, drag the corner" | **No.** Decision 3 stands |
+| **Showing where a tool is** — the control quietly lights up | **Yes.** This is direction, not explanation |
+
+**Lumo never names a control. The interface shows where it is. The child
+learns what it does by using it.** Familiarity — *what is where, and how it is
+used* — is the Rite's stated purpose, and it cannot be reached by narrative
+framing alone.
+
+## Four stages, words last
+
+1. **The glow** — the real control gets a soft ring. If it is nested (inside
+   *Add Something*, or requiring the object to be selected first), each step
+   lights in turn as the child advances.
+2. **The pulse** — no action for a few seconds: the glow strengthens.
+3. **Lumo looks** — a light travels from Lumo to the control. He is a character
+   standing on the screen; him turning toward something is direction that costs
+   no words and breaks no rule.
+4. **Words** — last resort, once, still in character and still never naming the
+   control: *"It's over on the right, near the Egg."*
+
+## The fading curve — this is what builds confidence
+
+The nudge is **slower on every page**, so the child takes over by degrees:
+
+| Page | Role | Glow appears |
+|---|---|---|
+| 1 | discover | **immediately**, every time |
+| 2 | apply | after **~4s** — a beat to try first |
+| 3 | own | after **~12s** — the child leads; the net is still there |
+
+This makes the graduation real rather than rhetorical, and it costs nothing
+when it is not needed: a confident child never sees a hint at all.
+
+## The visibility contract — measured, not assumed
+
+**A nudge that points at something off-screen is worse than no nudge.** In band
+mode the Rite's own dialogue covers the bottom of the viewport, and the
+measurement is not marginal:
+
+| Element | Rect (1343×800 viewport) | |
+|---|---|---|
+| Rite band | `542 → 800` | **258px — a third of the screen** |
+| `.context-set-tiles` (holds the Background tile) | `680 → 734` | **fully occluded** |
+| `.object-strip` | `651 → 788` | **fully occluded** |
+| `.context-zone-personalize` | `249 → 751` | bottom third occluded |
+| `#bookTitle` | `19 → 46` | safe |
+
+The control page 1 asks for **first** is currently behind the Rite's own band.
+
+**Therefore, before any glow is applied, the nudge must:**
+
+1. Resolve the target and compute the **safe area** — the viewport minus the
+   band's own rect, read live rather than hardcoded.
+2. If the target is not fully inside it, **scroll its scrollable ancestor**
+   until it is.
+3. Re-measure. If it still cannot be brought into the safe area, **shrink the
+   band** for the duration of the beat.
+4. Only then glow. If the target cannot be made visible at all, **do not point
+   at it** — fall straight to stage 4 (words), which is always visible.
+
+The band should also simply be **smaller in band mode**. 258px of a 800px
+screen is more than a dialogue strip needs, and shrinking it reduces how often
+steps 2–3 have to fire.
+
+## The control map
+
+A small table of `capability → DOM selector`: the Background tile, the *Add
+Something* accordion, the Move & Spin dial, the page strip's Add Page, and
+`#bookTitle`.
+
+**This is not new architecture.** `docs/COMPANION_V1_PROPOSAL.md` §3.2 already
+specifies exactly this as the `surface` pointer carried by every knowledge
+entry; the Rite builds it earlier and the Companion later shares it.
+
+**Its one real risk is staleness** — if a control moves and the map is not
+updated, the Rite points at nothing, which is worse than not pointing. Same
+mitigation as the Companion corpus: a verification pass that resolves every
+selector against a live DOM and fails loudly. Given the Rite is mandatory, this
+check is not optional.
+
+---
+
 # Part III — Phase-by-phase technical design
 
 **Script:** `docs/STUDIO_RITE_SCRIPT.md` — 18 Lumo lines, 5 blocking child

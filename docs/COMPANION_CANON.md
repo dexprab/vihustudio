@@ -279,6 +279,14 @@ Studio Rite Product Decision, and are resolved below.
 - **It teaches through creation, not explanation.** A user finishes the
   Rite having made something, not having read something. It reuses the
   real editor; there is no tutorial-only editor.
+- **The Rite may show a child WHERE a control is. It may never explain
+  WHAT it does.** Lumo never names a control; the interface lights the
+  real one, and the child learns its behaviour by using it. Familiarity
+  — *what is where, and how it is used* — is the Rite's purpose, and it
+  cannot be reached by narrative framing alone. A guidance nudge that
+  points at something the child cannot actually see is worse than no
+  nudge, so the target must be brought into view before it is
+  highlighted (`docs/STUDIO_RITE_PROPOSAL.md` → Part IV).
 - The vocabulary it establishes is **Traveller · Creator · Story ·
   Companion** — introduced by being used, never defined, and never
   assumed by the Studio beforehand.

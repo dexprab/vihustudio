@@ -96,14 +96,19 @@ no line, no prompt, nothing asked. The child just looks at what they made.
 
 ### Page 1 — The Falling · *discover*
 
-> **LUMO:** Every story starts somewhere. This one starts in the sky.
-> *What colour is your sky tonight?*
+*Reordered. The star now comes **before** the sky — see "Why the star comes
+first" below.*
 
-`[CHILD: sets the page background colour]` `[EGG: curious]`
-
-> **LUMO:** Beautiful. Now — something is up there, and it is about to fall.
+> **LUMO:** Every story starts somewhere. This one starts with something
+> falling.
+> *Put it up there.*
 
 `[CHILD: adds a star]` `[EGG: excited]`
+
+> **LUMO:** You can't see a star in the daytime.
+> *What colour is the sky when the stars come out?*
+
+`[CHILD: sets the page background colour]` `[EGG: curious]`
 
 > **LUMO:** There it is.
 > *Is it close to us, or very far away?*
@@ -218,8 +223,8 @@ already used, asked for in one line without a hint.*
 
 | # | Page | Story reason | Capability | Use | Why it isn't instructional |
 |---|---|---|---|---|---|
-| 1 | 1 | The sky has to have a colour | **Background** | 1st — *place* | Choosing the mood of a night, not filling a swatch |
-| 2 | 1 | Something must be up there to fall | **Add sticker** | 1st — *subject* | Casting the story |
+| 1 | 1 | Something must be up there to fall | **Add sticker** | 1st — *subject* | Casting the story |
+| 2 | 1 | A star is invisible in daylight | **Background** | 1st — *place* | The story **needs** it: the child cannot see their own star until they fix it |
 | 3 | 1 | Is it near or far? | **Resize** | 1st — *distance* | Size is distance; only the child knows the answer |
 | 4 | 1 | Falling things tumble | **Rotate** | only use | The one place rotation is obviously physics |
 | 5 | 2 | It has to land somewhere | **Add page** | 1st — *the fall* | The page break *is* the fall |
@@ -237,6 +242,39 @@ already used, asked for in one line without a hint.*
 | 17 | 3 | Stories need names | **Story title** | only use | The last thing an author does |
 
 **17 interactions · 8 capabilities · 6 of them used two or more times.**
+
+### Why the star comes first
+
+The original order asked for the **background colour** as the child's very
+first action in VihuStudio. Two problems, both real:
+
+**The vocabulary gap.** Lumo says *"sky."* The control says **"Background."** A
+five-year-old does not translate one into the other, and we would be asking
+them to do it on their first action ever — which is exactly the software-word
+problem the whole Rite exists to remove.
+
+**The reward gap.** Adding a sticker is the largest, most obvious affordance on
+the panel and something *appears* when you use it. Colouring a blank page is a
+subtler payoff for a first attempt.
+
+Reversing them fixes both and improves the writing: the sky is no longer
+coloured because Lumo asked, it is coloured because **the story stops working
+otherwise** — you cannot see a star in daylight. The child's own need creates
+the action, which is the principle this document is built on.
+
+### The nudge on page 1
+
+Page 1 is *discover*: every control is being met for the first time, so the
+glow appears **immediately** on each ask, with no delay (Part IV of
+`docs/STUDIO_RITE_PROPOSAL.md`). Page 2 waits ~4s, page 3 waits ~12s. Lumo
+still never names a control; the interface shows where it is.
+
+**Rotate remains the riskiest beat in the Rite.** It is the fourth first-time
+control in a row, it needs the star selected before the dial exists, and it is
+the one capability we have agreed is not first-hour core. It is also the beat
+most likely to strand a child on a mandatory, unskippable gate. The nudge's
+stepwise path — select the star, *then* the dial — is what makes it safe, and
+it should be tested first.
 
 ---
 

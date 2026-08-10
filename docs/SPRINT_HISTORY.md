@@ -1063,3 +1063,31 @@ revised up to **9–11 minutes** and the old cut list **withdrawn**, since the
 direction forbids reducing coverage; the honest alternative lever (splitting the
 Rite across the first return) is named but not proposed, as it would change
 Canon 6. Documentation only — no architecture, roadmap or code change.
+
+## Studio Rite — The Nudge, and Page 1 Reordered (design only)
+
+Product owner asked the question the Rite could not answer on its own: *when
+Lumo says "what colour is your sky?", are we assuming a child can find the
+Background control?* We were. Two things came out of it. **The guidance layer**:
+Decision 3's ban on explaining tools had collapsed two different things
+together, so canon now separates them — *the Rite may show a child WHERE a
+control is; it may never explain WHAT it does.* Lumo still never names a
+control; the interface lights the real one, and the child learns behaviour by
+using it. Four stages, words last (glow → pulse → Lumo turns toward it → one
+spoken hint), on a **fading curve** — immediate on page 1, ~4s on page 2, ~12s
+on page 3 — so the graduation is real and a confident child never sees a hint.
+**A measured occlusion bug**: at 1343×800 the Rite's own band occupies
+`542 → 800`, a third of the screen, and `.context-set-tiles` — which holds the
+Background tile page 1 asks for **first** — sits at `680 → 734`, fully behind
+it; the Object Strip too. So the nudge carries a visibility contract: resolve
+the target, compute the safe area from the band's live rect, scroll it into
+view, shrink the band if that fails, and if it still cannot be seen, don't point
+— fall to words. The band should also simply be smaller. **Page 1 reordered**:
+the star is now added before the sky is coloured, because "sky" vs the control's
+"Background" is a vocabulary leap on a child's first-ever action, and because a
+sticker appearing is a better first reward than colouring a blank page. It also
+writes better — the sky is now coloured because *you cannot see a star in
+daylight*, so the story's own need creates the action. Rotate flagged as the
+riskiest remaining beat and the one to test first. The control map reuses
+`COMPANION_V1_PROPOSAL.md` §3.2's `surface` pointer rather than inventing one.
+Docs only; no code.
