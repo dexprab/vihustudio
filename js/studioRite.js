@@ -130,7 +130,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'thinking',
        line:{title:'A story needs someone in it.',
              subtitle:"Choose whoever you like. It's your story."}}
-     ], end:{await:'sticker-added'}},
+     ], end:{await:'sticker-added'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
@@ -138,7 +138,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:"They don't have to stay there.",
              subtitle:'Put them wherever the story needs them.'}}
-     ], end:{await:'sticker-moved'}},
+     ], end:{await:'sticker-moved'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'curious',
@@ -146,7 +146,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'thinking',
        line:{title:'Big things feel close. Small things feel far away.',
              subtitle:'How close is this one?'}}
-     ], end:{await:'sticker-resized'}},
+     ], end:{await:'sticker-resized'}, nudgeDelay:12000},
 
     // ---- Act IV — Why do stories matter?
     {band:true, lines:[
@@ -156,7 +156,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'Every story has a name.',
              subtitle:'What is this one called?'}}
-     ], end:{await:'story-named'}},
+     ], end:{await:'story-named'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'excited', effect:'glow',
@@ -311,6 +311,206 @@ const StudioRite=(function(){
     });
   }
 
+  // ---------- The Nudge (docs/STUDIO_RITE_PROPOSAL.md → Part IV) ----------
+  // "The Rite may show a child WHERE a control is. It may never explain
+  // WHAT it does." (Canon 6). Lumo never names a control; the real one
+  // lights up, and the child learns its behaviour by using it.
+  //
+  // The delay lengthens screen by screen (the `nudgeDelay` on each
+  // SCREEN), so the child takes over by degrees and a confident one
+  // never sees a hint at all.
+
+  // Resolve by VISIBLE LABEL rather than position wherever possible — a
+  // positional selector silently points at the wrong control the moment
+  // a row is reordered, and a nudge aimed at the wrong thing is worse
+  // than no nudge.
+  // Prefers a label that STARTS with the term ("Size260px" -> "size")
+  // over one that merely contains it ("Font Size"), so a new unrelated
+  // row cannot quietly steal the nudge.
+  function _byLabel(labelSel,text,liftSel){
+    const want=String(text).toLowerCase();
+    const lift=function(el){ return liftSel ? el.closest(liftSel) : el; };
+    try{
+      const all=document.querySelectorAll(labelSel);
+      let contains=null;
+      for(let i=0;i<all.length;i++){
+        const t=(all[i].textContent||'').trim().toLowerCase();
+        if(t.indexOf(want)===0) return lift(all[i]);
+        if(!contains && t.indexOf(want)!==-1) contains=all[i];
+      }
+      if(contains) return lift(contains);
+    }catch(e){}
+    return null;
+  }
+
+  function _hasSelection(){
+    try{
+      return !!(PageRuntime.getSelection().sceneId) && PageRuntime.selectionIsValid();
+    }catch(e){ return false; }
+  }
+
+  // capability -> {find(), hint}. `find` may return null at any moment
+  // (the control genuinely isn't on screen yet); the nudge then simply
+  // waits and tries again rather than pointing at nothing.
+  const NUDGE={
+    'sticker-added':{
+      // Two steps, resolved by what is actually on screen: while the
+      // accordion is shut, point at the way in; once it is open, point
+      // at the Emojis card itself. Never at the whole accordion — it is
+      // 381px tall and cannot fit above the band, so the visibility
+      // contract would (correctly) refuse to point at all.
+      find:function(){
+        const card=_byLabel('.context-add-card-label','emoji');
+        if(card) return card.parentElement||card;
+        return document.querySelector('.context-add-trigger');
+      },
+      hint:"It's over on the right."
+    },
+    // Two steps: the object has to be chosen before its controls exist
+    // at all. The Object Strip is the DOM way in — the page is a canvas,
+    // so a sticker has no element of its own to ring. The Strip sits at
+    // the very bottom and often cannot clear the band, in which case the
+    // words below carry it instead; that is the contract working, not
+    // failing.
+    'sticker-moved':{
+      find:function(){
+        return _hasSelection()
+          ? _byLabel('.designer-row-label','move left','.designer-row')
+          : document.getElementById('objectStripList');
+      },
+      hint:function(){
+        return _hasSelection()
+          ? 'Drag them where you want, or nudge them from the right.'
+          : "Tap them first — they're in the row under your page.";
+      }
+    },
+    'sticker-resized':{
+      find:function(){
+        return _hasSelection()
+          ? _byLabel('.designer-row-label','size','.designer-row')
+          : document.getElementById('objectStripList');
+      },
+      hint:function(){
+        return _hasSelection()
+          ? "It's over on the right, under their name."
+          : "Tap them first — they're in the row under your page.";
+      }
+    },
+    'story-named':{
+      find:function(){ return document.getElementById('bookTitle'); },
+      hint:"It's up at the very top."
+    }
+  };
+
+  let _nudgeEl=null, _nudgeTimers=[];
+
+  // The safe area is the viewport minus the Rite's OWN band, read live
+  // rather than hardcoded. Measured at 1343x800 the band occupies
+  // 542-800 — a third of the screen — and the Background tile the story
+  // asks for sits at 680-734, entirely behind it.
+  function _safeBottom(){
+    try{
+      if(_els && _els.overlay.classList.contains('studio-rite-band')){
+        const r=_els.panel.getBoundingClientRect();
+        if(r.height>0) return Math.max(0,r.top);
+      }
+    }catch(e){}
+    return window.innerHeight;
+  }
+
+  // A control taller than the safe area can still be perfectly usable —
+  // its top edge is what a child taps. Requiring the WHOLE element to
+  // fit made the nudge refuse to point at anything tall, which is how
+  // the first version silently pointed at nothing.
+  function _isVisible(el){
+    try{
+      const r=el.getBoundingClientRect();
+      if(r.width<=0||r.height<=0) return false;
+      if(r.top<0) return false;
+      const need=Math.min(r.height,72);
+      return (r.top+need)<=_safeBottom();
+    }catch(e){ return false; }
+  }
+
+  // Scroll it into the safe area; if that is not enough, shrink the
+  // band; if it STILL cannot be seen, refuse to point (the caller falls
+  // through to words). A nudge aimed off-screen is worse than none.
+  function _ensureVisible(el){
+    if(_isVisible(el)) return true;
+    try{ el.scrollIntoView({block:'center',inline:'nearest'}); }catch(e){}
+    if(_isVisible(el)) return true;
+    try{ if(_els) _els.overlay.classList.add('studio-rite-band-compact'); }catch(e){}
+    return _isVisible(el);
+  }
+
+  function _clearNudge(){
+    _nudgeTimers.forEach(function(t){ clearTimeout(t); });
+    _nudgeTimers=[];
+    if(_nudgeEl){
+      try{ _nudgeEl.classList.remove('studio-rite-nudge','studio-rite-nudge-strong'); }catch(e){}
+      _nudgeEl=null;
+    }
+    try{ if(_els) _els.overlay.classList.remove('studio-rite-band-compact'); }catch(e){}
+  }
+
+  function _paintNudge(kind){
+    const spec=NUDGE[kind];
+    if(!spec) return false;
+    const el=spec.find();
+    if(!el) return false;
+    if(el===_nudgeEl) return true;
+    if(!_ensureVisible(el)) return false;
+    if(_nudgeEl){ try{ _nudgeEl.classList.remove('studio-rite-nudge','studio-rite-nudge-strong'); }catch(e){} }
+    _nudgeEl=el;
+    try{ el.classList.add('studio-rite-nudge'); }catch(e){}
+    return true;
+  }
+
+  // Escalation: glow -> stronger pulse -> one spoken hint. The hint is
+  // NOT merely a late fallback: if no target can be shown at all (the
+  // Object Strip, for instance, sits at the very bottom of the screen
+  // and structurally cannot clear the band), words arrive quickly
+  // instead, because a child staring at nothing is the failure this
+  // whole layer exists to prevent.
+  //
+  // The tick keeps running after a successful paint, because the right
+  // target changes as the child works — selecting their object replaces
+  // "tap it in the row below" with the spatial controls themselves.
+  //
+  // ("Lumo looks", stage 3 of the Part IV design, is not built.)
+  function _startNudge(kind,delay){
+    _clearNudge();
+    const spec=NUDGE[kind];
+    if(!spec) return;
+    let painted=false, spoke=false, misses=0, shownAt=0;
+    const speak=function(){
+      if(spoke||!_els) return;
+      spoke=true;
+      _appendLine({title:(typeof spec.hint==='function')?spec.hint():spec.hint});
+    };
+    const tick=function(){
+      if(!_els) return;
+      if(_paintNudge(kind)){
+        if(!painted){ painted=true; shownAt=misses; }
+        misses=0;
+        if(_nudgeEl && !_nudgeEl.classList.contains('studio-rite-nudge-strong')){
+          _nudgeTimers.push(setTimeout(function(){
+            if(_nudgeEl) try{ _nudgeEl.classList.add('studio-rite-nudge-strong'); }catch(e){}
+          },7000));
+        }
+      }else{
+        misses++;
+        // ~3.5s of being unable to show anything: use words instead of
+        // leaving the child with no guidance at all.
+        if(misses>=5) speak();
+      }
+      _nudgeTimers.push(setTimeout(tick,700));
+    };
+    _nudgeTimers.push(setTimeout(tick,Math.max(0,delay||0)));
+    // Even when the glow is showing, a long silence earns one line.
+    _nudgeTimers.push(setTimeout(speak,Math.max(0,delay||0)+18000));
+  }
+
   // ---------- Watching the child's own work ----------
   // Reads the live page rather than tracking our own copy of it, so the
   // Rite can never disagree with what the editor actually did.
@@ -419,17 +619,18 @@ const StudioRite=(function(){
 
   // A screen ends in exactly one of three ways: a button, the one
   // "Yes", or something the child makes.
-  function _playEnd(end){
+  function _playEnd(end,nudgeDelay){
     if(end.move) return _awaitClick(end.move);
     if(end.choice) return _awaitClick(end.choice,'studio-rite-choice-primary');
-    if(end.await) return _awaitAction(end.await);
+    if(end.await) return _awaitAction(end.await,nudgeDelay);
     return Promise.resolve();
   }
 
   // A beat the child completes by making something. Waits indefinitely.
-  function _awaitAction(kind){
+  function _awaitAction(kind,nudgeDelay){
     return new Promise(function(resolve){
       const baseline=_baseline();
+      _startNudge(kind,nudgeDelay);
       let idleTimer=null, onInput=null, poll=null;
       const rearmIdle=function(){
         if(idleTimer) clearTimeout(idleTimer);
@@ -440,6 +641,7 @@ const StudioRite=(function(){
         },IDLE_DRIFT_MS);
       };
       const cleanup=function(){
+        _clearNudge();
         if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
         if(poll){ clearInterval(poll); poll=null; }
         if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
@@ -479,12 +681,13 @@ const StudioRite=(function(){
     if(screen.band) _toBandMode();
     _clearConvo();
     return _playLines(screen.lines).then(function(){
-      return _playEnd(screen.end);
+      return _playEnd(screen.end,screen.nudgeDelay);
     });
   }
 
   function _teardown(){
     _running=false;
+    _clearNudge();
     if(_timer){ clearTimeout(_timer); _timer=null; }
     if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
     // Canon 2 — Lumo appears only at a threshold and is torn down when

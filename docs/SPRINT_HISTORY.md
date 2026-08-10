@@ -1091,3 +1091,28 @@ daylight*, so the story's own need creates the action. Rotate flagged as the
 riskiest remaining beat and the one to test first. The control map reuses
 `COMPANION_V1_PROPOSAL.md` §3.2's `surface` pointer rather than inventing one.
 Docs only; no code.
+
+## Studio Rite — The Nudge, Built
+
+Implemented the guidance layer in `js/studioRite.js` + `css/style.css`: a
+control map resolved by visible LABEL rather than position, a live visibility
+contract, glow → stronger pulse → spoken hint, and the fading curve as data
+(`nudgeDelay` per screen: 0 / 4000 / 12000 / 12000). The control map was wrong
+twice on the first attempt and browser verification caught both — the target was
+the whole `.context-add-accordion` (**381px tall**, so it could never fit above
+the band and the contract correctly refused to point at anything), the resize
+row is labelled **Size** not `Width`, and `.nudge-pad` does not exist for a
+sticker. Measured with a sticker selected at 1343×800: `Size260px` sits at top
+826 (off-screen but scrollable), `Move Left ↔ Right` is `0×0` (hidden in a
+collapsed section) and the Object Strip is at 651–788 (structurally below the
+band). So the first making glows on the Emojis card — verified inside the safe
+area — resize can glow once scrolled, and move falls through to words. Because
+refusing to point is a real outcome rather than a rare one, the escalation was
+restructured: if nothing can be shown after ~3.5s the spoken hint arrives at
+once instead of waiting out the timer, and the hint is state-aware ("Tap them
+first" before a selection, "Drag them where you want" after). `_isVisible` was
+also relaxed — a control taller than the safe area is usable when its tappable
+top is on screen. Verified: full end-to-end run still completes with the flag
+written once, ceremony intact, Story Egg in the widget, zero page errors; the
+10 gate unit checks still pass. Stage 3 of the design ("Lumo looks") is not
+built and is disclosed as such.

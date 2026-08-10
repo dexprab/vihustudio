@@ -10647,3 +10647,35 @@ body.dark-theme .traveller-save-notice-dismiss{
   .studio-rite-line{ transition:none; }
   .studio-rite-choice{ animation:none; }
 }
+
+/* Studio Rite — the Nudge (docs/STUDIO_RITE_PROPOSAL.md → Part IV).
+   Canon 6: the Rite may show a child WHERE a control is; it may never
+   explain WHAT it does. Lumo names nothing — the real control lights up
+   and the child learns it by using it. Applied to live app elements, so
+   every property here is additive and fully removed on cleanup. */
+.studio-rite-nudge{
+  outline:3px solid rgba(255,203,69,.95);
+  outline-offset:3px;
+  border-radius:12px;
+  animation:studio-rite-nudge-pulse 2s ease-in-out infinite;
+  /* Sits above neighbouring panel rows so the ring is never clipped by
+     a sibling, without changing the element's own layout. */
+  position:relative;
+  z-index:5;
+}
+.studio-rite-nudge.studio-rite-nudge-strong{ animation-duration:.9s; }
+@keyframes studio-rite-nudge-pulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,203,69,.55); }
+  50%    { box-shadow:0 0 0 10px rgba(255,203,69,0); }
+}
+/* Last resort before refusing to point: the band gives back room so a
+   control near the bottom of the screen can be seen at all. Measured:
+   the full band takes 258px of an 800px viewport, and the Background
+   tile sits inside that. */
+.studio-rite-overlay.studio-rite-band.studio-rite-band-compact .studio-rite-lumo-img{ width:clamp(48px,5.5vw,76px); }
+.studio-rite-overlay.studio-rite-band.studio-rite-band-compact .studio-rite-egg-img{ width:clamp(28px,3.2vw,42px); }
+.studio-rite-overlay.studio-rite-band.studio-rite-band-compact .studio-rite-convo{ max-height:12vh; min-height:0; }
+.studio-rite-overlay.studio-rite-band.studio-rite-band-compact .studio-rite-panel{ padding-bottom:10px; }
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-nudge{ animation:none; box-shadow:0 0 0 6px rgba(255,203,69,.35); }
+}

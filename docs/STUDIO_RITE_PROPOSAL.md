@@ -402,6 +402,46 @@ The band should also simply be **smaller in band mode**. 258px of a 800px
 screen is more than a dialogue strip needs, and shrinking it reduces how often
 steps 2–3 have to fire.
 
+## Built — and what it actually points at
+
+Stages 1, 2 and 4 are implemented (`js/studioRite.js`). **Stage 3, "Lumo
+looks", is not built.**
+
+The control map was wrong twice on first attempt, and both errors are the
+reason the map needs live verification rather than authoring-by-inspection:
+
+| Target | First attempt | Reality |
+|---|---|---|
+| Add Something | the whole `.context-add-accordion` | **381px tall** — cannot fit above the band, so the contract correctly refused to point at all. Now the `.context-add-card` for Emojis, or the trigger while it is shut |
+| Resize | a row labelled `Width` | the sticker's row is labelled **`Size`** |
+| Move | `.nudge-pad` | does not exist for a sticker |
+
+Measured, with a sticker selected at 1343×800 — both rows do belong to the
+sticker's own **"✨Your Sticker"** section, so the map is aimed correctly:
+
+| Row | Rect | Pointable? |
+|---|---|---|
+| `Size260px` | top `826` | yes — off-screen but scrollable into the safe area |
+| `Move Left ↔ Right` | `0 × 0` | **no** — hidden inside a collapsed section |
+| Object Strip | `651 → 788` | **no** — structurally below the band |
+
+So today: **the first making glows** (the Emojis card, verified inside the safe
+area), **resize can glow** once scrolled, and **move falls through to words** —
+because there is nothing on screen to ring until the child opens a section, and
+a page is a canvas so a sticker has no element of its own. That is the contract
+working, not failing.
+
+Because of that, the escalation was changed: if nothing can be shown after
+~3.5s, the spoken hint arrives **immediately** rather than waiting out the full
+timer. A child staring at nothing is the failure this layer exists to prevent.
+The hint is state-aware — *"Tap them first"* before a selection, *"Drag them
+where you want"* after.
+
+**Two follow-ups worth doing** when the three-page story is built: give the
+sticker's collapsed spatial section a two-step path (point at the section
+header, then the row inside it, exactly as Add Something now does), and shrink
+the band's resting height so fewer targets need rescuing at all.
+
 ## The control map
 
 A small table of `capability → DOM selector`: the Background tile, the *Add
