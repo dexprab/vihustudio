@@ -975,3 +975,24 @@ chapter. Added `StudioRite.isRunning()`; `_beginBoot()` now returns early while
 the Rite is in flight, since the Rite opens its own blank page. Proven in both
 directions with a genuine captured session: modal still shows on a normal boot,
 never over the Rite.
+
+## Studio Rite — The Canonical Starter Story (design only)
+
+Designed *The Night a Star Came Down*: a star falls, somebody the child chooses
+finds it and stays with it, and at dawn it is strong enough to go home. Three
+pages, 14 interactions, 8 capabilities, no tool named aloud. Only the story's
+shape is canonical — who helps, what they say, the colours and the title are
+the child's, so every Traveller makes the same story and no two are alike. It
+rhymes with the Egg (look after something small and not-yet-ready until it can
+go on) without revealing hatching, Companions or the Ceremony; curiosity is
+planted in exactly two lines and never explained. Three brief items proved
+unusable and are recorded rather than faked: **Places/Frames/Experiences** need
+a World and the Rite runs World-free on the `blank` path precisely so a
+mandatory gate cannot hard-fail on a first offline launch; **"reading the
+finished story"** is Publish, which Decision 7 forbids; and **layer ordering**
+exists only as Object Strip drag-reorder, the fiddliest interaction in Studio,
+which no beat genuinely needs. The brief's 3–5 minute target does not hold for
+14 interactions — honest estimate 7–9 minutes — so a four-item cut list is
+supplied that reaches ~5 minutes while keeping all three pages, the character
+choice, the words and the ending. Design supersedes the current Acts III–IV
+placeholder interactions. `docs/STUDIO_RITE_STARTER_STORY.md`. No code.
