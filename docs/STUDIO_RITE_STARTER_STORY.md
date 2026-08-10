@@ -3,39 +3,40 @@
 The one canonical story every Traveller makes before VihuStudio unlocks. Part
 of VihuPlanet's lore; experienced exactly once.
 
-**Canon:** `docs/COMPANION_CANON.md` → Canon 6 · **Rite script:**
+**Canon:** `docs/COMPANION_CANON.md` → Canon 6 & 7 · **Rite script:**
 `docs/STUDIO_RITE_SCRIPT.md` · **Architecture:** `docs/STUDIO_RITE_PROPOSAL.md`
 
-**Status: design only. No implementation.** This supersedes the current Acts
-III–IV interactions (place / move / resize one character on one page), which
-were a placeholder for exactly this.
+**Status: approved as the foundation. Design refined, not redesigned. No
+implementation yet.** Supersedes the current Acts III–IV placeholder
+interactions.
+
+**Success metric (revised):** not how many capabilities are introduced, but
+whether a child can confidently begin a story of their own the moment the Rite
+ends. Every capability the story teaches is used **at least twice, in two
+different narrative situations** — once to discover it, once to own it.
 
 ---
 
 ## 0. Three constraints that shaped it
 
-Stated first because two capabilities on the brief's list genuinely cannot be
-used, and one estimate does not hold.
-
 **Places, Frames and Experiences are unavailable.** They belong to a **World**,
 and the Rite deliberately runs on a **blank page with no World at all**
-(`CREATION_TYPES`' `blank:true` path). That was not a shortcut: Studio ships
-with zero built-in Worlds — the Theme Repository is remote — so a Rite that
-required a World would hard-fail on a first launch with no network, on a
-mandatory gate. The story therefore builds its settings from **background
-colour + stickers**, which are local and offline.
+(`CREATION_TYPES`' `blank:true` path). Studio ships with zero built-in Worlds —
+the Theme Repository is remote — so a Rite that required a World would
+hard-fail on a first launch with no network, on a mandatory gate. The story
+builds its settings from **background colour + stickers**, which are local and
+offline.
 
 **"Reading the finished story" is unavailable.** Reading a finished story means
 Story Book, a Publish destination. The rewritten Decision 7 does let the Rite
-reach the sharing moment, but sharing is a *giving*, not a *reading* — the
-child chooses to let the story become part of VihuPlanet and the Creator
-Ceremony follows immediately. Sitting them down to read it back first would
-put a lull exactly where the ceremony belongs.
+reach the sharing moment, but sharing is a *giving*, not a *reading* — and
+sitting the child down to read it back would put a lull exactly where the
+ceremony belongs.
 
 **Layer ordering is deliberately excluded.** It exists, but only as
 drag-to-reorder inside the Object Strip (`SceneEngine.setLayerOrder`) — the
-fiddliest interaction in Studio, and no beat in this story genuinely needs it.
-Adding it would be coverage for coverage's sake, which the brief forbids.
+fiddliest interaction in Studio, and no beat needs it. It is also not a
+first-hour capability, which under the revised metric is the stronger reason.
 
 ---
 
@@ -55,23 +56,19 @@ Three pages. Beginning, middle, end.
 ## 2. Why this story
 
 **It rhymes with the Egg without revealing anything.** The child has just been
-told a Story Egg was *entrusted* to them and that it will be ready one day. Then
-their first act as a Creator is to look after something small and not-yet-ready
-until it can go on. The lesson lands as feeling, not explanation, and nothing
-about hatching, Companions or the Creator Ceremony is spoiled — the parallel is
-never named. Lumo's closing question plants the curiosity and stops.
+told a Story Egg was entrusted to them, that it has waited a long time for a
+story of its own, and that nobody knows what is inside. Then their first act as
+a Creator is to look after something small and not-yet-ready until it can go
+on. The parallel is never named.
 
 **The child is the author, not the audience.** Only the *shape* is canonical:
 star falls, someone helps, star goes home. **Who** helps, what they say, what
-colour the night is, and what the story is called are all the child's. Every
-Traveller makes the same story and no two are alike — which is what makes it
-lore rather than a tutorial.
+colour the night is, and what the story is called are all the child's.
 
-**Every capability has a reason to exist here.** A falling star must tumble
-(rotate) and be far away (resize). A landing needs somewhere to land (a second
-page, a background, a tree). Someone who finds it must come *to* it (move). A
-rescue needs a voice (text). Going home is distance (resize + move). Nothing is
-bolted on.
+**It has a natural second half.** This is what makes it work as a *teaching*
+story rather than a demo: every capability introduced on pages 1–2 has an
+honest reason to come back on page 3 in a changed situation. The story didn't
+have to be bent to allow that — a thing that falls has to rise again.
 
 **It is universal.** No reading age, no cultural specificity, no named
 character, no villain, no failure state.
@@ -80,14 +77,13 @@ character, no villain, no failure state.
 
 ## 3. Pages
 
-**Three.** One per act, which is also the smallest number that teaches
-*sequence* — that pages are a story moving, not a pile of drawings.
+**Three.** One per act, and the smallest number that teaches *sequence*.
 
-| Page | Act | Feeling |
-|---|---|---|
-| 1 | The Falling | wonder |
-| 2 | The Finding | care |
-| 3 | The Going Home | letting go |
+| Page | Act | Feeling | Role in learning |
+|---|---|---|---|
+| 1 | The Falling | wonder | **discover** — every control met for the first time |
+| 2 | The Finding | care | **apply** — same controls, new purpose; the story gets a cast |
+| 3 | The Going Home | letting go | **own** — the child repeats everything unprompted, in reverse |
 
 ---
 
@@ -95,9 +91,10 @@ character, no villain, no failure state.
 
 Stage directions: `[EGG: pose]` — one of the five poses the Rite is allowed
 (`idle · curious · thinking · excited · sleep`). Lumo never names a control.
-Every beat waits for the child, indefinitely.
+Every beat waits for the child, indefinitely. `[LOOK]` is a deliberate silence —
+no line, no prompt, nothing asked. The child just looks at what they made.
 
-### Page 1 — The Falling
+### Page 1 — The Falling · *discover*
 
 > **LUMO:** Every story starts somewhere. This one starts in the sky.
 > *What colour is your sky tonight?*
@@ -118,11 +115,13 @@ Every beat waits for the child, indefinitely.
 
 `[CHILD: rotates the star]` `[EGG: excited]`
 
+`[LOOK]` — two seconds. Nobody says anything.
+
 > **LUMO:** Down it comes.
 
 → **Turn the page**
 
-### Page 2 — The Finding
+### Page 2 — The Finding · *apply*
 
 > **LUMO:** It has to land somewhere. Let's make the place where it lands.
 
@@ -136,6 +135,10 @@ Every beat waits for the child, indefinitely.
 > **LUMO:** Somewhere to land, and something to land under.
 
 `[CHILD: adds a tree]` `[EGG: idle]`
+
+> **LUMO:** Trees are tall. Is that one tall enough?
+
+`[CHILD: resizes the tree]` `[EGG: thinking]`
 
 > **LUMO:** Now the star is here, and it is very small, and it is alone.
 > *Somebody is about to find it. Who?*
@@ -152,27 +155,41 @@ Every beat waits for the child, indefinitely.
 
 `[CHILD: adds text — their own words]` `[EGG: excited]`
 
+`[LOOK]` — hold.
+
 > **LUMO:** *(quietly)* Nobody told them to be kind. They just were.
 
 → **Turn the page**
 
-### Page 3 — The Going Home
+### Page 3 — The Going Home · *own*
 
-> **LUMO:** They stayed all night. Look — the sky is getting lighter.
+*Lumo stops offering. Every beat on this page is a capability the child has
+already used, asked for in one line without a hint.*
+
+> **LUMO:** They stayed all night. Make it morning.
 
 `[CHILD: adds a page and sets a dawn background]` `[EGG: curious]`
 
-> **LUMO:** The star is stronger now. Strong enough to go home.
-> *Take it up.*
+> **LUMO:** The star is stronger now. Take it home.
 
-`[CHILD: moves the star high, and makes it small]` `[EGG: thinking]`
+`[CHILD: moves the star up into the sky]` `[EGG: thinking]`
 
-> **LUMO:** Far away again. Where it belongs.
-> *How does your friend feel, watching it go?*
+> **LUMO:** Further. It's a long way up.
+
+`[CHILD: resizes the star smaller]` `[EGG: excited]`
+
+> **LUMO:** *(quietly)* Far away again. Where it belongs.
+
+`[LOOK]` — the longest pause in the story.
+
+> **LUMO:** How does your friend feel, watching it go?
 
 `[CHILD: adds an emotion or a heart]` `[EGG: excited]`
 
-`[BEAT]` — hold. Nothing moves.
+> **LUMO:** Every story needs somebody telling it, too.
+> *Tell us how it ends.*
+
+`[CHILD: adds text — the story's own last words]` `[EGG: idle]`
 
 > **LUMO:** You made something small, and you looked after it, and then you let
 > it go.
@@ -183,132 +200,153 @@ Every beat waits for the child, indefinitely.
 
 `[CHILD: names the story]` `[EGG: excited]`
 
+`[LOOK]` — let the name sit on the page.
+
 > **LUMO:** *(quietly)* You made that. It didn't exist, and now it does.
 
 `[EGG: idle]` — settles close to the child.
 
-> **LUMO:** Your Egg felt every bit of that.
-> *It's a little stronger than it was this morning.*
+> **LUMO:** And you did all of it. I only asked questions.
 
-`[BEAT]`
+> **LUMO:** Whatever you want to make next — you already know how to start.
 
-> **LUMO:** The Studio is yours now.
-> *Go and see what else is in it.*
-
-→ **Into the Studio**
+→ *continues into the sharing moment (`docs/STUDIO_RITE_SCRIPT.md` → Completion)*
 
 ---
 
 ## 5. Every interaction, and why it earns its place
 
-| # | Page | Story reason | Capability | Why it isn't instructional |
-|---|---|---|---|---|
-| 1 | 1 | The sky has to have a colour | **Page background** | The child is choosing the *mood of a night*, not filling a swatch |
-| 2 | 1 | Something must be up there to fall | **Add sticker (Emojis)** | They are casting the story's subject |
-| 3 | 1 | Is it near or far? | **Resize** | Size is *distance* here — a storytelling decision with a right answer only the child has |
-| 4 | 1 | Falling things tumble | **Rotate** | The one place rotation is obviously physics, not a slider |
-| 5 | 2 | It has to land somewhere | **Add page** | The page break *is* the fall. Sequence is felt, not explained |
-| 6 | 2 | Ground is not sky | **Page background** (2nd) | Repetition with a changed purpose — proves the control is a tool of theirs |
-| 7 | 2 | Something to land under | **Add sticker (Nature)** | Building a place, not decorating |
-| 8 | 2 | Somebody finds it | **Add sticker (child's choice)** | The single most authorial act in the story. Nobody is named for them |
-| 9 | 2 | Nobody helps from far away | **Move** | Position carries meaning: *near* is the whole point of the scene |
-| 10 | 2 | What do they say? | **Text** | Their words, in their story — not a caption exercise |
-| 11 | 3 | Dawn | **Add page + background** | Time passing, shown by colour |
-| 12 | 3 | The star goes home | **Move + Resize** | Reuses both, now *combined* and reversed — small means far again |
-| 13 | 3 | How do they feel? | **Add sticker (Emotions)** | Emotion is the story's ending, not an emoji picker |
-| 14 | 3 | Stories need names | **Story title** | The last thing an author does |
+| # | Page | Story reason | Capability | Use | Why it isn't instructional |
+|---|---|---|---|---|---|
+| 1 | 1 | The sky has to have a colour | **Background** | 1st — *place* | Choosing the mood of a night, not filling a swatch |
+| 2 | 1 | Something must be up there to fall | **Add sticker** | 1st — *subject* | Casting the story |
+| 3 | 1 | Is it near or far? | **Resize** | 1st — *distance* | Size is distance; only the child knows the answer |
+| 4 | 1 | Falling things tumble | **Rotate** | only use | The one place rotation is obviously physics |
+| 5 | 2 | It has to land somewhere | **Add page** | 1st — *the fall* | The page break *is* the fall |
+| 6 | 2 | Ground is not sky | **Background** | 2nd — *a different place* | Same control, new job — the child leads |
+| 7 | 2 | Something to land under | **Add sticker** | 2nd — *setting* | Building a place, not decorating |
+| 8 | 2 | Trees are tall | **Resize** | 2nd — *scale* | Not distance this time — proportion |
+| 9 | 2 | Somebody finds it | **Add sticker** | 3rd — *character* | The most authorial act in the story |
+| 10 | 2 | Nobody helps from far away | **Move** | 1st — *helping* | Position carries the meaning of the scene |
+| 11 | 2 | What do they say? | **Text** | 1st — *dialogue* | Their words, in their story |
+| 12 | 3 | Morning | **Add page + Background** | 2nd / 3rd — *time passing* | Colour as time, not place |
+| 13 | 3 | Take it home | **Move** | 2nd — *returning* | Asked in one line, no hint |
+| 14 | 3 | It's a long way up | **Resize** | 3rd — *distance again, reversed* | Closes the loop opened on page 1 |
+| 15 | 3 | How do they feel? | **Add sticker** | 4th — *emotion* | Emotion is the ending |
+| 16 | 3 | Tell us how it ends | **Text** | 2nd — *narration* | A different kind of writing from dialogue |
+| 17 | 3 | Stories need names | **Story title** | only use | The last thing an author does |
 
-**14 interactions. 8 distinct capabilities. Zero tools named aloud.**
+**17 interactions · 8 capabilities · 6 of them used two or more times.**
 
 ---
 
-## 6. Capabilities introduced
+## 6. Capability coverage
 
-**Covered naturally:** page background colour · adding stickers (four
-categories: Space, Nature, Characters/Animals, Emotions) · move · resize ·
-rotate · text · multiple pages · page sequence · story title · scene
-progression · simple three-act storytelling.
+| Capability | Uses | The situations it is learned in | First-hour core? |
+|---|---|---|---|
+| **Add sticker** | 4 | subject · setting · character · emotion | yes |
+| **Background colour** | 3 | night sky · ground · dawn *(place, place, time)* | yes |
+| **Resize** | 3 | distance · scale · distance reversed | yes |
+| **Move** | 2 | going to help · going home | yes |
+| **Text** | 2 | dialogue · narration | yes |
+| **Add page** | 2 | the fall · the morning | yes |
+| **Rotate** | 1 | tumbling | no — see below |
+| **Story title** | 1 | naming the finished story | yes, but once is right |
 
-**Deliberately not covered, with reasons:** Places / Frames / Experiences
-(need a World — §0) · reading the finished story (needs Publish — §0) · layer
-ordering (fiddly, and no beat needs it — §0) · speech bubbles (the Speech Bubble
-*shape* exists, but pairing a shape with a separate text object is two
-positioning steps; a plain Text object gives the same story beat in one) ·
-doodle, photo, family photos (personal-content paths that deserve their own
-moment, not a first-story obligation).
+**Rotate is the one single-use capability, deliberately.** It is not something
+most children reach for in their first hour, and the story offers exactly one
+honest reason to spin something. A second use would be invented rather than
+needed — and Principle 3 (*every interaction must earn its place*) outranks
+Principle 1 (*reuse for familiarity*) whenever they disagree. It stays because
+a falling star tumbling is real, and it stays once.
+
+**Story title is used once by nature** — a story has one name, and naming it is
+the closing act. Repeating it would be nonsense.
+
+**Still deliberately excluded:** Places / Frames / Experiences (need a World) ·
+reading the finished story (needs Story Book) · layer ordering (fiddly, and not
+first-hour) · speech-bubble shapes (a shape plus a separate text object is two
+positioning steps for the same story beat a plain Text gives in one) · doodle,
+photo, family photos (personal-content paths that deserve their own moment, not
+a first-story obligation).
 
 ---
 
 ## 7. The Story Egg through the story
 
 The Egg never speaks, never teaches, never guides. It reacts, and the reactions
-tell their own quiet arc:
+form their own quiet arc:
 
-| Moment | Pose | Reading |
-|---|---|---|
-| The sky is chosen | `curious` | interest |
-| The star appears | `excited` | delight |
-| Distance, tumbling, the move | `thinking` | attention |
-| Somebody is chosen | `excited` | the story's warmest beat so far |
-| The words are written | `excited` | — |
-| The star goes home | `thinking` → `excited` | — |
-| The story is named | `excited` → `idle` | settles, close |
-| Long pause anywhere | `sleep` → wakes `curious` | never nags |
+| Moment | Pose |
+|---|---|
+| The sky is chosen | `curious` |
+| The star appears | `excited` |
+| Distance, scale, the move | `thinking` |
+| Somebody is chosen | `excited` |
+| The star goes home | `thinking` → `excited` |
+| The last words are written | `idle` |
+| The story is named | `excited` → `idle`, settles close |
+| Long pause anywhere | `sleep` → wakes `curious` |
 
-**Curiosity is planted exactly twice, and never explained.** Lumo says *"Your
-Egg felt every bit of that"* and *"a little stronger than it was this morning."*
-Nothing about hatching, Companions, or the Ceremony. The child leaves with a
-question, which is the point.
+**Nothing about hatching, Companions or the Ceremony is said.** The Egg simply
+watches the whole thing happen. The closing lines no longer claim it grew — the
+Rite's own Act I/II copy already established that nobody knows what is inside,
+and the ending lets that stand.
 
 ---
 
 ## 8. Teaching objectives per page
 
-| Page | Learned by doing | Never said aloud |
+| Page | Learned by doing | The child's state at the end |
 |---|---|---|
-| 1 | A page is a moment. Objects have size and angle. Colour sets mood. | "This is the resize control" |
-| 2 | Stories move across pages. Position means something. You choose the cast. Words are yours. | "Add a text object" |
-| 3 | Endings are made, not found. Feelings belong on the page. Stories are named. | "Now publish" |
+| 1 | A page is a moment. Things have size and angle. Colour sets mood. | *"I've seen how this works."* |
+| 2 | Stories move across pages. Position means something. You choose the cast. Words are yours. | *"I've done that before."* |
+| 3 | Endings are made. Everything reverses. Stories are named. | *"I did that without being shown."* |
+
+Page 3 is the graduation, and it is designed to feel like one: Lumo drops from
+two-line prompts to single sentences, and every capability asked for is one the
+child has already used. Nothing new is introduced after the halfway point.
 
 ---
 
 ## 9. Time
 
-**Honest estimate: 7–9 minutes**, not the 3–5 the brief targets.
+**Honest estimate: 9–11 minutes.**
 
-14 interactions is the cost of the coverage requested. At roughly 20–30 seconds
-each for a child locating a control for the first time, plus Lumo's lines
-between, 3–5 minutes is not reachable without cutting.
+Seventeen interactions, three of which are now repeats a child performs faster
+than the first time. The earlier revision of this document offered a cut list to
+reach five minutes; **it has been withdrawn** — the direction is explicit that
+coverage must not be reduced and familiarity outranks brevity.
 
-**If 5 minutes is firm, cut in this order** — each removes one interaction and
-costs the least story:
-
-1. **Rotate** (#4) — the star still falls; it just doesn't tumble. *−1*
-2. **Second background** (#6) — the ground keeps page 1's colour; Lumo says
-   *"it's darker down here"* instead. *−1*
-3. **Emotion sticker** (#13) — the ending rests on the text from page 2. *−1*
-4. **Tree** (#7) — the star lands in open grass. *−1*
-
-Cutting all four gives **10 interactions ≈ 5 minutes**, keeping all three
-pages, the character choice, the words, and the ending intact. I would not cut
-further: #8 (who finds it) and #10 (what they say) are the story.
+This is a real trade, and worth naming rather than hiding: the Rite is now
+roughly twice the length originally targeted, and it is mandatory. If session
+length becomes a problem in testing, the honest lever is **not** cutting
+capabilities but splitting the Rite — pages 1–2 before the Studio unlocks, page
+3 offered as the child's first return. That would be a change to Canon 6 and is
+not proposed here.
 
 ---
 
-## 10. Open question for the product owner
+## 10. Closing dialogue — confidence, not completion
 
-The closing line — *"a little stronger than it was this morning"* — commits to
-the Egg growing across many stories. `COMPANION_CANON.md` Canon 4 currently
-hatches the Egg at the **first Publish**, which for most children will be
-minutes after this story ends. The promise and the mechanic disagree.
+The final beats were rewritten under Principle 4. What changed and why:
 
-This is the same tension already flagged against the Screen 1–2 copy. It wants
-one decision, not two: either the Egg hatches later (a change to Canon 4 and
-`MagicCard.shouldOfferAwakening()`), or these lines soften. **The story is
-written assuming the Egg hatches later**, because that is what makes the
-Starter Story mean something.
+| Removed | Why |
+|---|---|
+| *"Your Egg felt every bit of that. It's a little stronger than it was this morning."* | Claimed a growth mechanic the platform doesn't have, and contradicted the Rite's own "nobody knows what is inside" |
+| *"The Studio is yours now. Go and see what else is in it."* | Reads as a door being unlocked — a reward for finishing |
+
+| Added | Why |
+|---|---|
+| *"And you did all of it. I only asked questions."* | Names the child as the author of everything that just happened. This is the confidence line; Lumo explicitly removes himself |
+| *"Whatever you want to make next — you already know how to start."* | Points forward at their own work, not back at a completed exercise |
+
+The Rite's own Completion screen then asks whether they would like the story to
+become part of VihuPlanet (Decision 7 as rewritten). The child leaves having
+made something, been told they made it, and chosen what happens to it.
 
 ---
 
-*Design only. Nothing implemented. Awaiting sign-off on the story, the cut
-list in §9, and the Canon 4 question in §10.*
+*Design only. Story approved and unchanged; this revision refines pacing,
+reuse and the closing beats. Nothing about Studio Rite's architecture or
+implementation roadmap is altered.*

@@ -1038,3 +1038,28 @@ is what the sharing ending then pays off. One milder line remains flagged rather
 than changed: II.2's *"Every story you create nurtures your Egg and helps it
 grow."* Verified in a browser: both screens render the new copy, buttons intact,
 scrollbar width 0, cast fixed, no page errors.
+
+## Starter Story — Refined for Familiarity (design only)
+
+Story approved as the foundation and left intact; the refinement changed pacing,
+reuse and the closing rather than the plot. The success metric became *can the
+child confidently start their own story afterwards*, so **six of eight
+capabilities are now used two or more times, each in a genuinely different
+narrative situation** — background as place / place / time; resize as distance /
+scale / distance-reversed; move as going-to-help / going-home; text as dialogue /
+narration; add page as the fall / the morning. Three interactions were added
+(resize the tree, a separate move on page 3 where move+resize had been one step,
+and a closing narration line) taking the story from 14 to 17. **Rotate stays
+single-use, deliberately** — a second spin would be invented rather than needed,
+and Principle 3 outranks Principle 1 when they disagree. Page 3 was restructured
+as the graduation: Lumo drops from two-line prompts to single sentences, and
+nothing new is introduced after the halfway point. Added `[LOOK]` beats — real
+silences where nothing is asked — to preserve the wonder. Closing rewritten for
+confidence: *"And you did all of it. I only asked questions."* and *"Whatever
+you want to make next — you already know how to start."*, replacing the
+door-unlocking line and the *"a little stronger than this morning"* growth claim
+that contradicted the Rite's own "nobody knows what is inside". Time estimate
+revised up to **9–11 minutes** and the old cut list **withdrawn**, since the
+direction forbids reducing coverage; the honest alternative lever (splitting the
+Rite across the first return) is named but not proposed, as it would change
+Canon 6. Documentation only — no architecture, roadmap or code change.
