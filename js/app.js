@@ -1982,14 +1982,32 @@ function _beginBoot(){
 // that one case Studio's boot must still resolve identity somehow, so it
 // falls back to exactly what booting looked like before the Gateway
 // existed at all.
-function _afterGateway(){
+// Studio Rite (docs/COMPANION_CANON.md → Canon 6) sits between the
+// Gateway handing off and Studio actually booting: "Studio Rite extends
+// the existing Gateway. It does not replace it." Every path that would
+// previously have called _beginBoot() as the post-Gateway continuation
+// now calls this instead, so the Rite is reached whether the Gateway
+// played normally or fell back. Guarded with the same defensive shape
+// every other optional module in this file uses — a missing or broken
+// js/studioRite.js boots straight into Studio rather than stranding a
+// child in front of a gate that can't open.
+function _riteThenBoot(){
   try{
-    if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.list().length>0){
-      MagicCardUI.checkIdentityGate(_beginBoot);
+    if(typeof StudioRite!=='undefined' && StudioRite.gate){
+      StudioRite.gate(_beginBoot);
       return;
     }
   }catch(e){}
   _beginBoot();
+}
+function _afterGateway(){
+  try{
+    if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.list().length>0){
+      MagicCardUI.checkIdentityGate(_riteThenBoot);
+      return;
+    }
+  }catch(e){}
+  _riteThenBoot();
 }
 function _runBootstrap(){
   // The ONE deliberate exception to "every launch sees the Gateway" —
@@ -2017,7 +2035,12 @@ function _runBootstrap(){
   // remaining degrade path, straight to _afterGateway()'s own fallback.
   try{
     if(typeof GatewaySequence!=='undefined' && GatewaySequence.begin){
-      GatewaySequence.begin(_beginBoot);
+      // Hands off to the Studio Rite rather than straight to _beginBoot()
+      // — one continuous journey, Gateway into Rite into Studio. The
+      // HOME_RETURN_FLAG path above deliberately still goes direct: a
+      // mid-session return to the dashboard is not a fresh arrival, and
+      // is not a moment to gate anyone on a first chapter.
+      GatewaySequence.begin(_riteThenBoot);
       return;
     }
   }catch(e){}
