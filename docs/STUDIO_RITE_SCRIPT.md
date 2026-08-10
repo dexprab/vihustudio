@@ -36,44 +36,46 @@ is the next breath.*
 
 `[EGG: idle]` — the Egg is simply there, close, already his.
 
-> **LUMO:** This is VihuStudio.
-> *Every story in VihuPlanet begins in a place like this.*
+> **LUMO:** Welcome to VihuStudio.
+> *Every story in VihuPlanet begins here.*
 
-`[BEAT]`
+`[EGG: curious]` — the Egg glows softly as it is named, then settles.
 
-> **LUMO:** Stories are how we keep the things we love.
-> *A day, a friend, a dragon you invented — a story keeps it real.*
-
-`[EGG: curious]` — the Egg tilts toward the child, as if it heard the word
-*dragon*.
-
-> **LUMO:** Someone brought this Egg here for you.
-> *It has been waiting.*
-
-`[BEAT]` — the Egg glows softly, then settles.
+> **LUMO:** This Story Egg has been entrusted to you.
+> *Every story you create helps it grow a little stronger.*
 
 `[EGG: idle]`
 
-**Emotional beat:** *arrival, and being expected.* The child has not been asked
-to do anything yet. Something was already waiting for them.
+> **LUMO:** One day it will be ready.
+> *Until then, it will quietly travel beside you on every adventure.*
 
-**Vocabulary introduced:** **Story** — used, never defined.
+→ **Let's Begin**
+
+**Emotional beat:** *arrival, and being entrusted.* The child has not been asked
+to do anything yet. Something was already waiting for them, and it is now
+theirs to look after.
+
+**Vocabulary introduced:** **Story**, **Story Egg** — used, never defined.
 
 ---
 
 ## Act II — Who am I?
 
-> **LUMO:** Everyone who finds their way here is a Traveller.
-> *You are a Traveller. You just arrived.*
+> **LUMO:** Everyone who arrives here is a Traveller.
+> *Today, your journey begins.*
 
 `[EGG: curious]`
 
-> **LUMO:** Travellers who make something become Creators.
-> *That's the only difference. Making something.*
+> **LUMO:** Travellers create stories.
+> *Every story you create nurtures your Egg and helps it grow.*
 
-`[BEAT]`
+`[EGG: excited]`
 
-> **LUMO:** Would you like to make something?
+> **LUMO:** When the time is right...
+> *Your Egg will become a lifelong Companion, and every story after that will
+> help your Companion learn, grow and mature with you.*
+
+→ **Start My First Story**
 
 `[CHILD: begins]` — a single, unmissable way forward. No choice of type, no
 World to pick, no settings.
@@ -86,10 +88,18 @@ Rite.*
 > **LUMO:** There. Your first page.
 > *It's empty on purpose. Empty is where everything starts.*
 
-**Emotional beat:** *the promotion is earned, not granted.* Lumo defines
-Traveller and Creator by the act that separates them, then immediately offers
-the child that act. The word "Creator" is never applied to the child by
-announcement — they will simply have become one by Act IV.
+**Emotional beat:** *the promotion is earned, not granted.* Lumo names what a
+Traveller does, then immediately offers the child the doing of it. The word
+"Creator" is never applied to the child by announcement — they will simply have
+become one by Act IV.
+
+**Open against canon, flagged not silently resolved.** This screen promises
+that the Egg grows over *many* stories and hatches "when the time is right",
+but `COMPANION_CANON.md` Canon 4 hatches it at the **first** Publish — which
+may be minutes later. It also promises a Companion that will "learn, grow and
+mature with you", which is Canon 5's *Memory* tier, listed as **not started**
+and explicitly out of scope for Companion v1. Either the copy softens or the
+canon moves; both are product decisions, and neither has been made here.
 
 **Vocabulary introduced:** **Traveller**, **Creator**.
 

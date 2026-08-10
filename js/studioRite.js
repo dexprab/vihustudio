@@ -88,29 +88,32 @@ const StudioRite=(function(){
   // Creator Ceremony and must never appear here.
   const SCREENS=[
     // ---- Act I — Where am I? (full-screen stage)
+    // The glow lands on the line about the Egg itself — Canon 1 allows
+    // the Egg pose, glow and magical effects, and nothing else.
     {lines:[
       {lumo:'wave', egg:'idle',
-       line:{title:'This is VihuStudio.',
-             subtitle:'Every story in VihuPlanet begins in a place like this.'}},
-      {lumo:'talk', egg:'curious',
-       line:{title:'Stories are how we keep the things we love.',
-             subtitle:'A day, a friend, a dragon you invented — a story keeps it real.'}},
-      {lumo:'curious', egg:'idle', effect:'glow',
-       line:{title:'Someone brought this Egg here for you.',
-             subtitle:'It has been waiting.'}}
-     ], end:{move:'Move ahead'}},
+       line:{title:'Welcome to VihuStudio.',
+             subtitle:'Every story in VihuPlanet begins here.'}},
+      {lumo:'talk', egg:'curious', effect:'glow',
+       line:{title:'This Story Egg has been entrusted to you.',
+             subtitle:'Every story you create helps it grow a little stronger.'}},
+      {lumo:'curious', egg:'idle',
+       line:{title:'One day it will be ready.',
+             subtitle:'Until then, it will quietly travel beside you on every adventure.'}}
+     ], end:{move:"Let's Begin"}},
 
     // ---- Act II — Who am I? Ends on the one unmissable way forward.
     {lines:[
       {lumo:'talk', egg:'curious',
-       line:{title:'Everyone who finds their way here is a Traveller.',
-             subtitle:'You are a Traveller. You just arrived.'}},
+       line:{title:'Everyone who arrives here is a Traveller.',
+             subtitle:'Today, your journey begins.'}},
       {lumo:'curious', egg:'curious',
-       line:{title:'Travellers who make something become Creators.',
-             subtitle:"That's the only difference. Making something."}},
+       line:{title:'Travellers create stories.',
+             subtitle:'Every story you create nurtures your Egg and helps it grow.'}},
       {lumo:'wave', egg:'excited',
-       line:{title:'Would you like to make something?'}}
-     ], end:{choice:'Yes'}, opensStudio:true},
+       line:{title:'When the time is right...',
+             subtitle:'Your Egg will become a lifelong Companion, and every story after that will help your Companion learn, grow and mature with you.'}}
+     ], end:{choice:'Start My First Story'}, opensStudio:true},
 
     // ---- Act III — What do I do here? (band, over the live editor)
     // Each screen pairs Lumo's reaction to what the child just did with
