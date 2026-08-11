@@ -47,6 +47,8 @@ const StoryPlayer=(function(){
   // rather than being told, so the button stays the only thing a child
   // has to press and nothing has to call back into the Rite.
   let _plays=0;
+  let _first=true;        // the opening page appears, it does not turn
+  let _lastIndex=0;
 
   function isOpen(){ return _open; }
 
@@ -60,9 +62,15 @@ const StoryPlayer=(function(){
   function _build(){
     const overlay=_el('div','story-player');
     const stage=_el('div','story-player-stage');
-    const canvas=document.createElement('canvas');
-    canvas.className='story-player-canvas';
-    stage.appendChild(canvas);
+    // Two canvases, not one. A page turn needs the page being left and
+    // the page being arrived at to exist at the same moment; with a
+    // single canvas the only possible transition is a hard cut, which is
+    // what this looked like before.
+    const book=_el('div','story-player-book');
+    const a=document.createElement('canvas'); a.className='story-player-canvas story-player-face';
+    const b=document.createElement('canvas'); b.className='story-player-canvas story-player-face';
+    book.appendChild(b); book.appendChild(a);
+    stage.appendChild(book);
 
     const close=_el('button','story-player-close','✕');
     close.type='button';
@@ -81,7 +89,8 @@ const StoryPlayer=(function(){
     overlay.appendChild(close);
     overlay.appendChild(counter);
     document.body.appendChild(overlay);
-    return {overlay:overlay,stage:stage,canvas:canvas,prev:prev,next:next,close:close,counter:counter};
+    return {overlay:overlay,stage:stage,book:book,faces:[a,b],front:0,
+            prev:prev,next:next,close:close,counter:counter};
   }
 
   function _clearTimer(){ if(_timer){ clearTimeout(_timer); _timer=null; } }
@@ -93,6 +102,56 @@ const StoryPlayer=(function(){
     _audio=null;
   }
 
+  function _renderTo(canvas,slide,index){
+    try{
+      SlideRenderer.init(canvas,{adaptiveViewport:true});
+      const title=document.getElementById('bookTitle');
+      SlideRenderer.render(SlideRenderer.buildPayload(slide,{
+        page:index+1,
+        totalPages:_slides.length,
+        defaultBookTitle:title?title.value:''
+      }));
+    }catch(e){}
+  }
+
+  function _reducedMotion(){
+    try{ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
+
+  // Paints the page onto the BACK face and turns it to the front. The
+  // outgoing page hinges about its spine edge, which is what makes this
+  // read as a book rather than a slideshow; going back hinges the other
+  // way, so the gesture always matches the direction of travel.
+  function _paint(slide,index){
+    const back=_els.faces[1-_els.front];
+    const front=_els.faces[_els.front];
+    _renderTo(back,slide,index);
+    if(_first || _reducedMotion()){
+      _first=false;
+      front.classList.remove('is-front');
+      back.classList.add('is-front');
+      _els.front=1-_els.front;
+      return;
+    }
+    const dir=(index<_lastIndex)?'back':'fwd';
+    _lastIndex=index;
+    back.classList.add('is-front');
+    // The arriving page is beneath; the leaving page swings away and is
+    // hidden past 90 degrees by backface-visibility, so its mirror image
+    // is never seen.
+    front.classList.add(dir==='fwd'?'is-turning':'is-turning-back');
+    const done=function(){
+      front.classList.remove('is-front','is-turning','is-turning-back');
+      _els.front=1-_els.front;
+      front.removeEventListener('transitionend',done);
+    };
+    front.addEventListener('transitionend',done);
+    // A transition that never fires (a tab in the background) must not
+    // strand the book with two visible faces.
+    setTimeout(function(){ try{ done(); }catch(e){} },900);
+  }
+
   // Draws page `i` and starts whatever holds it on screen — its own
   // narration if it has one, a plain timer if it does not.
   function _show(i){
@@ -101,15 +160,7 @@ const StoryPlayer=(function(){
     _i=Math.max(0,Math.min(i,_slides.length-1));
     const slide=_slides[_i];
 
-    try{
-      SlideRenderer.init(_els.canvas,{adaptiveViewport:true});
-      const title=document.getElementById('bookTitle');
-      SlideRenderer.render(SlideRenderer.buildPayload(slide,{
-        page:_i+1,
-        totalPages:_slides.length,
-        defaultBookTitle:title?title.value:''
-      }));
-    }catch(e){}
+    _paint(slide,_i);
 
     _els.counter.textContent=(_i+1)+' / '+_slides.length;
     _els.prev.disabled=(_i===0);
@@ -170,6 +221,7 @@ const StoryPlayer=(function(){
     try{ _returnTo=(AppState&&AppState.currentSlide)||0; }catch(e){ _returnTo=0; }
 
     _els=_build();
+    _first=true; _lastIndex=0;
     _open=true;
     _plays++;
     try{ document.body.classList.add('story-player-open'); }catch(e){}

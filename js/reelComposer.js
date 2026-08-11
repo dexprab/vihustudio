@@ -55,13 +55,31 @@ const ReelComposer=(function(){
       && !!(window.AudioContext||window.webkitAudioContext);
   }
 
-  // Preference order mirrors voiceRecorder.js's own audio list —
-  // expect webm in practice on Chromium; mp4 is the fallback shape.
+  // MP4 FIRST, and only when a REAL codec string says so.
+  //
+  // WebM is the wrong default for the people these videos are made for:
+  // it does not play in iOS Photos, in Messages, or in most of the
+  // places a parent actually sends a child's story. Chromium has
+  // supported H.264 recording since 126 and Safari has always done MP4,
+  // so on the browsers this product is used in, MP4 is available — it
+  // was simply never asked for, because the old list put webm first and
+  // left bare 'video/mp4' as a last resort.
+  //
+  // The explicit avc1 strings come first BECAUSE bare 'video/mp4' cannot
+  // be trusted: measured on the Chromium bundled here (141), every
+  // explicit H.264 string reports false while bare 'video/mp4' reports
+  // TRUE — a build with no proprietary codecs still claiming the
+  // container. Preferring the bare string would hand that build a
+  // container it cannot fill. Asking for the codec is the only question
+  // whose answer means anything, so the bare string is dropped entirely
+  // rather than kept as a fallback.
   const MIME_CANDIDATES=[
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',   // H.264 baseline + AAC
+    'video/mp4;codecs=avc1.4d002a,mp4a.40.2',   // H.264 main + AAC
+    'video/mp4;codecs=avc1,mp4a.40.2',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4'
+    'video/webm'
   ];
   function _pickMime(){
     if(typeof MediaRecorder==='undefined'||typeof MediaRecorder.isTypeSupported!=='function') return '';

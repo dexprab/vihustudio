@@ -11263,3 +11263,47 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
    screen while it is up, and the dock is not a second guide competing
    with it — see _watchForModal in js/studioRite.js. */
 .studio-rite-overlay.studio-rite-yield{ display:none !important; }
+
+/* ---- The page turn --------------------------------------------------
+   Two stacked faces inside a perspective box. The page being left hinges
+   about its spine edge and is hidden past 90 degrees, so its mirror is
+   never seen; the page being arrived at is already painted underneath. */
+.story-player-stage{ perspective:1800px; }
+.story-player-book{
+  position:relative;
+  /* Explicitly sized. Two stacked canvases in a content-sized grid have
+     nothing to bound them, so the arriving page rendered at its own
+     1080x1350 and overflowed the stage — visible only mid-turn, when
+     both faces are up at once. */
+  width:100%;
+  height:100%;
+  transform-style:preserve-3d;
+}
+.story-player-face{
+  /* Absolutely placed with inset:0 and auto margins rather than as grid
+     items. A grid row is content-sized, so max-height:100% on an item
+     resolves against a height that depends on the item itself and
+     constrains nothing — which is why the arriving page overflowed. An
+     absolute box against a definite parent has a real percentage to
+     resolve against, and auto margins still centre it. */
+  position:absolute;
+  inset:0;
+  margin:auto;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  opacity:0;
+  backface-visibility:hidden;
+  transform-origin:left center;
+  transition:transform .62s cubic-bezier(.42,0,.28,1), filter .62s ease;
+}
+.story-player-face.is-front{ opacity:1; z-index:2; }
+.story-player-face.is-turning{ transform:rotateY(-158deg); filter:brightness(.72); }
+.story-player-face.is-turning-back{ transform:rotateY(158deg); filter:brightness(.72); }
+/* Whichever face is arriving sits under the one that is leaving. */
+.story-player-face.is-turning,
+.story-player-face.is-turning-back{ z-index:3; }
+@media (prefers-reduced-motion: reduce){
+  .story-player-face{ transition:none; }
+}

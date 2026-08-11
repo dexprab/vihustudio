@@ -296,6 +296,14 @@ const StudioRite=(function(){
   // loses the thread of what they are making. Deliberately a reference,
   // not an instruction — it never competes with the line Lumo is
   // speaking, and it never changes.
+  // How long the child has to be still before a beat counts as finished.
+  // Long enough to cover the gap between two colour taps or two words of
+  // a title; short enough that a child who really has stopped is not
+  // left waiting on Lumo.
+  const SETTLE_MS=1800;
+  // Beats with nothing to settle — they happen once, in an instant.
+  const DISCRETE={'page-added':1,'story-played':1,'story-shared':1};
+
   const MISSION='Our story: a star falls from the sky, and someone helps it home.';
 
   const ASSETS_BASE='assets/';
@@ -1092,15 +1100,43 @@ const StudioRite=(function(){
         },IDLE_DRIFT_MS);
       };
       const cleanup=function(){
+        if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
         _clearNudge();
         if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
         if(poll){ clearInterval(poll); poll=null; }
         if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
         if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
       };
+      // A beat used to end on the FIRST qualifying change, which is not
+      // the same thing as the child being finished. "Make your star
+      // smaller" is satisfied by the first pixel of a drag, so Lumo
+      // moved on while a child was still resizing; naming a story ended
+      // on the first keystroke. The condition now only ARMS the beat,
+      // and the beat ends once the child has actually stopped — any
+      // further change restarts the wait. A child who keeps working
+      // simply keeps Lumo waiting, which is right rather than costly:
+      // the Rite is theirs to pace.
+      //
+      // Discrete beats are exempt. Copying a page, pressing Play and
+      // sharing all happen in an instant and have no "still working"
+      // state, so waiting there would just be dead air.
+      const settles=!DISCRETE[kind];
+      let settleTimer=null, settleSig=null;
+      const finish=function(){
+        if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
+        cleanup();
+        try{ if(_els) _els.controls.innerHTML=''; }catch(e){}
+        resolve();
+      };
+      const armSettle=function(){
+        if(settleTimer) clearTimeout(settleTimer);
+        settleSig=_workSignature();
+        settleTimer=setTimeout(finish,SETTLE_MS);
+      };
+
       const check=function(){
         if(!_conditionMet(kind,baseline)){
-          // fall through
+          if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
           rearmIdle();
           // They changed something, and it was not the thing being
           // waited on. Say the instruction again — at most once every
@@ -1113,9 +1149,11 @@ const StudioRite=(function(){
           }
           return;
         }
-        cleanup();
-        try{ if(_els) _els.controls.innerHTML=''; }catch(e){}
-        resolve();
+        if(!settles){ finish(); return; }
+        // Armed. Now wait for the child to actually stop.
+        if(!settleTimer){ armSettle(); return; }
+        const sig=_workSignature();
+        if(sig!==settleSig) armSettle();   // still working — wait again
       };
       if(declineLabel && _els){
         try{
