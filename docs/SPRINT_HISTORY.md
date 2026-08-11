@@ -1279,3 +1279,36 @@ child's own colour at centre and corner (Creator Rule 5 — Publish honours the
 centre pane), the flag survives `serialize()` and `duplicatePage()`, the full
 18/18 Rite run still passes with three distinct pages and zero page errors, and
 both goldenBuild suites pass unchanged.
+
+- Studio Rite: the band stops fighting the editor, and the Rite quiets the
+Studio. Two failures spotted together on a 1359x581 window. First, the mission
+row and the conversation were painted on top of each other — both sat in one
+grid cell (`grid-area:body`), one aligned to the start and one to the end, which
+reads as two stacked rows only while the cell is tall enough for both; measured,
+both began at y=358. The band is now genuinely two rows, so it cannot recur at
+any height, and the mission is `justify-self:start` so it lines up with Lumo's
+own text instead of floating over the page. Second, the band floated over the
+child's page and covered the bottom 83px of it: lifting it clear of the Object
+Strip was never enough, because the page and the band were competing for the
+same space. The band now publishes its real height as `--rite-band-h`, kept
+honest by a ResizeObserver since it grows and shrinks as lines accumulate, and
+`.preview-wrapper` gives up exactly that much room while the Rite runs — the
+page shrinks to sit above the band. Then, on the product owner's own steer
+("in the beginning we can hide the non essentials if space crunch is the
+issue"), the Rite quiets the Studio: the Traveller save notice (123px of corner
+whose call to action is "Publish Now", a word Canon 7 forbids inside the Rite),
+Open/Save As/Publish/Home/autosave/theme/Magic Card badge, the build footer,
+"+ Add Page" (the story teaches copying, and a blank page has no star on it),
+the five Add cards the story never asks for (Doodle, Photo, Family Photos, From
+This World, Voice), and the Object Strip's grown-up legend. Everything else
+stays — thumbnails and their ⋮, Emojis/Shapes/Text, Background, the Strip cards,
+`#bookTitle`. Every rule is scoped to `body.studio-rite-running`; a full run
+confirms the Studio comes back whole afterwards (body class back to
+`light-theme`, all eight Add cards shown, every button back, preview margin back
+to 12px, `--rite-band-h` cleared). `js/contextPanel.js` gained one additive
+line putting each Add card's own id on the element as `data-add-id`, so anything
+outside the panel has a stable handle that is not child-facing copy. Also made
+the plain-paper mark apply to every page while the Rite runs rather than only
+the first and its copies — one page in three with a white box through it is
+worse than none. Verified: 18/18 run, three distinct pages, nudge still reaching
+⋮ and Duplicate Page, no page errors, both goldenBuild suites pass.

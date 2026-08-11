@@ -278,6 +278,8 @@ const StudioRite=(function(){
   let _packs={};              // role -> {basePath,pkg}
   let _timer=null;
   let _unobserve=null;
+  let _paperGuard=null;       // unsubscribe for the plain-paper observer
+  let _bandRO=null;           // ResizeObserver keeping --rite-band-h honest
   let _running=false;
   let _voiceId=null;   // the clip currently speaking, so it can be silenced
   let _bgTouched=false; // the child actually used the background control
@@ -1064,8 +1066,42 @@ const StudioRite=(function(){
     });
   }
 
+  // The Rite's pages are sheets of paper, not picture cards. A page
+  // normally carries an empty Artwork Place — a large white rectangle
+  // over most of it — and the child's Background colour paints only the
+  // paper AROUND that, so "make the sky dark" left the biggest thing on
+  // the page white.
+  //
+  // Applied to EVERY page while the Rite runs, not just the first.
+  // Duplicating carries the mark, but a page made any other way would
+  // not, and one page in three with a white box through it is worse
+  // than none — so this is enforced rather than assumed.
+  // Re-entrancy: this runs as a PageRuntime observer AND asks
+  // PageRuntime to redraw, so without the latch the redraw would call it
+  // straight back. The second pass finds nothing to touch and stops on
+  // its own, but a latch says so outright instead of relying on that.
+  let _inPaper=false;
+  function _plainPaper(){
+    if(_inPaper) return;
+    _inPaper=true;
+    try{
+      const slides=(AppState&&AppState.slides)||[];
+      let touched=false;
+      slides.forEach(function(s){
+        if(!s) return;
+        if(!s.metadata) s.metadata={};
+        if(!s.metadata.noPlace){ s.metadata.noPlace=true; touched=true; }
+      });
+      if(touched) PageRuntime.notify();
+    }catch(e){}
+    _inPaper=false;
+  }
+
   function _teardown(){
     _running=false;
+    if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
+    if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
+    try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
     try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
     _clearNudge();
     _hush();
@@ -1095,6 +1131,30 @@ const StudioRite=(function(){
   // page — the nudge points at it. The band also wants the bottom of the
   // screen. Both cannot have it, so the band is lifted to sit directly
   // above the Strip, measured live rather than hardcoded.
+  // Keeps `--rite-band-h` on <body> in step with the band's real
+  // height. The preview column reads it and gives up exactly that much
+  // room, so the child's page is never underneath the band. Falls back
+  // to a single measurement where ResizeObserver is unavailable, which
+  // is still right for the common case (the band's height is set by its
+  // two rows, and both are laid out by then).
+  function _watchBandHeight(){
+    const write=function(){
+      try{
+        const p=_els&&_els.panel;
+        const h=p?Math.round(p.getBoundingClientRect().height):0;
+        document.body.style.setProperty('--rite-band-h',(h>0?h:0)+'px');
+      }catch(e){}
+    };
+    if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
+    try{
+      if(typeof ResizeObserver!=='undefined' && _els && _els.panel){
+        _bandRO=new ResizeObserver(write);
+        _bandRO.observe(_els.panel);
+      }
+    }catch(e){}
+    requestAnimationFrame(write);
+  }
+
   function _liftBandClearOfStrip(){
     try{
       const strip=document.querySelector('.object-strip');
@@ -1123,6 +1183,18 @@ const StudioRite=(function(){
         }
       }catch(e){}
       _els.overlay.style.setProperty('--rite-band-inset',inset+'px');
+      // The band used to simply float over the editor, and on a short
+      // viewport it covered the bottom of the child's own page — 83px
+      // of it, measured at 1359x581. Publishing the band's real height
+      // onto <body> lets the preview column give up exactly that much,
+      // so the page shrinks to fit above the band instead of hiding
+      // behind it. No circularity: the band's height is set by its own
+      // text, and the column reacting to it never changes that.
+      //
+      // Measured continuously, not once: the band grows and shrinks as
+      // lines accumulate and screens change, and a height read a single
+      // time at the start would be wrong for most of the Rite.
+      _watchBandHeight();
     }catch(e){}
   }
 
@@ -1173,17 +1245,10 @@ const StudioRite=(function(){
               try{
                 if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
               }catch(e){}
-              // The Rite's page is one sheet of paper, not a picture
-              // card. A blank page normally carries an empty Artwork
-              // Place — a large white rectangle over most of the page —
-              // and the child's Background colour paints only the paper
-              // AROUND it, so "make the sky dark" left the biggest
-              // thing on the page white. Marking the page as having no
-              // picture area makes the colour the child chooses BE the
-              // page. Duplicating carries the mark to pages 2 and 3.
+              _plainPaper();
               try{
-                const p=PageRuntime.getActivePage();
-                if(p){ if(!p.metadata) p.metadata={}; p.metadata.noPlace=true; PageRuntime.notify(); }
+                if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
+                  _paperGuard=PageRuntime.observe(_plainPaper);
               }catch(e){}
             });
           });

@@ -10741,18 +10741,36 @@ body.studio-rite-running .companion-widget{ display:none !important; }
   text-overflow:ellipsis;
 }
 .studio-rite-overlay.studio-rite-has-mission.studio-rite-band .studio-rite-mission{ display:block; }
-/* In band mode the panel is a row: cast | mission+conversation | button.
-   The mission shares the middle column, stacked above the conversation. */
+/* In band mode the panel is two rows:
+
+     mission   mission   mission
+     cast      body      controls
+
+   The mission and the conversation used to share ONE grid cell
+   (`grid-area:body` on both, one aligned to the start and one to the
+   end). In a cell tall enough for both that reads as two stacked rows,
+   which is why it looked right at 800px; in the short band it really
+   is, they are painted on top of each other. Measured at 1359x581: both
+   started at y=358 and the two texts overlapped on screen. Two real
+   rows cannot do that at any height. */
 .studio-rite-overlay.studio-rite-band .studio-rite-panel{
   grid-template-columns:auto minmax(0,1fr) auto;
-  grid-template-areas:'cast body controls';
+  grid-template-rows:auto auto;
+  grid-template-areas:
+    '.    mission .'
+    'cast body    controls';
+  row-gap:2px;
 }
 .studio-rite-overlay.studio-rite-band .studio-rite-cast{ grid-area:cast; }
 .studio-rite-overlay.studio-rite-band .studio-rite-controls{ grid-area:controls; }
-.studio-rite-overlay.studio-rite-band .studio-rite-mission,
-.studio-rite-overlay.studio-rite-band .studio-rite-convo{ grid-area:body; }
-.studio-rite-overlay.studio-rite-band .studio-rite-mission{ align-self:start; }
-.studio-rite-overlay.studio-rite-band .studio-rite-convo{ align-self:end; }
+.studio-rite-overlay.studio-rite-band .studio-rite-mission{
+  grid-area:mission;
+  /* The panel centres its items; the mission must line up with the
+     conversation underneath it instead, or it reads as a caption
+     floating over the page rather than a standing note above Lumo. */
+  justify-self:start;
+}
+.studio-rite-overlay.studio-rite-band .studio-rite-convo{ grid-area:body; align-self:end; }
 
 /* Story Play — the child watches their own pages turn. The band steps
    back so the pages are what they are looking at. */
@@ -10762,3 +10780,75 @@ body.studio-rite-running .companion-widget{ display:none !important; }
   .studio-rite-overlay.studio-rite-playing .studio-rite-convo,
   .studio-rite-overlay.studio-rite-playing .studio-rite-controls{ transition:none; }
 }
+
+/* ---- The Rite quiets the Studio -------------------------------------
+   "in the beginning we can hide the non essentials if space crunch is
+   the issue" — the product owner, after seeing the band fighting the
+   editor for room.
+
+   Every rule here is scoped to `body.studio-rite-running`, so it lasts
+   exactly as long as the Rite does and the Studio a child meets
+   afterwards is the whole Studio, untouched. Nothing is disabled and
+   nothing is removed from the DOM — these are the controls the Starter
+   Story never asks for and a six-year-old has no use for on their first
+   morning. It is the same rule the workspace already follows: the
+   editor should only carry controls that improve the ACTIVE workflow.
+
+   Deliberately still visible: the page thumbnails and their ⋮ (the
+   story's Copy This Page beat lives there), Emojis / Shapes / Text, the
+   Background tile, the Object Strip, and #bookTitle (the naming beat). */
+
+/* The save notice. It occupies 123px of the top-right corner and its
+   call to action is "Publish Now" — a word Canon 7 says a child is
+   never shown inside the Rite. */
+body.studio-rite-running .traveller-save-notice{ display:none !important; }
+
+/* Project plumbing. A child on their first story has nothing to open,
+   nothing to save as, and — again — is never shown "Publish". */
+body.studio-rite-running #openBtn,
+body.studio-rite-running #saveBtn,
+body.studio-rite-running #publishBtn,
+body.studio-rite-running #homeBtn,
+body.studio-rite-running #autosaveStatus,
+body.studio-rite-running #themeToggle,
+body.studio-rite-running #magicCardBadge{ display:none !important; }
+
+/* The build/release footer. */
+body.studio-rite-running #devFooter{ display:none !important; }
+
+/* The Object Strip's own legend — "Shows everything in this page. Tap
+   any object to select it." plus the edit/world key. Written for a
+   grown-up reading the interface; during the Rite it is 25px of the
+   child's page spent on a sentence they will not read, and Lumo is
+   already telling them what to do. The cards themselves stay. */
+body.studio-rite-running .object-strip-legend{ display:none !important; }
+
+/* The band no longer floats over the child's own page. It publishes its
+   real height as --rite-band-h (js/studioRite.js's _watchBandHeight),
+   and the preview column gives up exactly that much room, so the page
+   shrinks to sit above the band instead of disappearing behind it.
+   Measured before this rule at 1359x581: the band covered the bottom
+   83px of the page. The Object Strip below is untouched — the band is
+   already lifted clear of it. */
+body.studio-rite-running .preview-wrapper{
+  margin-bottom:var(--rite-band-h,0px);
+  transition:margin-bottom .18s ease;
+}
+@media (prefers-reduced-motion: reduce){
+  body.studio-rite-running .preview-wrapper{ transition:none; }
+}
+
+/* "+ Add Page" makes an EMPTY page, and the story teaches copying one
+   instead — a blank page would arrive with no star on it and, on page
+   3, nothing to move. The ⋮ menu right beside it stays. */
+body.studio-rite-running #addPageBtn{ display:none !important; }
+
+/* Add Something keeps only what the story asks for. Doodle, Photo,
+   Family Photos, From This World and Voice are all real capabilities a
+   child will meet the moment the Rite ends — they are just five more
+   decisions during the one beat that says "add a star". */
+body.studio-rite-running .context-add-card[data-add-id='doodle'],
+body.studio-rite-running .context-add-card[data-add-id='photo'],
+body.studio-rite-running .context-add-card[data-add-id='family'],
+body.studio-rite-running .context-add-card[data-add-id='fromWorld'],
+body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !important; }

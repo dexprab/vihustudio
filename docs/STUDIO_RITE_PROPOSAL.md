@@ -471,6 +471,49 @@ and no saved project changes. Verified: editor and publish both sample the
 child's own colour at the centre and the corner; the flag survives
 `serialize()` and `duplicatePage()`; both goldenBuild suites pass.
 
+## Where the band lives, and what the Studio hides while it is there
+
+Two separate failures, spotted together on a 1359×581 window.
+
+**The mission and the conversation were painted on top of each other.** Both
+were placed in one grid cell (`grid-area:body`), one aligned to the start and
+one to the end — which reads as two stacked rows only while the cell is tall
+enough for both. In the short band it is not, and the two texts overlapped on
+screen; measured, both began at `y=358`. The band is now genuinely two rows, so
+this cannot recur at any height.
+
+**The band floated over the child's own page**, covering the bottom 83px of it.
+Lifting it clear of the Object Strip was never enough, because the page and the
+band were both competing for the same space. The band now publishes its real
+height as `--rite-band-h` (kept honest by a `ResizeObserver`, since the band
+grows and shrinks as lines accumulate), and the preview column gives up exactly
+that much room. The page shrinks to fit *above* the band instead of hiding
+behind it.
+
+### The Rite quiets the Studio
+
+*"in the beginning we can hide the non essentials if space crunch is the
+issue."* Every rule is scoped to `body.studio-rite-running`, so it lasts exactly
+as long as the Rite does — verified after a full run: body class back to
+`light-theme`, all eight Add cards shown, every button back, preview margin back
+to `12px`, `--rite-band-h` cleared.
+
+| Hidden during the Rite | Why |
+|---|---|
+| Traveller save notice | 123px of the corner, and its call to action is **Publish Now** — a word Canon 7 says a child is never shown in the Rite |
+| Open · Save As · Publish · Home · autosave · theme · Magic Card badge | A child on their first story has nothing to open and nothing to save as |
+| Build/release footer | Never child-facing |
+| **+ Add Page** | The story teaches *copying* a page; a blank one has no star on it. The ⋮ beside it stays |
+| Doodle · Photo · Family Photos · From This World · Voice | Real capabilities they meet the moment the Rite ends — during "add a star" they are five more decisions |
+| Object Strip legend | 25px of a sentence written for a grown-up, while Lumo is already saying what to do |
+
+Deliberately still visible: the page thumbnails and their ⋮, Emojis · Shapes ·
+Text, the Background tile, the Object Strip cards, and `#bookTitle`.
+
+Nothing is disabled and nothing is removed from the DOM — this is the same rule
+the workspace already follows: *the editor should only carry controls that
+improve the active workflow*.
+
 ## Exploring is allowed — the path is offered, never enforced
 
 The question that follows the glow is what happens when the child taps

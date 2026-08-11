@@ -3252,6 +3252,12 @@ const ContextPanel=(function(){
       _addSomethingItems().forEach(function(item){
         const row=_el('button','context-add-card'+(item.comingSoon?' is-coming-soon':''));
         row.type='button';
+        // The item's own id, on the element. Additive and purely
+        // descriptive — it gives anything outside this panel a stable
+        // handle on a card that isn't its visible label (which is
+        // child-facing copy and can change). The Studio Rite uses it to
+        // quiet the cards its story never asks for.
+        row.setAttribute('data-add-id',item.id||'');
         const iconWrap=_el('span','context-add-card-icon',item.icon);
         row.appendChild(iconWrap);
         row.appendChild(_el('span','context-add-card-label',item.label));
