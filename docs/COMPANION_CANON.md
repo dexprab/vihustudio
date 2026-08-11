@@ -138,7 +138,7 @@ also carried on every claimed Magic Card):
 Story Dragon      -> Lumo (the Guardian, not a Story Companion)
 Dream Sprite      -> Nimbus
 Ink Spirit        -> Quill
-Bloomling
+Bloomling         -> Leafy
 Stardust Wisp
 Crystal Keeper
 Melody Spirit

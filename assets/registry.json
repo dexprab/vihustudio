@@ -27,6 +27,13 @@
       "species": "Ink Spirit",
       "path": "quill/",
       "role": "companion"
+    },
+    {
+      "id": "leafy",
+      "name": "Leafy",
+      "species": "Bloomling",
+      "path": "leafy/",
+      "role": "companion"
     }
   ]
 }
