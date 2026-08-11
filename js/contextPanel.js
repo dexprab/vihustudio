@@ -3229,6 +3229,24 @@ const ContextPanel=(function(){
     return items;
   }
 
+  // Drawn icons for the Add Something tiles. An emoji is a different
+  // picture on every operating system, which is a real problem for a
+  // product whose entire vocabulary is visual — and at tile size the
+  // system faces read as flat glyphs rather than as things a child
+  // might want to touch. Each entry is static, code-authored markup,
+  // keyed by the item id; anything without one falls back to the emoji
+  // it always used.
+  const ADD_ART={
+    stickers:'<svg viewBox="0 0 32 32" width="30" height="30"><circle cx="16" cy="16" r="12" fill="#FFD84D"/><circle cx="11.6" cy="13.6" r="1.9" fill="#3B2E00"/><circle cx="20.4" cy="13.6" r="1.9" fill="#3B2E00"/><path d="M10.4 19.4a6.4 6.4 0 0011.2 0" fill="none" stroke="#3B2E00" stroke-width="2" stroke-linecap="round"/><circle cx="8.2" cy="18.4" r="2.1" fill="#FF9EB5" opacity=".75"/><circle cx="23.8" cy="18.4" r="2.1" fill="#FF9EB5" opacity=".75"/></svg>',
+    shapes:'<svg viewBox="0 0 32 32" width="30" height="30"><circle cx="12" cy="12" r="7.5" fill="#5B9CF8"/><path d="M21 8l7 12H14z" fill="#F26D8B" opacity=".92"/><rect x="9" y="17" width="11" height="11" rx="2.6" fill="#9B7BEA" opacity=".9"/></svg>',
+    text:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="4" width="24" height="24" rx="7" fill="#FFFFFF"/><path d="M16 8.5l6 15h-3.1l-1.3-3.6h-6.2L10.1 23.5H7zm0 4.6l-2.1 5.4h4.2z" fill="#F2506A"/></svg>',
+    doodle:'<svg viewBox="0 0 32 32" width="30" height="30"><path d="M7 25l1.6-5 12-12 3.4 3.4-12 12z" fill="#FFD84D"/><path d="M20.6 8l3.4 3.4 2.2-2.2a2.4 2.4 0 00-3.4-3.4z" fill="#F4A0B6"/><path d="M7 25l1.6-5 1.7 1.7z" fill="#4A5578"/></svg>',
+    photo:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="7" width="24" height="18" rx="4" fill="#FFFFFF" stroke="#C6D2EC" stroke-width="1.6"/><circle cx="11" cy="13" r="2.6" fill="#FFD84D"/><path d="M7 23.4l6.4-7.4 4.6 5.4 3.4-3.4 4.6 5.4z" fill="#5BBE97"/></svg>',
+    family:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="3" y="9" width="26" height="16" rx="4.5" fill="#33477E"/><path d="M11.5 9l1.8-2.6h5.4L20.5 9z" fill="#33477E"/><circle cx="16" cy="17" r="5.4" fill="#8FB6F5"/><circle cx="16" cy="17" r="2.4" fill="#FFFFFF" opacity=".85"/></svg>',
+    fromWorld:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="13" width="24" height="15" rx="3" fill="#F2506A"/><rect x="3" y="9" width="26" height="6" rx="2.4" fill="#FF7B90"/><rect x="13.6" y="9" width="4.8" height="19" fill="#FFD84D"/><path d="M16 9c-3-4-8-1-4 2M16 9c3-4 8-1 4 2" fill="none" stroke="#FFD84D" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    voice:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="12" y="4" width="8" height="14" rx="4" fill="#33477E"/><path d="M8.5 15a7.5 7.5 0 0015 0" fill="none" stroke="#33477E" stroke-width="2.4" stroke-linecap="round"/><path d="M16 22.5V27M12 27h8" stroke="#33477E" stroke-width="2.4" stroke-linecap="round"/></svg>'
+  };
+
   function _buildAddSomethingAccordion(){
     const wrap=_el('div','context-add-accordion');
     const trigger=_el('button','context-add-trigger');
@@ -3258,7 +3276,9 @@ const ContextPanel=(function(){
         // child-facing copy and can change). The Studio Rite uses it to
         // quiet the cards its story never asks for.
         row.setAttribute('data-add-id',item.id||'');
-        const iconWrap=_el('span','context-add-card-icon',item.icon);
+        const art=ADD_ART[item.id];
+        const iconWrap=art?_el('span','context-add-card-icon'):_el('span','context-add-card-icon',item.icon);
+        if(art) iconWrap.innerHTML=art;
         row.appendChild(iconWrap);
         row.appendChild(_el('span','context-add-card-label',item.label));
         if(item.comingSoon){

@@ -13,8 +13,15 @@
   --text:#1a1a1a;
   --text-secondary:#666;
   --text-tertiary:#999;
-  --border-radius:12px;
-  --card-radius:16px;
+  /* Visual direction pass 2. Rounder, and separation by shadow instead
+     of hairline borders — the mockup lifts a white fill off a tinted
+     ground rather than drawing a line around it, which is most of why
+     the current editor reads as a spreadsheet. */
+  --border-radius:16px;
+  --card-radius:20px;
+  --shadow-sm:0 2px 8px rgba(30,47,94,.07);
+  --shadow:0 8px 22px rgba(30,47,94,.09);
+  --shadow-lg:0 18px 40px rgba(30,47,94,.14);
   --section-padding:16px;
   --section-gap:24px;
   --button-height:40px;
@@ -11063,3 +11070,70 @@ body.studio-rite-running #slideList{
    nothing for a child to go back TO — and a Back button they do not
    need is exactly the detour this fix exists to remove. */
 body.studio-rite-running .context-back-btn{ display:none !important; }
+
+/* ---- Visual direction pass 2: shape ---------------------------------
+   Cards and tiles stop being outlined and start being lifted. The one
+   real behavioural change is the selected state: a 3px gold RING rather
+   than a 1px gold border. A border says outlined; a ring says picked,
+   and picking is what these controls are for. */
+.context-add-card{
+  border:0;
+  border-radius:17px;
+  background:var(--bg);
+  box-shadow:var(--shadow-sm);
+  transition:transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.context-add-card:hover:not(.is-coming-soon){
+  border-color:transparent;
+  background:var(--bg);
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(30,47,94,.13);
+}
+.context-add-card:active:not(.is-coming-soon){ transform:translateY(0); }
+
+.object-card{
+  border:0;
+  border-radius:17px;
+  box-shadow:var(--shadow-sm);
+  transition:transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.object-card:hover{ border-color:transparent; transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(30,47,94,.13); }
+.object-card.selected{
+  background:#FFFCF3;
+  box-shadow:0 0 0 3px var(--gold), var(--shadow-sm);
+}
+body.dark-theme .object-card.selected{ background:rgba(245,197,66,.14); }
+.object-card-thumb{ border:0; border-radius:13px; }
+
+/* The drawn icons below need room to breathe and must not inherit the
+   emoji font metrics they replace. */
+.context-add-card-icon svg,
+.object-card-thumb svg{ display:block; }
+
+/* ---- The stage sky (js/stageSky.js) ---------------------------------
+   Decorative only. It sits behind the page and every control, cannot be
+   tapped, and never touches the page itself — the page is what Publish
+   reproduces, so nothing painted here may ever reach it. */
+.stage-sky{
+  position:absolute; inset:0; overflow:hidden;
+  pointer-events:none; z-index:0;
+}
+.preview-wrapper{ position:relative; }
+.preview-wrapper > *:not(.stage-sky){ position:relative; z-index:1; }
+.stage-sky-star{ position:absolute; animation:stage-sky-twinkle 3.6s ease-in-out infinite; }
+.stage-sky-star svg{ display:block; }
+.stage-sky-spark{ position:absolute; border-radius:50%; animation:stage-sky-twinkle 2.8s ease-in-out infinite; }
+.stage-sky-cloud{ position:absolute; opacity:.92; animation:stage-sky-drift 14s ease-in-out infinite alternate; }
+.stage-sky-cloud svg{ display:block; }
+@keyframes stage-sky-twinkle{
+  0%,100%{ opacity:.42; transform:scale(.86) rotate(0deg); }
+  50%{ opacity:1; transform:scale(1.1) rotate(6deg); }
+}
+@keyframes stage-sky-drift{ from{ transform:translateX(0) } to{ transform:translateX(22px) } }
+@media (prefers-reduced-motion: reduce){
+  .stage-sky-star,.stage-sky-spark,.stage-sky-cloud{ animation:none; }
+}
+/* The sky is a light-theme flourish; on the dark theme the workspace is
+   already a night, and white clouds on it read as smudges. */
+body.dark-theme .stage-sky{ display:none; }
