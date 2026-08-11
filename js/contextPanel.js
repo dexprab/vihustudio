@@ -642,10 +642,24 @@ const ContextPanel=(function(){
   // Falls back to the original raw input only in the (practically
   // unreachable) case CardDesigner hasn't loaded yet, so this can never
   // leave a caller with no colour control at all.
-  function _appendColourKit(row,colorValue,onInput){
+  // A page's own background wants a different set of colours from a pen
+  // or a letter. The shared kit's default palette is built for MARKS —
+  // strong reds, blacks, saturated blues, which are right for text and
+  // drawing and wrong behind a whole page, where they leave a child
+  // nowhere to put anything. These are skies and grounds: five pastels
+  // to sit behind a story, four deep tones for night and earth. Anything
+  // else is still one tap away on the kit's own custom picker.
+  //
+  // Deliberately passed only at the background call sites, not changed
+  // globally — every other control keeps the palette it needs.
+  const BACKGROUND_PALETTE=['#BFE3F7','#FBC9B6','#B9ECC8','#FCE8A8','#DCC6F7',
+                            '#1E2F5E','#7C5CE0','#1F7A45','#A06A3A'];
+
+  function _appendColourKit(row,colorValue,onInput,palette){
     if(typeof window.CardDesigner!=='undefined' && typeof window.CardDesigner.buildColourKit==='function'){
       window.CardDesigner.buildColourKit(row,{
         value:_safeColor(colorValue),
+        palette:palette||undefined,
         onChange:function(v){ onInput(v); }
       });
     }else{
@@ -1968,7 +1982,7 @@ const ContextPanel=(function(){
         // same shared debounce rather than calling ObjectStrip.refresh()
         // unconditionally on every tick.
         _debouncedObjectStripRefresh();
-      });
+      },BACKGROUND_PALETTE);
       container.appendChild(row);
       return;
     }
@@ -2001,7 +2015,7 @@ const ContextPanel=(function(){
       co.background=val;
       if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
       if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
-    });
+    },BACKGROUND_PALETTE);
     container.appendChild(row);
 
     _appendBackgroundImageControls(container,co);

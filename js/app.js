@@ -510,6 +510,18 @@ function markDirty(){ if(window.ProjectManager) ProjectManager.markDirty(); }
 // word in front of the child changes (Canon 7). Everything downstream,
 // including the Creator Ceremony that fires on a first publish, is
 // reached exactly as before.
+// The pencil belongs to the name field rather than being an action of
+// its own: it puts the cursor in the box and selects what is there, so
+// whoever taps it can type straight over the old name.
+const bookTitleEdit=document.getElementById('bookTitleEdit');
+if(bookTitleEdit){
+  bookTitleEdit.onclick=function(){
+    const t=document.getElementById('bookTitle');
+    if(!t) return;
+    try{ t.focus(); t.select(); }catch(e){}
+  };
+}
+
 const playStoryBtn=document.getElementById('playStoryBtn');
 const shareBtn=document.getElementById('shareBtn');
 if(playStoryBtn){
