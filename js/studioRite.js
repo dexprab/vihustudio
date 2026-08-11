@@ -280,6 +280,8 @@ const StudioRite=(function(){
   let _unobserve=null;
   let _paperGuard=null;       // unsubscribe for the plain-paper observer
   let _bandRO=null;           // ResizeObserver keeping --rite-band-h honest
+  let _dockWatch=null;        // resize handler that re-places the dock
+  let _dockUnobserve=null;    // page-list observer that re-places the dock
   let _running=false;
   let _voiceId=null;   // the clip currently speaking, so it can be silenced
   let _bgTouched=false; // the child actually used the background control
@@ -588,7 +590,8 @@ const StudioRite=(function(){
   // asks for sits at 680-734, entirely behind it.
   function _safeBottom(){
     try{
-      if(_els && _els.overlay.classList.contains('studio-rite-band')){
+      if(_els && _els.overlay.classList.contains('studio-rite-band')
+             && !_els.overlay.classList.contains('studio-rite-rail')){
         const r=_els.panel.getBoundingClientRect();
         if(r.height>0) return Math.max(0,r.top);
       }
@@ -617,7 +620,10 @@ const StudioRite=(function(){
     if(_isVisible(el)) return true;
     try{ el.scrollIntoView({block:'center',inline:'nearest'}); }catch(e){}
     if(_isVisible(el)) return true;
-    try{ if(_els) _els.overlay.classList.add('studio-rite-band-compact'); }catch(e){}
+    try{
+      if(_els && !_els.overlay.classList.contains('studio-rite-rail'))
+        _els.overlay.classList.add('studio-rite-band-compact');
+    }catch(e){}
     return _isVisible(el);
   }
 
@@ -1101,6 +1107,8 @@ const StudioRite=(function(){
     _running=false;
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
     if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
+    if(_dockWatch){ try{ window.removeEventListener('resize',_dockWatch); }catch(e){} _dockWatch=null; }
+    if(_dockUnobserve){ try{ _dockUnobserve(); }catch(e){} _dockUnobserve=null; }
     try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
     try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
     _clearNudge();
@@ -1123,7 +1131,77 @@ const StudioRite=(function(){
     if(!_els) return;
     _els.overlay.classList.add('studio-rite-band');
     _els.overlay.classList.add('studio-rite-has-mission');
-    _liftBandClearOfStrip();
+    _placeDock();
+    if(!_dockWatch){
+      _dockWatch=function(){ _placeDock(); };
+      try{ window.addEventListener('resize',_dockWatch); }catch(e){}
+      // The page list grows as the child copies pages, which pushes the
+      // top of the dock down. PageRuntime is the one thing that knows.
+      try{
+        if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
+          _dockUnobserve=PageRuntime.observe(_dockWatch);
+      }catch(e){}
+    }
+  }
+
+  // Measures the left rail and decides where the Rite speaks from.
+  //
+  // The dock is the product owner's call, and the measurements back it:
+  // the column under the page thumbnails is the one part of the editor
+  // nothing else ever claims, and moving the conversation there gives
+  // the child's page back the whole 100px the bottom band was taking —
+  // 265px to 363px at 1360x596, a 37% larger canvas.
+  //
+  // Everything is read live rather than hardcoded: the sidebar's width
+  // changes at five breakpoints, and the thumbnails the dock sits under
+  // grow with the story. Below 768px the workspace collapses to a single
+  // column and the sidebar becomes a strip across the top — there is no
+  // rail to dock into, so the bottom band stays as the fallback rather
+  // than the conversation being crammed somewhere it cannot be read.
+  function _placeDock(){
+    if(!_els) return;
+    let ok=false;
+    try{
+      const sidebar=document.querySelector('.sidebar:not(.right-sidebar)');
+      const list=document.getElementById('slideList');
+      const area=document.querySelector('.preview-area');
+      if(sidebar&&list&&area){
+        const sr=sidebar.getBoundingClientRect();
+        const lr=list.getBoundingClientRect();
+        const ar=area.getBoundingClientRect();
+        // Is the sidebar genuinely a column BESIDE the page, or has the
+        // workspace collapsed and turned it into a strip across the top?
+        // Measuring its width alone is not enough to tell: collapsed, it
+        // is 668px wide at a 700px viewport, comfortably past any size
+        // threshold, and docking there put the conversation straight
+        // over the page. Its right edge clearing the preview area's left
+        // edge is the only test that actually answers the question.
+        const isLeftColumn=(sr.right<=ar.left+2);
+        const cs=getComputedStyle(sidebar);
+        const padL=parseFloat(cs.paddingLeft)||0;
+        const padR=parseFloat(cs.paddingRight)||0;
+        const left=Math.round(sr.left+padL);
+        const width=Math.round(sr.width-padL-padR);
+        const top=Math.round(Math.max(lr.bottom+14,sr.top+14));
+        const height=Math.round(window.innerHeight-16-top);
+        if(isLeftColumn && width>=180 && height>=220){
+          _els.overlay.style.setProperty('--rite-dock-left',left+'px');
+          _els.overlay.style.setProperty('--rite-dock-top',top+'px');
+          _els.overlay.style.setProperty('--rite-dock-width',width+'px');
+          _els.overlay.style.setProperty('--rite-dock-height',height+'px');
+          ok=true;
+        }
+      }
+    }catch(e){}
+    try{ _els.overlay.classList.toggle('studio-rite-rail',ok); }catch(e){}
+    if(ok){
+      // A docked Rite covers nothing, so the preview column keeps every
+      // pixel of its height — release the reservation the band needed.
+      if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
+      try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
+    }else{
+      _liftBandClearOfStrip();
+    }
   }
 
   // The Object Strip sits at the very bottom of the editor and is the

@@ -10852,3 +10852,157 @@ body.studio-rite-running .context-add-card[data-add-id='photo'],
 body.studio-rite-running .context-add-card[data-add-id='family'],
 body.studio-rite-running .context-add-card[data-add-id='fromWorld'],
 body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !important; }
+
+/* ---- The Rite docks in the left rail --------------------------------
+   Approved placement. The conversation leaves the bottom of the screen
+   entirely and stands in the column under the page thumbnails — the one
+   part of the editor nothing else claims — so the child's page keeps its
+   full height (265px -> 363px at 1360x596).
+
+   Geometry is measured, never assumed: js/studioRite.js's _placeDock()
+   reads the sidebar's real rect and the bottom of the page list, because
+   the sidebar's width changes at five breakpoints and the thumbnails
+   grow as the story does. When there is no rail to dock into — below
+   768px the workspace collapses to one column — .studio-rite-rail is
+   simply not applied and every band rule above still governs. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail{
+  /* The rail is its own positioned box; the overlay stops laying out. */
+  display:block;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-panel{
+  position:fixed;
+  left:var(--rite-dock-left,16px);
+  top:var(--rite-dock-top,120px);
+  width:var(--rite-dock-width,247px);
+  height:var(--rite-dock-height,400px);
+  margin:0;                       /* the band's lift/inset do not apply */
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
+  padding:16px 15px 15px;
+  max-width:none;
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(23,16,52,.97) 0%,rgba(19,13,44,.95) 100%);
+  box-shadow:0 18px 44px rgba(10,6,28,.34);
+  /* Nothing of the editor is underneath it, so the whole dock can take
+     taps — which is what lets a child scroll back through the
+     conversation anywhere in the column, not just on the text itself. */
+  pointer-events:auto;
+  animation:studio-rite-dock-in .42s ease both;
+}
+@keyframes studio-rite-dock-in{
+  from{ opacity:0; transform:translateX(-10px); }
+  to{ opacity:1; transform:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-panel{ animation:none; }
+}
+
+/* The column reads top to bottom: what we are making, who is saying it,
+   what they just said, and the way on. DOM order puts the cast first
+   (the full-screen stage needs it there), so the mission is ordered
+   above it rather than moved. */
+.studio-rite-overlay.studio-rite-rail .studio-rite-mission{ order:1; }
+.studio-rite-overlay.studio-rite-rail .studio-rite-cast{ order:2; }
+.studio-rite-overlay.studio-rite-rail .studio-rite-convo{ order:3; }
+.studio-rite-overlay.studio-rite-rail .studio-rite-hint{ order:4; }
+.studio-rite-overlay.studio-rite-rail .studio-rite-controls{ order:5; }
+
+/* The mission is a standing note, and in a tall column it can finally be
+   one — it wraps instead of being clipped to a single ellipsised line. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-mission{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  justify-self:auto;
+  font-size:11.5px;
+  line-height:1.45;
+  letter-spacing:.04em;
+  padding:0 0 10px;
+  border-bottom:1px solid rgba(255,241,214,.14);
+}
+
+/* Lumo stands rather than lying along a strip: the art is portrait, and
+   a column is the one place it can be shown at a size that reads. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-cast{
+  flex-direction:row;
+  align-items:flex-end;
+  justify-content:flex-start;
+  gap:8px;
+  height:auto;
+  min-height:0;
+  flex:none;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-lumo-img{
+  width:auto; height:clamp(74px,13vh,116px);
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-egg-img{
+  width:auto; height:clamp(30px,5.4vh,46px);
+}
+
+/* The conversation takes whatever height is left and scrolls inside it,
+   so a long screen can never push the button off the bottom of the
+   column. Scrollbar furniture stays hidden — the base rule already does
+   that; only the sizing changes here. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-convo{
+  flex:1 1 auto;
+  min-height:0;
+  height:auto;
+  max-height:none;
+  align-items:flex-start;
+  justify-content:flex-start;
+  padding:0;
+  gap:6px;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-line{
+  text-align:left;
+}
+/* A 247px column takes a smaller measure than a full-width band did. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .gateway-greeting-title{
+  font-size:clamp(15px,1.25vw,17px); line-height:1.32;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .gateway-greeting-subtitle{
+  font-size:clamp(13px,1.05vw,15px); line-height:1.4;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-hint{
+  text-align:left; flex:none; padding:0;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-controls{
+  flex:none; width:auto; height:auto; padding:0;
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-choice{
+  width:100%;
+  padding:11px 14px;
+  font-size:clamp(14px,1.15vw,16px);
+  letter-spacing:.04em;
+}
+
+/* In a band the conversation grows UPWARD from the bottom edge, which is
+   why the first line carries margin-top:auto. A column reads the other
+   way: Lumo says something and it appears directly under him, with the
+   empty room below. */
+.studio-rite-overlay.studio-rite-rail .studio-rite-line:first-child{ margin-top:0; }
+
+/* Room for Lumo to actually be looked at. A 248px column can show the
+   portrait art at something closer to its real size than a 100px-tall
+   strip ever could — he is a character in this story, not an icon. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-lumo-img{
+  height:clamp(92px,17vh,148px);
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-egg-img{
+  height:clamp(36px,6.6vh,58px);
+}
+
+/* The dock is as tall as what Lumo has actually said, not as tall as the
+   rail — a fixed-height panel left 200px of empty dark below a single
+   line. It still cannot outgrow the column: the measured height becomes
+   the ceiling, and the conversation scrolls inside it once it reaches
+   that. */
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-panel{
+  height:auto;
+  max-height:var(--rite-dock-height,400px);
+}
+.studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-convo{
+  flex:0 1 auto;
+}

@@ -1312,3 +1312,34 @@ the plain-paper mark apply to every page while the Rite runs rather than only
 the first and its copies — one page in three with a white box through it is
 worse than none. Verified: 18/18 run, three distinct pages, nudge still reaching
 ⋮ and Duplicate Page, no page errors, both goldenBuild suites pass.
+
+- Studio Rite: the conversation docks in the left rail. Chosen by the product
+owner from a to-scale layout review of four placements, after the bottom band
+still read as cramped. The conversation now stands in the column under the page
+thumbnails — the one part of the editor nothing else claims — and the horizontal
+band is gone, so the child's page takes back every pixel of it: **265px to 368px
+at 1360x596 (+39%)**, 430 to 572 at 1343x800. The column reads mission (a
+standing note, which finally wraps instead of being clipped to one ellipsised
+line), then Lumo and the Egg at a size worth looking at, then what was just said,
+then the button; the panel is as tall as what has been said rather than as tall
+as the rail, and the conversation scrolls inside it at the ceiling. Geometry is
+measured live by `_placeDock()` — the sidebar's width changes at five
+breakpoints and the thumbnails grow with the story — and re-placed on resize and
+on every page change. **The bottom band survives as the fallback**: below 768px
+the workspace collapses to one column and there is no rail, so
+`.studio-rite-rail` is simply not applied and every band rule still governs. That
+test needed care and an overlap assertion caught it going wrong: measuring the
+sidebar's SIZE cannot distinguish a left column from a collapsed strip — at a
+700px viewport the collapsed sidebar is 668px wide, past any threshold, and
+docking there put the conversation straight over the page. The real test is
+whether the sidebar's right edge clears the preview area's left edge. One thing
+the dock gives back for free: with nothing occluding the bottom of the screen the
+nudge's safe area is the whole viewport again, so the Object Strip — which the
+visibility contract had always correctly refused to point at, because it
+structurally could not clear the band — is now a target the glow can paint.
+Verified at four viewports: railed with zero overlap at 1360x596, 1343x800 and
+1100x700; falling back to the band with zero overlap at 700x820. Full run 18/18
+with the buttons rendering inside the rail, the nudge still reaching the ⋮ and
+Duplicate Page, the off-path redirect firing, page walk 0-1-2, every page plain
+paper, the Studio restored whole afterwards, no page errors, both goldenBuild
+suites unchanged.

@@ -471,7 +471,44 @@ and no saved project changes. Verified: editor and publish both sample the
 child's own colour at the centre and the corner; the flag survives
 `serialize()` and `duplicatePage()`; both goldenBuild suites pass.
 
-## Where the band lives, and what the Studio hides while it is there
+## Where the Rite speaks from: the left rail
+
+**Decided: the dock.** The conversation leaves the bottom of the screen entirely
+and stands in the column under the page thumbnails — the one part of the editor
+nothing else ever claims. Measured at 1360×596, the child's page goes from
+**265px to 368px tall, a 39% larger canvas**, and at 1343×800 from 430 to 572.
+
+The column reads top to bottom: the mission (a standing note, which finally gets
+to wrap instead of being clipped to one ellipsised line), then Lumo and the Egg
+at a size worth looking at, then what he just said, then the way on. The panel
+is as tall as what has actually been said rather than as tall as the rail, and
+the conversation scrolls inside it once it reaches the ceiling.
+
+Geometry is measured, never assumed: `_placeDock()` reads the sidebar's real
+rect and the bottom of the page list, because the sidebar's width changes at
+five breakpoints and the thumbnails grow as the story does. It re-places on
+resize and on every page change.
+
+**The bottom band survives as the fallback.** Below 768px the workspace
+collapses to a single column and the sidebar becomes a strip across the top —
+there is no rail to dock into, so `.studio-rite-rail` is simply not applied and
+every band rule still governs.
+
+Getting that test right mattered more than it looks. Checking the sidebar's
+*size* is not enough to tell a left column from a collapsed strip: at a 700px
+viewport the collapsed sidebar measures 668px wide, comfortably past any
+threshold, and docking there put the conversation directly over the child's
+page — caught by an overlap assertion, not by eye. The real test is whether the
+sidebar's right edge clears the preview area's left edge, which is the only
+thing that actually answers the question being asked.
+
+**One thing the dock gives back for free.** With nothing occluding the bottom of
+the screen, the nudge's safe area is the whole viewport again — so the Object
+Strip, which the visibility contract had always (correctly) refused to point at
+because it structurally could not clear the band, is now a target the glow can
+actually paint.
+
+## Where the band lived, and what the Studio hides while it is there
 
 Two separate failures, spotted together on a 1359×581 window.
 
