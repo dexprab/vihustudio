@@ -11314,3 +11314,132 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 .app-header{ overflow:hidden; }
 .stage-sky-header{ z-index:0; }
 .app-header > *:not(.stage-sky-header){ position:relative; z-index:1; }
+
+/* ---- Studio Rite stage artwork --------------------------------------
+   Optional. js/studioRite.js sets --rite-stage-bg only once an image has
+   genuinely loaded; with no file present none of this applies and the
+   overlay keeps its original gradient.
+
+   Scoped :not(.studio-rite-band) deliberately. The band rule that clears
+   the background sits EARLIER in this file at equal specificity, so
+   without the extra class these rules would win by source order and
+   paint artwork behind the dock, over the live Studio. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band){
+  /* The gradient is repeated here as a SECOND layer beneath the artwork,
+     not replaced by it. Declaring background-image alone overrode the
+     base rule's `background` shorthand, so a broken image URL left the
+     overlay with nothing at all — a white screen on the first thing a
+     child ever sees, which is precisely the failure the fallback exists
+     to prevent. Layered, a missing image simply does not paint and the
+     gradient is still there. */
+  background-image:var(--rite-stage-bg),
+    linear-gradient(180deg,#171034 0%,#372a63 30%,#7c5c86 56%,#dd9c62 80%,#f6ce8c 100%);
+  background-size:cover, cover;
+  background-position:center bottom, center;
+  background-repeat:no-repeat, no-repeat;
+}
+
+/* ---- Standing the cast on the artwork ------------------------------
+   With the gradient there was no ground, so a centred column was right.
+   The artwork HAS ground — a hill whose crest lands around 69% of the
+   viewport height once the image is covered and bottom-anchored — and a
+   centred column left Lumo and the Egg hanging in the sky above it.
+
+   The whole group is pushed down so their feet meet the crest and the
+   conversation sits on the dark slope below, which is also where the
+   art is quietest and text is easiest to read. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-panel{
+  /* The panel is a GRID with fixed rows — minmax(0,44vh) for the cast,
+     minmax(0,34vh) for the conversation, 88px for the button — not a
+     flex column. That is why nothing moved through several attempts at
+     justify-content and gap: those govern a flex column, and here the
+     rows themselves were holding Lumo up in the sky, each one taller
+     than its content.
+     
+     Sized to content instead, and the whole grid pushed to the bottom
+     with align-content, so the group lands on the hill. */
+  grid-template-rows:auto auto auto;
+  align-content:end;
+  row-gap:clamp(4px,1vh,12px);
+  padding-bottom:clamp(14px,3vh,34px);
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-convo{
+  padding:10px 34px 12px;
+  gap:2px;
+  /* A soft halo behind the words rather than a flat wash over the whole
+     picture. The conversation lands exactly on the brightest part of the
+     art — the gold horizon — and the earlier, dimmed lines disappeared
+     into it completely. Fading to nothing at the edges keeps the sky and
+     the hill their own colours while giving every line something to sit
+     on. */
+  background:radial-gradient(ellipse 78% 120% at 50% 55%,
+    rgba(9,6,24,.80) 0%,
+    rgba(9,6,24,.62) 52%,
+    rgba(9,6,24,.22) 80%,
+    rgba(9,6,24,0) 100%);
+}
+/* The column has to lose height for the cast to come down at all —
+   bottom-aligning does nothing while the content already fills the
+   panel. The type comes down a step and the button tightens, which
+   between them frees roughly 90px and lets Lumo's feet reach the
+   horizon. It is a step the art earns back: on a painted sky the
+   picture carries the moment and the words do not have to shout. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .gateway-greeting-title{
+  font-size:clamp(18px,2.1vw,26px);
+  line-height:1.25;
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .gateway-greeting-subtitle{
+  font-size:clamp(14px,1.5vw,19px);
+  line-height:1.35;
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-choice{
+  padding:10px 28px;
+}
+/* Lumo and the Egg come down a step too, so the group reads as figures
+   on a hill rather than as artwork pinned over a painting. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-lumo-img{
+  width:clamp(128px,17vw,225px);
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-egg-img{
+  width:clamp(70px,9.5vw,120px);
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-controls{
+  min-height:0;
+  height:auto;
+  /* An auto top margin was absorbing every pixel of free space and
+     pinning the button to the floor, which packed the cast and the
+     conversation against the ceiling — bottom-aligning the column had
+     no effect at all while that margin existed. */
+  margin-top:0;
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-cast{
+  height:auto;
+  min-height:0;
+  flex:none;
+  margin-bottom:clamp(4px,1.4vh,14px);
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-convo{
+  flex:none;
+  height:auto;
+  justify-content:flex-start;
+}
+/* The conversation grows upward from the bottom in this layout, so the
+   first line must not be pushed away from the rest. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-line:first-child{
+  margin-top:0;
+}
+/* The scrim. The artwork is brightest exactly where the text sits — a
+   gold horizon under gold Cinzel titles — so the lower half is darkened
+   at runtime rather than in the file, which keeps the art usable
+   elsewhere and lets the top of the sky stay untouched. */
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band)::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,
+    rgba(10,7,26,0) 42%,
+    rgba(10,7,26,.20) 62%,
+    rgba(10,7,26,.50) 82%,
+    rgba(10,7,26,.68) 100%);
+}

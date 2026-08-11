@@ -107,7 +107,7 @@ const StudioRite=(function(){
              subtitle:'It is yours to look after.'}},
       {lumo:'curious', egg:'idle',
        line:{title:'It will stay with you while you make your story.'}}
-     ], audio:{id:'riteScreen1',cues:[0,3.14,6.14]}, end:{move:"Let's Begin"}},
+     ], bg:true, audio:{id:'riteScreen1',cues:[0,3.14,6.14]}, end:{move:"Let's Begin"}},
 
     // ---- Act II — Who am I?
     {lines:[
@@ -120,7 +120,7 @@ const StudioRite=(function(){
       {lumo:'wave', egg:'excited',
        line:{title:'Nobody knows what is inside a Story Egg.',
              subtitle:'Not even me.'}}
-     ], audio:{id:'riteScreen2',cues:[0,8.78,14.20]}, end:{choice:'Start My First Story'}, opensStudio:true},
+     ], bg:true, audio:{id:'riteScreen2',cues:[0,8.78,14.20]}, end:{choice:'Start My First Story'}, opensStudio:true},
 
     // ---- The Starter Story: "The Night a Star Came Down"
     // Page 1 — The Falling. Every line: one instruction, one new idea,
@@ -305,6 +305,55 @@ const StudioRite=(function(){
   const DISCRETE={'page-added':1,'story-played':1,'story-shared':1};
 
   const MISSION='Our story: a star falls from the sky, and someone helps it home.';
+
+  // The stage artwork behind screens 1 and 2. Three extensions are tried
+  // in order rather than one canonical name, because the file arrives by
+  // upload and "I added it and nothing happened" is a worse failure than
+  // two extra HEAD-shaped image loads that miss.
+  //
+  // Resolution is entirely optional: if none of them load, the overlay
+  // keeps its original gradient. That is not a nicety — the Rite is a
+  // mandatory gate on a child's first run, so a missing or slow asset
+  // must never be able to show them an empty screen.
+  const STAGE_BG_CANDIDATES=['assets/rite/stage.webp','assets/rite/stage.jpg','assets/rite/stage.png',
+                             // Where the artwork first arrived, kept so an
+                             // upload to the old path still works.
+                             'assets/rites/screne1-2.webp'];
+  let _stageBg=null;      // resolved url, or null once every candidate has failed
+
+  function _resolveStageBg(){
+    return new Promise(function(resolve){
+      let i=0;
+      const tryNext=function(){
+        if(i>=STAGE_BG_CANDIDATES.length){ resolve(null); return; }
+        const url=STAGE_BG_CANDIDATES[i++];
+        const img=new Image();
+        // Resolve with the image's OWN absolute src, not the relative
+        // path. A relative url() inside a custom property is resolved
+        // against the STYLESHEET, so 'assets/rite/stage.png' became
+        // 'css/assets/rite/stage.png' and 404'd — while this very
+        // Image(), resolved against the document, had loaded it fine.
+        img.onload=function(){ resolve(img.src||url); };
+        img.onerror=tryNext;
+        img.src=url;
+      };
+      tryNext();
+    });
+  }
+
+  // Applied per screen, so band mode never inherits it — the dock plays
+  // over the live Studio and has no background of its own.
+  function _applyStageBg(on){
+    if(!_els) return;
+    try{
+      if(on && _stageBg){
+        _els.overlay.style.setProperty('--rite-stage-bg','url("'+_stageBg+'")');
+        _els.overlay.classList.add('studio-rite-hasbg');
+      }else{
+        _els.overlay.classList.remove('studio-rite-hasbg');
+      }
+    }catch(e){}
+  }
 
   const ASSETS_BASE='assets/';
   const IDLE_DRIFT_MS=20000;  // the Egg drifts to sleep, and wakes on activity
@@ -1202,6 +1251,7 @@ const StudioRite=(function(){
 
   function _playScreen(screen){
     _clearCues();
+    _applyStageBg(!!screen.bg && !screen.band);
     if(screen.band) _toBandMode();
     if(screen.unlock && !_actionsUnlocked){
       _actionsUnlocked=true;
@@ -1531,6 +1581,18 @@ const StudioRite=(function(){
     try{
       try{ document.body.classList.add('studio-rite-running'); }catch(e){}
       _els=_buildStage();
+      // Resolved in parallel with the companion packs below, never in
+      // series: the artwork is decoration and must not add a single
+      // millisecond to how long a child waits for Lumo.
+      _resolveStageBg().then(function(url){
+        _stageBg=url;
+        // Screen 1 is very likely already up by the time this lands.
+        // Any screen that is NOT in band mode is screen 1 or 2, and both
+        // carry the artwork — so the test is simply "still full-screen".
+        try{
+          if(_els && !_els.overlay.classList.contains('studio-rite-band')) _applyStageBg(true);
+        }catch(e){}
+      });
       requestAnimationFrame(function(){ if(_els) _els.overlay.classList.add('studio-rite-in'); });
       window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(regList){
         return Promise.all([_loadPack(regList,'guardian'),_loadPack(regList,'traveller')]);
