@@ -144,12 +144,21 @@ const StudioRite=(function(){
      ], end:{await:'sticker-rotated'}, nudgeDelay:0},
 
     // Page 2 — The Finding.
+    //
+    // The child COPIES the page rather than adding a blank one, and this
+    // is a story requirement before it is a teaching one. "+ Add Page"
+    // makes an empty page: the star the whole story is about would not
+    // be on it, so "Someone comes to find the star" would ask a child to
+    // find something that is not there, and page 3's "Move your star up
+    // high" would have no star to move at all — an unpassable beat in a
+    // mandatory Rite. Copying carries the scene forward, which is also
+    // simply how picture books work.
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'The star falls down and down.'}},
       {lumo:'talk', egg:'curious',
-       line:{title:'It needs somewhere to land.',
-             subtitle:'Add a new page.'}}
+       line:{title:'Your page can make a copy of itself.',
+             subtitle:'Copy this page.'}}
      ], end:{await:'page-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
@@ -194,7 +203,7 @@ const StudioRite=(function(){
        line:{title:'They stayed with the star all night.'}},
       {lumo:'talk', egg:'curious',
        line:{title:'Now it is morning.',
-             subtitle:'Add a new page.'}}
+             subtitle:'Copy this page again.'}}
      ], end:{await:'page-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
@@ -434,6 +443,36 @@ const StudioRite=(function(){
     }catch(e){ return false; }
   }
 
+  // The ⋮ on the page the child is actually on — the way into the page
+  // menu. Falls back to the first thumbnail so the nudge still has
+  // somewhere to point if the index cannot be read.
+  function _thumbMenuBtn(){
+    try{
+      const i=(AppState&&AppState.currentSlide)||0;
+      return document.querySelector('#slideList .thumb[data-index="'+i+'"] .thumb-menu-btn')
+          || document.querySelector('#slideList .thumb-menu-btn');
+    }catch(e){ return null; }
+  }
+
+  // Duplicate Page, but only while the menu is genuinely open — a hidden
+  // menu item is not something a child can tap, and ringing it would
+  // point at nothing.
+  function _pageMenuItem(){
+    try{
+      const menu=document.getElementById('contextMenu');
+      if(!menu||menu.classList.contains('hidden')) return null;
+      return menu.querySelector('[data-action="duplicate"]');
+    }catch(e){ return null; }
+  }
+
+  // The way in to adding anything. Shared by the add beats and by the
+  // empty-page recovery below.
+  function _addWayIn(){
+    const card=_byLabel('.context-add-card-label','emoji');
+    if(card) return card.parentElement||card;
+    return document.querySelector('.context-add-trigger');
+  }
+
   // capability -> {find(), hint}. `find` may return null at any moment
   // (the control genuinely isn't on screen yet); the nudge then simply
   // waits and tries again rather than pointing at nothing.
@@ -444,11 +483,7 @@ const StudioRite=(function(){
       // at the Emojis card itself. Never at the whole accordion — it is
       // 381px tall and cannot fit above the band, so the visibility
       // contract would (correctly) refuse to point at all.
-      find:function(){
-        const card=_byLabel('.context-add-card-label','emoji');
-        if(card) return card.parentElement||card;
-        return document.querySelector('.context-add-trigger');
-      },
+      find:_addWayIn,
       hint:"It's over on the right."
     },
     // Two steps: the object has to be chosen before its controls exist
@@ -459,11 +494,13 @@ const StudioRite=(function(){
     // failing.
     'sticker-moved':{
       find:function(){
+        if(!_stickers().length) return _addWayIn();
         return _hasSelection()
           ? _byLabel('.designer-row-label','move left','.designer-row')
           : document.getElementById('objectStripList');
       },
       hint:function(){
+        if(!_stickers().length) return 'Add something to your page first.';
         return _hasSelection()
           ? 'Drag them where you want, or nudge them from the right.'
           : "Tap them first — they're in the row under your page.";
@@ -471,11 +508,13 @@ const StudioRite=(function(){
     },
     'sticker-resized':{
       find:function(){
+        if(!_stickers().length) return _addWayIn();
         return _hasSelection()
           ? _byLabel('.designer-row-label','size','.designer-row')
           : document.getElementById('objectStripList');
       },
       hint:function(){
+        if(!_stickers().length) return 'Add something to your page first.';
         return _hasSelection()
           ? "It's over on the right, under their name."
           : "Tap them first — they're in the row under your page.";
@@ -492,9 +531,23 @@ const StudioRite=(function(){
                            || _byLabel('.context-set-trigger-label','background','.context-set-tile'); },
       hint:"The page's own colour lives on the right."
     },
+    // Copying a page is two steps, and neither of them is a button
+    // sitting in the open: the ⋮ on the page's own thumbnail opens the
+    // page menu, and Duplicate Page lives inside it. So the nudge walks
+    // the child there — the ⋮ first, then the menu item the moment the
+    // menu is up. This is the same "the target changes as they work"
+    // shape the sticker beats already use.
     'page-added':{
-      find:function(){ return document.getElementById('addPageBtn'); },
-      hint:'A new page waits on the left.'
+      find:function(){
+        const item=_pageMenuItem();
+        if(item) return item;
+        return _thumbMenuBtn();
+      },
+      hint:function(){
+        return _pageMenuItem()
+          ? 'Tap "Duplicate Page".'
+          : 'Your pages are down the left side.';
+      }
     },
     'text-added':{
       find:function(){
@@ -504,13 +557,20 @@ const StudioRite=(function(){
       },
       hint:'Words live with the other things you can add.'
     },
+    // A page the child has emptied — by deleting what they made, which
+    // exploring children do — used to leave these three beats with
+    // nothing to point at and no way to pass, on a Rite there is no way
+    // out of. Now the guidance simply becomes "put something back", and
+    // the beat completes properly once there is something to move.
     'sticker-rotated':{
       find:function(){
+        if(!_stickers().length) return _addWayIn();
         return _hasSelection()
           ? _byLabel('.designer-row-label','spin','.designer-row')
           : document.getElementById('objectStripList');
       },
       hint:function(){
+        if(!_stickers().length) return 'Add something to your page first.';
         return _hasSelection()
           ? 'There is a spin control on the right.'
           : "Tap it first — it's in the row under your page.";
@@ -559,9 +619,30 @@ const StudioRite=(function(){
     return _isVisible(el);
   }
 
+  // The one quiet row under the conversation. Both the escalation hint
+  // and the redirect below write here, so a child never has two pieces
+  // of guidance on screen at once. A redirect answers something the
+  // child has just this moment done, so for a few seconds it outranks
+  // the general "here is where that lives".
+  let _hintAt=0;
+  function _sayHint(txt,priority){
+    if(!_els||!txt) return;
+    if(!priority && _hintAt && (Date.now()-_hintAt)<6000) return;
+    try{
+      let row=_els.panel.querySelector('.studio-rite-hint');
+      if(!row){
+        row=_el('div','studio-rite-hint');
+        _els.convo.parentNode.insertBefore(row,_els.controls);
+      }
+      if(row.textContent!==txt) row.textContent=txt;
+      if(priority) _hintAt=Date.now();
+    }catch(e){}
+  }
+
   function _clearNudge(){
     _nudgeTimers.forEach(function(t){ clearTimeout(t); });
     _nudgeTimers=[];
+    _hintAt=0;
     try{
       const row=_els&&_els.panel.querySelector('.studio-rite-hint');
       if(row&&row.parentNode) row.parentNode.removeChild(row);
@@ -610,16 +691,8 @@ const StudioRite=(function(){
     const speak=function(){
       if(spoke||!_els) return;
       spoke=true;
-      try{
-        const txt=(typeof spec.hint==='function')?spec.hint():spec.hint;
-        if(!txt) return;
-        let row=_els.panel.querySelector('.studio-rite-hint');
-        if(!row){
-          row=_el('div','studio-rite-hint');
-          _els.convo.parentNode.insertBefore(row,_els.controls);
-        }
-        row.textContent=txt;
-      }catch(e){}
+      try{ _sayHint((typeof spec.hint==='function')?spec.hint():spec.hint,false); }
+      catch(e){}
     };
     const tick=function(){
       if(!_els) return;
@@ -834,19 +907,64 @@ const StudioRite=(function(){
 
   // A screen ends in exactly one of three ways: a button, the one
   // "Yes", or something the child makes.
-  function _playEnd(end,nudgeDelay){
+  function _playEnd(end,nudgeDelay,instruction){
     if(end.move) return _awaitClick(end.move);
     if(end.choice) return _awaitClick(end.choice,'studio-rite-choice-primary');
-    if(end.await) return _awaitAction(end.await,nudgeDelay);
+    if(end.await) return _awaitAction(end.await,nudgeDelay,instruction);
     return Promise.resolve();
   }
 
+  // What the child was actually asked to do: the last thing Lumo said on
+  // this screen, preferring the subtitle, which is where the instruction
+  // lives when a screen has both.
+  function _instructionOf(screen){
+    try{
+      const last=screen.lines[screen.lines.length-1];
+      return (last&&last.line&&(last.line.subtitle||last.line.title))||'';
+    }catch(e){ return ''; }
+  }
+
+  // Everything the child has made on this page, in one comparable
+  // string. Used only to notice that they DID something — never to
+  // judge what.
+  function _workSignature(){
+    try{
+      return _pageCount()+'|'+_bgNow()+'|'+_titleNow()+'|'+_textCount()+'|'+
+        _stickers().map(function(s){
+          return s.id+':'+s.x+','+s.y+':'+s.w+'x'+s.h+':'+(s.rotation||0);
+        }).join('~');
+    }catch(e){ return ''; }
+  }
+
+  // "Nice. Now make the sky dark." The beat's own instruction, said
+  // again. Every awaited beat's last line is already an imperative, so
+  // this needs no new copy — which is the point: the child hears the
+  // same sentence, not a correction and not a different idea.
+  function _redirectText(instruction){
+    if(!instruction) return '';
+    const s=String(instruction).trim();
+    if(!s) return '';
+    return 'Nice. Now '+s.charAt(0).toLowerCase()+s.slice(1);
+  }
+
   // A beat the child completes by making something. Waits indefinitely.
-  function _awaitAction(kind,nudgeDelay){
+  //
+  // A child who taps something other than what Lumo asked for is never
+  // stopped, told they were wrong, or told which button they should have
+  // pressed. Everything reachable in the Studio during the Rite is a
+  // real, safe, undoable creative act, and the Rite's whole premise is
+  // that it teaches through creation — the first thing the Studio ever
+  // says to a child must not be "no". So exploring is simply allowed,
+  // and the only response to it is the same instruction, offered again
+  // once, warmly: they stay on the path without ever being held to it.
+  function _awaitAction(kind,nudgeDelay,instruction){
     return new Promise(function(resolve){
       const baseline=_baseline();
       _bgTouched=false;
       _startNudge(kind,nudgeDelay);
+      const redirect=_redirectText(instruction);
+      const startedAt=Date.now();
+      let lastWork=_workSignature();
       let idleTimer=null, onInput=null, poll=null;
       const rearmIdle=function(){
         if(idleTimer) clearTimeout(idleTimer);
@@ -864,7 +982,19 @@ const StudioRite=(function(){
         if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
       };
       const check=function(){
-        if(!_conditionMet(kind,baseline)){ rearmIdle(); return; }
+        if(!_conditionMet(kind,baseline)){
+          rearmIdle();
+          // They changed something, and it was not the thing being
+          // waited on. Say the instruction again — at most once every
+          // six seconds, and never in the first three, so a child mid-
+          // action is not talked over.
+          const now=_workSignature();
+          if(now!==lastWork){
+            lastWork=now;
+            if(redirect && (Date.now()-startedAt)>3000) _sayHint(redirect,true);
+          }
+          return;
+        }
         cleanup();
         resolve();
       };
@@ -930,7 +1060,7 @@ const StudioRite=(function(){
     return _playLines(screen.lines).then(function(){
       return screen.play ? _playPages() : null;
     }).then(function(){
-      return _playEnd(screen.end,screen.nudgeDelay);
+      return _playEnd(screen.end,screen.nudgeDelay,_instructionOf(screen));
     });
   }
 

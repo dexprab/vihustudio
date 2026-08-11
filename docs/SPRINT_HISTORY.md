@@ -1221,3 +1221,37 @@ background lockout fix (`_bgTouched`), which had been lost in an earlier
 rewrite — caught by grepping for it rather than assuming it survived. Verified:
 18/18 makings, 3 pages, flag written once, ceremony intact, Story Egg in the
 widget, zero page errors, 10 gate checks passing.
+
+- Studio Rite: the mission, Story Play, and copying a page. Three changes from
+one finding — a child handed a blank page did not know what they were building,
+and never saw what they built. The opening line now names the whole story
+before asking for the first sticker; a quiet, unchanging mission row sits above
+the conversation for the whole story; and after the last beat the child watches
+their own three pages turn (`PageRuntime.openPage`, no viewer, no second
+rendering path) before any decision about sharing. A Story Play *before*
+authoring was considered and rejected: it would have turned the one authorial
+act into imitation and made the closing line ("you did all of it yourself")
+untrue. Then the page beats were changed from **Add Page** to **Copy this
+page** — recommended, approved, and a story requirement before a teaching one,
+since a blank page carries no star and "Move your star up high" on page 3 could
+never be satisfied, a lockout on a mandatory Rite. The nudge walks the child
+there in two steps (the thumbnail's ⋮, then Duplicate Page once the menu is
+open). **That immediately exposed a real, pre-existing bug in a frozen
+subsystem**: `PageOps.duplicatePage()` copied `metadata` with a one-level
+`Object.assign`, so the duplicate and the original shared the same `stickers`
+array, the same sticker objects and the same `cardOverrides` — adding a tree to
+page 2 put a tree on page 1, and recolouring page 3's sky recoloured page 2's.
+Confirmed by reference identity, not inferred, then fixed with a bounded
+recursive clone of the plain-object portion of metadata (Image/Blob instances
+stay shared, exactly as `image` and `_placeImages` already do). On the "wrong
+button" question the answer is that exploring is allowed and never blocked:
+nothing is disabled and nothing is refused, the glow waits and re-aims, and a
+child who changes something else hears the beat's own instruction again once
+("Nice. Now make the sky dark.") — rate-limited, never in the first three
+seconds, sharing the one quiet hint row. Emptying a page no longer strands the
+move/resize/spin beats either; they point at Add Something instead. Verified end
+to end with the page beats driven through the real UI: 18/18 makings, the ⋮ and
+Duplicate Page both ringing, three genuinely different pages (4 and 6 objects,
+not 6 and 6), the redirect firing on an off-path action while the beat kept
+waiting, page walk 0→1→2, ceremony intact, zero page errors; both goldenBuild
+suites pass unchanged.

@@ -227,14 +227,14 @@ already used, asked for in one line without a hint.*
 | 2 | 1 | A star is invisible in daylight | **Background** | 1st — *place* | The story **needs** it: the child cannot see their own star until they fix it |
 | 3 | 1 | Is it near or far? | **Resize** | 1st — *distance* | Size is distance; only the child knows the answer |
 | 4 | 1 | Falling things tumble | **Rotate** | only use | The one place rotation is obviously physics |
-| 5 | 2 | It has to land somewhere | **Add page** | 1st — *the fall* | The page break *is* the fall |
+| 5 | 2 | It has to land somewhere | **Copy page** | 1st — *the fall* | The page break *is* the fall |
 | 6 | 2 | Ground is not sky | **Background** | 2nd — *a different place* | Same control, new job — the child leads |
 | 7 | 2 | Something to land under | **Add sticker** | 2nd — *setting* | Building a place, not decorating |
 | 8 | 2 | Trees are tall | **Resize** | 2nd — *scale* | Not distance this time — proportion |
 | 9 | 2 | Somebody finds it | **Add sticker** | 3rd — *character* | The most authorial act in the story |
 | 10 | 2 | Nobody helps from far away | **Move** | 1st — *helping* | Position carries the meaning of the scene |
 | 11 | 2 | What do they say? | **Text** | 1st — *dialogue* | Their words, in their story |
-| 12 | 3 | Morning | **Add page + Background** | 2nd / 3rd — *time passing* | Colour as time, not place |
+| 12 | 3 | Morning | **Copy page + Background** | 2nd / 3rd — *time passing* | Colour as time, not place |
 | 13 | 3 | Take it home | **Move** | 2nd — *returning* | Asked in one line, no hint |
 | 14 | 3 | It's a long way up | **Resize** | 3rd — *distance again, reversed* | Closes the loop opened on page 1 |
 | 15 | 3 | How do they feel? | **Add sticker** | 4th — *emotion* | Emotion is the ending |
@@ -269,8 +269,14 @@ Two ways out, and it is a product decision:
    adds two interactions and asks the child to rebuild what they just made,
    which reads as busywork rather than storytelling.
 
-Nothing has been changed either way. The code accepts any increase in page
-count, so both work mechanically; only option 1 makes the *story* work.
+**Resolved: option 1.** The product owner chose *teach duplicate*. Both page
+beats now say **"Copy this page."** / **"Copy this page again."**, and the nudge
+walks the child there in two steps — the **⋮** on their own page's thumbnail,
+then **Duplicate Page** the moment the menu opens. The `page-added` condition is
+unchanged: it counts pages, and duplicating increases the count.
+
+Nothing else moved. The code accepts any increase in page count, so both options
+always worked mechanically; only option 1 makes the *story* work.
 
 ### Why the star comes first
 
@@ -316,7 +322,7 @@ it should be tested first.
 | **Resize** | 3 | distance · scale · distance reversed | yes |
 | **Move** | 2 | going to help · going home | yes |
 | **Text** | 2 | dialogue · narration | yes |
-| **Add page** | 2 | the fall · the morning | yes |
+| **Copy page** | 2 | the fall · the morning | yes |
 | **Rotate** | 1 | tumbling | no — see below |
 | **Story title** | 1 | naming the finished story | yes, but once is right |
 

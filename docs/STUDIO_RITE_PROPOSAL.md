@@ -442,11 +442,54 @@ sticker's collapsed spatial section a two-step path (point at the section
 header, then the row inside it, exactly as Add Something now does), and shrink
 the band's resting height so fewer targets need rescuing at all.
 
+## Exploring is allowed — the path is offered, never enforced
+
+The question that follows the glow is what happens when the child taps
+something *else*. Two answers were on the table: **stop them** (block the tap,
+or say the button was wrong), or **let them explore and keep them on the path**.
+
+**The second, and not as a preference.** Everything reachable in the Studio
+during the Rite is a real, safe, undoable creative act — there is nothing to
+protect a child from. The Rite's whole premise is that it teaches *through
+creation*, and Decision 3 forbids explaining controls; "that was the wrong
+button" is both a correction and an explanation, and it would be the first
+thing the Studio ever said to a child.
+
+So nothing is ever disabled and nothing is ever refused. Instead:
+
+1. **The glow waits.** It stays on the real control and re-aims itself as the
+   child works, so the way back is always lit.
+2. **The instruction is offered again, once.** When the child changes something
+   that is not what the beat is waiting for, the quiet row under the
+   conversation says the beat's own instruction back to them — *"Nice. Now make
+   the sky dark."* No new idea, no new vocabulary, no correction. At most once
+   every six seconds, and never in the first three, so a child mid-action is
+   never talked over.
+3. **The beat still waits indefinitely.** Exploration costs them nothing.
+
+The same quiet row carries both this and the escalation hint, so there is only
+ever one piece of guidance on screen; a redirect answers something the child
+just did, so it outranks the general "here is where that lives" for a few
+seconds.
+
+**No dead ends.** A child who explores by *deleting* what they made used to
+strand the move / resize / spin beats — nothing to point at, and a condition
+that could never be met, on a Rite there is no way out of. On an empty page
+those beats now point at *Add Something* and say *"Add something to your page
+first."*, and complete properly once there is something to move.
+
 ## The control map
 
 A small table of `capability → DOM selector`: the Background tile, the *Add
-Something* accordion, the Move & Spin dial, the page strip's Add Page, and
-`#bookTitle`.
+Something* accordion, the Move & Spin dial, the page thumbnail's **⋮ → Duplicate
+Page**, and `#bookTitle`.
+
+**Copying a page is a two-step walk**, and neither step is a button sitting in
+the open: the ⋮ on the child's own page thumbnail opens the page menu, and
+*Duplicate Page* lives inside it. The nudge lights the ⋮ first, then the menu
+item the moment the menu is up — the same "the target changes as they work"
+shape the sticker beats already use. Verified in a full run: `.thumb-menu-btn`
+rings and escalates, then `[data-action="duplicate"]` rings once the menu opens.
 
 **This is not new architecture.** `docs/COMPANION_V1_PROPOSAL.md` §3.2 already
 specifies exactly this as the `surface` pointer carried by every knowledge

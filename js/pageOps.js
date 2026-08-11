@@ -70,6 +70,30 @@ const PageOps=(function(){
 
   // --- Public API ---
 
+  // A page's metadata was copied with a single Object.assign, which is
+  // one level deep — so the duplicate and the original SHARED the same
+  // `stickers` array, the same sticker objects inside it, and the same
+  // `cardOverrides`. Editing either page then edited both: adding a tree
+  // to the copy put a tree on the original, and recolouring the copy's
+  // background recoloured the original's. Confirmed directly
+  // (`stickers` identical by reference), not inferred.
+  //
+  // Plain objects and arrays are copied all the way down; anything with
+  // its own prototype (an Image, a Blob) is deliberately left shared,
+  // exactly as `image` and `_placeImages` already share theirs.
+  function _clonePlain(v,depth){
+    if(depth>6) return v;
+    if(Array.isArray(v)) return v.map(function(x){ return _clonePlain(x,depth+1); });
+    if(v&&typeof v==='object'){
+      const proto=Object.getPrototypeOf(v);
+      if(proto!==Object.prototype && proto!==null) return v;
+      const out={};
+      Object.keys(v).forEach(function(k){ out[k]=_clonePlain(v[k],depth+1); });
+      return out;
+    }
+    return v;
+  }
+
   function duplicatePage(index){
     if(index<0||index>=AppState.slides.length) return false;
     const original=AppState.slides[index];
@@ -80,7 +104,7 @@ const PageOps=(function(){
       storyBeat:original.storyBeat,
       storyDraft:original.storyDraft||'',
       pageType:original.pageType==='cover'?'story':(original.pageType||'story'),
-      metadata:Object.assign({},original.metadata||{}),
+      metadata:_clonePlain(original.metadata||{},0),
       page:original.page,
       totalPages:original.totalPages,
       _lastStory:original._lastStory,
