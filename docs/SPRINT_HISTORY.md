@@ -1343,3 +1343,36 @@ with the buttons rendering inside the rail, the nudge still reaching the ⋮ and
 Duplicate Page, the off-path redirect firing, page walk 0-1-2, every page plain
 paper, the Studio restored whole afterwards, no page errors, both goldenBuild
 suites unchanged.
+
+- Studio Rite: Lumo stands beside the page, and the panel comes back. Three
+fixes from live use of the docked Rite. **The third page turned the story area
+into a strip**: the dock sat under the page thumbnails, and at three pages the
+thumbnail list grows from 78px to 254px, which on a 596px window left the
+conversation 202px, tripped the 220px guard and dropped the whole Rite back to
+the bottom band. The page list is now capped while the Rite is docked in the
+rail (`--rite-list-max`, computed so the column always keeps 300px) and scrolls
+instead — the nudge already scrolls a page's own ⋮ into view before pointing at
+it. **Lumo now stands beside the page**, the product owner's preference, and the
+measurement that had made it look unworkable turned out to be an artefact of the
+page being centred: centring splits the free space into two gutters too narrow
+to read in (133px each at 1343x800), so while the Rite runs the page is pushed
+to the right of its stage instead, which hands both gutters to Lumo as one
+column — 249px at 800, 430px at 596 — and costs the page nothing, since it keeps
+its full height either way (368px at 596, 572px at 800). The dock is anchored
+against the page's own edge rather than the far wall, using the page's computed
+post-push position so it is never a frame out of place. The Selection Action
+Strip still has its own room on the far side (it needs 160px past the canvas;
+there are 332). Placement is now a three-step preference — beside the page, then
+the left rail, then the bottom band — each measured, each falling through only
+when the room genuinely is not there. **The right panel returns to its default
+before every page-level beat**: after adding a star the star is selected and the
+panel shows that star's controls, so "make the sky dark" was asking for a
+control the child could only reach by finding Back first. `PageRuntime`'s own
+`clearSelection()` plus a `notify()` puts the panel back on Personalize, where
+Background lives and where the nudge points; deliberately never done for move,
+resize and spin, which need the selection they are about to use. The panel's own
+Back control is hidden for the same reason — there is nothing left to go back
+to. Verified: full run 18/18 with the redirect and both page beats intact, three
+distinct pages, the 3-page case now stable at both viewports, fallback to the
+band still clean at 700x820, Studio restored whole, no page errors, both
+goldenBuild suites unchanged.

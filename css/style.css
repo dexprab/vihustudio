@@ -11006,3 +11006,47 @@ body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !i
 .studio-rite-overlay.studio-rite-band.studio-rite-rail .studio-rite-convo{
   flex:0 1 auto;
 }
+
+/* ---- Beside the page ------------------------------------------------
+   Lumo stands in the stage itself, next to the child's page. The page is
+   normally centred, which splits the free space into two gutters too
+   narrow to read in (133px each at 1343x800, measured); while the Rite
+   runs it is pushed to the right instead, handing both gutters to Lumo
+   as one column and costing the page nothing — it keeps its full height
+   either way. */
+body.studio-rite-beside .preview-wrapper{ justify-content:flex-end; }
+
+/* The dock's own box is already positioned by _placeDock's measured
+   custom properties (shared with the rail), so only what differs is
+   here: standing in the stage it reads as a character in the room
+   rather than a panel bolted to the sidebar, so it drops the heavy
+   card and keeps just enough ground to stay readable over the
+   workspace. */
+.studio-rite-overlay.studio-rite-band.studio-rite-beside .studio-rite-panel{
+  background:linear-gradient(180deg,rgba(23,16,52,.94) 0%,rgba(19,13,44,.9) 100%);
+  border-radius:18px;
+  animation:studio-rite-beside-in .42s ease both;
+}
+@keyframes studio-rite-beside-in{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-overlay.studio-rite-band.studio-rite-beside .studio-rite-panel{ animation:none; }
+}
+
+/* The page list stops growing without limit while the Rite is docked in
+   the rail. At three pages the thumbnails reach 254px, which on a 596px
+   window left the conversation 202px and dropped the whole Rite back to
+   a strip along the bottom. It scrolls instead — and the nudge already
+   scrolls a page's own ⋮ into view before it points at it. */
+body.studio-rite-running #slideList{
+  max-height:var(--rite-list-max,none);
+  overflow-y:auto;
+}
+
+/* The panel's own selection history control. The Rite already returns
+   the panel to Personalize before every page-level beat, so there is
+   nothing for a child to go back TO — and a Back button they do not
+   need is exactly the detour this fix exists to remove. */
+body.studio-rite-running .context-back-btn{ display:none !important; }

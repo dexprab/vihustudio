@@ -965,8 +965,32 @@ const StudioRite=(function(){
   // says to a child must not be "no". So exploring is simply allowed,
   // and the only response to it is the same instruction, offered again
   // once, warmly: they stay on the path without ever being held to it.
+  // Beats that act on the PAGE rather than on a selected object. After
+  // adding a star the star is selected, and the right panel is showing
+  // that star's own controls — so the next beat ("make the sky dark")
+  // asks for something the child cannot see without first finding their
+  // way back. Clearing the selection returns the panel to Personalize,
+  // which is where Background lives, and where the nudge points.
+  //
+  // Never done for the spatial beats: move, resize and spin need the
+  // selection they are about to use.
+  const PAGE_LEVEL={'bg-set':1,'page-added':1,'story-named':1,
+                    'sticker-added':1,'text-added':1};
+
+  function _showPageControls(){
+    try{
+      if(typeof PageRuntime==='undefined' || !PageRuntime.clearSelection) return;
+      PageRuntime.clearSelection();
+      // clearSelection only writes the host's selection fields; the five
+      // panel refreshes hang off notify(), so without this the panel
+      // keeps showing the object the child has finished with.
+      PageRuntime.notify();
+    }catch(e){}
+  }
+
   function _awaitAction(kind,nudgeDelay,instruction){
     return new Promise(function(resolve){
+      if(PAGE_LEVEL[kind]) _showPageControls();
       const baseline=_baseline();
       _bgTouched=false;
       _startNudge(kind,nudgeDelay);
@@ -1109,6 +1133,8 @@ const StudioRite=(function(){
     if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
     if(_dockWatch){ try{ window.removeEventListener('resize',_dockWatch); }catch(e){} _dockWatch=null; }
     if(_dockUnobserve){ try{ _dockUnobserve(); }catch(e){} _dockUnobserve=null; }
+    try{ document.body.classList.remove('studio-rite-beside'); }catch(e){}
+    try{ document.body.style.removeProperty('--rite-list-max'); }catch(e){}
     try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
     try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
     _clearNudge();
@@ -1160,41 +1186,92 @@ const StudioRite=(function(){
   // than the conversation being crammed somewhere it cannot be read.
   function _placeDock(){
     if(!_els) return;
-    let ok=false;
+    const ov=_els.overlay;
+    let mode='band';
     try{
+      const area=document.querySelector('.preview-area');
+      const canvas=document.getElementById('previewCanvas');
       const sidebar=document.querySelector('.sidebar:not(.right-sidebar)');
       const list=document.getElementById('slideList');
-      const area=document.querySelector('.preview-area');
-      if(sidebar&&list&&area){
+
+      // 1. BESIDE THE PAGE — the product owner's preference, and the
+      //    closest Lumo can stand to the thing he is talking about.
+      //
+      //    The page is normally centred in its stage, which splits the
+      //    free space into two gutters too narrow to read in: 133px each
+      //    at 1343x800, measured. So while the Rite runs the page is
+      //    pushed to the RIGHT of the stage instead, which hands both
+      //    gutters to Lumo as one column — 249px at 800, 430px at 596 —
+      //    and costs the page nothing: it keeps its full height either
+      //    way. The Selection Action Strip still has its own room on the
+      //    far side (it needs 160px past the canvas; there are 332).
+      if(area&&canvas){
+        const ar=area.getBoundingClientRect();
+        const cr=canvas.getBoundingClientRect();
+        const gutter=Math.round(ar.width-cr.width-32);
+        if(gutter>=210 && ar.height>=260){
+          const width=Math.min(320,gutter-24);
+          // Sit against the page, not against the far wall — "beside the
+          // page" is the whole point. The page's post-push left edge is
+          // computed rather than measured, because on the first pass the
+          // page has not been pushed yet and its current position would
+          // put Lumo in the wrong place for one frame.
+          const pageLeft=ar.right-16-cr.width;
+          const left=Math.max(Math.round(ar.left+8),Math.round(pageLeft-24-width));
+          ov.style.setProperty('--rite-dock-left',left+'px');
+          ov.style.setProperty('--rite-dock-top',Math.round(ar.top+16)+'px');
+          ov.style.setProperty('--rite-dock-width',width+'px');
+          ov.style.setProperty('--rite-dock-height',Math.round(ar.height-32)+'px');
+          mode='beside';
+        }
+      }
+
+      // 2. THE LEFT RAIL — when the page is wide enough to leave no
+      //    usable gutter. The page list is capped so the column below it
+      //    can never be squeezed out: at three pages the thumbnails grow
+      //    from 78px to 254px, which on a 596px window left the dock
+      //    202px and dropped the whole Rite back to a strip along the
+      //    bottom. The list scrolls instead, and the nudge already
+      //    scrolls a page's own menu button into view when it points.
+      if(mode==='band' && sidebar && list){
         const sr=sidebar.getBoundingClientRect();
         const lr=list.getBoundingClientRect();
-        const ar=area.getBoundingClientRect();
-        // Is the sidebar genuinely a column BESIDE the page, or has the
-        // workspace collapsed and turned it into a strip across the top?
-        // Measuring its width alone is not enough to tell: collapsed, it
-        // is 668px wide at a 700px viewport, comfortably past any size
-        // threshold, and docking there put the conversation straight
-        // over the page. Its right edge clearing the preview area's left
-        // edge is the only test that actually answers the question.
-        const isLeftColumn=(sr.right<=ar.left+2);
+        const ar2=area?area.getBoundingClientRect():null;
         const cs=getComputedStyle(sidebar);
         const padL=parseFloat(cs.paddingLeft)||0;
         const padR=parseFloat(cs.paddingRight)||0;
-        const left=Math.round(sr.left+padL);
         const width=Math.round(sr.width-padL-padR);
-        const top=Math.round(Math.max(lr.bottom+14,sr.top+14));
-        const height=Math.round(window.innerHeight-16-top);
+        // Measuring the sidebar's SIZE cannot tell a left column from a
+        // collapsed strip across the top — at a 700px viewport the
+        // collapsed sidebar is 668px wide, past any threshold, and
+        // docking there put the conversation over the page. Its right
+        // edge clearing the stage's left edge is the real test.
+        const isLeftColumn=!ar2 || (sr.right<=ar2.left+2);
+        const bottomLimit=window.innerHeight-16;
+        const DOCK_MIN=300;
+        const listMax=Math.max(110,Math.round(bottomLimit-DOCK_MIN-14-lr.top));
+        const listH=Math.min(Math.round(lr.height),listMax);
+        const top=Math.round(Math.max(lr.top+listH+14,sr.top+14));
+        const height=Math.round(bottomLimit-top);
         if(isLeftColumn && width>=180 && height>=220){
-          _els.overlay.style.setProperty('--rite-dock-left',left+'px');
-          _els.overlay.style.setProperty('--rite-dock-top',top+'px');
-          _els.overlay.style.setProperty('--rite-dock-width',width+'px');
-          _els.overlay.style.setProperty('--rite-dock-height',height+'px');
-          ok=true;
+          document.body.style.setProperty('--rite-list-max',listMax+'px');
+          ov.style.setProperty('--rite-dock-left',Math.round(sr.left+padL)+'px');
+          ov.style.setProperty('--rite-dock-top',top+'px');
+          ov.style.setProperty('--rite-dock-width',width+'px');
+          ov.style.setProperty('--rite-dock-height',height+'px');
+          mode='rail';
         }
       }
     }catch(e){}
-    try{ _els.overlay.classList.toggle('studio-rite-rail',ok); }catch(e){}
-    if(ok){
+
+    try{
+      ov.classList.toggle('studio-rite-rail',mode!=='band');
+      ov.classList.toggle('studio-rite-beside',mode==='beside');
+      document.body.classList.toggle('studio-rite-beside',mode==='beside');
+      if(mode!=='rail') document.body.style.removeProperty('--rite-list-max');
+    }catch(e){}
+
+    if(mode!=='band'){
       // A docked Rite covers nothing, so the preview column keeps every
       // pixel of its height — release the reservation the band needed.
       if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
@@ -1203,6 +1280,7 @@ const StudioRite=(function(){
       _liftBandClearOfStrip();
     }
   }
+
 
   // The Object Strip sits at the very bottom of the editor and is the
   // only DOM affordance a child has for selecting an object on a canvas
