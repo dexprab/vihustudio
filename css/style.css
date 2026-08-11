@@ -11371,21 +11371,19 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
      the conversation's height moves Lumo — and a growing conversation
      walked him back up into the sky. Held at two lines' worth, he does
      not move at all, whatever is being said. */
-  height:clamp(112px,19vh,164px);
+  /* Tall enough for two FULL entries — a title and its subtitle each —
+     at the largest size the type clamp allows. Sized from the smaller
+     end, it clipped the top line clean off. */
+  height:clamp(142px,23vh,186px);
   min-height:0;
   max-height:none;
   overflow:hidden;
-  /* A soft halo behind the words rather than a flat wash over the whole
-     picture. The conversation lands exactly on the brightest part of the
-     art — the gold horizon — and the earlier, dimmed lines disappeared
-     into it completely. Fading to nothing at the edges keeps the sky and
-     the hill their own colours while giving every line something to sit
-     on. */
-  background:radial-gradient(ellipse 78% 120% at 50% 55%,
-    rgba(9,6,24,.80) 0%,
-    rgba(9,6,24,.62) 52%,
-    rgba(9,6,24,.22) 80%,
-    rgba(9,6,24,0) 100%);
+  /* No background here on purpose. A radial gradient painted on this
+     box was sized 78% x 120% OF THE BOX — radii larger than the element
+     itself, so it never reached its transparent stop before the edge
+     and was cropped rather than faded. It read as a hard grey rectangle
+     lying on the painting. The scrim belongs to the overlay instead,
+     where it is full-bleed and has no edges to give away. */
 }
 /* The column has to lose height for the cast to come down at all —
    bottom-aligning does nothing while the content already fills the
@@ -11454,8 +11452,9 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
   inset:0;
   pointer-events:none;
   background:linear-gradient(180deg,
-    rgba(10,7,26,0) 42%,
-    rgba(10,7,26,.20) 62%,
-    rgba(10,7,26,.50) 82%,
-    rgba(10,7,26,.68) 100%);
+    rgba(9,6,24,0) 30%,
+    rgba(9,6,24,.12) 47%,
+    rgba(9,6,24,.52) 62%,
+    rgba(9,6,24,.78) 76%,
+    rgba(9,6,24,.86) 100%);
 }
