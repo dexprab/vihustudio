@@ -459,6 +459,31 @@ const StudioRite=(function(){
   // dimmed, so the newest is obviously the newest without the others
   // being lost. Reuses the Gateway's own title/subtitle typography so
   // Lumo sounds and looks like the same character throughout.
+  // On the artwork screens the conversation is capped at the newest two
+  // lines. It has to be: the panel's rows are sized to their content so
+  // the cast can reach the horizon, which means a third line grows the
+  // conversation and pushes Lumo and the Egg back up off the hill. The
+  // pairing is also how the script reads — what was just said, and what
+  // is being said now.
+  //
+  // Only the artwork screens are capped. In band mode the dock scrolls,
+  // and on a plain gradient there is no horizon to stand on, so neither
+  // has a reason to lose a line.
+  const STAGE_VISIBLE_LINES=2;
+
+  function _trimConvo(){
+    try{
+      if(!_els||!_els.convo) return;
+      const ov=_els.overlay;
+      if(!ov.classList.contains('studio-rite-hasbg')) return;
+      if(ov.classList.contains('studio-rite-band')) return;
+      const rows=_els.convo.querySelectorAll('.studio-rite-line');
+      for(let i=0;i<rows.length-STAGE_VISIBLE_LINES;i++){
+        if(rows[i].parentNode) rows[i].parentNode.removeChild(rows[i]);
+      }
+    }catch(e){}
+  }
+
   function _appendLine(line){
     if(!_els||!_els.convo||!line) return;
     const prev=_els.convo.querySelectorAll('.studio-rite-line');
@@ -473,6 +498,7 @@ const StudioRite=(function(){
       row.appendChild(sub);
     }
     _els.convo.appendChild(row);
+    _trimConvo();
     requestAnimationFrame(function(){
       row.classList.add('studio-rite-line-in');
       try{ _els.convo.scrollTop=_els.convo.scrollHeight; }catch(e){}
@@ -1581,23 +1607,19 @@ const StudioRite=(function(){
     try{
       try{ document.body.classList.add('studio-rite-running'); }catch(e){}
       _els=_buildStage();
-      // Resolved in parallel with the companion packs below, never in
-      // series: the artwork is decoration and must not add a single
-      // millisecond to how long a child waits for Lumo.
-      _resolveStageBg().then(function(url){
-        _stageBg=url;
-        // Screen 1 is very likely already up by the time this lands.
-        // Any screen that is NOT in band mode is screen 1 or 2, and both
-        // carry the artwork — so the test is simply "still full-screen".
-        try{
-          if(_els && !_els.overlay.classList.contains('studio-rite-band')) _applyStageBg(true);
-        }catch(e){}
-      });
+
       requestAnimationFrame(function(){ if(_els) _els.overlay.classList.add('studio-rite-in'); });
       window.CompanionEngine.loadRegistry(ASSETS_BASE).then(function(regList){
-        return Promise.all([_loadPack(regList,'guardian'),_loadPack(regList,'traveller')]);
+        // The artwork resolves ALONGSIDE the companion packs rather than
+        // racing screen 1. It used to land part way through the first
+        // screen, and because the grounded layout only applies once the
+        // artwork is really there, Lumo jumped the moment it arrived.
+        // Joined here it is still parallel — it simply cannot be late.
+        return Promise.all([_loadPack(regList,'guardian'),_loadPack(regList,'traveller'),
+                            _resolveStageBg()]);
       }).then(function(packs){
         _packs={guardian:packs[0],traveller:packs[1]};
+        _stageBg=packs[2];
         // No Lumo package at all means no guide — the Rite cannot be
         // performed, so hand straight off rather than showing a child
         // an empty stage.

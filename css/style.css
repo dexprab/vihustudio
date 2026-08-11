@@ -11366,6 +11366,15 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-convo{
   padding:10px 34px 12px;
   gap:2px;
+  /* A FIXED height, not a maximum. The panel's rows are content-sized so
+     the cast can reach the horizon, which means anything that changes
+     the conversation's height moves Lumo — and a growing conversation
+     walked him back up into the sky. Held at two lines' worth, he does
+     not move at all, whatever is being said. */
+  height:clamp(112px,19vh,164px);
+  min-height:0;
+  max-height:none;
+  overflow:hidden;
   /* A soft halo behind the words rather than a flat wash over the whole
      picture. The conversation lands exactly on the brightest part of the
      art — the gold horizon — and the earlier, dimmed lines disappeared
@@ -11404,8 +11413,12 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
   width:clamp(70px,9.5vw,120px);
 }
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-controls{
+  /* The button's space is RESERVED rather than claimed when it appears.
+     With content-sized rows, a button arriving at the end of a screen
+     added its own height and shunted the cast up the hill — the same
+     class of movement the fixed conversation height fixes above. */
+  height:clamp(58px,9vh,84px);
   min-height:0;
-  height:auto;
   /* An auto top margin was absorbing every pixel of free space and
      pinning the button to the floor, which packed the cast and the
      conversation against the ceiling — bottom-aligning the column had
@@ -11418,9 +11431,12 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
   flex:none;
   margin-bottom:clamp(4px,1.4vh,14px);
 }
+/* Height deliberately NOT set here — it is fixed above. An earlier
+   revision of this block carried `height:auto`, which sat later in the
+   file at identical specificity and silently won, so the conversation
+   went on sizing to its content and Lumo went on moving. */
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-convo{
   flex:none;
-  height:auto;
   justify-content:flex-start;
 }
 /* The conversation grows upward from the bottom in this layout, so the
