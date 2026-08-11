@@ -442,6 +442,35 @@ sticker's collapsed spatial section a two-step path (point at the section
 header, then the row inside it, exactly as Add Something now does), and shrink
 the band's resting height so fewer targets need rescuing at all.
 
+## The Rite's page is one sheet of paper
+
+A blank page is not blank. It carries an empty **Artwork Place** — a large white
+rectangle over most of the page — and the child's **Background** colour paints
+only the paper *around* it. Measured, not assumed: with the background set to
+`#7a1030`, the outer card sampled `#7a1030` and the centre of the page sampled
+`#ffffff`. So *"Make the sky dark"* left the biggest thing on the page white,
+and the Object Strip offered three objects — **Background · Artwork Place ·
+Star** — when Lumo only ever talks about two.
+
+The page model (picture card + caption) and the story's model (one sheet you
+draw a sky on) genuinely conflict, and the story cannot win that argument by
+rewording.
+
+**Resolved: Rite pages declare that they have no picture area.** A per-page
+`metadata.noPlace` flag, set once when the Rite opens the Studio and carried to
+pages 2 and 3 by duplication. The renderer already had this exact concept — a
+Scene converged with zero Places draws no picture area at all — so the flag
+joins that existing branch rather than adding a second way to mean the same
+thing; `getPlaceRects()` returns none, so the Object Strip drops the Artwork
+Place card and hit-testing has nothing to find.
+
+The flag is absent on every page that exists today, and a control run confirms
+a page without it renders exactly as before, in the editor *and* through
+`buildPayload()` — so Publish shows what the centre pane showed (Creator Rule 5),
+and no saved project changes. Verified: editor and publish both sample the
+child's own colour at the centre and the corner; the flag survives
+`serialize()` and `duplicatePage()`; both goldenBuild suites pass.
+
 ## Exploring is allowed — the path is offered, never enforced
 
 The question that follows the glow is what happens when the child taps

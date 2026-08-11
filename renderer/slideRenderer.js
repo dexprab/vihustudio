@@ -198,6 +198,16 @@ const SlideRenderer=(()=>{
     return {rect:rect, composition:(preset&&preset.composition)||'below'};
   }
 
+  // A page that declares it has no picture area at all. Same meaning as
+  // a Scene converged with zero Places (see _activeLayoutHolders), but
+  // reachable without a Theme -- the Studio Rite runs World-free on a
+  // blank page, where the fallback white panel is the whole picture
+  // area and there is no Layout to declare its absence. Absent on every
+  // existing page, so nothing already saved changes.
+  function _noPlaceFor(s){
+    return !!(s && s.metadata && s.metadata.noPlace);
+  }
+
   function _panelRectFor(s){
     const resolved=_resolveLayout(s);
     return (resolved && resolved.rect) || {x:PANEL_X,y:PANEL_Y,w:PANEL_W,h:PANEL_H};
@@ -4449,7 +4459,7 @@ const SlideRenderer=(()=>{
     // own draw-order depends on Frame/Panel geometry. That's exactly the
     // condition under which merging all three into one fully-interleaved,
     // freely-reorderable pass is safe — see the merged branch below.
-    const _noFramePipeline=(_composition==='quote')||(_activeLayoutHolders(s)===0);
+    const _noFramePipeline=(_composition==='quote')||(_activeLayoutHolders(s)===0)||_noPlaceFor(s);
     // Sprint 6.2 — when a scene is active, the scene blueprint owns the
     // page composition. Skip the legacy Story-style pipeline so text /
     // image / decorations don't double-render. Story-role pages stay
@@ -4529,7 +4539,7 @@ const SlideRenderer=(()=>{
 
     if(_composition==='quote'){
       _drawQuoteText(s,t,_panelRect);
-    }else if(_activeLayoutHolders(s)===0){
+    }else if(_activeLayoutHolders(s)===0 || _noPlaceFor(s)){
       // A Scene explicitly converged with zero Places has no picture
       // area at all -- unlike the plain "_border is null" case just
       // below (a legacy Story Theme with no Artwork Theme, where
@@ -6399,6 +6409,7 @@ const SlideRenderer=(()=>{
   // callers (Object Strip, hit-testing, pixel verification) would
   // select/sample the wrong on-screen area for Place 1.
   function getPlaceRects(s){
+    if(_noPlaceFor(s)) return [];
     const panelRect=_panelRectFor(s);
     const places=_activeLayoutPlaces(s);
     if(!places || !places.length) return [{id:'image-holder',place:null,rect:_applyPlaceMoveOverride(_applyPlaceSizeOverride(panelRect,s,'image-holder'),s,'image-holder')}];

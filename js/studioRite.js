@@ -1173,6 +1173,18 @@ const StudioRite=(function(){
               try{
                 if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
               }catch(e){}
+              // The Rite's page is one sheet of paper, not a picture
+              // card. A blank page normally carries an empty Artwork
+              // Place — a large white rectangle over most of the page —
+              // and the child's Background colour paints only the paper
+              // AROUND it, so "make the sky dark" left the biggest
+              // thing on the page white. Marking the page as having no
+              // picture area makes the colour the child chooses BE the
+              // page. Duplicating carries the mark to pages 2 and 3.
+              try{
+                const p=PageRuntime.getActivePage();
+                if(p){ if(!p.metadata) p.metadata={}; p.metadata.noPlace=true; PageRuntime.notify(); }
+              }catch(e){}
             });
           });
         },Promise.resolve()).then(function(){

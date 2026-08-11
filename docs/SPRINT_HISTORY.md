@@ -1255,3 +1255,27 @@ Duplicate Page both ringing, three genuinely different pages (4 and 6 objects,
 not 6 and 6), the redirect firing on an off-path action while the beat kept
 waiting, page walk 0→1→2, ceremony intact, zero page errors; both goldenBuild
 suites pass unchanged.
+
+- Studio Rite: the Rite's page is one sheet of paper, not a picture card. The
+product owner spotted that a Rite page carried both a Background and an empty
+Artwork Place and that this would confuse a child. Confirmed by pixel sampling,
+not inference: with the background set to `#7a1030` the outer card sampled
+`#7a1030` and the centre of the page sampled `#ffffff` — so "Make the sky dark"
+left the largest thing on the page white, and the Object Strip offered three
+objects (Background · Artwork Place · Star) when Lumo only ever talks about
+two. There was no existing per-page override for the panel colour, so this
+needed a product decision rather than a quiet fix; four options were put up and
+"no picture area on Rite pages" was approved. Implemented as a per-page
+`metadata.noPlace` flag set once when the Rite opens the Studio and carried to
+pages 2 and 3 by duplication. `renderer/slideRenderer.js` already had this exact
+concept — a Scene converged with zero Places draws no picture area — so the flag
+joins that existing branch (`_noFramePipeline`, and the draw-nothing arm) rather
+than adding a second way to say the same thing, and `getPlaceRects()` returns
+none so the Object Strip drops the Artwork Place card and hit-testing has
+nothing to find. The flag is absent on every page that exists today, and a
+control run confirms a page without it renders exactly as before in the editor
+AND through `buildPayload()`. Verified: editor and publish both sample the
+child's own colour at centre and corner (Creator Rule 5 — Publish honours the
+centre pane), the flag survives `serialize()` and `duplicatePage()`, the full
+18/18 Rite run still passes with three distinct pages and zero page errors, and
+both goldenBuild suites pass unchanged.
