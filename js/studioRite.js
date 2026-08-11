@@ -315,6 +315,50 @@ const StudioRite=(function(){
   // keeps its original gradient. That is not a nicety — the Rite is a
   // mandatory gate on a child's first run, so a missing or slow asset
   // must never be able to show them an empty screen.
+  // Where the ground actually is in the artwork, measured from the file
+  // by sampling its centre column: 1672x941, with the hill crest at
+  // 76.62% of the image height (the row where the glowing horizon falls
+  // away to dark hillside).
+  //
+  // This CANNOT be expressed in static CSS. The crest's position ON
+  // SCREEN depends on how `cover` crops the image, which depends on the
+  // viewport's aspect ratio — at 1160x560 it lands at y=407, and a
+  // layout that put the cast at a fixed fraction had them floating 83px
+  // above it. So it is computed, and recomputed on resize.
+  const STAGE_IMG_W=1672, STAGE_IMG_H=941, STAGE_CREST=0.7662;
+
+  function _horizonY(){
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const scale=Math.max(vw/STAGE_IMG_W, vh/STAGE_IMG_H);   // background-size:cover
+    const sh=STAGE_IMG_H*scale;
+    const top=vh-sh;                                        // background-position:… bottom
+    return STAGE_CREST*sh+top;
+  }
+
+  // Sets the cast's floor to the horizon, then checks whether what has
+  // to sit BELOW it — the conversation and the way on — actually fits.
+  // On a short window it does not, and Lumo is raised by exactly the
+  // shortfall rather than the text being pushed off the bottom of the
+  // screen. He ends up a little above the crest there; he is never in
+  // the sky, and never standing on top of his own dialogue.
+  function _placeHorizon(){
+    if(!_els) return;
+    try{
+      const ov=_els.overlay;
+      if(!ov.classList.contains('studio-rite-hasbg')||ov.classList.contains('studio-rite-band')) return;
+      const y=Math.round(_horizonY());
+      ov.style.setProperty('--rite-horizon',y+'px');
+      requestAnimationFrame(function(){
+        try{
+          if(!_els) return;
+          const panel=_els.panel;
+          const over=panel.scrollHeight-panel.clientHeight;
+          if(over>0) ov.style.setProperty('--rite-horizon',Math.max(120,y-over)+'px');
+        }catch(e){}
+      });
+    }catch(e){}
+  }
+
   const STAGE_BG_CANDIDATES=['assets/rite/stage.webp','assets/rite/stage.jpg','assets/rite/stage.png',
                              // Where the artwork first arrived, kept so an
                              // upload to the old path still works.
@@ -349,6 +393,11 @@ const StudioRite=(function(){
       if(on && _stageBg){
         _els.overlay.style.setProperty('--rite-stage-bg','url("'+_stageBg+'")');
         _els.overlay.classList.add('studio-rite-hasbg');
+        _placeHorizon();
+        if(!_horizonWatch){
+          _horizonWatch=function(){ _placeHorizon(); };
+          try{ window.addEventListener('resize',_horizonWatch); }catch(e){}
+        }
       }else{
         _els.overlay.classList.remove('studio-rite-hasbg');
       }
@@ -366,6 +415,7 @@ const StudioRite=(function(){
   // Play My Story and Share with VihuPlanet stay asleep in the header
   // for the whole story and wake at the finale. js/app.js reads this.
   let _actionsUnlocked=false;
+  let _horizonWatch=null;     // keeps the cast on the horizon across resizes
   let _yieldTimer=null;       // watches for a modal the Rite must stand behind
   let _cueTimers=[];          // line reveals scheduled against a recording
   let _dockWatch=null;        // resize handler that re-places the dock
@@ -1334,6 +1384,7 @@ const StudioRite=(function(){
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
     if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
     if(_yieldTimer){ clearInterval(_yieldTimer); _yieldTimer=null; }
+    if(_horizonWatch){ try{ window.removeEventListener('resize',_horizonWatch); }catch(e){} _horizonWatch=null; }
     if(_dockWatch){ try{ window.removeEventListener('resize',_dockWatch); }catch(e){} _dockWatch=null; }
     if(_dockUnobserve){ try{ _dockUnobserve(); }catch(e){} _dockUnobserve=null; }
     try{ document.body.classList.remove('studio-rite-beside'); }catch(e){}

@@ -11358,13 +11358,23 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
      
      Sized to content instead, and the whole grid pushed to the bottom
      with align-content, so the group lands on the hill. */
-  grid-template-rows:auto auto auto;
-  align-content:end;
-  row-gap:clamp(4px,1vh,12px);
-  padding-bottom:clamp(14px,3vh,34px);
+  /* The first row IS the ground. Its height is the measured distance
+     from the top of the screen to the artwork's hill crest, computed at
+     runtime (js/studioRite.js's _placeHorizon), and the cast is aligned
+     to the bottom of it — so Lumo and the Egg stand on the hill at every
+     viewport instead of at one fraction that only happened to look right
+     at one size. Rows start from the top now, because the first row's
+     height is doing the positioning. */
+  grid-template-rows:var(--rite-horizon,58vh) auto auto;
+  align-content:start;
+  row-gap:clamp(4px,1vh,10px);
+  padding-bottom:clamp(8px,1.4vh,16px);
+}
+.studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-cast{
+  align-self:end;
 }
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-convo{
-  padding:10px 34px 12px;
+  padding:6px 30px 8px;
   gap:2px;
   /* A FIXED height, not a maximum. The panel's rows are content-sized so
      the cast can reach the horizon, which means anything that changes
@@ -11374,7 +11384,7 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
   /* Tall enough for two FULL entries — a title and its subtitle each —
      at the largest size the type clamp allows. Sized from the smaller
      end, it clipped the top line clean off. */
-  height:clamp(142px,23vh,186px);
+  height:clamp(124px,16vh,142px);
   min-height:0;
   max-height:none;
   overflow:hidden;
@@ -11392,12 +11402,12 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
    horizon. It is a step the art earns back: on a painted sky the
    picture carries the moment and the words do not have to shout. */
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .gateway-greeting-title{
-  font-size:clamp(18px,2.1vw,26px);
-  line-height:1.25;
+  font-size:clamp(18px,2vw,24px);
+  line-height:1.22;
 }
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .gateway-greeting-subtitle{
-  font-size:clamp(14px,1.5vw,19px);
-  line-height:1.35;
+  font-size:clamp(13.5px,1.4vw,17.5px);
+  line-height:1.3;
 }
 .studio-rite-overlay.studio-rite-hasbg:not(.studio-rite-band) .studio-rite-choice{
   padding:10px 28px;
@@ -11415,7 +11425,7 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
      With content-sized rows, a button arriving at the end of a screen
      added its own height and shunted the cast up the hill — the same
      class of movement the fixed conversation height fixes above. */
-  height:clamp(58px,9vh,84px);
+  height:clamp(46px,6.5vh,62px);
   min-height:0;
   /* An auto top margin was absorbing every pixel of free space and
      pinning the button to the floor, which packed the cast and the
