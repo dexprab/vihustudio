@@ -1376,3 +1376,51 @@ to. Verified: full run 18/18 with the redirect and both page beats intact, three
 distinct pages, the 3-page case now stable at both viewports, fallback to the
 band still clean at 700x820, Studio restored whole, no page errors, both
 goldenBuild suites unchanged.
+
+## Sprint · VihuPlanet Ether Runtime (Phase 1)
+
+The product decision: until VihuPlanet has enough Story Worlds and Storytellers,
+published stories belong to no Story World — they become part of **the Ether**,
+the living space of VihuPlanet, where they drift waiting to be discovered. There
+is no "Create Story World" feature and there will not be one; worlds are an
+emergent property of a universe that already has stories in it. What was built
+is the runtime, not a screen: a new top-level `VihuPlanet` namespace under
+`vihuplanet/runtime/` (Core · Universe · Ether · Stories · Physics · Ambient ·
+Focus · Birth · Worlds) so the Ether is the first tenant of the foundation
+rather than a special case, with the Future World Engine present and
+deliberately inert — it holds the seams open (`entity.anchor`, already honoured
+by the physics attraction rule; `entity.world`; the signal bus; role-named
+palette tokens) without filling them. The systems are genuinely independent:
+physics touches no DOM, the Ether Renderer has never heard of a story, the Story
+Manager has never heard of a renderer, and the one file that knows they all
+exist is the composition root. **The decision that made it work was measured,
+not reasoned**: with the field equal to the screen, two hundred stories is a
+wall of overlapping cards, and no avoidance rule can fix it because two hundred
+cards do not fit in one screen. The Ether is therefore larger than the view and
+grows with the story count at constant density — about twenty stories in view
+whether the universe holds twenty or six hundred — with the view anchored at the
+field's origin so growth is silent, and every existing story carried outward with
+it (without that, stories added while the universe was small stay bunched
+exactly where the view is: 34 in view where the density called for 16). Focus is
+one number, `focusT`, blended between a story's place in the Ether and the
+centre of the view, with physics simply not simulating a story that is not
+drifting — so "stories always return to the exact place they occupied" needs no
+return animation and no restore step, and verified bit-exact (delta 0.0 on both
+axes) while the rest of the universe kept drifting underneath. Profiling drove
+three fixes that would have been invisible in review: mist and ambient glow
+moved into a quarter-size buffer refreshed every third frame (they are blurs),
+the story card's 22px and 26px shadow blurs cut to one tight shadow because blur
+radius inflates the rasterised layer in every direction (16fps → 25fps on that
+change alone), and the node cap set to a measured 64 — 275 stories and 600
+stories cost the same, because cost is decided by how many cards are in view and
+nothing else. Verified in headless Chromium without GPU (a floor, not a typical
+case): 60.8fps at 275 stories with 16 cards drawn and 17 DOM nodes, zero console
+errors, `prefers-reduced-motion` giving a completely still universe (0.0000
+movement over 1.5s) with focus and birth still responding, full keyboard
+coverage (role, tabindex, aria-label of title and creator, Enter/Space/Escape,
+focus following the story forward and back, pooled nodes inert and aria-hidden),
+and `destroy()` leaving nothing behind. Detail in
+`vihuplanet/runtime/README.md`. Explicitly out of scope and not to be added
+without a new decision: Story Worlds, clustering, world emergence, Telescope and
+Companion integration, the reading experience, reactions, search, filters,
+ranking.

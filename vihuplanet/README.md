@@ -6,6 +6,10 @@ This is **not** VihuStudio. VihuStudio is one of several destinations
 that will live inside VihuPlanet; a future chapter plugs it in as one
 landmark alongside others.
 
+- **VihuPlanet Runtime:** [`runtime/README.md`](runtime/README.md) —
+  the natural laws of the universe, and the foundation every future
+  VihuPlanet destination plugs into. The **Ether** — where published
+  stories live until Story Worlds emerge — is its first tenant.
 - **Hero canon:** [`HERO_CANON.md`](HERO_CANON.md) — start here.
   Permanent philosophy and locked product decisions; read this before
   making any Hero change.
@@ -89,6 +93,12 @@ vihuplanet/
 │   ├── dreamingPlanet.js
 │   ├── dreamingPlanetManager.js
 │   └── dreamingPlanet.css
+├── runtime/                 the VihuPlanet Runtime — the natural laws
+│                            of the universe (Core · Universe · Ether ·
+│                            Stories · Physics · Ambient · Focus ·
+│                            Birth · Worlds). A separate system from
+│                            the Hero, not a Hero change. See
+│                            runtime/README.md.
 ├── js/
 │   ├── registry.js          World Object descriptors
 │   ├── buildInfo.js         dev-only build indicator (reads build-info.json)

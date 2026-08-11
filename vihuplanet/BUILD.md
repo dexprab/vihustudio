@@ -2,6 +2,13 @@
 
 MEP Version: **0.4.7**
 
+> **Note — the VihuPlanet Runtime is a separate system, not a Hero
+> change.** `runtime/` holds the `VihuPlanet` namespace (Core ·
+> Universe · Ether · Stories · Physics · Ambient · Focus · Birth ·
+> Worlds) that the Ether and every future VihuPlanet destination are
+> built on. It does not reopen the Hero MEP freeze below, and it
+> modifies no Hero file. See [`runtime/README.md`](runtime/README.md).
+
 See [`HERO_CANON.md`](HERO_CANON.md) for the permanent philosophy and
 locked product decisions behind everything below — this file only
 tracks *status*.

@@ -132,6 +132,41 @@ Locked by the product owner in the Studio Rite Vision Update, after user testing
 - **Scope is closed** (Decision 10): introduce the world, teach creation through experience, unlock the Studio. Adding anything to the Rite is a canon change, not a feature.
 - Product decision: `docs/COMPANION_CANON.md` → Canon 6. Architecture and phase plan: `docs/STUDIO_RITE_PROPOSAL.md`. Screenplay: `docs/STUDIO_RITE_SCRIPT.md`.
 
+### 9. The Ether, and the VihuPlanet Runtime
+
+Locked by the product owner in the VihuPlanet Ether Runtime brief.
+
+- **Published stories belong to the Ether, not to a Story World.**
+  Until VihuPlanet has enough Story Worlds and Storytellers, a
+  published story becomes part of the Ether — the living space of
+  VihuPlanet — where it drifts, waiting to be discovered.
+- **There is no "Create Story World" feature, and there will not be
+  one.** Story Worlds are an emergent property of a universe that
+  already has stories in it. Adding a way to make one is a canon
+  change, not a feature.
+- **The runtime is the foundation of VihuPlanet, not a screen.** It
+  lives under a top-level `VihuPlanet` namespace (`vihuplanet/runtime/`
+  — Core · Universe · Ether · Stories · Physics · Ambient · Focus ·
+  Birth · Worlds), so the Ether is its first tenant rather than a
+  special case. Story Worlds, the Dreaming Realm, the Telescope and
+  the Companion arrive as siblings.
+- **Future systems plug into the runtime rather than modify it.** The
+  Story Entity contract is the seam: physics moves entities and knows
+  nothing else about them, renderers draw them and know nothing else
+  about them, the Story Manager owns them and knows nothing about
+  rendering. If a future phase has to edit `physics.js`,
+  `storyManager.js` or `etherRenderer.js` to add Story Worlds, the
+  architecture failed — those files do not need editing.
+- **The universe must feel alive through behaviour, not illustration.**
+  Procedural gradients, particles and lightweight assets only; no large
+  background images, no heavy animation libraries, no hundreds of DOM
+  nodes.
+- Phase 1 is complete and explicitly excludes Story Worlds, clustering,
+  world emergence, Telescope integration, Companion integration, the
+  reading experience, reactions, search, filters and ranking. Those
+  belong to later phases.
+- Architecture and rationale: `vihuplanet/runtime/README.md`.
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -1,0 +1,259 @@
+/* runtime.css — the VihuPlanet Runtime's own stylesheet.
+ *
+ * Scoped entirely under .vp-universe. The runtime never styles a host
+ * page, never sets anything on body, and never assumes a reset has
+ * run. Drop it into VihuStudio, into the Hero, or into a blank page
+ * and it looks the same in all three.
+ *
+ * The palette is Art Direction v1.0's, read through the same custom
+ * properties css/base.css declares, with the literal hexes repeated as
+ * fallbacks so the runtime is self-sufficient if it is ever mounted
+ * somewhere base.css is not loaded.
+ *
+ * Only two properties are ever animated anywhere in this file:
+ * transform and opacity. Both composite without laying the page out
+ * again, which is what makes a field of drifting cards cost about the
+ * same as a field of one.
+ */
+
+.vp-universe {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* The canvas paints the real background every frame; this is only
+     what shows in the moment before the first frame lands. */
+  background: var(--vp-ink, #1E2842);
+  /* The universe drifts; the page must not. Without this a child
+     dragging across the Ether on a phone scrolls the document
+     instead. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  --vp-card-width: 118px;
+  --vp-card-radius: 10px;
+}
+
+/* ---------- the Ether ---------- */
+
+.vp-ether-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- stories ---------- */
+
+.vp-story-layer {
+  position: absolute;
+  inset: 0;
+  /* The layer itself is not a surface — a click that misses a story
+     must reach the universe underneath, which is how touching the
+     space around an open story closes it. */
+  pointer-events: none;
+}
+
+/* A zero-size point in the field. Everything visible hangs off it and
+   is centred on it, so the position physics writes is the centre of
+   the story rather than its top-left corner. */
+.vp-story {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  /* Promoted once, on creation, rather than per state change: these
+     nodes are pooled and live for the whole session, so the layer
+     never has to be re-promoted mid-drift. */
+  will-change: transform, opacity;
+}
+
+/* Pooled nodes that are not currently carrying a story must not be
+   clickable, focusable or read out. */
+.vp-story:not(.is-live) {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.vp-story-focus {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 50%;
+}
+
+.vp-story-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--vp-card-width);
+  /* --vp-lift is the hover response; --vp-story-tilt is this story's
+     own resting lean, seeded from its id. Composed in one transform
+     because the card is the third and last element in the stack —
+     placement and focus already own the other two. */
+  transform:
+    translate(-50%, -50%)
+    translateY(var(--vp-lift, 0px))
+    rotate(var(--vp-story-tilt, 0deg));
+  transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.vp-story:hover  { --vp-lift: -5px; }
+.vp-story:active { --vp-lift: -1px; }
+
+.vp-story-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: var(--vp-card-radius);
+  /* Opaque. A story is an object in the Ether, not a pane of glass
+     over it — translucent cards read as ghosts of stories, and the
+     atmospheric recession that SHOULD make a distant story faint is
+     already applied to the whole node as opacity, from its depth. */
+  background: linear-gradient(160deg, #6E6191 0%, #3E5A63 55%, #1E2842 100%);
+  /* A hairline of paper cream: the same pencil-on-paper edge every
+     object in the Hero carries, at the scale a card can hold.
+     ONE blurred shadow, and a tight one. A shadow's blur radius
+     inflates the layer the compositor has to rasterise in every
+     direction, so the 22px drop and 26px glow this card started with
+     were quietly costing four times the pixels of the card itself —
+     measured at 16fps against 25fps for the same field without them.
+     The warm bloom that glow was for now lives where it is free: in
+     the Ether's own ambient light, behind the card. */
+  box-shadow:
+    0 0 0 1px rgba(241, 234, 208, 0.22),
+    0 5px 10px rgba(15, 20, 36, 0.48);
+}
+
+.vp-story-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A story with no cover yet is not a broken card. It is a story
+   nobody has looked inside — so it gets the Ether's own light. */
+.vp-story-cover.is-blank {
+  background:
+    radial-gradient(120% 90% at 50% 18%, rgba(232, 184, 113, 0.42) 0%, rgba(232, 184, 113, 0) 62%),
+    linear-gradient(165deg, #4E7B92 0%, #1E2842 100%);
+}
+
+/* An <img> with no src still renders a broken-image glyph in the
+   corner of the card. Taking it out of the box is the fix; clearing
+   src alone is not. */
+.vp-story-cover.is-blank .vp-story-image {
+  display: none;
+}
+
+.vp-story-caption {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.vp-story-title {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 15px;
+  line-height: 1.15;
+  letter-spacing: 0.2px;
+  color: var(--vp-paper, #F1EAD0);
+  /* The field behind a title is dark but never uniformly dark — a
+     nebula bloom can sit right behind one. The shadow is what keeps
+     every title legible over every part of the sky. Kept tight for
+     the same compositing reason as the card's own shadow. */
+  text-shadow: 0 1px 3px rgba(15, 20, 36, 0.9);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- focus ---------- */
+
+.vp-story.is-focused {
+  cursor: zoom-out;
+}
+
+/* The one card that may be expensive, because there is only ever one
+   of it and it is the thing the child is looking at. */
+.vp-story.is-focused .vp-story-cover {
+  box-shadow:
+    0 0 0 1px rgba(241, 234, 208, 0.34),
+    0 18px 44px rgba(9, 13, 26, 0.62),
+    0 0 60px rgba(232, 184, 113, 0.22);
+}
+
+/* The title is NOT enlarged on focus. It is already inside the card's
+   own scale transform, so a font bump on top of that pushes it to
+   roughly thirty pixels and it starts wrapping across the stories
+   behind it. A focused story is the same story, closer — including
+   its name. */
+
+/* ---------- birth ---------- */
+
+/* The bloom a story arrives inside. Its strength is 1 - birthT, so the
+   light is at its brightest at the instant the story appears and has
+   faded to nothing by the time it joins the Ether: light appears →
+   the story becomes luminous → the light becomes the story. */
+.vp-story.is-birthing .vp-story-card::after {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%,
+    rgba(232, 184, 113, 0.85) 0%,
+    rgba(228, 164, 85, 0.34) 34%,
+    rgba(228, 164, 85, 0) 70%);
+  opacity: calc(1 - var(--vp-birth-t, 0));
+}
+
+.vp-story.is-birthing .vp-story-cover {
+  box-shadow:
+    0 0 0 1px rgba(241, 234, 208, 0.3),
+    0 0 calc(46px * (1 - var(--vp-birth-t, 0))) rgba(232, 184, 113, 0.75);
+}
+
+/* A story is not touchable while it is still arriving. */
+.vp-story.is-birthing {
+  pointer-events: none;
+}
+
+/* ---------- keyboard ---------- */
+
+.vp-story:focus { outline: none; }
+
+.vp-story:focus-visible .vp-story-cover {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+/* ---------- small screens ---------- */
+
+/* One breakpoint, and it changes one thing: how big a story is. The
+   field, the star density and the particle budget all scale
+   themselves from the real size of the space — see etherRenderer.js
+   and ambientSystem.js — so there is nothing else here to adjust. */
+@media (max-width: 640px) {
+  .vp-universe { --vp-card-width: 104px; }
+  .vp-story-title { font-size: 14px; }
+}
+
+/* ---------- reduced motion ---------- */
+
+/* Physics already stops the universe at the source (motionScale 0),
+   and the Ambient System stops twinkling, drifting and shooting
+   stars. This is the presentation half of the same answer: the hover
+   lift stops easing and lands directly. Focus and birth still play —
+   they are responses to something the child did, and removing them
+   would make the interface look broken rather than calm. */
+@media (prefers-reduced-motion: reduce) {
+  .vp-story-card { transition: none; }
+}

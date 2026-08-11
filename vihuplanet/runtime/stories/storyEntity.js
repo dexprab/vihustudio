@@ -1,0 +1,205 @@
+// storyEntity.js — the Story Entity contract.
+//
+// This file is the seam of the whole runtime. Physics moves Story
+// Entities and knows nothing else about them. Renderers draw Story
+// Entities and know nothing else about them. The Story Manager owns
+// them. A published story from VihuStudio, a seeded demo story, and a
+// story that a future Story World hands over are all the same shape
+// once they are in the Ether.
+//
+// ---------------------------------------------------------------
+// THE CONTRACT
+//
+// Identity — supplied by whoever publishes the story:
+//   id           string, unique in the Ether
+//   title        string
+//   cover        string URL, or null (the Ether draws a plain
+//                luminous card when a story has no cover yet)
+//   creator      string, or null
+//   publishedAt  ISO string or epoch ms
+//   source       free-form; the runtime never reads it. Somewhere to
+//                keep a project id without the runtime caring.
+//
+// Motion state — owned by Physics, written every frame:
+//   position     { x, y }   field pixels
+//   velocity     { x, y }   field pixels per second
+//   rotation     degrees
+//   spin         degrees per second
+//   baseSpeed    the pace this story eases back to
+//   bob          { phase, speed, amplitude }  the tiny floating motion
+//   bobX, bobY   the bob resolved for this frame. Renderers ADD these
+//                to position; physics never integrates them.
+//
+// Presentation state — read by renderers, never written by them:
+//   depth        0 (far) .. 1 (near). Drives scale and opacity, per
+//                Art Direction v1.0: depth is felt through scale and
+//                atmospheric opacity, never through parallax tricks.
+//   scale        current render scale, depth-derived
+//   opacity      0..1, depth-derived
+//   radius       collision/avoidance radius in field pixels
+//   state        see STATES below
+//
+// Lifecycle state — owned by Focus and Birth:
+//   focusT       0..1 how far this story has come forward
+//   birthT       0..1 how far through its arrival it is
+//   home         { x, y } the exact place it occupied before focus
+//
+// Future systems attach here rather than modifying the contract:
+//   anchor       { x, y, strength } or null — the plug point Story
+//                World clustering will use. Physics already honours
+//                it; nothing in Phase 1 ever sets it.
+//   world        null — reserved for the Future World Engine.
+// ---------------------------------------------------------------
+//
+// Renderers may read anything above. They must write nothing. That
+// single rule is what lets a second renderer (canvas, WebGL, a
+// Telescope's narrow view) exist later without touching physics.
+
+(function (global) {
+  'use strict';
+
+  var VihuPlanet = global.VihuPlanet;
+  if (!VihuPlanet) return;
+
+  var Util = VihuPlanet.Util;
+  var Rng = VihuPlanet.Rng;
+  var Stories = VihuPlanet.ns('Stories');
+
+  // A story is in exactly one of these at any moment.
+  var STATES = {
+    BIRTHING:  'birthing',   // arriving — light, rise, join
+    DRIFTING:  'drifting',   // the normal life of a story
+    FOCUSING:  'focusing',   // coming forward under a child's touch
+    FOCUSED:   'focused',    // held open
+    RETURNING: 'returning',  // going back to the exact place it left
+    DORMANT:   'dormant'     // present, not simulated (reserved)
+  };
+
+  // Depth ramp. Deliberately narrow — the difference between the
+  // nearest and farthest story in the Ether should read as air, not as
+  // a zoom. Matches ArtDirection.composition.atmosphericOpacity, which
+  // puts background elements at 0.40–0.65 and midground at 0.85–1.0.
+  var DEPTH = {
+    minScale:   0.58,
+    maxScale:   1.0,
+    // The floor is above Art Direction's 0.40 for background elements
+    // on purpose: a Hero background object is scenery, and a story is
+    // something a child is meant to be able to reach for. A story
+    // faint enough to be missed is a story that cannot be discovered.
+    minOpacity: 0.52,
+    maxOpacity: 1.0
+  };
+
+  function scaleForDepth(depth) {
+    return Util.lerp(DEPTH.minScale, DEPTH.maxScale, depth);
+  }
+
+  function opacityForDepth(depth) {
+    return Util.lerp(DEPTH.minOpacity, DEPTH.maxOpacity, depth);
+  }
+
+  // Everything procedural about a story derives from its id, so the
+  // same story drifts, bobs and tilts identically in every session and
+  // on every device — without a single one of those numbers being
+  // stored on the published story. The Ether feels authored; it is
+  // only ever derived.
+  function create(input, options) {
+    input = input || {};
+    options = options || {};
+
+    var id = input.id || Util.uid('story');
+    var rng = Rng.forId(id);
+
+    var depth = (typeof input.depth === 'number')
+      ? Util.clamp(input.depth, 0, 1)
+      : rng.between(0.25, 1.0);
+
+    // Base drift speed in field px/s. Slow enough that the movement is
+    // caught out of the corner of the eye rather than watched — Art
+    // Direction v1.0's "no object animates faster than a shaft of
+    // sunlight moving across a room". Nearer stories drift slightly
+    // faster than far ones, which is the whole of the depth cue.
+    var speed = rng.between(3.2, 7.0) * Util.lerp(0.55, 1.0, depth);
+    var heading = rng.between(0, Math.PI * 2);
+
+    var entity = {
+      // --- identity ---
+      id:          id,
+      title:       input.title || '',
+      cover:       input.cover || null,
+      creator:     input.creator || null,
+      publishedAt: input.publishedAt || null,
+      source:      input.source || null,
+
+      // --- motion ---
+      position: {
+        x: (typeof input.x === 'number') ? input.x : 0,
+        y: (typeof input.y === 'number') ? input.y : 0
+      },
+      velocity: {
+        x: Math.cos(heading) * speed,
+        y: Math.sin(heading) * speed
+      },
+      // The pace this story eases back to after anything disturbs it
+      // (see the governor in physics.js). Every story keeps its own.
+      baseSpeed: speed,
+      rotation: rng.between(-6, 6),
+      // Degrees per second. At this range a full turn takes between
+      // four and twelve minutes — a story is never seen to rotate,
+      // only to have rotated.
+      spin: rng.spread(0.9),
+      bob: {
+        phase:     rng.between(0, Math.PI * 2),
+        speed:     rng.between(0.16, 0.30),   // radians/s
+        amplitude: rng.between(2.2, 5.4)      // field px
+      },
+      // The bob, resolved. Physics writes these; renderers ADD them to
+      // position at draw time. They are never integrated into position
+      // itself — see the header of physics.js for why presentation
+      // motion must not feed back into simulation.
+      bobX: 0,
+      bobY: 0,
+
+      // --- presentation ---
+      depth:   depth,
+      scale:   scaleForDepth(depth),
+      opacity: opacityForDepth(depth),
+      radius:  (options.radius || 84) * scaleForDepth(depth),
+      tilt:    rng.between(-2.4, 2.4),        // the card's own resting lean
+      state:   STATES.DRIFTING,
+
+      // --- lifecycle ---
+      focusT: 0,
+      birthT: 1,
+      home:   null,
+
+      // --- plug points, never set in Phase 1 ---
+      anchor: null,
+      world:  null
+    };
+
+    return entity;
+  }
+
+  // The read-only view a renderer is handed. Phase 1 passes entities
+  // directly for speed — freezing or cloning several hundred objects
+  // every frame is exactly the cost this runtime exists to avoid — so
+  // this exists as the documented shape and as a debugging aid, not as
+  // an enforcement mechanism. The rule "renderers never write" is held
+  // by review, not by the language.
+  function snapshot(e) {
+    return {
+      id: e.id, title: e.title, cover: e.cover, creator: e.creator,
+      x: e.position.x, y: e.position.y,
+      rotation: e.rotation, scale: e.scale, opacity: e.opacity,
+      depth: e.depth, state: e.state, focusT: e.focusT, birthT: e.birthT
+    };
+  }
+
+  Stories.STATES = STATES;
+  Stories.DEPTH = DEPTH;
+  Stories.create = create;
+  Stories.snapshot = snapshot;
+  Stories.scaleForDepth = scaleForDepth;
+  Stories.opacityForDepth = opacityForDepth;
+})(typeof window !== 'undefined' ? window : this);

@@ -2,6 +2,52 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.5.0 — 2026-08-11
+
+**VihuPlanet Ether Runtime (Phase 1).** A new system, not a Hero
+change — the Hero MEP freeze is untouched and no Hero file was
+modified. See [`runtime/README.md`](runtime/README.md).
+
+- **Product decision — the Ether.** Until VihuPlanet has enough Story
+  Worlds and Storytellers, published stories belong to no Story World.
+  They become part of the Ether, the living space of VihuPlanet, where
+  they drift waiting to be discovered. There is no "Create Story
+  World" feature and there will not be one: worlds are an emergent
+  property of a universe that already has stories in it.
+- **New — the `VihuPlanet` runtime namespace** (`runtime/`): Core
+  (namespace · rng · signal · clock) · Universe · Ether · Stories ·
+  Physics · Ambient · Focus · Birth · Worlds. The Ether is the first
+  tenant of the foundation rather than a special case; Story Worlds,
+  the Telescope and the Companion are expected as siblings.
+- **New — the Ether Renderer.** Six procedural layers (background,
+  nebula, stars, mist, particles, ambient glow) plus shooting stars
+  and the focus veil. No image files at all. Inherits Art Direction
+  v1.0's palette; stars are paper-cream, never white.
+- **New — Story Entities + the Story Manager.** One data contract that
+  physics moves and renderers draw, and which neither knows anything
+  else about. Everything procedural about a story (drift, bob, tilt,
+  depth) is derived from its id, so it moves identically in every
+  session without any of it being stored.
+- **New — Ether Physics.** Wander, soft avoidance over a uniform
+  spatial grid, an optional attraction plug point for future
+  clustering (never set in Phase 1), a speed governor, drift and wrap.
+  No DOM, no rendering.
+- **New — the Focus System.** One number, `focusT`. A focused story is
+  held: physics stops simulating it, so it returns to the exact place
+  it occupied with no return animation and no restore step — verified
+  bit-exact — while the universe keeps drifting underneath.
+- **New — Story Birth.** Publishing is never an insert. Light appears,
+  the story becomes luminous, floats upward on a bowed path, joins the
+  Ether and begins drifting.
+- **New — Ambient Behaviour.** Glow swell, three mist banks on
+  unrelated rates, pooled motes, and rare shooting stars.
+- **Scale.** The Ether is larger than the screen and grows with the
+  story count at constant density: around twenty stories in view
+  whether the universe holds twenty or six hundred. Measured without
+  GPU acceleration — 275 stories at 60.8fps, and 600 stories costing
+  the same, because cost is decided by how many cards are in view.
+- **Development harness** — `runtime/sandbox.html`. Not the product.
+
 ## v0.4.9 — 2026-07-05
 
 Sprint MEP-09 (World Library display-metadata consumption) and

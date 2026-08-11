@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VihuPlanet Runtime — Sandbox</title>
+
+<!-- Same inline ✿ favicon the Hero uses, for the same reason: the
+     browser asks for one on every load and a 404 is a console error. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
+<link rel="stylesheet" href="css/runtime.css">
+<link rel="stylesheet" href="sandbox.css">
+</head>
+<body>
+
+<!-- THIS PAGE IS NOT THE PRODUCT.
+     Phase 1 builds the runtime, not a screen. This is the harness the
+     runtime is developed and verified against: it mounts a universe,
+     seeds it, and exposes the two things a runtime cannot demonstrate
+     on its own — publishing a story, and a count of what it costs.
+     The real VihuPlanet surface comes later and will mount the exact
+     same universe with none of this chrome. -->
+
+<main class="sandbox">
+  <div class="sandbox-universe" data-universe></div>
+
+  <div class="sandbox-panel">
+    <div class="sandbox-title">VihuPlanet Runtime</div>
+    <div class="sandbox-actions">
+      <button type="button" data-action="publish">Share a story</button>
+      <button type="button" data-action="seed-50">+50 stories</button>
+      <button type="button" data-action="shoot">Shooting star</button>
+      <button type="button" data-action="clear">Clear</button>
+    </div>
+    <pre class="sandbox-stats" data-stats></pre>
+    <div class="sandbox-hint">Touch a story to bring it forward · Esc or tap the sky to send it back</div>
+  </div>
+</main>
+
+<!-- Load order. The runtime does not depend on it — every module
+     claims its own branch of the VihuPlanet namespace via ns() and
+     none of them run at load — but the order below is the dependency
+     order, which is the order it should be read in.
+       Art Direction (the palette the Ether inherits)
+       Core:     namespace · rng · signal · clock
+       Stories:  entity contract · manager · presentation layer
+       Physics:  spatial grid · the laws
+       Ether:    the space · the renderer
+       Systems:  ambient · focus · birth · worlds
+       Engine:   universe (the composition root, loaded last)
+-->
+<script src="../artDirection/illustrationRules.js"></script>
+
+<script src="core/namespace.js"></script>
+<script src="core/rng.js"></script>
+<script src="core/signal.js"></script>
+<script src="core/clock.js"></script>
+
+<script src="stories/storyEntity.js"></script>
+<script src="stories/storyManager.js"></script>
+<script src="stories/storyLayer.js"></script>
+
+<script src="physics/spatialGrid.js"></script>
+<script src="physics/physics.js"></script>
+
+<script src="ether/ether.js"></script>
+<script src="ether/etherRenderer.js"></script>
+
+<script src="ambient/ambientSystem.js"></script>
+<script src="focus/focusSystem.js"></script>
+<script src="birth/storyBirth.js"></script>
+<script src="worlds/worldEngine.js"></script>
+
+<script src="core/universe.js"></script>
+
+<script src="sandbox.js"></script>
+</body>
+</html>
