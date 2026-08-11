@@ -66,6 +66,12 @@ const StudioRite=(function(){
   // chapter still in progress — the Rite owns the screen until it ends.
   function isRunning(){ return _running; }
 
+  // False for the whole story, true from the finale onward. js/app.js
+  // reads it to decide whether the header's two story buttons are
+  // asleep — the Rite holds them shut whatever the project looks like,
+  // because the story is not finished until Lumo says it is.
+  function actionsUnlocked(){ return _actionsUnlocked; }
+
   function markComplete(){
     try{ localStorage.setItem(FLAG,'1'); }catch(e){}
   }
@@ -247,11 +253,31 @@ const StudioRite=(function(){
     // any decision about sharing. Not a demonstration of the canonical
     // story — that would make them copy, and would make the closing
     // line ("you did all of it yourself") untrue. This is theirs.
-    {band:true, play:true, lines:[
+    //
+    // `unlock` wakes Play My Story and Share with VihuPlanet, which have
+    // been dormant in the header since the Rite began. The Rite no
+    // longer turns the pages itself: the child presses the button, and
+    // so learns the control they will use for every story after this
+    // one. A chapter that teaches through creation should not perform a
+    // control on a child's behalf when it can hand it over.
+    {band:true, unlock:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'Your story is finished.',
              subtitle:'Watch it from the beginning.'}}
-     ], end:{move:'That is my story'}},
+     ], end:{await:'story-played'}, nudgeDelay:2000},
+
+    // The sharing beat (Decision 7). Declining is a real choice: the
+    // story stays theirs, the Studio still unlocks, and the Creator
+    // Ceremony waits for whichever story they do share. Nothing here
+    // claims anyone else can see it — sharing makes the story into
+    // something they can keep, which is exactly what Publish does.
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Right now your story only lives on this screen.'}},
+      {lumo:'curious', egg:'excited',
+       line:{title:'Sharing makes it into something you can keep.',
+             subtitle:'Tap Share with VihuPlanet.'}}
+     ], end:{await:'story-shared', decline:'Not now'}, nudgeDelay:3000},
 
     // The close.
     {band:true, lines:[
@@ -280,6 +306,10 @@ const StudioRite=(function(){
   let _unobserve=null;
   let _paperGuard=null;       // unsubscribe for the plain-paper observer
   let _bandRO=null;           // ResizeObserver keeping --rite-band-h honest
+  // Play My Story and Share with VihuPlanet stay asleep in the header
+  // for the whole story and wake at the finale. js/app.js reads this.
+  let _actionsUnlocked=false;
+  let _yieldTimer=null;       // watches for a modal the Rite must stand behind
   let _dockWatch=null;        // resize handler that re-places the dock
   let _dockUnobserve=null;    // page-list observer that re-places the dock
   let _running=false;
@@ -523,6 +553,14 @@ const StudioRite=(function(){
           ? "It's over on the right, under their name."
           : "Tap them first — they're in the row under your page.";
       }
+    },
+    'story-played':{
+      find:function(){ return document.getElementById('playStoryBtn'); },
+      hint:'It is up at the top, and it just woke up.'
+    },
+    'story-shared':{
+      find:function(){ return document.getElementById('shareBtn'); },
+      hint:'It is up at the top, next to Play My Story.'
     },
     'story-named':{
       find:function(){ return document.getElementById('bookTitle'); },
@@ -770,6 +808,21 @@ const StudioRite=(function(){
       if(!bg) return false;
       return bg!==(baseline&&baseline.__bg) || _bgTouched;
     }
+    // The child pressed Play My Story. Watched rather than told: the
+    // player counts its own readings, so the button stays the only
+    // thing a child touches and nothing has to report back here.
+    if(kind==='story-played'){
+      try{ return StoryPlayer.playCount()>(baseline&&baseline.__plays||0); }
+      catch(e){ return false; }
+    }
+    // The child shared. Read from MagicCard's own hasEverPublished flag,
+    // which js/publishStudio.js already sets on a completed publish —
+    // the same signal the Creator Ceremony itself is gated on, so this
+    // can never disagree with whether a publish really happened.
+    if(kind==='story-shared'){
+      try{ return !!MagicCard.growthSignals().hasEverPublished && !(baseline&&baseline.__published); }
+      catch(e){ return false; }
+    }
     if(kind==='text-added') return _textCount()>(baseline&&baseline.__texts||0);
     const list=_stickers();
     if(kind==='sticker-added') return list.length>(baseline&&baseline.__count||0);
@@ -834,6 +887,8 @@ const StudioRite=(function(){
     map.__pages=_pageCount();
     map.__count=_stickers().length;
     map.__texts=_textCount();
+    try{ map.__plays=StoryPlayer.playCount(); }catch(e){ map.__plays=0; }
+    try{ map.__published=!!MagicCard.growthSignals().hasEverPublished; }catch(e){ map.__published=false; }
     return map;
   }
 
@@ -918,7 +973,7 @@ const StudioRite=(function(){
   function _playEnd(end,nudgeDelay,instruction){
     if(end.move) return _awaitClick(end.move);
     if(end.choice) return _awaitClick(end.choice,'studio-rite-choice-primary');
-    if(end.await) return _awaitAction(end.await,nudgeDelay,instruction);
+    if(end.await) return _awaitAction(end.await,nudgeDelay,instruction,end.decline);
     return Promise.resolve();
   }
 
@@ -988,7 +1043,11 @@ const StudioRite=(function(){
     }catch(e){}
   }
 
-  function _awaitAction(kind,nudgeDelay,instruction){
+  // `declineLabel`, when given, puts a quiet second way out beside the
+  // beat — used only by the sharing beat, where saying no is a real
+  // answer rather than a failure to comply. It resolves the beat exactly
+  // as completing it would: the Rite carries on and the Studio unlocks.
+  function _awaitAction(kind,nudgeDelay,instruction,declineLabel){
     return new Promise(function(resolve){
       if(PAGE_LEVEL[kind]) _showPageControls();
       const baseline=_baseline();
@@ -1015,6 +1074,7 @@ const StudioRite=(function(){
       };
       const check=function(){
         if(!_conditionMet(kind,baseline)){
+          // fall through
           rearmIdle();
           // They changed something, and it was not the thing being
           // waited on. Say the instruction again — at most once every
@@ -1028,8 +1088,18 @@ const StudioRite=(function(){
           return;
         }
         cleanup();
+        try{ if(_els) _els.controls.innerHTML=''; }catch(e){}
         resolve();
       };
+      if(declineLabel && _els){
+        try{
+          const btn=_el('button','studio-rite-choice studio-rite-decline',declineLabel);
+          btn.type='button';
+          btn.addEventListener('click',function(){ cleanup(); try{ _els.controls.innerHTML=''; }catch(e){} resolve(); });
+          _els.controls.innerHTML='';
+          _els.controls.appendChild(btn);
+        }catch(e){}
+      }
       rearmIdle();
       try{
         if(typeof PageRuntime!=='undefined' && PageRuntime.observe){
@@ -1061,37 +1131,15 @@ const StudioRite=(function(){
     if(_els&&_els.convo) _els.convo.innerHTML='';
   }
 
-  // Turns the child's own pages, one at a time, using the Runtime's
-  // existing openPage — no viewer, no new rendering path.
-  function _playPages(){
-    return new Promise(function(resolve){
-      let n=0;
-      try{ n=(AppState&&AppState.slides&&AppState.slides.length)||0; }catch(e){}
-      if(!n||typeof PageRuntime==='undefined'||!PageRuntime.openPage){ resolve(); return; }
-      let i=0;
-      try{ if(_els) _els.overlay.classList.add('studio-rite-playing'); }catch(e){}
-      const done=function(){
-        try{ if(_els) _els.overlay.classList.remove('studio-rite-playing'); }catch(e){}
-        resolve();
-      };
-      const step=function(){
-        if(!_els){ done(); return; }
-        try{ PageRuntime.openPage(i); }catch(e){}
-        i++;
-        if(i>=n){ _timer=setTimeout(done,2000); return; }
-        _timer=setTimeout(step,2600);
-      };
-      step();
-    });
-  }
-
   function _playScreen(screen){
     if(screen.band) _toBandMode();
+    if(screen.unlock && !_actionsUnlocked){
+      _actionsUnlocked=true;
+      try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
+    }
     _hush();          // never let the previous screen's voice bleed in
     _clearConvo();
     return _playLines(screen.lines).then(function(){
-      return screen.play ? _playPages() : null;
-    }).then(function(){
       return _playEnd(screen.end,screen.nudgeDelay,_instructionOf(screen));
     });
   }
@@ -1129,8 +1177,11 @@ const StudioRite=(function(){
 
   function _teardown(){
     _running=false;
+    // The Studio's own content rules own the buttons from here.
+    try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
     if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
+    if(_yieldTimer){ clearInterval(_yieldTimer); _yieldTimer=null; }
     if(_dockWatch){ try{ window.removeEventListener('resize',_dockWatch); }catch(e){} _dockWatch=null; }
     if(_dockUnobserve){ try{ _dockUnobserve(); }catch(e){} _dockUnobserve=null; }
     try{ document.body.classList.remove('studio-rite-beside'); }catch(e){}
@@ -1158,6 +1209,7 @@ const StudioRite=(function(){
     _els.overlay.classList.add('studio-rite-band');
     _els.overlay.classList.add('studio-rite-has-mission');
     _placeDock();
+    _watchForModal();
     if(!_dockWatch){
       _dockWatch=function(){ _placeDock(); };
       try{ window.addEventListener('resize',_dockWatch); }catch(e){}
@@ -1184,6 +1236,29 @@ const StudioRite=(function(){
   // column and the sidebar becomes a strip across the top — there is no
   // rail to dock into, so the bottom band stays as the fallback rather
   // than the conversation being crammed somewhere it cannot be read.
+  // Publish Studio opens at z-index 300; the Rite's dock sits at 1400,
+  // so without this the dock would render straight over the top of it —
+  // the same "two guides at once" defect as two Lumos. The sharing beat
+  // is exactly when this happens, so the Rite stands down for as long as
+  // the modal is up and comes back when it closes.
+  //
+  // A poll rather than :has() or a MutationObserver: nothing else in
+  // this stylesheet depends on :has() yet and a silent failure here
+  // would be invisible, while an observer over the whole body is a lot
+  // of machinery for one boolean.
+  function _watchForModal(){
+    if(_yieldTimer) return;
+    _yieldTimer=setInterval(function(){
+      if(!_els){ return; }
+      let covered=false;
+      try{
+        const m=document.querySelector('.publish-studio-modal');
+        covered=!!(m && !m.classList.contains('hidden'));
+      }catch(e){}
+      try{ _els.overlay.classList.toggle('studio-rite-yield',covered); }catch(e){}
+    },350);
+  }
+
   function _placeDock(){
     if(!_els) return;
     const ov=_els.overlay;
@@ -1362,6 +1437,7 @@ const StudioRite=(function(){
       next(); return;
     }
     _running=true;
+    _actionsUnlocked=false;
     // next() boots the Studio. It happens PART WAY through the Rite —
     // at the moment the child says yes — because Acts III onward need
     // the real editor underneath. Guarded so it fires exactly once no
@@ -1439,6 +1515,7 @@ const StudioRite=(function(){
   return {
     isComplete:isComplete,
     isRunning:isRunning,
+    actionsUnlocked:actionsUnlocked,
     markComplete:markComplete,
     gate:gate
   };

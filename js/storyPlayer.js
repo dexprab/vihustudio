@@ -43,6 +43,10 @@ const StoryPlayer=(function(){
   let _returnTo=0;
   let _open=false;
   let _onClose=null;
+  // How many readings have happened this session. The Rite watches it
+  // rather than being told, so the button stays the only thing a child
+  // has to press and nothing has to call back into the Rite.
+  let _plays=0;
 
   function isOpen(){ return _open; }
 
@@ -167,6 +171,7 @@ const StoryPlayer=(function(){
 
     _els=_build();
     _open=true;
+    _plays++;
     try{ document.body.classList.add('story-player-open'); }catch(e){}
 
     _els.close.addEventListener('click',function(ev){ ev.stopPropagation(); close(); });
@@ -211,6 +216,8 @@ const StoryPlayer=(function(){
     if(cb){ try{ cb(); }catch(e){} }
   }
 
-  return { open:open, close:close, isOpen:isOpen };
+  function playCount(){ return _plays; }
+
+  return { open:open, close:close, isOpen:isOpen, playCount:playCount };
 })();
 try{ window.StoryPlayer=StoryPlayer; }catch(e){}

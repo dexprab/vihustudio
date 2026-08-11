@@ -503,13 +503,82 @@ function markDirty(){ if(window.ProjectManager) ProjectManager.markDirty(); }
 // Sprint 8.1.1 — Publish button opens Publish Studio. The editor stays
 // exactly as it was underneath; closing the studio returns control with
 // no state change.
-const publishBtn=document.getElementById('publishBtn');
-if(publishBtn){
-  publishBtn.onclick=function(){
+// The two things a child does with a finished story.
+//
+// Share with VihuPlanet opens the SAME PublishStudio the old Publish
+// button did — the module is untouched and keeps its name; only the
+// word in front of the child changes (Canon 7). Everything downstream,
+// including the Creator Ceremony that fires on a first publish, is
+// reached exactly as before.
+const playStoryBtn=document.getElementById('playStoryBtn');
+const shareBtn=document.getElementById('shareBtn');
+if(playStoryBtn){
+  playStoryBtn.onclick=function(){
+    if(playStoryBtn.disabled) return;
+    if(typeof StoryPlayer==='undefined') return;
+    StoryPlayer.open();
+  };
+}
+if(shareBtn){
+  shareBtn.onclick=function(){
+    if(shareBtn.disabled) return;
     if(typeof PublishStudio==='undefined') return;
     PublishStudio.open();
   };
 }
+
+// Asleep until there is a story.
+//
+// Neither button means anything before something exists to play or
+// share, so both start dormant and wake when it does. This is not a
+// Rite behaviour: a brand-new empty project has them asleep too, for
+// the same reason. Nothing ever explains the state — Canon 6 forbids
+// explaining a control, so there is no tooltip telling a child to
+// finish first; the button simply becomes real.
+function _pageHasContent(s){
+  if(!s||!s.metadata) return false;
+  const m=s.metadata;
+  if(Array.isArray(m.stickers)&&m.stickers.length) return true;
+  if(m.cardOverrides&&m.cardOverrides.background) return true;
+  if(s.image) return true;
+  return false;
+}
+function _setActionAsleep(btn,asleep){
+  if(!btn) return;
+  const was=btn.classList.contains('is-asleep');
+  btn.classList.toggle('is-asleep',asleep);
+  btn.disabled=!!asleep;
+  // Waking is a short pulse, once — a child who is not looking at the
+  // header when their story becomes shareable should still notice that
+  // something changed.
+  if(was&&!asleep){
+    btn.classList.add('is-waking');
+    setTimeout(function(){ try{ btn.classList.remove('is-waking'); }catch(e){} },7000);
+  }
+}
+window.refreshStoryActions=function(){
+  let content=false, named=false;
+  try{ content=(AppState.slides||[]).some(_pageHasContent); }catch(e){}
+  try{
+    const t=document.getElementById('bookTitle');
+    named=!!(t&&String(t.value||'').trim());
+  }catch(e){}
+  // The Rite holds both shut until its own finale, whatever the project
+  // looks like — the story is not finished until Lumo says so.
+  let riteHold=false;
+  try{
+    riteHold=(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning()
+              && StudioRite.actionsUnlocked && !StudioRite.actionsUnlocked());
+  }catch(e){}
+  _setActionAsleep(playStoryBtn, riteHold || !content);
+  _setActionAsleep(shareBtn,     riteHold || !content || !named);
+};
+try{
+  if(typeof PageRuntime!=='undefined' && PageRuntime.observe) PageRuntime.observe(window.refreshStoryActions);
+  const _t=document.getElementById('bookTitle');
+  if(_t) _t.addEventListener('input',window.refreshStoryActions);
+  window.refreshStoryActions();
+}catch(e){}
 
 if(saveBtn){
   saveBtn.onclick=()=>{

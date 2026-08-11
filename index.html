@@ -25,8 +25,8 @@
      stylesheets AND every script tag) on every ship that touches ANY
      JS or CSS file — not just the files that actually changed — the
      same manual ritual build-info.json's own version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0407'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0407'>
+<link rel='stylesheet' href='css/style.css?v=0410'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0410'>
 </head>
 <body class='light-theme creation-flow-active'>
 <!-- "under any circumstance, inner studio screen can never load before
@@ -93,10 +93,22 @@
      default; never a name, never a settings menu. -->
 <button id='magicCardBadge' class='magic-card-badge hidden' title='Your Magic Card' type='button'></button>
 <button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
-<!-- Sprint 9.1.4 — Children publish stories. Software generates
-     files. The Export button that lingered hidden since Sprint 8.1
-     is gone; Publish is the only publishing action in the editor. -->
-<button id='publishBtn' class='publish-btn' title='Publish my story'>📖 Publish</button>
+<!-- The two things a child does with a finished story. They replace the
+     single Publish button: Play My Story is new, and Share with
+     VihuPlanet is the child's name for the same Publish flow, which
+     keeps its module name internally (docs/COMPANION_CANON.md Canon 7 —
+     the word never appears in front of a child).
+
+     Both start ASLEEP and wake when there is a story. Nothing explains
+     why: Canon 6 forbids explaining a control, so there is no tooltip
+     saying "finish your story first" — the interface shows, it never
+     tells. -->
+<button id='playStoryBtn' class='story-action story-action-play is-asleep' type='button' disabled>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3.6l14 8.4-14 8.4z"/></svg>
+Play My Story</button>
+<button id='shareBtn' class='story-action story-action-share is-asleep' type='button' disabled>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.4"/><path d="M12 4v16"/></svg>
+Share with VihuPlanet</button>
 </div>
 </header>
 
@@ -605,6 +617,6 @@ Your <strong>World</strong> is the story's whole look and feel. Every change her
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js?v=0407'></script><script src='js/zipReader.js?v=0407'></script><script src='js/themePresets.js?v=0407'></script><script src='js/themeRegistry.js?v=0407'></script><script src='js/themeRepositoryClient.js?v=0407'></script><script src='js/assetStore.js?v=0407'></script><script src='js/familyAlbum.js?v=0407'></script><script src='js/voiceRecorder.js?v=0407'></script><script src='js/placeFrameV2.js?v=0407'></script><script src='js/cardPlatform.js?v=0407'></script><script src='js/themeEngine.js?v=0407'></script><script src='js/workspaceBuilder.js?v=0407'></script><script src='js/sceneEngine.js?v=0407'></script><script src='js/imageViewEngine.js?v=0407'></script><script src='js/stickerLibrary.js?v=0407'></script><script src='js/layerEngine.js?v=0407'></script><script src='renderer/slideRenderer.js?v=0407'></script><script src='js/buildInfo.js?v=0407'></script><script src='js/thumbnails.js?v=0407'></script><script src='js/pageOps.js?v=0407'></script><script src='js/theme.js?v=0407'></script><script src='js/creatorProjectStore.js?v=0407'></script><script src='js/creatorProjectSync.js?v=0407'></script><script src='js/creatorProjectCache.js?v=0407'></script><script src='js/magicCardArt.js?v=0407'></script><script src='js/magicCard.js?v=0407'></script><script src='js/lumoVoice.js?v=0407'></script><script src='js/magicCardUI.js?v=0407'></script><script src='js/projectManager.js?v=0407'></script><script src='tools/sheet-extractor/js/pngEncoder.js?v=0407'></script><script src='tools/sheet-extractor/js/extractor.js?v=0407'></script><script src='tools/sheet-extractor/js/tileEditor.js?v=0407'></script><script src='js/pictureStudio.js?v=0407'></script><script src='js/composePanel.js?v=0407'></script><script src='js/emojiPicker.js?v=0407'></script><script src='js/cardDesigner.js?v=0407'></script><script src='js/pageDesigner.js?v=0407'></script><script src='js/stickerStudio.js?v=0407'></script><script src='js/publishValidator.js?v=0407'></script><script src='js/pdfWriter.js?v=0407'></script><script src='js/zipWriter.js?v=0407'></script><script src='js/reelComposer.js?v=0407'></script><script src='js/magicReveal.js?v=0407'></script><script src='js/magicStrip.js?v=0407'></script><script src='js/storyDestinations.js?v=0407'></script><script src='js/publishStudio.js?v=0407'></script><script src='js/creationFlow.js?v=0407'></script><script src='js/contextPanel.js?v=0407'></script><script src='js/objectStrip.js?v=0407'></script><script src='js/selectionActionStrip.js?v=0407'></script><script src='js/pageRuntime.js?v=0407'></script><script src='js/travellerSaveNotice.js?v=0407'></script><script src='js/companionEngine.js?v=0407'></script><script src='js/companionDirector.js?v=0407'></script><script src='js/audioManager.js?v=0407'></script><script src='js/gatewayAudio.js?v=0407'></script><script src='js/gatewaySequence.js?v=0407'></script><script src='js/storyPlayer.js?v=0407'></script><script src='js/stageSky.js?v=0407'></script><script src='js/studioRite.js?v=0407'></script><script src='js/app.js?v=0407'></script>
+<script src='js/state.js?v=0410'></script><script src='js/zipReader.js?v=0410'></script><script src='js/themePresets.js?v=0410'></script><script src='js/themeRegistry.js?v=0410'></script><script src='js/themeRepositoryClient.js?v=0410'></script><script src='js/assetStore.js?v=0410'></script><script src='js/familyAlbum.js?v=0410'></script><script src='js/voiceRecorder.js?v=0410'></script><script src='js/placeFrameV2.js?v=0410'></script><script src='js/cardPlatform.js?v=0410'></script><script src='js/themeEngine.js?v=0410'></script><script src='js/workspaceBuilder.js?v=0410'></script><script src='js/sceneEngine.js?v=0410'></script><script src='js/imageViewEngine.js?v=0410'></script><script src='js/stickerLibrary.js?v=0410'></script><script src='js/layerEngine.js?v=0410'></script><script src='renderer/slideRenderer.js?v=0410'></script><script src='js/buildInfo.js?v=0410'></script><script src='js/thumbnails.js?v=0410'></script><script src='js/pageOps.js?v=0410'></script><script src='js/theme.js?v=0410'></script><script src='js/creatorProjectStore.js?v=0410'></script><script src='js/creatorProjectSync.js?v=0410'></script><script src='js/creatorProjectCache.js?v=0410'></script><script src='js/magicCardArt.js?v=0410'></script><script src='js/magicCard.js?v=0410'></script><script src='js/lumoVoice.js?v=0410'></script><script src='js/magicCardUI.js?v=0410'></script><script src='js/projectManager.js?v=0410'></script><script src='tools/sheet-extractor/js/pngEncoder.js?v=0410'></script><script src='tools/sheet-extractor/js/extractor.js?v=0410'></script><script src='tools/sheet-extractor/js/tileEditor.js?v=0410'></script><script src='js/pictureStudio.js?v=0410'></script><script src='js/composePanel.js?v=0410'></script><script src='js/emojiPicker.js?v=0410'></script><script src='js/cardDesigner.js?v=0410'></script><script src='js/pageDesigner.js?v=0410'></script><script src='js/stickerStudio.js?v=0410'></script><script src='js/publishValidator.js?v=0410'></script><script src='js/pdfWriter.js?v=0410'></script><script src='js/zipWriter.js?v=0410'></script><script src='js/reelComposer.js?v=0410'></script><script src='js/magicReveal.js?v=0410'></script><script src='js/magicStrip.js?v=0410'></script><script src='js/storyDestinations.js?v=0410'></script><script src='js/publishStudio.js?v=0410'></script><script src='js/creationFlow.js?v=0410'></script><script src='js/contextPanel.js?v=0410'></script><script src='js/objectStrip.js?v=0410'></script><script src='js/selectionActionStrip.js?v=0410'></script><script src='js/pageRuntime.js?v=0410'></script><script src='js/travellerSaveNotice.js?v=0410'></script><script src='js/companionEngine.js?v=0410'></script><script src='js/companionDirector.js?v=0410'></script><script src='js/audioManager.js?v=0410'></script><script src='js/gatewayAudio.js?v=0410'></script><script src='js/gatewaySequence.js?v=0410'></script><script src='js/storyPlayer.js?v=0410'></script><script src='js/stageSky.js?v=0410'></script><script src='js/studioRite.js?v=0410'></script><script src='js/app.js?v=0410'></script>
 </body>
 </html>

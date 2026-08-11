@@ -11184,3 +11184,82 @@ body.story-player-open{ overflow:hidden; }
 @media (prefers-reduced-motion: reduce){
   .story-player{ transition:none; }
 }
+
+/* ---- The two story actions -----------------------------------------
+   Play My Story and Share with VihuPlanet. Gold is everything the child
+   does to their own story; violet is the one action that sends it
+   outward. Two accents, two meanings, and nothing else uses either. */
+.story-action{
+  border:none;
+  border-radius:24px;
+  padding:9px 18px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  height:auto !important;
+  width:auto !important;
+  margin:0 !important;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+  transition:background .18s ease, box-shadow .18s ease, color .18s ease, transform .06s ease;
+}
+.story-action-play{
+  background:linear-gradient(135deg,#ffd668,var(--gold));
+  color:var(--navy);
+  box-shadow:0 4px 14px rgba(245,197,66,.32);
+}
+.story-action-share{
+  background:linear-gradient(135deg,#8E6DEB,#6F4CD8);
+  color:#fff;
+  box-shadow:0 4px 14px rgba(124,92,224,.34);
+}
+.story-action:not(.is-asleep):hover{ transform:translateY(-1px); }
+.story-action:not(.is-asleep):active{ transform:translateY(0); }
+
+/* Asleep. Present so a child learns where their story will go, dormant
+   because neither means anything until there is a story. Silent by
+   design — Canon 6 forbids explaining a control, so nothing here says
+   why, and there is no title attribute to read out either. */
+.story-action.is-asleep{
+  background:rgba(255,255,255,.08);
+  color:rgba(226,233,252,.4);
+  box-shadow:none;
+  cursor:default;
+}
+body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
+.story-action.is-asleep svg{ opacity:.34; }
+
+/* Waking. Three cycles then settle — enough that a child not watching
+   the header still notices something changed. */
+.story-action.is-waking.story-action-play{ animation:story-action-wake 2.2s ease-in-out 3; }
+.story-action.is-waking.story-action-share{ animation:story-action-wake-v 2.2s ease-in-out 3; }
+@keyframes story-action-wake{
+  0%,100%{ box-shadow:0 4px 14px rgba(245,197,66,.32) }
+  50%{ box-shadow:0 4px 24px rgba(245,197,66,.8) }
+}
+@keyframes story-action-wake-v{
+  0%,100%{ box-shadow:0 4px 14px rgba(124,92,224,.34) }
+  50%{ box-shadow:0 4px 26px rgba(124,92,224,.82) }
+}
+@media (prefers-reduced-motion: reduce){
+  .story-action.is-waking{ animation:none; }
+}
+
+/* Saying no to sharing is a real answer, not a failure to comply — so
+   it is a plain, quiet way out rather than a second bright button. */
+.studio-rite-choice.studio-rite-decline{
+  background:transparent;
+  color:rgba(255,241,214,.62);
+  box-shadow:none;
+  font-size:clamp(13px,1vw,15px);
+  padding:9px 14px;
+}
+.studio-rite-choice.studio-rite-decline:hover{ color:rgba(255,241,214,.92); }
+
+/* The Rite stands behind Publish Studio. Publish Studio owns the whole
+   screen while it is up, and the dock is not a second guide competing
+   with it — see _watchForModal in js/studioRite.js. */
+.studio-rite-overlay.studio-rite-yield{ display:none !important; }
