@@ -36,6 +36,19 @@ The upload arrived with `celeberate.png` misspelled; it was renamed to
 `celebrate.png` rather than declared under the typo, so the states map stays
 identical to every other companion's.
 
+## Framing
+
+Both display frames — the 92px companion widget (`.companion-portrait-img`)
+and the 240px Creator Ceremony stage (`.magic-card-ceremony-img`) — are
+squares using `object-fit:contain`, so for a portrait pose the character's
+apparent size is governed entirely by `contentHeight / canvasHeight`. Keep
+every pose filling roughly 75–90% of its canvas height; a pose with a tall
+empty margin silently renders at half the size of its neighbours.
+
+`hero.png` and `think.png` arrived filling 51% and 43%, and were cropped
+(never resampled) to 84% each. Every kept pixel is byte-identical to the
+upload.
+
 ## Non-State Files
 
 `sheet.png` is the labelled contact sheet of all twelve poses — reference
