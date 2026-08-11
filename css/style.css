@@ -1,8 +1,13 @@
 /* VihuStudio v0.4-dev - Final UI Polish & Design System */
 :root{
-  --navy:#1D3457;
-  --gold:#FFCB45;
-  --bg:#EEF2F7;
+  /* Visual direction pass 1. The mockup keeps navy and gold almost
+     exactly — a few points of blue, a touch less glare — but swings the
+     ground from grey-blue to blue-lavender, which is what stops the
+     workspace reading as application chrome. Three values; every
+     surface in the app already follows them. */
+  --navy:#1E2F5E;
+  --gold:#F5C542;
+  --bg:#F1F4FC;
   --panel:#fff;
   --line:#DCE3EE;
   --text:#1a1a1a;
@@ -29,7 +34,15 @@ body.dark-theme{
 
 body{
   margin:0;
-  font-family:Arial,sans-serif;
+  /* Nunito has shipped in assets/fonts/ since the Gateway was built and
+     was referenced by exactly nothing — the whole editor rendered in
+     Arial, the typeface of forms and spreadsheets. It is already
+     downloaded on every load, it is variable across the weights used
+     here, and it is the rounded face the product's own artwork is drawn
+     in. The canvas renderer is deliberately untouched: page text is
+     content, and changing it would alter every already-published
+     story. */
+  font-family:'Nunito',ui-rounded,system-ui,-apple-system,sans-serif;
   background:var(--bg);
   color:var(--text);
   transition:background-color 0.3s, color 0.3s;
