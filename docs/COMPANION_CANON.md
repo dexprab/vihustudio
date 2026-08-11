@@ -139,6 +139,7 @@ Story Dragon      -> Lumo (the Guardian, not a Story Companion)
 Dream Sprite      -> Nimbus
 Ink Spirit        -> Quill
 Bloomling         -> Leafy
+Lantern Lion      -> Leo
 Stardust Wisp
 Crystal Keeper
 Melody Spirit
@@ -152,6 +153,12 @@ Only the species/companion pairs actually registered in
 companions today — see "Asset Registration" below. The remaining
 species names above are reserved vocabulary for future companions, not
 yet implemented.
+
+The list is not closed. A new companion may bring a new species with it
+when nothing reserved fits — `Lantern Lion` was added for Leo, whose
+winged-lion art matched none of the reserved names. Claiming a reserved
+name is still preferred; adding one is a product-owner decision, not an
+engineering one.
 
 **Companion Pose Contract v2** — every Story Companion implements the
 exact same 12-pose vocabulary:
