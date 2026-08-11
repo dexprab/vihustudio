@@ -55,10 +55,31 @@ const StageSky=(function(){
     {x:1,  y:28, w:104, delay:3}
   ];
 
+  // The top bar gets its own, much quieter sky. The reference art has
+  // small stars scattered through the bar and they are a real part of
+  // why it reads as a night sky rather than a toolbar — but the bar is
+  // 64px tall and full of controls, so these are smaller, fewer, and
+  // placed in the gaps BETWEEN the clusters: the left group ends around
+  // 30%, the title sits near the middle, and the story buttons start
+  // around 70%. Anything that does end up behind a control is simply
+  // hidden by it, which costs nothing.
+  const HEADER_STARS=[
+    {x:32, y:26, size:13, fill:'#F5C542', delay:.2},
+    {x:38, y:64, size:9,  fill:'#FFE59A', delay:1.4},
+    {x:60, y:22, size:11, fill:'#C9B6F5', delay:.8},
+    {x:66, y:66, size:10, fill:'#F5C542', delay:2.1}
+  ];
+  const HEADER_SPARKS=[
+    {x:35, y:78, size:3, fill:'#FFE59A', delay:.6},
+    {x:57, y:74, size:4, fill:'#F5C542', delay:1.9},
+    {x:69, y:30, size:3, fill:'#BFD4FF', delay:1.1}
+  ];
+
   const NS='http://www.w3.org/2000/svg';
   const STAR_D='M12 1.6l2.9 6.4 7 .8-5.2 4.7 1.4 6.9L12 16.9 5.9 20.4l1.4-6.9L2.1 8.8l7-.8z';
 
   let _root=null;
+  let _bar=null;
 
   function _star(spec){
     const el=document.createElement('span');
@@ -136,21 +157,39 @@ const StageSky=(function(){
     }catch(e){ return false; }
   }
 
+  // The header's own layer. Mounted as its first child so every control
+  // paints over it in normal document order, and inert like the stage's.
+  function mountHeader(){
+    try{
+      const bar=document.querySelector('.app-header');
+      if(!bar) return false;
+      if(_bar && _bar.parentNode) _bar.parentNode.removeChild(_bar);
+      _bar=document.createElement('div');
+      _bar.className='stage-sky stage-sky-header';
+      _bar.setAttribute('aria-hidden','true');
+      HEADER_STARS.forEach(function(s){ _bar.appendChild(_star(s)); });
+      HEADER_SPARKS.forEach(function(s){ _bar.appendChild(_spark(s)); });
+      bar.insertBefore(_bar,bar.firstChild);
+      return true;
+    }catch(e){ return false; }
+  }
+
   function unmount(){
     try{ if(_root && _root.parentNode) _root.parentNode.removeChild(_root); }catch(e){}
-    _root=null;
+    try{ if(_bar && _bar.parentNode) _bar.parentNode.removeChild(_bar); }catch(e){}
+    _root=null; _bar=null;
   }
 
   // Self-mounting, deliberately: .preview-area is in the static markup,
   // nothing else needs to know this exists, and the header's promise
   // that deleting the script tag deletes the feature is only true if no
   // other module has to call it.
-  function _boot(){ mount(); }
+  function _boot(){ mount(); mountHeader(); }
   try{
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_boot);
     else _boot();
   }catch(e){}
 
-  return { mount:mount, unmount:unmount };
+  return { mount:mount, mountHeader:mountHeader, unmount:unmount };
 })();
 try{ window.StageSky=StageSky; }catch(e){}

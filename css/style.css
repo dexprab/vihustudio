@@ -11307,3 +11307,10 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 @media (prefers-reduced-motion: reduce){
   .story-player-face{ transition:none; }
 }
+
+/* The top bar's own sky. The bar is already position:relative, so the
+   layer only needs clipping and everything in the bar needs to paint
+   over it — the same z-index discipline the stage uses. */
+.app-header{ overflow:hidden; }
+.stage-sky-header{ z-index:0; }
+.app-header > *:not(.stage-sky-header){ position:relative; z-index:1; }
