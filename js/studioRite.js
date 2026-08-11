@@ -107,7 +107,7 @@ const StudioRite=(function(){
              subtitle:'It is yours to look after.'}},
       {lumo:'curious', egg:'idle',
        line:{title:'It will stay with you while you make your story.'}}
-     ], end:{move:"Let's Begin"}},
+     ], audio:{id:'riteScreen1',cues:[0,3.14,6.14]}, end:{move:"Let's Begin"}},
 
     // ---- Act II — Who am I?
     {lines:[
@@ -120,7 +120,7 @@ const StudioRite=(function(){
       {lumo:'wave', egg:'excited',
        line:{title:'Nobody knows what is inside a Story Egg.',
              subtitle:'Not even me.'}}
-     ], end:{choice:'Start My First Story'}, opensStudio:true},
+     ], audio:{id:'riteScreen2',cues:[0,8.78,14.20]}, end:{choice:'Start My First Story'}, opensStudio:true},
 
     // ---- The Starter Story: "The Night a Star Came Down"
     // Page 1 — The Falling. Every line: one instruction, one new idea,
@@ -129,25 +129,25 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'We are going to make a story about a star that falls out of the sky.',
              subtitle:'Add a star to your page.'}}
-     ], end:{await:'sticker-added'}, nudgeDelay:0},
+     ], audio:{id:'riteScreen3',cues:[0]}, end:{await:'sticker-added'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'Stars are hard to see in the daytime.',
              subtitle:'Make the sky dark.'}}
-     ], end:{await:'bg-set'}, nudgeDelay:0},
+     ], audio:{id:'riteScreen4',cues:[0]}, end:{await:'bg-set'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'curious', egg:'curious',
        line:{title:'Your star is far away up in the sky.',
              subtitle:'Make your star smaller.'}}
-     ], end:{await:'sticker-resized'}, nudgeDelay:0},
+     ], audio:{id:'riteScreen5',cues:[0]}, end:{await:'sticker-resized'}, nudgeDelay:0},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'Now the star starts to fall.',
              subtitle:'Turn your star a little.'}}
-     ], end:{await:'sticker-rotated'}, nudgeDelay:0},
+     ], audio:{id:'riteScreen6',cues:[0]}, end:{await:'sticker-rotated'}, nudgeDelay:0},
 
     // Page 2 — The Finding.
     //
@@ -165,7 +165,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'Your page can make a copy of itself.',
              subtitle:'Copy this page.'}}
-     ], end:{await:'page-added'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen7',cues:[0,5.24]}, end:{await:'page-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
@@ -310,6 +310,7 @@ const StudioRite=(function(){
   // for the whole story and wake at the finale. js/app.js reads this.
   let _actionsUnlocked=false;
   let _yieldTimer=null;       // watches for a modal the Rite must stand behind
+  let _cueTimers=[];          // line reveals scheduled against a recording
   let _dockWatch=null;        // resize handler that re-places the dock
   let _dockUnobserve=null;    // page-list observer that re-places the dock
   let _running=false;
@@ -958,6 +959,31 @@ const StudioRite=(function(){
 
   // Every line of a screen appears on its own, one after another. The
   // child is never asked to click to hear the next thing Lumo says.
+  // A screen with its own recording plays the take from end to end and
+  // reveals each line at a measured cue. `holdForAudio` is true only for
+  // screens that end in a BUTTON: there the screen waits for the
+  // recording to finish, so a child cannot click Lumo off mid-sentence.
+  // A screen that ends by waiting for the child resolves as soon as the
+  // last line is up — its baseline is captured at that moment, and a
+  // child who acts while Lumo is still talking must have that action
+  // counted, not swallowed.
+  function _playRecorded(lines,audio,holdForAudio){
+    return new Promise(function(resolve){
+      let total=0;
+      try{ total=LumoVoice.durationMs(audio.id)||0; }catch(e){}
+      _speak(audio.id);
+      const last=audio.cues.length-1;
+      lines.forEach(function(entry,i){
+        const at=Math.max(0,Math.round((audio.cues[i]||0)*1000));
+        const t=setTimeout(function(){ _showLine(entry); },at);
+        _cueTimers.push(t);
+      });
+      const lastAt=Math.round((audio.cues[last]||0)*1000);
+      const endAt=holdForAudio ? Math.max(lastAt+400,total) : lastAt+400;
+      _cueTimers.push(setTimeout(resolve,endAt));
+    });
+  }
+
   function _playLines(lines){
     return lines.reduce(function(chain,entry,i){
       return chain.then(function(){
@@ -1131,7 +1157,13 @@ const StudioRite=(function(){
     if(_els&&_els.convo) _els.convo.innerHTML='';
   }
 
+  function _clearCues(){
+    _cueTimers.forEach(function(t){ clearTimeout(t); });
+    _cueTimers=[];
+  }
+
   function _playScreen(screen){
+    _clearCues();
     if(screen.band) _toBandMode();
     if(screen.unlock && !_actionsUnlocked){
       _actionsUnlocked=true;
@@ -1139,7 +1171,12 @@ const StudioRite=(function(){
     }
     _hush();          // never let the previous screen's voice bleed in
     _clearConvo();
-    return _playLines(screen.lines).then(function(){
+    const rec=screen.audio && screen.audio.cues
+              && screen.audio.cues.length===screen.lines.length
+              && typeof LumoVoice!=='undefined' && LumoVoice.play;
+    const holdForAudio=!!(screen.end && (screen.end.move||screen.end.choice));
+    return (rec?_playRecorded(screen.lines,screen.audio,holdForAudio)
+               :_playLines(screen.lines)).then(function(){
       return _playEnd(screen.end,screen.nudgeDelay,_instructionOf(screen));
     });
   }
@@ -1177,6 +1214,7 @@ const StudioRite=(function(){
 
   function _teardown(){
     _running=false;
+    _clearCues();
     // The Studio's own content rules own the buttons from here.
     try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }

@@ -4,6 +4,10 @@ Every line Lumo speaks, in order, exactly as the shipped code says it.
 Generated from `js/studioRite.js` -> SCREENS, not transcribed by hand.
 
 - **Screens:** 22  · **Lines to record:** 31
+- **Recorded: screens 1-7** (`lumo-screen1-redone.mp3` … `screen7`), one
+  continuous take per screen. They are registered WHOLE and the text is
+  cued to the performance, so the pacing on screen is the pacing that was
+  recorded. **Still to record: screens 8-22.**
 - A screen's lines play one after another on their own; the child only
   acts (or taps) to LEAVE a screen.
 - *Italic* is the second half of the same line (the instruction). Record

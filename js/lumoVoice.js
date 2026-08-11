@@ -49,36 +49,27 @@
     // runs the exact same length as its placeholder.
     tapgrid:{file:'lumo-01-tapgrid.mp3',ms:3866},
 
-    // Studio Rite, Screen 1 — recorded as ONE continuous take
-    // (lumo-rites-audio.mp3, 30.43s) rather than a clip per line, so
-    // these three entries carry `from`/`to` offsets into that single
-    // file instead of each owning their own. Boundaries were measured,
-    // not guessed: the take's two performed pauses ("[long pause]
-    // [clears throat]" at 6.46-10.72 and "[long pause][sigh]" at
-    // 20.80-22.84) are the only silences longer than 1.1s in the whole
-    // recording, which makes the split unambiguous. Playing the file
-    // straight through would sit the child in front of 4.26s of dead
-    // air after the first line; per-segment playback skips it.
-    riteS1L1:{file:'lumo-rites-audio.mp3',from:0.00, to:6.46, ms:6460},
-    riteS1L2:{file:'lumo-rites-audio.mp3',from:10.72,to:20.80,ms:10080},
-    riteS1L3:{file:'lumo-rites-audio.mp3',from:22.84,to:30.43,ms:7590},
-
-    // Screens 2-4, same one-take-per-screen shape. Screen 1's split was
-    // unambiguous (two pauses over 2s, nothing else above 1.1s); these
-    // takes are more evenly paced, so boundaries were chosen from gap
-    // POSITION against each line's expected length and then cross-checked
-    // by speaking rate — all seven segments land between 2.08 and 2.74
-    // words/second, which a misplaced boundary would break by making one
-    // segment implausibly fast and its neighbour implausibly slow.
-    riteS2L1:{file:'lumo-rites-screen2-audio.mp3',from:0.00, to:6.94, ms:6940},
-    riteS2L2:{file:'lumo-rites-screen2-audio.mp3',from:7.98, to:15.76,ms:7780},
-    riteS2L3:{file:'lumo-rites-screen2-audio.mp3',from:16.80,to:25.39,ms:8590},
-
-    riteS3L1:{file:'lumo-rites-screen3-audio.mp3',from:0.00, to:7.48, ms:7480},
-    riteS3L2:{file:'lumo-rites-screen3-audio.mp3',from:8.60, to:14.52,ms:5920},
-
-    riteS4L1:{file:'lumo-rites-screen4-audio.mp3',from:0.00, to:3.58, ms:3580},
-    riteS4L2:{file:'lumo-rites-screen4-audio.mp3',from:4.54, to:9.48, ms:4940},
+    // Studio Rite — re-recorded, one continuous take per screen.
+    //
+    // These are registered WHOLE rather than cut into a clip per line,
+    // which is a change from the first attempt (riteS1L1/S1L2/... with
+    // from/to offsets into one file). Cutting means a boundary that is a
+    // few frames out clips a word off the start or end of a line, and
+    // there is no way to notice that from a waveform. Playing the take
+    // whole cannot truncate anything; js/studioRite.js instead reveals
+    // each line of text at a measured cue, so a cue that is slightly out
+    // only shows a line slightly early or late while the performance
+    // itself stays intact. The pacing is then the recording's own.
+    //
+    // Durations measured by decoding each file and reading its real
+    // length, not from the encoder's header.
+    riteScreen1:{file:'lumo-screen1-redone.mp3',ms:13240},
+    riteScreen2:{file:'lumo-screen2-redone.mp3',ms:20510},
+    riteScreen3:{file:'lumo-screen3-redone.mp3',ms:8360},
+    riteScreen4:{file:'lumo-screen4-redone.mp3',ms:5720},
+    riteScreen5:{file:'lumo-screen5-redone.mp3',ms:7000},
+    riteScreen6:{file:'lumo-screen6-redone.mp3',ms:5330},
+    riteScreen7:{file:'lumo-screen7-redone.mp3',ms:11960},
 
     // Traveller Gateway greeting -- title then subtitle, one real clip
     // each, played back to back (see playSequence()) while both lines of
