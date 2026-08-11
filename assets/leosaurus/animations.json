@@ -1,0 +1,16 @@
+{
+  "transitions": {
+    "wave": "idle",
+    "celebrate": "idle",
+    "sleep": "idle",
+    "surprised": "idle",
+    "happy": "idle",
+    "hatching": "hero"
+  },
+  "durations": {
+    "wave": 3000,
+    "celebrate": 2000,
+    "surprised": 1500,
+    "happy": 1800
+  }
+}

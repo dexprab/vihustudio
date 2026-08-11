@@ -34,6 +34,13 @@
       "species": "Bloomling",
       "path": "leafy/",
       "role": "companion"
+    },
+    {
+      "id": "leosaurus",
+      "name": "Leo",
+      "species": "Lantern Lion",
+      "path": "leosaurus/",
+      "role": "companion"
     }
   ]
 }
