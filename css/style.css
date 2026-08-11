@@ -11137,3 +11137,50 @@ body.dark-theme .object-card.selected{ background:rgba(245,197,66,.14); }
 /* The sky is a light-theme flourish; on the dark theme the workspace is
    already a night, and white clouds on it read as smudges. */
 body.dark-theme .stage-sky{ display:none; }
+
+/* ---- Play My Story (js/storyPlayer.js) ------------------------------
+   A full-screen reading of the child's own story. Deliberately almost
+   empty: the page is the only bright thing, and every control is quiet
+   until it is wanted. z-index sits above the Rite's own dock (1400) so
+   the player is never half-covered, and below the restore modal (2000),
+   which must always be able to speak over anything. */
+.story-player{
+  position:fixed; inset:0; z-index:1500;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 50% 42%, #2a2a52 0%, #14122e 62%, #0d0b20 100%);
+  opacity:0; transition:opacity .3s ease;
+}
+.story-player.story-player-in{ opacity:1; }
+.story-player-stage{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%; padding:36px 76px; cursor:pointer;
+}
+.story-player-canvas{
+  max-width:100%; max-height:100%; width:auto; height:auto;
+  border-radius:18px; box-shadow:0 30px 80px rgba(0,0,0,.6);
+  background:#fff;
+}
+.story-player-close,
+.story-player-nav{
+  position:absolute; border:0; cursor:pointer; color:#F3EAD6;
+  background:rgba(255,255,255,.1); border-radius:50%;
+  display:grid; place-items:center; padding:0; margin:0;
+  transition:background .18s ease, opacity .18s ease;
+}
+.story-player-close{ top:20px; right:22px; width:44px !important; height:44px; font-size:19px; }
+.story-player-nav{ top:50%; transform:translateY(-50%); width:52px !important; height:52px; font-size:30px; line-height:1; }
+.story-player-prev{ left:18px; }
+.story-player-next{ right:18px; }
+.story-player-close:hover,
+.story-player-nav:hover:not(:disabled){ background:rgba(255,255,255,.22); }
+.story-player-nav:disabled{ opacity:.18; cursor:default; }
+.story-player-counter{
+  position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+  color:rgba(243,234,214,.55); font-size:13px; font-weight:700;
+  letter-spacing:.14em; font-variant-numeric:tabular-nums;
+}
+/* Nothing behind the player should be reachable while it is up. */
+body.story-player-open{ overflow:hidden; }
+@media (prefers-reduced-motion: reduce){
+  .story-player{ transition:none; }
+}
