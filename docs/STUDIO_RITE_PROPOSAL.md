@@ -612,6 +612,99 @@ check is not optional.
 
 ---
 
+# Part V — Play My Story · Share with VihuPlanet
+
+**Status: defined, approved, not built.** Two buttons in the header that replace
+the single `📖 Publish`. They are not chrome: together they are the Rite's
+finale, and they are the two controls a child uses for the rest of their life
+in the Studio.
+
+## What the code already gives us
+
+Verified before designing, so none of this is reinvented:
+
+- **The Creator Ceremony already fires from a completed publish**, gated by
+  `MagicCard.shouldOfferAwakening()` (`js/publishStudio.js`). Share only has to
+  reach it. No new ceremony code.
+- **Per-page narration is recorded and has nowhere to play.** A child can record
+  their voice on a page today and never hear it back — it is only consumed when
+  baked into an exported video (`js/reelComposer.js`). Play My Story is the
+  surface that has been missing.
+- **There is no public VihuPlanet to share to.** `creator_projects` is a private
+  backup and it requires a claimed Magic Card. The card comes from the Ceremony;
+  the Ceremony comes from sharing. The first share therefore *cannot* be a cloud
+  share — that is circular by construction, not a gap to fill later.
+
+**Product owner's ruling on that last point: "share with vihuplanet equals
+publish."** The button is the child's name for the existing Publish flow. This
+is what Canon 7 already specifies — internally the Publish capability is used
+unchanged, no service or module renamed, and the word never appears in front of
+a child. Nothing new is claimed to a child: the lines below say the story
+becomes something they can keep, and never that anyone else can see it.
+
+## ▶ Play My Story
+
+A full-screen player over the Studio. Read-only; it never mutates the project.
+
+- Renders through **`SlideRenderer.buildPayload` + `render`** — the same path the
+  centre pane already proved (Creator Rule 5). Never a second renderer.
+- Page 1 to last, auto-advancing. Tap or → moves on, ← goes back, ✕ or Esc
+  leaves, and it returns the child to the page they were on.
+- **Plays each page's narration** where one exists, holding that page until the
+  clip ends; otherwise about four seconds. Atmosphere keeps running underneath.
+- **Wakes when** at least one page has something on it.
+- **In the Rite it replaces the automatic page-walk** that `_playPages()` does
+  today. Lumo says *"Your story is finished. Watch it from the beginning."*, the
+  button wakes and pulses, and the child presses it themselves. The Rite teaches
+  through creation, so it should not perform the control on their behalf when it
+  could hand it over.
+
+## ✦ Share with VihuPlanet
+
+- Opens **Publish Studio unchanged**. The child picks how the story becomes real
+  — Story Book, Story Carousel, Story Reel — all of which already exist.
+- On completion the existing chain runs: `CompanionDirector.notify('published')`
+  → `MagicCard.markEverPublished()` → **first time only, the Creator Ceremony.**
+- **Wakes when** the story has a name and at least one page with content.
+- **In the Rite this is the missing sharing beat** (Decision 7). Declining stays
+  allowed: the story stays theirs, the Studio still unlocks, and the Ceremony
+  waits for whichever story they do share.
+- **The Rite stands down while Publish Studio is open** and resumes for its
+  closing lines. Publish Studio owns the whole screen; two guides at once is the
+  same defect as two Lumos.
+
+## The sleep rule
+
+Asleep is dim, inert and **silent** — no tooltip, no "finish your story first".
+Canon 6 forbids explaining a control; the interface shows, it never tells.
+Waking is a three-cycle pulse, then settle, once per button per session.
+
+This applies **everywhere, not only inside the Rite**. A brand-new empty project
+has both buttons asleep for the same reason: neither means anything until there
+is a story. One rule, no special case.
+
+## The sharing beat — draft copy
+
+Follows the locked child-language rule: one instruction, one new idea, concrete,
+no metaphor needing interpretation. Placed after Play My Story, before the close.
+
+> **LUMO:** Right now your story only lives on this screen.
+>
+> **LUMO:** Sharing makes it into something you can keep.
+> *Tap Share with VihuPlanet.*
+
+`[CHILD: shares]` → Publish Studio → the Creator Ceremony (first time only)
+
+> **LUMO:** Now you have it for keeps.
+
+`[CHILD: declines]`
+
+> **LUMO:** That is alright. Your story is still yours.
+
+Either way the Rite continues into its existing close, and the Studio unlocks.
+
+---
+
 # Part III — Phase-by-phase technical design
 
 **Script:** `docs/STUDIO_RITE_SCRIPT.md` — 18 Lumo lines, 5 blocking child
