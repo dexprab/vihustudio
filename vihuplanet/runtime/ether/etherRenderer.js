@@ -230,6 +230,13 @@
     var lit = global.document.createElement('canvas');
     var litCtx = lit.getContext('2d');
 
+    // Two persistent vectors for the two camera offsets the frame
+    // holds simultaneously — see the note on camera.offsetFor().
+    // Everything else reads its offset and immediately keeps the
+    // numbers, which is safe with the shared one.
+    var camMistV = { x: 0, y: 0 };
+    var camStoryV = { x: 0, y: 0 };
+
     var stars = [];
     var twinklers = [];
     var nebula = [];       // {color, x, y, r, alpha} — pulsed live
@@ -628,8 +635,8 @@
       //
       // One story alone should never look abandoned. This is the layer
       // where the space around it answers.
-      var mistCam = camera ? camera.offsetFor(D.mist) : null;
-      var storyCam = camera ? camera.offsetFor(D.stories) : null;
+      var mistCam = camera ? camera.offsetFor(D.mist, camMistV) : null;
+      var storyCam = camera ? camera.offsetFor(D.stories, camStoryV) : null;
       if (frames % SOFT_INTERVAL === 0) drawSoft(mistCam);
       frames++;
       ctx.globalAlpha = 1;

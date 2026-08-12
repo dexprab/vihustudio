@@ -158,10 +158,22 @@
     // Negated, because moving the camera right moves the world left —
     // the sign belongs here rather than in five different renderers,
     // each of which would eventually get it wrong once.
-    function offsetFor(parallax) {
-      scratch.x = -offset.x * parallax;
-      scratch.y = -offset.y * parallax;
-      return scratch;
+    //
+    // `out` is not optional book-keeping — it is the fix for a real
+    // bug. This used to always return one shared scratch vector, which
+    // is fine for the common case (call it, read the numbers, move on)
+    // and silently wrong the moment a caller holds TWO layers' offsets
+    // at the same time: the second call overwrites the first, and the
+    // first layer is quietly drawn at the second layer's depth. That
+    // put the whole mist-and-nebula layer 87px down the screen when
+    // looking up, leaving a hard-edged empty band across the top of
+    // the universe. Callers that keep an offset now pass their own
+    // vector; the shared one remains for read-it-and-forget-it use.
+    function offsetFor(parallax, out) {
+      out = out || scratch;
+      out.x = -offset.x * parallax;
+      out.y = -offset.y * parallax;
+      return out;
     }
 
     return {

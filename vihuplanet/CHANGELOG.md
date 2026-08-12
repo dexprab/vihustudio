@@ -2,6 +2,25 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.7.2 — 2026-08-12
+
+- **Fix — a hard-edged empty band across the top of the universe when
+  looking up or down.** `camera.offsetFor()` returned one shared
+  scratch vector to every caller. That is fine for the common use —
+  call it, read the numbers, move on — and silently wrong the moment a
+  caller holds TWO layers' offsets at once, because the second call
+  overwrites the first. The Ether Renderer holds the mist offset and
+  the story offset together, so the entire mist-and-nebula layer was
+  being positioned at the stories' parallax: drawn 87px down the screen
+  at full pitch, leaving the top of the frame with sky and no
+  atmosphere at all.
+  Callers that keep an offset now pass their own vector. Verified at
+  five pitch positions and ten yaw angles: worst discontinuity 1–3 out
+  of a possible 765, against 20–35 for the band.
+  The bug is worth remembering by shape rather than by symptom — a
+  shared scratch buffer that is correct until two things need it in the
+  same frame.
+
 ## v0.7.1 — 2026-08-12
 
 Two bugs in Sprint U2's turning, both reported from a real screen.

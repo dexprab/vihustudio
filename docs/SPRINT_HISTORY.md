@@ -1607,3 +1607,27 @@ range of about 70px; yaw never had the problem because it maps to a full field
 WIDTH and wraps. Looking up is something you can always do under a sky, so pitch
 now has a floor of a third of the viewport either way — 199px of travel measured
 where there had been none — with the sky's bleed raised to 72px to cover it.
+
+## Sprint U2 follow-up 2 · The shared scratch vector
+
+A hard-edged empty band across the top of the universe when looking up or down,
+reported from a real screen and reproduced exactly. Six wrong hypotheses were
+eliminated by measurement before the real one: the bleed margins were all
+comfortably large enough, the soft buffer's own pixels had content in every row,
+and the baked sky covered the band (the stars were visible inside it). Isolating
+it by disabling one layer at a time showed the mist-and-nebula layer contributed
+*exactly zero* above y=81 while covering that region on paper — which is only
+possible if it was not being drawn where the arithmetic said. The cause is
+`camera.offsetFor()`, which returned **one shared scratch vector** to every
+caller. Correct for the common use (call it, read the numbers, move on) and
+silently wrong the moment a caller holds two layers' offsets simultaneously: the
+Ether Renderer keeps the mist offset and the story offset together, so the
+second call overwrote the first and the whole mist layer was positioned at the
+stories' parallax — 87px down the screen at full pitch, which is precisely where
+the band's edge was. Fixed with an optional out-parameter: callers that keep an
+offset pass their own vector, the shared one remains for read-and-forget use.
+Verified at five pitch positions and ten yaw angles, worst discontinuity 1-3 out
+of a possible 765 against 20-35 for the band. Worth remembering by shape rather
+than by symptom: a shared scratch buffer is correct until two things need it in
+the same frame, and the failure is not a crash but a layer quietly drawn at
+another layer's depth.
