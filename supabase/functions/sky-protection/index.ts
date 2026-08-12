@@ -32,10 +32,9 @@
 //
 // Deploy (from the repo root):
 //   supabase secrets set \
-//     SMTP_HOST=smtpout.secureserver.net SMTP_PORT=465 \
-//     SMTP_USER=you@yourdomain.com SMTP_PASSWORD='...' \
-//     SKY_FROM_EMAIL="VihuPlanet <you@yourdomain.com>" \
-//     SKY_REPLY_TO="you@yourdomain.com"
+//     SMTP_HOST=smtp.titan.email SMTP_PORT=465 \
+//     SMTP_USER=lumo@vihuplanet.com SMTP_PASSWORD='...' \
+//     SKY_FROM_EMAIL="Lumo from VihuPlanet <lumo@vihuplanet.com>"
 //   supabase functions deploy sky-protection --project-ref <your-project-ref>
 //
 // Sending through the domain's own mailbox needs NO DNS work at all —
@@ -164,10 +163,15 @@ function subjectFor(names: string[]): string {
 // here. Being able to move to an HTTP API by setting one secret, with
 // no code change and no deploy, is worth the twenty lines.
 //
-// SMTP (a real mailbox — e.g. GoDaddy Professional Email):
-//   SMTP_HOST      smtpout.secureserver.net
+// SMTP (a real mailbox). The host is the MAIL provider's, which is not
+// always the company the domain was bought from — a GoDaddy domain with
+// "Professional Email" on it is usually Titan underneath, and Titan's
+// host is nothing like GoDaddy's own. Check the webmail URL if unsure.
+//   SMTP_HOST      smtp.titan.email          (Titan, incl. via GoDaddy)
+//                  smtpout.secureserver.net  (GoDaddy's own mail)
+//                  smtp.office365.com        (Microsoft 365)
 //   SMTP_PORT      465  (implicit TLS)  ·  587 (STARTTLS)
-//   SMTP_USER      you@yourdomain.com
+//   SMTP_USER      the full email address
 //   SMTP_PASSWORD  the mailbox password
 //
 // HTTP (Resend):
@@ -175,7 +179,10 @@ function subjectFor(names: string[]): string {
 //
 // Both:
 //   SKY_FROM_EMAIL  "VihuPlanet <you@yourdomain.com>"
-//   SKY_REPLY_TO    optional; without it a parent's reply goes nowhere
+//   SKY_REPLY_TO    optional, and needed only when the from address is
+//                   a send-only one. When SKY_FROM_EMAIL is a real
+//                   mailbox — the normal case here — replies already
+//                   land in it and this should be left unset.
 //
 // With SMTP the from address must be the mailbox that authenticated —
 // most providers, GoDaddy included, reject anything else — so
