@@ -161,7 +161,14 @@ const EtherFeed = (function () {
       var slides = _pagesIn(record);
       var out = [];
       for (var i = 0; i < slides.length; i++) {
-        if (slides[i] && slides[i].thumbnail) out.push(slides[i].thumbnail);
+        if (!slides[i]) continue;
+        // `readImage` is the page rendered at reading size; `thumbnail`
+        // is the 110px one the page strip uses. Preferring the first and
+        // falling back to the second means a Story published before
+        // reading images existed still opens — softly, but it opens,
+        // and that is the same trade this portal has always made.
+        var img = slides[i].readImage || slides[i].thumbnail;
+        if (img) out.push(img);
       }
       return out;
     } catch (e) { return []; }

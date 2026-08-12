@@ -13,6 +13,18 @@ const ThumbnailEngine=(function(){
     if(onProgressUpdate) try{ onProgressUpdate({generating:generatingCount,total:totalToGenerate}); }catch(e){}
   }
 
+  // The strip's own size, and the size a page is READ at.
+  //
+  // 110px is right for a page strip and hopelessly wrong for reading:
+  // the Ether's portal shows a whole page on a whole screen, and a
+  // 110px image there is both tiny and soft. They are deliberately two
+  // renders rather than one compromise — every page carries the small
+  // one, only a page that has actually gone somewhere to be read
+  // carries the large one, and nothing pays for a resolution it does
+  // not use.
+  const STRIP_W=110;
+  const READ_W=1024;
+
   function generate(slide){
     if(!previewCanvas) return Promise.resolve(null);
     if(slide.thumbnail) return Promise.resolve(slide.thumbnail);
@@ -50,7 +62,7 @@ const ThumbnailEngine=(function(){
           SlideRenderer.render(payload);
         }catch(e){ /* ensure we continue */ }
 
-        const thumbW=110; const thumbH=Math.round((thumbW * temp.height)/temp.width);
+        const thumbW=STRIP_W; const thumbH=Math.round((thumbW * temp.height)/temp.width);
         const thumbCanvas=document.createElement('canvas'); thumbCanvas.width=thumbW; thumbCanvas.height=thumbH;
         const tctx=thumbCanvas.getContext('2d');
         // Sprint 6.3 — match SlideRenderer.init quality so the temp→thumb
@@ -113,9 +125,71 @@ const ThumbnailEngine=(function(){
     return Promise.all(promises);
   }
 
+  // A page at reading size. Deliberately NOT cached onto the slide and
+  // never written into a project's own pages — it is an order of
+  // magnitude larger than the strip thumbnail, and a story being edited
+  // has no use for it. The caller decides where it belongs: canon puts
+  // it in the file it ships, a shared story puts it on the record that
+  // joined the Ether.
+  //
+  // JPEG, not PNG. These are photographs of illustrated pages, not
+  // line art, and at this size the difference is roughly five times the
+  // bytes for no visible gain.
+  //
+  // Shares the same queue as generate(), so the two can never be
+  // half-way through the shared SlideRenderer canvas at the same time.
+  function generateRead(slide,width){
+    if(!previewCanvas) return Promise.resolve(null);
+    const targetW=width||READ_W;
+
+    generatingCount++;
+    totalToGenerate++;
+    _notifyProgress();
+
+    queue = queue.then(()=> new Promise((resolve)=>{
+      let dataUrl=null;
+      try{
+        const temp=document.createElement('canvas');
+        SlideRenderer.init(temp,{dpr:1,adaptiveViewport:true});
+        const titleEl=document.getElementById('bookTitle');
+        const payload=SlideRenderer.buildPayload(slide,{
+          defaultBookTitle: titleEl ? titleEl.value : ''
+        });
+        try{ SlideRenderer.render(payload); }catch(e){ /* ensure we continue */ }
+
+        // Never UPSCALE. A page whose own canvas is smaller than the
+        // reading size gains nothing from being stretched here and
+        // would only cost bytes for blur.
+        const outW=Math.min(targetW,temp.width);
+        const outH=Math.round((outW * temp.height)/temp.width);
+        const c=document.createElement('canvas'); c.width=outW; c.height=outH;
+        const cx=c.getContext('2d');
+        try{ cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high'; }catch(e){}
+        cx.fillStyle='#fff'; cx.fillRect(0,0,outW,outH);
+        cx.drawImage(temp,0,0,outW,outH);
+        dataUrl=c.toDataURL('image/jpeg',0.86);
+      }catch(err){
+        // Same tainted-canvas SecurityError as generate() above, and the
+        // same answer: dataUrl stays null, the caller falls back to the
+        // strip thumbnail, and the restore below still runs.
+      }
+      // Unconditional, for exactly the reason recorded in generate():
+      // leaving SlideRenderer pointed at a discarded canvas reads as a
+      // frozen editor for the rest of the session.
+      SlideRenderer.init(previewCanvas);
+      if(typeof window.redrawPreview==='function'){
+        try{ window.redrawPreview(); }catch(e){}
+      }
+      generatingCount--;
+      _notifyProgress();
+      resolve(dataUrl);
+    }));
+    return queue;
+  }
+
   function getProgress(){
     return {generating:generatingCount,total:totalToGenerate};
   }
 
-  return {init,generate,generateBatch,setProgressCallback,getProgress};
+  return {init,generate,generateBatch,generateRead,setProgressCallback,getProgress,READ_W};
 })();

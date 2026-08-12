@@ -1414,7 +1414,22 @@ const PublishStudio=(function(){
           second=ThumbnailEngine.generateBatch(missing);
         }
       }catch(e){}
+      // And a page at READING size for each one. The strip thumbnail is
+      // 110px, which is right for a strip and unreadable in the Ether's
+      // portal, where a page fills a screen. Canon is the easiest place
+      // to afford this: the file is committed to the repository once
+      // and ships with the application, so the bytes are paid for at
+      // build time rather than by every child's browser.
       return Promise.resolve(second).catch(function(){}).then(function(){
+        if(typeof ThumbnailEngine==='undefined' || !ThumbnailEngine.generateRead){
+          return null;
+        }
+        return Promise.all(live.map(function(s,i){
+          return ThumbnailEngine.generateRead(s).then(function(img){
+            if(img && slides[i]) slides[i].readImage=img;
+          }).catch(function(){});
+        }));
+      }).catch(function(){}).then(function(){
         // The FIRST PAGE THAT RENDERED, not simply the first page. A
         // Spirit wears this as its cover, and a story whose opening
         // page failed would otherwise drift as a bare gradient while
@@ -1438,7 +1453,12 @@ const PublishStudio=(function(){
 
     // Say so plainly rather than shipping a story nobody can open. This
     // screen is written for the team, so it states the fact.
-    const unreadable=slides.filter(function(s){ return !s || !s.thumbnail; }).length;
+    // Readable means the Ether can show it, and the Ether prefers the
+    // reading image and falls back to the strip thumbnail. Counting only
+    // thumbnails reported pages as broken that open perfectly well.
+    const unreadable=slides.filter(function(s){
+      return !s || !(s.readImage || s.thumbnail);
+    }).length;
 
     // Say what was produced and what to do with it. This is the one
     // screen in the product written for the team rather than for a
