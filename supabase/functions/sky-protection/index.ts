@@ -31,8 +31,20 @@
 // Siblings sharing one address is the normal case, not an edge case.
 //
 // Deploy (from the repo root):
-//   supabase secrets set RESEND_API_KEY=... SKY_FROM_EMAIL="VihuPlanet <hello@yourdomain>"
+//   supabase secrets set \
+//     RESEND_API_KEY=re_... \
+//     SKY_FROM_EMAIL="VihuPlanet <hello@send.yourdomain.com>" \
+//     SKY_REPLY_TO="you@yourdomain.com"
 //   supabase functions deploy sky-protection --project-ref <your-project-ref>
+//
+// Send from a SUBDOMAIN (send.yourdomain.com), not the root. A domain
+// may carry only one SPF record and one set of MX records, so adding
+// Resend's to a root domain that already has a mailbox on it breaks the
+// mailbox — incoming mail and outgoing alike. A subdomain has its own,
+// leaves the mailbox untouched, and keeps this product's sending
+// reputation separate from anything sent by hand.
+//
+// SKY_REPLY_TO is optional; without it a parent's reply goes nowhere.
 //
 // Failure convention mirrors the family-album function and
 // js/themeRepositoryClient.js: expected failures come back as
@@ -140,15 +152,25 @@ function subjectFor(names: string[]): string {
   return `Magic Cards for ${names.join(' and ')} — VihuPlanet`;
 }
 
+// SKY_REPLY_TO is optional and worth setting. The `from` address has to
+// live at whatever domain is verified for sending, which is usually a
+// subdomain nobody reads — so without this, a parent who replies to
+// their child's Magic Card is talking to nothing. Point it at a real
+// mailbox and a reply reaches a person, which for the one message this
+// product sends to a grown-up is the right behaviour.
 async function sendMail(to: string, subject: string, body: string) {
   const key = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('SKY_FROM_EMAIL');
+  const replyTo = Deno.env.get('SKY_REPLY_TO');
   if (!key || !from) return { ok: false, error: 'mail_not_configured' };
+
+  const payload: Record<string, unknown> = { from, to: [to], subject, text: body };
+  if (replyTo) payload.reply_to = replyTo;
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, text: body }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
