@@ -2,6 +2,32 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.4.1 — 2026-08-12
+
+- **The recovery email printed a code that would be rejected if typed
+  back in.** The identity row carries two identifiers and only one of
+  them works: the `code` column is `MC-00042`, and `recall_magic_card()`
+  matches `CYGNUS00042` — constellation plus serial. `js/magicCard.js`
+  already builds the right one for the printed card, with a comment
+  saying never to print something that would fail if typed; a recovery
+  email is the last place that rule may be broken, because the parent
+  reading it has nothing else left to try. It now prints the code that
+  works, and says where in the Studio to type it.
+- **A failed send now says which layer failed — in the console, never
+  on screen.** The child still gets one gentle sentence, which is
+  right; whoever has to fix it got the same sentence, which is not.
+  Five different faults produced it and were indistinguishable from
+  outside: no config file, no network, a missing `parent_email` column,
+  an unknown card, a mail server refusing. The reason and the server's
+  own detail are now logged, and a non-JSON answer (a worker that dies
+  on boot) is reported as itself instead of collapsing into
+  "unreachable".
+- **`SkyProtection.ping()`** — a deployment check that sends nothing and
+  answers whether the function is running, whether the database reads,
+  whether the `parent_email` column exists and which transport the
+  secrets selected. Booleans and a transport name only; never a secret,
+  an address or a card.
+
 ## v1.4.0 — 2026-08-12
 
 - **Protect Your Sky.** Before a story joins VihuPlanet — and at no

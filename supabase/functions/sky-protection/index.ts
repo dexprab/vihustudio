@@ -68,7 +68,7 @@ const CONSTELLATION_NAMES: Record<string, string> = {
 
 type Identity = {
   id: string;
-  code: string;
+  serial_no: number;
   nickname: string;
   constellation: string;
   pattern: number[][];
@@ -107,13 +107,31 @@ function orderedTaps(pattern: number[][]): string {
 // Deliberately plain. This is a message a parent files away and finds
 // again in a year, so it is text an inbox search can hit, not a
 // marketing template.
+// The one code a parent can actually type back in.
+//
+// The table has TWO identifiers and only one of them works here. The
+// `code` column is "MC-00042", and `recall_magic_card()`'s typed branch
+// does not look at it — it matches
+// upper(constellation || lpad(serial_no,5,'0')), i.e. "CYGNUS00042".
+// js/magicCard.js's _captureRecallCode() builds exactly this string for
+// the printed card, and its comment says why: never print something
+// that would fail if typed back in. A recovery email is the last place
+// that rule may be broken, since the parent reading it has nothing else
+// left to try.
+function recallCode(identity: Identity): string {
+  const serial = String(identity.serial_no == null ? '' : identity.serial_no);
+  if (!serial) return '';
+  return (identity.constellation || '').toUpperCase() + serial.padStart(5, '0');
+}
+
 function cardText(identity: Identity): string {
   const name = identity.nickname || 'This Creator';
   const constellation = CONSTELLATION_NAMES[identity.constellation] || identity.constellation;
+  const code = recallCode(identity);
   return [
     `Creator: ${name}`,
     ``,
-    `Magic Card code: ${identity.code}`,
+    code ? `Magic Card code: ${code}` : `Magic Card code: (this card has no code yet)`,
     `Constellation:   ${constellation}`,
     ``,
     `Their sky, star by star (tap these on the Mark Your Stars screen —`,
@@ -136,7 +154,8 @@ function recoveryText(): string {
     `recognise them and their stories will be waiting.`,
     ``,
     `If tapping the stars does not work, the Magic Card code above can be`,
-    `typed instead.`,
+    `typed instead: inside VihuStudio, open "My Magic Card? Tap to come`,
+    `home" and choose "Prefer to type your Magic Card code instead?".`,
     ``,
     `This is not an account. There is no password and nothing to log in`,
     `to — the Magic Card is simply how VihuPlanet recognises your child.`,
@@ -303,11 +322,41 @@ Deno.serve(async (req: Request) => {
   if (!db) return json({ ok: false, error: 'not_configured' });
 
   const action = String(body.action || 'protect');
+
+  // A deployment check, and nothing else. Five different things make
+  // this feature say "I could not reach them just now", and from a
+  // browser they are indistinguishable — so there is one call that
+  // answers, without sending anything, whether the function is running,
+  // whether the database can be read, whether the parent_email column
+  // was ever added, and which transport the secrets selected.
+  //
+  // It reports BOOLEANS and a transport name. Never a secret, never an
+  // address, never a card. Deliberately reachable with the anon key,
+  // because the anon key is public and the answer tells an attacker
+  // only that a mail feature exists, which the product already says.
+  if (action === 'ping') {
+    const probe = await db.from('magic_card_identities').select('parent_email').limit(1);
+    return json({
+      ok: true,
+      db: !probe.error,
+      parentEmailColumn: !probe.error,
+      dbError: probe.error ? String(probe.error.message || probe.error).slice(0, 200) : null,
+      transport: Deno.env.get('SMTP_HOST')
+        ? 'smtp'
+        : (Deno.env.get('RESEND_API_KEY') ? 'resend' : 'none'),
+      smtpHost: Deno.env.get('SMTP_HOST') || null,
+      smtpPort: Deno.env.get('SMTP_PORT') || null,
+      smtpUserSet: !!Deno.env.get('SMTP_USER'),
+      smtpPasswordSet: !!Deno.env.get('SMTP_PASSWORD'),
+      fromSet: !!Deno.env.get('SKY_FROM_EMAIL'),
+    });
+  }
+
   const email = body.email;
   if (!looksLikeEmail(email)) return json({ ok: false, error: 'bad_email' });
   const to = String(email).trim();
 
-  const COLUMNS = 'id, code, nickname, constellation, pattern, claimed_at';
+  const COLUMNS = 'id, serial_no, nickname, constellation, pattern, claimed_at';
 
   if (action === 'protect') {
     const identityId = String(body.identityId || '');

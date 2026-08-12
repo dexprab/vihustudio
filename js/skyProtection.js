@@ -95,10 +95,34 @@ const SkyProtection = (function () {
 
   // ---------- sending ----------
 
+  // The child is told one gentle thing when this fails, and that is
+  // right — "I could not reach them just now" is all a child needs and
+  // all a child should get. It is NOT enough for whoever has to fix it:
+  // five different things produce that one sentence (no config, no
+  // network, a missing column, an unknown card, a mail server saying
+  // no), and they are indistinguishable from the outside.
+  //
+  // So the reason is written to the console, where a child never looks
+  // and a grown-up always can. Never to the screen.
+  function _note(action, res, status) {
+    try {
+      if (res && res.ok) return;
+      console.warn('[SkyProtection] ' + action + ' failed —',
+        (res && res.error) || 'no_answer',
+        status ? '(HTTP ' + status + ')' : '',
+        (res && res.detail) || '');
+    } catch (e) {}
+  }
+
   function _call(payload) {
     return _config().then(function (cfg) {
-      if (!cfg) return { ok: false, error: 'not_configured' };
+      if (!cfg) {
+        var missing = { ok: false, error: 'not_configured' };
+        _note(payload.action, missing);
+        return missing;
+      }
       var url = cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN_NAME;
+      var status = 0;
       return fetch(url, {
         method: 'POST',
         headers: {
@@ -107,8 +131,24 @@ const SkyProtection = (function () {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
-      }).then(function (r) { return r.json(); })
-        .catch(function () { return { ok: false, error: 'unreachable' }; });
+      }).then(function (r) {
+        status = r.status;
+        // A gateway that refuses the call, or a worker that dies mid
+        // boot, does not always answer in JSON. Falling back to the
+        // raw text keeps the reason readable instead of turning every
+        // one of those into the same 'unreachable'.
+        return r.text().then(function (t) {
+          try { return JSON.parse(t); }
+          catch (e) { return { ok: false, error: 'bad_answer', detail: t.slice(0, 300) }; }
+        });
+      }).then(function (res) {
+        _note(payload.action, res, status);
+        return res;
+      }).catch(function (e) {
+        var res = { ok: false, error: 'unreachable', detail: String(e).slice(0, 300) };
+        _note(payload.action, res, status);
+        return res;
+      });
     }).catch(function () { return { ok: false, error: 'unreachable' }; });
   }
 
@@ -184,7 +224,14 @@ const SkyProtection = (function () {
     return _call({ action: 'protect', identityId: id, email: to });
   }
 
+  // Deployment check, from the console, sending nothing:
+  //   SkyProtection.ping().then(console.log)
+  // Answers which of the layers is the one that is wrong — the config
+  // file, the function, the database column, or the mail secrets.
+  function ping() { return _call({ action: 'ping' }); }
+
   var api = {
+    ping: ping,
     parentEmail: parentEmail,
     hasProtection: hasProtection,
     wasSkipped: wasSkipped,
