@@ -1631,3 +1631,43 @@ of a possible 765 against 20-35 for the band. Worth remembering by shape rather
 than by symptom: a shared scratch buffer is correct until two things need it in
 the same frame, and the failure is not a crash but a layer quietly drawn at
 another layer's depth.
+
+## Sprint VP1 · VihuPlanet becomes the Universal Home
+
+An entry architecture change. Every child now enters VihuPlanet first, through
+one entrance — `Tap to Begin → VihuPlanet` — and all four journeys (first-time
+Traveller, Returning Traveller, first-time Creator, Returning Creator) land on
+exactly the same screen with exactly the same two permanent actions, 📚 My
+Stories and ✨ Create Story. **The Studio stopped being the application home**:
+it moved from `index.html` to `studio.html` so the root could become VihuPlanet.
+Renaming rather than relocating was the deliberate choice — the Studio stays in
+the same directory so every one of its relative paths (js/, css/, renderer/,
+assets/) keeps working untouched — and a repository-wide check found that no
+runtime code linked to `index.html` at all (every occurrence was a comment),
+with the single exception of `docs/journey/harness.js`, which was updated. The
+architectural piece is **`js/journeyResolver.js`**, added on the product owner's
+own recommendation: the alternative is an `isCreator` check at every call site,
+which is how home screens rot — one button learns about Magic Cards, another
+about the Rite, a third about publishing, and within two sprints there are four
+buttons because each check grew a special case. The buttons now ask the resolver
+what a tap means and do as they are told; neither knows what a Magic Card is.
+Creator is defined exactly once, as a claimed Magic Card, reusing what
+`js/studioRite.js` already tested and what CLAUDE.md's Decision 8 already
+grandfathers on. Two design corrections came from looking at it: the invitation
+shown to a non-Creator originally drew **its own Create Story button**, which
+put two identical buttons a finger apart and taught precisely the wrong lesson —
+that the interface grows new controls when something is missing; the permanent
+button lights up instead (three cycles, then settle, the same discipline the
+Rite's sleeping controls use). And the Tap to Begin prompt breathed with
+*position*, which makes a tap target a small hand has to chase — and, as it
+happens, an element no automated check can ever click, one cause behind both
+problems. It breathes with light now. The Ether surface moved to the root as
+Home; `vihuplanet/ether/` became a redirect that carries `?story=` across so
+deep links shared before the move still resolve. Verified end to end per
+journey: threshold present and actions hidden until tapped, identical button
+labels for Traveller and Creator, My Stories staying on VihuPlanet with the
+invitation for a non-Creator and reaching Studio Home for a Creator, Create
+Story reaching the Studio with `rite: true` for a non-Creator, the Studio
+booting clean (AppState · ProjectManager · CreationFlow · StudioRite all
+present, `creation-flow-active` on the body), old deep links redirecting, and no
+failed requests on either page.

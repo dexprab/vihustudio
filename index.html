@@ -1,633 +1,146 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-<meta charset='UTF-8'>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>VihuStudio 1.0.4</title>
-<!-- "its still there" -- a real CSS fix (hiding .buddy-placeholder by
-     default) had already shipped, but GitHub Pages/the browser can
-     keep serving a stale cached copy of a same-URL file even after the
-     HTML document itself reloads fresh (confirmed by the dev footer
-     showing the new build while the old CSS still applied). A version
-     query param on a file's own URL forces a real re-fetch whenever it
-     changes.
-     Real, user-reported gap found later: this discipline was only ever
-     applied to the two <link> stylesheets below -- every <script src>
-     tag further down this file had NO ?v= at all, so a genuine JS fix
-     (a repaint bug in js/selectionActionStrip.js/contextPanel.js) could
-     ship correctly, be confirmed working in isolation, and STILL fail
-     for a real user whose browser kept serving the stale pre-fix JS —
-     traced only after a true hard reload (Ctrl+Shift+R) fixed it
-     immediately. Every <script src> tag now carries the identical ?v=
-     convention, matching tools/world-builder-v2/index.html's own
-     already-correct discipline of stamping every script with one
-     uniform version number per ship. Bump every ?v= here (both
-     stylesheets AND every script tag) on every ship that touches ANY
-     JS or CSS file — not just the files that actually changed — the
-     same manual ritual build-info.json's own version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0431'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0431'>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VihuPlanet</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css">
+<link rel="stylesheet" href="vihuplanet/runtime/css/runtime.css">
+<link rel="stylesheet" href="css/vihuplanet-home.css">
 </head>
-<body class='light-theme creation-flow-active'>
-<!-- "under any circumstance, inner studio screen can never load before
-     home screen" -- creation-flow-active starts PRESENT here, in the raw
-     markup, rather than only being added by JS once Creation Flow itself
-     opens: body.creation-flow-active #app{display:none} (css/style.css)
-     is what actually hides the Workspace, and until now that only ever
-     applied once js/creationFlow.js's start() explicitly added the
-     class -- meaning #app's own raw, real chrome (whatever unstyled/
-     no-data state it starts in) was visible-by-default for however long
-     page parse + every earlier <script> tag took to finish (none of
-     them are defer/async), the exact same class of "boot flash" bug
-     already found and fixed once for .tabs/.buddy-placeholder in an
-     earlier sprint, just never closed for #app itself. js/app.js's
-     _beginBoot() -- the one function every real boot path funnels
-     through, reached only after the Gateway (or its own fallback)
-     completes -- now explicitly REMOVES this class as its very first
-     action, synchronously followed by either a restore-session decision
-     (leaving it removed, #app dimly visible behind the restore modal's
-     own translucent backdrop, exactly as it always has) or
-     CreationFlow.start() (which immediately adds the class right back,
-     with zero visible flash since nothing paints between the two
-     synchronous calls) -- so the Workspace can never be shown before
-     _beginBoot() itself explicitly decides to reveal it, regardless of
-     how long everything upstream takes. -->
-<!-- Header -->
-<header class='app-header'>
-<div class='header-left'>
-<!-- Creator UI Convergence Sprint — a lightweight Home affordance was
-     missing entirely: once inside the Workspace there was no way back
-     to Screen 1 without a hard reload. Reuses CreationFlow.start() as-is
-     (the exact function App already calls at boot) — no new capability,
-     just a new entry point onto an existing one. -->
-<button id='homeBtn' class='header-icon-btn' title='Back to Start'>🏠</button>
-<div class='logo'>VihuStudio</div>
-<button id='openBtn' title='Open Project'>📂 Open</button>
-<button id='saveBtn' title='Save Project As'>💾 Save As</button>
-<input id='openProjectInput' type='file' accept='.vihu,application/json' hidden>
-</div>
-<div class='header-center'>
-<!-- Project Title metadata preserved in AppState.project.title; the
-     editable input stays hidden from the editor per CLAUDE.md Locked
-     Decision #1 (Workspace Simplification). This read-only readout is
-     new: a calm, non-editable orientation strip (current World · Page
-     Style · Book Title) reusing data ContextPanel/ThemeEngine already
-     compute — see ContextPanel.currentWorldLabel()/currentStyleLabel()
-     and js/app.js's _updateHeaderContext(). -->
-<input id='projectTitle' type='text' placeholder='Project Title' class='project-title-input' hidden>
-<!-- "Allow creator to name their project" — this is the SAME #bookTitle
-     input that used to sit hidden inside #story-tab, relocated here and
-     made visible. It names the project (it is what My Projects labels a
-     card with, via ProjectManager._syncProjectStore) and, if a World
-     chooses to show a book title on the page, it is that too — one name,
-     one field, no second source of truth. Amends CLAUDE.md Locked
-     Decision #1, which had hidden it. -->
-<!-- The name has to READ as something you write in. It was a bare
-     input — transparent, borderless, indistinguishable from a label —
-     so nothing told anyone, least of all a child, that tapping it does
-     anything. The field and its pencil are one control; the pencil is
-     hidden from the accessibility tree because the input already
-     carries the label, and it simply puts the cursor in the box. -->
-<div class='header-title-field'>
-<input id='bookTitle' type='text' value='My Adventure' class='header-project-name' maxlength='60' aria-label='Name your project' placeholder='Name your project'>
-<button id='bookTitleEdit' class='header-title-pencil' type='button' tabindex='-1' aria-hidden='true'>
-<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5l4 4L8 20H4v-4z"/></svg>
-</button>
-</div>
-<div id='headerContext' class='header-context'></div>
-</div>
-<div class='header-right'>
-<div id='autosaveStatus' class='autosave-status'>Saved locally</div>
-<!-- Magic Card Identity Evolution, Phase 1 — a small, quiet
-     constellation glyph shown only once a Magic Card has been claimed
-     on this device (js/magicCardUI.js's refreshHeaderBadge). Hidden by
-     default; never a name, never a settings menu. -->
-<button id='magicCardBadge' class='magic-card-badge hidden' title='Your Magic Card' type='button'></button>
-<button id='themeToggle' class='theme-toggle' title='Toggle Dark/Light Mode'>🌙</button>
-<!-- The two things a child does with a finished story. They replace the
-     single Publish button: Play My Story is new, and Share with
-     VihuPlanet is the child's name for the same Publish flow, which
-     keeps its module name internally (docs/COMPANION_CANON.md Canon 7 —
-     the word never appears in front of a child).
+<body>
 
-     Both start ASLEEP and wake when there is a story. Nothing explains
-     why: Canon 6 forbids explaining a control, so there is no tooltip
-     saying "finish your story first" — the interface shows, it never
-     tells. -->
-<button id='playStoryBtn' class='story-action story-action-play is-asleep' type='button' disabled>
-<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3.6l14 8.4-14 8.4z"/></svg>
-Play My Story</button>
-<button id='shareBtn' class='story-action story-action-share is-asleep' type='button' disabled>
-<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.4"/><path d="M12 4v16"/></svg>
-Share with VihuPlanet</button>
-</div>
-</header>
+<!-- ===============================================================
+     VihuPlanet is Home. VihuStudio is the Hall of Creation.
+     Children visit the Studio. They live here.
 
-<!-- The Traveller Gateway — VihuPlanet Canon Milestone 1, reworked under
-     the "Canon Update Sprint — Traveller Gateway Rework V1.1": the always-
-     identical physical journey from the Sky into the Hall of Creation.
-     Plays on EVERY boot now, both a first-time Traveller and a Returning
-     Creator alike (see js/app.js's bootstrapSession() IIFE, which calls
-     this unconditionally, and js/gatewaySequence.js) — only Scene 3
-     (Identity) differs between the two paths, resolved INSIDE the
-     Gateway itself; a Returning Creator is recognized and verified there
-     via js/magicCardUI.js's own Creator Signature tap challenge, never
-     shown Studio's standalone Identity Gate directly. Six scenes: The Sky
-     (arrival) -> Lumo's Arrival -> Identity (the branch, and where it
-     ends) -> The Gates Appear -> Journey Through the Sky -> The Gates
-     Open. onComplete() fires only once the gates finish opening, handing
-     off directly into Studio's own boot sequence (_beginBoot) — the Hall
-     of Creation is never visible before that moment, for anyone.
-     "The Gate Covers the Full Screen" removed the old illustrative
-     ambient-sky decoration layer (clouds/islands/birds/particles/rays/
-     wind-streaks) entirely — "remove the environment elements," direct
-     feedback once the real Gate video became a full-bleed backdrop and
-     those CSS decorations only ever clashed with it, whether bleeding
-     through during the Gate's own fade-in or simply reading as clutter
-     against real footage. .gateway-overlay's own background gradient is
-     the only remaining pre-video atmosphere, and it's invisible the
-     instant the Gate video paints. -->
-<div id='gatewayOverlay' class='gateway-overlay hidden'>
-<div id='gatewayContent' class='gateway-panel'></div>
-</div>
+     This is the one entrance, and it is the same entrance for
+     everybody — a first-time Traveller, a Returning Traveller, a
+     first-time Creator and a Returning Creator all land on exactly
+     this screen. Nobody bypasses it and nobody gets a different one.
 
-<!-- Sprint 10.0 — Creation Experience V1 (Child First Studio). Sprint 11.0
-     — Studio Arrival Experience gives it the "Story Meadow" illustrated
-     atmosphere from the canonical storyboard. Full-screen: Choose What
-     To Create -> Choose Theme & Page Style. Populated at runtime by
-     js/creationFlow.js; the .creation-scene decoration is static, purely
-     illustrative (aria-hidden), and never touched by JS. -->
-<div id='creationFlowOverlay' class='creation-flow-overlay hidden'>
-<div class='creation-scene' aria-hidden='true'>
-<div class='creation-scene-sky'></div>
-<div class='creation-scene-paper'></div>
-<div class='creation-scene-sun'></div>
-<span class='creation-scene-cloud cloud-1'></span>
-<span class='creation-scene-cloud cloud-2'></span>
-<span class='creation-scene-star star-1'>✦</span>
-<span class='creation-scene-star star-2'>✦</span>
-<span class='creation-scene-star star-3'>⋆</span>
-<span class='creation-scene-star star-4'>✦</span>
-<div class='creation-scene-hill hill-back'></div>
-<div class='creation-scene-hill hill-front'></div>
-<div class='creation-scene-grass'></div>
-<span class='creation-scene-tree tree-1'>🌳</span>
-<span class='creation-scene-tree tree-2'>🌲</span>
-<span class='creation-scene-flower flower-1'>🌼</span>
-<span class='creation-scene-flower flower-2'>🌸</span>
-<span class='creation-scene-flower flower-3'>🌷</span>
-<span class='creation-scene-flower flower-4'>🌼</span>
-<span class='creation-scene-flower flower-5'>🌻</span>
-<span class='creation-scene-bird bird-1'>🐦</span>
-<span class='creation-scene-bird bird-2'>🐦</span>
-<span class='creation-scene-butterfly butterfly-1'>🦋</span>
-<span class='creation-scene-butterfly butterfly-2'>🦋</span>
-<span class='creation-scene-butterfly butterfly-3'>🦋</span>
-<span class='creation-scene-castle'>🏰</span>
-<span class='creation-scene-kite'>🪁</span>
-<!-- Creator V2 — "kids reading under the tree" foreground group, per
-     the wireframe board's Screen 1 illustration. Pure CSS/emoji, no
-     binary assets (see the Illustration Source decision this sprint). -->
-<div class='creation-scene-reading-circle'>
-<span class='creation-scene-reader reader-1'>🧒</span>
-<span class='creation-scene-reader reader-2'>👧</span>
-<span class='creation-scene-reader reader-3'>🐰</span>
-</div>
-<div class='creation-scene-signpost'>Your adventure<br>starts here ♥</div>
-</div>
-<div id='creationFlowContent' class='creation-flow-panel'></div>
-</div>
+     The Studio moved to studio.html for this. It was index.html —
+     the application home — and it is not the application home any
+     more. Renaming rather than relocating keeps every one of its
+     relative paths intact; nothing inside the Studio changed.
+     =============================================================== -->
 
-<!-- Magic Card Identity Evolution, Phase 1 (local-only) — see
-     js/magicCard.js / js/magicCardUI.js. Three real screens share this
-     one overlay: the boot-time Identity Gate (Returning Creator / Shared
-     Device), the first-Publish Awakening ceremony, and Magic Card Home.
-     Mirrors #creationFlowOverlay's own container pattern; populated
-     entirely at runtime, nothing static inside. -->
-<div id='magicCardOverlay' class='magic-card-overlay hidden'>
-<div id='magicCardContent' class='magic-card-panel'></div>
-</div>
+<main class="vp-home">
+  <div class="vp-home-universe" data-universe></div>
 
-<!-- Main workspace -->
-<div id='app' class='workspace'>
-<!-- Left sidebar -->
-<aside class='sidebar left-sidebar'>
-<!-- "MY BOOK — Upload Images" (the old sidebar bulk multi-page importer)
-     removed per direct product decision ("this is no more needed in
-     studio") — every picture path now goes through its own dedicated,
-     Picture-Studio-routed entry point instead: the Artwork Place's own
-     Add/Replace Artwork, Personalize -> Add Something -> Photo, and
-     Family Photos. -->
+  <!-- The threshold. One tap, once per visit, before the universe is
+       handed over. It is not a loading screen — the Ether is already
+       alive behind it — it is the moment of arriving somewhere. -->
+  <div class="vp-threshold" data-threshold>
+    <h1 class="vp-threshold-title">VihuPlanet</h1>
+    <button type="button" class="vp-threshold-tap" data-begin>Tap to Begin</button>
+  </div>
 
-<!-- Project metadata (Title, Author) preserved in AppState.project; hidden from editor per CLAUDE.md Locked Decision #1 (Workspace Simplification) -->
-<section class='sidebar-section' hidden>
-<h3>PROJECT</h3>
-<label>Title</label>
-<input id='projectAuthor' type='text' placeholder='Enter project title' class='input-field'>
-<label>Author</label>
-<input id='projectAuthorName' type='text' placeholder='Enter author name' class='input-field'>
-</section>
+  <!-- The two permanent actions. They never change: not for different
+       children, not as a child grows, not once they have published a
+       hundred stories. What changes is what happens behind them, and
+       js/journeyResolver.js is the only thing that decides that. -->
+  <nav class="vp-actions" data-actions hidden aria-label="VihuPlanet">
+    <button type="button" class="vp-action" data-act="my-stories">
+      <span class="vp-action-glyph" aria-hidden="true">📚</span>
+      <span class="vp-action-label">My Stories</span>
+    </button>
+    <button type="button" class="vp-action is-primary" data-act="create">
+      <span class="vp-action-glyph" aria-hidden="true">✨</span>
+      <span class="vp-action-label">Create Story</span>
+    </button>
+  </nav>
 
-<!-- The sidebar WORLD card (#leftThemeCard) removed alongside the MY BOOK
-     importer ("have we removed the empty world space also") — it rendered
-     as an empty pill for an Artwork-World project (only a Story Theme
-     apply ever populated it) and was redundant regardless: the header's
-     own World readout (#headerContext) shows the current World AND opens
-     the exact same World picker on click. -->
+  <!-- Said when a child asks for stories they have not made yet. Not
+       an empty state and not an error — an invitation, with the one
+       action that changes it — which is the Create Story button that
+       is ALREADY there and always will be. A second copy of it inside
+       this message would be two identical buttons a finger apart, and
+       would teach that the interface grows new controls when something
+       is missing. It does not. The permanent one lights up instead. -->
+  <div class="vp-message" data-message hidden role="status">
+    <p class="vp-message-line" data-message-line></p>
+  </div>
 
-<!-- Creator UI Convergence Sprint — the Page Strip stays exactly where
-     it always was (vertical, left sidebar — the brief's own "Page Strip
-     scrolls vertically" instruction) with full functionality unchanged
-     (drag reorder, ⋮ menu, Cover/End anchoring — js/app.js/js/pageOps.js
-     untouched); only its visual polish changed, see .thumb in
-     css/style.css. -->
-<section class='sidebar-section'>
-<h3>PAGES</h3>
-<!-- Creator V2 — a direct "+ Add Page" affordance, per the wireframe
-     board. Reuses PageOps.addAfter (the exact function the page ⋮
-     menu's own "Add Blank Page After" already calls) rather than a new
-     page-creation path. -->
-<button id='addPageBtn' class='add-page-btn' type='button'>+ Add Page</button>
-<div id='slideList' class='slide-list'></div>
-</section>
-</aside>
+  <!-- Stage 4 · Preview. Appears when a Spirit has been met, and says
+       only what the Story actually knows about itself. -->
+  <aside class="ether-preview" data-preview hidden aria-live="polite">
+    <h2 class="ether-preview-title" data-preview-title></h2>
+    <p class="ether-preview-creator" data-preview-creator></p>
+    <p class="ether-preview-meta" data-preview-meta></p>
+    <div class="ether-preview-actions">
+      <button type="button" class="is-primary" data-act="read">Read story</button>
+      <button type="button" data-act="continue">Continue</button>
+      <button type="button" data-act="cheer">Cheer</button>
+      <button type="button" data-act="back">Back</button>
+    </div>
+  </aside>
 
-<!-- Center preview -->
-<main class='preview-area'>
-<!-- Option B (Refined), pencil/small-side-widget follow-up — the
-     selection action strip. A sibling of .preview-wrapper (never a
-     child positioned relative to the selected object's own on-canvas
-     coordinates) so it can never end up over the slide; positioned as a
-     small floating widget in whichever side gutter is actually free
-     beside the canvas (js/selectionActionStrip.js's _positionWidget()
-     measures this at runtime), falling back to a compact strip above
-     the canvas only when there's no gutter at all. Populated by
-     js/selectionActionStrip.js, refreshed via PageRuntime.notify() like
-     every other panel. Edit opens a small inline popup right here with
-     the real editing control (ContextPanel.mountQuickEditControl) —
-     never just a "make the right panel active" no-op. -->
-<div id='selectionActionStrip' class='selection-action-strip selection-action-strip-hidden'>
-<div class='selection-action-strip-row'>
-<span id='selectionActionBadge' class='selection-action-badge'></span>
-<span id='selectionActionName' class='selection-action-name'></span>
-<span class='selection-action-btns'>
-<button type='button' id='selectionActionEdit' class='selection-action-btn' title='Edit' aria-expanded='false'>✏️</button>
-<button type='button' id='selectionActionDeselect' class='selection-action-btn selection-action-btn-danger' title='Deselect'>✕</button>
-</span>
-</div>
-<span id='selectionActionOwner' class='selection-action-owner'></span>
-<div id='selectionActionEditPanel' class='selection-action-edit-panel selection-action-edit-panel-hidden'></div>
-</div>
-<div class='preview-wrapper'>
-<canvas id='previewCanvas'></canvas>
-</div>
-<!-- Creator UI Convergence Sprint — the NEW Object Strip: a horizontally
-     scrolling, child-friendly readout of every object on the current
-     page (Background / Artwork / Frame / Stickers / Text …), populated
-     by js/objectStrip.js. Never a Layer Panel — no reordering, just
-     "what's on my page" + tap-to-select, synced with canvas/Context
-     Panel selection. See docs in js/objectStrip.js. -->
-<div class='object-strip'>
-<div class='object-strip-legend'>
-<span class='object-strip-legend-title'>Shows everything in this page. Tap any object to select it.</span>
-<span class='object-strip-legend-key'><span class='object-strip-legend-dot'>🟢</span> You can edit</span>
-<span class='object-strip-legend-key'><span class='object-strip-legend-dot'>🔒</span> Part of the world</span>
-</div>
-<!-- "this scroll can be better" — the native OS scrollbar this row
-     used to rely on is hidden now (css/style.css); arrow buttons +
-     an edge fade replace it, matching the app's own rounded-button
-     visual language instead of the browser default. -->
-<div class='object-strip-scroll-row'>
-<button type='button' id='objectStripPrev' class='object-strip-arrow object-strip-arrow-prev' aria-label='Scroll left'>‹</button>
-<div class='object-strip-scroll-wrap'>
-<div id='objectStripList' class='object-strip-list'></div>
-</div>
-<button type='button' id='objectStripNext' class='object-strip-arrow object-strip-arrow-next' aria-label='Scroll right'>›</button>
-</div>
-</div>
-<!-- Legacy read-only page-thumbnail mirror — superseded by the sidebar
-     Page Strip; kept in the DOM (renderTimeline() call sites are
-     unconditional in a few spots in app.js) but never shown. -->
-<div class='timeline' hidden>
-<div id='timelineList' class='timeline-list'></div>
-</div>
+  <!-- Stage 5 · the Portal. An overlay, never a page — the universe
+       stays alive underneath, which is what makes coming back exact. -->
+  <div class="ether-portal" data-portal hidden role="dialog" aria-modal="true"
+       aria-label="Reading a story">
+    <div class="ether-portal-veil"></div>
+    <div class="ether-portal-inner">
+      <header class="ether-portal-bar">
+        <span class="ether-portal-title" data-portal-title></span>
+        <button type="button" class="ether-portal-close" data-portal-close
+                aria-label="Back to the Ether">Back to the Ether</button>
+      </header>
+      <div class="ether-portal-stage">
+        <button type="button" class="ether-portal-arrow is-prev" data-portal-prev
+                aria-label="Previous page">‹</button>
+        <img class="ether-portal-page" data-portal-page alt="">
+        <button type="button" class="ether-portal-arrow is-next" data-portal-next
+                aria-label="Next page">›</button>
+      </div>
+      <p class="ether-portal-count" data-portal-count></p>
+    </div>
+  </div>
 </main>
 
-<!-- Right sidebar -->
-<aside class='sidebar right-sidebar'>
-<div class='tabs'>
-<button class='tab-btn active' data-tab='story'>Story</button>
-<button class='tab-btn' data-tab='card'>Card Designer</button>
-<button class='tab-btn' data-tab='stickers'>✨ Emojis</button>
-<button class='tab-btn' data-tab='style'>World Designer</button>
-</div>
+<!-- ---------- VihuStudio: identity and Stories ----------
+     Only what reading published Stories and recognising a Creator
+     actually needs. This page does not load the Studio. -->
+<script src="js/creatorProjectCache.js"></script>
+<script src="js/creatorProjectStore.js"></script>
+<script src="js/creatorProjectSync.js"></script>
+<script src="js/magicCard.js"></script>
+<script src="js/etherFeed.js"></script>
+<script src="js/journeyResolver.js"></script>
 
-<!-- Card Designer mount point (Sprint 4.1 foundation) — populated by CardDesigner.mount() -->
-<div id='card-tab' class='tab-content'>
-<p class='card-designer-intro'>Reusable card foundation shared by Story Designer, Cover Designer and CTA Designer. Controls land in Sprint 4.x.</p>
-<div id='cardDesignerRoot' class='card-designer-root'></div>
-</div>
+<!-- ---------- the VihuPlanet Runtime ---------- -->
+<script src="vihuplanet/artDirection/illustrationRules.js"></script>
 
-<div id='story-tab' class='tab-content active'>
-<!-- Hidden plumbing inputs (Sprint 3.3.4 Workspace Simplification + Sprint 5.0 Story Designer):
-     these IDs remain wired into app.js's draw()/showSlide()/projectManager;
-     the visible Story tab UI is now the StoryDesigner mounted below. -->
-<!-- #bookTitle now lives in the header (see .header-center above) —
-     "Allow creator to name their project". It stays the same element
-     with the same id, only relocated and un-hidden, so every
-     getElementById('bookTitle') consumer (serialize, publish, pageOps,
-     thumbnails, storyDestinations) is untouched. -->
-<label hidden>Story Beat</label>
-<textarea id='storyBeat' class='input-field textarea' hidden></textarea>
-<label hidden>Page</label>
-<input id='pageNumber' type='text' value='1' class='input-field' hidden>
-<label hidden>Total Pages</label>
-<input id='totalPages' type='text' value='0' readonly class='input-field' hidden>
+<script src="vihuplanet/runtime/core/namespace.js"></script>
+<script src="vihuplanet/runtime/core/rng.js"></script>
+<script src="vihuplanet/runtime/core/signal.js"></script>
+<script src="vihuplanet/runtime/core/clock.js"></script>
+<script src="vihuplanet/runtime/core/camera.js"></script>
+<script src="vihuplanet/runtime/core/traveller.js"></script>
 
-<!-- Page Designer (Sprint 6.0) — page-centric content editor, role-aware -->
-<div id='pageDesignerRoot'></div>
+<script src="vihuplanet/runtime/stories/storyEntity.js"></script>
+<script src="vihuplanet/runtime/stories/storyManager.js"></script>
+<script src="vihuplanet/runtime/stories/storyLayer.js"></script>
+<script src="vihuplanet/runtime/stories/storySpirit.js"></script>
 
-<!-- Vihu Buddy placeholder -->
-<div class='buddy-placeholder'>🤖 Vihu Buddy Coming Soon</div>
-</div>
+<script src="vihuplanet/runtime/physics/spatialGrid.js"></script>
+<script src="vihuplanet/runtime/physics/physics.js"></script>
 
-<div id='style-tab' class='tab-content'>
-<!-- Sprint 9.1.3 — Theme Designer is the GLOBAL design system. This
-     note tells the child that every control here applies to the whole
-     story instantly — no page selection, no object selection, no
-     Apply button. -->
-<p class='theme-designer-intro'>
-Your <strong>World</strong> is the story's whole look and feel. Every change here updates <strong>every page</strong> instantly. No selection needed.
-</p>
-<section class='current-theme-banner'>
-<span class='current-theme-label'>Current World</span>
-<span id='currentThemeName' class='current-theme-name'>Storybook Classic</span>
-</section>
+<script src="vihuplanet/runtime/ether/ether.js"></script>
+<script src="vihuplanet/runtime/ether/currents.js"></script>
+<script src="vihuplanet/runtime/ether/etherRenderer.js"></script>
 
-<!-- Designer Palette (T3.3.4 refinement) — permanent vertical list with per-section collapsibility; ThemeEngine container IDs are preserved so buildDesigner() is unchanged -->
-<section class='designer-group' data-section='style'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Book Style</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label'>Variant</div>
-<div id='themeVariants' class='theme-variants'></div>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Story Panel</div>
-<div id='panelStyles' class='icon-row'></div>
-</div>
-</div>
-</section>
+<script src="vihuplanet/runtime/ambient/ambientSystem.js"></script>
+<script src="vihuplanet/runtime/focus/focusSystem.js"></script>
+<script src="vihuplanet/runtime/birth/storyBirth.js"></script>
+<script src="vihuplanet/runtime/worlds/worldEngine.js"></script>
 
-<section class='designer-group' data-section='branding'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Branding</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label'>Footer</div>
-<div id='footerStyles' class='icon-row'></div>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Book Title</div>
-<div class='designer-sublabel'>Visibility</div>
-<div id='bookTitleVisibility' class='icon-row'></div>
-<div class='designer-sublabel'>Position</div>
-<div id='bookTitlePosition' class='icon-row'></div>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Handle</div>
-<div class='designer-sublabel'>Visibility</div>
-<div id='handleVisibility' class='icon-row'></div>
-<div class='designer-sublabel'>Position</div>
-<div id='handlePosition' class='icon-row'></div>
-</div>
-</div>
-</section>
+<script src="vihuplanet/runtime/core/universe.js"></script>
 
-<!-- Sprint 8.4.2 — Typography. Page-wide font defaults that every Card
-     inherits unless overridden. The renderer reads `themeOptions.typography`
-     and falls back to the active theme's font + size when no override is set. -->
-<section class='designer-group' data-section='typography'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Typography</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label'>Story Font</div>
-<select id='themeStoryFont' class='input-field theme-font-select'></select>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label text-slider-label'><span>Text Size</span><span id='themeTextScaleValue'>100%</span></div>
-<input id='themeTextScale' type='range' min='0.8' max='1.4' step='0.05' value='1'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Text Color</div>
-<input id='themeTextColor' type='color' class='theme-color-input'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Reset</div>
-<button id='themeTypographyReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
-</div>
-</div>
-</section>
-
-<!-- Sprint 8.4.2 — Colours. Theme-level page + panel colour overrides.
-     Card overrides still win per slide; this is the global default. -->
-<section class='designer-group' data-section='colours'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Colours</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label'>Page Background</div>
-<input id='themePageColor' type='color' class='theme-color-input'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Story Panel</div>
-<input id='themePanelColor' type='color' class='theme-color-input'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Reset</div>
-<button id='themeColoursReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
-</div>
-</div>
-</section>
-
-<!-- Sprint 8.4.2 — Picture Holder defaults. Applies to every Picture
-     Holder unless the card overrides it. -->
-<section class='designer-group' data-section='holder'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Picture Frame Defaults</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label text-slider-label'><span>Default Corner Radius</span><span id='themeHolderRadiusValue'>0px</span></div>
-<input id='themeHolderRadius' type='range' min='0' max='80' step='1' value='0'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label text-slider-label'><span>Default Border Size</span><span id='themeHolderPaddingValue'>0px</span></div>
-<input id='themeHolderPadding' type='range' min='0' max='60' step='1' value='0'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Default Shadow</div>
-<label class='theme-toggle-row'><input id='themeHolderShadow' type='checkbox'> <span>On</span></label>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Reset</div>
-<button id='themeHolderReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
-</div>
-</div>
-</section>
-
-<!-- Sprint 8.4.2 — Page Layout. Editor-only safe-area guide so children
-     keep important content inside the safe zone. The guide is added to
-     the editor payload only; the export pipeline omits it. -->
-<section class='designer-group' data-section='pagelayout'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Page Layout</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label text-slider-label'><span>Page Margin</span><span id='themePageMarginValue'>60px</span></div>
-<input id='themePageMargin' type='range' min='0' max='160' step='2' value='60'>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Show Safe Area</div>
-<label class='theme-toggle-row'><input id='themeSafeArea' type='checkbox'> <span>On</span></label>
-</div>
-<div class='designer-row'>
-<div class='designer-row-label'>Reset</div>
-<button id='themeLayoutReset' type='button' class='theme-reset-btn'>↺ Reset to World</button>
-</div>
-</div>
-</section>
-
-<section class='designer-group' data-section='decorations'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Decorations</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div id='decorationsList' class='icon-row'></div>
-</div>
-</section>
-
-<section class='designer-group' data-section='layout'>
-<button type='button' class='designer-group-title' aria-expanded='true' data-collapsible-toggle>
-<span class='designer-group-title-text'>Navigation</span>
-<span class='designer-group-chevron' aria-hidden='true'>▾</span>
-</button>
-<div class='designer-group-body'>
-<div class='designer-row'>
-<div class='designer-row-label'>Page Numbers</div>
-<div id='pageNumberStyles' class='icon-row'></div>
-</div>
-</div>
-</section>
-</div>
-
-<!-- Sticker Studio (Sprint 6.6) — browse + insert stickers; mounts via StickerStudio.mount() -->
-<div id='stickers-tab' class='tab-content'>
-<div id='stickerStudioRoot' class='sticker-studio-root'></div>
-</div>
-</aside>
-</div>
-
-<!-- Build / release footer — populated at runtime by js/buildInfo.js. -->
-<div id='devFooter' class='dev-footer'>VihuStudio 1.0.2</div>
-
-<!-- Theme Picker modal (Sprint 3.3.1; Sprint 9.2 — Theme Library
-     Foundation: sections are rendered from ThemeRegistry.getCatalog()
-     instead of a hardcoded array; Sprint 9.3 — Artwork Themes adds a
-     second type section alongside Story Themes, same library, same
-     Official/Imported split within each. See js/themeRegistry.js. -->
-<div id='themePickerModal' class='modal hidden' role='dialog' aria-modal='true'>
-<div class='modal-content modal-wide'>
-<h3>Choose Your World</h3>
-<p>Pick a world for your story, and how your artwork is shown. You can fine-tune every detail in World Designer.</p>
-<div id='themePickerCards' class='theme-library'>
-<div class='theme-library-type'>
-<h3 class='theme-library-type-heading'>Story Worlds</h3>
-<div class='theme-library-section'>
-<h4 class='theme-library-heading'>Official Worlds</h4>
-<div id='themeLibraryStoryOfficial' class='theme-cards'></div>
-</div>
-<div class='theme-library-section'>
-<h4 class='theme-library-heading'>My Worlds</h4>
-<div id='themeLibraryStoryImported' class='theme-cards'></div>
-</div>
-</div>
-<div class='theme-library-type'>
-<h3 class='theme-library-type-heading'>Artwork Worlds</h3>
-<div class='theme-library-section'>
-<h4 class='theme-library-heading'>Official Worlds</h4>
-<div id='themeLibraryArtworkOfficial' class='theme-cards'></div>
-</div>
-<div class='theme-library-section'>
-<h4 class='theme-library-heading'>My Worlds</h4>
-<div id='themeLibraryArtworkImported' class='theme-cards'></div>
-</div>
-</div>
-<!-- WEP Scope Freeze — Import Deferred: hidden from the active WEP workflow (Builder -> Publish to Personal -> Promote to Official -> Studio), not deleted. _wireImportButton()/importThemeFile() in js/themeEngine.js are untouched and fully functional; only this entry point is hidden. -->
-<button id='importThemeBtn' type='button' class='modal-btn primary import-theme-btn' style='display:none'>+ Add a World</button>
-</div>
-<div class='modal-actions'>
-<button id='themePickerClose' class='modal-btn' type='button'>Cancel</button>
-</div>
-</div>
-</div>
-<input id='importThemeInput' type='file' accept='.vtheme,application/json' hidden>
-
-<!-- Theme Import Conflict modal (Sprint 9.2) -->
-<div id='themeImportConflictModal' class='modal hidden' role='dialog' aria-modal='true'>
-<div class='modal-content'>
-<h3>You already have this world</h3>
-<p id='themeImportConflictBody'>Choose what to do with the new world.</p>
-<div class='modal-actions'>
-<button id='themeImportConflictCancel' class='modal-btn' type='button'>Cancel</button>
-<button id='themeImportConflictCopy' class='modal-btn' type='button'>Keep Both</button>
-<button id='themeImportConflictReplace' class='modal-btn primary' type='button'>Replace Existing World</button>
-</div>
-</div>
-</div>
-
-<!-- Restore-session modal (Sprint 3) -->
-<div id='restoreModal' class='modal hidden' role='dialog' aria-modal='true'>
-<div class='modal-content'>
-<h3 id='restoreModalTitle'>Restore Previous Project?</h3>
-<p id='restoreModalBody'>You have a session from your previous visit.</p>
-<div class='modal-actions'>
-<button id='restoreModalSecondary' class='modal-btn'>Discard</button>
-<button id='restoreModalPrimary' class='modal-btn primary'>Restore</button>
-</div>
-</div>
-</div>
-
-<!-- Sprint 9.1.4 — Publishing Language & Page Management. Context menu
-     surfaces the six actions a child actually reaches for on a page.
-     Rename Page is removed (child-facing renaming was rarely used and
-     added a text-input step); Publish This Page and Move Page Up /
-     Down land in its place. PageOps still exposes the wider API
-     (setAsCover, addBefore, moveToEnd, splitPage, mergeWithNext) for
-     programmatic callers. -->
-<div id='contextMenu' class='context-menu hidden'>
-<button class='context-item' data-action='publish-page'>📖 Publish This Page</button>
-<button class='context-item' data-action='duplicate'>📋 Duplicate Page</button>
-<button class='context-item' data-action='move-up'>⬆ Move Page Up</button>
-<button class='context-item' data-action='move-down'>⬇ Move Page Down</button>
-<button class='context-item' data-action='add-after'>➕ Add Blank Page After</button>
-<button class='context-item' data-action='delete'>🗑 Delete Page</button>
-</div>
-
-<script src='js/state.js?v=0431'></script><script src='js/zipReader.js?v=0431'></script><script src='js/themePresets.js?v=0431'></script><script src='js/themeRegistry.js?v=0431'></script><script src='js/themeRepositoryClient.js?v=0431'></script><script src='js/assetStore.js?v=0431'></script><script src='js/familyAlbum.js?v=0431'></script><script src='js/voiceRecorder.js?v=0431'></script><script src='js/placeFrameV2.js?v=0431'></script><script src='js/cardPlatform.js?v=0431'></script><script src='js/themeEngine.js?v=0431'></script><script src='js/workspaceBuilder.js?v=0431'></script><script src='js/sceneEngine.js?v=0431'></script><script src='js/imageViewEngine.js?v=0431'></script><script src='js/stickerLibrary.js?v=0431'></script><script src='js/layerEngine.js?v=0431'></script><script src='renderer/slideRenderer.js?v=0431'></script><script src='js/buildInfo.js?v=0431'></script><script src='js/thumbnails.js?v=0431'></script><script src='js/pageOps.js?v=0431'></script><script src='js/theme.js?v=0431'></script><script src='js/creatorProjectStore.js?v=0431'></script><script src='js/creatorProjectSync.js?v=0431'></script><script src='js/creatorProjectCache.js?v=0431'></script><script src='js/magicCardArt.js?v=0431'></script><script src='js/magicCard.js?v=0431'></script><script src='js/lumoVoice.js?v=0431'></script><script src='js/magicCardUI.js?v=0431'></script><script src='js/projectManager.js?v=0431'></script><script src='tools/sheet-extractor/js/pngEncoder.js?v=0431'></script><script src='tools/sheet-extractor/js/extractor.js?v=0431'></script><script src='tools/sheet-extractor/js/tileEditor.js?v=0431'></script><script src='js/pictureStudio.js?v=0431'></script><script src='js/composePanel.js?v=0431'></script><script src='js/emojiPicker.js?v=0431'></script><script src='js/cardDesigner.js?v=0431'></script><script src='js/pageDesigner.js?v=0431'></script><script src='js/stickerStudio.js?v=0431'></script><script src='js/publishValidator.js?v=0431'></script><script src='js/pdfWriter.js?v=0431'></script><script src='js/zipWriter.js?v=0431'></script><script src='js/reelComposer.js?v=0431'></script><script src='js/magicReveal.js?v=0431'></script><script src='js/magicStrip.js?v=0431'></script><script src='js/storyDestinations.js?v=0431'></script><script src='js/publishStudio.js?v=0431'></script><script src='js/creationFlow.js?v=0431'></script><script src='js/contextPanel.js?v=0431'></script><script src='js/objectStrip.js?v=0431'></script><script src='js/selectionActionStrip.js?v=0431'></script><script src='js/pageRuntime.js?v=0431'></script><script src='js/travellerSaveNotice.js?v=0431'></script><script src='js/companionEngine.js?v=0431'></script><script src='js/companionDirector.js?v=0431'></script><script src='js/audioManager.js?v=0431'></script><script src='js/gatewayAudio.js?v=0431'></script><script src='js/gatewaySequence.js?v=0431'></script><script src='js/storyPlayer.js?v=0431'></script><script src='js/stageSky.js?v=0431'></script><script src='js/studioRite.js?v=0431'></script><script src='js/app.js?v=0431'></script>
+<script src="js/vihuplanetHome.js"></script>
 </body>
 </html>

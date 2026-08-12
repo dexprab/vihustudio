@@ -1,4 +1,4 @@
-/* ether.css — the Ether page's own shell.
+/* vihuplanet-home.css — VihuPlanet Home's own shell.
  *
  * Almost nothing, on purpose. Everything a child sees here is the
  * runtime (vihuplanet/runtime/css/runtime.css); this file positions the
@@ -23,7 +23,7 @@ html, body {
   overscroll-behavior: none;
 }
 
-.ether-page {
+.vp-home {
   position: relative;
   width: 100%;
   height: 100%;
@@ -32,7 +32,7 @@ html, body {
   height: 100dvh;
 }
 
-.ether-universe {
+.vp-home-universe {
   position: absolute;
   inset: 0;
 }
@@ -333,4 +333,186 @@ html, body {
   .ether-portal-veil { transition: opacity 200ms ease; transform: none; }
   .ether-portal.is-open .ether-portal-veil { transform: none; }
   .ether-preview { animation: none; }
+}
+
+
+/* ===============================================================
+   VihuPlanet Home
+   =============================================================== */
+
+/* ---------- the threshold ---------- */
+
+.vp-threshold {
+  position: absolute;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6rem;
+  cursor: pointer;
+  /* Deliberately not opaque: the Ether is already alive underneath and
+     a child should half-see it before they are let in. */
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(12, 17, 32, 0.42) 0%,
+    rgba(9, 13, 26, 0.78) 70%);
+  transition: opacity 780ms ease;
+}
+
+.vp-threshold.is-gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vp-threshold-title {
+  margin: 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-weight: 700;
+  font-size: clamp(2.6rem, 1.8rem + 4vw, 4.6rem);
+  line-height: 1;
+  letter-spacing: 0.4px;
+  color: var(--vp-paper, #F1EAD0);
+  text-shadow: 0 2px 24px rgba(9, 13, 26, 0.8);
+}
+
+.vp-threshold-tap {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.1rem);
+  padding: 0.6rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 184, 113, 0.5);
+  background: rgba(18, 24, 43, 0.5);
+  color: var(--vp-candle, #E8B871);
+  cursor: pointer;
+  /* The one breathing thing on the page, because it is the one thing
+     being asked for. Slow enough to read as an invitation.
+
+     It breathes with LIGHT and never with position. A tap target that
+     drifts, even by two pixels, is a target a small hand has to chase
+     — and an element that never stops moving is also one no automated
+     check can ever click. Both problems, one cause. */
+  animation: vp-threshold-breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes vp-threshold-breathe {
+  0%, 100% { opacity: 0.74; box-shadow: 0 0 0 0 rgba(232, 184, 113, 0); }
+  50%      { opacity: 1;    box-shadow: 0 0 22px 0 rgba(232, 184, 113, 0.22); }
+}
+
+.vp-threshold-tap:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+/* ---------- the two permanent actions ---------- */
+
+.vp-actions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(5vh + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 6500;
+  display: flex;
+  gap: 0.75rem;
+  opacity: 0;
+  transition: opacity 620ms ease, transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.vp-actions.is-in { opacity: 1; }
+
+.vp-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.92rem, 0.85rem + 0.3vw, 1.05rem);
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.24);
+  background: rgba(12, 17, 32, 0.6);
+  color: var(--vp-paper, #F1EAD0);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 220ms ease, border-color 220ms ease, transform 220ms ease;
+}
+
+.vp-action:hover { transform: translateY(-2px); }
+
+.vp-action:hover,
+.vp-action:focus-visible {
+  background: rgba(232, 184, 113, 0.16);
+  border-color: rgba(232, 184, 113, 0.6);
+}
+
+.vp-action.is-primary {
+  background: rgba(232, 184, 113, 0.18);
+  border-color: rgba(232, 184, 113, 0.5);
+  color: var(--vp-candle, #E8B871);
+}
+
+.vp-action:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+.vp-action-glyph { font-size: 1.05em; line-height: 1; }
+
+/* ---------- the invitation ---------- */
+
+/* Not an empty state and not an error, so it gets none of the styling
+   of one: no card border, no icon, no colour that means "wrong". One
+   line of handwriting above the actions, and the action that changes
+   it. */
+.vp-message {
+  position: absolute;
+  left: 50%;
+  bottom: calc(5vh + 4.6rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 6400;
+  width: min(30rem, calc(100% - 2.5rem));
+  text-align: center;
+  opacity: 0;
+  transition: opacity 460ms ease;
+}
+
+.vp-message.is-in { opacity: 1; }
+
+.vp-message-line {
+  margin: 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(1.15rem, 1rem + 0.8vw, 1.5rem);
+  line-height: 1.35;
+  text-wrap: balance;
+  color: rgba(241, 234, 208, 0.88);
+  text-shadow: 0 1px 8px rgba(9, 13, 26, 0.9);
+}
+
+/* The permanent button answers the invitation. Three cycles and then
+   it settles — the same "wake, then stop asking" discipline the Studio
+   Rite's own sleeping controls use, rather than a permanent attractor
+   that trains a child to ignore it. */
+.vp-action.is-calling {
+  animation: vp-action-call 1.5s ease-in-out 3;
+}
+
+@keyframes vp-action-call {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 184, 113, 0); }
+  50%      { box-shadow: 0 0 0 6px rgba(232, 184, 113, 0.16); }
+}
+
+/* The preview replaces the actions while a Spirit is being met — the
+   child is looking at one story, not at the whole universe. */
+.vp-home:has(.ether-preview:not([hidden])) .vp-actions { opacity: 0; pointer-events: none; }
+
+@media (max-width: 640px) {
+  .vp-actions { gap: 0.5rem; width: min(100%, 26rem); padding: 0 0.75rem; }
+  .vp-action { flex: 1 1 0; justify-content: center; padding: 0.6rem 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-threshold-tap { animation: none; opacity: 1; }
+  .vp-action.is-calling { animation: none; box-shadow: 0 0 0 3px rgba(232, 184, 113, 0.22); }
+  .vp-actions, .vp-message, .vp-threshold { transition: opacity 200ms ease; }
+  .vp-action:hover { transform: none; }
 }

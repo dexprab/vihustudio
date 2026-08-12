@@ -2,6 +2,41 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.0.0 — 2026-08-12
+
+**Sprint VP1 — VihuPlanet becomes the Universal Home.** An entry
+architecture change, not UI polish.
+
+- **One entrance for everybody.** `Tap to Begin → VihuPlanet`. All four
+  journeys — first-time Traveller, Returning Traveller, first-time
+  Creator, Returning Creator — land on exactly this screen.
+- **The Studio moved from `index.html` to `studio.html`,** and the root
+  became VihuPlanet Home. Renaming rather than relocating keeps every
+  one of the Studio's relative paths intact; nothing inside it changed.
+  No runtime code linked to `index.html` — every reference was a
+  comment — so the move is genuinely contained.
+- **Two permanent actions, forever:** 📚 My Stories · ✨ Create Story.
+  Verified identical for a Traveller and a Creator.
+- **New — `js/journeyResolver.js`.** The one place that decides what a
+  tap means: Traveller · Explorer · Creator. The buttons ask and obey;
+  neither knows what a Magic Card is. Future milestones teach the
+  resolver rather than adding buttons.
+- **My Stories** → Studio Home for a Creator; a warm invitation for
+  anyone else. The invitation does **not** draw its own Create Story
+  button — a second copy a finger away from the permanent one would
+  teach that the interface grows controls when something is missing.
+  The permanent button lights up instead, three cycles and settle.
+- **Create Story** → the Studio for everyone; the Starter Story Rite
+  runs on the way in when it has not been completed, which
+  `StudioRite.gate()` already decided for itself.
+- **The Ether surface moved to the root** as VihuPlanet Home;
+  `vihuplanet/ether/` is now a redirect that carries `?story=` across,
+  so deep links shared before the move still resolve.
+- **Fix — the Tap to Begin prompt breathed with position.** A tap
+  target that drifts is one a small hand has to chase, and an element
+  that never stops moving is one no automated check can ever click.
+  It breathes with light now.
+
 ## v0.7.2 — 2026-08-12
 
 - **Fix — a hard-edged empty band across the top of the universe when

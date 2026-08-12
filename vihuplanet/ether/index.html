@@ -2,106 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>The Ether · VihuPlanet</title>
-
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
-
-<link rel="stylesheet" href="../assets/fonts/fonts.css">
-<link rel="stylesheet" href="../runtime/css/runtime.css">
-<link rel="stylesheet" href="ether.css">
+<title>VihuPlanet</title>
+<!-- The Ether moved to VihuPlanet Home at the site root (Sprint VP1):
+     there is one entrance now, and this was a second one. Deep links
+     shared before the move still work — the ?story= parameter is
+     carried across, which is the whole reason this file still exists
+     rather than being deleted. -->
+<script>
+  (function () {
+    var q = window.location.search || '';
+    window.location.replace('../../' + q);
+  })();
+</script>
+<noscript><a href="../../">Continue to VihuPlanet</a></noscript>
 </head>
-<body>
-
-<!-- The first real VihuPlanet Ether surface.
-     Everything visible here is the runtime; this page's own job is
-     three lines long — mount a universe, ask EtherFeed for the real
-     published Stories, start it. See ether.js. -->
-
-<main class="ether-page">
-  <div class="ether-universe" data-universe></div>
-
-  <!-- Shown only when this creator has no published Stories yet. It
-       says what is true and offers the one thing that changes it. -->
-  <div class="ether-quiet" data-quiet hidden>
-    <p class="ether-quiet-line" data-quiet-line></p>
-    <a class="ether-quiet-link" href="../../index.html">Go to the Studio</a>
-  </div>
-
-  <!-- Stage 4 · Preview. Appears when a Spirit has been met, and says
-       only what the Story actually knows about itself. -->
-  <aside class="ether-preview" data-preview hidden aria-live="polite">
-    <h2 class="ether-preview-title" data-preview-title></h2>
-    <p class="ether-preview-creator" data-preview-creator></p>
-    <p class="ether-preview-meta" data-preview-meta></p>
-    <div class="ether-preview-actions">
-      <button type="button" class="is-primary" data-act="read">Read story</button>
-      <button type="button" data-act="continue">Continue</button>
-      <button type="button" data-act="cheer">Cheer</button>
-      <button type="button" data-act="back">Back</button>
-    </div>
-  </aside>
-
-  <!-- Stage 5 · the Portal. An overlay, never a page — the universe
-       stays alive underneath, which is what makes coming back exact. -->
-  <div class="ether-portal" data-portal hidden role="dialog" aria-modal="true"
-       aria-label="Reading a story">
-    <div class="ether-portal-veil"></div>
-    <div class="ether-portal-inner">
-      <header class="ether-portal-bar">
-        <span class="ether-portal-title" data-portal-title></span>
-        <button type="button" class="ether-portal-close" data-portal-close
-                aria-label="Back to the Ether">Back to the Ether</button>
-      </header>
-      <div class="ether-portal-stage">
-        <button type="button" class="ether-portal-arrow is-prev" data-portal-prev
-                aria-label="Previous page">‹</button>
-        <img class="ether-portal-page" data-portal-page alt="">
-        <button type="button" class="ether-portal-arrow is-next" data-portal-next
-                aria-label="Next page">›</button>
-      </div>
-      <p class="ether-portal-count" data-portal-count></p>
-    </div>
-  </div>
-</main>
-
-<!-- ---------- VihuStudio: the Stories ----------
-     Only what reading published projects actually needs. This page
-     does not load the Studio. -->
-<script src="../../js/creatorProjectCache.js"></script>
-<script src="../../js/creatorProjectStore.js"></script>
-<script src="../../js/magicCard.js"></script>
-<script src="../../js/etherFeed.js"></script>
-
-<!-- ---------- the VihuPlanet Runtime ---------- -->
-<script src="../artDirection/illustrationRules.js"></script>
-
-<script src="../runtime/core/namespace.js"></script>
-<script src="../runtime/core/rng.js"></script>
-<script src="../runtime/core/signal.js"></script>
-<script src="../runtime/core/clock.js"></script>
-<script src="../runtime/core/camera.js"></script>
-<script src="../runtime/core/traveller.js"></script>
-
-<script src="../runtime/stories/storyEntity.js"></script>
-<script src="../runtime/stories/storyManager.js"></script>
-<script src="../runtime/stories/storyLayer.js"></script>
-<script src="../runtime/stories/storySpirit.js"></script>
-
-<script src="../runtime/physics/spatialGrid.js"></script>
-<script src="../runtime/physics/physics.js"></script>
-
-<script src="../runtime/ether/ether.js"></script>
-<script src="../runtime/ether/currents.js"></script>
-<script src="../runtime/ether/etherRenderer.js"></script>
-
-<script src="../runtime/ambient/ambientSystem.js"></script>
-<script src="../runtime/focus/focusSystem.js"></script>
-<script src="../runtime/birth/storyBirth.js"></script>
-<script src="../runtime/worlds/worldEngine.js"></script>
-
-<script src="../runtime/core/universe.js"></script>
-
-<script src="ether.js"></script>
-</body>
+<body></body>
 </html>

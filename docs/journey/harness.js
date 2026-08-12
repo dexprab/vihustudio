@@ -21,7 +21,7 @@ function startServer(root) {
     return new Promise((resolve) => {
         const server = http.createServer((req, res) => {
             let reqPath = decodeURIComponent(req.url.split('?')[0]);
-            if (reqPath === '/') reqPath = '/index.html';
+            if (reqPath === "/") reqPath = "/studio.html";
             const filePath = path.join(root, reqPath);
             if (!filePath.startsWith(root)) { res.writeHead(403); res.end(); return; }
             fs.readFile(filePath, (err, data) => {
@@ -44,7 +44,7 @@ async function launch(viewport) {
     const errors = [];
     page.on('pageerror', (e) => errors.push('pageerror: ' + String(e)));
     page.on('console', (m) => { if (m.type() === 'error' && !/404|ERR_TUNNEL|supabase/.test(m.text())) errors.push('console: ' + m.text()); });
-    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
+    await page.goto(`http://127.0.0.1:${port}/studio.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(300);
     return { browser, page, server, errors };
 }

@@ -1,7 +1,20 @@
-// ether.js — the VihuPlanet Ether surface.
+// vihuplanetHome.js — VihuPlanet Home. The one entrance.
 //
-// Mount a universe, fill it with the creator's real published Stories,
-// and own the three things the runtime correctly knows nothing about:
+// Every child lands here: a first-time Traveller, a Returning
+// Traveller, a first-time Creator and a Returning Creator, all on
+// exactly this screen. Nobody bypasses it and nobody gets a different
+// one. VihuPlanet is Home; the Studio is the Hall of Creation, and it
+// is reached only through intent.
+//
+// THE TWO ACTIONS NEVER CHANGE. Not per child, not as a child grows.
+// A tap is handed to js/journeyResolver.js, which is the only thing
+// that decides what it means — so the home screen can stay still while
+// everything behind it evolves. If a future milestone needs the home
+// to behave differently, it teaches the resolver, not this file, and
+// it never adds a third button.
+//
+// It also mounts the Ether and owns the things the runtime correctly
+// knows nothing about:
 //
 //   PREVIEW   what a met Spirit says about itself, and what can be
 //             done with it (Stage 4)
@@ -133,6 +146,91 @@
     var pages = [];
     var pageIndex = 0;
 
+    // ---------- the threshold ----------
+    //
+    // One tap before the universe is handed over. It is not a loading
+    // screen — the Ether is already alive behind it, and has been since
+    // the moment the page opened — it is the moment of arriving
+    // somewhere, which is a different thing and worth one tap.
+    var thresholdEl = document.querySelector('[data-threshold]');
+    var actionsEl = document.querySelector('[data-actions]');
+    var messageEl = document.querySelector('[data-message]');
+    var messageLine = document.querySelector('[data-message-line]');
+
+    function crossThreshold() {
+      if (!thresholdEl || thresholdEl.classList.contains('is-gone')) return;
+      thresholdEl.classList.add('is-gone');
+      window.setTimeout(function () { thresholdEl.hidden = true; }, 900);
+      if (actionsEl) {
+        actionsEl.hidden = false;
+        // Two frames so the browser has laid them out before they
+        // start arriving.
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { actionsEl.classList.add('is-in'); });
+        });
+      }
+    }
+
+    var beginBtn = document.querySelector('[data-begin]');
+    if (beginBtn) beginBtn.addEventListener('click', crossThreshold);
+    if (thresholdEl) {
+      thresholdEl.addEventListener('click', crossThreshold);
+      thresholdEl.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') crossThreshold();
+      });
+    }
+
+    // ---------- the two permanent actions ----------
+    function goStudio() {
+      window.location.href = JourneyResolver.STUDIO;
+    }
+
+    // The invitation says what is true and then points at the control
+    // that changes it — the Create Story button that is already on
+    // screen and always will be. Never a second copy of it: two
+    // identical buttons a finger apart would teach that the interface
+    // grows new controls when something is missing, and the whole
+    // point of this home screen is that it does not.
+    var createBtn = document.querySelector('[data-act="create"]');
+
+    function invite(line) {
+      if (!messageEl) return;
+      messageLine.textContent = line;
+      messageEl.hidden = false;
+      messageEl.classList.add('is-in');
+      if (createBtn) createBtn.classList.add('is-calling');
+    }
+
+    function dismissInvite() {
+      if (!messageEl) return;
+      messageEl.classList.remove('is-in');
+      messageEl.hidden = true;
+      if (createBtn) createBtn.classList.remove('is-calling');
+    }
+
+    if (actionsEl) {
+      actionsEl.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('[data-act]');
+        if (!btn) return;
+        dismissInvite();
+
+        // The buttons ask what a tap means and do as they are told.
+        // Neither of them knows what a Magic Card is.
+        var decision = (btn.getAttribute('data-act') === 'my-stories')
+          ? JourneyResolver.myStories()
+          : JourneyResolver.createStory();
+
+        if (decision.action === 'studio') { goStudio(); return; }
+
+        // No empty state, no dead end, no software language — what is
+        // true, and the one action that changes it.
+        invite('You haven\u2019t shared a story with VihuPlanet yet. ' +
+               'Every story you create will always have a place here.');
+      });
+    }
+
+
+
     function quiet(message) {
       if (!el.quiet) return;
       if (!message) { el.quiet.hidden = true; return; }
@@ -200,7 +298,7 @@
       // Continuing a Story is editing it, which is the Studio's job and
       // a different place to be. This is the one control on this page
       // that deliberately does leave.
-      window.location.href = '../../index.html?project=' +
+      window.location.href = JourneyResolver.STUDIO + '?project=' +
         encodeURIComponent(projectIdOf(met) || '');
     });
 
@@ -292,9 +390,12 @@
       var wanted = linkedProjectId();
 
       if (!stories.length) {
-        quiet(wanted
-          ? 'That story is not in your Ether yet.'
-          : 'Nothing of yours is drifting here yet. Share a story and it will join VihuPlanet.');
+        // Only a deep link that cannot resolve says anything here. An
+        // Ether with nothing in it yet is not a state that needs
+        // narrating on arrival — the two actions already say what a
+        // child can do, and the invitation appears if they ask for
+        // stories they have not made.
+        if (wanted) quiet('That story is not in your Ether yet.');
         return;
       }
 

@@ -210,6 +210,46 @@ Locked by the product owner in the VihuPlanet Ether Runtime brief.
 - Architecture and rationale: `vihuplanet/runtime/README.md`.
   Integration: `js/etherFeed.js` and `vihuplanet/ether/`.
 
+### 10. VihuPlanet is the Universal Home
+
+Locked by the product owner in the Sprint VP1 brief. This is an entry
+*architecture* decision, not UI polish.
+
+- **There is exactly one entrance, and everyone uses it.**
+  `Tap to Begin → VihuPlanet`. A first-time Traveller, a Returning
+  Traveller, a first-time Creator and a Returning Creator all land on
+  the same screen. Nobody bypasses it and nobody gets a different one.
+- **VihuPlanet is Home. VihuStudio is the Hall of Creation.** Children
+  visit the Studio; they live in VihuPlanet. The Studio is no longer
+  the application home — it moved from `index.html` to `studio.html`
+  so the root could become VihuPlanet.
+- **The home screen has exactly two permanent actions, forever:**
+  📚 My Stories · ✨ Create Story. They never change — not per user
+  type, not as a child grows. Do **not** add "Continue Story",
+  "Resume", "Create New Story", "Traveller Mode" or "Creator Mode".
+  No new button may appear as a child progresses. The behaviour behind
+  the two evolves; the interface does not.
+- **Studio is never opened directly** — only through intent, and intent
+  is one of exactly two things: *I want to see my stories* or *I want
+  to create a story*.
+- **My Stories** verifies Creator first. A Creator gets Studio Home —
+  never the last story reopened, because Studio Home already owns story
+  management. A non-Creator gets a warm invitation, never an empty
+  state, never a dead end, never software language.
+- **Create Story** also verifies. A non-Creator goes to the Studio and
+  the Starter Story Rite runs on the way in — the Rite is the path to
+  becoming a Creator, not a Studio tutorial. A Creator gets Studio
+  Home and uses the existing creation workflow; there is no separate
+  "create new story" flow.
+- **A Creator is someone holding a claimed Magic Card.** One
+  definition, already used by `js/studioRite.js` and already the basis
+  for grandfathering in Decision 8.
+- **`JourneyResolver` is the only thing that decides what a tap
+  means** (`js/journeyResolver.js` → Traveller · Explorer · Creator).
+  No `isCreator` check belongs at a call site. Future milestones
+  (Companion, Story Worlds, the Telescope) teach the resolver — they
+  never add a button to the home screen.
+
 ## Roadmap
 
 1. Theme Designer Polish
