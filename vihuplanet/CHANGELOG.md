@@ -2,6 +2,24 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.0.1 — 2026-08-12
+
+- **The second "Tap to Begin" is gone.** VihuPlanet asks for the tap at
+  the door; the Traveller Gateway asked again on arrival at the Hall of
+  Creation, which is two thresholds for one journey. Pressing a button
+  on VihuPlanet now goes straight into the Lumo flow.
+  The gate was not decoration — it existed so a real gesture in the
+  Studio's own document could unlock audio, fixing a reported bug where
+  ambience and Lumo's voice never started for a Traveller who touched
+  nothing. A tap on VihuPlanet cannot do that job for a different page,
+  so `beginNow()` keeps the protection without the screen: playback is
+  attempted immediately, and if the browser blocks it, the first real
+  interaction anywhere in the Studio retries it once.
+  Disclosed cost, chosen deliberately: a child who watches the whole
+  cinematic without touching anything now sees it in silence. Better
+  than the original bug (silence forever), worse than the gate
+  (guaranteed sound).
+
 ## v1.0.0 — 2026-08-12
 
 **Sprint VP1 — VihuPlanet becomes the Universal Home.** An entry

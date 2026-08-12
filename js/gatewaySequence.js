@@ -101,7 +101,14 @@
 // _beginBoot(), never back through the standalone Identity Gate — the
 // Identity beat above already did that job, for whichever path applied.
 //
-// Required "Tap to Begin" gate — closes the real remaining gap the
+// "Tap to Begin" gate — REMOVED in the Sprint VP1 follow-up, because
+// VihuPlanet now asks for that tap at the door and a second threshold
+// for one journey is one too many. The paragraph below is kept because
+// it is still the reason the AUDIO handling in beginNow() looks the way
+// it does; see that function for what replaced the gate and what the
+// trade costs. Original note follows.
+//
+// Required "Tap to Begin" gate — closed the real remaining gap the
 // "Ambience Threaded Through Every Screen + Real Preload Gate" sprint
 // left open: js/app.js's own bootWithPreloadGate() correctly calls
 // AudioManager.init()/LumoVoice.preload() early and shows a spinner
@@ -117,7 +124,8 @@
 // remaining explanation for "i cleared cached and reloaded the page the
 // ambience and lumo voice did not came even for traveller" persisting
 // even after that sprint shipped. Fixed here, the one real caller of
-// audio playback in this automatic sequence, with showBeginGate() below
+// audio playback in this automatic sequence, with the gate that stood
+// where beginNow() is now
 // — a small, required "✨ Tap to Begin ✨" prompt whose own tap/keydown is
 // a real, synchronous gesture: AudioManager.playFoundation() fires
 // directly inside that handler (ambience genuinely starts there and
@@ -346,50 +354,65 @@
     // the event hadn't yet bubbled past), collapsing the entire cinematic
     // in one tick; deferring to the next macrotask guarantees the
     // originating click has fully finished dispatching first.
-    function showBeginGate(onProceed){
+    // Sprint VP1 follow-up — the Gateway no longer shows its own
+    // "✨ Tap to Begin ✨" screen.
+    //
+    // It used to, and for a real reason recorded in this file's header:
+    // browsers block every un-muted audio.play() until a genuine user
+    // gesture in THIS document, so ambience and Lumo's voice silently
+    // never started for a Traveller who watched the cinematic without
+    // touching anything. A gate whose tap called playFoundation() inside
+    // the handler fixed that.
+    //
+    // VihuPlanet is now the one entrance and it asks for that tap at the
+    // door (Decision 10). Asking again on arrival at the Hall of
+    // Creation is a second threshold for one journey, which is why it is
+    // gone. What is NOT gone is the thing the gate was protecting:
+    //
+    //   1. Playback is attempted immediately. On a browser that has
+    //      granted this origin autoplay — the common case for a child
+    //      who uses VihuPlanet regularly — sound simply starts.
+    //   2. If it is blocked, the first real gesture anywhere in the
+    //      Studio retries it, once. A child who touches nothing still
+    //      gets the cinematic; they get it silently, and sound joins the
+    //      moment they touch anything at all.
+    //
+    // That is strictly better than the original bug (silence forever)
+    // and strictly worse than the gate (guaranteed sound), and the trade
+    // is deliberate: one threshold per journey, chosen by the product
+    // owner over guaranteed audio on the untouched path.
+    function beginNow(onProceed){
       // Buffering (unlike playback) needs no gesture at all — kicked off
       // here too (js/app.js's own bootWithPreloadGate() already primes
       // this earlier, so this is a cheap, idempotent no-op in practice,
       // safe to call again).
       try{ if(typeof LumoVoice!=='undefined' && LumoVoice.preload) LumoVoice.preload(); }catch(e){}
 
-      const gate=el('div','gateway-begin-gate');
-      const inner=el('div','gateway-begin-gate-inner');
-      inner.textContent='✨ Tap to Begin ✨';
-      gate.setAttribute('tabindex','0');
-      gate.setAttribute('role','button');
-      gate.setAttribute('aria-label','Tap to begin');
-      gate.appendChild(inner);
-      content.appendChild(gate);
-      requestAnimationFrame(function(){ gate.classList.add('gateway-begin-gate-in'); });
-
-      let proceeded=false;
-      function proceed(){
-        if(proceeded) return;
-        proceeded=true;
-        gate.removeEventListener('click',proceed);
-        gate.removeEventListener('keydown',onKey);
-        // A real, synchronous gesture just fired — the one moment every
-        // subsequent audio.play() call in this file can reliably rely
-        // on, regardless of autoplay-heuristic history or a just-
-        // cleared cache. This part stays synchronous, inside the real
-        // gesture, on purpose.
+      function startAudio(){
         try{
           if(typeof AudioManager!=='undefined'){
             AudioManager.init();
             AudioManager.playFoundation();
           }
         }catch(e){}
-        if(gate.parentNode) gate.parentNode.removeChild(gate);
-        // Deferred — see this function's own header comment above for
-        // why onProceed() must never run inside the same still-bubbling
-        // click event that triggered this handler.
-        setTimeout(onProceed,0);
       }
-      function onKey(e){ if(e.key==='Enter'||e.key===' ') proceed(); }
-      gate.addEventListener('click',proceed);
-      gate.addEventListener('keydown',onKey);
-      try{ gate.focus(); }catch(e){}
+
+      startAudio();
+
+      // The retry. Capture-phase and once, so it fires on the earliest
+      // real interaction of any kind and then costs nothing for the rest
+      // of the page's life. Calling playFoundation() a second time is
+      // safe — js/audioManager.js treats it as idempotent — so this is
+      // free when the first attempt already succeeded.
+      var opts={capture:true,once:true,passive:true};
+      ['pointerdown','keydown','touchstart'].forEach(function(evt){
+        try{ document.addEventListener(evt,startAudio,opts); }catch(e){}
+      });
+
+      // Deferred exactly as the gate's own callback was — see this
+      // function's header for why onProceed() must never run inside a
+      // still-bubbling event.
+      setTimeout(onProceed,0);
     }
 
     function onSkipKey(e){
@@ -663,7 +686,8 @@
       // unlike playback, needs no gesture at all, so the several MB of
       // video gets the maximum possible head start either way; only the
       // gate's own visible mounting + audio-line playback (inside
-      // showBeginGate's own callback, below) waits on the tap.
+      // beginNow's own callback, below) used to wait on the gate's tap;
+      // it now runs on the next tick instead.
       let isReturning=false, card=null;
       try{
         if(typeof MagicCard!=='undefined'){
@@ -884,11 +908,11 @@
       // (ambience/Lumo voice were still being silently blocked by the
       // browser's own autoplay policy even after the spinner-based
       // preload gate). wireSkip() is deliberately attached only AFTER
-      // the gate resolves (and only via showBeginGate's own deferred
+      // beginNow resolves (and only via beginNow's own deferred
       // onProceed callback — never synchronously inside the tap's own
       // click handler), so the gate's own tap is never mistaken for the
       // whole-overlay skip-click.
-      showBeginGate(function(){
+      beginNow(function(){
         wireSkip(done);
         // The skip lands on Studio Rite, not past it. `done` calls this
         // begin()'s own onComplete, which js/app.js binds to

@@ -232,6 +232,16 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
 - **Studio is never opened directly** — only through intent, and intent
   is one of exactly two things: *I want to see my stories* or *I want
   to create a story*.
+- **There is exactly ONE "Tap to Begin", and it is VihuPlanet's.** The
+  Traveller Gateway's own `✨ Tap to Begin ✨` screen was removed: one
+  journey, one threshold. That gate existed to satisfy the browser's
+  autoplay policy (a real gesture in the Studio's own document, which a
+  tap on VihuPlanet cannot provide), so removing it carries a disclosed
+  cost — sound now starts immediately where the browser allows it, and
+  otherwise joins at the child's first touch in the Studio. A child who
+  watches the whole cinematic without touching anything sees it
+  silently. The product owner chose one threshold over guaranteed audio
+  on that path.
 - **My Stories** verifies Creator first. A Creator gets Studio Home —
   never the last story reopened, because Studio Home already owns story
   management. A non-Creator gets a warm invitation, never an empty

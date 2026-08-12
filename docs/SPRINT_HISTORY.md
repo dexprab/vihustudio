@@ -1671,3 +1671,31 @@ Story reaching the Studio with `rite: true` for a non-Creator, the Studio
 booting clean (AppState · ProjectManager · CreationFlow · StudioRite all
 present, `creation-flow-active` on the body), old deep links redirecting, and no
 failed requests on either page.
+
+## Sprint VP1 follow-up · One journey, one threshold
+
+VP1 left two "Tap to Begin" screens in a single journey — VihuPlanet's at the
+door, and the Traveller Gateway's on arrival at the Hall of Creation — and the
+product owner asked for the second removed. The Gateway's was not decoration:
+this file's own header records why it was added, which is that browsers block
+every un-muted `audio.play()` until a genuine user gesture *in that document*,
+so ambience and Lumo's voice silently never started for a Traveller who watched
+the cinematic without touching anything ("i cleared cached and reloaded the page
+the ambience and lumo voice did not came even for traveller"). A tap on
+VihuPlanet cannot do that job for a different page, so this was a real trade
+rather than a cleanup, and it was put to the product owner as one before being
+made. `showBeginGate()` became `beginNow()`, which keeps everything the gate was
+protecting except the screen: `LumoVoice.preload()` and `AudioManager.init()` /
+`playFoundation()` fire immediately — which simply works on any browser that has
+granted this origin autoplay, the common case for a returning child — and a
+capture-phase `once` listener on pointerdown/keydown/touchstart retries it at the
+first real interaction of any kind, which is free when the first attempt already
+succeeded because playFoundation is idempotent. The deferred `setTimeout(onProceed,0)`
+is preserved exactly, since the reason it existed (never resolving inside a
+still-bubbling event) is unrelated to the gate. Disclosed cost, chosen by the
+product owner over the alternative: a child who watches the entire cinematic
+without touching anything now sees it in silence — strictly better than the
+original bug, strictly worse than the gate. Verified across the whole real
+journey: VihuPlanet threshold present, one tap, Create Story, Studio reached
+with the Gateway running and no begin gate on screen at any point, and no failed
+requests anywhere in the flow.
