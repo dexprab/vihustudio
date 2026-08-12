@@ -1699,3 +1699,47 @@ original bug, strictly worse than the gate. Verified across the whole real
 journey: VihuPlanet threshold present, one tap, Create Story, Studio reached
 with the Gateway running and no begin gate on screen at any point, and no failed
 requests anywhere in the flow.
+
+## Sprint U2 follow-up 3 · Pitch wraps, and so does the sky
+
+"the up arrow and down arrow does not have infinite scroll like left and right
+arrow." Yaw wrapped and pitch was clamped, which was an inconsistency introduced
+in U2 rather than a missing feature: `physics.js` has wrapped the Ether on both
+axes since Phase 1, so the camera was disagreeing with the universe it looks at,
+and a Traveller holding the up arrow met an invisible ceiling in a space that
+does not have one. `pitchLimit()` is gone; a full turn of pitch is one field
+height exactly as a full turn of yaw is one field width, and the touch-drag and
+edge-steer constants moved to the same units as their yaw counterparts. Verified
+geometrically rather than by watching Spirits move — they drift, which swamps a
+before-and-after comparison and reports the already-working yaw axis as broken
+too: the camera offset advances by exactly one field height per turn, at one
+turn and at three, and a Spirit's screen position after a full turn differs by
+0.000px. The behavioural test the report implies (hold the key, does it keep
+going at the same rate) reads 1.26 radians per three-second leg, leg after leg,
+against yaw's 1.20.
+
+The renderer was the other half, and it had to be, because "vertically nothing
+tiles, because pitch is clamped" was a comment in `etherRenderer.js` describing a
+real dependency. Unbounded, the sky and the soft buffer slid their own edges into
+view as a hard horizontal band — the exact failure already reported twice on this
+screen. `blitTiled()` now repeats on both axes and only as far as the view
+reaches, so the common case is still one blit and four happens only when both
+seams are on screen at once; `drawBlobWrapped()` wraps into the eight neighbours
+instead of the two, skipping any copy that would fall outside the buffer; and the
+baked sky's gradient returns to its top tone at the bottom so its last row can sit
+above its first. Scanned across several full turns in each direction, separately
+and combined, the worst full-height discontinuity is 0 and the worst full-width is
+3, against ~40+ for a genuine seam. The extra blits cost nothing measurable.
+
+The part worth remembering is what wrapping the second axis did to the light.
+Folding a blob back means keeping the part of it that used to hang off the top or
+bottom and be thrown away, so alphas tuned against the old behaviour started
+adding more than they were set for: measured on the same seed and viewport, the
+sky's median luminance went from 56 to 70 — the milky field `etherRenderer.js`
+already carries a warning about, where the stars stop registering and the nebula
+stops reading as a shape. Finding it took a per-layer split, and that measurement
+was initially misread: killing `palette.nebula` does nothing, because each bloom
+captures its colour at bake time, so the nebula's contribution was hiding inside
+what looked like the bare sky. Nebula, mist and ambient glow all came down until
+the darks returned — darkest 5% 39.8 against a pre-change 40.6, brightest 5% 77.6
+against 82.1. Both regression suites and the five-stage interaction pass unchanged.

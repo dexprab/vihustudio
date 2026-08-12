@@ -79,9 +79,8 @@
   // How far past the view the baked layers extend, so the camera can
   // slide them without an edge appearing. Comfortably more than the
   // camera's reach (~2.5% of the shorter edge) times any parallax a
-  // baked layer uses.
-  // Sized against the deepest vertical look the camera allows: pitch
-  // reaches 0.35 of the viewport, and this layer moves at 0.18 of that.
+  // baked layer uses. It is no longer sized against a vertical limit,
+  // because there is not one — see blitTiled().
   var BLEED = 72;
 
   // The soft buffer gets a much larger bleed than the sky, because it
@@ -92,17 +91,29 @@
   // dark frame around the universe.
   var SOFT_BLEED = 120;
 
-  // Turning the universe is unbounded — a full turn of yaw is one
-  // field width, and a child can keep turning. So every layer drawn as
-  // a whole image tiles horizontally: the offset is reduced into one
-  // tile and the image is blitted twice when the seam is on screen,
-  // once when it is not. Vertically nothing tiles, because pitch is
-  // clamped (camera.js) to less than the bleed can cover.
-  function blitTiled(ctx, img, ox, oy, w, h) {
-    var start = ox % w;
-    if (start > 0) start -= w;
-    ctx.drawImage(img, start, oy, w, h);
-    if (start + w < ctx.canvas.width) ctx.drawImage(img, start + w, oy, w, h);
+  // Turning the universe is unbounded on BOTH axes — a full turn of
+  // yaw is one field width, a full turn of pitch is one field height,
+  // and a child can keep going in either. So every layer drawn as a
+  // whole image tiles in x and in y: the offset is reduced into one
+  // tile, and the tile is repeated only as far as the view actually
+  // reaches. Because a tile is always larger than the view (it carries
+  // a bleed on every side) that is one blit in the common case, two
+  // when a seam is on screen, and four only in the corner case where
+  // both seams are.
+  //
+  // This used to tile horizontally only, which was correct exactly as
+  // long as pitch was clamped. It is not any more: the Ether wraps
+  // vertically too (physics.js always did), so the camera does now,
+  // and a layer that did not would slide its own edge into view as a
+  // hard band across the universe.
+  function blitTiled(ctx, img, ox, oy, tw, th, viewW, viewH) {
+    var x0 = ox % tw; if (x0 > 0) x0 -= tw;
+    var y0 = oy % th; if (y0 > 0) y0 -= th;
+    for (var x = x0; x < viewW; x += tw) {
+      for (var y = y0; y < viewH; y += th) {
+        ctx.drawImage(img, x, y, tw, th);
+      }
+    }
   }
 
   // The same reduction for layers made of individual points (dust,
@@ -169,16 +180,30 @@
 
   // The same blob, drawn so that the buffer it lands in TILES.
   //
-  // A tiled blit repeats an image side by side, which only works if the
-  // image's left edge continues its right edge. A blob that runs off
-  // one side and does not reappear on the other breaks that: the dark
-  // edge of one copy butts against the bright middle of the next and
-  // the universe gets a hard vertical line down it. Anything large
-  // enough to cross an edge has to be drawn on both sides.
-  function drawBlobWrapped(ctx, color, x, y, radius, alpha, span) {
-    drawBlob(ctx, color, x, y, radius, alpha);
-    if (x - radius < 0) drawBlob(ctx, color, x + span, y, radius, alpha);
-    else if (x + radius > span) drawBlob(ctx, color, x - span, y, radius, alpha);
+  // A tiled blit repeats an image edge to edge, which only works if the
+  // image's left edge continues its right edge and its top continues
+  // its bottom. A blob that runs off one side and does not reappear on
+  // the other breaks that: the dark edge of one copy butts against the
+  // bright middle of the next and the universe gets a hard line across
+  // it. Anything large enough to cross an edge has to be drawn on the
+  // opposite side as well — and since the buffer now tiles in both
+  // directions, that means the eight neighbours, not the two.
+  //
+  // Only the copies that would actually land inside the buffer are
+  // drawn. A small bloom well inside it still costs exactly one blob,
+  // which is nearly all of them; the broad ambient glow, which is wider
+  // than the buffer, costs nine and is drawn once every third frame at
+  // a quarter of the resolution.
+  function drawBlobWrapped(ctx, color, x, y, radius, alpha, spanX, spanY) {
+    for (var ix = -1; ix <= 1; ix++) {
+      var px = x + ix * spanX;
+      if (px + radius < 0 || px - radius > spanX) continue;
+      for (var iy = -1; iy <= 1; iy++) {
+        var py = y + iy * spanY;
+        if (py + radius < 0 || py - radius > spanY) continue;
+        drawBlob(ctx, color, px, py, radius, alpha);
+      }
+    }
   }
 
   EtherNS.createRenderer = function (opts) {
@@ -264,10 +289,21 @@
       // there is no horizon in the Ether — with the nebula and mist
       // now brighter, the darks have to stay genuinely dark or the
       // whole field goes milky and the stars stop registering.
+      //
+      // It RETURNS to the top tone at the bottom, and that is not a
+      // decoration: this image now tiles vertically, so its last row
+      // sits directly above its first. A gradient that ended pale
+      // against a dark start is a hard horizontal line drawn across
+      // the universe every time a child looks far enough up. Ending
+      // where it began costs nothing visually — the tonal range is
+      // unchanged, it is simply a band of cooler light that the sky
+      // passes through rather than one it stops at — and it makes
+      // looking up forever mean something.
       var bg = bakedCtx.createLinearGradient(0, 0, 0, h);
       bg.addColorStop(0, mix(p.deep, '#070B16', 0.45));
-      bg.addColorStop(0.55, mix(p.deep, '#070B16', 0.12));
-      bg.addColorStop(1, mix(p.deep, p.near, 0.26));
+      bg.addColorStop(0.30, mix(p.deep, '#070B16', 0.12));
+      bg.addColorStop(0.62, mix(p.deep, p.near, 0.26));
+      bg.addColorStop(1, mix(p.deep, '#070B16', 0.45));
       bakedCtx.fillStyle = bg;
       bakedCtx.fillRect(0, 0, w, h);
 
@@ -352,7 +388,15 @@
           x: rng.between(-0.10, 1.10),
           y: rng.between(-0.06, 1.02),
           r: rng.between(0.15, 0.40),
-          alpha: rng.between(0.13, 0.30),
+          // Down from 0.13–0.30 for the same reason the mist and glow
+          // came down: the buffer wraps on both axes now, so the part
+          // of a bloom that used to hang off the top or bottom and be
+          // discarded comes back in at the other edge. That is right —
+          // it is the same cloud, and it is what makes the sky
+          // continuous when a child keeps looking up — but it packs
+          // more nebula into a buffer whose alphas were set when a
+          // bloom near an edge only counted once.
+          alpha: rng.between(0.078, 0.180),
           lobes: lobes
         });
       }
@@ -392,12 +436,12 @@
           var lobe = b.lobes[q];
           drawBlobWrapped(softCtx, b.color,
             bx + lobe.dx * br, by + lobe.dy * br,
-            br * lobe.rs, b.alpha * lobe.as * pulse * breath, w);
+            br * lobe.rs, b.alpha * lobe.as * pulse * breath, w, h);
         }
         // A brighter heart. The difference between a cloud of colour
         // and a cloud of colour that has somewhere it is coming from.
         drawBlobWrapped(softCtx, b.color, bx, by, br * 0.30,
-          b.alpha * 0.58 * pulse * breath, w);
+          b.alpha * 0.58 * pulse * breath, w, h);
       }
 
       // Mist — the buffer's own plane, so no internal offset.
@@ -407,7 +451,7 @@
         var mx = w * (0.5 + 0.36 * Math.sin(ph * 0.61 + m * 2.0));
         var my = h * (0.5 + 0.28 * Math.cos(ph * 0.43 + m * 1.3));
         drawBlobWrapped(softCtx, p.mist, mx, my,
-          mistR * (0.8 + m * 0.16), 0.030 * breath, w);
+          mistR * (0.8 + m * 0.16), 0.0155 * breath, w, h);
       }
 
       // The warmth at the heart of the field.
@@ -419,8 +463,22 @@
       // registering and the nebula stops reading as a shape. Keeping
       // these two quiet is what lets the nebula, which is localised, be
       // the thing that gives the space somewhere-ness.
+      //
+      // Both alphas came down by nearly half when the buffer started
+      // wrapping vertically, and that is a correction rather than a
+      // retune. These two are the widest things in the buffer — wider
+      // than the buffer itself — so most of each one used to hang off
+      // the top and bottom and simply be thrown away. Folding it back
+      // in is what wrapping means, and it is right; it also meant the
+      // field arrived brighter than the numbers were ever tuned for.
+      // Measured on the same seed and viewport, the wash took the
+      // sky's median luminance from 56 to 70, which is exactly the
+      // milky field the paragraph above is a record of. Halved, the
+      // darks are back where they belong and nothing about the look
+      // changed — there is simply no longer a second helping of haze
+      // arriving from off-buffer.
       drawBlobWrapped(softCtx, p.glow, w * 0.5, h * 0.54, span * 0.62,
-        (0.024 + amb.glow * 0.034) * breath, w);
+        (0.0125 + amb.glow * 0.018) * breath, w, h);
 
       softCtx.globalAlpha = 1;
       softCtx.globalCompositeOperation = 'source-over';
@@ -523,10 +581,11 @@
       // --- the baked sky. No clearRect first: it is opaque and, with
       // its bleed, covers every pixel at any camera offset.
       cam = camera ? camera.offsetFor(D.farStars) : null;
-      var skyTile = w + BLEED * 2;
-      var skyX = wrapOffset((cam ? cam.x : 0) - BLEED, skyTile);
-      var skyY = (cam ? cam.y : 0) - BLEED;
-      blitTiled(ctx, baked, skyX, skyY, skyTile, h + BLEED * 2);
+      var skyTileW = w + BLEED * 2;
+      var skyTileH = h + BLEED * 2;
+      var skyX = wrapOffset((cam ? cam.x : 0) - BLEED, skyTileW);
+      var skyY = wrapOffset((cam ? cam.y : 0) - BLEED, skyTileH);
+      blitTiled(ctx, baked, skyX, skyY, skyTileW, skyTileH, w, h);
 
       // Everything above the sky is added light, never paint over it —
       // 'lighter' is what makes mist read as luminous haze rather than
@@ -534,22 +593,27 @@
       ctx.globalCompositeOperation = 'lighter';
 
       // The live star layers ride the same tiles as the baked sky, so
-      // they repeat with it rather than sliding across it.
-      var skyPass = (skyX + skyTile < w) ? 2 : 1;
+      // they repeat with it rather than sliding across it. Two passes
+      // per axis at most, and only when that axis' seam is on screen.
+      var skyPassX = (skyX + skyTileW < w) ? 2 : 1;
+      var skyPassY = (skyY + skyTileH < h) ? 2 : 1;
 
       // --- living stars, at the sky's own parallax.
       if (!reduced) {
         ctx.fillStyle = p.star;
-        for (var pass = 0; pass < skyPass; pass++) {
-          var tx = skyX + pass * skyTile;
-          for (i = 0; i < twinklers.length; i++) {
-            var star = twinklers[i];
-            // Never fully out, and never much brighter than its baked
-            // self: a twinkle is a breath, not a blink.
-            var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
-            ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
-            ctx.fillRect(star.x + tx, star.y + skyY,
-              Math.max(1, star.r * 2), Math.max(1, star.r * 2));
+        for (var px = 0; px < skyPassX; px++) {
+          var tx = skyX + px * skyTileW;
+          for (var py = 0; py < skyPassY; py++) {
+            var ty = skyY + py * skyTileH;
+            for (i = 0; i < twinklers.length; i++) {
+              var star = twinklers[i];
+              // Never fully out, and never much brighter than its baked
+              // self: a twinkle is a breath, not a blink.
+              var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
+              ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
+              ctx.fillRect(star.x + tx, star.y + ty,
+                Math.max(1, star.r * 2), Math.max(1, star.r * 2));
+            }
           }
         }
       }
@@ -640,16 +704,17 @@
       if (frames % SOFT_INTERVAL === 0) drawSoft(mistCam);
       frames++;
       ctx.globalAlpha = 1;
-      var softTile = w + SOFT_BLEED * 2;
+      var softTileW = w + SOFT_BLEED * 2;
+      var softTileH = h + SOFT_BLEED * 2;
       blitTiled(ctx, soft,
-        wrapOffset((mistCam ? mistCam.x : 0) - SOFT_BLEED, softTile),
-        (mistCam ? mistCam.y : 0) - SOFT_BLEED,
-        softTile, h + SOFT_BLEED * 2);
+        wrapOffset((mistCam ? mistCam.x : 0) - SOFT_BLEED, softTileW),
+        wrapOffset((mistCam ? mistCam.y : 0) - SOFT_BLEED, softTileH),
+        softTileW, softTileH, w, h);
 
       // The auras, in view space, once.
       if (assembleLit(breath)) {
         ctx.globalAlpha = 1;
-        ctx.drawImage(lit, -SOFT_BLEED, -SOFT_BLEED, softTile, h + SOFT_BLEED * 2);
+        ctx.drawImage(lit, -SOFT_BLEED, -SOFT_BLEED, softTileW, softTileH);
       }
 
       // --- the Spirit's core.

@@ -87,9 +87,13 @@
     // the Ether wraps at the field's edge anyway (physics.js). No
     // seams, no ends, no wall to walk into.
     //
-    // `pitch` does not wrap. You can look up and you can look down, and
-    // then you have looked as far as there is — clamped to the field,
-    // because a sky you can scroll past forever is a scrollbar.
+    // `pitch` wraps too, and for the same reason. The Ether is a field
+    // that wraps on BOTH axes — physics.js has always wrapped stories
+    // vertically as well as horizontally — so clamping the camera's
+    // pitch was the camera disagreeing with the universe it looks at.
+    // Turning left goes on forever; turning up stopping dead reads as
+    // broken rather than as a limit. A full turn of pitch is one field
+    // height, exactly as a full turn of yaw is one field width.
     var yaw = 0;
     var pitch = 0;
     var yawTarget = 0;
@@ -100,32 +104,18 @@
     // it is a universe, it does not snap.
     var ease = opts.ease || 2.4;
 
-    // How far up and down the Traveller can look, in view pixels.
-    //
-    // This used to be derived purely from the field — (fieldH - viewH)
-    // / 2 — and in a nearly empty Ether the field is only 1.18x the
-    // view, so the whole vertical range was about 70px and the up/down
-    // arrows did visibly nothing. Yaw did not have the problem because
-    // it maps to a full field WIDTH and wraps.
-    //
-    // Looking up is a thing you can always do under a sky, whatever is
-    // in it, so there is a floor: a third of the viewport either way.
-    // It stays under what the renderer's bleed can cover at the
-    // deepest parallax that uses one (0.30 x 0.35 x viewH < SOFT_BLEED).
-    function pitchLimit() {
-      return Math.max((ether.height - ether.viewHeight) * 0.5,
-                      ether.viewHeight * 0.35);
-    }
-
-    // Radians in, and a full turn is one field width across.
+    // Radians in, on both axes. Neither is clamped: a full turn of yaw
+    // is one field width, a full turn of pitch is one field height, and
+    // the Ether wraps at both so the universe closes on itself in every
+    // direction.
     function look(dYaw, dPitch) {
       yawTarget += dYaw;
-      pitchTarget = Util.clamp(pitchTarget + dPitch, -1, 1);
+      pitchTarget += dPitch;
     }
 
     function lookTo(y, p) {
       yawTarget = y;
-      pitchTarget = Util.clamp(p, -1, 1);
+      pitchTarget = p;
     }
 
     function update(dt, time) {
@@ -148,7 +138,7 @@
       pitch += (pitchTarget - pitch) * k;
 
       offset.x = drift.x + (yaw / (Math.PI * 2)) * ether.width;
-      offset.y = drift.y + pitch * pitchLimit();
+      offset.y = drift.y + (pitch / (Math.PI * 2)) * ether.height;
     }
 
     // The camera's offset as a given layer should see it. Parallax 0
@@ -193,7 +183,7 @@
       restore: function (s) {
         if (!s) return;
         yawTarget = s.yaw || 0;
-        pitchTarget = Util.clamp(s.pitch || 0, -1, 1);
+        pitchTarget = s.pitch || 0;
         yaw = yawTarget;
         pitch = pitchTarget;
       }

@@ -43,7 +43,7 @@
   // enough that it reads as the sky moving rather than a camera
   // whipping round.
   var EDGE_YAW = 0.31;
-  var EDGE_PITCH = 0.30;      // in pitch units (-1..1) per second
+  var EDGE_PITCH = 0.26;      // radians/s, same units as yaw
 
   // Arrow keys are a little more decisive than the mouse: pressing a
   // key is a deliberate act, hovering near an edge is often not.
@@ -134,7 +134,7 @@
       // Dragging right pulls the universe right, which means looking
       // left — the sky moves with the finger, not against it.
       camera.look(-(dx / Math.max(1, ether.viewWidth)) * Math.PI * 2 * 0.5,
-                  -(dy / Math.max(1, ether.viewHeight)) * 0.9);
+                  -(dy / Math.max(1, ether.viewHeight)) * Math.PI * 2 * 0.5);
       if (drag.moved > 12) ev.preventDefault();
     }
     function onTouchEnd() { drag = null; }

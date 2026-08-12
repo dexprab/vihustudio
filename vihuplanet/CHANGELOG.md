@@ -2,6 +2,42 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.0.4 — 2026-08-12
+
+- **Looking up and down goes on forever, exactly as looking left and
+  right always did.** Pitch was clamped; yaw was not. That was the
+  camera disagreeing with the universe it looks at — `physics.js` has
+  wrapped the Ether on *both* axes since Phase 1, so a Traveller who
+  held the up arrow hit an invisible ceiling in a space that does not
+  have one. A full turn of pitch is now one field height, exactly as a
+  full turn of yaw is one field width, and the camera offset advances
+  by the field height per turn with a Spirit returning to within
+  0.000px of where it was. Measured on the four-second-hold test the
+  report describes: pitch now turns 1.26 radians per leg and keeps
+  turning, matching the yaw axis' 1.20, where before it stalled.
+- **Every layer drawn as a whole image now tiles vertically too.** The
+  sky and the soft buffer tiled horizontally only, which was correct
+  precisely as long as pitch was bounded; unbounded, they slid their
+  own edge into view as a hard band across the universe — the failure
+  already reported twice on this screen. `blitTiled()` repeats on both
+  axes and only as far as the view reaches (one blit normally, four
+  only when both seams are on screen), and `drawBlobWrapped()` wraps
+  the soft buffer's contents into the eight neighbours rather than the
+  two. The baked sky's gradient returns to its top tone at the bottom
+  so its last row can sit above its first. Scanned across several full
+  turns in both directions, alone and combined: worst full-height
+  discontinuity 0, worst full-width 3, against ~40+ for a real seam.
+  No measurable frame cost.
+- **The soft layers came down to compensate, and that is a correction
+  rather than a retune.** Wrapping on a second axis folds back light
+  that used to hang off the buffer's top and bottom and be discarded,
+  so alphas set against the old behaviour started adding more than
+  they were tuned for. Measured, it took the sky's median luminance
+  from 56 to 70 — the milky field that `etherRenderer.js` already
+  carries a warning about. Nebula, mist and ambient glow reduced until
+  the darks returned: darkest 5% now 39.8 against a pre-change 40.6,
+  brightest 5% 77.6 against 82.1.
+
 ## v1.0.3 — 2026-08-12
 
 - **The music starts on VihuPlanet's Tap to Begin,** exactly as it used
