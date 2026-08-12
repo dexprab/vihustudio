@@ -442,7 +442,28 @@
         }
         send.disabled = true;
         say('Looking…');
-        SkyProtection.recoverByEmail(input.value).then(function (res) {
+        // Two different questions wearing the same field.
+        //
+        // If this device HOLDS a Magic Card, the child is not trying to
+        // find one — they are worried about losing the one they have,
+        // and the honest thing is to put it in a grown-up's hands right
+        // now. That is protect, not recover. It also closes the gap for
+        // every Creator who claimed a card before Sky Protection
+        // existed: they were never asked for an address, so there is
+        // nothing for a search to find, and searching would have
+        // reported "on its way" while sending nothing at all.
+        //
+        // With no card here, it really is a search: a new device, and
+        // the only thing the child can offer is the address.
+        var holdsACard = false;
+        try {
+          holdsACard = typeof CreatorRecognition !== 'undefined' &&
+                       CreatorRecognition.isRecognised();
+        } catch (e) {}
+
+        var ask = holdsACard ? SkyProtection.protect(input.value)
+                             : SkyProtection.recoverByEmail(input.value);
+        ask.then(function (res) {
           send.disabled = false;
           if (lostForm) { lostForm.remove(); lostForm = null; }
           if (res && res.ok) {
@@ -451,7 +472,9 @@
             // oracle for which addresses are in the product, and the
             // child does not need to know either — a grown-up either
             // receives an email or does not.
-            say('If a grown-up is keeping your sky, it is on its way to them now.', 'quiet');
+            say(holdsACard
+              ? 'Your sky is on its way to them now. It will always be safe there.'
+              : 'If a grown-up is keeping your sky, it is on its way to them now.', 'quiet');
           } else {
             say('I could not reach them just now. You can try again in a moment.', 'quiet');
           }
