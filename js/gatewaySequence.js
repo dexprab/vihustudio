@@ -942,7 +942,24 @@
           // ever apply to the single arrival VihuPlanet wrote it for.
           let recognisedOnArrival=false;
           try{ recognisedOnArrival=(typeof CreatorRecognition!=='undefined')&&CreatorRecognition.takeRecognition(); }catch(e){}
-          runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,recognisedOnArrival:recognisedOnArrival,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});
+          // "Show me your stars" is a QUESTION, and since Sprint VP1.5 a
+          // Creator has usually already answered it — at VihuPlanet, on
+          // the way in. Scene 3 then takes its skip branch below and
+          // never mounts the challenge, so the line asked for something
+          // nothing would collect: an instruction with no question
+          // behind it, spoken and then abandoned.
+          //
+          // Recognised on arrival, Lumo only welcomes them home. The
+          // line and its voice clip BOTH go — a heard instruction with
+          // no text is worse than a written one, not better.
+          //
+          // A Creator who opens the Studio directly is untouched: no
+          // recognition happened before them, the challenge really is
+          // coming, and asking is exactly right. Decision 11 requires
+          // that path to behave as it always has.
+          const preLines=recognisedOnArrival?RETURNING_LINES.slice(0,1):RETURNING_LINES;
+          const preVoiceIds=recognisedOnArrival?RETURNING_VOICE_IDS.slice(0,1):RETURNING_VOICE_IDS;
+          runVideoSequence(gateVideoEl,{preLines:preLines,preVoiceIds:preVoiceIds,verify:true,recognisedOnArrival:recognisedOnArrival,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});
         }else{
           runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES,pauseVoiceIds:GREETING_VOICE_IDS});
         }
