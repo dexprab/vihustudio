@@ -1380,8 +1380,8 @@ const PublishStudio=(function(){
     const live=_slides();
     let ready;
     try{
-      ready=(typeof Thumbnails!=='undefined' && live.length)
-        ? Thumbnails.generateBatch(live)
+      ready=(typeof ThumbnailEngine!=='undefined' && live.length)
+        ? ThumbnailEngine.generateBatch(live)
         : Promise.resolve();
     }catch(e){ ready=Promise.resolve(); }
 
@@ -1397,13 +1397,22 @@ const PublishStudio=(function(){
       let second=Promise.resolve();
       try{
         const missing=slides.filter(function(s){ return s && !s.thumbnail; });
-        if(missing.length && typeof Thumbnails!=='undefined'){
-          second=Thumbnails.generateBatch(missing);
+        if(missing.length && typeof ThumbnailEngine!=='undefined'){
+          second=ThumbnailEngine.generateBatch(missing);
         }
       }catch(e){}
       return Promise.resolve(second).catch(function(){}).then(function(){
-        if(!record.thumbnail && slides[0] && slides[0].thumbnail){
-          record=Object.assign({},record,{thumbnail:slides[0].thumbnail});
+        // The FIRST PAGE THAT RENDERED, not simply the first page. A
+        // Spirit wears this as its cover, and a story whose opening
+        // page failed would otherwise drift as a bare gradient while
+        // carrying perfectly good pictures behind it.
+        if(!record.thumbnail){
+          for(let i=0;i<slides.length;i++){
+            if(slides[i] && slides[i].thumbnail){
+              record=Object.assign({},record,{thumbnail:slides[i].thumbnail});
+              break;
+            }
+          }
         }
         _finishCanonPublish(record, slides);
       });
