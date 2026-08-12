@@ -436,6 +436,59 @@ modes.**
   multi-author editing.
 - Architecture and how to add a story: `vihuplanet/canon/README.md`.
 
+### 14. Sky Protection
+
+Locked by the product owner in the Sprint VP4 brief. It adds a recovery
+mechanism; it changes nothing about the Magic Card or the magical
+experience.
+
+- **Children recognise themselves through their Magic Card. Parents
+  protect the Magic Card.** The parent email is **not** the child's
+  account: nothing signs in with it, it is never an identity, never a
+  password and never a profile. It is the safe place the card is kept.
+- **The Magic Card remains the primary identity inside VihuPlanet.**
+  Decision 11 is unchanged.
+- **It is asked for at exactly one moment: before a story joins
+  VihuPlanet.** Making a story needs no email. Finishing one needs no
+  email. Every artifact — book, PDF, Magic Creation, images — is
+  produced and handed over with nothing asked, because none of them
+  can be lost by losing a card. A story in the Ether is reachable
+  through the Magic Card and nothing else, which is why that is the
+  honest moment.
+- **Protect Your Sky · 🌟 Keep My Sky Safe · Skip For Now.** The
+  child's words are about their sky; posting a Magic Card to a grown-up
+  is how VihuPlanet does it.
+- **Skipping never blocks anything.** It shows one gentle line — "Your
+  Magic Card is the only way VihuPlanet can recognise your sky" — once,
+  and never becomes a nag.
+- **An address already on file is never asked for again.** The card is
+  resent silently and the child is told, with no interaction required.
+- **One address may protect several children.** Siblings on one
+  parent's email is the normal case; every message names its Creator
+  and a recovery email lists each sky separately.
+- **Recovery is `I Don't Have My Magic Card`** on the Mark Your Stars
+  screen. If this device remembers a grown-up, the card is resent and
+  the child is told to ask them — no typing. If it remembers nothing (a
+  new device) the child can give the grown-up's address, and the only
+  thing that happens is an email to it. Nothing is ever revealed to the
+  browser, so controlling the inbox is the whole of the check — which
+  is exactly right for something that is not an account, and is why the
+  answer is identical whether or not that address protects anything.
+- **No support request and no manual recovery**, because there is no
+  account to recover.
+- **The email is sent by `supabase/functions/sky-protection`**, and
+  `parent_email` is a plain column on `magic_card_identities`. An
+  unconfigured or unreachable deployment is a handled state everywhere:
+  the child still shares their story, and VihuPlanet never claims a sky
+  is safe when it is not.
+- **A first share happens before a Magic Card exists** (Canon 6 puts
+  the Creator Ceremony after sharing). The address is remembered and
+  the card is posted the moment there is one; the wording for that case
+  says so rather than pretending it has already gone.
+- Out of scope and not implemented: parent accounts, email/password
+  login, OTP verification, family dashboards, child management, cloud
+  profile management and Creator accounts.
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -722,3 +722,64 @@ html, body {
   .vp-stars-panel { transition: opacity 180ms ease; transform: none; }
   .vp-stars.is-open .vp-stars-panel { transform: none; }
 }
+
+
+/* ---------- "I don't have my Magic Card" ----------
+ *
+ * The way out for a child who cannot answer the question at all. It
+ * sits UNDER the two buttons and is quieter than both, because it is
+ * not a third choice — the screen still offers exactly two — it is the
+ * door for somebody who cannot use either. */
+
+.vp-stars-lost {
+  margin-top: 0.15rem;
+  padding: 0.3rem 0.6rem;
+  border: 0;
+  background: none;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: rgba(241, 234, 208, 0.55);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.vp-stars-lost:hover,
+.vp-stars-lost:focus-visible { color: var(--vp-candle, #E8B871); }
+
+.vp-stars-lost:focus-visible { outline: 2px solid var(--vp-candle, #E8B871); outline-offset: 3px; }
+
+/* A class that sets `display` outranks the browser's own [hidden]
+   rule. This one does not set display — but the guard is here anyway,
+   next to its neighbours, because every other surface in this file
+   that forgot it cost a bug. */
+.vp-stars-lost[hidden] { display: none; }
+
+.vp-stars-lost-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  width: min(22rem, 100%);
+  margin-top: 0.2rem;
+}
+
+.vp-stars-input {
+  width: 100%;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.98rem;
+  text-align: center;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.3);
+  background: rgba(12, 17, 32, 0.6);
+  color: var(--vp-paper, #F1EAD0);
+}
+
+.vp-stars-input::placeholder { color: rgba(241, 234, 208, 0.42); }
+
+.vp-stars-input:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+  border-color: rgba(232, 184, 113, 0.6);
+}

@@ -656,6 +656,30 @@ alter table public.magic_card_identities add column if not exists companion_id t
 alter table public.magic_card_identities add column if not exists companion_name text;
 alter table public.magic_card_identities add column if not exists companion_species text;
 
+-- Sky Protection (Sprint VP4) — the address a Magic Card is posted to
+-- so a child who loses their card, forgets their constellation or picks
+-- up a new device can always be recognised again.
+--
+-- It is NOT an account, and nothing about it behaves like one: nothing
+-- signs in with it, it is never an identity, and it grants nothing. It
+-- is deliberately plain text on the identity row rather than a table of
+-- its own, because it is one address belonging to one card and there is
+-- nothing to relate.
+--
+-- ONE ADDRESS MAY PROTECT SEVERAL CHILDREN — siblings on one parent's
+-- email is the normal case — so this is not unique, and the index below
+-- exists for exactly that lookup: recovery sends every sky protected by
+-- an address, each one named.
+--
+-- Owner-only RLS already covers it for the browser (the same policies
+-- as every other column here). The Edge Function reads it with the
+-- service role, which is what lets recovery work on a device that knows
+-- nothing at all.
+alter table public.magic_card_identities add column if not exists parent_email text;
+create index if not exists magic_card_identities_parent_email_idx
+  on public.magic_card_identities (parent_email)
+  where parent_email is not null;
+
 alter table public.magic_card_identities enable row level security;
 
 -- Owner-only CRUD — a magic card's own pattern/code/constellation must

@@ -216,6 +216,123 @@ const ShareCeremony=(function(){
     });
   }
 
+  // ---------------------------------------------------------------
+  // Protect Your Sky (Sprint VP4)
+  //
+  // Before the readiness questions, and only here — making a story
+  // needs no email, finishing one needs no email, and every artifact is
+  // handed over with nothing asked. A story that JOINS VihuPlanet is
+  // reachable through the Magic Card and nothing else, so the moment
+  // before that is the honest moment to make sure the card cannot be
+  // lost.
+  //
+  // The child's own words are about their sky, never about an email
+  // address or a card. "Keep My Sky Safe" is what they are doing;
+  // posting a Magic Card to a parent is how VihuPlanet does it.
+  // ---------------------------------------------------------------
+  function _protectSky(next){
+    if(typeof SkyProtection==='undefined'){ next(); return; }
+
+    // Already protected: no question, no form, nothing to interact
+    // with. The card goes again and the child is told, once.
+    if(SkyProtection.hasProtection()){
+      _pose('celebrate');
+      _speak(['⭐ Your Magic Card has been shared with your parent again.',
+              'You can always check your stars together.']);
+      _els.actions.innerHTML='';
+      try{ SkyProtection.resend(); }catch(e){}
+      _button('Go on','yes',next);
+      return;
+    }
+
+    _pose('curious');
+    _speak(['Before your story joins VihuPlanet,',
+            'let us make sure your sky can always be found again.']);
+    _els.actions.innerHTML='';
+
+    const field=_el('div','share-ceremony-field');
+    const input=document.createElement('input');
+    input.type='email';
+    input.className='share-ceremony-input';
+    input.placeholder='A grown-up’s email address';
+    input.setAttribute('aria-label','A grown-up’s email address');
+    input.autocomplete='email';
+    field.appendChild(input);
+    _els.actions.appendChild(field);
+
+    const note=_el('p','share-ceremony-note');
+    _els.actions.appendChild(note);
+
+    const row=_el('div','share-ceremony-row');
+    _els.actions.appendChild(row);
+
+    function button(label,kind,onClick){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='share-ceremony-btn'+(kind?' is-'+kind:'');
+      b.textContent=label;
+      b.addEventListener('click',onClick);
+      row.appendChild(b);
+      return b;
+    }
+
+    let sending=false;
+    const send=button('🌟 Keep My Sky Safe','yes',function(){
+      if(sending) return;
+      const value=input.value;
+      if(!SkyProtection.looksLikeEmail(value)){
+        // Not a scolding, and not the word "invalid". A child mistyping
+        // their parent's address has done nothing wrong.
+        note.textContent='That does not look like an email address yet.';
+        input.focus();
+        return;
+      }
+      sending=true;
+      note.textContent='Sending it…';
+      SkyProtection.protect(value).then(function(res){
+        sending=false;
+        if(res && res.ok && res.pending){
+          // Honest: there is no card to post yet, because the Creator
+          // Ceremony has not happened. Saying "it has been shared"
+          // here would be the one lie this feature cannot afford.
+          _pose('celebrate');
+          _speak(['⭐ Saved. Your sky will be sent to them as soon as it has a name in the stars.']);
+          _els.actions.innerHTML='';
+          _button('Go on','yes',next);
+          return;
+        }
+        if(res && res.ok){
+          _pose('celebrate');
+          _speak(['⭐ Your Magic Card has been safely shared with your parent.']);
+          _els.actions.innerHTML='';
+          _button('Go on','yes',next);
+          return;
+        }
+        // Could not post it. The address is remembered and will be used
+        // the next time; sharing is never blocked by this.
+        note.textContent='We could not send it just now. Your story can still go on.';
+      });
+    });
+
+    input.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'){ ev.preventDefault(); send.click(); }
+    });
+
+    button('Skip For Now','notyet',function(){
+      SkyProtection.markSkipped();
+      _pose('talk');
+      // Said once, gently, and never again in this ceremony. It is a
+      // true thing a child should know, not a nag — and it must never
+      // become one.
+      _speak(['Your Magic Card is the only way VihuPlanet can recognise your sky.',
+              'You can keep it safe with a grown-up any time.']);
+      _els.actions.innerHTML='';
+      _button('Go on','yes',next);
+    });
+
+    input.focus();
+  }
+
   function _button(label,kind,onClick){
     const b=document.createElement('button');
     b.type='button';
@@ -291,6 +408,12 @@ const ShareCeremony=(function(){
     // the consequence of sharing a story, never a reward for finishing
     // one, so it is set here rather than on finishing.
     try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
+    // A child who gave a parent's address before they had a Magic Card
+    // — the normal first-share order, since Canon 6 puts the Creator
+    // Ceremony after sharing. Silent, and a no-op when there is nothing
+    // waiting. Deliberately fired after the share rather than before:
+    // the card is minted by the Ceremony, which this triggers.
+    try{ if(typeof SkyProtection!=='undefined') SkyProtection.catchUp(); }catch(e){}
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
 
     window.setTimeout(function(){ _finish(ok); },900);
@@ -345,7 +468,13 @@ const ShareCeremony=(function(){
         _finish(false);
         return;
       }
-      _render();
+      // Sky Protection comes BEFORE the readiness questions, and runs
+      // exactly once — a story is about to become reachable only
+      // through the Magic Card, so this is the moment the card stops
+      // being losable. It never blocks: every path through it,
+      // including skipping and including a send that fails, continues
+      // into the ceremony.
+      _protectSky(function(){ _render(); });
     });
   }
 

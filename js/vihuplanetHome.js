@@ -304,6 +304,7 @@
     // nobody grinds at it, many enough that a slip is never the end.
     var TRIES = 3;
     var board = null;
+    var lostForm = null;      // the recover-by-grown-up field, when open
     var attempts = 0;
     var asking = false;
 
@@ -316,6 +317,9 @@
     function freshAsk() {
       if (starsActions) starsActions.hidden = false;
       if (starsRetry) starsRetry.hidden = true;
+      if (lostForm) { lostForm.remove(); lostForm = null; }
+      var lostBtn = starsEl && starsEl.querySelector('[data-stars-act="lost"]');
+      if (lostBtn) lostBtn.hidden = false;
       attempts = 0;
       say('');
       if (board) board.clear();
@@ -359,6 +363,110 @@
       var back = document.querySelector('[data-act="stars"]');
       if (back) back.focus();
     }
+
+    // ---------------------------------------------------------------
+    // "I don't have my Magic Card."
+    //
+    // The honest end of the recognition screen: a child who cannot
+    // answer at all. There is no support request and no manual
+    // recovery, because there is no account to recover — the card was
+    // posted to a grown-up, and the answer is to ask them.
+    //
+    // Two shapes, depending on what this browser knows:
+    //   · It remembers a parent's address → send it again, silently,
+    //     and say who to ask. No typing.
+    //   · It knows nothing (a new device) → the one thing a child can
+    //     offer is that address, and the only thing that happens is an
+    //     email to it. Nothing ever comes back to this browser.
+    // ---------------------------------------------------------------
+    function lostMyCard() {
+      if (typeof SkyProtection === 'undefined') return;
+      if (starsActions) starsActions.hidden = true;
+      if (starsRetry) starsRetry.hidden = true;
+      var lostBtn = starsEl.querySelector('[data-stars-act="lost"]');
+      if (lostBtn) lostBtn.hidden = true;
+      if (board) board.clear();
+
+      if (SkyProtection.hasProtection()) {
+        say('Ask your parent to check your Magic Card. I have sent it to them again.', 'quiet');
+        try { SkyProtection.resend(); } catch (e) {}
+        showLostActions();
+        return;
+      }
+      askForGrownUp();
+    }
+
+    function showLostActions() {
+      if (lostForm) { lostForm.remove(); lostForm = null; }
+      if (starsActions) starsActions.hidden = false;
+      var lostBtn = starsEl.querySelector('[data-stars-act="lost"]');
+      if (lostBtn) lostBtn.hidden = false;
+    }
+
+    // Asking for the address is not asking a child to log in. Nothing
+    // is verified, nothing is stored against them, and nothing is
+    // revealed here — an email is sent, or it is not.
+    function askForGrownUp() {
+      say('A grown-up may be keeping your Magic Card safe. What is their email?', 'quiet');
+      if (lostForm) lostForm.remove();
+      lostForm = document.createElement('div');
+      lostForm.className = 'vp-stars-lost-form';
+
+      var input = document.createElement('input');
+      input.type = 'email';
+      input.className = 'vp-stars-input';
+      input.placeholder = 'A grown-up’s email address';
+      input.setAttribute('aria-label', 'A grown-up’s email address');
+      input.autocomplete = 'email';
+      lostForm.appendChild(input);
+
+      var row = document.createElement('div');
+      row.className = 'vp-stars-actions';
+      var send = document.createElement('button');
+      send.type = 'button';
+      send.className = 'is-primary';
+      send.textContent = 'Send My Sky';
+      var back = document.createElement('button');
+      back.type = 'button';
+      back.textContent = 'Back';
+      row.appendChild(send);
+      row.appendChild(back);
+      lostForm.appendChild(row);
+      starsEl.querySelector('.vp-stars-panel').appendChild(lostForm);
+
+      function go() {
+        if (!SkyProtection.looksLikeEmail(input.value)) {
+          say('That does not look like an email address yet.', 'quiet');
+          input.focus();
+          return;
+        }
+        send.disabled = true;
+        say('Looking…');
+        SkyProtection.recoverByEmail(input.value).then(function (res) {
+          send.disabled = false;
+          if (lostForm) { lostForm.remove(); lostForm = null; }
+          if (res && res.ok) {
+            // The same words whether or not that address protects
+            // anything. Saying "no skies here" would make this an
+            // oracle for which addresses are in the product, and the
+            // child does not need to know either — a grown-up either
+            // receives an email or does not.
+            say('If a grown-up is keeping your sky, it is on its way to them now.', 'quiet');
+          } else {
+            say('I could not reach them just now. You can try again in a moment.', 'quiet');
+          }
+          showLostActions();
+        });
+      }
+      send.addEventListener('click', go);
+      back.addEventListener('click', function () { freshAsk(); showLostActions(); });
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); go(); }
+      });
+      input.focus();
+    }
+
+    function recoverBySky() { askForGrownUp(); }
 
     function exhausted() {
       if (starsActions) starsActions.hidden = true;
@@ -421,6 +529,8 @@
 
         if (act === 'continue') { askTheUniverse(); return; }
         if (act === 'retry') { freshAsk(); return; }
+        if (act === 'lost') { lostMyCard(); return; }
+        if (act === 'recover') { recoverBySky(); return; }
 
         // "I don't have one yet" and "Create Story" are the same door,
         // and the resolver says so: the Starter Story Rite is the path

@@ -1954,3 +1954,58 @@ and no projects at all: the Canon Story was there, with no creator, readable pag
 by page. The manifest was then restored to empty, because the repository ships
 empty on purpose — putting the first real story into VihuPlanet is a content
 decision, not one to make while building the pipe.
+
+## Sprint VP4 · Protect Your Sky
+
+A recovery mechanism that is emphatically not an account. Children recognise
+themselves through their Magic Card; parents protect the Magic Card; the parent
+email is the safe place it is kept and nothing else — nothing signs in with it,
+it is never an identity, and it grants nothing. `js/skyProtection.js` holds all of
+it, and the shape of the module is the shape of that sentence.
+
+The timing was the part worth getting right. It is asked at exactly one moment —
+before a story joins VihuPlanet — and nowhere else. Making a story asks nothing;
+finishing one asks nothing; every artifact is produced and handed over with
+nothing asked, because none of them can be lost by losing a card. A story in the
+Ether is reachable through the Magic Card and through nothing else, which is what
+makes that one moment the honest one to ask.
+
+Two collisions with existing canon had to be resolved rather than ignored. Canon 6
+puts the Creator Ceremony AFTER sharing, so on a first share there is no Magic
+Card at the moment Sky Protection runs — the brief's "generate the Magic Card"
+would have pre-empted the Ceremony. Instead the address is remembered, the card is
+posted the moment one exists (`catchUp()`, fired where `hasEverPublished` is set),
+and the wording for that case says so: "your sky will be sent to them as soon as it
+has a name in the stars." Claiming a card had been sent when none existed is the
+one lie this feature cannot afford. The second: recovery on a brand-new device has
+nothing to identify the child with, so the only thing they can offer is the
+grown-up's address — and the only thing that happens is an email to it. Nothing
+comes back to the browser, controlling the inbox IS the check, and the reply is
+identical whether or not that address protects anything, so it can never become an
+oracle for which addresses are in the product.
+
+The transport is a Supabase Edge Function, following the family-album precedent
+exactly, with `parent_email` as a plain column on `magic_card_identities` (not
+unique, and indexed for exactly the recovery lookup — one address protecting
+several siblings is the normal case, not an edge case). The email is deliberately
+plain text with the constellation drawn as characters, because a recovery mail
+that needs images to work is not a recovery mail. **Disclosed: this sandbox has no
+route to Supabase, so the function is written and documented but has not been run
+against a live deployment.** Every client path was verified against an intercepted
+function instead, including both failure modes — a send that cannot get through
+says so and keeps the address, and never claims the sky is safe.
+
+The bug worth remembering is a styling one with a real cause. `css/style.css` has
+a global `button { width:100%; height:var(--button-height) }` for the editor's
+panels, and every overlay in this codebase escapes it with `!important` — the share
+ceremony did not. It stayed invisible for a whole sprint because a flex item with
+width:100% still shrinks to fit inside a row; the moment the email field stacked
+the buttons into a column they went full-width, and the one screen that must never
+look like a form looked exactly like one. Found by measuring the computed width
+rather than by squinting at the screenshot, after two wrong guesses about `:has()`
+and `align-items`.
+
+Adding a screen in front of the readiness questions also made the VP2 suite drift —
+its click counting silently walked into the wrong screen and reported a share that
+had not happened. The suite was updated to step past Sky Protection the way a child
+in a hurry would, rather than left to quietly pass on the wrong thing.

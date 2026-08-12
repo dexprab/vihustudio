@@ -2,6 +2,51 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.4.0 — 2026-08-12
+
+- **Protect Your Sky.** Before a story joins VihuPlanet — and at no
+  other moment — a child is offered the chance to have their Magic Card
+  kept safe by a grown-up. `🌟 Keep My Sky Safe` · `Skip For Now`.
+  Making a story, finishing one and taking every artifact all still ask
+  for nothing at all, because none of them can be lost by losing a
+  card; a story in the Ether is reachable through the Magic Card and
+  nothing else, which is what makes that one moment the honest one.
+- **The parent email is not an account and behaves like nothing of the
+  sort.** No login, no password, no verification, no profile, no
+  dashboard. Checked mechanically: none of "sign in", "log in",
+  "password", "account", "verify", "register" or "otp" appears anywhere
+  on either new screen.
+- **Skipping never blocks.** One gentle line, once, and the share
+  continues — verified all the way through to the Story Birth.
+- **An address already on file is never asked for again** — the card is
+  resent and the child is told, with nothing to interact with.
+- **One address may protect several children.** Every message names its
+  Creator; a recovery email lists each sky separately, with its own
+  constellation drawn in plain text so it works in a mail client that
+  blocks images.
+- **`I Don't Have My Magic Card`**, on Mark Your Stars. If this device
+  remembers a grown-up it resends and says to ask them, with no typing.
+  If it remembers nothing, the child can give the grown-up's address —
+  and the only thing that happens is an email to it. The reply is
+  identical whether or not that address protects anything, so it can
+  never become an oracle for which addresses are in the product.
+- **It never claims a sky is safe when it is not.** A send that cannot
+  get through says so and keeps the address for next time; a child who
+  has no Magic Card yet — the normal first-share order, since the
+  Creator Ceremony comes after sharing — is told their sky will go as
+  soon as it has a name in the stars, and it does.
+- `supabase/functions/sky-protection` sends the mail;
+  `magic_card_identities.parent_email` holds the address. **Disclosed:
+  the Edge Function is written and documented but has not been run
+  against a live deployment from here — this environment has no route
+  to Supabase. Every client path is verified against an intercepted
+  function, including both failure modes.**
+- **Fix — the Studio's global `button { width:100% }` was leaking into
+  the ceremony.** Invisible while the buttons sat in a row, because a
+  flex item with width:100% still shrinks to fit; the moment the email
+  field stacked them into a column they went full-width and the one
+  screen that must not look like a form looked exactly like one.
+
 ## v1.3.0 — 2026-08-12
 
 - **Publishing Targets, not modes.** VihuStudio is now the tool the

@@ -121,6 +121,17 @@
   cursor: pointer;
   transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
   animation: share-line-in 460ms ease 260ms both;
+  /* Escaping css/style.css's own `button { width:100%; height:
+     var(--button-height) }`, which is right for the editor's panels and
+     wrong for an overlay that is not part of them. Every other overlay
+     in this codebase escapes it the same way — it stayed invisible here
+     while the buttons sat in a ROW, because a flex item with width:100%
+     still shrinks to fit; the moment the field stacked them into a
+     column they went full-width and the ceremony started looking like
+     the form it must never be. */
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
 }
 
 .share-ceremony-btn:hover { transform: translateY(-2px); }
@@ -262,4 +273,61 @@
 
 @media (prefers-reduced-motion: reduce) {
   .publish-celebration-choice:hover { transform: none; }
+}
+
+
+/* ---------- Protect Your Sky ----------
+ *
+ * A field and two buttons, on the same night sky as the rest of the
+ * ceremony. It is deliberately not a form: no label above the box, no
+ * asterisk, no validation styling and nothing red. A child mistyping a
+ * grown-up's address has done nothing wrong. */
+
+.share-ceremony-field { width: min(22rem, 100%); }
+
+.share-ceremony-input {
+  width: 100%;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.95rem, 0.9rem + 0.3vw, 1.1rem);
+  text-align: center;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.3);
+  background: rgba(12, 17, 32, 0.6);
+  color: #F1EAD0;
+  height: auto !important;
+}
+
+.share-ceremony-input::placeholder { color: rgba(241, 234, 208, 0.42); }
+
+.share-ceremony-input:focus-visible {
+  outline: 2px solid #E8B871;
+  outline-offset: 3px;
+  border-color: rgba(232, 184, 113, 0.6);
+}
+
+/* Stacking the field above the buttons needs a column, and a column's
+   default `align-items: stretch` made both buttons full-width — which
+   turned the one screen that must not look like a form into one. */
+.share-ceremony-actions:has(.share-ceremony-field) {
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-ceremony-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Never an error colour. This line only ever says something true and
+   small — "that does not look like an email address yet" — and a red
+   one under a child's typing turns a typo into a telling-off. */
+.share-ceremony-note {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: rgba(241, 234, 208, 0.62);
 }
