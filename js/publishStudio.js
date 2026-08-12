@@ -1378,22 +1378,43 @@ const PublishStudio=(function(){
     // across by index, which is safe because the serialization is this
     // same story in this same order.
     const live=_slides();
-    let ready;
-    try{
-      // Drawn AFRESH, not taken from the cache. A cached page image can
-      // be older than the page — that is a bug worth fixing wherever it
-      // happens, and it was, but canon cannot merely prefer a correct
-      // picture. Freezing declares a story final and ships it
-      // identically to every child, so the one moment it is worth
-      // re-rendering every page is this one. The author is already
-      // waiting on this screen, and it happens once.
-      live.forEach(function(s){ if(s) delete s.thumbnail; });
-      ready=(typeof ThumbnailEngine!=='undefined' && live.length)
-        ? ThumbnailEngine.generateBatch(live)
-        : Promise.resolve();
-    }catch(e){ ready=Promise.resolve(); }
+    const engine=(typeof ThumbnailEngine!=='undefined') ? ThumbnailEngine : null;
 
-    return Promise.resolve(ready).catch(function(){}).then(function(){
+    // READING IMAGES FIRST, and the strip thumbnails after them.
+    //
+    // The order is the fix, not an accident of writing. A page's
+    // artwork — stickers, decorations, imported pictures — loads
+    // asynchronously, and SlideRenderer draws whatever is ready at the
+    // moment it is asked. The first render of a session therefore tends
+    // to miss images that the second one catches, which is exactly what
+    // was seen: a Story that read perfectly page by page while wearing
+    // a blank cover, because the cover came from the render that ran
+    // first and the pages from the render that ran second.
+    //
+    // Drawn AFRESH either way. A cached page image can be older than
+    // the page — fixed at its source too, but canon cannot merely
+    // PREFER a correct picture: freezing declares a story final and
+    // ships it identically to every child.
+    try{ live.forEach(function(s){ if(s) delete s.thumbnail; }); }catch(e){}
+
+    let reads=Promise.resolve();
+    try{
+      if(engine && engine.generateRead && live.length){
+        reads=Promise.all(live.map(function(s,i){
+          return engine.generateRead(s).then(function(img){
+            if(img && slides[i]) slides[i].readImage=img;
+          }).catch(function(){});
+        }));
+      }
+    }catch(e){}
+
+    return Promise.resolve(reads).catch(function(){}).then(function(){
+      let strips=Promise.resolve();
+      try{
+        if(engine && live.length) strips=engine.generateBatch(live);
+      }catch(e){}
+      return Promise.resolve(strips).catch(function(){});
+    }).then(function(){
       // Overwritten, not filled in. The serialized page may be carrying
       // a thumbnail of its own, and after a deliberate re-render that
       // one is the older of the two — preferring it would reintroduce
@@ -1404,46 +1425,19 @@ const PublishStudio=(function(){
           slides[i].thumbnail=live[i].thumbnail;
         }
       }
-      // Anything the copy could not fill — a page count that does not
-      // line up, a story published from a record with no live editor
-      // behind it — gets one direct attempt of its own.
-      let second=Promise.resolve();
-      try{
-        const missing=slides.filter(function(s){ return s && !s.thumbnail; });
-        if(missing.length && typeof ThumbnailEngine!=='undefined'){
-          second=ThumbnailEngine.generateBatch(missing);
+      // The cover a Spirit wears. Taken from the READING image, which
+      // is the render that had every asset loaded, and only falling
+      // back to the strip thumbnail when there is no reading image at
+      // all. The first page that actually produced one, not simply the
+      // first page — a story whose opening page failed should not drift
+      // as a bare gradient while carrying perfectly good pictures.
+      if(!record.thumbnail){
+        for(let i=0;i<slides.length;i++){
+          const cover=slides[i] && (slides[i].readImage || slides[i].thumbnail);
+          if(cover){ record=Object.assign({},record,{thumbnail:cover}); break; }
         }
-      }catch(e){}
-      // And a page at READING size for each one. The strip thumbnail is
-      // 110px, which is right for a strip and unreadable in the Ether's
-      // portal, where a page fills a screen. Canon is the easiest place
-      // to afford this: the file is committed to the repository once
-      // and ships with the application, so the bytes are paid for at
-      // build time rather than by every child's browser.
-      return Promise.resolve(second).catch(function(){}).then(function(){
-        if(typeof ThumbnailEngine==='undefined' || !ThumbnailEngine.generateRead){
-          return null;
-        }
-        return Promise.all(live.map(function(s,i){
-          return ThumbnailEngine.generateRead(s).then(function(img){
-            if(img && slides[i]) slides[i].readImage=img;
-          }).catch(function(){});
-        }));
-      }).catch(function(){}).then(function(){
-        // The FIRST PAGE THAT RENDERED, not simply the first page. A
-        // Spirit wears this as its cover, and a story whose opening
-        // page failed would otherwise drift as a bare gradient while
-        // carrying perfectly good pictures behind it.
-        if(!record.thumbnail){
-          for(let i=0;i<slides.length;i++){
-            if(slides[i] && slides[i].thumbnail){
-              record=Object.assign({},record,{thumbnail:slides[i].thumbnail});
-              break;
-            }
-          }
-        }
-        _finishCanonPublish(record, slides);
-      });
+      }
+      _finishCanonPublish(record, slides);
     });
   }
 
