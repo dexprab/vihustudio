@@ -1353,8 +1353,70 @@ const PublishStudio=(function(){
       if(live) record=Object.assign({},record,{name:live});
     }catch(e){}
 
+    // A Canon Story that cannot be READ is not a Canon Story.
+    //
+    // The Ether reads a story's pages from each slide's own rendered
+    // `thumbnail`, and those are generated lazily — the editor makes
+    // them as a side effect of showing the page strip, so a creator's
+    // story has them by the time it is saved. Canon had no such
+    // guarantee: publishing a story whose strip had not rendered
+    // produced a file with slides but no page images, and the Spirit
+    // met in the Ether said "Story is elsewhere" and refused to open.
+    // It looked like a missing story; it was a missing render.
+    //
+    // The cover has the same cause. A Spirit shows the story's own
+    // thumbnail, which ProjectManager takes from the first slide — so
+    // with none generated, canon arrived as a bare gradient.
+    //
+    // Generated here rather than earlier because this is the only
+    // moment the answer has to be complete: freezing is what makes a
+    // story canon, and it ships to every child exactly as frozen.
+    const slides=(record.data && (record.data.pages||record.data.slides)) || [];
+    // Rendered from the LIVE slides, not from the serialized pages: the
+    // live objects are the ones SlideRenderer knows how to draw, and
+    // they are what the author is looking at. The results are copied
+    // across by index, which is safe because the serialization is this
+    // same story in this same order.
+    const live=_slides();
+    let ready;
+    try{
+      ready=(typeof Thumbnails!=='undefined' && live.length)
+        ? Thumbnails.generateBatch(live)
+        : Promise.resolve();
+    }catch(e){ ready=Promise.resolve(); }
+
+    return Promise.resolve(ready).catch(function(){}).then(function(){
+      for(let i=0;i<slides.length;i++){
+        if(slides[i] && !slides[i].thumbnail && live[i] && live[i].thumbnail){
+          slides[i].thumbnail=live[i].thumbnail;
+        }
+      }
+      // Anything the copy could not fill — a page count that does not
+      // line up, a story published from a record with no live editor
+      // behind it — gets one direct attempt of its own.
+      let second=Promise.resolve();
+      try{
+        const missing=slides.filter(function(s){ return s && !s.thumbnail; });
+        if(missing.length && typeof Thumbnails!=='undefined'){
+          second=Thumbnails.generateBatch(missing);
+        }
+      }catch(e){}
+      return Promise.resolve(second).catch(function(){}).then(function(){
+        if(!record.thumbnail && slides[0] && slides[0].thumbnail){
+          record=Object.assign({},record,{thumbnail:slides[0].thumbnail});
+        }
+        _finishCanonPublish(record, slides);
+      });
+    });
+  }
+
+  function _finishCanonPublish(record, slides){
     const result=CanonRepository.publish(record);
     if(!result || !result.ok) return;
+
+    // Say so plainly rather than shipping a story nobody can open. This
+    // screen is written for the team, so it states the fact.
+    const unreadable=slides.filter(function(s){ return !s || !s.thumbnail; }).length;
 
     // Say what was produced and what to do with it. This is the one
     // screen in the product written for the team rather than for a
@@ -1370,7 +1432,10 @@ const PublishStudio=(function(){
       _celebReadyMsg.classList.remove('hidden');
       _celebReadyMsg.innerHTML='<span>❄️</span> '+result.filename+
         ' — put it in vihuplanet/canon/ and add "'+result.manifestEntry+
-        '" to canon.json. It is in your own Ether already.';
+        '" to canon.json. It is in your own Ether already.'+
+        (unreadable
+          ? ' <strong>'+unreadable+' of '+slides.length+' pages did not render, so they will not be readable — reopen the story and publish again.</strong>'
+          : '');
     }
   }
 

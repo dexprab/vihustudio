@@ -109,11 +109,25 @@ const EtherFeed = (function () {
     };
   }
 
+  // A saved project serialises its pages as `data.pages`
+  // (js/projectManager.js). This read asked for `data.slides` — the
+  // name they have in AppState while the Studio is running, and a name
+  // that is nowhere in the stored record. It therefore found nothing,
+  // for every Story, from the day the Ether shipped: every Spirit
+  // reported zero pages and every portal offered "Story is elsewhere".
+  //
+  // Both names are accepted rather than one corrected, because the
+  // canon publish path builds its record straight from the live slides
+  // and genuinely does write `slides`. Two honest shapes, one reader.
+  function _pagesIn(record) {
+    var data = record && record.data;
+    if (!data) return [];
+    var list = data.pages || data.slides;
+    return Array.isArray(list) ? list : [];
+  }
+
   function _pageCount(record) {
-    try {
-      var slides = record && record.data && record.data.slides;
-      return (slides && slides.length) || 0;
-    } catch (e) { return 0; }
+    try { return _pagesIn(record).length; } catch (e) { return 0; }
   }
 
   // The Story's pages, for reading inside the portal.
@@ -144,7 +158,7 @@ const EtherFeed = (function () {
       if (!record && typeof CanonRepository !== 'undefined') {
         record = CanonRepository.get(projectId);
       }
-      var slides = (record && record.data && record.data.slides) || [];
+      var slides = _pagesIn(record);
       var out = [];
       for (var i = 0; i < slides.length; i++) {
         if (slides[i] && slides[i].thumbnail) out.push(slides[i].thumbnail);
