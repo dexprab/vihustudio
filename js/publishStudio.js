@@ -1343,6 +1343,16 @@ const PublishStudio=(function(){
       };
     }
 
+    // The canon id and filename are built from the NAME, so the name
+    // has to be the one on screen rather than whatever the store last
+    // wrote — an author who just retitled the story and published would
+    // otherwise get a file named after the old title.
+    try{
+      const live=(typeof AppState!=='undefined' && AppState.project) &&
+                 (AppState.project.bookTitle||AppState.project.title);
+      if(live) record=Object.assign({},record,{name:live});
+    }catch(e){}
+
     const result=CanonRepository.publish(record);
     if(!result || !result.ok) return;
 

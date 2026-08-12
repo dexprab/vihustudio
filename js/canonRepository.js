@@ -148,16 +148,43 @@ const CanonRepository = (function () {
   // state in the repository and nothing edits a story after it is in
   // there — the author edits the project in the Studio, exactly as
   // before, and publishes again.
+  // canon_the_falling_star — not canon_msq9w8rd_qz1e0e.
+  //
+  // This id is not machine plumbing. It is the FILENAME in
+  // vihuplanet/canon/ and the line added to canon.json, and both are
+  // read by a person reviewing a pull request. Handing them a project
+  // id tells that reviewer nothing about what they are approving, in
+  // the one place this product deliberately chose review-by-human over
+  // a database.
+  //
+  // Re-publishing the same story deliberately produces the SAME id, so
+  // an edit replaces its file and its manifest line rather than
+  // accumulating a second copy — the author flow is "edit in the
+  // Studio and publish again". Two DIFFERENT stories sharing a name
+  // would collide, and the resolution is to rename one, which is right
+  // anyway: the name is what a child sees.
+  function _slug(name) {
+    return String(name || '')
+      .toLowerCase()
+      .replace(/['’`]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 60);
+  }
+
   function freeze(record, opts) {
     opts = opts || {};
     if (!record) return null;
     var now = new Date().toISOString();
+    // A name of nothing but emoji or punctuation slugs to '', and the
+    // project id is a better answer than an id of 'canon_'.
+    var slug = _slug(record.name) || String(record.id || '').replace(/^proj_/, '') || String(Date.now());
     return {
       // A canon id, distinct from a project id on sight. The project it
       // was authored from stays where it is and is not referenced —
       // canon must not depend on a story sitting in one person's
       // browser.
-      id: opts.id || ('canon_' + String(record.id || '').replace(/^proj_/, '') ),
+      id: opts.id || ('canon_' + slug),
       origin: ORIGIN,
       name: record.name || 'A story',
       thumbnail: record.thumbnail || null,
