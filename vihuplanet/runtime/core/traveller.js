@@ -135,6 +135,7 @@
       // left — the sky moves with the finger, not against it.
       camera.look(-(dx / Math.max(1, ether.viewWidth)) * Math.PI * 2 * 0.5,
                   -(dy / Math.max(1, ether.viewHeight)) * Math.PI * 2 * 0.5);
+      still = 0;
       if (drag.moved > 12) ev.preventDefault();
     }
     function onTouchEnd() { drag = null; }
@@ -148,8 +149,16 @@
     global.addEventListener('keyup', onKeyUp);
     global.addEventListener('blur', onBlur);
 
+    // How long since the Traveller last turned the universe. The
+    // universe answers stillness (ambientSystem.js), and this is the
+    // only thing that knows when it began — the camera cannot tell a
+    // Traveller who has stopped looking from one whose input happens to
+    // sum to zero this frame, and a mouse resting inside the dead zone
+    // is stillness even though the pointer is moving.
+    var still = 0;
+
     function update(dt) {
-      if (!enabled) return;
+      if (!enabled) { still += dt; return; }
 
       var yaw = 0, pitch = 0;
 
@@ -162,11 +171,16 @@
       if (keys.up)    pitch -= KEY_PITCH;
       if (keys.down)  pitch += KEY_PITCH;
 
-      if (yaw || pitch) camera.look(yaw * dt, pitch * dt);
+      if (yaw || pitch) { camera.look(yaw * dt, pitch * dt); still = 0; }
+      else still += dt;
     }
 
     return {
       update: update,
+      // Seconds since the universe was last turned. Touch counts as
+      // turning too — a drag calls camera.look() directly, so it resets
+      // this on its way past.
+      stillSeconds: function () { return still; },
       // Turning is suspended while a story is being met or read — the
       // universe holding still is part of what makes that moment feel
       // like a moment.

@@ -147,11 +147,21 @@
   // BETWEEN its named roles without inventing a colour that is not in
   // Art Direction v1.0 — a mix of ink and shadow-teal is still ink and
   // shadow-teal.
+  // Returns HEX, not 'rgb(...)'. It used to return the latter, which
+  // was fine for the one thing it did — feed a gradient stop — and
+  // silently wrong the moment a mix was nested inside another one:
+  // hexToRgb('rgb(43,61,81)') strips a '#' that is not there, parses
+  // the rest as base 16, and hands back NaN. The result is not an
+  // error, it is a colour, and the only symptom was the field getting
+  // DARKER when a stop was made brighter. Hex composes with itself.
   function mix(hexA, hexB, t) {
-    var a = hexToRgb(hexA), b = hexToRgb(hexB);
-    return 'rgb(' + Math.round(a.r + (b.r - a.r) * t) + ',' +
-                    Math.round(a.g + (b.g - a.g) * t) + ',' +
-                    Math.round(a.b + (b.b - a.b) * t) + ')';
+    var a = hexToRgb(hexA), b = hexToRgb(hexB), out = '#';
+    var ch = ['r', 'g', 'b'];
+    for (var i = 0; i < 3; i++) {
+      var v = Util.clamp(Math.round(a[ch[i]] + (b[ch[i]] - a[ch[i]]) * t), 0, 255);
+      out += (v < 16 ? '0' : '') + v.toString(16);
+    }
+    return out;
   }
 
   // One soft radial sprite per colour, cached forever.
@@ -299,11 +309,34 @@
       // unchanged, it is simply a band of cooler light that the sky
       // passes through rather than one it stops at — and it makes
       // looking up forever mean something.
+      // The deep tone is TWILIGHT VIOLET, not near-black.
+      //
+      // It used to run toward #070B16, which is very nearly black, and
+      // that single choice was most of why the Ether read as outer
+      // space rather than as evening. A field whose darkest value has
+      // no hue in it cannot feel warm however much light is added on
+      // top — the warmth reads as something floating in front of a void
+      // rather than as the colour of the place.
+      //
+      // The luminance is deliberately close to what it replaced. This
+      // is a change of HUE, not of brightness: the darks have to stay
+      // genuinely dark or the stars stop registering and the nebula
+      // stops reading as a shape, which is the failure the previous
+      // pass recorded at length below. Warmth is not brightness.
+      //
+      // It still returns to the top tone at the bottom, because this
+      // image tiles vertically — see the note that follows.
       var bg = bakedCtx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, mix(p.deep, '#070B16', 0.45));
-      bg.addColorStop(0.30, mix(p.deep, '#070B16', 0.12));
-      bg.addColorStop(0.62, mix(p.deep, p.near, 0.26));
-      bg.addColorStop(1, mix(p.deep, '#070B16', 0.45));
+      bg.addColorStop(0, p.twilight);
+      bg.addColorStop(0.30, mix(p.deep, p.twilight, 0.34));
+      // The cooler band the sky passes through, pulled back toward
+      // violet. Shadow-teal at full 0.26 was the single greenest thing
+      // in the field and it sat across the middle of every frame; kept
+      // as a hint of turquoise inside a violet sky, it does the job it
+      // was there for — one band that is not the same temperature as
+      // the rest — without setting the temperature of the whole Ether.
+      bg.addColorStop(0.62, mix(mix(p.deep, p.near, 0.22), p.twilight, 0.20));
+      bg.addColorStop(1, p.twilight);
       bakedCtx.fillStyle = bg;
       bakedCtx.fillRect(0, 0, w, h);
 
@@ -416,6 +449,7 @@
       var w = soft.width, h = soft.height;
       var p = ether.palette;
       var amb = ether.ambient;
+      var region = amb.region;
       var k = 1 / SOFT_SCALE;
       var breath = amb.breath;
 
@@ -444,14 +478,15 @@
           b.alpha * 0.58 * pulse * breath, w, h);
       }
 
-      // Mist — the buffer's own plane, so no internal offset.
+      // Mist — the buffer's own plane, so no internal offset. Scaled by
+      // the region, so somewhere in the Ether is softer than here.
       var mistR = span * 0.55;
       for (var m = 0; m < amb.mistPhase.length; m++) {
         var ph = amb.mistPhase[m];
         var mx = w * (0.5 + 0.36 * Math.sin(ph * 0.61 + m * 2.0));
         var my = h * (0.5 + 0.28 * Math.cos(ph * 0.43 + m * 1.3));
         drawBlobWrapped(softCtx, p.mist, mx, my,
-          mistR * (0.8 + m * 0.16), 0.0155 * breath, w, h);
+          mistR * (0.8 + m * 0.16), 0.0155 * breath * region.mist, w, h);
       }
 
       // The warmth at the heart of the field.
@@ -477,8 +512,34 @@
       // darks are back where they belong and nothing about the look
       // changed — there is simply no longer a second helping of haze
       // arriving from off-buffer.
+      // The region's warmth scales it, so one part of the Ether is
+      // genuinely warmer than another rather than merely differently
+      // lit — and stillness gathers it, which is the largest part of
+      // how the universe answers a child who has stopped.
+      var warmK = region.warmth * (1 + amb.stillness * 0.30);
       drawBlobWrapped(softCtx, p.glow, w * 0.5, h * 0.54, span * 0.62,
-        (0.0125 + amb.glow * 0.018) * breath, w, h);
+        (0.0125 + amb.glow * 0.018) * breath * warmK, w, h);
+
+      // A SECOND warmth, off-centre and on its own slow wander.
+      //
+      // "There should always be subtle atmospheric glow somewhere in
+      // the visible area" — with one glow at the middle of a buffer
+      // that tiles, turning far enough put its dark half on screen and
+      // the field went cold exactly when a child had gone exploring.
+      // Two, at different places and different periods, means the
+      // answer is always yes without either of them being bright.
+      //
+      // Peach rather than gold, so the two do not read as one lamp with
+      // a soft edge. It costs one blob in a quarter-resolution buffer
+      // that repaints every third frame.
+      var wx = w * (0.5 + 0.30 * Math.sin(amb.mistPhase[0] * 0.37 + 1.1));
+      var wy = h * (0.5 + 0.26 * Math.cos(amb.mistPhase[2] * 0.29 - 0.4));
+      // Deliberately fainter than the gold one it accompanies. Two
+      // glows at equal strength is twice the haze, and haze is what
+      // stops a star registering — this one exists so that warmth is
+      // never entirely off screen, not so that the field is brighter.
+      drawBlobWrapped(softCtx, p.warm, wx, wy, span * 0.44,
+        (0.0046 + (1 - amb.glow) * 0.0055) * breath * warmK, w, h);
 
       softCtx.globalAlpha = 1;
       softCtx.globalCompositeOperation = 'source-over';
@@ -538,7 +599,12 @@
     }
 
     // ---------- dust ----------
-    function drawDust(target, store, breath, veilFade) {
+    // `near` lifts the layer's brightness while the Traveller is still.
+    // "A few particles drift closer" — they do not actually move
+    // toward anybody, which would be the universe reaching for a child;
+    // the nearest dust simply becomes a little more present, which
+    // reads as the same thing and is honest about what it is.
+    function drawDust(target, store, breath, veilFade, near) {
       var p = ether.palette;
       var cam = camera ? camera.offsetFor(store.parallax) : null;
       // Dust lives in view space and wraps there, so the camera offset
@@ -554,7 +620,7 @@
         // Every mote carries its own faint pulse, so no layer is ever
         // perfectly still even when the currents are slack.
         var pulse = 0.72 + 0.28 * Math.sin(m.phase);
-        var a = m.alpha * pulse * breath * veilFade;
+        var a = m.alpha * pulse * breath * veilFade * (near || 1);
         var color = m.warm ? p.glow : p.star;
         if (store.soft) {
           drawBlob(target, color, m.x + ox, m.y + oy, m.size, a);
@@ -571,6 +637,7 @@
       var w = ether.viewWidth, h = ether.viewHeight;
       var p = ether.palette;
       var amb = ether.ambient;
+      var region = amb.region;
       var breath = amb.breath;
       var i, cam;
 
@@ -610,7 +677,7 @@
               // Never fully out, and never much brighter than its baked
               // self: a twinkle is a breath, not a blink.
               var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
-              ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
+              ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath * region.sparkle;
               ctx.fillRect(star.x + tx, star.y + ty,
                 Math.max(1, star.r * 2), Math.max(1, star.r * 2));
             }
@@ -638,21 +705,34 @@
       var cx = wrapOffset(cam ? cam.x : 0, w + 240);
       var cy = wrapOffset(cam ? cam.y : 0, h + 240);
       ctx.lineCap = 'round';
+      // A current in a stronger part of the Ether is more visible, and
+      // stillness brings one nearer — "a distant current becomes
+      // visible" is the first thing the brief asks the universe to do
+      // when a child stops, and this is it.
+      var fluxK = region.flux * (1 + amb.stillness * 0.45);
       for (i = 0; i < amb.streaks.length; i++) {
         var s = amb.streaks[i];
         if (!s.alive || s.filled < 2) continue;
-        ctx.lineWidth = s.width || 1;
         // Fades in and out across its whole life, so a streak is never
         // seen to appear or to stop.
         var fade = Math.sin(s.life * Math.PI);
-        ctx.strokeStyle = s.warm ? p.glow : p.star;
+        var hue = s.hue ? (p[s.hue] || p.star) : (s.warm ? p.glow : p.star);
+        ctx.strokeStyle = hue;
         // Segment by segment down the remembered path, each fainter
         // than the last. A wisp that follows the curve the river took,
         // tapering into nothing — not a straight line, which at any
         // visible alpha reads as a scratch on a lens.
+        //
+        // The WIDTH tapers too, and that is what stops it reading as a
+        // drawn stroke: a line of constant thickness fading out is a
+        // stroke with an opacity ramp, while one that narrows as it
+        // fades is something dispersing. Organic rather than geometric,
+        // which is the whole difference between a current and a beam.
         for (var q = 1; q < s.filled; q++) {
           var head = s.pts[q - 1], tail = s.pts[q];
-          ctx.globalAlpha = s.alpha * fade * breath * (1 - (q - 1) / s.pts.length);
+          var along = 1 - (q - 1) / s.pts.length;
+          ctx.lineWidth = Math.max(0.4, (s.width || 1) * (0.35 + along * 0.85));
+          ctx.globalAlpha = s.alpha * fade * breath * along * fluxK;
           ctx.beginPath();
           ctx.moveTo(head.x + cx, head.y + cy);
           ctx.lineTo(tail.x + cx, tail.y + cy);
@@ -660,9 +740,9 @@
         }
         // A soft head on the line, so it reads as light travelling
         // along the river rather than as a drawn stroke.
-        drawBlob(ctx, s.warm ? p.glow : p.star,
+        drawBlob(ctx, hue,
           s.pts[0].x + cx, s.pts[0].y + cy, 7 + (s.width || 1) * 5,
-          s.alpha * fade * 1.4 * breath);
+          s.alpha * fade * 1.4 * breath * fluxK);
       }
 
       // --- mid dust.
@@ -757,8 +837,9 @@
         // would be read through dust that had not dimmed with the rest
         // of the universe.
         var veilFade = 1 - ether.veil * 0.72;
-        drawDust(frontCtx, amb.dust[2], breath, veilFade);
-        drawDust(frontCtx, amb.dust[3], breath, veilFade);
+        var near = 1 + amb.stillness * 0.38;
+        drawDust(frontCtx, amb.dust[2], breath, veilFade, near);
+        drawDust(frontCtx, amb.dust[3], breath, veilFade, near);
         frontCtx.globalAlpha = 1;
       }
     }

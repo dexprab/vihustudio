@@ -2,6 +2,46 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.5.0 — 2026-08-12 · The Ether Experience Pass
+
+No new architecture, no new objects in the universe, and nothing added
+to fill the space. The Ether felt cold, and every change here is to the
+atmosphere, the light, the depth and the behaviour of what was already
+there.
+
+- **The dark of the Ether is a colour now, not an absence.** The deep
+  tone ran toward `#070B16` — very nearly black — and that one choice
+  was most of why the field read as outer space rather than as evening.
+  It is twilight violet, built from ink and dusk and darkened, and the
+  darkest fifth of the frame went from `rgb(34,43,65)` to `rgb(47,47,68)`
+  — green above red to red at or above green. **Measured on five pinned
+  skies, the median luminance moved from 56.1 to 56.3.** Warmth is hue,
+  not brightness: the previous sprint recorded the field going milky at
+  a median of 70 and having to be taken back, and this pass is held to
+  that number.
+- **A second warmth, off-centre.** With one glow at the middle of a
+  buffer that tiles, turning far enough put its dark half on screen and
+  the universe went cold exactly when a child had gone exploring. A
+  fainter peach one on its own wander means warmth is always somewhere.
+- **Regions.** Different parts of the infinite Ether now have a
+  slightly different character — warmth, mist, current strength,
+  sparkle. Not zones, not levels, not labelled, and with no boundary
+  anywhere: four numbers within ±20% of 1, computed from sines of the
+  camera's own yaw and pitch, so a full turn returns to the same place
+  exactly and no seam can exist.
+- **The universe answers stillness.** Stop turning for four seconds and
+  a current brightens, the glow gathers and the near dust becomes more
+  present. No text, no notification, nothing said, nothing to press. It
+  falls again the moment a child moves.
+- **The currents read as currents.** They taper in width as they fade
+  rather than only in opacity — a line of constant thickness fading out
+  is a stroke, one that narrows is something dispersing — and a third
+  of them now carry lavender or peach instead of cream.
+- Unchanged and untouched: Story Cards, Story Spirits, Canon Stories,
+  the Magic Card, the two permanent actions, and every publishing flow.
+- Cost is unchanged: 3 DOM nodes, no images, one extra blob in a
+  quarter-resolution buffer that repaints every third frame.
+
 ## v1.4.1 — 2026-08-12
 
 - **The recovery email printed a code that would be rejected if typed

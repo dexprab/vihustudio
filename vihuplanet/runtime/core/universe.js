@@ -85,7 +85,16 @@
       // deciding separately how still to be.
       motionScale: Env.reducedMotion() ? 0 : 1
     });
-    var ambient  = VihuPlanet.Ambient.create({ ether: ether, currents: currents, signal: signal });
+    // The camera and the Traveller are handed over so the atmosphere
+    // can know two things it cannot work out for itself: WHERE in the
+    // Ether the child is looking (which gives that part of the universe
+    // its own character) and whether they have stopped (which is what
+    // the universe answers). Both are read-only — Ambient still writes
+    // nothing but `ether.ambient`, and still has never heard of a story.
+    var ambient  = VihuPlanet.Ambient.create({
+      ether: ether, currents: currents, signal: signal,
+      camera: camera, traveller: traveller
+    });
     var renderer = VihuPlanet.Ether.createRenderer({ ether: ether, mount: root, camera: camera });
     var layer    = VihuPlanet.Stories.createLayer({
       mount: root, ether: ether, manager: manager, signal: signal,

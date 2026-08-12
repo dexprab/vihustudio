@@ -85,10 +85,29 @@
   var BLOOM_MAX = 11;
   var BLOOM_POOL = 6;
 
+  // ---------- the character of a place ----------
+  //
+  // How far a region can pull each atmospheric quality away from 1.
+  // Small on purpose. The brief's own test is that a child thinks "I
+  // wonder what's over there", not "I have entered the warm zone" — so
+  // the difference has to be felt after arriving rather than seen on
+  // the way. Anything past about a fifth reads as a boundary.
+  var REGION_SWING = 0.20;
+
+  // Seconds of stillness before the universe has fully answered, and
+  // how long it waits first. Four seconds is long enough that it never
+  // triggers while a child is deciding where to look, and short enough
+  // that stopping to look at something is answered while they are
+  // still looking at it.
+  var STILL_DELAY = 4.0;
+  var STILL_RISE = 6.0;
+
   Ambient.create = function (opts) {
     opts = opts || {};
     var ether = opts.ether;
     var currents = opts.currents;
+    var camera = opts.camera || null;
+    var traveller = opts.traveller || null;
     var signal = opts.signal;
     if (!ether) return null;
 
@@ -205,7 +224,15 @@
       s.width = rng.between(0.8, 1.7);
       s.life = 0;
       s.duration = rng.between(16, 34);
+      // A current is not one colour. Most are the Ether's own cream,
+      // but a good number carry gold, lavender or peach — which is what
+      // turns "faint white lines" into light with a temperature. The
+      // roles are named rather than mixed here so a future Story World
+      // re-tinting the Ether re-tints these too.
       s.warm = rng.next() < 0.28;
+      s.hue = rng.next() < 0.34
+        ? (rng.next() < 0.5 ? 'mist' : 'warm')
+        : null;
       s.timer = 0;
       if (!s.pts) {
         s.pts = [];
@@ -242,8 +269,13 @@
         // Streaks ride the current faster than anything else, because
         // they are how it is read. Still slow in absolute terms — a
         // streak crosses the view in something like a minute.
-        s.x += v.x * 2.6 * dt;
-        s.y += v.y * 2.6 * dt;
+        //
+        // The region's own flux scales that pace, so a part of the
+        // Ether where the currents run stronger genuinely moves faster
+        // rather than merely looking brighter.
+        var f = 2.6 * region.flux;
+        s.x += v.x * f * dt;
+        s.y += v.y * f * dt;
 
         // Remember where it has been. Points shuffle down the trail,
         // so pts[0] is always the head and the last one is the oldest.
@@ -332,6 +364,61 @@
       }
     }
 
+    // ---------- where they are looking, and how it feels there ----------
+    //
+    // Four qualities, each a sum of two incommensurate sines of yaw and
+    // pitch. Sines because the universe WRAPS: turning a full circle
+    // has to arrive back at the same character exactly, and a function
+    // built from sin(yaw) does that by construction rather than by
+    // anybody remembering to make the ends meet. Two frequencies per
+    // quality, chosen not to share a period, so the four never line up
+    // into a grid a child could learn.
+    //
+    // Nothing here is a zone. There is no boundary anywhere in it, no
+    // name, no label, and no moment of entering one — the whole field
+    // is continuous, and the only way to notice it is to be somewhere
+    // for a while and then be somewhere else.
+    //
+    // Eased rather than read directly, so even a fast turn arrives
+    // somewhere new gradually. The camera can swing faster than the
+    // atmosphere should change.
+    var region = amb.region;
+    function updateRegion(dt) {
+      if (!camera) return;
+      var y = camera.yaw();
+      var p = camera.pitch();
+
+      var warmth = 0.62 * Math.sin(y * 0.83 + 0.4) + 0.38 * Math.sin(p * 1.21 - 1.1);
+      var mist   = 0.58 * Math.sin(y * 1.13 + 2.7) + 0.42 * Math.sin(p * 0.71 + 0.9);
+      var flux   = 0.55 * Math.sin(y * 0.67 - 1.9) + 0.45 * Math.sin(p * 1.37 + 2.2);
+      var spark  = 0.60 * Math.sin(y * 1.49 + 3.3) + 0.40 * Math.sin(p * 0.91 - 0.6);
+
+      var k = 1 - Math.exp(-0.55 * dt);
+      region.warmth += ((1 + warmth * REGION_SWING) - region.warmth) * k;
+      region.mist   += ((1 + mist   * REGION_SWING) - region.mist)   * k;
+      region.flux   += ((1 + flux   * REGION_SWING) - region.flux)   * k;
+      region.sparkle += ((1 + spark * REGION_SWING) - region.sparkle) * k;
+    }
+
+    // ---------- the universe answering stillness ----------
+    //
+    // Not a trigger and not an event. One number that rises while
+    // nobody is turning the universe and falls the instant they are —
+    // the layers that read it simply become slightly more present, so
+    // what a child experiences is the place continuing to live rather
+    // than anything happening AT them.
+    //
+    // It falls faster than it rises. Arriving is a mood; leaving is a
+    // response to the child, and a response that lagged would feel like
+    // the universe was slow rather than calm.
+    function updateStillness(dt) {
+      if (!traveller || !traveller.stillSeconds) return;
+      var held = traveller.stillSeconds();
+      var want = Util.clamp((held - STILL_DELAY) / STILL_RISE, 0, 1);
+      var rate = want > amb.stillness ? 0.5 : 2.4;
+      amb.stillness += (want - amb.stillness) * (1 - Math.exp(-rate * dt));
+    }
+
     // ---------- the frame ----------
     function update(dt, time) {
       // The universe breathing. Three incommensurate periods, so it
@@ -345,6 +432,13 @@
         + 0.009 * Math.sin(time * 0.263 + 4.1);
 
       amb.glow = 0.5 + 0.5 * Math.sin(time * 0.052);
+
+      // Both are cheap arithmetic and both must keep running under
+      // reduced motion — they are not motion. A region is where you
+      // are, and stillness is a mood; a child who has asked for less
+      // movement has not asked for a colder universe.
+      updateRegion(dt);
+      updateStillness(dt);
 
       // Per-bloom nebula pulses, each on its own slow rhythm, so the
       // deep background is never uniformly lit.

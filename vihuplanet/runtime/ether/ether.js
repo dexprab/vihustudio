@@ -71,6 +71,24 @@
     };
   }
 
+  // Blend two Art Direction colours. The Ether needs tones BETWEEN the
+  // named roles — a twilight violet is ink on its way to dusk — and
+  // mixing two palette colours is not inventing a third one.
+  function mix(hexA, hexB, t) {
+    function rgb(hex) {
+      var h = String(hex).replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      var n = parseInt(h, 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    var a = rgb(hexA), b = rgb(hexB), o = '#';
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(a[i] + (b[i] - a[i]) * t);
+      o += (v < 16 ? '0' : '') + v.toString(16);
+    }
+    return o;
+  }
+
   // How much room one story gets to itself, in square CSS pixels.
   // Chosen so that a typical screen holds a calm handful — around
   // sixteen on a laptop, five or six on a phone — leaving roughly two
@@ -113,13 +131,63 @@
       // Deliberately expressed as named roles rather than raw hexes,
       // so a future Story World can re-tint the Ether by handing over
       // a different set of roles without any renderer knowing.
+      // The Ether stayed too cold for too long, and the cause was in
+      // this object rather than anywhere that draws: ink, shadow-teal
+      // and paper-cream are a beautiful set and every one of them is
+      // BLUE-GREY. A field built from three cool roles reads as
+      // outer space however carefully it is lit, and outer space is
+      // not what a six-year-old should feel they have walked into.
+      //
+      // So the roles below add the warm half of the same Art Direction
+      // palette — twilight violet, lavender, muted gold, peach — and
+      // nothing here is a new colour: violet is ink on its way to dusk,
+      // and the peach is horizonApricot, which the daylight Hero has
+      // always used. The Ether is a different hour of the same world.
+      //
+      // The rule the whole pass is held to: THE ETHER IS CALM, THE
+      // THINGS INSIDE IT ARE ALIVE. Warmth is not brightness. The field
+      // stays dark enough for a star to register — measured, not
+      // judged — and the warmth arrives as hue, not as light.
       palette: {
         deep:    p.ink,             // the far dark of the field
         near:    p.shadow,          // the nearer, cooler water of it
-        nebula:  [p.dusk, p.skyCerulean, p.shadow],
+        // Twilight violet: the deep tone the sky passes through, so the
+        // darkest part of the Ether is a COLOUR rather than an absence.
+        // Never near-black — a black field is the horror-of-space
+        // feeling this pass exists to remove.
+        //
+        // Two steps, and the second one is the important half. Ink is
+        // very slightly green of blue, so pulling dusk toward ink gives
+        // a blue-grey rather than a violet; the hue has to come from
+        // dusk and the DEPTH from darkening, not from the two mixed at
+        // one ratio. Measured: this lands within a few points of the
+        // luminance of the near-black it replaces, with red above green
+        // instead of below it.
+        //
+        // Which is the whole discipline of this pass. Warming the Ether
+        // by lightening it is the one failure mode already on record
+        // here — the previous sprint measured the sky going milky at a
+        // median of 70 and had to take it back to 56. Warmth is hue.
+        twilight: mix(mix(p.ink, p.dusk, 0.55), '#0A0712', 0.70),
+        // Lavender twice, turquoise once, peach once.
+        //
+        // It used to be lavender, turquoise and shadow-TEAL, which is
+        // two cool roles against one warm-ish — and since the blooms
+        // are the largest coloured thing in the field, that alone kept
+        // the darks green of red however the gradient was tuned.
+        // Measured on five pinned skies: dropping the teal is most of
+        // what turns the dark of the Ether from blue-grey to violet.
+        // Turquoise stays, because the brief asks for it and one cool
+        // bloom among warm ones is what makes the warm ones read as
+        // warm.
+        nebula:  [p.dusk, p.skyCerulean, p.dusk, p.horizonApricot],
         star:    p.paper,           // stars are paper-cream, not white
         mist:    p.dusk,
         glow:    p.candle,          // the universe's warmth
+        // A second warmth, further from gold. Used for the far glow
+        // that keeps a corner of the field alive when the near one has
+        // drifted away.
+        warm:    p.horizonApricot,
         spark:   p.ember,           // birth light, shooting stars
         veil:    p.ink
       },
@@ -170,7 +238,36 @@
         dust: [],
         // Faint streaks that ride the Ether Currents — the only layer
         // that makes the rivers themselves visible. Pooled.
-        streaks: []
+        streaks: [],
+
+        // ---------- where in the Ether the Traveller is looking ----------
+        //
+        // Different parts of the universe have a slightly different
+        // character. Not zones, not biomes, not levels and never
+        // labelled — four numbers near 1.0 that every atmospheric layer
+        // multiplies into itself, so one direction is a little warmer,
+        // another a little mistier, another has stronger currents.
+        //
+        // It is a FUNCTION OF THE CAMERA'S ANGLES, not of a position,
+        // which is what makes it work in a universe that wraps: sines
+        // of yaw and pitch are periodic by construction, so turning a
+        // full circle returns to the same character exactly, and no
+        // seam can ever appear because there is no edge to cross.
+        //
+        // All four move slowly and land close to 1. A child should
+        // never see a transition — only, having drifted somewhere,
+        // notice that it is different here.
+        region: { warmth: 1, mist: 1, flux: 1, sparkle: 1 },
+
+        // ---------- how long the Traveller has been still ----------
+        //
+        // 0 while they are looking around, easing to 1 after a few
+        // seconds of stillness. The universe answers by becoming a
+        // little more present — a current brightens, the glow gathers,
+        // the near dust picks up. No text, no notification, nothing
+        // said. The whole intent is: THE UNIVERSE IS ALIVE EVEN WHEN I
+        // STOP.
+        stillness: 0
       },
 
       // ---------- light sources ----------

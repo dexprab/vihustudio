@@ -2069,3 +2069,61 @@ at VihuPlanet, and Scene 3 takes its skip branch and never asks. The line and it
 voice clip are dropped when recognition already happened. A Creator who opens the
 Studio directly still hears both and still gets the sky challenge, exactly as
 Decision 11 requires.
+
+## The Ether Experience Pass
+
+The Ether was cold. Not broken — the infinite canvas, the four-direction
+turning, the currents, the depth stack and the Traveller-at-the-centre all
+worked. It simply felt like navigating outer space rather than standing
+somewhere safe, and the brief was explicit that the fix was atmosphere and
+behaviour, never content: **do not solve emptiness by adding things.** Nothing
+was added to the universe in this pass.
+
+The cause turned out to be one line. The deep tone of the field ran toward
+`#070B16`, which is very nearly black, and a field whose darkest value has no
+hue in it cannot feel warm however much light is put on top — the warmth reads
+as something floating in front of a void rather than as the colour of the
+place. It is twilight violet now, built from ink and dusk and then darkened,
+because pulling dusk toward ink gives a blue-grey (ink is very slightly green
+of blue) while the hue has to come from dusk and the depth from darkening.
+
+The discipline the whole pass was held to, and it is already on record here:
+**warmth is hue, not brightness.** The previous Ether sprint measured the sky
+going milky at a median luminance of 70 and had to take it back to 56. The
+first attempt at this one landed at 72 — the identical failure — and the honest
+number only appeared once both versions were measured on the same five pinned
+seeds rather than on whatever sky each run happened to generate. Final: median
+56.1 → 56.3, p95 75.8 → 75.9, darkest fifth `rgb(34,43,65)` → `rgb(47,47,68)`,
+green-above-red to red-at-or-above-green. The sky is the same brightness and a
+different colour.
+
+Two things are genuinely new, and both are behaviour rather than objects.
+**Regions**: four numbers within ±20% of 1 — warmth, mist, flux, sparkle — that
+every atmospheric layer multiplies into itself, so one direction is warmer and
+another mistier. They are functions of the camera's own yaw and pitch, which is
+what makes them work in a universe that wraps: sines are periodic by
+construction, so a full turn arrives back at the same character exactly and no
+seam can exist because there is no edge. There are no zones, no boundaries and
+no labels. **Stillness**: one number that rises after four seconds of not
+turning and falls fast the moment a child moves. A current brightens, the glow
+gathers, the near dust comes up. No text, no notification, nothing to press —
+the universe is alive even when I stop.
+
+The bug worth remembering is a silent one. `etherRenderer`'s own `mix()`
+returned an `rgb(...)` string, which was correct for the single thing it did —
+feed a gradient stop — and wrong the instant a mix was nested inside another:
+`hexToRgb('rgb(43,61,81)')` strips a `#` that is not there, parses the rest as
+base 16, and returns NaN. That is not an error, it is a colour. The only
+symptom was the field getting *darker* when a stop was made brighter, and it
+was caught by disbelieving a measurement rather than by reading the code —
+the sweep moved the wrong way twice, the harness proved bit-identical across
+three runs, and the contradiction was the evidence.
+
+Also fixed while measuring: the streaks taper in width as they fade rather than
+only in opacity (a constant-width line fading out is a stroke; one that narrows
+is something dispersing), a third of them carry lavender or peach, and a second
+fainter peach glow wanders off-centre so that turning far enough can no longer
+put every warm thing off screen. Verified across desktop, a phone at 390px and
+reduced motion: both permanent actions reachable in all three, 3 DOM nodes, no
+images, and reduced motion keeps the region and the stillness response because
+neither is motion.
