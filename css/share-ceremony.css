@@ -1,0 +1,256 @@
+/* share-ceremony.css — Share with VihuPlanet.
+ *
+ * A ceremony, not a dialog. It gets its own stylesheet rather than a
+ * corner of css/style.css because it is the one moment in the Studio
+ * that deliberately does not look like the Studio: the child is not
+ * editing anything here, they are standing at the edge of VihuPlanet
+ * with the story they made.
+ *
+ * Deliberately absent, and each one for a reason: no progress bar, no
+ * step counter, no checklist, no percentage, no red. All five are ways
+ * of telling a child how much of a story they have failed to make. */
+
+.share-ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.8rem, 3vh, 2rem);
+  opacity: 0;
+  transition: opacity 420ms ease;
+  font-family: 'Kalam', system-ui, sans-serif;
+}
+
+.share-ceremony.is-in { opacity: 1; }
+
+/* The night the story is about to leave into. Procedural, like the
+   Ether's own — no image to load, and it reads as the same place. */
+.share-ceremony-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 8%, rgba(78, 96, 150, 0.42) 0%, rgba(12, 17, 32, 0) 62%),
+    radial-gradient(ellipse 90% 70% at 22% 88%, rgba(76, 110, 118, 0.30) 0%, rgba(12, 17, 32, 0) 60%),
+    linear-gradient(180deg, #0B1122 0%, #141C33 52%, #1E2842 100%);
+}
+
+.share-ceremony-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.6rem, 2vh, 1.2rem);
+  width: min(34rem, 100%);
+  max-height: 100%;
+  text-align: center;
+}
+
+/* ---------- Lumo ---------- */
+
+.share-ceremony-lumo {
+  flex: 0 0 auto;
+  width: clamp(6rem, 18vh, 10rem);
+  height: clamp(6rem, 18vh, 10rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 26px rgba(232, 184, 113, 0.34));
+  animation: share-lumo-hover 5.2s ease-in-out infinite;
+}
+
+.share-ceremony-lumo-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+@keyframes share-lumo-hover {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+
+/* ---------- what Lumo says ---------- */
+
+.share-ceremony-say {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 4.5rem;
+  justify-content: center;
+}
+
+/* One question fills the screen. It is handwriting, at reading size,
+   with nothing else competing for the child's attention. */
+.share-ceremony-line {
+  margin: 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(1.35rem, 1.05rem + 1.4vw, 2rem);
+  line-height: 1.28;
+  text-wrap: balance;
+  color: #F1EAD0;
+  text-shadow: 0 2px 18px rgba(9, 13, 26, 0.85);
+  opacity: 0;
+  animation: share-line-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes share-line-in {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- the answers ---------- */
+
+.share-ceremony-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 2.6rem;
+}
+
+.share-ceremony-btn {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.92rem, 0.86rem + 0.3vw, 1.05rem);
+  padding: 0.55rem 1.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.26);
+  background: rgba(12, 17, 32, 0.55);
+  color: #F1EAD0;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
+  animation: share-line-in 460ms ease 260ms both;
+}
+
+.share-ceremony-btn:hover { transform: translateY(-2px); }
+
+.share-ceremony-btn:hover,
+.share-ceremony-btn:focus-visible {
+  background: rgba(232, 184, 113, 0.18);
+  border-color: rgba(232, 184, 113, 0.6);
+}
+
+.share-ceremony-btn.is-yes {
+  background: rgba(232, 184, 113, 0.2);
+  border-color: rgba(232, 184, 113, 0.55);
+  color: #E8B871;
+}
+
+/* "Not yet" is an equal answer, not a lesser one — it gets the same
+   weight, the same size and the same warmth as its neighbour. It is
+   never grey, never small, and never styled as a way out. */
+.share-ceremony-btn.is-notyet {
+  background: rgba(12, 17, 32, 0.55);
+  border-color: rgba(241, 234, 208, 0.26);
+  color: #F1EAD0;
+}
+
+.share-ceremony-btn:focus-visible {
+  outline: 2px solid #E8B871;
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .share-ceremony-btn { flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-ceremony-lumo { animation: none; }
+  .share-ceremony-line,
+  .share-ceremony-btn { animation: none; opacity: 1; }
+  .share-ceremony-btn:hover { transform: none; }
+  .share-ceremony { transition: opacity 180ms ease; }
+}
+
+
+/* ===============================================================
+   The two choices, on the Finish Story celebration
+   ===============================================================
+
+   Finishing and sharing are separate acts, so the screen that ends a
+   story offers both and prefers neither. They are deliberately
+   IDENTICAL — same size, same border, same background, same weight.
+   The moment one of them takes the gold, the other becomes the thing
+   you skip, and "both actions are equal" stops being true no matter
+   what the copy says. */
+
+.publish-celebration-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 10px 0 0;
+}
+
+.publish-celebration-choice {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 160px;
+  padding: 16px 26px;
+  border: 1px solid rgba(245, 197, 66, 0.55);
+  border-radius: 22px;
+  background: rgba(245, 197, 66, 0.16);
+  /* The celebration is the ONE light screen these two live on — the
+     rest of this file is the night sky. Cream on cream was invisible,
+     and the labels are the whole point of the two choices being equal:
+     if you cannot read them, the shape is a decision and the words are
+     not. Navy, the same ink the primary download button uses. */
+  color: var(--navy, #1E2F5E);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  height: auto !important;
+  width: auto !important;
+  transition: transform 0.15s, background 0.2s, border-color 0.2s;
+}
+
+.publish-celebration-choice:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(245, 197, 66, 0.32);
+  border-color: rgba(245, 197, 66, 0.9);
+}
+
+.publish-celebration-choice:focus-visible {
+  outline: 2px solid var(--gold, #FFCB45);
+  outline-offset: 3px;
+}
+
+.publish-celebration-choice-glyph { font-size: 26px; line-height: 1; }
+.publish-celebration-choice-label { line-height: 1.2; text-align: center; }
+
+/* Taking the story is not a decision that closes anything, so the
+   button stays where it is — it simply stops being the only thing on
+   screen once the artifacts are showing. */
+.publish-celebration-choices.is-taken .publish-celebration-choice:first-child {
+  opacity: 0.62;
+}
+
+/* A Story already in the Ether. Not an error and not a scolding —
+   a statement of where the story already is. */
+.publish-celebration-choice.is-done {
+  opacity: 0.55;
+  cursor: default;
+  border-style: dashed;
+}
+
+.publish-celebration-takes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.publish-celebration-takes.hidden { display: none; }
+
+@media (max-width: 480px) {
+  .publish-celebration-choice { min-width: 0; flex: 1 1 40%; padding: 14px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publish-celebration-choice:hover { transform: none; }
+}

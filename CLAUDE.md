@@ -320,6 +320,62 @@ changes nothing about the Magic Card itself.
   or parent verification, Creator dashboards, story-retrieval redesign
   and story-sharing redesign.
 
+### 12. Finishing a Story and Sharing a Story are Separate Acts
+
+Locked by the product owner in the Sprint VP2 brief. It changes the
+end of the story lifecycle; it changes nothing about the artifact
+pipeline.
+
+- **Every child can always finish their story, and always receives
+  every artifact.** Finishing cannot fail and cannot be judged. There
+  is no readiness check, no validation and no nudge list on the way to
+  it — `PublishValidator` still exists and is still exported, but the
+  finish path no longer shows a child what is wrong with their story
+  before letting them have it.
+- **"Publish" is gone from child-facing language. The control is
+  Finish Story.** A child is finishing their story, not publishing
+  software. Internally nothing is renamed — no service, module, API or
+  storage key — exactly as Decision 8 already required for the Rite.
+- **Finishing ends in a celebration with exactly two equal choices:**
+  📦 Take My Story · 🌌 Share with VihuPlanet. Neither is mandatory and
+  neither is styled as the primary one; the moment one takes the gold
+  the other becomes the thing you skip.
+- **Sharing is a ceremony, not a dialog** (`js/shareCeremony.js`).
+  Lumo welcomes the story, asks whether it is ready — one question at a
+  time, never a checklist, never a score, never a percentage — and the
+  child chooses. The four questions are: does it have a name; does it
+  feel finished; would another Traveller understand it; would you be
+  happy if another Traveller discovered it.
+- **Lumo mentors the story and never judges the Creator.** Never "this
+  story isn't good enough", "you failed" or "you cannot publish". "Not
+  yet" is a real answer with the same weight as its neighbour, and it
+  returns the child to their story with every artifact they already
+  have.
+- **The only blocking validation allowed is technical** — an empty
+  story, zero pages, a corrupted story. Those are implementation
+  facts and are worded as such, never as creative judgement.
+- **`publishedAt` is stamped by the ceremony and nowhere else.** It is
+  the Ether's definition of membership (Decision 9), so stamping it on
+  finishing put every finished story in front of other Travellers
+  without anybody choosing to. `MagicCard.hasEverPublished`, the
+  Companion's `published` event and the **Creator Ceremony** moved with
+  it — Canon 6 is explicit that the Ceremony is the consequence of
+  sharing a story, never a reward for finishing one.
+- **A completed share plays the existing Story Birth sequence.** The
+  Studio hands over with `index.html?born=<projectId>`; VihuPlanet
+  holds that Story out of the opening seed and lets the runtime bring
+  it in, so the child watches it arrive rather than finding it already
+  there. The Spirit is not auto-opened — Story Birth already aims it
+  into view, and a preview panel over the universe at that moment
+  would turn a story joining a place into a dialog about a file.
+- **A share made during the Studio Rite does not leave the Studio.**
+  The Rite's last beat waits on exactly that moment and still has a
+  closing chapter to play and a Studio to unlock. The share completes
+  in every other way.
+- Out of scope and not implemented: AI story scoring, story ratings,
+  moderation, community voting, Story World assignment, popularity
+  systems, likes and quality metrics.
+
 ## Roadmap
 
 1. Theme Designer Polish

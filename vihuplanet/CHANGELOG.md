@@ -2,6 +2,76 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.2.0 — 2026-08-12
+
+- **Finish Story.** Every child-facing "Publish" is gone: the Studio's
+  header control, the Publish Studio's own brand and both of its
+  primary buttons, the page menu item, the Traveller save notice and
+  the Companion's two nudges. Nothing internal is renamed — no service,
+  module, API or storage key — exactly as Decision 8 already required
+  for the Rite.
+- **Finishing a story can no longer be judged.** The stage before it
+  used to run PublishValidator and, when it had anything to say,
+  replace the cover with a list of what was missing. Every one of those
+  is an opinion about the story, and "every finished story should
+  always produce its artifacts" is not compatible with a screen that
+  first tells a child what is wrong with theirs. The validator is
+  untouched and still exported; the finish path simply stopped asking
+  it. The concerns moved to where they now belong — the ceremony asks
+  about a name and about being finished, of the STORY, at the moment it
+  is about to go somewhere.
+- **Two equal choices at the end:** 📦 Take My Story · 🌌 Share with
+  VihuPlanet. Identical size, border, background and weight, verified
+  by measuring both rectangles — the moment one takes the gold the
+  other becomes the thing you skip. Take My Story reveals every
+  artifact the bundle produced and cannot fail.
+- **Share with VihuPlanet is a ceremony** (`js/shareCeremony.js`).
+  Lumo welcomes the story and asks four questions, one at a time, on a
+  night sky with nothing else on it: does it have a name, does it feel
+  finished, would another Traveller understand it, would you be happy
+  if another Traveller found it. No checklist, no score, no percentage,
+  no step counter and no red — all five are ways of telling a child how
+  much of a story they have failed to make. "Not yet" carries the same
+  visual weight as its neighbour and returns them to their story with
+  everything they already have.
+  A story that already has a name is not asked whether it has one —
+  Lumo says the name back instead, which is the same beat doing its job
+  without pretending not to know.
+- **The only blocking validation is technical.** A story with no pages
+  has nothing to send, and is told exactly that.
+- **`publishedAt` moved out of finishing.** It is the Ether's
+  definition of membership, so stamping it on a completed publish put
+  every finished story in front of other Travellers without anybody
+  choosing to. `MagicCard.hasEverPublished`, the Companion's
+  `published` event and the **Creator Ceremony** moved with it — Canon
+  6 is explicit that the Ceremony is the consequence of sharing a
+  story, never a reward for finishing one.
+- **A completed share plays Story Birth.** The Studio hands over with
+  `index.html?born=<projectId>`; VihuPlanet holds that Story out of the
+  opening seed and lets the runtime bring it in, after the threshold so
+  it is not spent behind the veil. Measured: two Stories on arrival,
+  the third born 800ms after the tap, landing at (593, 353) of a
+  1280×800 view at full presence, and a refresh does not replay it.
+  `EtherFeed.publishInto()` — written in Sprint U-something and never
+  called by anything until now — is what does it.
+- **The new Spirit is deliberately not auto-opened.** Story Birth
+  already aims it into view, and opening it would put a preview panel
+  over the universe at the one second the universe is the thing worth
+  looking at.
+- **A share made during the Studio Rite stays in the Studio.** The
+  Rite's last beat waits on exactly that moment and still has a closing
+  chapter to play and a Studio to unlock; leaving would have abandoned
+  a child mid-chapter and left the Rite to start again next time. The
+  share completes in every other way, Creator Ceremony included.
+- **Fix — the ceremony never appeared.** Its element helper took
+  `(class, text)` while every call site passed `(tag, class, text)`, so
+  the overlay was built as a `<div class="div">` with its own class name
+  as the visible text. It was in the DOM and invisible, and the Publish
+  Studio underneath kept the clicks.
+- **Fix — the two choices were unreadable.** They inherited the night
+  sky's cream, and the celebration is the one light screen in the
+  product. Navy, the same ink the download button already uses.
+
 ## v1.1.0 — 2026-08-12
 
 - **Show Me Your Stars.** The first permanent action is now

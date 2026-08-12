@@ -49,6 +49,7 @@
   'use strict';
 
   var PARAM = 'story';
+  var BORN = 'born';
   var CHEER_KEY = 'vp-ether-cheers';
 
   // ---------------------------------------------------------------
@@ -68,6 +69,34 @@
   function linkedProjectId() {
     try { return new URLSearchParams(window.location.search).get(PARAM); }
     catch (e) { return null; }
+  }
+
+  // ---------------------------------------------------------------
+  // A Story that has just been shared.  index.html?born=proj_m8x2k1
+  //
+  // Written by the Share ceremony as it hands the child over from the
+  // Studio (js/publishStudio.js's _completeShare). It means one thing:
+  // this Story joined the Ether seconds ago, so do NOT seed it with
+  // the rest — hold it back and let the runtime's Story Birth bring it
+  // in, so the child watches it ARRIVE instead of finding it already
+  // sitting there among the others.
+  //
+  // Nothing downstream cares whether a Story arrived this way. It is a
+  // presentation decision made once, at the door.
+  // ---------------------------------------------------------------
+  function bornProjectId() {
+    try { return new URLSearchParams(window.location.search).get(BORN); }
+    catch (e) { return null; }
+  }
+
+  function clearBorn() {
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete(BORN);
+      // Consumed. A refresh should show the Ether as it now is, not
+      // replay a birth that already happened.
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {}
   }
 
   function setLink(projectId) {
@@ -160,6 +189,12 @@
     var thresholdEl = document.querySelector('[data-threshold]');
     var actionsEl = document.querySelector('[data-actions]');
 
+    // Whether the child is actually looking at the universe yet, and
+    // what is waiting for the moment they are. A Story Birth held until
+    // the threshold is crossed is the only thing that uses it today.
+    var thresholdCrossed = false;
+    var onThreshold = null;
+
     function crossThreshold() {
       if (!thresholdEl || thresholdEl.classList.contains('is-gone')) return;
 
@@ -194,6 +229,13 @@
         requestAnimationFrame(function () {
           requestAnimationFrame(function () { actionsEl.classList.add('is-in'); });
         });
+      }
+
+      thresholdCrossed = true;
+      if (onThreshold) {
+        var run = onThreshold;
+        onThreshold = null;
+        run();
       }
     }
 
@@ -557,8 +599,47 @@
       return;
     }
 
-    EtherFeed.attach(universe).then(function (stories) {
+    // ---------- a Story that has just been shared ----------
+    //
+    // Held out of the seed above and brought in here instead, so it is
+    // seen to ARRIVE. The birth waits for the threshold: playing it
+    // behind the veil would spend the one moment this whole path exists
+    // to produce, on a child who cannot see it yet.
+    var born = bornProjectId();
+
+    function bringItIn() {
+      if (!born) return;
+      var id = born;
+      born = null;
+      clearBorn();
+      // A beat first, so the child is looking at the universe before
+      // anything moves in it.
+      window.setTimeout(function () {
+        try { EtherFeed.publishInto(universe, id); } catch (e) {}
+      }, 700);
+
+      // Deliberately NOT followed by focus.open() on the new Spirit.
+      //
+      // The reward is watching a Story become part of the universe, and
+      // Story Birth already aims a published Story into the view for
+      // exactly that reason — it is visible the moment it arrives. Then
+      // opening it would put a preview panel over the universe at the
+      // one second the universe is the thing worth looking at, and turn
+      // a story joining a place into a dialog about a file. The child
+      // meets it when they choose to, like any other Spirit.
+    }
+
+    EtherFeed.attach(universe, { exclude: born ? [born] : [] }).then(function (stories) {
       var wanted = linkedProjectId();
+
+      // A birth outranks a deep link: the child was just handed here by
+      // their own share, and that is what they are here to see.
+      if (born) {
+        quiet(null);
+        if (thresholdCrossed) bringItIn();
+        else onThreshold = bringItIn;
+        return;
+      }
 
       if (!stories.length) {
         // Only a deep link that cannot resolve says anything here. An

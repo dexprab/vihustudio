@@ -65,7 +65,7 @@ const PublishStudio=(function(){
     header.className='publish-studio-header';
     const brand=document.createElement('div');
     brand.className='publish-studio-brand';
-    brand.textContent='📖 Publish Studio';
+    brand.textContent='📖 Finish Story';
     header.appendChild(brand);
     const close=document.createElement('button');
     close.type='button';
@@ -145,7 +145,7 @@ const PublishStudio=(function(){
     _readPublishBtn=document.createElement('button');
     _readPublishBtn.type='button';
     _readPublishBtn.className='publish-read-publish';
-    _readPublishBtn.innerHTML='<span class="publish-read-publish-glyph">📖</span><span class="publish-read-publish-label">Publish My Adventure</span>';
+    _readPublishBtn.innerHTML='<span class="publish-read-publish-glyph">📖</span><span class="publish-read-publish-label">Finish My Story</span>';
     _readPublishBtn.addEventListener('click',function(){ _setStage(STAGES.ALMOST_READY); });
     center.appendChild(_readPublishBtn);
 
@@ -355,7 +355,7 @@ const PublishStudio=(function(){
     _almostPublishBtn=document.createElement('button');
     _almostPublishBtn.type='button';
     _almostPublishBtn.className='publish-primary-btn';
-    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">✨</span><span class="publish-primary-label">Publish My Adventure</span>';
+    _almostPublishBtn.innerHTML='<span class="publish-primary-glyph">✨</span><span class="publish-primary-label">Finish My Story</span>';
     // Magic Publish M6 — "The default path has no fork in it at all"
     // (architecture §7.2). Pressing this publishes the whole bundle;
     // the destination picker is still there for a creator who wants a
@@ -371,27 +371,29 @@ const PublishStudio=(function(){
     return body;
   }
 
+  // Sprint VP2 — no creative judgement on the way to finishing.
+  //
+  // This used to run PublishValidator and, when it had anything to say,
+  // replace the cover with a list of tips: no cover yet, no name yet,
+  // page 3 is empty. Every one of those is an opinion about the story,
+  // and the whole premise of the split is that finishing a story is
+  // never gated on one. "Every finished story should always produce its
+  // artifacts" is not compatible with a screen that first tells a child
+  // what is wrong with theirs.
+  //
+  // The questions did not disappear — they moved to where they now
+  // belong. js/shareCeremony.js asks whether the story has a name, and
+  // whether it is finished, at the moment the child is choosing to send
+  // it to meet another Traveller. Same concerns, asked about the story
+  // rather than about the child, and only when they are actually
+  // relevant. PublishValidator itself is untouched and still exported.
   function _enterAlmostReady(){
-    const slides=_slides();
-    const project=(typeof AppState!=='undefined') ? AppState.project : null;
-    const nudges=(typeof PublishValidator!=='undefined')
-      ? PublishValidator.run(slides, project) : [];
-
-    if(nudges.length===0){
-      if(_almostBadge) _almostBadge.textContent='🎉';
-      _almostHeadline.textContent='Your adventure looks ready!';
-      _almostMessage.textContent='';
-      _almostCoverHost.classList.remove('hidden');
-      _almostNudgeList.classList.add('hidden');
-      _renderAlmostCover();
-    }else{
-      if(_almostBadge) _almostBadge.textContent='💡';
-      _almostHeadline.textContent='A few helpful tips';
-      _almostMessage.textContent='Have a quick look — or publish your adventure anyway when you’re ready.';
-      _almostCoverHost.classList.add('hidden');
-      _almostNudgeList.classList.remove('hidden');
-      _renderAlmostNudges(nudges);
-    }
+    if(_almostBadge) _almostBadge.textContent='🎉';
+    _almostHeadline.textContent='Your story is ready to finish!';
+    _almostMessage.textContent='';
+    _almostCoverHost.classList.remove('hidden');
+    _almostNudgeList.classList.add('hidden');
+    _renderAlmostCover();
   }
 
   // --- Stage 2.5 · Choose Story Destination -------------------------
@@ -1012,39 +1014,35 @@ const PublishStudio=(function(){
         }
       }
     }catch(e){}
-    // Companion Engine Foundation (Sprint C1) — "Published".
-    try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
-    try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
-    // The Ether — "published stories become part of the Ether, where
-    // they drift, waiting to be discovered" (CLAUDE.md, Decision 9).
-    // MagicCard.markEverPublished() above records THAT a child has
-    // published; this records WHICH Story, which is the thing the Ether
-    // needs and the thing nothing anywhere stored until now. Same
-    // pattern, same place, same defensive wrapping as its neighbours —
-    // Publish Studio itself is untouched beyond this line.
-    try{
-      if(typeof CreatorProjectStore!=='undefined' && typeof ProjectManager!=='undefined'){
-        const _pid=ProjectManager.ensureProjectId();
-        if(_pid) CreatorProjectStore.markPublished(_pid);
-      }
-    }catch(e){}
-    // "if they do not publish their creation might get lost" — a real
-    // publish just happened, so the notice has nothing left to nag
-    // about for the rest of this tab session.
+    // ---------------------------------------------------------------
+    // WHAT DELIBERATELY NO LONGER HAPPENS HERE (Sprint VP2)
+    //
+    // Finishing a story and sharing a story are separate acts now, so
+    // everything that means "this story has gone out into the world"
+    // moved to js/shareCeremony.js, which is the only place a child can
+    // actually choose it:
+    //
+    //   CreatorProjectStore.markPublished()  — `publishedAt` IS the
+    //     Ether's definition of membership (CLAUDE.md, Decision 9).
+    //     Stamping it on finishing put every finished story in front of
+    //     other Travellers without anybody choosing to.
+    //   MagicCard.markEverPublished()        — records THAT a child has
+    //     shared. It is what the Studio Rite's sharing beat waits on.
+    //   CompanionDirector.notify('published')
+    //   MagicCardUI.showAwakening()          — the Creator Ceremony,
+    //     which Canon 6 is explicit is the consequence of SHARING a
+    //     story, never a reward for finishing one.
+    //
+    // What stays: this function still produces every artifact, exactly
+    // as it always did, and the child still keeps all of them. That is
+    // the whole point of the separation — finishing always succeeds.
+    // ---------------------------------------------------------------
+    //
+    // "if they do not publish their creation might get lost" — the
+    // artifacts exist now, so the notice has nothing left to nag about
+    // for the rest of this tab session. This one IS about finishing
+    // rather than sharing, so it stays.
     try{ if(typeof TravellerSaveNotice!=='undefined') TravellerSaveNotice.markPublished(); }catch(e){}
-    // Magic Card Identity Evolution, Phase 1 — "Instead of immediately
-    // downloading the creation, something unexpected happens" (design
-    // document, Screen 5). Fires at most once ever per browser
-    // (MagicCard.shouldOfferAwakening's own gate) — every other publish,
-    // and every publish once a card is already claimed or the ceremony
-    // was ever offered before, goes straight to Celebration exactly as
-    // it always has.
-    try{
-      if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.shouldOfferAwakening()){
-        MagicCardUI.showAwakening(function(){ _setStage(STAGES.CELEBRATION); });
-        return;
-      }
-    }catch(e){}
     _setStage(STAGES.CELEBRATION);
   }
 
@@ -1084,6 +1082,10 @@ const PublishStudio=(function(){
   let _celebSubtitle=null;
   let _celebDownloadBtn=null;
   let _celebReadyMsg=null;
+  let _celebChoices=null;
+  let _celebTakeBtn=null;
+  let _celebShareBtn=null;
+  let _celebKeepsHost=null;
   let _celebVideo=null;
   let _celebKeeps=null;
   let _celebVideoURL=null;
@@ -1102,7 +1104,7 @@ const PublishStudio=(function(){
 
     const headline=document.createElement('div');
     headline.className='publish-celebration-headline';
-    headline.innerHTML='<span class="publish-celebration-emoji">🎉</span> Congratulations!';
+    headline.innerHTML='<span class="publish-celebration-emoji">🎉</span> You finished your story!';
     center.appendChild(headline);
 
     // Sprint 9.0.5 — destination-aware message. The generic
@@ -1151,7 +1153,54 @@ const PublishStudio=(function(){
     _celebSubtitle.className='publish-celebration-subtitle';
     center.appendChild(_celebSubtitle);
 
-    // Primary action.
+    // ---------------------------------------------------------------
+    // TWO CHOICES, AND THEY ARE EQUAL (Sprint VP2)
+    //
+    // Neither is mandatory and neither is the "real" one. A child can
+    // take their story and never share it; a child can share it and
+    // never download a thing. Same size, same weight, side by side —
+    // the moment one of them is styled as the primary action, the
+    // other becomes the thing you skip.
+    // ---------------------------------------------------------------
+    _celebChoices=document.createElement('div');
+    _celebChoices.className='publish-celebration-choices';
+
+    _celebTakeBtn=document.createElement('button');
+    _celebTakeBtn.type='button';
+    _celebTakeBtn.className='publish-celebration-choice';
+    _celebTakeBtn.innerHTML='<span class="publish-celebration-choice-glyph">📦</span>'+
+      '<span class="publish-celebration-choice-label">Take My Story</span>';
+    // Always succeeds. Everything the bundle produced already exists by
+    // the time this screen is on — this reveals it, it does not
+    // generate it, and there is nothing here that can say no.
+    _celebTakeBtn.addEventListener('click',function(){
+      _celebChoices.classList.add('is-taken');
+      _celebKeepsHost.classList.remove('hidden');
+      const ok=_downloadPublished();
+      if(ok){
+        _celebReadyMsg.classList.remove('hidden');
+        _celebDownloadBtn.classList.add('is-given');
+      }
+    });
+    _celebChoices.appendChild(_celebTakeBtn);
+
+    _celebShareBtn=document.createElement('button');
+    _celebShareBtn.type='button';
+    _celebShareBtn.className='publish-celebration-choice';
+    _celebShareBtn.innerHTML='<span class="publish-celebration-choice-glyph">🌌</span>'+
+      '<span class="publish-celebration-choice-label">Share with VihuPlanet</span>';
+    _celebShareBtn.addEventListener('click',function(){ _beginShare(); });
+    _celebChoices.appendChild(_celebShareBtn);
+
+    center.appendChild(_celebChoices);
+
+    // Everything the artifacts live in, revealed by Take My Story
+    // rather than shown up front — a wall of download buttons is a
+    // workflow, and this screen is supposed to be a moment.
+    _celebKeepsHost=document.createElement('div');
+    _celebKeepsHost.className='publish-celebration-takes hidden';
+    center.appendChild(_celebKeepsHost);
+
     _celebDownloadBtn=document.createElement('button');
     _celebDownloadBtn.type='button';
     _celebDownloadBtn.className='publish-celebration-download';
@@ -1163,12 +1212,12 @@ const PublishStudio=(function(){
         _celebDownloadBtn.classList.add('is-given');
       }
     });
-    center.appendChild(_celebDownloadBtn);
+    _celebKeepsHost.appendChild(_celebDownloadBtn);
 
     _celebReadyMsg=document.createElement('div');
     _celebReadyMsg.className='publish-celebration-ready hidden';
     _celebReadyMsg.innerHTML='<span>✓</span> Your adventure is ready. Download again any time.';
-    center.appendChild(_celebReadyMsg);
+    _celebKeepsHost.appendChild(_celebReadyMsg);
 
     // Magic Publish M6 — the rest of the bundle. "Downloads remain
     // available" (roadmap M6): the book keeps the big primary button
@@ -1176,7 +1225,7 @@ const PublishStudio=(function(){
     // quiet button each. Populated in _enterCelebration.
     _celebKeeps=document.createElement('div');
     _celebKeeps.className='publish-celebration-keeps hidden';
-    center.appendChild(_celebKeeps);
+    _celebKeepsHost.appendChild(_celebKeeps);
 
     // Secondary actions.
     const secondary=document.createElement('div');
@@ -1211,6 +1260,93 @@ const PublishStudio=(function(){
 
     _celebBody.appendChild(center);
     return _celebBody;
+  }
+
+  // ---------- Share with VihuPlanet ----------
+  //
+  // The whole of this path is js/shareCeremony.js's; Publish Studio's
+  // job is to hand it the story and to get out of the way. It knows
+  // nothing about the questions Lumo asks and nothing about what makes
+  // a story ready — deliberately, because that is exactly the coupling
+  // that turned finishing into a gate in the first place.
+  //
+  // The child's artifacts are already made and are not touched by any
+  // of this. Declining, at any question, leaves them exactly where they
+  // were with everything they had.
+  function _beginShare(){
+    if(typeof ShareCeremony==='undefined'){
+      // No ceremony module means no way for a child to choose, and
+      // sharing without the choosing is the one thing this sprint
+      // exists to prevent. Nothing happens, silently and safely.
+      return;
+    }
+    let pid=null;
+    try{ if(typeof ProjectManager!=='undefined') pid=ProjectManager.ensureProjectId(); }catch(e){}
+    const project=(typeof AppState!=='undefined') ? AppState.project : null;
+
+    ShareCeremony.open({
+      slides:_slides(),
+      title:(project && (project.bookTitle||project.title))||'',
+      projectId:pid,
+      onDone:function(result){
+        if(!result || !result.shared){
+          // "Not yet", or a name to give first. Back to the story, with
+          // the Studio's own editor underneath — the celebration is
+          // closed because the child is going back to work, not because
+          // anything failed.
+          _close();
+          return;
+        }
+        _completeShare(result.projectId||pid);
+      }
+    });
+  }
+
+  // The Story has joined the Ether. The Creator Ceremony — which Canon
+  // 6 places here and nowhere else, as the consequence of sharing a
+  // story — runs first if this is the child's first time, and then the
+  // child is taken to VihuPlanet to watch their Story Spirit be born.
+  function _completeShare(projectId){
+    // Is the child part-way through the Studio Rite right now? Its last
+    // beat waits on exactly this moment — `story-shared`, Decision 7 —
+    // and it still has a closing chapter to play and a Studio to unlock
+    // afterwards. Leaving for VihuPlanet here would abandon a child
+    // half-way through their first chapter and, worse, leave the Rite
+    // incomplete so it began again next time.
+    //
+    // A share made during the Rite therefore completes in every way
+    // that matters — the Story is in the Ether, the flag is set, the
+    // Creator Ceremony still runs — and simply stays put. Their Story
+    // is waiting in VihuPlanet the moment they go there, which is one
+    // permanent button away for the rest of their life in the product.
+    let duringRite=false;
+    try{
+      duringRite=(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning());
+    }catch(e){}
+
+    function go(){
+      if(duringRite){ _close(); return; }
+      // `born` is what tells VihuPlanet to hold this Story back from the
+      // opening seed and play the Story Birth sequence for it instead,
+      // so a child sees it ARRIVE rather than finding it already there.
+      // The project id, for the same reason deep links use it: it is
+      // the identifier the Story has everywhere else.
+      let url='index.html';
+      if(projectId) url+='?born='+encodeURIComponent(projectId);
+      try{ window.location.href=url; }catch(e){}
+    }
+
+    // The Creator Ceremony, in BOTH cases. Canon 6 places it here and
+    // nowhere else: it is the consequence of a child choosing to let
+    // their story become part of VihuPlanet, and during the Rite that
+    // choice is the first one they ever make.
+    try{
+      if(typeof MagicCard!=='undefined' && typeof MagicCardUI!=='undefined' && MagicCard.shouldOfferAwakening()){
+        MagicCardUI.showAwakening(go);
+        return;
+      }
+    }catch(e){}
+    go();
   }
 
   // One object URL at a time — a second celebration in the same
@@ -1265,6 +1401,27 @@ const PublishStudio=(function(){
     // Reset between celebrations.
     _celebReadyMsg.classList.add('hidden');
     _celebDownloadBtn.classList.remove('is-given');
+    // The two choices come back side by side every time, and the
+    // artifacts go back behind Take My Story — a second finish in the
+    // same session must not open already answered.
+    if(_celebChoices) _celebChoices.classList.remove('is-taken');
+    if(_celebKeepsHost) _celebKeepsHost.classList.add('hidden');
+    // A Story already in the Ether cannot join it twice. Offering to
+    // send it again would be offering something that does nothing;
+    // saying so plainly is better than a button that lies.
+    if(_celebShareBtn){
+      let already=false;
+      try{
+        if(typeof CreatorProjectStore!=='undefined' && typeof ProjectManager!=='undefined'){
+          const rec=CreatorProjectStore.get(ProjectManager.ensureProjectId());
+          already=!!(rec && rec.publishedAt);
+        }
+      }catch(e){}
+      _celebShareBtn.classList.toggle('is-done', already);
+      _celebShareBtn.disabled=already;
+      _celebShareBtn.querySelector('.publish-celebration-choice-label').textContent=
+        already ? 'Already in VihuPlanet' : 'Share with VihuPlanet';
+    }
 
     // Sprint 9.0.3 — destination-aware Celebration copy. Story Book →
     // "Get My Adventure". Story Carousel → "Download Images" (or

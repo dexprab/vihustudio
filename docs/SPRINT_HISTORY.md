@@ -1830,3 +1830,69 @@ directly still gets Scene 3 unchanged. Two earlier versions of that test reporte
 a false pass — one because `body.creation-flow-active` is set underneath the
 Gateway overlay and is not proof of arrival, one because the skip-tap removed the
 thing under test.
+
+## Sprint VP2 · Share with VihuPlanet
+
+The end of the story lifecycle split in two. Finishing a story now always
+succeeds and always produces every artifact; whether that story then goes and
+lives in the Ether is a separate choice made in its own ceremony. Every
+child-facing "Publish" became "Finish Story" — the Studio's header control, the
+Publish Studio's brand and both primary buttons, the page menu item, the
+Traveller save notice and the Companion's two nudges — with nothing internal
+renamed, exactly as Decision 8 already required for the Rite.
+
+The single most consequential line moved rather than changed. `publishedAt` is
+the Ether's own definition of membership (Decision 9), and it was being stamped
+by Publish Studio's `_completeBundle()`, which meant every story a child finished
+was put in front of other Travellers without anybody choosing to. It now lives in
+`js/shareCeremony.js` and nowhere else. `MagicCard.hasEverPublished`, the
+Companion's `published` event and the Creator Ceremony went with it — Canon 6 is
+explicit that the Ceremony is the consequence of SHARING a story rather than a
+reward for finishing one, so the trigger was in the wrong place and had been
+since it was written. The Studio Rite's own sharing beat waits on
+`hasEverPublished`, so it now waits on the thing it always claimed to; its line
+was corrected too, because "sharing makes it into something you can keep" was
+true when one button did both jobs and describes finishing now.
+
+The other deliberate removal was the readiness stage. It ran PublishValidator and,
+whenever it had anything to say, replaced the cover preview with a list of what
+was missing — no cover, no name, page 3 is empty. Every one of those is an opinion
+about the story, and "every finished story should always produce its artifacts"
+cannot coexist with a screen that first tells a child what is wrong with theirs.
+The validator is untouched and still exported; the finish path stopped asking it,
+and the concerns it raised moved into the ceremony where they are asked of the
+STORY, at the moment it is about to go somewhere. One judgement call beyond the
+brief: a story that already has a name is not asked whether it has one — Lumo says
+the name back instead, which is the same beat doing its job without pretending not
+to know.
+
+The birth is the reward and it needed the two documents to cooperate. The Studio
+hands over with `index.html?born=<projectId>`; VihuPlanet holds that Story out of
+the opening seed (a new `exclude` on `EtherFeed.load`) and calls
+`EtherFeed.publishInto()` — written two sprints ago and never called by anything
+until now — once the child has crossed the threshold, because playing it behind
+the veil would spend the one moment the whole path exists to produce. Measured:
+two Stories present on arrival, the third born 800ms after the tap, landing at
+(593, 353) of a 1280×800 view at full presence, the URL cleaned so a refresh does
+not replay it. The new Spirit is deliberately NOT auto-opened — Story Birth
+already aims it into view, and a preview panel over the universe at that second
+turns a story joining a place into a dialog about a file.
+
+Two things were only found by driving the real thing. The ceremony never appeared
+at all: its element helper took `(class, text)` while every call site passed
+`(tag, class, text)`, so the overlay was built as a `<div class="div">` carrying
+its own class name as visible text — present in the DOM, invisible, and leaving
+the Publish Studio underneath to keep every click. And the two choices were
+unreadable, because they inherited the night sky's cream and the celebration is
+the one light screen in the product. Three of my own test runs also reported false
+passes before the harness was right: one read hidden DOM and called it a pass, one
+had `onDone` intercept the very branch it was meant to exercise, and one asserted
+`publishedAt` was unset in a run where the pipeline had never executed at all.
+
+A share made during the Studio Rite is the one case that does not leave for
+VihuPlanet. The Rite's last beat waits on exactly that moment and still has a
+closing chapter to play and a Studio to unlock, so leaving would abandon a child
+mid-chapter and leave the Rite incomplete enough to start again next time. It
+completes in every other way, Creator Ceremony included, and their Story is
+waiting in VihuPlanet behind a permanent button. Verified both branches by
+driving the real Share button with the Rite reported running and not running.

@@ -135,8 +135,18 @@ const EtherFeed = (function () {
           : CreatorProjectStore.listPublished();
       } catch (e) { local = []; }
 
+      // A Story can be deliberately held back from the opening seed —
+      // one that joined the Ether seconds ago, so the universe can
+      // bring it in with the Story Birth sequence instead of having it
+      // simply be there. `exclude` is the only thing that knows about
+      // that, and it is a set of project ids because that is what the
+      // caller has.
+      var skip = {};
+      (opts.exclude || []).forEach(function (id) { if (id) skip[id] = true; });
+
       local.forEach(function (record) {
         seen[record.id] = true;
+        if (skip[record.id]) return;
         out.push(toStory(record, creator));
       });
 
@@ -144,7 +154,7 @@ const EtherFeed = (function () {
 
       return _cloud().then(function (rows) {
         rows.forEach(function (record) {
-          if (!record || seen[record.id]) return;
+          if (!record || seen[record.id] || skip[record.id]) return;
           if (!opts.includeUnpublished && !record.publishedAt) return;
           out.push(toStory(record, creator));
         });
@@ -221,11 +231,15 @@ const EtherFeed = (function () {
     });
   }
 
-  // Called by a live Studio the moment a publish completes, so a Story
-  // visibly joins a universe that is already on screen. Nothing calls
-  // this yet — the Ether and the Studio are not on the same page today
-  // — but this is the entire integration when they are, and it is one
-  // function.
+  // A Story visibly JOINING a universe that is already on screen,
+  // rather than being seeded into one that is still being built.
+  //
+  // The Studio and VihuPlanet are different documents, so the Studio
+  // cannot call this directly — it hands over with `?born=<projectId>`
+  // and VihuPlanet Home calls it here, once the child has crossed the
+  // threshold and can actually see the universe it arrives into. When
+  // the two ever do share a page, this is still the whole integration
+  // and it is still one function.
   function publishInto(universe, projectId, options) {
     if (!universe || !projectId) return null;
     let record = null;

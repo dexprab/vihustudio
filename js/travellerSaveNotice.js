@@ -90,10 +90,10 @@ const TravellerSaveNotice=(function(){
     _el.innerHTML=
       '<div class="traveller-save-notice-row">'+
         '<span class="traveller-save-notice-icon" aria-hidden="true">🌱</span>'+
-        '<span class="traveller-save-notice-text">You’re creating as a Traveller. Publish your adventure to make sure it’s kept safe.</span>'+
+        '<span class="traveller-save-notice-text">You’re creating as a Traveller. Finish your story to make sure it’s kept safe.</span>'+
         '<button type="button" class="traveller-save-notice-dismiss" title="Dismiss for now" aria-label="Dismiss">✕</button>'+
       '</div>'+
-      '<button type="button" class="traveller-save-notice-publish">📖 Publish Now</button>';
+      '<button type="button" class="traveller-save-notice-publish">📖 Finish Story</button>';
 
     // Mount as a normal, in-flow FIRST child of .right-sidebar — never
     // document.body/position:fixed (see the Placement note above for

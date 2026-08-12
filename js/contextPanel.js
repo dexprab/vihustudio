@@ -2665,7 +2665,7 @@ const ContextPanel=(function(){
       const gate=_el('div','context-family-gate');
       gate.appendChild(_el('div','context-family-gate-icon','🧭'));
       gate.appendChild(_el('div','context-family-gate-text',
-        'You need a companion before you can leave your voice on a page! Publish your first adventure — your companion will arrive, and together you can tell every page’s story out loud.'));
+        'You need a companion before you can leave your voice on a page! Share your first story with VihuPlanet — your companion will arrive, and together you can tell every page’s story out loud.'));
       panelRoot.appendChild(gate);
       panelRoot.appendChild(doneBtn());
       return;
@@ -2940,7 +2940,7 @@ const ContextPanel=(function(){
       const gate=_el('div','context-family-gate');
       gate.appendChild(_el('div','context-family-gate-icon','🧭'));
       gate.appendChild(_el('div','context-family-gate-text',
-        'You need a companion to guide you in the outside world! Publish your first adventure — your companion will arrive, and together you can bring in family photos.'));
+        'You need a companion to guide you in the outside world! Share your first story with VihuPlanet — your companion will arrive, and together you can bring in family photos.'));
       mount.appendChild(gate);
       mount.appendChild(_familyDoneBtn());
       return;

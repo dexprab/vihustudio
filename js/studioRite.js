@@ -268,15 +268,23 @@ const StudioRite=(function(){
 
     // The sharing beat (Decision 7). Declining is a real choice: the
     // story stays theirs, the Studio still unlocks, and the Creator
-    // Ceremony waits for whichever story they do share. Nothing here
-    // claims anyone else can see it — sharing makes the story into
-    // something they can keep, which is exactly what Publish does.
+    // Ceremony waits for whichever story they do share.
+    //
+    // Sprint VP2 split what this beat used to describe. Finishing a
+    // story is what makes it into something a child can keep — it
+    // produces every artifact and cannot fail. Sharing it is the
+    // separate choice that sends it to VihuPlanet. The line said the
+    // first thing while the beat waited on the second, which was true
+    // when one button did both and is not any more, so it now says
+    // what each act actually is. The control it points at is still the
+    // first one the child needs, and it is still only pointed at,
+    // never explained (Canon 6).
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
        line:{title:'Right now your story only lives on this screen.'}},
       {lumo:'curious', egg:'excited',
-       line:{title:'Sharing makes it into something you can keep.',
-             subtitle:'Tap Share with VihuPlanet.'}}
+       line:{title:'Finishing it makes it yours to keep.',
+             subtitle:'Tap Finish Story.'}}
      ], end:{await:'story-shared', decline:'Not now'}, nudgeDelay:3000},
 
     // The close.
@@ -949,10 +957,14 @@ const StudioRite=(function(){
       try{ return StoryPlayer.playCount()>(baseline&&baseline.__plays||0); }
       catch(e){ return false; }
     }
-    // The child shared. Read from MagicCard's own hasEverPublished flag,
-    // which js/publishStudio.js already sets on a completed publish —
-    // the same signal the Creator Ceremony itself is gated on, so this
-    // can never disagree with whether a publish really happened.
+    // The child shared. Read from MagicCard's own hasEverPublished
+    // flag, which js/shareCeremony.js sets when a Story actually joins
+    // the Ether — the same signal the Creator Ceremony itself is gated
+    // on, so this can never disagree with whether a share really
+    // happened. (It moved there from js/publishStudio.js in Sprint VP2,
+    // when finishing and sharing became separate acts. This beat waits
+    // on sharing and always did; it is only now that the flag means
+    // exactly that and nothing else.)
     if(kind==='story-shared'){
       try{ return !!MagicCard.growthSignals().hasEverPublished && !(baseline&&baseline.__published); }
       catch(e){ return false; }
