@@ -247,6 +247,15 @@
 
 .publish-celebration-takes.hidden { display: none; }
 
+/* A class that sets `display` outranks the browser's own
+   [hidden] { display: none }, because a class beats a UA-sheet
+   attribute selector. Without this, hiding Take My Story in Author Mode
+   set the attribute and changed nothing on screen — the button stayed
+   exactly where it was. Same trap as .vp-stars; every `display` rule in
+   this file that is paired with a `hidden` attribute needs its own
+   guard. */
+.publish-celebration-choice[hidden] { display: none; }
+
 @media (max-width: 480px) {
   .publish-celebration-choice { min-width: 0; flex: 1 1 40%; padding: 14px 12px; }
 }

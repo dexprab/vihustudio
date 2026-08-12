@@ -376,6 +376,66 @@ pipeline.
   moderation, community voting, Story World assignment, popularity
   systems, likes and quality metrics.
 
+### 13. Publishing Targets, and the Canon Repository
+
+Locked by the product owner in the Sprint VP3 brief, including its own
+architectural recommendation: **think in publishing targets, not
+modes.**
+
+- **There is ONE editor, ONE story format and ONE authoring
+  experience.** The VihuPlanet team makes official stories in exactly
+  the editor children use, with the same controls. The only thing that
+  ever differs is where the finished story goes. Do not add a
+  "Creator Mode" and an "Author Mode" threaded through the editor —
+  that is two products sharing a codebase, and the sprint rejected it
+  by name.
+- **`js/publishTarget.js` is the seam, and only the last screen asks
+  it.** Nothing in the editor knows a target exists. If a future change
+  has to touch the editor to add a third target, the seam is in the
+  wrong place.
+- **Two kinds of story, and they are different things.** A **Creator
+  Story** is made by a child, owned by that child, carries their name,
+  and joins the Ether because they chose to share it. A **Canon
+  Story** is made by the team, is part of the product, is owned by
+  nobody, and ships with the application.
+- **Story Origin.** Every story record carries `origin: "creator"` or
+  `origin: "canon"`. Creator stories keep `creatorId` / `creatorName`;
+  Canon Stories have neither and there is nowhere to put one.
+- **Canon Stories are never attributed.** Never "Created by
+  VihuPlanet", never "by Admin", never by the person who authored
+  them. In the Ether they appear, drift, can be discovered and can be
+  read exactly like any other Spirit — they simply belong to the
+  universe. A child never learns the distinction exists.
+- **The runtime cannot tell them apart, by construction.** `origin`
+  lives on the entity's `source`, which physics, the renderer and the
+  story layer never read. There is no difference for them to act on.
+- **The Canon Repository is a folder in the repository** —
+  `vihuplanet/canon/`, a manifest plus one file per story — because
+  "shipped with the application" is what canon means. It is not put in
+  `creator_projects`: that is a private, card-gated backup of a
+  *child's* work, and putting product content there would make canon
+  somebody's possession. Publishing to canon produces the file; the
+  team commits it. That gives canon the properties product content
+  should have — reviewed in a pull request, versioned in git,
+  identical for every child.
+- **The repository ships empty.** Adding the first Canon Story is a
+  content decision, and it is two steps: commit the story file, add
+  its id to `canon.json`.
+- **The author flow is Create → Review → Freeze → Publish to Canon.**
+  Freezing is what makes a story canon: it ships identically to every
+  child, so publishing it is the act of declaring it final. There is
+  no draft state in the repository.
+- **Canon has no Magic Card, no Story Readiness ceremony, no creator
+  attribution and no Story Birth.** All four exist to serve a child
+  giving something away, and none of them applies to a product asset.
+- **Author Mode is a development configuration, not a role.**
+  `studio.html?author=on`, remembered per browser, stripped from the
+  address bar the moment it is read. Explicitly out of scope and not
+  implemented: role management UI, user administration, permission
+  editors, team collaboration, version history, approval workflows and
+  multi-author editing.
+- Architecture and how to add a story: `vihuplanet/canon/README.md`.
+
 ## Roadmap
 
 1. Theme Designer Polish

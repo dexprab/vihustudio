@@ -63,9 +63,9 @@ const PublishStudio=(function(){
     // every stage controls its own framing.
     const header=document.createElement('div');
     header.className='publish-studio-header';
-    const brand=document.createElement('div');
+    const brand=_brandEl=document.createElement('div');
     brand.className='publish-studio-brand';
-    brand.textContent='📖 Finish Story';
+    brand.textContent=_labels().brand;
     header.appendChild(brand);
     const close=document.createElement('button');
     close.type='button';
@@ -388,8 +388,9 @@ const PublishStudio=(function(){
   // rather than about the child, and only when they are actually
   // relevant. PublishValidator itself is untouched and still exported.
   function _enterAlmostReady(){
-    if(_almostBadge) _almostBadge.textContent='🎉';
-    _almostHeadline.textContent='Your story is ready to finish!';
+    const L=_labels();
+    if(_almostBadge) _almostBadge.textContent=_isCanon()?'❄️':'🎉';
+    _almostHeadline.textContent=L.commitHeadline;
     _almostMessage.textContent='';
     _almostCoverHost.classList.remove('hidden');
     _almostNudgeList.classList.add('hidden');
@@ -1274,6 +1275,18 @@ const PublishStudio=(function(){
   // of this. Declining, at any question, leaves them exactly where they
   // were with everything they had.
   function _beginShare(){
+    // ---------- Author Mode · Publish to Canon ----------
+    //
+    // The other destination, and it is deliberately nothing like the
+    // other one. No Magic Card, no Story Readiness, no creator
+    // attribution and no Story Spirit birth — a Canon Story is a
+    // product asset, not somebody's story being let go of, and every
+    // one of those four exists to serve a child giving something away.
+    //
+    // The ceremony is not skipped here; it simply does not apply. There
+    // is no author to reassure and nothing to be brave about.
+    if(_isCanon()){ _publishToCanon(); return; }
+
     if(typeof ShareCeremony==='undefined'){
       // No ceremony module means no way for a child to choose, and
       // sharing without the choosing is the one thing this sprint
@@ -1300,6 +1313,55 @@ const PublishStudio=(function(){
         _completeShare(result.projectId||pid);
       }
     });
+  }
+
+  // Freeze, hand over the file, and say plainly what happens next.
+  //
+  // The author gets a real `canon_*.json` file because that IS the
+  // publish: Canon Stories ship with the application, so putting one in
+  // the repository is what makes every child have it. Nothing here
+  // pretends a browser can commit to git; it produces the artifact and
+  // says where it goes.
+  function _publishToCanon(){
+    if(typeof CanonRepository==='undefined') return;
+
+    let pid=null;
+    try{ if(typeof ProjectManager!=='undefined') pid=ProjectManager.ensureProjectId(); }catch(e){}
+    let record=null;
+    try{ if(pid && typeof CreatorProjectStore!=='undefined') record=CreatorProjectStore.get(pid); }catch(e){}
+
+    // Fall back to what is on screen if the project has not been
+    // written yet — an author who has just made a story should not have
+    // to save it first to publish it.
+    if(!record){
+      const project=(typeof AppState!=='undefined') ? AppState.project : null;
+      record={
+        id:pid||('proj_'+Date.now()),
+        name:(project && (project.bookTitle||project.title))||'A story',
+        thumbnail:null,
+        data:{ project:project||{}, slides:_slides() }
+      };
+    }
+
+    const result=CanonRepository.publish(record);
+    if(!result || !result.ok) return;
+
+    // Say what was produced and what to do with it. This is the one
+    // screen in the product written for the team rather than for a
+    // child, so it says the actual thing: here is a file, put it in the
+    // folder, add its id to the manifest.
+    if(_celebShareBtn){
+      _celebShareBtn.disabled=true;
+      _celebShareBtn.classList.add('is-done');
+      _celebShareBtn.querySelector('.publish-celebration-choice-label').textContent='Published to Canon';
+    }
+    if(_celebKeepsHost) _celebKeepsHost.classList.remove('hidden');
+    if(_celebReadyMsg){
+      _celebReadyMsg.classList.remove('hidden');
+      _celebReadyMsg.innerHTML='<span>❄️</span> '+result.filename+
+        ' — put it in vihuplanet/canon/ and add "'+result.manifestEntry+
+        '" to canon.json. It is in your own Ether already.';
+    }
   }
 
   // The Story has joined the Ether. The Creator Ceremony — which Canon
@@ -1399,6 +1461,13 @@ const PublishStudio=(function(){
   function _enterCelebration(){
     if(!_celebBody) return;
     // Reset between celebrations.
+    const CL=_labels();
+    const head=_celebBody.querySelector('.publish-celebration-headline');
+    if(head){
+      head.innerHTML=_isCanon()
+        ? '<span class="publish-celebration-emoji">❄️</span> Story frozen.'
+        : '<span class="publish-celebration-emoji">🎉</span> You finished your story!';
+    }
     _celebReadyMsg.classList.add('hidden');
     _celebDownloadBtn.classList.remove('is-given');
     // The two choices come back side by side every time, and the
@@ -1411,7 +1480,13 @@ const PublishStudio=(function(){
     // saying so plainly is better than a button that lies.
     if(_celebShareBtn){
       let already=false;
+      // Only Creator Stories can already be in the Ether. Canon is
+      // republished whenever the team changes it — a frozen story that
+      // has shipped is replaced by publishing a new file over it, and
+      // refusing the second publish would make correcting a typo in an
+      // official story impossible.
       try{
+        if(_isCanon()) throw 0;
         if(typeof CreatorProjectStore!=='undefined' && typeof ProjectManager!=='undefined'){
           const rec=CreatorProjectStore.get(ProjectManager.ensureProjectId());
           already=!!(rec && rec.publishedAt);
@@ -1420,7 +1495,7 @@ const PublishStudio=(function(){
       _celebShareBtn.classList.toggle('is-done', already);
       _celebShareBtn.disabled=already;
       _celebShareBtn.querySelector('.publish-celebration-choice-label').textContent=
-        already ? 'Already in VihuPlanet' : 'Share with VihuPlanet';
+        already ? 'Already in VihuPlanet' : CL.destination;
     }
 
     // Sprint 9.0.3 — destination-aware Celebration copy. Story Book →
@@ -1438,7 +1513,13 @@ const PublishStudio=(function(){
     // right for every destination without polluting the shell
     // with per-destination branches.
     const msgEl=_celebBody.querySelector('.publish-celebration-message-generic');
-    if(msgEl){
+    if(msgEl && _isCanon()){
+      // The Creator lines below are written for a child who has just
+      // made something. An author has just produced a product asset,
+      // and saying "watch how your story came to life" to them is the
+      // screen talking to the wrong person.
+      msgEl.textContent='It is final now, and ready for the repository.';
+    }else if(msgEl){
       if(_publishMode==='bundle' && _bundleResults['magic'] && _bundleResults['magic'].blob){
         // The Magic Creation is playing right above this line, so the
         // copy should be about what they're watching rather than about
@@ -1587,12 +1668,58 @@ const PublishStudio=(function(){
   // (Read → Almost Ready → Destination → Publishing → Celebration)
   // without duplication.
   let _slidesOverride=null;
+  // ---------- publishing target (Sprint VP3) ----------
+  //
+  // One editor, one story format, one authoring experience. The ONLY
+  // thing that differs between a child finishing a story and the
+  // VihuPlanet team authoring an official one is where the finished
+  // story goes — so this screen asks the target what it is called and
+  // what it does, and nothing else in the Studio asks anything.
+  //
+  // Falls back to the Creator wording whenever js/publishTarget.js is
+  // not present, so a surface that never loads it behaves exactly as it
+  // did before this existed.
+  let _brandEl=null;
+  var _CREATOR_LABELS={
+    brand:'📖 Finish Story', review:'Finish My Story', commit:'Finish My Story',
+    commitHeadline:'Your story is ready to finish!',
+    celebration:'🎉 You finished your story!',
+    destination:'Share with VihuPlanet', destinationGlyph:'🌌'
+  };
+  // Every piece of wording this screen owns, re-resolved per open.
+  function _applyTargetLabels(){
+    const L=_labels();
+    if(_brandEl) _brandEl.textContent=L.brand;
+    const readLabel=_readPublishBtn&&_readPublishBtn.querySelector('.publish-read-publish-label');
+    if(readLabel) readLabel.textContent=L.review;
+    const commitLabel=_almostPublishBtn&&_almostPublishBtn.querySelector('.publish-primary-label');
+    if(commitLabel) commitLabel.textContent=L.commit;
+    if(_celebShareBtn){
+      const d=_celebShareBtn.querySelector('.publish-celebration-choice-glyph');
+      if(d) d.textContent=L.destinationGlyph;
+    }
+    // In Author Mode the artifacts are not a reward to be revealed —
+    // an author wants the files. Take My Story stops being a choice and
+    // the one action on the screen is the destination.
+    if(_celebTakeBtn) _celebTakeBtn.hidden=_isCanon();
+    if(_celebKeepsHost && _isCanon()) _celebKeepsHost.classList.remove('hidden');
+  }
+
+  function _labels(){
+    try{ if(typeof PublishTarget!=='undefined') return PublishTarget.labels(); }catch(e){}
+    return _CREATOR_LABELS;
+  }
+  function _isCanon(){
+    try{ return typeof PublishTarget!=='undefined' && PublishTarget.isCanon(); }catch(e){ return false; }
+  }
+
   function _slides(){
     if(Array.isArray(_slidesOverride) && _slidesOverride.length>0) return _slidesOverride;
     return (typeof AppState!=='undefined' && Array.isArray(AppState.slides)) ? AppState.slides : [];
   }
   function open(opts){
     _ensureModal();
+    _applyTargetLabels();
     if(opts && Array.isArray(opts.slides) && opts.slides.length>0){
       _slidesOverride=opts.slides.slice();
     }else{

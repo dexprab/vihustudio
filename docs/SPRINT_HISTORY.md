@@ -1896,3 +1896,61 @@ mid-chapter and leave the Rite incomplete enough to start again next time. It
 completes in every other way, Creator Ceremony included, and their Story is
 waiting in VihuPlanet behind a permanent button. Verified both branches by
 driving the real Share button with the Rite reported running and not running.
+
+## Sprint VP3 · Canon Authoring & the Canon Repository
+
+The product owner's own architectural recommendation decided the shape of this
+one, and it was right: think in **publishing targets**, not modes. An "Author
+Mode" and a "Creator Mode" threaded through the editor would put an `if` in every
+panel, every control and every save path, and the two would drift until they were
+two products sharing a codebase. So there is one editor, one story format and one
+authoring experience; `js/publishTarget.js` is the entire seam and exactly one
+screen — the last one — asks it anything. Nothing in the editor knows a target
+exists, which is the test: if a future change has to touch the editor to add a
+third target, the seam is in the wrong place.
+
+`js/canonRepository.js` had one decision worth recording. "Canon Stories are
+shipped with the application. They are not uploaded by a Creator" rules out the
+platform this product already has: `creator_projects` is a private, card-gated
+backup of a *child's* work, and putting product content in it would make canon
+somebody's possession, which is the one thing canon is not. So the Canon
+Repository is a folder in the git repository — `vihuplanet/canon/`, a manifest
+plus one file per story — and Publish to Canon produces the file the team
+commits. That is not a workaround for a missing backend; it is what "shipped with
+the application" means, and it gives canon exactly the properties product content
+should have: reviewed in a pull request, versioned in git, identical for every
+child, and impossible to change by accident from a browser. The author also gets
+the story staged locally so they can go and look at it in the Ether without a
+deploy, and the two are kept apart everywhere except one merged read.
+
+Attribution turned out to need no work at all downstream, which is the sign the
+existing contracts were right. The Story Entity has always allowed a null creator
+and the story layer has always rendered that as nothing, so a Canon Story
+carrying no creator simply works. The more interesting half is that `origin` does
+NOT reach the entity: `storyEntity.js` has a fixed field list and copies only what
+it declares, so the runtime cannot tell a Canon Story from a Creator Story. That
+is the requirement rather than an oversight — they drift the same way, are met the
+same way, are read the same way — and it is now stated in the code so nobody
+"fixes" it later. `origin` rides on `source` instead, which is the surface's own
+back-reference and which physics, the renderer and the story layer never read.
+
+Three things only surfaced by running it. **Continue** was offered on a Canon
+Story, and it opens the Studio on a project id that a Canon Story does not have —
+the editor would have opened onto nothing. **The preview told a child a Canon
+Story had been "shared" on a date**, which nobody did; it has always been here, so
+it now says only how long it is. And hiding Take My Story in Author Mode did
+nothing on screen: a class that sets `display` outranks the browser's own
+`[hidden]` rule, which is the third time this exact trap has cost a bug in three
+sprints, so every `display` rule paired with a `hidden` attribute in that
+stylesheet now carries its own guard.
+
+Verified both ways round. Creator Mode is untouched — same wording, same two equal
+choices, same ceremony, same Story Birth. Author Mode reads Canon Authoring →
+Review Complete → Ready to freeze → Story frozen → Publish to Canon, produces a
+real `canon_*.json`, and never touches a Magic Card, a readiness ceremony or a
+birth. The ship mechanism itself was tested for real by putting a story file and
+its id into the manifest and loading VihuPlanet in a browser with no Magic Card
+and no projects at all: the Canon Story was there, with no creator, readable page
+by page. The manifest was then restored to empty, because the repository ships
+empty on purpose — putting the first real story into VihuPlanet is a content
+decision, not one to make while building the pipe.

@@ -2,6 +2,61 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.3.0 — 2026-08-12
+
+- **Publishing Targets, not modes.** VihuStudio is now the tool the
+  VihuPlanet team uses to author official content, and it is the same
+  tool children use — the same editor, the same controls, the same
+  story format. The only thing that differs is where the finished story
+  goes. `js/publishTarget.js` is the whole seam and exactly one screen
+  asks it anything; nothing in the editor knows a target exists.
+- **Two kinds of story, architecturally separate.** A Creator Story is
+  made by a child, owned by them, and carries their name. A Canon Story
+  is made by the team, is part of the product, is owned by nobody, and
+  ships with the application. `origin` on the record says which, and it
+  is the only field anything has to read.
+- **Canon Stories are never attributed** — not to VihuPlanet, not to
+  Admin, not to whoever authored them. In the Ether they appear, drift,
+  can be met and can be read exactly like any other Spirit. The runtime
+  cannot tell the two apart by construction: `origin` rides on the
+  entity's `source`, which physics, the renderer and the story layer
+  never read, so there is no difference for them to act on.
+- **The Canon Repository is `vihuplanet/canon/`** — a manifest plus one
+  file per story. That is what "shipped with the application" means.
+  Canon deliberately does not go in `creator_projects`, which is a
+  private, card-gated backup of a *child's* work; product content there
+  would make canon somebody's possession. Publishing produces the file
+  and the team commits it, which gives canon the properties product
+  content should have: reviewed in a pull request, versioned in git,
+  identical for every child, impossible to change by accident from a
+  browser.
+  It ships **empty**. Adding the first Canon Story is a content
+  decision and it is two steps.
+- **Create → Review → Freeze → Publish to Canon.** Freezing is what
+  makes a story canon: it ships identically to every child, so
+  publishing it is the act of declaring it final. No Magic Card, no
+  Story Readiness ceremony, no creator attribution and no Story Birth —
+  all four exist to serve a child giving something away, and none of
+  them applies to a product asset.
+- **Author Mode is a development configuration** — `studio.html?author=on`,
+  remembered per browser and stripped from the address bar the instant
+  it is read, so it can never travel in a copied link. No roles, no
+  accounts, no permissions, no administration; none of those were built
+  and none are planned.
+- **Fix — Continue was offered on a Canon Story.** It opens the Studio
+  on a project id, and a Canon Story is not in anybody's project store;
+  the button would have opened the editor onto nothing. It is not there
+  for canon, which is also the honest answer: an official story is not
+  a child's to keep working on.
+- **Fix — a Canon Story claimed it had been "shared" on a date.**
+  Nobody shared it; it has always been here. It now says only what it
+  honestly knows, which is how long it is.
+- **Fix — hiding a celebration choice did nothing.** Third time for this
+  exact trap: a class that sets `display` outranks the browser's own
+  `[hidden]` rule, so Take My Story stayed on screen in Author Mode
+  with the attribute set. Every `display` rule paired with a `hidden`
+  attribute in that stylesheet now carries its own guard.
+
 ## v1.2.0 — 2026-08-12
 
 - **Finish Story.** Every child-facing "Publish" is gone: the Studio's

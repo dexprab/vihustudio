@@ -65,17 +65,47 @@ const EtherFeed = (function () {
   // mistake available here. `source` keeps the id, so opening a Story
   // for real (a later phase) can fetch it then.
   function toStory(record, creator) {
+    // Story Origin (Sprint VP3). A CANON story is a product asset owned
+    // by nobody, so it carries no creator — not "VihuPlanet", not
+    // "Admin", not the name of whoever on the team authored it. There
+    // is nowhere on this object to put one, which is the point: in the
+    // Ether it is simply a story that is there, and it belongs to the
+    // universe.
+    //
+    // The Story Entity contract already allows a null creator and the
+    // story layer already renders that as nothing, so canon needed no
+    // change anywhere downstream of this line.
+    //
+    // `origin` is set here and the runtime DROPS it — storyEntity.js
+    // has a fixed field list and copies only what it declares. That is
+    // the correct outcome and it is worth stating rather than leaving
+    // as an accident: once a story is in the Ether the universe cannot
+    // tell a Canon Story from a Creator Story, because there is no
+    // difference to tell. They drift the same way, are met the same
+    // way and are read the same way. `origin` exists for the surfaces
+    // ABOVE the runtime — this function, and anything that later needs
+    // to know where a story came from — and deliberately not for
+    // physics, the renderer or the story layer, none of which should
+    // ever have a reason to ask.
+    var canon = record.origin === 'canon';
     return {
       id: 'story-' + record.id,
       title: record.name || 'A story',
       cover: _cover(record),
-      creator: creator || null,
+      creator: canon ? null : (creator || null),
+      origin: canon ? 'canon' : 'creator',
       publishedAt: record.publishedAt || record.updatedAt || null,
       // How many pages it has. A count, not the pages — reading
       // `.length` copies nothing, and it is the one honest thing the
       // Preview can say about a Story without opening it.
       pages: _pageCount(record),
-      source: { projectId: record.id }
+      // `source` is the surface's own back-reference — the runtime
+      // copies it wholesale and never reads inside it (physics, the
+      // renderer and the story layer have no reason to, and must not
+      // start). So it is the right place for origin: a surface that
+      // legitimately needs to know where a Story came from can ask,
+      // and the universe still cannot tell the two apart.
+      source: { projectId: record.id, origin: canon ? 'canon' : 'creator' }
     };
   }
 
@@ -104,7 +134,16 @@ const EtherFeed = (function () {
   // reading experience.
   function pagesOf(projectId) {
     try {
-      var record = CreatorProjectStore.get(projectId);
+      // A Canon Story is read exactly like any other — "they can be
+      // read" is one of the four things canon is for — and it does not
+      // live in the project store, because it is not anybody's project.
+      // Same record shape, so one lookup falls through to the other and
+      // nothing below this line knows the difference.
+      var record = null;
+      try { record = CreatorProjectStore.get(projectId); } catch (e) {}
+      if (!record && typeof CanonRepository !== 'undefined') {
+        record = CanonRepository.get(projectId);
+      }
       var slides = (record && record.data && record.data.slides) || [];
       var out = [];
       for (var i = 0; i < slides.length; i++) {
@@ -150,17 +189,51 @@ const EtherFeed = (function () {
         out.push(toStory(record, creator));
       });
 
-      if (opts.localOnly) return out;
-
-      return _cloud().then(function (rows) {
-        rows.forEach(function (record) {
+      // ---------- Canon ----------
+      //
+      // The official stories of VihuPlanet, shipped with the
+      // application. They join the Ether on exactly the same terms as
+      // everything else and are indistinguishable from a Creator Story
+      // once they are in it — they drift, they can be met, they can be
+      // read. The one difference is upstream of here and is the whole
+      // distinction: they carry no creator, because they are owned by
+      // nobody.
+      //
+      // Merged BEFORE the cloud pass and after the local one, so a
+      // child's own stories always win an id collision. Canon ids are
+      // `canon_*` and project ids are `proj_*`, so a collision is not
+      // actually reachable — the ordering is belt and braces for a
+      // future that renames one of them.
+      return _canon().then(function (canonRows) {
+        canonRows.forEach(function (record) {
           if (!record || seen[record.id] || skip[record.id]) return;
-          if (!opts.includeUnpublished && !record.publishedAt) return;
-          out.push(toStory(record, creator));
+          seen[record.id] = true;
+          out.push(toStory(record, null));
         });
-        return out;
-      }).catch(function () { return out; });
+
+        if (opts.localOnly) return out;
+
+        return _cloud().then(function (rows) {
+          rows.forEach(function (record) {
+            if (!record || seen[record.id] || skip[record.id]) return;
+            if (!opts.includeUnpublished && !record.publishedAt) return;
+            out.push(toStory(record, creator));
+          });
+          return out;
+        }).catch(function () { return out; });
+      });
     });
+  }
+
+  // Canon is optional in every sense: the module may not be loaded on a
+  // given surface, the manifest may be missing, and it ships empty. All
+  // three resolve to "no Canon Stories", which is a young universe
+  // rather than a broken one.
+  function _canon() {
+    try {
+      if (typeof CanonRepository === 'undefined') return Promise.resolve([]);
+      return CanonRepository.all().catch(function () { return []; });
+    } catch (e) { return Promise.resolve([]); }
   }
 
   function _hydrated() {

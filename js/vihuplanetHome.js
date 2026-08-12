@@ -115,6 +115,14 @@
     return (entity && entity.source && entity.source.projectId) || null;
   }
 
+  // A Canon Story: made by the VihuPlanet team, owned by nobody, and
+  // shipped with the application. A child never learns the distinction
+  // exists — this page only asks so it can avoid saying something
+  // untrue about one.
+  function isCanon(entity) {
+    return !!(entity && entity.source && entity.source.origin === 'canon');
+  }
+
   // ---------- cheers ----------
   //
   // A cheer is real and it is local. There is no public VihuPlanet, so
@@ -468,16 +476,27 @@
       // about itself. No invented blurb, no fabricated popularity.
       var bits = [];
       if (pages.length) bits.push(pages.length + (pages.length === 1 ? ' page' : ' pages'));
-      var when = whenShared(met.publishedAt);
+      // "shared <date>" is a true thing to say about a Story a child
+      // chose to send, and a false one about a Canon Story, which
+      // nobody shared and which has simply always been here. A Canon
+      // Story says only what it honestly knows: how long it is.
+      var when = isCanon(met) ? '' : whenShared(met.publishedAt);
       if (when) bits.push('shared ' + when);
       el.meta.textContent = bits.join(' · ');
       el.read.disabled = !pages.length;
       el.read.textContent = pages.length ? 'Read story' : 'Story is elsewhere';
 
-      // Every Story in this Ether is this creator's own, so Continue
-      // is always theirs to press. When a public feed exists, this is
-      // the one line that learns to ask.
-      el.cont.hidden = false;
+      // Continue means "open this in the Studio and keep working on
+      // it", which is only ever true of a Story this child made. A
+      // Canon Story is a product asset that belongs to nobody and is
+      // not in anybody's project store, so the button would open the
+      // Studio onto a project id that does not exist — and it is not
+      // theirs to change in any case. It is not there.
+      //
+      // When a public cross-creator feed exists, this is the one line
+      // that learns to ask the same question about somebody else's
+      // Story.
+      el.cont.hidden = isCanon(met);
       el.cheer.textContent = hasCheered(pid) ? 'Cheered' : 'Cheer';
 
       el.preview.hidden = false;

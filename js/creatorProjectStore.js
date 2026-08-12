@@ -125,6 +125,15 @@ const CreatorProjectStore=(function(){
       // VihuPlanet must not stop being shared because its author typed
       // one more word into it.
       publishedAt:existing?existing.publishedAt:undefined,
+      // Story Origin (Sprint VP3). A project made in the Studio is a
+      // CREATOR story: it belongs to the child who made it and it
+      // carries their name. The other kind, a CANON story, is a product
+      // asset owned by nobody and never lives here at all — it lives in
+      // vihuplanet/canon/ and ships with the application. Stated
+      // explicitly rather than left implied, so that "what kind of
+      // story is this" is one field to read instead of a guess about
+      // which store something came out of.
+      origin:(existing&&existing.origin)||'creator',
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
