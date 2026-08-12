@@ -272,11 +272,15 @@
       el.cheer.textContent = hasCheered(pid) ? 'Cheered' : 'Cheer';
 
       el.preview.hidden = false;
+      // The permanent actions stand down while a Spirit is met: the
+      // child is looking at one story, not at the whole universe.
+      document.querySelector('.vp-home').classList.add('is-met');
     });
 
     universe.on('focus:closed', function () {
       met = null;
       el.preview.hidden = true;
+      document.querySelector('.vp-home').classList.remove('is-met');
       setLink(null);
     });
 

@@ -107,7 +107,11 @@ html, body {
   left: 50%;
   bottom: calc(4vh + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  z-index: 6000;
+  /* Above the permanent actions, which occupy the same corner of the
+     screen. Below them the nav overlapped the preview's own buttons and
+     swallowed the clicks — Cheer and Back were unreachable while a
+     Spirit was met. */
+  z-index: 6800;
   width: min(34rem, calc(100% - 2rem));
   text-align: center;
   padding: 1rem 1.1rem 1.1rem;
@@ -502,8 +506,11 @@ html, body {
 }
 
 /* The preview replaces the actions while a Spirit is being met — the
-   child is looking at one story, not at the whole universe. */
-.vp-home:has(.ether-preview:not([hidden])) .vp-actions { opacity: 0; pointer-events: none; }
+   child is looking at one story, not at the whole universe.
+   Driven by a class rather than :has(), so it does not depend on
+   selector support for something that decides whether controls are
+   clickable. */
+.vp-home.is-met .vp-actions { opacity: 0; pointer-events: none; }
 
 @media (max-width: 640px) {
   .vp-actions { gap: 0.5rem; width: min(100%, 26rem); padding: 0 0.75rem; }

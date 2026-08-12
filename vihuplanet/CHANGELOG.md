@@ -2,6 +2,26 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.0.2 — 2026-08-12
+
+- **Fix — the arrow keys stopped working after the first tap.** The
+  Traveller yielded the arrows to any focused `button` or `a` as well
+  as to text fields. Buttons do not use arrow keys, and every path
+  through VihuPlanet Home leaves focus on one — Tap to Begin is a
+  button, and so are both permanent actions — so the universe could be
+  turned until the child's first click and never again for the rest of
+  the visit. Measured: 0.53 radians of turn before the first click,
+  0.0000 after it. The guard now yields only to things that genuinely
+  use arrows: `input, textarea, select, [contenteditable]`.
+  Verified all four arrows turning after a click, with the buttons
+  still reachable by Tab and still activated by Enter.
+- **Fix — the Preview's own buttons sat under the permanent actions.**
+  Both occupy the bottom of the screen and the nav was above the
+  preview in z-order. The preview now sits above it, and the nav
+  standing down while a Spirit is met is driven by a class rather than
+  `:has()` — selector support should not be what decides whether a
+  control can be clicked.
+
 ## v1.0.1 — 2026-08-12
 
 - **The second "Tap to Begin" is gone.** VihuPlanet asks for the tap at

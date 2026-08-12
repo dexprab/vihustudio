@@ -90,14 +90,24 @@
       A: 'left', D: 'right', W: 'up', S: 'down'
     };
 
+    // Only ever yield the arrow keys to something that actually USES
+    // them: a text field, a select, editable content. Not buttons and
+    // not links — arrow keys mean nothing to either.
+    //
+    // This list started as `button, a, input, textarea, [contenteditable]`
+    // and that was a real bug, not an over-cautious guard. Every path
+    // through VihuPlanet Home leaves focus on a button — Tap to Begin
+    // is one, and so are both permanent actions — and focus stays there
+    // after a click. So arrows worked until the child's very first tap
+    // and then never again for the rest of the visit. Measured: 0.53
+    // radians of turn before the first click, 0.0000 after it.
+    var TYPING = 'input, textarea, select, [contenteditable]';
+
     function onKeyDown(ev) {
       var k = KEY_MAP[ev.key];
       if (!k) return;
-      // Never steal the arrow keys from something a child is actually
-      // using — a focused story, a button, a field.
       var el = global.document.activeElement;
-      if (el && el !== global.document.body && el.closest &&
-          el.closest('button, a, input, textarea, [contenteditable]')) return;
+      if (el && el !== global.document.body && el.closest && el.closest(TYPING)) return;
       keys[k] = true;
       ev.preventDefault();
     }
