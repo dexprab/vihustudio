@@ -32,19 +32,17 @@
 //
 // Deploy (from the repo root):
 //   supabase secrets set \
-//     RESEND_API_KEY=re_... \
-//     SKY_FROM_EMAIL="VihuPlanet <hello@send.yourdomain.com>" \
+//     SMTP_HOST=smtpout.secureserver.net SMTP_PORT=465 \
+//     SMTP_USER=you@yourdomain.com SMTP_PASSWORD='...' \
+//     SKY_FROM_EMAIL="VihuPlanet <you@yourdomain.com>" \
 //     SKY_REPLY_TO="you@yourdomain.com"
 //   supabase functions deploy sky-protection --project-ref <your-project-ref>
 //
-// Send from a SUBDOMAIN (send.yourdomain.com), not the root. A domain
-// may carry only one SPF record and one set of MX records, so adding
-// Resend's to a root domain that already has a mailbox on it breaks the
-// mailbox — incoming mail and outgoing alike. A subdomain has its own,
-// leaves the mailbox untouched, and keeps this product's sending
-// reputation separate from anything sent by hand.
-//
-// SKY_REPLY_TO is optional; without it a parent's reply goes nowhere.
+// Sending through the domain's own mailbox needs NO DNS work at all —
+// the provider's SPF and DKIM records are already on the domain for
+// exactly this, and the mail is signed by the same servers that carry
+// the rest of that mailbox's post. See the transport note further down
+// for the HTTP alternative and why the switch exists.
 //
 // Failure convention mirrors the family-album function and
 // js/themeRepositoryClient.js: expected failures come back as
@@ -152,13 +150,81 @@ function subjectFor(names: string[]): string {
   return `Magic Cards for ${names.join(' and ')} — VihuPlanet`;
 }
 
-// SKY_REPLY_TO is optional and worth setting. The `from` address has to
-// live at whatever domain is verified for sending, which is usually a
-// subdomain nobody reads — so without this, a parent who replies to
-// their child's Magic Card is talking to nothing. Point it at a real
-// mailbox and a reply reaches a person, which for the one message this
-// product sends to a grown-up is the right behaviour.
-async function sendMail(to: string, subject: string, body: string) {
+// ---------------------------------------------------------------
+// SENDING
+//
+// Two transports, chosen by whichever secrets are present. SMTP wins
+// when it is configured, because it is the deliberate choice; the HTTP
+// provider is the fallback and the escape hatch.
+//
+// This is not indecision — it is the reason the switch exists. SMTP
+// from an edge runtime is a raw TCP connection to somebody else's mail
+// server, and it is the least forgiving part of this whole feature: a
+// throttle, a blocked relay or a slow handshake all look the same from
+// here. Being able to move to an HTTP API by setting one secret, with
+// no code change and no deploy, is worth the twenty lines.
+//
+// SMTP (a real mailbox — e.g. GoDaddy Professional Email):
+//   SMTP_HOST      smtpout.secureserver.net
+//   SMTP_PORT      465  (implicit TLS)  ·  587 (STARTTLS)
+//   SMTP_USER      you@yourdomain.com
+//   SMTP_PASSWORD  the mailbox password
+//
+// HTTP (Resend):
+//   RESEND_API_KEY re_...
+//
+// Both:
+//   SKY_FROM_EMAIL  "VihuPlanet <you@yourdomain.com>"
+//   SKY_REPLY_TO    optional; without it a parent's reply goes nowhere
+//
+// With SMTP the from address must be the mailbox that authenticated —
+// most providers, GoDaddy included, reject anything else — so
+// SKY_FROM_EMAIL and SMTP_USER are the same address, with a display
+// name on the front.
+// ---------------------------------------------------------------
+
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
+
+async function sendViaSmtp(to: string, subject: string, body: string) {
+  const host = Deno.env.get('SMTP_HOST');
+  const user = Deno.env.get('SMTP_USER');
+  const pass = Deno.env.get('SMTP_PASSWORD');
+  const from = Deno.env.get('SKY_FROM_EMAIL') || user;
+  const replyTo = Deno.env.get('SKY_REPLY_TO');
+  const port = Number(Deno.env.get('SMTP_PORT') || '465');
+  if (!host || !user || !pass || !from) return { ok: false, error: 'mail_not_configured' };
+
+  let client: SMTPClient | null = null;
+  try {
+    client = new SMTPClient({
+      connection: {
+        hostname: host,
+        port,
+        // 465 is implicit TLS from the first byte; 587 opens in the
+        // clear and upgrades with STARTTLS, which denomailer does for
+        // itself. Getting this pair wrong is the usual reason a send
+        // hangs rather than fails.
+        tls: port === 465,
+        auth: { username: user, password: pass },
+      },
+    });
+    await client.send({
+      from,
+      to,
+      subject,
+      content: body,
+      replyTo: replyTo || undefined,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: 'mail_send_failed', detail: String(e).slice(0, 300) };
+  } finally {
+    // Never let a failed close mask a successful send.
+    try { await client?.close(); } catch { /* ignore */ }
+  }
+}
+
+async function sendViaResend(to: string, subject: string, body: string) {
   const key = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('SKY_FROM_EMAIL');
   const replyTo = Deno.env.get('SKY_REPLY_TO');
@@ -177,6 +243,12 @@ async function sendMail(to: string, subject: string, body: string) {
     return { ok: false, error: 'mail_send_failed', detail: detail.slice(0, 300) };
   }
   return { ok: true };
+}
+
+async function sendMail(to: string, subject: string, body: string) {
+  if (Deno.env.get('SMTP_HOST')) return await sendViaSmtp(to, subject, body);
+  if (Deno.env.get('RESEND_API_KEY')) return await sendViaResend(to, subject, body);
+  return { ok: false, error: 'mail_not_configured' };
 }
 
 function admin() {
