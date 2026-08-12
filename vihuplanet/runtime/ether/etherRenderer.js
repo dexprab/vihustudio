@@ -80,7 +80,9 @@
   // slide them without an edge appearing. Comfortably more than the
   // camera's reach (~2.5% of the shorter edge) times any parallax a
   // baked layer uses.
-  var BLEED = 56;
+  // Sized against the deepest vertical look the camera allows: pitch
+  // reaches 0.35 of the viewport, and this layer moves at 0.18 of that.
+  var BLEED = 72;
 
   // The soft buffer gets a much larger bleed than the sky, because it
   // is a quarter-resolution blur: 120 view-pixels of margin costs 30
@@ -163,6 +165,20 @@
     if (alpha <= 0.002 || radius <= 0.5) return;
     ctx.globalAlpha = alpha;
     ctx.drawImage(blob(color), x - radius, y - radius, radius * 2, radius * 2);
+  }
+
+  // The same blob, drawn so that the buffer it lands in TILES.
+  //
+  // A tiled blit repeats an image side by side, which only works if the
+  // image's left edge continues its right edge. A blob that runs off
+  // one side and does not reappear on the other breaks that: the dark
+  // edge of one copy butts against the bright middle of the next and
+  // the universe gets a hard vertical line down it. Anything large
+  // enough to cross an edge has to be drawn on both sides.
+  function drawBlobWrapped(ctx, color, x, y, radius, alpha, span) {
+    drawBlob(ctx, color, x, y, radius, alpha);
+    if (x - radius < 0) drawBlob(ctx, color, x + span, y, radius, alpha);
+    else if (x + radius > span) drawBlob(ctx, color, x - span, y, radius, alpha);
   }
 
   EtherNS.createRenderer = function (opts) {
@@ -367,13 +383,14 @@
         var br = b.r * span;
         for (var q = 0; q < b.lobes.length; q++) {
           var lobe = b.lobes[q];
-          drawBlob(softCtx, b.color,
+          drawBlobWrapped(softCtx, b.color,
             bx + lobe.dx * br, by + lobe.dy * br,
-            br * lobe.rs, b.alpha * lobe.as * pulse * breath);
+            br * lobe.rs, b.alpha * lobe.as * pulse * breath, w);
         }
         // A brighter heart. The difference between a cloud of colour
         // and a cloud of colour that has somewhere it is coming from.
-        drawBlob(softCtx, b.color, bx, by, br * 0.30, b.alpha * 0.58 * pulse * breath);
+        drawBlobWrapped(softCtx, b.color, bx, by, br * 0.30,
+          b.alpha * 0.58 * pulse * breath, w);
       }
 
       // Mist — the buffer's own plane, so no internal offset.
@@ -382,7 +399,8 @@
         var ph = amb.mistPhase[m];
         var mx = w * (0.5 + 0.36 * Math.sin(ph * 0.61 + m * 2.0));
         var my = h * (0.5 + 0.28 * Math.cos(ph * 0.43 + m * 1.3));
-        drawBlob(softCtx, p.mist, mx, my, mistR * (0.8 + m * 0.16), 0.030 * breath);
+        drawBlobWrapped(softCtx, p.mist, mx, my,
+          mistR * (0.8 + m * 0.16), 0.030 * breath, w);
       }
 
       // The warmth at the heart of the field.
@@ -394,8 +412,8 @@
       // registering and the nebula stops reading as a shape. Keeping
       // these two quiet is what lets the nebula, which is localised, be
       // the thing that gives the space somewhere-ness.
-      drawBlob(softCtx, p.glow, w * 0.5, h * 0.54, span * 0.62,
-        (0.024 + amb.glow * 0.034) * breath);
+      drawBlobWrapped(softCtx, p.glow, w * 0.5, h * 0.54, span * 0.62,
+        (0.024 + amb.glow * 0.034) * breath, w);
 
       softCtx.globalAlpha = 1;
       softCtx.globalCompositeOperation = 'source-over';
@@ -408,19 +426,25 @@
     // sets sit at different depths, so the lights are offset INSIDE
     // the buffer by the difference between their parallax and the
     // buffer's — the same trick the nebula uses in drawSoft().
-    function assembleLit(mistOffset, storyOffset, breath) {
+    function assembleLit(breath) {
       var k = 1 / SOFT_SCALE;
       var p = ether.palette;
+      var any = false;
 
       litCtx.setTransform(1, 0, 0, 1, 0, 0);
-      litCtx.globalCompositeOperation = 'source-over';
       litCtx.globalAlpha = 1;
+      litCtx.globalCompositeOperation = 'source-over';
       litCtx.clearRect(0, 0, lit.width, lit.height);
-      litCtx.drawImage(soft, 0, 0);
-
       litCtx.globalCompositeOperation = 'lighter';
-      var ox = ((storyOffset ? storyOffset.x : 0) - (mistOffset ? mistOffset.x : 0)) * k;
-      var oy = ((storyOffset ? storyOffset.y : 0) - (mistOffset ? mistOffset.y : 0)) * k;
+
+      // NOT merged into the soft buffer any more, and not tiled.
+      //
+      // Merging them saved a full-screen composite and was wrong the
+      // moment the universe could be turned: the soft buffer tiles, and
+      // a Spirit's aura is in VIEW space — tiling it drew every Spirit's
+      // light a second time, a screen-width away from the Spirit it
+      // belongs to. Correctness costs one more composite here.
+      var ox = 0, oy = 0;
 
       for (var i = 0; i < ether.lights.length; i++) {
         var l = ether.lights[i];
@@ -440,10 +464,12 @@
         var hue = p[l.hue] || p.glow;
         drawBlob(litCtx, l.warm ? p.spark : hue, x, y, reach, l.intensity * 0.17 * breath);
         drawBlob(litCtx, p.mist, x, y, reach * 1.9, l.intensity * 0.07 * breath);
+        any = true;
       }
 
       litCtx.globalAlpha = 1;
       litCtx.globalCompositeOperation = 'source-over';
+      return any;
     }
 
     // ---------- dust ----------
@@ -606,13 +632,18 @@
       var storyCam = camera ? camera.offsetFor(D.stories) : null;
       if (frames % SOFT_INTERVAL === 0) drawSoft(mistCam);
       frames++;
-      assembleLit(mistCam, storyCam, breath);
       ctx.globalAlpha = 1;
       var softTile = w + SOFT_BLEED * 2;
-      blitTiled(ctx, lit,
+      blitTiled(ctx, soft,
         wrapOffset((mistCam ? mistCam.x : 0) - SOFT_BLEED, softTile),
         (mistCam ? mistCam.y : 0) - SOFT_BLEED,
         softTile, h + SOFT_BLEED * 2);
+
+      // The auras, in view space, once.
+      if (assembleLit(breath)) {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(lit, -SOFT_BLEED, -SOFT_BLEED, softTile, h + SOFT_BLEED * 2);
+      }
 
       // --- the Spirit's core.
       //

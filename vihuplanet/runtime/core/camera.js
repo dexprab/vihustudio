@@ -100,8 +100,21 @@
     // it is a universe, it does not snap.
     var ease = opts.ease || 2.4;
 
+    // How far up and down the Traveller can look, in view pixels.
+    //
+    // This used to be derived purely from the field — (fieldH - viewH)
+    // / 2 — and in a nearly empty Ether the field is only 1.18x the
+    // view, so the whole vertical range was about 70px and the up/down
+    // arrows did visibly nothing. Yaw did not have the problem because
+    // it maps to a full field WIDTH and wraps.
+    //
+    // Looking up is a thing you can always do under a sky, whatever is
+    // in it, so there is a floor: a third of the viewport either way.
+    // It stays under what the renderer's bleed can cover at the
+    // deepest parallax that uses one (0.30 x 0.35 x viewH < SOFT_BLEED).
     function pitchLimit() {
-      return Math.max(0, (ether.height - ether.viewHeight) * 0.5);
+      return Math.max((ether.height - ether.viewHeight) * 0.5,
+                      ether.viewHeight * 0.35);
     }
 
     // Radians in, and a full turn is one field width across.

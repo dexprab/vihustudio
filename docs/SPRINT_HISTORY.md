@@ -1580,3 +1580,30 @@ SlideRenderer in would fix that and is its own piece of work. One real bug:
 `core/camera.js` used `Util` without importing it, which threw the instant
 anything called `lookTo`. Verified end to end across all five stages with real
 records in the real store, plus reduced motion, keyboard, and no console errors.
+
+## Sprint U2 follow-up · Two turning bugs, from a real screen
+
+Both reported by the product owner looking at the Ether on their own machine,
+and both invisible in the container the sprint was verified in. **A hard
+vertical seam down the middle of the universe when turning left or right**: the
+layers drawn as whole images tile horizontally so yaw can be unbounded, and a
+tiled blit is only correct if the image's left edge continues its right edge —
+the nebula/mist buffer's did not, because blobs ran off one side and never
+reappeared on the other, so the dark edge of one copy butted against the bright
+middle of the next. Fixed by drawing anything large enough to cross an edge on
+both sides (`drawBlobWrapped`). Verified by scanning every column for a
+discontinuity present at *every* row — the test that separates a tile seam from a
+bright star, which was what the first, cruder scan kept flagging — at ten yaw
+angles through two full turns and while looking up: worst reading 1 out of a
+possible 765, against roughly 40+ for the seam. The same fix exposed a second
+defect it had been hiding: **the story auras were inside that tiled buffer**, so
+every Spirit's light was also being drawn a second time a screen-width away from
+the Spirit it belonged to. Auras are view-space and are now composited
+separately and once, which costs back the full-screen pass merging them had
+saved — correctness over the frame. Separately, **the up and down arrows did
+visibly nothing**: pitch range was derived purely from the field, and in a
+nearly empty Ether the field is only 1.18x the view, giving a total vertical
+range of about 70px; yaw never had the problem because it maps to a full field
+WIDTH and wraps. Looking up is something you can always do under a sky, so pitch
+now has a floor of a third of the viewport either way — 199px of travel measured
+where there had been none — with the sky's bleed raised to 72px to cover it.

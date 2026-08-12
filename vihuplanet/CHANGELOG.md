@@ -2,6 +2,33 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.7.1 — 2026-08-12
+
+Two bugs in Sprint U2's turning, both reported from a real screen.
+
+- **Fix — a hard vertical seam down the universe when turning.** Layers
+  drawn as whole images tile horizontally so the universe can be turned
+  without end, and a tiled blit only works if the image's left edge
+  continues its right edge. The nebula and mist buffer's did not: blobs
+  ran off one side and never reappeared on the other, so the dark edge
+  of one copy butted against the bright middle of the next. Anything
+  large enough to cross an edge is now drawn on both sides. Verified by
+  scanning every column for a full-height discontinuity at ten yaw
+  angles through two full turns and while looking up — worst reading 1
+  out of a possible 765, against roughly 40+ for the seam itself.
+- **Fix — the story auras were being tiled with it**, which drew every
+  Spirit's light a second time a screen-width from the Spirit it
+  belonged to. Auras are in view space and are now composited
+  separately and once. That costs one more full-screen pass and is
+  simply what correctness costs here.
+- **Fix — the up and down arrows did visibly nothing.** The pitch range
+  was derived purely from the field, and in a nearly empty Ether the
+  field is only 1.18× the view — a total vertical range of about 70px.
+  Yaw never had the problem because it maps to a full field WIDTH and
+  wraps. Looking up is something you can always do under a sky, so
+  pitch now has a floor of a third of the viewport either way: measured
+  at 199px of travel where there had been none.
+
 ## v0.7.0 — 2026-08-12
 
 **Sprint U2 — Story Spirits & the Ether Interaction Runtime.** A
