@@ -2,6 +2,59 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.6.0 — 2026-08-12
+
+**Sprint U1 — Make the Universe Feel Alive.** The runtime worked but
+did not yet feel like VihuPlanet: a gradient, some stars, and one
+floating story — a stage waiting for actors. This sprint redesigns the
+*Universe* Runtime rather than the Story Runtime, against one test: **if
+there were zero stories here, would this still feel like a magical
+living universe?** See [`runtime/README.md`](runtime/README.md).
+
+- **New — Ether Currents** (`runtime/ether/currents.js`). Stories no
+  longer drift randomly; the Ether moves and carries them. The field
+  is the curl of a scalar potential, so it is divergence-free by
+  construction and nothing ever collects in a corner. Measured: flow
+  alignment 0.91 at 200px falling to −0.25 at 1600px — neighbours
+  travel together, opposite sides of the universe go opposite ways.
+- **New — the Universe Camera** (`runtime/core/camera.js`). The
+  viewpoint drifts on incommensurate 50–80 second periods at 2.5% of
+  the shorter viewport edge: too slow to notice while looking, and
+  unmistakable after half a minute. It is also what makes depth real —
+  every layer moves by its own parallax. It changes viewpoint, never
+  position, so focus still returns a story exactly.
+- **New — the story light field** (`runtime/stories/storyLight.js`).
+  One story alone never looks abandoned: the space answers with a glow,
+  and the currents bend perpendicular around it so dust sweeps past
+  rather than being repelled. Neither the renderer nor the currents
+  know that a light is a story.
+- **New — depth in nine planes** (`ether.depth`), with a second canvas
+  above the story layer for the two that are nearer than the stories.
+- **New — living light.** `ambient.breath` is one value every luminous
+  layer multiplies in, so the universe brightens and dims as one body.
+  Per-bloom nebula pulses, per-mote throbs, per-story rhythms, and
+  star-blooms every 3–11 seconds.
+- **Changed — the Ambient System** now runs four dust layers at four
+  depths, all carried by the currents, plus streaks that ride the
+  rivers as tapering trails of remembered positions (a straight line at
+  any visible alpha reads as a scratch on a lens).
+- **Changed — the sky.** Smaller, irregular, multi-lobed nebula blooms
+  with brighter cores instead of frame-wide washes; deeper darks; a few
+  genuinely bright stars.
+- **Changed — the development panel is separated from the experience.**
+  Closed at load, one small mark in the corner, D to open.
+- **Performance.** Four costs found by profiling and fixed — the light
+  field moved into a quarter-size buffer, that buffer merged with the
+  soft layers into a single full-screen composite (safe because
+  additive blending is commutative), tighter shadows, tighter bleed.
+  17fps → 41fps *with more layers than before*; 425 stories at 39fps
+  without GPU acceleration.
+- **Fix — buffers drawn at a camera offset need a bleed margin.**
+  Without it the mist and nebula stop before the screen does and the
+  universe gets a dark frame around it.
+- **Accessibility.** `prefers-reduced-motion` now also stops the
+  camera. Verified: camera, stories and dust all move exactly 0.0000.
+
 ## v0.5.0 — 2026-08-11
 
 **VihuPlanet Ether Runtime (Phase 1).** A new system, not a Hero

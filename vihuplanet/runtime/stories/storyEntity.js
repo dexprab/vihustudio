@@ -25,7 +25,8 @@
 //   velocity     { x, y }   field pixels per second
 //   rotation     degrees
 //   spin         degrees per second
-//   baseSpeed    the pace this story eases back to
+//   flow         how completely the Ether Currents carry this story
+//   personal     { x, y }  its own tiny drift on top of the current
 //   bob          { phase, speed, amplitude }  the tiny floating motion
 //   bobX, bobY   the bob resolved for this frame. Renderers ADD these
 //                to position; physics never integrates them.
@@ -114,12 +115,13 @@
       ? Util.clamp(input.depth, 0, 1)
       : rng.between(0.25, 1.0);
 
-    // Base drift speed in field px/s. Slow enough that the movement is
+    // Initial drift, in field px/s. Slow enough that the movement is
     // caught out of the corner of the eye rather than watched — Art
     // Direction v1.0's "no object animates faster than a shaft of
-    // sunlight moving across a room". Nearer stories drift slightly
-    // faster than far ones, which is the whole of the depth cue.
-    var speed = rng.between(3.2, 7.0) * Util.lerp(0.55, 1.0, depth);
+    // sunlight moving across a room". Within a few seconds the Ether
+    // Currents have taken over and this is forgotten; it exists so a
+    // story is never seen to start from a standstill.
+    var speed = rng.between(2.4, 5.0) * Util.lerp(0.55, 1.0, depth);
     var heading = rng.between(0, Math.PI * 2);
 
     var entity = {
@@ -140,9 +142,18 @@
         x: Math.cos(heading) * speed,
         y: Math.sin(heading) * speed
       },
-      // The pace this story eases back to after anything disturbs it
-      // (see the governor in physics.js). Every story keeps its own.
-      baseSpeed: speed,
+      // How completely this story surrenders to the Ether Currents.
+      // Near 1, so stories in the same river travel together — that
+      // shared direction is the thing that makes the space read as a
+      // current rather than as noise. The spread is small but it
+      // matters: identical affinity looks like a conveyor belt.
+      flow: rng.between(0.78, 1.16) * Util.lerp(0.62, 1.0, depth),
+      // A tiny drift of its own, on top of the current, so no two
+      // stories in the same river are ever perfectly locked.
+      personal: {
+        x: rng.spread(1.4),
+        y: rng.spread(1.4)
+      },
       rotation: rng.between(-6, 6),
       // Degrees per second. At this range a full turn takes between
       // four and twelve minutes — a story is never seen to rotate,

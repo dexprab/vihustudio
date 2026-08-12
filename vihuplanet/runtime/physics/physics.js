@@ -6,24 +6,34 @@
 // heard of a renderer. Swap the presentation layer entirely and this
 // file does not change.
 //
-// The five laws, in the order they are applied:
+// The four laws, in the order they are applied:
 //
-//   1. Wander    — each story's heading turns very slowly, on its own
-//                  private rhythm. This is what stops a field of
-//                  drifting objects from reading as a screensaver:
-//                  nothing travels in a straight line forever, and no
-//                  two stories turn together.
+//   1. Current   — the Ether moves, and a story is carried by it. Its
+//                  velocity eases toward the local current plus its
+//                  own small personal drift.
+//
+//                  This replaced a per-story random "wander", and the
+//                  difference is the whole of Sprint U1's premise: in
+//                  a wander, every object has an arbitrary heading and
+//                  the eye reads noise. In a current, things near each
+//                  other move TOGETHER, and the eye reads direction —
+//                  a sense that this space is going somewhere, without
+//                  a child ever consciously noticing why.
+//
+//                  The easing is also what keeps the field cool. A
+//                  story pushed by avoidance is drawn back to the pace
+//                  of its river within a few seconds, so no separate
+//                  speed governor is needed.
 //   2. Avoidance — a soft push away from anything crowding it. Not a
 //                  collision: stories never bounce, they ease apart.
+//                  It matters more now than it did: stories sharing a
+//                  current no longer separate on their own.
 //   3. Attraction— a gentle spring toward `entity.anchor`, if one
-//                  exists. Nothing in Phase 1 sets an anchor. This is
-//                  the plug point Story World clustering will use, and
-//                  the reason clustering will not require a physics
+//                  exists. Nothing sets an anchor. This is the plug
+//                  point Story World clustering will use, and the
+//                  reason clustering will not require a physics
 //                  rewrite.
-//   4. Governor  — speed is eased back toward each story's own base
-//                  speed. Without this, avoidance slowly heats the
-//                  whole field up until everything is racing.
-//   5. Drift     — integrate, spin, bob, wrap.
+//   4. Drift     — integrate, spin, bob, wrap.
 //
 // The bob (that tiny floating motion) is deliberately NOT integrated
 // into position. It is written to `bobX` / `bobY` and added by the
@@ -49,13 +59,14 @@
     // How hard a crowded story is pushed away, in px/s². Low: the
     // separation should be felt over a few seconds, never seen as a
     // reaction.
-    avoidStrength: 46,
+    avoidStrength: 58,
     // Personal space, as a multiple of the two radii involved.
     avoidPadding: 1.15,
-    // How fast a heading is allowed to wander, in radians/s.
-    wanderRate: 0.11,
-    // How quickly speed returns to a story's base speed (1/s).
-    governor: 0.35,
+    // How quickly a story gives itself up to the current it is in
+    // (1/s). A time constant of about four seconds: fast enough that
+    // a story pushed aside rejoins the flow while you watch, slow
+    // enough that it never looks steered.
+    surrender: 0.26,
     // Hard ceiling. A story should never outrun a slow walk across
     // the field, whatever forces stack up.
     maxSpeed: 26,
@@ -71,6 +82,7 @@
     if (opts.config) for (var j in opts.config) if (cfg.hasOwnProperty(j)) cfg[j] = opts.config[j];
 
     var grid = Physics.createGrid(opts.cellSize || 170);
+    var currents = opts.currents || null;
     var motionScale = (typeof opts.motionScale === 'number') ? opts.motionScale : 1;
 
     // Scratch vector, reused every frame for every entity. Allocating
@@ -134,35 +146,26 @@
       e.velocity.y += (a.y - e.position.y) * strength * dt;
     }
 
-    function governSpeed(e, dt) {
-      var vx = e.velocity.x, vy = e.velocity.y;
-      var speed = Math.sqrt(vx * vx + vy * vy);
-      if (speed < 0.0001) return;
-
-      var target = e.baseSpeed;
-      // Exponential approach — frame-rate independent, and it never
-      // overshoots, so a story that was pushed hard eases back to its
-      // own pace instead of oscillating around it.
-      var eased = speed + (target - speed) * (1 - Math.exp(-cfg.governor * dt));
-      if (eased > cfg.maxSpeed) eased = cfg.maxSpeed;
-
-      var k = eased / speed;
-      e.velocity.x = vx * k;
-      e.velocity.y = vy * k;
+    // The Ether carries it. Exponential approach — frame-rate
+    // independent, never overshoots, so a story eases into its river
+    // instead of oscillating around it.
+    function carry(e, dt, time) {
+      if (!currents) return;
+      var v = currents.sample(e.position.x, e.position.y, time);
+      var wantX = v.x * e.flow + e.personal.x;
+      var wantY = v.y * e.flow + e.personal.y;
+      var k = 1 - Math.exp(-cfg.surrender * dt);
+      e.velocity.x += (wantX - e.velocity.x) * k;
+      e.velocity.y += (wantY - e.velocity.y) * k;
     }
 
-    function wander(e, dt, time) {
-      // Two sine waves at incommensurate rates, seeded per story. The
-      // result never repeats on any rhythm an eye can find, and costs
-      // two sin() calls — no noise table, no per-entity state beyond
-      // the phase it was born with.
-      var p = e.bob.phase;
-      var turn = (Math.sin(time * 0.17 + p) * 0.6 + Math.sin(time * 0.041 + p * 2.3) * 0.4);
-      var angle = turn * cfg.wanderRate * dt;
-      var cos = Math.cos(angle), sin = Math.sin(angle);
+    function capSpeed(e) {
       var vx = e.velocity.x, vy = e.velocity.y;
-      e.velocity.x = vx * cos - vy * sin;
-      e.velocity.y = vx * sin + vy * cos;
+      var speed = Math.sqrt(vx * vx + vy * vy);
+      if (speed <= cfg.maxSpeed || speed < 0.0001) return;
+      var k = cfg.maxSpeed / speed;
+      e.velocity.x = vx * k;
+      e.velocity.y = vy * k;
     }
 
     function wrap(e, field) {
@@ -199,10 +202,10 @@
         e = entities[i];
         if (!isSimulated(e)) continue;
 
-        wander(e, dt, time);
+        carry(e, dt, time);
         avoid(e, dt);
         attract(e, dt);
-        governSpeed(e, dt);
+        capSpeed(e);
 
         e.position.x += e.velocity.x * dt * motionScale;
         e.position.y += e.velocity.y * dt * motionScale;

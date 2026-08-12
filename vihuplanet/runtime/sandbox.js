@@ -100,21 +100,48 @@
     // VihuPlanet namespace.
     window.sandboxUniverse = universe;
 
+    // The panel is development, not experience (Sprint U1 #7). Closed
+    // by default, and its stats only tick while it is open — a hidden
+    // panel should not cost the universe a timer.
+    var panel = document.querySelector('[data-panel]');
+    var toggle = document.querySelector('[data-toggle]');
     var statsEl = document.querySelector('[data-stats]');
+    var statsTimer = 0;
+
     function paintStats() {
       if (!statsEl) return;
       var s = universe.stats();
       statsEl.textContent =
         'stories    ' + s.stories + '\n' +
         'dom nodes  ' + s.nodes + '  (drawn ' + s.drawn + ')\n' +
-        'stars      ' + s.stars + '\n' +
-        'particles  ' + s.particles + '\n' +
+        'stars      ' + s.stars + '  nebula ' + s.nebula + '\n' +
+        'dust       ' + s.particles + '  streaks ' + s.streaks + '\n' +
+        'lights     ' + s.lights + '\n' +
         'arriving   ' + s.arriving + '\n' +
         'field      ' + s.field.width + '×' + s.field.height +
         (s.reducedMotion ? '\nreduced motion — universe is still' : '');
     }
-    paintStats();
-    window.setInterval(paintStats, 500);
+
+    function setPanel(open) {
+      if (!panel || !toggle) return;
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        paintStats();
+        statsTimer = window.setInterval(paintStats, 500);
+      } else {
+        window.clearInterval(statsTimer);
+        statsTimer = 0;
+      }
+    }
+
+    if (toggle) toggle.addEventListener('click', function () { setPanel(panel.hidden); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'd' || ev.key === 'D') {
+        if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+        setPanel(panel.hidden);
+      }
+    });
 
     document.querySelector('.sandbox-actions').addEventListener('click', function (ev) {
       var action = ev.target && ev.target.getAttribute('data-action');

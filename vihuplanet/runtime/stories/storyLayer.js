@@ -64,6 +64,7 @@
     var signal = opts.signal;
     if (!mount || !ether || !manager) return null;
 
+    var camera = opts.camera || null;
     var maxNodes = opts.maxNodes || DEFAULT_MAX_NODES;
 
     // How far outside the view a story still gets a node, so one that
@@ -205,6 +206,14 @@
       var centre = ether.centre();
       var i, e;
 
+      // The Universe Camera, at the stories' own plane. It is a
+      // viewpoint, not a position: it shifts where a story is DRAWN
+      // and never touches where it IS, which is why focus still
+      // returns a story to the exact place it occupied.
+      var cam = camera ? camera.offsetFor(ether.depth.stories) : null;
+      var camX = cam ? cam.x : 0;
+      var camY = cam ? cam.y : 0;
+
       // 1 · cull to the field plus a margin.
       visible.length = 0;
       for (i = 0; i < entities.length; i++) {
@@ -219,8 +228,9 @@
         // the cost flat as VihuPlanet fills up, and what leaves
         // stories to be discovered rather than displayed.
         if (!focused) {
-          if (e.position.x < -margin || e.position.x > ether.viewWidth + margin) continue;
-          if (e.position.y < -margin || e.position.y > ether.viewHeight + margin) continue;
+          var vx = e.position.x + camX, vy = e.position.y + camY;
+          if (vx < -margin || vx > ether.viewWidth + margin) continue;
+          if (vy < -margin || vy > ether.viewHeight + margin) continue;
         }
         visible.push(e);
       }
@@ -267,9 +277,13 @@
         // wrong: at focusT 0 the story is exactly where physics left
         // it, because that is the same expression that drew it a
         // moment ago.
+        // The camera is applied to the drifting position BEFORE the
+        // focus blend, so a focused story lands on the centre of the
+        // screen exactly and stays there while the universe keeps
+        // drifting behind it.
         var t = Util.smooth(e.focusT);
-        var x = Util.lerp(e.position.x + e.bobX, centre.x, t);
-        var y = Util.lerp(e.position.y + e.bobY, centre.y, t);
+        var x = Util.lerp(e.position.x + e.bobX + camX, centre.x, t);
+        var y = Util.lerp(e.position.y + e.bobY + camY, centre.y, t);
         var rot = Util.lerp(e.rotation, 0, t);
 
         // Birth. The story starts as a point of light and grows into

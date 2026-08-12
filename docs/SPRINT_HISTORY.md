@@ -1424,3 +1424,54 @@ and `destroy()` leaving nothing behind. Detail in
 without a new decision: Story Worlds, clustering, world emergence, Telescope and
 Companion integration, the reading experience, reactions, search, filters,
 ranking.
+
+## Sprint U1 · Make the Universe Feel Alive
+
+The runtime worked and did not yet feel like VihuPlanet — a gradient, some
+stars, one floating story, "a stage waiting for actors". The product owner's
+framing was that the problem is not the Story Entity but the Universe, and the
+test is a single question: **if there were zero stories here, would this still
+feel like a magical living universe?** Three systems were added, none of which
+needs a story to exist. **Ether Currents** (`ether/currents.js`) replace
+per-story random wander: the Ether itself moves and everything floating in it is
+carried, so things near each other travel *together* and the eye reads direction
+instead of noise. The field is the curl of a scalar potential — divergence-free
+by construction, which is not decoration: a flow field built the obvious way
+(noise for x, noise for y) has sources and sinks, and everything in the universe
+slowly collects in three corners and stays. The rivers also had to be widened
+after measurement — at a smallest octave of 0.38 view-widths, stories 400px
+apart aligned at only 0.20, which is turbulence rather than current; widened,
+flow alignment is 0.91 at 200px falling to −0.25 at 1600px. The **Universe
+Camera** (`core/camera.js`) drifts the viewpoint on incommensurate 50–80s
+periods at 2.5% of the shorter edge — too slow to catch, unmistakable after half
+a minute — and is also what makes depth real, since nine layers each read its
+offset times their own parallax and nothing has to animate for the universe to
+have volume. It changes viewpoint and never position, so exact return survives:
+verified with the camera 19px off centre, a focused story still lands dead
+centre and a closed one returns with a delta of exactly zero. The **story light
+field** (`stories/storyLight.js`) means one story is never alone — the space
+answers with a glow and the currents bend *perpendicular* around it, so dust
+sweeps past rather than being repelled, which is what reads as space curving
+rather than a story pushing; neither the renderer nor the currents know a light
+is a story. Around those: four dust layers at four depths all carried by the
+currents, streaks that ride the rivers as tapering trails of remembered
+positions (a straight segment at any visible alpha reads as a scratch on a
+lens), a single `breath` value every luminous layer multiplies in so the
+universe brightens as one body, per-bloom and per-mote and per-story rhythms
+that never coincide, star-blooms every 3–11 seconds, and a second canvas above
+the story layer for the two planes nearer than the stories. The sky itself was
+reworked twice against screenshots: frame-wide nebula washes read as haze
+(measured at twice the luminance of the ink they sit on, with the stars no
+longer registering), so blooms are now smaller, irregular, multi-lobed and
+cored, with genuinely dark space between them. Four performance costs were found
+by profiling and fixed — the light field at full resolution alone took the
+universe from 60fps to 17, and blitting the soft layers and the light field
+separately cost a whole extra full-screen `lighter` pass, which merging removes
+at no visual cost because additive blending is commutative and only the veil's
+position in the sequence matters. Net 17fps → 41fps with more layers than
+before; 425 stories at 39fps without GPU acceleration. One real bug: buffers
+drawn at a camera offset need a bleed margin, or the mist and nebula stop before
+the screen does and the universe gets a dark frame around it. The development
+panel is now closed at load behind one small mark in the corner (Sprint U1 #7),
+and `prefers-reduced-motion` stops the camera too — camera, stories and dust all
+verified at exactly 0.0000 movement. Detail in `vihuplanet/runtime/README.md`.

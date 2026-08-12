@@ -8,13 +8,16 @@
 // That ordering is the only coupling in the runtime, and it is here
 // rather than distributed through the systems on purpose:
 //
-//   1. Ambient   the universe does its own thing first — it is not a
+//   1. Camera    the viewpoint drifts. First, because every layer is
+//                drawn through it
+//   2. Ambient   the universe does its own thing — it is not a
 //                reaction to anything
-//   2. Birth     arriving stories are moved by Birth, not by Physics
-//   3. Focus     focusT and the veil settle before anything is drawn
-//   4. Physics   the drifting universe integrates
-//   5. Ether     the space is painted
-//   6. Stories   the stories are placed on top of it
+//   3. Birth     arriving stories are moved by Birth, not by Physics
+//   4. Focus     focusT and the veil settle before anything is drawn
+//   5. Physics   the drifting universe integrates
+//   6. Light     where every story ended up becomes a light source
+//   7. Ether     the space is painted
+//   8. Stories   the stories are placed on top of it
 //
 // Update and render are not split into two passes. At this scale the
 // separation buys nothing real and costs a second walk over every
@@ -64,20 +67,33 @@
       height: Math.max(1, Math.round(box.height || mount.clientHeight || global.innerHeight))
     });
 
+    // The Ether Currents and the Universe Camera come first: the
+    // currents are what everything that floats is carried by, and the
+    // camera is what every layer is drawn through.
+    var currents = VihuPlanet.Ether.createCurrents({ ether: ether });
+    var camera   = VihuPlanet.Camera.create({ ether: ether });
+
     var manager  = VihuPlanet.Stories.createManager({ field: ether, signal: signal });
     var physics  = VihuPlanet.Physics.create({
       config: opts.physics,
+      currents: currents,
       // Reduced motion is answered once, here, and every system
       // downstream inherits a still universe rather than each of them
       // deciding separately how still to be.
       motionScale: Env.reducedMotion() ? 0 : 1
     });
-    var ambient  = VihuPlanet.Ambient.create({ ether: ether, signal: signal });
-    var renderer = VihuPlanet.Ether.createRenderer({ ether: ether, mount: root });
+    var ambient  = VihuPlanet.Ambient.create({ ether: ether, currents: currents, signal: signal });
+    var renderer = VihuPlanet.Ether.createRenderer({ ether: ether, mount: root, camera: camera });
     var layer    = VihuPlanet.Stories.createLayer({
       mount: root, ether: ether, manager: manager, signal: signal,
-      maxNodes: opts.maxNodes
+      camera: camera, maxNodes: opts.maxNodes
     });
+    var lightField = VihuPlanet.Stories.createLightField({ ether: ether, manager: manager });
+
+    // Appended after the story layer so it sits above it in DOM order.
+    // The nearest atmosphere has to be in FRONT of the stories, and a
+    // canvas cannot be in front of a sibling it precedes.
+    renderer.attachForeground();
     var focus    = VihuPlanet.Focus.create({ ether: ether, manager: manager, layer: layer, signal: signal });
     var birth    = VihuPlanet.Birth.create({ ether: ether, manager: manager, signal: signal });
     var worlds   = VihuPlanet.Worlds.create({ manager: manager, signal: signal });
@@ -85,10 +101,15 @@
     var clock = VihuPlanet.Clock.create();
 
     clock.add(function (dt, time) {
+      camera.update(dt, time);
       ambient.update(dt, time);
       birth.update(dt);
       focus.update(dt);
       physics.step(manager.all(), dt, time, ether);
+      // After physics, before drawing: the light field reads where
+      // every story ended up this frame, and both the renderer and
+      // next frame's currents read the lights.
+      lightField.update(dt, time);
       renderer.render(dt, time);
       layer.render();
     });
@@ -191,6 +212,8 @@
       stories: manager,
       physics: physics,
       ambient: ambient,
+      camera: camera,
+      currents: currents,
       focus: focus,
       worlds: worlds,
       renderer: renderer,
@@ -220,7 +243,10 @@
           nodes: s.nodes,
           drawn: s.drawn,
           stars: r.stars,
+          nebula: r.nebula,
           particles: a.particles,
+          streaks: a.streaks,
+          lights: lightField.count(),
           arriving: birth.pending(),
           focused: focus.isOpen(),
           field: { width: Math.round(ether.width), height: Math.round(ether.height) },

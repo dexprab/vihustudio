@@ -2,39 +2,57 @@
 //
 // Responsible only for rendering the universe. It draws the space; it
 // never draws a story, never moves anything, and never asks what a
-// story is. Hand it a different Ether and it paints that instead.
+// story is. It draws `ether.lights` without knowing that a light
+// happens to be a story. Hand it a different Ether and it paints that
+// instead.
 //
-// Six procedural layers, back to front:
+// ---------------------------------------------------------------
+// THE LAYER STACK
 //
-//   1. Background   a vertical wash, deep at the top, cooler below
-//   2. Nebula       a handful of huge soft blooms, seeded
-//   3. Stars        a paper-cream field; a small subset twinkles
-//   4. Mist         three slow banks drifting across each other
-//   5. Particles    pooled motes, the dust the universe carries
-//   6. Ambient glow one warm swell at the heart of the field
+// Every layer has a PARALLAX (ether.depth) and moves by a different
+// amount when the Universe Camera drifts. That disagreement is the
+// depth — nothing here is drawn larger or hazier to fake distance.
 //
-//   (+ shooting stars, and the focus veil, drawn last of all)
+//   BEHIND the stories · .vp-ether-canvas
+//     0.18  deep gradient + the far star field      (baked)
+//     0.18  living stars · star-blooms              (live)
+//     0.10  far nebula, each bloom on its own pulse (soft buffer)
+//     0.30  mist banks · the ambient glow           (soft buffer)
+//     0.34  far dust
+//     0.46  light currents — the rivers made visible
+//     0.66  mid dust
+//     0.20  shooting stars
+//     1.00  the light field around every story
+//     ----  the focus veil
 //
-// Not one pixel of it is an image file. There is no background PNG to
-// download, to art-direct, to keep in sync across breakpoints, or to
-// scale badly on a phone — HERO_CANON.md §9 asks for instant
-// appearance and minimal rendering cost, and a procedural universe is
-// how a universe meets that.
+//   IN FRONT of the stories · .vp-ether-foreground
+//     1.12  near glowing dust
+//     1.58  foreground atmosphere
 //
-// The four techniques that make this cheap enough to leave running:
+// Two canvases, because a foreground layer drawn on the same canvas
+// as the background is not a foreground layer — it is a background
+// layer with a higher z-index inside the wrong stacking context. The
+// stories are DOM, they sit between the two, and the depth reads
+// correctly for it.
+// ---------------------------------------------------------------
 //
-//   · Layers 1–3 are baked ONCE into an offscreen canvas and blitted
-//     as a single drawImage per frame. They only repaint on resize.
-//   · Everything soft — nebula, mist, glow, particles, star haloes —
-//     is one pre-rendered radial sprite per colour, scaled at draw
-//     time. createRadialGradient is expensive; drawImage is not.
-//   · The mist and the ambient glow are drawn into a QUARTER-SIZE
-//     buffer and scaled up. They are, definitionally, blurs — there
-//     is nothing in them a full-resolution pass can express that a
-//     sixteenth-resolution one cannot — and they were measured to be
-//     the single most expensive thing in the frame before this. That
-//     buffer is also only refreshed every third frame, because the
-//     banks drift at ~0.03 rad/s and cannot visibly change faster.
+// Not one pixel of any of it is an image file. There is no background
+// PNG to download, to art-direct, to keep in sync across breakpoints,
+// or to scale badly on a phone.
+//
+// The techniques that keep it cheap enough to leave running:
+//
+//   · The gradient and the star field are baked ONCE into an offscreen
+//     canvas and blitted as a single drawImage per frame, with a bleed
+//     margin so the camera can slide them without exposing an edge.
+//   · One pre-rendered radial sprite per colour, scaled at draw time.
+//     Every soft thing in the universe is that sprite.
+//     createRadialGradient is expensive; drawImage is not.
+//   · Nebula, mist and ambient glow share a QUARTER-SIZE buffer
+//     refreshed every third frame. They are blurs — there is nothing
+//     in them a full-resolution pass can express. Their different
+//     parallaxes are applied as offsets INSIDE that buffer, so three
+//     depths still cost one blit.
 //   · Nothing allocates inside the frame loop.
 
 (function (global) {
@@ -48,23 +66,26 @@
   var Rng = VihuPlanet.Rng;
   var EtherNS = VihuPlanet.ns('Ether');
 
-  // Star budget per million square pixels of field. Tuned so a laptop
-  // sees a generous sky and a phone sees the same sky at the same
-  // apparent density, rather than the same COUNT crammed smaller.
-  var STAR_DENSITY = 190;
-  var STAR_DENSITY_LOW = 130;
-  // A floor, not a target. Below roughly this many the field stops
+  // Star budget per million square pixels of view.
+  var STAR_DENSITY = 210;
+  var STAR_DENSITY_LOW = 140;
+  // A floor, not a target. Below roughly this many the sky stops
   // reading as a sky and starts reading as an empty box, however small
   // the screen is — density alone does not survive a phone.
-  var STAR_FLOOR = 90;
-  var TWINKLERS = 34;          // how many of them are alive to the eye
-  var TWINKLERS_LOW = 16;
+  var STAR_FLOOR = 110;
+  var TWINKLERS = 46;          // how many of them are alive to the eye
+  var TWINKLERS_LOW = 22;
 
-  // The soft layers (mist + ambient glow) render into a buffer this
-  // many times smaller on each axis, and refresh this rarely. Both
-  // numbers are visual no-ops and together they were the difference
-  // between the Ether costing half a frame and costing a fraction of
-  // one on a machine without a GPU.
+  // How far past the view the baked layers extend, so the camera can
+  // slide them without an edge appearing. Comfortably more than the
+  // camera's reach (~2.5% of the shorter edge) times any parallax a
+  // baked layer uses.
+  var BLEED = 40;
+
+  // The soft layers render into a buffer this many times smaller on
+  // each axis, and refresh this rarely. Both are visual no-ops and
+  // together they were the difference between the Ether costing half a
+  // frame and costing a fraction of one on a machine without a GPU.
   var SOFT_SCALE = 4;
   var SOFT_INTERVAL = 3;
 
@@ -80,8 +101,18 @@
     return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha + ')';
   }
 
-  // One soft radial sprite per colour, cached forever. Every soft
-  // thing in the Ether is this sprite at a different size and alpha.
+  // Blend two palette colours. Used so the Ether can have tones
+  // BETWEEN its named roles without inventing a colour that is not in
+  // Art Direction v1.0 — a mix of ink and shadow-teal is still ink and
+  // shadow-teal.
+  function mix(hexA, hexB, t) {
+    var a = hexToRgb(hexA), b = hexToRgb(hexB);
+    return 'rgb(' + Math.round(a.r + (b.r - a.r) * t) + ',' +
+                    Math.round(a.g + (b.g - a.g) * t) + ',' +
+                    Math.round(a.b + (b.b - a.b) * t) + ')';
+  }
+
+  // One soft radial sprite per colour, cached forever.
   var _blobs = {};
   function blob(color) {
     if (_blobs[color]) return _blobs[color];
@@ -100,10 +131,9 @@
   }
 
   function drawBlob(ctx, color, x, y, radius, alpha) {
-    if (alpha <= 0.002) return;
-    var sprite = blob(color);
+    if (alpha <= 0.002 || radius <= 0.5) return;
     ctx.globalAlpha = alpha;
-    ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.drawImage(blob(color), x - radius, y - radius, radius * 2, radius * 2);
   }
 
   EtherNS.createRenderer = function (opts) {
@@ -112,36 +142,59 @@
     var mount = opts.mount;
     if (!ether || !mount) return null;
 
+    var camera = opts.camera || null;
     var lowPower = Env.lowPower();
     var reduced = Env.reducedMotion();
     var seed = (typeof opts.seed === 'number') ? opts.seed : Rng.sessionSeed();
+    var D = ether.depth;
 
-    var canvas = global.document.createElement('canvas');
-    canvas.className = 'vp-ether-canvas';
-    canvas.setAttribute('aria-hidden', 'true');
-    mount.appendChild(canvas);
+    function makeCanvas(cls) {
+      var c = global.document.createElement('canvas');
+      c.className = cls;
+      c.setAttribute('aria-hidden', 'true');
+      mount.appendChild(c);
+      return c;
+    }
+
+    // The back canvas is created here; the front one is appended later
+    // by the Universe, after the story layer, so it lands above it in
+    // DOM order.
+    var canvas = makeCanvas('vp-ether-canvas');
     var ctx = canvas.getContext('2d');
+    var front = null, frontCtx = null;
 
-    // The baked layers 1–3.
     var baked = global.document.createElement('canvas');
     var bakedCtx = baked.getContext('2d');
-
-    // The quarter-size buffer that mist and ambient glow live in.
     var soft = global.document.createElement('canvas');
     var softCtx = soft.getContext('2d');
 
-    var stars = [];       // every star, baked
-    var twinklers = [];   // the few drawn live on top
+    // Everything soft in the universe ends up here, and this is the
+    // only buffer that ever reaches the screen. Each frame it takes a
+    // copy of `soft` (the slow layers, refreshed every third frame)
+    // and adds the story light field (which moves with the stories and
+    // cannot be allowed to lag), then goes out in ONE full-screen
+    // composite.
+    //
+    // Both halves of that are measured. Drawn at full resolution the
+    // light field alone took the universe from 60fps to 17 on a
+    // machine without a GPU — a glow reaching 240px around each of two
+    // dozen stories is eight million composited pixels a frame. And
+    // blitting the two buffers separately cost a second full-screen
+    // 'lighter' pass for nothing: merging them at a quarter scale
+    // costs sixty thousand pixels.
+    var lit = global.document.createElement('canvas');
+    var litCtx = lit.getContext('2d');
+
+    var stars = [];
+    var twinklers = [];
+    var nebula = [];       // {color, x, y, r, alpha} — pulsed live
     var dpr = 1;
     var frames = 0;
 
-    // ---------- Layer 1–3: bake ----------
-    //
-    // Called on create and on every resize. Everything here is
-    // seeded: the same session regenerates the same sky, so a resized
-    // window is the same universe at a different size, not a new one.
+    // ---------- bake: gradient + the far star field ----------
     function bake() {
-      var w = ether.viewWidth, h = ether.viewHeight;
+      var w = ether.viewWidth + BLEED * 2;
+      var h = ether.viewHeight + BLEED * 2;
       var rng = Rng.create(seed);
       var p = ether.palette;
 
@@ -150,52 +203,44 @@
       bakedCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       bakedCtx.clearRect(0, 0, w, h);
 
-      // 1 · Background. Two stops only. Deep ink at the top of the
-      // field falling to the cooler shadow-teal below — the same
-      // vertical logic as the Hero's sky, inverted for night.
+      // Deep ink high, cooler shadow-teal low — the same vertical
+      // logic as the Hero's sky, inverted for night.
+      //
+      // The low stop is a MIX of the two rather than the shadow-teal
+      // itself. At full strength that colour turns the bottom of the
+      // frame into a pale band that reads as fog on a horizon, and
+      // there is no horizon in the Ether — with the nebula and mist
+      // now brighter, the darks have to stay genuinely dark or the
+      // whole field goes milky and the stars stop registering.
       var bg = bakedCtx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, p.deep);
-      bg.addColorStop(0.62, rgba(p.deep, 0.92));
-      bg.addColorStop(1, p.near);
-      fillField(bg, w, h);
+      bg.addColorStop(0, mix(p.deep, '#070B16', 0.45));
+      bg.addColorStop(0.55, mix(p.deep, '#070B16', 0.12));
+      bg.addColorStop(1, mix(p.deep, p.near, 0.26));
+      bakedCtx.fillStyle = bg;
+      bakedCtx.fillRect(0, 0, w, h);
 
-      // 2 · Nebula. Five or six blooms, large, low-alpha, drawn in the
-      // Art Direction dusk/cerulean/shadow trio. They are the only
-      // thing giving the field a sense of somewhere-ness, so they are
-      // biased toward the upper two thirds where the eye lands first.
-      // Composited as ADDED LIGHT, not as paint. Drawn with the
-      // default source-over these read as flat washes laid on top of
-      // the background — the difference between a nebula and a smudge
-      // is that a nebula is luminous.
-      bakedCtx.globalCompositeOperation = 'lighter';
-      var blooms = lowPower ? 4 : 6;
-      for (var i = 0; i < blooms; i++) {
-        var color = p.nebula[i % p.nebula.length];
-        var bx = rng.between(-0.1, 1.1) * w;
-        var by = rng.between(-0.05, 0.85) * h;
-        var br = rng.between(0.28, 0.62) * Math.max(w, h);
-        drawBlob(bakedCtx, color, bx, by, br, rng.between(0.09, 0.20));
-      }
-      bakedCtx.globalCompositeOperation = 'source-over';
-      bakedCtx.globalAlpha = 1;
-
-      // 3 · Stars. Paper-cream, never white — the Hero's palette has
-      // no white in it, and a white star field is the single fastest
-      // way to make this read as a screensaver instead of a page.
+      // Stars are paper-cream, never white — the Hero's palette has no
+      // white in it, and a white star field is the single fastest way
+      // to make this read as a screensaver instead of a page.
       var area = (w * h) / 1000000;
-      var count = Math.round(area * (lowPower ? STAR_DENSITY_LOW : STAR_DENSITY));
-      count = Util.clamp(count, STAR_FLOOR, 480);
+      var count = Util.clamp(
+        Math.round(area * (lowPower ? STAR_DENSITY_LOW : STAR_DENSITY)),
+        STAR_FLOOR, 620);
 
       stars.length = 0;
       for (var s = 0; s < count; s++) {
         var star = {
           x: rng.next() * w,
           y: rng.next() * h,
-          // Mostly pinpricks, occasionally something with presence.
-          r: rng.next() < 0.86 ? rng.between(0.5, 1.0) : rng.between(1.1, 1.9),
-          a: rng.between(0.22, 0.78),
+          // Mostly pinpricks, some with presence, and a rare few that
+          // are genuinely bright. A sky where every star is the same
+          // magnitude is a texture; a sky with a handful of standouts
+          // is somewhere you start finding shapes.
+          r: rng.next() < 0.84 ? rng.between(0.5, 1.0)
+             : (rng.next() < 0.78 ? rng.between(1.1, 1.9) : rng.between(2.1, 2.9)),
+          a: rng.between(0.26, 0.92),
           phase: rng.between(0, Math.PI * 2),
-          speed: rng.between(0.28, 0.72)
+          speed: rng.between(0.22, 0.66)
         };
         stars.push(star);
         bakedCtx.globalAlpha = star.a;
@@ -213,153 +258,366 @@
       }
       bakedCtx.globalAlpha = 1;
 
-      // The live subset. Drawn over the baked field each frame so the
-      // sky breathes without repainting four hundred stars.
+      // The subset drawn live on top, so the sky breathes without
+      // repainting six hundred stars.
       twinklers.length = 0;
       var want = Math.min(lowPower ? TWINKLERS_LOW : TWINKLERS, stars.length);
       for (var t = 0; t < want; t++) {
         twinklers.push(stars[Math.floor(rng.next() * stars.length)]);
       }
+
+      // Nebula blooms are described here and drawn live, so each one
+      // can carry its own slow pulse — a baked nebula is a painted
+      // backdrop, and the universe is not supposed to have one.
+      // Blooms are SMALLER than they were, and that was the fix for
+      // the field reading as haze. At 0.30–0.68 of the frame every
+      // bloom overlapped every other one and the result was a uniform
+      // wash — the opposite of structure. Kept tighter, with a
+      // brighter core inside each, they read as regions with dark
+      // space between them, which is what gives the Ether
+      // somewhere-ness rather than atmosphere-ness.
+      nebula.length = 0;
+      var blooms = lowPower ? 6 : 8;
+      for (var i = 0; i < blooms; i++) {
+        // Each bloom is three overlapping lobes plus a core, not one
+        // sprite. A single radial sprite is a perfect circle however
+        // faint it is, and a perfect circle in the sky reads as a lens
+        // flare rather than as a cloud. Four quarter-scale sprites per
+        // bloom, in a buffer that only repaints every third frame, is
+        // what irregularity costs.
+        var lobes = [];
+        var lobeCount = 2 + rng.int(2);
+        for (var q = 0; q < lobeCount; q++) {
+          lobes.push({
+            dx: rng.spread(0.52),
+            dy: rng.spread(0.44),
+            rs: rng.between(0.48, 0.92),
+            as: rng.between(0.42, 0.85)
+          });
+        }
+        nebula.push({
+          color: p.nebula[i % p.nebula.length],
+          x: rng.between(-0.10, 1.10),
+          y: rng.between(-0.06, 1.02),
+          r: rng.between(0.15, 0.40),
+          alpha: rng.between(0.13, 0.30),
+          lobes: lobes
+        });
+      }
+      ether.ambient.nebulaPulse.length = 0;
+      for (var n = 0; n < nebula.length; n++) ether.ambient.nebulaPulse.push(1);
     }
 
-    // Small helper kept separate so `bake` reads as a list of layers.
-    function fillField(style, w, h) {
-      bakedCtx.fillStyle = style;
-      bakedCtx.fillRect(0, 0, w, h);
-    }
-
-    // ---------- Resize ----------
-    function resize() {
-      var w = ether.viewWidth, h = ether.viewHeight;
-      dpr = Env.dpr();
-      canvas.width = Math.max(1, Math.round(w * dpr));
-      canvas.height = Math.max(1, Math.round(h * dpr));
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // The soft buffer is deliberately NOT dpr-scaled. It is a blur;
-      // giving it device pixels would be paying full price for the one
-      // layer that cannot show the difference.
-      soft.width = Math.max(1, Math.ceil(w / SOFT_SCALE));
-      soft.height = Math.max(1, Math.ceil(h / SOFT_SCALE));
-      frames = 0;    // force a soft refresh on the very next frame
-
-      bake();
-    }
-
-    // Mist and ambient glow, at a quarter scale. Cleared and redrawn
-    // whole each time: at ~64k pixels that is cheaper than tracking
-    // what changed.
-    function drawSoft() {
+    // ---------- the soft buffer: nebula · mist · ambient glow ----------
+    //
+    // Three different depths in one buffer. The buffer itself is
+    // blitted at the mist's parallax; the other two are offset INSIDE
+    // it by the difference, so three layers still cost one blit. The
+    // offsets refresh with the buffer rather than every frame, which
+    // at this drift rate is a lag of about a pixel and a half on a
+    // blur.
+    function drawSoft(camOffset) {
       var w = soft.width, h = soft.height;
       var p = ether.palette;
       var amb = ether.ambient;
+      var k = 1 / SOFT_SCALE;
+      var breath = amb.breath;
 
       softCtx.setTransform(1, 0, 0, 1, 0, 0);
       softCtx.clearRect(0, 0, w, h);
       softCtx.globalCompositeOperation = 'lighter';
 
-      // 4 · Mist. Three banks on three unrelated phases, each drifting
-      // on a lissajous path so no bank ever retraces the last one.
-      var mistR = Math.max(w, h) * 0.55;
+      // Nebula — further away than the buffer's own plane.
+      var nx = camOffset ? (camOffset.x * (D.farNebula - D.mist) * k) : 0;
+      var ny = camOffset ? (camOffset.y * (D.farNebula - D.mist) * k) : 0;
+      var span = Math.max(w, h);
+      for (var i = 0; i < nebula.length; i++) {
+        var b = nebula[i];
+        var pulse = amb.nebulaPulse[i] || 1;
+        var bx = b.x * w + nx, by = b.y * h + ny;
+        var br = b.r * span;
+        for (var q = 0; q < b.lobes.length; q++) {
+          var lobe = b.lobes[q];
+          drawBlob(softCtx, b.color,
+            bx + lobe.dx * br, by + lobe.dy * br,
+            br * lobe.rs, b.alpha * lobe.as * pulse * breath);
+        }
+        // A brighter heart. The difference between a cloud of colour
+        // and a cloud of colour that has somewhere it is coming from.
+        drawBlob(softCtx, b.color, bx, by, br * 0.30, b.alpha * 0.58 * pulse * breath);
+      }
+
+      // Mist — the buffer's own plane, so no internal offset.
+      var mistR = span * 0.55;
       for (var m = 0; m < amb.mistPhase.length; m++) {
         var ph = amb.mistPhase[m];
         var mx = w * (0.5 + 0.36 * Math.sin(ph * 0.61 + m * 2.0));
         var my = h * (0.5 + 0.28 * Math.cos(ph * 0.43 + m * 1.3));
-        drawBlob(softCtx, p.mist, mx, my, mistR * (0.8 + m * 0.16), 0.045);
+        drawBlob(softCtx, p.mist, mx, my, mistR * (0.8 + m * 0.16), 0.030 * breath);
       }
 
-      // 6 · Ambient glow — the warmth at the heart of the field. One
-      // sprite. It swells over roughly two minutes, which is slow
-      // enough that it is felt and never watched.
-      drawBlob(softCtx, p.glow, w * 0.5, h * 0.54, Math.max(w, h) * 0.62, 0.05 + amb.glow * 0.06);
+      // The warmth at the heart of the field.
+      //
+      // The mist and this glow are both broad and near-uniform, which
+      // means they do not add structure — they add HAZE. Measured, the
+      // sky was coming out at more than twice the luminance of the ink
+      // it is built on, and a washed field is one where the stars stop
+      // registering and the nebula stops reading as a shape. Keeping
+      // these two quiet is what lets the nebula, which is localised, be
+      // the thing that gives the space somewhere-ness.
+      drawBlob(softCtx, p.glow, w * 0.5, h * 0.54, span * 0.62,
+        (0.024 + amb.glow * 0.034) * breath);
 
       softCtx.globalAlpha = 1;
       softCtx.globalCompositeOperation = 'source-over';
     }
 
-    // ---------- The frame ----------
+    // ---------- everything soft, assembled ----------
+    //
+    // `soft` (mist · nebula · ambient glow) plus the story light
+    // field, into one buffer that goes out in one composite. The two
+    // sets sit at different depths, so the lights are offset INSIDE
+    // the buffer by the difference between their parallax and the
+    // buffer's — the same trick the nebula uses in drawSoft().
+    function assembleLit(mistOffset, storyOffset, breath) {
+      var k = 1 / SOFT_SCALE;
+      var p = ether.palette;
+
+      litCtx.setTransform(1, 0, 0, 1, 0, 0);
+      litCtx.globalCompositeOperation = 'source-over';
+      litCtx.globalAlpha = 1;
+      litCtx.clearRect(0, 0, lit.width, lit.height);
+      litCtx.drawImage(soft, 0, 0);
+
+      litCtx.globalCompositeOperation = 'lighter';
+      var ox = ((storyOffset ? storyOffset.x : 0) - (mistOffset ? mistOffset.x : 0)) * k;
+      var oy = ((storyOffset ? storyOffset.y : 0) - (mistOffset ? mistOffset.y : 0)) * k;
+
+      for (var i = 0; i < ether.lights.length; i++) {
+        var l = ether.lights[i];
+        if (!l.alive || l.intensity <= 0.004) continue;
+        // + BLEED, because the buffer's origin is that far outside the
+        // view's — see the bleed note in resize().
+        var x = (l.x + BLEED) * k + ox;
+        var y = (l.y + BLEED) * k + oy;
+        var reach = 128 * l.scale * k;
+        // Two blobs: a close warm core, and a much wider, fainter wash
+        // that is what actually keeps a lone story from looking
+        // abandoned — the near glow belongs to the card, the far one
+        // belongs to the Ether around it.
+        drawBlob(litCtx, l.warm ? p.spark : p.glow, x, y, reach, l.intensity * 0.17 * breath);
+        drawBlob(litCtx, p.mist, x, y, reach * 1.9, l.intensity * 0.07 * breath);
+      }
+
+      litCtx.globalAlpha = 1;
+      litCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // ---------- dust ----------
+    function drawDust(target, store, breath, veilFade) {
+      var p = ether.palette;
+      var cam = camera ? camera.offsetFor(store.parallax) : null;
+      var ox = cam ? cam.x : 0;
+      var oy = cam ? cam.y : 0;
+
+      for (var i = 0; i < store.motes.length; i++) {
+        var m = store.motes[i];
+        if (!m.alive) continue;
+        // Every mote carries its own faint pulse, so no layer is ever
+        // perfectly still even when the currents are slack.
+        var pulse = 0.72 + 0.28 * Math.sin(m.phase);
+        var a = m.alpha * pulse * breath * veilFade;
+        var color = m.warm ? p.glow : p.star;
+        if (store.soft) {
+          drawBlob(target, color, m.x + ox, m.y + oy, m.size, a);
+        } else {
+          target.globalAlpha = a;
+          target.fillStyle = color;
+          target.fillRect(m.x + ox, m.y + oy, m.size, m.size);
+        }
+      }
+    }
+
+    // ---------- the frame ----------
     function render(dt, time) {
       var w = ether.viewWidth, h = ether.viewHeight;
       var p = ether.palette;
       var amb = ether.ambient;
+      var breath = amb.breath;
+      var i, cam;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
 
-      // 1–3 · one blit. No clearRect first: the baked field is opaque
-      // and covers every pixel, so clearing would be a second
-      // full-screen pass to prepare for a full-screen overwrite.
-      ctx.drawImage(baked, 0, 0, w, h);
+      // --- the baked sky. No clearRect first: it is opaque and, with
+      // its bleed, covers every pixel at any camera offset.
+      cam = camera ? camera.offsetFor(D.farStars) : null;
+      var skyX = (cam ? cam.x : 0) - BLEED;
+      var skyY = (cam ? cam.y : 0) - BLEED;
+      ctx.drawImage(baked, skyX, skyY, w + BLEED * 2, h + BLEED * 2);
 
-      // Everything above the baked field is added light, never
-      // painted over it — 'lighter' is what makes mist read as
-      // luminous haze rather than as grey paint on top of stars.
+      // Everything above the sky is added light, never paint over it —
+      // 'lighter' is what makes mist read as luminous haze rather than
+      // as grey laid on top of stars.
       ctx.globalCompositeOperation = 'lighter';
 
-      // 3b · the living stars.
+      // --- living stars, at the sky's own parallax.
       if (!reduced) {
         ctx.fillStyle = p.star;
-        for (var t = 0; t < twinklers.length; t++) {
-          var star = twinklers[t];
-          // Never fully out and never brighter than its baked self by
-          // much: a twinkle is a breath, not a blink.
+        for (i = 0; i < twinklers.length; i++) {
+          var star = twinklers[i];
+          // Never fully out, and never much brighter than its baked
+          // self: a twinkle is a breath, not a blink.
           var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
-          ctx.globalAlpha = star.a * (0.35 + pulse * 0.75);
-          ctx.fillRect(star.x, star.y, Math.max(1, star.r * 2), Math.max(1, star.r * 2));
+          ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
+          ctx.fillRect(star.x + skyX, star.y + skyY,
+            Math.max(1, star.r * 2), Math.max(1, star.r * 2));
         }
       }
 
-      // 4 + 6 · Mist and ambient glow, in one upscaled blit off the
-      // soft buffer. Refreshed every SOFT_INTERVAL frames; drawn every
-      // frame, because the buffer persists between refreshes.
-      if (frames % SOFT_INTERVAL === 0) drawSoft();
-      frames++;
-      ctx.globalAlpha = 1;
-      ctx.drawImage(soft, 0, 0, w, h);
-
-      // 5 · Particles. Owned and moved by the Ambient System; this
-      // only paints them.
-      for (var i = 0; i < amb.particles.length; i++) {
-        var pt = amb.particles[i];
-        if (!pt.alive) continue;
-        ctx.globalAlpha = pt.alpha;
-        ctx.fillStyle = pt.warm ? p.glow : p.star;
-        ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+      // --- star-blooms: one star somewhere quietly swelling and
+      // fading. Small, frequent, and almost never actually caught.
+      for (i = 0; i < amb.starBlooms.length; i++) {
+        var bloom = amb.starBlooms[i];
+        if (!bloom.alive) continue;
+        var swell = Math.sin(bloom.life * Math.PI);   // in and back out
+        drawBlob(ctx, bloom.warm ? p.glow : p.star,
+          bloom.x + skyX, bloom.y + skyY,
+          bloom.radius * (0.6 + swell * 0.7), swell * 0.30 * breath);
       }
 
-      // Shooting stars. Rare, distant, and gone before a child can
-      // point at them — which is exactly what makes someone keep
-      // looking at a sky.
-      for (var s = 0; s < amb.shootingStars.length; s++) {
-        var sh = amb.shootingStars[s];
-        if (!sh.alive) continue;
-        var fade = sh.life < 0.2 ? sh.life / 0.2
-                 : (sh.life > 0.75 ? (1 - sh.life) / 0.25 : 1);
-        ctx.globalAlpha = Util.clamp(fade, 0, 1) * 0.85;
+      // --- far dust.
+      drawDust(ctx, amb.dust[0], breath, 1);
+
+      // --- light currents. The only layer that shows the rivers
+      // themselves: a faint mark trailing along the flow it is riding.
+      cam = camera ? camera.offsetFor(D.currents) : null;
+      var cx = cam ? cam.x : 0, cy = cam ? cam.y : 0;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 1;
+      for (i = 0; i < amb.streaks.length; i++) {
+        var s = amb.streaks[i];
+        if (!s.alive || s.filled < 2) continue;
+        // Fades in and out across its whole life, so a streak is never
+        // seen to appear or to stop.
+        var fade = Math.sin(s.life * Math.PI);
+        ctx.strokeStyle = s.warm ? p.glow : p.star;
+        // Segment by segment down the remembered path, each fainter
+        // than the last. A wisp that follows the curve the river took,
+        // tapering into nothing — not a straight line, which at any
+        // visible alpha reads as a scratch on a lens.
+        for (var q = 1; q < s.filled; q++) {
+          var head = s.pts[q - 1], tail = s.pts[q];
+          ctx.globalAlpha = s.alpha * fade * breath * (1 - (q - 1) / s.pts.length);
+          ctx.beginPath();
+          ctx.moveTo(head.x + cx, head.y + cy);
+          ctx.lineTo(tail.x + cx, tail.y + cy);
+          ctx.stroke();
+        }
+      }
+
+      // --- mid dust.
+      drawDust(ctx, amb.dust[1], breath, 1);
+
+      // --- shooting stars, out among the stars.
+      cam = camera ? camera.offsetFor(0.2) : null;
+      var sx = cam ? cam.x : 0, sy = cam ? cam.y : 0;
+      for (i = 0; i < amb.shootingStars.length; i++) {
+        var shot = amb.shootingStars[i];
+        if (!shot.alive) continue;
+        var f = shot.life < 0.2 ? shot.life / 0.2
+              : (shot.life > 0.75 ? (1 - shot.life) / 0.25 : 1);
+        f = Util.clamp(f, 0, 1);
+        ctx.globalAlpha = f * 0.85;
         ctx.strokeStyle = p.spark;
         ctx.lineWidth = 1.4;
-        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(sh.x, sh.y);
-        ctx.lineTo(sh.x - sh.dx * sh.tail, sh.y - sh.dy * sh.tail);
+        ctx.moveTo(shot.x + sx, shot.y + sy);
+        ctx.lineTo(shot.x - shot.dx * shot.tail + sx, shot.y - shot.dy * shot.tail + sy);
         ctx.stroke();
-        drawBlob(ctx, p.spark, sh.x, sh.y, 9, Util.clamp(fade, 0, 1) * 0.5);
+        drawBlob(ctx, p.spark, shot.x + sx, shot.y + sy, 9, f * 0.5);
       }
 
-      // The veil. Back to normal compositing: this one IS paint over
-      // the top. It never reaches opaque — the universe stays visible
-      // and in motion behind a story a child has opened.
+      // --- nebula · mist · ambient glow · the light field, in one
+      // full-screen composite.
+      //
+      // It is drawn here, after the dust, rather than under it — and
+      // that is not a compromise. Every layer above the baked sky is
+      // composited with 'lighter', and addition is commutative: the
+      // result is identical whichever order these go in. The only
+      // layer whose position in the sequence matters is the veil,
+      // which is paint rather than light, and it is still last.
+      //
+      // One story alone should never look abandoned. This is the layer
+      // where the space around it answers.
+      var mistCam = camera ? camera.offsetFor(D.mist) : null;
+      var storyCam = camera ? camera.offsetFor(D.stories) : null;
+      if (frames % SOFT_INTERVAL === 0) drawSoft(mistCam);
+      frames++;
+      assembleLit(mistCam, storyCam, breath);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(lit,
+        (mistCam ? mistCam.x : 0) - BLEED, (mistCam ? mistCam.y : 0) - BLEED,
+        w + BLEED * 2, h + BLEED * 2);
+
+      // --- the veil. Back to normal compositing: this one IS paint on
+      // top. It never reaches opaque — the universe stays visible and
+      // in motion behind a story a child has opened.
       ctx.globalCompositeOperation = 'source-over';
       if (ether.veil > 0.001) {
         ctx.globalAlpha = ether.veil * 0.62;
-        ctx.fillStyle = ether.palette.veil;
+        ctx.fillStyle = p.veil;
         ctx.fillRect(0, 0, w, h);
       }
-
       ctx.globalAlpha = 1;
+
+      // ---------- in front of the stories ----------
+      if (frontCtx) {
+        frontCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        frontCtx.clearRect(0, 0, w, h);
+        frontCtx.globalCompositeOperation = 'lighter';
+        // The foreground recedes with the veil too, or a focused story
+        // would be read through dust that had not dimmed with the rest
+        // of the universe.
+        var veilFade = 1 - ether.veil * 0.72;
+        drawDust(frontCtx, amb.dust[2], breath, veilFade);
+        drawDust(frontCtx, amb.dust[3], breath, veilFade);
+        frontCtx.globalAlpha = 1;
+      }
+    }
+
+    // ---------- resize ----------
+    function sizeCanvas(c, cx, w, h) {
+      c.width = Math.max(1, Math.round(w * dpr));
+      c.height = Math.max(1, Math.round(h * dpr));
+      c.style.width = w + 'px';
+      c.style.height = h + 'px';
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function resize() {
+      var w = ether.viewWidth, h = ether.viewHeight;
+      dpr = Env.dpr();
+      sizeCanvas(canvas, ctx, w, h);
+      if (front) sizeCanvas(front, frontCtx, w, h);
+
+      // The soft buffer is deliberately NOT dpr-scaled. It is a blur;
+      // giving it device pixels would be paying full price for the one
+      // layer that cannot show the difference.
+      // The soft buffers carry the same bleed as the baked sky, and
+      // for the same reason: they are drawn at a camera offset, and a
+      // buffer exactly the size of the view leaves an uncovered band
+      // along whichever edges the camera has moved away from. That
+      // band shows as a dark frame around the whole universe — the
+      // mist and nebula simply stop before the edge of the screen.
+      soft.width = Math.max(1, Math.ceil((w + BLEED * 2) / SOFT_SCALE));
+      soft.height = Math.max(1, Math.ceil((h + BLEED * 2) / SOFT_SCALE));
+      lit.width = soft.width;
+      lit.height = soft.height;
+      frames = 0;    // force a soft refresh on the very next frame
+
+      bake();
     }
 
     resize();
@@ -368,15 +626,28 @@
       canvas: canvas,
       render: render,
       resize: resize,
-      // Exposed for the sandbox's counters; nothing in the runtime
-      // reads it.
-      stats: function () {
-        return { stars: stars.length, twinklers: twinklers.length, dpr: dpr };
+
+      // Called by the Universe after the story layer exists, so the
+      // foreground canvas lands above it in DOM order. Depth is
+      // stacking as much as it is parallax.
+      attachForeground: function () {
+        if (front) return front;
+        front = makeCanvas('vp-ether-foreground');
+        frontCtx = front.getContext('2d');
+        sizeCanvas(front, frontCtx, ether.viewWidth, ether.viewHeight);
+        return front;
       },
+
+      stats: function () {
+        return { stars: stars.length, twinklers: twinklers.length, nebula: nebula.length, dpr: dpr };
+      },
+
       destroy: function () {
         if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        if (front && front.parentNode) front.parentNode.removeChild(front);
         stars.length = 0;
         twinklers.length = 0;
+        nebula.length = 0;
       }
     };
   };

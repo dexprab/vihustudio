@@ -29,11 +29,39 @@ html, body {
   inset: 0;
 }
 
+/* The one thing the development build shows by default: a small mark
+   in the corner. The universe gets the rest of the screen. */
+.sandbox-toggle {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 10000;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(241, 234, 208, 0.16);
+  background: rgba(18, 24, 43, 0.4);
+  color: rgba(241, 234, 208, 0.5);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 400ms ease, border-color 300ms ease;
+  opacity: 0.35;
+}
+
+.sandbox-toggle:hover,
+.sandbox-toggle:focus-visible {
+  opacity: 1;
+  border-color: rgba(232, 184, 113, 0.6);
+  color: #E8B871;
+}
+
 .sandbox-panel {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
-  z-index: 10;
+  left: 14px;
+  bottom: 48px;
+  z-index: 10000;
   padding: 12px 14px;
   border-radius: 12px;
   background: rgba(18, 24, 43, 0.78);

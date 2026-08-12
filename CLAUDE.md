@@ -161,6 +161,20 @@ Locked by the product owner in the VihuPlanet Ether Runtime brief.
   Procedural gradients, particles and lightweight assets only; no large
   background images, no heavy animation libraries, no hundreds of DOM
   nodes.
+- **The Universe must be alive before the first story arrives**
+  (Sprint U1). The test any change to it is held to: *if there were
+  zero stories here, would this still feel like a magical living
+  universe?* Three systems answer that and none of them needs a story:
+  the **Ether Currents** (the Ether moves and carries what floats in
+  it — stories never drift randomly), the **Universe Camera** (the
+  viewpoint drifts imperceptibly, and is what makes the depth layers
+  real), and the **story light field** (the space answers every story,
+  so one is never alone). Calm before spectacle: no flashing, no
+  fireworks, no game effects. The emotional goal is *"I want to stay
+  here"*, not *"wow"*.
+- **Development instrumentation is not part of the experience.** Any
+  runtime panel or counter stays closed by default and out of the
+  universe's way.
 - Phase 1 is complete and explicitly excludes Story Worlds, clustering,
   world emergence, Telescope integration, Companion integration, the
   reading experience, reactions, search, filters and ranking. Those

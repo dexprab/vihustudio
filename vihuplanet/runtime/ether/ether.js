@@ -116,20 +116,63 @@
         veil:    p.ink
       },
 
+      // ---------- the depth of the universe ----------
+      //
+      // One source of truth for how far away each layer is. The
+      // Universe Camera multiplies its drift by these, and that
+      // disagreement between layers IS the depth — nothing here is
+      // drawn larger or smaller to fake distance, it simply moves by
+      // a different amount when the viewpoint does.
+      //
+      // 0 is infinitely far and never moves. 1 is the plane the
+      // stories live on. Above 1 is in front of them, and swims.
+      depth: {
+        gradient:   0.00,
+        farNebula:  0.10,
+        farStars:   0.18,
+        mist:       0.30,
+        farDust:    0.34,
+        currents:   0.46,
+        midDust:    0.66,
+        stories:    1.00,
+        nearDust:   1.12,
+        foreground: 1.58
+      },
+
       // ---------- what the universe is doing ----------
       ambient: {
         // A slow swell of overall warmth. One number, read by the
         // renderer for the ambient-glow layer.
         glow: 0.5,
+        // The universe breathing. A single value near 1.0 that every
+        // luminous layer multiplies into its own brightness, so the
+        // whole Ether brightens and dims together as one body rather
+        // than as a set of independently animated effects.
+        breath: 1,
         // Independent drift phases for the mist banks, so no two move
         // together and none of them ever loop visibly.
         mistPhase: [0, 2.1, 4.3],
+        // Each nebula bloom's own slow pulse. Filled by the Ambient
+        // System to match however many blooms the renderer made.
+        nebulaPulse: [],
         // Live shooting stars. Pooled by the Ambient System — this
         // array's objects are reused, never reallocated.
         shootingStars: [],
-        // Ambient motes. Also pooled.
-        particles: []
+        // Dust, in layers, at different depths. Pooled.
+        dust: [],
+        // Faint streaks that ride the Ether Currents — the only layer
+        // that makes the rivers themselves visible. Pooled.
+        streaks: []
       },
+
+      // ---------- light sources ----------
+      //
+      // Anything luminous in the universe, as pure {x, y, scale,
+      // intensity}. The Ether Renderer draws these and the Ether
+      // Currents bend around them, and neither one knows that a light
+      // is a story — see stories/storyLight.js. A future Story World
+      // lighting the space it occupies writes into this same array.
+      lights: [],
 
       // ---------- focus veil ----------
       // 0 = the universe is fully present. 1 = it has receded as far

@@ -10,11 +10,11 @@ out of it.
 
 ```
 VihuPlanet
-├── Core       namespace · rng · signal · clock
+├── Core       namespace · rng · signal · clock · camera
 ├── Universe   the engine that composes everything below
-├── Ether      the living space stories drift through
-├── Stories    Story Entities · the Story Manager · presentation
-├── Physics    drift · avoidance · attraction
+├── Ether      the living space · the currents · the renderer
+├── Stories    Story Entities · Manager · presentation · light field
+├── Physics    currents · avoidance · attraction
 ├── Ambient    the universe's own restlessness
 ├── Focus      touch a story, it comes forward, it returns
 ├── Birth      a published story visibly joins the universe
@@ -99,6 +99,119 @@ Renderers may read anything on an entity. They must write nothing.
 
 ---
 
+## The universe is alive before the first story
+
+The test this runtime is held to: **if there were zero stories here,
+would this still feel like a magical living universe?** Everything in
+this section exists to make the answer yes, and none of it depends on
+a story being present.
+
+### Ether Currents — the invisible rivers
+
+Stories do not drift randomly. The **Ether** moves, and everything
+floating in it is carried. That is the difference between a screensaver
+and a place: in a screensaver every object has its own arbitrary
+heading and the eye reads noise; in a current, things near each other
+move *together*, and the eye reads direction.
+
+The field is the **curl of a scalar potential**, which is
+divergence-free by construction. That is not mathematical decoration —
+a flow field built the obvious way (noise for x, noise for y) has
+sources and sinks, and everything in the Ether slowly collects in three
+corners and stays. Nothing collects here, and the proof is calculus
+rather than tuning. Three octaves of products of sines, so the
+derivatives are exact: six `sin`/`cos` per sample, no noise tables.
+
+The rivers are also **wide on purpose**, and the width was measured. At
+the first attempt the smallest octave was 0.38 view-widths and stories
+within 400px of each other aligned at only 0.20 (where 1.0 is identical
+headings) — turbulence, not current. Widened, the field now measures:
+
+| distance apart | flow alignment | story alignment |
+|---|---|---|
+| 200px | 0.91 | 0.55 |
+| 400px | 0.77 | 0.46 |
+| 800px | 0.36 | 0.25 |
+| 1600px | −0.25 | 0.02 |
+
+Neighbours travel together; opposite sides of the universe go opposite
+ways. That is a river system.
+
+### The Universe Camera
+
+A living universe should never feel like a static webpage. Think of
+watching the night sky while lying on grass — you are never completely
+still, and neither is the sky.
+
+The whole design is one constraint: **too slow to notice while you are
+looking, unmistakable if you look away and come back.** Amplitude 2.5%
+of the shorter viewport edge (about 20px on a laptop); periods of 50–80
+seconds per axis on incommensurate rates, plus a much slower harmonic
+so even the shape of the drift changes over minutes.
+
+The camera is also what makes depth *real*. Every layer reads its
+offset multiplied by that layer's parallax, so distant stars barely
+move, mist slides, and foreground dust swims. Nothing has to animate
+for the universe to have volume — it has volume because the viewpoint
+moves and the layers disagree about how much.
+
+Moving the camera never moves anything in the world. It is a change of
+viewpoint, not of position, which is why focus still returns a story to
+the exact place it occupied — verified with the camera 19px off centre,
+a focused story still lands dead centre and a closed one returns with a
+delta of exactly zero.
+
+### Depth, in nine planes
+
+`ether.depth` is the one source of truth, from 0 (infinitely far, never
+moves) through 1.00 (the plane the stories live on) to 1.58 (in front
+of them, and swimming):
+
+```
+0.10 far nebula   0.30 mist        0.46 light currents   1.00 stories
+0.18 far stars    0.34 far dust    0.66 mid dust         1.12 near dust
+                                                         1.58 foreground
+```
+
+The two layers past 1.00 are drawn on a **second canvas above the story
+layer**, because a foreground drawn on the same canvas as the
+background is not a foreground — it is a background with a higher
+z-index in the wrong stacking context.
+
+### Living light
+
+Nothing is uniformly illuminated and nothing flashes.
+`ether.ambient.breath` is a single value near 1.0 — three
+incommensurate periods, ±6% — that every luminous layer multiplies into
+its own brightness, so the whole Ether brightens and dims as one body
+rather than as a set of independently animated effects. On top of it,
+each nebula bloom carries its own slow pulse, each star its own
+twinkle, each mote of dust its own faint throb, and each story's light
+its own rhythm seeded from its id, so no two ever pulse together.
+
+Small events keep an old sky feeling old: **star-blooms** (one star
+somewhere quietly swelling and fading over several seconds, every 3–11
+seconds) and **shooting stars** (every 26–74 seconds, always shallow
+and always across the upper sky — a steep streak reads as a rocket, and
+VihuPlanet removed its rocket on purpose).
+
+### No story is ever alone
+
+Every story writes a **light source** into `ether.lights`: a soft glow
+field that the renderer draws and that the Ether Currents bend around,
+so dust visibly curves as it passes. The deflection is perpendicular
+rather than radial — dust sweeps *around* a story instead of being
+repelled by it, which is what reads as the space curving rather than
+the story pushing.
+
+Neither the renderer nor the currents know that a light is a story.
+`stories/storyLight.js` is a presenter in exactly the sense the Story
+Layer is one, and when a Story World eventually wants to light the space
+it occupies, it writes into the same array and everything downstream
+already handles it.
+
+---
+
 ## The three decisions that shaped this
 
 ### 1. The field is bigger than the screen, and it grows
@@ -177,18 +290,18 @@ makes all of these numbers better:
 
 | | |
 |---|---|
-| 275 stories, 1280×800 | 60.8 fps, 16 cards drawn, 17 DOM nodes |
-| 600 stories | same cost — story count does not affect it, only how many are in view |
-| 275 stories, 390×780 | 3–6 cards drawn |
-| JS per frame at 525 stories | physics 1.25 ms · Ether 0.07 ms · story layer 0.74 ms |
+| 425 stories, 1280×800, every layer on | 39 fps, 16 cards drawn, 16 DOM nodes |
+| 60 stories | same cost — story count does not affect it, only how many are in view |
+| 425 stories, 390×780 | 4 cards drawn |
 
-The cost of the universe is decided by the node cap and nothing else,
-which is the promise that holds as VihuPlanet fills up.
+The cost of the universe is decided by the node cap and the
+full-screen composites, not by how many stories exist — which is the
+promise that holds as VihuPlanet fills up.
 
-### Two costs that were found by measuring
+### Four costs that were found by measuring
 
-Both were fixed, and both are the kind of thing that is invisible in
-code review:
+None of these are visible in code review; all of them were found by
+profiling and fixed:
 
 - **Large `box-shadow` blurs.** A blur radius inflates the layer the
   compositor rasterises in every direction. The story card's original
@@ -196,16 +309,41 @@ code review:
   the card itself — 16 fps against 25 fps for the same field. Only the
   focused card, of which there is ever one, is allowed to be expensive.
 - **Full-resolution mist.** Three 1400px-radius blobs and a glow,
-  composited per frame, halved the frame rate on their own.
+  composited per frame, halved the frame rate on their own. They live
+  in a quarter-size buffer now.
+- **The story light field at full resolution.** A glow reaching 240px
+  around each of two dozen stories is eight million composited pixels a
+  frame: it took the universe from 60 fps to 17 on its own.
+- **One full-screen composite too many.** Blitting the soft layers and
+  the light field separately cost a second full-screen `lighter` pass.
+  Merging them at a quarter scale costs sixty thousand pixels, and the
+  merge is *free of visual consequence* because every layer above the
+  baked sky is additive and addition is commutative — the order only
+  matters for the veil, which is paint rather than light, and is still
+  last.
+
+Together: 17 fps → 41 fps, with more layers than before.
+
+### The bug that was invisible until the camera moved
+
+Buffers drawn at a camera offset need a **bleed margin**, or they stop
+short of the edge the camera moved away from and the universe gets a
+dark frame around it — the mist and nebula simply ending before the
+screen does. Both the baked sky and the soft buffers now carry 40px of
+bleed on every side. Worth knowing before adding any future layer that
+lives in a buffer.
 
 ---
 
 ## Accessibility
 
 - `prefers-reduced-motion` is answered once, at the source: physics
-  runs at `motionScale` 0 and the Ambient System stops twinkling,
-  drifting and shooting stars. The universe becomes a still, complete
-  picture rather than a moving one. Verified: zero movement over 1.5s.
+  runs at `motionScale` 0, the Universe Camera's amplitude is 0, and
+  the Ambient System stops twinkling, drifting, dust and shooting
+  stars. The universe becomes a still, complete picture rather than a
+  moving one. Verified: camera, stories and dust all move exactly
+  0.0000 over 2.5s. A drifting viewpoint is precisely the kind of
+  unrequested motion the setting exists to silence.
   Focus and Birth still play — they are responses to something the
   child did, and removing them would make the interface look broken
   rather than calm.
@@ -220,8 +358,11 @@ code review:
 ## Development harness
 
 `sandbox.html` — mounts a universe, seeds it, and exposes publishing
-and a cost counter. **It is not the product.** The real VihuPlanet
-surface will mount the same universe with none of that chrome.
+and a cost counter. **It is not the product**, and it no longer behaves
+as though it were: the panel is closed at load and the universe has the
+whole screen, with one small mark in the corner. Press **D** or click
+it to open. The real VihuPlanet surface will mount the same universe
+with none of that chrome.
 
 Serve the repository with any static server and open
 `vihuplanet/runtime/sandbox.html`.

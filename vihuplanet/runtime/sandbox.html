@@ -26,8 +26,16 @@
 <main class="sandbox">
   <div class="sandbox-universe" data-universe></div>
 
-  <div class="sandbox-panel">
-    <div class="sandbox-title">VihuPlanet Runtime</div>
+  <!-- The panel is DEVELOPMENT, not experience (Sprint U1 #7). It
+       starts closed and the universe has the screen to itself; the
+       one visible affordance is a small mark in the corner. Press D
+       or click it to open. -->
+  <button type="button" class="sandbox-toggle" data-toggle
+          aria-expanded="false" aria-controls="sandbox-panel"
+          title="Development panel (D)">·</button>
+
+  <div class="sandbox-panel" id="sandbox-panel" data-panel hidden>
+    <div class="sandbox-title">Runtime</div>
     <div class="sandbox-actions">
       <button type="button" data-action="publish">Share a story</button>
       <button type="button" data-action="seed-50">+50 stories</button>
@@ -44,10 +52,10 @@
      none of them run at load — but the order below is the dependency
      order, which is the order it should be read in.
        Art Direction (the palette the Ether inherits)
-       Core:     namespace · rng · signal · clock
-       Stories:  entity contract · manager · presentation layer
+       Core:     namespace · rng · signal · clock · camera
+       Stories:  entity contract · manager · presentation · light field
        Physics:  spatial grid · the laws
-       Ether:    the space · the renderer
+       Ether:    the space · the currents · the renderer
        Systems:  ambient · focus · birth · worlds
        Engine:   universe (the composition root, loaded last)
 -->
@@ -57,15 +65,18 @@
 <script src="core/rng.js"></script>
 <script src="core/signal.js"></script>
 <script src="core/clock.js"></script>
+<script src="core/camera.js"></script>
 
 <script src="stories/storyEntity.js"></script>
 <script src="stories/storyManager.js"></script>
 <script src="stories/storyLayer.js"></script>
+<script src="stories/storyLight.js"></script>
 
 <script src="physics/spatialGrid.js"></script>
 <script src="physics/physics.js"></script>
 
 <script src="ether/ether.js"></script>
+<script src="ether/currents.js"></script>
 <script src="ether/etherRenderer.js"></script>
 
 <script src="ambient/ambientSystem.js"></script>
