@@ -59,10 +59,17 @@
 
   var DUST_MAX = 150;          // per layer
 
-  // The streaks that reveal the currents.
-  var STREAK_DENSITY = 15;
-  var STREAK_DENSITY_LOW = 8;
-  var STREAK_MAX = 34;
+  // FLUX LINES — the currents, made visible as flowing light.
+  //
+  // Promoted from a faint background detail to a named layer of the
+  // universe (Sprint U2). They are not connectors between Stories and
+  // they never join two of anything: they are the Ether's own rivers,
+  // and every Spirit drifts along them because physics.js samples the
+  // same field these do. Seeing a Spirit travel the same line a flux
+  // line traced a moment earlier is the entire point.
+  var STREAK_DENSITY = 26;
+  var STREAK_DENSITY_LOW = 15;
+  var STREAK_MAX = 52;
 
   // Seconds between shooting stars. Long, and deliberately variable —
   // an event on a predictable timer stops being an event.
@@ -187,17 +194,18 @@
     // whole layer: a straight segment at a visible alpha reads as a
     // scratch on the lens, while a path that curves the way the river
     // curved reads as flow. It costs seven points of memory each.
-    var STREAK_POINTS = 7;
-    var STREAK_SAMPLE = 0.85;      // seconds between remembered points
+    var STREAK_POINTS = 9;
+    var STREAK_SAMPLE = 0.8;       // seconds between remembered points
 
     function spawnStreak(s, seeded) {
       s.alive = true;
       s.x = rng.next() * ether.viewWidth;
       s.y = rng.next() * ether.viewHeight;
-      s.alpha = rng.between(0.030, 0.075);
+      s.alpha = rng.between(0.07, 0.17);
+      s.width = rng.between(0.8, 1.7);
       s.life = 0;
       s.duration = rng.between(16, 34);
-      s.warm = rng.next() < 0.2;
+      s.warm = rng.next() < 0.28;
       s.timer = 0;
       if (!s.pts) {
         s.pts = [];

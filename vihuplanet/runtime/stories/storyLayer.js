@@ -1,34 +1,36 @@
-// storyLayer.js — the presentation layer for Story Entities.
+// storyLayer.js — the Story Spirit's body.
 //
-// A renderer, in the same sense the Ether Renderer is one: it reads
-// the Story Entity contract and draws it. It never moves a story,
-// never changes a story's state, and never decides what a story is.
-// Delete this file and the universe still runs — it simply becomes
-// invisible.
+// The Spirit's SOUL is light, and it is drawn on canvas by the Ether
+// Renderer from what storySpirit.js computes. This file draws the rest:
+// the cover, the name, the maker — everything that only exists once a
+// child has turned toward it.
 //
-// Why DOM and not canvas, when the brief says to avoid hundreds of DOM
-// nodes: a story is the one thing in the Ether a child touches. Real
-// elements give real hit-testing, real focus rings, real keyboard
-// order and real screen-reader names for free, and losing all four to
-// save a paint is a bad trade for the one object that matters.
+// ---------------------------------------------------------------
+// A FAR SPIRIT HAS NO BODY AT ALL
 //
-// The brief's warning is respected by never creating hundreds of them:
+// Nodes are created only for Spirits the Traveller is anywhere near
+// (`prox` — see storySpirit.js). At the far end of the universe a
+// Spirit is purely a light in the canvas: no element, no image, no
+// text, nothing to lay out or composite.
 //
-//   · POOLING. Nodes are created once and reassigned. A story that
-//     drifts off the field releases its node to the next story that
-//     drifts on. Adding the five-hundredth story to the Ether creates
-//     no DOM at all.
-//   · CULLING. Only stories inside the field (plus a margin) are
-//     given a node. The Ether wraps, so at any moment most of a large
-//     universe is off-field.
-//   · A HARD CAP. If more stories are on-field than the cap allows,
-//     the nearest win — depth decides, which is also what the eye
-//     would decide. The cap is a promise about cost that holds no
-//     matter how large the universe gets.
+// That is the design and the performance story at once. The sprint
+// asks for discovery — "from far away, Story Spirits appear only as
+// glowing souls" — and the cheapest possible way to render a glowing
+// soul is to not make a DOM node for it. A universe of six hundred
+// Spirits creates elements only for the handful being looked at.
+//
+// Nodes are still POOLED and CAPPED on top of that, so the cost is
+// bounded even if every Spirit in the Ether crowds the centre at once.
+// ---------------------------------------------------------------
+//
+// The reveal itself is one number handed to CSS as `--vp-prox`, and
+// runtime.css does the rest — cover opacity, cover scale, and the
+// name appearing later than the picture. Keeping it declarative means
+// the reveal curve is one place, readable, and adjustable without
+// touching this file.
 //
 // Everything animates through `transform` and `opacity` only: the two
-// properties a browser can composite without laying the page out
-// again.
+// properties a browser can composite without laying the page out again.
 
 (function (global) {
   'use strict';
@@ -40,21 +42,16 @@
   var Stories = VihuPlanet.ns('Stories');
   var STATES = Stories.STATES;
 
-  // Beyond this many simultaneous on-field stories the far ones stop
-  // being given nodes.
-  //
-  // 64 is measured, not guessed. Profiling found that the cost of a
-  // drifting field is almost entirely "how many cards are being
-  // composited", and essentially nothing to do with how many stories
-  // exist: 275 stories and 600 stories run at the same frame rate,
-  // because both are drawing this many cards. The cap is therefore the
-  // one number that decides what the Ether costs, and it holds that
-  // promise no matter how large VihuPlanet gets.
-  //
-  // 64 simultaneously visible stories is also already a busier field
-  // than a calm universe should show. If a surface ever wants more, it
-  // passes maxNodes and accepts the cost knowingly.
-  var DEFAULT_MAX_NODES = 64;
+  // A hard ceiling on bodies. Rarely reached now that nearness decides
+  // who gets one, but it is the promise about cost that holds no
+  // matter how many Spirits crowd the centre.
+  var DEFAULT_MAX_NODES = 48;
+
+  // Below this nearness a Spirit is soul only — no element, no image,
+  // no text. Sits just under where runtime.css starts fading the cover
+  // in (0.34), so a body always exists before it is visible and a cover
+  // is never seen to pop into being.
+  var BODY_THRESHOLD = 0.28;
 
   Stories.createLayer = function (opts) {
     opts = opts || {};
@@ -64,16 +61,8 @@
     var signal = opts.signal;
     if (!mount || !ether || !manager) return null;
 
-    var camera = opts.camera || null;
     var maxNodes = opts.maxNodes || DEFAULT_MAX_NODES;
-
-    // How far outside the view a story still gets a node, so one that
-    // is half on screen is drawn half on screen rather than popping in
-    // at the edge. It only needs to cover half a card — 160px was
-    // measured drawing 63 cards on a phone where 33 were actually in
-    // view, because a fixed margin is enormous relative to a small
-    // screen and reasonable relative to a large one.
-    var margin = opts.margin || 120;
+    var margin = opts.margin || 140;
 
     var root = global.document.createElement('div');
     root.className = 'vp-story-layer';
@@ -82,19 +71,20 @@
     var pool = [];        // every node ever created
     var free = [];        // nodes not currently assigned
     var assigned = {};    // entity id → node
-    var visible = [];     // scratch: entities to draw this frame
+    var visible = [];     // scratch: spirits to draw this frame
 
     // ---------- node construction ----------
     //
     // Three nested elements, each owning exactly one transform
-    // concern. This is the same structure planets.js arrived at in the
-    // Hero, for the same reason: transforms that are written by
-    // different systems at different rates must not share an element,
-    // or the last writer each frame silently wins.
+    // concern. This is the structure planets.js arrived at in the Hero,
+    // for the same reason: transforms written by different systems at
+    // different rates must not share an element, or the last writer
+    // each frame silently wins.
     //
     //   .vp-story        placement in the Ether (written every frame)
     //   .vp-story-focus  the come-forward transform (Focus System)
-    //   .vp-story-card   the card's own resting tilt + hover lift (CSS)
+    //   .vp-story-card   the card's own tilt, hover lift, and the
+    //                    nearness reveal (CSS, from --vp-prox)
     function createNode() {
       var el = global.document.createElement('div');
       el.className = 'vp-story';
@@ -122,7 +112,10 @@
 
       var title = global.document.createElement('div');
       title.className = 'vp-story-title';
+      var creator = global.document.createElement('div');
+      creator.className = 'vp-story-creator';
       caption.appendChild(title);
+      caption.appendChild(creator);
 
       card.appendChild(cover);
       card.appendChild(caption);
@@ -131,11 +124,11 @@
 
       var node = {
         el: el, focusEl: focusEl, card: card,
-        cover: cover, img: img, title: title,
-        entityId: null, coverSrc: null, birthing: false
+        cover: cover, img: img, title: title, creator: creator,
+        entityId: null, coverSrc: null, birthing: false, prox: -1
       };
 
-      // The only thing this layer decides is that a story was
+      // The only thing this layer decides is that a Spirit was
       // touched. What happens next belongs to the Focus System, which
       // is listening — not to the element that was clicked.
       function activate(ev) {
@@ -162,14 +155,15 @@
     function bind(node, e) {
       node.entityId = e.id;
       node.title.textContent = e.title || '';
+      node.creator.textContent = e.creator || '';
 
       var label = e.title || 'A story';
       if (e.creator) label += ', by ' + e.creator;
       node.el.setAttribute('aria-label', label);
 
       // Only touch src when it actually changed — reassigning the same
-      // URL restarts a decode for nothing, and node reuse makes that
-      // an easy accident to have every single frame.
+      // URL restarts a decode for nothing, and node reuse makes that an
+      // easy accident to have every single frame.
       if (node.coverSrc !== e.cover) {
         node.coverSrc = e.cover;
         if (e.cover) {
@@ -177,10 +171,9 @@
           node.cover.classList.remove('is-blank');
         } else {
           node.img.removeAttribute('src');
-          // A story with no cover art is not an error state. It gets
-          // the Ether's own light instead — a luminous blank card,
-          // which is what a story looks like before anyone has seen
-          // inside it.
+          // A Spirit with no cover art is not an error state. It gets
+          // the Ether's own light instead — a luminous blank, which is
+          // what a story looks like before anyone has seen inside it.
           node.cover.classList.add('is-blank');
         }
       }
@@ -193,6 +186,7 @@
       if (!node.entityId) return;
       node.entityId = null;
       node.birthing = false;
+      node.prox = -1;
       node.el.classList.remove('is-live', 'is-focused', 'is-birthing');
       node.el.style.removeProperty('--vp-birth-t');
       node.el.setAttribute('aria-hidden', 'true');
@@ -206,54 +200,39 @@
       var centre = ether.centre();
       var i, e;
 
-      // The Universe Camera, at the stories' own plane. It is a
-      // viewpoint, not a position: it shifts where a story is DRAWN
-      // and never touches where it IS, which is why focus still
-      // returns a story to the exact place it occupied.
-      var cam = camera ? camera.offsetFor(ether.depth.stories) : null;
-      var camX = cam ? cam.x : 0;
-      var camY = cam ? cam.y : 0;
-
-      // 1 · cull to the field plus a margin.
+      // 1 · a body only for Spirits the Traveller is near. `prox`,
+      // `screenX` and `screenY` were computed once this frame by
+      // storySpirit.js, wrap and camera already resolved.
       visible.length = 0;
       for (i = 0; i < entities.length; i++) {
         e = entities[i];
         if (e.state === STATES.DORMANT) continue;
-        // A focused story is always kept, wherever its held place is —
-        // it is the one thing the child is actually looking at.
-        var focused = e.focusT > 0.001;
-        // Culled against the VIEW, not the field. The Ether is far
-        // larger than the screen (see ether.js), so most of a grown
-        // universe is elsewhere at any moment — which is what keeps
-        // the cost flat as VihuPlanet fills up, and what leaves
-        // stories to be discovered rather than displayed.
-        if (!focused) {
-          var vx = e.position.x + camX, vy = e.position.y + camY;
-          if (vx < -margin || vx > ether.viewWidth + margin) continue;
-          if (vy < -margin || vy > ether.viewHeight + margin) continue;
-        }
+        var body = (e.prox || 0) > BODY_THRESHOLD ||
+                   e.focusT > 0.001 ||
+                   e.state === STATES.BIRTHING;
+        if (!body) continue;
+        // Off the edge of the screen entirely: nothing to draw even if
+        // the maths says it is near.
+        if (e.screenX < -margin || e.screenX > ether.viewWidth + margin) continue;
+        if (e.screenY < -margin || e.screenY > ether.viewHeight + margin) continue;
         visible.push(e);
       }
 
-      // 2 · if the field is over-full, the nearest stories win. Sorting
-      // only happens in the rare frames where it matters.
+      // 2 · if more crowd in than the cap allows, the nearest win.
       if (visible.length > maxNodes) {
         visible.sort(function (a, b) {
           if (b.focusT !== a.focusT) return b.focusT - a.focusT;
-          return b.depth - a.depth;
+          return (b.prox || 0) - (a.prox || 0);
         });
         visible.length = maxNodes;
       }
 
-      // 3 · release nodes whose story is no longer being drawn.
-      var stillVisible = {};
-      for (i = 0; i < visible.length; i++) stillVisible[visible[i].id] = true;
+      // 3 · release nodes whose Spirit is no longer being drawn.
+      var still = {};
+      for (i = 0; i < visible.length; i++) still[visible[i].id] = true;
       for (var id in assigned) {
         if (!assigned.hasOwnProperty(id)) continue;
-        if (!stillVisible[id]) {
-          release(assigned[id]);
-          delete assigned[id];
-        }
+        if (!still[id]) { release(assigned[id]); delete assigned[id]; }
       }
 
       // 4 · draw.
@@ -270,29 +249,20 @@
           bind(node, e);
         }
 
-        // Focus composition. The story's place in the Ether and the
-        // place a focused story occupies are BLENDED, not swapped —
-        // which is the whole of "stories always return to the exact
-        // place they occupied". There is no return animation to get
-        // wrong: at focusT 0 the story is exactly where physics left
-        // it, because that is the same expression that drew it a
-        // moment ago.
-        // The camera is applied to the drifting position BEFORE the
-        // focus blend, so a focused story lands on the centre of the
-        // screen exactly and stays there while the universe keeps
-        // drifting behind it.
+        // Focus composition. The Spirit's place in the Ether and the
+        // place a met Spirit occupies are BLENDED, not swapped — which
+        // is the whole of "the Traveller returns to the exact same
+        // position". There is no return animation to get wrong: at
+        // focusT 0 the Spirit is exactly where the Ether left it,
+        // because that is the same expression that drew it a moment
+        // ago.
         var t = Util.smooth(e.focusT);
-        var x = Util.lerp(e.position.x + e.bobX + camX, centre.x, t);
-        var y = Util.lerp(e.position.y + e.bobY + camY, centre.y, t);
+        var x = Util.lerp(e.screenX, centre.x, t);
+        var y = Util.lerp(e.screenY, centre.y, t);
         var rot = Util.lerp(e.rotation, 0, t);
 
-        // Birth. The story starts as a point of light and grows into
-        // itself as it rises. birthT is written by storyBirth.js; all
-        // this layer does is read it — including handing it to CSS as
-        // `--vp-birth-t`, which is what drives the bloom in
-        // runtime.css. The luminance is styling, so it lives in the
-        // stylesheet; the journey is motion, so it lives in physics
-        // and birth. Neither one duplicates the other.
+        // Birth. The Spirit starts as a point of light and grows into
+        // itself as it rises. birthT is written by storyBirth.js.
         var birthing = (e.state === STATES.BIRTHING);
         var born = birthing ? Util.smooth(e.birthT) : 1;
         var base = birthing ? Util.lerp(0.16, e.scale, Util.easeOut(e.birthT)) : e.scale;
@@ -300,40 +270,47 @@
 
         var alpha = Util.lerp(e.opacity * born, 1, t);
 
-        if (birthing) {
-          node.el.classList.add('is-birthing');
-          node.el.style.setProperty('--vp-birth-t', e.birthT.toFixed(3));
-        } else if (node.birthing) {
-          node.el.classList.remove('is-birthing');
-          node.el.style.removeProperty('--vp-birth-t');
-        }
-        node.birthing = birthing;
-
         var el = node.el;
         el.style.transform = 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px,0)';
         el.style.opacity = alpha.toFixed(3);
-        // Depth decides stacking; a focused story leaves the ramp
-        // entirely and sits above everything.
-        el.style.zIndex = String(t > 0.001 ? 3000 : Math.round(e.depth * 900));
+        el.style.zIndex = String(t > 0.001 ? 3000 : Math.round((e.prox || 0) * 900));
+
+        // ONE number for the whole reveal. runtime.css turns it into
+        // the cover fading up, the cover growing, and the name
+        // arriving after the picture.
+        var prox = birthing ? 1 : (e.prox || 0);
+        if (node.prox !== prox) {
+          node.prox = prox;
+          el.style.setProperty('--vp-prox', prox.toFixed(3));
+        }
 
         node.focusEl.style.transform =
           'rotate(' + rot.toFixed(2) + 'deg) scale(' + scale.toFixed(3) + ')';
+
+        if (birthing) {
+          el.classList.add('is-birthing');
+          el.style.setProperty('--vp-birth-t', e.birthT.toFixed(3));
+        } else if (node.birthing) {
+          el.classList.remove('is-birthing');
+          el.style.removeProperty('--vp-birth-t');
+        }
+        node.birthing = birthing;
 
         if (t > 0.5) el.classList.add('is-focused');
         else el.classList.remove('is-focused');
       }
     }
 
-    // How large a focused story becomes. Derived from the field so the
-    // same story fills a phone and a laptop equally — a fixed scale
+    // How large a met Spirit becomes. Derived from the field so the
+    // same Spirit fills a phone and a laptop equally — a fixed scale
     // would be a postage stamp on one and off the edge on the other.
     function focusScale() {
       var shortest = Math.min(ether.viewWidth, ether.viewHeight);
-      return Util.clamp(shortest / 420, 1.35, 2.6);
+      return Util.clamp(shortest / 460, 1.25, 2.3);
     }
 
-    // A story removed from the Ether must not leave a live node behind
-    // holding its title and its click handler.
+    // A Spirit removed from the Ether must not leave a live node
+    // behind holding its title and its click handler.
     if (signal) {
       signal.on('story:removed', function (payload) {
         var node = assigned[payload.entity.id];
@@ -346,9 +323,9 @@
     return {
       root: root,
       render: render,
-      // The node belonging to a story, if it currently has one. The
-      // Focus System uses this to move keyboard focus onto an opened
-      // story; nothing else needs it.
+      // The node belonging to a Spirit, if it currently has one. The
+      // Focus System uses this to move keyboard focus onto a met
+      // Spirit; nothing else needs it.
       nodeFor: function (id) { return assigned[id] || null; },
       stats: function () {
         return { nodes: pool.length, free: free.length, drawn: visible.length };

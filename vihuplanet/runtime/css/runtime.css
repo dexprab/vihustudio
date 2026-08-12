@@ -120,6 +120,22 @@
 .vp-story:hover  { --vp-lift: -5px; }
 .vp-story:active { --vp-lift: -1px; }
 
+/* ---------- the reveal ----------
+ *
+ * `--vp-prox` is one number written by storyLayer.js: 0 when the Spirit
+ * is across the universe, 1 when the Traveller has turned to face it.
+ * Everything about discovery is expressed here rather than in JS, so
+ * the whole curve is one readable place.
+ *
+ * The calc()s look odd and are deliberate: opacity clamps its own
+ * input to 0..1, so `(prox - 0.10) * 2.0` IS a ramp that starts at
+ * 0.10 and is complete by 0.60, with no clamp() and no keyframes.
+ *
+ * The order matters — the picture arrives before the name. A child
+ * sees light, then a picture, then finds out what it is called. Give
+ * them the name at the same time as the picture and there is nothing
+ * left to approach for. */
+
 .vp-story-cover {
   position: relative;
   width: 100%;
@@ -140,9 +156,20 @@
      measured at 16fps against 25fps for the same field without them.
      The warm bloom that glow was for now lives where it is free: in
      the Ether's own ambient light, behind the card. */
+  /* The hairline is much fainter than a card's would be, and on
+     purpose: a crisp bright edge is the single strongest "this is a UI
+     card" signal available, and a Story Spirit is not one. What holds
+     it against the sky is its own light, behind it. */
   box-shadow:
-    0 0 0 1px rgba(241, 234, 208, 0.22),
-    0 5px 10px rgba(15, 20, 36, 0.48);
+    0 0 0 1px rgba(241, 234, 208, 0.10),
+    0 5px 14px rgba(15, 20, 36, 0.55);
+
+  /* Fades up from a tenth of the way in, whole by two thirds. */
+  opacity: calc((var(--vp-prox, 1) - 0.34) * 2.4);
+  /* And grows into itself as it resolves — a Spirit noticed from far
+     away is a small bright thing that becomes a picture. */
+  transform: scale(calc(0.54 + var(--vp-prox, 1) * 0.46));
+  transform-origin: 50% 60%;
 }
 
 .vp-story-image {
@@ -170,6 +197,20 @@
 .vp-story-caption {
   margin-top: 8px;
   text-align: center;
+  /* Much later than the cover: nothing until the Spirit is more than
+     half met, complete only at the end. */
+  opacity: calc((var(--vp-prox, 1) - 0.70) * 4.2);
+}
+
+.vp-story-creator {
+  margin-top: 1px;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(241, 234, 208, 0.62);
+  text-shadow: 0 1px 3px rgba(15, 20, 36, 0.9);
+  /* Later still than the title — the last thing a Spirit gives up. */
+  opacity: calc((var(--vp-prox, 1) - 0.84) * 6.0);
 }
 
 .vp-story-title {
@@ -194,6 +235,14 @@
 .vp-story.is-focused {
   cursor: zoom-out;
 }
+
+/* A met Spirit is wholly present, whatever nearness it arrived with. */
+.vp-story.is-focused .vp-story-cover,
+.vp-story.is-focused .vp-story-caption,
+.vp-story.is-focused .vp-story-creator {
+  opacity: 1;
+}
+.vp-story.is-focused .vp-story-cover { transform: scale(1); }
 
 /* The one card that may be expensive, because there is only ever one
    of it and it is the thing the child is looking at. */

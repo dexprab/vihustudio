@@ -72,6 +72,9 @@
     // camera is what every layer is drawn through.
     var currents = VihuPlanet.Ether.createCurrents({ ether: ether });
     var camera   = VihuPlanet.Camera.create({ ether: ether });
+    // The Traveller never moves; this is how the universe turns around
+    // them. Created after the camera because it drives nothing else.
+    var traveller = VihuPlanet.Traveller.create({ camera: camera, ether: ether, root: root });
 
     var manager  = VihuPlanet.Stories.createManager({ field: ether, signal: signal });
     var physics  = VihuPlanet.Physics.create({
@@ -86,9 +89,11 @@
     var renderer = VihuPlanet.Ether.createRenderer({ ether: ether, mount: root, camera: camera });
     var layer    = VihuPlanet.Stories.createLayer({
       mount: root, ether: ether, manager: manager, signal: signal,
-      camera: camera, maxNodes: opts.maxNodes
+      maxNodes: opts.maxNodes
     });
-    var lightField = VihuPlanet.Stories.createLightField({ ether: ether, manager: manager });
+    var spirits = VihuPlanet.Stories.createSpirits({
+      ether: ether, manager: manager, camera: camera
+    });
 
     // Appended after the story layer so it sits above it in DOM order.
     // The nearest atmosphere has to be in FRONT of the stories, and a
@@ -100,19 +105,43 @@
 
     var clock = VihuPlanet.Clock.create();
 
+    // "The universe gently slows" when a Spirit is met (Stage 3). One
+    // number, eased, multiplying the time that reaches the universe's
+    // own systems — NOT the ones responding to the child. Focus and
+    // Birth keep real time, because slowing a response to a touch is
+    // just latency; slowing the universe around it is the moment.
+    var pace = 1;
+    var paceTarget = 1;
+    var etherTime = 0;
+
     clock.add(function (dt, time) {
-      camera.update(dt, time);
-      ambient.update(dt, time);
+      paceTarget = focus.isOpen() ? 0.28 : 1;
+      pace += (paceTarget - pace) * (1 - Math.exp(-2.0 * dt));
+
+      // The universe's own clock, which is not the wall clock once it
+      // has slowed. Everything procedural reads this, so slowing is
+      // seamless rather than a jump in every sine wave at once.
+      var sdt = dt * pace;
+      etherTime += sdt;
+
+      traveller.update(dt);
+      camera.update(sdt, etherTime);
+      ambient.update(sdt, etherTime);
       birth.update(dt);
       focus.update(dt);
-      physics.step(manager.all(), dt, time, ether);
-      // After physics, before drawing: the light field reads where
-      // every story ended up this frame, and both the renderer and
-      // next frame's currents read the lights.
-      lightField.update(dt, time);
-      renderer.render(dt, time);
+      physics.step(manager.all(), sdt, etherTime, ether);
+      // After physics, before drawing: the Spirits read where every
+      // story ended up this frame, and both the renderer and next
+      // frame's currents read the lights they write.
+      spirits.update(dt, etherTime);
+      renderer.render(sdt, etherTime);
       layer.render();
     });
+
+    // Turning is suspended while a Spirit is being met — the universe
+    // holding still is part of what makes that a moment.
+    signal.on('focus:begin', function () { traveller.setEnabled(false); });
+    signal.on('focus:closed', function () { traveller.setEnabled(true); });
 
     // ---------- resize ----------
     //
@@ -194,6 +223,7 @@
 
     function destroy() {
       clock.destroy();
+      traveller.destroy();
       focus.destroy();
       layer.destroy();
       renderer.destroy();
@@ -214,6 +244,8 @@
       ambient: ambient,
       camera: camera,
       currents: currents,
+      traveller: traveller,
+      spirits: spirits,
       focus: focus,
       worlds: worlds,
       renderer: renderer,
@@ -234,6 +266,14 @@
       resize: measure,
       destroy: destroy,
 
+      // Where the Traveller is looking, small enough to keep and hand
+      // back. This is what lets them step into a story and return to
+      // the exact same place in the Ether — nothing is reloaded and
+      // nothing is reset, so this is only the viewpoint, not the
+      // universe. The universe was never anywhere else.
+      viewpoint: function () { return camera.state(); },
+      restoreViewpoint: function (s) { camera.restore(s); },
+
       stats: function () {
         var s = layer.stats();
         var a = ambient.stats();
@@ -246,7 +286,7 @@
           nebula: r.nebula,
           particles: a.particles,
           streaks: a.streaks,
-          lights: lightField.count(),
+          lights: spirits.count(),
           arriving: birth.pending(),
           focused: focus.isOpen(),
           field: { width: Math.round(ether.width), height: Math.round(ether.height) },

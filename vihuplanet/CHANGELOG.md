@@ -2,6 +2,60 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.7.0 — 2026-08-12
+
+**Sprint U2 — Story Spirits & the Ether Interaction Runtime.** A
+published story is no longer a card floating in space. It is a Story
+Spirit: a soul (light), an identity (its cover), movement (the currents
+carry it) and curiosity (it reacts to being noticed).
+
+- **New — Story Spirits** (`runtime/stories/storySpirit.js`). Four
+  layers, of which only the aura is ever guaranteed visible. Nearness
+  (`prox`) is distance from the centre of the screen, because the
+  Traveller IS the centre — so "approaching a Spirit" and "it is near
+  the middle" are one sentence. The cover fades up with nearness, the
+  name arrives later, the maker later still. A far Spirit gets no DOM
+  node at all: the cheapest way to draw a glowing soul is to not make
+  an element for it.
+- **New — the Traveller** (`runtime/core/traveller.js`). The universe
+  rotates around a Traveller who never moves. Mouse toward the edges,
+  arrow keys, or a one-to-one drag on touch. Every input feeds yaw and
+  pitch, never a position — and a full turn of yaw is exactly one field
+  width, so the universe closes on itself with no seam.
+- **Changed — the Universe Camera** gains yaw and pitch on top of its
+  drift, and can hand its whole viewpoint over and take it back.
+- **Changed — Flux Lines.** The currents made visible: promoted from a
+  faint background detail to a named layer, with tapering trails of
+  remembered positions and a soft head of light. They are not
+  connectors between Stories — they are the Ether's rivers, and Spirits
+  drift along them because physics samples the same field.
+- **New — the universe gently slows** when a Spirit is met: one eased
+  number multiplying the time that reaches the universe's own systems,
+  never the ones responding to the child.
+- **New — Stage 4, Preview** (`vihuplanet/ether/`). Cover, title,
+  creator, page count and arrival date — everything it says is
+  something the Story actually knows about itself. Actions: Read story ·
+  Continue · Cheer · Back.
+- **New — Stage 5, the Portal.** Reading opens an overlay that grows
+  out of the Spirit's own position. It never navigates and never
+  reloads: the same universe stays mounted underneath with every Spirit
+  where it was, its clock stopped while the child reads. Pages are the
+  Story's own page images, so a real read happens inside the Ether —
+  at thumbnail resolution, because SlideRenderer and the half of the
+  Studio it depends on are not loaded here. That is a disclosed limit,
+  not an oversight.
+- **New — Cheer.** Local and real: the Spirit shines brighter for a
+  couple of seconds and remembers being cheered. No invented counts
+  from strangers who do not exist yet.
+- **Fixes found by looking at it.** `NEAR`/`FAR` at 0.22/0.72 made most
+  of the screen count as "near", so every Spirit resolved at once and
+  the Ether read as a gallery of floating cards — the exact failure the
+  sprint names; 0.11/0.52 fixes it. Each Spirit also gained a small
+  crisp core at full resolution, because a quarter-resolution halo has
+  nothing in the middle of it to see.
+- **Fix — `camera.js` used `Util` without importing it**, which threw
+  the moment anything called `lookTo`.
+
 ## v0.6.1 — 2026-08-12
 
 **Real published Stories in the Ether, and deep links for them.** The

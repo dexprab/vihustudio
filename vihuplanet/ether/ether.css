@@ -93,3 +93,244 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .ether-quiet-link { transition: none; }
 }
+
+/* ---------- Stage 4 · Preview ----------
+ *
+ * Low and to one side, never a modal over the middle: the Spirit the
+ * child just met is at the centre of the screen, and covering it with
+ * a panel would hide the thing they came for. Art Direction v1.0
+ * forbids modals by name; this is a caption beside a story, not a
+ * dialog about one. */
+
+.ether-preview {
+  position: absolute;
+  left: 50%;
+  bottom: calc(4vh + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 6000;
+  width: min(34rem, calc(100% - 2rem));
+  text-align: center;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 16px;
+  background: rgba(12, 17, 32, 0.62);
+  border: 1px solid rgba(241, 234, 208, 0.14);
+  backdrop-filter: blur(10px);
+  animation: vp-preview-in 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes vp-preview-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ether-preview-title {
+  margin: 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-weight: 700;
+  font-size: clamp(1.35rem, 1.1rem + 1vw, 1.8rem);
+  line-height: 1.2;
+  text-wrap: balance;
+  color: var(--vp-paper, #F1EAD0);
+}
+
+.ether-preview-creator {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--vp-candle, #E8B871);
+}
+
+.ether-preview-meta {
+  margin: 0.3rem 0 0.9rem;
+  font-size: 0.8rem;
+  color: rgba(241, 234, 208, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.ether-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+}
+
+.ether-preview-actions button {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 0.42rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.26);
+  background: rgba(241, 234, 208, 0.07);
+  color: var(--vp-paper, #F1EAD0);
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.ether-preview-actions button:hover:not(:disabled),
+.ether-preview-actions button:focus-visible {
+  background: rgba(232, 184, 113, 0.18);
+  border-color: rgba(232, 184, 113, 0.6);
+}
+
+.ether-preview-actions button.is-primary {
+  background: rgba(232, 184, 113, 0.2);
+  border-color: rgba(232, 184, 113, 0.55);
+  color: var(--vp-candle, #E8B871);
+}
+
+.ether-preview-actions button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.ether-preview-actions button:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+/* ---------- Stage 5 · the Portal ----------
+ *
+ * The Spirit opens and the Traveller steps in. It is an OVERLAY: the
+ * universe is still mounted underneath with every Spirit exactly where
+ * it was, which is what makes coming back exact rather than restored.
+ *
+ * The veil grows from the Spirit's own position on screen (--vp-portal-x
+ * / y, written by ether.js) so the portal opens out of the light rather
+ * than appearing over it. */
+
+.ether-portal {
+  position: absolute;
+  inset: 0;
+  z-index: 7000;
+}
+
+.ether-portal-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at var(--vp-portal-x, 50%) var(--vp-portal-y, 50%),
+      rgba(232, 184, 113, 0.30) 0%,
+      rgba(30, 40, 66, 0.94) 34%,
+      rgba(9, 13, 26, 0.985) 100%);
+  opacity: 0;
+  transform: scale(0.35);
+  transform-origin: var(--vp-portal-x, 50%) var(--vp-portal-y, 50%);
+  transition: opacity 560ms ease, transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.ether-portal.is-open .ether-portal-veil {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ether-portal-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(0.7rem, 2vh, 1.4rem);
+  gap: 0.6rem;
+  opacity: 0;
+  transition: opacity 380ms ease 240ms;
+}
+
+.ether-portal.is-open .ether-portal-inner { opacity: 1; }
+
+.ether-portal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.ether-portal-title {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(1.1rem, 0.9rem + 0.8vw, 1.5rem);
+  color: var(--vp-paper, #F1EAD0);
+}
+
+.ether-portal-close {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.88rem;
+  padding: 0.38rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.3);
+  background: rgba(12, 17, 32, 0.5);
+  color: var(--vp-paper, #F1EAD0);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ether-portal-close:hover,
+.ether-portal-close:focus-visible {
+  border-color: rgba(232, 184, 113, 0.7);
+  color: var(--vp-candle, #E8B871);
+}
+
+.ether-portal-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.3rem, 1.5vw, 1rem);
+}
+
+.ether-portal-page {
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(6, 9, 20, 0.66);
+}
+
+.ether-portal-arrow {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(241, 234, 208, 0.24);
+  background: rgba(12, 17, 32, 0.5);
+  color: var(--vp-paper, #F1EAD0);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ether-portal-arrow:hover:not(:disabled) {
+  border-color: rgba(232, 184, 113, 0.7);
+  color: var(--vp-candle, #E8B871);
+}
+
+.ether-portal-arrow:disabled { opacity: 0.25; cursor: default; }
+
+.ether-portal-count {
+  flex: 0 0 auto;
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(241, 234, 208, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.ether-portal-close:focus-visible,
+.ether-portal-arrow:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .ether-preview { padding: 0.8rem 0.8rem 0.9rem; }
+  .ether-preview-actions button { font-size: 0.84rem; padding: 0.36rem 0.75rem; }
+  .ether-portal-arrow { width: 2.2rem; height: 2.2rem; font-size: 1.25rem; }
+}
+
+/* The portal still opens and closes under reduced motion — it is a
+   response to something the child pressed, and removing it would make
+   the control look broken rather than calm. It simply does not grow. */
+@media (prefers-reduced-motion: reduce) {
+  .ether-portal-veil { transition: opacity 200ms ease; transform: none; }
+  .ether-portal.is-open .ether-portal-veil { transform: none; }
+  .ether-preview { animation: none; }
+}

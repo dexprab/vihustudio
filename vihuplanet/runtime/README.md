@@ -10,10 +10,10 @@ out of it.
 
 ```
 VihuPlanet
-├── Core       namespace · rng · signal · clock · camera
+├── Core       namespace · rng · signal · clock · camera · traveller
 ├── Universe   the engine that composes everything below
 ├── Ether      the living space · the currents · the renderer
-├── Stories    Story Entities · Manager · presentation · light field
+├── Stories    Story Entities · Manager · Spirits · presentation
 ├── Physics    currents · avoidance · attraction
 ├── Ambient    the universe's own restlessness
 ├── Focus      touch a story, it comes forward, it returns
@@ -138,6 +138,98 @@ the Ether.
 Renderers may read anything on an entity. They must write nothing.
 
 ---
+
+## Story Spirits
+
+A published story is not a card floating in space. It is a **Story
+Spirit**: a living presence in the Ether, with a soul (light), an
+identity (its cover), movement (the currents carry it) and curiosity
+(it reacts to being noticed).
+
+Four layers, and only the first is ever guaranteed to be visible:
+
+| | |
+|---|---|
+| **Spirit Aura** | light, seen from across the universe — the first thing a child notices, and for most Spirits at any moment the only thing |
+| **Story Cover** | its identity, revealed by nearness, never by default |
+| **Soft Glow** | its own pulse, its own colour, seeded from its id |
+| **Flux** | it belongs to the Ether and travels the currents |
+
+### Nearness is distance from the centre of the screen
+
+The Traveller never moves — they *are* the centre, and the universe
+turns around them. So "the Traveller approaches a Spirit" and "the
+Spirit is near the middle of the screen" are the same sentence, and
+`prox` (0 far, 1 met) is that sentence as a number. Everything about
+discovery falls out of it:
+
+```
+prox 0.00   a light in the dark. No cover, no name — and NO DOM NODE
+prox 0.35   the cover begins to fade up, small, still unnamed
+prox 0.70   it has a name
+prox 0.85   it has a maker
+```
+
+The picture always arrives before the name. Give a child both at once
+and there is nothing left to approach for.
+
+That a far Spirit has no element is the design and the performance
+story at once: the cheapest way to render a glowing soul is to not make
+a DOM node for it. Measured with 24 Spirits in view, 5 had bodies and
+19 were pure light.
+
+Two numbers were tuned by looking at the thing rather than reasoning
+about it. `NEAR`/`FAR` started at 0.22/0.72 of the shorter edge, which
+made most of the screen count as "near" — every Spirit in view resolved
+at once and the Ether read as **a gallery of floating cards**, the exact
+failure the sprint names. At 0.11/0.52 only what the Traveller has
+actually turned toward becomes a picture. And each Spirit now gets a
+small, bright, crisp **core** drawn at full resolution on top of its
+quarter-resolution halo — blurred across four pixels there was nothing
+in the middle of an aura to see, and a distant Spirit was reading as a
+faint card rather than a soul.
+
+## The Traveller
+
+The Traveller is always at the centre and never moves. There is no
+avatar and no object representing them — the Traveller *is* the centre
+of the screen. What they can do is look.
+
+- **Mouse** toward the edges turns the universe; the nearer the edge,
+  the faster. The dead zone is most of the screen on purpose — reaching
+  for a Spirit must not steer the universe by accident.
+- **Arrow keys** turn it, a little more decisively than the mouse.
+- **Touch** drags it one-to-one; the sky follows the hand.
+
+Every input feeds the camera's **yaw** and **pitch**, never a position.
+A full turn of yaw is exactly one field width, and the Ether already
+wraps there — so turn far enough and the universe closes on itself,
+with no seam and no end to walk into. Pitch is clamped: you can look up
+and down, and then you have looked as far as there is.
+
+Layers drawn as whole images tile horizontally to survive that, and the
+soft buffers carry a much larger bleed than the sky because looking up
+and down moves them further.
+
+## The five stages
+
+| | | where it lives |
+|---|---|---|
+| 1 · Discovery | Spirits are only glowing souls | runtime |
+| 2 · Approach | turn toward one: glow rises, cover resolves, it reacts to being noticed | runtime |
+| 3 · Meet | the universe **gently slows**, the background fades, the Spirit comes to the Traveller | runtime |
+| 4 · Preview | cover, title, creator, what it knows about itself, and four actions | the Ether page |
+| 5 · Enter | the Spirit opens like a portal and the Traveller steps in | the Ether page |
+
+Stages 1–3 are the runtime's and the page takes no part in them. The
+slowing is one eased number multiplying the time that reaches the
+universe's own systems — never the ones responding to the child, because
+slowing a response to a touch is just latency.
+
+"The Spirit subtly reacts to being noticed" is a value that *lags*
+behind nearness, so a Spirit swells a moment after the child turns
+toward it rather than tracking the pointer like a cursor. Being noticed
+is something that happens to it, not a readout of where the mouse is.
 
 ## The universe is alive before the first story
 

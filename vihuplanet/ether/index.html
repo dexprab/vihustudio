@@ -27,6 +27,42 @@
     <p class="ether-quiet-line" data-quiet-line></p>
     <a class="ether-quiet-link" href="../../index.html">Go to the Studio</a>
   </div>
+
+  <!-- Stage 4 · Preview. Appears when a Spirit has been met, and says
+       only what the Story actually knows about itself. -->
+  <aside class="ether-preview" data-preview hidden aria-live="polite">
+    <h2 class="ether-preview-title" data-preview-title></h2>
+    <p class="ether-preview-creator" data-preview-creator></p>
+    <p class="ether-preview-meta" data-preview-meta></p>
+    <div class="ether-preview-actions">
+      <button type="button" class="is-primary" data-act="read">Read story</button>
+      <button type="button" data-act="continue">Continue</button>
+      <button type="button" data-act="cheer">Cheer</button>
+      <button type="button" data-act="back">Back</button>
+    </div>
+  </aside>
+
+  <!-- Stage 5 · the Portal. An overlay, never a page — the universe
+       stays alive underneath, which is what makes coming back exact. -->
+  <div class="ether-portal" data-portal hidden role="dialog" aria-modal="true"
+       aria-label="Reading a story">
+    <div class="ether-portal-veil"></div>
+    <div class="ether-portal-inner">
+      <header class="ether-portal-bar">
+        <span class="ether-portal-title" data-portal-title></span>
+        <button type="button" class="ether-portal-close" data-portal-close
+                aria-label="Back to the Ether">Back to the Ether</button>
+      </header>
+      <div class="ether-portal-stage">
+        <button type="button" class="ether-portal-arrow is-prev" data-portal-prev
+                aria-label="Previous page">‹</button>
+        <img class="ether-portal-page" data-portal-page alt="">
+        <button type="button" class="ether-portal-arrow is-next" data-portal-next
+                aria-label="Next page">›</button>
+      </div>
+      <p class="ether-portal-count" data-portal-count></p>
+    </div>
+  </div>
 </main>
 
 <!-- ---------- VihuStudio: the Stories ----------
@@ -45,11 +81,12 @@
 <script src="../runtime/core/signal.js"></script>
 <script src="../runtime/core/clock.js"></script>
 <script src="../runtime/core/camera.js"></script>
+<script src="../runtime/core/traveller.js"></script>
 
 <script src="../runtime/stories/storyEntity.js"></script>
 <script src="../runtime/stories/storyManager.js"></script>
 <script src="../runtime/stories/storyLayer.js"></script>
-<script src="../runtime/stories/storyLight.js"></script>
+<script src="../runtime/stories/storySpirit.js"></script>
 
 <script src="../runtime/physics/spatialGrid.js"></script>
 <script src="../runtime/physics/physics.js"></script>

@@ -80,7 +80,36 @@
   // slide them without an edge appearing. Comfortably more than the
   // camera's reach (~2.5% of the shorter edge) times any parallax a
   // baked layer uses.
-  var BLEED = 40;
+  var BLEED = 56;
+
+  // The soft buffer gets a much larger bleed than the sky, because it
+  // is a quarter-resolution blur: 120 view-pixels of margin costs 30
+  // buffer-pixels a side. It needs the room because looking up and
+  // down moves it further than the sky (parallax 0.30 against 0.18),
+  // and a layer that stops before the edge of the screen shows as a
+  // dark frame around the universe.
+  var SOFT_BLEED = 120;
+
+  // Turning the universe is unbounded — a full turn of yaw is one
+  // field width, and a child can keep turning. So every layer drawn as
+  // a whole image tiles horizontally: the offset is reduced into one
+  // tile and the image is blitted twice when the seam is on screen,
+  // once when it is not. Vertically nothing tiles, because pitch is
+  // clamped (camera.js) to less than the bleed can cover.
+  function blitTiled(ctx, img, ox, oy, w, h) {
+    var start = ox % w;
+    if (start > 0) start -= w;
+    ctx.drawImage(img, start, oy, w, h);
+    if (start + w < ctx.canvas.width) ctx.drawImage(img, start + w, oy, w, h);
+  }
+
+  // The same reduction for layers made of individual points (dust,
+  // flux lines) that live in view space rather than field space.
+  function wrapOffset(v, span) {
+    if (!(span > 0)) return v;
+    var r = v % span;
+    return r > 0 ? r - span : r;
+  }
 
   // The soft layers render into a buffer this many times smaller on
   // each axis, and refresh this rarely. Both are visual no-ops and
@@ -396,16 +425,20 @@
       for (var i = 0; i < ether.lights.length; i++) {
         var l = ether.lights[i];
         if (!l.alive || l.intensity <= 0.004) continue;
-        // + BLEED, because the buffer's origin is that far outside the
-        // view's — see the bleed note in resize().
-        var x = (l.x + BLEED) * k + ox;
-        var y = (l.y + BLEED) * k + oy;
+        // + SOFT_BLEED, because the buffer's origin is that far
+        // outside the view's — see the bleed note in resize().
+        var x = (l.x + SOFT_BLEED) * k + ox;
+        var y = (l.y + SOFT_BLEED) * k + oy;
         var reach = 128 * l.scale * k;
         // Two blobs: a close warm core, and a much wider, fainter wash
         // that is what actually keeps a lone story from looking
         // abandoned — the near glow belongs to the card, the far one
         // belongs to the Ether around it.
-        drawBlob(litCtx, l.warm ? p.spark : p.glow, x, y, reach, l.intensity * 0.17 * breath);
+        // "Different stories may have slightly different glow
+        // colours" — the Spirit's own hue, chosen from the Ether's
+        // palette roles and seeded from its id (storySpirit.js).
+        var hue = p[l.hue] || p.glow;
+        drawBlob(litCtx, l.warm ? p.spark : hue, x, y, reach, l.intensity * 0.17 * breath);
         drawBlob(litCtx, p.mist, x, y, reach * 1.9, l.intensity * 0.07 * breath);
       }
 
@@ -417,8 +450,12 @@
     function drawDust(target, store, breath, veilFade) {
       var p = ether.palette;
       var cam = camera ? camera.offsetFor(store.parallax) : null;
-      var ox = cam ? cam.x : 0;
-      var oy = cam ? cam.y : 0;
+      // Dust lives in view space and wraps there, so the camera offset
+      // is reduced into one span — otherwise turning the universe far
+      // enough would carry every mote off the screen and leave the
+      // foreground empty.
+      var ox = wrapOffset(cam ? cam.x : 0, ether.viewWidth + 140);
+      var oy = wrapOffset(cam ? cam.y : 0, ether.viewHeight + 140);
 
       for (var i = 0; i < store.motes.length; i++) {
         var m = store.motes[i];
@@ -453,26 +490,34 @@
       // --- the baked sky. No clearRect first: it is opaque and, with
       // its bleed, covers every pixel at any camera offset.
       cam = camera ? camera.offsetFor(D.farStars) : null;
-      var skyX = (cam ? cam.x : 0) - BLEED;
+      var skyTile = w + BLEED * 2;
+      var skyX = wrapOffset((cam ? cam.x : 0) - BLEED, skyTile);
       var skyY = (cam ? cam.y : 0) - BLEED;
-      ctx.drawImage(baked, skyX, skyY, w + BLEED * 2, h + BLEED * 2);
+      blitTiled(ctx, baked, skyX, skyY, skyTile, h + BLEED * 2);
 
       // Everything above the sky is added light, never paint over it —
       // 'lighter' is what makes mist read as luminous haze rather than
       // as grey laid on top of stars.
       ctx.globalCompositeOperation = 'lighter';
 
+      // The live star layers ride the same tiles as the baked sky, so
+      // they repeat with it rather than sliding across it.
+      var skyPass = (skyX + skyTile < w) ? 2 : 1;
+
       // --- living stars, at the sky's own parallax.
       if (!reduced) {
         ctx.fillStyle = p.star;
-        for (i = 0; i < twinklers.length; i++) {
-          var star = twinklers[i];
-          // Never fully out, and never much brighter than its baked
-          // self: a twinkle is a breath, not a blink.
-          var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
-          ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
-          ctx.fillRect(star.x + skyX, star.y + skyY,
-            Math.max(1, star.r * 2), Math.max(1, star.r * 2));
+        for (var pass = 0; pass < skyPass; pass++) {
+          var tx = skyX + pass * skyTile;
+          for (i = 0; i < twinklers.length; i++) {
+            var star = twinklers[i];
+            // Never fully out, and never much brighter than its baked
+            // self: a twinkle is a breath, not a blink.
+            var pulse = 0.5 + 0.5 * Math.sin(time * star.speed + star.phase);
+            ctx.globalAlpha = star.a * (0.32 + pulse * 0.80) * breath;
+            ctx.fillRect(star.x + tx, star.y + skyY,
+              Math.max(1, star.r * 2), Math.max(1, star.r * 2));
+          }
         }
       }
 
@@ -493,12 +538,13 @@
       // --- light currents. The only layer that shows the rivers
       // themselves: a faint mark trailing along the flow it is riding.
       cam = camera ? camera.offsetFor(D.currents) : null;
-      var cx = cam ? cam.x : 0, cy = cam ? cam.y : 0;
+      var cx = wrapOffset(cam ? cam.x : 0, w + 240);
+      var cy = wrapOffset(cam ? cam.y : 0, h + 240);
       ctx.lineCap = 'round';
-      ctx.lineWidth = 1;
       for (i = 0; i < amb.streaks.length; i++) {
         var s = amb.streaks[i];
         if (!s.alive || s.filled < 2) continue;
+        ctx.lineWidth = s.width || 1;
         // Fades in and out across its whole life, so a streak is never
         // seen to appear or to stop.
         var fade = Math.sin(s.life * Math.PI);
@@ -515,6 +561,11 @@
           ctx.lineTo(tail.x + cx, tail.y + cy);
           ctx.stroke();
         }
+        // A soft head on the line, so it reads as light travelling
+        // along the river rather than as a drawn stroke.
+        drawBlob(ctx, s.warm ? p.glow : p.star,
+          s.pts[0].x + cx, s.pts[0].y + cy, 7 + (s.width || 1) * 5,
+          s.alpha * fade * 1.4 * breath);
       }
 
       // --- mid dust.
@@ -557,9 +608,31 @@
       frames++;
       assembleLit(mistCam, storyCam, breath);
       ctx.globalAlpha = 1;
-      ctx.drawImage(lit,
-        (mistCam ? mistCam.x : 0) - BLEED, (mistCam ? mistCam.y : 0) - BLEED,
-        w + BLEED * 2, h + BLEED * 2);
+      var softTile = w + SOFT_BLEED * 2;
+      blitTiled(ctx, lit,
+        wrapOffset((mistCam ? mistCam.x : 0) - SOFT_BLEED, softTile),
+        (mistCam ? mistCam.y : 0) - SOFT_BLEED,
+        softTile, h + SOFT_BLEED * 2);
+
+      // --- the Spirit's core.
+      //
+      // The halo above is a quarter-resolution blur, which is right for
+      // a glow and wrong for a soul: blurred across four pixels there
+      // is nothing at the middle of it to see, and a Story Spirit seen
+      // from across the universe was reading as a faint card rather
+      // than as a light. So each one also gets a small, bright, crisp
+      // core at full resolution. Small is what makes it affordable —
+      // thirty cores at eighteen pixels is forty thousand pixels, next
+      // to nothing, and it is the difference between a gallery of
+      // floating cards and a universe with souls in it.
+      for (i = 0; i < ether.lights.length; i++) {
+        var core = ether.lights[i];
+        if (!core.alive || core.intensity <= 0.004) continue;
+        var ck = 9 + core.scale * 9;
+        drawBlob(ctx, core.warm ? p.spark : (p[core.hue] || p.glow),
+          core.x + (storyCam ? storyCam.x : 0), core.y + (storyCam ? storyCam.y : 0),
+          ck, Util.clamp(core.intensity * 0.62, 0, 0.85) * breath);
+      }
 
       // --- the veil. Back to normal compositing: this one IS paint on
       // top. It never reaches opaque — the universe stays visible and
@@ -611,8 +684,8 @@
       // along whichever edges the camera has moved away from. That
       // band shows as a dark frame around the whole universe — the
       // mist and nebula simply stop before the edge of the screen.
-      soft.width = Math.max(1, Math.ceil((w + BLEED * 2) / SOFT_SCALE));
-      soft.height = Math.max(1, Math.ceil((h + BLEED * 2) / SOFT_SCALE));
+      soft.width = Math.max(1, Math.ceil((w + SOFT_BLEED * 2) / SOFT_SCALE));
+      soft.height = Math.max(1, Math.ceil((h + SOFT_BLEED * 2) / SOFT_SCALE));
       lit.width = soft.width;
       lit.height = soft.height;
       frames = 0;    // force a soft refresh on the very next frame

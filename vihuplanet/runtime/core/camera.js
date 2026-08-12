@@ -41,6 +41,7 @@
   var VihuPlanet = global.VihuPlanet;
   if (!VihuPlanet) return;
 
+  var Util = VihuPlanet.Util;
   var Env = VihuPlanet.Env;
   var Rng = VihuPlanet.Rng;
   var Camera = VihuPlanet.ns('Camera');
@@ -71,16 +72,70 @@
       x2: rng.between(0, Math.PI * 2), y2: rng.between(0, Math.PI * 2)
     };
 
-    var offset = { x: 0, y: 0 };
+    var drift = { x: 0, y: 0 };     // the involuntary part
+    var offset = { x: 0, y: 0 };    // drift + look, what layers read
     var scratch = { x: 0, y: 0 };
 
+    // ---------- looking around ----------
+    //
+    // The Traveller never moves. The universe rotates around them —
+    // standing beneath a living night sky, not walking across a map.
+    //
+    // `yaw` is an angle, and a full turn scrolls exactly one field
+    // width. That is what makes the universe close on itself: turn all
+    // the way around and you are looking at where you started, because
+    // the Ether wraps at the field's edge anyway (physics.js). No
+    // seams, no ends, no wall to walk into.
+    //
+    // `pitch` does not wrap. You can look up and you can look down, and
+    // then you have looked as far as there is — clamped to the field,
+    // because a sky you can scroll past forever is a scrollbar.
+    var yaw = 0;
+    var pitch = 0;
+    var yawTarget = 0;
+    var pitchTarget = 0;
+
+    // How quickly the view catches up to where the Traveller is
+    // looking (1/s). Low enough that the universe always feels heavy —
+    // it is a universe, it does not snap.
+    var ease = opts.ease || 2.4;
+
+    function pitchLimit() {
+      return Math.max(0, (ether.height - ether.viewHeight) * 0.5);
+    }
+
+    // Radians in, and a full turn is one field width across.
+    function look(dYaw, dPitch) {
+      yawTarget += dYaw;
+      pitchTarget = Util.clamp(pitchTarget + dPitch, -1, 1);
+    }
+
+    function lookTo(y, p) {
+      yawTarget = y;
+      pitchTarget = Util.clamp(p, -1, 1);
+    }
+
     function update(dt, time) {
-      if (amplitude <= 0) { offset.x = 0; offset.y = 0; return; }
-      var reach = Math.min(ether.viewWidth, ether.viewHeight) * amplitude;
-      offset.x = reach * (Math.sin(time * rate.x1 + phase.x1) * 0.72 +
-                          Math.sin(time * rate.x2 + phase.x2) * 0.28);
-      offset.y = reach * (Math.cos(time * rate.y1 + phase.y1) * 0.72 +
-                          Math.cos(time * rate.y2 + phase.y2) * 0.28);
+      // The involuntary drift — the thing that makes a still universe
+      // feel alive even when nobody touches anything.
+      if (amplitude > 0) {
+        var reach = Math.min(ether.viewWidth, ether.viewHeight) * amplitude;
+        drift.x = reach * (Math.sin(time * rate.x1 + phase.x1) * 0.72 +
+                           Math.sin(time * rate.x2 + phase.x2) * 0.28);
+        drift.y = reach * (Math.cos(time * rate.y1 + phase.y1) * 0.72 +
+                           Math.cos(time * rate.y2 + phase.y2) * 0.28);
+      } else {
+        drift.x = 0; drift.y = 0;
+      }
+
+      // The voluntary part eases toward wherever the Traveller has
+      // turned. Frame-rate independent, never overshoots.
+      var k = 1 - Math.exp(-ease * dt);
+      yaw += (yawTarget - yaw) * k;
+      pitch += (pitchTarget - pitch) * k;
+
+      offset.x = drift.x + (yaw / (Math.PI * 2)) * ether.width;
+      offset.y = drift.y + pitch * pitchLimit();
     }
 
     // The camera's offset as a given layer should see it. Parallax 0
@@ -100,7 +155,23 @@
       update: update,
       offsetFor: offsetFor,
       offset: function () { return offset; },
-      amplitude: function () { return amplitude; }
+      amplitude: function () { return amplitude; },
+
+      look: look,
+      lookTo: lookTo,
+      yaw: function () { return yaw; },
+      pitch: function () { return pitch; },
+      // The whole viewpoint, small enough to keep and hand back. This
+      // is what lets the Traveller step into a story and return to the
+      // exact same place in the Ether — see the Ether page's portal.
+      state: function () { return { yaw: yawTarget, pitch: pitchTarget }; },
+      restore: function (s) {
+        if (!s) return;
+        yawTarget = s.yaw || 0;
+        pitchTarget = Util.clamp(s.pitch || 0, -1, 1);
+        yaw = yawTarget;
+        pitch = pitchTarget;
+      }
     };
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -193,6 +193,20 @@ Locked by the product owner in the VihuPlanet Ether Runtime brief.
   today that is the creator across their own devices, since there is no
   public cross-creator feed yet. When one exists it becomes another
   source inside `EtherFeed.load()` and nothing downstream changes.
+- **A published Story is a Story Spirit, never a card** (Sprint U2). A
+  soul (light) first, an identity (its cover) only once approached, its
+  own glow, and movement it does not choose — the currents carry it.
+  Nearness is distance from the centre of the screen, and the cover, the
+  name and the maker each arrive later than the last. *If it feels like
+  a gallery of floating cards, it is wrong.*
+- **The Traveller is the centre and never moves.** The universe rotates
+  around them — looking around a night sky, not moving through a map.
+  Mouse to the edges, arrow keys, or drag. A full turn is exactly one
+  field width, so the universe closes on itself.
+- **Meeting and reading never leave VihuPlanet.** The portal is an
+  overlay; the universe is never torn down, reset or reloaded, so
+  returning is exact because nothing was lost rather than because
+  something was restored.
 - Architecture and rationale: `vihuplanet/runtime/README.md`.
   Integration: `js/etherFeed.js` and `vihuplanet/ether/`.
 

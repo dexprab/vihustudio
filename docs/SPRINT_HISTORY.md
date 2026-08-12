@@ -1523,3 +1523,60 @@ this is the creator's own Stories, on their own device plus their card's cloud
 sync — there is no public cross-creator feed to read, because there is no public
 VihuPlanet yet (`creator_projects` is a private, card-gated backup). The URL
 contract is what a public feed will need; the feed is what a stranger will need.
+
+## Sprint U2 · Story Spirits & the Ether Interaction Runtime
+
+A published story stopped being a card floating in space and became a **Story
+Spirit**: a soul (light), an identity (its cover), movement it does not choose
+(the currents carry it) and curiosity (it reacts to being noticed). The
+mechanism is one number. The Traveller never moves — they ARE the centre of the
+screen and the universe turns around them — so "the Traveller approaches a
+Spirit" and "the Spirit is near the middle of the screen" are the same sentence,
+and `prox` is that sentence as a number. Everything about discovery falls out of
+it: at `prox` 0 a Spirit is a light with **no DOM node at all**, the cover fades
+up from 0.34, the name arrives at 0.70 and the maker at 0.84 — the picture
+always before the name, because giving a child both at once leaves nothing to
+approach for. That a far Spirit has no element is the design and the performance
+story at once: the cheapest way to draw a glowing soul is to not make an element
+for it (measured: 24 Spirits in view, 5 bodies, 19 pure light). Two numbers were
+fixed by looking at screenshots rather than reasoning — `NEAR`/`FAR` at
+0.22/0.72 made most of the screen count as "near", every Spirit resolved at once
+and the result read as **a gallery of floating cards**, the exact failure the
+sprint names by name; 0.11/0.52 fixed it. And each Spirit gained a small crisp
+**core** drawn at full resolution over its quarter-resolution halo, because a
+blur spread across four pixels has nothing in the middle of it to see and
+distant Spirits were reading as faint cards rather than souls. The **Traveller**
+(`core/traveller.js`) turns the universe: mouse toward the edges past a
+deliberately large dead zone, arrow keys, or a one-to-one drag on touch. Every
+input feeds the camera's yaw and pitch and never a position, and a full turn of
+yaw is exactly one field width — which the Ether already wraps at — so the
+universe closes on itself with no seam and no wall. Supporting that meant layers
+drawn as whole images tile horizontally, and the soft buffers needed a much
+larger bleed (120px against the sky's 56) because looking up and down moves them
+further. **Flux Lines** were promoted from a faint background detail to a named
+layer: tapering trails of remembered positions with a soft head of light, riding
+the same field physics samples, so a Spirit visibly travels the line a flux line
+traced a moment earlier. They are never connectors between Stories. The five
+stages split cleanly at the runtime boundary — Discovery, Approach and Meet are
+entirely the runtime's (including "the universe gently slows", one eased number
+multiplying the time that reaches the universe's own systems and never the ones
+responding to the child, because slowing a response to a touch is just latency),
+while **Preview** and the **Portal** belong to `vihuplanet/ether/`. Preview says
+only what the Story actually knows about itself — cover, title, creator, page
+count, arrival date — with Read story · Continue · Cheer · Back. Cheer is local
+and honest: the Spirit shines for two seconds and remembers, with no invented
+counts from strangers who do not exist yet. The Portal is an overlay that grows
+out of the Spirit's own screen position; it never navigates and never reloads,
+the same universe object stays mounted with every Spirit where it was and its
+clock simply stopped, so returning is exact because nothing was lost rather than
+because something was restored (verified: viewpoint delta 0.0005 rad, positions
+within 3.7px of where they were, which is the universe living through the ~2.5s
+of transition rather than resetting). Reading uses each slide's own `thumbnail`
+data URI, which `js/projectManager.js` deliberately keeps unmigrated — that
+choice is what makes a real page-by-page read possible here without loading
+SlideRenderer and the ~6,900 lines and half the Studio it depends on. Disclosed
+limit: pages therefore read at thumbnail resolution in the Ether; wiring
+SlideRenderer in would fix that and is its own piece of work. One real bug:
+`core/camera.js` used `Util` without importing it, which threw the instant
+anything called `lookTo`. Verified end to end across all five stages with real
+records in the real store, plus reduced motion, keyboard, and no console errors.

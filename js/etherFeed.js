@@ -71,8 +71,47 @@ const EtherFeed = (function () {
       cover: _cover(record),
       creator: creator || null,
       publishedAt: record.publishedAt || record.updatedAt || null,
+      // How many pages it has. A count, not the pages — reading
+      // `.length` copies nothing, and it is the one honest thing the
+      // Preview can say about a Story without opening it.
+      pages: _pageCount(record),
       source: { projectId: record.id }
     };
+  }
+
+  function _pageCount(record) {
+    try {
+      var slides = record && record.data && record.data.slides;
+      return (slides && slides.length) || 0;
+    } catch (e) { return 0; }
+  }
+
+  // The Story's pages, for reading inside the portal.
+  //
+  // Every slide carries its own `thumbnail` as a plain data URI —
+  // js/projectManager.js keeps it that way deliberately (a disclosed
+  // scope decision recorded there), which is what makes page-by-page
+  // reading possible here without loading SlideRenderer and the six
+  // thousand lines and half the Studio that come with it.
+  //
+  // The honest limit: these are page THUMBNAILS, so a story read in the
+  // Ether is lower resolution than the same story read in the Studio.
+  // Wiring SlideRenderer into this page would fix that and is its own
+  // piece of work; a real read at thumbnail quality is a great deal
+  // better than a portal that opens onto nothing.
+  //
+  // Local only, on purpose: a cloud round-trip per page turn is not a
+  // reading experience.
+  function pagesOf(projectId) {
+    try {
+      var record = CreatorProjectStore.get(projectId);
+      var slides = (record && record.data && record.data.slides) || [];
+      var out = [];
+      for (var i = 0; i < slides.length; i++) {
+        if (slides[i] && slides[i].thumbnail) out.push(slides[i].thumbnail);
+      }
+      return out;
+    } catch (e) { return []; }
   }
 
   // Local first, and local is usually all of it: CreatorProjectStore
@@ -176,6 +215,7 @@ const EtherFeed = (function () {
   const api = {
     load: load,
     attach: attach,
+    pagesOf: pagesOf,
     publishInto: publishInto,
     toStory: toStory
   };
