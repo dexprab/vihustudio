@@ -2,6 +2,23 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.0.3 — 2026-08-12
+
+- **The music starts on VihuPlanet's Tap to Begin,** exactly as it used
+  to on the Gateway's. The tap moved to the door when VihuPlanet became
+  the entrance; the ambience moved with it. `AudioManager.init()` and
+  `playFoundation()` fire synchronously inside the handler — before any
+  timeout or await, or the gesture is spent and the browser blocks the
+  play anyway.
+  AudioManager needed nothing else to come with it: it has no module
+  dependencies and resolves its own asset paths from its script's
+  location, so it behaves at the root exactly as it does in the Studio.
+  Verified with the browser's default autoplay policy: all five
+  Foundation layers created on the tap, playing, at their mixed volumes,
+  with `currentTime` advancing.
+  The Studio is a separate document and still cannot inherit this — its
+  own audio starts at the child's first touch there.
+
 ## v1.0.2 — 2026-08-12
 
 - **Fix — the arrow keys stopped working after the first tap.** The

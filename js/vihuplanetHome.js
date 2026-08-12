@@ -159,6 +159,29 @@
 
     function crossThreshold() {
       if (!thresholdEl || thresholdEl.classList.contains('is-gone')) return;
+
+      // The music starts HERE, and this is the one place it can.
+      //
+      // Browsers block every un-muted audio.play() until a genuine user
+      // gesture in this document, so ambience has to begin inside a
+      // real handler — synchronously, before any await or timeout, or
+      // the gesture is spent and the play() is blocked anyway. That is
+      // exactly what the Traveller Gateway's own "Tap to Begin" did
+      // before VihuPlanet took over the threshold; the tap moved, so
+      // the music moved with it.
+      //
+      // The Studio is a separate document and cannot inherit this — its
+      // own audio still starts on the child's first touch there (see
+      // beginNow() in js/gatewaySequence.js). This makes VihuPlanet
+      // itself sound like somewhere, which is where a child now spends
+      // their time.
+      try {
+        if (typeof AudioManager !== 'undefined') {
+          AudioManager.init();
+          AudioManager.playFoundation();
+        }
+      } catch (e) {}
+
       thresholdEl.classList.add('is-gone');
       window.setTimeout(function () { thresholdEl.hidden = true; }, 900);
       if (actionsEl) {
