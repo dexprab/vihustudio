@@ -211,13 +211,32 @@ function subjectFor(names: string[]): string {
 
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
+// A secret typed into a dashboard field, or set through a shell, picks
+// up characters nobody meant to send: a trailing newline from a paste,
+// a leading space, or the quotes from `SMTP_PASSWORD='...'` stored
+// literally rather than consumed by the shell. Every one of those
+// reaches the mail server as part of the password and comes back as
+// 535 authentication failed, which reads exactly like a wrong password
+// and is not one.
+//
+// Passwords do not legitimately begin or end with whitespace or a
+// matched pair of quotes, so removing them can only ever fix this and
+// never break a working credential.
+function secret(name: string): string {
+  let v = (Deno.env.get(name) || '').trim();
+  if (v.length > 1 && ((v[0] === '"' && v.endsWith('"')) || (v[0] === "'" && v.endsWith("'")))) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 async function sendViaSmtp(to: string, subject: string, body: string) {
-  const host = Deno.env.get('SMTP_HOST');
-  const user = Deno.env.get('SMTP_USER');
-  const pass = Deno.env.get('SMTP_PASSWORD');
-  const from = Deno.env.get('SKY_FROM_EMAIL') || user;
-  const replyTo = Deno.env.get('SKY_REPLY_TO');
-  const port = Number(Deno.env.get('SMTP_PORT') || '465');
+  const host = secret('SMTP_HOST');
+  const user = secret('SMTP_USER');
+  const pass = secret('SMTP_PASSWORD');
+  const from = secret('SKY_FROM_EMAIL') || user;
+  const replyTo = secret('SKY_REPLY_TO');
+  const port = Number(secret('SMTP_PORT') || '465');
   if (!host || !user || !pass || !from) return { ok: false, error: 'mail_not_configured' };
 
   let client: SMTPClient | null = null;
@@ -344,11 +363,33 @@ Deno.serve(async (req: Request) => {
       transport: Deno.env.get('SMTP_HOST')
         ? 'smtp'
         : (Deno.env.get('RESEND_API_KEY') ? 'resend' : 'none'),
-      smtpHost: Deno.env.get('SMTP_HOST') || null,
-      smtpPort: Deno.env.get('SMTP_PORT') || null,
-      smtpUserSet: !!Deno.env.get('SMTP_USER'),
-      smtpPasswordSet: !!Deno.env.get('SMTP_PASSWORD'),
-      fromSet: !!Deno.env.get('SKY_FROM_EMAIL'),
+      smtpHost: secret('SMTP_HOST') || null,
+      smtpPort: secret('SMTP_PORT') || null,
+      smtpUserSet: !!secret('SMTP_USER'),
+      smtpPasswordSet: !!secret('SMTP_PASSWORD'),
+      fromSet: !!secret('SKY_FROM_EMAIL'),
+
+      // 535 from a mail server means "that credential is wrong", and it
+      // says the same thing whether the password is genuinely wrong or
+      // merely carries a stray quote, a trailing newline or an address
+      // that is not the full mailbox. These distinguish those without
+      // revealing anything: shapes and matches, never a value and never
+      // a length.
+      smtpUserIsFullAddress: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secret('SMTP_USER')),
+      smtpPasswordWasWrapped:
+        (Deno.env.get('SMTP_PASSWORD') || '') !== secret('SMTP_PASSWORD'),
+      // With SMTP the from address must be the mailbox that
+      // authenticated — most providers, Titan included, reject anything
+      // else. A display name on the front is fine; a different address
+      // is not.
+      fromMatchesUser: (function () {
+        const u = secret('SMTP_USER').toLowerCase();
+        const f = secret('SKY_FROM_EMAIL').toLowerCase();
+        if (!u) return false;
+        if (!f) return true; // falls back to the user
+        const inAngles = f.match(/<([^>]+)>/);
+        return (inAngles ? inAngles[1].trim() : f.trim()) === u;
+      })(),
     });
   }
 
