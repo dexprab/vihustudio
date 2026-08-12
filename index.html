@@ -44,9 +44,9 @@
        hundred stories. What changes is what happens behind them, and
        js/journeyResolver.js is the only thing that decides that. -->
   <nav class="vp-actions" data-actions hidden aria-label="VihuPlanet">
-    <button type="button" class="vp-action" data-act="my-stories">
-      <span class="vp-action-glyph" aria-hidden="true">📚</span>
-      <span class="vp-action-label">My Stories</span>
+    <button type="button" class="vp-action" data-act="stars">
+      <span class="vp-action-glyph" aria-hidden="true">⭐</span>
+      <span class="vp-action-label">Show Me Your Stars</span>
     </button>
     <button type="button" class="vp-action is-primary" data-act="create">
       <span class="vp-action-glyph" aria-hidden="true">✨</span>
@@ -54,15 +54,53 @@
     </button>
   </nav>
 
-  <!-- Said when a child asks for stories they have not made yet. Not
-       an empty state and not an error — an invitation, with the one
-       action that changes it — which is the Create Story button that
-       is ALREADY there and always will be. A second copy of it inside
-       this message would be two identical buttons a finger apart, and
-       would teach that the interface grows new controls when something
-       is missing. It does not. The permanent one lights up instead. -->
-  <div class="vp-message" data-message hidden role="status">
-    <p class="vp-message-line" data-message-line></p>
+  <!-- ===============================================================
+       Mark Your Stars.
+       This is how VihuPlanet recognises its Creators. It is not a
+       login: there is no account behind it, nothing to remember and
+       nothing that can expire. A child draws the constellation from
+       their own Magic Card and the universe either knows that sky or
+       does not.
+
+       It opens for EVERYBODY who asks — no Creator check first, no
+       Lumo, no dialogue. A returning Creator on a new device looks
+       exactly like a first-time Traveller to this browser; the only
+       thing that can tell them apart is the sky itself, so the sky is
+       what gets asked for.
+
+       Two buttons, and only two. It is an overlay over the living
+       Ether, never a page: the universe carries on behind it, which is
+       the whole idea — you are being recognised by somewhere, not
+       authenticated by something.
+       =============================================================== -->
+  <div class="vp-stars" data-stars hidden role="dialog" aria-modal="true"
+       aria-labelledby="vp-stars-title">
+    <div class="vp-stars-veil" data-stars-veil></div>
+    <div class="vp-stars-panel">
+      <h2 class="vp-stars-title" id="vp-stars-title">Mark Your Stars</h2>
+      <p class="vp-stars-subtitle">Draw the constellation from your Magic Card.</p>
+
+      <div class="vp-stars-sky" data-stars-sky></div>
+
+      <!-- The one line that ever speaks here. It never blames: no
+           "incorrect", no "invalid", no "wrong", no "failed". A
+           Creator's stars are never wrong — they are only, sometimes,
+           not recognised. -->
+      <p class="vp-stars-status" data-stars-status role="status" aria-live="polite"></p>
+
+      <!-- Two buttons, and only two. After several tries the pair is
+           swapped for Try Again / Create Story rather than a third and
+           fourth button appearing beside them — the screen changes
+           what it offers, it never grows. -->
+      <div class="vp-stars-actions" data-stars-actions>
+        <button type="button" class="is-primary" data-stars-act="continue">Continue</button>
+        <button type="button" data-stars-act="no-card">I Don’t Have One Yet</button>
+      </div>
+      <div class="vp-stars-actions" data-stars-actions-retry hidden>
+        <button type="button" class="is-primary" data-stars-act="retry">Try Again</button>
+        <button type="button" data-stars-act="create">Create Story</button>
+      </div>
+    </div>
   </div>
 
   <!-- Stage 4 · Preview. Appears when a Spirit has been met, and says
@@ -105,10 +143,23 @@
 <!-- ---------- VihuStudio: identity and Stories ----------
      Only what reading published Stories and recognising a Creator
      actually needs. This page does not load the Studio. -->
+<!-- The platform client. Both js/creatorProjectSync.js and
+     MagicCard.recall() reach for it by name and degrade quietly when it
+     is absent, which is how this page shipped — and which quietly meant
+     a Creator arriving on a NEW device could never be recognised, since
+     the only thing that knows every card ever claimed lives behind it.
+     It is standalone, loads the Supabase client lazily from a CDN only
+     if it is ever used, and treats a missing supabase-config.json as a
+     normal unconfigured state rather than an error. -->
+<script src="js/themeRepositoryClient.js"></script>
 <script src="js/creatorProjectCache.js"></script>
 <script src="js/creatorProjectStore.js"></script>
 <script src="js/creatorProjectSync.js"></script>
 <script src="js/magicCard.js"></script>
+<!-- How VihuPlanet recognises a Creator: the sky they draw, and the
+     one place that asks whether it is theirs. -->
+<script src="js/constellationBoard.js"></script>
+<script src="js/creatorRecognition.js"></script>
 <!-- The Ether's ambience. Self-contained — no other module needed —
      and it resolves its own asset paths from this script's location,
      so it works from the root exactly as it does from the Studio. -->

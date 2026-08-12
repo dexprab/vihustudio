@@ -1,0 +1,185 @@
+// creatorRecognition.js — how VihuPlanet recognises its Creators.
+//
+// This is not login. There is no account, no password, no email and no
+// session to expire. A Creator draws the constellation from their Magic
+// Card and the universe either knows that sky or does not. The Magic
+// Card is the Creator's permanent identity inside VihuPlanet; this file
+// is the one place that asks it "is this you?".
+//
+// ---------------------------------------------------------------
+// ONE FLOW, THREE ARRIVALS
+//
+// The sprint's requirement is a single flow that handles all three
+// cases naturally, and the way that works is that the child does the
+// same thing every time — they draw their stars — while this file
+// looks in two places for them, nearest first.
+//
+//   A first-time Traveller has no card anywhere. Nothing matches, and
+//     that is not a failure: they say so with "I don't have one yet"
+//     and the Rite begins. This file is never even asked.
+//   A returning Creator on the same device is recognised LOCALLY, from
+//     the card already in this browser. Instant, and it still works
+//     with the network off — which matters, because a child who cannot
+//     reach their own stories because the wifi is down has been locked
+//     out by software, which is the exact experience this whole design
+//     exists to avoid.
+//   A returning Creator on a NEW device has nothing local to match, so
+//     the same drawn sky goes to the Magic Card platform's own recall,
+//     which knows every card ever claimed. Recognition there adopts the
+//     identity onto this device and pulls their Stories with it —
+//     MagicCard.adopt() already does all of that and is untouched here.
+//
+// Same gesture, same screen, same button. The child never learns that
+// there were two places to look.
+// ---------------------------------------------------------------
+//
+// The local pass is a SET comparison, matching what the platform does
+// server-side (_card_platform_sort_pattern in supabase/schema.sql
+// sorts both sides before comparing). A constellation is a shape in
+// the sky, not a sequence of moves — a child who taps the same five
+// stars starting from a different one has drawn the same sky, and
+// being told otherwise would be the software imposing an order that
+// the card itself never showed them.
+
+const CreatorRecognition = (function () {
+  'use strict';
+
+  // What a recognition attempt can come back as. Only the first means
+  // "come in"; the other two are told apart because they deserve
+  // different words. `unknown` is "these stars are new to me", which
+  // may well be the child's fault and is safe to invite a retry from.
+  // `unreachable` is "I cannot see the whole sky from here" — the
+  // network, not the child — and blaming them for it would be both
+  // wrong and unkind.
+  var KNOWN = 'known';
+  var UNKNOWN = 'unknown';
+  var UNREACHABLE = 'unreachable';
+
+  function canonical(pattern) {
+    if (!Array.isArray(pattern)) return '';
+    return pattern
+      .filter(function (p) { return Array.isArray(p) && p.length >= 2; })
+      .map(function (p) { return [Number(p[0]), Number(p[1])]; })
+      .sort(function (a, b) { return (a[0] - b[0]) || (a[1] - b[1]); })
+      .map(function (p) { return p[0] + ',' + p[1]; })
+      .join(' ');
+  }
+
+  function localCards() {
+    try {
+      return (typeof MagicCard !== 'undefined' && typeof MagicCard.list === 'function')
+        ? MagicCard.list() : [];
+    } catch (e) { return []; }
+  }
+
+  // The card on this device whose sky is the one just drawn, if any.
+  // A card recalled by typed code has no pattern stored (the platform
+  // deliberately never returns one — see MagicCard.adopt), so it simply
+  // cannot be matched this way and falls through to the cloud pass,
+  // which can.
+  function matchLocally(pattern) {
+    var want = canonical(pattern);
+    if (!want) return null;
+    var cards = localCards();
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i] && cards[i].pattern && canonical(cards[i].pattern) === want) return cards[i];
+    }
+    return null;
+  }
+
+  function cloudRecall(pattern) {
+    try {
+      if (typeof MagicCard === 'undefined' || typeof MagicCard.recall !== 'function') {
+        return Promise.resolve({ outcome: UNREACHABLE });
+      }
+      return MagicCard.recall({ pattern: pattern }).then(function (result) {
+        if (result && result.ok && result.card) {
+          return { outcome: KNOWN, card: result.card, where: 'platform' };
+        }
+        // Only `no_match` is genuinely "I don't know that sky". Every
+        // other reason the platform can give — an unconfigured client,
+        // no session, a thrown error — means the question never got
+        // asked, and answering it on the platform's behalf would tell a
+        // real Creator their own stars are wrong.
+        var reason = result && result.reason;
+        return { outcome: reason === 'no_match' ? UNKNOWN : UNREACHABLE, reason: reason };
+      }).catch(function () {
+        return { outcome: UNREACHABLE };
+      });
+    } catch (e) {
+      return Promise.resolve({ outcome: UNREACHABLE });
+    }
+  }
+
+  // The whole question, asked once. Always resolves — never rejects —
+  // because there is no caller for whom a thrown error is a better
+  // answer than "I could not see".
+  function recognise(pattern) {
+    var here = matchLocally(pattern);
+    if (here) {
+      // This device already held the card; recognising it is choosing
+      // it. setActive() is what makes the rest of VihuStudio — the
+      // Studio header, the project store, the Companion — agree about
+      // who is here.
+      try { MagicCard.setActive(here.id); } catch (e) {}
+      return Promise.resolve({ outcome: KNOWN, card: here, where: 'device' });
+    }
+    return cloudRecall(pattern);
+  }
+
+  // Whether a Creator is currently recognised on this device at all.
+  // The same definition js/journeyResolver.js and js/studioRite.js
+  // already use, not a new one.
+  function isRecognised() {
+    return localCards().length > 0;
+  }
+
+  // ---------------------------------------------------------------
+  // "I was recognised on the way in."
+  //
+  // Recognition happens once per arrival, at VihuPlanet. The Studio is
+  // a different document, and its Traveller Gateway has always resolved
+  // identity for itself — for a Returning Creator that means Scene 3's
+  // sky challenge, which is exactly right when the Studio IS the front
+  // door. It is not the front door any more.
+  //
+  // Without this note a child drew their constellation on VihuPlanet,
+  // was recognised, and was met on arrival by "One of these skies is
+  // yours. Can you find it?" — a second proof of the same identity,
+  // seconds later, which is precisely the "one single flow" this whole
+  // design exists to be.
+  //
+  // sessionStorage, because the semantics wanted are exactly its own:
+  // it survives the one navigation from VihuPlanet into the Studio and
+  // nothing else. Read once and cleared in the same breath, so it can
+  // only ever affect the arrival it was written for — the same
+  // discipline js/app.js's own Home-reload flag uses. A new tab, a
+  // later visit or a direct link to the Studio all find nothing here
+  // and the Gateway behaves exactly as it always has.
+  // ---------------------------------------------------------------
+  var PASS_KEY = 'vihu-recognised-on-arrival';
+
+  function markRecognised(cardId) {
+    try { sessionStorage.setItem(PASS_KEY, cardId || '1'); } catch (e) {}
+  }
+
+  function takeRecognition() {
+    try {
+      var v = sessionStorage.getItem(PASS_KEY);
+      sessionStorage.removeItem(PASS_KEY);
+      return !!v;
+    } catch (e) { return false; }
+  }
+
+  var api = {
+    KNOWN: KNOWN,
+    UNKNOWN: UNKNOWN,
+    UNREACHABLE: UNREACHABLE,
+    recognise: recognise,
+    isRecognised: isRecognised,
+    markRecognised: markRecognised,
+    takeRecognition: takeRecognition
+  };
+  try { window.CreatorRecognition = api; } catch (e) {}
+  return api;
+})();

@@ -224,11 +224,13 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   the application home — it moved from `index.html` to `studio.html`
   so the root could become VihuPlanet.
 - **The home screen has exactly two permanent actions, forever:**
-  📚 My Stories · ✨ Create Story. They never change — not per user
-  type, not as a child grows. Do **not** add "Continue Story",
+  ⭐ Show Me Your Stars · ✨ Create Story. They never change — not per
+  user type, not as a child grows. Do **not** add "Continue Story",
   "Resume", "Create New Story", "Traveller Mode" or "Creator Mode".
   No new button may appear as a child progresses. The behaviour behind
   the two evolves; the interface does not.
+  (Amended by Decision 11. The first action was 📚 My Stories when
+  this decision was written; the pair is otherwise unchanged.)
 - **Studio is never opened directly** — only through intent, and intent
   is one of exactly two things: *I want to see my stories* or *I want
   to create a story*.
@@ -242,10 +244,12 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   watches the whole cinematic without touching anything sees it
   silently. The product owner chose one threshold over guaranteed audio
   on that path.
-- **My Stories** verifies Creator first. A Creator gets Studio Home —
-  never the last story reopened, because Studio Home already owns story
-  management. A non-Creator gets a warm invitation, never an empty
-  state, never a dead end, never software language.
+- ~~**My Stories** verifies Creator first.~~ **Superseded by
+  Decision 11.** This action is now ⭐ Show Me Your Stars and it
+  verifies nothing before opening — it asks for the child's
+  constellation first, of everybody. A recognised Creator still gets
+  Studio Home, never the last story reopened, for the reason this
+  clause originally gave: Studio Home already owns story management.
 - **Create Story** also verifies. A non-Creator goes to the Studio and
   the Starter Story Rite runs on the way in — the Rite is the path to
   becoming a Creator, not a Studio tutorial. A Creator gets Studio
@@ -259,6 +263,62 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   No `isCreator` check belongs at a call site. Future milestones
   (Companion, Story Worlds, the Telescope) teach the resolver — they
   never add a button to the home screen.
+
+### 11. The Magic Card is the Creator's Identity
+
+Locked by the product owner in the Sprint VP1.5 brief. It amends
+Decision 10's first action and promotes the Magic Card's role; it
+changes nothing about the Magic Card itself.
+
+- **VihuPlanet recognises its Creators. It does not authenticate
+  users.** There are no accounts, no logins, no passwords, no email
+  verification, no parent verification and no Creator dashboards. Do
+  not add any of them.
+- **The first permanent action is ⭐ Show Me Your Stars.** Pressing it
+  opens the Magic Card constellation screen **immediately** — no Lumo
+  dialogue, no Creator check, no account screen, no login screen.
+- **One flow serves all three arrivals.** A first-time Traveller, a
+  Returning Creator on the same device and a Returning Creator on a
+  brand-new device all get the same screen and the same gesture. That
+  is deliberate: a Creator on a new device is indistinguishable from a
+  Traveller by anything the browser can see, so the only honest thing
+  to ask is the one thing that *can* tell them apart, and to ask it of
+  everyone the same way.
+- **The screen is *Mark Your Stars* — "Draw the constellation from
+  your Magic Card" — with exactly two buttons: `Continue` and `I Don't
+  Have One Yet`. Nothing more.** After several unrecognised attempts
+  those two are *replaced* by `Try Again` and `Create Story`; the
+  screen changes what it offers, it never grows a third button.
+- **Recognition is instant and silent.** No confirmation screen, no
+  success dialog — VihuStudio Home simply opens.
+- **Recognition happens ONCE per arrival.** The Traveller Gateway's
+  Scene 3 asked a Returning Creator to find their sky again on the way
+  into the Studio, which was right while the Studio was the front door
+  and is a second proof of the same identity now that it is not. A
+  one-shot note written at VihuPlanet and consumed on arrival tells
+  Scene 3 it already has its answer. The Gateway is **not** redesigned
+  — it takes the same branch a successful signature always took. A
+  Creator who opens the Studio directly, with no recognition before
+  it, still gets Scene 3 exactly as before.
+- **The language never blames.** Never "incorrect", "invalid", "wrong
+  password" or "authentication failed". A Creator's stars are never
+  wrong; they are only, sometimes, unrecognised.
+- **"I Don't Have One Yet" launches the existing Starter Story Rite**,
+  with no further questions, no registration and no profile creation.
+  It is the same door ✨ Create Story opens.
+- **The Magic Card is now the permanent identity of every Creator
+  inside VihuPlanet**, not only a recovery mechanism. The Magic Card
+  itself is unchanged and is not redesigned — only its role in the
+  product architecture.
+- Recognition looks on the device first and the platform second
+  (`js/creatorRecognition.js`), so a returning Creator is recognised
+  with the network off. A constellation is matched as a **set**, not a
+  sequence — the same canonicalisation the platform already does
+  server-side — because it is a shape in the sky, not an order of
+  taps.
+- Out of scope and not implemented: accounts, login, passwords, email
+  or parent verification, Creator dashboards, story-retrieval redesign
+  and story-sharing redesign.
 
 ## Roadmap
 

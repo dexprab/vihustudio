@@ -2,7 +2,7 @@
 //
 // VihuPlanet's home screen shows exactly two actions, forever:
 //
-//     📚 My Stories        ✨ Create Story
+//     ⭐ Show Me Your Stars        ✨ Create Story
 //
 // They never change. Not for a first-time Traveller, not for a
 // Returning Creator, not as a child grows. What changes is what
@@ -111,18 +111,43 @@ const JourneyResolver = (function () {
   // today and, say, a Companion prompt later, without either of them
   // learning what a Magic Card is.
 
-  // "I want to see my stories."
-  function myStories(state) {
-    var s = state || resolve();
-    if (s.isCreator) {
-      // Studio Home, never a story directly. Studio Home already owns
-      // story management, and opening the last story for them would be
-      // deciding on their behalf what they came back for.
-      return { action: 'studio', destination: STUDIO, journey: s.journey };
-    }
-    // Not a dead end and not an empty state — an invitation, and the
-    // only action that changes anything.
-    return { action: 'invite', offer: 'create', journey: s.journey };
+  // "Show me your stars."
+  //
+  // This asks the child to show the universe who they are, and it means
+  // the same thing for everybody: open the sky and let them draw.
+  //
+  // No Creator check happens here, and that is the point rather than an
+  // omission. Checking first would produce three different screens for
+  // three kinds of arrival, and it would ask the software to decide who
+  // somebody is before they have said. A Creator returning on a new
+  // device is indistinguishable from a first-time Traveller by anything
+  // this device can see — the only thing that can tell them apart is
+  // the child's own sky, so that is what gets asked for, first, of
+  // everyone. Recognition then belongs to js/creatorRecognition.js.
+  //
+  // A first-time Traveller is not stranded by this: they say "I don't
+  // have one yet" and the Rite begins, which is the same door
+  // `createStory()` opens below.
+  function showMeYourStars() {
+    return { action: 'stars' };
+  }
+
+  // What the drawn sky turned out to mean. Recognition itself is not
+  // this file's job — it is asked and answered elsewhere — but where a
+  // recognised Creator GOES is a journey decision and belongs here.
+  //
+  // Studio Home, never a story directly. Studio Home already owns story
+  // management, and reopening their last story would be deciding on
+  // their behalf what they came back for.
+  function recognised() {
+    return { action: 'studio', destination: STUDIO, journey: CREATOR };
+  }
+
+  // "I don't have one yet." The Rite is the path to becoming a Creator,
+  // not a Studio tutorial, so this is the same decision as asking to
+  // create — StudioRite.gate() runs it on the way in.
+  function noCardYet(state) {
+    return createStory(state);
   }
 
   // "I want to create a story."
@@ -148,7 +173,9 @@ const JourneyResolver = (function () {
     CREATOR: CREATOR,
     STUDIO: STUDIO,
     resolve: resolve,
-    myStories: myStories,
+    showMeYourStars: showMeYourStars,
+    recognised: recognised,
+    noCardYet: noCardYet,
     createStory: createStory
   };
   try { window.JourneyResolver = api; } catch (e) {}

@@ -1743,3 +1743,90 @@ captures its colour at bake time, so the nebula's contribution was hiding inside
 what looked like the bare sky. Nebula, mist and ambient glow all came down until
 the darks returned — darkest 5% 39.8 against a pre-change 40.6, brightest 5% 77.6
 against 82.1. Both regression suites and the five-stage interaction pass unchanged.
+
+## Sprint VP1.5 · Show Me Your Stars
+
+VihuPlanet's first permanent action became ⭐ Show Me Your Stars, and pressing it
+now opens the Magic Card constellation screen immediately — no Lumo, no dialogue,
+no Creator check, no account screen. *Mark Your Stars · Draw the constellation
+from your Magic Card*, a 10×10 sky, and exactly two buttons. The brief's hardest
+requirement is the one that shapes everything else: ONE flow serves a first-time
+Traveller, a Returning Creator on the same device and a Returning Creator on a
+brand-new device. That works because a Creator on a new device is
+indistinguishable from a Traveller by anything the browser can see, so the only
+honest question is the one thing that CAN tell them apart, asked of everybody the
+same way. `js/creatorRecognition.js` then looks in two places, nearest first: the
+cards already on this device, and only failing that the platform's own recall
+RPC. Local-first is not an optimisation — it is what makes a returning Creator
+recognisable with the network off, and a child who cannot reach their own stories
+because the wifi is down has been locked out by software, which is the exact
+experience this design exists to avoid. Verified offline: recognised, platform
+never asked, Studio Home opened. A constellation is matched as a SET, matching
+the platform's own server-side canonicalisation, because it is a shape in the sky
+rather than an order of taps; verified by tapping a known card's five stars in a
+deliberately different order.
+
+The language rules were treated as testable, not aspirational: every string the
+screen can show is scanned for "incorrect", "invalid", "wrong", "password",
+"authenticat", "login", "sign in", "account", "failed" and "error", and the
+status line has no error colour at all — a red rule under a child's own
+constellation says "wrong" more loudly than any wording can take back. Three
+tries, then "I couldn't recognise those stars." with Try Again / Create Story
+*replacing* the original pair rather than joining it. One distinction was added
+beyond the brief and is worth keeping: a sky the platform could not be ASKED
+about (unconfigured client, no session, a thrown request) is not the same as one
+it did not know, so it says so honestly, keeps the child's drawing, and does not
+spend one of their three tries — only `no_match` counts. The brief's "nothing
+more" was respected on buttons, so the way out for a child who opened this by
+accident is the sky itself and Escape, which is the gesture the Ether already
+uses to send a met Spirit back.
+
+`js/constellationBoard.js` is a component rather than a third private copy. This
+grid already existed twice — `js/creationFlow.js` for unlocking a World and
+`js/magicCardUI.js` for the Creator gate, the second of which says in its own
+comment that it had to be rewritten because the first module's helpers were
+unreachable. Both are inside frozen subsystems and were left untouched; the new
+one carries over the two details from that history that were real fixes rather
+than decoration (every cell shows the same dim star at rest, and no coordinates
+are ever drawn).
+
+Three things were found by measuring rather than by reading. A class that sets
+`display` outranks the browser's own `[hidden]` rule, so the closed star overlay
+stayed laid out across the whole window and silently swallowed every tap on the
+two permanent actions underneath — caught because Playwright could not click a
+button that was plainly visible. `board.clear()` fired its own change callback,
+which wiped whatever had just been said about the sky it was clearing, so the
+sprint's own gentle message never survived long enough to be read. And loading
+`js/themeRepositoryClient.js` on the home page — necessary for new-device
+recognition, and incidentally the fix for cloud-backed Stories never reaching the
+Ether from the root — meant `EtherFeed` reached for a session on load, which
+mints an anonymous Supabase identity. Tolerable inside the Studio; not at a front
+door everybody comes through. `EtherFeed._cloud()` now returns early when no
+Magic Card is on the device, which loses nothing (such a visitor owns no rows by
+definition, and a recalled Creator's Stories arrive by `MagicCard.adopt()`'s own
+owner-id path). Verified: a Traveller opening VihuPlanet makes no outbound
+request at all; a Creator's device fetches their Stories; a submitted sky reaches
+the platform. My own first network probe was wrong and said "no requests" for
+both — it cleared its log after `waitUntil: 'networkidle'`, throwing away exactly
+the load-time requests it was written to catch.
+
+The last thing found was the one that would have undone the sprint. A child
+recognised on VihuPlanet arrived in the Studio and was met, four seconds later,
+by "One of these skies is yours. Can you find it?" — the Traveller Gateway's
+Scene 3, which has always resolved identity for itself and was entirely right to,
+back when the Studio was the front door. It is not the front door any more, and a
+second proof of the same identity in the next breath is precisely what "one single
+flow" rules out. The Gateway is frozen and Decision 10 says the Rite extends it
+rather than modifying it, so the fix is a one-shot note: `CreatorRecognition`
+writes it in sessionStorage at the moment of recognition, Scene 3 reads and clears
+it in the same breath, and on finding it takes the branch a successful signature
+has always taken (straight to the closing flash — its own comment already argues
+that replaying the full cinematic for an already-recognized Creator is redundant).
+No question is answered differently; one is simply not asked twice. Verified both
+ways, without tapping to skip, because a skip bypasses Scene 3 on its own and
+would hide exactly what was being measured: recognised-at-VihuPlanet reaches
+Studio Home with no second ask, and the same Creator opening `studio.html`
+directly still gets Scene 3 unchanged. Two earlier versions of that test reported
+a false pass — one because `body.creation-flow-active` is set underneath the
+Gateway overlay and is not proof of arrival, one because the skip-tap removed the
+thing under test.

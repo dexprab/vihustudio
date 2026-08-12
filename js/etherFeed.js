@@ -174,6 +174,28 @@ const EtherFeed = (function () {
   function _cloud() {
     try {
       if (typeof CreatorProjectSync === 'undefined') return Promise.resolve([]);
+
+      // Nobody recognised on this device means nothing of theirs in the
+      // cloud to fetch, so do not go and look.
+      //
+      // This is not an optimisation. CreatorProjectSync.list() selects
+      // rows owned by the CURRENT session's user, and reaching a
+      // session at all mints an anonymous Supabase identity if there
+      // is not one. A visitor with no Magic Card owns no rows by
+      // definition, so the round trip is guaranteed to come back empty
+      // — and would leave behind a brand-new anonymous auth user for
+      // every single person who so much as opens VihuPlanet. That was
+      // tolerable when this file only ran inside the Studio; VihuPlanet
+      // is the front door now, and everybody comes through it.
+      //
+      // A Creator arriving on a NEW device loses nothing here: they own
+      // no rows under this browser's fresh session either, and the
+      // Stories that ARE theirs arrive by a different route entirely —
+      // MagicCard.adopt() pulls them by the recalled identity's own
+      // owner id the moment their sky is recognised.
+      if (typeof MagicCard === 'undefined' || !MagicCard.list().length) {
+        return Promise.resolve([]);
+      }
       return Promise.resolve(CreatorProjectSync.list()).then(function (rows) {
         if (!Array.isArray(rows)) return [];
         return rows.map(function (row) {

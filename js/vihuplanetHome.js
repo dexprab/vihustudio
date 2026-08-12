@@ -16,6 +16,11 @@
 // It also mounts the Ether and owns the things the runtime correctly
 // knows nothing about:
 //
+//   STARS     Mark Your Stars — how VihuPlanet recognises a Creator.
+//             Not a login: a child draws the constellation from their
+//             Magic Card and the universe either knows that sky or
+//             does not. js/creatorRecognition.js answers; this file
+//             only asks and shows.
 //   PREVIEW   what a met Spirit says about itself, and what can be
 //             done with it (Stage 4)
 //   PORTAL    stepping into a Story and coming back (Stage 5)
@@ -154,8 +159,6 @@
     // somewhere, which is a different thing and worth one tap.
     var thresholdEl = document.querySelector('[data-threshold]');
     var actionsEl = document.querySelector('[data-actions]');
-    var messageEl = document.querySelector('[data-message]');
-    var messageLine = document.querySelector('[data-message-line]');
 
     function crossThreshold() {
       if (!thresholdEl || thresholdEl.classList.contains('is-gone')) return;
@@ -204,55 +207,196 @@
     }
 
     // ---------- the two permanent actions ----------
-    function goStudio() {
-      window.location.href = JourneyResolver.STUDIO;
-    }
-
-    // The invitation says what is true and then points at the control
-    // that changes it — the Create Story button that is already on
-    // screen and always will be. Never a second copy of it: two
-    // identical buttons a finger apart would teach that the interface
-    // grows new controls when something is missing, and the whole
-    // point of this home screen is that it does not.
-    var createBtn = document.querySelector('[data-act="create"]');
-
-    function invite(line) {
-      if (!messageEl) return;
-      messageLine.textContent = line;
-      messageEl.hidden = false;
-      messageEl.classList.add('is-in');
-      if (createBtn) createBtn.classList.add('is-calling');
-    }
-
-    function dismissInvite() {
-      if (!messageEl) return;
-      messageEl.classList.remove('is-in');
-      messageEl.hidden = true;
-      if (createBtn) createBtn.classList.remove('is-calling');
+    function goStudio(decision) {
+      window.location.href = (decision && decision.destination) || JourneyResolver.STUDIO;
     }
 
     if (actionsEl) {
       actionsEl.addEventListener('click', function (ev) {
         var btn = ev.target.closest('[data-act]');
         if (!btn) return;
-        dismissInvite();
 
         // The buttons ask what a tap means and do as they are told.
         // Neither of them knows what a Magic Card is.
-        var decision = (btn.getAttribute('data-act') === 'my-stories')
-          ? JourneyResolver.myStories()
+        var decision = (btn.getAttribute('data-act') === 'stars')
+          ? JourneyResolver.showMeYourStars()
           : JourneyResolver.createStory();
 
-        if (decision.action === 'studio') { goStudio(); return; }
-
-        // No empty state, no dead end, no software language — what is
-        // true, and the one action that changes it.
-        invite('You haven\u2019t shared a story with VihuPlanet yet. ' +
-               'Every story you create will always have a place here.');
+        if (decision.action === 'stars') { openStars(); return; }
+        goStudio(decision);
       });
     }
 
+    // ---------------------------------------------------------------
+    // Mark Your Stars — recognition.
+    //
+    // Everyone who asks gets this screen: no Creator check in front of
+    // it, no Lumo, no dialogue, no account, no login. A Creator
+    // returning on a new device is indistinguishable from a first-time
+    // Traveller by anything this browser can see, so the only honest
+    // thing to ask is the one thing that CAN tell them apart — and to
+    // ask it of everybody, the same way.
+    //
+    // It is an overlay, exactly as the portal is. The universe is never
+    // torn down; it keeps drifting behind the sky the child is drawing
+    // on, which is what makes this feel like being recognised by
+    // somewhere rather than logged into something. Turning is suspended
+    // while it is open, because the arrow keys belong to the board.
+    // ---------------------------------------------------------------
+    var starsEl = document.querySelector('[data-stars]');
+    var starsSky = document.querySelector('[data-stars-sky]');
+    var starsStatus = document.querySelector('[data-stars-status]');
+    var starsActions = document.querySelector('[data-stars-actions]');
+    var starsRetry = document.querySelector('[data-stars-actions-retry]');
+    var starsVeil = document.querySelector('[data-stars-veil]');
 
+    // Three, matching the Studio's own sky challenge. Few enough that
+    // nobody grinds at it, many enough that a slip is never the end.
+    var TRIES = 3;
+    var board = null;
+    var attempts = 0;
+    var asking = false;
+
+    function say(line, tone) {
+      if (!starsStatus) return;
+      starsStatus.textContent = line || '';
+      starsStatus.className = 'vp-stars-status' + (tone ? ' is-' + tone : '');
+    }
+
+    function freshAsk() {
+      if (starsActions) starsActions.hidden = false;
+      if (starsRetry) starsRetry.hidden = true;
+      attempts = 0;
+      say('');
+      if (board) board.clear();
+    }
+
+    function openStars() {
+      if (!starsEl || !window.ConstellationBoard) return;
+
+      if (!board) {
+        board = ConstellationBoard.create({
+          mount: starsSky,
+          // Any change to the sky clears whatever was last said about
+          // it. A child who has started drawing again should not still
+          // be reading the answer to the sky before this one.
+          onChange: function () { if (!asking) say(''); }
+        });
+      }
+      freshAsk();
+
+      starsEl.hidden = false;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          starsEl.classList.add('is-open');
+          // The lines are drawn from measured pixel positions, so the
+          // board has to be laid out before it can draw any.
+          if (board) board.reflow();
+        });
+      });
+      universe.traveller.setEnabled(false);
+      document.querySelector('.vp-home').classList.add('is-marking');
+      var first = starsEl.querySelector('.vp-stars-cell');
+      if (first) first.focus();
+    }
+
+    function closeStars() {
+      if (!starsEl || starsEl.hidden) return;
+      starsEl.classList.remove('is-open');
+      window.setTimeout(function () { starsEl.hidden = true; }, 420);
+      universe.traveller.setEnabled(true);
+      document.querySelector('.vp-home').classList.remove('is-marking');
+      var back = document.querySelector('[data-act="stars"]');
+      if (back) back.focus();
+    }
+
+    function exhausted() {
+      if (starsActions) starsActions.hidden = true;
+      if (starsRetry) starsRetry.hidden = false;
+      say('I couldn’t recognise those stars.', 'quiet');
+      if (board) board.clear();
+    }
+
+    function askTheUniverse() {
+      if (asking || !board) return;
+      if (board.count() < 2) {
+        say('Mark a few stars first.', 'quiet');
+        return;
+      }
+      asking = true;
+      say('Looking for your sky…');
+
+      CreatorRecognition.recognise(board.pattern()).then(function (result) {
+        asking = false;
+
+        if (result.outcome === CreatorRecognition.KNOWN) {
+          // No confirmation screen, no success dialog, no "welcome
+          // back" to dismiss. Being recognised is not an event to
+          // acknowledge — it is the door opening, and the child is
+          // already through it.
+          say('There you are.', 'known');
+          // Recognition happens ONCE per arrival, and it happened here.
+          // The Studio's Gateway asks for itself otherwise, and a child
+          // who has just drawn their stars should not be asked to find
+          // them again in the next breath.
+          CreatorRecognition.markRecognised(result.card && result.card.id);
+          window.setTimeout(function () {
+            goStudio(JourneyResolver.recognised());
+          }, 620);
+          return;
+        }
+
+        // Honest about which of the two things happened, because they
+        // are not the same and a child deserves to know when it was
+        // not them. An unreachable sky does not count against their
+        // tries either — spending an attempt on the network's behalf
+        // would be blaming them for it twice.
+        if (result.outcome === CreatorRecognition.UNREACHABLE) {
+          say('I can’t see the whole sky from here right now.', 'quiet');
+          return;
+        }
+
+        attempts++;
+        if (attempts >= TRIES) { exhausted(); return; }
+        say('I don’t know those stars yet. Try once more?', 'quiet');
+        board.clear();
+      });
+    }
+
+    if (starsEl) {
+      starsEl.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('[data-stars-act]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-stars-act');
+
+        if (act === 'continue') { askTheUniverse(); return; }
+        if (act === 'retry') { freshAsk(); return; }
+
+        // "I don't have one yet" and "Create Story" are the same door,
+        // and the resolver says so: the Starter Story Rite is the path
+        // to becoming a Creator, and it runs on the way into the
+        // Studio. No registration, no profile, nothing else asked.
+        goStudio(act === 'no-card'
+          ? JourneyResolver.noCardYet()
+          : JourneyResolver.createStory());
+      });
+
+      // A way out that is not a third button. The sprint asks for
+      // exactly two, and a child who opened this by accident still has
+      // to be able to leave — so the sky itself dismisses it, which is
+      // the gesture the Ether already uses to send a met Spirit back.
+      if (starsVeil) starsVeil.addEventListener('click', closeStars);
+      document.addEventListener('keydown', function (ev) {
+        if (starsEl.hidden || ev.key !== 'Escape') return;
+        closeStars();
+        ev.preventDefault();
+        ev.stopPropagation();
+      }, true);
+
+      window.addEventListener('resize', function () {
+        if (!starsEl.hidden && board) board.reflow();
+      });
+    }
 
     function quiet(message) {
       if (!el.quiet) return;

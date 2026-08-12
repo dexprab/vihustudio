@@ -1,0 +1,204 @@
+// constellationBoard.js — the sky a Creator draws their constellation on.
+//
+// A 10×10 field of stars. Tap them in order; a coloured line follows
+// the hand; tap one again to take it back. That is the whole
+// component, and it knows nothing else: not what a Magic Card is, not
+// what a pattern means, not whether the sky it just drew belongs to
+// anybody. It hands back coordinates. Whoever asked decides what they
+// are worth.
+//
+// ---------------------------------------------------------------
+// WHY A COMPONENT AND NOT A THIRD COPY
+//
+// This grid already exists twice: js/creationFlow.js built it for
+// unlocking a World, and js/magicCardUI.js rebuilt it for the Creator
+// gate — the second one says so in its own comment, because the first
+// one's helpers are module-private and could not be reached from
+// outside. Both are inside frozen Studio subsystems and are staying
+// exactly as they are.
+//
+// VihuPlanet needed the same grid on a page that loads neither of
+// them, so rather than write it a third time and leave the next
+// surface to write a fourth, it is a component. Nothing in it is
+// VihuPlanet-specific; the two Studio copies could adopt it whenever
+// somebody is changing that code for another reason. Nobody should
+// change them just for this.
+// ---------------------------------------------------------------
+//
+// Two details carried over deliberately, because both were real fixes
+// rather than decoration:
+//
+//   · EVERY cell shows the same dim star at rest. Reported during the
+//     Magic Card work as "very difficult to show the stars" — a child
+//     on a touch device has no hover, so a board that only lights a
+//     sparse subset gives no clue where the other tappable positions
+//     are. Uniform is also better camouflage, not worse: with every
+//     cell identical there is no visible subset for a shoulder-surfer
+//     to tell a real tap from.
+//   · No row or column numbers, ever. The coordinate system is never
+//     shown, so nothing about the board hints at what it is holding.
+
+const ConstellationBoard = (function () {
+  'use strict';
+
+  var SIZE = 10;
+
+  // Each star takes its own colour, in tap order. Recomputed from the
+  // selection on every change rather than stamped on a cell, so undoing
+  // one in the middle re-colours everything after it instead of leaving
+  // a gap in the sequence.
+  var PALETTE = ['#FFCB45', '#B388FF', '#5CE1E6', '#FF6FA5',
+                 '#5CFFB0', '#FF8B5C', '#7C9CFF', '#FFD166'];
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function key(r, c) { return r + ',' + c; }
+
+  function centreOf(board, r, c) {
+    var el = board.querySelector('[data-row="' + r + '"][data-col="' + c + '"]');
+    if (!el) return { x: 0, y: 0 };
+    return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
+  }
+
+  function create(opts) {
+    opts = opts || {};
+    var mount = opts.mount;
+    if (!mount) return null;
+    var size = opts.size || SIZE;
+    var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
+
+    var board = document.createElement('div');
+    board.className = 'vp-stars-board';
+    board.style.setProperty('--vp-stars-size', String(size));
+    mount.appendChild(board);
+
+    var selected = [];
+    var cells = [];
+
+    for (var r = 0; r < size; r++) {
+      for (var c = 0; c < size; c++) {
+        cells.push(makeCell(r, c));
+      }
+    }
+
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'vp-stars-lines');
+    svg.setAttribute('aria-hidden', 'true');
+    board.appendChild(svg);
+
+    function makeCell(row, col) {
+      var cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'vp-stars-cell';
+      cell.textContent = '★';
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      cell.style.gridRow = String(row + 1);
+      cell.style.gridColumn = String(col + 1);
+      // Out of step with each other, so the board twinkles like a sky
+      // instead of pulsing like one light. Harmless under reduced
+      // motion, where the CSS turns the animation off outright.
+      cell.style.animationDelay = (Math.random() * 2.4).toFixed(2) + 's';
+      cell.style.animationDuration = (1.8 + Math.random() * 1.6).toFixed(2) + 's';
+      // A screen reader needs SOME way to tell one star from another,
+      // and position is the only thing that distinguishes them. It is
+      // spoken, never drawn.
+      cell.setAttribute('aria-label', 'Star, row ' + (row + 1) + ', column ' + (col + 1));
+      cell.addEventListener('click', function () { toggle(row, col, cell); });
+      board.appendChild(cell);
+      return cell;
+    }
+
+    function toggle(row, col, cell) {
+      var k = key(row, col);
+      var at = selected.indexOf(k);
+      if (at === -1) {
+        selected.push(k);
+        cell.classList.add('is-lit');
+        cell.setAttribute('aria-pressed', 'true');
+      } else {
+        selected.splice(at, 1);
+        cell.classList.remove('is-lit');
+        cell.removeAttribute('aria-pressed');
+        cell.style.removeProperty('--vp-star-color');
+      }
+      paint();
+      onChange(selected.length);
+    }
+
+    function paint() {
+      var i, parts, cell;
+      for (i = 0; i < selected.length; i++) {
+        parts = selected[i].split(',');
+        cell = board.querySelector('[data-row="' + parts[0] + '"][data-col="' + parts[1] + '"]');
+        if (cell) cell.style.setProperty('--vp-star-color', PALETTE[i % PALETTE.length]);
+      }
+
+      svg.innerHTML = '';
+      if (selected.length < 2) return;
+      var pts = selected.map(function (k) {
+        var p = k.split(',');
+        return centreOf(board, parseInt(p[0], 10), parseInt(p[1], 10));
+      });
+      for (i = 0; i < pts.length - 1; i++) {
+        var line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', pts[i].x);
+        line.setAttribute('y1', pts[i].y);
+        line.setAttribute('x2', pts[i + 1].x);
+        line.setAttribute('y2', pts[i + 1].y);
+        line.setAttribute('class', 'vp-stars-line');
+        // A segment takes the colour of the star it arrives at, so the
+        // trail reads as one drawn line changing colour rather than as
+        // a set of separate gold sticks.
+        var colour = PALETTE[(i + 1) % PALETTE.length];
+        line.style.stroke = colour;
+        line.style.filter = 'drop-shadow(0 0 4px ' + colour + ')';
+        svg.appendChild(line);
+      }
+    }
+
+    // Deliberately SILENT. onChange means "the child changed the sky",
+    // and every caller of clear() is the page resetting the board for
+    // its own reasons — after a sky was not recognised, on reopening,
+    // on Try Again. Firing it here made clear() wipe whatever had just
+    // been said about the very sky it was clearing: the page set the
+    // line, called clear(), and clear() called back to erase it. The
+    // gentle message after several tries never survived long enough to
+    // be read.
+    function clear() {
+      for (var i = 0; i < cells.length; i++) {
+        cells[i].classList.remove('is-lit');
+        cells[i].removeAttribute('aria-pressed');
+        cells[i].style.removeProperty('--vp-star-color');
+      }
+      selected.length = 0;
+      svg.innerHTML = '';
+    }
+
+    return {
+      el: board,
+      count: function () { return selected.length; },
+      // [[row, col], …] in the order they were tapped.
+      pattern: function () {
+        return selected.map(function (k) {
+          var p = k.split(',');
+          return [parseInt(p[0], 10), parseInt(p[1], 10)];
+        });
+      },
+      clear: clear,
+      // The lines are drawn from measured pixel positions, so they are
+      // wrong the moment the board changes size and right again the
+      // moment this is called.
+      reflow: paint,
+      destroy: function () {
+        if (board.parentNode) board.parentNode.removeChild(board);
+        cells.length = 0;
+        selected.length = 0;
+      }
+    };
+  }
+
+  var api = { create: create, SIZE: SIZE };
+  try { window.ConstellationBoard = api; } catch (e) {}
+  return api;
+})();

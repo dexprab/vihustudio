@@ -2,6 +2,70 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v1.1.0 — 2026-08-12
+
+- **Show Me Your Stars.** The first permanent action is now
+  ⭐ Show Me Your Stars, and pressing it opens the Magic Card
+  constellation screen immediately — no Lumo, no dialogue, no Creator
+  check, no account screen, no login screen. *Mark Your Stars · Draw
+  the constellation from your Magic Card*, a 10×10 sky, and exactly two
+  buttons: Continue and I Don't Have One Yet.
+- **One flow for all three arrivals.** A first-time Traveller, a
+  Returning Creator on the same device and a Returning Creator on a
+  brand-new device get the same screen and the same gesture. A Creator
+  on a new device is indistinguishable from a Traveller by anything the
+  browser can see, so the only honest thing to ask is the one thing
+  that *can* tell them apart — and to ask it of everyone the same way.
+  `js/creatorRecognition.js` looks on the device first and the platform
+  second, so a returning Creator is recognised with the network off,
+  and a constellation is matched as a SET rather than a sequence: it is
+  a shape in the sky, not an order of taps.
+- **Recognised is silent.** No confirmation screen and no success
+  dialog — one line, and Studio Home opens. Being recognised is not an
+  event to acknowledge.
+- **Unrecognised never blames.** Two more tries, then "I couldn't
+  recognise those stars." with Try Again and Create Story replacing the
+  original pair — the screen changes what it offers, it never grows a
+  third button. No "incorrect", "invalid", "wrong" or "failed" appears
+  anywhere on it, checked mechanically. A sky the platform could not be
+  ASKED about is told apart from one it did not know, says so
+  honestly, and does not spend one of the tries.
+- **Fix — the Studio asked for the same sky again.** A child recognised
+  on VihuPlanet arrived in the Studio and was met, seconds later, by
+  "One of these skies is yours. Can you find it?" — the Traveller
+  Gateway's Scene 3, which resolved identity for itself back when the
+  Studio was the front door. A one-shot note written at VihuPlanet and
+  consumed on arrival tells Scene 3 it already has its answer; it takes
+  the same branch a successful signature always took, so nothing about
+  the Gateway is redesigned. Verified both ways: recognised at
+  VihuPlanet reaches Studio Home with no second ask, and opening the
+  Studio directly still gets Scene 3 exactly as before.
+- **I Don't Have One Yet launches the Starter Story Rite**, with no
+  further questions, no registration and no profile creation — the same
+  door ✨ Create Story opens.
+- **`js/constellationBoard.js` is a real component.** This grid existed
+  twice already, in two frozen Studio subsystems, the second of which
+  says in its own comment that it had to be rewritten because the first
+  was unreachable. Rather than write a third private copy, VihuPlanet's
+  is a component nothing else has to adopt but anything can.
+- **The platform client now loads on VihuPlanet**, which is what makes
+  recognition on a new device possible at all, and also fixes
+  cloud-backed Stories never reaching the Ether from the home page.
+  With one guard added so the front door does not pay for it:
+  `EtherFeed` no longer reaches the cloud when no Magic Card is on the
+  device. Such a visitor owns no rows by definition, and asking would
+  have minted an anonymous account for every single person who so much
+  as opened VihuPlanet. Verified: a Traveller opening the page makes no
+  outbound request at all.
+- **Fix — a hidden overlay that still swallowed every tap.** A class
+  that sets `display` outranks the browser's own `[hidden]` rule, so
+  the closed star screen stayed laid out across the whole window and
+  the two permanent actions underneath it silently stopped working.
+- **Fix — the gentle message erased itself.** Clearing the board fired
+  its own change callback, which wiped whatever had just been said
+  about the sky being cleared. The sprint's own "I couldn't recognise
+  those stars." never survived long enough to be read.
+
 ## v1.0.4 — 2026-08-12
 
 - **Looking up and down goes on forever, exactly as looking left and

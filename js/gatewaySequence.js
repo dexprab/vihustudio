@@ -815,6 +815,15 @@
           if(!opts.preLines){ beginSegment1(); return; }
           playLines(opts.preLines,RETURNING_LINE_MS,RETURNING_LINE_GAP_MS,reduced,function(bubble){
             if(skipRequested) return;
+            // Already recognised at VihuPlanet's own "Show Me Your
+            // Stars" on the way in (js/creatorRecognition.js). This is
+            // the SAME branch a successful signature below takes, for
+            // the same reason its own comment gives — once a Creator is
+            // recognized, replaying the full flying-in/landing/greeting
+            // cinematic is redundant. Nothing about Scene 3 is
+            // redesigned: it simply already has its answer, so it does
+            // not ask the question twice.
+            if(opts.recognisedOnArrival){ playFinalFlash(reduced,done); return; }
             if(!opts.verify||typeof MagicCardUI==='undefined'||!MagicCardUI.beginCreatorSignature){
               // No Creator Signature challenge could be reached — a
               // real, honest degrade straight into Segment 1, never a
@@ -929,7 +938,11 @@
         after(reduced?800:TAP_HINT_DELAY_MS,showTapHint);
 
         if(isReturning){
-          runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});
+          // Read once and cleared in the same breath, so it can only
+          // ever apply to the single arrival VihuPlanet wrote it for.
+          let recognisedOnArrival=false;
+          try{ recognisedOnArrival=(typeof CreatorRecognition!=='undefined')&&CreatorRecognition.takeRecognition(); }catch(e){}
+          runVideoSequence(gateVideoEl,{preLines:RETURNING_LINES,preVoiceIds:RETURNING_VOICE_IDS,verify:true,recognisedOnArrival:recognisedOnArrival,pauseLines:LUMO_ARRIVAL_RETURNING_LINES,pauseVoiceIds:LUMO_ARRIVAL_RETURNING_VOICE_IDS});
         }else{
           runVideoSequence(gateVideoEl,{preLines:null,verify:false,pauseLines:GREETING_LINES,pauseVoiceIds:GREETING_VOICE_IDS});
         }
