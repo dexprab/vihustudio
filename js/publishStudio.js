@@ -1380,14 +1380,27 @@ const PublishStudio=(function(){
     const live=_slides();
     let ready;
     try{
+      // Drawn AFRESH, not taken from the cache. A cached page image can
+      // be older than the page — that is a bug worth fixing wherever it
+      // happens, and it was, but canon cannot merely prefer a correct
+      // picture. Freezing declares a story final and ships it
+      // identically to every child, so the one moment it is worth
+      // re-rendering every page is this one. The author is already
+      // waiting on this screen, and it happens once.
+      live.forEach(function(s){ if(s) delete s.thumbnail; });
       ready=(typeof ThumbnailEngine!=='undefined' && live.length)
         ? ThumbnailEngine.generateBatch(live)
         : Promise.resolve();
     }catch(e){ ready=Promise.resolve(); }
 
     return Promise.resolve(ready).catch(function(){}).then(function(){
+      // Overwritten, not filled in. The serialized page may be carrying
+      // a thumbnail of its own, and after a deliberate re-render that
+      // one is the older of the two — preferring it would reintroduce
+      // exactly the staleness this just went to the trouble of
+      // clearing.
       for(let i=0;i<slides.length;i++){
-        if(slides[i] && !slides[i].thumbnail && live[i] && live[i].thumbnail){
+        if(slides[i] && live[i] && live[i].thumbnail){
           slides[i].thumbnail=live[i].thumbnail;
         }
       }

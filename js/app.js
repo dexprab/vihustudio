@@ -206,6 +206,18 @@ if(typeof StickerStudio!=='undefined'){
       refreshThumbnails:function(){
         const s=AppState.slides[AppState.currentSlide];
         if(s && typeof ThumbnailEngine!=='undefined'){
+          // ThumbnailEngine.generate() returns the CACHED thumbnail
+          // immediately when one exists, so asking it to "refresh"
+          // without clearing first refreshed nothing: a page whose
+          // picture had been drawn once kept that picture forever,
+          // however many stickers were added to it afterwards. The
+          // stale image then went everywhere the real one goes — the
+          // page strip, the timeline, My Projects, and the frozen file
+          // a Canon Story ships as. Every other invalidation site in
+          // this codebase (js/contextPanel.js, js/pageDesigner.js,
+          // js/cardDesigner.js, js/themeEngine.js) deletes first; this
+          // one did not.
+          delete s.thumbnail;
           try{ ThumbnailEngine.generate(s).then(function(){
             if(typeof renderList==='function') renderList();
             if(typeof renderTimeline==='function') renderTimeline();
