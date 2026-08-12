@@ -1015,6 +1015,19 @@ const PublishStudio=(function(){
     // Companion Engine Foundation (Sprint C1) — "Published".
     try{ if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('published'); }catch(e){}
     try{ if(typeof MagicCard!=='undefined') MagicCard.markEverPublished(); }catch(e){}
+    // The Ether — "published stories become part of the Ether, where
+    // they drift, waiting to be discovered" (CLAUDE.md, Decision 9).
+    // MagicCard.markEverPublished() above records THAT a child has
+    // published; this records WHICH Story, which is the thing the Ether
+    // needs and the thing nothing anywhere stored until now. Same
+    // pattern, same place, same defensive wrapping as its neighbours —
+    // Publish Studio itself is untouched beyond this line.
+    try{
+      if(typeof CreatorProjectStore!=='undefined' && typeof ProjectManager!=='undefined'){
+        const _pid=ProjectManager.ensureProjectId();
+        if(_pid) CreatorProjectStore.markPublished(_pid);
+      }
+    }catch(e){}
     // "if they do not publish their creation might get lost" — a real
     // publish just happened, so the notice has nothing left to nag
     // about for the rest of this tab session.

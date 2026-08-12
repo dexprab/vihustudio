@@ -93,6 +93,10 @@ vihuplanet/
 │   ├── dreamingPlanet.js
 │   ├── dreamingPlanetManager.js
 │   └── dreamingPlanet.css
+├── ether/                   the first real Ether surface — mounts the
+│                            runtime and fills it with this creator's
+│                            actual published Stories (js/etherFeed.js).
+│                            Deep links: ?story=<projectId>.
 ├── runtime/                 the VihuPlanet Runtime — the natural laws
 │                            of the universe (Core · Universe · Ether ·
 │                            Stories · Physics · Ambient · Focus ·

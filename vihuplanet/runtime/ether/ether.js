@@ -80,7 +80,15 @@
 
   // Even a nearly empty universe is bigger than the screen, so there
   // is always somewhere for a story to drift in FROM.
-  var MIN_SPREAD = 1.6;
+  //
+  // 1.18, not 1.6, and the difference is a real first-run bug rather
+  // than a taste call. At 1.6 the field is 2.56× the area of the view,
+  // so only ~39% of a small universe is on screen at any moment — a
+  // creator with four published Stories would see one or two of them
+  // and conclude the Ether had lost the rest. 1.18 puts ~72% in view,
+  // which is also almost exactly where the density rule below takes
+  // over (around thirty Stories), so the two rules meet without a step.
+  var MIN_SPREAD = 1.18;
 
   EtherNS.create = function (opts) {
     opts = opts || {};

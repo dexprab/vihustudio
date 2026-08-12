@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Ether · VihuPlanet</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
+<link rel="stylesheet" href="../runtime/css/runtime.css">
+<link rel="stylesheet" href="ether.css">
+</head>
+<body>
+
+<!-- The first real VihuPlanet Ether surface.
+     Everything visible here is the runtime; this page's own job is
+     three lines long — mount a universe, ask EtherFeed for the real
+     published Stories, start it. See ether.js. -->
+
+<main class="ether-page">
+  <div class="ether-universe" data-universe></div>
+
+  <!-- Shown only when this creator has no published Stories yet. It
+       says what is true and offers the one thing that changes it. -->
+  <div class="ether-quiet" data-quiet hidden>
+    <p class="ether-quiet-line" data-quiet-line></p>
+    <a class="ether-quiet-link" href="../../index.html">Go to the Studio</a>
+  </div>
+</main>
+
+<!-- ---------- VihuStudio: the Stories ----------
+     Only what reading published projects actually needs. This page
+     does not load the Studio. -->
+<script src="../../js/creatorProjectCache.js"></script>
+<script src="../../js/creatorProjectStore.js"></script>
+<script src="../../js/magicCard.js"></script>
+<script src="../../js/etherFeed.js"></script>
+
+<!-- ---------- the VihuPlanet Runtime ---------- -->
+<script src="../artDirection/illustrationRules.js"></script>
+
+<script src="../runtime/core/namespace.js"></script>
+<script src="../runtime/core/rng.js"></script>
+<script src="../runtime/core/signal.js"></script>
+<script src="../runtime/core/clock.js"></script>
+<script src="../runtime/core/camera.js"></script>
+
+<script src="../runtime/stories/storyEntity.js"></script>
+<script src="../runtime/stories/storyManager.js"></script>
+<script src="../runtime/stories/storyLayer.js"></script>
+<script src="../runtime/stories/storyLight.js"></script>
+
+<script src="../runtime/physics/spatialGrid.js"></script>
+<script src="../runtime/physics/physics.js"></script>
+
+<script src="../runtime/ether/ether.js"></script>
+<script src="../runtime/ether/currents.js"></script>
+<script src="../runtime/ether/etherRenderer.js"></script>
+
+<script src="../runtime/ambient/ambientSystem.js"></script>
+<script src="../runtime/focus/focusSystem.js"></script>
+<script src="../runtime/birth/storyBirth.js"></script>
+<script src="../runtime/worlds/worldEngine.js"></script>
+
+<script src="../runtime/core/universe.js"></script>
+
+<script src="ether.js"></script>
+</body>
+</html>

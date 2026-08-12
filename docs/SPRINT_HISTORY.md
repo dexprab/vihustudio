@@ -1475,3 +1475,51 @@ the screen does and the universe gets a dark frame around it. The development
 panel is now closed at load behind one small mark in the corner (Sprint U1 #7),
 and `prefers-reduced-motion` stops the camera too — camera, stories and dust all
 verified at exactly 0.0000 movement. Detail in `vihuplanet/runtime/README.md`.
+
+## Sprint · Real Published Stories in the Ether, and Deep Links
+
+The Ether had a runtime and demo data. Plugging in real Stories turned up the
+thing that was actually missing: **nothing anywhere recorded which Story had
+been published.** `MagicCard.hasEverPublished` is a single global boolean per
+browser — true the moment any Story is published, never attributable to one —
+which is fine for what it was built for (gating the Creator Ceremony) and
+useless for an Ether that needs to know what is in it. So publishing now stamps
+the Story itself: `CreatorProjectStore.markPublished(id)` writes `publishedAt`
+onto the record that already carries the Story's name and cover and already
+syncs to the cloud, so nothing new is stored and nothing new is uploaded — one
+more field on a row that was already going there. It is carried forward through
+`upsert()` exactly like `createdAt` and `cloudSyncedAt`, for the reason that
+file already documents at length: `upsert()` rebuilds the whole record on every
+debounced autosave, so anything not carried forward is wiped the instant editing
+continues, and a Story must not stop being shared because its author typed one
+more word into it (verified). Publish Studio itself is untouched beyond one
+guarded line beside the existing `MagicCard.markEverPublished()` call. The
+integration proper is `js/etherFeed.js`, the one place VihuStudio's project data
+meets the VihuPlanet Runtime, with the dependency running one way — it knows
+about both, the runtime knows about neither, and deleting it leaves a universe
+that still runs with no stories in it. It maps records to the Story Entity
+contract (name → title, thumbnail → cover, card nickname → creator),
+local-primary with the cloud as a second source merged by id, and deliberately
+does NOT copy the project payload: the Ether shows a drifting cover and a name,
+and holding hundreds of full project payloads to do that would be the most
+expensive mistake available. `vihuplanet/ether/` is the first real surface —
+mount, feed, start — and it owns the two things the runtime correctly knows
+nothing about: **deep links** (`?story=proj_...`; focusing a Story writes its
+link to the address bar via `replaceState`, since drifting through the Ether is
+browsing rather than navigating, and opening a link focuses that Story after one
+beat so a child sees the universe before it moves) and the quiet state (an Ether
+with nothing in it is not an error and gets no error styling — one line of
+handwriting low in the frame, per Art Direction's sky-caption rule). One real
+bug fixed on the way: `MIN_SPREAD` 1.6 makes the field 2.56× the view's area, so
+a creator with four published Stories saw one or two drawn and would reasonably
+conclude the Ether had lost the rest; 1.18 puts ~72% in view and meets the
+density rule without a step at around thirty Stories, verified at both ends (4
+of 4 drawn; 425 stories still 17 drawn at 40fps). Verified end to end in a
+browser against the real store: empty state, four published of six projects with
+the two drafts correctly excluded, `publishedAt` surviving a later autosave,
+focus writing the link, close clearing it, a shared link resolving and opening,
+an unknown link saying so, and the Studio itself booting clean. Disclosed limit:
+this is the creator's own Stories, on their own device plus their card's cloud
+sync — there is no public cross-creator feed to read, because there is no public
+VihuPlanet yet (`creator_projects` is a private, card-gated backup). The URL
+contract is what a public feed will need; the feed is what a stranger will need.

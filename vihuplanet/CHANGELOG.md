@@ -2,6 +2,45 @@
 
 All notable changes to the VihuPlanet MEP are recorded here.
 
+## v0.6.1 — 2026-08-12
+
+**Real published Stories in the Ether, and deep links for them.** The
+Ether had a runtime and demo data; it now has the creator's actual
+Stories, and every one of them has a URL.
+
+- **New — a Story records that it was published.** Nothing anywhere did
+  before: `MagicCard.hasEverPublished` is one global boolean per browser
+  and cannot be attributed to a project. `CreatorProjectStore` gains
+  `markPublished(id)` / `listPublished()`, stamping `publishedAt` on the
+  record that already carries the Story's name and cover and already
+  syncs to the cloud — one more field on a row that was already going
+  there. Carried forward through `upsert()` like `createdAt` and
+  `cloudSyncedAt`, so a Story does not stop being shared because its
+  author typed one more word into it.
+- **New — `js/etherFeed.js`.** The one place VihuStudio's project data
+  meets the runtime, and the dependency runs one way: it knows about
+  both, the runtime knows about neither. Maps records to the Story
+  Entity contract, local-primary with the cloud as a second source.
+  Deliberately does not copy the project payload — the Ether shows a
+  drifting cover and a name.
+- **New — `vihuplanet/ether/`,** the first real Ether surface. Mounts
+  the universe, loads the feed, and says something true when a creator
+  has not shared anything yet.
+- **New — deep links.** `?story=proj_...`. Focusing a Story writes its
+  link to the address bar; opening a link focuses that Story after one
+  beat, so a child sees the universe before it moves. An unknown link
+  says so rather than failing silently.
+- **Fix — the minimum field size was too generous for a small
+  universe.** At `MIN_SPREAD` 1.6 the field is 2.56× the view's area, so
+  a creator with four published Stories saw one or two and would
+  conclude the Ether had lost the rest. 1.18 puts ~72% in view and meets
+  the density rule without a step at around thirty Stories.
+- **Publish Studio is untouched** beyond one guarded line beside the
+  existing `MagicCard.markEverPublished()` call.
+- Scope, stated plainly: this is the creator's own Stories, on their own
+  device plus their card's cloud sync. There is no public cross-creator
+  feed to read, because there is no public VihuPlanet yet.
+
 ## v0.6.0 — 2026-08-12
 
 **Sprint U1 — Make the Universe Feel Alive.** The runtime worked but

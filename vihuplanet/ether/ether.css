@@ -1,0 +1,95 @@
+/* ether.css — the Ether page's own shell.
+ *
+ * Almost nothing, on purpose. Everything a child sees here is the
+ * runtime (vihuplanet/runtime/css/runtime.css); this file positions the
+ * universe and styles one line of text for the case where a creator has
+ * not shared anything yet.
+ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* Painted, not inherited — this is the colour behind the universe in
+     the moment before its first frame lands. */
+  background: var(--vp-ink, #1E2842);
+  font-family: 'Kalam', system-ui, sans-serif;
+  color: var(--vp-paper, #F1EAD0);
+  /* The Ether fills the window and never scrolls. Whatever is off the
+     edge is elsewhere in the universe, not further down the page. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.ether-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Respects a phone's notch without letting the universe stop short of
+     the edges — the universe is full-bleed; only the text inset. */
+  height: 100dvh;
+}
+
+.ether-universe {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- the quiet state ---------- */
+
+/* An Ether with nothing in it is not an error state and gets no error
+   styling: no card, no icon, no border. One line of handwriting low in
+   the frame, the same way the Hero speaks (sky-caption, never a modal —
+   Art Direction v1.0 forbids the alternatives by name). */
+.ether-quiet {
+  position: absolute;
+  left: 50%;
+  bottom: calc(12vh + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 6000;
+  width: min(30rem, calc(100% - 3rem));
+  text-align: center;
+  /* The universe underneath stays touchable — a child can still reach
+     into the Ether while this is on screen. */
+  pointer-events: none;
+}
+
+.ether-quiet-line {
+  margin: 0 0 0.85rem;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(1.15rem, 1rem + 0.8vw, 1.5rem);
+  line-height: 1.35;
+  text-wrap: balance;
+  color: rgba(241, 234, 208, 0.82);
+  text-shadow: 0 1px 6px rgba(9, 13, 26, 0.9);
+}
+
+.ether-quiet-link {
+  pointer-events: auto;
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 184, 113, 0.45);
+  background: rgba(18, 24, 43, 0.5);
+  color: var(--vp-candle, #E8B871);
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: background 220ms ease, border-color 220ms ease;
+}
+
+.ether-quiet-link:hover,
+.ether-quiet-link:focus-visible {
+  background: rgba(232, 184, 113, 0.16);
+  border-color: rgba(232, 184, 113, 0.75);
+}
+
+.ether-quiet-link:focus-visible {
+  outline: 2px solid var(--vp-candle, #E8B871);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ether-quiet-link { transition: none; }
+}

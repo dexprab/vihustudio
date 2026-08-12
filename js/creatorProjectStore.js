@@ -118,6 +118,13 @@ const CreatorProjectStore=(function(){
       createdAt:existing?existing.createdAt:now,
       updatedAt:now,
       cloudSyncedAt:existing?existing.cloudSyncedAt:undefined,
+      // Carried forward for exactly the reason cloudSyncedAt above is:
+      // this function rebuilds the whole record on every debounced
+      // autosave, so anything not carried forward is silently wiped the
+      // instant editing continues. A Story that was shared with
+      // VihuPlanet must not stop being shared because its author typed
+      // one more word into it.
+      publishedAt:existing?existing.publishedAt:undefined,
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
@@ -146,6 +153,38 @@ const CreatorProjectStore=(function(){
     return {ok:true};
   }
 
+  // The Ether, Phase 1 wiring. Until now nothing anywhere recorded
+  // WHICH Story was shared with VihuPlanet — MagicCard's own
+  // hasEverPublished is a single global boolean per browser, true the
+  // moment any Story is published and never attributable to one. That
+  // is fine for what it was built for (gating the Creator Ceremony) and
+  // useless for the Ether, which needs to know which Stories are in it.
+  //
+  // So publishing now stamps the Story itself, on the record that
+  // already carries its name and its cover and already syncs to the
+  // cloud. Nothing new is stored and nothing new is uploaded: one more
+  // field on a row that was already going there.
+  //
+  // Deliberately idempotent on the FIRST publish only — publishing the
+  // same Story again does not move its arrival date, because a Story
+  // joined the Ether once and has been drifting ever since.
+  function markPublished(id,when){
+    const record=_cache().get(id);
+    if(!record) return {ok:false};
+    if(record.publishedAt) return {ok:true,record:record,already:true};
+    record.publishedAt=when||new Date().toISOString();
+    record.updatedAt=new Date().toISOString();
+    _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
+    return {ok:true,record:record};
+  }
+
+  // Every Story that has been shared with VihuPlanet, newest arrival
+  // first. The Ether's whole reading list.
+  function listPublished(){
+    return list().filter(function(r){ return !!r.publishedAt; })
+      .sort(function(a,b){ return new Date(b.publishedAt)-new Date(a.publishedAt); });
+  }
+
   const api={
     STORAGE_KEY:STORAGE_KEY,
     newId:newId,
@@ -154,6 +193,8 @@ const CreatorProjectStore=(function(){
     upsert:upsert,
     remove:remove,
     clearAll:clearAll,
+    markPublished:markPublished,
+    listPublished:listPublished,
     onPersistError:onPersistError
   };
   try{ window.CreatorProjectStore=api; }catch(e){}

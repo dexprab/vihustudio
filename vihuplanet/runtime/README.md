@@ -75,6 +75,46 @@ story joining VihuPlanet while somebody watches.
 position of the control the child actually pressed and the story rises
 out from under their finger.
 
+### Real published Stories
+
+`vihuplanet/ether/` is the first real surface: it mounts this runtime
+and fills it with the creator's actual published Stories. The
+integration lives entirely outside the runtime —
+
+| | |
+|---|---|
+| `js/etherFeed.js` | project records → the Story Entity contract |
+| `js/creatorProjectStore.js` | `markPublished(id)` · `listPublished()` |
+| `js/publishStudio.js` | one line stamping the Story on publish |
+| `vihuplanet/ether/` | the page: mount · feed · deep links |
+
+— and the dependency runs one way. `EtherFeed` knows about both
+VihuStudio and VihuPlanet; the runtime knows about neither. Delete
+`etherFeed.js` and the universe still runs, with no stories in it.
+That is the correct blast radius for an integration.
+
+**A Story is in the Ether when its record carries `publishedAt`.**
+Before this, nothing anywhere recorded *which* Story had been shared —
+`MagicCard.hasEverPublished` is one global boolean per browser and
+cannot be attributed to a project. Stories published before this
+shipped therefore have no arrival date and do not appear; there is no
+honest way to invent one, and guessing would put Stories in VihuPlanet
+that a child never chose to share.
+
+**Deep links.** Every Story has a URL:
+`vihuplanet/ether/?story=proj_...`. Opening one focuses that Story;
+focusing a Story writes its link to the address bar, so the URL a child
+copies is always the Story they are looking at (`replaceState`, because
+drifting through the Ether is browsing, not navigating).
+
+The link resolves for anyone whose Ether contains that Story — today,
+the creator themselves, including on another device once their Magic
+Card has synced. It does **not** yet resolve for a stranger, because
+there is no public VihuPlanet to read from: `creator_projects` is a
+private, card-gated backup. The URL contract is what a public feed will
+need; the feed is what a stranger will need. The page handles the gap by
+saying so rather than failing silently.
+
 ### Events
 
 | Event | When |

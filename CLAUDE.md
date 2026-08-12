@@ -179,7 +179,22 @@ Locked by the product owner in the VihuPlanet Ether Runtime brief.
   world emergence, Telescope integration, Companion integration, the
   reading experience, reactions, search, filters and ranking. Those
   belong to later phases.
+- **A Story is in the Ether when its own record carries
+  `publishedAt`**, stamped by Publish Studio on completion.
+  `MagicCard.hasEverPublished` records *that* a child has published and
+  can never say *which* Story — it is not a substitute. Stories
+  published before this existed have no arrival date and correctly do
+  not appear: inventing one would put Stories in VihuPlanet that a
+  child never chose to share.
+- **Every published Story has a deep link** —
+  `vihuplanet/ether/?story=<projectId>`. The project id, not any
+  runtime-internal id, so a shared link survives anything the runtime
+  renames. It resolves for anyone whose Ether contains that Story;
+  today that is the creator across their own devices, since there is no
+  public cross-creator feed yet. When one exists it becomes another
+  source inside `EtherFeed.load()` and nothing downstream changes.
 - Architecture and rationale: `vihuplanet/runtime/README.md`.
+  Integration: `js/etherFeed.js` and `vihuplanet/ether/`.
 
 ## Roadmap
 
