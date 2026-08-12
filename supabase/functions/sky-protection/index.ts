@@ -32,16 +32,43 @@
 //
 // Deploy (from the repo root):
 //   supabase secrets set \
-//     SMTP_HOST=smtp.titan.email SMTP_PORT=465 \
-//     SMTP_USER=lumo@vihuplanet.com SMTP_PASSWORD='...' \
-//     SKY_FROM_EMAIL="Lumo from VihuPlanet <lumo@vihuplanet.com>"
+//     RESEND_API_KEY=re_... \
+//     SKY_FROM_EMAIL="Lumo from VihuPlanet <lumo@vihuplanet.com>" \
+//     SKY_REPLY_TO=someone@real.example
 //   supabase functions deploy sky-protection --project-ref <your-project-ref>
 //
-// Sending through the domain's own mailbox needs NO DNS work at all —
-// the provider's SPF and DKIM records are already on the domain for
-// exactly this, and the mail is signed by the same servers that carry
-// the rest of that mailbox's post. See the transport note further down
-// for the HTTP alternative and why the switch exists.
+// SEND OVER HTTP, NOT THROUGH A MAILBOX. This started the other way
+// round — sending through the domain's own mailbox needs no DNS work,
+// which is genuinely attractive — and it cost two days to find out why
+// that is the wrong shape:
+//
+//   A mailbox's SMTP is a HUMAN LOGIN CHANNEL. It is gated by the
+//   things human logins are gated by, and none of them are visible to
+//   the thing trying to send. The first mailbox tried here refused
+//   every SMTP authentication with 535 while accepting the identical
+//   password in webmail — from three independent clients, two auth
+//   mechanisms, two ports and three networks. Nothing was
+//   misconfigured; the provider simply does not let that mailbox send.
+//   A provider can decide that silently, at any time, for a mailbox
+//   that worked yesterday.
+//
+// The failure modes that remain even when it does work are worse than
+// the one that is easy to see: a mailbox cannot tell you whether the
+// mail arrived or went to spam, and an SMTP login from an edge
+// runtime's shifting egress IPs is exactly what a large provider
+// challenges — which fails INTERMITTENTLY, so it passes testing and
+// breaks a week later, and a Magic Card that silently does not arrive
+// is a lost sky. Losing skies is the one thing this feature exists to
+// prevent.
+//
+// SMTP is kept, and still wins when SMTP_HOST is set, because it is a
+// real escape hatch and it is twenty lines. It is not the recommended
+// path.
+//
+// A from address on a domain with no mailbox behind it is a send-only
+// address, so SKY_REPLY_TO must point somewhere a person reads. A
+// parent replying to ask a question about their child's sky should
+// reach a human, not a bounce.
 //
 // Failure convention mirrors the family-album function and
 // js/themeRepositoryClient.js: expected failures come back as
@@ -172,20 +199,25 @@ function subjectFor(names: string[]): string {
 // SENDING
 //
 // Two transports, chosen by whichever secrets are present. SMTP wins
-// when it is configured, because it is the deliberate choice; the HTTP
-// provider is the fallback and the escape hatch.
+// when SMTP_HOST is set — which is now the ESCAPE HATCH rather than the
+// recommendation. See the note at the top of this file for what
+// changed and why; the short version is that a mailbox's SMTP is a
+// human login channel and behaves like one.
 //
-// This is not indecision — it is the reason the switch exists. SMTP
-// from an edge runtime is a raw TCP connection to somebody else's mail
-// server, and it is the least forgiving part of this whole feature: a
-// throttle, a blocked relay or a slow handshake all look the same from
-// here. Being able to move to an HTTP API by setting one secret, with
-// no code change and no deploy, is worth the twenty lines.
+// The switch is why that discovery cost a secret rather than a sprint:
+// the transport moved with no code change and no deploy. That is worth
+// the twenty lines on its own, and it is worth keeping now that the
+// preference has flipped — the next thing to go wrong will be on the
+// HTTP side, and the way back is the same one secret.
 //
-// SMTP (a real mailbox). The host is the MAIL provider's, which is not
-// always the company the domain was bought from — a GoDaddy domain with
-// "Professional Email" on it is usually Titan underneath, and Titan's
-// host is nothing like GoDaddy's own. Check the webmail URL if unsure.
+// HTTP (Resend) — the recommended path:
+//   RESEND_API_KEY  re_...
+//
+// SMTP (a real mailbox) — the escape hatch. The host is the MAIL
+// provider's, which is not always the company the domain was bought
+// from — a GoDaddy domain with "Professional Email" on it is usually
+// Titan underneath, and Titan's host is nothing like GoDaddy's own.
+// Check the webmail URL if unsure.
 //   SMTP_HOST      smtp.titan.email          (Titan, incl. via GoDaddy)
 //                  smtpout.secureserver.net  (GoDaddy's own mail)
 //                  smtp.office365.com        (Microsoft 365)
@@ -193,15 +225,14 @@ function subjectFor(names: string[]): string {
 //   SMTP_USER      the full email address
 //   SMTP_PASSWORD  the mailbox password
 //
-// HTTP (Resend):
-//   RESEND_API_KEY re_...
-//
 // Both:
 //   SKY_FROM_EMAIL  "VihuPlanet <you@yourdomain.com>"
-//   SKY_REPLY_TO    optional, and needed only when the from address is
-//                   a send-only one. When SKY_FROM_EMAIL is a real
-//                   mailbox — the normal case here — replies already
-//                   land in it and this should be left unset.
+//   SKY_REPLY_TO    where a parent's reply should land. Needed whenever
+//                   the from address is send-only — a domain sending
+//                   over HTTP with no mailbox behind it is exactly
+//                   that, and is the normal case now. Leave it unset
+//                   only when SKY_FROM_EMAIL is a real inbox somebody
+//                   reads.
 //
 // With SMTP the from address must be the mailbox that authenticated —
 // most providers, GoDaddy included, reject anything else — so
