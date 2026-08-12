@@ -305,6 +305,7 @@
     var TRIES = 3;
     var board = null;
     var lostForm = null;      // the recover-by-grown-up field, when open
+    var againRow = null;      // "it didn't arrive", after a send
     var attempts = 0;
     var asking = false;
 
@@ -318,6 +319,7 @@
       if (starsActions) starsActions.hidden = false;
       if (starsRetry) starsRetry.hidden = true;
       if (lostForm) { lostForm.remove(); lostForm = null; }
+      if (againRow) { againRow.remove(); againRow = null; }
       var lostBtn = starsEl && starsEl.querySelector('[data-stars-act="lost"]');
       if (lostBtn) lostBtn.hidden = false;
       attempts = 0;
@@ -331,10 +333,20 @@
       if (!board) {
         board = ConstellationBoard.create({
           mount: starsSky,
+          // The recovery email names every star as "row 3, column 5".
+          // This is the screen those words are read against, so it is
+          // the one board that shows them.
+          labels: true,
           // Any change to the sky clears whatever was last said about
           // it. A child who has started drawing again should not still
-          // be reading the answer to the sky before this one.
-          onChange: function () { if (!asking) say(''); }
+          // be reading the answer to the sky before this one — and
+          // "send it again" answers that same line, so it goes with it
+          // rather than being left pointing at nothing.
+          onChange: function () {
+            if (asking) return;
+            say('');
+            if (againRow) { againRow.remove(); againRow = null; }
+          }
         });
       }
       freshAsk();
@@ -391,6 +403,7 @@
         say('Ask your parent to check your Magic Card. I have sent it to them again.', 'quiet');
         try { SkyProtection.resend(); } catch (e) {}
         showLostActions();
+        offerAnotherSend(function () { return SkyProtection.resend(); });
         return;
       }
       askForGrownUp();
@@ -398,9 +411,51 @@
 
     function showLostActions() {
       if (lostForm) { lostForm.remove(); lostForm = null; }
+      if (againRow) { againRow.remove(); againRow = null; }
       if (starsActions) starsActions.hidden = false;
       var lostBtn = starsEl.querySelector('[data-stars-act="lost"]');
       if (lostBtn) lostBtn.hidden = false;
+    }
+
+    // ---------------------------------------------------------------
+    // "It never came."
+    //
+    // "On its way" and "arrived" are not the same sentence. Mail is
+    // slow, mail is filtered, and a grown-up who never sees it leaves a
+    // child on this screen with the right words in front of them and
+    // nothing to press. So every send leaves exactly one way to try
+    // once more — aimed at the same address, with nothing to retype and
+    // nothing to remember.
+    //
+    // It is not a third permanent button and must never become one: it
+    // exists only in the moments after a send, and the next thing the
+    // child does takes it away again.
+    // ---------------------------------------------------------------
+    function offerAnotherSend(send) {
+      if (againRow) { againRow.remove(); againRow = null; }
+      var panel = starsEl.querySelector('.vp-stars-panel');
+      if (!panel) return;
+
+      againRow = document.createElement('button');
+      againRow.type = 'button';
+      againRow.className = 'vp-stars-again';
+      againRow.textContent = 'It didn’t arrive — send it again';
+      // Beside the line it answers, rather than at the bottom of the
+      // screen under everything else.
+      panel.insertBefore(againRow, starsActions || null);
+
+      againRow.addEventListener('click', function () {
+        againRow.disabled = true;
+        say('Sending it again…');
+        var going;
+        try { going = send(); } catch (e) { going = null; }
+        Promise.resolve(going || { ok: false }).then(function (res) {
+          if (againRow) againRow.disabled = false;
+          say(res && res.ok
+            ? 'Sent again. It can take a few minutes to arrive — it is worth looking in the spam folder too.'
+            : 'I could not reach them just now. You can try again in a moment.', 'quiet');
+        });
+      });
     }
 
     // Asking for the address is not asking a child to log in. Nothing
@@ -461,8 +516,13 @@
                        CreatorRecognition.isRecognised();
         } catch (e) {}
 
-        var ask = holdsACard ? SkyProtection.protect(input.value)
-                             : SkyProtection.recoverByEmail(input.value);
+        // Kept so "send it again" needs no retyping — including after a
+        // failure, where nothing was remembered anywhere else.
+        var typed = String(input.value).trim();
+        var again = holdsACard ? function () { return SkyProtection.protect(typed); }
+                               : function () { return SkyProtection.recoverByEmail(typed); };
+
+        var ask = again();
         ask.then(function (res) {
           send.disabled = false;
           if (lostForm) { lostForm.remove(); lostForm = null; }
@@ -479,6 +539,7 @@
             say('I could not reach them just now. You can try again in a moment.', 'quiet');
           }
           showLostActions();
+          offerAnotherSend(again);
         });
       }
       send.addEventListener('click', go);

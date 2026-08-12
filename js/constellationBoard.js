@@ -35,8 +35,18 @@
 //     are. Uniform is also better camouflage, not worse: with every
 //     cell identical there is no visible subset for a shoulder-surfer
 //     to tell a real tap from.
-//   · No row or column numbers, ever. The coordinate system is never
-//     shown, so nothing about the board hints at what it is holding.
+//   · The board carried no row or column numbers, on the reasoning
+//     that a hidden coordinate system tells a passer-by nothing about
+//     what the board holds. Sky Protection changed the facts under
+//     that: the recovery email a parent receives names every star as
+//     "row 3, column 5", and a board with no numbers left them
+//     counting squares with a finger. An unreadable recovery route is
+//     not a recovery route. `labels: true` turns them on.
+//
+//     The privacy cost is close to nothing, which is why this is a
+//     straight improvement rather than a trade: the numbers name
+//     positions, they do not reveal which positions are lit, and every
+//     cell still carries the same dim star at rest.
 
 const ConstellationBoard = (function () {
   'use strict';
@@ -65,19 +75,51 @@ const ConstellationBoard = (function () {
     var mount = opts.mount;
     if (!mount) return null;
     var size = opts.size || SIZE;
+    var labels = opts.labels === true;
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
 
     var board = document.createElement('div');
-    board.className = 'vp-stars-board';
+    board.className = 'vp-stars-board' + (labels ? ' has-labels' : '');
     board.style.setProperty('--vp-stars-size', String(size));
     mount.appendChild(board);
+
+    // With labels the grid gains one track on each side for them, so
+    // every star sits one row and one column further in.
+    var off = labels ? 1 : 0;
 
     var selected = [];
     var cells = [];
 
+    if (labels) makeLabels();
+
     for (var r = 0; r < size; r++) {
       for (var c = 0; c < size; c++) {
         cells.push(makeCell(r, c));
+      }
+    }
+
+    // Numbered from 1, because the recovery email is read by a parent
+    // counting on a screen, not by a programmer. aria-hidden: a screen
+    // reader already hears "Star, row 3, column 5" from the star
+    // itself, and a lone "3" floating beside it would only add noise.
+    function makeLabels() {
+      var i, el;
+      for (i = 0; i < size; i++) {
+        el = document.createElement('span');
+        el.className = 'vp-stars-label is-col';
+        el.textContent = String(i + 1);
+        el.setAttribute('aria-hidden', 'true');
+        el.style.gridRow = '1';
+        el.style.gridColumn = String(i + 2);
+        board.appendChild(el);
+
+        el = document.createElement('span');
+        el.className = 'vp-stars-label is-row';
+        el.textContent = String(i + 1);
+        el.setAttribute('aria-hidden', 'true');
+        el.style.gridRow = String(i + 2);
+        el.style.gridColumn = '1';
+        board.appendChild(el);
       }
     }
 
@@ -93,8 +135,8 @@ const ConstellationBoard = (function () {
       cell.textContent = '★';
       cell.dataset.row = row;
       cell.dataset.col = col;
-      cell.style.gridRow = String(row + 1);
-      cell.style.gridColumn = String(col + 1);
+      cell.style.gridRow = String(row + 1 + off);
+      cell.style.gridColumn = String(col + 1 + off);
       // Out of step with each other, so the board twinkles like a sky
       // instead of pulsing like one light. Harmless under reduced
       // motion, where the CSS turns the animation off outright.

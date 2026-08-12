@@ -585,12 +585,36 @@ html, body {
   aspect-ratio: 1 / 1;
   width: 100%;
   gap: 0;
-  /* A patch of sky, not a table. No gridlines, no cell borders and no
-     row or column numbers anywhere — the coordinate system is never
-     shown, so nothing about the board hints at what it holds. */
+  /* A patch of sky, not a table. No gridlines and no cell borders —
+     the numbers below are the only structure ever drawn, and they are
+     there so a parent reading "row 3, column 5" off a recovery email
+     has something to read it against. */
   border-radius: 14px;
   background: rgba(9, 13, 26, 0.42);
   border: 1px solid rgba(241, 234, 208, 0.10);
+}
+
+/* One extra track on each side, sized to its own content so the sky
+   keeps almost all of the square. */
+.vp-stars-board.has-labels {
+  grid-template-columns: auto repeat(var(--vp-stars-size, 10), 1fr);
+  grid-template-rows: auto repeat(var(--vp-stars-size, 10), 1fr);
+  padding: 2px 4px 4px 2px;
+}
+
+.vp-stars-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Faint on purpose. They are a reference for the rare moment a card
+     is being read back from an email, not part of the sky — a child
+     drawing their own constellation should not notice them at all. */
+  color: rgba(241, 234, 208, 0.34);
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.45rem, 1.15vmin, 0.72rem);
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
 }
 
 .vp-stars-cell {
@@ -754,6 +778,37 @@ html, body {
    next to its neighbours, because every other surface in this file
    that forgot it cost a bug. */
 .vp-stars-lost[hidden] { display: none; }
+
+/* "It didn't arrive." Deliberately the quiet shape of the lost-card
+   link and not a button: the two real buttons on this screen are
+   Continue and I Don't Have One Yet, and this must never read as a
+   third one. It appears only in the moments after a send. */
+.vp-stars-again {
+  margin: 0.1rem 0 0.15rem;
+  padding: 0.3rem 0.6rem;
+  border: 0;
+  background: none;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: rgba(241, 234, 208, 0.55);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* Escaping css/style.css's own `button { width:100%; height:
+     var(--button-height) }` — the same escape every overlay in this
+     codebase needs. */
+  width: auto !important;
+  height: auto !important;
+}
+
+.vp-stars-again:hover:not(:disabled),
+.vp-stars-again:focus-visible { color: var(--vp-candle, #E8B871); }
+
+.vp-stars-again:focus-visible { outline: 2px solid var(--vp-candle, #E8B871); outline-offset: 3px; }
+
+.vp-stars-again:disabled { opacity: 0.5; cursor: default; }
+
+.vp-stars-again[hidden] { display: none; }
 
 .vp-stars-lost-form {
   display: flex;
