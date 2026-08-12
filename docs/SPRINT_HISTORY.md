@@ -2009,3 +2009,63 @@ Adding a screen in front of the readiness questions also made the VP2 suite drif
 its click counting silently walked into the wrong screen and reported a share that
 had not happened. The suite was updated to step past Sky Protection the way a child
 in a hurry would, rather than left to quietly pass on the wrong thing.
+
+## Sky Protection, deployed for real (post-VP4)
+
+The disclosure at the end of the VP4 entry — "written and documented but has not
+been run against a live deployment" — is now closed. It cost two days, and almost
+all of it went on one wrong architectural instinct that the code had already
+hedged against.
+
+Sending was configured through the domain's own mailbox (GoDaddy "Professional
+Email", Titan underneath — the webmail URL is the only way to tell). Every send
+came back `535 5.7.8 authentication failed`. The credential was correct: the same
+password authenticated in Titan webmail, and the AUTH exchange was refused from
+three independent clients (denomailer, curl, Gmail's own "Send mail as"
+verification), two auth mechanisms, two ports and three networks. Nothing was
+misconfigured — the provider simply does not let that mailbox send, and does not
+say so anywhere. **A mailbox's SMTP is a human login channel**, gated by things
+invisible to whatever is trying to send through it. The transport moved to Resend
+by setting one secret, with no code change and no deploy, which is the entire
+reason the switch was built. The deploy notes now recommend HTTP and document
+SMTP as the escape hatch, with that reasoning next to it.
+
+Two failure modes that survive even when mailbox SMTP works are worse than the
+visible one: a mailbox cannot report whether the mail arrived or went to spam, and
+an SMTP login from an edge runtime's shifting egress IPs is exactly what a large
+provider challenges — intermittently, so it passes testing and breaks later. A
+Magic Card that silently does not arrive is a lost sky.
+
+Diagnosis was slow for a reason worth fixing rather than repeating: the child sees
+one gentle sentence when a send fails, which is right, and the developer saw the
+same one, which is not. Five faults produced it and were indistinguishable from a
+browser. `js/skyProtection.js` now logs the reason and the server's own detail to
+the console (never to the screen), reports a non-JSON answer as itself rather than
+collapsing it into `unreachable`, and exposes `SkyProtection.ping()` — a
+deployment check that sends nothing and answers whether the function runs, the
+database reads, the `parent_email` column exists and which transport the secrets
+selected. Booleans and a transport name only. It took the next two failures from
+a screenshot to a root cause in one line each.
+
+One real bug fell out of reading that path: the recovery email printed the
+identity row's `code` column (`MC-00042`), and `recall_magic_card()` does not look
+at that column — its typed branch matches `constellation || lpad(serial_no,5,'0')`
+(`CYGNUS00042`). `js/magicCard.js` already builds the right one for the printed
+card, with a comment saying never to print something that would fail if typed
+back in. A recovery email is the last place that rule may be broken.
+
+Two changes to Mark Your Stars followed from using it. The board had carried no
+row or column numbers, on the reasoning that a hidden coordinate system tells a
+passer-by nothing — but the recovery email names every star as "row 3, column 5",
+and a board with no numbers left a parent counting squares with a finger. The
+numbers name positions without revealing which are lit, so the camouflage that
+reasoning protected is intact. And "on its way" is not "arrived": every send now
+leaves one quiet way to try once more, aimed at the same address with nothing to
+retype, shaped like the lost-card link and never like a third button.
+
+Finally, `RETURNING_LINES[1]`. Lumo greeted a returning Creator with "Welcome
+home. Show me your stars." — but since VP1.5 that Creator has already shown them,
+at VihuPlanet, and Scene 3 takes its skip branch and never asks. The line and its
+voice clip are dropped when recognition already happened. A Creator who opens the
+Studio directly still hears both and still gets the sky challenge, exactly as
+Decision 11 requires.
