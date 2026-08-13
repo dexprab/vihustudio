@@ -107,6 +107,19 @@
       img.loading = 'lazy';
       cover.appendChild(img);
 
+      // "A little audio symbol on its card." It lives on the COVER
+      // rather than beside the name, because it is a fact about the
+      // Story itself and it should read at a glance without anything
+      // being said — and because the caption is where words go.
+      //
+      // Hidden until the Story has one, so a Spirit with no voice has
+      // no empty slot where a badge would be.
+      var voice = global.document.createElement('div');
+      voice.className = 'vp-story-voice';
+      voice.setAttribute('aria-hidden', 'true');
+      voice.textContent = '🔊';
+      cover.appendChild(voice);
+
       var caption = global.document.createElement('div');
       caption.className = 'vp-story-caption';
 
@@ -124,7 +137,7 @@
 
       var node = {
         el: el, focusEl: focusEl, card: card,
-        cover: cover, img: img, title: title, creator: creator,
+        cover: cover, img: img, voice: voice, title: title, creator: creator,
         entityId: null, coverSrc: null, birthing: false, prox: -1
       };
 
@@ -156,9 +169,13 @@
       node.entityId = e.id;
       node.title.textContent = e.title || '';
       node.creator.textContent = e.creator || '';
+      node.voice.classList.toggle('is-on', e.hasAudio === true);
 
       var label = e.title || 'A story';
       if (e.creator) label += ', by ' + e.creator;
+      // Said, not drawn. The badge is aria-hidden because a symbol
+      // repeated in the label would be read out twice.
+      if (e.hasAudio) label += ' — you can listen to this one';
       node.el.setAttribute('aria-label', label);
 
       // Only touch src when it actually changed — reassigning the same

@@ -187,6 +187,39 @@
     linear-gradient(165deg, #4E7B92 0%, #1E2842 100%);
 }
 
+/* "A little audio symbol on its card." A Story that can be heard says
+   so, without a word.
+ *
+ * On the cover rather than beside the name: it is a fact about the
+ * Story, it should read at a glance, and the caption is where words go.
+ * Small, low-contrast and in a corner — it is a mark, not a control,
+ * and nothing about it invites a tap. Tapping the Spirit is already
+ * how a Story is met.
+ *
+ * Absent, not empty, when the Story has no voice: `display: none`
+ * rather than a faded slot, so a silent Spirit carries nothing at all.
+ * It also fades WITH the cover, because a badge that arrived before the
+ * picture it belongs to would be a label floating in the dark. */
+.vp-story-voice {
+  position: absolute;
+  right: 6%;
+  bottom: 6%;
+  display: none;
+  place-items: center;
+  width: 22%;
+  max-width: 26px;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: rgba(12, 17, 32, 0.62);
+  border: 1px solid rgba(241, 234, 208, 0.28);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.vp-story-voice.is-on { display: grid; }
+
 /* An <img> with no src still renders a broken-image glyph in the
    corner of the card. Taking it out of the box is the fix; clearing
    src alone is not. */

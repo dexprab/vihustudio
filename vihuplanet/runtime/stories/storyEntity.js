@@ -131,6 +131,13 @@
       cover:       input.cover || null,
       creator:     input.creator || null,
       publishedAt: input.publishedAt || null,
+      // Whether the Story has a voice — true if any page carries
+      // narration. A boolean, never the audio itself and never a count
+      // of it: the runtime does not play sound, does not know what a
+      // recording is, and must not start holding one. It is the same
+      // kind of fact as `cover` — something the Story knows about
+      // itself that a surface may choose to show.
+      hasAudio:    input.hasAudio === true,
       source:      input.source || null,
 
       // --- motion ---

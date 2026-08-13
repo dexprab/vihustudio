@@ -112,6 +112,10 @@ const EtherFeed = (function () {
       // `.length` copies nothing, and it is the one honest thing the
       // Preview can say about a Story without opening it.
       pages: _pageCount(record),
+      // Does this Story have a voice? Computed from the record here,
+      // where project data is understood, rather than by handing the
+      // runtime something it would have to look inside.
+      hasAudio: _hasAudio(record),
       // `source` is the surface's own back-reference — the runtime
       // copies it wholesale and never reads inside it (physics, the
       // renderer and the story layer have no reason to, and must not
@@ -137,6 +141,19 @@ const EtherFeed = (function () {
     if (!data) return [];
     var list = data.pages || data.slides;
     return Array.isArray(list) ? list : [];
+  }
+
+  // True when any page carries narration. Deliberately just a boolean —
+  // the Ether shows that a Story can be heard, and nothing more.
+  function _hasAudio(record) {
+    try {
+      var pages = _pagesIn(record);
+      for (var i = 0; i < pages.length; i++) {
+        var n = pages[i] && pages[i].metadata && pages[i].metadata.narration;
+        if (n && n.ref) return true;
+      }
+      return false;
+    } catch (e) { return false; }
   }
 
   function _pageCount(record) {
