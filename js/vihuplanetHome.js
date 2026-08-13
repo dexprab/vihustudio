@@ -186,6 +186,7 @@
 
     var met = null;      // the entity currently being met
     var pages = [];
+    var audio = [];   // narration, one slot per page, aligned with `pages`
     var pageIndex = 0;
 
     // ---------- the threshold ----------
@@ -665,6 +666,7 @@
       // surface concern and the runtime has no business knowing about
       // them.
       pages = (pid && window.EtherFeed) ? EtherFeed.pagesOf(pid) : [];
+      audio = (pid && window.EtherFeed && EtherFeed.audioOf) ? EtherFeed.audioOf(pid) : [];
 
       // Everything said here is something the Story actually knows
       // about itself. No invented blurb, no fabricated popularity.
@@ -768,6 +770,8 @@
     }
 
     function closePortal() {
+      // A voice must never outlive the page it belongs to.
+      stopVoice();
       // Running again before the portal has finished closing, so the
       // universe is alive underneath as it is revealed rather than
       // starting up once it is exposed.
@@ -778,11 +782,61 @@
       if (node) node.el.focus();
     }
 
+    // ---------- a page's own voice ----------
+    //
+    // A Story read in the Ether now plays whatever narration its pages
+    // carry, which is what makes a Canon Story with audio worth
+    // publishing at all: the recording is embedded in the canon file, so
+    // it plays for a child who has never met whoever made it.
+    //
+    // Deliberately quieter than the Studio's own Story Player. That one
+    // is a performance — it turns the page when the narration ends. This
+    // is a child reading at their own pace, so the voice accompanies the
+    // page and the page never moves on by itself. Turning away, turning
+    // the page, or closing the portal all stop it immediately: a voice
+    // still talking about a page nobody is looking at is the one thing
+    // this must not do.
+    var voice = null;
+    function stopVoice() {
+      if (!voice) return;
+      try { voice.pause(); voice.src = ''; } catch (e) {}
+      voice = null;
+    }
+
+    function playVoice() {
+      stopVoice();
+      var ref = audio[pageIndex];
+      if (!ref) return;
+      var at = pageIndex;
+      var start = function (src) {
+        // The child may have turned the page while this resolved.
+        if (!src || at !== pageIndex || el.portal.hidden) return;
+        try {
+          voice = new Audio(src);
+          var p = voice.play();
+          // Autoplay may be refused until the child has touched
+          // something. That is not an error and there is nothing to
+          // say about it — the page simply stays silent.
+          if (p && p.catch) p.catch(function () { stopVoice(); });
+        } catch (e) { stopVoice(); }
+      };
+      // A Canon Story carries its narration inline, so this is already
+      // a data: URI; a child's own Story carries a reference that only
+      // resolves on the device that recorded it. AssetStore passes a
+      // data: URI straight through, so one path serves both.
+      if (typeof AssetStore !== 'undefined' && AssetStore.resolve) {
+        AssetStore.resolve(ref).then(start).catch(function () {});
+      } else {
+        start(ref);
+      }
+    }
+
     function showPage() {
       el.page.src = pages[pageIndex] || '';
       el.pageNo.textContent = (pageIndex + 1) + ' / ' + pages.length;
       el.prev.disabled = pageIndex === 0;
       el.next.disabled = pageIndex >= pages.length - 1;
+      playVoice();
     }
 
     function turn(by) {

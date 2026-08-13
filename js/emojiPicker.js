@@ -46,17 +46,22 @@ const EmojiPicker=(function(){
   // wrapper, still reachable by every existing `querySelector('.foo')`
   // lookup keyed on el's own class — callers don't need to change how
   // they find/sync/focus the field afterward.
-  function wrap(el){
-    const box=document.createElement('div');
-    box.className='emoji-picker-field';
-    box.appendChild(el);
-
+  // The toggle and its panel, appended to a host the CALLER already
+  // owns. Split out of wrap() so a field that cannot be wrapped can
+  // still have the affordance: the Studio header's project name lives
+  // in a compact pill beside its own pencil, and wrap()'s full-width
+  // row would take that pill apart.
+  //
+  // Returns the toggle, so a caller can place it precisely among
+  // whatever else it keeps in there.
+  function attach(el,host,opts){
+    opts=opts||{};
     const toggle=document.createElement('button');
     toggle.type='button';
-    toggle.className='emoji-picker-toggle';
+    toggle.className='emoji-picker-toggle'+(opts.toggleClass?(' '+opts.toggleClass):'');
     toggle.textContent='😊';
     toggle.setAttribute('aria-label','Insert emoji');
-    box.appendChild(toggle);
+    host.appendChild(toggle);
 
     const panel=document.createElement('div');
     panel.className='emoji-picker-panel hidden';
@@ -72,7 +77,7 @@ const EmojiPicker=(function(){
       });
       panel.appendChild(b);
     });
-    box.appendChild(panel);
+    host.appendChild(panel);
 
     toggle.addEventListener('click',function(ev){
       ev.stopPropagation();
@@ -82,10 +87,23 @@ const EmojiPicker=(function(){
       _openPanel=panel;
     });
 
+    return toggle;
+  }
+
+  // Wraps an already-built <input>/<textarea> with a toggle button + a
+  // small emoji grid. `el` stays a direct child of the returned
+  // wrapper, still reachable by every existing `querySelector('.foo')`
+  // lookup keyed on el's own class — callers don't need to change how
+  // they find/sync/focus the field afterward.
+  function wrap(el){
+    const box=document.createElement('div');
+    box.className='emoji-picker-field';
+    box.appendChild(el);
+    attach(el,box);
     return box;
   }
 
-  const api={EMOJI:EMOJI,wrap:wrap};
+  const api={EMOJI:EMOJI,wrap:wrap,attach:attach};
   try{ window.EmojiPicker=api; }catch(e){}
   return api;
 })();

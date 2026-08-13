@@ -159,6 +159,38 @@ const EtherFeed = (function () {
   //
   // Local only, on purpose: a cloud round-trip per page turn is not a
   // reading experience.
+  // A Story's narration, page by page, aligned index-for-index with
+  // pagesOf() so the reader can turn a page and reach for the same
+  // slot in both.
+  //
+  // Returns whatever the page carries: a `data:` URI on a Canon Story
+  // (embedded when it was published, so a browser that never met the
+  // author can play it), or a `vihu-asset:` reference on a child's own
+  // Story, which only resolves on the device that recorded it. Both are
+  // handed over as-is — resolving is the reader's job, and it already
+  // knows how, because AssetStore.resolve() passes a data: URI straight
+  // through.
+  //
+  // A page with no narration is `null`, never a gap: a story where only
+  // the third page was recorded still lines up.
+  function audioOf(projectId) {
+    try {
+      var record = null;
+      try { record = CreatorProjectStore.get(projectId); } catch (e) {}
+      if (!record && typeof CanonRepository !== 'undefined') {
+        record = CanonRepository.get(projectId);
+      }
+      var pages = _pagesIn(record);
+      var out = [];
+      for (var i = 0; i < pages.length; i++) {
+        var p = pages[i];
+        var n = p && p.metadata && p.metadata.narration;
+        out.push((n && n.ref) || null);
+      }
+      return out;
+    } catch (e) { return []; }
+  }
+
   function pagesOf(projectId) {
     try {
       // A Canon Story is read exactly like any other — "they can be
@@ -359,6 +391,7 @@ const EtherFeed = (function () {
     load: load,
     attach: attach,
     pagesOf: pagesOf,
+    audioOf: audioOf,
     publishInto: publishInto,
     toStory: toStory
   };

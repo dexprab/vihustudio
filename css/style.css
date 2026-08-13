@@ -11523,6 +11523,36 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 .header-title-field:hover .header-title-pencil,
 .header-title-field:focus-within .header-title-pencil{ color:var(--gold); }
 
+/* The emoji affordance on the project name.
+ *
+ * The name is the one text field in the Studio that is markup rather
+ * than something EmojiPicker.wrap() built, so it gets the toggle
+ * attached instead (js/app.js) — and it has to look like it belongs in
+ * a 24px pill beside the pencil, not like the 32px bordered button that
+ * suits a full-width panel row.
+ *
+ * position:relative is not decoration: .emoji-picker-panel is absolute,
+ * and without a positioned ancestor here it would hang off whatever
+ * container happened to be positioned further up the header. */
+.header-title-field{ position:relative; }
+.emoji-picker-toggle.header-title-emoji{
+  width:24px !important;
+  height:24px;
+  padding:0;
+  margin:0 !important;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:rgba(255,255,255,.62);
+  font-size:13px;
+  flex:none;
+  opacity:.72;
+  transition:opacity .18s ease;
+}
+.header-title-field:hover .emoji-picker-toggle.header-title-emoji,
+.header-title-field:focus-within .emoji-picker-toggle.header-title-emoji{ opacity:1; }
+.emoji-picker-toggle.header-title-emoji:hover{ border:0; opacity:1; }
+
 /* True centring. The header was a flex row with space-between, so the
    name sat wherever the two side clusters happened to leave it — and
    during the Rite, where the left cluster is reduced to the wordmark

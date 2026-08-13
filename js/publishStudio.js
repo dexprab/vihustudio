@@ -1484,7 +1484,33 @@ const PublishStudio=(function(){
           if(cover){ record=Object.assign({},record,{thumbnail:cover}); break; }
         }
       }
-      _finishCanonPublish(record, slides);
+
+      // EVERYTHING THE STORY CARRIES, EMBEDDED — including its AUDIO.
+      //
+      // A Canon Story is committed to the repository and opened by
+      // browsers that have never met its author, so it has to be as
+      // self-contained as a .vihu file. Pictures and per-page narration
+      // are both stored as `vihu-asset:` references into the author's
+      // own local store, and a reference is precisely the thing another
+      // browser cannot follow: canon would have shipped a story whose
+      // narration silently did not exist for anybody else, with nothing
+      // anywhere reporting it.
+      //
+      // Through the hydrator saveProjectAs already uses, rather than a
+      // second one that could drift out of agreement with it — audio
+      // must not be portable in one export path and broken in the
+      // other.
+      let embedded=Promise.resolve();
+      try{
+        if(typeof ProjectManager!=='undefined' &&
+           typeof ProjectManager.hydrateForExport==='function' && record.data){
+          embedded=ProjectManager.hydrateForExport(record.data);
+        }
+      }catch(e){}
+
+      return Promise.resolve(embedded).catch(function(){}).then(function(){
+        _finishCanonPublish(record, slides);
+      });
     });
   }
 

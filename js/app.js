@@ -534,6 +534,25 @@ if(bookTitleEdit){
   };
 }
 
+// A story's name can carry emoji, like every other piece of text a
+// child writes.
+//
+// It always COULD — nothing anywhere strips them, and the name is
+// stored and rendered as plain text (the only _sanitise in the codebase
+// is for filenames, which is right). What it had no way to do was
+// insert one: every other text field in the Studio is built through
+// EmojiPicker.wrap(), and this field is markup in the header, so it
+// never passed through that. A child on a tablet has no emoji key.
+//
+// Attached rather than wrapped — wrap() builds a full-width row, and
+// this name lives in a compact pill next to its own pencil.
+(function(){
+  const field=document.querySelector('.header-title-field');
+  const t=document.getElementById('bookTitle');
+  if(!field || !t || typeof EmojiPicker==='undefined' || !EmojiPicker.attach) return;
+  try{ EmojiPicker.attach(t,field,{toggleClass:'header-title-emoji'}); }catch(e){}
+})();
+
 const playStoryBtn=document.getElementById('playStoryBtn');
 const shareBtn=document.getElementById('shareBtn');
 if(playStoryBtn){

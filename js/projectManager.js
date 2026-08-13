@@ -742,7 +742,15 @@ const ProjectManager=(function(){
     // even on a brand-new project's very first upload, before any save has
     // ever run — guaranteeing exactly one id is ever minted per project,
     // never a race between two producers minting two different ones.
-    ensureProjectId:_ensureProjectId
+    ensureProjectId:_ensureProjectId,
+    // Canon Stories ship in the repository and are read by browsers
+    // that have never met the author, so a canon file has to be as
+    // self-contained as a .vihu one: every vihu-asset: reference in it
+    // — pictures AND per-page narration — resolved back to embedded
+    // data. This is the same walk saveProjectAs already does, exposed
+    // rather than reimplemented, so audio can never be portable in one
+    // export path and broken in the other.
+    hydrateForExport:_hydratePayloadForExport
   };
   try{ window.ProjectManager=api; }catch(e){}
   return api;
