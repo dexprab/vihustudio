@@ -642,8 +642,12 @@
           // The heart is what a child actually SEES — the two below it
           // are the glow it sits in — so it carries more than its own
           // alpha and is kept genuinely thin.
-          var width = r.thickness * (pass === 0 ? 2.6 : (pass === 1 ? 1.0 : 0.16));
-          var strength = (pass === 0 ? 0.26 : (pass === 1 ? 0.52 : 1.15)) * r.alpha * born * gain;
+          // The "heart" is no longer a bright thread. A thin, high-alpha
+          // core is what read as neon — a drawn line rather than light —
+          // so it is wider and much dimmer, and the ribbon is now three
+          // soft bands rather than a glowing wire in a haze.
+          var width = r.thickness * (pass === 0 ? 2.0 : (pass === 1 ? 1.0 : 0.38));
+          var strength = (pass === 0 ? 0.30 : (pass === 1 ? 0.50 : 0.78)) * r.alpha * born * gain;
           if (strength <= 0.002) continue;
 
           // Arrives and leaves. Four stops rather than three so the

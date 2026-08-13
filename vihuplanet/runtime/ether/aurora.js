@@ -82,8 +82,8 @@
   // right at once and the Ether goes quiet. Ten is still weather rather
   // than a light show — they are wide and faint, and the count is what
   // keeps the sky populated rather than what makes it busy.
-  var RIBBONS = 10;
-  var RIBBONS_LOW = 7;
+  var RIBBONS = 5;
+  var RIBBONS_LOW = 4;
 
   // How many points a ribbon's curve is sampled at. Raised once the
   // ribbons were drawn at full resolution and turned up bright enough
@@ -176,7 +176,13 @@
       r.drift = rng.between(2.5, 7.5);
 
       r.thickness = rng.between(26, 58);
-      r.alpha = rng.between(0.17, 0.34);
+      // Halved, and then halved again. At 0.17-0.34 with a bright core
+      // the sky was a light show that dominated the frame — the exact
+      // thing the brief rules out, and obvious the moment it was seen on
+      // a real display rather than in a headless screenshot. An aurora
+      // should be something the eye finds, not something it cannot
+      // avoid.
+      r.alpha = rng.between(0.040, 0.090);
 
       // Ribbons fade in and out over minutes, so the sky is never the
       // same sky and none of them is ever seen to appear.
