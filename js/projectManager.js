@@ -87,6 +87,12 @@ const ProjectManager=(function(){
         author:readDomString('projectAuthorName')||AppState.project.author||'',
         bookTitle:readDomString('bookTitle')||AppState.project.bookTitle||'',
         theme:readDomString('themeSelect')||AppState.project.theme||'default',
+        // How the name in the top bar looks — {color, fontFamily}. A
+        // property of the project, not of the browser, so a story
+        // reopened on another device wears the same name it was given.
+        // Absent on every project saved before this, which reads as
+        // "the default look" everywhere it is used.
+        bookTitleStyle:AppState.project.bookTitleStyle||null,
         themeOptions:AppState.project.themeOptions||null,
         // A real, confirmed root cause found investigating "the studio
         // center screen froze" a second time, after the earlier Museum
@@ -205,6 +211,7 @@ const ProjectManager=(function(){
         author:project.author||'',
         bookTitle:project.bookTitle||'',
         theme:project.theme||'default',
+        bookTitleStyle:project.bookTitleStyle||null,
         themeOptions:project.themeOptions||null,
         // See serialize()'s own matching comment above — restored here,
         // then actually applied (via ThemeEngine.applyArtworkTheme, below,
@@ -230,6 +237,10 @@ const ProjectManager=(function(){
       writeDomString('projectTitle',AppState.project.title);
       writeDomString('projectAuthorName',AppState.project.author);
       writeDomString('bookTitle',AppState.project.bookTitle);
+      // The name's own colour and font came back with the project;
+      // put them on the field, or a restored story shows its name in
+      // the default look until something else happens to redraw it.
+      try{ if(typeof window.applyBookTitleStyle==='function') window.applyBookTitleStyle(); }catch(e){}
       writeDomString('themeSelect',AppState.project.theme);
 
       const recallOwnerId=AppState.project.recallOwnerId;

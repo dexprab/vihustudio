@@ -56,6 +56,19 @@ const EmojiPicker=(function(){
   // whatever else it keeps in there.
   function attach(el,host,opts){
     opts=opts||{};
+    // PORTAL MODE — for a host inside a clipping ancestor.
+    //
+    // The Studio header is `overflow: hidden`, so a panel absolutely
+    // positioned inside it is cut off at the header's own bottom edge:
+    // the field gets its toggle, and opening it shows one row of a
+    // panel that is really six. Positioning cannot fix that from
+    // inside — the fix is to not be inside it.
+    //
+    // So the panel is appended to <body> and positioned as `fixed`,
+    // against the toggle's own on-screen box, each time it opens (the
+    // header can move — the window resizes, the field grows with the
+    // name in it — so its place is computed at open time, never cached).
+    var portal=opts.portal===true;
     const toggle=document.createElement('button');
     toggle.type='button';
     toggle.className='emoji-picker-toggle'+(opts.toggleClass?(' '+opts.toggleClass):'');
@@ -77,13 +90,32 @@ const EmojiPicker=(function(){
       });
       panel.appendChild(b);
     });
-    host.appendChild(panel);
+    if(portal){
+      panel.classList.add('is-portal');
+      try{ document.body.appendChild(panel); }catch(e){ host.appendChild(panel); }
+    }else{
+      host.appendChild(panel);
+    }
+
+    function place(){
+      if(!portal) return;
+      try{
+        var r=toggle.getBoundingClientRect();
+        panel.style.top=(r.bottom+6)+'px';
+        // Kept on screen: a panel opening near the right edge is
+        // pulled back rather than sliding off it.
+        var w=panel.offsetWidth||216;
+        var left=Math.min(r.right-w, window.innerWidth-w-8);
+        panel.style.left=Math.max(8,left)+'px';
+      }catch(e){}
+    }
 
     toggle.addEventListener('click',function(ev){
       ev.stopPropagation();
       if(_openPanel===panel){ _closeOpenPanel(); return; }
       _closeOpenPanel();
       panel.classList.remove('hidden');
+      place();
       _openPanel=panel;
     });
 

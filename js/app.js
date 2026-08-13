@@ -550,7 +550,175 @@ if(bookTitleEdit){
   const field=document.querySelector('.header-title-field');
   const t=document.getElementById('bookTitle');
   if(!field || !t || typeof EmojiPicker==='undefined' || !EmojiPicker.attach) return;
-  try{ EmojiPicker.attach(t,field,{toggleClass:'header-title-emoji'}); }catch(e){}
+  // portal:true — the header is `overflow: hidden`, so a panel inside
+  // it is clipped to the header's own height.
+  try{ EmojiPicker.attach(t,field,{toggleClass:'header-title-emoji',portal:true}); }catch(e){}
+})();
+
+// THE NAME IN THE TOP BAR HAS ITS OWN COLOUR AND FONT.
+//
+// The story's name is the one piece of the Studio a child writes and
+// then looks at all day, and it was the one piece with no say in how it
+// looked. This is that control, and it is deliberately HERE — on the
+// field itself, next to the pencil and the emoji — rather than in a
+// panel somewhere: it styles the thing you are looking at, so it
+// belongs on the thing you are looking at.
+//
+// It is a property of the PROJECT (`bookTitleStyle`, serialized by
+// js/projectManager.js), not of the browser, so a story reopened
+// tomorrow or recalled onto another device still wears the name it was
+// given. It is NOT the same thing as the title drawn on the page —
+// that is the Story Title object, styled per page through the text
+// editor. One is the name of the work; the other is a thing printed on
+// a page.
+const HEADER_TITLE_COLORS=[
+  ['', 'Default'],
+  ['#FFFFFF','White'],
+  ['#FFCB45','Gold'],
+  ['#7FD1FF','Sky'],
+  ['#FF9AA2','Blush'],
+  ['#B6F7C1','Mint'],
+  ['#D7BDFF','Lilac']
+];
+const HEADER_TITLE_FONTS=[
+  ['', 'Default'],
+  ['"Nunito", "Trebuchet MS", sans-serif','Kid Friendly'],
+  ['"Kalam", "Comic Sans MS", cursive','Handwriting'],
+  ['"Permanent Marker", "Comic Sans MS", cursive','Marker'],
+  ['Georgia, serif','Georgia'],
+  ['"Trebuchet MS", sans-serif','Trebuchet'],
+  ['"Courier New", Courier, monospace','Courier']
+];
+
+function _bookTitleStyle(){
+  try{
+    if(!AppState.project) AppState.project={};
+    if(!AppState.project.bookTitleStyle) AppState.project.bookTitleStyle={};
+    return AppState.project.bookTitleStyle;
+  }catch(e){ return {}; }
+}
+
+// Applied to the live field. Empty means "leave the stylesheet alone",
+// which is why each is cleared rather than set to a hardcoded default —
+// the header's own CSS should keep owning the untouched case.
+function applyBookTitleStyle(){
+  const t=document.getElementById('bookTitle');
+  if(!t) return;
+  const st=_bookTitleStyle();
+  try{
+    t.style.color=st.color||'';
+    t.style.fontFamily=st.fontFamily||'';
+  }catch(e){}
+}
+try{ window.applyBookTitleStyle=applyBookTitleStyle; }catch(e){}
+
+(function(){
+  const field=document.querySelector('.header-title-field');
+  const t=document.getElementById('bookTitle');
+  if(!field || !t) return;
+
+  const toggle=document.createElement('button');
+  toggle.type='button';
+  toggle.className='header-title-style';
+  toggle.textContent='🎨';
+  toggle.setAttribute('aria-label','Change the name’s colour and font');
+  field.appendChild(toggle);
+
+  const panel=document.createElement('div');
+  panel.className='header-title-style-panel hidden';
+
+  function section(label){
+    const h=document.createElement('div');
+    h.className='header-title-style-heading';
+    h.textContent=label;
+    panel.appendChild(h);
+  }
+
+  function commit(){
+    applyBookTitleStyle();
+    try{ if(typeof ProjectManager!=='undefined') ProjectManager.markDirty(); }catch(e){}
+    build();
+  }
+
+  // Rebuilt on every change so the active swatch/chip is always the
+  // one the field is actually wearing, rather than a copy of that fact
+  // kept in a second place.
+  function build(){
+    panel.innerHTML='';
+    const st=_bookTitleStyle();
+
+    section('Colour');
+    const colors=document.createElement('div');
+    colors.className='header-title-swatches';
+    HEADER_TITLE_COLORS.forEach(function(pair){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='header-title-swatch'+((st.color||'')===pair[0]?' active':'');
+      b.title=pair[1];
+      b.setAttribute('aria-label',pair[1]);
+      // The default swatch cannot show a colour it does not have, so it
+      // shows the letter instead of a misleading block of paint.
+      if(pair[0]) b.style.background=pair[0];
+      else b.textContent='A';
+      b.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        if(pair[0]) st.color=pair[0]; else delete st.color;
+        commit();
+      });
+      colors.appendChild(b);
+    });
+    panel.appendChild(colors);
+
+    section('Font');
+    const fonts=document.createElement('div');
+    fonts.className='header-title-fonts';
+    HEADER_TITLE_FONTS.forEach(function(pair){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='header-title-font'+((st.fontFamily||'')===pair[0]?' active':'');
+      b.textContent=pair[1];
+      // Each option is shown IN its own font, so the choice is made by
+      // looking rather than by reading a name and guessing.
+      if(pair[0]) b.style.fontFamily=pair[0];
+      b.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        if(pair[0]) st.fontFamily=pair[0]; else delete st.fontFamily;
+        commit();
+      });
+      fonts.appendChild(b);
+    });
+    panel.appendChild(fonts);
+  }
+
+  build();
+  // To <body>, not into the field: the header is `overflow: hidden` and
+  // would cut this panel off at its own bottom edge. Positioned against
+  // the toggle each time it opens, for the same reason EmojiPicker's
+  // own portal mode does it — the header moves when the window resizes
+  // and when the name in it grows.
+  document.body.appendChild(panel);
+
+  function placePanel(){
+    try{
+      const r=toggle.getBoundingClientRect();
+      panel.style.top=(r.bottom+6)+'px';
+      const w=panel.offsetWidth||238;
+      const left=Math.min(r.right-w, window.innerWidth-w-8);
+      panel.style.left=Math.max(8,left)+'px';
+    }catch(e){}
+  }
+
+  toggle.addEventListener('click',function(ev){
+    ev.stopPropagation();
+    const opening=panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    if(opening) placePanel();
+  });
+  document.addEventListener('click',function(ev){
+    if(!panel.classList.contains('hidden') && !panel.contains(ev.target) && ev.target!==toggle){
+      panel.classList.add('hidden');
+    }
+  });
 })();
 
 const playStoryBtn=document.getElementById('playStoryBtn');

@@ -382,6 +382,14 @@ body{
 .emoji-picker-panel.hidden{
   display:none;
 }
+/* Portal mode (EmojiPicker.attach({portal:true})) — lifted out of a
+   clipping ancestor and positioned in viewport coordinates. */
+.emoji-picker-panel.is-portal{
+  position:fixed;
+  right:auto;
+  top:auto;
+  z-index:400;
+}
 .emoji-picker-option{
   border:none;
   background:transparent;
@@ -11552,6 +11560,101 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 .header-title-field:hover .emoji-picker-toggle.header-title-emoji,
 .header-title-field:focus-within .emoji-picker-toggle.header-title-emoji{ opacity:1; }
 .emoji-picker-toggle.header-title-emoji:hover{ border:0; opacity:1; }
+
+/* The name's own colour and font, chosen on the name itself.
+ *
+ * Same 24px pill sibling as the pencil and the emoji — three small
+ * marks that belong to one field, not three different kinds of button.
+ * The panel hangs off .header-title-field, which is already
+ * position:relative for the emoji panel. */
+.header-title-style{
+  width:24px !important;
+  height:24px;
+  padding:0;
+  margin:0 !important;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:rgba(255,255,255,.62);
+  font-size:12px;
+  line-height:1;
+  flex:none;
+  cursor:pointer;
+  opacity:.72;
+  transition:opacity .18s ease;
+}
+.header-title-field:hover .header-title-style,
+.header-title-field:focus-within .header-title-style{ opacity:1; }
+.header-title-style:hover{ opacity:1; }
+
+/* fixed, and a child of <body> — see js/app.js. The header is
+   overflow:hidden, so an absolutely positioned panel inside it is
+   clipped to the header's height. Coordinates are set at open time. */
+.header-title-style-panel{
+  position:fixed;
+  z-index:400;
+  width:238px;
+  padding:10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--border-radius);
+  box-shadow:0 10px 26px rgba(0,0,0,0.28);
+  text-align:left;
+}
+.header-title-style-panel.hidden{ display:none; }
+.header-title-style-heading{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--text-secondary);
+  margin:2px 0 6px;
+}
+.header-title-swatches{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:10px;
+}
+.header-title-swatch{
+  width:26px !important;
+  height:26px;
+  padding:0;
+  margin:0 !important;
+  border-radius:50%;
+  border:2px solid var(--line);
+  background:var(--bg);
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  cursor:pointer;
+  flex:none;
+}
+.header-title-swatch.active{ border-color:var(--gold); transform:scale(1.08); }
+.header-title-fonts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+.header-title-font{
+  width:auto !important;
+  height:auto;
+  padding:5px 9px;
+  margin:0 !important;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--bg);
+  color:var(--text-secondary);
+  font-size:11px;
+  line-height:1.1;
+  cursor:pointer;
+}
+.header-title-font.active{
+  border-color:var(--gold);
+  background:rgba(255,203,69,0.10);
+  color:var(--text);
+}
 
 /* True centring. The header was a flex row with space-between, so the
    name sat wherever the two side clusters happened to leave it — and
