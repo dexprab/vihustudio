@@ -177,7 +177,27 @@ const SlideRenderer=(()=>{
   // Shared by _resolveLayout (LAYOUT_RECT lookup) and _sceneViewportFor
   // (SCENE_VIEWPORT_BY_ASPECT lookup) so the two tables can never
   // resolve a different aspect for the same slide.
+  // A PAGE'S OWN ASPECT, chosen by the Story Author, wins over the
+  // theme's layout preset.
+  //
+  // Orientation used to be reachable only THROUGH a theme: a page took
+  // the aspect of whichever entry in `theme.layouts` was selected, so a
+  // theme that declares one layout — or none, which is every page begun
+  // from a blank idea — gave a creator no way to make a landscape page
+  // at all. The aspect vocabulary was already there and already shared
+  // by both tables below; the only thing missing was somewhere for a
+  // page to say which one it wanted.
+  //
+  // `metadata.aspect` is absent on every page saved before this, so
+  // nothing already made changes by a pixel.
+  function _pageAspect(s){
+    const own=s && s.metadata && s.metadata.aspect;
+    return (own && LAYOUT_RECT[own]) ? own : null;
+  }
+
   function _resolvedAspectKey(s){
+    const own=_pageAspect(s);
+    if(own) return own;
     const theme=_layoutTheme(s);
     const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
     if(!layouts || !layouts.length) return null;
@@ -187,14 +207,20 @@ const SlideRenderer=(()=>{
   }
 
   function _resolveLayout(s){
-    const theme=_layoutTheme(s);
-    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
-    if(!layouts || !layouts.length) return null;
-    const chosenId=(s && s.metadata && s.metadata.layout) || null;
-    const preset=(chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0];
     const key=_resolvedAspectKey(s);
     const rect=(key && LAYOUT_RECT[key]) || null;
     if(!rect) return null;
+    // The composition still comes from the theme's own preset when
+    // there is one — a page choosing its shape is not a page choosing
+    // how the theme composes inside that shape. With no preset (a page
+    // that set its own aspect on a theme with no layouts) it falls to
+    // the same 'below' every layout-less page already used.
+    const theme=_layoutTheme(s);
+    const layouts=theme && Array.isArray(theme.layouts) ? theme.layouts : null;
+    const chosenId=(s && s.metadata && s.metadata.layout) || null;
+    const preset=layouts && layouts.length
+      ? ((chosenId && layouts.find(function(l){ return l && l.id===chosenId; })) || layouts[0])
+      : null;
     return {rect:rect, composition:(preset&&preset.composition)||'below'};
   }
 

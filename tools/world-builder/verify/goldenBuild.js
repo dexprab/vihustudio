@@ -183,7 +183,14 @@ async function main() {
         const page3 = await context.newPage();
         const consoleErrors = [];
         page3.on('pageerror', e => consoleErrors.push(String(e)));
-        await page3.goto(`${baseURL}/index.html`);
+        // studio.html, not index.html. VihuPlanet took the root when it
+        // became the application's front door (CLAUDE.md, Decision 10) and
+        // the Studio moved here; this suite kept loading the old address
+        // and then waited thirty seconds for a ThemeRegistry that VihuPlanet
+        // has no reason to define. It has been failing at this line ever
+        // since the move, for a reason that has nothing to do with what it
+        // is testing.
+        await page3.goto(`${baseURL}/studio.html`);
         await page3.waitForFunction(() => typeof window.ThemeRegistry !== 'undefined' && typeof window.ThemeEngine !== 'undefined');
 
         const importResult = await page3.evaluate(async (pkgJson) => {
