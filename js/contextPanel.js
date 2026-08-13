@@ -3462,6 +3462,7 @@ const ContextPanel=(function(){
     zone.appendChild(_el('div','context-zone-label','✨ Personalize this page'));
     zone.appendChild(_buildAddSomethingAccordion());
     const tiles=_el('div','context-set-tiles');
+    tiles.appendChild(_buildStoryTitleTile());
     tiles.appendChild(_buildPageShapeTile());
     tiles.appendChild(_buildBackgroundTile());
     const changeLookTile=_buildChangeLookTile();
@@ -3555,6 +3556,144 @@ const ContextPanel=(function(){
     hasWrap.appendChild(hasLbl);
     hasRow.appendChild(hasWrap);
     container.appendChild(hasRow);
+  }
+
+  // ---------- Story Title ----------
+  //
+  // Putting the story's own name ON the page, and the way to reach its
+  // colour and font.
+  //
+  // Both of those already existed and neither was reachable. Selecting
+  // the title gives the full text editor — Font Family, Colour, Weight,
+  // Size, Alignment, the lot — but the title is hidden by default
+  // (`bookTitleVisibility: 'hide'`), so it is never drawn, never
+  // appears in the Object Strip, and can never be selected. The only
+  // switch was in the Theme Designer's Branding group, which is an
+  // author's tool and not where a child names their story.
+  //
+  // So a child could name their story and had no way to show that name,
+  // and therefore no way to style it. This is that switch, in the
+  // workflow the child is actually in.
+  var TITLE_SPOTS=[
+    ['bottom-left','◧','Left'],
+    ['bottom-center','▣','Middle'],
+    ['bottom-right','◨','Right']
+  ];
+
+  function _themeOpt(key,value){
+    // ThemeEngine owns these and persists them; AppState is the
+    // fallback for the case where no theme is active yet, so the
+    // control still works on a bare page rather than throwing.
+    try{
+      if(typeof ThemeEngine!=='undefined' && ThemeEngine.setOption){
+        ThemeEngine.setOption(key,value);
+        return;
+      }
+    }catch(e){}
+    try{
+      if(AppState.project && AppState.project.themeOptions){
+        AppState.project.themeOptions[key]=value;
+      }
+    }catch(e){}
+  }
+
+  function _readThemeOpt(key){
+    try{
+      if(typeof ThemeEngine!=='undefined' && ThemeEngine.getOptions){
+        return ThemeEngine.getOptions()[key];
+      }
+    }catch(e){}
+    try{ return AppState.project.themeOptions[key]; }catch(e){}
+    return null;
+  }
+
+  function _appendStoryTitle(container){
+    const slide=_currentSlide();
+    if(!slide) return;
+
+    function changed(){
+      delete slide.thumbnail;
+      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      _debouncedObjectStripRefresh();
+      refresh();
+    }
+
+    const shown=_readThemeOpt('bookTitleVisibility')==='show';
+
+    const row=_el('div','designer-row context-row');
+    const wrap=document.createElement('label');
+    wrap.className='context-transparent-toggle';
+    wrap.style.display='inline-flex';
+    wrap.style.alignItems='center';
+    wrap.style.gap='6px';
+    wrap.style.fontSize='13px';
+    const cb=document.createElement('input');
+    cb.type='checkbox';
+    cb.checked=shown;
+    cb.addEventListener('change',function(){
+      _themeOpt('bookTitleVisibility',cb.checked?'show':'hide');
+      changed();
+    });
+    wrap.appendChild(cb);
+    const lbl=document.createElement('span');
+    lbl.textContent='Show my story’s name on the page';
+    wrap.appendChild(lbl);
+    row.appendChild(wrap);
+    container.appendChild(row);
+
+    // Where it sits, and how to style it — both only once it is
+    // actually on the page, because neither means anything before then.
+    if(!shown) return;
+
+    container.appendChild(_el('div','context-panel-heading','Where'));
+    const spotRow=_el('div','designer-row context-row');
+    const chips=_el('div','preview-chip-row');
+    const at=_readThemeOpt('bookTitlePosition')||'bottom-left';
+    TITLE_SPOTS.forEach(function(spot){
+      const chip=_el('button','preview-chip'+((at===spot[0])?' active':''),
+        spot[1]+' '+spot[2]);
+      chip.type='button';
+      chip.addEventListener('click',function(){
+        _themeOpt('bookTitlePosition',spot[0]);
+        changed();
+      });
+      chips.appendChild(chip);
+    });
+    spotRow.appendChild(chips);
+    container.appendChild(spotRow);
+
+    // Deliberately a pointer rather than a second copy of the text
+    // controls. The title is a real object on the page and selecting it
+    // already opens the full text editor — colour, font, size, weight,
+    // alignment. Rebuilding two of those here would create a second
+    // place that sets the same thing, and the two would disagree the
+    // first time either changed.
+    const hint=_el('div','context-hint',
+      'Tap the name on your page to change its colour and font.');
+    hint.style.fontSize='12px';
+    hint.style.opacity='.75';
+    hint.style.marginTop='6px';
+    container.appendChild(hint);
+  }
+
+  function _buildStoryTitleTile(){
+    const wrap=_el('div','context-set-tile');
+    const trigger=_el('button','context-set-trigger');
+    trigger.type='button';
+    trigger.appendChild(_el('span','context-set-trigger-label','📖 Story Title'));
+    trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='title'?'▴':'▾'));
+    trigger.addEventListener('click',function(){
+      personalizeOpenSection=(personalizeOpenSection==='title')?null:'title';
+      refresh();
+    });
+    wrap.appendChild(trigger);
+    if(personalizeOpenSection==='title'){
+      const body=_el('div','context-set-body');
+      _appendStoryTitle(body);
+      wrap.appendChild(body);
+    }
+    return wrap;
   }
 
   function _buildPageShapeTile(){

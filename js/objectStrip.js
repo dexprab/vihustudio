@@ -93,7 +93,17 @@ const ObjectStrip=(function(){
   const FRIENDLY_TEXT_ID={
     'story-text':{icon:'✏️',name:'Story Text',editable:true},
     'handle':{icon:'🔖',name:'Handle',editable:false},
-    'footer':{icon:'📖',name:'Footer',editable:false},
+    // "Footer" is what this element is called in the theme and in the
+    // renderer, and it is not what it IS: _drawFooter draws the book
+    // title and nothing else. A child looking for their story's name
+    // would never think to open "Footer".
+    //
+    // `editable:false` stays true and means what it has always meant —
+    // the TEXT cannot be retyped here, because it is the project's own
+    // name and that has exactly one source of truth (the header field).
+    // `styleable` is the new part: its colour and font CAN be changed,
+    // so the card must stop saying "Locked", which would now be a lie.
+    'footer':{icon:'📖',name:'Story Title',editable:false,styleable:true},
     'page-number':{icon:'#️⃣',name:'Page Number',editable:false}
   };
 
@@ -189,7 +199,9 @@ const ObjectStrip=(function(){
     // Ownership-aware badge: an object a child locked themselves reads
     // differently from something that was never theirs to begin with —
     // both used to share the same "Part of the world" text.
-    const badgeText=opts.editable ? '🟢 You can edit' : (opts.owner==='world' ? '🌍 Part of the World' : '🔒 Locked');
+    const badgeText=opts.editable ? '🟢 You can edit'
+      : opts.styleable ? '🎨 You can style it'
+      : (opts.owner==='world' ? '🌍 Part of the World' : '🔒 Locked');
     card.appendChild(_el('div','object-card-badge',badgeText));
     if(opts.id && !opts.draggable) card.title="Can't be reordered";
     if(typeof opts.onClick==='function') card.addEventListener('click',opts.onClick);
@@ -466,6 +478,7 @@ const ObjectStrip=(function(){
         icon:friendly.icon,
         name:friendly.name,
         editable:friendly.editable,
+        styleable:friendly.styleable===true,
         selected:selText===t.id,
         onClick:function(){ _selectText(t.id); }
       }));
