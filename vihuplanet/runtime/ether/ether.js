@@ -188,6 +188,18 @@
         // that keeps a corner of the field alive when the near one has
         // drifted away.
         warm:    p.horizonApricot,
+
+        // ---------- the aurora ----------
+        //
+        // Four roles rather than one, because a single-coloured aurora
+        // is a curtain and a many-coloured one is a light show. The
+        // weighting lives in ether/aurora.js: turquoise and lavender
+        // carry it, peach and gold arrive occasionally and are what
+        // stop the sky reading as cold light.
+        aurora1: p.skyCerulean,     // turquoise
+        aurora2: p.dusk,            // lavender
+        aurora3: p.horizonApricot,  // peach
+        aurora4: p.candle,          // gold
         spark:   p.ember,           // birth light, shooting stars
         veil:    p.ink
       },
@@ -208,6 +220,12 @@
         farStars:   0.18,
         mist:       0.30,
         farDust:    0.34,
+        // The aurora sits between the mist and the streaks — far
+        // enough to read as sky rather than as something passing the
+        // Traveller, near enough that turning moves it visibly. It is
+        // the layer a child is most likely to notice the parallax on,
+        // because it is the only wide thing with a shape.
+        aurora:     0.40,
         currents:   0.46,
         midDust:    0.66,
         stories:    1.00,

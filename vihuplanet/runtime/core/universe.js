@@ -95,7 +95,16 @@
       ether: ether, currents: currents, signal: signal,
       camera: camera, traveller: traveller
     });
-    var renderer = VihuPlanet.Ether.createRenderer({ ether: ether, mount: root, camera: camera });
+    // The Northern Lights, and they are the CURRENTS made visible
+    // rather than a layer of their own invention — created with the
+    // same current field the dust, the streaks and every Story Spirit
+    // are carried by, so light flows exactly where a Story would
+    // drift. It owns ribbons and nothing else; the renderer draws
+    // them, exactly as it draws everything.
+    var auroraLayer = VihuPlanet.Ether.createAurora({ ether: ether, currents: currents });
+    var renderer = VihuPlanet.Ether.createRenderer({
+      ether: ether, mount: root, camera: camera, aurora: auroraLayer
+    });
     var layer    = VihuPlanet.Stories.createLayer({
       mount: root, ether: ether, manager: manager, signal: signal,
       maxNodes: opts.maxNodes
@@ -136,6 +145,7 @@
       traveller.update(dt);
       camera.update(sdt, etherTime);
       ambient.update(sdt, etherTime);
+      if (auroraLayer) auroraLayer.update(sdt, etherTime);
       birth.update(dt);
       focus.update(dt);
       physics.step(manager.all(), sdt, etherTime, ether);
@@ -167,6 +177,7 @@
       manager.rescale(ratio.x, ratio.y);
       renderer.resize();
       ambient.resize();
+      if (auroraLayer) auroraLayer.resize();
     }
 
     // The Ether grows with the number of stories in it, at constant
@@ -253,6 +264,7 @@
       ambient: ambient,
       camera: camera,
       currents: currents,
+      aurora: auroraLayer,
       traveller: traveller,
       spirits: spirits,
       focus: focus,
@@ -295,6 +307,7 @@
           nebula: r.nebula,
           particles: a.particles,
           streaks: a.streaks,
+          aurora: auroraLayer ? auroraLayer.count() : 0,
           lights: spirits.count(),
           arriving: birth.pending(),
           focused: focus.isOpen(),

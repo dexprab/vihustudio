@@ -144,8 +144,15 @@
       p.pulse = rng.between(0.10, 0.34);
       // A small personal rise on top of the current, so motes in the
       // same river are not perfectly locked to each other.
-      p.rise = rng.between(1.6, 5.2);
-      p.sway = rng.between(0.4, 1.5);
+      //
+      // Roughly doubled. A mote rising at 1.6px/s crosses a tenth of
+      // the screen in a minute, which is motion only in the sense that
+      // it is not zero — and the whole point of this pass is that the
+      // Ether must read as moving within a few seconds of looking at
+      // it. At 4-11px/s a child can follow one with their eye, which
+      // is the test.
+      p.rise = rng.between(4.0, 11.0);
+      p.sway = rng.between(0.9, 2.8);
     }
 
     function buildDust() {

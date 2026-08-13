@@ -19,6 +19,7 @@
 //     0.10  far nebula, each bloom on its own pulse (soft buffer)
 //     0.30  mist banks · the ambient glow           (soft buffer)
 //     0.34  far dust
+//     0.40  the aurora — the currents themselves, made visible
 //     0.46  light currents — the rivers made visible
 //     0.66  mid dust
 //     0.20  shooting stars
@@ -73,8 +74,12 @@
   // reading as a sky and starts reading as an empty box, however small
   // the screen is — density alone does not survive a phone.
   var STAR_FLOOR = 110;
-  var TWINKLERS = 46;          // how many of them are alive to the eye
-  var TWINKLERS_LOW = 22;
+  // How many of them are alive to the eye. Raised with the rate, and
+  // for the same reason: forty-six live stars in a field of six
+  // hundred is one in thirteen, which is a sky that has a few moving
+  // parts rather than a sky that is moving.
+  var TWINKLERS = 96;
+  var TWINKLERS_LOW = 48;
 
   // How far past the view the baked layers extend, so the camera can
   // slide them without an edge appearing. Comfortably more than the
@@ -223,6 +228,7 @@
     if (!ether || !mount) return null;
 
     var camera = opts.camera || null;
+    var aurora = opts.aurora || null;
     var lowPower = Env.lowPower();
     var reduced = Env.reducedMotion();
     var seed = (typeof opts.seed === 'number') ? opts.seed : Rng.sessionSeed();
@@ -361,7 +367,14 @@
              : (rng.next() < 0.78 ? rng.between(1.1, 1.9) : rng.between(2.1, 2.9)),
           a: rng.between(0.26, 0.92),
           phase: rng.between(0, Math.PI * 2),
-          speed: rng.between(0.22, 0.66)
+          // Faster than they were, and deliberately so. The previous
+          // pass tuned every rate for motion a child notices only
+          // after a while; this one is asked for the opposite — the
+          // Ether has to say "alive" inside five to ten seconds, and
+          // a twinkle whose half-cycle was fourteen seconds said
+          // nothing at all in that window. Four to twelve seconds now,
+          // which is a breath rather than a blink.
+          speed: rng.between(0.52, 1.40)
         };
         stars.push(star);
         bakedCtx.globalAlpha = star.a;
@@ -552,7 +565,116 @@
     // sets sit at different depths, so the lights are offset INSIDE
     // the buffer by the difference between their parallax and the
     // buffer's — the same trick the nebula uses in drawSoft().
-    function assembleLit(breath) {
+    // ---------- the aurora ----------
+    //
+    // Three strokes per ribbon: a wide faint halo, a middle, and a
+    // thin bright heart. That stack is what gives a flat canvas stroke
+    // the soft translucent edge an aurora has, and it costs three
+    // lines rather than a blur filter — which on a full-screen layer
+    // is the single most expensive thing a browser can be asked for.
+    //
+    // Drawn at FULL resolution, on the main canvas.
+    //
+    // It went into the quarter-resolution light buffer first, on the
+    // reasoning that the four-times upscale would be a free blur and
+    // an aurora is nothing but soft edges. That was wrong, and
+    // measurably so: the ribbons were provably being drawn — turning
+    // their alpha to 0.9 moved the frame's mean brightness by eleven
+    // — and still could not be SEEN, because a seven-pixel bright
+    // heart smeared across twenty-eight pixels has no edge left, and
+    // an aurora with no edge is indistinguishable from the mist it is
+    // lying on. Softness is not the same as having no shape.
+    //
+    // Full resolution costs about three hundred short strokes a frame,
+    // which is far less than the full-screen composites either side of
+    // it, and it buys the one thing the layer exists for: a curve a
+    // child can point at.
+    //
+    // ONE PATH PER PASS, faded by a gradient along its own length.
+    //
+    // The fade was first done by stroking each segment separately at
+    // its own alpha, and it produced a string of beads: a round cap at
+    // both ends of every short segment, each one blended over its
+    // neighbour, so a ribbon read as a chain rather than as a curve.
+    // Visible immediately once the alpha was turned up to look at it,
+    // and invisible at the intended alpha — which is the argument for
+    // turning a thing up before believing it is right.
+    //
+    // A gradient strokeStyle running start-to-end gives the same
+    // arrive-and-leave with one stroke, no joins to bead, and a
+    // twentieth of the calls.
+    function drawAurora(target, time, breath) {
+      if (!aurora || !aurora.ribbons.length) return false;
+      var p = ether.palette;
+      var amb = ether.ambient;
+      var cam = camera ? camera.offsetFor(D.aurora) : null;
+      // View space, wrapped exactly as the dust is — the ribbons carry
+      // themselves across the field and this only has to keep them
+      // from sliding away when the universe is turned.
+      var ox = wrapOffset(cam ? cam.x : 0, ether.viewWidth + 520);
+      var oy = wrapOffset(cam ? cam.y : 0, ether.viewHeight + 520);
+
+      // Stronger where the currents run stronger, and gathering while
+      // the Traveller is still — "a distant ribbon becomes more
+      // visible" is what the sprint asks stillness to do, and the
+      // aurora is now the layer best placed to do it.
+      var gain = amb.region.flux * (1 + amb.stillness * 0.55) * breath;
+
+      var n = aurora.points;
+      target.lineCap = 'round';
+      target.lineJoin = 'round';
+
+      for (var i = 0; i < aurora.ribbons.length; i++) {
+        var r = aurora.ribbons[i];
+        if (!r.alive) continue;
+        // Fades in over its first moments and out over its last, and
+        // holds at full strength in between — see aurora.presence().
+        var born = aurora.presence(r);
+        if (born <= 0.01) continue;
+        var colour = p[r.hue] || p.mist;
+
+        var x0 = r.x + ox;
+        var x1 = r.x + r.len + ox;
+
+        // Halo · middle · heart.
+        for (var pass = 0; pass < 3; pass++) {
+          // Wide and faint, then narrower, then a thin bright heart.
+          // The heart is what a child actually SEES — the two below it
+          // are the glow it sits in — so it carries more than its own
+          // alpha and is kept genuinely thin.
+          var width = r.thickness * (pass === 0 ? 2.6 : (pass === 1 ? 1.0 : 0.16));
+          var strength = (pass === 0 ? 0.26 : (pass === 1 ? 0.52 : 1.15)) * r.alpha * born * gain;
+          if (strength <= 0.002) continue;
+
+          // Arrives and leaves. Four stops rather than three so the
+          // ribbon is at full strength across its middle instead of
+          // peaking at one point, which reads as a ribbon lit along
+          // its length rather than as a lamp with a falloff.
+          var grad = target.createLinearGradient(x0, 0, x1, 0);
+          grad.addColorStop(0.00, rgba(colour, 0));
+          grad.addColorStop(0.22, rgba(colour, strength));
+          grad.addColorStop(0.74, rgba(colour, strength));
+          grad.addColorStop(1.00, rgba(colour, 0));
+
+          target.lineWidth = Math.max(0.6, width);
+          target.strokeStyle = grad;
+          target.globalAlpha = 1;
+          target.beginPath();
+          for (var s = 0; s <= n; s++) {
+            var u = s / n;
+            var x = r.x + u * r.len + ox;
+            var y = aurora.heightAt(r, u, time) + oy;
+            if (s === 0) target.moveTo(x, y);
+            else target.lineTo(x, y);
+          }
+          target.stroke();
+        }
+      }
+      target.globalAlpha = 1;
+      return true;
+    }
+
+    function assembleLit(time, breath) {
       var k = 1 / SOFT_SCALE;
       var p = ether.palette;
       var any = false;
@@ -562,6 +684,7 @@
       litCtx.globalCompositeOperation = 'source-over';
       litCtx.clearRect(0, 0, lit.width, lit.height);
       litCtx.globalCompositeOperation = 'lighter';
+
 
       // NOT merged into the soft buffer any more, and not tiled.
       //
@@ -699,6 +822,14 @@
       // --- far dust.
       drawDust(ctx, amb.dust[0], breath, 1);
 
+      // --- the aurora. The Ether Currents, made visible.
+      //
+      // Above the far dust and below the streaks, at its own depth, so
+      // turning the universe moves it by a different amount than
+      // either — which is the only thing that makes a flat layer read
+      // as being somewhere rather than on the glass.
+      drawAurora(ctx, time, breath);
+
       // --- light currents. The only layer that shows the rivers
       // themselves: a faint mark trailing along the flow it is riding.
       cam = camera ? camera.offsetFor(D.currents) : null;
@@ -791,8 +922,8 @@
         wrapOffset((mistCam ? mistCam.y : 0) - SOFT_BLEED, softTileH),
         softTileW, softTileH, w, h);
 
-      // The auras, in view space, once.
-      if (assembleLit(breath)) {
+      // The aurora and the auras, in view space, once.
+      if (assembleLit(time, breath)) {
         ctx.globalAlpha = 1;
         ctx.drawImage(lit, -SOFT_BLEED, -SOFT_BLEED, softTileW, softTileH);
       }
