@@ -3462,6 +3462,7 @@ const ContextPanel=(function(){
     zone.appendChild(_el('div','context-zone-label','✨ Personalize this page'));
     zone.appendChild(_buildAddSomethingAccordion());
     const tiles=_el('div','context-set-tiles');
+    tiles.appendChild(_buildPageShapeTile());
     tiles.appendChild(_buildBackgroundTile());
     const changeLookTile=_buildChangeLookTile();
     if(changeLookTile) tiles.appendChild(changeLookTile);
@@ -3469,6 +3470,110 @@ const ContextPanel=(function(){
     if(captionTile) tiles.appendChild(captionTile);
     zone.appendChild(tiles);
     container.appendChild(zone);
+  }
+
+  // ---------- Page Shape ----------
+  //
+  // Orientation and whether the page has a picture area at all, PER
+  // PAGE — the product owner's own call when asked whether it should be
+  // per page or per story. Per page is what the renderer seam supports
+  // and it is the freer answer: a story can open on a wide landscape
+  // page and turn to a tall one.
+  //
+  // Both write plain page metadata that the renderer already reads
+  // (`aspect` → the layout rect and the scene viewport; `noPlace` →
+  // "this page declares it has no picture area"). Neither invents a
+  // concept: the aspect vocabulary is World Builder v2's own, and
+  // `noPlace` was already honoured everywhere, it simply had no control
+  // and had only ever been set by the Studio Rite.
+  var PAGE_SHAPES=[
+    ['portrait','📖','Tall'],
+    ['landscape','🖼️','Wide'],
+    ['square','⬜','Square']
+  ];
+
+  function _appendPageShape(container){
+    const slide=_currentSlide();
+    if(!slide) return;
+    if(!slide.metadata) slide.metadata={};
+
+    function changed(){
+      // The page's own picture is now the wrong shape or gone, so the
+      // strip has to draw it again rather than reuse what it has.
+      delete slide.thumbnail;
+      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      _debouncedObjectStripRefresh();
+      refresh();
+    }
+
+    container.appendChild(_el('div','context-panel-heading','Shape'));
+    const row=_el('div','designer-row context-row');
+    // The codebase's own chip vocabulary (css/style.css, .preview-chip),
+    // reused rather than a new class — a chip row invented here would
+    // arrive with no styles at all, which is exactly what happened the
+    // first time this was written.
+    const chips=_el('div','preview-chip-row');
+    const current=slide.metadata.aspect||null;
+    PAGE_SHAPES.forEach(function(shape){
+      const chip=_el('button','preview-chip'+((current===shape[0])?' active':''),
+        shape[1]+' '+shape[2]);
+      chip.type='button';
+      chip.addEventListener('click',function(){
+        if(slide.metadata.aspect===shape[0]) delete slide.metadata.aspect;
+        else slide.metadata.aspect=shape[0];
+        changed();
+      });
+      chips.appendChild(chip);
+    });
+    row.appendChild(chips);
+    container.appendChild(row);
+
+    // A page with no picture area at all. Real pages want this — a page
+    // that is only words, an ending, a dedication — and until now the
+    // only way to have one was to leave the picture empty, which draws
+    // an invitation to add artwork rather than a page that has none.
+    container.appendChild(_el('div','context-panel-heading','Picture Area'));
+    const hasRow=_el('div','designer-row context-row');
+    const hasWrap=document.createElement('label');
+    hasWrap.className='context-transparent-toggle';
+    hasWrap.style.display='inline-flex';
+    hasWrap.style.alignItems='center';
+    hasWrap.style.gap='6px';
+    hasWrap.style.fontSize='13px';
+    const hasCb=document.createElement('input');
+    hasCb.type='checkbox';
+    hasCb.checked=!slide.metadata.noPlace;
+    hasCb.addEventListener('change',function(){
+      if(hasCb.checked) delete slide.metadata.noPlace;
+      else slide.metadata.noPlace=true;
+      changed();
+    });
+    hasWrap.appendChild(hasCb);
+    const hasLbl=document.createElement('span');
+    hasLbl.textContent='This page has a picture';
+    hasWrap.appendChild(hasLbl);
+    hasRow.appendChild(hasWrap);
+    container.appendChild(hasRow);
+  }
+
+  function _buildPageShapeTile(){
+    const wrap=_el('div','context-set-tile');
+    const trigger=_el('button','context-set-trigger');
+    trigger.type='button';
+    trigger.appendChild(_el('span','context-set-trigger-label','📐 Page Shape'));
+    trigger.appendChild(_el('span','context-accordion-chevron',personalizeOpenSection==='shape'?'▴':'▾'));
+    trigger.addEventListener('click',function(){
+      personalizeOpenSection=(personalizeOpenSection==='shape')?null:'shape';
+      refresh();
+    });
+    wrap.appendChild(trigger);
+    if(personalizeOpenSection==='shape'){
+      const body=_el('div','context-set-body');
+      _appendPageShape(body);
+      wrap.appendChild(body);
+    }
+    return wrap;
   }
 
   function _renderDefault(){
