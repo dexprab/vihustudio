@@ -2019,6 +2019,58 @@ const ContextPanel=(function(){
     container.appendChild(row);
 
     _appendBackgroundImageControls(container,co);
+    _appendPlaceTransparency(container,slide);
+  }
+
+  // "Transparent background for the Places" — the one background in the
+  // Studio that had no way to be turned off.
+  //
+  // On a page with no Story World the picture area is painted with an
+  // opaque page-colour rectangle (renderer/slideRenderer.js, the
+  // fallback-panel branch). A Place authored in the Builder can already
+  // be made transparent, and a Frame Style's fill has had a 'None' chip
+  // all along — but both of those sit ON TOP of that rectangle, so
+  // turning them off revealed the page colour rather than the page.
+  //
+  // Only offered where it means something: a page whose Place comes
+  // from a World has its own Paper control and must not be given a
+  // second, conflicting one.
+  function _appendPlaceTransparency(container,slide){
+    if(!slide) return;
+    let worldOwned=false;
+    try{
+      worldOwned=(typeof SceneEngine!=='undefined') &&
+                 (SceneEngine.getRenderData(slide)!==null);
+    }catch(e){}
+    if(worldOwned) return;
+
+    if(!slide.metadata) slide.metadata={};
+    const row=_el('div','designer-row context-row');
+    row.appendChild(_el('div','designer-row-label','Picture Area'));
+
+    const wrap=document.createElement('label');
+    wrap.className='context-transparent-toggle';
+    wrap.style.display='inline-flex';
+    wrap.style.alignItems='center';
+    wrap.style.gap='6px';
+    wrap.style.fontSize='13px';
+    const cb=document.createElement('input');
+    cb.type='checkbox';
+    cb.checked=!!slide.metadata.placeTransparent;
+    cb.addEventListener('change',function(){
+      if(cb.checked) slide.metadata.placeTransparent=true;
+      else delete slide.metadata.placeTransparent;
+      delete slide.thumbnail;
+      if(host && typeof host.redraw==='function'){ try{ host.redraw(); }catch(e){} }
+      if(host && typeof host.markDirty==='function'){ try{ host.markDirty(); }catch(e){} }
+      _debouncedObjectStripRefresh();
+    });
+    wrap.appendChild(cb);
+    const lbl=document.createElement('span');
+    lbl.textContent='Transparent';
+    wrap.appendChild(lbl);
+    row.appendChild(wrap);
+    container.appendChild(row);
   }
 
   // Picture — a genuinely uploaded picture covering the full page

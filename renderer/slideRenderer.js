@@ -4601,7 +4601,22 @@ const SlideRenderer=(()=>{
         x.rotate(_place1RotDeg*Math.PI/180);
         x.translate(-_place1Cx,-_place1Cy);
       }
-      _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
+      // A TRANSPARENT PLACE, on a page with no Story World.
+      //
+      // This rectangle is the Place's background on every World-free
+      // page, and until now it was the one background in the Studio
+      // with no way to turn it off. A Place authored in the Builder can
+      // be made transparent — its Paper has a kind of 'none' and a
+      // control to set it — and a Frame Style's own fill has had a
+      // 'None' chip all along. Neither of those is this: they sit ON
+      // TOP of this panel, so turning them off revealed the page colour
+      // underneath rather than the page itself.
+      //
+      // `metadata.placeTransparent` is absent on every page saved
+      // before this, so nothing already made changes.
+      if(!(s.metadata && s.metadata.placeTransparent)){
+        _drawPanel(t.panel.color,opts.panelStyle,_place1Rect);
+      }
       if(_place1RotDeg) x.restore();
     }
 
