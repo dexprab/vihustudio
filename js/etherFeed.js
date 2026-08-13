@@ -44,7 +44,20 @@ const EtherFeed = (function () {
   // Story looks like before anyone has seen inside it. So a missing
   // thumbnail is a normal state, never an error.
   function _cover(record) {
-    return (record && record.thumbnail) || null;
+    if (!record) return null;
+    // The FIRST PAGE AT READING SIZE, when the Story carries one.
+    //
+    // `record.thumbnail` is the 110px image the page strip uses, and a
+    // Spirit shows its cover at a couple of hundred pixels and larger
+    // still as a child approaches — so the strip thumbnail arrives
+    // already softer than the thing it is drawn into. A Story that has
+    // been rendered for reading has a far better picture of its own
+    // first page sitting right there.
+    var pages = _pagesIn(record);
+    for (var i = 0; i < pages.length; i++) {
+      if (pages[i] && pages[i].readImage) return pages[i].readImage;
+    }
+    return record.thumbnail || null;
   }
 
   function _creator() {

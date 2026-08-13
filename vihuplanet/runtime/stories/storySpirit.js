@@ -64,6 +64,25 @@
   var NEAR = 0.11;
   var FAR = 0.52;
 
+  // A YOUNG UNIVERSE REVEALS FURTHER OUT.
+  //
+  // "Soul first, identity on approach" is right, and it assumes there
+  // is something else to approach. With one Story in the whole Ether,
+  // 0.52 of the shorter edge means anything outside a circle about
+  // four hundred pixels wide is a faint light and nothing else — so a
+  // child who has just shared their first story opens VihuPlanet and
+  // finds, correctly and uselessly, almost nothing.
+  //
+  // Below the same count at which the field is exactly the view
+  // (ether.js → INTIMATE_BELOW), the reveal reaches nearly the whole
+  // screen instead. The grading is unchanged — a Story is still
+  // faintest at the edge, still resolves as it is turned toward, still
+  // whole only at the centre — it simply starts sooner. Nothing is
+  // shown as a card from across the universe; there is just no longer
+  // an "across the universe" to be shown from.
+  var FAR_SPARSE = 0.95;
+  var SPARSE_BELOW = 5;
+
   // Each Spirit's own light colour, chosen from the Ether's palette
   // roles and seeded from its id. "Different stories may have slightly
   // different glow colours" — slightly is the whole instruction, so
@@ -104,7 +123,7 @@
       var cy = ether.viewHeight * 0.5;
       var shortest = Math.min(ether.viewWidth, ether.viewHeight);
       var near = shortest * NEAR;
-      var far = shortest * FAR;
+      var far = shortest * (entities.length < SPARSE_BELOW ? FAR_SPARSE : FAR);
       var i, e;
 
       ranked.length = 0;

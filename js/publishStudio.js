@@ -1287,6 +1287,22 @@ const PublishStudio=(function(){
     // is no author to reassure and nothing to be brave about.
     if(_isCanon()){ _publishToCanon(); return; }
 
+    // A child's Story deserves the same pictures a Canon one gets.
+    //
+    // Reading images were built for canon first, and only canon, which
+    // left every Story a child shares reading — and WEARING, since a
+    // Spirit's cover is its first page — at the 110px the page strip
+    // uses. That is the wrong way round: the stories children make are
+    // the ones the Ether is for.
+    //
+    // Rendered here, at the moment a child chooses to share, because
+    // that is the first point it is worth spending anything on and the
+    // last point the live slides are guaranteed to be in front of us.
+    // It is fire-and-forget: if it fails, or the child answers "not
+    // yet", the Story is exactly as it was and simply keeps the small
+    // pictures.
+    _renderReadingImages();
+
     if(typeof ShareCeremony==='undefined'){
       // No ceremony module means no way for a child to choose, and
       // sharing without the choosing is the one thing this sprint
@@ -1322,6 +1338,37 @@ const PublishStudio=(function(){
   // the repository is what makes every child have it. Nothing here
   // pretends a browser can commit to git; it produces the artifact and
   // says where it goes.
+  // Render every page at reading size and keep them on the stored
+  // Story, so the Ether can show a page a child can actually read and a
+  // cover that is not a thumbnail stretched to four times its size.
+  //
+  // Writes through CreatorProjectStore.upsert() rather than mutating
+  // the cached record, so it persists the same way every other edit
+  // does. Deliberately silent — nothing about the share waits on it.
+  function _renderReadingImages(){
+    if(typeof ThumbnailEngine==='undefined' || !ThumbnailEngine.generateRead) return;
+    let pid=null;
+    try{ if(typeof ProjectManager!=='undefined') pid=ProjectManager.ensureProjectId(); }catch(e){}
+    if(!pid || typeof CreatorProjectStore==='undefined') return;
+    const record=CreatorProjectStore.get(pid);
+    if(!record || !record.data) return;
+    const pages=record.data.pages||record.data.slides;
+    if(!Array.isArray(pages) || !pages.length) return;
+    const live=_slides();
+
+    Promise.all(live.map(function(s,i){
+      if(!pages[i] || pages[i].readImage) return Promise.resolve();
+      return ThumbnailEngine.generateRead(s).then(function(img){
+        if(img && pages[i]) pages[i].readImage=img;
+      }).catch(function(){});
+    })).then(function(){
+      try{
+        CreatorProjectStore.upsert(pid,
+          { name: record.name, thumbnail: record.thumbnail }, record.data);
+      }catch(e){}
+    }).catch(function(){});
+  }
+
   function _publishToCanon(){
     if(typeof CanonRepository==='undefined') return;
 

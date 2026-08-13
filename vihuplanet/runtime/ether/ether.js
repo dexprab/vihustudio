@@ -108,6 +108,24 @@
   // over (around thirty Stories), so the two rules meet without a step.
   var MIN_SPREAD = 1.18;
 
+  // Below this many Stories the Ether is exactly the size of the view,
+  // and every Story is therefore always somewhere on screen.
+  //
+  // "Stories drift and wait to be discovered" is the right idea and it
+  // needs something to discover. With one Story in a field 1.39 times
+  // the area of the view, better than a quarter of the universe is
+  // off screen at any moment, and a child who has just shared their
+  // first story can open VihuPlanet and find nothing at all — the
+  // universe is working exactly as designed and it reads as broken.
+  //
+  // So a young universe is the screen, and grows into a place to
+  // explore as it fills. Nothing about the discovery model changes: at
+  // this count the field starts expanding through MIN_SPREAD and then
+  // through AREA_PER_STORY, carrying every Story outward with it, and
+  // drifting-in-from-elsewhere begins to mean something because there
+  // is then an elsewhere.
+  var INTIMATE_BELOW = 5;
+
   EtherNS.create = function (opts) {
     opts = opts || {};
     var signal = opts.signal;
@@ -118,9 +136,12 @@
 
     var ether = {
       // ---------- the field ----------
-      // The whole universe. Grows with the number of stories in it.
-      width: viewWidth * MIN_SPREAD,
-      height: viewHeight * MIN_SPREAD,
+      // The whole universe. Starts as exactly the view — see
+      // INTIMATE_BELOW — and grows with the number of stories in it.
+      // It has to START here rather than being fitted down to it,
+      // because fit() deliberately never shrinks the field.
+      width: viewWidth,
+      height: viewHeight,
 
       // ---------- the view ----------
       // What is on screen. Anchored at the field's origin, always.
@@ -318,7 +339,8 @@
     ether.fit = function (count) {
       var viewArea = ether.viewWidth * ether.viewHeight;
       if (viewArea <= 0) return null;
-      var wanted = Math.max(viewArea * MIN_SPREAD * MIN_SPREAD, count * AREA_PER_STORY);
+      var spread = (count < INTIMATE_BELOW) ? 1 : MIN_SPREAD;
+      var wanted = Math.max(viewArea * spread * spread, count * AREA_PER_STORY);
       var scale = Math.sqrt(wanted / viewArea);
       var w = ether.viewWidth * scale;
       var h = ether.viewHeight * scale;
