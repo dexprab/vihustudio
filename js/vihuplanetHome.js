@@ -395,6 +395,93 @@
 
     function scanSay(text) { if (scanLine) scanLine.textContent = text; }
 
+    // ---------------------------------------------------------------
+    // RECOGNISED. The camera goes off, and the sky comes up.
+    //
+    // Two things were wrong with simply navigating. The camera stayed
+    // ON through the hand-off — the light was still lit, still
+    // reading, for a card that had already been seen — and there is
+    // nothing left to look at through a lens once it has. And the
+    // moment itself was skipped: the brief calls for the stars to
+    // awaken before the Studio opens, so a child sees THEIR OWN
+    // constellation and knows it was theirs that was recognised, not
+    // merely that something happened.
+    //
+    // So: stop looking, put the card's sky where the camera was, and
+    // only then move on.
+    // ---------------------------------------------------------------
+    function skyRecognised(card) {
+      // The camera first, before anything is drawn. Nothing about this
+      // moment needs it, and a child holding a card should see the
+      // light go out.
+      if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
+      if (typeof MagicCardVision !== 'undefined') {
+        try { MagicCardVision.closeCamera(scanStream); } catch (e) {}
+      }
+      scanStream = null;
+      try { if (scanVideo) { scanVideo.pause(); scanVideo.srcObject = null; } } catch (e) {}
+      if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
+      if (scanActions) scanActions.hidden = true;
+      if (scanWindow) scanWindow.classList.remove('is-seeing');
+
+      scanSay('There you are.');
+      drawTheSky(card && card.pattern);
+
+      CreatorRecognition.markRecognised(card && card.id);
+      // Long enough to be a moment, short enough not to be a wait.
+      window.setTimeout(function () {
+        closeCardScan({ keepUniverseStill: true });
+        goStudio(JourneyResolver.recognised());
+      }, 1600);
+    }
+
+    // The child's own constellation, drawn as the Ether draws stars:
+    // light first, joined by a thread, on the dark. Deliberately not a
+    // picture of the card — the card has been put down.
+    function drawTheSky(pattern) {
+      var canvas = scanEl && scanEl.querySelector('[data-scan-sky]');
+      if (!canvas) return;
+      canvas.hidden = false;
+      if (scanVideo) scanVideo.style.visibility = 'hidden';
+      var hold = scanEl.querySelector('[data-scan-hold]');
+      if (hold) hold.style.display = 'none';
+      if (!pattern || !pattern.length) return;
+
+      var box = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(box.width * dpr));
+      canvas.height = Math.max(1, Math.round(box.height * dpr));
+      var x = canvas.getContext('2d');
+      x.scale(dpr, dpr);
+
+      var pad = Math.min(box.width, box.height) * 0.16;
+      var side = Math.min(box.width, box.height) - pad * 2;
+      var cell = side / 10;
+      var ox = (box.width - side) / 2, oy = (box.height - side) / 2;
+      var pts = pattern.map(function (p) {
+        return { x: ox + (p[1] + 0.5) * cell, y: oy + (p[0] + 0.5) * cell };
+      });
+
+      // The thread between them, faint.
+      if (pts.length > 1) {
+        x.strokeStyle = 'rgba(255, 226, 160, 0.28)';
+        x.lineWidth = 1.5;
+        x.beginPath();
+        pts.forEach(function (p, i) { if (i === 0) x.moveTo(p.x, p.y); else x.lineTo(p.x, p.y); });
+        x.stroke();
+      }
+      pts.forEach(function (p) {
+        x.save();
+        x.shadowColor = 'rgba(255, 214, 128, 0.95)';
+        x.shadowBlur = 18;
+        x.fillStyle = '#FFF3D6';
+        x.beginPath();
+        x.arc(p.x, p.y, Math.max(2.5, cell * 0.13), 0, Math.PI * 2);
+        x.fill();
+        x.restore();
+      });
+    }
+
     function closeCardScan(opts) {
       if (!scanEl || scanEl.hidden) return;
       if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
@@ -470,6 +557,13 @@
       if (scanAgainBtn) scanAgainBtn.hidden = true;
       scanState = null;
       scanPatienceSaid = false;
+      // Whatever the last recognition left on screen is cleared, or a
+      // second look would open onto the previous child's stars.
+      var sky = scanEl.querySelector('[data-scan-sky]');
+      if (sky) sky.hidden = true;
+      if (scanVideo) scanVideo.style.visibility = '';
+      var hold0 = scanEl.querySelector('[data-scan-hold]');
+      if (hold0) hold0.style.display = '';
       scanSay('✨ Show me your Magic Card ✨');
       universe.traveller.setEnabled(false);
 
@@ -557,12 +651,7 @@
           try { known = CreatorRecognition.matchLocally(list[li]); } catch (e) {}
           if (known) {
             try { MagicCard.setActive(known.id); } catch (e) {}
-            scanSay('There you are.');
-            CreatorRecognition.markRecognised(known.id);
-            window.setTimeout(function () {
-              closeCardScan({ keepUniverseStill: true });
-              goStudio(JourneyResolver.recognised());
-            }, 620);
+            skyRecognised(known);
             return;
           }
         }
@@ -588,15 +677,7 @@
         var pattern = list[i++];
         CreatorRecognition.recognise(pattern).then(function (result) {
           if (result.outcome === CreatorRecognition.KNOWN) {
-            scanSay('There you are.');
-            // The same three lines the drawing board runs. Being
-            // recognised is not an event to acknowledge — it is the
-            // door opening.
-            CreatorRecognition.markRecognised(result.card && result.card.id);
-            window.setTimeout(function () {
-              closeCardScan({ keepUniverseStill: true });
-              goStudio(JourneyResolver.recognised());
-            }, 620);
+            skyRecognised(result.card);
             return;
           }
           // KEEP GOING on an unreachable one.

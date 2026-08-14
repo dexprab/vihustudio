@@ -1090,3 +1090,30 @@ html, body {
 /* The camera's way out sits under its two choices, so it is never the
    thing a child hits by accident while reaching for Draw Your Stars. */
 .vp-scan-away { margin-top: 0.15rem; }
+
+/* The recognised sky, where the camera was.
+ *
+ * The card has been seen; there is nothing left to look at through a
+ * lens, so the camera goes dark and the child's own constellation comes
+ * up in its place. It is the one moment in this screen that is purely
+ * a reward, and it lasts about a second and a half. */
+.vp-scan-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: radial-gradient(120% 90% at 50% 40%, #1a2450 0%, #070a16 78%);
+  animation: vp-sky-wake 700ms ease-out both;
+}
+
+.vp-scan-sky[hidden] { display: none; }
+
+@keyframes vp-sky-wake {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-scan-sky { animation: none; }
+}
