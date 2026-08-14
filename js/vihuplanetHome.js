@@ -644,6 +644,17 @@
         if (scanAgainBtn) scanAgainBtn.hidden = false;
       }, SCAN_PATIENCE_MS);
 
+      // Asked for the moment the camera opens, so it is downloading
+      // while the child is still getting their card into frame. It is
+      // deliberately NOT waited on: everything works without it today,
+      // and a ten megabyte download must never be the thing standing
+      // between a child and their sky.
+      try {
+        if (typeof OpenCv !== 'undefined') {
+          OpenCv.load().catch(function () { /* Draw Your Stars is unaffected */ });
+        }
+      } catch (e) {}
+
       MagicCardVision.openCamera(scanVideo).then(function (stream) {
         scanStream = stream;
         scanner = MagicCardVision.scan(scanVideo, {

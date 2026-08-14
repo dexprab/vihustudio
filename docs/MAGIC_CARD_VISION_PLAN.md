@@ -42,12 +42,34 @@ Verified, with four cards on one device: each real card opens its own
 sky; a sky nobody owns, a card the device does not hold, and random
 bright dots are all refused.
 
-## What is needed before the OpenCV work can start
+## How OpenCV.js arrives — decided
 
-`opencv.js` cannot be fetched from the build environment — the proxy
-refuses `docs.opencv.org` with a 403 — so **the file has to be vendored
-into the repository** (`vendor/opencv.js`, ~8 MB WASM). Nothing else is
-blocked.
+**From a CDN, not the repository.** The product owner's call: VihuPlanet
+is a hosted experience and is not intended to work offline, so ten
+megabytes does not belong in git history forever.
+
+`js/openCv.js` fetches `https://docs.opencv.org/4.10.0/opencv.js` — a
+PINNED version, because `4.x` moves and a pipeline tuned against one
+build should not silently be handed another. It is requested the moment
+the camera opens and deliberately **not waited on**: everything works
+without it today, and a ten megabyte download must never stand between
+a child and their sky.
+
+Every failure — offline, blocked, slow, a CDN outage, a script that
+loads but never initialises — resolves the same way: the promise
+rejects, the caller falls back, and Draw Your Stars is untouched. A
+timeout is part of that, because a request that hangs is worse than one
+that fails: nothing downstream can tell "slow" from "never".
+
+**Disclosed:** the loader has NOT been observed to succeed. This build
+environment blocks `docs.opencv.org`, so what is verified is the failure
+path — the whole camera flow behaves identically with the CDN
+unreachable. The success path needs one run from a machine with open
+network.
+
+The cost, stated plainly: recognition by camera now depends on a third
+party being reachable. Draw Your Stars does not, which is exactly why it
+stays.
 
 ## The shape of the work, once it is there
 
