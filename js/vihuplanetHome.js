@@ -607,7 +607,13 @@
             // one line offering a way on a frame after it appeared.
             else if (!scanPatienceSaid) scanSay('✨ Show me your Magic Card ✨');
           },
-          onPattern: function () { tryTheSkies(); }
+          onPattern: function () { tryTheSkies(); },
+          // Shape recognition needs no complete reading — it compares
+          // what the camera can see against the cards this device
+          // already holds. Tried on every frame that has stars in it,
+          // so a returning Creator is recognised the moment their card
+          // is in view rather than after a reading is assembled.
+          onMarks: function () { tryByShape(); }
         });
       }).catch(function () {
         // Permission refused, or no camera at all. Both are ordinary
@@ -623,6 +629,29 @@
     // one it cannot stand behind. Only a REAL card's exact pattern
     // belongs to a Creator, so a wrong reading matches nobody — which
     // is also why this cannot let a Traveller into somebody else's sky.
+    // THE DEVICE'S OWN CARDS, MATCHED BY SHAPE.
+    //
+    // The straightforward answer for the common case, and the one the
+    // grid-reading path kept getting wrong: a returning Creator's card
+    // is already on this device, with its pattern, so the question is
+    // only which of a few known skies the camera is looking at. That
+    // needs no grid, no cell size and no absolute offset — the three
+    // things a photograph is worst at giving.
+    function tryByShape() {
+      if (scanBusy) return;
+      if (!MagicCardVision.identify) return;
+      var cards = [];
+      try { cards = (typeof MagicCard !== 'undefined' && MagicCard.list) ? MagicCard.list() : []; }
+      catch (e) { cards = []; }
+      if (!cards.length) return;
+      var hit = null;
+      try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
+      if (!hit || !hit.card) return;
+      scanBusy = true;
+      try { MagicCard.setActive(hit.card.id); } catch (e) {}
+      skyRecognised(hit.card);
+    }
+
     function tryTheSkies() {
       if (scanBusy) return;
       scanBusy = true;

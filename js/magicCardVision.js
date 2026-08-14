@@ -903,7 +903,7 @@ const MagicCardVision = (function () {
     xx.drawImage(source, 0, 0, W, hh);
     var im = xx.getImageData(0, 0, W, hh);
     var bl = _blobs(im.data, W, hh);
-    var res = { stars: bl.length, patterns: null };
+    var res = { stars: bl.length, marks: bl, patterns: null };
     if (bl.length < MIN_STARS || bl.length > MAX_STARS) return res;
     var g = _goldGrid(im.data, W, hh, bl);
     var first = g ? _readCells(bl, g) : null;
@@ -932,6 +932,13 @@ const MagicCardVision = (function () {
         // Said on every frame, so the camera is never a still picture:
         // 'nothing' / 'something' (bright marks, not a sky) / 'stars'
         // (a readable card). The caller turns these into words.
+        // Every frame that has star-shaped marks in it is worth
+        // offering to a shape match, which does not need a complete
+        // reading — only the marks.
+        if (look && look.marks && look.marks.length >= MIN_STARS &&
+            typeof opts.onMarks === 'function') {
+          try { opts.onMarks(look.marks); } catch (e) {}
+        }
         if (typeof opts.onState === 'function') {
           try {
             opts.onState(!look ? 'nothing'
@@ -1009,7 +1016,116 @@ const MagicCardVision = (function () {
     } catch (e) {}
   }
 
+  // ---------------------------------------------------------------
+  // WHOSE SKY IS THIS? — by SHAPE, not by grid coordinates.
+  //
+  // A better approach, and worth saying plainly why the earlier one was
+  // not. Everything before this tried to rebuild the card's 10x10 grid
+  // from a photograph and read the stars' absolute cells — and the
+  // absolute cells are the hard part, because a pattern is placed at a
+  // random offset, the printed grid is nearly invisible at analysis
+  // size, and a lattice shifted by a whole cell fits exactly as well as
+  // the true one. Every round of this sprint has been a different way
+  // of guessing that offset, and each one worked in a rendering and
+  // failed on a real card.
+  //
+  // But a Creator's sky does not need to be reconstructed. It needs to
+  // be RECOGNISED, and the device usually already holds the answer: the
+  // handful of cards claimed on it, each with its pattern. Deciding
+  // which of a few known shapes a photograph looks like is a far easier
+  // question than reading coordinates blind, and it is immune to
+  // everything that has been breaking — where the grid starts, how big
+  // a cell is, where the card sits in frame, how far away it is.
+  //
+  // Translation, scale and rotation are all normalised away. What is
+  // left is the shape of the constellation itself.
+  //
+  // The grid-reading path above is KEPT, for the one case this cannot
+  // serve: a brand-new machine, which holds no cards to compare
+  // against and must ask the platform with an exact pattern.
+  function identify(source, cards) {
+    if (!cards || !cards.length) return null;
+    var look = _analyse(source);
+    if (!look || !look.marks || look.marks.length < MIN_STARS) return null;
+
+    // The tilt estimate is a guess made from a handful of points, and a
+    // constellation with three stars in a row can pull it several
+    // degrees out — ORION did exactly that, found all seven of its
+    // marks and still matched nothing. So a few angles around the
+    // estimate are tried and the best is kept: cheap, and it removes
+    // the estimate's accuracy from the answer.
+    var est = _tiltOf(look.marks);
+    var tries = [];
+    for (var t = -3; t <= 3; t++) {
+      tries.push(_normalise(_spin(look.marks, -(est + t * 0.035))));   // ±6°, in 2° steps
+    }
+
+    var best = null;
+    for (var i = 0; i < cards.length; i++) {
+      var pat = cards[i] && cards[i].pattern;
+      if (!pat || pat.length !== look.marks.length) continue;   // a sky has as many stars as it has
+      var pts = pat.map(function (p) { return { x: p[1], y: p[0], n: 1 }; });
+      var want = _normalise(pts);
+      if (!want) continue;
+      for (var k = 0; k < tries.length; k++) {
+        if (!tries[k]) continue;
+        var cost = _shapeCost(tries[k], want);
+        if (best === null || cost < best.cost) best = { card: cards[i], cost: cost };
+      }
+    }
+    // Far enough apart that a different constellation cannot pass, and
+    // loose enough that a hand-held card does. Star positions after
+    // normalising are around a unit apart, so this is a fifth of the
+    // distance between neighbouring stars.
+    if (!best || best.cost > 0.2) return null;
+    return best;
+  }
+
+  // Centre on the middle, scale so the spread is one. Removes where the
+  // card is and how big it looks, leaving only its shape.
+  function _normalise(pts) {
+    if (!pts || pts.length < 2) return null;
+    var cx = 0, cy = 0, i;
+    for (i = 0; i < pts.length; i++) { cx += pts[i].x; cy += pts[i].y; }
+    cx /= pts.length; cy /= pts.length;
+    var rms = 0;
+    for (i = 0; i < pts.length; i++) {
+      var dx = pts[i].x - cx, dy = pts[i].y - cy;
+      rms += dx * dx + dy * dy;
+    }
+    rms = Math.sqrt(rms / pts.length);
+    if (rms < 1e-6) return null;
+    var out = [];
+    for (i = 0; i < pts.length; i++) {
+      out.push({ x: (pts[i].x - cx) / rms, y: (pts[i].y - cy) / rms });
+    }
+    return out;
+  }
+
+  // How unlike two skies are: every star's distance to the nearest star
+  // in the other, both ways round, averaged. Both directions matter —
+  // one alone would let several stars pile onto one and call it a
+  // match.
+  function _shapeCost(a, b) {
+    return (_oneWay(a, b) + _oneWay(b, a)) / 2;
+  }
+
+  function _oneWay(from, to) {
+    var total = 0;
+    for (var i = 0; i < from.length; i++) {
+      var best = Infinity;
+      for (var j = 0; j < to.length; j++) {
+        var dx = from[i].x - to[j].x, dy = from[i].y - to[j].y;
+        var d = dx * dx + dy * dy;
+        if (d < best) best = d;
+      }
+      total += Math.sqrt(best);
+    }
+    return total / from.length;
+  }
+
   var api = {
+    identify: identify,
     // A testing seam, not part of the experience: it reports what the
     // reader SAW in a frame — the star blobs it found and the grid it
     // registered on — so a failure can be diagnosed as "no stars",
