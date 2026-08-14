@@ -904,12 +904,50 @@ create policy creator_projects_delete
 -- Recall proof goes through has_magic_recall_grant() (see above) —
 -- an inline join here would die under the recaller's own RLS on
 -- magic_card_identities.
+-- ---------------------------------------------------------------
+-- THE ETHER IS A SHARED SPACE.
+--
+-- "Anybody who pushes a story to VihuPlanet shows in the Ether" — so at
+-- any moment the Ether is the Canon Stories plus every story anybody
+-- has shared. Until this, `creator_projects` was readable only by its
+-- owner (or a proven Magic Card recall), which made the Ether
+-- per-creator: a child saw their own shared stories and nobody else's.
+-- CLAUDE.md Decision 9 anticipated exactly this, and said a real shared
+-- feed "becomes another source inside EtherFeed.load() and nothing
+-- downstream changes."
+--
+-- WHAT IS PUBLIC IS A COLUMN, NOT A GUESS.
+--
+-- `is_shared` is GENERATED from the record itself, so it can never
+-- disagree with the story: publishedAt is the Ether's definition of
+-- membership, and this is that same fact in a form the database can
+-- police. It cannot be set by a client independently of actually
+-- sharing, because it cannot be set by a client at all.
+--
+-- A DRAFT IS NEVER EXPOSED. The policy below widens SELECT only for
+-- rows where is_shared is true. Every unshared project stays exactly as
+-- private as it was, which is the whole reason this is a generated
+-- column on the existing table rather than a blanket public read.
+--
+-- Sharing a story means other people can read it. That is what the
+-- child chose in the Share ceremony, and it is what makes the story
+-- discoverable in the Ether at all.
+alter table public.creator_projects
+  add column if not exists is_shared boolean
+  generated always as ((data->>'publishedAt') is not null) stored;
+
+create index if not exists creator_projects_is_shared_idx
+  on public.creator_projects (is_shared)
+  where is_shared;
+
 drop policy if exists creator_projects_select on public.creator_projects;
 create policy creator_projects_select
   on public.creator_projects for select
   using (
     owner_id = auth.uid()::text
     or public.has_magic_recall_grant(owner_id)
+    -- A shared story is readable by everyone. This is the Ether.
+    or is_shared
   );
 
 -- ---------------------------------------------------------------

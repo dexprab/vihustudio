@@ -28,13 +28,30 @@
 // ---------------------------------------------------------------
 // WHOSE STORIES
 //
-// This creator's own, from their own device, plus whatever their Magic
-// Card has synced to the cloud. There is no public cross-creator feed
-// to read, because there is no public VihuPlanet yet — `creator_projects`
-// is a private, card-gated backup, not a shared space. When a real
-// shared feed exists, it becomes another source inside `load()` and
-// nothing downstream changes: the Ether has always taken a list of
-// Story Entities and never asked where they came from.
+// EVERYBODY'S. The Ether is a shared space: at any moment it is the
+// Canon Stories plus every story anybody has shared with VihuPlanet.
+//
+// Four sources, in this order, first one wins on a repeated id:
+//
+//   local   this device's own shared stories
+//   canon   the stories VihuPlanet owns, shipped with the application
+//   cloud   this creator's own, from wherever their Magic Card has been
+//   shared  every story anybody has shared  <-- the public Ether
+//
+// The last one is what makes it shared rather than per-creator, and it
+// arrived exactly as Decision 9 said it would: another source inside
+// load(), with nothing downstream changed. The runtime still takes a
+// list of Story Entities and still never asks where they came from.
+//
+// A draft is unreachable through it. `is_shared` on creator_projects is
+// a GENERATED column (supabase/schema.sql) and the SELECT policy widens
+// only for rows where it is true, so no client can mark a draft shared
+// without actually sharing it. Every unshared project stays as private
+// as it ever was.
+//
+// A story's maker travels WITH the story (`creatorName` on the record).
+// Reading the Magic Card on the device doing the looking would label
+// every story in the Ether with the name of whoever is reading it.
 
 const EtherFeed = (function () {
   'use strict';
@@ -58,6 +75,30 @@ const EtherFeed = (function () {
       if (pages[i] && pages[i].readImage) return pages[i].readImage;
     }
     return record.thumbnail || null;
+  }
+
+  // Shared Stories that came from other people, kept by project id as
+  // load() reads them.
+  //
+  // Necessary, not an optimisation: a Story somebody else shared is in
+  // neither the local project store nor the Canon repository, so
+  // without this the Ether would show a Spirit that opens to nothing —
+  // a child could approach a story, press Read, and be told it was
+  // elsewhere. The records are already fetched in full to build the
+  // feed; this simply stops throwing away the part the reader needs.
+  var _sharedRecords = {};
+
+  // A Story's record, wherever it lives: this device's own projects
+  // first, then Canon, then whatever the shared Ether handed us. One
+  // lookup so no caller has to know which kind of Story it is holding.
+  function _recordFor(projectId) {
+    var record = null;
+    try { record = CreatorProjectStore.get(projectId); } catch (e) {}
+    if (!record && typeof CanonRepository !== 'undefined') {
+      try { record = CanonRepository.get(projectId); } catch (e) {}
+    }
+    if (!record) record = _sharedRecords[projectId] || null;
+    return record;
   }
 
   function _creator() {
@@ -105,7 +146,16 @@ const EtherFeed = (function () {
       id: 'story-' + record.id,
       title: record.name || 'A story',
       cover: _cover(record),
-      creator: canon ? null : (creator || null),
+      // The story's OWN maker, and only then the local card.
+      //
+      // The Ether is a shared space, so `creator` (read from the Magic
+      // Card on THIS device) is the viewer, not necessarily the author.
+      // Preferring the record's own creatorName is what stops every
+      // story in the Ether being labelled with the name of whoever is
+      // looking at it. A record saved before creatorName existed has
+      // none, and falls back to the old behaviour — right for the
+      // common case, since a device's own stories are the ones it has.
+      creator: canon ? null : (record.creatorName || creator || null),
       origin: canon ? 'canon' : 'creator',
       publishedAt: record.publishedAt || record.updatedAt || null,
       // How many pages it has. A count, not the pages — reading
@@ -192,11 +242,7 @@ const EtherFeed = (function () {
   // the third page was recorded still lines up.
   function audioOf(projectId) {
     try {
-      var record = null;
-      try { record = CreatorProjectStore.get(projectId); } catch (e) {}
-      if (!record && typeof CanonRepository !== 'undefined') {
-        record = CanonRepository.get(projectId);
-      }
+      var record = _recordFor(projectId);
       var pages = _pagesIn(record);
       var out = [];
       for (var i = 0; i < pages.length; i++) {
@@ -215,11 +261,7 @@ const EtherFeed = (function () {
       // live in the project store, because it is not anybody's project.
       // Same record shape, so one lookup falls through to the other and
       // nothing below this line knows the difference.
-      var record = null;
-      try { record = CreatorProjectStore.get(projectId); } catch (e) {}
-      if (!record && typeof CanonRepository !== 'undefined') {
-        record = CanonRepository.get(projectId);
-      }
+      var record = _recordFor(projectId);
       var slides = _pagesIn(record);
       var out = [];
       for (var i = 0; i < slides.length; i++) {
@@ -300,9 +342,34 @@ const EtherFeed = (function () {
           rows.forEach(function (record) {
             if (!record || seen[record.id] || skip[record.id]) return;
             if (!opts.includeUnpublished && !record.publishedAt) return;
+            seen[record.id] = true;
             out.push(toStory(record, creator));
           });
-          return out;
+
+          // ---------- everybody else's shared Stories ----------
+          //
+          // "Anybody who pushes a story to VihuPlanet shows in the
+          // Ether." This is that source, and it is the last one for a
+          // reason: a Story this device already has — its own, or a
+          // Canon Story — wins, so nothing appears twice and a child's
+          // own story is always the local copy.
+          //
+          // Failure here is a quieter universe, never a broken one:
+          // no network, no configured platform and a database without
+          // the is_shared column all resolve to an empty list, and the
+          // child still sees Canon plus their own.
+          return _shared().then(function (sharedRows) {
+            sharedRows.forEach(function (record) {
+              if (!record || seen[record.id] || skip[record.id]) return;
+              if (!record.publishedAt) return;
+              seen[record.id] = true;
+              // No local creator passed: this Story is somebody else's,
+              // so its name must come from the Story itself or be
+              // absent. Never from the card on this device.
+              out.push(toStory(record, null));
+            });
+            return out;
+          }).catch(function () { return out; });
         }).catch(function () { return out; });
       });
     });
@@ -337,6 +404,30 @@ const EtherFeed = (function () {
   // which is exactly why that module stores the whole record rather
   // than the inner payload. Unwrapping it is the only translation this
   // needs.
+  // Every Story anybody has shared. Unwraps the same {id, data,
+  // updated_at} row shape _cloud() does — `data` is the whole
+  // CreatorProjectStore record.
+  //
+  // Deliberately does NOT require a Magic Card on this device. A
+  // Traveller with no card of their own should still arrive in a
+  // universe that has other people's stories in it; that is the
+  // difference between a shared Ether and a private one.
+  function _shared() {
+    try {
+      if (typeof CreatorProjectSync === 'undefined' || !CreatorProjectSync.listShared) {
+        return Promise.resolve([]);
+      }
+      return CreatorProjectSync.listShared().then(function (rows) {
+        var records = (rows || []).map(function (row) {
+          return (row && row.data) ? row.data : null;
+        }).filter(Boolean);
+        // Kept so the portal can actually open them — see _sharedRecords.
+        records.forEach(function (r) { if (r && r.id) _sharedRecords[r.id] = r; });
+        return records;
+      }).catch(function () { return []; });
+    } catch (e) { return Promise.resolve([]); }
+  }
+
   function _cloud() {
     try {
       if (typeof CreatorProjectSync === 'undefined') return Promise.resolve([]);
@@ -398,8 +489,7 @@ const EtherFeed = (function () {
   // and it is still one function.
   function publishInto(universe, projectId, options) {
     if (!universe || !projectId) return null;
-    let record = null;
-    try { record = CreatorProjectStore.get(projectId); } catch (e) {}
+    var record = _recordFor(projectId);
     if (!record) return null;
     return universe.publish(toStory(record, _creator()), options);
   }

@@ -108,6 +108,17 @@ const CreatorProjectStore=(function(){
   // (tools/world-builder-v2/js/projectStore.js), which never had this
   // bug since it mutates the caller's existing object rather than
   // constructing a fresh one.
+  // The nickname on this device's own Magic Card, used only when
+  // stamping a record this device is authoring. Never used to label a
+  // story that came from somewhere else.
+  function _localCreatorName(){
+    try{
+      if(typeof MagicCard==='undefined') return null;
+      const card=MagicCard.getActive();
+      return (card && card.nickname) || null;
+    }catch(e){ return null; }
+  }
+
   function upsert(id,meta,data){
     const now=new Date().toISOString();
     const existing=_cache().get(id);
@@ -134,6 +145,18 @@ const CreatorProjectStore=(function(){
       // story is this" is one field to read instead of a guess about
       // which store something came out of.
       origin:(existing&&existing.origin)||'creator',
+      // WHOSE STORY THIS IS, travelling WITH the story.
+      //
+      // The Ether is a shared space: anybody's shared story shows in
+      // everybody's Ether. So the maker's name cannot be read from the
+      // Magic Card on the DEVICE doing the looking — that is the
+      // viewer, not the author, and every story in the Ether would be
+      // attributed to whoever happened to be reading it.
+      //
+      // Carried forward like publishedAt above, for the same reason: a
+      // record is rebuilt on every debounced autosave, so anything not
+      // carried forward is wiped the moment editing continues.
+      creatorName:(meta&&meta.creatorName)||(existing&&existing.creatorName)||_localCreatorName()||undefined,
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});

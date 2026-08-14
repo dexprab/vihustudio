@@ -489,6 +489,45 @@ experience.
   login, OTP verification, family dashboards, child management, cloud
   profile management and Creator accounts.
 
+### 15. The Ether is a Shared Space
+
+Locked by the product owner: *"the idea of ether is anybody who pushes
+story to VihuPlanet shows in ether. the cannon stories are the stories
+owned by VihuPlanet and not by any account. so at any given moment the
+ether should always show cannon stories + pushed to VihuPlanet
+stories."*
+
+- **At any moment the Ether is Canon Stories + every Story anybody has
+  shared.** It is not per-creator. A Traveller with no Magic Card of
+  their own still arrives in a universe that has other people's Stories
+  in it.
+- **Canon Stories are owned by VihuPlanet and by no account.** Decision
+  13 is unchanged: they ship with the application, are never
+  attributed, and a child never learns the distinction exists.
+- **This replaces the Phase 1 boundary**, which read "there is no
+  public cross-creator feed to read." Decision 9 said a real shared
+  feed "becomes another source inside `EtherFeed.load()` and nothing
+  downstream changes", and that is exactly how it arrived — a fourth
+  source, with the runtime untouched.
+- **`is_shared` is the public boundary, and it is a column rather than
+  a guess.** A `generated always` column on `creator_projects`
+  (`(data->>'publishedAt') is not null`), so it can never disagree with
+  the Story and cannot be set by a client independently of actually
+  sharing. `creator_projects`' SELECT policy widens only for rows where
+  it is true. **Every unshared project stays exactly as private as it
+  was** — a draft is unreachable through the shared feed by
+  construction, not by a caller being careful.
+- **A Story's maker travels with the Story** (`creatorName` on the
+  record, stamped from the authoring device's own Magic Card). Reading
+  the Magic Card on the device doing the LOOKING would label every
+  Story in the Ether with the name of whoever is reading it.
+- **A shared Story can be read, not only seen.** The records the feed
+  fetches are kept by project id so the portal can open a Story that is
+  in neither the local project store nor the Canon repository.
+  Otherwise the Ether shows a Spirit that opens to nothing.
+- Still out of scope and not implemented: moderation, ratings, scoring,
+  popularity, likes, search, filters and ranking (Decision 12).
+
 ## Roadmap
 
 1. Theme Designer Polish

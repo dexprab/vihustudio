@@ -185,7 +185,37 @@ const CreatorProjectSync = (function () {
     });
   }
 
-  const api = { isAvailable: isAvailable, push: push, get: get, list: list, listByOwner: listByOwner, remove: remove };
+  // EVERY STORY ANYBODY HAS SHARED — the Ether's own source.
+  //
+  // An owner-agnostic SELECT for shared rows only. Like listByOwner()
+  // above, it relies entirely on the database to decide what the caller
+  // may see: creator_projects' SELECT policy widens to `is_shared`
+  // rows, and is_shared is a GENERATED column, so no client can mark a
+  // draft shared without actually sharing it. A draft is unreachable
+  // through this call by construction, not by this function being
+  // careful.
+  //
+  // Named distinctly rather than added as a flag on list(), matching
+  // listByOwner()'s own precedent: "whose data this reads" should never
+  // be ambiguous at the call site.
+  function listShared(limit) {
+    if (!window.ThemeRepositoryClient) return Promise.resolve([]);
+    return window.ThemeRepositoryClient.getClient().then(function (client) {
+      return client.from(TABLE)
+        .select('id,data,updated_at')
+        .eq('is_shared', true)
+        .order('updated_at', { ascending: false })
+        .limit(limit || 200)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return res.data || [];
+        });
+    }).catch(function () {
+      return [];
+    });
+  }
+
+  const api = { isAvailable: isAvailable, push: push, get: get, list: list, listByOwner: listByOwner, listShared: listShared, remove: remove };
   try { window.CreatorProjectSync = api; } catch (e) {}
   return api;
 })();
