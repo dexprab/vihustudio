@@ -913,7 +913,26 @@
       // A beat first, so the child is looking at the universe before
       // anything moves in it.
       window.setTimeout(function () {
-        try { EtherFeed.publishInto(universe, id); } catch (e) {}
+        var spirit = null;
+        try { spirit = EtherFeed.publishInto(universe, id); } catch (e) {}
+        // A STORY MUST NEVER SIMPLY VANISH.
+        //
+        // This Story was deliberately held OUT of the opening seed so
+        // the child could watch it arrive — which means if the birth
+        // does not happen, it is not merely un-dramatic, it is absent
+        // from the universe altogether until the next reload.
+        // publishInto() returns null whenever the record cannot be read
+        // (it looks only in the local store, so a Story that lives only
+        // in the cloud on this device finds nothing), and that was
+        // swallowed silently.
+        //
+        // Falling back to the ordinary path costs the arrival animation
+        // and keeps the Story, which is the right way round.
+        if (!spirit) {
+          try {
+            EtherFeed.attach(universe, { exclude: [] }).catch(function () {});
+          } catch (e) {}
+        }
       }, 700);
 
       // Deliberately NOT followed by focus.open() on the new Spirit.

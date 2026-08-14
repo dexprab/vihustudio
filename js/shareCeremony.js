@@ -394,13 +394,38 @@ const ShareCeremony=(function(){
     // definition of membership (CLAUDE.md, Decision 9) — which is
     // exactly why it moved here out of Publish Studio's completion:
     // finishing a story must not put it in front of anybody.
+    // THE STAMP HAS TO ACTUALLY LAND.
+    //
+    // `ok` used to be set to true merely because markPublished() was
+    // CALLED, never because it worked. markPublished() returns
+    // {ok:false} when the Story has no record in the store — which is
+    // exactly the case where it cannot join the Ether — and the
+    // ceremony went on to say "Off it goes.", play the Story Birth
+    // hand-off and report a successful share anyway. A child was told
+    // their story had gone to VihuPlanet and it had not, with nothing
+    // anywhere recording that.
     let ok=false;
     try{
       if(typeof CreatorProjectStore!=='undefined' && _ctx.projectId){
-        CreatorProjectStore.markPublished(_ctx.projectId);
-        ok=true;
+        const res=CreatorProjectStore.markPublished(_ctx.projectId);
+        ok=!!(res && res.ok);
       }
     }catch(e){}
+
+    // A Story with no record in the store cannot be stamped, and that
+    // is a recoverable state rather than a dead end: the Story is right
+    // here on screen, the store simply has not been given it yet.
+    // _writeStorage() is what upserts into CreatorProjectStore, and it
+    // is synchronous, so the stamp can be retried immediately.
+    if(!ok){
+      try{
+        if(typeof ProjectManager!=='undefined' && ProjectManager.saveToLocalStorage && _ctx.projectId){
+          ProjectManager.saveToLocalStorage();
+          const retry=CreatorProjectStore.markPublished(_ctx.projectId);
+          ok=!!(retry && retry.ok);
+        }
+      }catch(e){}
+    }
 
     // "hasEverPublished" records THAT a child has shared, and it is
     // what the Studio Rite's own sharing beat waits on and what opens
