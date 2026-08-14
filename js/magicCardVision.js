@@ -1008,8 +1008,6 @@ const MagicCardVision = (function () {
     // it. It goes first, because when the frame is visible it is the
     // one reading that was solved rather than guessed.
     var frameQuad = _frame(im.data, W, hh);
-    var solved = _readByFrame(bl, frameQuad);
-    var head = solved ? [solved] : [];
 
     // ONLY WHAT IS INSIDE THE FRAME CAN BE A STAR.
     //
@@ -1023,6 +1021,20 @@ const MagicCardVision = (function () {
     // boundary rather than a hint: anything beyond it is furniture, by
     // construction, whatever it looks like. A little inset also drops
     // the frame's own edge.
+    //
+    // THIS RUNS BEFORE THE FRAME SOLVE, and used to run after it.
+    //
+    // That ordering was the bug, and it was a bad one: the filter was
+    // built from the frame and then handed only to the guessing paths,
+    // while the one reading that is SOLVED — the head of the list, the
+    // one trusted first precisely because it is exact — was still being
+    // computed from every mark in the picture, numbering included.
+    //
+    // _readByFrame refuses outright when it is given more marks than a
+    // sky can have, so the usual result was that the exact answer was
+    // silently dropped and a guess was promoted in its place. Measured
+    // on a card filling a third of the frame: frame found, seven stars
+    // found, and the cells "not solved" anyway.
     var inside = bl;
     if (frameQuad) {
       var lim = _bounds(frameQuad.map(function (c) { return { x: c.x, y: c.y }; }));
@@ -1033,6 +1045,9 @@ const MagicCardVision = (function () {
       });
       if (within.length >= MIN_STARS) inside = within;
     }
+
+    var solved = _readByFrame(inside, frameQuad);
+    var head = solved ? [solved] : [];
 
     // Then the usual sorting, for whatever the frame could not exclude.
     var stars = _starLike(inside);
@@ -1181,8 +1196,20 @@ const MagicCardVision = (function () {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       return Promise.reject(new Error('no-camera'));
     }
+    // ASK FOR THE SENSOR, NOT FOR A PREVIEW.
+    //
+    // 1280 was chosen when every frame was analysed live and a bigger
+    // one only cost time. The still path changed that: the photograph
+    // is read once, and every pixel the stream was not given is detail
+    // no amount of later cleverness recovers. A rear phone camera will
+    // happily hand over 1920 or more, and `ideal` means a webcam that
+    // cannot simply gives its best instead of failing.
     return navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
       audio: false
     }).then(function (stream) {
       video.srcObject = stream;
@@ -1406,9 +1433,31 @@ const MagicCardVision = (function () {
       var area = bw * bh;
       if (n > area * 0.42) continue;                      // solid: a panel, not a frame
       var ratio = bw / bh;
-      if (ratio < 0.55 || ratio > 1.85) continue;         // the grid is square
-      if (!best || area > best.area) {
-        best = { area: area, corners: [pTL, pTR, pBR, pBL] };
+      if (ratio < 0.55 || ratio > 1.85) continue;
+      // THE SQUAREST, NOT THE LARGEST — and this was the whole bug.
+      //
+      // "The largest hollow bright thing" is not the star chart. It is
+      // the CARD, whose own rounded border encloses the chart and is
+      // bigger than it, is just as hollow, and at 680x960 has a ratio of
+      // 0.708 that sailed through the window above. So the homography
+      // was solved from the card's outline and every star was mapped
+      // through the wrong rectangle — the reading was not slightly off,
+      // it was measuring against the wrong object.
+      //
+      // Seen once, it is obvious in a picture: the registration quad
+      // drawn over the photograph sat around the whole card, title and
+      // footer included, with the chart a small square in the middle.
+      // Five rounds of numbers never said that, and one overlay did.
+      //
+      // The chart is a SQUARE by construction — magicCardArt draws it
+      // gridSize x gridSize — and the card is a portrait rectangle.
+      // Nothing else about them differs so reliably, so squareness is
+      // the discriminator, with area breaking ties between shapes that
+      // are equally square.
+      var skew = Math.abs(Math.log(ratio));
+      if (!best || skew < best.skew - 0.06 ||
+          (Math.abs(skew - best.skew) <= 0.06 && area > best.area)) {
+        best = { area: area, skew: skew, corners: [pTL, pTR, pBR, pBL] };
       }
     }
     if (!best || !best.corners[0]) return null;
@@ -1693,6 +1742,68 @@ const MagicCardVision = (function () {
       } catch (e) { return { error: String(e) }; }
     },
     readFrame: readFrame,
+    // WHERE IT WENT WRONG, STAGE BY STAGE.
+    //
+    // "The pattern recognition is way off" is true and unactionable —
+    // it is consistent with the frame being missed, the stars being
+    // miscounted, the numbering being read as sky, or the cells landing
+    // a row out. Those need different fixes and the earlier seams each
+    // answered only one of them, at one resolution.
+    //
+    // This runs the real pipeline and reports every stage, so a bad
+    // reading is diagnosed rather than guessed at.
+    diagnose: function (source, width) {
+      try {
+        var c = document.createElement('canvas');
+        var sw = source.videoWidth || source.naturalWidth || source.width;
+        var sh = source.videoHeight || source.naturalHeight || source.height;
+        var Wd = width || STILL_W;
+        if (Wd > sw) Wd = sw;
+        var hh = Math.round(Wd * sh / sw);
+        c.width = Wd; c.height = hh;
+        var xx = c.getContext('2d', { willReadFrequently: true });
+        xx.drawImage(source, 0, 0, Wd, hh);
+        var im = xx.getImageData(0, 0, Wd, hh);
+        var bl = _blobs(im.data, Wd, hh);
+        var fq = _frame(im.data, Wd, hh);
+        var inside = bl;
+        if (fq) {
+          var lim = _bounds(fq.map(function (q) { return { x: q.x, y: q.y }; }));
+          var pX = lim.w * 0.04, pY = lim.h * 0.04;
+          var wi = bl.filter(function (m) {
+            return m.x > lim.cx - lim.w / 2 + pX && m.x < lim.cx + lim.w / 2 - pX &&
+                   m.y > lim.cy - lim.h / 2 + pY && m.y < lim.cy + lim.h / 2 - pY;
+          });
+          if (wi.length >= MIN_STARS) inside = wi;
+        }
+        var look = _analyse(source, width);
+        var kept = _starLike(inside);
+        var isStar = {};
+        kept.forEach(function (m) { isStar[Math.round(m.x) + ',' + Math.round(m.y)] = 1; });
+        return {
+          size: [Wd, hh],
+          marks: bl.length,
+          // Every mark, and whether it survived to be treated as a star.
+          // Drawn over the photograph, this is what turns "the pattern
+          // is wrong" into "the numbering was read as sky" or "the frame
+          // enclosed the wrong thing" without anybody guessing.
+          marksAt: bl.map(function (m) {
+            var x = Math.round(m.x), y = Math.round(m.y);
+            return { x: x, y: y, n: m.n, star: !!isStar[x + ',' + y] };
+          }),
+          frame: fq ? fq.map(function (q) {
+            return [Math.round(q.x), Math.round(q.y)];
+          }) : null,
+          inside: inside.length,
+          starLike: kept.length,
+          // `inside`, not every blob — the same ordering the pipeline
+          // itself depends on. A diagnostic that reads differently from
+          // the thing it is diagnosing is worse than none.
+          byFrame: _readByFrame(inside, fq),
+          patterns: (look && look.patterns) || null
+        };
+      } catch (e) { return { error: String(e && e.message || e) }; }
+    },
     // Every sky the frame is consistent with, best first. The caller
     // hands these to CreatorRecognition in turn — see _candidates.
     // A STILL, read properly. Everything the live path does, at the

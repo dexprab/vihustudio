@@ -806,26 +806,155 @@
       }, 700);
     }
 
-    // The photograph itself, at the camera's own resolution rather
-    // than the thumbnail a live loop can afford.
+    // The photograph itself.
+    //
+    // A REAL PHOTOGRAPH, NOT THE PREVIEW FRAME. This copied the <video>
+    // element, which is the live preview — capped at whatever the stream
+    // was negotiated to and the very resolution the still path exists to
+    // escape. Calling it a photograph did not make it one, and it is the
+    // likeliest reason a real card still read badly after the countdown
+    // shipped: the countdown was new, the picture underneath it was not.
+    //
+    // ImageCapture.takePhoto() asks the camera for a still at its PHOTO
+    // resolution, which on a phone is several times the preview and is
+    // usually the full sensor. Where it does not exist (Safari, Firefox)
+    // or the device refuses, the preview frame is still taken — worse,
+    // but never nothing.
     function takeTheShot() {
       if (capturing || scanBusy) return;
       capturing = true;
       scanSay('✨');
-      var shot = document.createElement('canvas');
-      var w = scanVideo.videoWidth || 1280;
-      var h = scanVideo.videoHeight || 720;
-      shot.width = w; shot.height = h;
-      try {
-        shot.getContext('2d').drawImage(scanVideo, 0, 0, w, h);
-      } catch (e) { capturing = false; return; }
 
-      // A moment on the still, so the picture is not analysed in the
-      // same frame it was taken and the flash has time to be seen.
-      window.setTimeout(function () { readTheShot(shot); }, 260);
+      function fromPreview() {
+        var shot = document.createElement('canvas');
+        var w = scanVideo.videoWidth || 1280;
+        var h = scanVideo.videoHeight || 720;
+        shot.width = w; shot.height = h;
+        try { shot.getContext('2d').drawImage(scanVideo, 0, 0, w, h); }
+        catch (e) { capturing = false; return null; }
+        return shot;
+      }
+
+      function read(shot) {
+        if (!shot) { capturing = false; return; }
+        // A moment on the still, so the picture is not analysed in the
+        // same frame it was taken and the flash has time to be seen.
+        window.setTimeout(function () { readTheShot(shot); }, 260);
+      }
+
+      var track = null;
+      try { track = scanStream && scanStream.getVideoTracks ? scanStream.getVideoTracks()[0] : null; }
+      catch (e) {}
+
+      if (!track || typeof window.ImageCapture !== 'function') { read(fromPreview()); return; }
+
+      var settled = false;
+      // takePhoto() can hang on some drivers, and a countdown that ends
+      // in nothing is worse than a smaller picture.
+      var giveUp = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        read(fromPreview());
+      }, 2500);
+
+      try {
+        new window.ImageCapture(track).takePhoto()
+          .then(function (blob) { return createImageBitmap(blob); })
+          .then(function (bitmap) {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(giveUp);
+            var shot = document.createElement('canvas');
+            shot.width = bitmap.width; shot.height = bitmap.height;
+            shot.getContext('2d').drawImage(bitmap, 0, 0);
+            read(shot);
+          })
+          .catch(function () {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(giveUp);
+            read(fromPreview());
+          });
+      } catch (e) {
+        if (!settled) {
+          settled = true;
+          window.clearTimeout(giveUp);
+          read(fromPreview());
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // WHAT THE CAMERA ACTUALLY GOT, WITH THE READING DRAWN ON IT.
+    //
+    // The live panel reports numbers, and numbers cannot tell "the card
+    // was out of focus" from "the frame was found around the wrong
+    // thing" from "the child was holding the picture side". Every one of
+    // those reads as a bad pattern, and they need completely different
+    // fixes — which is how five rounds went to fixing the wrong one.
+    //
+    // So the still is kept and shown: the photograph at the size it was
+    // taken, the chart's frame in green, every mark in red, and the ones
+    // the reader kept as stars in white. One glance separates all three.
+    // Only under ?cardcheck=1, and it never touches recognition.
+    function showShot(shot, d) {
+      if (!checking) return;
+      var box = document.querySelector('[data-shot-check]');
+      if (!box) {
+        box = document.createElement('div');
+        box.setAttribute('data-shot-check', '');
+        box.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:2147483000;' +
+          'background:rgba(6,9,20,.9);padding:6px;border-radius:8px;' +
+          'font:10px/1.4 ui-monospace,Menlo,monospace;color:#9fd;text-align:left';
+        document.body.appendChild(box);
+      }
+      box.textContent = '';
+      var view = document.createElement('canvas');
+      var scale = Math.min(1, 420 / shot.width);
+      view.width = Math.round(shot.width * scale);
+      view.height = Math.round(shot.height * scale);
+      var g = view.getContext('2d');
+      g.drawImage(shot, 0, 0, view.width, view.height);
+
+      // diagnose() works at its own analysis width, so its coordinates
+      // are in that space, not the shot's. This is the ratio between.
+      var k = d && d.size ? (view.width / d.size[0]) : 1;
+      if (d && d.frame) {
+        g.strokeStyle = '#4ef08a'; g.lineWidth = 2;
+        g.beginPath();
+        d.frame.forEach(function (pt, i) {
+          var x = pt[0] * k, y = pt[1] * k;
+          if (i) g.lineTo(x, y); else g.moveTo(x, y);
+        });
+        g.closePath(); g.stroke();
+      }
+      (d && d.marksAt ? d.marksAt : []).forEach(function (m) {
+        g.strokeStyle = m.star ? '#ffffff' : '#ff5a5a';
+        g.lineWidth = m.star ? 2 : 1;
+        g.beginPath(); g.arc(m.x * k, m.y * k, m.star ? 7 : 4, 0, 7); g.stroke();
+      });
+      box.appendChild(view);
+      var note = document.createElement('div');
+      note.style.cssText = 'margin-top:4px;white-space:pre';
+      note.textContent =
+        'shot   ' + shot.width + 'x' + shot.height +
+          (window.ImageCapture ? '' : '  (preview only)') + '\n' +
+        'read at' + (d && d.size ? ' ' + d.size.join('x') : ' —') + '\n' +
+        'frame  ' + (d && d.frame ? 'found' : 'NOT FOUND') +
+          '   marks ' + (d ? d.marks : '?') +
+          '   stars ' + (d ? d.starLike : '?') + '\n' +
+        'cells  ' + (d && d.byFrame
+          ? d.byFrame.map(function (rc) { return rc.join(','); }).join(' ')
+          : 'not solved');
+      box.appendChild(note);
     }
 
     function readTheShot(shot) {
+      if (checking && MagicCardVision.diagnose) {
+        var d = null;
+        try { d = MagicCardVision.diagnose(shot); } catch (e) {}
+        try { showShot(shot, d); } catch (e) {}
+      }
       var cards = [];
       try { cards = (typeof MagicCard !== 'undefined' && MagicCard.list) ? MagicCard.list() : []; }
       catch (e) { cards = []; }
