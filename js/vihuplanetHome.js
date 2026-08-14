@@ -543,6 +543,48 @@
     // silence.
     var SCAN_PATIENCE_MS = 11000;
 
+    // ---------------------------------------------------------------
+    // ?cardcheck=1 — what the camera actually sees, live.
+    //
+    // Five rounds of this have been fixed against simulated rooms and
+    // have then failed on a real card in a real hand, which is a method
+    // that is guessing. This stops the guessing: it puts the detector's
+    // own numbers on screen while the card is held up, so the next fix
+    // is aimed at a measurement instead of at an idea of one.
+    //
+    // Off unless asked for, out of the way, and it changes nothing
+    // about how recognition behaves.
+    var checking = false;
+    try { checking = new URLSearchParams(window.location.search).get('cardcheck') === '1'; }
+    catch (e) {}
+    var checkEl = null;
+
+    function showCheck() {
+      if (!checking || !MagicCardVision.look) return;
+      if (!checkEl) {
+        checkEl = document.createElement('div');
+        checkEl.style.cssText = 'position:fixed;right:8px;top:8px;z-index:2147483000;' +
+          'font:11px/1.5 ui-monospace,Menlo,monospace;color:#9fd;background:rgba(6,9,20,.85);' +
+          'padding:8px 10px;border-radius:8px;white-space:pre;pointer-events:none';
+        document.body.appendChild(checkEl);
+      }
+      var r = MagicCardVision.look(scanVideo);
+      if (!r) return;
+      var cards = [];
+      try { cards = MagicCard.list ? MagicCard.list() : []; } catch (e) {}
+      var hit = null;
+      try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
+      checkEl.textContent =
+        'frame      ' + r.size + '\n' +
+        'brightness ' + r.frameMean + ' avg / ' + r.frameMax + ' max\n' +
+        'MARKS      ' + r.marks + '\n' +
+        'sizes      ' + JSON.stringify(r.sizes) + '\n' +
+        'cards here ' + cards.length +
+          (cards.length ? ' (' + cards.map(function (c) {
+            return (c.pattern || []).length + ' stars'; }).join(', ') + ')' : '') + '\n' +
+        'match      ' + (hit ? (hit.card.nickname + '  cost ' + hit.cost.toFixed(3)) : 'none');
+    }
+
     function openCardScan() {
       if (!scanEl || typeof MagicCardVision === 'undefined') { openStars(); return; }
       scanEl.hidden = false;
@@ -613,7 +655,8 @@
           // already holds. Tried on every frame that has stars in it,
           // so a returning Creator is recognised the moment their card
           // is in view rather than after a reading is assembled.
-          onMarks: function () { tryByShape(); }
+          onMarks: function () { tryByShape(); },
+          onFrame: function () { showCheck(); }
         });
       }).catch(function () {
         // Permission refused, or no camera at all. Both are ordinary

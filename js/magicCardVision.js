@@ -927,6 +927,7 @@ const MagicCardVision = (function () {
     function tick() {
       if (stopped) return;
       if (!busy && video.readyState >= 2) {
+        if (typeof opts.onFrame === 'function') { try { opts.onFrame(); } catch (e) {} }
         var look = _analyse(video);
         var pattern = (look && look.patterns) ? look.patterns[0] : null;
         // Said on every frame, so the camera is never a still picture:
@@ -1124,8 +1125,41 @@ const MagicCardVision = (function () {
     return total / from.length;
   }
 
+  // What the detector sees in a frame, in numbers. Used by the live
+  // check below — see js/vihuplanetHome.js's ?cardcheck=1.
+  function look(source) {
+    try {
+      var c = document.createElement('canvas');
+      var sw = source.videoWidth || source.naturalWidth || source.width;
+      var sh = source.videoHeight || source.naturalHeight || source.height;
+      if (!sw || !sh) return null;
+      var hh = Math.round(W * sh / sw);
+      c.width = W; c.height = hh;
+      var xx = c.getContext('2d', { willReadFrequently: true });
+      xx.drawImage(source, 0, 0, W, hh);
+      var d = xx.getImageData(0, 0, W, hh);
+      var bl = _blobs(d.data, W, hh);
+      // How bright the frame is overall, and how bright its brightest
+      // parts are — the two numbers that decide whether a star clears
+      // the local threshold at all.
+      var sum = 0, max = 0;
+      for (var i = 0; i < W * hh; i++) {
+        var v = (d.data[i * 4] * 0.299 + d.data[i * 4 + 1] * 0.587 + d.data[i * 4 + 2] * 0.114) / 255;
+        sum += v; if (v > max) max = v;
+      }
+      return {
+        size: W + 'x' + hh,
+        marks: bl.length,
+        sizes: bl.slice(0, 10).map(function (b) { return b.n; }),
+        frameMean: Math.round(sum / (W * hh) * 100) / 100,
+        frameMax: Math.round(max * 100) / 100
+      };
+    } catch (e) { return { error: String(e) }; }
+  }
+
   var api = {
     identify: identify,
+    look: look,
     // A testing seam, not part of the experience: it reports what the
     // reader SAW in a frame — the star blobs it found and the grid it
     // registered on — so a failure can be diagnosed as "no stars",
