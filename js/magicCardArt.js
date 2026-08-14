@@ -537,7 +537,19 @@ const MagicCardArt=(function(){
       // it. Square rather than round so the reader can tell them from
       // the stars, and outside the grid so they never sit where a star
       // could be.
-      var markR=Math.max(7,cell*0.20);
+      // Half the side of a corner mark. Deliberately LARGER than a
+      // star: the reader finds the four corners by taking the biggest
+      // marks, so "bigger than a star" is not decoration, it is what
+      // makes them identifiable at all. At 0.20 a square's area was
+      // slightly SMALLER than a star disc's and the two were
+      // indistinguishable.
+      // Measured, not guessed: at 0.32 the corner marks came out of the
+      // detector at 25 pixels against stars at 21 — only a fifth
+      // bigger, which is not enough to tell them apart, and the whole
+      // corner solve refused to run. A star also carries a glow that
+      // adds to its area while a flat square does not, so the drawn
+      // sizes have to differ by more than the arithmetic suggests.
+      var markR=Math.max(12,cell*0.46);
       ctx.fillStyle='#FFFFFF';
       [[gridLeft,gridTop],[gridLeft+gridSize,gridTop],
        [gridLeft,gridTop+gridSize],[gridLeft+gridSize,gridTop+gridSize]]

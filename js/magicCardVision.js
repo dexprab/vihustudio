@@ -280,22 +280,18 @@ const MagicCardVision = (function () {
     // Relative to the largest rather than a fixed floor, so a card held
     // at arm's length still works: there the stars are small, but they
     // are still all the same small.
-    if (out.length > 1) {
-      var bestGroup = null;
-      for (var gi = 0; gi < out.length; gi++) {
-        var ref = out[gi].n;
-        var group = out.filter(function (bb) {
-          return bb.n >= ref * 0.45 && bb.n <= ref * 2.2;
-        });
-        // More marks wins; on a tie the smaller reference wins, since
-        // `out` is sorted largest-first and later entries are smaller.
-        if (!bestGroup || group.length > bestGroup.length ||
-            (group.length === bestGroup.length && ref < bestGroup[0].n)) {
-          bestGroup = group;
-        }
-      }
-      if (bestGroup && bestGroup.length >= 2) out = bestGroup;
-    }
+    // NO SIZE FILTERING HERE ANY MORE.
+    //
+    // Choosing "the biggest group of marks that match each other" is
+    // right for picking stars out of a room — and it deletes the
+    // CORNER marks, which are deliberately a different size from the
+    // stars. The two rules were undoing each other: raising the corner
+    // marks so they could be told apart made this filter throw them
+    // away, and the corner solve stopped running at all.
+    //
+    // So this reports everything it found and the choosing happens
+    // downstream, where it is known whether stars or corners are
+    // wanted. See _starLike().
     return out.slice(0, 14);
   }
 
@@ -579,6 +575,11 @@ const MagicCardVision = (function () {
       x.drawImage(source, 0, 0, W, h);
       var img = x.getImageData(0, 0, W, h);
       var blobs = _blobs(img.data, W, h);
+      // The corner solve wants everything; the lattice guesswork below
+      // wants only the star-shaped set.
+      var byQuadFirst = _readByQuad(blobs);
+      if (byQuadFirst) return byQuadFirst;
+      blobs = _starLike(blobs);
       if (blobs.length < MIN_STARS || blobs.length > MAX_STARS) return null;
 
       // The card's own grid first — a MEASUREMENT, and the only thing
@@ -595,13 +596,6 @@ const MagicCardVision = (function () {
       if (grid) {
         var byGrid = _readCells(blobs, grid);
         if (byGrid) return byGrid;
-      }
-      // The card's own corner marks first — an exact answer when they
-      // are visible, with nothing guessed.
-      var corners = _corners(blobs);
-      if (corners) {
-        var byCorners = _readByCorners(blobs, corners);
-        if (byCorners) return byCorners;
       }
       var cand = _candidates(img.data, W, h, blobs);
       if (cand && cand.length) return cand[0];
@@ -1150,6 +1144,147 @@ const MagicCardVision = (function () {
     return picked;
   }
 
+  // The marks that look like a constellation: whichever size has the
+  // most marks near it. Stars come in fives and sevens that match each
+  // other; a room's bright patches are few and all different, and a
+  // card's corner marks are a set of exactly four that are bigger.
+  function _starLike(marks) {
+    if (marks.length < 2) return marks;
+    var best = null;
+    for (var i = 0; i < marks.length; i++) {
+      var ref = marks[i].n;
+      var group = marks.filter(function (b) { return b.n >= ref * 0.45 && b.n <= ref * 2.2; });
+      if (!best || group.length > best.length ||
+          (group.length === best.length && ref < best[0].n)) best = group;
+    }
+    return (best && best.length >= 2) ? best : marks;
+  }
+
+  // ---------------------------------------------------------------
+  // FOUR CORNERS ARE A COMPLETE ANSWER.
+  //
+  // Everything before this inferred the lattice from the stars — where
+  // the grid began, how big a cell was, how the card was turned and
+  // tipped — and every one of those was a guess that a real photograph
+  // could break. Four known points do not need inferring. They define
+  // a projective transform outright, and a projective transform is
+  // EXACTLY what a flat card photographed from an angle undergoes.
+  //
+  // So the corners are mapped to the unit square, the map is inverted,
+  // and every star is put through it. Tilt, tip, distance and position
+  // all come out in the wash because they are all the same
+  // transformation, solved rather than searched for.
+  //
+  // The corner marks are the four largest marks on the card, which is
+  // why the art draws them larger than the stars.
+  function _quad(marks) {
+    if (marks.length < 6) return null;                 // 4 corners + stars
+    // SIZE NARROWS IT; POSITION DECIDES IT.
+    //
+    // Taking the four largest marks was not enough: the card carries
+    // other bright furniture — the companion emblem, the panels along
+    // the bottom — and measured against the real art there were FIVE
+    // marks of corner size, not four. Picking the top four then mixed
+    // a panel in with three corners and the whole solve was refused.
+    //
+    // Corner marks have something no panel has: they sit at the four
+    // extremes of the card, one toward each corner. So the large marks
+    // are the candidates, and the four that reach furthest into each
+    // corner are the answer.
+    var sorted = marks.slice().sort(function (a, b) { return b.n - a.n; });
+    var big = sorted.slice(0, Math.min(10, sorted.length));
+    if (big.length < 4) return null;
+
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
+    for (i = 0; i < marks.length; i++) {
+      if (marks[i].x < minX) minX = marks[i].x;
+      if (marks[i].y < minY) minY = marks[i].y;
+      if (marks[i].x > maxX) maxX = marks[i].x;
+      if (marks[i].y > maxY) maxY = marks[i].y;
+    }
+    var want = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]];
+    var picked = [];
+    for (var c = 0; c < 4; c++) {
+      var best = null, bestD = Infinity;
+      for (i = 0; i < big.length; i++) {
+        if (picked.indexOf(big[i]) >= 0) continue;
+        var dx = big[i].x - want[c][0], dy = big[i].y - want[c][1];
+        var d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; best = big[i]; }
+      }
+      if (!best) return null;
+      picked.push(best);
+    }
+
+    // They have to agree with each other in size, or they are not one
+    // set of marks, and they have to enclose a real area rather than
+    // huddling along one edge.
+    var ns = picked.map(function (m) { return m.n; });
+    if (Math.max.apply(null, ns) > Math.min.apply(null, ns) * 3.2) return null;
+    var w = Math.max(Math.abs(picked[1].x - picked[0].x), Math.abs(picked[2].x - picked[3].x));
+    var h2 = Math.max(Math.abs(picked[3].y - picked[0].y), Math.abs(picked[2].y - picked[1].y));
+    if (w < 20 || h2 < 20) return null;
+
+    // picked is already in corner order: TL, TR, BR, BL.
+    return { corners: picked, stars: marks.filter(function (m) { return picked.indexOf(m) < 0; }) };
+  }
+
+  // The homography taking the unit square to the four corners, solved
+  // as a plain 8x8 system, then inverted so a point in the picture can
+  // be asked where it sits on the card.
+  function _homography(q) {
+    var x0 = q[0].x, y0 = q[0].y, x1 = q[1].x, y1 = q[1].y;
+    var x2 = q[2].x, y2 = q[2].y, x3 = q[3].x, y3 = q[3].y;
+    var dx1 = x1 - x2, dx2 = x3 - x2, sx = x0 - x1 + x2 - x3;
+    var dy1 = y1 - y2, dy2 = y3 - y2, sy = y0 - y1 + y2 - y3;
+    var den = dx1 * dy2 - dx2 * dy1;
+    if (!den) return null;
+    var g = (sx * dy2 - dx2 * sy) / den;
+    var h = (dx1 * sy - sx * dy1) / den;
+    var a = x1 - x0 + g * x1, b = x3 - x0 + h * x3, c = x0;
+    var d = y1 - y0 + g * y1, e = y3 - y0 + h * y3, f = y0;
+    // Inverse of [[a,b,c],[d,e,f],[g,h,1]], by adjugate.
+    var A = e - f * h, B = c * h - b, C = b * f - c * e;
+    var D = f * g - d, E = a - c * g, F = c * d - a * f;
+    var G = d * h - e * g, H = b * g - a * h, I = a * e - b * d;
+    return function (px, py) {
+      var w = G * px + H * py + I;
+      if (!w) return null;
+      return { u: (A * px + B * py + C) / w, v: (D * px + E * py + F) / w };
+    };
+  }
+
+  // A card's cells, read exactly, from its own corner marks.
+  function _readByQuad(marks) {
+    var q = _quad(marks);
+    if (!q) return null;
+    // What is left after the corners still includes the card's own
+    // furniture — panels, the emblem — so the constellation is picked
+    // out of it the same way it is everywhere else: the marks that
+    // match each other.
+    var stars = _starLike(q.stars);
+    if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
+    var inv = _homography(q.corners);
+    if (!inv) return null;
+
+    var cells = _geometry().cells;
+    var pattern = [], used = {};
+    for (var i = 0; i < stars.length; i++) {
+      var p = inv(stars[i].x, stars[i].y);
+      if (!p) return null;
+      var u = p.u * cells, v = p.v * cells;
+      var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
+      if (row < 0 || col < 0 || row >= cells || col >= cells) return null;
+      if (Math.abs(u - (col + 0.5)) > SNAP_TOLERANCE) return null;
+      if (Math.abs(v - (row + 0.5)) > SNAP_TOLERANCE) return null;
+      var k = row + ',' + col;
+      if (used[k]) return null;
+      used[k] = 1;
+      pattern.push([row, col]);
+    }
+    return pattern;
+  }
+
   function identify(source, cards) {
     if (!cards || !cards.length) return null;
     var look = _analyse(source);
@@ -1164,11 +1299,10 @@ const MagicCardVision = (function () {
     // a 5 to 7 star sky the moment the corners were added. They are
     // taken out before the shape is compared.
     var marks = look.marks;
-    var corner = _corners(marks);
-    if (corner) {
-      var without = marks.filter(function (m) { return corner.indexOf(m) < 0; });
-      if (without.length >= MIN_STARS) marks = without;
-    }
+    var q = _quad(marks);
+    if (q && q.stars.length >= MIN_STARS) marks = _starLike(q.stars);
+    else marks = _starLike(marks);
+    if (marks.length < MIN_STARS) return null;
 
     // The tilt estimate is a guess made from a handful of points, and a
     // constellation with three stars in a row can pull it several
@@ -1322,6 +1456,27 @@ const MagicCardVision = (function () {
           return { x: Math.round(b.x), y: Math.round(b.y), n: b.n };
         });
       } catch (e) { return String(e); }
+    },
+    // Testing seam: what the corner solve made of a frame.
+    quadOf: function (source) {
+      try {
+        var c = document.createElement('canvas');
+        var sw = source.videoWidth || source.naturalWidth || source.width;
+        var sh = source.videoHeight || source.naturalHeight || source.height;
+        var hh = Math.round(W * sh / sw);
+        c.width = W; c.height = hh;
+        var xx = c.getContext('2d', { willReadFrequently: true });
+        xx.drawImage(source, 0, 0, W, hh);
+        var bl = _blobs(xx.getImageData(0, 0, W, hh).data, W, hh);
+        var sorted = bl.slice().sort(function (a, b) { return b.n - a.n; });
+        var q = _quad(bl);
+        return {
+          marks: bl.length,
+          sizes: sorted.map(function (b) { return b.n; }),
+          quad: q ? { stars: q.stars.length } : null,
+          read: q ? (_readByQuad(bl) ? 'read' : 'quad ok, cells refused') : 'no quad'
+        };
+      } catch (e) { return { error: String(e) }; }
     },
     readFrame: readFrame,
     // Every sky the frame is consistent with, best first. The caller
