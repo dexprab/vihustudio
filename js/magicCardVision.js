@@ -535,6 +535,38 @@ const MagicCardVision = (function () {
   // hands in a <video>. This module's whole job is "is there a Magic
   // Card in front of this camera, and whose is it".
   // ---------------------------------------------------------------
+  // What the reader can see RIGHT NOW, in one pass.
+  //
+  // Split out because the camera has to be able to say something on
+  // every frame. Reporting only a finished reading meant that holding a
+  // card up and holding up nothing at all looked exactly the same — a
+  // still picture and no sign of life — which is the one thing a child
+  // waiting for magic should never get.
+  function _analyse(source) {
+    var c = document.createElement('canvas');
+    var sw = source.videoWidth || source.naturalWidth || source.width;
+    var sh = source.videoHeight || source.naturalHeight || source.height;
+    if (!sw || !sh) return null;
+    var hh = Math.round(W * sh / sw);
+    c.width = W; c.height = hh;
+    var xx = c.getContext('2d', { willReadFrequently: true });
+    xx.drawImage(source, 0, 0, W, hh);
+    var im = xx.getImageData(0, 0, W, hh);
+    var bl = _blobs(im.data, W, hh);
+    var res = { stars: bl.length, patterns: null };
+    if (bl.length < MIN_STARS || bl.length > MAX_STARS) return res;
+    var g = _goldGrid(im.data, W, hh, bl);
+    var first = g ? _readCells(bl, g) : null;
+    var list = _candidates(im.data, W, hh, bl) || [];
+    if (first) {
+      var fk = _key(first);
+      list = list.filter(function (pp) { return _key(pp) !== fk; });
+      list.unshift(first);
+    }
+    res.patterns = list.length ? list : null;
+    return res;
+  }
+
   function scan(video, opts) {
     opts = opts || {};
     var stopped = false;
@@ -545,7 +577,19 @@ const MagicCardVision = (function () {
     function tick() {
       if (stopped) return;
       if (!busy && video.readyState >= 2) {
-        var pattern = readFrame(video, opts.rect || null);
+        var look = _analyse(video);
+        var pattern = (look && look.patterns) ? look.patterns[0] : null;
+        // Said on every frame, so the camera is never a still picture:
+        // 'nothing' / 'something' (bright marks, not a sky) / 'stars'
+        // (a readable card). The caller turns these into words.
+        if (typeof opts.onState === 'function') {
+          try {
+            opts.onState(!look ? 'nothing'
+              : look.patterns ? 'stars'
+              : look.stars > 0 ? 'something'
+              : 'nothing', look ? look.stars : 0);
+          } catch (e) {}
+        }
         if (pattern) {
           var k = _key(pattern);
           if (k === lastKey) agreed++;
@@ -554,11 +598,18 @@ const MagicCardVision = (function () {
             try { opts.onSighting(agreed / AGREE_FRAMES); } catch (e) {}
           }
           if (agreed >= AGREE_FRAMES) {
+            // PAUSED, NOT STOPPED.
+            //
+            // A reading that turns out to belong to nobody is an
+            // ordinary thing — a card at an angle, a light across it, a
+            // hand half over it — and a child should not have to press
+            // anything to be allowed another go. The caller looks at
+            // this sky, and calls resume() to carry on looking.
             busy = true;
-            stopped = true;
             if (typeof opts.onPattern === 'function') {
               try { opts.onPattern(pattern); } catch (e) {}
             }
+            window.requestAnimationFrame(tick);
             return;
           }
         } else {
@@ -573,7 +624,16 @@ const MagicCardVision = (function () {
     }
     window.requestAnimationFrame(tick);
 
-    return { stop: function () { stopped = true; } };
+    return {
+      stop: function () { stopped = true; },
+      // Carry on looking, and forget what was just seen so the same
+      // frame is not read as a fresh sighting a moment later.
+      resume: function () {
+        busy = false;
+        lastKey = null;
+        agreed = 0;
+      }
+    };
   }
 
   // Ask for the camera. Rear camera where there is one — a child holds
@@ -630,26 +690,8 @@ const MagicCardVision = (function () {
     // hands these to CreatorRecognition in turn — see _candidates.
     readCandidates: function (source, rect) {
       try {
-        var c = document.createElement('canvas');
-        var sw = source.videoWidth || source.naturalWidth || source.width;
-        var sh = source.videoHeight || source.naturalHeight || source.height;
-        if (!sw || !sh) return null;
-        var hh = Math.round(W * sh / sw);
-        c.width = W; c.height = hh;
-        var xx = c.getContext('2d', { willReadFrequently: true });
-        xx.drawImage(source, 0, 0, W, hh);
-        var im = xx.getImageData(0, 0, W, hh);
-        var bl = _blobs(im.data, W, hh);
-        if (bl.length < MIN_STARS || bl.length > MAX_STARS) return null;
-        var g = _goldGrid(im.data, W, hh, bl);
-        var first = g ? _readCells(bl, g) : null;
-        var list = _candidates(im.data, W, hh, bl) || [];
-        if (first) {
-          var fk = _key(first);
-          list = list.filter(function (p) { return _key(p) !== fk; });
-          list.unshift(first);
-        }
-        return list.length ? list : null;
+        var look = _analyse(source);
+        return (look && look.patterns) ? look.patterns : null;
       } catch (e) { return null; }
     },
     scan: scan,

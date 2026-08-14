@@ -390,11 +390,14 @@
     var scanStream = null;
     var scanner = null;
     var scanBusy = false;
+    var scanState = null;
+    var scanPatienceSaid = false;
 
     function scanSay(text) { if (scanLine) scanLine.textContent = text; }
 
     function closeCardScan(opts) {
       if (!scanEl || scanEl.hidden) return;
+      if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
       if (typeof MagicCardVision !== 'undefined') {
         try { MagicCardVision.closeCamera(scanStream); } catch (e) {}
@@ -406,39 +409,116 @@
       if (!(opts && opts.keepUniverseStill)) universe.traveller.setEnabled(true);
     }
 
-    function scanFailed(line) {
-      if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
+    // IT KEEPS LOOKING. ALWAYS.
+    //
+    // "We are building for kids. We need to be patient and fail and
+    // recover gracefully." So a reading that belongs to nobody does not
+    // end anything: the camera stays on, the child keeps holding their
+    // card, and it tries again by itself. There is no limit on tries,
+    // no lockout, and nothing a child must press to be allowed another
+    // go — the buttons are there for the child who WANTS a different
+    // way, never as a toll for failing.
+    //
+    // `fatal` is the one exception, and it is not a failure to read: no
+    // camera, or permission refused. There is nothing to keep looking
+    // WITH, so that one stops and offers the two ways on.
+    function scanFailed(line, fatal) {
+      if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       scanBusy = false;
       if (scanWindow) scanWindow.classList.remove('is-seeing');
+      if (scanAgainBtn) scanAgainBtn.hidden = false;
       // Never "failed", "invalid", "not found" or "verification". A
       // child's stars are never wrong; they are only, sometimes, not
       // yet seen.
       scanSay(line);
       if (scanActions) scanActions.hidden = false;
+
+      if (fatal) {
+        if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
+        return;
+      }
+      // A short breath before looking again, so it does not spend the
+      // next second re-reading the same unlucky frame, and so the line
+      // above is actually readable.
+      scanState = null;
+      window.setTimeout(function () {
+        if (!scanEl || scanEl.hidden || !scanner) return;
+        try { scanner.resume(); } catch (e) {}
+      }, 1400);
     }
+
+    var scanAgainBtn = scanEl && scanEl.querySelector('[data-scan-act="again"]');
+    var scanWaitTimer = null;
+
+    // How long the camera looks before offering a way on. A child
+    // holding a card up gets a few seconds of nothing happening; a
+    // child with no card gets a dead end unless something breaks the
+    // silence.
+    var SCAN_PATIENCE_MS = 11000;
 
     function openCardScan() {
       if (!scanEl || typeof MagicCardVision === 'undefined') { openStars(); return; }
       scanEl.hidden = false;
-      if (scanActions) scanActions.hidden = true;
+      // DRAW YOUR STARS IS THERE FROM THE FIRST SECOND.
+      //
+      // It used to appear only after a failure, which left a child
+      // looking at a live camera with their own face in it and nothing
+      // to press — the exact dead end this was meant to avoid. It is
+      // not an error state and never was: it is how a child without
+      // their card in reach, or who would simply rather draw, gets in.
+      if (scanActions) scanActions.hidden = false;
+      if (scanAgainBtn) scanAgainBtn.hidden = true;
+      scanState = null;
+      scanPatienceSaid = false;
       scanSay('✨ Show me your Magic Card ✨');
       universe.traveller.setEnabled(false);
+
+      // Nothing seen for a while is not a failure and is not silence
+      // either. One gentle line, and the retry appears beside the way
+      // out that was already there.
+      if (scanWaitTimer) window.clearTimeout(scanWaitTimer);
+      scanWaitTimer = window.setTimeout(function () {
+        if (!scanEl || scanEl.hidden || scanBusy) return;
+        scanSay('I couldn’t see your stars yet. Ready when you are.');
+        scanPatienceSaid = true;
+        if (scanAgainBtn) scanAgainBtn.hidden = false;
+      }, SCAN_PATIENCE_MS);
 
       MagicCardVision.openCamera(scanVideo).then(function (stream) {
         scanStream = stream;
         scanner = MagicCardVision.scan(scanVideo, {
-          // Light, not a number. The only feedback a child gets is the
-          // window brightening as their stars come into view.
-          onSighting: function (progress) {
-            if (!scanWindow) return;
-            scanWindow.classList.toggle('is-seeing', progress > 0);
+          // THE CAMERA HAS TO LOOK ALIVE.
+          //
+          // Holding a card up used to look exactly like holding up
+          // nothing: the only signal was the window brightening, and
+          // that happened only once a whole sky had been read. Anything
+          // short of success — a card too far away, a card at an angle,
+          // a card the light is not reaching — was a still picture and
+          // silence, and the honest reading of that screen is that it
+          // has frozen.
+          //
+          // So it now says what it is doing, in three short states and
+          // never a number: nothing yet, something in view, stars it
+          // can read.
+          onState: function (state) {
+            if (scanWindow) scanWindow.classList.toggle('is-seeing', state === 'stars');
+            if (scanBusy) return;
+            if (state === scanState) return;   // only when it changes
+            scanState = state;
+            if (state === 'stars') scanSay('I can see your stars…');
+            else if (state === 'something') scanSay('Hold it a little steadier…');
+            // Once it has said it is ready when they are, it does not
+            // go back to asking. Seeing something is still worth
+            // saying; seeing nothing again is not, and would wipe the
+            // one line offering a way on a frame after it appeared.
+            else if (!scanPatienceSaid) scanSay('✨ Show me your Magic Card ✨');
           },
           onPattern: function () { tryTheSkies(); }
         });
       }).catch(function () {
         // Permission refused, or no camera at all. Both are ordinary
         // and neither is a dead end.
-        scanFailed('I can’t see your Magic Card.');
+        scanFailed('I can’t see your Magic Card.', true);
       });
     }
 
@@ -456,6 +536,7 @@
       try { list = MagicCardVision.readCandidates(scanVideo, null) || []; } catch (e) {}
       if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
 
+      if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       scanSay('Looking for your sky…');
       var i = 0;
       var anyUnreachable = false;
