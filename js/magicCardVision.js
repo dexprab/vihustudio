@@ -246,7 +246,29 @@ const MagicCardVision = (function () {
     }
     out.sort(function (a2, b2) { return b2.n - a2.n; });
 
-    // EVERY STAR ON A CARD IS DRAWN THE SAME SIZE.
+    // A CONSTELLATION IS THE BIGGEST GROUP OF MARKS THAT MATCH EACH
+    // OTHER — not the biggest marks.
+    //
+    // The live readout from a real card settled this. It reported:
+    //
+    //     MARKS 4    sizes [205,143,105,72]
+    //
+    // on a card with SEVEN stars. Those four are not stars: at that
+    // distance a star covers about ten pixels and they are all the same
+    // size, while 205 against 72 is nothing of the sort. They were the
+    // window, the wall and the bright clutter behind the hand.
+    //
+    // The previous rule — keep marks close in size to the LARGEST —
+    // then did the damage. Anchored to a window, it kept the room and
+    // discarded every real star for being too small. It only ever
+    // looked right because in a rendered test the largest mark was
+    // always a star.
+    //
+    // Stars come in a set of five to seven that match each other; a
+    // room's bright patches are few and all different. So the group is
+    // chosen by AGREEMENT rather than by size: whichever size has the
+    // most marks near it wins, and ties go to the smaller, because a
+    // card's stars are small and a room's windows are not.
     //
     // That is the fact that separates them from everything else the
     // local threshold picks up. Measured on a rendered card, the seven
@@ -258,10 +280,21 @@ const MagicCardVision = (function () {
     // Relative to the largest rather than a fixed floor, so a card held
     // at arm's length still works: there the stars are small, but they
     // are still all the same small.
-    if (out.length) {
-      var biggest = out[0].n;
-      var floor = Math.max(3, biggest * 0.28);
-      out = out.filter(function (bb) { return bb.n >= floor; });
+    if (out.length > 1) {
+      var bestGroup = null;
+      for (var gi = 0; gi < out.length; gi++) {
+        var ref = out[gi].n;
+        var group = out.filter(function (bb) {
+          return bb.n >= ref * 0.45 && bb.n <= ref * 2.2;
+        });
+        // More marks wins; on a tie the smaller reference wins, since
+        // `out` is sorted largest-first and later entries are smaller.
+        if (!bestGroup || group.length > bestGroup.length ||
+            (group.length === bestGroup.length && ref < bestGroup[0].n)) {
+          bestGroup = group;
+        }
+      }
+      if (bestGroup && bestGroup.length >= 2) out = bestGroup;
     }
     return out.slice(0, 14);
   }
@@ -492,6 +525,38 @@ const MagicCardVision = (function () {
     return best ? best.pattern : null;
   }
 
+  // Cells straight from the corners: they bound the grid, so the rest
+  // is arithmetic. The marks that ARE the corners are dropped — they
+  // are furniture, not stars.
+  function _readByCorners(marks, corners) {
+    var cells = _geometry().cells;
+    var xs = corners.map(function (c) { return c.x; });
+    var ys = corners.map(function (c) { return c.y; });
+    var left = Math.min.apply(null, xs), right = Math.max.apply(null, xs);
+    var top = Math.min.apply(null, ys), bottom = Math.max.apply(null, ys);
+    var gw = right - left, gh = bottom - top;
+    if (gw < 20 || gh < 20) return null;
+
+    var stars = marks.filter(function (m) { return corners.indexOf(m) < 0; });
+    if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
+
+    var cellW = gw / cells, cellH = gh / cells;
+    var pattern = [], used = {};
+    for (var i = 0; i < stars.length; i++) {
+      var u = (stars[i].x - left) / cellW;
+      var v = (stars[i].y - top) / cellH;
+      var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
+      if (row < 0 || col < 0 || row >= cells || col >= cells) return null;
+      if (Math.abs(u - (col + 0.5)) > SNAP_TOLERANCE) return null;
+      if (Math.abs(v - (row + 0.5)) > SNAP_TOLERANCE) return null;
+      var k = row + ',' + col;
+      if (used[k]) return null;
+      used[k] = 1;
+      pattern.push([row, col]);
+    }
+    return pattern;
+  }
+
   function _key(pattern) {
     return pattern.map(function (p) { return p[0] + ',' + p[1]; }).sort().join(';');
   }
@@ -530,6 +595,13 @@ const MagicCardVision = (function () {
       if (grid) {
         var byGrid = _readCells(blobs, grid);
         if (byGrid) return byGrid;
+      }
+      // The card's own corner marks first — an exact answer when they
+      // are visible, with nothing guessed.
+      var corners = _corners(blobs);
+      if (corners) {
+        var byCorners = _readByCorners(blobs, corners);
+        if (byCorners) return byCorners;
       }
       var cand = _candidates(img.data, W, h, blobs);
       if (cand && cand.length) return cand[0];
@@ -1044,10 +1116,59 @@ const MagicCardVision = (function () {
   // The grid-reading path above is KEPT, for the one case this cannot
   // serve: a brand-new machine, which holds no cards to compare
   // against and must ask the platform with an exact pattern.
+  // THE FOUR CORNER MARKS, AND WHAT THEY SETTLE.
+  //
+  // The card now prints a solid white square just outside each corner
+  // of the grid (js/magicCardArt.js). Four marks, and the whole
+  // ambiguity this reader has been fighting disappears: they bound the
+  // grid exactly, so a star's cell is arithmetic rather than a guess
+  // among dozens of placements.
+  //
+  // They are told apart from stars by shape — a square is squarer than
+  // a disc — and by position: they are the four outermost marks, one
+  // toward each corner of the set.
+  function _corners(marks) {
+    if (marks.length < 8) return null;      // 4 corners + at least 4 stars
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
+    for (i = 0; i < marks.length; i++) {
+      if (marks[i].x < minX) minX = marks[i].x;
+      if (marks[i].y < minY) minY = marks[i].y;
+      if (marks[i].x > maxX) maxX = marks[i].x;
+      if (marks[i].y > maxY) maxY = marks[i].y;
+    }
+    var picked = [];
+    [[minX, minY], [maxX, minY], [minX, maxY], [maxX, maxY]].forEach(function (c) {
+      var best = null, bestD = Infinity;
+      for (var j = 0; j < marks.length; j++) {
+        var dx = marks[j].x - c[0], dy = marks[j].y - c[1];
+        var d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; best = marks[j]; }
+      }
+      if (best && picked.indexOf(best) < 0) picked.push(best);
+    });
+    if (picked.length !== 4) return null;
+    return picked;
+  }
+
   function identify(source, cards) {
     if (!cards || !cards.length) return null;
     var look = _analyse(source);
     if (!look || !look.marks || look.marks.length < MIN_STARS) return null;
+
+    // THE CORNER MARKS ARE NOT STARS.
+    //
+    // The card prints four of them to bound the grid, and the detector
+    // finds them exactly as it finds a star — so a five-star sky
+    // arrives here as NINE marks and matches nothing. Tested against
+    // the real card art, every tilted card reported 8 to 11 marks for
+    // a 5 to 7 star sky the moment the corners were added. They are
+    // taken out before the shape is compared.
+    var marks = look.marks;
+    var corner = _corners(marks);
+    if (corner) {
+      var without = marks.filter(function (m) { return corner.indexOf(m) < 0; });
+      if (without.length >= MIN_STARS) marks = without;
+    }
 
     // The tilt estimate is a guess made from a handful of points, and a
     // constellation with three stars in a row can pull it several
@@ -1055,16 +1176,16 @@ const MagicCardVision = (function () {
     // marks and still matched nothing. So a few angles around the
     // estimate are tried and the best is kept: cheap, and it removes
     // the estimate's accuracy from the answer.
-    var est = _tiltOf(look.marks);
+    var est = _tiltOf(marks);
     var tries = [];
     for (var t = -3; t <= 3; t++) {
-      tries.push(_normalise(_spin(look.marks, -(est + t * 0.035))));   // ±6°, in 2° steps
+      tries.push(_normalise(_spin(marks, -(est + t * 0.035))));   // ±6°, in 2° steps
     }
 
     var best = null;
     for (var i = 0; i < cards.length; i++) {
       var pat = cards[i] && cards[i].pattern;
-      if (!pat || pat.length !== look.marks.length) continue;   // a sky has as many stars as it has
+      if (!pat || pat.length !== marks.length) continue;   // a sky has as many stars as it has
       var pts = pat.map(function (p) { return { x: p[1], y: p[0], n: 1 }; });
       var want = _normalise(pts);
       if (!want) continue;

@@ -496,21 +496,64 @@ const MagicCardArt=(function(){
         ctx.stroke();
       }
 
+      // ---------------------------------------------------------------
+      // A CARD A CAMERA CAN READ.
+      //
+      // The back of this card was drawn to be looked at by a child, and
+      // it is now also looked at by a camera (js/magicCardVision.js).
+      // Photographed in a real room it defeated five rounds of reader:
+      // the stars were small ★ glyphs in cream on near-black, at a
+      // contrast that survives neither a phone's exposure nor the
+      // downscale a live camera pass needs, and the joining line ran
+      // straight THROUGH every one of them, so the seven stars merged
+      // into a single shape.
+      //
+      // Three changes, none of which alters what the card means:
+      //
+      //   - the stars are solid white discs, and larger. A disc has a
+      //     middle that survives blur, where a glyph's thin arms do
+      //     not, and white against this navy is the strongest contrast
+      //     the card can offer.
+      //   - the joining line is thinner and fainter, and is drawn
+      //     UNDER the stars rather than across them, so it still reads
+      //     as a constellation to a child without welding the stars
+      //     into one blob for the camera.
+      //   - four corner marks bound the grid. They are what makes a
+      //     reading EXACT: a pattern sits at a random offset on the
+      //     grid, so without knowing where the grid begins a lattice
+      //     shifted by one cell fits just as well as the true one, and
+      //     the reader has to offer dozens of guesses. With the corners
+      //     visible there is nothing left to guess.
+      // ---------------------------------------------------------------
       if(pts.length>1){
-        ctx.strokeStyle='rgba(255,203,69,0.4)';
-        ctx.lineWidth=2;
+        ctx.strokeStyle='rgba(255,203,69,0.22)';
+        ctx.lineWidth=1.2;
         ctx.beginPath();
         pts.forEach(function(p,i){ if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y); });
         ctx.stroke();
       }
+
+      // The grid's four corners, as small solid squares just outside
+      // it. Square rather than round so the reader can tell them from
+      // the stars, and outside the grid so they never sit where a star
+      // could be.
+      var markR=Math.max(7,cell*0.20);
+      ctx.fillStyle='#FFFFFF';
+      [[gridLeft,gridTop],[gridLeft+gridSize,gridTop],
+       [gridLeft,gridTop+gridSize],[gridLeft+gridSize,gridTop+gridSize]]
+        .forEach(function(c){
+          ctx.fillRect(c[0]-markR,c[1]-markR,markR*2,markR*2);
+        });
+
       pts.forEach(function(p){
-        ctx.shadowColor=GOLD;
-        ctx.shadowBlur=16;
-        ctx.fillStyle=CREAM;
-        ctx.font='30px sans-serif';
-        ctx.textAlign='center';
-        ctx.textBaseline='middle';
-        ctx.fillText('★',p.x,p.y);
+        ctx.save();
+        ctx.shadowColor='rgba(255,214,128,0.9)';
+        ctx.shadowBlur=10;
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,Math.max(8,cell*0.24),0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
       });
       ctx.shadowBlur=0;
 
