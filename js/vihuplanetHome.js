@@ -181,7 +181,8 @@
       prev:     document.querySelector('[data-portal-prev]'),
       next:     document.querySelector('[data-portal-next]'),
       close:    document.querySelector('[data-portal-close]'),
-      portalTitle: document.querySelector('[data-portal-title]')
+      portalTitle: document.querySelector('[data-portal-title]'),
+      portalCreator: document.querySelector('[data-portal-creator]')
     };
 
     var met = null;      // the entity currently being met
@@ -752,6 +753,19 @@
       pageIndex = 0;
       showPage();
       el.portalTitle.textContent = met.title || 'A story';
+
+      // Whose story this is, while it is being read.
+      //
+      // Hidden rather than blank when there is nobody to name: a Canon
+      // Story belongs to nobody by design, and a story shared before
+      // its maker travelled with it has no honest answer. An empty line
+      // under the title would read as a missing thing; no line reads as
+      // a story that simply is.
+      if (el.portalCreator) {
+        var maker = met.creator || '';
+        el.portalCreator.textContent = maker ? ('by ' + maker) : '';
+        el.portalCreator.hidden = !maker;
+      }
       el.portal.hidden = false;
       // Two frames, so the browser has laid the overlay out before the
       // opening class starts it animating — without this the transition

@@ -247,11 +247,32 @@ html, body {
   flex: 0 0 auto;
 }
 
+/* Title and maker as one block, so the bar's space-between still puts
+   the heading at one end and the way out at the other. */
+.ether-portal-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
 .ether-portal-title {
   font-family: 'Caveat', 'Kalam', cursive;
   font-size: clamp(1.1rem, 0.9rem + 0.8vw, 1.5rem);
   color: var(--vp-paper, #F1EAD0);
 }
+
+/* Quieter than the title on purpose. The story is the thing being
+   read; whose it is sits under its name rather than competing with
+   it. */
+.ether-portal-creator {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(0.85rem, 0.75rem + 0.35vw, 1.05rem);
+  color: rgba(241, 234, 208, 0.62);
+  line-height: 1.1;
+}
+
+.ether-portal-creator[hidden] { display: none; }
 
 .ether-portal-close {
   font-family: 'Kalam', system-ui, sans-serif;
