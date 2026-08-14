@@ -176,6 +176,59 @@ const CreatorRecognition = (function () {
     UNKNOWN: UNKNOWN,
     UNREACHABLE: UNREACHABLE,
     recognise: recognise,
+    // ---------------------------------------------------------------
+    // EVERY READING AT ONCE — what makes a new machine work like a
+    // familiar one.
+    //
+    // The camera cannot always pin a card's grid down exactly, so it
+    // offers a handful of possible readings. On a device that already
+    // holds the card that costs nothing: the readings are compared
+    // against a pattern sitting in this browser, by SHAPE, and a
+    // near-miss still matches.
+    //
+    // The platform is unforgiving by comparison — recall matches a
+    // constellation as an exact set — so the same handful of readings
+    // had to be sent one at a time, and the first was almost never the
+    // right one. That is the whole reason recognition behaved
+    // differently on a new machine: not a weaker reader, a stricter
+    // question asked serially.
+    //
+    // Asking about all of them together removes the difference. The
+    // true reading is in the list — that is what the reader is for —
+    // and one round trip finds it wherever in the list it sits. A
+    // wrong reading matches nobody, so offering many cannot invent an
+    // identity; it can only find the one that was always there.
+    // ---------------------------------------------------------------
+    recogniseAny: function (patterns) {
+      var list = (patterns || []).filter(Boolean);
+      if (!list.length) return Promise.resolve({ outcome: UNKNOWN });
+
+      // This device first, all of it, before anything goes out.
+      for (var i = 0; i < list.length; i++) {
+        var here = matchLocally(list[i]);
+        if (here) {
+          try { MagicCard.setActive(here.id); } catch (e) {}
+          return Promise.resolve({ outcome: KNOWN, card: here, where: 'device' });
+        }
+      }
+
+      // Then the platform, about every reading together rather than in
+      // turn. Bounded, because each is a real request.
+      var ask = list.slice(0, 40);
+      return Promise.all(ask.map(function (p) {
+        return cloudRecall(p).catch(function () { return { outcome: UNREACHABLE }; });
+      })).then(function (results) {
+        for (var j = 0; j < results.length; j++) {
+          if (results[j] && results[j].outcome === KNOWN) return results[j];
+        }
+        // Unreachable only when NOTHING got through — one dropped
+        // request among forty is not the network being down, and
+        // telling a child their sky is out of reach because of it
+        // would be blaming them for somebody else's packet.
+        var any = results.some(function (r) { return r && r.outcome === UNKNOWN; });
+        return { outcome: any ? UNKNOWN : UNREACHABLE };
+      });
+    },
     // The device-only half of recognise(), on its own.
     //
     // The camera reads a card as a HANDFUL of possible skies rather

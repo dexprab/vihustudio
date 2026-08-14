@@ -705,68 +705,30 @@
       if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       scanSay('Looking for your sky…');
 
-      // THIS DEVICE FIRST, ALL OF IT, BEFORE ANYTHING GOES OUT.
+      // ONE QUESTION, ABOUT EVERY READING.
       //
-      // The camera offers a handful of possible skies rather than one,
-      // and recognise() asks the platform whenever a guess is not on
-      // this device — so a wrong guess costs a round trip. Walking the
-      // list one at a time meant a Creator holding their OWN card
-      // waited through a network call for every wrong guess before
-      // reaching the right one, while the answer was sitting in this
-      // browser the whole time. On a slow connection that is a screen
-      // that simply never finishes.
+      // This used to walk the list, asking the platform about each
+      // reading in turn — and since a wrong reading is answered by the
+      // platform, a Creator on a NEW machine paid a round trip for
+      // every wrong guess before reaching the right one. That is why
+      // recognition worked on a familiar device and not on a new one:
+      // the same reader, a stricter question, asked serially.
       //
-      // Every guess is checked here first, instantly and offline.
-      if (CreatorRecognition.matchLocally) {
-        for (var li = 0; li < list.length; li++) {
-          var known = null;
-          try { known = CreatorRecognition.matchLocally(list[li]); } catch (e) {}
-          if (known) {
-            try { MagicCard.setActive(known.id); } catch (e) {}
-            skyRecognised(known);
-            return;
-          }
-        }
-      }
-
-      // Nothing here knows this card, so now the platform is asked —
-      // which is the path that matters on a brand-new machine. Bounded,
-      // because each one is a round trip and a child is watching.
-      if (list.length > 20) list = list.slice(0, 20);
-      var i = 0;
-      var anyUnreachable = false;
-      function next() {
-        if (i >= list.length) {
-          // Only once EVERY reading has been asked about. An unreachable
-          // sky is not the child's doing, so it is worth saying — but
-          // only when it is the whole story, never because one wrong
-          // reading happened to be the one the network dropped.
-          scanFailed(anyUnreachable
-            ? 'I can’t see the whole sky from here right now.'
-            : 'I couldn’t see your stars yet.');
+      // recogniseAny checks this device first and then asks about all
+      // of them together, so both machines behave the same way.
+      CreatorRecognition.recogniseAny(list).then(function (result) {
+        if (result.outcome === CreatorRecognition.KNOWN) {
+          skyRecognised(result.card);
           return;
         }
-        var pattern = list[i++];
-        CreatorRecognition.recognise(pattern).then(function (result) {
-          if (result.outcome === CreatorRecognition.KNOWN) {
-            skyRecognised(result.card);
-            return;
-          }
-          // KEEP GOING on an unreachable one.
-          //
-          // A reading that is not this child's sky is answered by the
-          // platform, and with no platform in reach that answer is
-          // "unreachable" — for every wrong reading, not just the real
-          // one. Stopping there ended the search on the FIRST candidate
-          // and never reached the true sky sitting behind it, which is
-          // exactly how a Creator holding their own card was told the
-          // sky was out of reach.
-          if (result.outcome === CreatorRecognition.UNREACHABLE) anyUnreachable = true;
-          next();
-        }).catch(function () { next(); });
-      }
-      next();
+        scanFailed(result.outcome === CreatorRecognition.UNREACHABLE
+          ? 'I can’t see the whole sky from here right now.'
+          : 'I couldn’t see your stars yet.');
+      }).catch(function () {
+        scanFailed('I couldn’t see your stars yet.');
+      });
     }
+
 
     if (scanEl) {
       scanEl.addEventListener('click', function (ev) {

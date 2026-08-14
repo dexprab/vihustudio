@@ -970,7 +970,24 @@ const MagicCardVision = (function () {
     var im = xx.getImageData(0, 0, W, hh);
     var bl = _blobs(im.data, W, hh);
     var res = { stars: bl.length, marks: bl, patterns: null };
-    if (bl.length < MIN_STARS || bl.length > MAX_STARS) return res;
+
+    // THE FRAME'S READING BELONGS IN THE LIST.
+    //
+    // A real defect, and the one that kept a new machine from working
+    // even when the card had been read correctly: the frame solve ran
+    // inside readFrame and NOWHERE ELSE, so the list of readings handed
+    // to the platform never contained it. Measured, the true sky was
+    // absent from that list in all twenty cases — including the ones
+    // where the reader had the right answer and simply never offered
+    // it. It goes first, because when the frame is visible it is the
+    // one reading that was solved rather than guessed.
+    var solved = _readByFrame(bl, _frame(im.data, W, hh));
+    var head = solved ? [solved] : [];
+
+    if (bl.length < MIN_STARS || bl.length > MAX_STARS) {
+      res.patterns = head.length ? head : null;
+      return res;
+    }
     var g = _goldGrid(im.data, W, hh, bl);
     var first = g ? _readCells(bl, g) : null;
     var list = _candidates(im.data, W, hh, bl) || [];
@@ -978,6 +995,11 @@ const MagicCardVision = (function () {
       var fk = _key(first);
       list = list.filter(function (pp) { return _key(pp) !== fk; });
       list.unshift(first);
+    }
+    if (head.length) {
+      var hk = _key(head[0]);
+      list = list.filter(function (pp) { return _key(pp) !== hk; });
+      list = head.concat(list);
     }
     res.patterns = list.length ? list : null;
     return res;
