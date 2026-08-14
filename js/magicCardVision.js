@@ -1429,24 +1429,51 @@ const MagicCardVision = (function () {
       tries.push(_normalise(_spin(marks, -(est + t * 0.035))));   // ±6°, in 2° steps
     }
 
-    var best = null;
+    var best = null, runnerUp = null;
     for (var i = 0; i < cards.length; i++) {
       var pat = cards[i] && cards[i].pattern;
       if (!pat || pat.length !== marks.length) continue;   // a sky has as many stars as it has
       var pts = pat.map(function (p) { return { x: p[1], y: p[0], n: 1 }; });
       var want = _normalise(pts);
       if (!want) continue;
+      var mine = Infinity;
       for (var k = 0; k < tries.length; k++) {
         if (!tries[k]) continue;
         var cost = _shapeCost(tries[k], want);
-        if (best === null || cost < best.cost) best = { card: cards[i], cost: cost };
+        if (cost < mine) mine = cost;
+      }
+      if (mine === Infinity) continue;
+      if (best === null || mine < best.cost) {
+        runnerUp = best;
+        best = { card: cards[i], cost: mine };
+      } else if (runnerUp === null || mine < runnerUp.cost) {
+        runnerUp = { card: cards[i], cost: mine };
       }
     }
-    // Far enough apart that a different constellation cannot pass, and
-    // loose enough that a hand-held card does. Star positions after
-    // normalising are around a unit apart, so this is a fifth of the
-    // distance between neighbouring stars.
-    if (!best || best.cost > 0.2) return null;
+    // ---------------------------------------------------------------
+    // NEVER OPEN A CREATOR'S SKY ON AN UNCERTAIN MATCH.
+    //
+    // The product owner's own line, and it is the right trade for a
+    // child's identity: a false negative costs a retry, a false
+    // positive puts a child inside somebody else's life. So this
+    // refuses on any doubt at all, and there are three kinds.
+    //
+    //   TOO LOOSE   — the best match is not close enough to be the
+    //                 same constellation, only the nearest one present.
+    //   TOO CLOSE   — the best and the second best are almost as good
+    //                 as each other, so the picture does not actually
+    //                 choose between them. Two children on one device
+    //                 is the ordinary case for siblings, and "nearly
+    //                 both" must never resolve to "the first one".
+    //   NOT SURE    — anything else that cannot be stated positively.
+    //
+    // A refusal is not a dead end here: the reading still goes to the
+    // board, where the child confirms it and the EXACT match runs. So
+    // being strict costs a tap, never a way in.
+    // ---------------------------------------------------------------
+    if (!best) return null;
+    if (best.cost > 0.12) return null;                    // too loose
+    if (runnerUp && runnerUp.cost < best.cost * 2.2) return null;   // too close to call
     return best;
   }
 
