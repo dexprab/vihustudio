@@ -58,7 +58,7 @@ const MagicCardVision = (function () {
 
   // Analysis size. Small on purpose: this runs continuously, and a
   // star on a card is several pixels across even here.
-  var W = 220;
+  var W = 320;
 
   // How many consecutive frames must agree before a pattern is
   // believed. A single frame can be lucky; three in a row of the same
@@ -90,26 +90,74 @@ const MagicCardVision = (function () {
   // window are different values and a child should not have to care.
   // ---------------------------------------------------------------
   function _blobs(data, w, h) {
+    // LOCALLY BRIGHT, NOT BRIGHTEST IN THE ROOM.
+    //
+    // The first version compared every pixel against the whole frame's
+    // brightness, and a photograph of it holding a real card shows why
+    // that cannot work: the card is a small DARK rectangle held up in a
+    // bright room, so a white wall behind it sets what "bright" means
+    // and the card's own stars — dim, because the camera exposed for
+    // the wall — never came close. It reported seeing nothing at all,
+    // never even "hold it steadier".
+    //
+    // A star is not the brightest thing in the room. It is the
+    // brightest thing on the CARD, by a wide margin. So each pixel is
+    // compared against its own neighbourhood instead, through an
+    // integral image so the whole frame still costs one pass. A dark
+    // card under a bright window and a pale card under a lamp both
+    // work, because neither is being asked to out-shine its
+    // surroundings.
     var lum = new Float32Array(w * h);
-    var i, max = 0, sum = 0;
+    var i;
     for (i = 0; i < w * h; i++) {
-      var r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-      var v = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-      lum[i] = v;
-      sum += v;
-      if (v > max) max = v;
+      lum[i] = (data[i * 4] * 0.299 + data[i * 4 + 1] * 0.587 + data[i * 4 + 2] * 0.114) / 255;
     }
-    var mean = sum / (w * h);
-    // Between the frame's average and its brightest — a star is much
-    // brighter than the navy it sits on, whatever the exposure.
-    var cut = mean + (max - mean) * 0.55;
-    if (max - mean < 0.10) return [];   // a flat frame has no stars in it
+
+    // Integral image: sum(x,y) = every pixel above and left of here.
+    var integral = new Float64Array((w + 1) * (h + 1));
+    var x, y;
+    for (y = 0; y < h; y++) {
+      var rowSum = 0;
+      for (x = 0; x < w; x++) {
+        rowSum += lum[y * w + x];
+        integral[(y + 1) * (w + 1) + (x + 1)] = integral[y * (w + 1) + (x + 1)] + rowSum;
+      }
+    }
+    function areaMean(x0, y0, x1, y1) {
+      x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+      x1 = Math.min(w - 1, x1); y1 = Math.min(h - 1, y1);
+      var n = (x1 - x0 + 1) * (y1 - y0 + 1);
+      if (n <= 0) return 0;
+      var s = integral[(y1 + 1) * (w + 1) + (x1 + 1)]
+            - integral[y0 * (w + 1) + (x1 + 1)]
+            - integral[(y1 + 1) * (w + 1) + x0]
+            + integral[y0 * (w + 1) + x0];
+      return s / n;
+    }
+
+    // Wide enough to take in the card around a star, narrow enough that
+    // the wall behind the card is not what a star is measured against.
+    var rad = Math.max(5, Math.round(w / 16));
+
+    var bright = new Uint8Array(w * h);
+    var any = 0;
+    for (y = 0; y < h; y++) {
+      for (x = 0; x < w; x++) {
+        var v = lum[y * w + x];
+        var local = areaMean(x - rad, y - rad, x + rad, y + rad);
+        // Both a proportional and an absolute margin: the first finds a
+        // star on a dim card, the second stops flat noise in an evenly
+        // lit area from registering as thousands of tiny stars.
+        if (v > local * 1.45 && v - local > 0.055) { bright[y * w + x] = 1; any++; }
+      }
+    }
+    if (!any) return [];
 
     var seen = new Uint8Array(w * h);
     var out = [];
     var stack = [];
     for (i = 0; i < w * h; i++) {
-      if (seen[i] || lum[i] < cut) continue;
+      if (seen[i] || !bright[i]) continue;
       stack.length = 0;
       stack.push(i);
       seen[i] = 1;
@@ -128,7 +176,7 @@ const MagicCardVision = (function () {
             var qx = px + dx, qy = py + dy;
             if (qx < 0 || qy < 0 || qx >= w || qy >= h) continue;
             var q = qy * w + qx;
-            if (seen[q] || lum[q] < cut) continue;
+            if (seen[q] || !bright[q]) continue;
             seen[q] = 1;
             stack.push(q);
           }
@@ -137,14 +185,38 @@ const MagicCardVision = (function () {
       var bw = maxX - minX + 1, bh = maxY - minY + 1;
       // A star is a small, roughly round mark. A window, a lamp or a
       // sheet of paper is not.
-      if (n < 3 || n > 400) continue;
+      //
+      // Both bounds are a FRACTION of the frame rather than a pixel
+      // count. A fixed cap of 400 was fine while analysis ran at 220px
+      // wide and silently rejected every star the moment it ran at 320,
+      // where the same mark covers twice the pixels — the reader went
+      // from reading every test card to reading none, with nothing to
+      // show for it but "I couldn't see your stars yet."
+      if (n < 2 || n > w * h * 0.01) continue;
       if (bw > w * 0.22 || bh > h * 0.22) continue;
       var ratio = bw / Math.max(1, bh);
       if (ratio < 0.35 || ratio > 2.8) continue;
       out.push({ x: sx / n, y: sy / n, n: n });
     }
-    // Brightest-largest first, and never more than a sky's worth.
-    out.sort(function (a, b) { return b.n - a.n; });
+    out.sort(function (a2, b2) { return b2.n - a2.n; });
+
+    // EVERY STAR ON A CARD IS DRAWN THE SAME SIZE.
+    //
+    // That is the fact that separates them from everything else the
+    // local threshold picks up. Measured on a rendered card, the seven
+    // real stars came out at 77 to 104 pixels and the seven impostors
+    // at exactly 2 — the corners where grid lines cross, which are
+    // locally brighter than the cells around them and are not stars by
+    // any other test.
+    //
+    // Relative to the largest rather than a fixed floor, so a card held
+    // at arm's length still works: there the stars are small, but they
+    // are still all the same small.
+    if (out.length) {
+      var biggest = out[0].n;
+      var floor = Math.max(3, biggest * 0.28);
+      out = out.filter(function (bb) { return bb.n >= floor; });
+    }
     return out.slice(0, 14);
   }
 
@@ -443,32 +515,141 @@ const MagicCardVision = (function () {
   // Traveller safety intact — a candidate list cannot invent a Creator
   // it does not already match exactly.
   function _candidates(data, w, h, blobs) {
-    var geo = _geometry();
-    var cells = geo.cells;
-    var warmCols = _columns(data, w, h, blobs);
-    if (!warmCols) return null;
-    var left = warmCols.left, gw = warmCols.width;
-    var cell = gw / cells;
-    if (cell < 3) return null;
+    // THE STARS THEMSELVES SAY HOW BIG A CELL IS.
+    //
+    // Finding the printed grid worked on a clean rendering and fell
+    // apart in a real room: photographed holding an actual card, the
+    // stars were found every time and the grid never was, because a
+    // projection across the whole frame is dominated by the window, the
+    // desk and everything else in it. Requiring the grid meant the
+    // reader could see a child's stars perfectly and still say it had
+    // seen nothing.
+    //
+    // It does not need the grid. Every star sits at the centre of a
+    // cell, so the gaps between stars are whole numbers of cells — and
+    // a constellation spans at most nine of them. Trying each possible
+    // span gives the cell size directly from the marks on the card,
+    // with nothing in the room able to interfere.
+    var cellList = _cellsFrom(blobs);
+    if (!cellList) return null;
 
+    var cells = _geometry().cells;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (var i = 0; i < blobs.length; i++) {
+      if (blobs[i].x < minX) minX = blobs[i].x;
+      if (blobs[i].y < minY) minY = blobs[i].y;
+      if (blobs[i].x > maxX) maxX = blobs[i].x;
+      if (blobs[i].y > maxY) maxY = blobs[i].y;
+    }
+
+    // Each lattice's own readings, kept apart so they can be
+    // interleaved below.
+    var perCell = [];
+    for (var ci = 0; ci < cellList.length; ci++) {
+      var cell = cellList[ci];
+      var spanC = Math.round((maxX - minX) / cell);
+      var spanR = Math.round((maxY - minY) / cell);
+      if (spanC >= cells || spanR >= cells) continue;
+      var mine = [];
+      // Where the grid begins is still unknown — the stars cannot say
+      // which cell they start in — so every placement that fits inside
+      // a 10x10 grid is offered.
+      for (var c0 = 0; c0 + spanC < cells; c0++) {
+        for (var r0 = 0; r0 + spanR < cells; r0++) {
+          var gx = minX - (c0 + 0.5) * cell;
+          var gy = minY - (r0 + 0.5) * cell;
+          var pattern = _readCells(blobs, { x: gx, y: gy, w: cell * cells, h: cell * cells });
+          if (pattern) mine.push(pattern);
+        }
+      }
+      if (mine.length) perCell.push(mine);
+    }
+    if (!perCell.length) return null;
+
+    // ROUND-ROBIN, not one lattice then the next.
+    //
+    // A wrong lattice can produce far more placements than the right
+    // one, and taking them in order let it fill the whole list before
+    // the true sky was ever reached — CASSIOPEIA and CYGNUS both read
+    // as nobody for exactly that reason. Giving each lattice its turn
+    // means the true reading is always near the front, whichever
+    // lattice it belongs to.
     var seen = {};
     var out = [];
-    // Every whole-cell phase the stars can sit in, plus a little
-    // sub-cell slack for a card held slightly askew.
-    for (var t = -cells; t <= cells; t++) {
-      for (var frac = -0.18; frac <= 0.181; frac += 0.09) {
-        var top = _topFor(blobs, cell, t, frac);
-        if (top === null) continue;
-        var pattern = _readCells(blobs, { x: left, y: top, w: gw, h: gw });
-        if (!pattern) continue;
-        var k = _key(pattern);
+    var depth = 0, added = true;
+    while (added && out.length < 60) {
+      added = false;
+      for (var pi = 0; pi < perCell.length; pi++) {
+        if (depth >= perCell[pi].length) continue;
+        added = true;
+        var cand = perCell[pi][depth];
+        var k = _key(cand);
         if (seen[k]) continue;
         seen[k] = 1;
-        out.push(pattern);
-        if (out.length >= 12) return out;
+        out.push(cand);
+        // Bounded: every candidate is a question the platform may be
+        // asked, and a child is waiting while it is.
+        if (out.length >= 60) break;
       }
+      depth++;
     }
     return out.length ? out : null;
+  }
+
+  // EVERY CELL SIZE THE MARKS COULD BE SITTING ON.
+  //
+  // The stars cannot always settle this alone, and it is worth being
+  // precise about why rather than picking one and hoping.
+  //
+  //   CASSIOPEIA sits at columns 1, 3, 5, 7, 9 — every gap TWO cells —
+  //   so a cell twice the true size fits perfectly, with no error to
+  //   tell it apart.
+  //   CYGNUS's gaps are all THREE cells, so a cell three times too big
+  //   fits, and so does one three quarters the true size.
+  //
+  // Whenever every gap shares a factor, several lattices fit the marks
+  // exactly. Choosing the best-scoring one reads CASSIOPEIA wrong;
+  // choosing the finest reads CYGNUS wrong. There is no rule over the
+  // marks alone that gets both, because the information is not there.
+  //
+  // So each one that fits is offered, and the recogniser settles it —
+  // the same way the unknown starting cell is settled. A lattice that
+  // is not the card's own produces a sky belonging to nobody.
+  function _cellsFrom(blobs) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
+    for (i = 0; i < blobs.length; i++) {
+      if (blobs[i].x < minX) minX = blobs[i].x;
+      if (blobs[i].y < minY) minY = blobs[i].y;
+      if (blobs[i].x > maxX) maxX = blobs[i].x;
+      if (blobs[i].y > maxY) maxY = blobs[i].y;
+    }
+    var span = Math.max(maxX - minX, maxY - minY);
+    if (span < 6) return null;
+
+    var fits = [];
+    var bestErr = Infinity;
+    for (var sp = 1; sp <= 9; sp++) {
+      var c = span / sp;
+      if (c < 2.5) continue;
+      var err = 0, n = 0;
+      for (i = 0; i < blobs.length; i++) {
+        var u = (blobs[i].x - minX) / c, v = (blobs[i].y - minY) / c;
+        var du = u - Math.round(u), dv = v - Math.round(v);
+        err += du * du + dv * dv;
+        n += 2;
+      }
+      err = err / n;
+      if (err < bestErr) bestErr = err;
+      if (err < 0.018) fits.push({ cell: c, err: err, span: sp });
+    }
+    // Marks that are not on a grid at all — a hand, a face, a shelf of
+    // things — line up with nothing, and are refused here rather than
+    // turned into somebody's sky.
+    if (!fits.length) return null;
+    // Best-fitting first, so the likeliest reading is asked about
+    // first and a child usually waits for one answer, not twenty.
+    fits.sort(function (a, b) { return a.err - b.err; });
+    return fits.map(function (f) { return f.cell; });
   }
 
   function _topFor(blobs, cell, whole, frac) {
@@ -684,6 +865,23 @@ const MagicCardVision = (function () {
           cells: gr ? _readCells(bl, gr) : null
         };
       } catch (e) { return { error: String(e) }; }
+    },
+    // Testing seam: the marks themselves, so a bad reading can be
+    // diagnosed instead of guessed at.
+    inspectBlobs: function (source) {
+      try {
+        var c = document.createElement('canvas');
+        var sw = source.videoWidth || source.naturalWidth || source.width;
+        var sh = source.videoHeight || source.naturalHeight || source.height;
+        var hh = Math.round(W * sh / sw);
+        c.width = W; c.height = hh;
+        var xx = c.getContext('2d', { willReadFrequently: true });
+        xx.drawImage(source, 0, 0, W, hh);
+        var bl = _blobs(xx.getImageData(0, 0, W, hh).data, W, hh);
+        return bl.map(function (b) {
+          return { x: Math.round(b.x), y: Math.round(b.y), n: b.n };
+        });
+      } catch (e) { return String(e); }
     },
     readFrame: readFrame,
     // Every sky the frame is consistent with, best first. The caller
