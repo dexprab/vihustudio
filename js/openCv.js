@@ -34,9 +34,29 @@
 const OpenCv = (function () {
   'use strict';
 
-  // Pinned deliberately. `4.x` moves, and a computer-vision pipeline
-  // tuned against one build should not silently be handed another.
-  var SRC = 'https://docs.opencv.org/4.10.0/opencv.js';
+  // MORE THAN ONE PLACE TO GET IT.
+  //
+  // The first attempt named a single URL — docs.opencv.org/4.10.0/ —
+  // and the browser reported `unreachable`, which is what a 404 looks
+  // like from a script tag. That path was my invention: the OpenCV
+  // documentation site publishes /4.x/, and I pinned a version
+  // directory without being able to check that it exists.
+  //
+  // Guessing a second URL would repeat the mistake. These are tried in
+  // order until one loads, so a wrong path, a 404, a host that is down
+  // or a network that blocks one domain all cost a moment rather than
+  // the feature.
+  //
+  // The jsDelivr entries are pinned to an exact package version and are
+  // the ones to prefer: docs.opencv.org is documentation hosting with
+  // no uptime promise, and its unversioned /4.x/ can change build under
+  // us — which is why it is last rather than absent.
+  var SOURCES = [
+    'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
+    'https://unpkg.com/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
+    'https://docs.opencv.org/4.x/opencv.js'
+  ];
+  var SRC = SOURCES[0];
 
   // Long enough for a real download of ten megabytes on a slow
   // connection, short enough that a child is not left waiting on
@@ -51,6 +71,10 @@ const OpenCv = (function () {
   // answers from different people.
   var lastError = null;
   var started = 0;
+
+  function _host(url) {
+    try { return url.split('/')[2]; } catch (e) { return url; }
+  }
 
   function load() {
     if (promise) return promise;
@@ -79,43 +103,57 @@ const OpenCv = (function () {
         if (err) reject(err); else resolve(value);
       }
 
-      var el = document.createElement('script');
-      el.src = SRC;
-      el.async = true;
-      // NO crossOrigin, deliberately.
-      //
-      // Setting it to 'anonymous' looked like good hygiene and was in
-      // fact the thing that broke this: it opts a plain <script> INTO a
-      // CORS check, and docs.opencv.org sends no
-      // Access-Control-Allow-Origin header, so the browser refused the
-      // file outright —
-      //
-      //   Access to script at 'https://docs.opencv.org/4.10.0/opencv.js'
-      //   from origin 'https://vihuplanet.com' has been blocked by CORS
-      //   policy … net::ERR_FAILED
-      //
-      // A classic script tag needs no such header. The only thing
-      // crossOrigin would buy here is readable error details from the
-      // other origin, which is worth nothing next to the file loading
-      // at all.
+      var at = 0;
+      var tried = [];
 
-      el.onerror = function () { done(new Error('unreachable')); };
-      el.onload = function () {
-        // LOADED IS NOT READY. OpenCV.js compiles a WebAssembly module
-        // after its script runs, and using it before that finishes
-        // throws in a way that looks like a bug in whatever called it.
-        var cv = window.cv;
-        if (!cv) { done(new Error('absent')); return; }
-        if (cv.Mat) { done(null, cv); return; }
-        if (typeof cv.then === 'function') {          // some builds are a promise
-          cv.then(function (real) { done(null, real || window.cv); })
-            .catch(function () { done(new Error('init-failed')); });
+      function attempt() {
+        if (at >= SOURCES.length) {
+          done(new Error('unreachable (' + tried.join(', ') + ')'));
           return;
         }
-        cv.onRuntimeInitialized = function () { done(null, window.cv); };
-      };
+        var url = SOURCES[at++];
+        var el = document.createElement('script');
+        el.src = url;
+        el.async = true;
+        // NO crossOrigin, deliberately.
+        //
+        // Setting it to 'anonymous' looked like good hygiene and was in
+        // fact what broke the first attempt: it opts a plain <script>
+        // INTO a CORS check, and docs.opencv.org sends no
+        // Access-Control-Allow-Origin header, so the browser refused
+        // the file outright —
+        //
+        //   Access to script at 'https://docs.opencv.org/…/opencv.js'
+        //   from origin 'https://vihuplanet.com' has been blocked by
+        //   CORS policy … net::ERR_FAILED
+        //
+        // A classic script tag needs no such header, and the only thing
+        // crossOrigin buys is readable errors from the other origin,
+        // which is worth nothing next to the file loading at all.
 
-      document.head.appendChild(el);
+        el.onerror = function () {
+          tried.push(_host(url));
+          el.parentNode && el.parentNode.removeChild(el);
+          attempt();                       // the next place
+        };
+        el.onload = function () {
+          // LOADED IS NOT READY. OpenCV compiles a WebAssembly module
+          // after its script runs, and using it before that finishes
+          // throws in a way that looks like a bug in whatever called it.
+          var cv = window.cv;
+          if (!cv) { tried.push(_host(url) + ' (empty)'); attempt(); return; }
+          if (cv.Mat) { done(null, cv); return; }
+          if (typeof cv.then === 'function') {        // some builds are a promise
+            cv.then(function (real) { done(null, real || window.cv); })
+              .catch(function () { done(new Error('init-failed')); });
+            return;
+          }
+          cv.onRuntimeInitialized = function () { done(null, window.cv); };
+        };
+        document.head.appendChild(el);
+      }
+
+      attempt();
     }).catch(function (e) {
       lastError = (e && e.message) || 'failed';
       // A failed attempt is not remembered. A child who tries again
