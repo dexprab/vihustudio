@@ -599,6 +599,7 @@
       try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
       checkEl.textContent =
         'frame      ' + r.size + '\n' +
+        'CHART      ' + r.frame + '   inside ' + r.inside + '\n' +
         'brightness ' + r.frameMean + ' avg / ' + r.frameMax + ' max\n' +
         'MARKS      ' + r.marks + '\n' +
         'sizes      ' + JSON.stringify(r.sizes) + '\n' +

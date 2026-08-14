@@ -557,7 +557,13 @@ const MagicCardArt=(function(){
       // the drawing board shows, so a child reading their card and a
       // child marking their stars are looking at the same thing.
       ctx.save();
-      ctx.fillStyle='rgba(255,203,69,0.62)';
+      // Faint on purpose. The numbering is for a child's eye at
+      // reading distance, and it is the one thing on this card that
+      // must NOT look like a star to the camera — reported from a real
+      // lens, fourteen marks on a seven-star card, because gold at two
+      // thirds opacity blurs into something as bright as white. At a
+      // third it stays legible in the hand and stops competing.
+      ctx.fillStyle='rgba(255,203,69,0.34)';
       ctx.font='500 15px Georgia, serif';
       ctx.textAlign='center';
       ctx.textBaseline='middle';

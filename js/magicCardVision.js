@@ -1217,7 +1217,7 @@ const MagicCardVision = (function () {
       if (marks[i].lit > brightest) brightest = marks[i].lit;
     }
     if (brightest > 0) {
-      var lit = marks.filter(function (m) { return m.lit >= brightest * 0.82; });
+      var lit = marks.filter(function (m) { return m.lit >= brightest * 0.88; });
       if (lit.length >= MIN_STARS) marks = lit;
     }
     var best = null;
@@ -1515,8 +1515,16 @@ const MagicCardVision = (function () {
         var v = (d.data[i * 4] * 0.299 + d.data[i * 4 + 1] * 0.587 + d.data[i * 4 + 2] * 0.114) / 255;
         sum += v; if (v > max) max = v;
       }
+      var fr = _frame(d.data, W, hh);
+      var inside = fr ? bl.filter(function (m) {
+        var xs = fr.map(function (c) { return c.x; }), ys = fr.map(function (c) { return c.y; });
+        return m.x > Math.min.apply(null, xs) && m.x < Math.max.apply(null, xs) &&
+               m.y > Math.min.apply(null, ys) && m.y < Math.max.apply(null, ys);
+      }).length : 0;
       return {
         size: W + 'x' + hh,
+        frame: fr ? 'found' : 'NOT FOUND',
+        inside: fr ? inside : '-',
         marks: bl.length,
         sizes: bl.slice(0, 10).map(function (b) { return b.n; }),
         frameMean: Math.round(sum / (W * hh) * 100) / 100,
