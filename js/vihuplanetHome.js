@@ -597,7 +597,19 @@
       try { cards = MagicCard.list ? MagicCard.list() : []; } catch (e) {}
       var hit = null;
       try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
+      // Whether the CDN build arrived, in the panel that is already
+      // open while the card is being held up — so confirming it costs
+      // nobody a console.
+      var cvState = 'no loader';
+      try {
+        if (typeof OpenCv !== 'undefined') {
+          cvState = OpenCv.ready() ? 'READY'
+            : (window.cv ? 'loading…' : 'not here (using the old reader)');
+        }
+      } catch (e) {}
+
       checkEl.textContent =
+        'opencv     ' + cvState + '\n' +
         'frame      ' + r.size + '\n' +
         'CHART      ' + r.frame + '   inside ' + r.inside + '\n' +
         'brightness ' + r.frameMean + ' avg / ' + r.frameMax + ' max\n' +
