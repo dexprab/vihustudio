@@ -176,6 +176,16 @@ const CreatorRecognition = (function () {
     UNKNOWN: UNKNOWN,
     UNREACHABLE: UNREACHABLE,
     recognise: recognise,
+    // The device-only half of recognise(), on its own.
+    //
+    // The camera reads a card as a HANDFUL of possible skies rather
+    // than one, and asking the platform about each in turn means a
+    // network round trip per guess — a Creator holding their own card
+    // waited through all of them while the answer sat in this browser
+    // the whole time. Every guess can be checked here first, instantly
+    // and offline, and only then does anything go out to the platform.
+    // Same matching, same canonical set comparison; no new rules.
+    matchLocally: matchLocally,
     isRecognised: isRecognised,
     markRecognised: markRecognised,
     takeRecognition: takeRecognition

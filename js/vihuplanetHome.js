@@ -538,6 +538,40 @@
 
       if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       scanSay('Looking for your sky…');
+
+      // THIS DEVICE FIRST, ALL OF IT, BEFORE ANYTHING GOES OUT.
+      //
+      // The camera offers a handful of possible skies rather than one,
+      // and recognise() asks the platform whenever a guess is not on
+      // this device — so a wrong guess costs a round trip. Walking the
+      // list one at a time meant a Creator holding their OWN card
+      // waited through a network call for every wrong guess before
+      // reaching the right one, while the answer was sitting in this
+      // browser the whole time. On a slow connection that is a screen
+      // that simply never finishes.
+      //
+      // Every guess is checked here first, instantly and offline.
+      if (CreatorRecognition.matchLocally) {
+        for (var li = 0; li < list.length; li++) {
+          var known = null;
+          try { known = CreatorRecognition.matchLocally(list[li]); } catch (e) {}
+          if (known) {
+            try { MagicCard.setActive(known.id); } catch (e) {}
+            scanSay('There you are.');
+            CreatorRecognition.markRecognised(known.id);
+            window.setTimeout(function () {
+              closeCardScan({ keepUniverseStill: true });
+              goStudio(JourneyResolver.recognised());
+            }, 620);
+            return;
+          }
+        }
+      }
+
+      // Nothing here knows this card, so now the platform is asked —
+      // which is the path that matters on a brand-new machine. Bounded,
+      // because each one is a round trip and a child is watching.
+      if (list.length > 20) list = list.slice(0, 20);
       var i = 0;
       var anyUnreachable = false;
       function next() {

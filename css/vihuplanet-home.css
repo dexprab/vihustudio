@@ -935,10 +935,14 @@ html, body {
    "hold steady" instruction, no technical word anywhere. One short
    sentence and a soft place to hold a card.
    --------------------------------------------------------------- */
+/* Above the home screen, not below it. At z-index 60 the two permanent
+   actions painted straight over this overlay — which is how the way out
+   ended up invisible underneath "Create Story" while the camera was
+   running. Everything else on this page stacks in the thousands. */
 .vp-scan {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 7600;
   display: grid;
   place-items: center;
 }
