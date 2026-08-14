@@ -153,9 +153,55 @@ const MagicCardVision = (function () {
     }
     if (!any) return [];
 
+    // THE CARD JOINS ITS STARS WITH A LINE.
+    //
+    // magicCardArt draws the constellation's own joining stroke through
+    // every star, and a photograph of a real card shows it plainly. To
+    // a connected-components pass that line is a bridge: all seven
+    // stars become ONE blob, too big to be a star, and the reader sees
+    // two marks where there are seven. Every earlier test drew the
+    // stars WITHOUT the line, which is exactly why they passed while
+    // the real card failed.
+    //
+    // One erosion pass separates them. A star is a solid mark whose
+    // middle is surrounded on all sides; the joining stroke is thin, so
+    // its pixels have neighbours along the line and empty space either
+    // side. Keeping only pixels with a nearly full neighbourhood erases
+    // the bridge and leaves the stars standing.
+    var solid = new Uint8Array(w * h);
+    for (y = 1; y < h - 1; y++) {
+      for (x = 1; x < w - 1; x++) {
+        if (!bright[y * w + x]) continue;
+        var around = 0;
+        for (var ny = -1; ny <= 1; ny++) {
+          for (var nx = -1; nx <= 1; nx++) {
+            if (!nx && !ny) continue;
+            if (bright[(y + ny) * w + (x + nx)]) around++;
+          }
+        }
+        if (around >= 6) solid[y * w + x] = 1;
+      }
+    }
+    // Erosion is tried, never imposed. A card small in the frame puts a
+    // star into so few pixels that eroding it removes the star along
+    // with the line — measured, a card at a third of the frame went
+    // from seven marks to none. So both readings are taken and the one
+    // that actually looks like a sky is kept, preferring the eroded
+    // one, which is the only one that can separate joined stars.
+    var plain = _marksIn(bright, w, h);
+    var eroded = _marksIn(solid, w, h);
+    if (eroded.length >= MIN_STARS && eroded.length <= MAX_STARS) return eroded;
+    if (plain.length >= MIN_STARS && plain.length <= MAX_STARS) return plain;
+    return eroded.length ? eroded : plain;
+  }
+
+  // Connected marks in a mask, filtered to things shaped like a star.
+  function _marksIn(bright, w, h) {
+
     var seen = new Uint8Array(w * h);
     var out = [];
     var stack = [];
+    var x, y, i;
     for (i = 0; i < w * h; i++) {
       if (seen[i] || !bright[i]) continue;
       stack.length = 0;
@@ -530,6 +576,94 @@ const MagicCardVision = (function () {
     // a constellation spans at most nine of them. Trying each possible
     // span gives the cell size directly from the marks on the card,
     // with nothing in the room able to interfere.
+    // A CARD IS NEVER HELD SQUARE.
+    //
+    // A photograph of a real one shows it a few degrees off, and a few
+    // degrees is enough: over a span of seven cells, four degrees moves
+    // the far star half a cell, past any sane tolerance. Every tilted
+    // reading was refused while the marks themselves were found
+    // perfectly — the reader could see the stars and could not place
+    // them.
+    //
+    // The stars lie on a grid, so the directions between them cluster
+    // around the grid's own axes. Folding every pair's angle into a
+    // quarter turn makes both axes agree, and their middle is how far
+    // the card is tilted. Undo that and the lattice is square again.
+    var tilt = _tiltOf(blobs);
+    var upright = tilt ? _spin(blobs, -tilt) : blobs;
+
+    // AND A CARD IS NEVER FLAT-ON EITHER.
+    //
+    // A hand holding a card tips its top away from the camera, and that
+    // is not a rotation: the rows lean while the columns stay put, so
+    // undoing the turn leaves the lattice leaning. Two separate cell
+    // sizes cannot describe it and a squarer fit does not exist.
+    //
+    // A small lean each way is tried, and the readings from all of them
+    // are pooled. A wrong lean produces marks that sit on no lattice at
+    // all and quietly contributes nothing, so this costs candidates
+    // only when it is actually earning them.
+    // Flat-on first, and ONLY if that finds nothing is a lean tried.
+    //
+    // Pooling every lean at once was worse than not trying: five sets
+    // of readings crowded the true sky past the end of the list, and
+    // CYGNUS and LYRA went from being found to being lost. A card held
+    // reasonably flat is the ordinary case and should stay cheap; a
+    // leaning one can afford the longer list, because the alternative
+    // for it is nothing at all.
+    var straight = _readOneWay(upright);
+    if (straight && straight.length) return straight;
+
+    var LEANS = [-0.06, 0.06, -0.12, 0.12];
+    var pooled = [];
+    for (var li = 0; li < LEANS.length; li++) {
+      var got = _readOneWay(_lean(upright, LEANS[li]));
+      if (got && got.length) pooled.push(got);
+    }
+    if (!pooled.length) return null;
+    return _interleave(pooled, 120);
+  }
+
+  // A lean about the middle: every row slid sideways in proportion to
+  // how far it is from centre. The inverse of a card tipped away.
+  function _lean(blobs, k) {
+    var cy = 0, i;
+    for (i = 0; i < blobs.length; i++) cy += blobs[i].y;
+    cy /= blobs.length;
+    var out = [];
+    for (i = 0; i < blobs.length; i++) {
+      out.push({ x: blobs[i].x - k * (blobs[i].y - cy), y: blobs[i].y, n: blobs[i].n });
+    }
+    return out;
+  }
+
+  // Fair shares from several lists, best-first within each. A wrong
+  // reading can produce far more placements than the right one, and
+  // taking them in order let it fill the whole list before the true sky
+  // was ever reached — CASSIOPEIA and CYGNUS both read as nobody for
+  // exactly that reason.
+  function _interleave(lists, limit) {
+    var seen = {};
+    var out = [];
+    var depth = 0, added = true;
+    while (added && out.length < limit) {
+      added = false;
+      for (var i = 0; i < lists.length; i++) {
+        if (depth >= lists[i].length) continue;
+        added = true;
+        var cand = lists[i][depth];
+        var k = _key(cand);
+        if (seen[k]) continue;
+        seen[k] = 1;
+        out.push(cand);
+        if (out.length >= limit) break;
+      }
+      depth++;
+    }
+    return out.length ? out : null;
+  }
+
+  function _readOneWay(blobs) {
     var cellList = _cellsFrom(blobs);
     if (!cellList) return null;
 
@@ -542,13 +676,11 @@ const MagicCardVision = (function () {
       if (blobs[i].y > maxY) maxY = blobs[i].y;
     }
 
-    // Each lattice's own readings, kept apart so they can be
-    // interleaved below.
     var perCell = [];
     for (var ci = 0; ci < cellList.length; ci++) {
-      var cell = cellList[ci];
-      var spanC = Math.round((maxX - minX) / cell);
-      var spanR = Math.round((maxY - minY) / cell);
+      var cx = cellList[ci].cx, cy = cellList[ci].cy;
+      var spanC = Math.round((maxX - minX) / cx);
+      var spanR = Math.round((maxY - minY) / cy);
       if (spanC >= cells || spanR >= cells) continue;
       var mine = [];
       // Where the grid begins is still unknown — the stars cannot say
@@ -556,47 +688,64 @@ const MagicCardVision = (function () {
       // a 10x10 grid is offered.
       for (var c0 = 0; c0 + spanC < cells; c0++) {
         for (var r0 = 0; r0 + spanR < cells; r0++) {
-          var gx = minX - (c0 + 0.5) * cell;
-          var gy = minY - (r0 + 0.5) * cell;
-          var pattern = _readCells(blobs, { x: gx, y: gy, w: cell * cells, h: cell * cells });
+          var gx = minX - (c0 + 0.5) * cx;
+          var gy = minY - (r0 + 0.5) * cy;
+          var pattern = _readCells(blobs, { x: gx, y: gy, w: cx * cells, h: cy * cells });
           if (pattern) mine.push(pattern);
         }
       }
       if (mine.length) perCell.push(mine);
     }
     if (!perCell.length) return null;
-
-    // ROUND-ROBIN, not one lattice then the next.
-    //
-    // A wrong lattice can produce far more placements than the right
-    // one, and taking them in order let it fill the whole list before
-    // the true sky was ever reached — CASSIOPEIA and CYGNUS both read
-    // as nobody for exactly that reason. Giving each lattice its turn
-    // means the true reading is always near the front, whichever
-    // lattice it belongs to.
-    var seen = {};
-    var out = [];
-    var depth = 0, added = true;
-    while (added && out.length < 60) {
-      added = false;
-      for (var pi = 0; pi < perCell.length; pi++) {
-        if (depth >= perCell[pi].length) continue;
-        added = true;
-        var cand = perCell[pi][depth];
-        var k = _key(cand);
-        if (seen[k]) continue;
-        seen[k] = 1;
-        out.push(cand);
-        // Bounded: every candidate is a question the platform may be
-        // asked, and a child is waiting while it is.
-        if (out.length >= 60) break;
-      }
-      depth++;
-    }
-    return out.length ? out : null;
+    // Generous, because a candidate is cheap to check on the device
+    // that holds the card and correctness matters more than the list's
+    // length: CYGNUS and LYRA both sit deep in it, and a shorter list
+    // simply lost them.
+    return _interleave(perCell, 120);
   }
 
-  // EVERY CELL SIZE THE MARKS COULD BE SITTING ON.
+  // How far the card is turned, in radians. Pairs closer than a few
+  // pixels are ignored — their direction is noise, not geometry.
+  function _tiltOf(blobs) {
+    var angles = [];
+    for (var i = 0; i < blobs.length; i++) {
+      for (var j = i + 1; j < blobs.length; j++) {
+        var dx = blobs[j].x - blobs[i].x;
+        var dy = blobs[j].y - blobs[i].y;
+        if (Math.abs(dx) + Math.abs(dy) < 6) continue;
+        var a = Math.atan2(dy, dx);
+        // Into a quarter turn, so a horizontal pair and a vertical one
+        // report the same tilt.
+        var q = Math.PI / 2;
+        a = a - Math.floor(a / q) * q;      // [0, 90°)
+        if (a > q / 2) a -= q;              // (-45°, 45°]
+        angles.push(a);
+      }
+    }
+    if (angles.length < 3) return 0;
+    angles.sort(function (p1, p2) { return p1 - p2; });
+    var mid = angles[(angles.length / 2) | 0];
+    // Only a HELD card, never a card lying at some arbitrary angle: a
+    // large value here is far likelier to be marks that are not on a
+    // grid at all, and correcting by it would invent a sky.
+    if (Math.abs(mid) > 0.28) return 0;     // ~16 degrees
+    return mid;
+  }
+
+  function _spin(blobs, rad) {
+    var cx = 0, cy = 0, i;
+    for (i = 0; i < blobs.length; i++) { cx += blobs[i].x; cy += blobs[i].y; }
+    cx /= blobs.length; cy /= blobs.length;
+    var cos = Math.cos(rad), sin = Math.sin(rad);
+    var out = [];
+    for (i = 0; i < blobs.length; i++) {
+      var dx = blobs[i].x - cx, dy = blobs[i].y - cy;
+      out.push({ x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos, n: blobs[i].n });
+    }
+    return out;
+  }
+
+  // EVERY LATTICE THE MARKS COULD BE SITTING ON.
   //
   // The stars cannot always settle this alone, and it is worth being
   // precise about why rather than picking one and hoping.
@@ -607,14 +756,16 @@ const MagicCardVision = (function () {
   //   CYGNUS's gaps are all THREE cells, so a cell three times too big
   //   fits, and so does one three quarters the true size.
   //
-  // Whenever every gap shares a factor, several lattices fit the marks
-  // exactly. Choosing the best-scoring one reads CASSIOPEIA wrong;
-  // choosing the finest reads CYGNUS wrong. There is no rule over the
-  // marks alone that gets both, because the information is not there.
+  // Whenever every gap shares a factor, several lattices fit exactly.
+  // Choosing the best-scoring one reads CASSIOPEIA wrong; choosing the
+  // finest reads CYGNUS wrong. The information is not in the marks. So
+  // each one that fits is offered and the recogniser settles it — a
+  // lattice that is not the card's own belongs to nobody.
   //
-  // So each one that fits is offered, and the recogniser settles it —
-  // the same way the unknown starting cell is settled. A lattice that
-  // is not the card's own produces a sky belonging to nobody.
+  // THE TWO AXES ARE MEASURED SEPARATELY, which is what carries mild
+  // perspective. A card held with its top tipped away is not square in
+  // the picture: it is a little shorter down the page than across it,
+  // and one shared cell size cannot describe both. Two can.
   function _cellsFrom(blobs) {
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
     for (i = 0; i < blobs.length; i++) {
@@ -623,33 +774,51 @@ const MagicCardVision = (function () {
       if (blobs[i].x > maxX) maxX = blobs[i].x;
       if (blobs[i].y > maxY) maxY = blobs[i].y;
     }
-    var span = Math.max(maxX - minX, maxY - minY);
-    if (span < 6) return null;
+    var spanX = maxX - minX, spanY = maxY - minY;
+    if (Math.max(spanX, spanY) < 6) return null;
 
-    var fits = [];
-    var bestErr = Infinity;
-    for (var sp = 1; sp <= 9; sp++) {
-      var c = span / sp;
-      if (c < 2.5) continue;
-      var err = 0, n = 0;
-      for (i = 0; i < blobs.length; i++) {
-        var u = (blobs[i].x - minX) / c, v = (blobs[i].y - minY) / c;
-        var du = u - Math.round(u), dv = v - Math.round(v);
-        err += du * du + dv * dv;
-        n += 2;
+    // How well a spacing explains one axis on its own.
+    function axisErr(vals, min, c) {
+      if (c < 2.5) return Infinity;
+      var e = 0;
+      for (var k = 0; k < vals.length; k++) {
+        var u = (vals[k] - min) / c;
+        var d = u - Math.round(u);
+        e += d * d;
       }
-      err = err / n;
-      if (err < bestErr) bestErr = err;
-      if (err < 0.018) fits.push({ cell: c, err: err, span: sp });
+      return e / vals.length;
     }
-    // Marks that are not on a grid at all — a hand, a face, a shelf of
-    // things — line up with nothing, and are refused here rather than
-    // turned into somebody's sky.
-    if (!fits.length) return null;
-    // Best-fitting first, so the likeliest reading is asked about
-    // first and a child usually waits for one answer, not twenty.
-    fits.sort(function (a, b) { return a.err - b.err; });
-    return fits.map(function (f) { return f.cell; });
+    var xs = [], ys = [];
+    for (i = 0; i < blobs.length; i++) { xs.push(blobs[i].x); ys.push(blobs[i].y); }
+
+    var okX = [], okY = [];
+    for (var sx = 1; sx <= 9; sx++) {
+      var cx = spanX / sx;
+      // An axis the stars barely span says nothing about spacing, so
+      // it is left to the other one.
+      if (spanX < 6) { okX = [spanY / sx]; break; }
+      if (axisErr(xs, minX, cx) < 0.02) okX.push(cx);
+    }
+    for (var sy = 1; sy <= 9; sy++) {
+      var cy = spanY / sy;
+      if (spanY < 6) { okY = [spanX / sy]; break; }
+      if (axisErr(ys, minY, cy) < 0.02) okY.push(cy);
+    }
+    if (!okX.length || !okY.length) return null;
+
+    // Pairs, nearest-square first: a card is square-ruled, so the
+    // truest reading is usually the one whose two spacings agree.
+    var pairs = [];
+    for (i = 0; i < okX.length; i++) {
+      for (var j = 0; j < okY.length; j++) {
+        var r = okX[i] / okY[j];
+        if (r < 0.62 || r > 1.6) continue;    // beyond any real tilt
+        pairs.push({ cx: okX[i], cy: okY[j], skew: Math.abs(Math.log(r)) });
+      }
+    }
+    if (!pairs.length) return null;
+    pairs.sort(function (p1, p2) { return p1.skew - p2.skew; });
+    return pairs;
   }
 
   function _topFor(blobs, cell, whole, frac) {

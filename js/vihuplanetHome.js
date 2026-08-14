@@ -839,6 +839,9 @@
         if (act === 'continue') { askTheUniverse(); return; }
         if (act === 'retry') { freshAsk(); return; }
         if (act === 'lost') { lostMyCard(); return; }
+        // Leaving without answering. The universe was never torn down,
+        // so this returns the child to exactly where they were.
+        if (act === 'away') { closeStars(); return; }
         if (act === 'recover') { recoverBySky(); return; }
 
         // "I don't have one yet" and "Create Story" are the same door,

@@ -1062,3 +1062,27 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .vp-scan-hold { animation: none; }
 }
+
+/* The way out of Mark Your Stars.
+ *
+ * Every other control on that screen answers the question — draw your
+ * stars, or say you have no card. None of them declines it, so a child
+ * who opened it to look was stuck. Quiet, below the rest, and worded
+ * exactly as the portal's own way out, because it is the same journey
+ * back into the same universe. */
+.vp-stars-away {
+  display: block;
+  margin: 0.9rem auto 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 0.95rem;
+  background: none;
+  border: 0;
+  color: rgba(241, 234, 208, 0.55);
+  cursor: pointer;
+}
+
+.vp-stars-away:hover { color: var(--vp-paper, #F1EAD0); }
+
+/* The camera's way out sits under its two choices, so it is never the
+   thing a child hits by accident while reaching for Draw Your Stars. */
+.vp-scan-away { margin-top: 0.15rem; }
