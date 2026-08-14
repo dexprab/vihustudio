@@ -329,7 +329,7 @@
       if (board) board.clear();
     }
 
-    function openStars() {
+    function openStars(seen) {
       if (!starsEl || !window.ConstellationBoard) return;
 
       if (!board) {
@@ -364,8 +364,23 @@
       });
       universe.traveller.setEnabled(false);
       document.querySelector('.vp-home').classList.add('is-marking');
-      var first = starsEl.querySelector('.vp-stars-cell');
-      if (first) first.focus();
+
+      // WHAT THE CAMERA SAW, ALREADY MARKED.
+      //
+      // The camera stops trying to be right and starts being useful.
+      // Every failure of the last several days was the reader being
+      // APPROXIMATELY right and being refused for it — and
+      // approximately right is worth a great deal once a child can look
+      // at it. A star a cell out costs one tap instead of a dead end.
+      //
+      // It also removes the last difference between a familiar machine
+      // and a new one: there is only one recognition path left, the
+      // exact match that has always worked everywhere, and the camera
+      // is an input helper rather than an authority.
+      if (seen && seen.length && board.set) {
+        try { board.set(seen); } catch (e) {}
+        say('Are these your stars?');
+      }
     }
 
     // ---------------------------------------------------------------
@@ -695,6 +710,8 @@
       skyRecognised(hit.card);
     }
 
+    // The camera has seen a sky. Whose it is, is now somebody else's
+    // question — the board's, and the child's.
     function tryTheSkies() {
       if (scanBusy) return;
       scanBusy = true;
@@ -702,33 +719,19 @@
       try { list = MagicCardVision.readCandidates(scanVideo, null) || []; } catch (e) {}
       if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
 
-      if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
-      scanSay('Looking for your sky…');
-
-      // ONE QUESTION, ABOUT EVERY READING.
-      //
-      // This used to walk the list, asking the platform about each
-      // reading in turn — and since a wrong reading is answered by the
-      // platform, a Creator on a NEW machine paid a round trip for
-      // every wrong guess before reaching the right one. That is why
-      // recognition worked on a familiar device and not on a new one:
-      // the same reader, a stricter question, asked serially.
-      //
-      // recogniseAny checks this device first and then asks about all
-      // of them together, so both machines behave the same way.
-      CreatorRecognition.recogniseAny(list).then(function (result) {
-        if (result.outcome === CreatorRecognition.KNOWN) {
-          skyRecognised(result.card);
-          return;
-        }
-        scanFailed(result.outcome === CreatorRecognition.UNREACHABLE
-          ? 'I can’t see the whole sky from here right now.'
-          : 'I couldn’t see your stars yet.');
-      }).catch(function () {
-        scanFailed('I couldn’t see your stars yet.');
-      });
+      // Straight in, when this device already knows the card and the
+      // shapes agree — a returning Creator on their own machine should
+      // not be asked to confirm what the universe already recognises.
+      // tryByShape() handles that on every frame; reaching here means
+      // it did not, so the reading goes to the child instead of to a
+      // guess.
+      scanSay('There they are.');
+      var seen = list[0];
+      window.setTimeout(function () {
+        closeCardScan({ keepUniverseStill: true });
+        openStars(seen);
+      }, 700);
     }
-
 
     if (scanEl) {
       scanEl.addEventListener('click', function (ev) {

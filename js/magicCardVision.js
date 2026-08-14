@@ -188,15 +188,15 @@ const MagicCardVision = (function () {
     // from seven marks to none. So both readings are taken and the one
     // that actually looks like a sky is kept, preferring the eroded
     // one, which is the only one that can separate joined stars.
-    var plain = _marksIn(bright, w, h);
-    var eroded = _marksIn(solid, w, h);
+    var plain = _marksIn(bright, w, h, lum);
+    var eroded = _marksIn(solid, w, h, lum);
     if (eroded.length >= MIN_STARS && eroded.length <= MAX_STARS) return eroded;
     if (plain.length >= MIN_STARS && plain.length <= MAX_STARS) return plain;
     return eroded.length ? eroded : plain;
   }
 
   // Connected marks in a mask, filtered to things shaped like a star.
-  function _marksIn(bright, w, h) {
+  function _marksIn(bright, w, h, lum) {
 
     var seen = new Uint8Array(w * h);
     var out = [];
@@ -207,12 +207,13 @@ const MagicCardVision = (function () {
       stack.length = 0;
       stack.push(i);
       seen[i] = 1;
-      var n = 0, sx = 0, sy = 0;
+      var n = 0, sx = 0, sy = 0, peak = 0;
       var minX = w, maxX = 0, minY = h, maxY = 0;
       while (stack.length) {
         var p = stack.pop();
         var px = p % w, py = (p / w) | 0;
         n++; sx += px; sy += py;
+        if (lum && lum[p] > peak) peak = lum[p];
         if (px < minX) minX = px;
         if (px > maxX) maxX = px;
         if (py < minY) minY = py;
@@ -242,7 +243,7 @@ const MagicCardVision = (function () {
       if (bw > w * 0.22 || bh > h * 0.22) continue;
       var ratio = bw / Math.max(1, bh);
       if (ratio < 0.35 || ratio > 2.8) continue;
-      out.push({ x: sx / n, y: sy / n, n: n });
+      out.push({ x: sx / n, y: sy / n, n: n, lit: peak });
     }
     out.sort(function (a2, b2) { return b2.n - a2.n; });
 
@@ -984,13 +985,17 @@ const MagicCardVision = (function () {
     var solved = _readByFrame(bl, _frame(im.data, W, hh));
     var head = solved ? [solved] : [];
 
-    if (bl.length < MIN_STARS || bl.length > MAX_STARS) {
+    // The stars, sorted out from the card's own furniture — the frame,
+    // the numbering along it, the panels. Everything downstream wants
+    // stars, not marks.
+    var stars = _starLike(bl);
+    if (stars.length < MIN_STARS || stars.length > MAX_STARS) {
       res.patterns = head.length ? head : null;
       return res;
     }
-    var g = _goldGrid(im.data, W, hh, bl);
-    var first = g ? _readCells(bl, g) : null;
-    var list = _candidates(im.data, W, hh, bl) || [];
+    var g = _goldGrid(im.data, W, hh, stars);
+    var first = g ? _readCells(stars, g) : null;
+    var list = _candidates(im.data, W, hh, stars) || [];
     if (first) {
       var fk = _key(first);
       list = list.filter(function (pp) { return _key(pp) !== fk; });
@@ -1172,6 +1177,27 @@ const MagicCardVision = (function () {
   // card's corner marks are a set of exactly four that are bigger.
   function _starLike(marks) {
     if (marks.length < 2) return marks;
+
+    // BRIGHTNESS BEFORE SIZE.
+    //
+    // The card's rows and columns are numbered now, and the numbers are
+    // marks too — measured, a frame held to the camera reported
+    // fourteen of them where there were seven stars, and the numbers
+    // are numerous enough and alike enough that "the biggest group of
+    // matching sizes" started choosing THEM.
+    //
+    // The stars are pure white and the numbering is gold at a little
+    // over half opacity, so brightness separates them cleanly where
+    // size cannot. Everything appreciably dimmer than the brightest
+    // mark is furniture: numbers, the frame, the panels.
+    var brightest = 0, i;
+    for (i = 0; i < marks.length; i++) {
+      if (marks[i].lit > brightest) brightest = marks[i].lit;
+    }
+    if (brightest > 0) {
+      var lit = marks.filter(function (m) { return m.lit >= brightest * 0.82; });
+      if (lit.length >= MIN_STARS) marks = lit;
+    }
     var best = null;
     for (var i = 0; i < marks.length; i++) {
       var ref = marks[i].n;

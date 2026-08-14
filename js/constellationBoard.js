@@ -228,6 +228,20 @@ const ConstellationBoard = (function () {
         });
       },
       clear: clear,
+      // Light these cells, as though they had been tapped.
+      //
+      // The camera reads a child's card and marks the board with what
+      // it saw, so the child confirms or nudges rather than drawing
+      // from scratch. Deliberately goes through the same toggle() every
+      // tap uses, so a marked-by-camera sky and a drawn one are the
+      // same thing in every respect that follows.
+      set: function (pattern) {
+        clear();
+        (pattern || []).forEach(function (p) {
+          var cell = board.querySelector('[data-row="' + p[0] + '"][data-col="' + p[1] + '"]');
+          if (cell) toggle(p[0], p[1], cell);
+        });
+      },
       // The lines are drawn from measured pixel positions, so they are
       // wrong the moment the board changes size and right again the
       // moment this is called.
