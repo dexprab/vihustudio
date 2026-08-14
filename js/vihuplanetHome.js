@@ -603,8 +603,8 @@
       var cvState = 'no loader';
       try {
         if (typeof OpenCv !== 'undefined') {
-          cvState = OpenCv.ready() ? 'READY'
-            : (window.cv ? 'loading…' : 'not here (using the old reader)');
+          cvState = OpenCv.state ? OpenCv.state()
+            : (OpenCv.ready() ? 'READY' : 'not here');
         }
       } catch (e) {}
 

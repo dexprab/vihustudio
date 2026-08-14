@@ -44,10 +44,19 @@ const OpenCv = (function () {
   var TIMEOUT_MS = 25000;
 
   var promise = null;
+  // Why the last attempt failed, kept so a surface can SAY it. A
+  // dependency that silently is not there is the hardest kind to
+  // diagnose from a screenshot — "not here" could be a slow network, a
+  // blocked host, or a bug in this file, and those need different
+  // answers from different people.
+  var lastError = null;
+  var started = 0;
 
   function load() {
     if (promise) return promise;
 
+    lastError = null;
+    started = Date.now();
     promise = new Promise(function (resolve, reject) {
       if (typeof window === 'undefined' || !window.document) {
         reject(new Error('no-document'));
@@ -73,9 +82,22 @@ const OpenCv = (function () {
       var el = document.createElement('script');
       el.src = SRC;
       el.async = true;
-      // No credentials travel with this, and nothing about a child goes
-      // out with the request — it is a static file fetch.
-      el.crossOrigin = 'anonymous';
+      // NO crossOrigin, deliberately.
+      //
+      // Setting it to 'anonymous' looked like good hygiene and was in
+      // fact the thing that broke this: it opts a plain <script> INTO a
+      // CORS check, and docs.opencv.org sends no
+      // Access-Control-Allow-Origin header, so the browser refused the
+      // file outright —
+      //
+      //   Access to script at 'https://docs.opencv.org/4.10.0/opencv.js'
+      //   from origin 'https://vihuplanet.com' has been blocked by CORS
+      //   policy … net::ERR_FAILED
+      //
+      // A classic script tag needs no such header. The only thing
+      // crossOrigin would buy here is readable error details from the
+      // other origin, which is worth nothing next to the file loading
+      // at all.
 
       el.onerror = function () { done(new Error('unreachable')); };
       el.onload = function () {
@@ -95,6 +117,7 @@ const OpenCv = (function () {
 
       document.head.appendChild(el);
     }).catch(function (e) {
+      lastError = (e && e.message) || 'failed';
       // A failed attempt is not remembered. A child who tries again
       // after their connection comes back should get a real second
       // chance, not a cached refusal.
@@ -111,7 +134,17 @@ const OpenCv = (function () {
     return !!(typeof window !== 'undefined' && window.cv && window.cv.Mat);
   }
 
-  var api = { load: load, ready: ready, SRC: SRC };
+  // What happened, in words: 'ready', 'never asked', 'still trying (Ns)'
+  // or the reason it gave up.
+  function state() {
+    if (ready()) return 'ready';
+    if (!started) return 'never asked';
+    if (lastError) return lastError;
+    var secs = Math.round((Date.now() - started) / 1000);
+    return 'still trying (' + secs + 's)';
+  }
+
+  var api = { load: load, ready: ready, state: state, SRC: SRC };
   try { window.OpenCv = api; } catch (e) {}
   return api;
 })();
