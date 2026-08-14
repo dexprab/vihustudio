@@ -982,13 +982,35 @@ const MagicCardVision = (function () {
     // where the reader had the right answer and simply never offered
     // it. It goes first, because when the frame is visible it is the
     // one reading that was solved rather than guessed.
-    var solved = _readByFrame(bl, _frame(im.data, W, hh));
+    var frameQuad = _frame(im.data, W, hh);
+    var solved = _readByFrame(bl, frameQuad);
     var head = solved ? [solved] : [];
 
-    // The stars, sorted out from the card's own furniture — the frame,
-    // the numbering along it, the panels. Everything downstream wants
-    // stars, not marks.
-    var stars = _starLike(bl);
+    // ONLY WHAT IS INSIDE THE FRAME CAN BE A STAR.
+    //
+    // Reported from a real camera: ten marks on a seven-star card, and
+    // the board marked with stars "all over the place". The extra marks
+    // are the row and column numbers — and brightness alone does not
+    // separate them once a real lens has blurred white into gold.
+    //
+    // The card already answers this exactly. The numbering is drawn
+    // OUTSIDE the frame and the stars are inside it, so the frame is a
+    // boundary rather than a hint: anything beyond it is furniture, by
+    // construction, whatever it looks like. A little inset also drops
+    // the frame's own edge.
+    var inside = bl;
+    if (frameQuad) {
+      var lim = _bounds(frameQuad.map(function (c) { return { x: c.x, y: c.y }; }));
+      var padX = lim.w * 0.04, padY = lim.h * 0.04;
+      var within = bl.filter(function (m) {
+        return m.x > lim.cx - lim.w / 2 + padX && m.x < lim.cx + lim.w / 2 - padX &&
+               m.y > lim.cy - lim.h / 2 + padY && m.y < lim.cy + lim.h / 2 - padY;
+      });
+      if (within.length >= MIN_STARS) inside = within;
+    }
+
+    // Then the usual sorting, for whatever the frame could not exclude.
+    var stars = _starLike(inside);
     if (stars.length < MIN_STARS || stars.length > MAX_STARS) {
       res.patterns = head.length ? head : null;
       return res;

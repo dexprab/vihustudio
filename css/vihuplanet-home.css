@@ -1117,3 +1117,42 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .vp-scan-sky { animation: none; }
 }
+
+/* Moving a camera-read sky as one thing.
+ *
+ * Only ever shown when the camera has marked the board: the reader gets
+ * a constellation's shape right and its position approximately, so the
+ * correction that is actually needed is a shift, not seven taps. */
+.vp-stars-nudge { margin: 0.5rem 0 0.2rem; text-align: center; }
+.vp-stars-nudge[hidden] { display: none; }
+
+.vp-stars-nudge-label {
+  display: block;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 0.9rem;
+  color: rgba(241, 234, 208, 0.55);
+  margin-bottom: 0.25rem;
+}
+
+.vp-stars-nudge-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 2rem);
+  grid-template-rows: repeat(2, 2rem);
+  gap: 0.2rem;
+  justify-content: center;
+}
+
+.vp-stars-nudge-pad button {
+  border-radius: 8px;
+  border: 1px solid rgba(241, 234, 208, 0.26);
+  background: rgba(12, 17, 32, 0.55);
+  color: var(--vp-paper, #F1EAD0);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0;
+}
+.vp-stars-nudge-pad button:hover { border-color: var(--vp-candle, #E8B871); }
+.vp-stars-nudge-pad [data-nudge="up"]    { grid-column: 2; grid-row: 1; }
+.vp-stars-nudge-pad [data-nudge="left"]  { grid-column: 1; grid-row: 2; }
+.vp-stars-nudge-pad [data-nudge="down"]  { grid-column: 2; grid-row: 2; }
+.vp-stars-nudge-pad [data-nudge="right"] { grid-column: 3; grid-row: 2; }

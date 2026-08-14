@@ -228,6 +228,33 @@ const ConstellationBoard = (function () {
         });
       },
       clear: clear,
+      // Move the whole sky by a row or a column.
+      //
+      // The camera reads a card's SHAPE reliably and its POSITION only
+      // approximately — measured, every star comes out right and the
+      // whole constellation sits a row or two from where it belongs.
+      // Correcting that star by star is seven taps for a wrong answer;
+      // moving it as one thing is the correction the mistake actually
+      // calls for.
+      //
+      // Refuses rather than clips when the sky would leave the grid, so
+      // a nudge can never quietly change the shape.
+      nudge: function (dr, dc) {
+        var pts = selected.map(function (k) {
+          var q = k.split(',');
+          return [parseInt(q[0], 10) + dr, parseInt(q[1], 10) + dc];
+        });
+        if (!pts.length) return false;
+        for (var i = 0; i < pts.length; i++) {
+          if (pts[i][0] < 0 || pts[i][0] >= size || pts[i][1] < 0 || pts[i][1] >= size) return false;
+        }
+        clear();
+        pts.forEach(function (p) {
+          var cell = board.querySelector('[data-row="' + p[0] + '"][data-col="' + p[1] + '"]');
+          if (cell) toggle(p[0], p[1], cell);
+        });
+        return true;
+      },
       // Light these cells, as though they had been tapped.
       //
       // The camera reads a child's card and marks the board with what

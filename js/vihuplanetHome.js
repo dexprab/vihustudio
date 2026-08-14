@@ -377,9 +377,17 @@
       // and a new one: there is only one recognition path left, the
       // exact match that has always worked everywhere, and the camera
       // is an input helper rather than an authority.
+      var nudgeEl = starsEl.querySelector('[data-stars-nudge]');
       if (seen && seen.length && board.set) {
         try { board.set(seen); } catch (e) {}
         say('Are these your stars?');
+        // Offered only here. A child drawing from scratch has nothing
+        // to move; a child holding a card has a whole sky in slightly
+        // the wrong place, which is a different problem and this is
+        // its answer.
+        if (nudgeEl) nudgeEl.hidden = false;
+      } else if (nudgeEl) {
+        nudgeEl.hidden = true;
       }
     }
 
@@ -984,6 +992,14 @@
 
     if (starsEl) {
       starsEl.addEventListener('click', function (ev) {
+        var pad = ev.target.closest ? ev.target.closest('[data-nudge]') : null;
+        if (pad) {
+          var d = pad.getAttribute('data-nudge');
+          var dr = d === 'up' ? -1 : d === 'down' ? 1 : 0;
+          var dc = d === 'left' ? -1 : d === 'right' ? 1 : 0;
+          try { if (board && board.nudge) board.nudge(dr, dc); } catch (e) {}
+          return;
+        }
         var btn = ev.target.closest('[data-stars-act]');
         if (!btn) return;
         var act = btn.getAttribute('data-stars-act');
