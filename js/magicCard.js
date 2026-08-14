@@ -302,9 +302,14 @@ const MagicCard=(function(){
   // claimed offline (or whose very first push simply failed) still
   // self-heals the moment any later push succeeds -- no migration,
   // no separate backfill job.
+  // Returns the write's own promise so a caller that must not act
+  // until the row EXISTS can wait for it. Sky Protection is the reason:
+  // it posts a Magic Card by id, and asking the platform to mail a card
+  // it has not been told about yet fails with `no_such_card`. Every
+  // existing caller ignores the return value and is unaffected.
   function _pushIdentitySnapshot(card){
-    if(!card || typeof ThemeRepositoryClient==='undefined') return;
-    ThemeRepositoryClient.isConfigured().then(function(ok){
+    if(!card || typeof ThemeRepositoryClient==='undefined') return Promise.resolve(false);
+    return ThemeRepositoryClient.isConfigured().then(function(ok){
       if(!ok) return;
       return ThemeRepositoryClient.getClient().then(function(client){
         return ThemeRepositoryClient.getSession().then(function(session){
@@ -466,7 +471,31 @@ const MagicCard=(function(){
     setActive(card.id);
     // A one-time event, not a rapid-succession edit stream -- pushed
     // immediately rather than debounced, unlike touch()/rename() below.
-    _pushIdentitySnapshot(card);
+    // THE MOMENT A WAITING SKY CAN FINALLY BE POSTED.
+    //
+    // A child gives a grown-up's address during their FIRST share, and
+    // at that moment they have no Magic Card yet -- Canon 6 puts the
+    // Creator Ceremony after sharing, so that is the normal order, not
+    // an edge case. SkyProtection.protect() correctly remembers the
+    // address and reports `pending`, and the card is meant to be posted
+    // "the moment there is one". This is that moment, and nothing was
+    // calling it: the only catchUp() was fired by the share ceremony
+    // itself, synchronously, BEFORE the interactive Ceremony that mints
+    // the card had even begun -- so _activeCardId() was still null, it
+    // returned `nothing_to_do`, and the card was never sent at all.
+    // A grown-up who was promised a Magic Card never received one.
+    //
+    // Chained onto the snapshot rather than fired beside it, because
+    // Sky Protection asks the platform to mail a card BY ID and the row
+    // has to exist there first, or the send fails with `no_such_card`.
+    var pushed=_pushIdentitySnapshot(card);
+    try{
+      if(pushed && typeof pushed.then==='function'){
+        pushed.then(function(){
+          try{ if(typeof SkyProtection!=='undefined' && SkyProtection.catchUp) SkyProtection.catchUp(); }catch(e){}
+        }).catch(function(){});
+      }
+    }catch(e){}
     // Companion Canon V2 -- this is the literal "Story Egg hatches -> A
     // Story Companion is born -> Magic Card is permanently bonded ->
     // Creator Journey begins" moment. Single defensive hook, matching

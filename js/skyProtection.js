@@ -45,6 +45,12 @@ const SkyProtection = (function () {
   // what the platform holds, not the record of it.
   var EMAIL_KEY = 'vihu-sky-parent-email';
   var SKIPPED_KEY = 'vihu-sky-protection-skipped';
+  // Set when an address is taken but the card could not be posted yet
+  // (there was no card), cleared the moment one is successfully sent.
+  // catchUp() acts ONLY on this, which is what keeps it from mailing a
+  // second identical copy to a child who already had a card when they
+  // gave the address — protect() has already sent that one.
+  var PENDING_KEY = 'vihu-sky-protection-pending';
 
   var CONFIG_URL = (function () {
     var el = document.currentScript;
@@ -70,6 +76,16 @@ const SkyProtection = (function () {
   function _rememberEmail(email) {
     try { localStorage.setItem(EMAIL_KEY, email); } catch (e) {}
     try { localStorage.removeItem(SKIPPED_KEY); } catch (e) {}
+  }
+
+  function _markPending() {
+    try { localStorage.setItem(PENDING_KEY, '1'); } catch (e) {}
+  }
+  function _clearPending() {
+    try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+  }
+  function _isPending() {
+    try { return localStorage.getItem(PENDING_KEY) === '1'; } catch (e) { return false; }
   }
 
   function hasProtection() { return !!parentEmail(); }
@@ -177,10 +193,15 @@ const SkyProtection = (function () {
     var id = _activeCardId();
     _rememberEmail(to);
 
-    if (!id) return Promise.resolve({ ok: true, pending: true, sent: 0 });
+    if (!id) { _markPending(); return Promise.resolve({ ok: true, pending: true, sent: 0 }); }
+    // Still pending until the send actually succeeds — an unreachable
+    // or unconfigured deployment must leave the card waiting to be
+    // posted, not silently drop it.
+    _markPending();
     return _call({ action: 'protect', identityId: id, email: to })
       .then(function (res) {
-        return res && res.ok ? { ok: true, sent: res.sent || 1 } : (res || { ok: false });
+        if (res && res.ok) { _clearPending(); return { ok: true, sent: res.sent || 1 }; }
+        return res || { ok: false };
       });
   }
 
@@ -221,7 +242,16 @@ const SkyProtection = (function () {
     var to = parentEmail();
     var id = _activeCardId();
     if (!to || !id) return Promise.resolve({ ok: false, error: 'nothing_to_do' });
-    return _call({ action: 'protect', identityId: id, email: to });
+    // Only when a card is genuinely still owed. Without this, a child
+    // who already HAD a card when they gave the address gets the same
+    // Magic Card twice — protect() sent it, and this would send it
+    // again the moment anything called catchUp().
+    if (!_isPending()) return Promise.resolve({ ok: false, error: 'nothing_to_do' });
+    return _call({ action: 'protect', identityId: id, email: to })
+      .then(function (res) {
+        if (res && res.ok) _clearPending();
+        return res;
+      });
   }
 
   // Deployment check, from the console, sending nothing:

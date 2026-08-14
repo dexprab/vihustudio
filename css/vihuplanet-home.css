@@ -301,6 +301,57 @@ html, body {
   box-shadow: 0 18px 50px rgba(6, 9, 20, 0.66);
 }
 
+/* ---------- the page turn ----------
+ *
+ * A page in a story turns; it does not cross-fade. The image pivots on
+ * its spine — the left edge going forward, the right edge coming back —
+ * so the direction of travel is legible without a word, and the new
+ * page is swapped in at the halfway point, while the paper is edge-on
+ * and there is nothing to see. That is what makes it read as one sheet
+ * moving rather than two pictures trading places.
+ *
+ * Cheap on purpose, per the runtime's own rule: two transforms and an
+ * opacity on ONE element that already exists. No second page element,
+ * no library, no per-frame JS. */
+.ether-portal-stage { perspective: 1600px; }
+
+.ether-portal-page.is-turning-next,
+.ether-portal-page.is-turning-prev {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.ether-portal-page.is-turning-next {
+  transform-origin: left center;
+  animation: vp-page-next 460ms cubic-bezier(.42, 0, .3, 1) both;
+}
+
+.ether-portal-page.is-turning-prev {
+  transform-origin: right center;
+  animation: vp-page-prev 460ms cubic-bezier(.42, 0, .3, 1) both;
+}
+
+@keyframes vp-page-next {
+  0%   { transform: rotateY(0deg)   translateZ(0); opacity: 1; }
+  48%  { transform: rotateY(-74deg) translateZ(26px); opacity: .55; }
+  52%  { transform: rotateY(74deg)  translateZ(26px); opacity: .55; }
+  100% { transform: rotateY(0deg)   translateZ(0); opacity: 1; }
+}
+
+@keyframes vp-page-prev {
+  0%   { transform: rotateY(0deg)   translateZ(0); opacity: 1; }
+  48%  { transform: rotateY(74deg)  translateZ(26px); opacity: .55; }
+  52%  { transform: rotateY(-74deg) translateZ(26px); opacity: .55; }
+  100% { transform: rotateY(0deg)   translateZ(0); opacity: 1; }
+}
+
+/* A child who has asked their device for less movement gets the page,
+   not the performance. */
+@media (prefers-reduced-motion: reduce) {
+  .ether-portal-page.is-turning-next,
+  .ether-portal-page.is-turning-prev { animation: none; }
+}
+
 .ether-portal-arrow {
   flex: 0 0 auto;
   width: 2.6rem;

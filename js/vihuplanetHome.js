@@ -839,11 +839,42 @@
       playVoice();
     }
 
+    // The page turns, and the new one is swapped in at the halfway
+    // point — while the paper is edge-on and there is nothing to see.
+    // Swapping at either end would show the picture change instead of
+    // the page move, which is the difference between turning a page and
+    // cross-fading two of them.
+    var PAGE_TURN_MS = 460;
+    var turning = false;
+
+    function reducedMotion() {
+      try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+      catch (e) { return false; }
+    }
+
     function turn(by) {
+      // A second press mid-turn would swap the picture under a running
+      // animation and leave the count disagreeing with the page.
+      if (turning) return;
       var next = pageIndex + by;
       if (next < 0 || next >= pages.length) return;
-      pageIndex = next;
-      showPage();
+
+      if (reducedMotion()) { pageIndex = next; showPage(); return; }
+
+      turning = true;
+      var cls = by > 0 ? 'is-turning-next' : 'is-turning-prev';
+      el.page.classList.add(cls);
+      window.setTimeout(function () {
+        pageIndex = next;
+        // Also where the new page's narration begins, which is right:
+        // the voice belongs to the page now arriving, not the one
+        // leaving.
+        showPage();
+      }, PAGE_TURN_MS / 2);
+      window.setTimeout(function () {
+        el.page.classList.remove(cls);
+        turning = false;
+      }, PAGE_TURN_MS);
     }
 
     el.read.addEventListener('click', openPortal);

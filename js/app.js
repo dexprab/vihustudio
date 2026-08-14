@@ -412,6 +412,37 @@ if(addPageBtnEl){
 // See the Home click handler's own comment for the full story.
 const HOME_RETURN_FLAG='vihu-home-return-to-projects';
 let _homeReturnPending=false;
+// BACK TO VIHUPLANET.
+//
+// VihuPlanet is Home; the Studio is the Hall of Creation. A child could
+// always come here and, until now, never leave — nothing in the Studio
+// led back to the universe, so the only way out was the browser's own
+// back button or a reload.
+//
+// The story is saved on the way out rather than trusted to the autosave
+// timer, because leaving is exactly the moment a debounced save has not
+// fired yet. Navigation happens whether or not that save resolves: a
+// child pressing this must always end up in VihuPlanet, and a save that
+// failed has already been reported by the autosave status itself.
+const etherBtnEl=document.getElementById('etherBtn');
+if(etherBtnEl){
+  etherBtnEl.addEventListener('click',function(){
+    function go(){ try{ window.location.href='index.html'; }catch(e){} }
+    try{
+      if(typeof ProjectManager!=='undefined' && ProjectManager.saveToLocalStorage){
+        const r=ProjectManager.saveToLocalStorage();
+        if(r && typeof r.then==='function'){
+          r.then(go).catch(go);
+          // Never let a hung save trap a child in the Studio.
+          window.setTimeout(go,1200);
+          return;
+        }
+      }
+    }catch(e){}
+    go();
+  });
+}
+
 const homeBtnEl=document.getElementById('homeBtn');
 if(homeBtnEl){
   homeBtnEl.addEventListener('click',function(){
