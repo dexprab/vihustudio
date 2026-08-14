@@ -528,6 +528,53 @@ stories."*
 - Still out of scope and not implemented: moderation, ratings, scoring,
   popularity, likes, search, filters and ranking (Decision 12).
 
+### 16. Show Me Your Stars Means the Magic Card
+
+Locked by the product owner after real use: shown ⭐ Show Me Your Stars,
+a child raised his physical Magic Card to the camera. Nobody taught him
+that. The product agrees with him rather than correcting him.
+
+- **⭐ Show Me Your Stars opens the camera**, not an identity screen.
+  One short line — *"Show me your Magic Card"* — and a soft place to
+  hold it. No QR codes, no account ids, no passwords, no tutorial and
+  no technical word anywhere a child can see.
+- **It must never look like scanning.** Not document capture, not
+  banking, not face recognition, not an authenticator. No corner
+  brackets, no reticle, no sweeping line, no percentage. It is
+  VihuPlanet looking at the child's stars.
+- **The Ether stays behind it, softened.** A child is never taken out
+  of the universe to be recognised.
+- **No new identity system.** The pattern the camera reads goes to
+  `CreatorRecognition.recognise()` — the same call the drawing board
+  makes, device first and platform second, matched as a SET. That is
+  what makes a brand-new machine work: the card is the bridge, not the
+  browser.
+- **✏️ Draw Your Stars remains, and is first-class.** It is the way in
+  whenever the camera cannot be used — permission refused, no camera,
+  card not to hand, or the child simply preferring it — and it is never
+  styled as an error state.
+- **The language never blames.** Never "failed", "invalid", "not
+  found", "verification". *"I couldn't see your stars yet."* ·
+  *"I can't see your Magic Card."* Then Try Again · Draw Your Stars,
+  and the child stays in the Ether.
+- **A Traveller cannot fall into somebody else's sky.** Recognition
+  succeeds only on an exact constellation belonging to a real Creator.
+- **The card is read, not decoded** (`js/magicCardVision.js`): bright
+  marks are found, registered against the card's own grid, and turned
+  into cells. It shares `MagicCardArt.backGridGeometry()` with the art
+  that draws the card, so the two cannot drift apart.
+- **Disclosed limit.** The reader resolves the grid's left edge and
+  width exactly, and the vertical phase only approximately, so it
+  offers every reading the frame is consistent with (typically 3–8)
+  and lets the recogniser choose. Only a real card's exact pattern
+  belongs to a Creator, so a wrong reading matches nobody — the
+  candidate list cannot invent an identity. **It has been verified
+  against rendered cards, not yet against printed ones under real
+  lighting.**
+- Scope is closed: this sprint is only the interaction. The Ether,
+  Story Spirits, Canon Stories, Create Story and Creator Home are
+  unchanged.
+
 ## Roadmap
 
 1. Theme Designer Polish

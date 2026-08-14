@@ -274,7 +274,7 @@
           ? JourneyResolver.showMeYourStars()
           : JourneyResolver.createStory();
 
-        if (decision.action === 'stars') { openStars(); return; }
+        if (decision.action === 'stars') { openCardScan(); return; }
         goStudio(decision);
       });
     }
@@ -366,6 +366,148 @@
       document.querySelector('.vp-home').classList.add('is-marking');
       var first = starsEl.querySelector('.vp-stars-cell');
       if (first) first.focus();
+    }
+
+    // ---------------------------------------------------------------
+    // ⭐ SHOW ME YOUR STARS — taken literally.
+    //
+    // A child tapped this and held their Magic Card up to the camera.
+    // Nobody taught them that; it is simply what the words mean. So the
+    // camera opens first, and drawing the sky by hand becomes the way
+    // in when the card cannot be shown — never a lesser one.
+    //
+    // Nothing here is a new identity system. The pattern the camera
+    // reads goes to CreatorRecognition.recognise(), the same call the
+    // drawing board makes, and success runs the same three lines the
+    // board's own success runs. That is what makes a brand-new machine
+    // work: the card is the bridge, not the browser.
+    // ---------------------------------------------------------------
+    var scanEl = document.querySelector('[data-scan]');
+    var scanVideo = scanEl && scanEl.querySelector('[data-scan-video]');
+    var scanWindow = scanEl && scanEl.querySelector('.vp-scan-window');
+    var scanLine = scanEl && scanEl.querySelector('[data-scan-line]');
+    var scanActions = scanEl && scanEl.querySelector('[data-scan-actions]');
+    var scanStream = null;
+    var scanner = null;
+    var scanBusy = false;
+
+    function scanSay(text) { if (scanLine) scanLine.textContent = text; }
+
+    function closeCardScan(opts) {
+      if (!scanEl || scanEl.hidden) return;
+      if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
+      if (typeof MagicCardVision !== 'undefined') {
+        try { MagicCardVision.closeCamera(scanStream); } catch (e) {}
+      }
+      scanStream = null;
+      scanBusy = false;
+      scanEl.hidden = true;
+      if (scanWindow) scanWindow.classList.remove('is-seeing');
+      if (!(opts && opts.keepUniverseStill)) universe.traveller.setEnabled(true);
+    }
+
+    function scanFailed(line) {
+      if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
+      scanBusy = false;
+      if (scanWindow) scanWindow.classList.remove('is-seeing');
+      // Never "failed", "invalid", "not found" or "verification". A
+      // child's stars are never wrong; they are only, sometimes, not
+      // yet seen.
+      scanSay(line);
+      if (scanActions) scanActions.hidden = false;
+    }
+
+    function openCardScan() {
+      if (!scanEl || typeof MagicCardVision === 'undefined') { openStars(); return; }
+      scanEl.hidden = false;
+      if (scanActions) scanActions.hidden = true;
+      scanSay('✨ Show me your Magic Card ✨');
+      universe.traveller.setEnabled(false);
+
+      MagicCardVision.openCamera(scanVideo).then(function (stream) {
+        scanStream = stream;
+        scanner = MagicCardVision.scan(scanVideo, {
+          // Light, not a number. The only feedback a child gets is the
+          // window brightening as their stars come into view.
+          onSighting: function (progress) {
+            if (!scanWindow) return;
+            scanWindow.classList.toggle('is-seeing', progress > 0);
+          },
+          onPattern: function () { tryTheSkies(); }
+        });
+      }).catch(function () {
+        // Permission refused, or no camera at all. Both are ordinary
+        // and neither is a dead end.
+        scanFailed('I can’t see your Magic Card.');
+      });
+    }
+
+    // Every sky the frame could be showing, asked about in turn.
+    //
+    // The reader resolves where the card's grid begins along one axis
+    // and not the other, so it offers a handful of readings rather than
+    // one it cannot stand behind. Only a REAL card's exact pattern
+    // belongs to a Creator, so a wrong reading matches nobody — which
+    // is also why this cannot let a Traveller into somebody else's sky.
+    function tryTheSkies() {
+      if (scanBusy) return;
+      scanBusy = true;
+      var list = [];
+      try { list = MagicCardVision.readCandidates(scanVideo, null) || []; } catch (e) {}
+      if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
+
+      scanSay('Looking for your sky…');
+      var i = 0;
+      var anyUnreachable = false;
+      function next() {
+        if (i >= list.length) {
+          // Only once EVERY reading has been asked about. An unreachable
+          // sky is not the child's doing, so it is worth saying — but
+          // only when it is the whole story, never because one wrong
+          // reading happened to be the one the network dropped.
+          scanFailed(anyUnreachable
+            ? 'I can’t see the whole sky from here right now.'
+            : 'I couldn’t see your stars yet.');
+          return;
+        }
+        var pattern = list[i++];
+        CreatorRecognition.recognise(pattern).then(function (result) {
+          if (result.outcome === CreatorRecognition.KNOWN) {
+            scanSay('There you are.');
+            // The same three lines the drawing board runs. Being
+            // recognised is not an event to acknowledge — it is the
+            // door opening.
+            CreatorRecognition.markRecognised(result.card && result.card.id);
+            window.setTimeout(function () {
+              closeCardScan({ keepUniverseStill: true });
+              goStudio(JourneyResolver.recognised());
+            }, 620);
+            return;
+          }
+          // KEEP GOING on an unreachable one.
+          //
+          // A reading that is not this child's sky is answered by the
+          // platform, and with no platform in reach that answer is
+          // "unreachable" — for every wrong reading, not just the real
+          // one. Stopping there ended the search on the FIRST candidate
+          // and never reached the true sky sitting behind it, which is
+          // exactly how a Creator holding their own card was told the
+          // sky was out of reach.
+          if (result.outcome === CreatorRecognition.UNREACHABLE) anyUnreachable = true;
+          next();
+        }).catch(function () { next(); });
+      }
+      next();
+    }
+
+    if (scanEl) {
+      scanEl.addEventListener('click', function (ev) {
+        var act = ev.target && ev.target.getAttribute
+          ? ev.target.getAttribute('data-scan-act') : null;
+        if (act === 'again') { closeCardScan(); openCardScan(); return; }
+        if (act === 'draw') { closeCardScan(); openStars(); return; }
+        if (act === 'close') { closeCardScan(); return; }
+      });
     }
 
     function closeStars() {

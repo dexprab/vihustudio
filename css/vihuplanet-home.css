@@ -922,3 +922,143 @@ html, body {
   outline-offset: 3px;
   border-color: rgba(232, 184, 113, 0.6);
 }
+
+/* ---------------------------------------------------------------
+   ⭐ Show Me Your Stars — the camera.
+
+   A child raised their Magic Card to the camera unprompted, so this
+   is what "show me" now means. The Ether stays visible and softened
+   behind it: the child never leaves the universe to be recognised.
+
+   Everything a scanner would do, this deliberately does not. No corner
+   brackets, no reticle, no sweeping laser line, no percentage, no
+   "hold steady" instruction, no technical word anywhere. One short
+   sentence and a soft place to hold a card.
+   --------------------------------------------------------------- */
+.vp-scan {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+
+.vp-scan[hidden] { display: none; }
+
+/* The universe is still there — only quietened, never replaced. */
+.vp-scan-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 40%, rgba(8, 11, 24, 0.55) 0%, rgba(6, 9, 20, 0.86) 70%);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.vp-scan-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1rem;
+  max-width: min(92vw, 30rem);
+  text-align: center;
+}
+
+.vp-scan-line {
+  margin: 0;
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: clamp(1.3rem, 1.05rem + 1vw, 1.9rem);
+  color: var(--vp-paper, #F1EAD0);
+  text-shadow: 0 0 18px rgba(232, 184, 113, 0.35);
+}
+
+/* The card's own proportions, so what the child is holding and what
+   they are looking at are the same shape. */
+.vp-scan-window {
+  position: relative;
+  width: min(78vw, 22rem);
+  aspect-ratio: 700 / 980;
+  max-height: 58vh;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(10, 14, 28, 0.7);
+  box-shadow: 0 0 0 1px rgba(241, 234, 208, 0.16), 0 18px 50px rgba(4, 7, 16, 0.6);
+}
+
+.vp-scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Where to hold it: a breathing glow, not a target. It says "about
+   here" and never "align precisely", because the reader tolerates a
+   card held roughly. */
+.vp-scan-hold {
+  position: absolute;
+  inset: 7%;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(232, 184, 113, 0.5);
+  box-shadow: inset 0 0 40px rgba(232, 184, 113, 0.12);
+  pointer-events: none;
+  animation: vp-scan-breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes vp-scan-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.95; }
+}
+
+/* Brightens as the stars come into view — the only feedback, and it is
+   light rather than a number. */
+.vp-scan-window.is-seeing .vp-scan-hold {
+  border-color: rgba(255, 240, 200, 0.95);
+  box-shadow: inset 0 0 70px rgba(255, 226, 160, 0.34);
+  animation: none;
+}
+
+.vp-scan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.vp-scan-actions[hidden] { display: none; }
+
+/* Draw Your Stars is NOT a lesser thing here. Both buttons are the
+   same weight on purpose: one of them is how a child without their
+   card in reach gets in, and dressing it as the sad option would make
+   the fallback feel like a failure. */
+.vp-scan-btn {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 1.05rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.3);
+  background: rgba(12, 17, 32, 0.6);
+  color: var(--vp-paper, #F1EAD0);
+  cursor: pointer;
+}
+
+.vp-scan-btn:hover {
+  border-color: rgba(232, 184, 113, 0.8);
+  color: var(--vp-candle, #E8B871);
+}
+
+.vp-scan-away {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 0.95rem;
+  background: none;
+  border: 0;
+  color: rgba(241, 234, 208, 0.55);
+  cursor: pointer;
+}
+
+.vp-scan-away:hover { color: var(--vp-paper, #F1EAD0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-scan-hold { animation: none; }
+}

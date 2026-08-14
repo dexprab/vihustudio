@@ -64,6 +64,32 @@ const MagicCardArt=(function(){
   // "no cross-tool sharing, mirror instead" discipline for card art --
   // a future card type follows this identical pattern.
   const CARD_ART_W=700, CARD_ART_H=980;
+
+  // WHERE THE CONSTELLATION SITS ON THE BACK OF THE CARD.
+  //
+  // One definition, used by the art that DRAWS the card and by the
+  // camera that READS it (js/magicCardVision.js). Two copies of this
+  // would drift the first time the card's layout was touched, and the
+  // failure would be silent: a card that still looks right and stops
+  // being recognisable.
+  //
+  // `subtitleBottom` is where the wrapped subtitle ended, which only
+  // drawBack knows. The default is what that text actually produces at
+  // its fixed size and width, so a caller that has not drawn anything
+  // (the camera) gets the same geometry.
+  function _backGridGeometry(subtitleBottom){
+    const gridSize=CARD_ART_W-160;
+    const bottom=(typeof subtitleBottom==='number')?subtitleBottom:150;
+    return {
+      cardW:CARD_ART_W,
+      cardH:CARD_ART_H,
+      gridSize:gridSize,
+      gridLeft:(CARD_ART_W-gridSize)/2,
+      gridTop:Math.max(150,bottom+40),
+      cell:gridSize/10,
+      cells:10
+    };
+  }
   const CARD_PRINT_DPI=300;
   const CARD_TRIM_IN_W=2.5, CARD_TRIM_IN_H=3.5;
   const CARD_PIXEL_W=Math.round(CARD_TRIM_IN_W*CARD_PRINT_DPI);
@@ -448,8 +474,9 @@ const MagicCardArt=(function(){
     ctx.fillStyle='rgba(238,241,255,0.7)';
     const subtitleBottom=_wrapCentered(ctx,'This constellation is your secret code. It connects you to VihuPlanet.',CARD_ART_W/2,106,CARD_ART_W-160,22,2);
 
-    const gridTop=Math.max(150,subtitleBottom+40), gridSize=CARD_ART_W-160, cell=gridSize/10;
-    const gridLeft=(CARD_ART_W-gridSize)/2;
+    const _geo=_backGridGeometry(subtitleBottom);
+    const gridTop=_geo.gridTop, gridSize=_geo.gridSize, cell=_geo.cell;
+    const gridLeft=_geo.gridLeft;
 
     if(card.pattern && card.pattern.length){
       const pts=card.pattern.map(function(p){
@@ -606,6 +633,9 @@ const MagicCardArt=(function(){
     resolveCompanionPortrait:resolveCompanionPortrait,
     drawFront:drawFront,
     drawBack:drawBack,
+    // Shared with the camera that reads a printed card — see the
+    // function's own comment.
+    backGridGeometry:_backGridGeometry,
     downloadDataURL:downloadDataURL,
     printCard:printCard
   };
