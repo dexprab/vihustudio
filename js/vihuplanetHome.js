@@ -414,6 +414,9 @@
     var scanner = null;
     var scanBusy = false;
     var scanState = null;
+    var steadyFor = 0;
+    var counting = null;
+    var capturing = false;
     var scanPatienceSaid = false;
 
     function scanSay(text) { if (scanLine) scanLine.textContent = text; }
@@ -507,6 +510,8 @@
 
     function closeCardScan(opts) {
       if (!scanEl || scanEl.hidden) return;
+      stopCountdown(false);
+      capturing = false;
       if (scanWaitTimer) { window.clearTimeout(scanWaitTimer); scanWaitTimer = null; }
       if (scanner) { try { scanner.stop(); } catch (e) {} scanner = null; }
       if (typeof MagicCardVision !== 'undefined') {
@@ -635,6 +640,9 @@
       if (scanAgainBtn) scanAgainBtn.hidden = true;
       scanState = null;
       scanPatienceSaid = false;
+      steadyFor = 0;
+      capturing = false;
+      stopCountdown(false);
       // Whatever the last recognition left on screen is cleared, or a
       // second look would open onto the previous child's stars.
       var sky = scanEl.querySelector('[data-scan-sky]');
@@ -705,7 +713,37 @@
             // one line offering a way on a frame after it appeared.
             else if (!scanPatienceSaid) scanSay('✨ Show me your Magic Card ✨');
           },
-          onPattern: function () { tryTheSkies(); },
+          // ---------------------------------------------------------
+          // HOLD IT STILL, AND IT TAKES A PHOTOGRAPH.
+          //
+          // Reading the live stream was never going to work, and the
+          // reason was never the algorithm: a live frame is read at
+          // 320 pixels wide because it runs many times a second, and at
+          // that size a star on a held-up card is two or three pixels.
+          // No cleverness recovers detail thrown away before it ran.
+          //
+          // A still has no frame budget. Measured against the same
+          // scene, the same card that gives eight marks live gives
+          // fourteen in a still, and the EXACT read — the one a new
+          // machine needs — goes from working only on a flat card to
+          // working on a tilted one.
+          //
+          // So the camera waits for the child to hold their card still,
+          // counts down where they can see it, and takes the picture.
+          // No tap: a countdown is the one instruction a child does not
+          // need explained.
+          // ---------------------------------------------------------
+          onSteady: function (movement, marks) {
+            if (scanBusy || capturing) return;
+            var holding = marks >= 4;
+            var still = movement < 0.045;
+            if (holding && still) { steadyFor++; } else { steadyFor = 0; }
+
+            if (steadyFor >= 8 && !counting) { startCountdown(); return; }
+            // Moved during the count — start again rather than take a
+            // photograph of a moving card.
+            if (counting && !(holding && still)) { stopCountdown(true); }
+          },
           // Shape recognition needs no complete reading — it compares
           // what the camera can see against the cards this device
           // already holds. Tried on every frame that has stars in it,
@@ -749,6 +787,75 @@
       scanBusy = true;
       try { MagicCard.setActive(hit.card.id); } catch (e) {}
       skyRecognised(hit.card);
+    }
+
+    function stopCountdown(sayAgain) {
+      if (counting) { window.clearInterval(counting); counting = null; }
+      steadyFor = 0;
+      if (sayAgain) { scanState = null; scanSay('Hold it a little steadier…'); }
+    }
+
+    function startCountdown() {
+      var n = 5;
+      scanSay(String(n));
+      counting = window.setInterval(function () {
+        n--;
+        if (n > 0) { scanSay(String(n)); return; }
+        stopCountdown(false);
+        takeTheShot();
+      }, 700);
+    }
+
+    // The photograph itself, at the camera's own resolution rather
+    // than the thumbnail a live loop can afford.
+    function takeTheShot() {
+      if (capturing || scanBusy) return;
+      capturing = true;
+      scanSay('✨');
+      var shot = document.createElement('canvas');
+      var w = scanVideo.videoWidth || 1280;
+      var h = scanVideo.videoHeight || 720;
+      shot.width = w; shot.height = h;
+      try {
+        shot.getContext('2d').drawImage(scanVideo, 0, 0, w, h);
+      } catch (e) { capturing = false; return; }
+
+      // A moment on the still, so the picture is not analysed in the
+      // same frame it was taken and the flash has time to be seen.
+      window.setTimeout(function () { readTheShot(shot); }, 260);
+    }
+
+    function readTheShot(shot) {
+      var cards = [];
+      try { cards = (typeof MagicCard !== 'undefined' && MagicCard.list) ? MagicCard.list() : []; }
+      catch (e) { cards = []; }
+
+      // This device's own cards first, on the full-resolution still.
+      if (cards.length && MagicCardVision.identifyStill) {
+        var hit = null;
+        try { hit = MagicCardVision.identifyStill(shot, cards); } catch (e) {}
+        if (hit && hit.card) {
+          capturing = false;
+          scanBusy = true;
+          try { MagicCard.setActive(hit.card.id); } catch (e) {}
+          skyRecognised(hit.card);
+          return;
+        }
+      }
+
+      // Otherwise the reading goes to the board, as before — but read
+      // from a photograph rather than a thumbnail.
+      var read = null;
+      try { read = MagicCardVision.readStill(shot); } catch (e) {}
+      var list = (read && read.patterns) || [];
+      capturing = false;
+      if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
+      scanBusy = true;
+      scanSay('There they are.');
+      window.setTimeout(function () {
+        closeCardScan({ keepUniverseStill: true });
+        openStars(list[0]);
+      }, 700);
     }
 
     // The camera has seen a sky. Whose it is, is now somebody else's

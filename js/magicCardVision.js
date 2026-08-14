@@ -56,9 +56,16 @@
 const MagicCardVision = (function () {
   'use strict';
 
-  // Analysis size. Small on purpose: this runs continuously, and a
-  // star on a card is several pixels across even here.
-  var W = 320;
+  // What a LIVE frame is read at. Small because it runs many times a
+  // second; see _analyse for why that smallness is the whole problem.
+  var LIVE_W = 320;
+
+  // What a STILL is read at. No frame budget applies, so this is bound
+  // only by the camera — a card that gave three-pixel stars at 320
+  // gives thirty-pixel stars here.
+  var STILL_W = 1400;
+
+  var W = LIVE_W;
 
   // How many consecutive frames must agree before a pattern is
   // believed. A single frame can be lucky; three in a row of the same
@@ -959,11 +966,29 @@ const MagicCardVision = (function () {
   // card up and holding up nothing at all looked exactly the same — a
   // still picture and no sign of life — which is the one thing a child
   // waiting for magic should never get.
-  function _analyse(source) {
+  function _analyse(source, width) {
+    // WIDTH IS A PARAMETER NOW, and it is the most important number in
+    // this file.
+    //
+    // A live stream is read at 320px because it runs many times a
+    // second — and at that size, with the card filling half the frame,
+    // a star is two or three pixels. That is the real reason it cannot
+    // be told from a numeral or a speck of the room, and no amount of
+    // cleverness recovers detail that was thrown away before the
+    // algorithm ran.
+    //
+    // A STILL has no frame budget. It can be read at the camera's own
+    // resolution, where the same star is tens of pixels across.
+    var W = width || LIVE_W;
     var c = document.createElement('canvas');
     var sw = source.videoWidth || source.naturalWidth || source.width;
     var sh = source.videoHeight || source.naturalHeight || source.height;
     if (!sw || !sh) return null;
+    // NEVER LARGER THAN THE PICTURE ITSELF. Asking for 1400 from a
+    // 1280-wide frame upscales it: the same detail, spread over more
+    // pixels, at more cost and no gain. Native is the most a still can
+    // honestly offer.
+    if (W > sw) W = sw;
     var hh = Math.round(W * sh / sw);
     c.width = W; c.height = hh;
     var xx = c.getContext('2d', { willReadFrequently: true });
@@ -1039,6 +1064,35 @@ const MagicCardVision = (function () {
     var agreed = 0;
     var busy = false;
 
+    // IS THE CARD BEING HELD STILL?
+    //
+    // A thumbnail of each frame, compared with the one before it. Tiny
+    // on purpose — this is not looking at the card, only at whether the
+    // picture has changed — so it costs almost nothing and is immune to
+    // sensor noise, which averages out at this size.
+    //
+    // Steadiness is what triggers the countdown, and the countdown is
+    // what earns the still: a photograph taken while a child is waving
+    // their card is worth no more than a video frame of it.
+    var prev = null;
+    var tiny = document.createElement('canvas');
+    tiny.width = 32; tiny.height = 18;
+    var tinyX = tiny.getContext('2d', { willReadFrequently: true });
+
+    function stillness() {
+      try {
+        tinyX.drawImage(video, 0, 0, 32, 18);
+        var now = tinyX.getImageData(0, 0, 32, 18).data;
+        if (!prev) { prev = now; return 0; }
+        var diff = 0;
+        for (var i = 0; i < now.length; i += 4) {
+          diff += Math.abs(now[i] - prev[i]);
+        }
+        prev = now;
+        return diff / (32 * 18 * 255);        // 0 = frozen, 1 = chaos
+      } catch (e) { return 1; }
+    }
+
     function tick() {
       if (stopped) return;
       if (!busy && video.readyState >= 2) {
@@ -1055,6 +1109,11 @@ const MagicCardVision = (function () {
             typeof opts.onMarks === 'function') {
           try { opts.onMarks(look.marks); } catch (e) {}
         }
+        // How still the picture is, every frame, for whoever is
+        // deciding whether to take a photograph.
+        if (typeof opts.onSteady === 'function') {
+          try { opts.onSteady(stillness(), look && look.marks ? look.marks.length : 0); } catch (e) {}
+        }
         if (typeof opts.onState === 'function') {
           try {
             opts.onState(!look ? 'nothing'
@@ -1070,7 +1129,14 @@ const MagicCardVision = (function () {
           if (typeof opts.onSighting === 'function') {
             try { opts.onSighting(agreed / AGREE_FRAMES); } catch (e) {}
           }
-          if (agreed >= AGREE_FRAMES) {
+          // Only pause if somebody is waiting on a complete reading.
+          //
+          // The still-photograph path does not: it watches steadiness
+          // and takes its own picture, so latching here stopped the
+          // frame loop dead — onSteady was never called again and the
+          // countdown could never start. A latch with nothing to
+          // release it is a hang, not a guard.
+          if (agreed >= AGREE_FRAMES && typeof opts.onPattern === 'function') {
             // PAUSED, NOT STOPPED.
             //
             // A reading that turns out to belong to nobody is an
@@ -1401,9 +1467,9 @@ const MagicCardVision = (function () {
     return pattern;
   }
 
-  function identify(source, cards) {
+  function identify(source, cards, width) {
     if (!cards || !cards.length) return null;
-    var look = _analyse(source);
+    var look = _analyse(source, width);
     if (!look || !look.marks || look.marks.length < MIN_STARS) return null;
 
     // THE CORNER MARKS ARE NOT STARS.
@@ -1629,6 +1695,24 @@ const MagicCardVision = (function () {
     readFrame: readFrame,
     // Every sky the frame is consistent with, best first. The caller
     // hands these to CreatorRecognition in turn — see _candidates.
+    // A STILL, read properly. Everything the live path does, at the
+    // camera's own resolution and with no frame budget.
+    readStill: function (source) {
+      try {
+        var look = _analyse(source, STILL_W);
+        return look ? { marks: look.stars, patterns: look.patterns } : null;
+      } catch (e) { return null; }
+    },
+    // What a still yields, for comparison against the live path.
+    lookStill: function (source) {
+      try {
+        var look = _analyse(source, STILL_W);
+        return look ? { marks: look.stars, patterns: (look.patterns || []).length } : null;
+      } catch (e) { return null; }
+    },
+    identifyStill: function (source, cards) {
+      return identify(source, cards, STILL_W);
+    },
     readCandidates: function (source, rect) {
       try {
         var look = _analyse(source);
