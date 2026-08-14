@@ -577,8 +577,8 @@ const MagicCardVision = (function () {
       var blobs = _blobs(img.data, W, h);
       // The corner solve wants everything; the lattice guesswork below
       // wants only the star-shaped set.
-      var byQuadFirst = _readByQuad(blobs);
-      if (byQuadFirst) return byQuadFirst;
+      var byFrame = _readByFrame(blobs, _frame(img.data, W, h));
+      if (byFrame) return byFrame;
       blobs = _starLike(blobs);
       if (blobs.length < MIN_STARS || blobs.length > MAX_STARS) return null;
 
@@ -1177,56 +1177,107 @@ const MagicCardVision = (function () {
   //
   // The corner marks are the four largest marks on the card, which is
   // why the art draws them larger than the stars.
-  function _quad(marks) {
-    if (marks.length < 6) return null;                 // 4 corners + stars
-    // SIZE NARROWS IT; POSITION DECIDES IT.
-    //
-    // Taking the four largest marks was not enough: the card carries
-    // other bright furniture — the companion emblem, the panels along
-    // the bottom — and measured against the real art there were FIVE
-    // marks of corner size, not four. Picking the top four then mixed
-    // a panel in with three corners and the whole solve was refused.
-    //
-    // Corner marks have something no panel has: they sit at the four
-    // extremes of the card, one toward each corner. So the large marks
-    // are the candidates, and the four that reach furthest into each
-    // corner are the answer.
-    var sorted = marks.slice().sort(function (a, b) { return b.n - a.n; });
-    var big = sorted.slice(0, Math.min(10, sorted.length));
-    if (big.length < 4) return null;
-
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
-    for (i = 0; i < marks.length; i++) {
-      if (marks[i].x < minX) minX = marks[i].x;
-      if (marks[i].y < minY) minY = marks[i].y;
-      if (marks[i].x > maxX) maxX = marks[i].x;
-      if (marks[i].y > maxY) maxY = marks[i].y;
+  // THE CHART'S FRAME IS THE REGISTRATION MARK.
+  //
+  // The card no longer carries four white squares — they did the job
+  // and looked like hardware bolted to a keepsake. It carries a ruled
+  // frame around the grid instead, the way a star chart is bordered,
+  // and for the reader that is strictly better: four separate marks had
+  // to be found among the card's other bright furniture and then
+  // matched up, where a frame is ONE continuous shape that encloses
+  // everything else. Its corners are the corners of the largest hollow
+  // bright thing in the picture.
+  //
+  // Hollow is what tells it from a panel or a window: a frame's own
+  // pixels are a small fraction of the area it encloses.
+  function _frame(data, w, h) {
+    var lum = new Float32Array(w * h);
+    var i, x, y;
+    for (i = 0; i < w * h; i++) {
+      lum[i] = (data[i * 4] * 0.299 + data[i * 4 + 1] * 0.587 + data[i * 4 + 2] * 0.114) / 255;
     }
-    var want = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]];
-    var picked = [];
-    for (var c = 0; c < 4; c++) {
-      var best = null, bestD = Infinity;
-      for (i = 0; i < big.length; i++) {
-        if (picked.indexOf(big[i]) >= 0) continue;
-        var dx = big[i].x - want[c][0], dy = big[i].y - want[c][1];
-        var d = dx * dx + dy * dy;
-        if (d < bestD) { bestD = d; best = big[i]; }
+    // Locally bright, same reasoning as the stars: a card in a bright
+    // room is dark, and its frame is bright only against the card.
+    var integral = new Float64Array((w + 1) * (h + 1));
+    for (y = 0; y < h; y++) {
+      var row = 0;
+      for (x = 0; x < w; x++) {
+        row += lum[y * w + x];
+        integral[(y + 1) * (w + 1) + (x + 1)] = integral[y * (w + 1) + (x + 1)] + row;
       }
-      if (!best) return null;
-      picked.push(best);
+    }
+    function mean(x0, y0, x1, y1) {
+      x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+      x1 = Math.min(w - 1, x1); y1 = Math.min(h - 1, y1);
+      var n = (x1 - x0 + 1) * (y1 - y0 + 1);
+      if (n <= 0) return 0;
+      return (integral[(y1 + 1) * (w + 1) + (x1 + 1)]
+            - integral[y0 * (w + 1) + (x1 + 1)]
+            - integral[(y1 + 1) * (w + 1) + x0]
+            + integral[y0 * (w + 1) + x0]) / n;
+    }
+    var rad = Math.max(6, Math.round(w / 14));
+    var on = new Uint8Array(w * h);
+    for (y = 0; y < h; y++) {
+      for (x = 0; x < w; x++) {
+        var v = lum[y * w + x];
+        var m = mean(x - rad, y - rad, x + rad, y + rad);
+        if (v > m * 1.25 && v - m > 0.035) on[y * w + x] = 1;
+      }
     }
 
-    // They have to agree with each other in size, or they are not one
-    // set of marks, and they have to enclose a real area rather than
-    // huddling along one edge.
-    var ns = picked.map(function (m) { return m.n; });
-    if (Math.max.apply(null, ns) > Math.min.apply(null, ns) * 3.2) return null;
-    var w = Math.max(Math.abs(picked[1].x - picked[0].x), Math.abs(picked[2].x - picked[3].x));
-    var h2 = Math.max(Math.abs(picked[3].y - picked[0].y), Math.abs(picked[2].y - picked[1].y));
-    if (w < 20 || h2 < 20) return null;
-
-    // picked is already in corner order: TL, TR, BR, BL.
-    return { corners: picked, stars: marks.filter(function (m) { return picked.indexOf(m) < 0; }) };
+    // The largest connected bright thing that is mostly empty inside.
+    var seen = new Uint8Array(w * h);
+    var stack = [];
+    var best = null;
+    for (i = 0; i < w * h; i++) {
+      if (seen[i] || !on[i]) continue;
+      stack.length = 0; stack.push(i); seen[i] = 1;
+      var n = 0, minX = w, maxX = 0, minY = h, maxY = 0;
+      // THE FRAME'S TRUE CORNERS, not its bounding box.
+      //
+      // A tilted card's frame has a bounding box whose corners are
+      // nowhere near the frame's own — which is why every tilted card
+      // read exactly right when flat and wrong the moment it turned.
+      // The extremes of x+y and x-y find the real corners at any angle.
+      var tl = Infinity, br = -Infinity, tr = -Infinity, bl = Infinity;
+      var pTL = null, pBR = null, pTR = null, pBL = null;
+      while (stack.length) {
+        var p = stack.pop();
+        var px = p % w, py = (p / w) | 0;
+        var sum = px + py, dif = px - py;
+        if (sum < tl) { tl = sum; pTL = { x: px, y: py }; }
+        if (sum > br) { br = sum; pBR = { x: px, y: py }; }
+        if (dif > tr) { tr = dif; pTR = { x: px, y: py }; }
+        if (dif < bl) { bl = dif; pBL = { x: px, y: py }; }
+        n++;
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            var qx = px + dx, qy = py + dy;
+            if (qx < 0 || qy < 0 || qx >= w || qy >= h) continue;
+            var q = qy * w + qx;
+            if (seen[q] || !on[q]) continue;
+            seen[q] = 1; stack.push(q);
+          }
+        }
+      }
+      var bw = maxX - minX + 1, bh = maxY - minY + 1;
+      if (bw < w * 0.16 || bh < h * 0.16) continue;      // too small to be the chart
+      var area = bw * bh;
+      if (n > area * 0.42) continue;                      // solid: a panel, not a frame
+      var ratio = bw / bh;
+      if (ratio < 0.55 || ratio > 1.85) continue;         // the grid is square
+      if (!best || area > best.area) {
+        best = { area: area, corners: [pTL, pTR, pBR, pBL] };
+      }
+    }
+    if (!best || !best.corners[0]) return null;
+    // In the order the transform expects: TL, TR, BR, BL.
+    return best.corners;
   }
 
   // The homography taking the unit square to the four corners, solved
@@ -1254,18 +1305,13 @@ const MagicCardVision = (function () {
     };
   }
 
-  // A card's cells, read exactly, from its own corner marks.
-  function _readByQuad(marks) {
-    var q = _quad(marks);
-    if (!q) return null;
-    // What is left after the corners still includes the card's own
-    // furniture — panels, the emblem — so the constellation is picked
-    // out of it the same way it is everywhere else: the marks that
-    // match each other.
-    var stars = _starLike(q.stars);
-    if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
-    var inv = _homography(q.corners);
+  // A card's cells, read exactly, from the chart's own frame.
+  function _readByFrame(marks, frame) {
+    if (!frame) return null;
+    var inv = _homography(frame);
     if (!inv) return null;
+    var stars = _starLike(marks);
+    if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
 
     var cells = _geometry().cells;
     var pattern = [], used = {};
@@ -1298,10 +1344,7 @@ const MagicCardVision = (function () {
     // the real card art, every tilted card reported 8 to 11 marks for
     // a 5 to 7 star sky the moment the corners were added. They are
     // taken out before the shape is compared.
-    var marks = look.marks;
-    var q = _quad(marks);
-    if (q && q.stars.length >= MIN_STARS) marks = _starLike(q.stars);
-    else marks = _starLike(marks);
+    var marks = _starLike(look.marks);
     if (marks.length < MIN_STARS) return null;
 
     // The tilt estimate is a guess made from a handful of points, and a

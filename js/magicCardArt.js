@@ -533,37 +533,70 @@ const MagicCardArt=(function(){
         ctx.stroke();
       }
 
-      // The grid's four corners, as small solid squares just outside
-      // it. Square rather than round so the reader can tell them from
-      // the stars, and outside the grid so they never sit where a star
-      // could be.
-      // Half the side of a corner mark. Deliberately LARGER than a
-      // star: the reader finds the four corners by taking the biggest
-      // marks, so "bigger than a star" is not decoration, it is what
-      // makes them identifiable at all. At 0.20 a square's area was
-      // slightly SMALLER than a star disc's and the two were
-      // indistinguishable.
-      // Measured, not guessed: at 0.32 the corner marks came out of the
-      // detector at 25 pixels against stars at 21 — only a fifth
-      // bigger, which is not enough to tell them apart, and the whole
-      // corner solve refused to run. A star also carries a glow that
-      // adds to its area while a flat square does not, so the drawn
-      // sizes have to differ by more than the arithmetic suggests.
-      var markR=Math.max(12,cell*0.46);
-      ctx.fillStyle='#FFFFFF';
-      [[gridLeft,gridTop],[gridLeft+gridSize,gridTop],
-       [gridLeft,gridTop+gridSize],[gridLeft+gridSize,gridTop+gridSize]]
-        .forEach(function(c){
-          ctx.fillRect(c[0]-markR,c[1]-markR,markR*2,markR*2);
-        });
+      // A STAR CHART'S FRAME, not four squares stuck on.
+      //
+      // The corner marks worked for the camera and looked like what
+      // they were — hardware bolted to a keepsake. This does the same
+      // job and belongs on the card: a clean ruled frame around the
+      // grid, the way a real star chart is bordered, with the rows and
+      // columns numbered along it.
+      //
+      // For the reader it is BETTER than the squares were. Four
+      // separate marks had to be found among the card's other bright
+      // furniture and then matched up; a frame is one continuous shape
+      // enclosing everything else, so its corners are simply the
+      // corners of the largest hollow thing on the card. Those four
+      // points give the exact transform (js/magicCardVision.js).
+      ctx.save();
+      ctx.strokeStyle='rgba(255,246,221,0.92)';
+      ctx.lineWidth=3;
+      ctx.strokeRect(gridLeft,gridTop,gridSize,gridSize);
+      ctx.restore();
 
+      // Rows down the side, columns along the top — the same numbering
+      // the drawing board shows, so a child reading their card and a
+      // child marking their stars are looking at the same thing.
+      ctx.save();
+      ctx.fillStyle='rgba(255,203,69,0.62)';
+      ctx.font='500 15px Georgia, serif';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      for(let gi=0;gi<10;gi++){
+        const mid=(gi+0.5)*cell;
+        ctx.fillText(String(gi+1), gridLeft+mid, gridTop-16);
+        ctx.fillText(String(gi+1), gridLeft-16, gridTop+mid);
+      }
+      ctx.restore();
+
+      // REAL STARS, drawn thick enough to be seen.
+      //
+      // The original ★ glyph was the right shape and the wrong weight:
+      // small, and with arms thin enough that a camera lost them
+      // entirely — that is what defeated the first five readers. A
+      // circle survived the camera and was not a star, which is not a
+      // trade worth making on a child's keepsake.
+      //
+      // So: a real five-pointed star, drawn as a filled polygon at a
+      // size that leaves a solid middle. The inner radius is half the
+      // outer, which is a full-bodied star rather than a spindly one,
+      // and the middle is what survives blur and distance.
+      function starPath(cxp,cyp,outer){
+        const inner=outer*0.5;
+        ctx.beginPath();
+        for(let sp=0;sp<10;sp++){
+          const r=(sp%2===0)?outer:inner;
+          const a=-Math.PI/2 + sp*Math.PI/5;
+          const px=cxp+Math.cos(a)*r, py=cyp+Math.sin(a)*r;
+          if(sp===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+        }
+        ctx.closePath();
+      }
       pts.forEach(function(p){
         ctx.save();
         ctx.shadowColor='rgba(255,214,128,0.9)';
         ctx.shadowBlur=10;
         ctx.fillStyle='#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,Math.max(8,cell*0.24),0,Math.PI*2);
+        starPath(p.x,p.y,Math.max(11,cell*0.34));
         ctx.fill();
         ctx.restore();
       });
