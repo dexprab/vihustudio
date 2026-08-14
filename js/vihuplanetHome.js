@@ -656,16 +656,25 @@
         if (scanAgainBtn) scanAgainBtn.hidden = false;
       }, SCAN_PATIENCE_MS);
 
-      // Asked for the moment the camera opens, so it is downloading
-      // while the child is still getting their card into frame. It is
-      // deliberately NOT waited on: everything works without it today,
-      // and a ten megabyte download must never be the thing standing
-      // between a child and their sky.
-      try {
-        if (typeof OpenCv !== 'undefined') {
-          OpenCv.load().catch(function () { /* Draw Your Stars is unaffected */ });
-        }
-      } catch (e) {}
+      // OPENCV IS NOT FETCHED YET, ON PURPOSE.
+      //
+      // It was, from the moment the camera opened — and it made the
+      // page unresponsive and left the preview black. Ten megabytes of
+      // WebAssembly compiles on the main thread, so while it lands
+      // nothing else runs: not the video, not a tap, not the universe
+      // underneath.
+      //
+      // And it bought nothing, because NOTHING USES IT YET. The reader
+      // that will is still to be written (docs/MAGIC_CARD_VISION_PLAN.md).
+      // Paying a freeze for a dependency no code calls is the worst
+      // possible order to do this in, so the call moves to the reader
+      // that needs it — where it can also be deferred, chunked, or put
+      // behind a worker, none of which is decidable until there is
+      // something to defer.
+      //
+      // js/openCv.js stays exactly as it is: loader, timeout, fallback
+      // and diagnosis are all proven, and it is one call away from
+      // being used.
 
       MagicCardVision.openCamera(scanVideo).then(function (stream) {
         scanStream = stream;
