@@ -137,18 +137,44 @@ const OpenCv = (function () {
           attempt();                       // the next place
         };
         el.onload = function () {
-          // LOADED IS NOT READY. OpenCV compiles a WebAssembly module
-          // after its script runs, and using it before that finishes
-          // throws in a way that looks like a bug in whatever called it.
-          var cv = window.cv;
-          if (!cv) { tried.push(_host(url) + ' (empty)'); attempt(); return; }
-          if (cv.Mat) { done(null, cv); return; }
-          if (typeof cv.then === 'function') {        // some builds are a promise
-            cv.then(function (real) { done(null, real || window.cv); })
-              .catch(function () { done(new Error('init-failed')); });
-            return;
-          }
-          cv.onRuntimeInitialized = function () { done(null, window.cv); };
+          // LOADED IS NOT READY, and the ways of finding out differ per
+          // build. This waits for the one thing that is true of all of
+          // them instead of trusting any single contract.
+          //
+          // The previous version did `cv.then(...).catch(...)` and threw
+          // on the real file:
+          //
+          //   Uncaught TypeError: cv.then(...).catch is not a function
+          //
+          // An Emscripten module exposes a `then` PROPERTY, which makes
+          // it look thenable without being a promise — calling it
+          // returns undefined, so chaining anything onto it throws. It
+          // is a well-known footgun and I walked straight into it.
+          //
+          // `cv.Mat` existing is the honest test: it is the API this
+          // module actually uses, so its presence means ready by
+          // definition rather than by a promise anybody has to keep.
+          var give = function () {
+            if (window.cv && window.cv.Mat) { done(null, window.cv); return true; }
+            return false;
+          };
+          if (give()) return;
+
+          // Both mechanisms, and neither trusted alone.
+          try {
+            if (window.cv && typeof window.cv.onRuntimeInitialized !== 'function') {
+              window.cv.onRuntimeInitialized = function () { give(); };
+            }
+          } catch (e) {}
+
+          // The belt and braces: some builds resolve without ever
+          // calling the hook, and a poll cannot be wrong about whether
+          // the API is there. The outer timeout still bounds it.
+          var waited = 0;
+          var poll = window.setInterval(function () {
+            waited += 120;
+            if (give() || settled || waited > TIMEOUT_MS) window.clearInterval(poll);
+          }, 120);
         };
         document.head.appendChild(el);
       }
