@@ -102,7 +102,27 @@ const MagicCardArt=(function(){
       gridLeft:(CARD_ART_W-gridSize)/2,
       gridTop:Math.max(150,bottom+40),
       cell:gridSize/10,
-      cells:10
+      cells:10,
+      // HOW FAR OUTSIDE THE GRID THE GUIDE STARS SIT, in cells.
+      //
+      // They used to sit exactly ON the corners, and that put them on
+      // top of the sky. A corner cell's centre is half a cell in on both
+      // axes — 38 card pixels from the corner — while a guide star's
+      // radius is 35 and a pattern star's is 18. They overlap by a wide
+      // margin, so a constellation with a star in a corner cell had that
+      // star swallowed whole: URSA MAJOR read six of its seven, losing
+      // exactly the one at row 9, column 9.
+      //
+      // Half a cell out puts 76 pixels between a guide star and the
+      // nearest cell centre, which clears both radii with room for a
+      // lens to blur into. It also clears the row and column numbering,
+      // which sits 30 pixels off the grid on the other two sides.
+      //
+      // The reader needs this number too: the four guide stars now bound
+      // a square 11 cells across rather than 10, and the grid is the
+      // middle 10 of it. One definition, used by the art and the camera
+      // alike — see magicCardVision's _guideChart().
+      guideOutset:0.5
     };
   }
   const CARD_PRINT_DPI=300;
@@ -601,6 +621,7 @@ const MagicCardArt=(function(){
       // each held by a bright star, is the older and better looking of
       // the two drawings anyway.
       const guideR=Math.max(11,cell*0.34)*1.9;
+      const guideOut=(_geo.guideOutset||0)*cell;
       const openGap=guideR+10;
       ctx.save();
       ctx.strokeStyle='rgba(255,246,221,0.92)';
@@ -699,8 +720,10 @@ const MagicCardArt=(function(){
       // are also outside every cell centre, so even if one were treated
       // as a star it could not land on a cell.
       const guide=guideR;
-      [[gridLeft,gridTop],[gridLeft+gridSize,gridTop],
-       [gridLeft+gridSize,gridTop+gridSize],[gridLeft,gridTop+gridSize]]
+      [[gridLeft-guideOut,gridTop-guideOut],
+       [gridLeft+gridSize+guideOut,gridTop-guideOut],
+       [gridLeft+gridSize+guideOut,gridTop+gridSize+guideOut],
+       [gridLeft-guideOut,gridTop+gridSize+guideOut]]
       .forEach(function(g){
         ctx.save();
         ctx.shadowColor='rgba(255,232,178,0.95)';

@@ -116,7 +116,8 @@ const MagicCardVision = (function () {
       }
     } catch (e) {}
     // The same numbers the art produces, if the art module is absent.
-    return { cardW: 700, cardH: 980, gridSize: 540, gridLeft: 80, gridTop: 150, cell: 54, cells: 10 };
+    return { cardW: 700, cardH: 980, gridSize: 540, gridLeft: 80, gridTop: 150,
+             cell: 54, cells: 10, guideOutset: 0.5 };
   }
 
   // ---------------------------------------------------------------
@@ -1081,7 +1082,7 @@ const MagicCardVision = (function () {
     }
 
     var solved = guide
-      ? _readThrough(inside, { quad: guide, u0: 0, v0: 0, span: 1 })
+      ? _readByGuides(inside, guide)
       : _readByFrame(inside, cands);
     var head = solved ? [solved] : [];
     // The chart's corners travel with the reading. Shape matching needs
@@ -1758,6 +1759,50 @@ const MagicCardVision = (function () {
   // speck — and the real proof is left where it belongs: every star has
   // to land on a cell through the resulting transform, or _readThrough
   // refuses and nothing is claimed.
+  // WHAT THE FOUR GUIDE STARS ACTUALLY BOUND.
+  //
+  // Not the grid. They sit half a cell OUTSIDE each corner (see
+  // magicCardArt's guideOutset and the reason there), so the square they
+  // describe is eleven cells across and the ten-by-ten grid is the
+  // middle of it. Reading them as the grid itself put every star half a
+  // cell out — which is the difference between an exact reading and no
+  // reading at all.
+  //
+  // Falls back to treating them as the grid when the geometry does not
+  // say otherwise, so a card printed before this still reads.
+  function _guideChart(quad, outset) {
+    var g = _geometry();
+    var out = (typeof outset === 'number') ? outset : (g.guideOutset || 0);
+    var span = g.cells + out * 2;
+    return {
+      quad: quad,
+      u0: out / span, v0: out / span,
+      uSpan: g.cells / span, vSpan: g.cells / span
+    };
+  }
+
+  // BOTH CARDS, WITHOUT ASKING WHICH ONE THIS IS.
+  //
+  // Cards printed before the guide stars moved have them ON the grid's
+  // corners; cards printed after have them half a cell outside. The two
+  // are half a cell apart in the reading, which is the difference
+  // between exact and refused — so a reader that assumed either one
+  // would silently stop working for everybody holding the other.
+  //
+  // Nothing has to identify the card. Both mappings are tried and the
+  // stars decide: on the wrong one they land between cells and the read
+  // refuses, on the right one they land on centres. The card that is
+  // actually in the picture is the one that reads.
+  var GUIDE_OUTSETS = [(_geometry().guideOutset || 0.5), 0];
+
+  function _readByGuides(marks, quad) {
+    for (var i = 0; i < GUIDE_OUTSETS.length; i++) {
+      var got = _readThrough(marks, _guideChart(quad, GUIDE_OUTSETS[i]));
+      if (got) return got;
+    }
+    return null;
+  }
+
   function _guideQuad(marks) {
     if (!marks || marks.length < MIN_STARS + 4) return null;
 
@@ -1834,6 +1879,7 @@ const MagicCardVision = (function () {
 
             var inv = _homography(q);
             if (!inv) continue;
+            var charts = GUIDE_OUTSETS.map(function (o) { return _guideChart(q, o); });
             var inner = _within(marks.filter(function (m) {
               return m !== four[0] && m !== four[1] && m !== four[2] && m !== four[3];
             }), q, INSIDE_PAD);
@@ -1864,19 +1910,27 @@ const MagicCardVision = (function () {
             if (stars.length < MIN_STARS || stars.length > MAX_STARS) continue;
 
             // The proof: every star on a cell centre, and how well.
-            var worst = 0, used = {}, good = true;
-            for (i = 0; i < stars.length; i++) {
-              var pt = inv(stars[i].x, stars[i].y);
-              if (!pt) { good = false; break; }
-              var u = pt.u * cells, v = pt.v * cells;
-              var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
-              if (row < 0 || col < 0 || row >= cells || col >= cells) { good = false; break; }
-              var e = Math.max(Math.abs(u - (col + 0.5)), Math.abs(v - (row + 0.5)));
-              if (e > SNAP_TOLERANCE) { good = false; break; }
-              var k = row + ',' + col;
-              if (used[k]) { good = false; break; }
-              used[k] = 1;
-              if (e > worst) worst = e;
+            // Tried against both card generations; the one that reads is
+            // the one in the picture.
+            var worst = Infinity, good = false;
+            for (var ch = 0; ch < charts.length; ch++) {
+              var chart = charts[ch];
+              var w = 0, used = {}, fits = true;
+              for (i = 0; i < stars.length; i++) {
+                var pt = inv(stars[i].x, stars[i].y);
+                if (!pt) { fits = false; break; }
+                var u = ((pt.u - chart.u0) / chart.uSpan) * cells;
+                var v = ((pt.v - chart.v0) / chart.vSpan) * cells;
+                var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
+                if (row < 0 || col < 0 || row >= cells || col >= cells) { fits = false; break; }
+                var e = Math.max(Math.abs(u - (col + 0.5)), Math.abs(v - (row + 0.5)));
+                if (e > SNAP_TOLERANCE) { fits = false; break; }
+                var k = row + ',' + col;
+                if (used[k]) { fits = false; break; }
+                used[k] = 1;
+                if (e > w) w = e;
+              }
+              if (fits && w < worst) { worst = w; good = true; }
             }
             if (!good) continue;
 
@@ -2401,7 +2455,7 @@ const MagicCardVision = (function () {
           // itself depends on. A diagnostic that reads differently from
           // the thing it is diagnosing is worse than none.
           byFrame: guide
-            ? _readThrough(inside, { quad: guide, u0: 0, v0: 0, span: 1 })
+            ? _readByGuides(inside, guide)
             : _readByFrame(inside, cands),
           // Which rectangle actually registered — the chart's own ruled
           // frame, or the card's border with the grid derived from it.
