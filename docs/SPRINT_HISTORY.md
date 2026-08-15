@@ -2164,3 +2164,13 @@ safety 14/14 on both paths, board EXACTLY THE CARD on all four cards, countdown
 7 stars exact, acceptance, try-again, no-write and card-keeping all pass.
 Decision 18 in CLAUDE.md; `supabase/migrations_recall_returns_pattern.sql` is
 the one thing that must be run by hand.
+
+**0535 — the Move Them Together pad is gone.** Four arrows under the drawing
+board that shifted a camera-marked sky a row or a column at a time, added when
+the reader got a constellation's shape right and its position approximately.
+The guide stars removed the reason for it: position is now solved rather than
+inferred, so a sky that arrives in the wrong place is a reading that should be
+refused, not one a child should be asked to drag into position. Removed from
+the markup, the stylesheet, the click handler, and `ConstellationBoard.nudge()`
+along with them — it had no other caller. What remains under a camera-marked
+board is what belongs there: the stars, the question, and 📷 Show My Card Again.
