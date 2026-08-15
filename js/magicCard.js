@@ -642,6 +642,47 @@ const MagicCard=(function(){
     return out;
   }
 
+  // CAN THE LINE BE KNOWN, OR ONLY GUESSED?
+  //
+  // Not the same question as "is this sky symmetric". CASSIOPEIA's cells
+  // are unchanged by a top-to-bottom flip, so two placements fit — and
+  // both draw the SAME SEGMENTS, just traversed from opposite ends, so
+  // the line is identical and there is nothing to get wrong. CYGNUS's
+  // cross also fits more than one placement, and those draw DIFFERENT
+  // segments: one traces Top-Centre-Left-Bottom-Right, another
+  // Bottom-Centre-Right-Top-Left, and the two are 180 degrees apart.
+  // Reported from a real card as exactly that: "cygnus came inverse".
+  //
+  // So the test is about the LINE, not the shape. Every placement that
+  // fits these cells is drawn out as a set of unordered segments; if
+  // they all agree, the line is a fact and can be drawn. If they differ,
+  // the photograph genuinely does not say which one the card uses, and a
+  // caller about to draw it should be told so rather than shown a coin
+  // toss.
+  function _segments(order){
+    const out=[];
+    for(let i=0;i<order.length-1;i++){
+      const a=order[i][0]+','+order[i][1], b=order[i+1][0]+','+order[i+1][1];
+      out.push(a<b?a+'|'+b:b+'|'+a);
+    }
+    return out.sort().join('  ');
+  }
+
+  function traceIsCertain(cells){
+    if(!Array.isArray(cells)||cells.length<2) return false;
+    const names=Object.keys(CONSTELLATIONS);
+    for(let i=0;i<names.length;i++){
+      const ways=_placementsFor(names[i],cells);
+      if(!ways.length) continue;
+      const first=_segments(ways[0]);
+      for(let k=1;k<ways.length;k++){
+        if(_segments(ways[k])!==first) return false;
+      }
+      return true;
+    }
+    return false;                       // not a known sky: nothing to know
+  }
+
   function orderLikeAnySky(cells){
     if(!Array.isArray(cells)||!cells.length) return cells;
     const names=Object.keys(CONSTELLATIONS);
@@ -821,6 +862,7 @@ const MagicCard=(function(){
     recall:recall,
     adopt:adopt,
     orderLikeAnySky:orderLikeAnySky,
+    traceIsCertain:traceIsCertain,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

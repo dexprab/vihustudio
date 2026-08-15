@@ -417,7 +417,7 @@
         // also settles the symmetric case, where a derived order is a
         // genuine guess (CYGNUS's cross maps onto its own cells under
         // all eight transforms).
-        var marked = seen;
+        var marked = seen, sure = false;
         try {
           var setKey = function (list) {
             return (list || []).map(function (p) { return p[0] + ',' + p[1]; })
@@ -431,12 +431,31 @@
               own = held[ci].pattern; break;
             }
           }
-          if (own) marked = own;
+          if (own) { marked = own; sure = true; }
           else if (typeof MagicCard !== 'undefined' && MagicCard.orderLikeAnySky) {
             marked = MagicCard.orderLikeAnySky(seen) || seen;
+            // Derived — which is a fact for most skies and a coin toss
+            // for a few. MagicCard compares the SEGMENTS every possible
+            // placement would draw, so this is "would the line differ",
+            // not "is the shape symmetric".
+            sure = !!(MagicCard.traceIsCertain && MagicCard.traceIsCertain(seen));
           }
         } catch (e) { marked = seen; }
-        try { board.set(marked); } catch (e) {}
+        // NO LINE RATHER THAN THE WRONG ONE.
+        //
+        // CYGNUS is the case that forced this: a perfect cross whose
+        // card traces Bottom-Centre-Right-Top-Left while the derived
+        // order traces Top-Centre-Left-Bottom-Right. Same five stars,
+        // same cross, one hundred and eighty degrees apart — and a real
+        // card reported it as "came inverse", which it was.
+        //
+        // Every star is still lit and still checkable against the card.
+        // What is withheld is only the part a photograph cannot answer,
+        // and only for the skies where it genuinely cannot: CASSIOPEIA
+        // also fits two placements and both draw the same segments, so
+        // its line is certain and is drawn. The child's first tap makes
+        // the order theirs and the line returns.
+        try { board.set(marked, { noLine: !sure }); } catch (e) {}
         say('Are these your stars?');
         // Offered only here. A child drawing from scratch has nothing
         // to move; a child holding a card has a whole sky in slightly

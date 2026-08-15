@@ -146,7 +146,12 @@ const ConstellationBoard = (function () {
       // and position is the only thing that distinguishes them. It is
       // spoken, never drawn.
       cell.setAttribute('aria-label', 'Star, row ' + (row + 1) + ', column ' + (col + 1));
-      cell.addEventListener('click', function () { toggle(row, col, cell); });
+      cell.addEventListener('click', function () {
+        // Touched by the child, so the order is theirs and no longer a
+        // guess about anybody's card.
+        quiet = false;
+        toggle(row, col, cell);
+      });
       board.appendChild(cell);
       return cell;
     }
@@ -168,6 +173,8 @@ const ConstellationBoard = (function () {
       onChange(selected.length);
     }
 
+    var quiet = false;
+
     function paint() {
       var i, parts, cell;
       for (i = 0; i < selected.length; i++) {
@@ -178,6 +185,7 @@ const ConstellationBoard = (function () {
 
       svg.innerHTML = '';
       if (selected.length < 2) return;
+      if (quiet) return;
       var pts = selected.map(function (k) {
         var p = k.split(',');
         return centreOf(board, parseInt(p[0], 10), parseInt(p[1], 10));
@@ -262,8 +270,11 @@ const ConstellationBoard = (function () {
       // from scratch. Deliberately goes through the same toggle() every
       // tap uses, so a marked-by-camera sky and a drawn one are the
       // same thing in every respect that follows.
-      set: function (pattern) {
+      // `opts.noLine` lights the stars without joining them. Used when
+      // the order genuinely cannot be known — see the caller.
+      set: function (pattern, opts) {
         clear();
+        quiet = !!(opts && opts.noLine);
         (pattern || []).forEach(function (p) {
           var cell = board.querySelector('[data-row="' + p[0] + '"][data-col="' + p[1] + '"]');
           if (cell) toggle(p[0], p[1], cell);
