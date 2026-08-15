@@ -194,58 +194,29 @@ const MagicCard=(function(){
   // -style read-time reconciliation elsewhere in this codebase) so it
   // runs exactly once per card and never re-touches an already-correct
   // pattern from a fresh claim() made after this fix shipped.
-  // A CARD'S ORDER IS DERIVED, NOT REMEMBERED — AND NOT FLAGGED.
-  //
-  // This replaces a one-time, flag-gated swap of CYGNUS's indices 2 and
-  // 3, and the flag is the part that has to go. That migration decided
-  // who needed repairing by the ABSENCE of constellationOrderFixed,
-  // which neither claim() nor adopt() ever set — so it "repaired" every
-  // newly minted CYGNUS card straight back into the self-crossing order
-  // it existed to remove, on the card's very next read. A one-time
-  // migration is only as good as the bookkeeping that says it has run,
-  // and that bookkeeping was wrong for the entire life of the fix.
-  //
-  // Nothing here is remembered. A card's connect-the-dots order is a
-  // FUNCTION of its constellation and its cells: _placeConstellation()
-  // built the original from the named base by one of four rotations, an
-  // optional mirror and a translation, so trying all eight against the
-  // stored cells recovers the order it was minted with. Running that
-  // every read is idempotent — the answer for an already-correct card is
-  // itself — so there is no state to get wrong, and a card damaged by
-  // any future bug repairs itself the next time it is looked at.
-  //
-  // It can never change WHICH stars a card has, only their order, so it
-  // cannot affect recall: both this device and the platform match a
-  // pattern as a set.
-  function _repairPatternOrder(cards){
-    let changed=false;
-    cards.forEach(function(card){
-      if(!card||!Array.isArray(card.pattern)||!card.pattern.length) return;
-      const ways=_placementsFor(card.constellation,card.pattern);
-      if(!ways.length) return;                // not a placement of a known sky
-      // ALREADY ONE OF THE LEGITIMATE ORDERS — LEAVE IT ALONE.
-      //
-      // This is the difference between repairing damage and destroying
-      // information, and getting it wrong was reported immediately:
-      // "also check it's mirrored". A mirrored CYGNUS is not a corrupt
-      // CYGNUS, it is one _placeConstellation() genuinely mints, and
-      // rewriting it to the unmirrored base turned a correct card into
-      // a mirror image of itself. Only an order that is NONE of the
-      // eight is damage — which is exactly what the old index-2/3 swap
-      // produced, since no rotation or mirror can make that arrangement.
-      for(let i=0;i<ways.length;i++){ if(_sameOrder(card.pattern,ways[i])) return; }
-      card.pattern=ways[0];
-      changed=true;
-    });
-    return changed;
-  }
-
   function _readCards(){
     try{
       const raw=localStorage.getItem(CARDS_KEY);
       const parsed=raw?JSON.parse(raw):[];
       const cards=Array.isArray(parsed)?parsed:[];
-      if(_repairPatternOrder(cards)) _writeCards(cards);
+      // NOTHING IS WRITTEN ON A READ. The product owner's instruction,
+      // and the right one: "fix the stars of magic card and dont over
+      // write them."
+      //
+      // A repair used to run here, rewriting any pattern whose order was
+      // not a legal placement. It was well-meant — it undid damage an
+      // older migration had caused — but it made reading a card a
+      // MUTATING operation, and a card's stars are the child's identity.
+      // Anything that can rewrite them can get it wrong, and the last
+      // two rounds are both proof: the first version rewrote correct
+      // mirrored cards, and even the corrected one still means a card
+      // can change while nobody asked it to.
+      //
+      // _readCards() now returns exactly what is stored. The migration
+      // that caused the original damage is gone, so nothing new is being
+      // corrupted; a card damaged before that removal keeps its order
+      // until somebody deliberately repairs it, which is a decision for
+      // its owner rather than a side effect of looking at it.
       return cards;
     }catch(e){ return []; }
   }
@@ -735,6 +706,23 @@ const MagicCard=(function(){
   // untouched when nothing matches — a hand-drawn sky is whatever the
   // child drew, and reordering that would be inventing a shape they
   // did not make.
+  // MORE THAN ONE PLACEMENT FITS THESE CELLS.
+  //
+  // True of any symmetric sky — CYGNUS's cross maps onto its own five
+  // squares under every rotation and mirror — and it is the difference
+  // between "traced the way the card traces it" and "traced one of
+  // eight ways, one of which happens to be the card's". A caller that
+  // is about to DRAW the order needs to know which of those it has.
+  function skyIsAmbiguous(cells){
+    if(!Array.isArray(cells)||!cells.length) return true;
+    const names=Object.keys(CONSTELLATIONS);
+    for(let i=0;i<names.length;i++){
+      const ways=_placementsFor(names[i],cells);
+      if(ways.length) return ways.length>1;
+    }
+    return true;
+  }
+
   function orderLikeAnySky(cells){
     if(!Array.isArray(cells)||!cells.length) return cells;
     const names=Object.keys(CONSTELLATIONS);
@@ -914,6 +902,7 @@ const MagicCard=(function(){
     recall:recall,
     adopt:adopt,
     orderLikeAnySky:orderLikeAnySky,
+    skyIsAmbiguous:skyIsAmbiguous,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

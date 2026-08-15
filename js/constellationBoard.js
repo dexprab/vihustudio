@@ -146,7 +146,12 @@ const ConstellationBoard = (function () {
       // and position is the only thing that distinguishes them. It is
       // spoken, never drawn.
       cell.setAttribute('aria-label', 'Star, row ' + (row + 1) + ', column ' + (col + 1));
-      cell.addEventListener('click', function () { toggle(row, col, cell); });
+      cell.addEventListener('click', function () {
+        // The child has touched it, so the order is theirs now and the
+        // line is no longer a guess about anybody's card.
+        quiet = false;
+        toggle(row, col, cell);
+      });
       board.appendChild(cell);
       return cell;
     }
@@ -168,6 +173,8 @@ const ConstellationBoard = (function () {
       onChange(selected.length);
     }
 
+    var quiet = false;
+
     function paint() {
       var i, parts, cell;
       for (i = 0; i < selected.length; i++) {
@@ -178,6 +185,23 @@ const ConstellationBoard = (function () {
 
       svg.innerHTML = '';
       if (selected.length < 2) return;
+      // A LINE ASSERTS AN ORDER, AND SOMETIMES THERE ISN'T ONE TO KNOW.
+      //
+      // A sky marked from a photograph has stars but no tap order: the
+      // camera found them in whatever order it found them. For most
+      // constellations the true order can be recovered from the cells,
+      // but a symmetric one — CYGNUS is a perfect cross — maps onto its
+      // own five cells under all four rotations and both mirrors, so
+      // the ONLY thing telling those apart is the very order that was
+      // not observed. Drawing one anyway produced a card traced upside
+      // down, reported as exactly that.
+      //
+      // So the caller can ask for the stars without the line. Nothing
+      // is hidden: every star the camera saw is lit and can be checked
+      // against the card. What is not drawn is the one thing that would
+      // be a guess. The first tap clears the flag, because from then on
+      // the order is the child's own and is not in doubt.
+      if (quiet) return;
       var pts = selected.map(function (k) {
         var p = k.split(',');
         return centreOf(board, parseInt(p[0], 10), parseInt(p[1], 10));
@@ -262,8 +286,10 @@ const ConstellationBoard = (function () {
       // from scratch. Deliberately goes through the same toggle() every
       // tap uses, so a marked-by-camera sky and a drawn one are the
       // same thing in every respect that follows.
-      set: function (pattern) {
+      set: function (pattern, opts) {
         clear();
+        // `quiet` suppresses the joining line only — see paint().
+        quiet = !!(opts && opts.noLine);
         (pattern || []).forEach(function (p) {
           var cell = board.querySelector('[data-row="' + p[0] + '"][data-col="' + p[1] + '"]');
           if (cell) toggle(p[0], p[1], cell);
