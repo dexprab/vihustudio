@@ -411,7 +411,7 @@
         // with, so a read whose cells ARE that card's cells is drawn the
         // card's own way. Matched as a set, the same comparison
         // recognition uses.
-        var marked = seen, known = false;
+        var marked = seen;
         try {
           var key = function (list) {
             return (list || []).map(function (p) { return p[0] + ',' + p[1]; })
@@ -425,21 +425,17 @@
               mine = held[ci].pattern; break;
             }
           }
-          if (mine) { marked = mine; known = true; }
+          if (mine) marked = mine;
           else if (typeof MagicCard !== 'undefined' && MagicCard.orderLikeAnySky) {
-            var tidy = MagicCard.orderLikeAnySky(seen);
-            if (tidy) {
-              marked = tidy;
-              // Recovered from the cells — which is only unambiguous
-              // when the sky is not symmetric. MagicCard says whether
-              // more than one placement fits.
-              known = !(MagicCard.skyIsAmbiguous && MagicCard.skyIsAmbiguous(seen));
-            }
+            marked = MagicCard.orderLikeAnySky(seen) || seen;
           }
         } catch (e) { marked = seen; }
-        // No line unless the order is actually known. See the board's
-        // paint() for why a guessed one is worse than none.
-        try { board.set(marked, { noLine: !known }); } catch (e) {}
+        // Safe to draw the line now. The card art derives its trace from
+        // the same cells by the same rule (magicCardArt's drawBack), so
+        // the board and the card cannot disagree about how a sky is
+        // joined — which is what made a guessed order dangerous before
+        // and makes it merely correct now.
+        try { board.set(marked); } catch (e) {}
         say('Are these your stars?');
         // Offered only here. A child drawing from scratch has nothing
         // to move; a child holding a card has a whole sky in slightly

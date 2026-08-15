@@ -494,7 +494,34 @@ const MagicCardArt=(function(){
     const gridLeft=_geo.gridLeft;
 
     if(card.pattern && card.pattern.length){
-      const pts=card.pattern.map(function(p){
+      // THE TRACE IS DERIVED FOR DRAWING, NEVER READ FROM STORAGE.
+      //
+      // A card's stars are its identity and are stored; the ORDER they
+      // are joined in is a rendering decision, and this used to take it
+      // straight from the stored array. That made the card's appearance
+      // depend on a mutable field's ordering — so when an old migration
+      // reordered patterns in place, every card silently redrew itself
+      // with a different line, and a card printed before that no longer
+      // matched the one on screen. Reported as the constellation looking
+      // upside down, with the stars themselves provably identical.
+      //
+      // Deriving it here ends that whole class of drift: the same cells
+      // always draw the same constellation, whatever order they happen
+      // to be stored in, so the printed card and the screen cannot come
+      // apart again. Nothing is written — this reorders a local copy for
+      // the length of one draw.
+      //
+      // Guarded because magicCardArt must keep working with MagicCard
+      // absent (the camera test harnesses draw cards with neither), and
+      // an unrecognised sky is drawn exactly as given: a hand-drawn
+      // pattern is whatever its owner drew.
+      let ordered=card.pattern;
+      try{
+        if(typeof MagicCard!=='undefined' && MagicCard.orderLikeAnySky){
+          ordered=MagicCard.orderLikeAnySky(card.pattern)||card.pattern;
+        }
+      }catch(e){ ordered=card.pattern; }
+      const pts=ordered.map(function(p){
         return {x:gridLeft+(p[1]+0.5)*cell, y:gridTop+(p[0]+0.5)*cell};
       });
 
