@@ -221,13 +221,20 @@ const MagicCard=(function(){
     let changed=false;
     cards.forEach(function(card){
       if(!card||!Array.isArray(card.pattern)||!card.pattern.length) return;
-      const want=_baseOrderFor(card.constellation,card.pattern);
-      if(!want) return;                       // not a placement of a known sky
-      const same=want.every(function(p,i){
-        return card.pattern[i] && p[0]===card.pattern[i][0] && p[1]===card.pattern[i][1];
-      });
-      if(same) return;
-      card.pattern=want;
+      const ways=_placementsFor(card.constellation,card.pattern);
+      if(!ways.length) return;                // not a placement of a known sky
+      // ALREADY ONE OF THE LEGITIMATE ORDERS — LEAVE IT ALONE.
+      //
+      // This is the difference between repairing damage and destroying
+      // information, and getting it wrong was reported immediately:
+      // "also check it's mirrored". A mirrored CYGNUS is not a corrupt
+      // CYGNUS, it is one _placeConstellation() genuinely mints, and
+      // rewriting it to the unmirrored base turned a correct card into
+      // a mirror image of itself. Only an order that is NONE of the
+      // eight is damage — which is exactly what the old index-2/3 swap
+      // produced, since no rotation or mirror can make that arrangement.
+      for(let i=0;i<ways.length;i++){ if(_sameOrder(card.pattern,ways[i])) return; }
+      card.pattern=ways[0];
       changed=true;
     });
     return changed;
@@ -662,16 +669,26 @@ const MagicCard=(function(){
   //
   // Falls back to the sorted order when nothing matches — a card minted
   // before this, or a name the registry no longer has.
-  function _baseOrderFor(name,cells){
+  // EVERY WAY THIS SKY COULD LEGITIMATELY HAVE BEEN PLACED.
+  //
+  // _placeConstellation() builds a card from the named base by one of
+  // four rotations, an optional mirror and a translation, so these eight
+  // are exactly the orders a real card can carry. More than one can
+  // produce the SAME CELLS — CYGNUS is a perfect cross, so all eight
+  // land on the same five squares and differ only in the order they are
+  // traced — which is why the list matters rather than just the first
+  // entry.
+  function _placementsFor(name,cells){
     const stable=_stablePattern(cells);
-    if(!stable) return null;
+    if(!stable) return [];
     const base=CONSTELLATIONS[name];
-    if(!base||base.length!==stable.length) return null;
+    if(!base||base.length!==stable.length) return [];
     const key=function(list){
       return list.map(function(p){ return p[0]+','+p[1]; }).sort().join(' ');
     };
     const want=key(stable);
     const minR=_minOf(stable,0), minC=_minOf(stable,1);
+    const out=[];
     for(let turns=0;turns<4;turns++){
       for(let mirror=0;mirror<2;mirror++){
         let pts=_shiftToOrigin(base);
@@ -679,14 +696,53 @@ const MagicCard=(function(){
         if(mirror) pts=_mirrorHorizontal(pts);
         pts=_shiftToOrigin(pts);
         const placed=pts.map(function(p){ return [p[0]+minR,p[1]+minC]; });
-        if(key(placed)===want) return placed;
+        if(key(placed)===want) out.push(placed);
       }
     }
-    return null;
+    return out;
+  }
+
+  function _baseOrderFor(name,cells){
+    const all=_placementsFor(name,cells);
+    return all.length?all[0]:null;
+  }
+
+  function _sameOrder(a,b){
+    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+    for(let i=0;i<a.length;i++){
+      if(!a[i]||!b[i]||a[i][0]!==b[i][0]||a[i][1]!==b[i][1]) return false;
+    }
+    return true;
   }
 
   function _orderLikeConstellation(name,cells){
     return _baseOrderFor(name,cells)||_stablePattern(cells);
+  }
+
+  // WHICH SKY IS THIS, AND IN WHAT ORDER SHOULD IT BE DRAWN?
+  //
+  // The camera hands over cells in whatever order the blob detector
+  // found them, and the drawing board joins stars in the order it is
+  // given — so a correctly read card was drawn as a zig-zag where the
+  // card itself draws a clean cross. Same stars, same cells, wrong
+  // line, and to a child looking at their card and at the screen that
+  // is simply the wrong constellation.
+  //
+  // The name is not needed to fix it. Every card's pattern is one of
+  // five known shapes under one of four rotations, an optional mirror
+  // and a translation, so trying each in turn identifies the sky AND
+  // recovers the order it is meant to be traced in. Returns the cells
+  // untouched when nothing matches — a hand-drawn sky is whatever the
+  // child drew, and reordering that would be inventing a shape they
+  // did not make.
+  function orderLikeAnySky(cells){
+    if(!Array.isArray(cells)||!cells.length) return cells;
+    const names=Object.keys(CONSTELLATIONS);
+    for(let i=0;i<names.length;i++){
+      const placed=_baseOrderFor(names[i],cells);
+      if(placed) return placed;
+    }
+    return cells;
   }
 
   function adopt(remoteResult,pattern){
@@ -857,6 +913,7 @@ const MagicCard=(function(){
     rename:rename,
     recall:recall,
     adopt:adopt,
+    orderLikeAnySky:orderLikeAnySky,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

@@ -379,7 +379,58 @@
       // is an input helper rather than an authority.
       var nudgeEl = starsEl.querySelector('[data-stars-nudge]');
       if (seen && seen.length && board.set) {
-        try { board.set(seen); } catch (e) {}
+        // DRAWN IN THE ORDER THE SKY IS TRACED IN.
+        //
+        // The board joins its stars in the order it is handed them, and
+        // the camera hands them over in whatever order the blob
+        // detector found them. So a card read perfectly — every cell
+        // right — came out as a zig-zag where the card itself draws a
+        // clean cross, and a child comparing the two sees the wrong
+        // constellation. "Quite near to what it should be but still not
+        // what it should be" was exactly this, and it was never a
+        // reading error at all.
+        //
+        // Any real card's cells are one of five known shapes under a
+        // rotation, an optional mirror and a translation, so the sky
+        // can be identified from the cells alone and traced the way it
+        // is meant to be. A sky that matches nothing is passed through
+        // untouched: a child's own drawing is whatever they drew.
+        //
+        // THE CARD'S OWN ORDER FIRST, when this device holds the card.
+        //
+        // A symmetric sky cannot be traced from its cells alone. CYGNUS
+        // is a perfect cross: mirror it and the five cells map onto
+        // themselves, while the order reverses from Top, Centre, Left,
+        // Bottom, Right to Top, Centre, Right, Bottom, Left. Same stars,
+        // mirror-image line, and nothing in the photograph can say which
+        // one the card was minted with — reported as exactly that,
+        // "check it's mirrored".
+        //
+        // It does not have to be inferred when the answer is already
+        // here. A card on this device carries the order it was minted
+        // with, so a read whose cells ARE that card's cells is drawn the
+        // card's own way. Matched as a set, the same comparison
+        // recognition uses.
+        var marked = seen;
+        try {
+          var key = function (list) {
+            return (list || []).map(function (p) { return p[0] + ',' + p[1]; })
+              .sort().join(' ');
+          };
+          var want = key(seen), mine = null;
+          var held = (typeof MagicCard !== 'undefined' && MagicCard.list)
+            ? MagicCard.list() : [];
+          for (var ci = 0; ci < held.length; ci++) {
+            if (held[ci] && held[ci].pattern && key(held[ci].pattern) === want) {
+              mine = held[ci].pattern; break;
+            }
+          }
+          if (mine) marked = mine;
+          else if (typeof MagicCard !== 'undefined' && MagicCard.orderLikeAnySky) {
+            marked = MagicCard.orderLikeAnySky(seen) || seen;
+          }
+        } catch (e) { marked = seen; }
+        try { board.set(marked); } catch (e) {}
         say('Are these your stars?');
         // Offered only here. A child drawing from scratch has nothing
         // to move; a child holding a card has a whole sky in slightly
