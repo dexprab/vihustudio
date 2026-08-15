@@ -1007,7 +1007,13 @@ const MagicCardVision = (function () {
     // where the reader had the right answer and simply never offered
     // it. It goes first, because when the frame is visible it is the
     // one reading that was solved rather than guessed.
-    var frameQuad = _frame(im.data, W, hh);
+    var cands = _frame(im.data, W, hh);
+    // The CHART's corners, derived from whichever candidate reads —
+    // which may be the card's border rather than the chart's own frame.
+    // The filter below is about where the stars are, so it has to be
+    // the grid, not the card: the card's border encloses the numbering
+    // too, and filtering by it would let every numeral back in.
+    var frameQuad = _chartQuad(cands);
 
     // ONLY WHAT IS INSIDE THE FRAME CAN BE A STAR.
     //
@@ -1046,7 +1052,7 @@ const MagicCardVision = (function () {
       if (within.length >= MIN_STARS) inside = within;
     }
 
-    var solved = _readByFrame(inside, frameQuad);
+    var solved = _readByFrame(inside, cands);
     var head = solved ? [solved] : [];
 
     // Then the usual sorting, for whatever the frame could not exclude.
@@ -1402,10 +1408,10 @@ const MagicCardVision = (function () {
       }
     }
 
-    // The largest connected bright thing that is mostly empty inside.
+    // Every connected bright thing that is mostly empty inside.
     var seen = new Uint8Array(w * h);
     var stack = [];
-    var best = null;
+    var found = [];
     for (i = 0; i < w * h; i++) {
       if (seen[i] || !on[i]) continue;
       stack.length = 0; stack.push(i); seen[i] = 1;
@@ -1446,36 +1452,59 @@ const MagicCardVision = (function () {
       var area = bw * bh;
       if (n > area * 0.42) continue;                      // solid: a panel, not a frame
       var ratio = bw / bh;
-      if (ratio < 0.55 || ratio > 1.85) continue;
-      // THE SQUAREST, NOT THE LARGEST — and this was the whole bug.
+      if (ratio < 0.45 || ratio > 1.85) continue;
+      // KEEP THEM ALL, AND WORK OUT WHAT EACH ONE IS LATER.
       //
-      // "The largest hollow bright thing" is not the star chart. It is
-      // the CARD, whose own rounded border encloses the chart and is
-      // bigger than it, is just as hollow, and at 680x960 has a ratio of
-      // 0.708 that sailed through the window above. So the homography
-      // was solved from the card's outline and every star was mapped
-      // through the wrong rectangle — the reading was not slightly off,
-      // it was measuring against the wrong object.
-      //
-      // Seen once, it is obvious in a picture: the registration quad
-      // drawn over the photograph sat around the whole card, title and
-      // footer included, with the chart a small square in the middle.
-      // Five rounds of numbers never said that, and one overlay did.
-      //
-      // The chart is a SQUARE by construction — magicCardArt draws it
-      // gridSize x gridSize — and the card is a portrait rectangle.
-      // Nothing else about them differs so reliably, so squareness is
-      // the discriminator, with area breaking ties between shapes that
-      // are equally square.
-      var skew = Math.abs(Math.log(ratio));
-      if (!best || skew < best.skew - 0.06 ||
-          (Math.abs(skew - best.skew) <= 0.06 && area > best.area)) {
-        best = { area: area, skew: skew, corners: [pTL, pTR, pBR, pBL] };
-      }
+      // Two different rectangles on this card can register a reading,
+      // and which one a given photograph offers is not something this
+      // loop can know. Picking one here — largest, then squarest — was
+      // wrong both times: largest chose the CARD when the chart was
+      // wanted, and squarest chose a bright sliver of room when the
+      // chart was too faint to find at all.
+      found.push({ area: area, ratio: ratio, corners: [pTL, pTR, pBR, pBL] });
     }
-    if (!best || !best.corners[0]) return null;
-    // In the order the transform expects: TL, TR, BR, BL.
-    return best.corners;
+    if (!found.length) return null;
+    found.sort(function (a, b) { return b.area - a.area; });
+    return found;
+  }
+
+  // WHICH RECTANGLE IS THIS, AND WHERE IS THE GRID INSIDE IT?
+  //
+  // The chart's own ruled frame is the ideal registration mark and is
+  // sometimes simply not there to be found: on a card lit by a phone
+  // screen in a dim room it is a thin stroke that the local threshold
+  // loses, and the reader then had nothing at all — "CHART NOT FOUND",
+  // no reading, from a photograph where the card filled the window and
+  // a person could read the stars perfectly well.
+  //
+  // But the card has a second rectangle, and it is the strongest
+  // structure in any picture of it: its own gold border, roundRect(10,
+  // 10, 680, 960) at five pixels wide, enclosing everything. If that is
+  // found, the grid's position is not a guess — magicCardArt fixes it
+  // at gridLeft/gridTop/gridSize within those same coordinates, so the
+  // chart can be derived from the card exactly.
+  //
+  // So a candidate is classified by its aspect and the grid is placed
+  // accordingly: near-square is the chart itself, near 680/960 is the
+  // whole card. Anything else is furniture and is skipped.
+  function _chartOf(cand) {
+    var g = _geometry();
+    var cardRatio = (g.cardW - 20) / (g.cardH - 20);
+    var r = cand.ratio;
+    // The chart, read directly. Its corners ARE the grid's corners.
+    if (Math.abs(Math.log(r / 1)) < 0.22) return { quad: cand.corners, u0: 0, v0: 0, span: 1 };
+    // The card. The grid is a known sub-rectangle of the bordered area.
+    if (Math.abs(Math.log(r / cardRatio)) < 0.22) {
+      var bx = 10, by = 10, bw2 = g.cardW - 20, bh2 = g.cardH - 20;
+      return {
+        quad: cand.corners,
+        u0: (g.gridLeft - bx) / bw2,
+        v0: (g.gridTop - by) / bh2,
+        uSpan: g.gridSize / bw2,
+        vSpan: g.gridSize / bh2
+      };
+    }
+    return null;
   }
 
   // The homography taking the unit square to the four corners, solved
@@ -1503,20 +1532,49 @@ const MagicCardVision = (function () {
     };
   }
 
+  // The same transform the other way: a point on the card, to where it
+  // lands in the picture. Used to draw the grid's own corners once the
+  // card's border is what registered.
+  function _forward(q) {
+    var x0 = q[0].x, y0 = q[0].y, x1 = q[1].x, y1 = q[1].y;
+    var x2 = q[2].x, y2 = q[2].y, x3 = q[3].x, y3 = q[3].y;
+    var dx1 = x1 - x2, dx2 = x3 - x2, sx = x0 - x1 + x2 - x3;
+    var dy1 = y1 - y2, dy2 = y3 - y2, sy = y0 - y1 + y2 - y3;
+    var den = dx1 * dy2 - dx2 * dy1;
+    if (!den) return null;
+    var g = (sx * dy2 - dx2 * sy) / den;
+    var h = (dx1 * sy - sx * dy1) / den;
+    var a = x1 - x0 + g * x1, b = x3 - x0 + h * x3, c = x0;
+    var d = y1 - y0 + g * y1, e = y3 - y0 + h * y3, f = y0;
+    return function (u, v) {
+      var w = g * u + h * v + 1;
+      if (!w) return null;
+      return { x: (a * u + b * v + c) / w, y: (d * u + e * v + f) / w };
+    };
+  }
+
   // A card's cells, read exactly, from the chart's own frame.
-  function _readByFrame(marks, frame) {
-    if (!frame) return null;
-    var inv = _homography(frame);
+  // Read a sky through ONE candidate rectangle, whichever it turned out
+  // to be. `chart` carries where the grid sits inside that rectangle,
+  // so the arithmetic below is identical for the chart's own frame
+  // (the grid is the whole of it) and for the card's border (the grid
+  // is a known window within it).
+  function _readThrough(marks, chart) {
+    if (!chart) return null;
+    var inv = _homography(chart.quad);
     if (!inv) return null;
     var stars = _starLike(marks);
     if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
 
     var cells = _geometry().cells;
+    var u0 = chart.u0 || 0, v0 = chart.v0 || 0;
+    var uSpan = chart.uSpan || chart.span || 1;
+    var vSpan = chart.vSpan || chart.span || 1;
     var pattern = [], used = {};
     for (var i = 0; i < stars.length; i++) {
       var p = inv(stars[i].x, stars[i].y);
       if (!p) return null;
-      var u = p.u * cells, v = p.v * cells;
+      var u = ((p.u - u0) / uSpan) * cells, v = ((p.v - v0) / vSpan) * cells;
       var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
       if (row < 0 || col < 0 || row >= cells || col >= cells) return null;
       if (Math.abs(u - (col + 0.5)) > SNAP_TOLERANCE) return null;
@@ -1527,6 +1585,85 @@ const MagicCardVision = (function () {
       pattern.push([row, col]);
     }
     return pattern;
+  }
+
+  // Every candidate rectangle tried, best first, and the first one that
+  // yields a whole sky wins. A candidate that cannot be classified, or
+  // through which the stars do not land on cells, costs one attempt —
+  // it never contributes a partial or approximate answer.
+  function _readByFrame(marks, cands) {
+    if (!cands) return null;
+    if (!cands.length) return null;
+    // Tolerate a single quad from an older caller.
+    if (cands[0] && typeof cands[0].x === 'number') {
+      return _readThrough(marks, { quad: cands, u0: 0, v0: 0, span: 1 });
+    }
+    // THE CHART FIRST, THE CARD ONLY IF THERE IS NO CHART.
+    //
+    // Candidates arrive largest first, which puts the card's border
+    // ahead of the chart it encloses — and taking the first that reads
+    // therefore took the card every time, turning an exact answer into
+    // a merely plausible one. The card's corners are also the weaker
+    // measurement: they are the outer edge of a five-pixel stroke, and
+    // the card is die-cut with a 30px corner radius, so the extreme
+    // point sits on an arc rather than on the corner itself — about
+    // 1.3% of the width out, which is a seventh of a cell spent before
+    // the stars are even considered.
+    //
+    // So it is a fallback, and it earns its place by working at all on
+    // a card whose thin ruled frame the threshold could not find.
+    var order = [], i;
+    for (i = 0; i < cands.length; i++) {
+      var c = _chartOf(cands[i]);
+      if (c) order.push(c);
+    }
+    order.sort(function (a, b) { return (a.span === 1 ? 0 : 1) - (b.span === 1 ? 0 : 1); });
+    for (i = 0; i < order.length; i++) {
+      var read = _readThrough(marks, order[i]);
+      if (read) return read;
+    }
+    return null;
+  }
+
+  // Where the grid is, in the picture, for whichever candidate actually
+  // reads — so the marks-inside-the-frame filter and the diagnostic
+  // overlay both talk about the chart rather than about the card.
+  // IT MUST NOT DEPEND ON A SUCCESSFUL READ.
+  //
+  // The obvious version asked each candidate "do the stars land on
+  // cells through you?" and returned the first that said yes — which
+  // deadlocks, because the marks handed in still include the row and
+  // column numbering, and the filter that removes the numbering is the
+  // thing waiting on this answer. Written that way it found nothing at
+  // all: no chart, so no filter, so fourteen marks, so no read, so no
+  // chart. Classification is a question about SHAPE and does not need
+  // the stars, so it is answered without them.
+  //
+  // The chart is preferred where it was found, since its corners are
+  // measured; the card's border only implies them. Candidates arrive
+  // largest first, which puts the card ahead of the chart it contains,
+  // so this looks for a chart across all of them before settling.
+  function _chartQuad(cands) {
+    if (!cands || !cands.length) return null;
+    if (cands[0] && typeof cands[0].x === 'number') return cands;
+    var pick = null, i, chart;
+    for (i = 0; i < cands.length; i++) {
+      chart = _chartOf(cands[i]);
+      if (!chart) continue;
+      if (chart.span === 1) { pick = chart; break; }   // the chart itself
+      if (!pick) pick = chart;                         // the card, for now
+    }
+    if (!pick) return null;
+    var fwd = _forward(pick.quad);
+    if (!fwd) return null;
+    var u0 = pick.u0 || 0, v0 = pick.v0 || 0;
+    var uS = pick.uSpan || pick.span || 1;
+    var vS = pick.vSpan || pick.span || 1;
+    var out = [
+      fwd(u0, v0), fwd(u0 + uS, v0),
+      fwd(u0 + uS, v0 + vS), fwd(u0, v0 + vS)
+    ];
+    return (out[0] && out[1] && out[2] && out[3]) ? out : null;
   }
 
   function identify(source, cards, width) {
@@ -1670,7 +1807,7 @@ const MagicCardVision = (function () {
         var v = (d.data[i * 4] * 0.299 + d.data[i * 4 + 1] * 0.587 + d.data[i * 4 + 2] * 0.114) / 255;
         sum += v; if (v > max) max = v;
       }
-      var fr = _frame(d.data, W, hh);
+      var fr = _chartQuad(_frame(d.data, W, hh));
       var inside = fr ? bl.filter(function (m) {
         var xs = fr.map(function (c) { return c.x; }), ys = fr.map(function (c) { return c.y; });
         return m.x > Math.min.apply(null, xs) && m.x < Math.max.apply(null, xs) &&
@@ -1778,7 +1915,8 @@ const MagicCardVision = (function () {
         xx.drawImage(source, 0, 0, Wd, hh);
         var im = xx.getImageData(0, 0, Wd, hh);
         var bl = _blobs(im.data, Wd, hh);
-        var fq = _frame(im.data, Wd, hh);
+        var cands = _frame(im.data, Wd, hh);
+        var fq = _chartQuad(cands);
         var inside = bl;
         if (fq) {
           var lim = _bounds(fq.map(function (q) { return { x: q.x, y: q.y }; }));
@@ -1812,7 +1950,19 @@ const MagicCardVision = (function () {
           // `inside`, not every blob — the same ordering the pipeline
           // itself depends on. A diagnostic that reads differently from
           // the thing it is diagnosing is worse than none.
-          byFrame: _readByFrame(inside, fq),
+          byFrame: _readByFrame(inside, cands),
+          // Which rectangle actually registered — the chart's own ruled
+          // frame, or the card's border with the grid derived from it.
+          // Two very different pictures produce "frame found", and the
+          // difference is the whole diagnosis.
+          via: (function () {
+            if (!cands || !cands.length) return null;
+            for (var vi = 0; vi < cands.length; vi++) {
+              var ch = _chartOf(cands[vi]);
+              if (ch && _readThrough(inside, ch)) return ch.span === 1 ? 'chart' : 'card';
+            }
+            return null;
+          })(),
           patterns: (look && look.patterns) || null
         };
       } catch (e) { return { error: String(e && e.message || e) }; }

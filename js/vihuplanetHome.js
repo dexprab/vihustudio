@@ -1020,7 +1020,7 @@
         'shot   ' + shot.width + 'x' + shot.height +
           (window.ImageCapture ? '' : '  (preview only)') + '\n' +
         'read at' + (d && d.size ? ' ' + d.size.join('x') : ' —') + '\n' +
-        'frame  ' + (d && d.frame ? 'found' : 'NOT FOUND') +
+        'frame  ' + (d && d.frame ? ('found via ' + (d.via || '?')) : 'NOT FOUND') +
           '   marks ' + (d ? d.marks : '?') +
           '   stars ' + (d ? d.starLike : '?') + '\n' +
         'cells  ' + (d && d.byFrame
