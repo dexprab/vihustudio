@@ -421,6 +421,76 @@ const MagicCard=(function(){
   // it posts a Magic Card by id, and asking the platform to mail a card
   // it has not been told about yet fails with `no_such_card`. Every
   // existing caller ignores the return value and is unaffected.
+  // ---------------------------------------------------------------
+  // RESERVING A PATTERN — THE DATABASE DECIDES, NOT THIS FILE.
+  //
+  // A canonical star pattern belongs to exactly one Creator, and the
+  // only place that can be enforced is the database: magic_card_
+  // identities is owner-only SELECT by design, so this client cannot
+  // even see whether a pattern is free, and two devices minting at the
+  // same instant could not agree if it could. So it does not ask — it
+  // attempts, and a unique index on the canonical form arbitrates.
+  //
+  // On `pattern_taken` a NEW pattern is generated IN THE SAME
+  // CONSTELLATION FAMILY and the attempt repeated. The family is kept
+  // deliberately: the ceremony has already named the child's sky, and
+  // changing Lyra to Aries underneath them would be a visible lie,
+  // where a different Lyra is simply the sky they were always getting.
+  //
+  // Nothing here is ever shown to the child. A collision is a fact
+  // about the universe, not a mistake they made.
+  var MINT_ATTEMPTS=6;
+
+  function _reserveIdentity(card, attempt){
+    attempt=attempt||0;
+    if(!card || typeof ThemeRepositoryClient==='undefined') return Promise.resolve(false);
+    return ThemeRepositoryClient.isConfigured().then(function(ok){
+      if(!ok) return false;
+      return ThemeRepositoryClient.getClient().then(function(client){
+        return ThemeRepositoryClient.getSession().then(function(){
+          return client.rpc('mint_magic_card',{
+            p_id:card.id,
+            p_nickname:card.nickname||'',
+            p_constellation:card.constellation,
+            p_pattern:card.pattern,
+            p_claimed_at:card.claimedAt,
+            p_companion_id:card.companionId||null,
+            p_companion_name:card.companionName||null,
+            p_companion_species:card.companionSpecies||null
+          }).then(function(res){
+            // An RPC that is not deployed yet is not a failure: the old
+            // upsert path still works, and a database without the unique
+            // index is exactly the state this migration is for.
+            if(res && res.error) return _pushIdentitySnapshot(card);
+            const out=res && res.data;
+            if(out && out.ok){
+              if(out.serial_no!=null){
+                _captureRecallCode(card.id, out.constellation||card.constellation, out.serial_no);
+              }
+              return true;
+            }
+            if(out && out.reason==='pattern_taken' && attempt<MINT_ATTEMPTS){
+              // Another Creator already holds this exact sky. Draw a
+              // different one from the same family and try again.
+              const fresh=_placeConstellation(card.constellation);
+              if(fresh && fresh.pattern && fresh.pattern.length){
+                const cards=_readCards();
+                const idx=cards.findIndex(function(c){ return c.id===card.id; });
+                if(idx!==-1){
+                  cards[idx].pattern=fresh.pattern;
+                  _writeCards(cards);
+                  card.pattern=fresh.pattern;
+                }
+                return _reserveIdentity(card, attempt+1);
+              }
+            }
+            return false;
+          });
+        });
+      });
+    }).catch(function(){ return false; });
+  }
+
   function _pushIdentitySnapshot(card){
     if(!card || typeof ThemeRepositoryClient==='undefined') return Promise.resolve(false);
     return ThemeRepositoryClient.isConfigured().then(function(ok){
@@ -498,7 +568,18 @@ const MagicCard=(function(){
   // they'll actually get if they claim it. Nothing is "locked in" until
   // claim() below is called with this same value, so "Maybe Later"
   // leaves no half-created card behind.
-  function generatePattern(){
+  // `name` is honoured when given, and a random mintable family is
+  // chosen when it is not.
+  //
+  // It USED to take no argument at all and silently ignore one. That is
+  // a quiet footgun — a caller writing generatePattern('LYRA') gets a
+  // random family and no complaint — and it misled this project's own
+  // testing: a check reported "200 distinct LYRA cards" while actually
+  // comparing two random cards two hundred times, which of course
+  // differed, and which said nothing whatever about Lyra. Honouring the
+  // argument costs one line and removes the trap.
+  function generatePattern(name){
+    if(name && CONSTELLATIONS[name]) return _placeConstellation(name);
     return _placeConstellation(_pickConstellationName());
   }
 
@@ -615,7 +696,10 @@ const MagicCard=(function(){
     // Chained onto the snapshot rather than fired beside it, because
     // Sky Protection asks the platform to mail a card BY ID and the row
     // has to exist there first, or the send fails with `no_such_card`.
-    var pushed=_pushIdentitySnapshot(card);
+    // Reserved rather than merely pushed: the database is the authority
+    // on whether this exact sky is free, and hands back a different one
+    // of the same family if it is not.
+    var pushed=_reserveIdentity(card);
     try{
       if(pushed && typeof pushed.then==='function'){
         pushed.then(function(){

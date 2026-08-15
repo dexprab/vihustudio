@@ -102,6 +102,16 @@ const CreatorRecognition = (function () {
         // asked, and answering it on the platform's behalf would tell a
         // real Creator their own stars are wrong.
         var reason = result && result.reason;
+        // AN AMBIGUOUS IDENTITY IS NOT AN INVITATION.
+        //
+        // The platform reports identity_conflict when more than one
+        // Creator holds the pattern that was just drawn. It refuses to
+        // choose between them and so does this: no Sky opens, and the
+        // child is not told their stars are wrong, because they are not
+        // — this is our data being ambiguous, not their card.
+        if (reason === 'identity_conflict') {
+          return { outcome: UNREACHABLE, reason: reason };
+        }
         return { outcome: reason === 'no_match' ? UNKNOWN : UNREACHABLE, reason: reason };
       }).catch(function () {
         return { outcome: UNREACHABLE };
