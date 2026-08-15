@@ -463,7 +463,20 @@ const MagicCard=(function(){
       lastActiveAt:now,
       companionId:(companionFields&&companionFields.companionId)||null,
       companionName:(companionFields&&companionFields.companionName)||'',
-      companionSpecies:(companionFields&&companionFields.companionSpecies)||''
+      companionSpecies:(companionFields&&companionFields.companionSpecies)||'',
+      // ALREADY CORRECT, SO SAY SO.
+      //
+      // _migrateCygnusOrder() repairs CYGNUS cards minted before that
+      // order was fixed, and it decides who needs repairing by the
+      // absence of this flag. A card minted HERE comes from the current
+      // CONSTELLATIONS table, which is the fixed order — so leaving the
+      // flag off told the migration to "repair" a card that was already
+      // right, swapping it straight back into the self-crossing order
+      // the fix existed to remove.
+      //
+      // It ran on the next _readCards(), which is to say immediately and
+      // invisibly, on every new CYGNUS card since that fix shipped.
+      constellationOrderFixed:true
     };
     const cards=_readCards();
     cards.push(card);
@@ -561,13 +574,103 @@ const MagicCard=(function(){
   // one; still fully usable (nickname/code/Home all work), just
   // without a printable back until the constellation is known some
   // other way (e.g. seeing the original device's own printed card).
+  // A CARD ALREADY HERE KEEPS ITS OWN SKY.
+  //
+  // Reported after a successful camera recognition: the right Creator
+  // came in, and the constellation on their Magic Card had changed.
+  // This is where. adopt() built a whole new record and REPLACED the
+  // existing one, storing whatever pattern the caller had submitted —
+  // and after a camera read, that is the order the blobs happened to be
+  // found in, not the order the card was minted with.
+  //
+  // The stars themselves were never wrong: recognition matches as a SET
+  // (canonical() here, _card_platform_sort_pattern server-side), so a
+  // match proves the same five or seven cells. But drawBack() joins the
+  // pattern with a line IN ARRAY ORDER, so the same sky re-ordered
+  // draws a different constellation. The child sees their card change,
+  // which for something whose whole job is being their permanent
+  // identity is about as bad as a cosmetic bug gets.
+  //
+  // So an existing local pattern is authoritative and is never
+  // overwritten by a submitted one. It came from claim(), where the
+  // platform minted it; a recall has nothing better to offer, since the
+  // RPC deliberately never returns a pattern on any branch.
+  // A SUBMITTED PATTERN IS STORED IN A STABLE ORDER.
+  //
+  // Only reached on a device that has never held this card, where there
+  // is genuinely no better source: the recall RPC never returns the
+  // pattern, so the one just submitted is all there is. But a camera
+  // read hands over cells in whatever order the blob detector found
+  // them, which differs between two photographs of the SAME card — so
+  // stored raw, the joining line would be drawn differently every time
+  // the card was recalled.
+  //
+  // Sorting row by row makes it deterministic. It is honestly NOT the
+  // order the card was minted with, so the line on a recalled card may
+  // differ from the printed one; that is a disclosed consequence of the
+  // platform never returning the pattern, and a stable wrong order is
+  // strictly better than a random one.
+  function _stablePattern(pattern){
+    if(!Array.isArray(pattern)||!pattern.length) return null;
+    return pattern
+      .filter(function(p){ return Array.isArray(p)&&p.length>=2; })
+      .map(function(p){ return [Number(p[0]),Number(p[1])]; })
+      .sort(function(a,b){ return (a[0]-b[0])||(a[1]-b[1]); });
+  }
+
+  // THE ORIGINAL ORDER CAN BE RECOVERED, so it is not guessed.
+  //
+  // A sorted order is stable and still not the card's own, so a
+  // recalled card would draw its joining line differently from the
+  // printed one it is meant to BE. That is avoidable: recall does
+  // return the constellation's NAME, and _placeConstellation() built
+  // the original from exactly that base by one of four rotations, an
+  // optional mirror, and a translation — a small, finite set.
+  //
+  // So every one of those eight transforms is applied to the base and
+  // shifted onto the cells just read. Whichever reproduces the same SET
+  // reproduces the original ORDER with it, because it is the same
+  // construction run forwards. The card then draws the line the child's
+  // printed card draws, rather than one that merely joins the same
+  // stars.
+  //
+  // Falls back to the sorted order when nothing matches — a card minted
+  // before this, or a name the registry no longer has.
+  function _orderLikeConstellation(name,cells){
+    const stable=_stablePattern(cells);
+    if(!stable) return null;
+    const base=CONSTELLATIONS[name];
+    if(!base) return stable;
+    const key=function(list){
+      return list.map(function(p){ return p[0]+','+p[1]; }).sort().join(' ');
+    };
+    const want=key(stable);
+    const minR=_minOf(stable,0), minC=_minOf(stable,1);
+    for(let turns=0;turns<4;turns++){
+      for(let mirror=0;mirror<2;mirror++){
+        let pts=_shiftToOrigin(base);
+        pts=_rotate(pts,turns);
+        if(mirror) pts=_mirrorHorizontal(pts);
+        pts=_shiftToOrigin(pts);
+        const placed=pts.map(function(p){ return [p[0]+minR,p[1]+minC]; });
+        if(key(placed)===want) return placed;
+      }
+    }
+    return stable;
+  }
+
   function adopt(remoteResult,pattern){
     const now=new Date().toISOString();
+    const cardsBefore=_readCards();
+    const existing=cardsBefore.find(function(c){ return c && c.id===remoteResult.identity_id; });
+    const keptPattern=(existing && Array.isArray(existing.pattern) && existing.pattern.length)
+      ? existing.pattern
+      : _orderLikeConstellation(remoteResult.constellation,pattern);
     const card={
       id:remoteResult.identity_id,
       nickname:remoteResult.nickname||'',
       constellation:remoteResult.constellation,
-      pattern:pattern||null,
+      pattern:keptPattern,
       claimedAt:remoteResult.claimed_at||now,
       lastActiveAt:now,
       // Companion Canon V2 -- the bond travels with the identity, not
@@ -577,9 +680,15 @@ const MagicCard=(function(){
       // called by claim()/ensureBondedCompanion(), never here).
       companionId:remoteResult.companion_id||null,
       companionName:remoteResult.companion_name||'',
-      companionSpecies:remoteResult.companion_species||''
+      companionSpecies:remoteResult.companion_species||'',
+      // Same reasoning as claim(). Either this pattern was kept from a
+      // card already on this device — which _readCards() has therefore
+      // already migrated — or it was rebuilt just now from the current
+      // CONSTELLATIONS table. Both are the fixed order, and neither
+      // wants repairing.
+      constellationOrderFixed:true
     };
-    const cards=_readCards();
+    const cards=cardsBefore;
     const idx=cards.findIndex(function(c){ return c.id===card.id; });
     if(idx===-1) cards.push(card); else cards[idx]=card;
     _writeCards(cards);
