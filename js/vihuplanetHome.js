@@ -1027,6 +1027,28 @@
           ? d.byFrame.map(function (rc) { return rc.join(','); }).join(' ')
           : 'not solved');
       box.appendChild(note);
+
+      // KEEP THE PHOTOGRAPH.
+      //
+      // Every simulated room now passes and the real one still fails,
+      // which means the simulations stopped measuring anything. The way
+      // out is not another invented scene — it is this exact picture,
+      // saved, so the reader can be run against what a camera really
+      // produces instead of against what I imagine it produces.
+      var save = document.createElement('button');
+      save.type = 'button';
+      save.textContent = '⬇ save this photo';
+      save.style.cssText = 'margin-top:5px;font:10px ui-monospace,Menlo,monospace;' +
+        'color:#0f1220;background:#9fd;border:0;border-radius:5px;padding:4px 7px;cursor:pointer';
+      save.addEventListener('click', function () {
+        try {
+          var a = document.createElement('a');
+          a.href = shot.toDataURL('image/png');
+          a.download = 'magiccard-' + shot.width + 'x' + shot.height + '.png';
+          a.click();
+        } catch (e) {}
+      });
+      box.appendChild(save);
     }
 
     function readTheShot(shot) {

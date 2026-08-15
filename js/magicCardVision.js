@@ -995,7 +995,7 @@ const MagicCardVision = (function () {
     xx.drawImage(source, 0, 0, W, hh);
     var im = xx.getImageData(0, 0, W, hh);
     var bl = _blobs(im.data, W, hh);
-    var res = { stars: bl.length, marks: bl, patterns: null };
+    var res = { stars: bl.length, marks: bl, patterns: null, quad: null };
 
     // THE FRAME'S READING BELONGS IN THE LIST.
     //
@@ -1054,6 +1054,9 @@ const MagicCardVision = (function () {
 
     var solved = _readByFrame(inside, cands);
     var head = solved ? [solved] : [];
+    // The chart's corners travel with the reading. Shape matching needs
+    // them to undo perspective — see identify().
+    res.quad = frameQuad;
 
     // Then the usual sorting, for whatever the frame could not exclude.
     var stars = _starLike(inside);
@@ -1692,6 +1695,54 @@ const MagicCardVision = (function () {
     var tries = [];
     for (var t = -3; t <= 3; t++) {
       tries.push(_normalise(_spin(marks, -(est + t * 0.035))));   // ±6°, in 2° steps
+    }
+
+    // ---------------------------------------------------------------
+    // FLATTEN THE CARD BEFORE COMPARING ITS SHAPE.
+    //
+    // Everything above searches over ROTATION, which is a similarity
+    // transform — and a card held in a hand at an angle does not undergo
+    // a similarity transform. It undergoes a PROJECTIVE one: the near
+    // edge is longer than the far edge, parallel lines converge, and a
+    // row of three evenly spaced stars stops being evenly spaced. No
+    // amount of spinning undoes that, so a perfectly detected sky could
+    // still match nothing.
+    //
+    // Reported from a real card, and visible in the diagnostic overlay
+    // that finally made it checkable: all seven stars found, each circle
+    // sitting exactly on its printed star, and "match none". The stars
+    // were right; the comparison was being made in the wrong space.
+    //
+    // The homography that reads cells is the same one that fixes this.
+    // Mapped through it, the marks land in the card's own flat
+    // coordinates, where the card is square-on by definition and a
+    // similarity match is finally the right tool. This is an EXTRA
+    // alignment rather than a replacement: where no quad was found the
+    // rotation search is still all there is, and where one was found the
+    // better alignment simply wins on cost.
+    //
+    // It cannot loosen the refusals. A rectified reading has to clear
+    // the same two bars as any other — close enough outright, and
+    // clearly better than the runner-up — so a wrong card fitting well
+    // after flattening is refused exactly as before.
+    if (look.quad) {
+      var inv = _homography(look.quad);
+      if (inv) {
+        var cells = _geometry().cells;
+        var flat = [], ok = true;
+        for (var m = 0; m < marks.length; m++) {
+          var q = inv(marks[m].x, marks[m].y);
+          if (!q) { ok = false; break; }
+          flat.push({ x: q.u * cells, y: q.v * cells, n: 1 });
+        }
+        if (ok) {
+          // Square-on already, so only a hair of rotation is searched —
+          // enough for corner estimates that are a pixel or two out.
+          for (var ft = -1; ft <= 1; ft++) {
+            tries.push(_normalise(_spin(flat, ft * 0.03)));
+          }
+        }
+      }
     }
 
     var best = null, runnerUp = null;
