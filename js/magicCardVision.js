@@ -1079,6 +1079,19 @@ const MagicCardVision = (function () {
     var agreed = 0;
     var busy = false;
 
+    // THE SAME PICTURE THE REST OF THE FLOW READS.
+    //
+    // The caller crops every other read to what the camera window is
+    // actually showing (see holdCrop in vihuplanetHome.js), and the
+    // frame loop reading the raw <video> instead would make the live
+    // state — "I can see your stars", the steadiness that starts the
+    // countdown — describe a wider, more cluttered picture than the one
+    // the photograph is taken from. Then the countdown would fire on
+    // marks that the still cannot find, which is the worst of both.
+    var framed = (typeof opts.frame === 'function')
+      ? function () { return opts.frame(video) || video; }
+      : function () { return video; };
+
     // IS THE CARD BEING HELD STILL?
     //
     // A thumbnail of each frame, compared with the one before it. Tiny
@@ -1096,7 +1109,7 @@ const MagicCardVision = (function () {
 
     function stillness() {
       try {
-        tinyX.drawImage(video, 0, 0, 32, 18);
+        tinyX.drawImage(framed(), 0, 0, 32, 18);
         var now = tinyX.getImageData(0, 0, 32, 18).data;
         if (!prev) { prev = now; return 0; }
         var diff = 0;
@@ -1112,7 +1125,7 @@ const MagicCardVision = (function () {
       if (stopped) return;
       if (!busy && video.readyState >= 2) {
         if (typeof opts.onFrame === 'function') { try { opts.onFrame(); } catch (e) {} }
-        var look = _analyse(video);
+        var look = _analyse(framed());
         var pattern = (look && look.patterns) ? look.patterns[0] : null;
         // Said on every frame, so the camera is never a still picture:
         // 'nothing' / 'something' (bright marks, not a sky) / 'stars'

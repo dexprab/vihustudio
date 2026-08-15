@@ -418,8 +418,70 @@
     var counting = null;
     var capturing = false;
     var scanPatienceSaid = false;
+    var nudge = 0;
 
     function scanSay(text) { if (scanLine) scanLine.textContent = text; }
+
+    // ---------------------------------------------------------------
+    // READ ONLY WHAT THE CHILD CAN SEE.
+    //
+    // The first photograph from a real camera in a real room said this
+    // outright, and no simulated scene ever would have. The reader had
+    // found fourteen marks and kept ten of them as stars — on a bicycle
+    // helmet, a shelf and a window frame. The card was a small bright
+    // thing off to one side, and the registration quad had latched onto
+    // furniture. Every fix before this was aimed at telling a star from
+    // a numeral, when the actual problem was that half the room was in
+    // the picture at all.
+    //
+    // And the child never saw that room. The camera window is the
+    // card's own shape, portrait, and the stream is landscape, and the
+    // video is object-fit: cover — so roughly the middle 40% of the
+    // camera's width is displayed and the rest is cropped away on
+    // screen ONLY. The child aims the card at what they can see; the
+    // reader was searching a frame two and a half times wider, full of
+    // things nobody chose to photograph.
+    //
+    // So the analysis is cropped to exactly what the window shows, and
+    // then to the guide inside it. Three things follow, all of them
+    // wanted: the clutter is gone, the card is a far larger share of
+    // the pixels that remain, and the dashed guide finally MEANS
+    // something — it is now the boundary of what is read, rather than
+    // decoration over a reader that ignored it.
+    //
+    // The inset matches .vp-scan-hold's own 7%, so the promise the
+    // interface makes and the region the reader uses cannot drift.
+    var HOLD_INSET = 0.07;
+
+    function holdCrop(source) {
+      var sw = source.videoWidth || source.naturalWidth || source.width;
+      var sh = source.videoHeight || source.naturalHeight || source.height;
+      if (!sw || !sh) return source;
+
+      // What object-fit: cover is showing. Scale to fill, then only the
+      // middle of the longer axis survives.
+      var box = scanWindow ? scanWindow.getBoundingClientRect() : null;
+      var tw = (box && box.width) || sw;
+      var th = (box && box.height) || sh;
+      if (!tw || !th) return source;
+      var scale = Math.max(tw / sw, th / sh);
+      var visW = Math.min(sw, tw / scale);
+      var visH = Math.min(sh, th / scale);
+
+      var cw = visW * (1 - HOLD_INSET * 2);
+      var ch = visH * (1 - HOLD_INSET * 2);
+      var cx = (sw - cw) / 2;
+      var cy = (sh - ch) / 2;
+      if (!(cw > 16 && ch > 16)) return source;
+
+      var c = document.createElement('canvas');
+      c.width = Math.round(cw);
+      c.height = Math.round(ch);
+      try {
+        c.getContext('2d').drawImage(source, cx, cy, cw, ch, 0, 0, c.width, c.height);
+      } catch (e) { return source; }
+      return c;
+    }
 
     // ---------------------------------------------------------------
     // RECOGNISED. The camera goes off, and the sky comes up.
@@ -596,12 +658,12 @@
           'padding:8px 10px;border-radius:8px;white-space:pre;pointer-events:none';
         document.body.appendChild(checkEl);
       }
-      var r = MagicCardVision.look(scanVideo);
+      var r = MagicCardVision.look(holdCrop(scanVideo));
       if (!r) return;
       var cards = [];
       try { cards = MagicCard.list ? MagicCard.list() : []; } catch (e) {}
       var hit = null;
-      try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
+      try { hit = MagicCardVision.identify(holdCrop(scanVideo), cards); } catch (e) {}
       // Whether the CDN build arrived, in the panel that is already
       // open while the card is being held up — so confirming it costs
       // nobody a console.
@@ -687,6 +749,9 @@
       MagicCardVision.openCamera(scanVideo).then(function (stream) {
         scanStream = stream;
         scanner = MagicCardVision.scan(scanVideo, {
+          // Every frame the loop reads is cropped to the window, the
+          // same as every other read — see holdCrop.
+          frame: holdCrop,
           // THE CAMERA HAS TO LOOK ALIVE.
           //
           // Holding a card up used to look exactly like holding up
@@ -706,7 +771,16 @@
             if (state === scanState) return;   // only when it changes
             scanState = state;
             if (state === 'stars') scanSay('I can see your stars…');
-            else if (state === 'something') scanSay('Hold it a little steadier…');
+            // DISTANCE IS THE BIGGEST LEVER THERE IS, and the first real
+            // photograph showed a card held at arm's length taking up a
+            // quarter of the window. Every pixel the grid does not cover
+            // is detail no later stage invents, so the ask alternates:
+            // steadier, then closer. Two hints, never a lecture, and
+            // both are things a child can simply do.
+            else if (state === 'something') {
+              nudge = (nudge + 1) % 2;
+              scanSay(nudge ? 'Bring it a little closer…' : 'Hold it a little steadier…');
+            }
             // Once it has said it is ready when they are, it does not
             // go back to asking. Seeing something is still worth
             // saying; seeing nothing again is not, and would wipe the
@@ -782,7 +856,7 @@
       catch (e) { cards = []; }
       if (!cards.length) return;
       var hit = null;
-      try { hit = MagicCardVision.identify(scanVideo, cards); } catch (e) {}
+      try { hit = MagicCardVision.identify(holdCrop(scanVideo), cards); } catch (e) {}
       if (!hit || !hit.card) return;
       scanBusy = true;
       try { MagicCard.setActive(hit.card.id); } catch (e) {}
@@ -837,9 +911,15 @@
 
       function read(shot) {
         if (!shot) { capturing = false; return; }
+        // Cropped to the window before anything reads it, so the
+        // photograph and the preview are the same picture. A full-sensor
+        // photo makes this matter MORE, not less: the extra pixels are
+        // extra room, and the card's share of them is unchanged.
+        var framed = shot;
+        try { framed = holdCrop(shot); } catch (e) {}
         // A moment on the still, so the picture is not analysed in the
         // same frame it was taken and the flash has time to be seen.
-        window.setTimeout(function () { readTheShot(shot); }, 260);
+        window.setTimeout(function () { readTheShot(framed); }, 260);
       }
 
       var track = null;
@@ -993,7 +1073,7 @@
       if (scanBusy) return;
       scanBusy = true;
       var list = [];
-      try { list = MagicCardVision.readCandidates(scanVideo, null) || []; } catch (e) {}
+      try { list = MagicCardVision.readCandidates(holdCrop(scanVideo), null) || []; } catch (e) {}
       if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
 
       // Straight in, when this device already knows the card and the
