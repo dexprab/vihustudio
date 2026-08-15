@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data Matrix Lab — VihuPlanet experiment</title>
+<!--
+  A LABORATORY, AND ONLY THAT.
+
+  Nothing in this folder is loaded by VihuPlanet. It reads no Creator,
+  writes no Creator, and touches no Supabase. Deleting tools/datamatrix-lab/
+  removes the experiment completely and changes nothing else.
+
+  The one question: can a Data Matrix be hidden under a constellation
+  and still be read by an ordinary camera?
+-->
+<style>
+  :root {
+    --ink: #eef1ff; --gold: #FFCB45; --panel: rgba(18,24,48,.72);
+    --line: rgba(255,203,69,.22);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #070a16; color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, sans-serif;
+  }
+  header {
+    padding: 14px 18px; border-bottom: 1px solid var(--line);
+    display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;
+  }
+  h1 { font: 600 16px/1 Georgia, serif; margin: 0; color: var(--gold); }
+  .muted { color: rgba(238,241,255,.5); font-size: 12px; }
+  .tabs { display: flex; gap: 6px; margin-left: auto; }
+  .tabs button.on { background: var(--gold); color: #101427; }
+  button, select, input[type=text] {
+    background: rgba(255,255,255,.06); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer;
+  }
+  button:hover { background: rgba(255,255,255,.12); }
+  main { display: grid; grid-template-columns: 320px 1fr; gap: 18px; padding: 18px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h2 { font: 600 12px/1 system-ui; letter-spacing: .08em; text-transform: uppercase;
+              color: var(--gold); margin: 0 0 10px; }
+  label { display: block; margin: 9px 0 3px; font-size: 12px; color: rgba(238,241,255,.72); }
+  input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 1 1 auto; }
+  .toggles label { display: flex; gap: 7px; align-items: center; margin: 6px 0; font-size: 13px; color: var(--ink); }
+  canvas.card { width: 100%; max-width: 420px; border-radius: 10px; display: block; background: #000; }
+  .stage { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .big { font: 600 22px/1.2 system-ui; color: var(--gold); }
+  video { width: 100%; max-width: 420px; border-radius: 10px; background: #000; display: block; }
+  .state { font: 600 13px/1 system-ui; letter-spacing: .06em; text-transform: uppercase; padding: 8px 0; }
+  .s-idle { color: rgba(238,241,255,.5); }
+  .s-searching { color: var(--gold); }
+  .s-found { color: #9fd; }
+  .s-fail { color: #f88; }
+  .hide { display: none !important; }
+  .grid20 { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
+  .grid20 figure { margin: 0; }
+  .grid20 canvas { width: 100%; border-radius: 6px; }
+  .grid20 figcaption { font-size: 11px; color: rgba(238,241,255,.6); padding-top: 3px; }
+  code { color: #9fd; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Data Matrix Lab</h1>
+  <span class="muted">standalone experiment · not connected to VihuPlanet · no real Creator data</span>
+  <span class="tabs">
+    <button data-tab="child" class="on">Child View</button>
+    <button data-tab="tech">Technical View</button>
+    <button data-tab="scan">Scan</button>
+    <button data-tab="sheet">20 Identities</button>
+  </span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Card</h2>
+    <label>Creator ID (test only)</label>
+    <input type="text" id="cid" value="TEST-0001">
+    <label>Constellation family</label>
+    <select id="family"></select>
+
+    <h2 style="margin-top:16px">Camouflage strategy</h2>
+    <select id="strategy">
+      <option value="A">A — Matrix under constellation</option>
+      <option value="B">B — Star overlay (halos cut the matrix)</option>
+      <option value="C">C — Low contrast</option>
+      <option value="D">D — Sky-integrated</option>
+      <option value="E" selected>E — Hybrid</option>
+    </select>
+
+    <label>Data Matrix opacity <span id="vOp"></span></label>
+    <input type="range" id="op" min="0" max="1" step="0.02" value="0.5">
+    <label>Data Matrix contrast <span id="vCon"></span></label>
+    <input type="range" id="con" min="0" max="1" step="0.02" value="0.6">
+    <label>Star size <span id="vSz"></span></label>
+    <input type="range" id="sz" min="0.12" max="0.5" step="0.01" value="0.30">
+    <label>Star brightness <span id="vSb"></span></label>
+    <input type="range" id="sb" min="0.2" max="1" step="0.02" value="1">
+    <label>Sky brightness <span id="vSk"></span></label>
+    <input type="range" id="sk" min="0" max="1" step="0.02" value="0.10">
+    <label>Star count <span id="vSc"></span></label>
+    <input type="range" id="sc" min="3" max="8" step="1" value="5">
+
+    <div class="toggles" id="techToggles" style="margin-top:14px">
+      <h2>Layers</h2>
+      <label><input type="checkbox" id="tMatrix" checked> Data Matrix</label>
+      <label><input type="checkbox" id="tStars" checked> Constellation</label>
+      <label><input type="checkbox" id="tSky" checked> Background</label>
+      <label><input type="checkbox" id="tLines" checked> Connecting line</label>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button id="dl">⬇ PNG</button>
+      <button id="dlClean">⬇ Clean card</button>
+      <button id="selfTest">Self-test decode</button>
+    </div>
+    <p class="muted" id="libs" style="margin-top:10px"></p>
+  </section>
+
+  <section>
+    <div id="tab-child" class="stage">
+      <canvas class="card" id="cardChild" width="700" height="700"></canvas>
+      <div class="panel" style="max-width:320px">
+        <h2>What the child sees</h2>
+        <p class="muted">Their constellation on a deep sky. No technical
+        labels, no scan instruction, nothing that looks like a code.</p>
+        <p class="muted">Everything about the identity layer is on the
+        left, for us — not on the card, for them.</p>
+      </div>
+    </div>
+
+    <div id="tab-tech" class="stage hide">
+      <canvas class="card" id="cardTech" width="700" height="700"></canvas>
+      <div class="panel" style="max-width:340px">
+        <h2>Layers</h2>
+        <p class="muted">Turn the Data Matrix off and the constellation must be
+        unchanged — the star cells are computed from the Creator ID and never
+        from the matrix.</p>
+        <table id="techInfo"></table>
+      </div>
+    </div>
+
+    <div id="tab-scan" class="stage hide">
+      <div>
+        <video id="cam" playsinline muted></video>
+        <div class="row" style="margin-top:10px">
+          <button id="camStart">Start camera</button>
+          <button id="camStop">Stop</button>
+          <button id="reset">Reset counters</button>
+        </div>
+        <div class="state s-idle" id="scanState">idle</div>
+        <p class="muted">Hold a printed card in front of the camera. Decoding runs
+        at a modest cadence so the preview stays smooth.</p>
+      </div>
+      <div class="panel" style="min-width:280px">
+        <h2>Results</h2>
+        <div class="big" id="rate">—</div>
+        <table id="counters"></table>
+        <h2 style="margin-top:14px">Last decode</h2>
+        <table id="lastDecode"></table>
+        <h2 style="margin-top:14px">By strategy</h2>
+        <table id="byStrategy"></table>
+      </div>
+    </div>
+
+    <div id="tab-sheet" class="hide">
+      <div class="panel" style="margin-bottom:12px">
+        <div class="row">
+          <button id="gen20">Generate 20 identities</button>
+          <button id="verify20">Verify all 20 decode uniquely</button>
+          <button id="dlSheet">⬇ Print sheet (PNG)</button>
+        </div>
+        <p class="muted" id="sheetResult" style="margin:10px 0 0"></p>
+      </div>
+      <div class="grid20" id="sheet"></div>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/bwip-js-min.js"></script>
+<script src="vendor/zxing.min.js"></script>
+<script src="lab.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

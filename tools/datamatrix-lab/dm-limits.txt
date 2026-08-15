@@ -1,0 +1,41 @@
+TIP (perspective away from the camera), turn fixed at 2 degrees
+   tip  0deg    100%
+   tip  4deg    100%
+   tip  8deg    100%
+   tip 10deg    100%
+   tip 12deg    100%
+   tip 14deg    100%
+   tip 16deg      0%
+   tip 18deg      0%
+   tip 20deg      0%
+   tip 25deg      0%
+   tip 30deg      0%
+
+TURN (rotation about the vertical), tip fixed at 2 degrees
+   turn  0deg   100%
+   turn  5deg   100%
+   turn 10deg   100%
+   turn 15deg   100%
+   turn 20deg   100%
+   turn 25deg     0%
+   turn 30deg     0%
+   turn 35deg     0%
+   turn 40deg     0%
+
+DISTANCE (share of the frame the card fills)
+   fill 0.85     100%
+   fill 0.72     100%
+   fill 0.60     100%
+   fill 0.50     100%
+   fill 0.40     100%
+   fill 0.30     100%
+   fill 0.25     100%
+   fill 0.20     100%
+
+OCCLUSION (share of the card covered by a hand, from a corner)
+   covered  0%   100%
+   covered  5%   100%
+   covered 10%   100%
+   covered 15%   100%
+   covered 20%     0%
+   covered 30%     0%
