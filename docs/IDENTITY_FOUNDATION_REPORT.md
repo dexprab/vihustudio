@@ -30,16 +30,34 @@ Delphinus 384, Gemini 336 … Pegasus 64, Cassiopeia 64, **Cygnus 16**.
 
 ## C. Duplicate patterns found
 
-**Not determinable from here.** This session has no database access, so
-no audit was run against live data. The audit is STEP 1 of
-`supabase/migrations_identity_hardening.sql` and reports, for every
-canonical pattern held by more than one Creator: the pattern, the count,
-the Creator ids, the families, the nicknames, first claim and last seen.
+**None. Zero duplicate patterns across all live Creators.**
 
-Nothing is deleted, merged, reassigned or reminted. STEP 2 **refuses to
-install the unique index** while any duplicate exists, and says how
-many, because silently failing to add a uniqueness constraint would be
-worse than stopping.
+Measured against the live database after the migration ran:
+
+| | |
+|---|---|
+| Creators | 6 |
+| Distinct canonical patterns | 6 |
+| **Duplicate patterns** | **0** |
+| Cards on the twelve new families | 0 |
+
+Two independent confirmations agree. The count above is direct; and
+STEP 2 of the migration *raises and aborts* if any duplicate exists, so
+a clean run — which produced STEP 3 and STEP 4 — could only have
+happened with none.
+
+No Creator identity was deleted, merged, reassigned or reminted, and
+none needed to be. There is no product decision outstanding.
+
+**The constellation CHECK break never bit anyone.** `on_new_families`
+is 0: no card had yet been minted with one of the twelve new families,
+so the constraint would have rejected the *next* claim rather than
+having already lost one. It was a latent break, caught before its first
+victim.
+
+At 6 Creators the residual collision risk is about 0.9% across all
+fifteen pairs — and is now moot regardless, since the unique index
+makes a duplicate impossible rather than unlikely.
 
 ## D. Database constraint added
 
@@ -140,6 +158,9 @@ Uniqueness is now enforced, so a collision can no longer create two
 Creators; it exhausts the pool instead, which is a visible failure
 rather than a silent one.
 
+With 6 of 3,472 patterns taken, the pool is 0.17% used. The limit is
+real and is nowhere near.
+
 ## K. Tests
 
 **13 passed, 0 failed.**
@@ -164,13 +185,24 @@ A–I run against a model of the hardened database. They verify the
 *logic* the SQL implements; they are not a substitute for running the
 migration against the real one.
 
-## Still to do, by a human
+## Migration status
 
-`supabase/migrations_identity_hardening.sql` has not been run — no
-database was reachable from this session. Run STEP 1 first and read the
-audit; STEP 2 will refuse to proceed if duplicates exist.
+**Run, and verified.** `supabase/migrations_identity_hardening.sql`
+executed cleanly against the live database:
 
-Until it is run: recall still uses `limit 1` on the live database, the
-canonical unique index does not exist, and **cards using the twelve new
-constellation families are being silently rejected by the platform.**
-That last one is the most urgent.
+- the constellation CHECK accepts all eighteen families
+- the canonical unique index is installed
+- `recall_magic_card` refuses on `identity_conflict` and no longer
+  contains `limit 1`
+- `mint_magic_card` is deployed
+
+`supabase/verify_identity_hardening.sql` re-checks all four at any time
+and changes nothing.
+
+Every guarantee in this report is now enforced by the database rather
+than only by the client:
+
+    one canonical star pattern  ->  one Creator
+    one Creator                 ->  one Magic Card identity
+
+and an ambiguous identity can never open a Sky.
