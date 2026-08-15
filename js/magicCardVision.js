@@ -74,8 +74,38 @@ const MagicCardVision = (function () {
 
   // How far from a cell centre a star may land, as a fraction of the
   // cell. Beyond this the fit is not a grid and is refused.
-  var SNAP_TOLERANCE = 0.34;
+  // HOW CLOSE A STAR HAS TO LAND TO A CELL'S CENTRE, in cells.
+  //
+  // 0.34 was two thirds of the way to the boundary — a star could be
+  // most of the way to the next cell and still be accepted. That is not
+  // a reading, it is a lattice that happens to fit, and under the bloom
+  // a real camera produces it accepted whole constellations that were
+  // simply wrong. Measured: at moderate bloom the guide stars were found
+  // correctly and the cells came back WRONG rather than refused.
+  //
+  // A wrong constellation is the worst outcome this code has. The
+  // board's arrows can move a sky that is in the wrong place; nothing a
+  // child can do repairs one that is the wrong shape. So this is now a
+  // quarter of a cell, which every good reading clears comfortably —
+  // square-on measures 0.03 and a tipped card 0.10 — and which marginal
+  // fits do not.
+  var SNAP_TOLERANCE = 0.25;
 
+  // HOW FAR INSIDE THE CHART A MARK HAS TO BE TO COUNT AS A STAR.
+  //
+  // The two things being separated sit at known coordinates, so this is
+  // arithmetic rather than taste. A guide star is exactly ON the border,
+  // at 0 and 1. The outermost a pattern star can ever be is a cell
+  // centre in the first or last column, which is 0.05 and 0.95. Anything
+  // between those bounds excludes the corners and keeps every possible
+  // sky.
+  //
+  // It was 0.04, which is a hair under 0.05 and left no room at all:
+  // CASSIOPEIA has a star in the tenth column at 0.95 against a limit of
+  // 0.96, so the smallest perspective error threw it away and a
+  // five-star sky arrived as four. Half way between the two bounds is
+  // the honest place for it.
+  var INSIDE_PAD = 0.025;
   var MIN_STARS = 4;
   var MAX_STARS = 9;
 
@@ -1046,7 +1076,7 @@ const MagicCardVision = (function () {
     // found, and the cells "not solved" anyway.
     var inside = bl;
     if (frameQuad) {
-      var within = _within(bl, frameQuad, 0.04);
+      var within = _within(bl, frameQuad, INSIDE_PAD);
       if (within.length >= MIN_STARS) inside = within;
     }
 
@@ -1615,12 +1645,29 @@ const MagicCardVision = (function () {
     //
     // So it is a fallback, and it earns its place by working at all on
     // a card whose thin ruled frame the threshold could not find.
+    // THE CARD'S BORDER NO LONGER PRODUCES A READING.
+    //
+    // It was added as a fallback for a card whose thin chart frame the
+    // threshold could not find, and it did work — but its corners are
+    // the outer edge of a five-pixel stroke on a die-cut 30px radius, so
+    // the extreme point sits on an arc about 1.3% of the width from the
+    // corner. That is a seventh of a cell spent before the stars are
+    // considered, and under the bloom a real camera produces it stopped
+    // being a near miss: measured, it returned cells that were WRONG
+    // rather than refusing — a complete, plausible, incorrect
+    // constellation drawn on a child's board.
+    //
+    // A wrong reading is worse than none here. The board's arrows can
+    // move a sky that is merely in the wrong place; nothing a child can
+    // do repairs one that is the wrong shape. So the card's border is
+    // kept for finding roughly where the chart is — which is all the
+    // inside-the-chart filter needs of it — and no longer for saying
+    // which cells the stars are in.
     var order = [], i;
     for (i = 0; i < cands.length; i++) {
       var c = _chartOf(cands[i]);
-      if (c) order.push(c);
+      if (c && c.span === 1) order.push(c);
     }
-    order.sort(function (a, b) { return (a.span === 1 ? 0 : 1) - (b.span === 1 ? 0 : 1); });
     for (i = 0; i < order.length; i++) {
       var read = _readThrough(marks, order[i]);
       if (read) return read;
@@ -1657,25 +1704,89 @@ const MagicCardVision = (function () {
   // the thing a random pattern offset makes unguessable — stops being a
   // question.
   //
-  // The test is strict on purpose, because a wrong quad is worse than no
-  // quad. Four marks, clearly larger than everything else, arranged as a
-  // convex quadrilateral of roughly square aspect. Anything short of
-  // that falls through to the rectangle search, so a card printed before
-  // this change still reads exactly as well as it did.
+  // THEY ARE FOUND BY WHERE THEY ARE, NOT BY HOW BIG THEY ARE.
+  //
+  // The first version took the four biggest marks and required a clear
+  // size gap below them, because the card draws them at 1.9x — which is
+  // 3.6x the area and looks decisive on a rendered card. On a real
+  // photograph it is not. Bright marks BLOOM: a lens and an exposure
+  // spread a small white star until it measures nearly the size of a
+  // large one. Measured on a real card held to a real camera, the sizes
+  // came back
+  //
+  //     769 580 577 539 | 516 514 483 313 256 | 191 188 185
+  //     └ the guides ──┘  └── CYGNUS's five ─┘
+  //
+  // — a gap of four per cent where the drawing has a gap of two hundred
+  // and sixty. The test refused, the exact read never ran, and the
+  // reading fell through to the path that infers cell size from the
+  // stars themselves, which produced a constellation squeezed into a
+  // corner of the board. That is the whole of "the constellation drawn
+  // is still wrong".
+  //
+  // Position is the far stronger fact, and it does not bloom. Every
+  // pattern star sits at a CELL CENTRE, which is half a cell inside the
+  // grid; the guide stars sit ON the grid's corners. So the guides are
+  // the extreme marks in the four diagonal directions, always, and no
+  // pattern can put a star outside one. Extremes of a convex set are
+  // vertices at any rotation, so this holds for a card held at any
+  // angle rather than only a level one.
+  //
+  // Size is kept only as a sanity floor — a corner should not be a
+  // speck — and the real proof is left where it belongs: every star has
+  // to land on a cell through the resulting transform, or _readThrough
+  // refuses and nothing is claimed.
   function _guideQuad(marks) {
-    if (!marks || marks.length < 4) return null;
-    var by = marks.slice().sort(function (a, b) { return b.n - a.n; });
-    var four = by.slice(0, 4);
-    var smallest = four[3].n;
-    // A CLEAR GAP, not a ranking. Taking "the four biggest" alone would
-    // find four of anything; these have to be the size the card draws
-    // guide stars, which is well clear of the fifth mark.
-    if (by.length > 4 && by[4].n > smallest * 0.62) return null;
-    // Sizes among themselves must agree — four corners of one card are
-    // photographed at nearly the same scale.
-    if (four[0].n > smallest * 3.2) return null;
+    if (!marks || marks.length < MIN_STARS + 4) return null;
 
-    var cx = 0, cy = 0, i;
+    // A COARSE SIZE FLOOR FIRST, because position alone picks numerals.
+    //
+    // The row and column numbers are drawn OUTSIDE the grid — above the
+    // top row and left of the first column — so in the very directions
+    // this searches, a numeral is further out than the corner star it
+    // sits beside. Pure position chose them and the quad collapsed.
+    //
+    // This is emphatically not the strict gap that failed before. That
+    // asked the fifth mark to be well under the fourth, which bloom
+    // destroys — four per cent apart on a real card. This only asks a
+    // corner to be within a factor of two of the fourth largest mark,
+    // which the numbering is nowhere near: on the same real photograph
+    // the guides ran 769 to 539 and the numbering 191 to 185, a factor
+    // of nearly three. Loose enough to survive any bloom, tight enough
+    // to leave only marks that could be a corner.
+    var ranked = marks.slice().sort(function (a, b) { return b.n - a.n; });
+    var floor = ranked[3].n * 0.5;
+    var big = marks.filter(function (m) { return m.n >= floor; });
+    if (big.length < 4) return null;
+
+    var pick = function (score) {
+      var bestM = null, bestV = -Infinity;
+      for (var j = 0; j < big.length; j++) {
+        var v = score(big[j]);
+        if (v > bestV) { bestV = v; bestM = big[j]; }
+      }
+      return bestM;
+    };
+    var four = [
+      pick(function (m) { return -(m.x + m.y); }),   // top-left
+      pick(function (m) { return m.x - m.y; }),      // top-right
+      pick(function (m) { return m.x + m.y; }),      // bottom-right
+      pick(function (m) { return m.y - m.x; })       // bottom-left
+    ];
+    var i, j2;
+    for (i = 0; i < 4; i++) {
+      if (!four[i]) return null;
+      for (j2 = i + 1; j2 < 4; j2++) if (four[i] === four[j2]) return null;
+    }
+
+    // A corner is never one of the smallest things in the picture. This
+    // is deliberately loose — it exists to reject a speck of room, not
+    // to identify a guide star, which position already did.
+    var sizes = marks.map(function (m) { return m.n; }).sort(function (a, b) { return a - b; });
+    var median = sizes[Math.floor(sizes.length / 2)] || 1;
+    for (i = 0; i < 4; i++) if (four[i].n < median * 0.45) return null;
+
+    var cx = 0, cy = 0;
     for (i = 0; i < 4; i++) { cx += four[i].x; cy += four[i].y; }
     cx /= 4; cy /= 4;
     // Corner order by angle about the centre gives TL, TR, BR, BL for a
@@ -1697,6 +1808,16 @@ const MagicCardVision = (function () {
     if (Math.abs(Math.log(horiz / vert)) > 0.42) return null;
     if (Math.max(top, bottom) > Math.min(top, bottom) * 2.1) return null;
     if (Math.max(left, right) > Math.min(left, right) * 2.1) return null;
+
+    // AND THERE HAS TO BE A SKY INSIDE IT. Four extreme marks can be
+    // found in any picture; four extreme marks with a constellation's
+    // worth of stars strictly within them is a card. This is what stops
+    // an arbitrary spread of room highlights from registering as a
+    // chart before _readThrough ever gets a say.
+    var inner = _within(marks.filter(function (m) {
+      return m !== four[0] && m !== four[1] && m !== four[2] && m !== four[3];
+    }), q, 0.02);
+    if (inner.length < MIN_STARS) return null;
     return q;
   }
 
@@ -1776,7 +1897,7 @@ const MagicCardVision = (function () {
     // NUMBER of stars, and four extra corners means no pattern has it.
     var pool = look.marks;
     if (look.quad) {
-      var kept = _within(pool, look.quad, 0.04);
+      var kept = _within(pool, look.quad, INSIDE_PAD);
       if (kept.length >= MIN_STARS) pool = kept;
     }
     var markSets = [];
@@ -1803,6 +1924,26 @@ const MagicCardVision = (function () {
       var minusCorners = _starLike(bySize.slice(4));
       if (minusCorners.length >= MIN_STARS &&
           minusCorners.length !== primary.length) markSets.push(minusCorners);
+    }
+
+    // AND THE UNFILTERED SET, WHEN THE FILTER COST A STAR.
+    //
+    // Filtering to what is inside the chart is right for READING cells
+    // and is not free for RECOGNISING one: a card turned well aside
+    // pushes its outermost star — CASSIOPEIA's tenth column is the worst
+    // case — close enough to the border that a small perspective error
+    // drops it, and a four-star reading of a five-star sky matches
+    // nothing on length alone. Measured, that alone took recognition
+    // from 20/20 to 16/20 while fixing the case a real camera actually
+    // hit.
+    //
+    // Both are offered. Neither is trusted: whichever set produces a
+    // match still has to clear the same two refusals, so this widens
+    // what can be recognised without widening what can be believed.
+    if (pool !== look.marks) {
+      var unfiltered = _starLike(look.marks);
+      var already = markSets.some(function (set) { return set.length === unfiltered.length; });
+      if (unfiltered.length >= MIN_STARS && !already) markSets.push(unfiltered);
     }
     if (!markSets.length) return null;
     var marks = markSets[0];
@@ -2092,7 +2233,7 @@ const MagicCardVision = (function () {
         if (!q) return { guide: false };
         var inv = _homography(q);
         if (!inv) return { guide: true, solved: false };
-        var inside = _within(bl, q, 0.04);
+        var inside = _within(bl, q, INSIDE_PAD);
         var stars = _starLike(inside);
         var cells = _geometry().cells, worst = 0, off = [];
         stars.forEach(function (m) {
@@ -2138,7 +2279,7 @@ const MagicCardVision = (function () {
         var fq = guide || _chartQuad(cands);
         var inside = bl;
         if (fq) {
-          var wi = _within(bl, fq, 0.04);
+          var wi = _within(bl, fq, INSIDE_PAD);
           if (wi.length >= MIN_STARS) inside = wi;
         }
         var look = _analyse(source, width);
