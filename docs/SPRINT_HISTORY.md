@@ -2127,3 +2127,40 @@ put every warm thing off screen. Verified across desktop, a phone at 390px and
 reduced motion: both permanent actions reachable in all three, 3 DOM nodes, no
 images, and reduced motion keeps the region and the stillness response because
 neither is motion.
+
+## Shown, Not Assumed — the Ten Seconds Before the Door Opens (build 0534)
+
+The camera could recognise a Magic Card and open the Studio without the child
+ever seeing what it had decided, and a strange device — a Creator at their
+grandmother's — got the *longest* path of all: the reader's candidate readings
+went straight to the drawing board, which asked them to check their own stars
+and press Continue, while the machine that already knew them let them walk in.
+Three changes, one sprint. `CreatorRecognition.recogniseAny()`, written for
+exactly this case and called from nowhere, is now wired into the still path:
+every candidate reading goes to the platform in one parallel round (bounded to
+eight, given up on after six seconds, falling back to the board — a slow
+network must never hold a child in front of a dead camera). The board is still
+there and is now reached only when nobody recognises the sky at all, which is
+the only time it has a real question to ask. Second, both recognised arrivals —
+this device's own card and the platform's answer — now draw the recognised sky
+back to the child with their name and a ten-second countdown, with `That's not
+me` beside it: a countdown rather than a question, so nothing must be pressed
+to continue and the child is simply able to stop it. `setActive()` and
+`markRecognised()` moved to the end of that countdown, because committing them
+on the match would have left the browser believing a recognition the child had
+just rejected — and the Studio's Gateway would then have skipped its own
+question on the strength of it. The drawing board stays instant: there the
+child drew the sky themselves. Third, `recall_magic_card()` now returns the
+stored pattern on the pattern branch only, and `adopt()` prefers it over the
+order the camera read — checked as a SET against what the caller proved, never
+assumed — so a Creator recognised on a brand-new device gets the picture that
+is in their pocket rather than the right stars joined the wrong way. The typed-
+code branch returns no pattern, exactly as before: that caller has proved
+nothing about the sky. Verified: the confirmation on both arrivals with the sky
+drawn, the countdown, and nothing written to `vihu-magic-card-active-id` or the
+arrival note until it elapses; `That's not me` returning to the camera with
+nothing committed and no late navigation; and the existing suites unchanged —
+safety 14/14 on both paths, board EXACTLY THE CARD on all four cards, countdown
+7 stars exact, acceptance, try-again, no-write and card-keeping all pass.
+Decision 18 in CLAUDE.md; `supabase/migrations_recall_returns_pattern.sql` is
+the one thing that must be run by hand.

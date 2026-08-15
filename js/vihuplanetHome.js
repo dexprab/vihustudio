@@ -590,13 +590,78 @@
 
       scanSay('There you are.');
       drawTheSky(card && card.pattern);
+      confirmSky(card);
+    }
 
-      CreatorRecognition.markRecognised(card && card.id);
-      // Long enough to be a moment, short enough not to be a wait.
-      window.setTimeout(function () {
-        closeCardScan({ keepUniverseStill: true });
-        goStudio(JourneyResolver.recognised());
-      }, 1600);
+    // ---------------------------------------------------------------
+    // SHOWN, NOT ASSUMED.
+    //
+    // The product owner's decision, and it amends Decision 11's
+    // "recognition is instant and silent — no confirmation screen".
+    // The reasoning is the child's rather than the system's: being told
+    // who you are is not the same as agreeing, and a Magic Card opens
+    // somebody's whole creative life. Ten seconds with your own
+    // constellation drawn back to you, and a way to say no, costs a
+    // returning Creator almost nothing and gives them the last word.
+    //
+    // IT IS A COUNTDOWN, NOT A QUESTION. Nothing has to be pressed to
+    // continue — the door is already opening, and the child is simply
+    // able to stop it. A prompt that required an answer would turn
+    // every arrival into a form.
+    //
+    // NOTHING IS COMMITTED UNTIL IT ELAPSES. setActive() and
+    // markRecognised() used to run the instant a match was found;
+    // choosing "that's not me" afterwards would have left this browser
+    // believing it, and the Studio's own Gateway would have skipped its
+    // question on the strength of a recognition the child rejected.
+    var confirmTimer = null, confirmCard = null;
+    var CONFIRM_SECONDS = 10;
+
+    function confirmSky(card) {
+      confirmCard = card;
+      var box = scanEl && scanEl.querySelector('[data-scan-confirm]');
+      var line = scanEl && scanEl.querySelector('[data-scan-confirm-line]');
+      var who = (card && card.nickname) ? String(card.nickname).trim() : '';
+
+      if (!box || !line) { enterStudio(); return; }
+      box.hidden = false;
+      var left = CONFIRM_SECONDS;
+
+      function say(n) {
+        line.textContent = who
+          ? 'Welcome back, ' + who + '. Opening your Studio in ' + n + '…'
+          : 'This is your sky. Opening your Studio in ' + n + '…';
+      }
+      say(left);
+
+      confirmTimer = window.setInterval(function () {
+        left--;
+        if (left > 0) { say(left); return; }
+        window.clearInterval(confirmTimer); confirmTimer = null;
+        enterStudio();
+      }, 1000);
+    }
+
+    function enterStudio() {
+      var card = confirmCard;
+      if (confirmTimer) { window.clearInterval(confirmTimer); confirmTimer = null; }
+      // Committed only now.
+      try { if (card && card.id) MagicCard.setActive(card.id); } catch (e) {}
+      try { CreatorRecognition.markRecognised(card && card.id); } catch (e) {}
+      closeCardScan({ keepUniverseStill: true });
+      goStudio(JourneyResolver.recognised());
+    }
+
+    // "That's not me." Nothing is committed, nothing is blamed, and the
+    // camera simply comes back — the child is where they were before
+    // anybody claimed to know them.
+    function notMe() {
+      if (confirmTimer) { window.clearInterval(confirmTimer); confirmTimer = null; }
+      confirmCard = null;
+      var box = scanEl && scanEl.querySelector('[data-scan-confirm]');
+      if (box) box.hidden = true;
+      closeCardScan();
+      openCardScan();
     }
 
     // The child's own constellation, drawn as the Ether draws stars:
@@ -626,10 +691,12 @@
         return { x: ox + (p[1] + 0.5) * cell, y: oy + (p[0] + 0.5) * cell };
       });
 
-      // The thread between them, faint.
+      // The thread between them. Faint when this was only a flourish
+      // on the way through; the child is now being ASKED whether this
+      // is their sky, so it has to be legible enough to answer.
       if (pts.length > 1) {
-        x.strokeStyle = 'rgba(255, 226, 160, 0.28)';
-        x.lineWidth = 1.5;
+        x.strokeStyle = 'rgba(255, 226, 160, 0.5)';
+        x.lineWidth = 2;
         x.beginPath();
         pts.forEach(function (p, i) { if (i === 0) x.moveTo(p.x, p.y); else x.lineTo(p.x, p.y); });
         x.stroke();
@@ -637,10 +704,10 @@
       pts.forEach(function (p) {
         x.save();
         x.shadowColor = 'rgba(255, 214, 128, 0.95)';
-        x.shadowBlur = 18;
-        x.fillStyle = '#FFF3D6';
+        x.shadowBlur = 22;
+        x.fillStyle = '#FFF6E2';
         x.beginPath();
-        x.arc(p.x, p.y, Math.max(2.5, cell * 0.13), 0, Math.PI * 2);
+        x.arc(p.x, p.y, Math.max(3.5, cell * 0.2), 0, Math.PI * 2);
         x.fill();
         x.restore();
       });
@@ -767,6 +834,9 @@
     function openCardScan() {
       if (!scanEl || typeof MagicCardVision === 'undefined') { openStars(); return; }
       scanEl.hidden = false;
+      var confirmBox = scanEl.querySelector('[data-scan-confirm]');
+      if (confirmBox) confirmBox.hidden = true;
+      if (confirmTimer) { window.clearInterval(confirmTimer); confirmTimer = null; }
       // DRAW YOUR STARS IS THERE FROM THE FIRST SECOND.
       //
       // It used to appear only after a failure, which left a child
@@ -935,7 +1005,7 @@
       try { hit = MagicCardVision.identify(holdCrop(scanVideo), cards); } catch (e) {}
       if (!hit || !hit.card) return;
       scanBusy = true;
-      try { MagicCard.setActive(hit.card.id); } catch (e) {}
+      // Committed in confirmSky(), not here.
       skyRecognised(hit.card);
     }
 
@@ -1157,25 +1227,76 @@
         if (hit && hit.card) {
           capturing = false;
           scanBusy = true;
-          try { MagicCard.setActive(hit.card.id); } catch (e) {}
+          // NOT setActive yet — see confirmSky(). Nothing is committed
+          // until the child has had their ten seconds.
           skyRecognised(hit.card);
           return;
         }
       }
 
-      // Otherwise the reading goes to the board, as before — but read
-      // from a photograph rather than a thumbnail.
+      // ASK VIHUPLANET BEFORE ASKING THE CHILD.
+      //
+      // The card is not on this device — which is exactly the case of a
+      // Creator standing at somebody else's computer, and until now the
+      // one arrival that got the LONGEST path. It filled the drawing
+      // board, asked them to check their own stars and to press
+      // Continue, and only then asked the platform. The device that
+      // already knew them let them walk in; the strange one made them
+      // work for it.
+      //
+      // recogniseAny() was written for precisely this and was called
+      // from nowhere. It asks about every candidate reading in one
+      // parallel round, because the platform matches an exact set and
+      // the true reading is somewhere in that list rather than reliably
+      // first.
+      //
+      // The board is still there, and is now reached only when nobody
+      // recognises the sky at all — which is the only time it has a
+      // real question to ask.
       var read = null;
       try { read = MagicCardVision.readStill(shot); } catch (e) {}
       var list = (read && read.patterns) || [];
       capturing = false;
       if (!list.length) { scanFailed('I couldn’t see your stars yet.'); return; }
       scanBusy = true;
-      scanSay('There they are.');
-      window.setTimeout(function () {
-        closeCardScan({ keepUniverseStill: true });
-        openStars(list[0]);
-      }, 700);
+
+      var toBoard = function () {
+        scanSay('There they are.');
+        window.setTimeout(function () {
+          closeCardScan({ keepUniverseStill: true });
+          openStars(list[0]);
+        }, 700);
+      };
+
+      if (!CreatorRecognition.recogniseAny) { toBoard(); return; }
+      scanSay('Looking for your sky…');
+
+      // Bounded and timed. A slow network must never hold a child in
+      // front of a dead camera, so the board is the answer if this does
+      // not come back promptly — the same answer as being offline.
+      var settled = false;
+      var giveUp = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        toBoard();
+      }, 6000);
+
+      CreatorRecognition.recogniseAny(list.slice(0, 8)).then(function (res) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(giveUp);
+        if (res && res.outcome === CreatorRecognition.KNOWN && res.card) {
+          skyRecognised(res.card);
+          return;
+        }
+        toBoard();
+      }).catch(function () {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(giveUp);
+        toBoard();
+      });
+      return;
     }
 
     // The camera has seen a sky. Whose it is, is now somebody else's
@@ -1205,6 +1326,7 @@
       scanEl.addEventListener('click', function (ev) {
         var act = ev.target && ev.target.getAttribute
           ? ev.target.getAttribute('data-scan-act') : null;
+        if (act === 'notme') { notMe(); return; }
         if (act === 'again') { closeCardScan(); openCardScan(); return; }
         if (act === 'draw') { closeCardScan(); openStars(); return; }
         if (act === 'close') { closeCardScan(); return; }

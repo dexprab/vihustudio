@@ -289,8 +289,12 @@ changes nothing about the Magic Card itself.
   Have One Yet`. Nothing more.** After several unrecognised attempts
   those two are *replaced* by `Try Again` and `Create Story`; the
   screen changes what it offers, it never grows a third button.
-- **Recognition is instant and silent.** No confirmation screen, no
-  success dialog — VihuStudio Home simply opens.
+- ~~**Recognition is instant and silent.** No confirmation screen, no
+  success dialog — VihuStudio Home simply opens.~~ **Amended by
+  Decision 18** for the camera only: the drawing board still opens the
+  Studio instantly, because the child drew the sky and pressed Continue
+  themselves. A camera claims to know somebody without being asked, so
+  that path now shows them the sky it recognised for ten seconds first.
 - **Recognition happens ONCE per arrival.** The Traveller Gateway's
   Scene 3 asked a Returning Creator to find their sky again on the way
   into the Studio, which was right while the Studio was the front door
@@ -620,6 +624,52 @@ untouched.
   needs — is exact square-on and under moderate tip, and still fails
   under strong turn, where it refuses rather than guesses. **A card
   held facing the camera reads; a card turned well away does not yet.**
+
+### 18. A Creator Is Shown Their Sky Before the Door Opens
+
+Locked by the product owner: *"before sending vihaan in studio in both
+conditions whether he is at his home or at his grandma the pattern
+needs to be shown on screen with a 10 second timer for him to get
+assured he is correctly recognized with an option to say hey thats not
+me."* It **amends Decision 11's** "recognition is instant and silent"
+for the camera path only.
+
+- **The camera never opens the Studio silently.** When a card is
+  recognised, the sky that was recognised is drawn back to the child,
+  with their name, and the Studio opens ten seconds later.
+- **It is a countdown, not a question.** Nothing has to be pressed to
+  continue — the door is already opening and the child is simply able
+  to stop it. A prompt requiring an answer would turn every arrival
+  into a form.
+- **`That's not me` is the whole of the opt-out.** It puts the camera
+  back and blames nobody.
+- **Nothing is committed until the countdown elapses.** `setActive()`
+  and `markRecognised()` used to run the instant a match was found;
+  saying "that's not me" afterwards would have left the browser
+  believing it, and the Studio's own Gateway would then have skipped
+  its own question (Decision 11) on the strength of a recognition the
+  child had rejected.
+- **Both arrivals go through it** — the card already on this device,
+  and a strange device that had to ask VihuPlanet. They are the two
+  cases the product owner named, and they now share one path.
+- **The drawing board is unchanged and stays instant.** There the child
+  drew the sky and pressed Continue; they have already said it is
+  theirs, and asking twice would be the form this decision avoids.
+- **A strange device asks VihuPlanet before it asks the child.**
+  `CreatorRecognition.recogniseAny()` existed for exactly this and was
+  called from nowhere; the camera's still path now offers it every
+  candidate reading in one parallel round. The drawing board is still
+  there and is reached only when nobody recognises the sky at all —
+  which is the only time it has a real question to ask.
+- **The drawing order travels with the identity.**
+  `recall_magic_card()` returns the stored pattern on the pattern
+  branch only (`supabase/migrations_recall_returns_pattern.sql`), and
+  `MagicCard.adopt()` prefers it — but only after checking it is the
+  same SET the caller just proved. Without it, a Creator recognised on
+  a brand-new device kept whatever order the camera happened to read
+  the stars in, so their Magic Card there drew the right stars joined
+  the wrong way. A typed-code recall still gets no pattern: that caller
+  has proved nothing about the sky, and the pattern is the credential.
 
 ## Roadmap
 

@@ -901,13 +901,55 @@ const MagicCard=(function(){
     return cells;
   }
 
+  // The same SET comparison recognition itself uses — canonical() on
+  // this device, _card_platform_sort_pattern() on the platform — so
+  // two orders of one sky read as the same sky, and any other pair
+  // does not.
+  function _canon(cells){
+    if(!Array.isArray(cells)) return null;
+    const flat=cells.filter(function(p){ return Array.isArray(p)&&p.length>=2; })
+      .map(function(p){ return [Number(p[0]),Number(p[1])]; });
+    if(!flat.length) return null;
+    return flat.sort(function(a,b){ return (a[0]-b[0])||(a[1]-b[1]); })
+      .map(function(p){ return p[0]+','+p[1]; }).join(' ');
+  }
+
+  function _sameSky(a,b){
+    const ca=_canon(a), cb=_canon(b);
+    return !!(ca && cb && ca===cb);
+  }
+
   function adopt(remoteResult,pattern){
     const now=new Date().toISOString();
     const cardsBefore=_readCards();
     const existing=cardsBefore.find(function(c){ return c && c.id===remoteResult.identity_id; });
+    // WHICH ORDER THE CARD IS DRAWN IN, on a device seeing this
+    // identity for the first time.
+    //
+    // Three candidates, in order of how much they know:
+    //
+    //  1. A card already on THIS device. _readCards() has already
+    //     migrated it, the child has already seen it, and nothing
+    //     about a recall makes it less true.
+    //  2. The order stored WITH the identity, returned by
+    //     recall_magic_card() on the pattern branch only
+    //     (supabase/migrations_recall_returns_pattern.sql). This is
+    //     the order the original card was drawn in — the picture in
+    //     the child's pocket.
+    //  3. The order the caller submitted. On the camera path that is
+    //     whatever order the reader happened to walk the marks in,
+    //     which draws the right stars joined the wrong way.
+    //
+    // (2) is only trusted when it is the SAME SET the caller proved.
+    // It always should be — it is the row that matched — but adopting
+    // a pattern that is not the one just shown is precisely the thing
+    // an identity system must never do, so it is checked rather than
+    // assumed.
+    const submitted=(Array.isArray(pattern)&&pattern.length)?pattern:null;
+    const returned=_sameSky(remoteResult.pattern,submitted)?remoteResult.pattern:null;
     const keptPattern=(existing && Array.isArray(existing.pattern) && existing.pattern.length)
       ? existing.pattern
-      : (Array.isArray(pattern)&&pattern.length?pattern:null);
+      : (returned || submitted);
     const card={
       id:remoteResult.identity_id,
       nickname:remoteResult.nickname||'',
