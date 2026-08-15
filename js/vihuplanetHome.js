@@ -1025,7 +1025,20 @@
           '   stars ' + (d ? d.starLike : '?') + '\n' +
         'cells  ' + (d && d.byFrame
           ? d.byFrame.map(function (rc) { return rc.join(','); }).join(' ')
-          : 'not solved');
+          : 'not solved') + '\n' +
+        // THE SIZES ARE THE ANSWER TO "WHY NOT THE GUIDE STARS".
+        //
+        // The card draws its four corner stars at 1.9x the radius of a
+        // pattern star, so in this list they should be four numbers far
+        // larger than the rest. If they are there and it still says
+        // "via chart", the size test is too strict; if they are not
+        // there at all, they merged with something or the card predates
+        // them. Those need opposite fixes and nothing else on this
+        // panel tells them apart.
+        'sizes  ' + (d && d.marksAt
+          ? d.marksAt.map(function (m) { return m.n; })
+              .sort(function (a, b) { return b - a; }).slice(0, 12).join(' ')
+          : '—');
       box.appendChild(note);
 
       // KEEP THE PHOTOGRAPH.
