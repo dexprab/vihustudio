@@ -599,6 +599,59 @@ const MagicCard=(function(){
   // overwritten by a submitted one. It came from claim(), where the
   // platform minted it; a recall has nothing better to offer, since the
   // RPC deliberately never returns a pattern on any branch.
+  // ---------------------------------------------------------------
+  // HOW A SKY IS TRACED, for DRAWING only.
+  //
+  // Nothing here writes anything. A card's stored pattern is its
+  // identity and is never touched — the Studio's card draws it exactly
+  // as stored, and that is deliberate, because what is stored is the
+  // truth about the card.
+  //
+  // The board is a different question. A sky marked from a photograph
+  // has stars but no order: the camera found them in whatever order it
+  // found them, so joining them in that order draws a zig-zag rather
+  // than a constellation. That is not "what was seen" in any useful
+  // sense — the ORDER was never seen at all — so drawing it asserts
+  // something arbitrary rather than something honest.
+  //
+  // Every real card's cells are one of five known shapes under one of
+  // four rotations, an optional mirror and a translation, so the shape
+  // can be identified from the cells and traced the way it is drawn.
+  // Cells that match nothing are returned untouched, because a
+  // hand-drawn sky is whatever its child drew.
+  function _placementsFor(name,cells){
+    if(!Array.isArray(cells)||!cells.length) return [];
+    const base=CONSTELLATIONS[name];
+    if(!base||base.length!==cells.length) return [];
+    const key=function(list){
+      return list.map(function(p){ return p[0]+','+p[1]; }).sort().join(' ');
+    };
+    const want=key(cells);
+    const minR=_minOf(cells,0), minC=_minOf(cells,1);
+    const out=[];
+    for(let turns=0;turns<4;turns++){
+      for(let mirror=0;mirror<2;mirror++){
+        let pts=_shiftToOrigin(base);
+        pts=_rotate(pts,turns);
+        if(mirror) pts=_mirrorHorizontal(pts);
+        pts=_shiftToOrigin(pts);
+        const placed=pts.map(function(p){ return [p[0]+minR,p[1]+minC]; });
+        if(key(placed)===want) out.push(placed);
+      }
+    }
+    return out;
+  }
+
+  function orderLikeAnySky(cells){
+    if(!Array.isArray(cells)||!cells.length) return cells;
+    const names=Object.keys(CONSTELLATIONS);
+    for(let i=0;i<names.length;i++){
+      const ways=_placementsFor(names[i],cells);
+      if(ways.length) return ways[0];
+    }
+    return cells;
+  }
+
   function adopt(remoteResult,pattern){
     const now=new Date().toISOString();
     const cardsBefore=_readCards();
@@ -767,6 +820,7 @@ const MagicCard=(function(){
     rename:rename,
     recall:recall,
     adopt:adopt,
+    orderLikeAnySky:orderLikeAnySky,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

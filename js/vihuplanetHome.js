@@ -399,7 +399,44 @@
         // can be identified from the cells alone and traced the way it
         // is meant to be. A sky that matches nothing is passed through
         // untouched: a child's own drawing is whatever they drew.
-        try { board.set(seen); } catch (e) {}
+        // TRACED LIKE THE CONSTELLATION, NOT LIKE THE SEARCH.
+        //
+        // The board joins stars in the order it is handed them, and the
+        // camera hands them over in the order the blob detector found
+        // them — which is not an order anybody chose or saw. Drawing it
+        // produced a correct set of stars joined into a zig-zag, and
+        // "the lines between stars are wrong" is exactly right.
+        //
+        // This changes nothing that is stored. The card's own pattern
+        // is its identity and is never touched; the Studio's card still
+        // draws it exactly as stored. This is the BOARD, working out how
+        // to draw a sky whose order was never observed.
+        //
+        // The card's own order wins whenever this device holds the card,
+        // because then the answer is known rather than derived — which
+        // also settles the symmetric case, where a derived order is a
+        // genuine guess (CYGNUS's cross maps onto its own cells under
+        // all eight transforms).
+        var marked = seen;
+        try {
+          var setKey = function (list) {
+            return (list || []).map(function (p) { return p[0] + ',' + p[1]; })
+              .sort().join(' ');
+          };
+          var want = setKey(seen), own = null;
+          var held = (typeof MagicCard !== 'undefined' && MagicCard.list)
+            ? MagicCard.list() : [];
+          for (var ci = 0; ci < held.length; ci++) {
+            if (held[ci] && held[ci].pattern && setKey(held[ci].pattern) === want) {
+              own = held[ci].pattern; break;
+            }
+          }
+          if (own) marked = own;
+          else if (typeof MagicCard !== 'undefined' && MagicCard.orderLikeAnySky) {
+            marked = MagicCard.orderLikeAnySky(seen) || seen;
+          }
+        } catch (e) { marked = seen; }
+        try { board.set(marked); } catch (e) {}
         say('Are these your stars?');
         // Offered only here. A child drawing from scratch has nothing
         // to move; a child holding a card has a whole sky in slightly
