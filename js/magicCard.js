@@ -194,15 +194,41 @@ const MagicCard=(function(){
   // -style read-time reconciliation elsewhere in this codebase) so it
   // runs exactly once per card and never re-touches an already-correct
   // pattern from a fresh claim() made after this fix shipped.
-  function _migrateCygnusOrder(cards){
+  // A CARD'S ORDER IS DERIVED, NOT REMEMBERED — AND NOT FLAGGED.
+  //
+  // This replaces a one-time, flag-gated swap of CYGNUS's indices 2 and
+  // 3, and the flag is the part that has to go. That migration decided
+  // who needed repairing by the ABSENCE of constellationOrderFixed,
+  // which neither claim() nor adopt() ever set — so it "repaired" every
+  // newly minted CYGNUS card straight back into the self-crossing order
+  // it existed to remove, on the card's very next read. A one-time
+  // migration is only as good as the bookkeeping that says it has run,
+  // and that bookkeeping was wrong for the entire life of the fix.
+  //
+  // Nothing here is remembered. A card's connect-the-dots order is a
+  // FUNCTION of its constellation and its cells: _placeConstellation()
+  // built the original from the named base by one of four rotations, an
+  // optional mirror and a translation, so trying all eight against the
+  // stored cells recovers the order it was minted with. Running that
+  // every read is idempotent — the answer for an already-correct card is
+  // itself — so there is no state to get wrong, and a card damaged by
+  // any future bug repairs itself the next time it is looked at.
+  //
+  // It can never change WHICH stars a card has, only their order, so it
+  // cannot affect recall: both this device and the platform match a
+  // pattern as a set.
+  function _repairPatternOrder(cards){
     let changed=false;
     cards.forEach(function(card){
-      if(card && card.constellation==='CYGNUS' && Array.isArray(card.pattern) && card.pattern.length===5 && !card.constellationOrderFixed){
-        const p=card.pattern;
-        card.pattern=[p[0],p[1],p[3],p[2],p[4]];
-        card.constellationOrderFixed=true;
-        changed=true;
-      }
+      if(!card||!Array.isArray(card.pattern)||!card.pattern.length) return;
+      const want=_baseOrderFor(card.constellation,card.pattern);
+      if(!want) return;                       // not a placement of a known sky
+      const same=want.every(function(p,i){
+        return card.pattern[i] && p[0]===card.pattern[i][0] && p[1]===card.pattern[i][1];
+      });
+      if(same) return;
+      card.pattern=want;
+      changed=true;
     });
     return changed;
   }
@@ -212,7 +238,7 @@ const MagicCard=(function(){
       const raw=localStorage.getItem(CARDS_KEY);
       const parsed=raw?JSON.parse(raw):[];
       const cards=Array.isArray(parsed)?parsed:[];
-      if(_migrateCygnusOrder(cards)) _writeCards(cards);
+      if(_repairPatternOrder(cards)) _writeCards(cards);
       return cards;
     }catch(e){ return []; }
   }
@@ -636,11 +662,11 @@ const MagicCard=(function(){
   //
   // Falls back to the sorted order when nothing matches — a card minted
   // before this, or a name the registry no longer has.
-  function _orderLikeConstellation(name,cells){
+  function _baseOrderFor(name,cells){
     const stable=_stablePattern(cells);
     if(!stable) return null;
     const base=CONSTELLATIONS[name];
-    if(!base) return stable;
+    if(!base||base.length!==stable.length) return null;
     const key=function(list){
       return list.map(function(p){ return p[0]+','+p[1]; }).sort().join(' ');
     };
@@ -656,7 +682,11 @@ const MagicCard=(function(){
         if(key(placed)===want) return placed;
       }
     }
-    return stable;
+    return null;
+  }
+
+  function _orderLikeConstellation(name,cells){
+    return _baseOrderFor(name,cells)||_stablePattern(cells);
   }
 
   function adopt(remoteResult,pattern){
