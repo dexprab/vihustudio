@@ -64,27 +64,122 @@ const MagicCard=(function(){
   const FLAGS_KEY='vihu-magic-card-flags';
   const CLOUD_SYNC_DEBOUNCE_MS=2000;
 
-  // Same curated shapes/grid as js/cardPlatform.js's own CONSTELLATIONS
-  // — not astronomically precise, recognizable and pleasant to trace.
-  // "the star marker grid needs rework. it cannot mark any constellation
-  // which has crossing lines" -- kept in lockstep with cardPlatform.js's
-  // own copy of this fix: CYGNUS's original order (Top, Center, Bottom,
-  // Left, Right) drew its last segment straight back through the Center
-  // point a second time, reading as an overlapping "number 4" rather
-  // than a clean shape -- confirmed on a real claimed card, reproduced
-  // with a segment-intersection check, and fixed by reordering to Top,
-  // Center, Left, Bottom, Right, which traces the same five points with
-  // zero self-crossing in the base order or under any of
-  // _placeConstellation()'s 4 rotation x mirror-on/off combinations
-  // (an isometry never changes whether two segments cross). The other
-  // four shapes were checked the same way and were already clean.
+  // ---------------------------------------------------------------
+  // THE CANON CONSTELLATION LIBRARY.
+  //
+  // Seventeen real constellations, each reduced to the few prominent
+  // stars a child needs to recognise it. The goal is recognition and
+  // mythology, not astronomical precision — no attempt is made to plot
+  // every star, and the grid is 10x10, so these are the shapes as they
+  // are DRAWN in a star atlas rather than as they are measured.
+  //
+  // A FAMILY IS NOT AN IDENTITY. Two Creators can both be given Lyra;
+  // they are different Creators because their exact cells differ, and
+  // the exact canonical cell set is the only thing recognition ever
+  // compares (canonical() below, _card_platform_sort_pattern in
+  // supabase/schema.sql). Nothing anywhere uses the family name, or
+  // family-plus-rotation, as a Creator id.
+  //
+  // Each entry's ARRAY ORDER is the connecting line — the order a child
+  // would trace it — and is what drawBack() and the drawing board join.
+  // The order is chosen to draw the constellation as an atlas draws it,
+  // and never to cross itself.
+  //
+  // js/cardPlatform.js has its own CONSTELLATIONS for World Cards. Those
+  // two tables used to be kept in lockstep; they are now deliberately
+  // different, because a World Card is a shareable pointer to a World
+  // and a Magic Card is a child's identity, and only the latter needed
+  // a real library. Neither reads the other.
   const CONSTELLATIONS={
+    // ---- the five that already existed, UNCHANGED ----
+    // Every card ever minted carries cells from these, and altering a
+    // base shape would strand those cards' tracing (their cells would
+    // match no placement of the new shape). Left exactly as they were.
     ORION:[[1,2],[1,7],[4,4],[4,5],[4,6],[8,2],[8,7]],
     CASSIOPEIA:[[2,1],[4,3],[2,5],[4,7],[2,9]],
     URSA_MAJOR:[[1,1],[1,4],[3,4],[3,2],[4,5],[6,7],[8,8]],
     CYGNUS:[[1,5],[4,5],[4,2],[7,5],[4,8]],
-    LYRA:[[2,5],[5,3],[5,7],[7,3],[7,7]]
+    LYRA:[[2,5],[5,3],[5,7],[7,3],[7,7]],
+
+    // ---- the twelve added by this sprint ----
+    // Traced top of the kite, down the long axis, then the crossbar —
+    // the Southern Cross as the "kite" it is often called.
+    CRUX:[[0,3],[3,0],[6,2],[3,5]],
+    // The fish hook: head, down the body, round the curve, the sting.
+    SCORPIUS:[[0,0],[1,1],[3,1],[5,1],[6,2],[7,4],[6,5]],
+    // The Sickle first (backwards question mark), then the body back to
+    // Denebola at the tail.
+    LEO:[[0,3],[0,4],[1,5],[2,5],[3,4],[3,1],[4,0]],
+    // The Hyades V — the bull's face, traced down one horn and up the
+    // other.
+    TAURUS:[[0,0],[1,1],[2,2],[3,3],[2,4],[1,5],[0,6]],
+    // Two figures joined at the feet, which is how the twins are drawn.
+    GEMINI:[[0,0],[1,1],[2,1],[3,0],[3,4],[2,4],[1,3],[0,3]],
+    // Sirius at the head, then the dog's shoulders, foreleg and hind.
+    CANIS_MAJOR:[[0,2],[2,3],[2,1],[3,0],[4,2],[5,3]],
+    // The water jar as a small diamond, then the stream falling away.
+    AQUARIUS:[[0,1],[1,0],[1,2],[2,1],[4,0],[5,2],[6,1]],
+    // The Great Square, walked round three sides, then the neck.
+    PEGASUS:[[4,0],[0,0],[0,4],[4,4],[5,5],[6,6]],
+    // The ram's horn: a short bent line.
+    ARIES:[[2,0],[2,1],[1,3],[0,4]],
+    // Three stars and nothing else — the smallest sky in the library.
+    TRIANGULUM:[[0,2],[2,0],[2,3]],
+    // Job's Coffin, the little diamond, with its tail.
+    DELPHINUS:[[0,1],[1,0],[2,1],[1,2],[4,2]],
+    // The arrow: a shaft and its fletching.
+    SAGITTA:[[1,0],[1,2],[0,3],[2,3]],
+    // The northern crown, an arc that does not quite close.
+    CORONA_BOREALIS:[[3,0],[1,1],[0,2],[0,4],[1,5],[2,6]]
   };
+
+  // What each family IS, for anything that wants to say so. Nothing in
+  // recognition reads this; it is description, not identity.
+  //
+  // `mintable:false` means the family still draws and still traces —
+  // every card already carrying it keeps working — but no NEW card is
+  // given it. Ursa Major is the only one: it is a real constellation
+  // and real cards carry it, and it is not in the seventeen this sprint
+  // was asked for, so it is kept rather than deleted.
+  const CONSTELLATION_META={
+    ORION:{id:'orion',name:'Orion',family:'Orion',stars:7,hemisphere:'both',
+      about:'The Hunter. Two shoulders, the three stars of Orion’s Belt, and two feet.',mintable:true},
+    CASSIOPEIA:{id:'cassiopeia',name:'Cassiopeia',family:'Perseus',stars:5,hemisphere:'north',
+      about:'The Queen. Five stars in the shape of a W.',mintable:true},
+    URSA_MAJOR:{id:'ursa_major',name:'Ursa Major',family:'Ursa Major',stars:7,hemisphere:'north',
+      about:'The Great Bear, whose brightest stars make the Plough.',mintable:false},
+    CYGNUS:{id:'cygnus',name:'Cygnus',family:'Hercules',stars:5,hemisphere:'north',
+      about:'The Swan, flying along the Milky Way. Also called the Northern Cross.',mintable:true},
+    LYRA:{id:'lyra',name:'Lyra',family:'Hercules',stars:5,hemisphere:'north',
+      about:'The Lyre of Orpheus, hung in the sky beside bright Vega.',mintable:true},
+    CRUX:{id:'crux',name:'Crux',family:'Hercules',stars:4,hemisphere:'south',
+      about:'The Southern Cross, the smallest constellation and a signpost to the south.',mintable:true},
+    SCORPIUS:{id:'scorpius',name:'Scorpius',family:'Zodiac',stars:7,hemisphere:'south',
+      about:'The Scorpion, curling to a sting, with red Antares at its heart.',mintable:true},
+    LEO:{id:'leo',name:'Leo',family:'Zodiac',stars:7,hemisphere:'both',
+      about:'The Lion. The Sickle makes his mane, and Denebola his tail.',mintable:true},
+    TAURUS:{id:'taurus',name:'Taurus',family:'Zodiac',stars:7,hemisphere:'both',
+      about:'The Bull. The V of the Hyades makes his face, with Aldebaran as his eye.',mintable:true},
+    GEMINI:{id:'gemini',name:'Gemini',family:'Zodiac',stars:8,hemisphere:'north',
+      about:'The Twins, Castor and Pollux, standing side by side.',mintable:true},
+    CANIS_MAJOR:{id:'canis_major',name:'Canis Major',family:'Orion',stars:6,hemisphere:'south',
+      about:'The Great Dog, following Orion, led by Sirius — the brightest star in the sky.',mintable:true},
+    AQUARIUS:{id:'aquarius',name:'Aquarius',family:'Zodiac',stars:7,hemisphere:'both',
+      about:'The Water Bearer, pouring a stream of stars from a jar.',mintable:true},
+    PEGASUS:{id:'pegasus',name:'Pegasus',family:'Perseus',stars:6,hemisphere:'north',
+      about:'The Winged Horse. Four stars make the Great Square.',mintable:true},
+    ARIES:{id:'aries',name:'Aries',family:'Zodiac',stars:4,hemisphere:'north',
+      about:'The Ram, a short bent line making his curling horn.',mintable:true},
+    TRIANGULUM:{id:'triangulum',name:'Triangulum',family:'Perseus',stars:3,hemisphere:'north',
+      about:'The Triangle. Three stars, and that is all it needs.',mintable:true},
+    DELPHINUS:{id:'delphinus',name:'Delphinus',family:'Heavenly Waters',stars:5,hemisphere:'north',
+      about:'The Dolphin, leaping. Its diamond is called Job’s Coffin.',mintable:true},
+    SAGITTA:{id:'sagitta',name:'Sagitta',family:'Hercules',stars:4,hemisphere:'north',
+      about:'The Arrow, small and sharp, flying between the Swan and the Eagle.',mintable:true},
+    CORONA_BOREALIS:{id:'corona_borealis',name:'Corona Borealis',family:'Ursa Major',stars:6,hemisphere:'north',
+      about:'The Northern Crown, an arc of stars that never quite closes.',mintable:true}
+  };
+
   const GRID_SIZE=10;
 
   function _minOf(points,idx){ return points.reduce(function(m,p){ return Math.min(m,p[idx]); },Infinity); }
@@ -126,9 +221,24 @@ const MagicCard=(function(){
     }
     return {constellation:name,pattern:_shiftToOrigin(base)};
   }
+  // ONLY FROM THE LIBRARY THIS SPRINT DEFINED.
+  //
+  // A family marked mintable:false still draws and still traces, so
+  // every card already carrying it is untouched — it is simply never
+  // handed to a new Creator. Falls back to the whole table if that ever
+  // empties, because minting no card at all is worse than minting a
+  // legacy one.
+  function _mintableNames(){
+    const all=Object.keys(CONSTELLATIONS);
+    const ok=all.filter(function(n){
+      return !CONSTELLATION_META[n] || CONSTELLATION_META[n].mintable!==false;
+    });
+    return ok.length?ok:all;
+  }
+
   function _pickConstellationName(rand){
     rand=rand||Math.random;
-    const names=Object.keys(CONSTELLATIONS);
+    const names=_mintableNames();
     return names[Math.floor(rand()*names.length)];
   }
 
@@ -862,6 +972,19 @@ const MagicCard=(function(){
     recall:recall,
     adopt:adopt,
     orderLikeAnySky:orderLikeAnySky,
+    // The library, for anything that wants to describe a sky. Copies
+    // out, so a caller cannot reach in and edit the catalogue.
+    library:function(){
+      return Object.keys(CONSTELLATIONS).map(function(n){
+        const m=CONSTELLATION_META[n]||{};
+        return {
+          key:n, id:m.id||n.toLowerCase(), name:m.name||n, family:m.family||'',
+          stars:CONSTELLATIONS[n].length, about:m.about||'',
+          hemisphere:m.hemisphere||'', mintable:m.mintable!==false,
+          pattern:CONSTELLATIONS[n].map(function(p){ return [p[0],p[1]]; })
+        };
+      });
+    },
     traceIsCertain:traceIsCertain,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
