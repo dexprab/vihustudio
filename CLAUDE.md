@@ -575,6 +575,52 @@ that. The product agrees with him rather than correcting him.
   Story Spirits, Canon Stories, Create Story and Creator Home are
   unchanged.
 
+### 17. The Card is Drawn to Be Read
+
+Locked by the product owner after the camera failed on real cards
+through five rounds of reader fixes. It **amends Decisions 11 and 16**,
+which said the Magic Card itself is not redesigned. It changes the
+card's back only; the Magic Card's role, meaning and identity are
+untouched.
+
+- **The card carries four guide stars, one at each corner of the star
+  chart.** They are drawn with the same five-point path as every other
+  star on the card, at 1.9× the radius, and a child sees four bright
+  stars holding the corners of their sky. **They are not the old corner
+  squares** — those were removed for looking like hardware bolted to a
+  keepsake, and nothing about this announces a machine.
+- **They exist because absolute position is part of the identity.** A
+  pattern sits at a random offset on the grid, so a lattice shifted by
+  one cell fits exactly as well as the true one. Every reader before
+  this inferred the grid's origin from the stars themselves and
+  sometimes inferred it wrong — which is precisely what *"all seven
+  stars recognised but the pattern is off"* was. Four points at known
+  coordinates give the projective transform outright; everything after
+  is arithmetic rather than search.
+- **The chart's ruled frame opens at the corners**, so each guide star
+  is its own shape. A continuous border runs through all four and the
+  detector swallows them whole — measured, the four guide stars were
+  absent from the mark list entirely.
+- **The chart sits on its own field of sky**, a shade lighter than the
+  card. A thin stroke on near-black gives a camera nothing; a boundary
+  between two regions is what edge detection is good at.
+- **Old printed cards still work.** The reader tries guide stars first,
+  then the chart's frame, then the card's own border, and falls through
+  cleanly. Nobody has to reprint anything to keep using what they have —
+  and **Draw Your Stars remains first-class**, exactly as Decision 16
+  requires.
+- **The reader and the art share one geometry function**, and a real
+  bug proved why that is not enough on its own: the camera's
+  no-argument default put the grid 40 card pixels — three quarters of a
+  cell — below where the art drew it. A shared function still needs its
+  default to be *measured* rather than asserted.
+- **Disclosed limit.** Verified against rendered cards under a true
+  projective warp: recognition 20/20 across square-on, tipped, turned,
+  dim and steep. Reading the exact cells — the path a brand-new device
+  needs — is exact square-on and under moderate tip, and still fails
+  under strong turn, where it refuses rather than guesses. **A card
+  held facing the camera reads; a card turned well away does not yet.**
+
 ## Roadmap
 
 1. Theme Designer Polish

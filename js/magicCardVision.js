@@ -86,7 +86,7 @@ const MagicCardVision = (function () {
       }
     } catch (e) {}
     // The same numbers the art produces, if the art module is absent.
-    return { cardW: 700, cardH: 980, gridSize: 540, gridLeft: 80, gridTop: 190, cell: 54, cells: 10 };
+    return { cardW: 700, cardH: 980, gridSize: 540, gridLeft: 80, gridTop: 150, cell: 54, cells: 10 };
   }
 
   // ---------------------------------------------------------------
@@ -1008,12 +1008,15 @@ const MagicCardVision = (function () {
     // it. It goes first, because when the frame is visible it is the
     // one reading that was solved rather than guessed.
     var cands = _frame(im.data, W, hh);
+    // The guide stars first, when the card carries them: four known
+    // points beat any rectangle inferred from a threshold.
+    var guide = _guideQuad(bl);
     // The CHART's corners, derived from whichever candidate reads —
     // which may be the card's border rather than the chart's own frame.
     // The filter below is about where the stars are, so it has to be
     // the grid, not the card: the card's border encloses the numbering
     // too, and filtering by it would let every numeral back in.
-    var frameQuad = _chartQuad(cands);
+    var frameQuad = guide || _chartQuad(cands);
 
     // ONLY WHAT IS INSIDE THE FRAME CAN BE A STAR.
     //
@@ -1043,16 +1046,13 @@ const MagicCardVision = (function () {
     // found, and the cells "not solved" anyway.
     var inside = bl;
     if (frameQuad) {
-      var lim = _bounds(frameQuad.map(function (c) { return { x: c.x, y: c.y }; }));
-      var padX = lim.w * 0.04, padY = lim.h * 0.04;
-      var within = bl.filter(function (m) {
-        return m.x > lim.cx - lim.w / 2 + padX && m.x < lim.cx + lim.w / 2 - padX &&
-               m.y > lim.cy - lim.h / 2 + padY && m.y < lim.cy + lim.h / 2 - padY;
-      });
+      var within = _within(bl, frameQuad, 0.04);
       if (within.length >= MIN_STARS) inside = within;
     }
 
-    var solved = _readByFrame(inside, cands);
+    var solved = guide
+      ? _readThrough(inside, { quad: guide, u0: 0, v0: 0, span: 1 })
+      : _readByFrame(inside, cands);
     var head = solved ? [solved] : [];
     // The chart's corners travel with the reading. Shape matching needs
     // them to undo perspective — see identify().
@@ -1646,6 +1646,90 @@ const MagicCardVision = (function () {
   // measured; the card's border only implies them. Candidates arrive
   // largest first, which puts the card ahead of the chart it contains,
   // so this looks for a chart across all of them before settling.
+  // ---------------------------------------------------------------
+  // THE FOUR GUIDE STARS, FOUND BY BEING THE FOUR BIGGEST.
+  //
+  // The card now draws a star at each corner of the chart at 1.9x the
+  // radius of a pattern star (js/magicCardArt.js). That is a deliberate,
+  // wide size gap, and it is the whole reason this can be reliable where
+  // every inferred rectangle was not: four points at known coordinates
+  // define the projective transform outright, so the grid's origin —
+  // the thing a random pattern offset makes unguessable — stops being a
+  // question.
+  //
+  // The test is strict on purpose, because a wrong quad is worse than no
+  // quad. Four marks, clearly larger than everything else, arranged as a
+  // convex quadrilateral of roughly square aspect. Anything short of
+  // that falls through to the rectangle search, so a card printed before
+  // this change still reads exactly as well as it did.
+  function _guideQuad(marks) {
+    if (!marks || marks.length < 4) return null;
+    var by = marks.slice().sort(function (a, b) { return b.n - a.n; });
+    var four = by.slice(0, 4);
+    var smallest = four[3].n;
+    // A CLEAR GAP, not a ranking. Taking "the four biggest" alone would
+    // find four of anything; these have to be the size the card draws
+    // guide stars, which is well clear of the fifth mark.
+    if (by.length > 4 && by[4].n > smallest * 0.62) return null;
+    // Sizes among themselves must agree — four corners of one card are
+    // photographed at nearly the same scale.
+    if (four[0].n > smallest * 3.2) return null;
+
+    var cx = 0, cy = 0, i;
+    for (i = 0; i < 4; i++) { cx += four[i].x; cy += four[i].y; }
+    cx /= 4; cy /= 4;
+    // Corner order by angle about the centre gives TL, TR, BR, BL for a
+    // convex quad at any rotation, which a sort on x or y does not.
+    four.sort(function (a, b) {
+      return Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx);
+    });
+    // atan2 starts at the negative x axis going down, so the first point
+    // is the top-left for any card held within a quarter turn.
+    var q = four.map(function (m) { return { x: m.x, y: m.y }; });
+
+    var d = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
+    var top = d(q[0], q[1]), right = d(q[1], q[2]);
+    var bottom = d(q[2], q[3]), left = d(q[3], q[0]);
+    if (!(top > 8 && right > 8 && bottom > 8 && left > 8)) return null;
+    // The chart is square, so opposite sides are comparable even under
+    // perspective, and adjacent sides are near enough equal.
+    var horiz = (top + bottom) / 2, vert = (left + right) / 2;
+    if (Math.abs(Math.log(horiz / vert)) > 0.42) return null;
+    if (Math.max(top, bottom) > Math.min(top, bottom) * 2.1) return null;
+    if (Math.max(left, right) > Math.min(left, right) * 2.1) return null;
+    return q;
+  }
+
+  // INSIDE THE CHART, NOT INSIDE ITS BOUNDING BOX.
+  //
+  // The filter that keeps only marks within the chart measured them
+  // against the axis-aligned box around the quad, inset a few percent.
+  // For a card held square-on those are nearly the same rectangle and it
+  // worked. Turn the card and they are not: the bounding box of a
+  // rotated quad is much larger than the quad, so the inset stopped
+  // reaching the corners — and the corners are exactly where the guide
+  // stars are.
+  //
+  // The signature was unmistakable once the error was measured in cells
+  // instead of being reported as a yes/no: a worst-case of exactly 0.50,
+  // identical for every constellation. Half a cell is the distance from
+  // a cell's centre to its edge, and u=0 is the chart's edge — that is a
+  // guide star being read as part of the sky, not a sky read badly.
+  //
+  // Mapped through the homography the test is exact at any angle: a mark
+  // is inside if its chart coordinates are inside, which is what the
+  // filter meant all along.
+  function _within(marks, quad, pad) {
+    var inv = _homography(quad);
+    if (!inv) return marks;
+    var lo = pad, hi = 1 - pad;
+    var out = marks.filter(function (m) {
+      var q = inv(m.x, m.y);
+      return q && q.u > lo && q.u < hi && q.v > lo && q.v < hi;
+    });
+    return out;
+  }
+
   function _chartQuad(cands) {
     if (!cands || !cands.length) return null;
     if (cands[0] && typeof cands[0].x === 'number') return cands;
@@ -1682,8 +1766,46 @@ const MagicCardVision = (function () {
     // the real card art, every tilted card reported 8 to 11 marks for
     // a 5 to 7 star sky the moment the corners were added. They are
     // taken out before the shape is compared.
-    var marks = _starLike(look.marks);
-    if (marks.length < MIN_STARS) return null;
+    //
+    // AND THE CHART'S OWN FILTER BELONGS HERE TOO. Reading a sky and
+    // recognising one were doing different things with the same marks:
+    // the read filtered to what is inside the chart, and this did not.
+    // With the guide stars added that stopped being a nuance and became
+    // a regression — every real card refused on the live path, because
+    // a shape can only be compared against a pattern with the SAME
+    // NUMBER of stars, and four extra corners means no pattern has it.
+    var pool = look.marks;
+    if (look.quad) {
+      var kept = _within(pool, look.quad, 0.04);
+      if (kept.length >= MIN_STARS) pool = kept;
+    }
+    var markSets = [];
+    var primary = _starLike(pool);
+    if (primary.length >= MIN_STARS) markSets.push(primary);
+
+    // WHEN THE GUIDE STARS CANNOT BE RESOLVED, TAKE THEM OUT ANYWAY.
+    //
+    // At live-preview size a card across the room puts the guide stars
+    // at two or three pixels, too small to pass the quad test — and yet
+    // still bright enough to be found and counted, which leaves a
+    // five-star sky arriving as nine marks and matching nothing on
+    // length alone. Measured: every real card refused on the live path
+    // while the same card in a still was recognised.
+    //
+    // The four biggest marks being the four corners is exactly what the
+    // card guarantees by drawing them at 1.9x, so dropping them is a
+    // hypothesis worth ONE extra comparison rather than a guess. It is
+    // offered alongside the untouched set, never instead of it, so a
+    // card with no guide stars at all — every one printed before this —
+    // is completely unaffected.
+    if (pool.length >= MIN_STARS + 4) {
+      var bySize = pool.slice().sort(function (a, b) { return b.n - a.n; });
+      var minusCorners = _starLike(bySize.slice(4));
+      if (minusCorners.length >= MIN_STARS &&
+          minusCorners.length !== primary.length) markSets.push(minusCorners);
+    }
+    if (!markSets.length) return null;
+    var marks = markSets[0];
 
     // The tilt estimate is a guess made from a handful of points, and a
     // constellation with three stars in a row can pull it several
@@ -1746,6 +1868,13 @@ const MagicCardVision = (function () {
     }
 
     var best = null, runnerUp = null;
+    for (var si = 0; si < markSets.length; si++) {
+    marks = markSets[si];
+    var setTries = (si === 0) ? tries : (function () {
+      var e2 = _tiltOf(marks), out = [];
+      for (var tt = -3; tt <= 3; tt++) out.push(_normalise(_spin(marks, -(e2 + tt * 0.035))));
+      return out;
+    })();
     for (var i = 0; i < cards.length; i++) {
       var pat = cards[i] && cards[i].pattern;
       if (!pat || pat.length !== marks.length) continue;   // a sky has as many stars as it has
@@ -1753,9 +1882,9 @@ const MagicCardVision = (function () {
       var want = _normalise(pts);
       if (!want) continue;
       var mine = Infinity;
-      for (var k = 0; k < tries.length; k++) {
-        if (!tries[k]) continue;
-        var cost = _shapeCost(tries[k], want);
+      for (var k = 0; k < setTries.length; k++) {
+        if (!setTries[k]) continue;
+        var cost = _shapeCost(setTries[k], want);
         if (cost < mine) mine = cost;
       }
       if (mine === Infinity) continue;
@@ -1765,6 +1894,7 @@ const MagicCardVision = (function () {
       } else if (runnerUp === null || mine < runnerUp.cost) {
         runnerUp = { card: cards[i], cost: mine };
       }
+    }
     }
     // ---------------------------------------------------------------
     // NEVER OPEN A CREATOR'S SKY ON AN UNCERTAIN MATCH.
@@ -1943,6 +2073,43 @@ const MagicCardVision = (function () {
       } catch (e) { return { error: String(e) }; }
     },
     readFrame: readFrame,
+    // How far the stars land from their cell centres, in cells. The
+    // read either succeeds or returns nothing, which cannot say whether
+    // it missed by a hair or by a mile — and those need opposite fixes.
+    snapError: function (source) {
+      try {
+        var c = document.createElement('canvas');
+        var sw = source.videoWidth || source.naturalWidth || source.width;
+        var sh = source.videoHeight || source.naturalHeight || source.height;
+        var Wd = Math.min(STILL_W, sw);
+        var hh = Math.round(Wd * sh / sw);
+        c.width = Wd; c.height = hh;
+        var xx = c.getContext('2d', { willReadFrequently: true });
+        xx.drawImage(source, 0, 0, Wd, hh);
+        var im = xx.getImageData(0, 0, Wd, hh);
+        var bl = _blobs(im.data, Wd, hh);
+        var q = _guideQuad(bl);
+        if (!q) return { guide: false };
+        var inv = _homography(q);
+        if (!inv) return { guide: true, solved: false };
+        var inside = _within(bl, q, 0.04);
+        var stars = _starLike(inside);
+        var cells = _geometry().cells, worst = 0, off = [];
+        stars.forEach(function (m) {
+          var pt = inv(m.x, m.y);
+          if (!pt) return;
+          var u = pt.u * cells, v = pt.v * cells;
+          var du = Math.abs(u - (Math.round(u - 0.5) + 0.5));
+          var dv = Math.abs(v - (Math.round(v - 0.5) + 0.5));
+          var e = Math.max(du, dv);
+          off.push(Math.round(e * 100) / 100);
+          if (e > worst) worst = e;
+        });
+        return { guide: true, stars: stars.length,
+                 worst: Math.round(worst * 100) / 100,
+                 tolerance: SNAP_TOLERANCE, each: off };
+      } catch (e) { return { error: String(e && e.message || e) }; }
+    },
     // WHERE IT WENT WRONG, STAGE BY STAGE.
     //
     // "The pattern recognition is way off" is true and unactionable —
@@ -1967,15 +2134,11 @@ const MagicCardVision = (function () {
         var im = xx.getImageData(0, 0, Wd, hh);
         var bl = _blobs(im.data, Wd, hh);
         var cands = _frame(im.data, Wd, hh);
-        var fq = _chartQuad(cands);
+        var guide = _guideQuad(bl);
+        var fq = guide || _chartQuad(cands);
         var inside = bl;
         if (fq) {
-          var lim = _bounds(fq.map(function (q) { return { x: q.x, y: q.y }; }));
-          var pX = lim.w * 0.04, pY = lim.h * 0.04;
-          var wi = bl.filter(function (m) {
-            return m.x > lim.cx - lim.w / 2 + pX && m.x < lim.cx + lim.w / 2 - pX &&
-                   m.y > lim.cy - lim.h / 2 + pY && m.y < lim.cy + lim.h / 2 - pY;
-          });
+          var wi = _within(bl, fq, 0.04);
           if (wi.length >= MIN_STARS) inside = wi;
         }
         var look = _analyse(source, width);
@@ -2001,12 +2164,15 @@ const MagicCardVision = (function () {
           // `inside`, not every blob — the same ordering the pipeline
           // itself depends on. A diagnostic that reads differently from
           // the thing it is diagnosing is worse than none.
-          byFrame: _readByFrame(inside, cands),
+          byFrame: guide
+            ? _readThrough(inside, { quad: guide, u0: 0, v0: 0, span: 1 })
+            : _readByFrame(inside, cands),
           // Which rectangle actually registered — the chart's own ruled
           // frame, or the card's border with the grid derived from it.
           // Two very different pictures produce "frame found", and the
           // difference is the whole diagnosis.
           via: (function () {
+            if (guide) return 'guide stars';
             if (!cands || !cands.length) return null;
             for (var vi = 0; vi < cands.length; vi++) {
               var ch = _chartOf(cands[vi]);

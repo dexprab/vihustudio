@@ -74,12 +74,27 @@ const MagicCardArt=(function(){
   // being recognisable.
   //
   // `subtitleBottom` is where the wrapped subtitle ended, which only
-  // drawBack knows. The default is what that text actually produces at
-  // its fixed size and width, so a caller that has not drawn anything
-  // (the camera) gets the same geometry.
+  // drawBack knows. The default has to produce the SAME geometry, since
+  // a caller that has not drawn anything — the camera — gets no better
+  // information.
+  //
+  // IT DID NOT. The default was 150, which drove gridTop to 190, while
+  // the subtitle actually fits on one line and ends at 106, putting the
+  // drawn grid at 150. Forty card pixels apart, three quarters of a
+  // cell, and vertical — which is exactly the shape of the complaint it
+  // caused: "all seven stars recognised but the pattern is off", off by
+  // a row. The old comment asserted the two agreed; measuring them was
+  // what showed they never had.
+  //
+  // The measured value goes in, so the no-argument case lands on the
+  // same 150 the art draws. Note the floor is doing the work here: at
+  // this font and width the subtitle is one line and 106+40 is under
+  // 150, so both paths take the floor and agree exactly. If that text
+  // or its size ever changes enough to wrap to two lines, drawBack will
+  // move the grid and this default must move with it.
   function _backGridGeometry(subtitleBottom){
     const gridSize=CARD_ART_W-160;
-    const bottom=(typeof subtitleBottom==='number')?subtitleBottom:150;
+    const bottom=(typeof subtitleBottom==='number')?subtitleBottom:106;
     return {
       cardW:CARD_ART_W,
       cardH:CARD_ART_H,
@@ -483,6 +498,29 @@ const MagicCardArt=(function(){
         return {x:gridLeft+(p[1]+0.5)*cell, y:gridTop+(p[0]+0.5)*cell};
       });
 
+      // THE CHART SITS ON ITS OWN FIELD OF SKY.
+      //
+      // Photographed, this card was 0.39 average brightness and the
+      // ruled frame was simply not there — "CHART NOT FOUND" from a
+      // picture in which a person could read the stars perfectly well.
+      // A thin stroke on near-black gives a local threshold nothing to
+      // work with once a lens and an auto-exposure have had their way
+      // with it.
+      //
+      // So the chart's square is filled, a shade lighter than the card
+      // around it. It reads as the patch of sky the constellation lives
+      // in — which is what it is — and for the camera it turns the
+      // frame from "a faint line on black" into "the boundary between
+      // two clearly different regions", which is the thing edge
+      // detection is actually good at.
+      ctx.save();
+      const field=ctx.createLinearGradient(0,gridTop,0,gridTop+gridSize);
+      field.addColorStop(0,'rgba(96,116,178,0.30)');
+      field.addColorStop(1,'rgba(58,72,124,0.30)');
+      ctx.fillStyle=field;
+      ctx.fillRect(gridLeft,gridTop,gridSize,gridSize);
+      ctx.restore();
+
       ctx.strokeStyle='rgba(255,203,69,0.16)';
       ctx.lineWidth=1;
       for(let gi=0;gi<=10;gi++){
@@ -547,10 +585,37 @@ const MagicCardArt=(function(){
       // enclosing everything else, so its corners are simply the
       // corners of the largest hollow thing on the card. Those four
       // points give the exact transform (js/magicCardVision.js).
+      // THE FRAME OPENS AT THE CORNERS, and that is not decoration.
+      //
+      // The guide stars sit exactly ON the grid's corners, which is what
+      // makes them exact — and a continuous strokeRect runs straight
+      // through all four. Measured on a clean, flat, full-size render:
+      // fourteen marks, of which the four biggest were 613 down to 527
+      // and were the SEVEN pattern stars. The guide stars were not in
+      // the list at all, because each had been swallowed by the frame it
+      // touched and the whole thing was one connected shape.
+      //
+      // So each side stops short of the corner. The gap clears the
+      // guide star's own points with room to spare, which keeps the four
+      // of them separate blobs — and a ruled chart with open corners,
+      // each held by a bright star, is the older and better looking of
+      // the two drawings anyway.
+      const guideR=Math.max(11,cell*0.34)*1.9;
+      const openGap=guideR+10;
       ctx.save();
       ctx.strokeStyle='rgba(255,246,221,0.92)';
       ctx.lineWidth=3;
-      ctx.strokeRect(gridLeft,gridTop,gridSize,gridSize);
+      ctx.lineCap='round';
+      [[gridLeft+openGap,gridTop,gridLeft+gridSize-openGap,gridTop],
+       [gridLeft+gridSize,gridTop+openGap,gridLeft+gridSize,gridTop+gridSize-openGap],
+       [gridLeft+gridSize-openGap,gridTop+gridSize,gridLeft+openGap,gridTop+gridSize],
+       [gridLeft,gridTop+gridSize-openGap,gridLeft,gridTop+openGap]]
+      .forEach(function(seg){
+        ctx.beginPath();
+        ctx.moveTo(seg[0],seg[1]);
+        ctx.lineTo(seg[2],seg[3]);
+        ctx.stroke();
+      });
       ctx.restore();
 
       // Rows down the side, columns along the top — the same numbering
@@ -569,8 +634,10 @@ const MagicCardArt=(function(){
       ctx.textBaseline='middle';
       for(let gi=0;gi<10;gi++){
         const mid=(gi+0.5)*cell;
-        ctx.fillText(String(gi+1), gridLeft+mid, gridTop-16);
-        ctx.fillText(String(gi+1), gridLeft-16, gridTop+mid);
+        // Clear of the corner guide stars, which are large by
+        // necessity and sat on top of the "1" of each run.
+        ctx.fillText(String(gi+1), gridLeft+mid, gridTop-30);
+        ctx.fillText(String(gi+1), gridLeft-30, gridTop+mid);
       }
       ctx.restore();
 
@@ -597,6 +664,54 @@ const MagicCardArt=(function(){
         }
         ctx.closePath();
       }
+      // ---------------------------------------------------------------
+      // THE FOUR GUIDE STARS.
+      //
+      // Approved by the product owner as an amendment to Decisions 11
+      // and 16, which until now said the Magic Card is not redesigned.
+      // The reason is measured rather than aesthetic: a pattern sits at
+      // a RANDOM OFFSET on the grid, so the absolute cells are part of
+      // the identity, and without knowing exactly where the grid begins
+      // a lattice shifted by one cell fits precisely as well as the true
+      // one. Every version of this reader has had to infer that origin
+      // from the stars themselves and has sometimes inferred it wrong —
+      // which is what "all seven stars found, pattern still off" is.
+      //
+      // Four stars at the four corners of the chart end the inference.
+      // They are at known coordinates by construction, so they give the
+      // projective transform outright, and everything after that is
+      // arithmetic rather than search.
+      //
+      // WHY THEY ARE NOT THE OLD CORNER MARKS. The card carried four
+      // white squares once and they were removed for looking like
+      // hardware bolted to a keepsake — the product owner's words were
+      // "ugly squares". These are stars, drawn with the same five-point
+      // path as every other star on the card, because the corners of a
+      // star chart being marked by brighter stars is what a star chart
+      // looks like. A child sees four bright stars holding the corners
+      // of their sky. Nothing about the card announces a machine.
+      //
+      // THEY MUST NOT BE MISTAKEN FOR THE CONSTELLATION. They are drawn
+      // at 1.9x the radius of a pattern star, which is a wide, reliable
+      // gap for the size filter — the earlier failure was corner marks
+      // the SAME size as stars, so a five-star sky arrived as nine marks
+      // and matched nothing. Sitting exactly on the grid's corners, they
+      // are also outside every cell centre, so even if one were treated
+      // as a star it could not land on a cell.
+      const guide=guideR;
+      [[gridLeft,gridTop],[gridLeft+gridSize,gridTop],
+       [gridLeft+gridSize,gridTop+gridSize],[gridLeft,gridTop+gridSize]]
+      .forEach(function(g){
+        ctx.save();
+        ctx.shadowColor='rgba(255,232,178,0.95)';
+        ctx.shadowBlur=16;
+        ctx.fillStyle='#FFFDF4';
+        starPath(g[0],g[1],guide);
+        ctx.fill();
+        ctx.restore();
+      });
+      ctx.shadowBlur=0;
+
       pts.forEach(function(p){
         ctx.save();
         ctx.shadowColor='rgba(255,214,128,0.9)';
