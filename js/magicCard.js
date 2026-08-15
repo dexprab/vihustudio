@@ -599,147 +599,13 @@ const MagicCard=(function(){
   // overwritten by a submitted one. It came from claim(), where the
   // platform minted it; a recall has nothing better to offer, since the
   // RPC deliberately never returns a pattern on any branch.
-  // A SUBMITTED PATTERN IS STORED IN A STABLE ORDER.
-  //
-  // Only reached on a device that has never held this card, where there
-  // is genuinely no better source: the recall RPC never returns the
-  // pattern, so the one just submitted is all there is. But a camera
-  // read hands over cells in whatever order the blob detector found
-  // them, which differs between two photographs of the SAME card — so
-  // stored raw, the joining line would be drawn differently every time
-  // the card was recalled.
-  //
-  // Sorting row by row makes it deterministic. It is honestly NOT the
-  // order the card was minted with, so the line on a recalled card may
-  // differ from the printed one; that is a disclosed consequence of the
-  // platform never returning the pattern, and a stable wrong order is
-  // strictly better than a random one.
-  function _stablePattern(pattern){
-    if(!Array.isArray(pattern)||!pattern.length) return null;
-    return pattern
-      .filter(function(p){ return Array.isArray(p)&&p.length>=2; })
-      .map(function(p){ return [Number(p[0]),Number(p[1])]; })
-      .sort(function(a,b){ return (a[0]-b[0])||(a[1]-b[1]); });
-  }
-
-  // THE ORIGINAL ORDER CAN BE RECOVERED, so it is not guessed.
-  //
-  // A sorted order is stable and still not the card's own, so a
-  // recalled card would draw its joining line differently from the
-  // printed one it is meant to BE. That is avoidable: recall does
-  // return the constellation's NAME, and _placeConstellation() built
-  // the original from exactly that base by one of four rotations, an
-  // optional mirror, and a translation — a small, finite set.
-  //
-  // So every one of those eight transforms is applied to the base and
-  // shifted onto the cells just read. Whichever reproduces the same SET
-  // reproduces the original ORDER with it, because it is the same
-  // construction run forwards. The card then draws the line the child's
-  // printed card draws, rather than one that merely joins the same
-  // stars.
-  //
-  // Falls back to the sorted order when nothing matches — a card minted
-  // before this, or a name the registry no longer has.
-  // EVERY WAY THIS SKY COULD LEGITIMATELY HAVE BEEN PLACED.
-  //
-  // _placeConstellation() builds a card from the named base by one of
-  // four rotations, an optional mirror and a translation, so these eight
-  // are exactly the orders a real card can carry. More than one can
-  // produce the SAME CELLS — CYGNUS is a perfect cross, so all eight
-  // land on the same five squares and differ only in the order they are
-  // traced — which is why the list matters rather than just the first
-  // entry.
-  function _placementsFor(name,cells){
-    const stable=_stablePattern(cells);
-    if(!stable) return [];
-    const base=CONSTELLATIONS[name];
-    if(!base||base.length!==stable.length) return [];
-    const key=function(list){
-      return list.map(function(p){ return p[0]+','+p[1]; }).sort().join(' ');
-    };
-    const want=key(stable);
-    const minR=_minOf(stable,0), minC=_minOf(stable,1);
-    const out=[];
-    for(let turns=0;turns<4;turns++){
-      for(let mirror=0;mirror<2;mirror++){
-        let pts=_shiftToOrigin(base);
-        pts=_rotate(pts,turns);
-        if(mirror) pts=_mirrorHorizontal(pts);
-        pts=_shiftToOrigin(pts);
-        const placed=pts.map(function(p){ return [p[0]+minR,p[1]+minC]; });
-        if(key(placed)===want) out.push(placed);
-      }
-    }
-    return out;
-  }
-
-  function _baseOrderFor(name,cells){
-    const all=_placementsFor(name,cells);
-    return all.length?all[0]:null;
-  }
-
-  function _sameOrder(a,b){
-    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
-    for(let i=0;i<a.length;i++){
-      if(!a[i]||!b[i]||a[i][0]!==b[i][0]||a[i][1]!==b[i][1]) return false;
-    }
-    return true;
-  }
-
-  function _orderLikeConstellation(name,cells){
-    return _baseOrderFor(name,cells)||_stablePattern(cells);
-  }
-
-  // WHICH SKY IS THIS, AND IN WHAT ORDER SHOULD IT BE DRAWN?
-  //
-  // The camera hands over cells in whatever order the blob detector
-  // found them, and the drawing board joins stars in the order it is
-  // given — so a correctly read card was drawn as a zig-zag where the
-  // card itself draws a clean cross. Same stars, same cells, wrong
-  // line, and to a child looking at their card and at the screen that
-  // is simply the wrong constellation.
-  //
-  // The name is not needed to fix it. Every card's pattern is one of
-  // five known shapes under one of four rotations, an optional mirror
-  // and a translation, so trying each in turn identifies the sky AND
-  // recovers the order it is meant to be traced in. Returns the cells
-  // untouched when nothing matches — a hand-drawn sky is whatever the
-  // child drew, and reordering that would be inventing a shape they
-  // did not make.
-  // MORE THAN ONE PLACEMENT FITS THESE CELLS.
-  //
-  // True of any symmetric sky — CYGNUS's cross maps onto its own five
-  // squares under every rotation and mirror — and it is the difference
-  // between "traced the way the card traces it" and "traced one of
-  // eight ways, one of which happens to be the card's". A caller that
-  // is about to DRAW the order needs to know which of those it has.
-  function skyIsAmbiguous(cells){
-    if(!Array.isArray(cells)||!cells.length) return true;
-    const names=Object.keys(CONSTELLATIONS);
-    for(let i=0;i<names.length;i++){
-      const ways=_placementsFor(names[i],cells);
-      if(ways.length) return ways.length>1;
-    }
-    return true;
-  }
-
-  function orderLikeAnySky(cells){
-    if(!Array.isArray(cells)||!cells.length) return cells;
-    const names=Object.keys(CONSTELLATIONS);
-    for(let i=0;i<names.length;i++){
-      const placed=_baseOrderFor(names[i],cells);
-      if(placed) return placed;
-    }
-    return cells;
-  }
-
   function adopt(remoteResult,pattern){
     const now=new Date().toISOString();
     const cardsBefore=_readCards();
     const existing=cardsBefore.find(function(c){ return c && c.id===remoteResult.identity_id; });
     const keptPattern=(existing && Array.isArray(existing.pattern) && existing.pattern.length)
       ? existing.pattern
-      : _orderLikeConstellation(remoteResult.constellation,pattern);
+      : (Array.isArray(pattern)&&pattern.length?pattern:null);
     const card={
       id:remoteResult.identity_id,
       nickname:remoteResult.nickname||'',
@@ -901,8 +767,6 @@ const MagicCard=(function(){
     rename:rename,
     recall:recall,
     adopt:adopt,
-    orderLikeAnySky:orderLikeAnySky,
-    skyIsAmbiguous:skyIsAmbiguous,
     growthSignals:growthSignals,
     shouldOfferAwakening:shouldOfferAwakening,
     markAwakeningOffered:markAwakeningOffered,

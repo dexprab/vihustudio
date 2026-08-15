@@ -378,6 +378,10 @@
       // exact match that has always worked everywhere, and the camera
       // is an input helper rather than an authority.
       var nudgeEl = starsEl.querySelector('[data-stars-nudge]');
+      // Offered only to a child who arrived from the camera — the same
+      // condition the nudge pad uses, and for the same reason.
+      var cameraBtn = starsEl.querySelector('[data-stars-act="camera"]');
+      if (cameraBtn) cameraBtn.hidden = !(seen && seen.length);
       if (seen && seen.length && board.set) {
         // DRAWN IN THE ORDER THE SKY IS TRACED IN.
         //
@@ -395,47 +399,7 @@
         // can be identified from the cells alone and traced the way it
         // is meant to be. A sky that matches nothing is passed through
         // untouched: a child's own drawing is whatever they drew.
-        //
-        // THE CARD'S OWN ORDER FIRST, when this device holds the card.
-        //
-        // A symmetric sky cannot be traced from its cells alone. CYGNUS
-        // is a perfect cross: mirror it and the five cells map onto
-        // themselves, while the order reverses from Top, Centre, Left,
-        // Bottom, Right to Top, Centre, Right, Bottom, Left. Same stars,
-        // mirror-image line, and nothing in the photograph can say which
-        // one the card was minted with — reported as exactly that,
-        // "check it's mirrored".
-        //
-        // It does not have to be inferred when the answer is already
-        // here. A card on this device carries the order it was minted
-        // with, so a read whose cells ARE that card's cells is drawn the
-        // card's own way. Matched as a set, the same comparison
-        // recognition uses.
-        var marked = seen;
-        try {
-          var key = function (list) {
-            return (list || []).map(function (p) { return p[0] + ',' + p[1]; })
-              .sort().join(' ');
-          };
-          var want = key(seen), mine = null;
-          var held = (typeof MagicCard !== 'undefined' && MagicCard.list)
-            ? MagicCard.list() : [];
-          for (var ci = 0; ci < held.length; ci++) {
-            if (held[ci] && held[ci].pattern && key(held[ci].pattern) === want) {
-              mine = held[ci].pattern; break;
-            }
-          }
-          if (mine) marked = mine;
-          else if (typeof MagicCard !== 'undefined' && MagicCard.orderLikeAnySky) {
-            marked = MagicCard.orderLikeAnySky(seen) || seen;
-          }
-        } catch (e) { marked = seen; }
-        // Safe to draw the line now. The card art derives its trace from
-        // the same cells by the same rule (magicCardArt's drawBack), so
-        // the board and the card cannot disagree about how a sky is
-        // joined — which is what made a guessed order dangerous before
-        // and makes it merely correct now.
-        try { board.set(marked); } catch (e) {}
+        try { board.set(seen); } catch (e) {}
         say('Are these your stars?');
         // Offered only here. A child drawing from scratch has nothing
         // to move; a child holding a card has a whole sky in slightly
@@ -1445,6 +1409,10 @@
         var act = btn.getAttribute('data-stars-act');
 
         if (act === 'continue') { askTheUniverse(); return; }
+        // Straight back to the camera, with the board left behind. The
+        // child still has the card in their hand; this is the shortest
+        // distance between them and another attempt.
+        if (act === 'camera') { closeStars(); openCardScan(); return; }
         if (act === 'retry') { freshAsk(); return; }
         if (act === 'lost') { lostMyCard(); return; }
         // Leaving without answering. The universe was never torn down,
