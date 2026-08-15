@@ -1759,66 +1759,116 @@ const MagicCardVision = (function () {
     var big = marks.filter(function (m) { return m.n >= floor; });
     if (big.length < 4) return null;
 
-    var pick = function (score) {
-      var bestM = null, bestV = -Infinity;
-      for (var j = 0; j < big.length; j++) {
-        var v = score(big[j]);
-        if (v > bestV) { bestV = v; bestM = big[j]; }
+    // DO NOT ASSUME THE OUTERMOST MARKS ARE THE CORNERS — PROVE IT.
+    //
+    // Taking the single extreme mark in each diagonal direction is right
+    // when the card is all there is to see, and wrong the moment a room
+    // is in the frame. Measured on a real photograph: the top two
+    // corners landed on the guide stars and the bottom two ran off the
+    // card entirely, one of them onto the edge of a pair of glasses.
+    // The shape checks passed it, because a quad with a 1.56 ratio
+    // between its top and bottom edges is a perfectly ordinary
+    // perspective view of a square — there is nothing wrong with that
+    // quad except that it is not the chart.
+    //
+    // No geometric test can settle this, because the wrong answer is
+    // geometrically respectable. But there IS a decisive test already
+    // written: do this card's stars land on cell centres when read
+    // through it? A quad drawn on a helmet and a face does not put five
+    // stars on a ten by ten lattice; the chart's own corners do.
+    //
+    // So every plausible set of four is tried and the reading decides.
+    // The candidates are few — marks big enough to be a corner — and
+    // the winner is the one whose stars sit CLOSEST to their cell
+    // centres, not merely the first that fits, so a lucky near-miss
+    // cannot beat the real thing.
+    var cand = big.slice().sort(function (a, b) { return b.n - a.n; }).slice(0, 12);
+    var cells = _geometry().cells;
+    var bestQ = null, bestErr = Infinity, bestCount = 0, bestMass = 0;
+
+    for (var a = 0; a < cand.length; a++) {
+      for (var b2 = a + 1; b2 < cand.length; b2++) {
+        for (var c2 = b2 + 1; c2 < cand.length; c2++) {
+          for (var d2 = c2 + 1; d2 < cand.length; d2++) {
+            var four = [cand[a], cand[b2], cand[c2], cand[d2]];
+            var cx = 0, cy = 0, i;
+            for (i = 0; i < 4; i++) { cx += four[i].x; cy += four[i].y; }
+            cx /= 4; cy /= 4;
+            // Ordered by angle about the centre, which gives TL, TR, BR,
+            // BL for a convex quad at any rotation.
+            var ord = four.slice().sort(function (p1, p2) {
+              return Math.atan2(p1.y - cy, p1.x - cx) - Math.atan2(p2.y - cy, p2.x - cx);
+            });
+            var q = ord.map(function (m) { return { x: m.x, y: m.y }; });
+
+            var dist = function (p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); };
+            var top = dist(q[0], q[1]), right = dist(q[1], q[2]);
+            var bottom = dist(q[2], q[3]), left = dist(q[3], q[0]);
+            if (!(top > 8 && right > 8 && bottom > 8 && left > 8)) continue;
+            var horiz = (top + bottom) / 2, vert = (left + right) / 2;
+            if (Math.abs(Math.log(horiz / vert)) > 0.42) continue;
+            if (Math.max(top, bottom) > Math.min(top, bottom) * 2.1) continue;
+            if (Math.max(left, right) > Math.min(left, right) * 2.1) continue;
+
+            var inv = _homography(q);
+            if (!inv) continue;
+            var inner = _within(marks.filter(function (m) {
+              return m !== four[0] && m !== four[1] && m !== four[2] && m !== four[3];
+            }), q, INSIDE_PAD);
+            if (inner.length < MIN_STARS) continue;
+            var stars = _starLike(inner);
+            if (stars.length < MIN_STARS || stars.length > MAX_STARS) continue;
+
+            // The proof: every star on a cell centre, and how well.
+            var worst = 0, used = {}, good = true;
+            for (i = 0; i < stars.length; i++) {
+              var pt = inv(stars[i].x, stars[i].y);
+              if (!pt) { good = false; break; }
+              var u = pt.u * cells, v = pt.v * cells;
+              var col = Math.round(u - 0.5), row = Math.round(v - 0.5);
+              if (row < 0 || col < 0 || row >= cells || col >= cells) { good = false; break; }
+              var e = Math.max(Math.abs(u - (col + 0.5)), Math.abs(v - (row + 0.5)));
+              if (e > SNAP_TOLERANCE) { good = false; break; }
+              var k = row + ',' + col;
+              if (used[k]) { good = false; break; }
+              used[k] = 1;
+              if (e > worst) worst = e;
+            }
+            if (!good) continue;
+
+            // WHICH VALID QUAD IS THE REAL ONE.
+            //
+            // More than one set of four can put stars on cell centres —
+            // a lattice shifted or shrunk by a cell fits a small
+            // constellation surprisingly well, which is the same
+            // ambiguity the guide stars exist to remove. Lowest error
+            // alone therefore picked wrong ones, and did so confidently.
+            //
+            // The tell is what a wrong quad has to do to exist: it uses
+            // one of the constellation's OWN stars as a corner, and that
+            // star is then no longer inside to be read. So the true quad
+            // leaves the most stars in the sky — every one of them —
+            // while an impostor is always short.
+            //
+            // Ties go to the larger corners, since the card really does
+            // draw its guide stars bigger, and only then to the closer
+            // fit. Size is a hint here rather than the test it used to
+            // be, which is the right weight for something a camera can
+            // blur away.
+            var mass = four[0].n + four[1].n + four[2].n + four[3].n;
+            var better = !bestQ ||
+              stars.length > bestCount ||
+              (stars.length === bestCount && mass > bestMass * 1.08) ||
+              (stars.length === bestCount && mass > bestMass * 0.92 && worst < bestErr);
+            if (better) {
+              bestErr = worst; bestQ = q; bestCount = stars.length; bestMass = mass;
+            }
+          }
+        }
       }
-      return bestM;
-    };
-    var four = [
-      pick(function (m) { return -(m.x + m.y); }),   // top-left
-      pick(function (m) { return m.x - m.y; }),      // top-right
-      pick(function (m) { return m.x + m.y; }),      // bottom-right
-      pick(function (m) { return m.y - m.x; })       // bottom-left
-    ];
-    var i, j2;
-    for (i = 0; i < 4; i++) {
-      if (!four[i]) return null;
-      for (j2 = i + 1; j2 < 4; j2++) if (four[i] === four[j2]) return null;
     }
+    return bestQ;
 
-    // A corner is never one of the smallest things in the picture. This
-    // is deliberately loose — it exists to reject a speck of room, not
-    // to identify a guide star, which position already did.
-    var sizes = marks.map(function (m) { return m.n; }).sort(function (a, b) { return a - b; });
-    var median = sizes[Math.floor(sizes.length / 2)] || 1;
-    for (i = 0; i < 4; i++) if (four[i].n < median * 0.45) return null;
-
-    var cx = 0, cy = 0;
-    for (i = 0; i < 4; i++) { cx += four[i].x; cy += four[i].y; }
-    cx /= 4; cy /= 4;
-    // Corner order by angle about the centre gives TL, TR, BR, BL for a
-    // convex quad at any rotation, which a sort on x or y does not.
-    four.sort(function (a, b) {
-      return Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx);
-    });
-    // atan2 starts at the negative x axis going down, so the first point
-    // is the top-left for any card held within a quarter turn.
-    var q = four.map(function (m) { return { x: m.x, y: m.y }; });
-
-    var d = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
-    var top = d(q[0], q[1]), right = d(q[1], q[2]);
-    var bottom = d(q[2], q[3]), left = d(q[3], q[0]);
-    if (!(top > 8 && right > 8 && bottom > 8 && left > 8)) return null;
-    // The chart is square, so opposite sides are comparable even under
-    // perspective, and adjacent sides are near enough equal.
-    var horiz = (top + bottom) / 2, vert = (left + right) / 2;
-    if (Math.abs(Math.log(horiz / vert)) > 0.42) return null;
-    if (Math.max(top, bottom) > Math.min(top, bottom) * 2.1) return null;
-    if (Math.max(left, right) > Math.min(left, right) * 2.1) return null;
-
-    // AND THERE HAS TO BE A SKY INSIDE IT. Four extreme marks can be
-    // found in any picture; four extreme marks with a constellation's
-    // worth of stars strictly within them is a card. This is what stops
-    // an arbitrary spread of room highlights from registering as a
-    // chart before _readThrough ever gets a say.
-    var inner = _within(marks.filter(function (m) {
-      return m !== four[0] && m !== four[1] && m !== four[2] && m !== four[3];
-    }), q, 0.02);
-    if (inner.length < MIN_STARS) return null;
-    return q;
   }
 
   // INSIDE THE CHART, NOT INSIDE ITS BOUNDING BOX.
