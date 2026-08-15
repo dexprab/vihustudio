@@ -559,6 +559,20 @@ const MagicCard=(function(){
     if(_cloudSyncTimers[id]) clearTimeout(_cloudSyncTimers[id]);
     _cloudSyncTimers[id]=setTimeout(function(){
       delete _cloudSyncTimers[id];
+      // Deliberately the plain push, NOT _reserveIdentity.
+      //
+      // Re-rolling a pattern is only ever safe at claim time, when the
+      // card is seconds old and nobody has seen it. By the time a card
+      // is being touched or renamed it is established — printed,
+      // perhaps, and certainly the thing its Creator draws to be
+      // recognised — so changing its stars to resolve a collision would
+      // destroy the identity it was trying to protect.
+      //
+      // If such a card cannot sync because its pattern is held by
+      // somebody else, it stays local and silent. That is the right
+      // failure: it can only happen to a card minted before the unique
+      // index existed, and the audit that installed the index proved
+      // there were none.
       _pushIdentitySnapshot(get(id));
     },CLOUD_SYNC_DEBOUNCE_MS);
   }
