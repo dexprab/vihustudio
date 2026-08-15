@@ -1596,10 +1596,32 @@ const MagicCardVision = (function () {
     if (!chart) return null;
     var inv = _homography(chart.quad);
     if (!inv) return null;
-    var stars = _starLike(marks);
-    if (stars.length < MIN_STARS || stars.length > MAX_STARS) return null;
+
+    // BOTH SETS, LONGEST WINNING — the same reasoning as in _guideQuad,
+    // and it has to be here too or the quad is chosen on five stars and
+    // the pattern is then produced from four. _starLike is a heuristic
+    // that drops a dim star on a real print; the snap test below is not,
+    // so it is safe to hand it everything and let it refuse what does
+    // not belong.
+    var whole = marks.slice();
+    var lean = _starLike(marks);
+    var attempts = [];
+    if (whole.length >= MIN_STARS && whole.length <= MAX_STARS) attempts.push(whole);
+    if (lean.length >= MIN_STARS && lean.length <= MAX_STARS &&
+        lean.length !== whole.length) attempts.push(lean);
+    if (!attempts.length) return null;
+    attempts.sort(function (a, b) { return b.length - a.length; });
 
     var cells = _geometry().cells;
+    for (var ai = 0; ai < attempts.length; ai++) {
+      var got = _snapAll(attempts[ai], inv, chart, cells);
+      if (got) return got;
+    }
+    return null;
+  }
+
+  // Every star through the transform and onto its own cell, or nothing.
+  function _snapAll(stars, inv, chart, cells) {
     var u0 = chart.u0 || 0, v0 = chart.v0 || 0;
     var uSpan = chart.uSpan || chart.span || 1;
     var vSpan = chart.vSpan || chart.span || 1;
@@ -1816,7 +1838,29 @@ const MagicCardVision = (function () {
               return m !== four[0] && m !== four[1] && m !== four[2] && m !== four[3];
             }), q, INSIDE_PAD);
             if (inner.length < MIN_STARS) continue;
-            var stars = _starLike(inner);
+
+            // LET THE READING SAY WHICH MARKS ARE STARS.
+            //
+            // _starLike is a heuristic — brightest group, then biggest
+            // group of similar sizes — and on a real underexposed print
+            // it drops one. Measured on a photograph of a real card:
+            // CYGNUS's five stars were all found, at 437 411 290 231 and
+            // 221, and four survived the filter. The board drew four
+            // stars and the fifth simply was not there.
+            //
+            // Inside a proven quad the filter is not needed for safety,
+            // because there is a far stricter test right below it: every
+            // mark has to land on its own cell centre. A speck of dust
+            // will not, so including it fails the whole set rather than
+            // corrupting it. So both are offered — everything inside the
+            // chart, and the filtered subset — and the scoring prefers
+            // whichever yields MORE stars that all snap.
+            var sets = [inner];
+            var lean = _starLike(inner);
+            if (lean.length !== inner.length && lean.length >= MIN_STARS) sets.push(lean);
+
+            for (var sx = 0; sx < sets.length; sx++) {
+            var stars = sets[sx];
             if (stars.length < MIN_STARS || stars.length > MAX_STARS) continue;
 
             // The proof: every star on a cell centre, and how well.
@@ -1862,6 +1906,7 @@ const MagicCardVision = (function () {
               (stars.length === bestCount && mass > bestMass * 0.92 && worst < bestErr);
             if (better) {
               bestErr = worst; bestQ = q; bestCount = stars.length; bestMass = mass;
+            }
             }
           }
         }
