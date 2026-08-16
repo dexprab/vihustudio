@@ -268,8 +268,60 @@
     }
 
     // ---------- the two permanent actions ----------
+    // THE ONE DOOR INTO THE STUDIO, and therefore the one place the
+    // screen is ever asked about.
+    //
+    // All four ways in come through here — the two permanent actions,
+    // the camera's confirmed recognition, and the drawing board's — so
+    // a phone is turned back once, in one place, rather than by four
+    // checks that could disagree.
+    //
+    // Deliberately AFTER recognition rather than before it. A child on
+    // a phone is still recognised, still committed, still known; what
+    // they cannot do is open the Studio. Checking first would refuse to
+    // look at their stars at all, which is a different and much colder
+    // product.
     function goStudio(decision) {
+      if (typeof DeviceGate !== 'undefined' && !DeviceGate.canOpenStudio()) {
+        openBigger(decision && decision.journey === JourneyResolver.CREATOR);
+        return;
+      }
       window.location.href = (decision && decision.destination) || JourneyResolver.STUDIO;
+    }
+
+    // ---------- a bigger screen ----------
+    var biggerEl = document.querySelector('[data-bigger]');
+    function openBigger(recognised) {
+      if (!biggerEl) {
+        // Nothing to show is not a reason to send a phone somewhere it
+        // cannot work — it is a reason to do nothing at all.
+        return;
+      }
+      // Whatever asked the question is finished with. Left open, the
+      // board and its buttons sit behind this panel still offering
+      // Continue and "I Don't Have One Yet" — two answers to a question
+      // that has already been answered.
+      try { closeStars(); } catch (e) {}
+      try { closeCardScan({ keepUniverseStill: true }); } catch (e) {}
+
+      var known = biggerEl.querySelector('[data-bigger-known]');
+      if (known) known.hidden = !recognised;
+      biggerEl.hidden = false;
+      // Next frame, so the transition has a closed state to run from.
+      window.requestAnimationFrame(function () { biggerEl.classList.add('is-open'); });
+    }
+    function closeBigger() {
+      if (!biggerEl) return;
+      biggerEl.classList.remove('is-open');
+      window.setTimeout(function () { biggerEl.hidden = true; }, 260);
+    }
+    if (biggerEl) {
+      biggerEl.addEventListener('click', function (ev) {
+        // The veil closes it too: the universe is still running behind
+        // this and leaving costs nothing.
+        if (ev.target.closest('[data-bigger-act="away"]') ||
+            ev.target.hasAttribute('data-bigger-veil')) closeBigger();
+      });
     }
 
     if (actionsEl) {

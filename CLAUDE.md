@@ -713,6 +713,55 @@ from vihupapa was still available in the god."*
   sweeps unowned records to the new card — only unowned ones, never
   another Creator's.
 
+### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
+
+Locked by the product owner: *"vihuplanet is meant for laptop screens
+and not mobile screens. mobile should not be allowed to move past sky
+detection."*
+
+- **Everything up to and including being recognised works on a phone.**
+  The Ether, Story Spirits, reading, Cheer, ⭐ Show Me Your Stars, the
+  camera, ✏️ Draw Your Stars and recognition itself are unchanged on
+  every device. A child can visit VihuPlanet on a phone and be known by
+  their stars.
+- **Only the Studio door is closed.** Making a story means a Card
+  Designer, a Page Designer, an Object Strip, a Context Panel and a
+  page canvas at once; there is no phone layout of that which would be
+  honest. What a phone would get is not a smaller Studio, it is a worse
+  one.
+- **The check happens AFTER recognition, never before.** Checking first
+  would refuse to look at a child's stars at all, which is a colder
+  product than telling them where the making happens. They are still
+  recognised, still committed, still known.
+- **`goStudio()` is the only door, so it is the only gate.** All four
+  ways in — the two permanent actions and both recognition paths — pass
+  through it, so a phone is turned back once rather than by four checks
+  that could disagree.
+- **A phone is told from a computer by TWO signals, both of which must
+  agree** (`js/deviceGate.js`): the primary pointer is coarse, AND the
+  SCREEN's short edge is under `MIN_SHORT_EDGE` (768). Never the user
+  agent — a string anybody can set, which lies by default on iPad.
+  Never window width alone: a laptop with a narrow window is still a
+  laptop and must not be locked out of its own Studio. A 1280×720
+  laptop fails the size test and passes on its pointer, which is the
+  whole reason there are two. **Tablets are allowed** — an iPad's short
+  edge is 834.
+- **Unreadable signals mean yes.** A Creator wrongly turned away from
+  their own stories is a far worse failure than a phone getting a
+  Studio it cannot use well.
+- **The language never blames**, and never says "unsupported",
+  "incompatible" or "device". *"Stories are made on a bigger screen"* ·
+  *"Open VihuPlanet on a laptop and everything will be waiting for
+  you."* A recognised child is told *"I know your stars"* first, so
+  being turned back never reads as not being known.
+- **It is an overlay on the living Ether**, never a page and never a
+  wall: the universe carries on behind it and Back to the Ether costs
+  nothing. Whatever asked the question is closed first, so no answered
+  question is left offering its buttons underneath.
+- Decision 10 is intact: the two permanent actions are unchanged and no
+  button was added or removed. Only what happens behind them differs,
+  which is what that decision already allows.
+
 ### 20. Cheer — Stories Grow When Somebody Believes in Them
 
 Locked by the product owner in the Cheer sprint brief.
