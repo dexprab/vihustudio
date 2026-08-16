@@ -102,7 +102,7 @@
       // the light so the renderer can draw it without ever being told
       // what a story is — the same discipline as `hue` and `warm`.
       lights.push({ alive: false, x: 0, y: 0, scale: 1, intensity: 0, warm: 0, hue: 'glow',
-                    grown: false, arriving: 0, seed: 0, radius: 44, radiusY: 59 });
+                    grown: false, growth: 0, arriving: 0, seed: 0, radius: 44, radiusY: 59 });
     }
 
     // Candidates, sorted by nearness each frame to decide which get a
@@ -220,6 +220,11 @@
         // company, which is exactly what it earned.
         l.arriving = e.cheer;
         l.grown = !!e.grown;
+        // How much company it keeps, 0 → 1. Continuous, so a story
+        // with a great deal of starlight is visibly more alive than one
+        // with a little, without there ever being a step between them
+        // that could read as a level reached.
+        l.growth = e.growth || 0;
         // Its own phase, so no two grown Spirits turn together.
         l.seed = e.bob.phase;
         // How big the story itself is ON SCREEN. The Spirit's card is

@@ -1722,6 +1722,7 @@
         // cheered, and to nothing else — not the creator, not their
         // other stories, not the Ether.
         entity.grown = nowGrown;
+        entity.growth = Cheer.growth ? Cheer.growth(pid) : entity.growth;
         if (met === entity) {
           el.cheer.textContent = cheerLabel(pid);
           el.cheer.disabled = true;

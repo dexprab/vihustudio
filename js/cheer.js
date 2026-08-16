@@ -53,10 +53,31 @@ const Cheer = (function () {
   // from the count, so moving this number changes when stories grow
   // and needs no migration, no backfill and no stored stage.
   //
-  // There is ONE stage. Not ten, not a progression, not an economy —
-  // the question this sprint asks is only whether Cheer → Growth is a
-  // good loop at all.
+  // The first cheer at which a story is visibly growing at all.
   var GROWTH_THRESHOLD = 3;
+
+  // WHERE GROWTH IS COMPLETE.
+  //
+  // Growth is CONTINUOUS, not staged: every cheer moves the story a
+  // little, and there is no threshold anywhere between the first and
+  // this one. That matters because a stage is a level, a level has a
+  // name, and a name is something a child can compare their story
+  // against somebody else's with. There is nothing here to be on a
+  // rung of — only a story that is a little more alive than it was.
+  //
+  // Nothing displays this number, nothing announces crossing it, and
+  // past it a story simply stays as it is: there is no top of the
+  // ladder to reach because there is no ladder.
+  var GROWTH_FULL = 100;
+
+  // Early cheers have to COUNT. Linear, the first cheer on a story
+  // moves it by a hundredth and the child who gave it sees nothing
+  // happen — so the curve is front-loaded: the first ten cheers do
+  // roughly a third of the whole journey, and the last ten do a few
+  // percent. That is also the honest shape of the thing, because the
+  // difference between no one and someone is far larger than the
+  // difference between forty people and fifty.
+  var GROWTH_CURVE = 0.62;
 
   // How many stranded cheers to carry to the platform per visit — see
   // refresh(). Small on purpose: it is a catch-up, not a queue.
@@ -127,6 +148,21 @@ const Cheer = (function () {
   // sprint ever takes a Cheer away.
   function grown(storyId) {
     return count(storyId) >= GROWTH_THRESHOLD;
+  }
+
+  // HOW GROWN, 0 → 1. Derived from the count for exactly the same
+  // reason `grown` is: it is a fact about the starlight a story has
+  // been given, so it is persistent, cannot disagree with the cheers,
+  // and needs no migration when this curve changes.
+  //
+  // The renderer reads this one number and nothing else. It never
+  // learns a count, so there is no quantity anywhere in the drawing
+  // code that could be turned into something shown.
+  function growth(storyId) {
+    var n = count(storyId);
+    if (n <= 0) return 0;
+    var x = Math.min(n, GROWTH_FULL) / GROWTH_FULL;
+    return Math.pow(x, GROWTH_CURVE);
   }
 
   // ---------------------------------------------------------------
@@ -243,9 +279,11 @@ const Cheer = (function () {
 
   var api = {
     GROWTH_THRESHOLD: GROWTH_THRESHOLD,
+    GROWTH_FULL: GROWTH_FULL,
     count: count,
     mine: mine,
     grown: grown,
+    growth: growth,
     give: give,
     refresh: refresh
   };

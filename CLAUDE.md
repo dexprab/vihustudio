@@ -743,11 +743,35 @@ Locked by the product owner in the Cheer sprint brief.
   That is the right way round — one extra cheer is a far smaller wrong
   than a child being told to claim an identity before they may be kind
   about somebody's story.
-- **Growth is ONE stage, and it is derived.** `CHEER_GROWTH_THRESHOLD`
-  is a constant in `js/cheer.js`; a Story at or above it is grown.
-  Deriving it from the stored count is what makes growth persistent
-  for free — there is no second piece of state to keep in step, and no
-  way for a Story to be grown while its cheers say otherwise.
+- **Growth is CONTINUOUS, and it is derived.** `GROWTH_THRESHOLD` in
+  `js/cheer.js` is where a Story first visibly grows; `GROWTH_FULL` is
+  where growing stops. Between them there is no stage, no step and no
+  threshold: `Cheer.growth()` returns 0 → 1 on a front-loaded curve, and
+  every cheer moves the Story a little. Deriving it from the stored
+  count is what makes growth persistent for free — there is no second
+  piece of state to keep in step, and no way for a Story to be grown
+  while its cheers say otherwise.
+  (Amends the original "ONE stage", which was written to keep a level
+  system out. The reason stands and the mechanism changed: with one
+  stage the fourth cheer and the four-hundredth looked identical, so a
+  Story stopped answering the kindness it was given. A continuous
+  curve answers every cheer without there ever being a rung to be on.)
+- **A stage is a level, a level has a name, and a name can be
+  compared.** That is why there are none. The product owner's growth
+  ladder is a specification for the curve and **a child never sees
+  it** — no bands, no band names, no numbers, no progress, and nothing
+  announced when a Story passes anything.
+- **The drawing code is never given a count.** `Cheer.growth()` hands
+  the runtime one 0 → 1 number and the renderer reads only that, so
+  there is no quantity anywhere in the drawing path that could be
+  turned into something displayed. Companions interpolate 3 → 7 with
+  the fractional part fading in, so no cheer ever makes one appear.
+- **Growth stays company, never brightness, at every point on the
+  curve.** The warm field deepens by a little and stops. Brightness
+  already means NEARNESS in this universe, so a much-loved Story that
+  kept getting brighter would be lying about where it is — and a sky
+  where the well-cheered Stories are the loud ones is a ranking drawn
+  in light, which Decision 9's "calm before spectacle" rules out.
 - **Growth belongs to the Story, never to the Creator.** Not their
   other Stories, not a profile, not the Ether. Verified against three
   Stories by one maker.
@@ -786,10 +810,11 @@ Locked by the product owner in the Cheer sprint brief.
 - **Local first.** A tap lands instantly and survives a reload with no
   platform configured at all; the platform is told afterwards and its
   total replaces the local guess when it arrives.
-- Out of scope and not implemented: multiple growth levels, ranking,
-  trending, leaderboards, comments, followers, likes, reactions,
-  badges, rewards, points, currencies, notifications, social profiles
-  and moderation changes.
+- Out of scope and not implemented: growth levels, ranking, trending,
+  leaderboards, comments, followers, likes, reactions, badges, rewards,
+  points, currencies, notifications, social profiles and moderation
+  changes. ("Multiple growth levels" is still out — continuous growth
+  is the opposite of levels, not a set of them.)
 - `supabase/migrations_cheer.sql` · `js/cheer.js`.
 
 ## Roadmap

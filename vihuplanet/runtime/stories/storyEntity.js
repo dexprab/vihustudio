@@ -218,6 +218,12 @@
       cheer:  0,
       cheers: input.cheers || 0,
       grown:  !!input.grown,
+      // How grown, 0 → 1, and the ONLY thing about starlight the
+      // drawing code ever reads. It is a continuous quantity with no
+      // stages in it: there is no level to be on, nothing to cross,
+      // and nothing to announce. A renderer given a count could be
+      // asked to show a count; given this, there is nothing to show.
+      growth: (typeof input.growth === 'number') ? input.growth : 0,
 
       // --- plug points, never set in Phase 1 ---
       anchor: null,

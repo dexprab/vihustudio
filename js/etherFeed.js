@@ -173,6 +173,7 @@ const EtherFeed = (function () {
       // like it.
       cheers: _cheers(record.id),
       grown: _grown(record.id),
+      growth: _growth(record.id),
       // `source` is the surface's own back-reference — the runtime
       // copies it wholesale and never reads inside it (physics, the
       // renderer and the story layer have no reason to, and must not
@@ -229,6 +230,14 @@ const EtherFeed = (function () {
     try {
       return (typeof Cheer !== 'undefined' && Cheer.grown) ? Cheer.grown(projectId) : false;
     } catch (e) { return false; }
+  }
+  // How grown, 0 → 1 — the only thing the runtime is told about how
+  // much starlight a story has. Never a count, so nothing downstream
+  // holds a quantity it could display.
+  function _growth(projectId) {
+    try {
+      return (typeof Cheer !== 'undefined' && Cheer.growth) ? Cheer.growth(projectId) : 0;
+    } catch (e) { return 0; }
   }
 
   function _pageCount(record) {
@@ -555,6 +564,7 @@ const EtherFeed = (function () {
               if (!e) return;
               e.cheers = Cheer.count(pid);
               e.grown = Cheer.grown(pid);
+              e.growth = Cheer.growth ? Cheer.growth(pid) : 0;
             });
           });
         }

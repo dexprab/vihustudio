@@ -191,7 +191,22 @@
   // many small motes, turning slowly around it. Three is enough to read
   // as "something is different about this one" and few enough that a
   // sky full of grown stories is still a calm sky.
-  var GROWN_MOTES = 3;
+  // THE COMPANY A GROWN STORY KEEPS.
+  //
+  // A range rather than a number, because growth is continuous: a story
+  // just past its first starlight keeps GROWN_MOTES_MIN companions and
+  // one that has been cheered a great many times keeps GROWN_MOTES_MAX.
+  // Everything between is interpolated from one 0→1 number, so there is
+  // no count at which anything appears all at once — a new companion
+  // fades up over many cheers rather than arriving as an event.
+  //
+  // The top of the range is deliberately small. This is company, not
+  // spectacle: the sky must stay calm when a much-loved story drifts
+  // through it, and a story with a handful of cheers must not look like
+  // a failure beside one that has many.
+  var GROWN_MOTES_MIN = 3;
+  var GROWN_MOTES_MAX = 7;
+  var GROWN_MOTES = GROWN_MOTES_MAX;
   // The motes of one cheer arriving. A few more than the permanent
   // ones, because they are on screen for barely two seconds.
   var CHEER_MOTES = 7;
@@ -956,8 +971,25 @@
         var core = ether.lights[i];
         if (!core.alive || core.intensity <= 0.004) continue;
         var ck = 9 + core.scale * 9;
-        var cx0 = core.x + (storyCam ? storyCam.x : 0);
-        var cy0 = core.y + (storyCam ? storyCam.y : 0);
+        // A Spirit's light is ALREADY IN VIEW SPACE. storySpirit.js
+        // writes l.x from e.screenX, which it computed this frame from
+        // the story position PLUS the story-layer camera offset and the
+        // field wrap. Adding storyCam here applied that offset a second
+        // time, so every Spirit's own light — and the warm field and
+        // companions drawn around it — sat exactly one camera offset
+        // away from the card it belongs to.
+        //
+        // It hid because the camera drifts from zero: seconds after a
+        // load the error is a pixel or two, and a measurement taken
+        // then says the light is centred. It grows with every turn of
+        // the universe, and at a couple of hundred pixels the glow has
+        // visibly detached from the story and is sitting in empty sky.
+        //
+        // The aura pass above has always used l.x directly, and says so
+        // — "a Spirit's aura is in VIEW space". This pass is now the
+        // same, which is why storyCam is no longer read at all below.
+        var cx0 = core.x;
+        var cy0 = core.y;
         drawBlob(ctx, core.warm ? p.spark : (p[core.hue] || p.glow),
           cx0, cy0, ck, Util.clamp(core.intensity * 0.62, 0, 0.85) * breath);
 
@@ -983,7 +1015,14 @@
           // drifting near it at the sides and far from it at the top.
           var halfW = core.radius || 44;
           var halfH = core.radiusY || (halfW / 0.75);
-          var margin = halfW * 0.40;
+          // 0 → 1, the whole of what this code knows about how much
+          // starlight the story has. Never a count.
+          var g = Util.clamp(core.growth || 0, 0, 1);
+          // The company stands a little further out as it grows, so a
+          // much-loved story reads as having more room around it rather
+          // than as a tighter crowd. A quarter of the card at most —
+          // beyond that it stops belonging to the story.
+          var margin = halfW * (0.40 + g * 0.26);
           var orbX = halfW + margin;
           var orbY = halfH + margin;
           // One number for the arriving motes, which travel in from
@@ -1041,20 +1080,37 @@
           // background haze — present in a pixel measurement, and
           // invisible as a glow on the story, which is exactly how it
           // was reported.
+          //
+          // It deepens and widens a little with growth, and only a
+          // little: the field is warmth around a story, and warmth that
+          // kept growing would eventually be brightness — which in this
+          // universe already means NEARNESS, and would have a much-loved
+          // story lying about where it is.
           if (core.grown) {
-            drawBlob(ctx, p.spark, cx0, cy0, halfH * 1.34,
-              Util.clamp(core.intensity * 0.38, 0, 0.42) * breath);
-            drawBlob(ctx, p.spark, cx0, cy0, halfH * 0.92,
-              Util.clamp(core.intensity * 0.30, 0, 0.34) * breath);
+            var fieldR = halfH * (1.34 + g * 0.30);
+            var fieldA = 0.38 + g * 0.16;
+            drawBlob(ctx, p.spark, cx0, cy0, fieldR,
+              Util.clamp(core.intensity * fieldA, 0, 0.42 + g * 0.14) * breath);
+            drawBlob(ctx, p.spark, cx0, cy0, halfH * (0.92 + g * 0.18),
+              Util.clamp(core.intensity * (0.30 + g * 0.12), 0, 0.34 + g * 0.12) * breath);
           }
 
           // Slow — a full turn takes the better part of a minute — so
           // it reads as alive rather than as something spinning at a
           // child.
           if (core.grown) {
-            for (var s3 = 0; s3 < GROWN_MOTES; s3++) {
-              var a3 = core.seed * 2.1 + time * 0.11 + s3 * (Math.PI * 2 / GROWN_MOTES);
+            // How many companions, as a REAL number rather than a whole
+            // one. The fractional part is the next companion fading in,
+            // so growth never has a frame where one appears — which is
+            // what would make a cheer feel like crossing a level
+            // instead of adding a little light.
+            var n3 = GROWN_MOTES_MIN + (GROWN_MOTES_MAX - GROWN_MOTES_MIN) * g;
+            var step3 = (Math.PI * 2) / n3;
+            for (var s3 = 0; s3 < Math.ceil(n3); s3++) {
+              var a3 = core.seed * 2.1 + time * (0.11 + g * 0.04) + s3 * step3;
               var wob = 1 + 0.08 * Math.sin(time * 0.37 + s3);
+              // The last companion is partial while it arrives.
+              var fade3 = Util.clamp(n3 - s3, 0, 1);
               // WARM, and warm on purpose. The Spirit's own hue can be
               // any of the Ether's palette roles, several of which are
               // the same cool blue-white as the star field behind it —
@@ -1068,7 +1124,7 @@
               // like they belong to this story.
               var mx = cx0 + Math.cos(a3) * orbX * wob;
               var my = cy0 + Math.sin(a3) * orbY * wob;
-              var ma = Util.clamp(core.intensity, 0, 1) * breath;
+              var ma = Util.clamp(core.intensity, 0, 1) * breath * fade3;
               // A small halo under a brighter heart, the same two-part
               // build the Spirit's own core uses — it is what makes a
               // dot look like a light rather than a pixel.
