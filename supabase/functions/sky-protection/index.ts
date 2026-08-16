@@ -109,6 +109,17 @@ type Identity = {
 // one may be the only copy left.
 type Kind = 'protect' | 'recover';
 
+// WHICH BUILD IS ACTUALLY RUNNING.
+//
+// An Edge Function runs the copy uploaded to the project, not the file
+// in the repository, and there is no CI here that deploys it — so the
+// two drift silently and the only symptom is an email that looks
+// unchanged. Working that out from the wording of a message is slow and
+// ambiguous; `{"action":"ping"}` now answers it outright.
+//
+// Bump this whenever the mail itself changes.
+const BUILD = '2026-08-16 · html emails, ruled grid';
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -639,6 +650,15 @@ Deno.serve(async (req: Request) => {
     const probe = await db.from('magic_card_identities').select('parent_email').limit(1);
     return json({
       ok: true,
+      build: BUILD,
+      // Proof the HTML build is live without sending anything: the
+      // length of the message this deployment would actually generate.
+      // Zero means an old, text-only copy is running.
+      htmlBytes: composeHtml(
+        [{ id: '', serial_no: 1, nickname: 'Sample', constellation: 'LYRA',
+           pattern: [[0, 0]], claimed_at: '' }],
+        'recover',
+      ).length,
       db: !probe.error,
       parentEmailColumn: !probe.error,
       dbError: probe.error ? String(probe.error.message || probe.error).slice(0, 200) : null,
