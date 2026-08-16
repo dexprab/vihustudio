@@ -136,20 +136,20 @@
     try { return (typeof Cheer !== 'undefined') ? Cheer.mine(id) : false; }
     catch (e) { return false; }
   }
-  function cheerCount(id) {
-    try { return (typeof Cheer !== 'undefined') ? Cheer.count(id) : 0; }
-    catch (e) { return 0; }
-  }
-
-  // What the button says. The number is deliberately secondary — a
-  // small ✨ and a figure, never a score, and the screen still makes
-  // complete sense to a child who cannot read it yet, because the
-  // starlight itself is the answer.
+  // What the button says, and it says NO NUMBER.
+  //
+  // It carried a small `✨ 3` — the sprint allowed a quiet count and I
+  // put it here. The product owner has taken it off, and the screen is
+  // better for it: a figure on a button is a score however small it is
+  // set, and it invites a child to compare their story against another
+  // one rather than to look at either.
+  //
+  // Nothing is lost that a child can use. The count is still kept, and
+  // it is what decides growth — but growth is the thing they SEE, and
+  // starlight around a story says everything the number was saying
+  // without asking anybody to read.
   function cheerLabel(id) {
-    var n = cheerCount(id);
-    var mine = hasCheered(id);
-    if (!n) return mine ? 'Cheered' : 'Cheer';
-    return (mine ? 'Cheered' : 'Cheer') + ' ✨ ' + n;
+    return hasCheered(id) ? 'Cheered' : 'Cheer';
   }
 
   function whenShared(iso) {

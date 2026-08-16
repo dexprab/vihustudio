@@ -751,9 +751,14 @@ Locked by the product owner in the Cheer sprint brief.
 - **A Cheer arriving is starlight travelling to the Story** and
   settling on it — never a burst, never confetti, never a reward
   popup. No hearts, no thumbs, no social-media iconography.
-- **The number is secondary.** `Cheered ✨ 3` on the button and nowhere
-  else. The screen must still make sense to a child who cannot read it
-  yet, because the starlight is the answer and the figure is a detail.
+- **No number is shown anywhere.** The button says `Cheer`, then
+  `Cheered`, and that is all. The sprint allowed a small quiet count
+  and it was briefly on the button; the product owner took it off, and
+  the screen is better for it — a figure on a button is a score however
+  small it is set, and it invites a child to compare their story
+  against somebody else's rather than to look at either. The count is
+  still kept and is what decides growth; growth is the part a child
+  sees.
 - **Nobody can ask who cheered.** `story_cheers` has RLS on and no
   policies at all: everything goes through two SECURITY DEFINER
   functions that return counts and "have I cheered this", so no social

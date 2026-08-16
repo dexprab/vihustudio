@@ -2485,3 +2485,13 @@ is what makes a dot look like a light. And the orbit was squashed vertically
 every turn behind the card — now slightly wide instead of flat, clearing it at
 every point of the turn. Measured in the ring: 35 → 395 lit pixels, against 204
 → 495 before, and 60fps unchanged.
+
+**0546 — no number on the Cheer button.** It read `Cheered ✨ 3`; the sprint
+allowed a small quiet count and I put it there. The product owner took it off,
+and the screen is better for it: a figure on a button is a score however small
+it is set, and it invites a child to compare their story against somebody
+else's rather than to look at either. The button now says `Cheer`, then
+`Cheered`, and no count appears anywhere on screen. Nothing a child can use is
+lost — the count is still kept and is still what decides growth, and growth is
+the part they actually see. Decision 20 amended to match; every Cheer flow
+re-run unchanged.
