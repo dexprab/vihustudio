@@ -751,6 +751,16 @@ Locked by the product owner in the Cheer sprint brief.
 - **Growth belongs to the Story, never to the Creator.** Not their
   other Stories, not a profile, not the Ether. Verified against three
   Stories by one maker.
+- **Any Story can be cheered and grown — Creator or Canon, it does not
+  matter.** A Canon Story met in the Ether offers the same Cheer, takes
+  it the same way and grows the same way. That is Decision 13 holding
+  rather than a second rule: `origin` lives on the entity's `source`,
+  which the story layer, physics and the renderer never read, so there
+  is no branch in which they could differ. A child never learns the
+  distinction exists, and would find one the moment a Story they liked
+  refused their starlight. Verified through the real button on a Canon
+  Story: cheered → grown → survives a reload → the renderer's light
+  carries it.
 - **The effect is company, not brightness.** A grown Spirit carries
   **three small warm lights that circle it**, outside its own card, and
   rests in a soft warm field a little larger than the card. Deliberately
