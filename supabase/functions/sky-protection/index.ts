@@ -102,6 +102,13 @@ type Identity = {
   claimed_at: string;
 };
 
+// Which of the two moments this is. They are genuinely different
+// messages — one arrives the day a parent chooses to keep a sky safe,
+// the other on the day a card has been lost — so only the opening
+// changes; everything a parent needs is in both, because the second
+// one may be the only copy left.
+type Kind = 'protect' | 'recover';
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -172,17 +179,30 @@ function cardText(identity: Identity): string {
   ].join('\n');
 }
 
+// THE ONLY INSTRUCTIONS THAT ARE ALLOWED HERE ARE ONES THAT WORK.
+//
+// This used to send a parent to "My Magic Card? Tap to come home" in
+// VihuStudio for the typed-code path. That control was removed once
+// VihuPlanet became the front door and recognition moved there, so the
+// instruction pointed at nothing. Measured on a fresh profile with no
+// cards: the Gateway plays its cinematic and closes, and no typed-code
+// entry is reachable at all.
+//
+// So the star path is the whole of it, and the star path is verified:
+// ⭐ Show Me Your Stars opens the camera, ✏️ Draw Your Stars opens the
+// board, tap the sky, Continue.
 function recoveryText(): string {
   return [
     `How to use this`,
     ``,
-    `Open VihuPlanet and press "Show Me Your Stars". Help your child tap`,
-    `the stars above on the grid, then press Continue. VihuPlanet will`,
-    `recognise them and their stories will be waiting.`,
+    `1. Open VihuPlanet.`,
+    `2. Press "Show Me Your Stars".`,
+    `3. If you have the printed card to hand, hold it up to the camera.`,
+    `   Otherwise choose "Draw Your Stars".`,
+    `4. Tap the stars shown above, then press Continue.`,
     ``,
-    `If tapping the stars does not work, the Magic Card code above can be`,
-    `typed instead: inside VihuStudio, open "My Magic Card? Tap to come`,
-    `home" and choose "Prefer to type your Magic Card code instead?".`,
+    `The order does not matter — only which stars. VihuPlanet will`,
+    `recognise your child and their stories will be waiting.`,
     ``,
     `This is not an account. There is no password and nothing to log in`,
     `to — the Magic Card is simply how VihuPlanet recognises your child.`,
@@ -190,9 +210,193 @@ function recoveryText(): string {
   ].join('\n');
 }
 
-function subjectFor(names: string[]): string {
-  if (names.length === 1) return `${names[0]}'s Magic Card — VihuPlanet`;
-  return `Magic Cards for ${names.join(' and ')} — VihuPlanet`;
+function subjectFor(names: string[], kind: Kind): string {
+  // A parent searches an inbox a year later, so the subject carries the
+  // child's name and the words "Magic Card" in both cases. Only the
+  // verb changes, because "here is the card you asked for" and "your
+  // child's card is now safe" are different messages arriving on
+  // different days.
+  // "Vihaan and Meera's Magic Card" reads as one card belonging to a
+  // pair. Siblings on one address is the normal case here, so the
+  // plural form is the one that has to be right.
+  const who = names.length === 1 ? names[0] : names.join(' and ');
+  if (names.length > 1) return `Magic Cards for ${who} — VihuPlanet`;
+  return kind === 'recover'
+    ? `${who}'s Magic Card — VihuPlanet`
+    : `${who}'s sky is safe — VihuPlanet Magic Card`;
+}
+
+// ---------------------------------------------------------------
+// THE SAME MESSAGE, DRAWN
+//
+// Every client renders the plain-text part; this is for the ones that
+// can do better. Rules it is built under, all of them forced by what
+// email clients actually do rather than by taste:
+//
+//   · NO IMAGES, at all. Not a logo, not the card, not the sky. A
+//     recovery mail that needs pictures to work is not a recovery mail,
+//     and the sky is the one thing here that MUST survive an inbox with
+//     images turned off. It is drawn as table cells.
+//   · Tables and inline styles only. No <style> block, no class names,
+//     no flexbox, no grid — Outlook still renders with Word.
+//   · A LIGHT body. VihuPlanet is a night sky and the temptation is to
+//     make the whole mail one; a parent may print this and file it, and
+//     a full-bleed dark email prints as a sheet of ink. The sky panel
+//     is dark because the sky is the part that means something dark;
+//     everything around it is paper.
+//   · No web fonts. A font that fails to load takes the layout with it.
+// ---------------------------------------------------------------
+const INK = '#1D2440';
+const MUTED = '#5C6584';
+const GOLD = '#B57F1E';
+const PAPER = '#FFFDF7';
+const LINE = '#E4DECB';
+const NIGHT = '#141A2E';
+const STAR = '#F0C978';
+
+function esc(s: string): string {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// The sky, as a 10x10 table. Each cell is a fixed square so the grid
+// stays square when a client rescales text, and the lit ones carry a
+// glyph as well as a colour — a parent reading this on a monochrome
+// screen, or colour-blind, still sees which stars are theirs.
+function skyHtml(pattern: number[][]): string {
+  const size = 10;
+  const lit = new Set((pattern || []).map((p) => `${p[0]},${p[1]}`));
+  const rows: string[] = [];
+  for (let r = 0; r < size; r++) {
+    let tds = '';
+    for (let c = 0; c < size; c++) {
+      const on = lit.has(`${r},${c}`);
+      tds += `<td width="22" height="22" align="center" valign="middle" style="width:22px;height:22px;`
+        + `font-family:Georgia,'Times New Roman',serif;font-size:${on ? 15 : 11}px;line-height:22px;`
+        + `color:${on ? STAR : '#3A4463'};">${on ? '&#9733;' : '&middot;'}</td>`;
+    }
+    rows.push(`<tr>${tds}</tr>`);
+  }
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"`
+    + ` style="border-collapse:collapse;background:${NIGHT};border-radius:10px;">`
+    + `<tr><td style="padding:10px;"><table role="presentation" cellpadding="0" cellspacing="0"`
+    + ` border="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`;
+}
+
+function cardHtml(identity: Identity): string {
+  const name = esc(identity.nickname || 'This Creator');
+  const constellation = esc(
+    CONSTELLATION_NAMES[identity.constellation] || identity.constellation || '',
+  );
+  const code = recallCode(identity);
+  const taps = (identity.pattern || [])
+    .map((p) => `row ${p[0] + 1}, col ${p[1] + 1}`)
+    .join(' &nbsp;·&nbsp; ');
+
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="border-collapse:collapse;border:1px solid ${LINE};border-radius:14px;background:${PAPER};">
+  <tr><td style="padding:22px 24px;">
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.25;color:${INK};font-weight:bold;">${name}</div>
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:${MUTED};padding-top:3px;">
+      ${constellation ? 'The ' + constellation + ' sky' : 'Their sky'}
+    </div>
+
+    <!-- STACKED, NOT TWO COLUMNS.
+         A sky (240px) beside a list of stars cannot shrink below about
+         540px, so on a 390px phone the whole mail overflowed and had to
+         be scrolled sideways — measured at 622px wide in a 390px
+         viewport. Media queries would fix it in the clients that keep a
+         <style> block and not in the ones that strip it, which is the
+         wrong half to be right in for a recovery mail. Stacking is
+         correct everywhere and costs a desktop reader nothing. -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+      <tr><td style="padding:16px 0 0 0;">${skyHtml(identity.pattern)}</td></tr>
+      <tr><td style="padding:18px 0 0 0;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${MUTED};text-transform:uppercase;letter-spacing:.08em;">Their stars</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:${INK};padding-top:4px;">${taps}</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${MUTED};padding-top:6px;">The order does not matter &mdash; only which stars.</div>
+      </td></tr>
+      ${code ? `<tr><td style="padding:14px 0 0 0;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${MUTED};text-transform:uppercase;letter-spacing:.08em;">Card code</div>
+        <div style="font-family:'Courier New',Courier,monospace;font-size:15px;line-height:1.4;color:${GOLD};font-weight:bold;padding-top:2px;">${esc(code)}</div>
+      </td></tr>` : ''}
+    </table>
+  </td></tr>
+</table>`;
+}
+
+function composeHtml(identities: Identity[], kind: Kind): string {
+  const many = identities.length > 1;
+  const lede = kind === 'recover'
+    ? (many
+      ? `Here are the Magic Cards kept safe at this address. Each one belongs to a different Creator.`
+      : `Here is the Magic Card kept safe at this address.`)
+    : (many
+      ? `${identities.length} skies are now safe with you.`
+      : `Their sky is now safe with you.`);
+
+  // cardHtml returns a COMPLETE table, so the separator is a spacer and
+  // nothing else. It used to close a <table> that was never opened and
+  // reopen another, which is invalid markup — the browser recovered by
+  // hoisting the second card out of the container, so with two siblings
+  // the second one broke the width of the mail.
+  const blocks = identities.map(cardHtml).join(
+    `<div style="height:16px;line-height:16px;font-size:16px;">&nbsp;</div>`,
+  );
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Magic Card — VihuPlanet</title></head>
+<body style="margin:0;padding:0;background:#F4F1E8;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Keep this email — it is how your child's sky can always be found again.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1E8;">
+<tr><td align="center" style="padding:28px 12px;">
+  <!-- width:100% + max-width, NOT a width="600" attribute. The
+       attribute is a hard width a phone cannot shrink: measured at
+       624px inside a 320px viewport, i.e. sideways scrolling on every
+       narrow screen. -->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+
+    <tr><td style="padding:0 0 18px 0;">
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:${MUTED};">&#10022; VihuPlanet</div>
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;color:${INK};padding-top:6px;">${esc(lede)}</div>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:${MUTED};padding-top:8px;">
+        Keep this email. A Magic Card is how VihuPlanet recognises your child &mdash; there is no account, no password and nothing to sign in to, so this is the one thing worth keeping.
+      </div>
+    </td></tr>
+
+    <tr><td>${blocks}</td></tr>
+
+    <tr><td style="padding:22px 0 0 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;border-top:1px solid ${LINE};">
+        <tr><td style="padding:18px 2px 0 2px;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${MUTED};">If the card is ever lost</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.75;color:${INK};padding-top:8px;">
+            1. Open VihuPlanet.<br>
+            2. Press <strong>Show Me Your Stars</strong>.<br>
+            3. Hold the printed card up to the camera &mdash; or choose <strong>Draw Your Stars</strong>.<br>
+            4. Tap the stars shown above, then press <strong>Continue</strong>.
+          </div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${MUTED};padding-top:12px;">
+            Their stories will be waiting, on any device.
+          </div>
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <tr><td style="padding:26px 2px 0 2px;">
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:${MUTED};">
+        Sent because someone chose to keep this sky safe. VihuPlanet never asks a child for an email address.
+      </div>
+    </td></tr>
+
+  </table>
+</td></tr></table>
+</body></html>`;
 }
 
 // ---------------------------------------------------------------
@@ -261,7 +465,7 @@ function secret(name: string): string {
   return v;
 }
 
-async function sendViaSmtp(to: string, subject: string, body: string) {
+async function sendViaSmtp(to: string, subject: string, body: string, html: string) {
   const host = secret('SMTP_HOST');
   const user = secret('SMTP_USER');
   const pass = secret('SMTP_PASSWORD');
@@ -288,7 +492,11 @@ async function sendViaSmtp(to: string, subject: string, body: string) {
       from,
       to,
       subject,
+      // BOTH parts, always. The text is not a courtesy fallback here —
+      // it is the copy a parent's inbox search will hit in a year, and
+      // the one that survives a client that strips markup outright.
       content: body,
+      html,
       replyTo: replyTo || undefined,
     });
     return { ok: true };
@@ -300,13 +508,13 @@ async function sendViaSmtp(to: string, subject: string, body: string) {
   }
 }
 
-async function sendViaResend(to: string, subject: string, body: string) {
+async function sendViaResend(to: string, subject: string, body: string, html: string) {
   const key = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('SKY_FROM_EMAIL');
   const replyTo = Deno.env.get('SKY_REPLY_TO');
   if (!key || !from) return { ok: false, error: 'mail_not_configured' };
 
-  const payload: Record<string, unknown> = { from, to: [to], subject, text: body };
+  const payload: Record<string, unknown> = { from, to: [to], subject, text: body, html };
   if (replyTo) payload.reply_to = replyTo;
 
   const res = await fetch('https://api.resend.com/emails', {
@@ -321,9 +529,9 @@ async function sendViaResend(to: string, subject: string, body: string) {
   return { ok: true };
 }
 
-async function sendMail(to: string, subject: string, body: string) {
-  if (Deno.env.get('SMTP_HOST')) return await sendViaSmtp(to, subject, body);
-  if (Deno.env.get('RESEND_API_KEY')) return await sendViaResend(to, subject, body);
+async function sendMail(to: string, subject: string, body: string, html: string) {
+  if (Deno.env.get('SMTP_HOST')) return await sendViaSmtp(to, subject, body, html);
+  if (Deno.env.get('RESEND_API_KEY')) return await sendViaResend(to, subject, body, html);
   return { ok: false, error: 'mail_not_configured' };
 }
 
@@ -340,12 +548,18 @@ function looksLikeEmail(v: unknown): v is string {
   return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) && v.length < 320;
 }
 
-function compose(identities: Identity[]): string {
+function compose(identities: Identity[], kind: Kind): string {
   const parts = identities.map(cardText);
+  const many = identities.length > 1;
+  const lede = kind === 'recover'
+    ? (many
+      ? `Here are the Magic Cards kept safe at this address.`
+      : `Here is the Magic Card kept safe at this address.`)
+    : (many
+      ? `${identities.length} skies are now safe with you.`
+      : `Their sky is now safe with you.`);
   return [
-    identities.length === 1
-      ? `A Magic Card from VihuPlanet.`
-      : `Magic Cards from VihuPlanet, for ${identities.length} Creators.`,
+    lede,
     ``,
     `Keep this email. It is how your child's sky can always be found again.`,
     ``,
@@ -354,6 +568,9 @@ function compose(identities: Identity[]): string {
     '—'.repeat(40),
     ``,
     recoveryText(),
+    ``,
+    `Sent because someone chose to keep this sky safe. VihuPlanet never`,
+    `asks a child for an email address.`,
   ].join('\n');
 }
 
@@ -450,7 +667,13 @@ Deno.serve(async (req: Request) => {
       .update({ parent_email: to })
       .eq('id', identityId);
 
-    const sent = await sendMail(to, subjectFor([rows[0].nickname || 'Your Creator']), compose(rows));
+    const names = [rows[0].nickname || 'Your Creator'];
+    const sent = await sendMail(
+      to,
+      subjectFor(names, 'protect'),
+      compose(rows, 'protect'),
+      composeHtml(rows, 'protect'),
+    );
     if (!sent.ok) return json(sent);
     return json({ ok: true, sent: 1 });
   }
@@ -473,8 +696,9 @@ Deno.serve(async (req: Request) => {
 
     const sent = await sendMail(
       to,
-      subjectFor(rows.map((r) => r.nickname || 'Your Creator')),
-      compose(rows),
+      subjectFor(rows.map((r) => r.nickname || 'Your Creator'), 'recover'),
+      compose(rows, 'recover'),
+      composeHtml(rows, 'recover'),
     );
     if (!sent.ok) return json(sent);
     return json({ ok: true, sent: rows.length });
