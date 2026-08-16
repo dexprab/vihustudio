@@ -691,6 +691,21 @@ const MagicCard=(function(){
     cards.push(card);
     _writeCards(cards);
     setActive(card.id);
+    // THE WORK THIS CHILD ALREADY DID IS THEIRS.
+    //
+    // Projects are scoped to the card that owns them (see
+    // CreatorProjectStore.list). The Rite has a child make a Story
+    // BEFORE they have a card, so at this exact moment their Story is
+    // sitting in the store owned by nobody — and without this it would
+    // disappear from My Projects the instant they were handed the card
+    // that is meant to keep it. Only unowned records are taken; another
+    // Creator's Story on a shared machine is never swept up by somebody
+    // else claiming a card.
+    try{
+      if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.claimUnowned){
+        CreatorProjectStore.claimUnowned(card.id);
+      }
+    }catch(e){}
     // A one-time event, not a rapid-succession edit stream -- pushed
     // immediately rather than debounced, unlike touch()/rename() below.
     // THE MOMENT A WAITING SKY CAN FINALLY BE POSTED.
@@ -977,7 +992,7 @@ const MagicCard=(function(){
     if(idx===-1) cards.push(card); else cards[idx]=card;
     _writeCards(cards);
     setActive(card.id);
-    _pullRecalledProjects(remoteResult.owner_id);
+    _pullRecalledProjects(remoteResult.owner_id,card.id);
     // Companion Canon Freeze -- recalling an identity on a new device
     // is the other real "Traveller becomes Creator" path (alongside
     // claim() above) -- this device now recognizes a Creator too.
@@ -996,7 +1011,7 @@ const MagicCard=(function(){
   // original row anyway, and two devices staying genuinely independent
   // working copies is the explicit, disclosed design (never live/
   // simultaneous multi-device editing of the same project).
-  function _pullRecalledProjects(ownerId){
+  function _pullRecalledProjects(ownerId,cardId){
     if(typeof CreatorProjectSync==='undefined' || typeof CreatorProjectStore==='undefined' || !ownerId) return;
     CreatorProjectSync.listByOwner(ownerId).then(function(rows){
       rows.forEach(function(row){
@@ -1020,7 +1035,14 @@ const MagicCard=(function(){
           // the full mechanism.
           data.project.recallOwnerId=ownerId;
         }
-        CreatorProjectStore.upsert(newId,{name:record.name,thumbnail:record.thumbnail},data);
+        // Stamped with the card being recalled, NOT the card that
+        // happens to be active on this machine. These Stories are the
+        // recalled Creator's own, materialised here; attributing them
+        // to whoever last used this browser is the very bug the
+        // scoping exists to stop.
+        CreatorProjectStore.upsert(newId,
+          {name:record.name,thumbnail:record.thumbnail,
+           creatorName:record.creatorName,cardId:cardId||undefined},data);
       });
     }).catch(function(){});
   }

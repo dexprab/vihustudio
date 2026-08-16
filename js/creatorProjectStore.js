@@ -70,9 +70,127 @@ const CreatorProjectStore=(function(){
     return function(error){ _notifyPersistError(id,error); };
   }
 
+  // ---------------------------------------------------------------
+  // WHOSE PROJECTS THESE ARE.
+  //
+  // Reported, and real: signed in as one Creator, made a Story, went
+  // back and was recognised as a DIFFERENT Creator — and the first
+  // Creator's Story was still sitting in My Projects.
+  //
+  // The cause was that projects were never scoped to a Creator at all.
+  // This store is per-DEVICE and always has been: one list, one
+  // IndexedDB, and a cloud row keyed on the browser's own anonymous
+  // session — which is the device, not the card. Two Magic Cards on one
+  // machine share that anonymous session, so they shared everything.
+  //
+  // The only wipe that existed (clearAll, below) fires for a first-time
+  // TRAVELLER and never for a Returning Creator, which is exactly the
+  // case that was reported: one Creator following another.
+  //
+  // So a record now records the card that owns it, and the list is what
+  // that card owns. Deliberately a FILTER and never a delete: a second
+  // Creator borrowing a machine must not be able to destroy the first
+  // one's work by walking in, and the owner sees it all again the
+  // moment their own sky is recognised.
+  // ---------------------------------------------------------------
+  function _activeCardId(){
+    try{
+      return (typeof MagicCard!=='undefined' && MagicCard.getActiveId)
+        ? (MagicCard.getActiveId()||null) : null;
+    }catch(e){ return null; }
+  }
+
+  function _cards(){
+    try{
+      return (typeof MagicCard!=='undefined' && MagicCard.list) ? (MagicCard.list()||[]) : [];
+    }catch(e){ return []; }
+  }
+
+  // EVERY record, whoever owns it. For the callers that genuinely mean
+  // the device rather than the Creator — the Ether's own local source
+  // is the one: a Story shared with VihuPlanet is public, and hiding
+  // another card's shared Story from the universe would be a different
+  // bug from the one being fixed here.
+  function listAll(){
+    return _cache().list().sort(function(a,b){ return new Date(b.updatedAt)-new Date(a.updatedAt); });
+  }
+
+  // WHAT HAPPENS TO WORK THAT PREDATES THIS.
+  //
+  // Every record already on a device has no owner recorded, and
+  // guessing wrong in either direction is bad: hide a child's own
+  // Stories, or hand them to somebody else. Two things are known and
+  // both are used, in order of how much they prove:
+  //
+  //   1. The record's own creatorName, stamped at save time from the
+  //      card that was active. A card on this device with that nickname
+  //      IS that record's owner — recorded evidence, not a guess.
+  //   2. Failing that, a device with exactly ONE card has no ambiguity
+  //      to resolve; the work is that card's.
+  //
+  // Anything left over stays unowned, and unowned work is shown to a
+  // Traveller who holds no card at all — which is what it is. Nothing
+  // is ever deleted by this, so a record that cannot be placed today
+  // can still be placed later.
+  var _claimedOnce=false;
+  function _claimLegacy(){
+    if(_claimedOnce) return;
+    _claimedOnce=true;
+    var cards=_cards();
+    if(!cards.length) return;
+    var byName={};
+    cards.forEach(function(c){
+      var n=(c&&c.nickname||'').trim().toLowerCase();
+      if(n && !byName[n]) byName[n]=c.id;
+    });
+    var only=cards.length===1?cards[0].id:null;
+    listAll().forEach(function(r){
+      if(!r || r.cardId) return;
+      var n=(r.creatorName||'').trim().toLowerCase();
+      var owner=(n && byName[n]) || only;
+      if(!owner) return;
+      var next={};
+      Object.keys(r).forEach(function(k){ next[k]=r[k]; });
+      next.cardId=owner;
+      _cache().putLocal(next,{onPersistFailed:_onPersistFailed(r.id)});
+    });
+  }
+
+  // A TRAVELLER'S WORK BECOMES THEIRS.
+  //
+  // The Rite has a child make a Story before they have a Magic Card, so
+  // at the moment a card is claimed there is real work sitting here
+  // owned by nobody. It is that child's — they are standing there — and
+  // without this it would vanish from My Projects the instant they were
+  // given the very card that is supposed to keep it.
+  //
+  // Only ever unowned records. A Story already belonging to another
+  // Creator is never swept up by somebody else claiming a card.
+  function claimUnowned(cardId){
+    if(!cardId) return {ok:false,claimed:0};
+    var n=0;
+    listAll().forEach(function(r){
+      if(!r || r.cardId) return;
+      var next={};
+      Object.keys(r).forEach(function(k){ next[k]=r[k]; });
+      next.cardId=cardId;
+      _cache().putLocal(next,{onPersistFailed:_onPersistFailed(r.id)});
+      n++;
+    });
+    return {ok:true,claimed:n};
+  }
+
   // Newest-first — matches World Builder's own "My World Projects" list.
   function list(){
-    return _cache().list().sort(function(a,b){ return new Date(b.updatedAt)-new Date(a.updatedAt); });
+    _claimLegacy();
+    var active=_activeCardId();
+    return listAll().filter(function(r){
+      if(!r) return false;
+      // A Traveller holding no card sees the work that belongs to no
+      // card — their own, made before they had one.
+      if(!active) return !r.cardId;
+      return r.cardId===active;
+    });
   }
 
   function get(id){
@@ -157,6 +275,19 @@ const CreatorProjectStore=(function(){
       // record is rebuilt on every debounced autosave, so anything not
       // carried forward is wiped the moment editing continues.
       creatorName:(meta&&meta.creatorName)||(existing&&existing.creatorName)||_localCreatorName()||undefined,
+      // WHICH CREATOR'S WORK THIS IS — see list() above.
+      //
+      // Carried forward like publishedAt and creatorName, and for the
+      // same reason: this record is rebuilt on every debounced autosave,
+      // so anything not carried forward is wiped the moment editing
+      // continues. It never changes hands afterwards either — a Story
+      // opened by whoever is at the machine stays the Story of the
+      // Creator who made it.
+      //
+      // meta.cardId is for the one caller that knows better than the
+      // active card does: MagicCard.adopt(), materialising a recalled
+      // Creator's own Stories on a new device.
+      cardId:(meta&&meta.cardId)||(existing&&existing.cardId)||_activeCardId()||undefined,
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
@@ -212,8 +343,15 @@ const CreatorProjectStore=(function(){
 
   // Every Story that has been shared with VihuPlanet, newest arrival
   // first. The Ether's whole reading list.
+  // EVERY shared Story on this device, whoever made it — listAll, not
+  // list. This is the Ether's own local source, and the Ether is a
+  // shared space (Decision 15): a Story that was shared with VihuPlanet
+  // is public, so hiding one because a different card is active would
+  // take a Story out of the universe that its maker put there. My
+  // Projects is the surface that must be scoped; the universe is not.
   function listPublished(){
-    return list().filter(function(r){ return !!r.publishedAt; })
+    _claimLegacy();
+    return listAll().filter(function(r){ return !!r.publishedAt; })
       .sort(function(a,b){ return new Date(b.publishedAt)-new Date(a.publishedAt); });
   }
 
@@ -221,6 +359,8 @@ const CreatorProjectStore=(function(){
     STORAGE_KEY:STORAGE_KEY,
     newId:newId,
     list:list,
+    listAll:listAll,
+    claimUnowned:claimUnowned,
     get:get,
     upsert:upsert,
     remove:remove,

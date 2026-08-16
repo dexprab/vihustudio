@@ -671,6 +671,48 @@ for the camera path only.
   the wrong way. A typed-code recall still gets no pattern: that caller
   has proved nothing about the sky, and the pattern is the credential.
 
+### 19. A Story Belongs to the Creator Who Made It
+
+Locked by the product owner after a real report: *"i was logged in as
+vihupapa. and then i went back and logged in as the god. my project
+from vihupapa was still available in the god."*
+
+- **Projects are scoped to the Magic Card that made them.** Every
+  project record carries `cardId`, stamped from the active card and
+  carried forward on every autosave like `publishedAt` and
+  `creatorName`. `CreatorProjectStore.list()` returns what the active
+  card owns, and nothing else.
+- **The store was never Creator-scoped, and that was the whole bug.**
+  It is per-DEVICE — one list, one IndexedDB, and a cloud row keyed on
+  the browser's own anonymous session, which is the device rather than
+  the card. Two Magic Cards on one machine shared all of it. The only
+  wipe that existed fires for a first-time **Traveller** and never for
+  a Returning Creator, which is exactly the case reported.
+- **It is a filter and never a delete.** A second Creator borrowing a
+  machine cannot destroy the first one's work by walking in, and the
+  owner sees everything again the moment their own sky is recognised.
+- **My Projects is scoped; the Ether is not.** A Story shared with
+  VihuPlanet is public (Decision 15), so `listPublished()` reads every
+  shared Story on the device whoever made it. Hiding one because a
+  different card is active would take a Story out of the universe that
+  its maker put there.
+- **The session slot is the second door into the same room.**
+  `ProjectManager.getSessionStatus()` refuses to offer a session whose
+  project belongs to a different card — otherwise a Creator recognised
+  after somebody else is offered that person's work by name before ever
+  reaching a list. Refused only on positive evidence; an unowned or
+  unmatched session restores exactly as before.
+- **Work that predates this is placed by evidence, not by guessing.**
+  A record's own `creatorName` was stamped from the card that was
+  active, so a card on the device with that nickname IS its owner;
+  failing that, a device with exactly one card has no ambiguity.
+  Anything still unplaceable stays unowned, is shown to a Traveller
+  holding no card, and is never deleted.
+- **A Traveller's work becomes theirs when they claim a card.** The
+  Rite has a child make a Story before they have one, so `claim()`
+  sweeps unowned records to the new card — only unowned ones, never
+  another Creator's.
+
 ## Roadmap
 
 1. Theme Designer Polish

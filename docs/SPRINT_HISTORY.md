@@ -2258,3 +2258,41 @@ have taken theirs. Verified at 1002×581 (the reported shape), 899×557, 820×42
 1280×800 and 390×844 — Back to the Ether on screen in all five; board EXACTLY
 THE CARD on all four cards, acceptance, try-again and the ten-second
 confirmation unchanged.
+
+## A Story Belongs to the Creator Who Made It (build 0539)
+
+Reported: *"i was logged in as vihupapa. and then i went back and logged in as
+the god. my project from vihupapa was still available in the god."* Real, and
+the cause was that projects were never scoped to a Creator at all.
+`CreatorProjectStore` is per-DEVICE and always has been — one list, one
+IndexedDB, and a `creator_projects` row keyed on the browser's own anonymous
+Supabase session, which is the device rather than the Magic Card — so two cards
+on one machine shared everything. The only wipe that existed (`clearAll`) fires
+for a first-time **Traveller** and never for a Returning Creator, which is
+exactly the case reported. Records now carry `cardId`, stamped from the active
+card and carried forward on every autosave like `publishedAt` and `creatorName`
+(anything not carried forward is wiped the moment editing continues), and
+`list()` returns what the active card owns. Deliberately a FILTER and never a
+delete: a second Creator borrowing a machine cannot destroy the first one's
+work, and the owner sees it all again the moment their own sky is recognised.
+Three things fall out of that and each is decided rather than assumed. **The
+Ether is not scoped** — `listPublished()` reads every shared Story on the
+device whoever made it, because a Story shared with VihuPlanet is public
+(Decision 15) and hiding one would take it out of the universe its maker put it
+in. **The session slot is a second door into the same room** —
+`ProjectManager.getSessionStatus()` now refuses a session whose project belongs
+to a different card, since that single per-device slot would otherwise offer a
+Creator the previous one's work by name before they ever reached a list; refused
+only on positive evidence, so an unowned or unmatched session restores exactly
+as before. **Work that predates this is placed by evidence** — a record's own
+`creatorName` was stamped from the card that was active, so a card on the device
+with that nickname IS its owner; failing that, a device with exactly one card
+has no ambiguity; anything still unplaceable stays unowned, is shown to a
+Traveller holding no card, and is never deleted. And a Traveller's work becomes
+theirs on `claim()`, because the Rite has a child make a Story before they have
+a card. Verified end to end on one browser profile: Creator A's Story invisible
+to Creator B, B's own Story visible to B only, A's returned intact when A comes
+back, both still stored, restore offered to the owner and refused to the other,
+a cardless Traveller's work following them through claiming, and the Ether still
+seeing every shared Story — plus all three legacy paths (placed by name, placed
+by single card, and genuinely unknowable). Canon and Ether suites unchanged.

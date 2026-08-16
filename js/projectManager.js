@@ -579,6 +579,29 @@ const ProjectManager=(function(){
     // an explicit Discard — which only ever removes this raw slot — can
     // never be silently undone by this fallback).
     const id=data.project && data.project.id;
+    // WHOSE SESSION THIS IS.
+    //
+    // The scoping in CreatorProjectStore.list() keeps another Creator's
+    // Stories out of My Projects, and this slot is the second door into
+    // the same room: it is a single per-DEVICE slot holding whatever was
+    // last edited here, so without this a Creator recognised after
+    // somebody else would be offered that somebody else's work to carry
+    // on with, by name, before ever reaching a list.
+    //
+    // Only ever refused on positive evidence — a catalog record that
+    // exists and names a DIFFERENT owner. A session with no matching
+    // record, or one owned by nobody, restores exactly as it always
+    // did, so nothing a Traveller was working on is lost.
+    if(id && typeof CreatorProjectStore!=='undefined'){
+      try{
+        const owned=CreatorProjectStore.get(id);
+        var activeCard=null;
+        try{ activeCard=(typeof MagicCard!=='undefined' && MagicCard.getActiveId) ? MagicCard.getActiveId() : null; }catch(e3){}
+        if(owned && owned.cardId && activeCard && owned.cardId!==activeCard){
+          return {state:'none'};
+        }
+      }catch(e){}
+    }
     if(id && typeof CreatorProjectStore!=='undefined'){
       try{
         const record=CreatorProjectStore.get(id);
