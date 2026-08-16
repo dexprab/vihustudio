@@ -2471,3 +2471,17 @@ threshold, reload persistence, growth confined to the story that earned it
 across three stories by one maker, 59–60fps with a grown Spirit on screen, 125
 DOM nodes, and no ranking or social-media word anywhere on the page.
 `supabase/migrations_cheer.sql` must be run by hand.
+
+**0545 — the motes made visible.** Asked "not sure about motes how do they
+look", and a close-up at 3× said they looked like nothing: two faint dots the
+same size and colour as the background star field, with the third hidden. Three
+things were wrong and all three needed the close-up to see. They were drawn in
+the STORY'S OWN HUE, which is one of the Ether's palette roles and often the
+same cool blue-white as the stars behind it — starlight given by another
+Traveller is now the one warm thing near a Spirit. They were a single flat blob,
+where the Spirit's own core has always been a halo under a brighter heart, which
+is what makes a dot look like a light. And the orbit was squashed vertically
+(×0.62) around a card that is TALLER than it is wide, so a mote spent much of
+every turn behind the card — now slightly wide instead of flat, clearing it at
+every point of the turn. Measured in the ring: 35 → 395 lit pixels, against 204
+→ 495 before, and 60fps unchanged.

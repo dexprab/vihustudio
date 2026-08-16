@@ -972,7 +972,10 @@
           // OUTSIDE the card, always. The story's own card is drawn
           // over this canvas, so the motes have to clear its silhouette
           // or they are painted and then covered.
-          var orbit = (core.radius || 84) * 1.22;
+          // Close enough to the card to be READ as belonging to it.
+          // At 1.22 they sat far enough out to be mistaken for two more
+          // background stars, which is what a close look showed.
+          var orbit = (core.radius || 84) * 1.10;
 
           // ARRIVING: starlight coming in. It starts wide and dark and
           // spirals down onto the Spirit, so what a child sees is a
@@ -997,17 +1000,27 @@
             for (var s3 = 0; s3 < GROWN_MOTES; s3++) {
               var a3 = core.seed * 2.1 + time * 0.11 + s3 * (Math.PI * 2 / GROWN_MOTES);
               var wob = 1 + 0.08 * Math.sin(time * 0.37 + s3);
-              // Measured rather than eyeballed: at a quarter of the
-              // core's size these were drawn and invisible — fifteen
-              // more lit pixels in the ring, which is nothing. Bigger
-              // and a little brighter puts them clearly above the
-              // Spirit's own halo while staying far below the burst of
-              // a cheer landing.
-              drawBlob(ctx, p[core.hue] || p.glow,
-                cx0 + Math.cos(a3) * orbit * wob,
-                cy0 + Math.sin(a3) * orbit * 0.62 * wob,
-                ck * 0.40,
-                Util.clamp(core.intensity * 0.78, 0, 0.8) * breath);
+              // WARM, and warm on purpose. The Spirit's own hue can be
+              // any of the Ether's palette roles, several of which are
+              // the same cool blue-white as the star field behind it —
+              // and a mote in that colour, at that size, simply reads
+              // as one more distant star rather than as something this
+              // story has. Starlight given by another Traveller is the
+              // one warm thing near a Spirit.
+              // A story's card is TALLER than it is wide, so an orbit
+              // squashed vertically puts a mote behind it at the top
+              // and the bottom of every turn — which is what a close
+              // look showed: three motes, one visible. Slightly wide
+              // rather than flat, so all three clear the card whatever
+              // part of the turn they are in.
+              var mx = cx0 + Math.cos(a3) * orbit * 1.10 * wob;
+              var my = cy0 + Math.sin(a3) * orbit * 1.05 * wob;
+              var ma = Util.clamp(core.intensity, 0, 1) * breath;
+              // A small halo under a brighter heart, the same two-part
+              // build the Spirit's own core uses — it is what makes a
+              // dot look like a light rather than a pixel.
+              drawBlob(ctx, p.spark, mx, my, ck * 0.95, ma * 0.30);
+              drawBlob(ctx, p.spark, mx, my, ck * 0.34, ma * 0.92);
             }
           }
         }
