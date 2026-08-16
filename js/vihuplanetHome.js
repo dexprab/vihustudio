@@ -488,6 +488,10 @@
     var capturing = false;
     var scanPatienceSaid = false;
     var nudge = 0;
+    // Long enough for the portal to finish opening; the class is only
+    // dropped so the next arrival can play it again.
+    var PORTAL_MS = 900;
+    var portalTimer = null;
 
     function scanSay(text) { if (scanLine) scanLine.textContent = text; }
 
@@ -718,7 +722,12 @@
       scanStream = null;
       scanBusy = false;
       scanEl.hidden = true;
-      if (scanWindow) scanWindow.classList.remove('is-seeing');
+      scanEl.classList.remove('is-opening');
+      if (portalTimer) { window.clearTimeout(portalTimer); portalTimer = null; }
+      if (scanWindow) {
+        scanWindow.classList.remove('is-seeing');
+        scanWindow.classList.remove('is-live');
+      }
       if (!(opts && opts.keepUniverseStill)) universe.traveller.setEnabled(true);
     }
 
@@ -827,6 +836,17 @@
     function openCardScan() {
       if (!scanEl || typeof MagicCardVision === 'undefined') { openStars(); return; }
       scanEl.hidden = false;
+      // The portal opens. Retriggered on every arrival, including the
+      // one after "That's not me", so coming back is the same moment
+      // rather than a screen that was already there.
+      scanEl.classList.remove('is-opening');
+      if (scanWindow) scanWindow.classList.remove('is-live');
+      void scanEl.offsetWidth;              // let the animation restart
+      scanEl.classList.add('is-opening');
+      if (portalTimer) window.clearTimeout(portalTimer);
+      portalTimer = window.setTimeout(function () {
+        if (scanEl) scanEl.classList.remove('is-opening');
+      }, PORTAL_MS);
       var confirmBox = scanEl.querySelector('[data-scan-confirm]');
       if (confirmBox) confirmBox.hidden = true;
       if (confirmTimer) { window.clearInterval(confirmTimer); confirmTimer = null; }
@@ -887,6 +907,9 @@
 
       MagicCardVision.openCamera(scanVideo).then(function (stream) {
         scanStream = stream;
+        // The room appears inside the portal rather than the portal
+        // being a window that was black until permission came back.
+        if (scanWindow) scanWindow.classList.add('is-live');
         scanner = MagicCardVision.scan(scanVideo, {
           // Every frame the loop reads is cropped to the window, the
           // same as every other read — see holdCrop.

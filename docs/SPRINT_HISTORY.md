@@ -2174,3 +2174,35 @@ refused, not one a child should be asked to drag into position. Removed from
 the markup, the stylesheet, the click handler, and `ConstellationBoard.nudge()`
 along with them — it had no other caller. What remains under a camera-marked
 board is what belongs there: the stars, the question, and 📷 Show My Card Again.
+
+## The Portal, and the Child in the Picture (build 0536)
+
+Two pieces of polish, one of them a real defect. **A face was being read as
+stars.** The detector asks only that a mark be small and locally bright, and a
+face offers half a dozen: both catchlights, a reflection in each lens, a shine
+on the nose and the forehead, a line of teeth. Measured on a rendered card with
+a face beside it — fourteen marks, five of them on the face, and a card that
+read exactly without the face read *nothing* with it. The mechanism was worse
+than noise: `_marksIn` reports the fourteen LARGEST marks it found, and a
+specular highlight on skin is far larger than a star on a card held at arm's
+length, so the face took the top of that list and pushed real stars off the
+bottom of it. The fix is a coarse skin-region map (`_skinRegions`) handed to
+`_marksIn` so it filters BEFORE that cut — not face detection, and deliberately
+not: nothing is recognised, located or kept, it only asks which parts of the
+frame are a broad expanse of skin colour, and a patch must cover better than a
+hundredth of the frame to count, so a gold star's own glow can never form one.
+The gaps matter as much as the skin, because everything that shines is a place
+where skin isn't; enclosed-hole filling failed (the forehead's gap opens into
+the hair, which reaches the edge of the frame), so gaps are filled by the rule
+that actually holds — skin on both sides, close by — with a width bound, since a
+hand holding a card is skin on both sides of the card too. With a face in shot:
+five face marks became one, and both paths went from refusing to exact.
+Verified unchanged: 17/18 families identify and read exactly off a simulated lit
+screen (Triangulum's three stars remain below the reader's floor of four),
+safety 14/14 on both paths, board EXACTLY THE CARD, countdown 7 stars exact.
+**And the camera now opens rather than appears** — a point of warm light in the
+quietened universe widening into the card's own shape, the line and the ways out
+arriving after it, and the camera fading in when the stream actually lands
+instead of a black rectangle waiting on permission. Not a scanner starting up:
+no reticle, no sweep, no brackets, nothing that counts (Decision 16). Reduced
+motion gets the same portal with everything already there.

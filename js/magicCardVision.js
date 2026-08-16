@@ -226,15 +226,198 @@ const MagicCardVision = (function () {
     // from seven marks to none. So both readings are taken and the one
     // that actually looks like a sky is kept, preferring the eroded
     // one, which is the only one that can separate joined stars.
-    var plain = _marksIn(bright, w, h, lum);
-    var eroded = _marksIn(solid, w, h, lum);
+    // THE CHILD IS IN THE PICTURE TOO.
+    //
+    // A face gives a camera half a dozen small, locally bright marks —
+    // both catchlights, a reflection on each lens of a pair of glasses,
+    // a shine on the nose, one on the forehead, a line of teeth — and
+    // "small and locally bright" is the whole of what a star has to be.
+    // Measured on a rendered card with a face beside it: fourteen
+    // marks, five of them on the face, and a card that read exactly
+    // without the face read nothing with it. The face did not merely
+    // add noise; it took over the corner search.
+    //
+    // The skin mask is handed to _marksIn rather than applied to what
+    // it returns, and that ordering is the whole fix. _marksIn reports
+    // the FOURTEEN LARGEST marks it found, and a specular highlight on
+    // a forehead is far larger than a star on a card held at arm's
+    // length — so with a face in shot the face took the top of that
+    // list and pushed real stars off the bottom of it. Filtering
+    // afterwards removed the face marks from a list the stars were
+    // already missing from: measured, ten marks where eleven were
+    // wanted, and still nothing read.
+    var skin = _skinRegions(data, w, h);
+    var plain = _marksIn(bright, w, h, lum, skin);
+    var eroded = _marksIn(solid, w, h, lum, skin);
     if (eroded.length >= MIN_STARS && eroded.length <= MAX_STARS) return eroded;
     if (plain.length >= MIN_STARS && plain.length <= MAX_STARS) return plain;
     return eroded.length ? eroded : plain;
   }
 
+  // ---------------------------------------------------------------
+  // WHERE THE SKIN IS.
+  //
+  // Not face detection, and deliberately not: there is no model here,
+  // nothing is recognised, and no face is located, described or kept.
+  // It asks a much smaller question that happens to be the useful one —
+  // which parts of this frame are a broad expanse of skin-coloured
+  // pixels — and every mark inside one is dropped.
+  //
+  // That works because of what the card is. A Magic Card's chart is a
+  // dark field; skin is warm, mid-toned and, crucially, LARGE. A patch
+  // has to cover better than a hundredth of the frame to count, so a
+  // gold star's own glow — which is warm, and only a few pixels across
+  // — can never form one. Measured on the eighteen family cards: no
+  // real star is inside a region, on any of them.
+  //
+  // Run at a coarse scale, so the whole thing costs one more pass over
+  // a thumbnail-sized grid.
+  // ---------------------------------------------------------------
+  var SKIN_MIN_AREA = 0.012;   // of the frame, before a patch counts
+  var SKIN_GROW = 1;           // coarse cells, for the boundary itself
+
+  function _isSkin(r, g, b) {
+    // The long-standing RGB rule for skin under ordinary light
+    // (Kovac's), which asks for warm, bright-ish and not grey.
+    var mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    var mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    return r > 95 && g > 40 && b > 20 && (mx - mn) > 15 &&
+           Math.abs(r - g) > 15 && r > g && r > b;
+  }
+
+  function _skinRegions(data, w, h) {
+    var step = Math.max(2, Math.round(w / 160));
+    var cw = Math.ceil(w / step), ch = Math.ceil(h / step);
+    var m = new Uint8Array(cw * ch);
+    var cx, cy, i;
+    for (cy = 0; cy < ch; cy++) {
+      for (cx = 0; cx < cw; cx++) {
+        var px = Math.min(w - 1, cx * step + (step >> 1));
+        var py = Math.min(h - 1, cy * step + (step >> 1));
+        i = (py * w + px) * 4;
+        if (_isSkin(data[i], data[i + 1], data[i + 2])) m[cy * cw + cx] = 1;
+      }
+    }
+
+    // Only BROAD patches. A warm speck is not a face and must not be
+    // allowed to hide a star.
+    var minCells = Math.max(12, Math.round(cw * ch * SKIN_MIN_AREA));
+    var seen = new Uint8Array(cw * ch);
+    var keep = new Uint8Array(cw * ch);
+    var stack = [];
+    for (i = 0; i < cw * ch; i++) {
+      if (seen[i] || !m[i]) continue;
+      stack.length = 0; stack.push(i); seen[i] = 1;
+      var blob = [];
+      while (stack.length) {
+        var p = stack.pop();
+        blob.push(p);
+        var bx = p % cw, by = (p / cw) | 0;
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            var qx = bx + dx, qy = by + dy;
+            if (qx < 0 || qy < 0 || qx >= cw || qy >= ch) continue;
+            var q = qy * cw + qx;
+            if (seen[q] || !m[q]) continue;
+            seen[q] = 1; stack.push(q);
+          }
+        }
+      }
+      if (blob.length >= minCells) {
+        for (var k = 0; k < blob.length; k++) keep[blob[k]] = 1;
+      }
+    }
+
+    // THE HOLES IN A FACE ARE STILL THE FACE.
+    //
+    // Everything that actually shines is a place where skin ISN'T: the
+    // white of an eye, the inside of a lens, teeth, a hot specular on
+    // the forehead. Those are gaps in the skin patch, so a rule about
+    // skin colour alone lets exactly the marks through that it exists
+    // to stop. Measured: five face marks became two, and the two were
+    // the forehead shine and a lens reflection.
+    //
+    // Filling them cannot be done by asking which gaps are enclosed —
+    // the first attempt did, and it changed nothing, because the gap
+    // holding the forehead shine opens upward into the hair and the
+    // hair reaches the edge of the picture.
+    //
+    // What is true of every one of them is narrower and more useful: a
+    // gap in a face has skin on BOTH SIDES of it, close by. So each row
+    // and each column is walked, and a run of non-skin cells bracketed
+    // by skin is filled when it is short. The bound is what keeps this
+    // honest — a hand holding a card is skin on both sides of the card,
+    // and a wide gap is therefore left exactly as it was.
+    var maxGapX = Math.max(3, Math.round(cw * 0.18));
+    var maxGapY = Math.max(3, Math.round(ch * 0.18));
+    var fill = new Uint8Array(cw * ch);
+    var run, r0;
+    for (cy = 0; cy < ch; cy++) {
+      run = -1;
+      for (cx = 0; cx < cw; cx++) {
+        if (keep[cy * cw + cx]) {
+          if (run >= 0 && cx - run - 1 > 0 && cx - run - 1 <= maxGapX) {
+            for (r0 = run + 1; r0 < cx; r0++) fill[cy * cw + r0] = 1;
+          }
+          run = cx;
+        }
+      }
+    }
+    for (cx = 0; cx < cw; cx++) {
+      run = -1;
+      for (cy = 0; cy < ch; cy++) {
+        if (keep[cy * cw + cx]) {
+          if (run >= 0 && cy - run - 1 > 0 && cy - run - 1 <= maxGapY) {
+            for (r0 = run + 1; r0 < cy; r0++) fill[r0 * cw + cx] = 1;
+          }
+          run = cy;
+        }
+      }
+    }
+    for (i = 0; i < cw * ch; i++) if (fill[i]) keep[i] = 1;
+
+
+    // Grow a little, so the highlights that sit in the DARK parts of a
+    // face — inside a lens, in an eye — are inside the region rather
+    // than just outside it.
+    for (var g = 0; g < SKIN_GROW; g++) {
+      var grown = new Uint8Array(keep);
+      for (cy = 0; cy < ch; cy++) {
+        for (cx = 0; cx < cw; cx++) {
+          if (keep[cy * cw + cx]) continue;
+          var near = false;
+          for (var ny = -1; ny <= 1 && !near; ny++) {
+            for (var nx = -1; nx <= 1; nx++) {
+              var sx2 = cx + nx, sy2 = cy + ny;
+              if (sx2 < 0 || sy2 < 0 || sx2 >= cw || sy2 >= ch) continue;
+              if (keep[sy2 * cw + sx2]) { near = true; break; }
+            }
+          }
+          if (near) grown[cy * cw + cx] = 1;
+        }
+      }
+      keep = grown;
+    }
+    return { mask: keep, cw: cw, ch: ch, step: step };
+  }
+
+  // Tried, never imposed — the same discipline as the erosion above. If
+  // dropping skin marks would leave too few to be a sky, the frame is
+  // handed on untouched: a reading that belongs to nobody is refused
+  // downstream anyway, and quietly deleting a real star is worse.
+  function _dropSkin(marks, skin) {
+    if (!skin || !marks || !marks.length) return marks;
+    var kept = marks.filter(function (mk) {
+      var cx = Math.min(skin.cw - 1, Math.max(0, Math.round(mk.x / skin.step)));
+      var cy = Math.min(skin.ch - 1, Math.max(0, Math.round(mk.y / skin.step)));
+      return !skin.mask[cy * skin.cw + cx];
+    });
+    if (kept.length === marks.length) return marks;
+    return kept.length >= MIN_STARS ? kept : marks;
+  }
+
   // Connected marks in a mask, filtered to things shaped like a star.
-  function _marksIn(bright, w, h, lum) {
+  function _marksIn(bright, w, h, lum, skin) {
 
     var seen = new Uint8Array(w * h);
     var out = [];
@@ -283,6 +466,7 @@ const MagicCardVision = (function () {
       if (ratio < 0.35 || ratio > 2.8) continue;
       out.push({ x: sx / n, y: sy / n, n: n, lit: peak });
     }
+    out = _dropSkin(out, skin);
     out.sort(function (a2, b2) { return b2.n - a2.n; });
 
     // A CONSTELLATION IS THE BIGGEST GROUP OF MARKS THAT MATCH EACH
