@@ -48,6 +48,10 @@ const Cheer = (function () {
   // good loop at all.
   var GROWTH_THRESHOLD = 3;
 
+  // How many stranded cheers to carry to the platform per visit — see
+  // refresh(). Small on purpose: it is a catch-up, not a queue.
+  var CATCHUP_MAX = 8;
+
   // { storyId: { n: <cheers>, mine: true|false } }
   var _mem = null;
 
@@ -176,6 +180,12 @@ const Cheer = (function () {
   function refresh(storyIds) {
     var ids = (storyIds || []).filter(Boolean);
     if (!ids.length) return Promise.resolve(false);
+    // Read what is actually on disk before deciding what is owed. The
+    // in-memory mirror is filled the first time anything asks — during
+    // page load, by the feed — and another tab, or an earlier visit in
+    // this same tab, can have written since. Cheap, because a refresh
+    // happens once per arrival rather than per story.
+    _mem = null;
     return _client().then(function (client) {
       if (!client) return false;
       return client.rpc('story_cheer_counts', { p_story_ids: ids, p_cheerer: _me() })
@@ -190,6 +200,40 @@ const Cheer = (function () {
             if (row.mine && !e.mine) { e.mine = true; changed = true; }
           });
           if (changed) _write();
+
+          // STARLIGHT THAT NEVER LEFT THE DEVICE.
+          //
+          // give() sends a cheer at the moment it is given, and if
+          // there was no platform to send it to — offline, or before
+          // the platform existed at all — that cheer stayed local
+          // forever. Nothing ever went back for it, so a story could be
+          // grown on the machine that cheered it and untouched
+          // everywhere else, permanently.
+          //
+          // So this pass also carries them: any story this device
+          // believes it has cheered, which the platform does not have a
+          // cheer from us for, is sent now. The primary key makes it
+          // safe to send one that did in fact land — the row already
+          // exists, `on conflict do nothing` ignores it, and the total
+          // does not move.
+          //
+          // Bounded per refresh, because this is a catch-up and not a
+          // queue: the next visit carries the next few.
+          var theirs = {};
+          res.data.forEach(function (row) { if (row && row.mine) theirs[row.story_id] = true; });
+          var owed = ids.filter(function (id) {
+            var e = _read()[id];
+            return e && e.mine && !theirs[id];
+          }).slice(0, CATCHUP_MAX);
+          owed.forEach(function (id) {
+            client.rpc('cheer_story', { p_story_id: id, p_cheerer: _me() })
+              .then(function (r) {
+                if (r.error || !r.data || r.data.ok !== true) return;
+                var e = _entry(id);
+                if ((r.data.cheers | 0) > e.n) { e.n = r.data.cheers | 0; _write(); }
+              }).catch(function () {});
+          });
+
           return changed;
         });
     }).catch(function () { return false; });

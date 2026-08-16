@@ -2495,3 +2495,19 @@ else's rather than to look at either. The button now says `Cheer`, then
 lost — the count is still kept and is still what decides growth, and growth is
 the part they actually see. Decision 20 amended to match; every Cheer flow
 re-run unchanged.
+
+**0547 — starlight that never left the device.** `give()` sends a cheer at the
+moment it is given; if there was no platform to send it to — offline, or before
+`migrations_cheer.sql` was run — that cheer stayed local forever, because
+nothing ever went back for it. A story could be grown on the machine that
+cheered it and untouched everywhere else, permanently. `refresh()` now carries
+them: any story this device believes it has cheered, which the platform has no
+cheer from us for, is sent on the next arrival. Safe to send one that did in
+fact land, because the primary key already decided that question — the row
+exists, `on conflict do nothing` ignores it, and the total does not move.
+Bounded at eight per visit, because it is a catch-up and not a queue. Also:
+`refresh()` re-reads from storage before deciding what is owed, since the
+in-memory mirror is filled during page load and another tab can have written
+since. Verified with a recording stub: three cheers given with no platform, all
+three carried on the next refresh, and the read call made once for the whole
+Ether rather than once per story.
