@@ -162,17 +162,52 @@ const CreationFlow=(function(){
   // nothing yet."
   function _myProjectsEntry(){
     const projects=_myProjects();
-    if(!projects.length) return null;
+    const card=_activeCard();
+    if(!projects.length && !card) return null;
     const row=_el('div','creation-flow-myprojects-entry');
-    const btn=_el('button','creation-flow-myprojects-btn');
-    btn.type='button';
-    btn.appendChild(_el('span','creation-flow-myprojects-icon','📂'));
-    btn.appendChild(_el('span','creation-flow-myprojects-label','My Projects'));
-    btn.appendChild(_el('span','creation-flow-myprojects-count',String(projects.length)));
-    btn.addEventListener('click',_renderMyProjectsScreen);
-    row.appendChild(btn);
+    if(projects.length){
+      const btn=_el('button','creation-flow-myprojects-btn');
+      btn.type='button';
+      btn.appendChild(_el('span','creation-flow-myprojects-icon','📂'));
+      btn.appendChild(_el('span','creation-flow-myprojects-label','My Projects'));
+      btn.appendChild(_el('span','creation-flow-myprojects-count',String(projects.length)));
+      btn.addEventListener('click',_renderMyProjectsScreen);
+      row.appendChild(btn);
+    }
+    // MY MAGIC CARD.
+    //
+    // Their own card, to look at — the same Magic Card Home the header
+    // badge opens, which is unreachable from here because this screen
+    // covers the header. A child in the Studio has been recognised
+    // already, so the honest thing to offer them is their card, not a
+    // question about whether they have one.
+    //
+    // Shown only when this device actually holds a claimed card: a
+    // Traveller part-way through the Rite has none yet, and a control
+    // that opens nothing is worse than no control.
+    if(card){
+      const mc=_el('button','creation-flow-myprojects-btn');
+      mc.type='button';
+      mc.appendChild(_el('span','creation-flow-myprojects-icon','✨'));
+      mc.appendChild(_el('span','creation-flow-myprojects-label','My Magic Card'));
+      mc.addEventListener('click',function(){
+        try{ window.MagicCardUI.openHome(); }catch(e){}
+      });
+      row.appendChild(mc);
+    }
     content.appendChild(row);
     return row;
+  }
+
+  // The Magic Card claimed on this device, or null. Wrapped because
+  // every caller here wants "is there one", never the card itself, and
+  // MagicCard is optional on pages that do not load it.
+  function _activeCard(){
+    try{
+      if(typeof window.MagicCard==='undefined') return null;
+      if(typeof window.MagicCardUI==='undefined') return null;
+      return window.MagicCard.getActive()||null;
+    }catch(e){ return null; }
   }
 
   function _openProjectRecord(record){
@@ -707,16 +742,27 @@ const CreationFlow=(function(){
     if(typeof window.CardPlatform!=='undefined'){
       secondaryCards.push(_buildCardRedeemWidget());
     }
-    // Magic Card Identity Evolution, Phase 2 — the "come home on a new
-    // device" recall widget lives here too, for the same reason the
-    // World Card redeem widget does: this is the natural landing point
-    // on a fresh device with zero local Magic Cards, before any
-    // Creation Type has been chosen.
-    let recallWidget=null;
-    if(typeof window.MagicCard!=='undefined'){
-      recallWidget=_buildMagicCardRecallWidget();
-      secondaryCards.push(recallWidget);
-    }
+    // THE "COME HOME ON A NEW DEVICE" RECALL WIDGET IS GONE FROM HERE.
+    //
+    // It was right when the Studio was the front door: a child arriving
+    // on a fresh device had no other way to say who they were, so this
+    // screen had to ask.
+    //
+    // It is not the front door any more. VihuPlanet is (Decision 10),
+    // and recognition happens there, once per arrival, of everybody —
+    // the camera and Mark Your Stars (Decisions 11 and 16). Anyone who
+    // reaches this screen has already come through it, so asking "My
+    // Magic Card? Tap to come home" here asks a child to prove an
+    // identity they have just proved, on the screen where they came to
+    // make something.
+    //
+    // What replaces it is not another question: it is their card, in
+    // _myProjectsEntry above, to look at.
+    //
+    // _buildMagicCardRecallWidget and its panel are deliberately KEPT
+    // rather than deleted. The Traveller Gateway's Scene 3 and Magic
+    // Card Home are separate paths to the same recall, and a later
+    // surface may want this one back; nothing here is the only copy.
     if(secondaryCards.length){
       const section=_el('div','creation-flow-secondary-options');
       section.appendChild(_el('div','creation-flow-secondary-label','Already have something?'));

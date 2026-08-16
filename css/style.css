@@ -418,7 +418,14 @@ button{
   justify-content:center;
 }
 
-button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn){
+/* The five :not()s give this (0,5,1), so it quietly beats any single
+   class that tries to set its own width — which is exactly what had
+   happened to .creation-flow-myprojects-btn: it asks for width:auto and
+   never got it, so the My Projects pill has always spanned the whole
+   row. That reads as a banner rather than a control, and it stops two
+   pills sitting side by side at all. Carved out here, the way every
+   other exception on this rule already is. */
+button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn){
   width:100%;
   margin-bottom:12px;
 }
@@ -6634,6 +6641,10 @@ body.creation-flow-active .app-header{ display:none; }
 .creation-flow-myprojects-entry{
   display:flex;
   justify-content:center;
+  /* My Projects and My Magic Card sit side by side here, and wrap
+     rather than squeeze on a narrow screen. */
+  flex-wrap:wrap;
+  gap:10px;
   margin:0 0 clamp(10px,2vh,20px);
 }
 .creation-flow-myprojects-btn{
