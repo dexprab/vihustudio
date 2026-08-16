@@ -141,7 +141,22 @@ const StoryPlayer=(function(){
     // hidden past 90 degrees by backface-visibility, so its mirror image
     // is never seen.
     front.classList.add(dir==='fwd'?'is-turning':'is-turning-back');
+    // ONCE, whichever gets here first.
+    //
+    // Both the transitionend and the safety timeout below call this,
+    // and it used to run for both — so `_els.front` was flipped twice
+    // on every turn and the two flips cancelled. From the third page
+    // onwards the player then chose the face that was ALREADY on
+    // screen as the one to draw the next page onto: no page turn at
+    // all, and the child watching the visible canvas being cleared and
+    // repainted in front of them.
+    //
+    // Measured before this guard: the visible face went 0, 1, 0, 0, 0,
+    // 0 across six pages — alternating once, then stuck.
+    let settled=false;
     const done=function(){
+      if(settled) return;
+      settled=true;
       front.classList.remove('is-front','is-turning','is-turning-back');
       _els.front=1-_els.front;
       front.removeEventListener('transitionend',done);
