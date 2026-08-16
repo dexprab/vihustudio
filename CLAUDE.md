@@ -713,6 +713,60 @@ from vihupapa was still available in the god."*
   sweeps unowned records to the new card — only unowned ones, never
   another Creator's.
 
+### 20. Cheer — Stories Grow When Somebody Believes in Them
+
+Locked by the product owner in the Cheer sprint brief.
+
+- **A Cheer is not a Like.** It is a small act of magic from one
+  Creator that gives another Creator's story a little energy, and the
+  story grows for it: *Story → Cheer → Growth → the story is a little
+  more alive in the Ether.* The words Like, Rating, Vote, Upvote and
+  Score are not used anywhere a child can see, and neither is the
+  thinking behind them.
+- **Cheer belongs to a Story in the Ether**, on the Preview that
+  appears when a Spirit is met. There is no feed, no comments, no
+  followers, no rankings, no leaderboards and no popularity badges,
+  and adding one is a canon change rather than a feature.
+- **One Creator, one Cheer, per Story.** The database's primary key IS
+  the rule — one row per (story, cheerer) — so a double tap, a retry
+  and two devices at once all end with one row and one count. There is
+  no counter to drift out of step with the rows, because the count is
+  the rows.
+- **A cheerer is a Magic Card** (Decision 11), and a Traveller with no
+  card yet is their own anonymous session. No second identity system,
+  no fingerprinting, and nothing here touches the Magic Card itself.
+- **Growth is ONE stage, and it is derived.** `CHEER_GROWTH_THRESHOLD`
+  is a constant in `js/cheer.js`; a Story at or above it is grown.
+  Deriving it from the stored count is what makes growth persistent
+  for free — there is no second piece of state to keep in step, and no
+  way for a Story to be grown while its cheers say otherwise.
+- **Growth belongs to the Story, never to the Creator.** Not their
+  other Stories, not a profile, not the Ether. Verified against three
+  Stories by one maker.
+- **The effect is company, not brightness.** A grown Spirit carries
+  three small motes turning slowly around it, outside its own card.
+  Deliberately not "brighter": brightness already means NEARNESS in
+  this universe, and a grown Story that merely looked closer would be
+  saying the wrong thing.
+- **A Cheer arriving is starlight travelling to the Story** and
+  settling on it — never a burst, never confetti, never a reward
+  popup. No hearts, no thumbs, no social-media iconography.
+- **The number is secondary.** `Cheered ✨ 3` on the button and nowhere
+  else. The screen must still make sense to a child who cannot read it
+  yet, because the starlight is the answer and the figure is a detail.
+- **Nobody can ask who cheered.** `story_cheers` has RLS on and no
+  policies at all: everything goes through two SECURITY DEFINER
+  functions that return counts and "have I cheered this", so no social
+  graph exists to leak rather than one being withheld.
+- **Local first.** A tap lands instantly and survives a reload with no
+  platform configured at all; the platform is told afterwards and its
+  total replaces the local guess when it arrives.
+- Out of scope and not implemented: multiple growth levels, ranking,
+  trending, leaderboards, comments, followers, likes, reactions,
+  badges, rewards, points, currencies, notifications, social profiles
+  and moderation changes.
+- `supabase/migrations_cheer.sql` · `js/cheer.js`.
+
 ## Roadmap
 
 1. Theme Designer Polish

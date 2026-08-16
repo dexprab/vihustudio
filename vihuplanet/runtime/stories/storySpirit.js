@@ -98,7 +98,11 @@
 
     var lights = ether.lights;
     for (var i = 0; i < MAX_LIGHTS; i++) {
-      lights.push({ alive: false, x: 0, y: 0, scale: 1, intensity: 0, warm: 0, hue: 'glow' });
+      // `grown` and `arriving` are the Spirit's starlight, carried on
+      // the light so the renderer can draw it without ever being told
+      // what a story is — the same discipline as `hue` and `warm`.
+      lights.push({ alive: false, x: 0, y: 0, scale: 1, intensity: 0, warm: 0, hue: 'glow',
+                    grown: false, arriving: 0, seed: 0, radius: 84 });
     }
 
     // Candidates, sorted by nearness each frame to decide which get a
@@ -200,6 +204,30 @@
           l.intensity *= 1 + e.cheer * 1.5;
         }
         l.warm = (e.state === STATES.BIRTHING) ? 1 : 0;
+
+        // THE STARLIGHT.
+        //
+        // `arriving` is the cheer that is landing right now — the
+        // renderer draws motes converging out of the dark and settling
+        // on the Spirit while it runs down.
+        //
+        // `grown` is what a story keeps. Once enough starlight has
+        // been given, the Spirit carries a few small companions of its
+        // own, turning slowly around it. Deliberately NOT more
+        // brightness: brightness already means nearness in this
+        // universe, and a grown story that merely looked closer would
+        // be saying the wrong thing. It is a story with a little
+        // company, which is exactly what it earned.
+        l.arriving = e.cheer;
+        l.grown = !!e.grown;
+        // Its own phase, so no two grown Spirits turn together.
+        l.seed = e.bob.phase;
+        // How big the story itself is on screen. The Spirit's card is
+        // DOM and sits ON TOP of the canvas these motes are drawn on,
+        // so anything orbiting closer than this is behind the card and
+        // simply cannot be seen — which is exactly what happened, and
+        // what a measurement of the canvas alone could not tell me.
+        l.radius = e.radius;
       }
       for (; n < lights.length; n++) lights[n].alive = false;
     }

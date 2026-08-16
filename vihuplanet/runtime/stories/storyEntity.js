@@ -45,6 +45,18 @@
 //   birthT       0..1 how far through its arrival it is
 //   home         { x, y } the exact place it occupied before focus
 //
+// Given to it by other Travellers — written by the surface, read by
+// renderers, and touched by nothing else:
+//   cheer        0..1, a cheer arriving right now. Set to 1 at the
+//                moment one is given and decays on its own; it is the
+//                clock the starlight animation runs on.
+//   cheers       how much starlight this story has been given, total.
+//   grown        true once that total has crossed the threshold. The
+//                Spirit is a little more alive for it, permanently.
+//                Belongs to THIS story and no other, and to no
+//                Creator — it is a property of the thing that was
+//                made, not of whoever made it.
+//
 // Future systems attach here rather than modifying the contract:
 //   anchor       { x, y, strength } or null — the plug point Story
 //                World clustering will use. Physics already honours
@@ -190,6 +202,22 @@
       focusT: 0,
       birthT: 1,
       home:   null,
+
+      // --- starlight given by other Travellers ---
+      // `cheer` is the moment one arrives and decays on its own;
+      // `cheers` is how much this story has been given altogether, and
+      // `grown` is what that total has earned it. Declared here so
+      // every Spirit has them from birth and no renderer has to guard
+      // against their absence.
+      // Read from the STORY, not from the manager's options: whoever
+      // publishes a story into the Ether is who knows how much
+      // starlight it has already been given. Getting this wrong was
+      // caught by the reload test — the count persisted perfectly and
+      // the Spirit came back ungrown, which is the half a child would
+      // actually notice.
+      cheer:  0,
+      cheers: input.cheers || 0,
+      grown:  !!input.grown,
 
       // --- plug points, never set in Phase 1 ---
       anchor: null,

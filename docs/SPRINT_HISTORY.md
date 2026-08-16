@@ -2422,3 +2422,52 @@ about that. Removed from the markup, the element map and its click handler; the
 it, and `isCanon` is still used for whether "shared <date>" is an honest thing
 to say. Read story · Cheer · Back, verified in the real flow with the portal
 still opening.
+
+## Cheer — Let Stories Grow (build 0544)
+
+*Story → Cheer → Growth.* A Cheer is not a Like and nothing in it is built like
+one: no feed, no comments, no followers, no ranking, no leaderboard, no badges,
+and no word on screen from that family. It is one Creator giving another
+Creator's story a little of VihuPlanet's own magic, and the story is more alive
+for it.
+
+**The data is the smallest thing that can carry that.** `story_cheers` has the
+primary key `(story_id, cheerer)` — the uniqueness rule IS the key, so a double
+tap, a retry and two devices at once all end with one row and one count, and
+there is no counter to drift out of step with the rows because the count is the
+rows. The table has RLS on and **no policies at all**: everything goes through
+two SECURITY DEFINER functions returning counts and "have I cheered this", so
+"nobody can see who cheered" is structural rather than a promise. A cheerer is a
+Magic Card (Decision 11); a Traveller with no card is their own anonymous
+session. No second identity system, nothing touching the Magic Card.
+
+**Growth is one stage and it is derived.** `CHEER_GROWTH_THRESHOLD = 3` in
+`js/cheer.js`; a story at or above it is grown. Deriving it from the stored
+count is what makes growth persistent for nothing — no second state to keep in
+step, and no way for a story to be grown while its cheers disagree.
+
+**The effect is company, not brightness.** Three small motes turn slowly around
+a grown Spirit. Brightness already means NEARNESS in this universe, so a grown
+story that merely looked closer would be saying the wrong thing. A cheer
+arriving is starlight spiralling in from wide and dark and settling — never a
+burst.
+
+**Two things were caught by measuring rather than looking.** The reload test
+found growth persisting in the count and NOT on the Spirit: the entity read
+`cheers` from the manager's options while the feed puts it on the story, so a
+story that grew yesterday came back plain — the half a child would actually
+notice. And the motes, once tuned to be plainly visible on the canvas (+291 lit
+pixels in the ring), still could not be seen: a story's card is DOM drawn OVER
+that canvas, so anything orbiting closer than the card is painted and then
+covered. They now orbit outside the card's own silhouette, measured in the ring
+where a child can actually see them (61 → 223 lit pixels). Both mistakes were
+mine and neither was visible in the passing tests around them.
+
+**Local first**, like everything else here: a tap lands instantly, survives a
+reload with no platform configured at all, and the platform's total replaces the
+local guess when it arrives — one call for the whole Ether, never one per story.
+Verified: cheer, repeat-tap (stays at one), a second Creator (two), crossing the
+threshold, reload persistence, growth confined to the story that earned it
+across three stories by one maker, 59–60fps with a grown Spirit on screen, 125
+DOM nodes, and no ranking or social-media word anywhere on the page.
+`supabase/migrations_cheer.sql` must be run by hand.

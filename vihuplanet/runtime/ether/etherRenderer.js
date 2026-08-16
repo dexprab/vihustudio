@@ -187,6 +187,15 @@
     return c;
   }
 
+  // A story that has been given starlight keeps a little company: this
+  // many small motes, turning slowly around it. Three is enough to read
+  // as "something is different about this one" and few enough that a
+  // sky full of grown stories is still a calm sky.
+  var GROWN_MOTES = 3;
+  // The motes of one cheer arriving. A few more than the permanent
+  // ones, because they are on screen for barely two seconds.
+  var CHEER_MOTES = 5;
+
   function drawBlob(ctx, color, x, y, radius, alpha) {
     if (alpha <= 0.002 || radius <= 0.5) return;
     ctx.globalAlpha = alpha;
@@ -947,9 +956,61 @@
         var core = ether.lights[i];
         if (!core.alive || core.intensity <= 0.004) continue;
         var ck = 9 + core.scale * 9;
+        var cx0 = core.x + (storyCam ? storyCam.x : 0);
+        var cy0 = core.y + (storyCam ? storyCam.y : 0);
         drawBlob(ctx, core.warm ? p.spark : (p[core.hue] || p.glow),
-          core.x + (storyCam ? storyCam.x : 0), core.y + (storyCam ? storyCam.y : 0),
-          ck, Util.clamp(core.intensity * 0.62, 0, 0.85) * breath);
+          cx0, cy0, ck, Util.clamp(core.intensity * 0.62, 0, 0.85) * breath);
+
+        // --- the starlight a story has been given.
+        //
+        // Both parts are drawn HERE, in the core pass, because both
+        // are small and crisp and belong to the Spirit rather than to
+        // the air around it. Three motes and a handful of arriving
+        // ones is a few dozen pixels each — the same reasoning that
+        // made the core itself affordable.
+        if (core.grown || core.arriving > 0.002) {
+          // OUTSIDE the card, always. The story's own card is drawn
+          // over this canvas, so the motes have to clear its silhouette
+          // or they are painted and then covered.
+          var orbit = (core.radius || 84) * 1.22;
+
+          // ARRIVING: starlight coming in. It starts wide and dark and
+          // spirals down onto the Spirit, so what a child sees is a
+          // gift travelling to the story and settling — never a burst
+          // going off, never confetti.
+          if (core.arriving > 0.002) {
+            var t = 1 - core.arriving;            // 0 → 1 as it lands
+            var ease = t * t * (3 - 2 * t);
+            for (var s2 = 0; s2 < CHEER_MOTES; s2++) {
+              var a2 = core.seed + s2 * (Math.PI * 2 / CHEER_MOTES) + ease * 1.5;
+              var r2 = orbit * (1 - ease) * 5.5 + orbit * ease;
+              drawBlob(ctx, p.spark,
+                cx0 + Math.cos(a2) * r2, cy0 + Math.sin(a2) * r2,
+                ck * 0.30, Util.clamp(core.arriving, 0, 1) * 0.7 * core.intensity);
+            }
+          }
+
+          // GROWN: the company it keeps. Slow — a full turn takes the
+          // better part of a minute — so it reads as alive rather than
+          // as something spinning at a child.
+          if (core.grown) {
+            for (var s3 = 0; s3 < GROWN_MOTES; s3++) {
+              var a3 = core.seed * 2.1 + time * 0.11 + s3 * (Math.PI * 2 / GROWN_MOTES);
+              var wob = 1 + 0.08 * Math.sin(time * 0.37 + s3);
+              // Measured rather than eyeballed: at a quarter of the
+              // core's size these were drawn and invisible — fifteen
+              // more lit pixels in the ring, which is nothing. Bigger
+              // and a little brighter puts them clearly above the
+              // Spirit's own halo while staying far below the burst of
+              // a cheer landing.
+              drawBlob(ctx, p[core.hue] || p.glow,
+                cx0 + Math.cos(a3) * orbit * wob,
+                cy0 + Math.sin(a3) * orbit * 0.62 * wob,
+                ck * 0.40,
+                Util.clamp(core.intensity * 0.78, 0, 0.8) * breath);
+            }
+          }
+        }
       }
 
       // --- the veil. Back to normal compositing: this one IS paint on

@@ -50,7 +50,6 @@
 
   var PARAM = 'story';
   var BORN = 'born';
-  var CHEER_KEY = 'vp-ether-cheers';
 
   // ---------------------------------------------------------------
   // Deep links.  .../vihuplanet/ether/?story=proj_m8x2k1_a7f3
@@ -125,22 +124,32 @@
 
   // ---------- cheers ----------
   //
-  // A cheer is real and it is local. There is no public VihuPlanet, so
-  // there is nobody to send it to and no honest count to show — a
-  // number of cheers from strangers would be a fiction. What it does
-  // instead is true: the Spirit shines brighter, and it remembers that
-  // this Traveller cheered it.
-  function cheers() {
-    try { return JSON.parse(localStorage.getItem(CHEER_KEY) || '{}'); }
-    catch (e) { return {}; }
+  // A Cheer is a small act of magic from one Creator that gives
+  // another Creator's story a little energy, and the story grows for
+  // it. Everything real about it — the count, the one-per-Creator
+  // rule, the growth threshold — lives in js/cheer.js; this is only
+  // the button.
+  //
+  // The old local-only version stayed exactly true while there was
+  // nobody else in VihuPlanet to send starlight to. There is now.
+  function hasCheered(id) {
+    try { return (typeof Cheer !== 'undefined') ? Cheer.mine(id) : false; }
+    catch (e) { return false; }
   }
-  function hasCheered(id) { return !!cheers()[id]; }
-  function saveCheer(id) {
-    try {
-      var all = cheers();
-      all[id] = new Date().toISOString();
-      localStorage.setItem(CHEER_KEY, JSON.stringify(all));
-    } catch (e) {}
+  function cheerCount(id) {
+    try { return (typeof Cheer !== 'undefined') ? Cheer.count(id) : 0; }
+    catch (e) { return 0; }
+  }
+
+  // What the button says. The number is deliberately secondary — a
+  // small ✨ and a figure, never a score, and the screen still makes
+  // complete sense to a child who cannot read it yet, because the
+  // starlight itself is the answer.
+  function cheerLabel(id) {
+    var n = cheerCount(id);
+    var mine = hasCheered(id);
+    if (!n) return mine ? 'Cheered' : 'Cheer';
+    return (mine ? 'Cheered' : 'Cheer') + ' ✨ ' + n;
   }
 
   function whenShared(iso) {
@@ -1675,7 +1684,8 @@
       el.read.disabled = !pages.length;
       el.read.textContent = pages.length ? 'Read story' : 'Story is elsewhere';
 
-      el.cheer.textContent = hasCheered(pid) ? 'Cheered' : 'Cheer';
+      el.cheer.textContent = cheerLabel(pid);
+      el.cheer.disabled = hasCheered(pid);
 
       el.preview.hidden = false;
       // The permanent actions stand down while a Spirit is met: the
@@ -1695,12 +1705,32 @@
     el.cheer.addEventListener('click', function () {
       if (!met) return;
       var pid = projectIdOf(met);
-      saveCheer(pid);
-      el.cheer.textContent = 'Cheered';
-      // The Spirit answers. storySpirit.js decays this back to nothing
-      // over a couple of seconds, so a cheer is a moment of light
-      // rather than a permanent decoration.
-      met.cheer = 1;
+      if (!pid || hasCheered(pid)) return;
+
+      // The Spirit answers first, before anything is stored or sent.
+      // A child taps and starlight travels to the story — the network
+      // is not allowed to be part of that moment, and on a device with
+      // no platform at all it never was.
+      var entity = met;
+      entity.cheer = 1;
+
+      Cheer.give(pid).then(function (res) {
+        // Whatever the platform knew that this device did not.
+        entity.cheers = res.cheers || entity.cheers || 0;
+        var nowGrown = Cheer.grown(pid);
+        // Growth belongs to THIS story. Set on the one entity that was
+        // cheered, and to nothing else — not the creator, not their
+        // other stories, not the Ether.
+        entity.grown = nowGrown;
+        if (met === entity) {
+          el.cheer.textContent = cheerLabel(pid);
+          el.cheer.disabled = true;
+        }
+      });
+
+      // Said immediately, not when the promise lands.
+      el.cheer.textContent = cheerLabel(pid);
+      el.cheer.disabled = true;
     });
 
     // ---------- Stage 5 · the Portal ----------

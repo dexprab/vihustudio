@@ -166,6 +166,13 @@ const EtherFeed = (function () {
       // where project data is understood, rather than by handing the
       // runtime something it would have to look inside.
       hasAudio: _hasAudio(record),
+      // The starlight this Story has been given, and whether it has
+      // grown for it. Read here so a Spirit is already grown the
+      // moment it is born into the universe — a story that grew
+      // yesterday should not have to be cheered again today to look
+      // like it.
+      cheers: _cheers(record.id),
+      grown: _grown(record.id),
       // `source` is the surface's own back-reference — the runtime
       // copies it wholesale and never reads inside it (physics, the
       // renderer and the story layer have no reason to, and must not
@@ -203,6 +210,24 @@ const EtherFeed = (function () {
         if (n && n.ref) return true;
       }
       return false;
+    } catch (e) { return false; }
+  }
+
+  // Starlight, when the Cheer module is loaded. Everything here
+  // degrades to "none" without it, which is what an Ether with no
+  // cheers in it has always looked like.
+  //
+  // Keyed on the PROJECT id, never the runtime's own 'story-…' id —
+  // the same rule the deep link follows (Decision 9). Starlight given
+  // to a story has to survive anything the runtime ever renames.
+  function _cheers(projectId) {
+    try {
+      return (typeof Cheer !== 'undefined' && Cheer.count) ? Cheer.count(projectId) : 0;
+    } catch (e) { return 0; }
+  }
+  function _grown(projectId) {
+    try {
+      return (typeof Cheer !== 'undefined' && Cheer.grown) ? Cheer.grown(projectId) : false;
     } catch (e) { return false; }
   }
 
@@ -506,6 +531,35 @@ const EtherFeed = (function () {
 
     return load(opts).then(function (stories) {
       universe.seed(stories);
+
+      // CATCHING UP WITH EVERYBODY ELSE'S STARLIGHT.
+      //
+      // The seed above used what this device already knew, so the
+      // universe is on screen immediately and every story a child
+      // cheered before is already grown. This asks the platform what
+      // the rest of VihuPlanet has given since, in ONE call for the
+      // whole Ether, and quietly updates any Spirit whose total
+      // changed. It never blocks the universe appearing, and with no
+      // platform configured it does nothing at all.
+      try {
+        if (typeof Cheer !== 'undefined' && Cheer.refresh) {
+          Cheer.refresh(stories.map(function (s) {
+            return s.source && s.source.projectId;
+          }).filter(Boolean)).then(function (changed) {
+            if (!changed) return;
+            stories.forEach(function (s) {
+              var pid = s.source && s.source.projectId;
+              if (!pid) return;
+              var e = universe.stories && universe.stories.get
+                ? universe.stories.get(s.id) : null;
+              if (!e) return;
+              e.cheers = Cheer.count(pid);
+              e.grown = Cheer.grown(pid);
+            });
+          });
+        }
+      } catch (e) {}
+
       return stories;
     });
   }
