@@ -2206,3 +2206,33 @@ arriving after it, and the camera fading in when the stream actually lands
 instead of a black rectangle waiting on permission. Not a scanner starting up:
 no reticle, no sweep, no brackets, nothing that counts (Decision 16). Reduced
 motion gets the same portal with everything already there.
+
+## Mark Your Stars and the Camera, Dressed (build 0537)
+
+The product owner supplied two reference screens. Both recognition surfaces were
+correct and plain; this gives them the same hand as the rest of the universe,
+procedurally — layered gradients and one inline SVG, no images and no new
+libraries, because Decision 9 is explicit that the universe lives through light
+and behaviour rather than illustration. **Mark Your Stars** gains ribbons of
+colour through the veil it already had (extra background layers, no new DOM), an
+ornament between the ask and the sky, and — the piece worth having — **the same
+four guide stars the Magic Card carries**, one at each corner of a ruled frame
+around the chart, with the row and column numbers outside it exactly as they are
+on the card. Frame and stars are ONE background image: four separate layers were
+tried first and could not work, since a background layer is positioned by its
+own box, so every star landed inside the grid sitting on top of a real one.
+Continue is now the only lit thing on the screen; Show My Card Again gains a
+shape so it stops reading as fine print, deliberately not the pair's shape,
+because Decision 11 fixes this screen at two buttons. **The camera** gains a
+stroke of light under the line it speaks with (what it says changes constantly,
+and the whole screen used to move every time it did), one quiet line under it
+that never changes, a gold frame on the window, and Draw Your Stars at the size
+of a real door with its purpose written under the label rather than crammed into
+it. Two things in the references are deliberately absent, both locked decisions
+rather than taste: **no corner brackets** on the camera window (Decision 16 names
+them, along with reticles and sweeping lines, as what makes a thing read as a
+scanner), and **no Companion beside it** (Canon 6 puts Lumo at two thresholds,
+the Rite and the Creator Ceremony, and being recognised is neither). Verified on
+desktop and at 390px, with reduced motion, and against the suites: board EXACTLY
+THE CARD on all four cards, acceptance, try-again and the ten-second
+confirmation unchanged.
