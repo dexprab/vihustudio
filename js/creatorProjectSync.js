@@ -202,7 +202,12 @@ const CreatorProjectSync = (function () {
     if (!window.ThemeRepositoryClient) return Promise.resolve([]);
     return window.ThemeRepositoryClient.getClient().then(function (client) {
       return client.from(TABLE)
-        .select('id,data,updated_at')
+        // owner_id comes along because a shared Story's PICTURES travel
+        // inside the record but its VOICE does not: narration is a
+        // `vihu-asset:` reference whose Storage path is derived from
+        // whoever recorded it. Without the owner, a Story shared from
+        // another device can be read but never heard.
+        .select('id,data,updated_at,owner_id')
         .eq('is_shared', true)
         .order('updated_at', { ascending: false })
         .limit(limit || 200)

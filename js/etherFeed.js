@@ -254,6 +254,17 @@ const EtherFeed = (function () {
     } catch (e) { return []; }
   }
 
+  // The owner of a Story that came from the shared feed, or null for
+  // one of this device's own (where the recording is in this browser's
+  // IndexedDB and no owner is needed to find it). Only ever used to
+  // resolve assets — see the portal's playVoice().
+  function ownerOf(projectId) {
+    try {
+      var record = _recordFor(projectId);
+      return (record && record.__ownerId) || null;
+    } catch (e) { return null; }
+  }
+
   function pagesOf(projectId) {
     try {
       // A Canon Story is read exactly like any other — "they can be
@@ -419,7 +430,18 @@ const EtherFeed = (function () {
       }
       return CreatorProjectSync.listShared().then(function (rows) {
         var records = (rows || []).map(function (row) {
-          return (row && row.data) ? row.data : null;
+          if (!row || !row.data) return null;
+          // WHO RECORDED THIS STORY'S VOICE.
+          //
+          // Carried on the record in memory only, never persisted: a
+          // page's narration is a `vihu-asset:` reference, and the
+          // Storage path it resolves through is built from the owner
+          // who put it there. Reading a shared Story without it finds
+          // nothing and the page reads in silence — which is exactly
+          // what happened, and the first thing anybody notices about a
+          // story somebody recorded their voice into.
+          try{ row.data.__ownerId = row.owner_id || null; }catch(e){}
+          return row.data;
         }).filter(Boolean);
         // Kept so the portal can actually open them — see _sharedRecords.
         records.forEach(function (r) { if (r && r.id) _sharedRecords[r.id] = r; });
@@ -499,6 +521,7 @@ const EtherFeed = (function () {
     attach: attach,
     pagesOf: pagesOf,
     audioOf: audioOf,
+    ownerOf: ownerOf,
     publishInto: publishInto,
     toStory: toStory
   };

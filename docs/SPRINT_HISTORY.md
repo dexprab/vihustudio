@@ -2346,3 +2346,30 @@ recording keeps everything up to that moment; and the timer counts from when the
 microphone is really listening rather than from the button. Verified: four takes
 with margin and no clipping, cancel-during-warm-up clean, stop-immediately
 sane (1 ms, not fifty years), and the panel never inviting speech early.
+
+## A Shared Story's Voice (build 0541)
+
+Reported: a Story with narration, shared to the Ether, read in perfect silence.
+The portal's narration code was right and had been all along — what was missing
+was the thing that makes a recording findable. **A Story's voice is not inside
+the Story.** The record carries a `vihu-asset:` reference and the recording
+itself lives in IndexedDB (durably, in Supabase Storage); only `AssetStore` can
+turn one back into something playable, and `index.html` — the page the Ether
+runs on — never loaded it. So `typeof AssetStore === 'undefined'` and the code
+fell through its own fallback to handing `new Audio()` the raw reference, which
+is not a URL. It failed silently, which is exactly how it presented.
+Reproduced before fixing: recorded through the real recorder, shared, opened in
+the Ether — `handed to Audio(): vihu-asset:creator:proj_…`, playable NO. With
+`js/assetStore.js` loaded: a `blob:` URL, and the page speaks.
+
+A second gap was closed in the same pass, because it is the same feature and
+would have been the next report. `CreatorProjectSync.listShared()` selected
+`id,data,updated_at` and no `owner_id` — so a Story shared from ANOTHER device
+could be read but never heard: its pictures travel inside the record as data
+URIs, while its voice is a reference whose Storage path is built from whoever
+recorded it. The shared feed now carries `owner_id` on the record in memory
+(`__ownerId`, never persisted), `EtherFeed.ownerOf()` exposes it, and the portal
+passes it to `AssetStore.resolve(ref, {ownerId})` — a parameter that already
+existed, built for Magic Card recall, and had no caller here. Verified end to
+end: a Story recorded, shared and opened through the deep link plays its page's
+voice (`Audio(blob:…) played=true`). Ether and canon suites unchanged.

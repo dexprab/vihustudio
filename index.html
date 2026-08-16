@@ -7,9 +7,9 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
 
-<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css?v=0540">
-<link rel="stylesheet" href="vihuplanet/runtime/css/runtime.css?v=0540">
-<link rel="stylesheet" href="css/vihuplanet-home.css?v=0540">
+<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css?v=0541">
+<link rel="stylesheet" href="vihuplanet/runtime/css/runtime.css?v=0541">
+<link rel="stylesheet" href="css/vihuplanet-home.css?v=0541">
 </head>
 <body>
 
@@ -249,71 +249,80 @@
      It is standalone, loads the Supabase client lazily from a CDN only
      if it is ever used, and treats a missing supabase-config.json as a
      normal unconfigured state rather than an error. -->
-<script src="js/themeRepositoryClient.js?v=0540"></script>
-<script src="js/creatorProjectCache.js?v=0540"></script>
-<script src="js/creatorProjectStore.js?v=0540"></script>
-<script src="js/creatorProjectSync.js?v=0540"></script>
-<script src="js/magicCard.js?v=0540"></script>
+<script src="js/themeRepositoryClient.js?v=0541"></script>
+<script src="js/creatorProjectCache.js?v=0541"></script>
+<script src="js/creatorProjectStore.js?v=0541"></script>
+<script src="js/creatorProjectSync.js?v=0541"></script>
+<!-- WHERE A PAGE'S VOICE ACTUALLY LIVES.
+     A Story's narration is not inside the Story: the record carries a
+     `vihu-asset:` reference and the recording itself sits in IndexedDB
+     (and, durably, in Storage). Only AssetStore can turn one back into
+     something playable — and this page never loaded it, so the portal's
+     own narration code fell through to handing `new Audio()` the raw
+     reference, which is not a URL. It failed silently, which is why a
+     shared Story with a voice read in perfect silence. -->
+<script src="js/assetStore.js?v=0541"></script>
+<script src="js/magicCard.js?v=0541"></script>
 <!-- How VihuPlanet recognises a Creator: the sky they draw, and the
      one place that asks whether it is theirs. -->
-<script src="js/constellationBoard.js?v=0540"></script>
-<script src="js/creatorRecognition.js?v=0540"></script>
+<script src="js/constellationBoard.js?v=0541"></script>
+<script src="js/creatorRecognition.js?v=0541"></script>
 <!-- "Show me your Magic Card." A child raised their card to the camera
      without being asked to, so the camera now looks for it. The card
      art is what it reads (it shares that module's grid geometry), and
      the sky it finds goes to creatorRecognition above — no second
      identity system. -->
-<script src="js/magicCardArt.js?v=0540"></script>
+<script src="js/magicCardArt.js?v=0541"></script>
 <!-- OpenCV.js, fetched only when the camera is opened. See
      js/openCv.js for why it comes from a CDN and how it fails. -->
-<script src="js/openCv.js?v=0540"></script>
-<script src="js/magicCardVision.js?v=0540"></script>
-<script src="js/skyProtection.js?v=0540"></script>
+<script src="js/openCv.js?v=0541"></script>
+<script src="js/magicCardVision.js?v=0541"></script>
+<script src="js/skyProtection.js?v=0541"></script>
 <!-- The Ether's ambience. Self-contained — no other module needed —
      and it resolves its own asset paths from this script's location,
      so it works from the root exactly as it does from the Studio. -->
-<script src="js/audioManager.js?v=0540"></script>
+<script src="js/audioManager.js?v=0541"></script>
 <!-- The Canon Repository: the official stories of VihuPlanet, shipped
      with the application. They join the Ether on the same terms as
      everything else and carry no creator, because they are owned by
      nobody. -->
-<script src="js/canonRepository.js?v=0540"></script>
-<script src="js/etherFeed.js?v=0540"></script>
-<script src="js/journeyResolver.js?v=0540"></script>
+<script src="js/canonRepository.js?v=0541"></script>
+<script src="js/etherFeed.js?v=0541"></script>
+<script src="js/journeyResolver.js?v=0541"></script>
 
 <!-- ---------- the VihuPlanet Runtime ---------- -->
-<script src="vihuplanet/artDirection/illustrationRules.js?v=0540"></script>
+<script src="vihuplanet/artDirection/illustrationRules.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/core/namespace.js?v=0540"></script>
-<script src="vihuplanet/runtime/core/rng.js?v=0540"></script>
-<script src="vihuplanet/runtime/core/signal.js?v=0540"></script>
-<script src="vihuplanet/runtime/core/clock.js?v=0540"></script>
-<script src="vihuplanet/runtime/core/camera.js?v=0540"></script>
-<script src="vihuplanet/runtime/core/traveller.js?v=0540"></script>
+<script src="vihuplanet/runtime/core/namespace.js?v=0541"></script>
+<script src="vihuplanet/runtime/core/rng.js?v=0541"></script>
+<script src="vihuplanet/runtime/core/signal.js?v=0541"></script>
+<script src="vihuplanet/runtime/core/clock.js?v=0541"></script>
+<script src="vihuplanet/runtime/core/camera.js?v=0541"></script>
+<script src="vihuplanet/runtime/core/traveller.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/stories/storyEntity.js?v=0540"></script>
-<script src="vihuplanet/runtime/stories/storyManager.js?v=0540"></script>
-<script src="vihuplanet/runtime/stories/storyLayer.js?v=0540"></script>
-<script src="vihuplanet/runtime/stories/storySpirit.js?v=0540"></script>
+<script src="vihuplanet/runtime/stories/storyEntity.js?v=0541"></script>
+<script src="vihuplanet/runtime/stories/storyManager.js?v=0541"></script>
+<script src="vihuplanet/runtime/stories/storyLayer.js?v=0541"></script>
+<script src="vihuplanet/runtime/stories/storySpirit.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/physics/spatialGrid.js?v=0540"></script>
-<script src="vihuplanet/runtime/physics/physics.js?v=0540"></script>
+<script src="vihuplanet/runtime/physics/spatialGrid.js?v=0541"></script>
+<script src="vihuplanet/runtime/physics/physics.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/ether/ether.js?v=0540"></script>
-<script src="vihuplanet/runtime/ether/currents.js?v=0540"></script>
-<script src="vihuplanet/runtime/ether/aurora.js?v=0540"></script>
-<script src="vihuplanet/runtime/ether/etherRenderer.js?v=0540"></script>
+<script src="vihuplanet/runtime/ether/ether.js?v=0541"></script>
+<script src="vihuplanet/runtime/ether/currents.js?v=0541"></script>
+<script src="vihuplanet/runtime/ether/aurora.js?v=0541"></script>
+<script src="vihuplanet/runtime/ether/etherRenderer.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/ambient/ambientSystem.js?v=0540"></script>
-<script src="vihuplanet/runtime/focus/focusSystem.js?v=0540"></script>
-<script src="vihuplanet/runtime/birth/storyBirth.js?v=0540"></script>
-<script src="vihuplanet/runtime/worlds/worldEngine.js?v=0540"></script>
+<script src="vihuplanet/runtime/ambient/ambientSystem.js?v=0541"></script>
+<script src="vihuplanet/runtime/focus/focusSystem.js?v=0541"></script>
+<script src="vihuplanet/runtime/birth/storyBirth.js?v=0541"></script>
+<script src="vihuplanet/runtime/worlds/worldEngine.js?v=0541"></script>
 
-<script src="vihuplanet/runtime/core/universe.js?v=0540"></script>
+<script src="vihuplanet/runtime/core/universe.js?v=0541"></script>
 
-<script src="js/vihuplanetHome.js?v=0540"></script>
+<script src="js/vihuplanetHome.js?v=0541"></script>
 <!-- Which build is on screen. Reads its own ?v= stamp, so it cannot
      disagree with the files the browser actually fetched. -->
-<script src="js/buildStamp.js?v=0540"></script>
+<script src="js/buildStamp.js?v=0541"></script>
 </body>
 </html>

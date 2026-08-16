@@ -188,6 +188,7 @@
     var met = null;      // the entity currently being met
     var pages = [];
     var audio = [];   // narration, one slot per page, aligned with `pages`
+    var audioOwner = null;  // who recorded it, for a Story shared by somebody else
     var pageIndex = 0;
 
     // ---------- the threshold ----------
@@ -1656,6 +1657,10 @@
       // them.
       pages = (pid && window.EtherFeed) ? EtherFeed.pagesOf(pid) : [];
       audio = (pid && window.EtherFeed && EtherFeed.audioOf) ? EtherFeed.audioOf(pid) : [];
+      // Whoever recorded it, when the Story came from somebody else —
+      // see playVoice(). Null for this device's own Stories, where the
+      // recording is already in this browser.
+      audioOwner = (pid && window.EtherFeed && EtherFeed.ownerOf) ? EtherFeed.ownerOf(pid) : null;
 
       // Everything said here is something the Story actually knows
       // about itself. No invented blurb, no fabricated popularity.
@@ -1826,8 +1831,19 @@
       // a data: URI; a child's own Story carries a reference that only
       // resolves on the device that recorded it. AssetStore passes a
       // data: URI straight through, so one path serves both.
+      // AssetStore is what turns a `vihu-asset:` reference back into
+      // something playable, and this page did not load it at all — so
+      // this fell through to handing new Audio() the raw reference,
+      // which is not a URL, and every shared Story with a voice read in
+      // silence. It is loaded now (index.html); the fallback stays for
+      // the Canon case, whose narration is already a data: URI.
+      //
+      // The owner matters for a Story somebody ELSE shared: the
+      // recording is not in this browser, and the Storage path it lives
+      // at is built from whoever recorded it.
       if (typeof AssetStore !== 'undefined' && AssetStore.resolve) {
-        AssetStore.resolve(ref).then(start).catch(function () {});
+        AssetStore.resolve(ref, audioOwner ? {ownerId: audioOwner} : undefined)
+          .then(start).catch(function () {});
       } else {
         start(ref);
       }
